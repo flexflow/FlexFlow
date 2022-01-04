@@ -13,8 +13,19 @@
  * limitations under the License.
  */
 
-#include "model.h"
-#include "cuda_helper.h"
+#include "flexflow/ops/cast.h"
+#include "flexflow/utils/cuda_helper.h"
+
+namespace FlexFlow {
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::coord_t;
+
 
 OpMeta* Cast::init_task(
     const Task *task,
@@ -23,8 +34,8 @@ OpMeta* Cast::init_task(
   Cast* cast = (Cast*) task->args;
   FFHandler handler = *((const FFHandler*) task->local_args);
   CastMeta* m = new CastMeta(handler);
-  m->input_data_type = cast->inputs[0].data_type;
-  m->output_data_type = cast->outputs[0].data_type;
+  m->input_data_type = cast->inputs[0]->data_type;
+  m->output_data_type = cast->outputs[0]->data_type;
   return m;
 }
 
@@ -180,7 +191,7 @@ void Cast::backward_task(
 bool Cast::measure_operator_cost(
     Simulator*sim,
     const ParallelConfig& pc,
-    CostMetrics& cost_metrics) {
+    CostMetrics& cost_metrics) const {
   // Assume cast has no cost
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
@@ -189,3 +200,5 @@ bool Cast::measure_operator_cost(
 
 CastMeta::CastMeta(FFHandler handle)
 : OpMeta(handle) {}
+
+}; //namespace FlexFlow

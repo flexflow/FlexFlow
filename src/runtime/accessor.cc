@@ -227,28 +227,29 @@ DT* helperGetTensorPointerWO(PhysicalRegion region,
 
 template const float* helperGetTensorPointerRO(
   PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
-
 template float* helperGetTensorPointerRW(
   PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
-
 template float* helperGetTensorPointerWO(
   PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
 
-template const int* helperGetTensorPointerRO(
+template const double* helperGetTensorPointerRO(
+  PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
+template double* helperGetTensorPointerRW(
+  PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
+template double* helperGetTensorPointerWO(
   PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
 
-template int* helperGetTensorPointerRW(
+template const int32_t* helperGetTensorPointerRO(
   PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
-
-template int* helperGetTensorPointerWO(
+template int32_t* helperGetTensorPointerRW(
+  PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
+template int32_t* helperGetTensorPointerWO(
   PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
 
 template const int64_t* helperGetTensorPointerRO(
   PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
-
 template int64_t* helperGetTensorPointerRW(
   PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
-
 template int64_t* helperGetTensorPointerWO(
   PhysicalRegion region, RegionRequirement req, FieldID fid, Context ctx, Runtime* runtime);
 

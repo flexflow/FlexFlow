@@ -146,6 +146,16 @@ Tensor FFModel::elu(const Tensor x, bool inplace, const char *name)
   return this->unary(OP_ELU, x, inplace, name);
 }
 
+Tensor FFModel::rsqrt(const Tensor x, bool inplace, const char *name)
+{
+  return this->unary(OP_RSQRT, x, inplace, name);
+}
+
+Tensor FFModel::pow(const Tensor x, const float exponent, bool inplace, const char *name)
+{
+  return this->unary(OP_POW, x, inplace, name, exponent);
+}
+
 ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type,
                            const ParallelTensor x,

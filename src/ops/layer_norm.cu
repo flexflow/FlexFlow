@@ -13,65 +13,28 @@
  * limitations under the License.
  */
 
-#include "model.h"
-#include "cuda_helper.h"
+#include "flexflow/ops/layer_norm.h"
+#include "flexflow/utils/cuda_helper.h"
+
+namespace FlexFlow {
+
+// declare Legion names
+using Legion::Context;
+using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::coord_t;
+using Legion::Memory;
+using Legion::Machine;
 
 #define C10_WARP_SIZE 32
 constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 constexpr int kColwiseReduceTileSize = 32;
 
-Tensor FFModel::layer_norm(const Tensor& input,
-                           const std::vector<int>& axes,
-                           bool elementwise_affine,
-                           float eps,
-                           const char* name)
-{
-  // axes must be the last axes.size() dimensions
-  for (int i = 0; i < axes.size(); i++) {
-    bool found = false;
-    for (int j = 0; j < axes.size(); j++) 
-      if (axes[j] == input.numDim - 1 - i)
-        found = true;
-    if (!found) {
-      assert(false && "axes must be the last axes.size() dimensions");
-    }
-  }
-  LayerNorm *ln = new LayerNorm(*this, input, axes, elementwise_affine, eps, name);
-  layers.push_back(ln);
-  return ln->outputs[0];
-}
-
-LayerNorm::LayerNorm(FFModel& model,
-                     const Tensor& _input,
-                     const std::vector<int>& axes,
-                     bool _elementwise_affine,
-                     float _eps,
-                     const char *name)
-: Op(model, OP_LAYERNORM, name, _input),
-  elementwise_affine(_elementwise_affine),
-  eps(_eps)
-{
-  outputs[0].numDim = inputs[0].numDim;
-  for (int i = 0; i < outputs[0].numDim; i++)
-    outputs[0].adim[i] = inputs[0].adim[i];
-  int M = 1;
-  for (int i = 0; i < axes.size(); i++)
-    M *= inputs[0].adim[inputs[0].numDim-1-axes[i]];
-  effective_num_elements = M;
-  effective_batch_size = inputs[0].get_volume() / M;
-  if (elementwise_affine) {
-    numWeights = 2;
-    weights[0].numDim = 1;
-    weights[0].adim[0] = M;
-    weights[1].numDim = 1;
-    weights[1].adim[0] = M;
-  } else {
-    numWeights = 0;
-  }
-  return;
-}
-
+#ifdef DEADCODE
 void LayerNorm::create_weights(FFModel& model)
 {
   std::string pcname = name;
@@ -139,6 +102,7 @@ void LayerNorm::create_output_and_partition(FFModel& model)
     assert(false && "LayerNorm currently assume output/input have same partition");
   }
 }
+#endif
 
 LayerNormMeta::LayerNormMeta(FFHandler handle, const LayerNorm* ln)
 : OpMeta(handle)
@@ -164,72 +128,6 @@ OpMeta* LayerNorm::init_task(const Task *task,
   FFHandler handle = *((const FFHandler*) task->local_args);
   LayerNormMeta* meta = new LayerNormMeta(handle, ln);
   return meta;
-}
-
-void LayerNorm::init(const FFModel& ff)
-{
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      ParallelConfig pc; \
-      std::string pcname = name; \
-      ff.config.find_parallel_config(DIM, pcname, pc); \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        FFHandler handle = ff.handlers[pc.device_ids[idx++]]; \
-        argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-  IndexLauncher launcher(LAYERNORM_INIT_TASK_ID, task_is,
-    TaskArgument(this, sizeof(LayerNorm)), argmap,
-    Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-    FFConfig::get_hash_id(std::string(name)));
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
-  launcher.add_field(0, FID_DATA);
-  for (int i = 0; i < numInputs; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(input_lps[i], 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i].region));
-    launcher.add_field(i + 1, FID_DATA);
-  }
-  for (int i = 0; i < numInputs; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(input_grad_lps[i], 0/*projection id*/,
-        WRITE_ONLY, EXCLUSIVE, inputs[i].region_grad));
-    launcher.add_field(i + numInputs + 1, FID_DATA);
-  }
-  FutureMap fm = runtime->execute_index_space(ctx, launcher);
-  fm.wait_all_results();
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        meta[idx++] = fm.get_result<OpMeta*>(*it); \
-      } \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
 }
 
 /*
@@ -377,54 +275,6 @@ void LayerNorm::forward_kernel(const LayerNormMeta* m,
           m->effective_num_elements, m->eps, in_ptr, m->mean_ptr, m->rstd_ptr);
   LayerNormForwardCUDAKernel<float><<<m->effective_batch_size, kCUDANumThreads, 0, stream>>>(
       m->effective_num_elements, in_ptr, m->mean_ptr, m->rstd_ptr, gamma_ptr, beta_ptr, out_ptr);
-}
-
-void LayerNorm::forward(const FFModel& ff)
-{
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        OpMeta* mp = meta[idx++]; \
-        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
-      } \
-      break; \
-    } 
-    LEGION_FOREACH_N(DIMFUNC) 
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-  IndexLauncher launcher(LAYERNORM_FWD_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
-  launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0].region));
-  launcher.add_field(1, FID_DATA);
-  if (elementwise_affine) {
-    launcher.add_region_requirement(
-      RegionRequirement(weights[0].part, 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, weights[0].region));
-    launcher.add_field(2, FID_DATA);
-    launcher.add_region_requirement(
-      RegionRequirement(weights[1].part, 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, weights[1].region));
-    launcher.add_field(3, FID_DATA);
-  }
-  runtime->execute_index_space(ctx, launcher);
 }
 
 template <typename T>
@@ -726,72 +576,12 @@ void LayerNorm::backward_kernel(const LayerNormMeta* m,
   }
 }
 
-void LayerNorm::backward(const FFModel& ff)
-{
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
-  Domain domain = runtime->get_index_space_domain(ctx, task_is);
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        OpMeta* mp = meta[idx++]; \
-        argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
-      } \
-      break; \
-    } 
-    LEGION_FOREACH_N(DIMFUNC) 
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-  IndexLauncher launcher(LAYERNORM_BWD_TASK_ID, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(name)));
-  // regions[0](I): output_grad
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
-  launcher.add_field(0, FID_DATA);
-  // regions[1](I): input
-  launcher.add_region_requirement(
-    RegionRequirement(input_lps[0], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0].region));
-  launcher.add_field(1, FID_DATA);
-  // regions[2](I/O): input_grad
-  launcher.add_region_requirement(
-    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
-  launcher.add_field(2, FID_DATA);
-  if (elementwise_affine) {
-    // regions[3](I): gamma
-    launcher.add_region_requirement(
-      RegionRequirement(weights[0].part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, weights[0].region));
-    launcher.add_field(3, FID_DATA);
-    // regions[4](I/O): gamma_grad
-    launcher.add_region_requirement(
-      RegionRequirement(weights[0].part_grad, 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, weights[0].region_grad));
-    launcher.add_field(4, FID_DATA);
-    // regions[5](I/O): beta_grad
-    launcher.add_region_requirement(
-      RegionRequirement(weights[1].part_grad, 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, weights[1].region_grad));
-    launcher.add_field(5, FID_DATA);
-  }
-  runtime->execute_index_space(ctx, launcher);
-}
-
-bool LayerNorm::measure_operator_cost(Simulator* sim,
-                                      const ParallelConfig& pc,
-                                      CostMetrics& cost_metrics)
+bool LayerNorm::measure_operator_cost(
+    Simulator* sim,
+    const ParallelConfig& pc,
+    CostMetrics& cost_metrics) const
 {
   return false;
 }
 
+}; //namespace FlexFlow

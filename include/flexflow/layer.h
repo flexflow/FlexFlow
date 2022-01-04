@@ -30,12 +30,16 @@ public:
                         long long value);
   void add_float_property(const std::string& key,
                           float value);
+  void add_int_vector_property(const std::string& key,
+                               const std::vector<int>& value);
   void add_initializer(const std::string& key,
                        Initializer* initializer);
   bool get_int_property(const std::string& key,
                         long long& value) const;
   bool get_float_property(const std::string& key,
                           float& value) const;
+  bool get_int_vector_property(const std::string& key,
+                               std::vector<int>& value) const;
   bool get_initializer(const std::string& key,
                        Initializer* &initializer) const;
   Tensor get_parameter(int index);
@@ -55,6 +59,7 @@ private:
   std::unordered_map<std::string, long long> int_properties;
   std::unordered_map<std::string, float> float_properties;
   std::unordered_map<std::string, Initializer*> initializers;
+  std::unordered_map<std::string, std::vector<int> > int_vector_properties;
 };
 
 }; // namespace FlexFlow

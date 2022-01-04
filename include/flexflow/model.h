@@ -70,6 +70,9 @@ enum TaskIDs {
   CACHE_INIT_TASK_ID,
   CACHE_FWD_TASK_ID,
   CACHE_UPDATE_TASK_ID,
+  CAST_INIT_TASK_ID,
+  CAST_FWD_TASK_ID,
+  CAST_BWD_TASK_ID,
   AGGREGATE_INIT_TASK_ID,
   AGGREGATE_FWD_TASK_ID,
   AGGREGATE_BWD_TASK_ID,
@@ -86,6 +89,9 @@ enum TaskIDs {
   BATCHMATMUL_INIT_TASK_ID,
   BATCHMATMUL_FWD_TASK_ID,
   BATCHMATMUL_BWD_TASK_ID,
+  LAYERNORM_INIT_TASK_ID,
+  LAYERNORM_FWD_TASK_ID,
+  LAYERNORM_BWD_TASK_ID,
   LINEAR_INIT_TASK_ID,
   LINEAR_INIT_PARA_TASK_ID,
   LINEAR_FWD_TASK_ID,
@@ -152,11 +158,14 @@ enum TaskIDs {
   GRAPH_OPTIMIZE_TASK_ID,
   // Python data loader
   PY_DL_FLOAT_LOAD_ENTIRE_CPU_TASK_ID,
-  PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID,
+  PY_DL_INT32_LOAD_ENTIRE_CPU_TASK_ID,
+  PY_DL_INT64_LOAD_ENTIRE_CPU_TASK_ID,
   PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
-  PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
+  PY_DL_INT32_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
+  PY_DL_INT64_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
   PY_DL_FLOAT_LOAD_BATCH_GPU_TASK_ID,
-  PY_DL_INT_LOAD_BATCH_GPU_TASK_ID,
+  PY_DL_INT32_LOAD_BATCH_GPU_TASK_ID,
+  PY_DL_INT64_LOAD_BATCH_GPU_TASK_ID,
   // Parallel Ops
   REPARTITION_INIT_TASK_ID,
   REPARTITION_FWD_TASK_ID,
@@ -504,6 +513,7 @@ class NoOp;
 
 ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
 
+class Cast;
 class Concat;
 class Conv2D;
 class Conv2DParams;
@@ -558,6 +568,15 @@ public:
                 const Tensor y,
                 bool inplace_a = false,
                 char const *name = NULL);
+  // Add a rsqrt layer
+  Tensor rsqrt(const Tensor x,
+               bool inplace = true,
+               char const *name = NULL);
+  // Add a pow layer
+  Tensor pow(const Tensor x,
+             const float exponent,
+             bool inplace = true,
+             char const *name = NULL);
   // Add a scalar multiply layer
   Tensor scalar_multiply(const Tensor x,
 	      const float scalar,
@@ -643,6 +662,12 @@ public:
                 ActiMode activation = AC_MODE_NONE,
                 const char* name = NULL);
   // Add a batch_norm layer
+  Tensor layer_norm(const Tensor input,
+                    const std::vector<int>& axes,
+                    bool elementwise_affine,
+                    float eps,
+                    const char* name = NULL);
+  // Add a batch_norm layer
   Tensor batch_norm(const Tensor input,
                     bool relu = true,
                     const char* name = NULL);
@@ -661,11 +686,20 @@ public:
                Initializer* kernel_initializer = NULL,
                Initializer* bias_initializer = NULL,
                const char *name = NULL);
+  // Add a cast layer
+  Tensor cast(const Tensor input,
+              DataType dtype,
+              const char* name);
   // Add a concat layer
   Tensor concat(int n,
                 const Tensor* tensors,
                 int axis,
                 const char *name = NULL);
+  // Add a mean layer
+  Tensor mean(const Tensor input,
+              const std::vector<int>& dims,
+              bool keepdims,
+              const char *name);
   // Add a split layer
   void split(const Tensor input, Tensor* outputs,
              const std::vector<int>& split, int axis,
@@ -851,6 +885,8 @@ public:
   // ========================================
   PCG::Node get_or_create_noop_node(const ParallelTensor input);
   PCG::Node get_or_create_input_node(const ParallelTensorShape&);
+  PCG::Node get_or_create_cast_node(const ParallelTensor input,
+                                    DataType dtype);
   PCG::Node get_or_create_concat_node(int num_inputs,
                                       const ParallelTensor* inputs,
                                       int axis);
@@ -1056,6 +1092,7 @@ public:
   // Cached operators: key: operator hash, value: operator pointer
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
   std::unordered_map<size_t, NoOp*> cached_input_ops;
+  std::unordered_map<size_t, Cast*> cached_cast_ops;
   std::unordered_map<size_t, Concat*> cached_concat_ops;
   std::unordered_map<size_t, Conv2D*> cached_conv2d_ops;
   std::unordered_map<size_t, Dropout*> cached_dropout_ops;

@@ -21,6 +21,7 @@ namespace Output {
 class EmbeddingMeta : public OpMeta {
 public:
   EmbeddingMeta(FFHandler handle): OpMeta(handle) {}
+  DataType input_data_type;
   AggrMode aggr;
 };
 
@@ -71,24 +72,29 @@ public:
   static void backward_task_cpu(const Legion::Task *task,
                                 const std::vector<Legion::PhysicalRegion> &regions,
                                 Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_kernel(int64_t const *input_ptr,
-                             float *output_ptr,
-                             float const *weight_ptr,
-                             int in_dim,
-                             int out_dim,
-                             int batch_size,
-                             AggrMode aggr,
-                             int outputSize,
-                             cudaStream_t stream);
-  static void backward_kernel(int64_t const *input_ptr,
-                              float const *output_ptr,
-                              float *weight_grad_ptr,
-                              int in_dim,
-                              int out_dim,
-                              int batch_size,
-                              AggrMode aggr,
-                              int outputSize,
-                              cudaStream_t stream);
+  template<typename TI>
+  static void forward_kernel(
+      TI const *input_ptr,
+      float *output_ptr,
+      float const *weight_ptr,
+      int in_dim,
+      int out_dim,
+      int batch_size,
+      AggrMode aggr,
+      int outputSize,
+      cudaStream_t stream);
+  template<typename TI>
+  static void backward_kernel(
+      TI const *input_ptr,
+      float const *output_ptr,
+      float *weight_grad_ptr,
+      int in_dim,
+      int out_dim,
+      int batch_size,
+      AggrMode aggr,
+      int outputSize,
+      cudaStream_t stream);
+
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
@@ -97,14 +103,16 @@ public:
 
   EmbeddingParams get_params() const;
 private:
-  template<int NDIM>
-  static void forward_task_with_dim(const Legion::Task *task,
-                                    const std::vector<Legion::PhysicalRegion> &regions,
-                                    Legion::Context ctx, Legion::Runtime *runtime);
-  template<int NDIM>
-  static void backward_task_with_dim(const Legion::Task *task,
-                                     const std::vector<Legion::PhysicalRegion> &regions,
-                                     Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename TI>
+  static void forward_task_with_type(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename TI>
+  static void backward_task_with_type(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
 
   int input_vocab_size_replica_dim() const;
   int input_channel_out_replica_dim() const;

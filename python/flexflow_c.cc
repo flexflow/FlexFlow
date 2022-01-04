@@ -361,9 +361,8 @@ flexflow_model_add_rsqrt(
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->rsqrt(*input, name);
+  const Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->rsqrt(input, name);
   DEBUG_PRINT("[Rsqrt] new Tensor %p, input %p, name %s",
     tensor, input, name);
   return FFCObjectWrapper::wrap(tensor);
@@ -377,9 +376,8 @@ flexflow_model_add_pow(
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
-  *tensor = handle->pow(*input, exponent, name);
+  const Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->pow(input, exponent, name);
   DEBUG_PRINT("[Pow] new Tensor %p, input %p, exponent %f, name %s",
     tensor, input, exponent, name);
   return FFCObjectWrapper::wrap(tensor);
@@ -395,7 +393,7 @@ flexflow_model_add_mean(
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
+  const Tensor input = FFCObjectWrapper::unwrap(input_);
   std::vector<int> dims_vec;
   char cbuffer[256];
   char *cbuffer_ptr = cbuffer;
@@ -409,8 +407,7 @@ flexflow_model_add_mean(
     snprintf(cbuffer_ptr, num_digits + 2, "%s ", dim_str.c_str());
     cbuffer_ptr += num_digits + 1;
   }
-  Tensor *tensor = new Tensor();
-  *tensor = handle->mean(*input, dims_vec, keepdims, name);
+  Tensor tensor = handle->mean(input, dims_vec, keepdims, name);
   DEBUG_PRINT("%s, new Tensor %p, keepdims %d, name %s",
     cbuffer, tensor, keepdims, name);
   return FFCObjectWrapper::wrap(tensor);
@@ -511,13 +508,12 @@ flexflow_model_add_layer_norm(
   const char *name)
 {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor *input = FFCObjectWrapper::unwrap(input_);
-  Tensor *tensor = new Tensor();
+  const Tensor input = FFCObjectWrapper::unwrap(input_);
   std::vector<int> axes_vec;
   for (int i = 0; i < n; i++ ) {
     axes_vec.push_back(axes[i]);
   }
-  *tensor = handle->layer_norm(*input, axes_vec, elementwise_affine, eps, name);
+  Tensor tensor = handle->layer_norm(input, axes_vec, elementwise_affine, eps, name);
   DEBUG_PRINT("[LayerNorm] new Tensor %p, input %p, elementwise_affine %d, eps %f, name %s", tensor, input, elementwise_affine, eps, name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -987,7 +983,7 @@ flexflow_tensor_create(
   } else {
     assert(0);
   }
-  printf("[create_tensor()] %d %d %d\n", tensor->region.get_index_space().get_id(), tensor->region.get_field_space().get_id(), tensor->region.get_tree_id());
+  // printf("[create_tensor()] %d %d %d\n", tensor->region.get_index_space().get_id(), tensor->region.get_field_space().get_id(), tensor->region.get_tree_id());
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -1253,28 +1249,30 @@ flexflow_tensor_set_tensor_int64(
   flexflow_model_t model_,
   int num_dim,
   int *dims,
-  const int64_t *data,
-  enum ParameterSyncType comm_type)
+  const int64_t *data)
 {
-  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
-  const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
+  Tensor handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
   std::vector<int> dims_vec;
   for (int i = 0; i < num_dim; i++ ) {
     dims_vec.push_back(dims[i]);
   }
-  return handle->set_tensor<int64_t>(model, dims_vec, data, comm_type);
+  ParallelTensor ptensor;
+  model->get_parallel_tensor_from_tensor(handle, ptensor);
+  return ptensor->set_tensor<int64_t>(model, dims_vec, data);
 }
 
 bool
 flexflow_tensor_get_tensor_int64(
   flexflow_tensor_t handle_,
   flexflow_model_t model_,
-  int64_t *data,
-  enum ParameterSyncType comm_type)
+  int64_t *data)
 {
-  Tensor *handle = FFCObjectWrapper::unwrap(handle_);
-  const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
-  return handle->get_tensor<int64_t>(model, data, comm_type);
+  Tensor handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  ParallelTensor ptensor;
+  model->get_parallel_tensor_from_tensor(handle, ptensor);
+  return ptensor->get_tensor<int64_t>(model, data);
 }
 
 // -----------------------------------------------------------------------

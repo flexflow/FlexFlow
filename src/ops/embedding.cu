@@ -34,7 +34,7 @@ OpMeta* Embedding::init_task(const Task *task,
   const Embedding* embed = (Embedding*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   EmbeddingMeta* m = new EmbeddingMeta(handle);
-  m->input_data_type = embed->inputs[0].data_type;
+  m->input_data_type = embed->inputs[0]->data_type;
   m->profiling = embed->profiling;
   m->aggr = embed->aggr;
   return m;

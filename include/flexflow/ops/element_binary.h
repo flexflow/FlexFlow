@@ -9,11 +9,12 @@ class ElementBinaryMeta : public OpMeta {
 public:
   ElementBinaryMeta(FFHandler handle);
 #if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
+  cudnnTensorDescriptor_t input1Tensor, input2Tensor, outputTensor;
   cudnnOpTensorDescriptor_t opDesc;
+  cudnnReduceTensorDescriptor_t reduceAddDesc;
 #endif
   OperatorType op_type;
-  bool inplace_a;
+  bool inplace_a, has_same_operands;
 };
 
 class ElementBinary : public Op {
@@ -62,7 +63,7 @@ public:
                        cudaStream_t stream);
   size_t get_params_hash() const override;
 public:
-  bool inplace_a;
+  bool inplace_a, has_same_operands;
 };
 
 }; // namespace FlexFlow

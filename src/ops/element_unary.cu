@@ -17,6 +17,7 @@
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
+
 // declare Legion names
 using Legion::Context;
 using Legion::Runtime;
@@ -62,9 +63,9 @@ OpMeta* ElementUnary::init_task(const Task *task,
   FFHandler handle = *((FFHandler*) task->local_args);
   ElementUnaryMeta* m = new ElementUnaryMeta(handle);
   m->op_type = eu->op_type;
-  m->data_type = eu->outputs[0].data_type;
+  m->data_type = eu->outputs[0]->data_type;
   // Current assume input and output have the same data type
-  assert(eu->outputs[0].data_type == eu->inputs[0].data_type);
+  assert(eu->outputs[0]->data_type == eu->inputs[0]->data_type);
   m->profiling = eu->profiling;
   m->inplace = eu->inplace;
   m->scalar = eu->scalar;

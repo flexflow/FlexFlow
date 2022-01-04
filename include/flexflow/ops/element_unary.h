@@ -13,6 +13,7 @@ public:
   cudnnActivationDescriptor_t actiDesc;
 #endif
   OperatorType op_type;
+  DataType data_type;
   bool inplace;
   float scalar;
 };
@@ -46,18 +47,32 @@ public:
   static void backward_task(const Legion::Task *task,
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_kernel(const ElementUnaryMeta* m,
-                      const float* in_ptr,
-                      float* out_ptr,
-                      size_t num_elements,
-                      cudaStream_t stream);
-  static void backward_kernel(const ElementUnaryMeta* m,
-                       const float* in_ptr,
-                       float* in_grad_ptr,
-                       const float* out_ptr,
-                       const float* out_grad_ptr,
-                       size_t num_elements,
-                       cudaStream_t stream);
+  template<typename T>
+  static void forward_task_with_type(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename T>
+  static void backward_task_with_type(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename T>
+  static void forward_kernel(
+      const ElementUnaryMeta* m,
+      const T* in_ptr,
+      T* out_ptr,
+      size_t num_elements,
+      cudaStream_t stream);
+  template<typename T>
+  static void backward_kernel(
+      const ElementUnaryMeta* m,
+      const T* in_ptr,
+      T* in_grad_ptr,
+      const T* out_ptr,
+      const T* out_grad_ptr,
+      size_t num_elements,
+      cudaStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;

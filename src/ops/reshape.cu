@@ -88,6 +88,7 @@ void Reshape::forward_task(const Task *task,
   }
 }
 
+template<typename T>
 void Reshape::backward_kernel(T* input_grad_ptr,
                               const T* output_grad_ptr,
                               size_t num_elements,

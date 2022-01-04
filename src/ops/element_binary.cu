@@ -30,10 +30,10 @@ bool ElementBinary::can_inplace_output(void)
 {
   if (op_type == OP_EW_ADD || op_type == OP_EW_MUL) {
     // TODO: Currently assume that we always inplace_a
-    if (outputs[0].numDim != inputs[0].numDim)
+    if (outputs[0]->num_dims != inputs[0]->num_dims)
       return false;
-    for (int i = 0; i < inputs[0].numDim; i++) {
-      if (inputs[0].adim[i] != outputs[0].adim[i])
+    for (int i = 0; i < inputs[0]->num_dims; i++) {
+      if (inputs[0]->dims[i] != outputs[0]->dims[i])
         return false;
     }
     return true;
@@ -480,7 +480,7 @@ ElementBinaryMeta::ElementBinaryMeta(FFHandler handler)
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateOpTensorDescriptor(&opDesc));
   checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceAddDesc));
-  op_type = OP_ANY;
+  op_type = OP_NOOP;
 }
 
 bool ElementBinary::measure_operator_cost(Simulator* sim,
