@@ -134,7 +134,10 @@ Node FFModel::get_or_create_pool2d_node(const ParallelTensor input,
   if (!params.is_valid(input)) {
     return Node::INVALID_NODE;
   }
-
+  // Currently disable parallelizing the height and width dimension
+  if (input->dims[0].degree > 1 || input->dims[1].degree > 1) {
+    return Node::INVALID_NODE;
+  }
 
   Pool2D *pool;
 

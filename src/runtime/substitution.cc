@@ -1299,7 +1299,7 @@ void GraphSearchHelper::generate_all_pcg_xfers()
     log_xfers.debug() << oss.str();
   }
 
-  for (int num_dims = 3; num_dims <=4; num_dims++) {
+  for (int num_dims = 3; num_dims <= 4; num_dims++) {
     all_pcg_xfers.push_back(create_linear_relu_merge(this->model, num_dims, true));
     all_pcg_xfers.push_back(create_linear_relu_merge(this->model, num_dims, false));
   }
