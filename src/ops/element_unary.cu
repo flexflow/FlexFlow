@@ -244,7 +244,7 @@ void ElementUnary::forward_task_with_type(
 
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  forward_kernel(m, input_ptr, output_ptr, input_domain.get_volume(), stream);
+  forward_kernel<DT>(m, input_ptr, output_ptr, input_domain.get_volume(), stream);
 }
 
 template<typename T>
