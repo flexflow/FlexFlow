@@ -363,7 +363,7 @@ void Cast::backward(const FFModel& ff)
     default:
       assert(false);
   }
-  IndexLauncher launcher(CAST_FWD_TASK_ID, task_is,
+  IndexLauncher launcher(CAST_BWD_TASK_ID, task_is,
                          TaskArgument(NULL, false), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          FFConfig::get_hash_id(std::string(name)));

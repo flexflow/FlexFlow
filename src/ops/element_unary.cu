@@ -552,6 +552,7 @@ void elewise_unary_backward_kernel(coord_t volume,
       case OP_POW:
       {
         input_grad[i] = (T)(output_grad[i] * scalar * powf(input[i], scalar - 1));
+        break;
       }
       default:
         assert(false);

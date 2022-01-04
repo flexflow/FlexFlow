@@ -664,20 +664,53 @@ void ElementBinary::backward_kernel(const ElementBinaryMeta* m,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
+  int output_ndims, input_ndims;
+  int output_dims[MAX_TENSOR_DIM], input_dims[MAX_TENSOR_DIM];
+  int output_strides[MAX_TENSOR_DIM], input_strides[MAX_TENSOR_DIM];
+  cudnnDataType_t output_datatype, input_datatype;
+  checkCUDNN(cudnnGetTensorNdDescriptor(m->outputTensor, 4,
+      &output_datatype, &output_ndims, output_dims, output_strides));
+
   if (m->op_type == OP_EW_ADD || m->op_type == OP_EW_SUB) {
     float alpha = 1.0f, beta = 1.0f;
-    checkCUDNN(cudnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
-        nullptr/*indices*/, 0/*indicesSizeInBytes*/,
-        m->handle.workSpace, m->handle.workSpaceSize,
-        &alpha, m->outputTensor, out_grad_ptr,
-        &beta, m->input1Tensor, in1_grad_ptr));
+    checkCUDNN(cudnnGetTensorNdDescriptor(m->input1Tensor, 4,
+        &input_datatype, &input_ndims, input_dims, input_strides));
+    bool has_reduce = false;
+    assert(input_ndims == output_ndims);
+    for (int i = 0; i < input_ndims; i++)
+      if (input_dims[i] != output_dims[i])
+        has_reduce = true;
+    if (has_reduce) {
+      checkCUDNN(cudnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
+          nullptr/*indices*/, 0/*indicesSizeInBytes*/,
+          m->handle.workSpace, m->handle.workSpaceSize,
+          &alpha, m->outputTensor, out_grad_ptr,
+          &beta, m->input1Tensor, in1_grad_ptr));
+    } else {
+      checkCUDNN(cudnnAddTensor(m->handle.dnn,
+          &alpha, m->outputTensor, out_grad_ptr,
+          &beta, m->input1Tensor, in1_grad_ptr));
+    }
     if (m->op_type == OP_EW_SUB)
       alpha = -1.0f;
-    checkCUDNN(cudnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
-        nullptr/*indices*/, 0/*indicesSizeInBytes*/,
-        m->handle.workSpace, m->handle.workSpaceSize,
-        &alpha, m->outputTensor, out_grad_ptr,
-        &beta, m->input2Tensor, in2_grad_ptr));
+    checkCUDNN(cudnnGetTensorNdDescriptor(m->input2Tensor, 4,
+        &input_datatype, &input_ndims, input_dims, input_strides));
+    has_reduce = false;
+    assert(input_ndims == output_ndims);
+    for (int i = 0; i < input_ndims; i++)
+      if (input_dims[i] != output_dims[i])
+        has_reduce = true;
+    if (has_reduce) {
+      checkCUDNN(cudnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
+          nullptr/*indices*/, 0/*indicesSizeInBytes*/,
+          m->handle.workSpace, m->handle.workSpaceSize,
+          &alpha, m->outputTensor, out_grad_ptr,
+          &beta, m->input2Tensor, in2_grad_ptr));
+    } else {
+      checkCUDNN(cudnnAddTensor(m->handle.dnn,
+          &alpha, m->outputTensor, out_grad_ptr,
+          &beta, m->input2Tensor, in2_grad_ptr));
+    }
   } else if (m->op_type == OP_EW_MUL) {
     float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f;
     checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
@@ -730,7 +763,7 @@ void ElementBinary::backward_task(const Task *task,
       Domain in1_domain = runtime->get_index_space_domain(
         ctx, task->regions[2].region.get_index_space());
       assert(in0_domain == out_grad_domain);
-      assert(in1_domain == out_grad_domain);
+      //assert(in1_domain == out_grad_domain);
       in0_ptr = helperGetTensorPointerRO<float>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
       in1_ptr = helperGetTensorPointerRO<float>(
@@ -763,8 +796,8 @@ void ElementBinary::backward_task(const Task *task,
         ctx, task->regions[3].region.get_index_space());
       Domain in1_grad_domain = runtime->get_index_space_domain(
         ctx, task->regions[4].region.get_index_space());
-      assert(out_grad_domain == in1_domain);
-      assert(out_grad_domain == in1_grad_domain);
+      //assert(out_grad_domain == in1_domain);
+      assert(in1_domain == in1_grad_domain);
       in1_ptr = helperGetTensorPointerRO<float>(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
       in1_grad_ptr = helperGetTensorPointerRW<float>(
@@ -774,10 +807,44 @@ void ElementBinary::backward_task(const Task *task,
 
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+
   backward_kernel(m, out_grad_ptr, in0_ptr, in1_ptr, in0_grad_ptr, in1_grad_ptr, stream);
   //elewise_binary_backward_kernel<<<GET_BLOCKS(out_grad_domain.get_volume()), CUDA_NUM_THREADS>>>(
     //out_grad_domain.get_volume(), alpha, alpha, ele->op_type, out_grad_ptr, in1_ptr, in2_ptr,
     //in1_grad_ptr, in2_grad_ptr);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    char const *opName;
+    switch (m->op_type) {
+      case OP_EW_ADD:
+        opName = "Add";
+        break;
+      case OP_EW_SUB:
+        opName = "Sub";
+        break;
+      case OP_EW_MUL:
+        opName = "Mul";
+        break;
+      case OP_EW_DIV:
+        opName = "Div";
+        break;
+      default:
+        assert(false);
+    }
+    printf("[%s] backward time (CB) = %.2fms\n", opName, elapsed);
+  }
+
 }
 
 void ElementBinary::backward(const FFModel& ff)
