@@ -850,7 +850,7 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
       //assert(opx->get_pm_constraint(PM_OUTPUT_CHANNELS, output_channels));
       assert(opx->get_pm_constraint(PM_ACTI, activation));
       op = model->get_or_create_linear_node(linear->layer_guid, inputs[0], linear->out_channels,
-                                            (ActiMode)activation, false);
+                                            (ActiMode)activation, linear->use_bias);
       break;
     }
     case OP_MULTIHEAD_ATTENTION:

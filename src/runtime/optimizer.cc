@@ -28,9 +28,9 @@ ParallelTensor create_replica_parameter(const FFModel* model,
 {
   Context ctx = model->config.lg_ctx;
   Runtime* runtime = model->config.lg_hlr;
-  ParallelTensor v = new ParallelTensorBase();
-  v->sync_type = p->sync_type;
-  v->owner_op = p->owner_op;
+  ParallelTensor v = new ParallelTensorBase(*p);
+  v->region_grad = LogicalRegion::NO_REGION;
+  v->part_grad = LogicalPartition::NO_PART;
   v->region = runtime->create_logical_region(
       ctx, p->region.get_index_space(), p->region.get_field_space());
   if (v->sync_type == ParameterSyncType::PS) {
