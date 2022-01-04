@@ -23,8 +23,8 @@ public:
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
   void print_layer(const FFModel& model) override {assert(0);}
-  void create_weights(FFModel& model);
-  void create_output_and_partition(FFModel& model);
+  //void create_weights(FFModel& model);
+  //void create_output_and_partition(FFModel& model);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,

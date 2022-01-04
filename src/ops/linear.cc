@@ -33,24 +33,31 @@ Tensor FFModel::dense(const Tensor input,
   Layer* li = new Layer(this, OP_LINEAR, name, 1/*inputs*/,
                         use_bias ? 2 : 1 /*weights*/, 1/*outputs*/,
                         input);
-  int numdims = input->num_dims;
-  int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdims; i++)
-    dims[i] = input->dims[i];
-  dims[0] = outDim;
+  {
+    int numdims = input->num_dims;
+    int dims[MAX_TENSOR_DIM];
+    for (int i = 0; i < numdims; i++)
+      dims[i] = input->dims[i];
+    dims[0] = outDim;
+    li->outputs[0] = create_tensor_legion_ordering(numdims, dims, data_type,
+                                                   li, 0, true/*create_grad*/);
+  }
+  {
+    int dims[2] = {input->dims[0], outDim};
+    li->weights[KERNEL_IDX] = create_weight_legion_ordering(2, dims, DT_FLOAT,
+        li, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
+  }
+  if (use_bias) {
+    int dims[1] = {outDim};
+    li->weights[BIAS_IDX] = create_weight_legion_ordering(1, dims, DT_FLOAT,
+        li, true/*create_grad*/, bias_initializer, CHOSEN_SYNC_TYPE);
+  }
   li->data_type = data_type;
-  li->outputs[0] = create_tensor_legion_ordering(numdims, dims, data_type,
-                                                 li, 0, true/*create_grad*/);
   li->add_int_property("use_bias", use_bias);
   li->add_int_property("out_dim", outDim);
   li->add_int_property("activation", activation);
   layers.push_back(li);
   return li->outputs[0];
-#ifdef DEADCODE
-  Linear* li = new Linear(*this, input, outDim, activation, use_bias, data_type, false, name);
-  layers.push_back(li);
-  return li->outputs[0];
-#endif
 }
 
 Op* Linear::create_operator_from_layer(FFModel& model,
@@ -64,7 +71,7 @@ Op* Linear::create_operator_from_layer(FFModel& model,
   int outdim = value;
   layer->get_int_property("activation", value);
   ActiMode activation = (ActiMode) value;
-  return new Linear(model, inputs[0], outdim, activation, use_bias,
+  return new Linear(model, layer->layer_guid, inputs[0], outdim, activation, use_bias,
                     layer->data_type, false/*allocate_weights*/, layer->name);
 }
 
@@ -76,11 +83,12 @@ Linear::Linear(FFModel& model,
                Linear const &other, 
                const ParallelTensor input,
                bool allocate_weights)
-: Linear(model, input, other.out_channels, other.activation,
+: Linear(model, other.layer_guid, input, other.out_channels, other.activation,
          other.use_bias, other.data_type, allocate_weights, other.name)
 { }
 
 Linear::Linear(FFModel& model,
+               const LayerID& _layer_guid,
                const ParallelTensor _input,
                int out_dim,
                ActiMode _activation,
@@ -102,6 +110,8 @@ Linear::Linear(FFModel& model,
   use_bias(_use_bias),
   replica(ParallelTensorBase::NO_TENSOR)
 {
+  // overwrite layer_guid
+  layer_guid = _layer_guid;
   data_type = _data_type;
   auto dimension_names = this->get_params().get_dimension_names(_input->get_shape());
   this->in_channels = _input->dims[dimension_names.at(LinearParams::INPUT_CHANNEL)].size;
@@ -421,19 +431,21 @@ Node FFModel::get_or_create_linear_node(const ParallelTensor input,
   if (it != cached_linear_ops.end()) {
     li = it->second;
   } else {
-    li = new Linear(*this, input, params.out_channels, params.activation, params.use_bias, params.data_type, false/*allocate_weights*/, NULL);
+    li = new Linear(*this, params.layer_guid, input, params.out_channels, params.activation, params.use_bias, params.data_type, false/*allocate_weights*/, NULL);
     cached_linear_ops[hash] = li;
   }
 
   return this->new_node(li);
 }
 
-Node FFModel::get_or_create_linear_node(const ParallelTensor input,
+Node FFModel::get_or_create_linear_node(const LayerID& layer_guid,
+                                        const ParallelTensor input,
                                         int out_dim,
                                         ActiMode activation,
                                         bool use_bias)
 {
   LinearParams params;
+  params.layer_guid = layer_guid;
   params.out_channels = out_dim;
   params.activation = activation;
   params.use_bias = use_bias;
@@ -446,6 +458,7 @@ Node FFModel::get_or_create_linear_node(const ParallelTensor input,
 }
 
 void Linear::serialize(Legion::Serializer& sez) const { 
+  sez.serialize(this->layer_guid.id);
   sez.serialize(this->out_channels); 
   sez.serialize(this->activation); 
   sez.serialize(this->use_bias); 
@@ -459,15 +472,19 @@ Node Linear::deserialize(FFModel &ff, Legion::Deserializer &dez, ParallelTensor 
   ActiMode activation; 
   bool use_bias;
   DataType data_type;
+  size_t id;
+  dez.deserialize(id);
+  LayerID layer_guid(id);
   dez.deserialize(out_channels); 
   dez.deserialize(activation); 
   dez.deserialize(use_bias);
   dez.deserialize(data_type);
-  return ff.get_or_create_linear_node(inputs[0], out_channels, activation, use_bias);
+  return ff.get_or_create_linear_node(layer_guid, inputs[0], out_channels, activation, use_bias);
 } 
 
 LinearParams Linear::get_params() const {
   LinearParams params;
+  params.layer_guid = this->layer_guid;
   params.out_channels = this->out_channels;
   params.use_bias = this->use_bias;
   params.data_type = this->data_type;
@@ -479,6 +496,7 @@ LinearParams Linear::get_params() const {
 
 size_t LinearParams::get_hash(const ParallelTensor input) const {
   size_t hash = input->get_owner_independent_hash();
+  hash_combine(hash, this->layer_guid.id);
   hash_combine(hash, this->out_channels);
   hash_combine(hash, this->activation);
   hash_combine(hash, this->use_bias);

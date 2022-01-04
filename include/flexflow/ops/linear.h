@@ -25,6 +25,7 @@ public:
 
 class LinearParams {
 public:
+  LayerID layer_guid;
   int in_channels, out_channels;
   bool use_bias;
   DataType data_type;
@@ -73,6 +74,7 @@ private:
 class Linear : public Op {
 public:
   Linear(FFModel& model,
+         const LayerID& layer_guid,
          const ParallelTensor input,
          int out_dim,
          ActiMode activation,

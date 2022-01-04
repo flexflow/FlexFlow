@@ -2,6 +2,7 @@
 #define _FLEXFLOW_CONV_2D_H
 
 #include "flexflow/model.h"
+#include "flexflow/fftype.h"
 
 namespace FlexFlow {
   
@@ -56,6 +57,7 @@ namespace Conv2DBias {
 }
 
 struct Conv2DParams {
+  LayerID layer_guid;
   int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, groups;
   ActiMode activation;
   bool use_bias;
@@ -106,6 +108,7 @@ public:
 class Conv2D : public Op {
 public:
   Conv2D(FFModel& model,
+         const LayerID& layer_guid,
          const ParallelTensor input,
          int outChannels,
          int kernelH, int kernelW,

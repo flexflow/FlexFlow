@@ -43,30 +43,6 @@ Tensor FFModel::batch_norm(const Tensor input,
   bm->add_int_property("relu", relu);
   layers.push_back(bm);
   return bm->outputs[0];
-#ifdef DEADCODE
-  assert(input->num_dims == 4); //Only support 4D BN for now
-  Initializer* scale_initializer = new ConstantInitializer(1.0f);
-  Initializer* bias_initializer = new ConstantInitializer(0.0f);
-#ifdef FF_USE_NCCL
-  ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-  ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-  Tensor scale, bias;
-  {
-    const int dims[1] = {input->dims[2].size};
-    scale = create_weight<1>(dims, DT_FLOAT, NULL/*owner_op*/,
-        true/*create_grad*/, scale_initializer, comm_type);
-  }
-  {
-    const int dims[1] = {input->dims[2].size};
-    bias = create_weight<1>(dims, DT_FLOAT, NULL/*owner_op*/,
-        true/*create_grad*/, bias_initializer, comm_type);
-  }
-  BatchNorm *bn = new BatchNorm(*this, input, scale, bias, relu, name);
-  layers.push_back(bn);
-  return bn->outputs[0];
-#endif
 }
 
 /*

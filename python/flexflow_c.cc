@@ -1816,12 +1816,10 @@ flexflow_op_get_parameter_by_id(
   flexflow_op_t handle_,
   int id)
 {
-  assert(false && "TODO: implement a mapping function from parameter to parallel parameter");
-#ifdef DEADCODE
+  //assert(false && "TODO: implement a mapping function from parameter to parallel parameter");
   Layer *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor tensor = handle->get_parameter(id);
   return FFCObjectWrapper::wrap(tensor);
-#endif
 }
 
 int
