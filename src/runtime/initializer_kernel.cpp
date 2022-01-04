@@ -233,32 +233,32 @@ void ZeroInitializer::init_task(const Task* task,
                                 const std::vector<PhysicalRegion>& regions,
                                 Context ctx, Runtime* runtime)
 {
+  ZeroInitMeta* meta = (ZeroInitMeta*) task->args;
+  assert(meta->num_regions == regions.size());
   assert(regions.size() == task->regions.size());
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   for (size_t i = 0; i < regions.size(); i++) {
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
-    float* w;
-    switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-      case DIM: \
-      { \
-        TensorAccessorW<float, DIM> accW( \
-            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/); \
-        w = accW.ptr; \
-        break; \
-      }
-      LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-      default:
-      {
-         assert(false);
-         break;
-      }
+    if (meta->data_types[i] == DT_FLOAT) {
+      float* w = helperGetTensorPointerWO<float>(
+          regions[i], task->regions[i], FID_DATA, ctx, runtime);
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<float>), GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream,
+          w, domain.get_volume(), 0.0f);
+    } else if (meta->data_types[i] == DT_INT32) {
+      int32_t* w = helperGetTensorPointerWO<int32_t>(
+          regions[i], task->regions[i], FID_DATA, ctx, runtime);
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<int32_t>), GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream,
+          w, domain.get_volume(), 0);
+    } else if (meta->data_types[i] == DT_INT64) {
+      int64_t* w = helperGetTensorPointerWO<int64_t>(
+          regions[i], task->regions[i], FID_DATA, ctx, runtime);
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<int64_t>), GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream,
+          w, domain.get_volume(), 0);
+    } else {
+      assert(false && "Unsupported data type in Zero Initializer");
     }
-    hipLaunchKernelGGL(assign_kernel, GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream,
-        w, domain.get_volume(), 0.0f);
   }
   checkCUDA(hipDeviceSynchronize());
 }

@@ -610,8 +610,8 @@ void FusedOp::backward_task(const Task* task,
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
         assert(my_grad_id[0].get_volume() == my_grad_od[0].get_volume());
-        Reshape::backward_kernel(my_grad_ip[0], my_grad_op[0],
-            my_grad_id[0].get_volume(), stream);
+        // Reshape::backward_kernel(my_grad_ip[0], my_grad_op[0],
+        //     my_grad_id[0].get_volume(), stream);
         break;
       }
       case OP_TRANSPOSE:

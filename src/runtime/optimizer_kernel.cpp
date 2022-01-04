@@ -55,12 +55,12 @@ void SGDOptimizer::ps_update_task_gpu(const SGDOptimizer* op,
   // Step 1: Gather gradients in the first replica
   for (int i = 1; i < num_replicas; i++) {
     const float* src = w_grad_ptr + i * size;
-    hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_add_with_scale), GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream, 
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_add_with_scale<float>), GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream, 
         (float*) w_grad_ptr, src, size, 1.0f);
   }
   //checkCUDA(hipDeviceSynchronize());
   // Step 2: SGD update
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(sgd_update), GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream, 
+  hipLaunchKernelGGL(sgd_update, GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream, 
       size, op->lr, op->weight_decay, op->momentum, op->nesterov,
       w_grad_ptr, v_ptr, w_ptr);
   //checkCUDA(hipDeviceSynchronize());
@@ -82,7 +82,7 @@ void SGDOptimizer::nccl_update_task_gpu(const SGDOptimizer* op,
   //fprintf(stderr, "weight(%p) After ncclAllReduce...\n", w_grad_ptr);
 
   // Step 2: SGD update
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(sgd_update), GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream, 
+  hipLaunchKernelGGL(sgd_update, GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream, 
       size, op->lr, op->weight_decay, op->momentum, op->nesterov,
       w_grad_ptr, v_ptr, w_ptr);
   //checkCUDA(hipDeviceSynchronize());

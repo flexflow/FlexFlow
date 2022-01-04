@@ -70,6 +70,7 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   template<typename IDT, typename ODT>
   static void forward_kernel(
       const IDT* input_ptr,
@@ -82,6 +83,20 @@ public:
       ODT* dst_ptr,
       size_t volume,
       cudaStream_t stream);
+#else
+  template<typename IDT, typename ODT>
+  static void forward_kernel(
+      const IDT* input_ptr,
+      ODT* output_ptr,
+      size_t volume,
+      hipStream_t stream);
+  template<typename IDT, typename ODT>
+  static void backward_kernel(
+      const IDT* src_ptr,
+      ODT* dst_ptr,
+      size_t volume,
+      hipStream_t stream);
+#endif
 };
 
 }; // namespace FlexFlow

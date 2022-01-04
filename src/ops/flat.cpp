@@ -77,7 +77,7 @@ void Flat::backward_kernel(float* input_grad_ptr,
                            hipStream_t stream)
 {
   float alpha = 1.0f;
-  hipLaunchKernelGGL(apply_add_with_scale, GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream, 
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_add_with_scale<float>), GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream, 
       input_grad_ptr, output_grad_ptr, num_elements, alpha);
 }
 
