@@ -355,6 +355,65 @@ flexflow_model_add_divide(
 }
 
 flexflow_tensor_t
+flexflow_model_add_rsqrt(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_,
+  const char *name)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->rsqrt(input, name);
+  DEBUG_PRINT("[Rsqrt] new Tensor %p, input %p, name %s",
+    tensor, input, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t
+flexflow_model_add_pow(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_,
+  const float exponent,
+  const char *name)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor = handle->pow(input, exponent, name);
+  DEBUG_PRINT("[Pow] new Tensor %p, input %p, exponent %f, name %s",
+    tensor, input, exponent, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t
+flexflow_model_add_mean(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_,
+  int *dims,
+  int n,
+  bool keepdims,
+  const char *name)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor input = FFCObjectWrapper::unwrap(input_);
+  std::vector<int> dims_vec;
+  char cbuffer[256];
+  char *cbuffer_ptr = cbuffer;
+  snprintf(cbuffer_ptr, 13, "[Mean] dims ");
+  cbuffer_ptr += 12;
+  for (int i = 0; i < n; ++i) {
+    int dim = dims[i];
+    dims_vec.push_back(dim);
+    std::string dim_str = std::to_string(dim);
+    size_t num_digits = dim_str.size();
+    snprintf(cbuffer_ptr, num_digits + 2, "%s ", dim_str.c_str());
+    cbuffer_ptr += num_digits + 1;
+  }
+  Tensor tensor = handle->mean(input, dims_vec, keepdims, name);
+  DEBUG_PRINT("%s, new Tensor %p, keepdims %d, name %s",
+    cbuffer, tensor, keepdims, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t
 flexflow_model_add_conv2d(
   flexflow_model_t handle_,
   const flexflow_tensor_t input_,
@@ -435,6 +494,27 @@ flexflow_model_add_batch_norm(
   Tensor tensor = handle->batch_norm(input, relu, name);
   DEBUG_PRINT("[BatchNorm] new Tensor 4D %p (%d, %d, %d, %d), input %p, relu %d, name %s", 
     tensor, tensor->dims[0], tensor->dims[1], tensor->dims[2], tensor->dims[3], input, relu, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t
+flexflow_model_add_layer_norm(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_,
+  int n,
+  int* axes,
+  bool elementwise_affine,
+  float eps, 
+  const char *name)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor input = FFCObjectWrapper::unwrap(input_);
+  std::vector<int> axes_vec;
+  for (int i = 0; i < n; i++ ) {
+    axes_vec.push_back(axes[i]);
+  }
+  Tensor tensor = handle->layer_norm(input, axes_vec, elementwise_affine, eps, name);
+  DEBUG_PRINT("[LayerNorm] new Tensor %p, input %p, elementwise_affine %d, eps %f, name %s", tensor, input, elementwise_affine, eps, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -883,7 +963,10 @@ flexflow_tensor_create(
 {
   Tensor tensor;
   FFModel *model = FFCObjectWrapper::unwrap(model_);
-  if (num_dims == 2) {
+  if (num_dims == 1) {
+    tensor = model->create_tensor<1>(dims, data_type, NULL, create_grad);
+    DEBUG_PRINT("[Tensor] new 1D %p (%d, %d, %d, %d)", tensor, tensor->dims[0], tensor->dims[1], tensor->dims[2], tensor->dims[3]);
+  } else if (num_dims == 2) {
     tensor = model->create_tensor<2>(dims, data_type, NULL, create_grad);
     DEBUG_PRINT("[Tensor] new 2D %p (%d, %d, %d, %d)", tensor, tensor->dims[0], tensor->dims[1], tensor->dims[2], tensor->dims[3]);
   } else if (num_dims == 3) {
@@ -900,6 +983,7 @@ flexflow_tensor_create(
   } else {
     assert(0);
   }
+  // printf("[create_tensor()] %d %d %d\n", tensor->region.get_index_space().get_id(), tensor->region.get_field_space().get_id(), tensor->region.get_tree_id());
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -928,7 +1012,10 @@ flexflow_constant_create(
 {
   Tensor tensor;
   FFModel *model = FFCObjectWrapper::unwrap(model_);
-  if (num_dims == 2) {
+  if (num_dims == 1) {
+    tensor = model->create_constant<1>(dims, value, data_type);
+    DEBUG_PRINT("[Tensor] new 1D %p (%d, %d, %d, %d)", tensor, tensor->dims[0], tensor->dims[1], tensor->dims[2], tensor->dims[3]);
+  } else if (num_dims == 2) {
     tensor = model->create_constant<2>(dims, value, data_type);
     DEBUG_PRINT("[Tensor] new 2D %p (%d, %d, %d, %d)", tensor, tensor->dims[0], tensor->dims[1], tensor->dims[2], tensor->dims[3]);
   } else if (num_dims == 3) {
@@ -1154,6 +1241,38 @@ flexflow_tensor_get_tensor_int(
   ParallelTensor ptensor;
   model->get_parallel_tensor_from_tensor(handle, ptensor);
   return ptensor->get_tensor<int>(model, data);
+}
+
+bool
+flexflow_tensor_set_tensor_int64(
+  flexflow_tensor_t handle_,
+  flexflow_model_t model_,
+  int num_dim,
+  int *dims,
+  const int64_t *data)
+{
+  Tensor handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  std::vector<int> dims_vec;
+  for (int i = 0; i < num_dim; i++ ) {
+    dims_vec.push_back(dims[i]);
+  }
+  ParallelTensor ptensor;
+  model->get_parallel_tensor_from_tensor(handle, ptensor);
+  return ptensor->set_tensor<int64_t>(model, dims_vec, data);
+}
+
+bool
+flexflow_tensor_get_tensor_int64(
+  flexflow_tensor_t handle_,
+  flexflow_model_t model_,
+  int64_t *data)
+{
+  Tensor handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  ParallelTensor ptensor;
+  model->get_parallel_tensor_from_tensor(handle, ptensor);
+  return ptensor->get_tensor<int64_t>(model, data);
 }
 
 // -----------------------------------------------------------------------

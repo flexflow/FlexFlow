@@ -38,6 +38,14 @@ struct ParallelDim {
     return true;
   }
 
+  bool operator!=(const ParallelDim &rhs) const
+  {
+    if (size != rhs.size) return true;
+    if (degree != rhs.degree) return true;
+    if (parallel_idx != rhs.parallel_idx) return true;
+    return false;
+  }
+
   int size = 0;
   int degree = UNKNOWN_DEGREE;
   int parallel_idx = UNKNOWN_INDEX;

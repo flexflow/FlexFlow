@@ -34,11 +34,6 @@ Tensor FFModel::unary(OperatorType op,
   ele->add_float_property("scalar", scalar);
   layers.push_back(ele);
   return ele->outputs[0];
-#ifdef DEADCODE
-  ElementUnary *ele = new ElementUnary(*this, op, x, inplace, name, scalar);
-  layers.push_back(ele);
-  return ele->outputs[0];
-#endif
 }
 
 Op* ElementUnary::create_operator_from_layer(
@@ -61,7 +56,6 @@ size_t ElementUnary::get_params_hash() const {
   if (this->op_type == OP_SCALAR_MULTIPLY) {
     hash_combine(hash, this->scalar);
   }
-
   return hash;
 }
 
@@ -150,6 +144,16 @@ Tensor FFModel::elu(const Tensor x, bool inplace, const char *name)
   // Currently assume inplace is false
   assert(!inplace);
   return this->unary(OP_ELU, x, inplace, name);
+}
+
+Tensor FFModel::rsqrt(const Tensor x, bool inplace, const char *name)
+{
+  return this->unary(OP_RSQRT, x, inplace, name);
+}
+
+Tensor FFModel::pow(const Tensor x, const float exponent, bool inplace, const char *name)
+{
+  return this->unary(OP_POW, x, inplace, name, exponent);
 }
 
 ElementUnary::ElementUnary(FFModel& model,

@@ -26,21 +26,25 @@ public:
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
 #if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
-  static void forward_kernel(const float* input_ptr,
-                             float* output_ptr,
+  template<typename T>
+  static void forward_kernel(const T* input_ptr,
+                             T* output_ptr,
                              size_t num_elements,
                              cudaStream_t stream);
-  static void backward_kernel(float* input_grad_ptr,
-                              const float* output_grad_ptr,
+  template<typename T>
+  static void backward_kernel(T* input_grad_ptr,
+                              const T* output_grad_ptr,
                               size_t num_elements,
                               cudaStream_t stream);
 #else
-  static void forward_kernel(const float* input_ptr,
-                             float* output_ptr,
+  template<typename T>
+  static void forward_kernel(const T* input_ptr,
+                             T* output_ptr,
                              size_t num_elements,
                              hipStream_t stream);
-  static void backward_kernel(float* input_grad_ptr,
-                              const float* output_grad_ptr,
+  template<typename T>
+  static void backward_kernel(T* input_grad_ptr,
+                              const T* output_grad_ptr,
                               size_t num_elements,
                               hipStream_t stream);
 #endif

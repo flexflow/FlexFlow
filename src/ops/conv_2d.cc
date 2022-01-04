@@ -73,24 +73,6 @@ Tensor FFModel::conv2d(const Tensor input,
   conv->add_initializer("bias", bias_initializer);
   layers.push_back(conv);
   return conv->outputs[0];
-
-#ifdef DEADCODE
-  Conv2D *conv = new Conv2D(
-      *this, 
-      input, 
-      outChannels,
-      kernelH, kernelW,
-      strideH, strideW, 
-      paddingH, paddingW, 
-      activation,
-      groups,
-      false, // use_bias, // TODO FIXME @lockshaw
-      false,
-      name
-  );
-  layers.push_back(conv);
-  return conv->outputs[0];
-#endif
 }
 
 Op* Conv2D::create_operator_from_layer(
@@ -178,6 +160,10 @@ Node FFModel::get_or_create_conv2d_node(const ParallelTensor input,
                                         const Conv2DParams& params)
 {
   if (!params.is_valid(input)) {
+    return Node::INVALID_NODE;
+  }
+  // Currently disable parallelizing the height and width dimension
+  if (input->dims[0].degree > 1 || input->dims[1].degree > 1) {
     return Node::INVALID_NODE;
   }
 

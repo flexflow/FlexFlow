@@ -23,21 +23,31 @@ Tensor FFModel::binary(OperatorType op,
                        bool inplace_a,
                        char const *name)
 {
-  Layer *ele = new Layer(this, op, name, 2/*inputs*/, 0/*weights*/, 1/*outputs*/, in1, in2);
+  Layer* ele = nullptr;
+  DataType dtype;
   assert(in1->num_dims == in2->num_dims);
   for (int i = 0; i < in1->num_dims; i++) {
     assert(in1->dims[i] == in2->dims[i]);
   }
+  if (in1->data_type < in2->data_type) {
+    dtype = in2->data_type;
+    std::string str(name);
+    Tensor new_in1 = cast(in1, dtype, (str+"input1_pre_cast").c_str());
+    ele = new Layer(this, op, name, 2/*inputs*/, 0/*weights*/, 1/*outputs*/, new_in1, in2);
+  } else if (in1->data_type > in2->data_type) {
+    dtype = in1->data_type;
+    std::string str(name);
+    Tensor new_in2 = cast(in2, dtype, (str+"input2_pre_cast").c_str());
+    ele = new Layer(this, op, name, 2/*inputs*/, 0/*weights*/, 1/*outputs*/, in1, new_in2);
+  } else {
+    dtype = in1->data_type;
+    ele = new Layer(this, op, name, 2/*inputs*/, 0/*weights*/, 1/*outputs*/, in1, in2);
+  }
   ele->outputs[0] = create_tensor_legion_ordering(
-      in1->num_dims, in1->dims, DT_FLOAT, ele, 0, true/*create_grad*/);
+      in1->num_dims, in1->dims, dtype, ele, 0, true/*create_grad*/);
   ele->add_int_property("inplace_a", inplace_a);
   layers.push_back(ele);
   return ele->outputs[0];
-#ifdef DEADCODE
-  ElementBinary *ele = new ElementBinary(*this, op, in1, in2, inplace_a, name);
-  layers.push_back(ele);
-  return ele->outputs[0];
-#endif
 }
 
 Op* ElementBinary::create_operator_from_layer(
@@ -101,12 +111,10 @@ ElementBinary::ElementBinary(FFModel& model,
   ),
   inplace_a(_inplace_a)
 {
-  //TODO: implement broadcast op
   numOutputs = 1;
   numWeights = 0;
-  assert(in1->num_dims == in2->num_dims);
   assert(in1->data_type == in2->data_type);
-  int numdim = in1->num_dims;
+  int numdim = std::max(in1->num_dims, in2->num_dims);
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
     assert(in1->dims[i] == in2->dims[i]);
@@ -127,19 +135,22 @@ void ElementBinary::init(const FFModel& ff)
                          TaskArgument(this, sizeof(ElementBinary)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          outputs[0]->machine_view.hash());
+  int rid = 0;
   launcher.add_region_requirement(
     RegionRequirement(inputs[0]->part, 0/*projection id*/,
       READ_WRITE, EXCLUSIVE, inputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-    RegionRequirement(inputs[1]->part, 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[1]->region));
-  launcher.add_field(1, FID_DATA);
+  launcher.add_field(rid++, FID_DATA);
+  if (!has_same_operands) {
+    launcher.add_region_requirement(
+      RegionRequirement(inputs[1]->part, 0/*projection id*/,
+        READ_WRITE, EXCLUSIVE, inputs[1]->region));
+    launcher.add_field(rid++, FID_DATA);
+  }
   if (!inplace_a) {
     launcher.add_region_requirement(
       RegionRequirement(outputs[0]->part, 0/*projection id*/,
         WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
-    launcher.add_field(2, FID_DATA);
+    launcher.add_field(rid++, FID_DATA);
   } else {
     assert(outputs[0]->part == inputs[0]->part);
     assert(outputs[0]->region == inputs[0]->region);
@@ -177,23 +188,34 @@ void ElementBinary::forward(const FFModel& ff)
       RegionRequirement(inputs[0]->part, 0/*projection id*/,
         READ_WRITE, EXCLUSIVE, inputs[0]->region));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[1]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[1]->region));
-    launcher.add_field(1, FID_DATA);
+    if (has_same_operands) {
+      // do nothing else
+    } else {
+      launcher.add_region_requirement(
+        RegionRequirement(inputs[1]->part, 0/*projection id*/,
+          READ_ONLY, EXCLUSIVE, inputs[1]->region));
+      launcher.add_field(1, FID_DATA);
+    }
   } else {
     launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part, 0/*projection id*/,
         READ_ONLY, EXCLUSIVE, inputs[0]->region));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[1]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[1]->region));
-    launcher.add_field(1, FID_DATA);
-    launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0/*projection id*/,
-        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
-    launcher.add_field(2, FID_DATA);
+    if (has_same_operands) {
+      launcher.add_region_requirement(
+        RegionRequirement(outputs[0]->part, 0/*projection id*/,
+          WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+      launcher.add_field(1, FID_DATA);
+    } else {
+      launcher.add_region_requirement(
+        RegionRequirement(inputs[1]->part, 0/*projection id*/,
+          READ_ONLY, EXCLUSIVE, inputs[1]->region));
+      launcher.add_field(1, FID_DATA);
+      launcher.add_region_requirement(
+        RegionRequirement(outputs[0]->part, 0/*projection id*/,
+          WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+      launcher.add_field(2, FID_DATA);
+    }
   }
   runtime->execute_index_space(ctx, launcher);
 }

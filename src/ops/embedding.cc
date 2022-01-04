@@ -45,26 +45,30 @@ Tensor FFModel::embedding(const Tensor input,
 {
   Layer* embed = new Layer(this, OP_EMBEDDING, name, 1/*inputs*/,
                            1/*weights*/, 1/*outputs*/, input);
-  int numdims = input->num_dims;
-  int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdims; i++)
-    dims[i] = input->dims[i];
-  dims[0] = out_dim;
+  if (aggr == AGGR_MODE_NONE) {
+    int numdims = input->num_dims + 1;
+    int dims[MAX_TENSOR_DIM];
+    for (int i = 1; i < numdims; i++)
+      dims[i] = input->dims[i-1];
+    dims[0] = out_dim;
+    embed->outputs[0] = create_tensor_legion_ordering(
+        numdims, dims, embed->data_type, embed, 0, true/*create_grad*/);
+  } else {
+    int numdims = input->num_dims;
+    int dims[MAX_TENSOR_DIM];
+    for (int i = 0; i < numdims; i++)
+      dims[i] = input->dims[i];
+    dims[0] = out_dim;
+    embed->outputs[0] = create_tensor_legion_ordering(
+        numdims, dims, embed->data_type, embed, 0, true/*create_grad*/);
+  }
   embed->data_type = DT_FLOAT;
-  embed->outputs[0] = create_tensor_legion_ordering(
-      numdims, dims, embed->data_type, embed, 0, false/*create_grad*/);
   embed->add_int_property("num_entries", num_entries);
   embed->add_int_property("out_dim", out_dim);
   embed->add_int_property("aggr_mode", aggr);
   embed->add_initializer("kernel", kernel_initializer);
   layers.push_back(embed);
   return embed->outputs[0];
-#ifdef DEADCODE
-  Embedding* embed = new Embedding(*this, input, num_entries, out_dim,
-                                   aggr, false/*allocate_weights*/, name);
-  layers.push_back(embed);
-  return embed->outputs[0];
-#endif
 }
 
 EmbeddingParams Embedding::get_params() const {
@@ -116,7 +120,8 @@ int Embedding::input_channel_out_replica_dim() const {
 }
 
 int Embedding::output_vocab_size_replica_dim() const {
-  return this->inputs[0]->num_dims - 1;
+  assert(this->outputs[0] != nullptr);
+  return this->outputs[0]->num_dims - 1;
 }
 
 int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
@@ -190,8 +195,6 @@ Embedding::Embedding(FFModel& model,
 : Op(model, OP_EMBEDDING, name, 1/*inputs*/, 1/*weights*/, allocate_weights, 1/*outputs*/, _input),
   num_entries(_num_entries), out_channels(_out_channels), aggr(_aggr)
 {
-  this->register_mappings();
-
   std::vector<ParallelDim *> weight_dim_sets;
 
   int weight_ndim;
@@ -204,6 +207,9 @@ Embedding::Embedding(FFModel& model,
   ParallelDim output_dims[MAX_TENSOR_DIM];
   int output_ndim = this->output_size(output_dims);
 
+  // register mappings between inputs/weights and outputs
+  this->register_mappings();
+
   this->solve_parallel_dim_mappings(
     { _input->dims },
     weight_dim_sets,
@@ -214,7 +220,8 @@ Embedding::Embedding(FFModel& model,
     Initializer *weight_initializer = new GlorotUniform(std::rand()/*seed*/);
 
     weights[0] = model.create_parallel_weight_legion_ordering(
-        weight_ndim, weight_dims, DT_FLOAT, nullptr/*owner_op*/, true/*create_grad*/, weight_initializer, CHOSEN_SYNC_TYPE);
+        weight_ndim, weight_dims, DT_FLOAT, nullptr/*owner_op*/, true/*create_grad*/,
+        weight_initializer, CHOSEN_SYNC_TYPE);
   }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);

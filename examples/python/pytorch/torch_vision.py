@@ -15,8 +15,7 @@ def top_level_task():
   dims_input = [ffconfig.batch_size, 3, 229, 229]
   input_tensor = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
-  torch_model = PyTorchModel("squeezenet.ff")
-  output_tensors = torch_model.apply(ffmodel, [input_tensor])
+  output_tensors = PyTorchModel.file_to_ff("squeezenet.ff", ffmodel, [input_tensor])
 
   ffoptimizer = SGDOptimizer(ffmodel, 0.01)
   ffmodel.optimizer = ffoptimizer

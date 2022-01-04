@@ -626,7 +626,11 @@ template int32_t* ParallelTensorBase::get_raw_ptr<int32_t>(FFConfig &config);
 
 template bool ParallelTensorBase::set_tensor<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
 template bool ParallelTensorBase::get_tensor<float>(const FFModel* ff, float* data);
-template bool ParallelTensorBase::set_tensor<int>(const FFModel* ff, const std::vector<int>& dims, const int* data);
-template bool ParallelTensorBase::get_tensor<int>(const FFModel* ff, int* data);
+template bool ParallelTensorBase::set_tensor<double>(const FFModel* ff, const std::vector<int>& dims, const double* data);
+template bool ParallelTensorBase::get_tensor<double>(const FFModel* ff, double* data);
+template bool ParallelTensorBase::set_tensor<int32_t>(const FFModel* ff, const std::vector<int>& dims, const int32_t* data);
+template bool ParallelTensorBase::get_tensor<int32_t>(const FFModel* ff, int32_t* data);
+template bool ParallelTensorBase::set_tensor<int64_t>(const FFModel* ff, const std::vector<int>& dims, const int64_t* data);
+template bool ParallelTensorBase::get_tensor<int64_t>(const FFModel* ff, int64_t* data);
 
 }; // namespace FlexFlow
