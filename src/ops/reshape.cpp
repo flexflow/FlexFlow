@@ -27,11 +27,18 @@ using Legion::Rect;
 using Legion::PhysicalRegion;
 using Legion::coord_t;
 
+ReshapeMeta::ReshapeMeta(FFHandler handler)
+: OpMeta(handler) {}
+
 OpMeta* Reshape::init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
                            Context ctx, Runtime *runtime)
 {
-  return NULL;
+  const Reshape* reshape = (Reshape*) task->args;
+  FFHandler handle = *((const FFHandler*) task->local_args);
+  ReshapeMeta* m = new ReshapeMeta(handle);
+  m->data_type = reshape->outputs[0]->data_type;
+  return m;
 }
 
 /*static*/
@@ -52,7 +59,7 @@ void Reshape::forward_task(const Task *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   //const Reshape* reshape = (const Reshape*) task->args;
-  DataType type = *((DataType*) task->args);
+  const ReshapeMeta* m = *((ReshapeMeta**) task->local_args);
   Domain in_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain out_domain = runtime->get_index_space_domain(
@@ -60,25 +67,25 @@ void Reshape::forward_task(const Task *task,
   assert(in_domain.get_volume() == out_domain.get_volume());
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  if (type == DT_FLOAT) {
+  if (m->data_type == DT_FLOAT) {
     const float* in_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
     float* out_ptr = helperGetTensorPointerWO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
     forward_kernel<float>(in_ptr, out_ptr, in_domain.get_volume(), stream);
-  } else if (type == DT_DOUBLE) {
+  } else if (m->data_type == DT_DOUBLE) {
     const double* in_ptr = helperGetTensorPointerRO<double>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
     double* out_ptr = helperGetTensorPointerWO<double>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
     forward_kernel<double>(in_ptr, out_ptr, in_domain.get_volume(), stream);
-  } else if (type == DT_INT32) {
+  } else if (m->data_type == DT_INT32) {
     const int32_t* in_ptr = helperGetTensorPointerRO<int32_t>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int32_t* out_ptr = helperGetTensorPointerWO<int32_t>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
     forward_kernel<int32_t>(in_ptr, out_ptr, in_domain.get_volume(), stream);
-  } else if (type == DT_INT64) {
+  } else if (m->data_type == DT_INT64) {
     const int64_t* in_ptr = helperGetTensorPointerRO<int64_t>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int64_t* out_ptr = helperGetTensorPointerWO<int64_t>(
@@ -107,7 +114,7 @@ void Reshape::backward_task(const Task *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   //const Reshape* reshape = (const Reshape*) task->args;
-  DataType type = *((DataType*) task->args);
+  const ReshapeMeta* m = *((ReshapeMeta**) task->local_args);
   Domain out_grad_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain in_grad_domain = runtime->get_index_space_domain(
@@ -115,25 +122,25 @@ void Reshape::backward_task(const Task *task,
   assert(in_grad_domain.get_volume() == out_grad_domain.get_volume());
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  if (type == DT_FLOAT) {
+  if (m->data_type == DT_FLOAT) {
     const float* out_grad_ptr = helperGetTensorPointerRO<float>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     float* in_grad_ptr = helperGetTensorPointerRW<float>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     backward_kernel<float>(in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume(), stream);
-  } else if (type == DT_DOUBLE) {
+  } else if (m->data_type == DT_DOUBLE) {
     const double* out_grad_ptr = helperGetTensorPointerRO<double>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     double* in_grad_ptr = helperGetTensorPointerRW<double>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     backward_kernel<double>(in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume(), stream);
-  } else if (type == DT_INT32) {
+  } else if (m->data_type == DT_INT32) {
     const int32_t* out_grad_ptr = helperGetTensorPointerRO<int32_t>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int32_t* in_grad_ptr = helperGetTensorPointerRW<int32_t>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     backward_kernel<int32_t>(in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume(), stream);
-  } else if (type == DT_INT64) {
+  } else if (m->data_type == DT_INT64) {
     const int64_t* out_grad_ptr = helperGetTensorPointerRO<int64_t>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int64_t* in_grad_ptr = helperGetTensorPointerRW<int64_t>(

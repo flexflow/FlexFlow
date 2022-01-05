@@ -65,10 +65,7 @@ public:
 #endif
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-<<<<<<< HEAD
                              CostMetrics& cost_metrics) const override;
-=======
-                             CostMetrics& cost_metrics) const;
   size_t get_params_hash() const override;
   void serialize(Legion::Serializer& s) const override;
   static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);
@@ -77,7 +74,6 @@ public:
 public:
   size_t shape_length;
   int shape_array[MAX_TENSOR_DIM];
->>>>>>> upstream/unify
 };
 
 }; // namespace FlexFlow
