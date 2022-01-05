@@ -27,6 +27,7 @@ Parameter create_replica_parameter(const FFModel* model,
   Parameter v;
   v.sync_type = p.sync_type;
   v.owner_op = p.owner_op;
+  v.data_type = p.data_type;
   v.region = runtime->create_logical_region(
       ctx, p.region.get_index_space(), p.region.get_field_space());
   if (v.sync_type == ParameterSyncType::PS) {
