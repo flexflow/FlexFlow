@@ -21,6 +21,7 @@
 #include "flexflow/ops/conv_2d.h"
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/reshape.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/flat.h"
@@ -1540,6 +1541,8 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
         break;
       }
       case OP_EW_ADD:
+      case OP_EW_SUB:
+      case OP_EW_MUL:
       {
         sez.serialize(op->op_type);
         break;
@@ -1807,6 +1810,8 @@ void FFModel::deserialize_graph_optimal_view(
         break;
       }
       case OP_EW_ADD:
+      case OP_EW_SUB:
+      case OP_EW_MUL:
       {
         assert(num_inputs == 2);
         OperatorType op_type;
@@ -1827,6 +1832,11 @@ void FFModel::deserialize_graph_optimal_view(
       case OP_POOL2D:
       {
         node = Pool2D::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_RESHAPE:
+      {
+        node = Reshape::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_LINEAR:
