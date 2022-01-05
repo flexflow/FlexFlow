@@ -2496,6 +2496,12 @@ Op* FFModel::create_operator_from_layer(Layer* layer,
       operators.push_back(op);
       return op;
     }
+    case OP_RESHAPE:
+    {
+      Op* op = Reshape::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_SOFTMAX:
     {
       Op* op = Softmax::create_operator_from_layer(*this, layer, inputs);

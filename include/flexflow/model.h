@@ -528,6 +528,8 @@ class LinearParams;
 class MultiHeadAttention;
 class Pool2D;
 class Pool2DParams;
+class Reshape;
+class ReshapeParams;
 class Softmax;
 class Combine;
 class Repartition;
@@ -915,6 +917,10 @@ public:
                                               bool bias,
                                               bool add_bias_kv,
                                               bool add_zero_attn);
+  PCG::Node get_or_create_reshape_node(const ParallelTensor input,
+                                       const ReshapeParams& shape);
+  PCG::Node get_or_create_reshape_node(const ParallelTensor input,
+                                       const std::vector<int>& shape);
   PCG::Node get_or_create_softmax_node(const ParallelTensor input,
                                        int softmax_dim);
   PCG::Node get_or_create_repartition_node(const ParallelTensor input,
@@ -1103,6 +1109,7 @@ public:
   std::unordered_map<size_t, Pool2D*> cached_pool2d_ops;
   std::unordered_map<size_t, Flat*> cached_flat_ops;
   std::unordered_map<size_t, MultiHeadAttention*> cached_multihead_attn_ops;
+  std::unordered_map<size_t, Reshape*> cached_reshape_ops;
   std::unordered_map<size_t, Softmax*> cached_softmax_ops;
   std::unordered_map<size_t, Repartition*> cached_repartition_ops;
   std::unordered_map<size_t, Replicate*> cached_replicate_ops;
