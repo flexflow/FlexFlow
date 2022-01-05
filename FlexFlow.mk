@@ -63,6 +63,7 @@ GEN_SRC += ${FF_HOME}/src/runtime/accessor.cc\
 		${FF_HOME}/src/ops/attention.cc\
     ${FF_HOME}/src/ops/batch_matmul.cc\
 		${FF_HOME}/src/ops/batch_norm.cc\
+		${FF_HOME}/src/ops/cast.cc\
 		${FF_HOME}/src/ops/cache.cc\
 		${FF_HOME}/src/ops/concat.cc\
 		${FF_HOME}/src/ops/conv_2d.cc\
@@ -73,7 +74,9 @@ GEN_SRC += ${FF_HOME}/src/runtime/accessor.cc\
 		${FF_HOME}/src/ops/flat.cc\
 		${FF_HOME}/src/ops/fused.cc\
 		${FF_HOME}/src/ops/group_by.cc\
+		${FF_HOME}/src/ops/layer_norm.cc\
 		${FF_HOME}/src/ops/linear.cc\
+		${FF_HOME}/src/ops/mean.cc\
 		${FF_HOME}/src/ops/noop.cc\
 		${FF_HOME}/src/ops/pool_2d.cc\
 		${FF_HOME}/src/ops/reshape.cc\
@@ -97,11 +100,9 @@ FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/attention.cu\
 		${FF_HOME}/src/ops/batch_matmul.cu\
 		${FF_HOME}/src/ops/batch_norm.cu\
-		${FF_HOME}/src/ops/layer_norm.cu\
-		${FF_HOME}/src/ops/linear.cu\
-		${FF_HOME}/src/ops/softmax.cu\
 		${FF_HOME}/src/ops/concat.cu\
 		${FF_HOME}/src/ops/cache.cu\
+		${FF_HOME}/src/ops/cast.cu\
 		${FF_HOME}/src/ops/dropout.cu\
 		${FF_HOME}/src/ops/element_binary.cu\
 		${FF_HOME}/src/ops/element_unary.cu\
@@ -109,7 +110,9 @@ FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/flat.cu\
 		${FF_HOME}/src/ops/fused.cu\
 		${FF_HOME}/src/ops/group_by.cu\
+		${FF_HOME}/src/ops/layer_norm.cu\
 		${FF_HOME}/src/ops/linear.cu\
+		${FF_HOME}/src/ops/mean.cu\
 		${FF_HOME}/src/ops/pool_2d.cu\
 		${FF_HOME}/src/ops/reshape.cu\
 		${FF_HOME}/src/ops/reverse.cu\
@@ -122,9 +125,6 @@ FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/parallel_ops/replicate.cu\
 		${FF_HOME}/src/parallel_ops/reduction.cu\
 		${FF_HOME}/src/parallel_ops/fused_parallel_op.cu\
-		${FF_HOME}/src/ops/attention.cu\
-		${FF_HOME}/src/ops/fused.cu\
-		${FF_HOME}/src/ops/mean.cu\
 		${FF_HOME}/src/loss_functions/loss_functions.cu\
 		${FF_HOME}/src/metrics_functions/metrics_functions.cu\
 		${FF_HOME}/src/runtime/accessor_kernel.cu\
