@@ -54,7 +54,7 @@ void SGDOptimizer::ps_update_task_gpu(const SGDOptimizer* op,
   // Step 1: Gather gradients in the first replica
   for (int i = 1; i < num_replicas; i++) {
     const float* src = w_grad_ptr + i * size;
-    apply_add_with_scale<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
+    apply_add_with_scale<float><<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
         (float*) w_grad_ptr, src, size, 1.0f);
   }
   //checkCUDA(cudaDeviceSynchronize());
