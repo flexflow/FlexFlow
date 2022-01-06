@@ -85,29 +85,16 @@ public:
   static void backward_task(const Legion::Task *task,
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
-#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   static void forward_kernel(const Pool2DMeta* m,
                              const float* input_ptr,
                              float* output_ptr,
-                             cudaStream_t stream);
+                             ffStream_t stream);
   static void backward_kernel(const Pool2DMeta* m,
                               const float* input_ptr,
                               float* input_grad_ptr,
                               const float* output_ptr,
                               const float* output_grad_ptr,
-                              cudaStream_t stream);
-#else
-  static void forward_kernel(const Pool2DMeta* m,
-                             const float* input_ptr,
-                             float* output_ptr,
-                             hipStream_t stream);
-  static void backward_kernel(const Pool2DMeta* m,
-                              const float* input_ptr,
-                              float* input_grad_ptr,
-                              const float* output_ptr,
-                              const float* output_grad_ptr,
-                              hipStream_t stream);
-#endif
+                              ffStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;

@@ -51,25 +51,14 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;
-#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   static void forward_kernel(SoftmaxMeta const *m,
                              float const *input_ptr,
                              float *output_ptr,
-                             cudaStream_t stream);
+                             ffStream_t stream);
   static void backward_kernel(float *input_grad_ptr,
                               float const *output_grad_ptr,
                               size_t num_elements,
-                              cudaStream_t stream);
-#else
-  static void forward_kernel(SoftmaxMeta const *m,
-                             float const *input_ptr,
-                             float *output_ptr,
-                             hipStream_t stream);
-  static void backward_kernel(float *input_grad_ptr,
-                              float const *output_grad_ptr,
-                              size_t num_elements,
-                              hipStream_t stream);
-#endif
+                              ffStream_t stream);
   size_t get_params_hash() const override;
 private:
   template<int NDIM>

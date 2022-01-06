@@ -115,7 +115,7 @@ void Linear::forward_kernel(const LinearMeta* m,
                             const void* weight_ptr,
                             const void* bias_ptr,
                             int in_dim, int out_dim, int batch_size,
-                            cudaStream_t stream)
+                            ffStream_t stream)
 {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -255,7 +255,7 @@ void Linear::backward_kernel(const LinearMeta* m,
                              void* kernel_grad_ptr,
                              void* bias_grad_ptr,
                              int in_dim, int out_dim, int batch_size,
-                             cudaStream_t stream)
+                             ffStream_t stream)
 {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));

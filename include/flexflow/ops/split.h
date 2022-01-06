@@ -26,23 +26,13 @@ public:
   static void backward_task(const Legion::Task *task,
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
-#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   static void forward_kernel(float **out_ptrs,
                              float const *in_ptr,
                              Legion::coord_t const *out_blk_sizes,
                              Legion::coord_t in_blk_size,
                              Legion::coord_t num_blks,
                              int numOutputs,
-                             cudaStream_t stream);
-#else
-  static void forward_kernel(float **out_ptrs,
-                             float const *in_ptr,
-                             Legion::coord_t const *out_blk_sizes,
-                             Legion::coord_t in_blk_size,
-                             Legion::coord_t num_blks,
-                             int numOutputs,
-                             hipStream_t stream);
-#endif
+                             ffStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;

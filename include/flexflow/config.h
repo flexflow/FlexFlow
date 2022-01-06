@@ -18,12 +18,14 @@
 #include <cstring>
 #include "legion.h"
 #include "ffconst.h"
-#if (defined(LEGION_USE_HIP) && defined(__HIP_PLATFORM_NVCC__)) || defined(LEGION_USE_CUDA)
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
 #include <cudnn.h>
 #include <cublas_v2.h>
-#else
+#elif defined (FF_USE_HIP_ROCM)
 #include <miopen.h>
 #include <hipblas.h>
+#else
+#error "Unknown device" 
 #endif
 #include "tl/optional.h"
 #ifdef FF_USE_NCCL

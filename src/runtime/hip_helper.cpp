@@ -7,9 +7,11 @@ using Legion::Rect;
 using Legion::coord_t;
 
 namespace FlexFlow {
-#ifndef LEGION_USE_HIP
-#error "LEGION_USE_HIP must be defined"
+
+#ifndef FF_USE_HIP_ROCM
+#error "FF_USE_HIP_ROCM must be defined"
 #endif
+
 extern "C" {
 hipStream_t hipGetTaskStream();
 }

@@ -46,14 +46,13 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;
-#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)  
   static void forward_kernel(const MultiHeadAttentionMeta* m,
                       const float* query_ptr,
                       const float* key_ptr,
                       const float* value_ptr,
                       const float* weight_ptr,
                       float* output_ptr,
-                      cudaStream_t stream);
+                      ffStream_t stream);
   static void backward_kernel(const MultiHeadAttentionMeta* m,
                        const float* query_ptr,
                        float* query_grad_ptr,
@@ -64,27 +63,7 @@ public:
                        const float* weight_ptr,
                        float* weight_grad_ptr,
                        const float* output_grad_ptr,
-                       cudaStream_t stream);
-#else
-  static void forward_kernel(const MultiHeadAttentionMeta* m,
-                      const float* query_ptr,
-                      const float* key_ptr,
-                      const float* value_ptr,
-                      const float* weight_ptr,
-                      float* output_ptr,
-                      hipStream_t stream);
-  static void backward_kernel(const MultiHeadAttentionMeta* m,
-                       const float* query_ptr,
-                       float* query_grad_ptr,
-                       const float* key_ptr,
-                       float* key_grad_ptr,
-                       const float* value_ptr,
-                       float* value_grad_ptr,
-                       const float* weight_ptr,
-                       float* weight_grad_ptr,
-                       const float* output_grad_ptr,
-                       hipStream_t stream);      
-#endif            
+                       ffStream_t stream);            
   public:
   int num_heads;
   float dropout;

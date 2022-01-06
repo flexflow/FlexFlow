@@ -112,14 +112,13 @@ public:
   static void backward_task(const Legion::Task *task,
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
-#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   static void forward_kernel(const LinearMeta* m,
                              const void* input_ptr,
                              void* output_ptr,
                              const void* filter_ptr,
                              const void* bias_ptr,
                              int in_dim, int out_dim, int batch_size,
-                             cudaStream_t stream);
+                             ffStream_t stream);
   static void backward_kernel(const LinearMeta* m,
                               const void* input_ptr,
                               void* input_grad_ptr,
@@ -129,26 +128,7 @@ public:
                               void* kernel_grad_ptr,
                               void* bias_ptr,
                               int in_dim, int out_dim, int batch_size,
-                              cudaStream_t stream);
-#else
-  static void forward_kernel(const LinearMeta* m,
-                             const void* input_ptr,
-                             void* output_ptr,
-                             const void* filter_ptr,
-                             const void* bias_ptr,
-                             int in_dim, int out_dim, int batch_size,
-                             hipStream_t stream);
-  static void backward_kernel(const LinearMeta* m,
-                              const void* input_ptr,
-                              void* input_grad_ptr,
-                              const void* output_ptr,
-                              void* output_grad_ptr,
-                              const void* kernel_ptr,
-                              void* kernel_grad_ptr,
-                              void* bias_ptr,
-                              int in_dim, int out_dim, int batch_size,
-                              hipStream_t stream);
-#endif
+                              ffStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;

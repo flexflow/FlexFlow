@@ -32,13 +32,12 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;
-#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   static void forward_kernel(BatchNormMeta *m,
                              float const *input_ptr,
                              float *output_ptr,
                              float const *scale_ptr,
                              float const *bias_ptr,
-                             cudaStream_t stream);
+                             ffStream_t stream);
   static void backward_kernel(BatchNormMeta *m,
                               float const *input_ptr,
                               float *output_grad_ptr,
@@ -48,25 +47,7 @@ public:
                               float *scale_grad_ptr,
                               float *bias_grad_ptr,
                               size_t numElements,
-                              cudaStream_t stream);
-#else
-  static void forward_kernel(BatchNormMeta *m,
-                             float const *input_ptr,
-                             float *output_ptr,
-                             float const *scale_ptr,
-                             float const *bias_ptr,
-                             hipStream_t stream);
-  static void backward_kernel(BatchNormMeta *m,
-                              float const *input_ptr,
-                              float *output_grad_ptr,
-                              float const *output_ptr,
-                              float *input_grad_ptr,
-                              float const *scale_ptr,
-                              float *scale_grad_ptr,
-                              float *bias_grad_ptr,
-                              size_t numElements,
-                              hipStream_t stream);
-#endif
+                              ffStream_t stream);
 public:
   bool relu;
   int num_replica;
