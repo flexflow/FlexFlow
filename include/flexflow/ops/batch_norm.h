@@ -14,11 +14,11 @@ public:
             const ParallelTensor bias,
             bool relu,
             const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
   void update(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
+  void print_layer(const FFModel& model) override {assert(0);}
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -31,13 +31,13 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
   static void forward_kernel(BatchNormMeta *m,
                              float const *input_ptr,
                              float *output_ptr,
                              float const *scale_ptr,
                              float const *bias_ptr,
-                             cudaStream_t stream);
+                             ffStream_t stream);
   static void backward_kernel(BatchNormMeta *m,
                               float const *input_ptr,
                               float *output_grad_ptr,
@@ -47,7 +47,7 @@ public:
                               float *scale_grad_ptr,
                               float *bias_grad_ptr,
                               size_t numElements,
-                              cudaStream_t stream);
+                              ffStream_t stream);
 public:
   bool relu;
   int num_replica;
@@ -68,6 +68,10 @@ public:
   cudnnTensorDescriptor_t inputTensor, outputTensor, biasTensor;
   cudnnActivationDescriptor_t actiDesc;
   cudnnBatchNormMode_t mode;
+#else
+  miopenTensorDescriptor_t inputTensor, outputTensor, biasTensor;
+  miopenActivationDescriptor_t actiDesc;
+  miopenBatchNormMode_t mode;
 #endif
   float *runningMean, *runningVar, *saveMean, *saveVar;
   bool relu;

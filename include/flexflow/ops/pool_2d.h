@@ -44,6 +44,10 @@ public:
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;
   cudnnPoolingDescriptor_t poolDesc;
+#else
+  miopenTensorDescriptor_t inputTensor, outputTensor;
+  miopenActivationDescriptor_t actiDesc;
+  miopenPoolingDescriptor_t poolDesc;
 #endif
   bool relu;
   char op_name[MAX_OPNAME];
@@ -62,11 +66,11 @@ public:
   Pool2D(FFModel& model,
          Pool2D const &other,
          ParallelTensor const input);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
   void update(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
+  void print_layer(const FFModel& model) override {assert(0);}
   static Op* create_operator_from_layer(
       FFModel& model,
       const Layer* layer,
@@ -84,16 +88,16 @@ public:
   static void forward_kernel(const Pool2DMeta* m,
                              const float* input_ptr,
                              float* output_ptr,
-                             cudaStream_t stream);
+                             ffStream_t stream);
   static void backward_kernel(const Pool2DMeta* m,
                               const float* input_ptr,
                               float* input_grad_ptr,
                               const float* output_ptr,
                               const float* output_grad_ptr,
-                              cudaStream_t stream);
+                              ffStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
 
   void serialize(Legion::Serializer &) const override;
   static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);

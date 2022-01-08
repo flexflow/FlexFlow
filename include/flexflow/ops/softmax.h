@@ -14,6 +14,8 @@ public:
               const Legion::Domain& input_domain);
 #if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor;
+#else
+  miopenTensorDescriptor_t inputTensor;
 #endif
   bool profiling;
   int dim;
@@ -26,11 +28,11 @@ public:
           const ParallelTensor logit,
           int dim,
           const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  bool get_int_parameter(PMParameter, int*) const;
-  void print_layer(const FFModel& model) {assert(0);}
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
+  bool get_int_parameter(PMParameter, int*) const override;
+  void print_layer(const FFModel& model) override {assert(0);}
   static Op* create_operator_from_layer(FFModel& model,
                                         const Layer* layer,
                                         const std::vector<ParallelTensor>& inputs);
@@ -48,15 +50,15 @@ public:
                  Legion::Rect<2> const &output) const;
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
   static void forward_kernel(SoftmaxMeta const *m,
                              float const *input_ptr,
                              float *output_ptr,
-                             cudaStream_t stream);
+                             ffStream_t stream);
   static void backward_kernel(float *input_grad_ptr,
                               float const *output_grad_ptr,
                               size_t num_elements,
-                              cudaStream_t stream);
+                              ffStream_t stream);
   size_t get_params_hash() const override;
 private:
   template<int NDIM>

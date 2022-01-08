@@ -1,5 +1,6 @@
-#ifndef _LEGION_CNN_HELPER_H_
-#define _LEGION_CNN_HELPER_H_
+#ifndef _FLEXFLOW_CUDA_HELPER_H_
+#define _FLEXFLOW_CUDA_HELPER_H_
+#include <cublas_v2.h>
 #include "legion.h"
 #include "flexflow/ffconst.h"
 #include <cudnn.h>

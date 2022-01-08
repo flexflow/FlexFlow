@@ -6,23 +6,8 @@ using Legion::Rect;
 using Legion::coord_t;
 
 namespace FlexFlow {
-#ifdef LEGION_USE_HIP
-#ifdef __HIP_PLATFORM_NVCC__
-extern "C" {
-cudaStream_t hipGetTaskStream();
-}
 
-cudaError_t get_legion_stream(cudaStream_t *stream)
-{
-#ifdef DISABLE_LEGION_CUDA_HIJACK
-  *stream = (cudaStream_t)0;
-#else
-  *stream = hipGetTaskStream();
-#endif
-  return cudaSuccess;
-}
-#endif
-#else
+#ifdef FF_USE_CUDA
 cudaError_t get_legion_stream(cudaStream_t *stream)
 {
 #ifdef DISABLE_LEGION_CUDA_HIJACK
@@ -32,7 +17,23 @@ cudaError_t get_legion_stream(cudaStream_t *stream)
   return cudaStreamCreate(stream);
 #endif
 }
+#elif FF_USE_HIP_CUDA
+extern "C" {
+  cudaStream_t hipGetTaskStream();
+}
+cudaError_t get_legion_stream(cudaStream_t *stream)
+{
+#ifdef DISABLE_LEGION_CUDA_HIJACK
+  *stream = (cudaStream_t)0;
+#else
+  *stream = hipGetTaskStream();
 #endif
+  return cudaSuccess;
+}  
+#else
+#error "Unknown device, please make sure if CUDA is enabled"
+#endif
+
 }; // namespace
 
 using FlexFlow::get_legion_stream;

@@ -75,13 +75,13 @@ public:
       const IDT* input_ptr,
       ODT* output_ptr,
       size_t volume,
-      cudaStream_t stream);
+      ffStream_t stream);
   template<typename IDT, typename ODT>
   static void backward_kernel(
       const IDT* src_ptr,
       ODT* dst_ptr,
       size_t volume,
-      cudaStream_t stream);
+      ffStream_t stream);
 };
 
 }; // namespace FlexFlow

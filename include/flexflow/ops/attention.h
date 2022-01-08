@@ -28,11 +28,11 @@ public:
                      float _dropout, bool _bias,
                      bool _add_bias_kv, bool _add_zero_attn,
                      const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
-  bool get_int_parameter(PMParameter, int*) const;
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
+  void print_layer(const FFModel& model) override {assert(0);}
+  bool get_int_parameter(PMParameter, int*) const override;
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -45,14 +45,14 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
   static void forward_kernel(const MultiHeadAttentionMeta* m,
                       const float* query_ptr,
                       const float* key_ptr,
                       const float* value_ptr,
                       const float* weight_ptr,
                       float* output_ptr,
-                      cudaStream_t stream);
+                      ffStream_t stream);
   static void backward_kernel(const MultiHeadAttentionMeta* m,
                        const float* query_ptr,
                        float* query_grad_ptr,
@@ -63,8 +63,8 @@ public:
                        const float* weight_ptr,
                        float* weight_grad_ptr,
                        const float* output_grad_ptr,
-                       cudaStream_t stream);
-public:
+                       ffStream_t stream);            
+  public:
   int num_heads;
   float dropout;
   bool bias;

@@ -29,6 +29,9 @@ using Legion::ArgumentMap;
 using Legion::TaskArgument;
 using Legion::RegionRequirement;
 using Legion::Predicate;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::coord_t;
 
 Tensor FFModel::aggregate_spec(const Tensor* inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
                           int n, float lambda_bal, const char* name)
@@ -101,6 +104,17 @@ void AggregateSpec::init(const FFModel& ff)
   set_opmeta_from_futuremap(ff, fm);
 }
 
+OpMeta* AggregateSpec::init_task(const Task* task,
+                        const std::vector<PhysicalRegion> &regions,
+                        Context ctx, Runtime* runtime)
+{
+  AggregateSpec* agg = (AggregateSpec*) task->args;
+  FFHandler handle = *((FFHandler*)task->local_args);
+  AggregateSpecMeta* m = new AggregateSpecMeta(handle, agg->n);
+  m->profiling = agg->profiling;
+  return m;
+}
+
 void AggregateSpec::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
@@ -135,6 +149,64 @@ void AggregateSpec::forward(const FFModel& ff)
       WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(n+2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+void AggregateSpec::forward_task(const Task *task,
+                                 const std::vector<PhysicalRegion>& regions,
+                                 Context ctx, Runtime* runtime)
+{
+  int n = ((AggregateSpec*)task->args)->n;
+
+  assert((int)regions.size() == n+3);
+  assert((int)task->regions.size() == n+3);
+
+  const AggregateSpecMeta* m = *((AggregateSpecMeta**)task->local_args);
+
+  // get gate_pred, gate_assign, output
+  const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
+  const AccessorRO<int, 2> acc_gate_assign(regions[1], FID_DATA);
+  const AccessorWO<float, 2> acc_output(regions[n+2], FID_DATA);
+
+  Rect<2> rect_gate_pred = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  Rect<2> rect_gate_assign = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  Rect<2> rect_output = runtime->get_index_space_domain(
+      ctx, task->regions[n+2].region.get_index_space());
+
+  coord_t batch_size = rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1;
+  assert(batch_size == rect_gate_assign.hi[1] - rect_gate_assign.lo[1] + 1);
+  coord_t k = rect_gate_pred.hi[0] - rect_gate_pred.lo[0] + 1;
+  assert(k == rect_gate_assign.hi[0] - rect_gate_assign.lo[0] + 1);
+  assert(k*batch_size == rect_output.hi[1] - rect_output.lo[1] + 1);
+  coord_t out_dim = rect_output.hi[0] - rect_output.lo[0] + 1;
+
+  // get exp_preds
+  float* exp_preds[n];
+  // get first exp_pred and row and out_dim
+  Domain exp_domain = runtime->get_index_space_domain(
+    ctx, task->regions[2].region.get_index_space());
+  exp_preds[0] = helperGetTensorPointerWO<float>(
+    regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  coord_t rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
+  assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
+
+  for(int i = 1; i < n; i++) {
+    exp_domain = runtime->get_index_space_domain(
+      ctx, task->regions[i+2].region.get_index_space());
+    exp_preds[i] = helperGetTensorPointerWO<float>(
+      regions[i+2], task->regions[i+2], FID_DATA, ctx, runtime);
+
+    assert(rows == exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
+    assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
+  }
+
+  forward_task_gpu(m, 
+                   exp_preds,
+                   acc_gate_assign.ptr(rect_gate_assign), 
+                   acc_output.ptr(rect_output), 
+                   n, k, rows, 
+                   batch_size, out_dim);
 }
 
 void AggregateSpec::backward(const FFModel& ff)
@@ -188,6 +260,75 @@ void AggregateSpec::backward(const FFModel& ff)
   launcher.add_field(n+4, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
+}
+
+void AggregateSpec::backward_task(const Task *task,
+                              const std::vector<PhysicalRegion>& regions,
+                              Context ctx, Runtime* runtime)
+{
+  const AggregateSpecMeta* m = *((AggregateSpecMeta**)task->local_args);
+  int n = ((AggregateSpec*)task->args)->n;
+  float lambda_bal = ((AggregateSpec*)task->args)->lambda_bal;
+
+  assert((int)regions.size() == n+5);
+  assert((int)task->regions.size() == n+5);
+
+  // get gate_pred, gate_assin, full_gate_grad, output_grad
+  const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
+  const AccessorRO<int, 2> acc_gate_assign(regions[1], FID_DATA);
+  const AccessorRO<int, 2> acc_true_gate_assign(regions[2], FID_DATA);
+  const AccessorWO<float, 2> acc_full_gate_grad(regions[3], FID_DATA);
+  const AccessorRO<float, 2> acc_output_grad(regions[n+4], FID_DATA);
+
+  Rect<2> rect_gate_pred = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  Rect<2> rect_gate_assign = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  Rect<2> rect_true_gate_assign = runtime->get_index_space_domain(
+      ctx, task->regions[2].region.get_index_space());
+  Rect<2> rect_full_gate_grad = runtime->get_index_space_domain(
+          ctx, task->regions[3].region.get_index_space());
+  Rect<2> rect_out_grad = runtime->get_index_space_domain(
+      ctx, task->regions[n+4].region.get_index_space());
+
+  coord_t batch_size = rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1;
+  assert(batch_size == rect_gate_assign.hi[1] - rect_gate_assign.lo[1] + 1);
+  assert(rect_gate_assign == rect_true_gate_assign);
+  assert(batch_size == rect_full_gate_grad.hi[1] - rect_full_gate_grad.lo[1] + 1);
+  coord_t k = rect_gate_assign.hi[0] - rect_gate_assign.lo[0] + 1;
+  assert(k*batch_size == rect_out_grad.hi[1] - rect_out_grad.lo[1] + 1);
+  assert(rect_gate_pred.hi[0] - rect_gate_pred.lo[0] + 1 == k);
+  coord_t out_dim = rect_out_grad.hi[0] - rect_out_grad.lo[0] + 1;
+  assert(n == rect_full_gate_grad.hi[0] - rect_full_gate_grad.lo[0] + 1);
+
+  // get exp_preds
+  float* exp_grads[n];
+  // get first exp_pred and row
+  Domain exp_domain = runtime->get_index_space_domain(
+    ctx, task->regions[4].region.get_index_space());
+  exp_grads[0] = helperGetTensorPointerRW<float>(
+    regions[4], task->regions[4], FID_DATA, ctx, runtime);
+  coord_t rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
+  assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
+
+  for(int i = 1; i < n; i++) {
+    exp_domain = runtime->get_index_space_domain(
+      ctx, task->regions[i+4].region.get_index_space());
+    exp_grads[i] = helperGetTensorPointerRW<float>(
+      regions[i+4], task->regions[i+4], FID_DATA, ctx, runtime);
+    assert(rows == exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
+    assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
+  }
+
+  backward_task_gpu(m, 
+    exp_grads,
+    acc_gate_assign.ptr(rect_gate_assign),
+    acc_true_gate_assign.ptr(rect_true_gate_assign),
+    acc_gate_pred.ptr(rect_gate_pred),
+    acc_full_gate_grad.ptr(rect_full_gate_grad),
+    acc_output_grad.ptr(rect_out_grad),
+    n, k, rows, 
+    lambda_bal, batch_size, out_dim);
 }
 
 }; // namespace FlexFlow

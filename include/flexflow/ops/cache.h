@@ -19,10 +19,10 @@ public:
       std::function<float(float*,const void*,const void*,int)> &_score_f,
       const char* name);
   ~Cache(void);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
+  void print_layer(const FFModel& model) override {assert(0);}
   //void create_weights(FFModel& model);
   //void create_output_and_partition(FFModel& model);
 
@@ -37,7 +37,7 @@ public:
                            Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
   void use_cached(bool cached);
 public:
   void** batch_ptrs;

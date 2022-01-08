@@ -18,8 +18,15 @@
 #include <cstring>
 #include "legion.h"
 #include "ffconst.h"
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
 #include <cudnn.h>
 #include <cublas_v2.h>
+#elif defined (FF_USE_HIP_ROCM)
+#include <miopen.h>
+#include <hipblas.h>
+#else
+#error "Unknown device" 
+#endif
 #include "tl/optional.h"
 #ifdef FF_USE_NCCL
 #include <nccl.h>
@@ -54,8 +61,13 @@ constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::PS;
 class FFConfig;
 
 struct FFHandler {
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudnnHandle_t dnn;
   cublasHandle_t blas;
+#else
+  miopenHandle_t dnn;
+  hipblasHandle_t blas;
+#endif
   void *workSpace;
   size_t workSpaceSize;
   bool allowTensorOpMathConversion;

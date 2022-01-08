@@ -45,11 +45,11 @@ public:
             Embedding const &other,
             const ParallelTensor input,
             bool allocate_weights);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
   //void update(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
+  void print_layer(const FFModel& model) override {assert(0);}
   //Parameter* get_parameter(int index);
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
@@ -82,7 +82,7 @@ public:
       int batch_size,
       AggrMode aggr,
       int outputSize,
-      cudaStream_t stream);
+      ffStream_t stream);
   template<typename TI>
   static void backward_kernel(
       TI const *input_ptr,
@@ -93,11 +93,11 @@ public:
       int batch_size,
       AggrMode aggr,
       int outputSize,
-      cudaStream_t stream);
+      ffStream_t stream);
 
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
 
   size_t get_params_hash() const override;  
 

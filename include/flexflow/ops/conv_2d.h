@@ -92,6 +92,14 @@ public:
   cudnnConvolutionFwdAlgo_t fwdAlgo;
   cudnnConvolutionBwdFilterAlgo_t bwdFilterAlgo;
   cudnnConvolutionBwdDataAlgo_t bwdDataAlgo;
+#else
+  miopenTensorDescriptor_t inputTensor, biasTensor, outputTensor;
+  miopenTensorDescriptor_t filterDesc;
+  miopenActivationDescriptor_t actiDesc;
+  miopenConvolutionDescriptor_t convDesc;
+  miopenConvFwdAlgorithm_t fwdAlgo;
+  miopenConvBwdWeightsAlgorithm_t bwdFilterAlgo;
+  miopenConvBwdDataAlgorithm_t bwdDataAlgo;
 #endif
   bool relu, use_bias;
   char op_name[MAX_OPNAME];
@@ -115,11 +123,11 @@ public:
          Conv2D const &other, 
          const ParallelTensor input,
          bool allocate_weights);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
   //void update(const FFModel&);
-  void print_layer(const FFModel& model);
+  void print_layer(const FFModel& model) override;
   //Parameter* get_parameter(int index);
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
@@ -141,7 +149,7 @@ public:
                       float* output_ptr,
                       const float* filter_ptr,
                       const float* bias_ptr,
-                      cudaStream_t stream);
+                      ffStream_t stream);
   static void backward_kernel(const Conv2DMeta* m,
                        const float* input_ptr,
                        float* input_grad_ptr,
@@ -150,10 +158,10 @@ public:
                        const float* kernel_ptr,
                        float* kernel_grad_ptr,
                        float* bias_ptr,
-                       cudaStream_t stream);
+                       ffStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
   bool estimate_sync_cost(Simulator* sim,
                           const MachineView& pc,
                           CostMetrics& cost_metrics) const override;

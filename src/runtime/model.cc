@@ -14,7 +14,11 @@
  */
 
 #include "flexflow/model.h"
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
 #include "flexflow/utils/cuda_helper.h"
+#else
+#include "flexflow/utils/hip_helper.h"
+#endif
 #include "flexflow/mapper.h"
 #include "flexflow/utils/test_utils.h"
 #include <dirent.h>

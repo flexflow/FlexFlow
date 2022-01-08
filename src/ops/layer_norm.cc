@@ -14,7 +14,6 @@
  */
 
 #include "flexflow/ops/layer_norm.h"
-#include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 

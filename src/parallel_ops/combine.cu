@@ -17,24 +17,6 @@
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
-using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
-using Legion::Predicate;
-using Legion::coord_t;
-using Legion::Memory;
-using Legion::Machine;
-using Legion::InlineLauncher;
 
 template<typename T>
 void Combine::forward_kernel(
@@ -42,36 +24,12 @@ void Combine::forward_kernel(
     T* output_ptr,
     size_t num_elements)
 {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cudaMemcpyAsync(output_ptr, input_ptr,
       num_elements * sizeof(T),
-      cudaMemcpyDeviceToDevice));
-}
-
-/*static*/
-void Combine::forward_task(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
-    Context ctx, Runtime *runtime)
-{
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  Domain input_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
-  Domain output_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1].region.get_index_space());
-  assert(output_domain == input_domain);
-
-  const float* input_ptr = helperGetTensorPointerRO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float* output_ptr = helperGetTensorPointerWO<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  //checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  forward_kernel<float>(input_ptr, output_ptr, output_domain.get_volume());
+      cudaMemcpyDeviceToDevice,
+      stream));
 }
 
 template<typename T>
@@ -80,34 +38,13 @@ void Combine::backward_kernel(
     T* input_grad_ptr,
     size_t num_elements)
 {
-  add_kernel<T><<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS>>>(
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  add_kernel<T><<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
       input_grad_ptr, output_grad_ptr, num_elements);
 }
 
-void Combine::backward_task(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
-    Context ctx, Runtime *runtime)
-{
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  Domain output_grad_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
-  Domain input_grad_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1].region.get_index_space());
-  assert(output_grad_domain == input_grad_domain);
-
-  const float* output_grad_ptr = helperGetTensorPointerRO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float* input_grad_ptr = helperGetTensorPointerRW<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  //checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  backward_kernel<float>(output_grad_ptr, input_grad_ptr, output_grad_domain.get_volume());
-}
+template void Combine::forward_kernel<float>(const float* input_ptr, float* output_ptr, size_t num_elements);
+template void Combine::backward_kernel<float>(const float* output_grad_ptr, float* input_grad_ptr, size_t num_elements);
 
 }; // namespace FlexFlow

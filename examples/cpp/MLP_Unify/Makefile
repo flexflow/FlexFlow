@@ -15,18 +15,22 @@
 
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 1		# Include debugging symbols
-MAX_DIM         ?= 4		# Maximum number of dimensions
+MAX_DIM         ?= 5		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
-USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
+USE_CUDA        ?= 0		# Include CUDA support (requires CUDA)
 USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
+USE_HIP         ?= 1		# Include HIP support (requires HIP)
+HIP_TARGET      ?= ROCM
+USE_GPU_REDUCTIONS ?= 0
 
 # Put the binary file name here
 OUTFILE		?= mlp
 # List all the application source files here
 GEN_SRC		= mlp.cc
 GEN_GPU_SRC	=
+GEN_HIP_SRC     =
 
 ifndef FF_HOME
 $(error FF_HOME variable is not defined, aborting build)

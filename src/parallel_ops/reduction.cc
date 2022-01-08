@@ -202,4 +202,52 @@ Node FFModel::get_or_create_reduction_node(const ParallelTensor input,
   return ret;
 }
 
+/*static*/
+void Reduction::forward_task(
+    const Task *task,
+    const std::vector<PhysicalRegion> &regions,
+    Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  Domain input_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain output_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+  // Currently only support the outter most dimension
+  for (int i = 0; i < output_domain.get_dim()-1; i++) {
+    assert(output_domain.lo()[i] == input_domain.lo()[i]);
+    assert(output_domain.hi()[i] == input_domain.hi()[i]);
+  }
+  size_t num_elements = output_domain.get_volume();
+  size_t num_replicas = input_domain.get_volume() / num_elements;
+  const float* input_ptr = helperGetTensorPointerRO<float>(
+    regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  float* output_ptr = helperGetTensorPointerRW<float>(
+    regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  forward_kernel<float>(input_ptr, output_ptr, num_elements, num_replicas);
+}
+
+void Reduction::backward_task(
+    const Task *task,
+    const std::vector<PhysicalRegion> &regions,
+    Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  Domain output_grad_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain input_grad_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+  assert(input_grad_domain.get_volume() == output_grad_domain.get_volume());
+  const float* output_grad_ptr = helperGetTensorPointerRO<float>(
+    regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  float* input_grad_ptr = helperGetTensorPointerWO<float>(
+    regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  backward_kernel<float>(output_grad_ptr, input_grad_ptr,
+      output_grad_domain.get_volume());
+}
+
 }; // namespace FlexFlow

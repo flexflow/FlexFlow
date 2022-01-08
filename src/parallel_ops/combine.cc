@@ -221,4 +221,47 @@ tl::optional<RecordFormatter> Combine::as_dot() const {
   return rf;
 }
 
+/*static*/
+void Combine::forward_task(
+    const Task *task,
+    const std::vector<PhysicalRegion> &regions,
+    Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  Domain input_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain output_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+  assert(output_domain == input_domain);
+
+  const float* input_ptr = helperGetTensorPointerRO<float>(
+    regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  float* output_ptr = helperGetTensorPointerWO<float>(
+    regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  forward_kernel<float>(input_ptr, output_ptr, output_domain.get_volume());
+}
+
+void Combine::backward_task(
+    const Task *task,
+    const std::vector<PhysicalRegion> &regions,
+    Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  Domain output_grad_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain input_grad_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+  assert(output_grad_domain == input_grad_domain);
+
+  const float* output_grad_ptr = helperGetTensorPointerRO<float>(
+    regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  float* input_grad_ptr = helperGetTensorPointerRW<float>(
+    regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  backward_kernel<float>(output_grad_ptr, input_grad_ptr, output_grad_domain.get_volume());
+}
+
 }; // namespace FlexFlow

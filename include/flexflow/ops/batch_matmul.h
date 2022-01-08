@@ -18,10 +18,10 @@ public:
               const ParallelTensor B,
               int a_seq_length_dim,
               int b_seq_length_dim);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model);
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
+  void print_layer(const FFModel& model) override;
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
@@ -38,7 +38,7 @@ public:
                       const float* c_ptr,
                       int m, int n, int k,
                       int batch,
-                      cudaStream_t stream,
+                      ffStream_t stream,
                       int a_seq_length_dim = -1,
                       int b_seq_length_dim = -1,
                       int seq_length = -1);
@@ -51,10 +51,10 @@ public:
                        float* b_grad_ptr,
                        float* c_grad_ptr,
                        int m, int n, int k, int batch,
-                       cudaStream_t stream);
+                       ffStream_t stream);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
 private:
   template<int NDIM>
   void init_with_dim(const FFModel& ff);

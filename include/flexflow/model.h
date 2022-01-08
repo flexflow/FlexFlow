@@ -25,8 +25,7 @@
 #include "loss_functions.h"
 #include "metrics_functions.h"
 #include "recompile.h"
-#include <cuda_runtime.h>
-#include <curand.h>
+#include "device.h"
 #include <unistd.h>
 #include <functional>
 #include "tl/optional.h"
@@ -223,16 +222,6 @@ namespace PCG {
   class GraphSearchHelper;
   class Graph;
 };
-
-#ifdef LEGION_USE_HIP
-#ifdef __HIP_PLATFORM_NVCC__
-cudaError_t get_legion_stream(cudaStream_t *stream);
-#else
-hipError_t get_legion_stream(hipStream_t *stream);
-#endif
-#else
-cudaError_t get_legion_stream(cudaStream_t *stream);
-#endif
 
 class FFModel;
 class ParallelOp;

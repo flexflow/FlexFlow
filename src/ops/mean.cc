@@ -14,7 +14,6 @@
  */
 
 #include "flexflow/ops/mean.h"
-#include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 // declare Legion names

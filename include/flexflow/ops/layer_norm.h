@@ -35,14 +35,14 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const; 
   template<typename T>
   static void forward_kernel(const LayerNormMeta *m,
                              const T *input_ptr,
                              T *output_ptr,
                              T *gamma_ptr,
                              T *beta_ptr,
-                             cudaStream_t stream);
+                             ffStream_t stream);
   template<typename T>
   static void backward_kernel(const LayerNormMeta *m,
                               const T* output_grad_ptr,
@@ -51,7 +51,7 @@ public:
                               const T *gamma_ptr,
                               T *gamma_grad_ptr,
                               T *beta_grad_ptr,
-                              cudaStream_t stream);
+                              ffStream_t stream);
 public:
   bool elementwise_affine;
   int64_t effective_batch_size, effective_num_elements;

@@ -25,13 +25,13 @@ public:
                 const ParallelTensor y,
                 bool inplace_a,
                 const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
-  bool can_inplace_output();
-  bool has_inplace_output();
-  void do_inplace_output();
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
+  void print_layer(const FFModel& model) override {assert(0);}
+  bool can_inplace_output() override;
+  bool has_inplace_output() override;
+  void do_inplace_output() override;
   static Op* create_operator_from_layer(
       FFModel& model,
       const Layer* layer,
@@ -48,19 +48,19 @@ public:
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
   static void forward_kernel(const ElementBinaryMeta* m,
                       const float* in1_ptr,
                       const float* in2_ptr,
                       float* out_ptr,
-                      cudaStream_t stream);
+                      ffStream_t stream);
   static void backward_kernel(const ElementBinaryMeta* m,
                        const float* out_grad_ptr,
                        const float* in1_ptr,
                        const float* in2_ptr,
                        float* in1_grad_ptr,
                        float* in2_grad_ptr,
-                       cudaStream_t stream);
+                       ffStream_t stream);
   size_t get_params_hash() const override;
 public:
   bool inplace_a, has_same_operands;

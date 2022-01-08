@@ -17,62 +17,19 @@
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
-using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
-using Legion::Predicate;
-using Legion::coord_t;
-using Legion::Memory;
-using Legion::Machine;
-using Legion::InlineLauncher;
+
 template<typename T>
 void Replicate::forward_kernel(
     const T* input_ptr,
     T* output_ptr,
     size_t num_elements)
 {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cudaMemcpyAsync(output_ptr, input_ptr,
       num_elements * sizeof(T),
-      cudaMemcpyDeviceToDevice));
-}
-
-void Replicate::forward_task(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
-    Context ctx, Runtime *runtime)
-{
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  Domain input_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
-  Domain output_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1].region.get_index_space());
-  // Currently only support the outter most dimension
-  for (int i = 0; i < output_domain.get_dim()-1; i++) {
-    assert(output_domain.lo()[i] == input_domain.lo()[i]);
-    assert(output_domain.hi()[i] == input_domain.hi()[i]);
-  }
-  assert(input_domain.get_volume() == output_domain.get_volume());
-  const float* input_ptr = helperGetTensorPointerRO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float* output_ptr = helperGetTensorPointerRW<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  //checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  forward_kernel<float>(input_ptr, output_ptr, input_domain.get_volume());
+      cudaMemcpyDeviceToDevice,
+      stream));
 }
 
 template<typename T>
@@ -98,40 +55,14 @@ void Replicate::backward_kernel(
     size_t num_replicas)
 {
   size_t total_elements = num_elements * num_replicas;
-  replicate_backward_kernel<T><<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS>>>(
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  replicate_backward_kernel<T><<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS, 0, stream>>>(
       output_grad_ptr, input_grad_ptr, num_elements, num_replicas);
 }
 
-void Replicate::backward_task(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
-    Context ctx, Runtime *runtime)
-{
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  Domain output_grad_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
-  Domain input_grad_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1].region.get_index_space());
-  // Currently only support the outter most dimension
-  for (int i = 0; i < output_grad_domain.get_dim()-1; i++) {
-    assert(output_grad_domain.lo()[i] == input_grad_domain.lo()[i]);
-    assert(output_grad_domain.hi()[i] == input_grad_domain.hi()[i]);
-  }
-  size_t num_elements = input_grad_domain.get_volume();
-  size_t num_replicas = output_grad_domain.get_volume() / num_elements;
-  const float* output_grad_ptr = helperGetTensorPointerRO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float* input_grad_ptr = helperGetTensorPointerRW<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  //checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  backward_kernel<float>(output_grad_ptr, input_grad_ptr,
-      num_elements, num_replicas);
-}
-
+template void Replicate::forward_kernel<float>(const float* input_ptr, float* output_ptr, size_t num_elements);
+template __global__ void replicate_backward_kernel<float>(const float* input_ptr, float* output_ptr, size_t num_elements, size_t num_replicas);
+template void Replicate::backward_kernel<float>(const float* output_grad_ptr, float* input_grad_ptr, size_t num_elements, size_t num_replicas);
+      
 }; // namespace FlexFlow

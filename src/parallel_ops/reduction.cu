@@ -17,24 +17,7 @@
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
-using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
-using Legion::Predicate;
-using Legion::coord_t;
-using Legion::Memory;
-using Legion::Machine;
-using Legion::InlineLauncher;
+
 template<typename T>
 __global__
 void reduction_forward_kernel(
@@ -58,41 +41,11 @@ void Reduction::forward_kernel(
     size_t num_elements,
     size_t num_replicas)
 {
-  size_t total_elements = num_elements * num_replicas;
-  reduction_forward_kernel<T><<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS>>>(
-      input_ptr, output_ptr, num_elements, num_replicas);
-}
-
-/*static*/
-void Reduction::forward_task(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
-    Context ctx, Runtime *runtime)
-{
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  Domain input_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
-  Domain output_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1].region.get_index_space());
-  // Currently only support the outter most dimension
-  for (int i = 0; i < output_domain.get_dim()-1; i++) {
-    assert(output_domain.lo()[i] == input_domain.lo()[i]);
-    assert(output_domain.hi()[i] == input_domain.hi()[i]);
-  }
-  size_t num_elements = output_domain.get_volume();
-  size_t num_replicas = input_domain.get_volume() / num_elements;
-  const float* input_ptr = helperGetTensorPointerRO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float* output_ptr = helperGetTensorPointerRW<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-
-#ifndef DISABLE_LEGION_CUDA_HIJACK
   cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  //checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  forward_kernel<float>(input_ptr, output_ptr, num_elements, num_replicas);
+  checkCUDA(get_legion_stream(&stream));
+  size_t total_elements = num_elements * num_replicas;
+  reduction_forward_kernel<T><<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS, 0, stream>>>(
+      input_ptr, output_ptr, num_elements, num_replicas);
 }
 
 template<typename T>
@@ -101,36 +54,16 @@ void Reduction::backward_kernel(
     T* input_grad_ptr,
     size_t num_elements)
 {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cudaMemcpyAsync(input_grad_ptr, output_grad_ptr,
       num_elements * sizeof(T),
-      cudaMemcpyDeviceToDevice));
+      cudaMemcpyDeviceToDevice,
+      stream));
 }
 
-
-void Reduction::backward_task(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
-    Context ctx, Runtime *runtime)
-{
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  Domain output_grad_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
-  Domain input_grad_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1].region.get_index_space());
-  assert(input_grad_domain.get_volume() == output_grad_domain.get_volume());
-  const float* output_grad_ptr = helperGetTensorPointerRO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float* input_grad_ptr = helperGetTensorPointerWO<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-
-#ifndef DISABLE_LEGION_CUDA_HIJACK
-  cudaStream_t stream;
-  checkCUDA(cudaStreamCreate(&stream));
-  //checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-#endif
-  backward_kernel<float>(output_grad_ptr, input_grad_ptr,
-      output_grad_domain.get_volume());
-}
+template __global__ void reduction_forward_kernel<float>(const float* input_ptr, float* output_ptr, size_t num_elements, size_t num_replicas);
+template void Reduction::forward_kernel<float>(const float* input_ptr, float* output_ptr, size_t num_elements, size_t num_replicas);
+template void Reduction::backward_kernel<float>(const float* output_grad_ptr, float* input_grad_ptr, size_t num_elements);
 
 }; // namespace FlexFlow
