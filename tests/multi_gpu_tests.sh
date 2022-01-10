@@ -19,10 +19,10 @@ EXE=$FF_HOME/python/flexflow_python
 #Keras other
 #$EXE $FF_HOME/examples/python/keras/callback.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE}
 #$EXE $FF_HOME/examples/python/keras/unary.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE}
-$EXE $FF_HOME/examples/python/keras/reshape.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE}
+#$EXE $FF_HOME/examples/python/keras/reshape.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE}
 
 #Functional API
-$EXE $FF_HOME/examples/python/keras/func_mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE}
+#$EXE $FF_HOME/examples/python/keras/func_mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE}
 $EXE $FF_HOME/examples/python/keras/func_mnist_mlp_concat.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE}
 $EXE $FF_HOME/examples/python/keras/func_mnist_mlp_concat2.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE}
 $EXE $FF_HOME/examples/python/keras/func_mnist_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE}
