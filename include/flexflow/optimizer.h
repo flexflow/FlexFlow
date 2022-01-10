@@ -17,11 +17,12 @@
 #define _FLEXFLOW_OPTIMIZER_H_
 
 #include "legion.h"
-#include "parallel_tensor.h"
+#include "flexflow/parallel_tensor.h"
 
 namespace FlexFlow {
 
 class FFModel;
+class OpMeta;
 
 class Optimizer
 {
