@@ -79,7 +79,7 @@ public:
          int out_dim,
          ActiMode activation,
          bool _use_bias,
-	 DataType _data_type,
+         DataType _data_type,
          bool allocate_weights,
          const char* name);
   Linear(NodeCache& node_cache,
@@ -106,6 +106,9 @@ public:
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
+  static void init_kernel(LinearMeta *m,
+                          int batch_size,
+                          int channel);
   static void forward_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
@@ -119,6 +122,12 @@ public:
                              const void* bias_ptr,
                              int in_dim, int out_dim, int batch_size,
                              ffStream_t stream);
+  static void forward_kernel_wrapper(const LinearMeta* m,
+                                     const void* input_ptr,
+                                     void* output_ptr,
+                                     const void* filter_ptr,
+                                     const void* bias_ptr,
+                                     int in_dim, int out_dim, int batch_size);
   static void backward_kernel(const LinearMeta* m,
                               const void* input_ptr,
                               void* input_grad_ptr,
@@ -129,6 +138,15 @@ public:
                               void* bias_ptr,
                               int in_dim, int out_dim, int batch_size,
                               ffStream_t stream);
+  static void backward_kernel_wrapper(const LinearMeta* m,
+                                      const void* input_ptr,
+                                      void* input_grad_ptr,
+                                      const void* output_ptr,
+                                      void* output_grad_ptr,
+                                      const void* kernel_ptr,
+                                      void* kernel_grad_ptr,
+                                      void* bias_ptr,
+                                      int in_dim, int out_dim, int batch_size);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;
