@@ -138,6 +138,12 @@ public:
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
+  static void init_task_kernel(const Conv2D *conv, 
+                               Conv2DMeta *m,
+                               int input_w, int input_h, int input_c, int input_n,
+                               int output_w, int output_h, int output_c, int output_n,
+                               int pad_h, int pad_w,
+                               const float* input_ptr, float* output_ptr, const float* kernel_ptr, float* kernel_grad_ptr);
   static void forward_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
@@ -150,6 +156,11 @@ public:
                       const float* filter_ptr,
                       const float* bias_ptr,
                       ffStream_t stream);
+  static void forward_kernel_wrapper(const Conv2DMeta* m,
+                                     const float* input_ptr,
+                                     float* output_ptr,
+                                     const float* filter_ptr,
+                                     const float* bias_ptr);
   static void backward_kernel(const Conv2DMeta* m,
                        const float* input_ptr,
                        float* input_grad_ptr,
@@ -159,6 +170,14 @@ public:
                        float* kernel_grad_ptr,
                        float* bias_ptr,
                        ffStream_t stream);
+  static void backward_kernel_wrapper(const Conv2DMeta* m,
+                                      const float* input_ptr,
+                                      float* input_grad_ptr,
+                                      const float* output_ptr,
+                                      float* output_grad_ptr,
+                                      const float* kernel_ptr,
+                                      float* kernel_grad_ptr,
+                                      float* bias_grad_ptr);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;
