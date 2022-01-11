@@ -35,6 +35,12 @@ namespace FlexFlow::PCG::Utils {
   }
 
   template <typename G, typename Structure = GraphStructure<G>>
+  std::unordered_set<typename Structure::edge_type> outgoing_edges(G const &g, typename Structure::vertex_type const &n) {
+    Structure s;
+    return s.get_outgoing_edges(g, n);
+  }
+
+  template <typename G, typename Structure = GraphStructure<G>>
   std::pair<typename Structure::vertex_type, typename Structure::vertex_type> get_basic_edge(G const &g, typename Structure::edge_type const &e) {
     Structure s;
 
