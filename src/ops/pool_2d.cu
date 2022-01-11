@@ -17,20 +17,13 @@
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
-  
-// declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::coord_t;
 
 /*static*/
-void Pool2D::init_task_kernel(Pool2DMeta *m,
-                              int intput_w, int intput_h, int intput_c, int intput_n,
-                              int pad_h, int pad_w)
+void Pool2D::init_kernel(const Pool2D *pool,
+                         Pool2DMeta *m,
+                         int input_w, int input_h, int input_c, int input_n,
+                         int output_w, int output_h, int output_c, int output_n,  
+                         int pad_h, int pad_w)
 {
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
                                         CUDNN_TENSOR_NCHW,
@@ -86,21 +79,10 @@ void Pool2D::forward_kernel(const Pool2DMeta* m,
 }
 
 /*static*/
-void Pool2D::forward_kernel(const Pool2DMeta* m,
-  const float* input_ptr,
-  float* output_ptr,
-  cudaStream_t stream)
+void Pool2D::forward_kernel_wrapper(const Pool2DMeta* m,
+                                    const float* input_ptr,
+                                    float* output_ptr)
 {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  //const Pool2D* pool = (Pool2D*) task->args;
-  const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
-  TensorAccessorR<float, Pool2DInput::NUMDIM> acc_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Pool2DOutput::NUMDIM> acc_output(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime,
-      false/*readOutput*/);
-
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   
@@ -110,7 +92,7 @@ void Pool2D::forward_kernel(const Pool2DMeta* m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  forward_kernel(m, acc_input.ptr, acc_output.ptr, stream);
+  Pool2D::forward_kernel(m, input_ptr, output_ptr, stream);
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -142,30 +124,13 @@ void Pool2D::backward_kernel(const Pool2DMeta* m,
                                   &alpha, m->inputTensor, input_grad_ptr));
 }
 
-/*
-  regions[0](I): input
-  regions[1](I/O): input_grad
-  regions[2](I): output
-  regions[3](I): output_grad
-*/
-void Pool2D::backward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime)
+/*static*/
+void Pool2D::backward_kernel_wrapper(const Pool2DMeta* m,
+                                     const float* input_ptr,
+                                     float* input_grad_ptr,
+                                     const float* output_ptr,
+                                     const float* output_grad_ptr)
 {
-  assert(regions.size() == 4);
-  assert(task->regions.size() == 4);
-  //const Pool2D* pool = (Pool2D*) task->args;
-  const Pool2DMeta* m = *((Pool2DMeta**) task->local_args);
-  TensorAccessorR<float, Pool2DInput::NUMDIM> acc_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Pool2DInput::NUMDIM> acc_input_grad(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime,
-      true/*readOutput*/);
-  TensorAccessorR<float, Pool2DOutput::NUMDIM> acc_output(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, Pool2DOutput::NUMDIM> acc_output_grad(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
-
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -175,7 +140,7 @@ void Pool2D::backward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  backward_kernel(m, acc_input.ptr, acc_input_grad.ptr, acc_output.ptr, acc_output_grad.ptr, stream);
+  Pool2D::backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr, stream);
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -193,110 +158,6 @@ Pool2DMeta::Pool2DMeta(FFHandler handler)
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreatePoolingDescriptor(&poolDesc));
-}
-
-bool Pool2D::measure_operator_cost(Simulator* sim,
-                                   const ParallelConfig& pc,
-                                   CostMetrics& cost_metrics) const
-{
-  ParallelTensorBase sub_output, sub_input;
-  if(!outputs[0]->get_output_sub_tensor(pc, sub_output, OP_POOL2D))
-    return false;
-  if(!inputs[0]->get_input_sub_tensor(pc, sub_input, OP_POOL2D))
-    return false;
-  int input_w = sub_input.dims[0].size;
-  int input_h = sub_input.dims[1].size;
-  int input_c = sub_input.dims[2].size;
-  int input_n = sub_input.dims[3].size;
-  int output_w = sub_output.dims[0].size;
-  int output_h = sub_output.dims[1].size;
-  int output_c = sub_output.dims[2].size;
-  int output_n = sub_output.dims[3].size;
-  int pad_h = ((output_h - 1) * stride_h + kernel_h - input_h + 1) / 2;
-  int pad_w = ((output_w - 1) * stride_w + kernel_w - input_w + 1) / 2;
-  Pool2DMeta* m = sim->pool2d_meta;
-  checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
-                                        input_n,
-                                        input_c,
-                                        input_h,
-                                        input_w));
-  cudnnPoolingMode_t mode;
-  if (pool_type == POOL_MAX)
-    mode = CUDNN_POOLING_MAX;
-  else {
-    assert(pool_type == POOL_AVG);
-    mode = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
-  }
-  checkCUDNN(cudnnSetPooling2dDescriptor(m->poolDesc,
-                                         mode,
-                                         CUDNN_PROPAGATE_NAN,
-                                         kernel_h,
-                                         kernel_w,
-                                         pad_h,//pool->padding_h,
-                                         pad_w,//pool->padding_w,
-                                         stride_h,
-                                         stride_w));
-  int n, c, h, w;
-  checkCUDNN(cudnnGetPooling2dForwardOutputDim(m->poolDesc,
-                                               m->inputTensor,
-                                               &n, &c, &h, &w));
-  assert(n == output_n);
-  assert(c == output_c);
-  assert(h == output_h);
-  assert(w == output_w);
-
-  checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
-                                        n, c, h, w));
-  // allocate tensors in simulator
-  sim->free_all();
-  float* input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  assert(input_ptr != NULL);
-  float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert(output_ptr != NULL);
-
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  std::function<void()> forward, backward;
-  forward = [&] {
-    forward_kernel(m, input_ptr, output_ptr, stream);
-  };
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-    assert(input_grad_ptr != NULL);
-    float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-    assert(output_grad_ptr != NULL);
-    backward = [&] {
-      backward_kernel(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr, stream);
-    };
-  }
-
-  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    log_measure.debug(
-        "[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
-        name,
-        input_n, input_c, input_h, input_w,
-        output_n, output_c, output_h, output_w,
-        stride_h, stride_w,
-        padding_h, padding_w,
-        cost_metrics.forward_time, cost_metrics.backward_time);
-  } else {
-    log_measure.debug(
-        "[Measure Pool2D] name(%s) input(%d %d %d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) forward_time(%.4lf)\n",
-        name,
-        input_n, input_c, input_h, input_w,
-        output_n, output_c, output_h, output_w,
-        stride_h, stride_w,
-        padding_h, padding_w,
-        cost_metrics.forward_time);
-  }
-
-  return true;
 }
 
 }; // namespace FlexFlow 

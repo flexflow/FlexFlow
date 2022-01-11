@@ -79,6 +79,11 @@ public:
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
+  static void init_kernel(const Pool2D *pool,
+                          Pool2DMeta *m,
+                          int input_w, int input_h, int input_c, int input_n,
+                          int output_w, int output_h, int output_c, int output_n, 
+                          int pad_h, int pad_w);
   static void forward_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
@@ -89,12 +94,20 @@ public:
                              const float* input_ptr,
                              float* output_ptr,
                              ffStream_t stream);
+  static void forward_kernel_wrapper(const Pool2DMeta* m,
+                                     const float* input_ptr,
+                                     float* output_ptr);
   static void backward_kernel(const Pool2DMeta* m,
                               const float* input_ptr,
                               float* input_grad_ptr,
                               const float* output_ptr,
                               const float* output_grad_ptr,
                               ffStream_t stream);
+  static void backward_kernel_wrapper(const Pool2DMeta* m,
+                                      const float* input_ptr,
+                                      float* input_grad_ptr,
+                                      const float* output_ptr,
+                                      const float* output_grad_ptr);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;

@@ -566,11 +566,11 @@ OpMeta* Conv2D::init_task(const Task *task,
   if (pad_w != conv->padding_w)
     printf("Warning: changing conv_padding_w to satisfy output_w size\n");
 
-  Conv2D::init_task_kernel(conv, m, 
-                           input_w, input_h, input_c, input_n,
-                           output_w, output_h, output_c, output_n,
-                           pad_h, pad_w,
-                           acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_kernel_grad.ptr);
+  Conv2D::init_kernel(conv, m, 
+                      input_w, input_h, input_c, input_n,
+                      output_w, output_h, output_c, output_n,
+                      pad_h, pad_w,
+                      acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_kernel_grad.ptr);
 
   return m;
 }

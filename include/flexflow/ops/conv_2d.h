@@ -138,12 +138,12 @@ public:
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
-  static void init_task_kernel(const Conv2D *conv, 
-                               Conv2DMeta *m,
-                               int input_w, int input_h, int input_c, int input_n,
-                               int output_w, int output_h, int output_c, int output_n,
-                               int pad_h, int pad_w,
-                               const float* input_ptr, float* output_ptr, const float* kernel_ptr, float* kernel_grad_ptr);
+  static void init_kernel(const Conv2D *conv, 
+                          Conv2DMeta *m,
+                          int input_w, int input_h, int input_c, int input_n,
+                          int output_w, int output_h, int output_c, int output_n,
+                          int pad_h, int pad_w,
+                          const float* input_ptr, float* output_ptr, const float* kernel_ptr, float* kernel_grad_ptr);
   static void forward_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);

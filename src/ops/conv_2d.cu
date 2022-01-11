@@ -41,12 +41,12 @@ selectConvolutionBackwardDataAlgorithm(cudnnHandle_t handle,
                                        const cudnnTensorDescriptor_t dxDesc, void* dx);
 
 /*static*/
-void Conv2D::init_task_kernel(const Conv2D *conv, 
-                              Conv2DMeta *m,
-                              int input_w, int input_h, int input_c, int input_n,
-                              int output_w, int output_h, int output_c, int output_n,
-                              int pad_h, int pad_w,
-                              const float* input_ptr, float* output_ptr, const float* kernel_ptr, float* kernel_grad_ptr)
+void Conv2D::init_kernel(const Conv2D *conv, 
+                         Conv2DMeta *m,
+                         int input_w, int input_h, int input_c, int input_n,
+                         int output_w, int output_h, int output_c, int output_n,
+                         int pad_h, int pad_w,
+                         const float* input_ptr, float* output_ptr, const float* kernel_ptr, float* kernel_grad_ptr)
 {
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
       CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT,
