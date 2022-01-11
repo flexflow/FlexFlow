@@ -36,6 +36,7 @@
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/graph.h"
+#include "flexflow/graph_structures.h"
 
 namespace FlexFlow::PCG {
 
@@ -1374,6 +1375,7 @@ void GraphSearchHelper::graph_optimize(size_t budget,
   this->logger->debug() << "Starting graph optimization";
 
   Graph *graph = this->construct_graph();
+  graph->duplicate_input_nodes();
   std::unordered_map<Node, MachineView> empty_strategy;
   if (!this->config.export_strategy_computation_graph_file.empty()) {
     graph->export_strategy_computation_graph(empty_strategy, this->config.export_strategy_computation_graph_file);
@@ -1390,11 +1392,18 @@ void GraphSearchHelper::graph_optimize(size_t budget,
   settings.simplify_parallel_ops = true;
   best_graph = std::unique_ptr<Graph>(new Graph(optimal.graph.value()));
   best_graph->simplify(settings);
+  std::unordered_map<Node, MachineView> duplicated_optimal_views = best_graph->optimal_views();
+  std::unordered_map<Node, Node> deduplication_map = best_graph->deduplicate_input_nodes();
+  std::unordered_map<Node, MachineView> real_optimal_views;
+  for (auto const &kv : duplicated_optimal_views) {
+    if (deduplication_map.find(kv.first) != deduplication_map.end()) {
+      real_optimal_views[deduplication_map.at(kv.first)] = kv.second;
+    } else {
+      real_optimal_views[kv.first] = kv.second;
+    }
+  }
   best_graph->print_strategy_computation_graph(optimal.views);
-  optimal_views = best_graph->optimal_views();
-  // for (auto const &kv : optimal.views) {
-  //   std::cout << "Node " << kv.first.to_string() << " View " << kv.second << std::endl;
-  // }
+  optimal_views = real_optimal_views;
 }
 
 void GraphSearchHelper::graph_optimize_no_split(
@@ -1446,6 +1455,8 @@ tl::optional<Node> GraphSearchHelper::find_split_node(Graph const *graph, int ba
   using FlexFlow::PCG::Utils::get_edges;
   using FlexFlow::PCG::Utils::nodes;
   using FlexFlow::PCG::Utils::post_dominators;
+  using FlexFlow::PCG::Utils::MultisourceGraphStructure;
+  using FlexFlow::PCG::Utils::roots;
 
   this->logger->enter();
 
@@ -1496,8 +1507,13 @@ tl::optional<Node> GraphSearchHelper::find_split_node(Graph const *graph, int ba
   }
   this->logger->leave();
 
-  std::unordered_map<Node, std::unordered_set<Node>> post_dominator_map = post_dominators(*graph);
-  Node source_node = graph->find_source_node();
+  std::unordered_map<Node, std::unordered_set<Node>> post_dominator_map = post_dominators<Graph, MultisourceGraphStructure<Graph>>(*graph);
+  Node source_node;
+  {
+    std::unordered_set<Node> source_nodes = roots<Graph, MultisourceGraphStructure<Graph>>(*graph);
+    assert (source_nodes.size() == 1);
+    source_node = *source_nodes.begin();
+  }
   std::unordered_set<Node> possible_bottlenecks = post_dominator_map.at(source_node);
   Node sink_node = graph->find_sink_node();
 
