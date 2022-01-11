@@ -27,40 +27,11 @@ using Legion::Rect;
 using Legion::PhysicalRegion;
 using Legion::coord_t;
 
-/*
-  regions[0]: input
-  regions[1]: output
-*/
-OpMeta* Pool2D::init_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
-                          Context ctx, Runtime *runtime)
+/*static*/
+void Pool2D::init_task_kernel(Pool2DMeta *m,
+                              int intput_w, int intput_h, int intput_c, int intput_n,
+                              int pad_h, int pad_w)
 {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  const Pool2D* pool = (Pool2D*) task->args;
-  FFHandler handle = *((const FFHandler*) task->local_args);
-  Pool2DMeta* m = new Pool2DMeta(handle);
-  m->profiling = pool->profiling;
-  std::strcpy(m->op_name, pool->name);
-  TensorAccessorR<float, Pool2DInput::NUMDIM> acc_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Pool2DOutput::NUMDIM> acc_output(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime,
-      false/*readOutput*/);
-
-  int input_w = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
-  int input_h = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
-  int input_c = acc_input.rect.hi[2] - acc_input.rect.lo[2] + 1;
-  int input_n = acc_input.rect.hi[3] - acc_input.rect.lo[3] + 1;
-  int output_w = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
-  int output_h = acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1;
-  int output_c = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
-  int output_n = acc_output.rect.hi[3] - acc_output.rect.lo[3] + 1;
-
-  printf("init pool (input): n(%d) c(%d) h(%d) w(%d)\n",
-         input_n, input_c, input_h, input_w);
-  printf("init pool (output): n(%d) c(%d) h(%d) w(%d)\n",
-         output_n, output_c, output_h, output_w);
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
@@ -68,12 +39,6 @@ OpMeta* Pool2D::init_task(const Task *task,
                                         input_c,
                                         input_h,
                                         input_w));
-  int pad_h = ((output_h - 1) * pool->stride_h + pool->kernel_h - input_h + 1) / 2;
-  int pad_w = ((output_w - 1) * pool->stride_w + pool->kernel_w - input_w + 1) / 2;
-  if (pad_h != pool->padding_h)
-    printf("Warning: changing pool_padding_h to satisfy output_h size\n");
-  if (pad_w != pool->padding_w)
-    printf("Warning: changing pool_padding_w to satisfy output_w size\n");
 
   cudnnPoolingMode_t mode;
   if (pool->pool_type == POOL_MAX)
@@ -104,7 +69,6 @@ OpMeta* Pool2D::init_task(const Task *task,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
                                         n, c, h, w));
-  return m;
 }
 
 /*static*/
@@ -121,13 +85,11 @@ void Pool2D::forward_kernel(const Pool2DMeta* m,
                                  &beta, m->outputTensor, output_ptr));
 }
 
-/*
-  regions[0](I): input
-  regions[1](O): output
-*/
-void Pool2D::forward_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
-                          Context ctx, Runtime *runtime)
+/*static*/
+void Pool2D::forward_kernel(const Pool2DMeta* m,
+  const float* input_ptr,
+  float* output_ptr,
+  cudaStream_t stream)
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);

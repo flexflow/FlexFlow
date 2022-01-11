@@ -203,13 +203,13 @@ void Aggregate::forward_task(const Task *task,
 
   int k = (int)(rect_gate_assign.hi[0] - rect_gate_assign.lo[0] + 1);
   
-  forward_task_gpu(m, 
-    exp_preds,
-    acc_gate_assign.ptr(rect_gate_assign), 
-    acc_gate_pred.ptr(rect_gate_pred), 
-    acc_output.ptr(rect_output), 
-    n, k, rows, 
-    batch_size, out_dim);
+  Aggregate::forward_kernel_wrapper(m, 
+                                    exp_preds,
+                                    acc_gate_assign.ptr(rect_gate_assign), 
+                                    acc_gate_pred.ptr(rect_gate_pred), 
+                                    acc_output.ptr(rect_output), 
+                                    n, k, rows, 
+                                    batch_size, out_dim);
 }
 
 void Aggregate::backward(const FFModel& ff)
@@ -336,16 +336,16 @@ void Aggregate::backward_task(const Task *task,
     assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
   }
   
-  backward_task_gpu(m, 
-    exp_preds,
-    exp_grads,
-    acc_gate_assign.ptr(rect_gate_assign),
-    acc_true_gate_assign.ptr(rect_true_gate_assign),
-    acc_gate_pred.ptr(rect_gate_pred),
-    full_acc_gate_grad.ptr(rect_full_gate_grad),
-    acc_output_grad.ptr(rect_out_grad),
-    n, k, rows, 
-    lambda_bal, batch_size, out_dim);
+  Aggregate::backward_kernel_wrapper(m, 
+                                     exp_preds,
+                                     exp_grads,
+                                     acc_gate_assign.ptr(rect_gate_assign),
+                                     acc_true_gate_assign.ptr(rect_true_gate_assign),
+                                     acc_gate_pred.ptr(rect_gate_pred),
+                                     full_acc_gate_grad.ptr(rect_full_gate_grad),
+                                     acc_output_grad.ptr(rect_out_grad),
+                                     n, k, rows, 
+                                     lambda_bal, batch_size, out_dim);
 }
 
 }; // namespace FlexFlow

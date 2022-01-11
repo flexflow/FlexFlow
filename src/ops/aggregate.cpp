@@ -189,14 +189,14 @@ void agg_backward_kernel(float** exp_preds,
     k, n, out_dim);
 }
  
- __host__
-void Aggregate::forward_task_gpu(const AggregateMeta *m, 
-                                float** exp_preds,
-                                const int* acc_gate_assign_ptr, 
-                                const float* acc_gate_pred_ptr, 
-                                float* acc_output_ptr, 
-                                int n, const int k, int rows, 
-                                const int batch_size, int out_dim)
+/*static*/
+void Aggregate::forward_kernel_wrapper(const AggregateMeta *m, 
+                                       float** exp_preds,
+                                       const int* acc_gate_assign_ptr, 
+                                       const float* acc_gate_pred_ptr, 
+                                       float* acc_output_ptr, 
+                                       int n, const int k, int rows, 
+                                       const int batch_size, int out_dim)
  {
    hipStream_t stream;
    checkCUDA(get_legion_stream(&stream));
@@ -211,18 +211,18 @@ void Aggregate::forward_task_gpu(const AggregateMeta *m,
      acc_output_ptr, n, k, rows, batch_size, out_dim);
  }
  
- __host__
-void Aggregate::backward_task_gpu(const AggregateMeta *m, 
-                                  float** exp_preds,
-                                  float** exp_grads,
-                                  const int* acc_gate_assign_ptr,
-                                  const int* acc_true_gate_assign_ptr, 
-                                  const float* acc_gate_pred_ptr, 
-                                  float* full_acc_gate_grad_ptr,
-                                  const float* acc_output_grad_ptr, 
-                                  int n, const int k, int rows, 
-                                  float lambda_bal,
-                                  const int batch_size, int out_dim)
+/*static*/
+void Aggregate::backward_kernel_wrapper(const AggregateMeta *m, 
+                                        float** exp_preds,
+                                        float** exp_grads,
+                                        const int* acc_gate_assign_ptr,
+                                        const int* acc_true_gate_assign_ptr, 
+                                        const float* acc_gate_pred_ptr, 
+                                        float* full_acc_gate_grad_ptr,
+                                        const float* acc_output_grad_ptr, 
+                                        int n, const int k, int rows, 
+                                        float lambda_bal,
+                                        const int batch_size, int out_dim)
 {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
