@@ -1071,6 +1071,7 @@ std::ostream& operator<<(std::ostream &s, GraphCostResult const &r) {
 
 std::ostream& operator<<(std::ostream &s, GraphOptimizeResult const &r) {
   s << "GraphOptimizeResult{cost=" << r.cost << "}";
+  return s;
 }
 
 template <>

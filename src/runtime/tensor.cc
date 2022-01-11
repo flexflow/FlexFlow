@@ -387,6 +387,14 @@ size_t ParallelTensorBase::get_total_num_parts() const
   return parts;
 }
 
+int ParallelTensorBase::get_num_replica_dims() const { 
+  return this->get_shape().get_num_replica_dims();
+}
+
+int ParallelTensorBase::get_num_replicas() const {
+  return this->get_shape().get_num_replicas();
+}
+
 Domain ParallelTensorBase::get_domain() const
 {
   Domain d;
@@ -453,6 +461,16 @@ void ParallelTensorBase::print(const std::string& name) const
 
 }
 
+ParallelTensorShape::ParallelTensorShape(int num_dims, 
+                                         ParallelDim const dims[MAX_TENSOR_DIM], 
+                                         DataType data_type)
+  : num_dims(num_dims), data_type(data_type)
+{
+  for (int i = 0; i < num_dims; i++) {
+    this->dims[i] = dims[i];
+  }
+}
+
 ParallelTensorShape ParallelTensorBase::get_shape() const {
   ParallelTensorShape shape;
   shape.num_dims = this->num_dims;
@@ -462,6 +480,28 @@ ParallelTensorShape ParallelTensorBase::get_shape() const {
   }
 
   return shape;
+}
+
+int ParallelTensorShape::get_num_replica_dims() const {
+  int num_replica_dims = 0;
+  for (int i = 0; i < this->num_dims; i++) {
+    if (this->dims[i].is_replica_dim) {
+      num_replica_dims++; 
+    }
+  }
+
+  return num_replica_dims;
+}
+
+int ParallelTensorShape::get_num_replicas() const {
+  int num_replicas = 1;
+  for (int i = 0; i < this->num_dims; i++) {
+    if (this->dims[i].is_replica_dim) {
+      num_replicas *= this->dims[i].degree;
+    }
+  }
+
+  return num_replicas;
 }
 
 std::ostream& operator<<(std::ostream &s, ParallelTensorShape const &shape) {
