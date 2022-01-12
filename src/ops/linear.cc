@@ -321,8 +321,8 @@ void Linear::forward_task_with_dim(const Task *task,
 {
   //Linear* linear = (Linear*) task->args;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
-  assert(regions.size() == (3 + int(m->use_bias)));
-  assert(task->regions.size() == (3 + int(m->use_bias)));
+  assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
+  assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));
   
   TensorAccessorR<float, NDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -334,19 +334,19 @@ void Linear::forward_task_with_dim(const Task *task,
   int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
   int batch_size = acc_output.rect.volume() / out_dim;
-  assert(acc_output.rect.volume() == out_dim * batch_size);
-  assert(acc_input.rect.volume() == in_dim * batch_size);
-  assert(acc_kernel.rect.volume() == in_dim * out_dim);
+  assert(acc_output.rect.volume() == static_cast<size_t>(out_dim * batch_size));
+  assert(acc_input.rect.volume() == static_cast<size_t>(in_dim * batch_size));
+  assert(acc_kernel.rect.volume() == static_cast<size_t>(in_dim * out_dim));
   const float* acc_bias_ptr = NULL;
   if (m->use_bias) {
     TensorAccessorR<float, 3> acc_bias(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
-    assert(acc_bias.rect.volume() == out_dim);
+    assert(acc_bias.rect.volume() == static_cast<size_t>(out_dim));
     acc_bias_ptr = acc_bias.ptr;
   }
 
   Linear::forward_kernel_wrapper(m, acc_input.ptr, acc_output.ptr,
-      acc_kernel.ptr, acc_bias_ptr, in_dim, out_dim, batch_size);
+                                 acc_kernel.ptr, acc_bias_ptr, in_dim, out_dim, batch_size);
 }
 
 void Linear::backward(const FFModel& ff)
@@ -439,8 +439,8 @@ void Linear::backward_task_with_dim(const Task *task,
 {
   //Linear* linear = (Linear*) task->args;
   const LinearMeta* m = *((LinearMeta**) task->local_args);
-  assert(regions.size() == (5 + int(m->trainableInputs[0]) + int(m->use_bias)));
-  assert(task->regions.size() == (5 + int(m->trainableInputs[0]) + int(m->use_bias)));
+  assert(regions.size() == (5 + static_cast<size_t>(m->trainableInputs[0]) + static_cast<size_t>(m->use_bias)));
+  assert(task->regions.size() == (5 + static_cast<size_t>(m->trainableInputs[0]) + static_cast<size_t>(m->use_bias)));
   float* input_grad = NULL;
   size_t rid = 0;
   TensorAccessorR<float, NDIM> acc_input(
@@ -480,25 +480,25 @@ void Linear::backward_task_with_dim(const Task *task,
   int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
   int batch_size = acc_output.rect.volume() / out_dim;
-  assert(acc_output.rect.volume() == out_dim * batch_size);
-  assert(acc_output_grad.rect.volume() == out_dim * batch_size);
-  assert(acc_kernel.rect.volume() == in_dim * out_dim);
-  assert(acc_kernel_grad.rect.volume() == in_dim * out_dim);
+  assert(acc_output.rect.volume() == static_cast<size_t>(out_dim * batch_size));
+  assert(acc_output_grad.rect.volume() == static_cast<size_t>(out_dim * batch_size));
+  assert(acc_kernel.rect.volume() == static_cast<size_t>(in_dim * out_dim));
+  assert(acc_kernel_grad.rect.volume() == static_cast<size_t>(in_dim * out_dim));
   float* acc_bias_grad_ptr = NULL;
   if (m->use_bias) {
     TensorAccessorW<float, 3> acc_bias_grad(
         regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
         true/*readOutput*/);
     rid++;
-    assert(acc_bias_grad.rect.volume() == out_dim);
+    assert(acc_bias_grad.rect.volume() == static_cast<size_t>(out_dim));
     acc_bias_grad_ptr = static_cast<float*>(acc_bias_grad.ptr);
   }
   assert(rid == regions.size());
 
   Linear::backward_kernel_wrapper(m, acc_input.ptr, input_grad,
-      acc_output.ptr, acc_output_grad.ptr,
-      acc_kernel.ptr, acc_kernel_grad.ptr,
-      acc_bias_grad_ptr, in_dim, out_dim, batch_size);
+                                  acc_output.ptr, acc_output_grad.ptr,
+                                  acc_kernel.ptr, acc_kernel_grad.ptr,
+                                  acc_bias_grad_ptr, in_dim, out_dim, batch_size);
 }
 
 void Linear::print_layer(const FFModel& ff)
@@ -632,6 +632,11 @@ bool Linear::use_activation(ActiMode mode)
     case AC_MODE_SIGMOID:
     case AC_MODE_TANH:
       return true;
+    case AC_MODE_NONE:
+      return false;
+    default:
+      assert(0);
+      break;
   }
   return false;
 }

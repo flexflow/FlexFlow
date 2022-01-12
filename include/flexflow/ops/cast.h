@@ -44,44 +44,45 @@ public:
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
   template<typename IDT>
-  static void forward_task_with_1_type(
-      const Legion::Task *task,
-      const std::vector<Legion::PhysicalRegion> &regions,
-      Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task_with_1_type(const Legion::Task *task,
+                                       const std::vector<Legion::PhysicalRegion> &regions,
+                                       Legion::Context ctx, Legion::Runtime *runtime);
   template<typename IDT, typename ODT>
-  static void forward_task_with_2_type(
-      const Legion::Task *task,
-      const std::vector<Legion::PhysicalRegion> &regions,
-      Legion::Context ctx, Legion::Runtime *runtime);
-  static void backward_task(
-      const Legion::Task *task,
-      const std::vector<Legion::PhysicalRegion> &regions,
-      Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task_with_2_type(const Legion::Task *task,
+                                       const std::vector<Legion::PhysicalRegion> &regions,
+                                       Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion> &regions,
+                            Legion::Context ctx, Legion::Runtime *runtime);
   template<typename IDT>
-  static void backward_task_with_1_type(
-      const Legion::Task *task,
-      const std::vector<Legion::PhysicalRegion> &regions,
-      Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task_with_1_type(const Legion::Task *task,
+                                        const std::vector<Legion::PhysicalRegion> &regions,
+                                        Legion::Context ctx, Legion::Runtime *runtime);
   template<typename IDT, typename ODT>
-  static void backward_task_with_2_type(
-      const Legion::Task *task,
-      const std::vector<Legion::PhysicalRegion> &regions,
-      Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task_with_2_type(const Legion::Task *task,
+                                        const std::vector<Legion::PhysicalRegion> &regions,
+                                        Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename IDT, typename ODT>
+  static void forward_kernel(const IDT* input_ptr,
+                             ODT* output_ptr,
+                             size_t volume,
+                             ffStream_t stream);
+  template<typename IDT, typename ODT>
+  static void forward_kernel_wrapper(const IDT* input_ptr,
+                                     ODT* output_ptr,
+                                     size_t volume);
+  template<typename IDT, typename ODT>
+  static void backward_kernel(const IDT* src_ptr,
+                              ODT* dst_ptr,
+                              size_t volume,
+                              ffStream_t stream);
+  template<typename IDT, typename ODT>
+  static void backward_kernel_wrapper(const IDT* src_ptr,
+                                      ODT* dst_ptr,
+                                      size_t volume);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const;
-  template<typename IDT, typename ODT>
-  static void forward_kernel(
-      const IDT* input_ptr,
-      ODT* output_ptr,
-      size_t volume,
-      ffStream_t stream);
-  template<typename IDT, typename ODT>
-  static void backward_kernel(
-      const IDT* src_ptr,
-      ODT* dst_ptr,
-      size_t volume,
-      ffStream_t stream);
 };
 
 }; // namespace FlexFlow

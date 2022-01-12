@@ -23,6 +23,10 @@ namespace FlexFlow {
 using Legion::Context;
 using Legion::Runtime;
 using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::coord_t;
 using Legion::TaskLauncher;
 using Legion::IndexLauncher;
 using Legion::FutureMap;
@@ -146,6 +150,20 @@ void Concat::init(const FFModel& ff)
   set_opmeta_from_futuremap(ff, fm);
 }
 
+OpMeta* Concat::init_task(const Task *task,
+                          const std::vector<PhysicalRegion> &regions,
+                          Context ctx, Runtime *runtime)
+{
+  Concat* cc = (Concat*) task->args;
+  FFHandler handler = *((const FFHandler*) task->local_args);
+  ConcatMeta* m = new ConcatMeta(handler);
+  // Note that our internal axis index ordering is opposite to other frameworks
+  cc->init_meta(m);
+  m->profiling = cc->profiling;
+  std::strcpy(m->op_name, cc->name);
+  return m;
+}
+
 void Concat::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
@@ -167,6 +185,36 @@ void Concat::forward(const FFModel& ff)
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](O): output
+  regions[1..numInputs](I): inputs
+*/
+void Concat::forward_task(const Task *task,
+                          const std::vector<PhysicalRegion> &regions,
+                          Context ctx, Runtime *runtime)
+{
+  const Concat* cc = (Concat*) task->args;
+  const ConcatMeta* m = *((ConcatMeta**) task->local_args);
+  // Note that our internal axis index ordering is opposite to other frameworks
+  assert(regions.size() == cc->numInputs + 1);
+  assert(task->regions.size() == cc->numInputs + 1);
+  Domain out_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  //assert(out_domain.get_dim() == cc->outputs[0].num_dims);
+  Domain in_domain[MAX_NUM_INPUTS];
+  for (int i = 0; i < cc->numInputs; i++)
+    in_domain[i] = runtime->get_index_space_domain(
+        ctx, task->regions[i+1].region.get_index_space());
+  float *output = helperGetTensorPointerWO<float>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  const float *inputs[MAX_NUM_INPUTS];
+  for (int i = 0; i < cc->numInputs; i++)
+    inputs[i] = helperGetTensorPointerRO<float>(
+        regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
+  
+  Concat::forward_kernel_wrapper(m, output, inputs, cc->numInputs, cc->axis, out_domain, in_domain);
 }
 
 void Concat::backward(const FFModel& ff)
@@ -194,6 +242,38 @@ void Concat::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+/*
+  regions[0](I): output_grad
+  regions[1..numInputs](I/O): input_grad
+*/
+void Concat::backward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime)
+{
+  const Concat* cc = (Concat*) task->args;
+  const ConcatMeta* m = *((ConcatMeta**) task->local_args);
+  // Note that our internal axis index ordering is opposite to other frameworks
+  assert(regions.size() == cc->numInputs + 1);
+  assert(task->regions.size() == cc->numInputs + 1);
+  assert(cc->numInputs <= MAX_NUM_INPUTS);
+  Domain out_grad_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  //assert(out_grad_domain.get_dim() == cc->outputs[0].num_dims);
+  Domain in_grad_domains[MAX_NUM_INPUTS];
+  for (int i = 0; i < cc->numInputs; i++)
+    in_grad_domains[i] = runtime->get_index_space_domain(
+        ctx, task->regions[i+1].region.get_index_space());
+  const float *output_grad = helperGetTensorPointerRO<float>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  float *input_grads[MAX_NUM_INPUTS];
+  for (int i = 0; i < cc->numInputs; i++)
+    input_grads[i] = helperGetTensorPointerRW<float>(
+        regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
+
+  Concat::backward_kernel_wrapper(m, output_grad, input_grads, cc->numInputs, cc->axis,
+                                  out_grad_domain, in_grad_domains);
+}
+
 bool Concat::get_int_parameter(PMParameter para, int* value) const
 {
   switch (para) {
@@ -203,6 +283,85 @@ bool Concat::get_int_parameter(PMParameter para, int* value) const
     default:
       return Op::get_int_parameter(para, value);
   }
+}
+
+bool Concat::measure_operator_cost(Simulator* sim,
+                                   const ParallelConfig& pc,
+                                   CostMetrics& cost_metrics) const
+{
+  assert (numInputs <= MAX_NUM_INPUTS);
+  ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_output;
+  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
+    return false;
+  }
+  for (int i = 0; i < numInputs; i++) {
+    if (!inputs[i]->get_input_sub_tensor(pc, sub_inputs[i], op_type)) {
+      return false;
+    }
+  }
+
+  ConcatMeta *m = sim->concat_meta;
+  this->init_meta(m);
+
+  sim->free_all();
+  float *input_ptrs[MAX_NUM_INPUTS];
+  float *input_grad_ptrs[MAX_NUM_INPUTS];
+  bool out_of_memory = false;
+  for (int i = 0; i < numInputs; i++) {
+    input_ptrs[i] = (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
+    out_of_memory = out_of_memory || (input_ptrs[i] == NULL);
+  }
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  out_of_memory = out_of_memory || (output_ptr == NULL);
+  if (out_of_memory) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
+
+  Domain out_domain = sub_output.get_domain();
+  Domain in_domains[MAX_NUM_INPUTS];
+  for (int i = 0; i < numInputs; i++) {
+    in_domains[i] = sub_inputs[i].get_domain();
+  }
+
+  assert(m->profiling == false);
+
+  std::function<void()> forward, backward;
+  forward = [&] {
+    forward_kernel_wrapper(m, output_ptr, input_ptrs, numInputs, axis, out_domain, in_domains);
+  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    for (int i = 0; i < numInputs; i++) {
+      input_grad_ptrs[i] = (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
+      out_of_memory = out_of_memory || (input_grad_ptrs[i] == NULL);
+    }
+    float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    out_of_memory = out_of_memory || (output_grad_ptr == NULL);
+    if (out_of_memory) {
+      cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+      cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+      return true;
+    }
+    backward = [&] {
+      backward_kernel_wrapper(m, output_grad_ptr, input_grad_ptrs,
+                              numInputs, axis, out_domain, in_domains);
+    };
+  }
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure Concat] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time,
+        cost_metrics.backward_time);
+  } else {
+    printf("[Measure Concat] name(%s) forward_time(%.4lf)\n",
+        name, cost_metrics.forward_time);
+  }
+
+  return true;
 }
 
 Node FFModel::get_or_create_concat_node(int num_inputs,
