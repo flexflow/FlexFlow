@@ -618,8 +618,8 @@ void Conv2D::forward_task(const Task *task,
 {
   //Conv2D* conv = (Conv2D*) task->args;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
-  assert(regions.size() == (3 + int(m->use_bias)));
-  assert(task->regions.size() == (3 + int(m->use_bias)));
+  assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
+  assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));
   TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, Conv2DOutput::NUMDIM> acc_output(
@@ -705,8 +705,8 @@ void Conv2D::backward_task(const Task *task,
 {
   //Conv2D* conv = (Conv2D*) task->args;
   const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
-  assert(regions.size() == (5 + int(m->trainableInputs[0]) + int(m->use_bias)));
-  assert(task->regions.size() == (5 + int(m->trainableInputs[0]) + int(m->use_bias)));
+  assert(regions.size() == (5 + static_cast<size_t>(m->trainableInputs[0]) + static_cast<size_t>(m->use_bias)));
+  assert(task->regions.size() == (5 + static_cast<size_t>(m->trainableInputs[0]) + static_cast<size_t>(m->use_bias)));
   size_t rid = 0;
   TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
