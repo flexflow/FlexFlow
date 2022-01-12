@@ -42,6 +42,31 @@ size_t TensorBase::get_volume() const
   return volume;
 }
 
+template <typename T>
+bool TensorBase::set_tensor(
+    const FFModel* ff,
+    const std::vector<int>& dim_sizes,
+    const T* data) {
+  if (num_dims != (int)dim_sizes.size())
+    return false;
+  for (int i = 0; i < num_dims; i++) {
+    if (dims[num_dims-1-i] != dim_sizes[i])
+      return false;
+  }
+  ParallelTensor ptensor = nullptr;
+  ff->get_parallel_tensor_from_tensor(this, ptensor);
+  ptensor->set_tensor<T>(ff, dim_sizes, data);
+}
+
+template <typename T>
+bool TensorBase::get_tensor(
+    const FFModel* ff,
+    T* data) {
+  ParallelTensor ptensor = nullptr;
+  ff->get_parallel_tensor_from_tensor(this, ptensor);
+  ptensor->get_tensor<T>(ff, data);
+}
+
 bool ParallelTensorShape::is_valid() const {
   bool used[MAX_TENSOR_DIM];
   std::fill_n(used, MAX_TENSOR_DIM, false);
@@ -570,12 +595,7 @@ bool ParallelTensorBase::set_tensor(
   } else {
     assert(false);
   }
-  // Check dimensions
-  if (num_dims != (int)dim_sizes.size())
-    return false;
-  for (int i = 0; i < num_dims; i++) {
-    if (dims[num_dims-1-i].size != dim_sizes[i])
-      return false;
+  for (size_t i = 0; i < dim_sizes.size(); i++) {
     volume = volume * dim_sizes[i];
   }
   RegionRequirement req(region, READ_WRITE, EXCLUSIVE, region);
@@ -663,6 +683,15 @@ bool ParallelTensorBase::get_tensor(
 
 template float* ParallelTensorBase::get_raw_ptr<float>(FFConfig &config);
 template int32_t* ParallelTensorBase::get_raw_ptr<int32_t>(FFConfig &config);
+
+template bool TensorBase::set_tensor<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
+template bool TensorBase::get_tensor<float>(const FFModel* ff, float* data);
+template bool TensorBase::set_tensor<double>(const FFModel* ff, const std::vector<int>& dims, const double* data);
+template bool TensorBase::get_tensor<double>(const FFModel* ff, double* data);
+template bool TensorBase::set_tensor<int32_t>(const FFModel* ff, const std::vector<int>& dims, const int32_t* data);
+template bool TensorBase::get_tensor<int32_t>(const FFModel* ff, int32_t* data);
+template bool TensorBase::set_tensor<int64_t>(const FFModel* ff, const std::vector<int>& dims, const int64_t* data);
+template bool TensorBase::get_tensor<int64_t>(const FFModel* ff, int64_t* data);
 
 template bool ParallelTensorBase::set_tensor<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
 template bool ParallelTensorBase::get_tensor<float>(const FFModel* ff, float* data);

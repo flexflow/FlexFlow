@@ -1202,9 +1202,7 @@ flexflow_tensor_set_tensor_float(
   for (int i = 0; i < num_dim; i++ ) {
     dims_vec.push_back(dims[i]);
   }
-  ParallelTensor ptensor;
-  model->get_parallel_tensor_from_tensor(handle, ptensor);
-  return ptensor->set_tensor<float>(model, dims_vec, data);
+  return handle->set_tensor<float>(model, dims_vec, data);
 }
 
 bool
@@ -1215,9 +1213,7 @@ flexflow_tensor_get_tensor_float(
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
-  ParallelTensor ptensor;
-  model->get_parallel_tensor_from_tensor(handle, ptensor);
-  return ptensor->get_tensor<float>(model, data);
+  return handle->get_tensor<float>(model, data);
 }
   
 bool
@@ -1234,9 +1230,7 @@ flexflow_tensor_set_tensor_int(
   for (int i = 0; i < num_dim; i++ ) {
     dims_vec.push_back(dims[i]);
   }
-  ParallelTensor ptensor;
-  model->get_parallel_tensor_from_tensor(handle, ptensor);
-  return ptensor->set_tensor<int>(model, dims_vec, data);
+  return handle->set_tensor<int>(model, dims_vec, data);
 }
 
 bool
@@ -1247,9 +1241,7 @@ flexflow_tensor_get_tensor_int(
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
-  ParallelTensor ptensor;
-  model->get_parallel_tensor_from_tensor(handle, ptensor);
-  return ptensor->get_tensor<int>(model, data);
+  return handle->get_tensor<int>(model, data);
 }
 
 bool
@@ -1266,9 +1258,7 @@ flexflow_tensor_set_tensor_int64(
   for (int i = 0; i < num_dim; i++ ) {
     dims_vec.push_back(dims[i]);
   }
-  ParallelTensor ptensor;
-  model->get_parallel_tensor_from_tensor(handle, ptensor);
-  return ptensor->set_tensor<int64_t>(model, dims_vec, data);
+  return handle->set_tensor<int64_t>(model, dims_vec, data);
 }
 
 bool
@@ -1279,9 +1269,7 @@ flexflow_tensor_get_tensor_int64(
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
-  ParallelTensor ptensor;
-  model->get_parallel_tensor_from_tensor(handle, ptensor);
-  return ptensor->get_tensor<int64_t>(model, data);
+  return handle->get_tensor<int64_t>(model, data);
 }
 
 // -----------------------------------------------------------------------

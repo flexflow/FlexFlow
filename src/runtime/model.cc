@@ -1612,8 +1612,9 @@ void FFModel::map_weight_with_dim(ParallelTensor weight, const Op* parallel_op)
   }
 }
 
-bool FFModel::get_parallel_tensor_from_tensor(const Tensor tensor,
-                                              ParallelTensor& parallel_tensor)
+bool FFModel::get_parallel_tensor_from_tensor(
+    const Tensor tensor,
+    ParallelTensor& parallel_tensor) const
 {
   assert(tensor->parallel_tensor != nullptr);
   parallel_tensor = tensor->parallel_tensor;
