@@ -449,6 +449,10 @@ flexflow_op_t
 flexflow_model_get_layer_by_id(
   flexflow_model_t handle,
   int layer_id);
+  
+flexflow_op_t
+flexflow_model_get_last_layer(
+  flexflow_model_t handle);
 
 flexflow_tensor_t
 flexflow_model_get_parameter_by_id(

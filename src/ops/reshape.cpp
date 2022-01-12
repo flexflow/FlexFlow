@@ -202,4 +202,7 @@ bool Reshape::measure_operator_cost(Simulator* sim,
   return true;
 }
 
+template void Reshape::forward_kernel<float>(const float* input_ptr, float* output_ptr, size_t volume, cudaStream_t stream);
+template void Reshape::backward_kernel<float>(float* in_grad_ptr, const float* out_grad_ptr, size_t volume, cudaStream_t stream);
+
 }; // namespace FlexFlow

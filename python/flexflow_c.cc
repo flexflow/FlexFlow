@@ -925,6 +925,15 @@ flexflow_model_get_layer_by_id(
   return FFCObjectWrapper::wrap(layer);
 }
 
+flexflow_op_t
+flexflow_model_get_last_layer(
+  flexflow_model_t handle_)
+{
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Layer* layer = handle->layers.back();
+  return FFCObjectWrapper::wrap(layer);
+}
+
 flexflow_tensor_t
 flexflow_model_get_parameter_by_id(
   flexflow_model_t handle_,

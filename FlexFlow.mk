@@ -49,23 +49,23 @@ endif
 
 GEN_SRC += ${FF_HOME}/src/runtime/accessor.cc\
 		${FF_HOME}/src/runtime/graph.cc\
-    ${FF_HOME}/src/runtime/initializer.cc\
-    ${FF_HOME}/src/runtime/layer.cc\
-    ${FF_HOME}/src/runtime/machine_model.cc\
-    ${FF_HOME}/src/runtime/machine_view.cc\
-    ${FF_HOME}/src/runtime/model.cc\
+		${FF_HOME}/src/runtime/initializer.cc\
+		${FF_HOME}/src/runtime/layer.cc\
+		${FF_HOME}/src/runtime/machine_model.cc\
+		${FF_HOME}/src/runtime/machine_view.cc\
+		${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/runtime/optimizer.cc\
 		${FF_HOME}/src/runtime/parallel_op.cc\
-    ${FF_HOME}/src/runtime/recursive_logger.cc\
-    ${FF_HOME}/src/runtime/simulator.cc\
-    ${FF_HOME}/src/runtime/strategy.cc\
-    ${FF_HOME}/src/runtime/substitution.cc\
-    ${FF_HOME}/src/runtime/tensor.cc\
-    ${FF_HOME}/src/mapper/mapper.cc\
+		${FF_HOME}/src/runtime/recursive_logger.cc\
+		${FF_HOME}/src/runtime/simulator.cc\
+		${FF_HOME}/src/runtime/strategy.cc\
+		${FF_HOME}/src/runtime/substitution.cc\
+		${FF_HOME}/src/runtime/tensor.cc\
+		${FF_HOME}/src/mapper/mapper.cc\
 		${FF_HOME}/src/ops/aggregate.cc\
-    ${FF_HOME}/src/ops/aggregate_spec.cc\
+		${FF_HOME}/src/ops/aggregate_spec.cc\
 		${FF_HOME}/src/ops/attention.cc\
-    ${FF_HOME}/src/ops/batch_matmul.cc\
+		${FF_HOME}/src/ops/batch_matmul.cc\
 		${FF_HOME}/src/ops/batch_norm.cc\
 		${FF_HOME}/src/ops/cast.cc\
 		${FF_HOME}/src/ops/cache.cc\
@@ -100,13 +100,13 @@ GEN_SRC += ${FF_HOME}/src/runtime/accessor.cc\
 
 FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/aggregate.cu\
-    ${FF_HOME}/src/ops/aggregate_spec.cu\
+		${FF_HOME}/src/ops/aggregate_spec.cu\
 		${FF_HOME}/src/ops/attention.cu\
 		${FF_HOME}/src/ops/batch_matmul.cu\
 		${FF_HOME}/src/ops/batch_norm.cu\
-		${FF_HOME}/src/ops/concat.cu\
 		${FF_HOME}/src/ops/cache.cu\
 		${FF_HOME}/src/ops/cast.cu\
+		${FF_HOME}/src/ops/concat.cu\
 		${FF_HOME}/src/ops/dropout.cu\
 		${FF_HOME}/src/ops/element_binary.cu\
 		${FF_HOME}/src/ops/element_unary.cu\
@@ -141,13 +141,13 @@ FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		
 FF_HIP_SRC	+= ${FF_HOME}/src/ops/conv_2d.cpp\
 		${FF_HOME}/src/ops/aggregate.cpp\
-    ${FF_HOME}/src/ops/aggregate_spec.cpp\
+		${FF_HOME}/src/ops/aggregate_spec.cpp\
 		${FF_HOME}/src/ops/attention.cpp\
 		${FF_HOME}/src/ops/batch_matmul.cpp\
 		${FF_HOME}/src/ops/batch_norm.cpp\
-		${FF_HOME}/src/ops/concat.cpp\
 		${FF_HOME}/src/ops/cache.cpp\
 		${FF_HOME}/src/ops/cast.cpp\
+		${FF_HOME}/src/ops/concat.cpp\
 		${FF_HOME}/src/ops/dropout.cpp\
 		${FF_HOME}/src/ops/element_binary.cpp\
 		${FF_HOME}/src/ops/element_unary.cpp\
