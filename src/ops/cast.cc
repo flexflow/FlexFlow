@@ -235,10 +235,10 @@ void Cast::backward(const FFModel& ff)
 }
 
 template<typename IDT>
-void Cast::backward_task_with_1_type(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
-    Context ctx, Runtime *runtime) {
+void Cast::backward_task_with_1_type(const Task *task,
+                                     const std::vector<PhysicalRegion> &regions,
+                                     Context ctx, Runtime *runtime) 
+{
   const CastMeta* m = *((CastMeta**) task->local_args);
   if (m->input_data_type == DT_FLOAT) {
     Cast::backward_task_with_2_type<IDT, float>(task, regions, ctx, runtime);
@@ -252,10 +252,10 @@ void Cast::backward_task_with_1_type(
 }
 
 template<typename IDT, typename ODT>
-void Cast::backward_task_with_2_type(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
-    Context ctx, Runtime *runtime) {
+void Cast::backward_task_with_2_type(const Task *task,
+                                     const std::vector<PhysicalRegion> &regions,
+                                     Context ctx, Runtime *runtime) 
+{
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
   Domain input_domain = runtime->get_index_space_domain(
@@ -269,10 +269,10 @@ void Cast::backward_task_with_2_type(
   Cast::backward_kernel_wrapper<IDT, ODT>(input_ptr, output_ptr, output_domain.get_volume());
 }
 
-void Cast::backward_task(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
-    Context ctx, Runtime *runtime) {
+void Cast::backward_task(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx, Runtime *runtime) 
+{
   const CastMeta* m = *((CastMeta**) task->local_args);
   if (m->output_data_type == DT_FLOAT) {
     Cast::backward_task_with_1_type<float>(task, regions, ctx, runtime);

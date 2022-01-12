@@ -89,4 +89,44 @@ void Cast::backward_kernel_wrapper(const IDT* src_ptr,
 CastMeta::CastMeta(FFHandler handle)
 : OpMeta(handle) {}
 
+template void Cast::forward_kernel_wrapper<float, float>(const float* input_ptr, float* output_ptr, size_t volume);
+template void Cast::forward_kernel_wrapper<float, double>(const float* input_ptr, double* output_ptr, size_t volume);
+template void Cast::forward_kernel_wrapper<float, int32_t>(const float* input_ptr, int32_t* output_ptr, size_t volume);
+template void Cast::forward_kernel_wrapper<float, int64_t>(const float* input_ptr, int64_t* output_ptr, size_t volume);
+
+template void Cast::forward_kernel_wrapper<double, float>(const double* input_ptr, float* output_ptr, size_t volume);
+template void Cast::forward_kernel_wrapper<double, double>(const double* input_ptr, double* output_ptr, size_t volume);
+template void Cast::forward_kernel_wrapper<double, int32_t>(const double* input_ptr, int32_t* output_ptr, size_t volume);
+template void Cast::forward_kernel_wrapper<double, int64_t>(const double* input_ptr, int64_t* output_ptr, size_t volume);
+
+template void Cast::forward_kernel_wrapper<int32_t, float>(const int32_t* input_ptr, float* output_ptr, size_t volume);
+template void Cast::forward_kernel_wrapper<int32_t, double>(const int32_t* input_ptr, double* output_ptr, size_t volume);
+template void Cast::forward_kernel_wrapper<int32_t, int32_t>(const int32_t* input_ptr, int32_t* output_ptr, size_t volume);
+template void Cast::forward_kernel_wrapper<int32_t, int64_t>(const int32_t* input_ptr, int64_t* output_ptr, size_t volume);
+
+template void Cast::forward_kernel_wrapper<int64_t, float>(const int64_t* input_ptr, float* output_ptr, size_t volume);
+template void Cast::forward_kernel_wrapper<int64_t, double>(const int64_t* input_ptr, double* output_ptr, size_t volume);
+template void Cast::forward_kernel_wrapper<int64_t, int32_t>(const int64_t* input_ptr, int32_t* output_ptr, size_t volume);
+template void Cast::forward_kernel_wrapper<int64_t, int64_t>(const int64_t* input_ptr, int64_t* output_ptr, size_t volume);
+
+template void Cast::backward_kernel_wrapper<float, float>(const float* src_ptr, float* dst_ptr, size_t volume);
+template void Cast::backward_kernel_wrapper<float, double>(const float* src_ptr, double* dst_ptr, size_t volume);
+template void Cast::backward_kernel_wrapper<float, int32_t>(const float* src_ptr, int32_t* dst_ptr, size_t volume);
+template void Cast::backward_kernel_wrapper<float, int64_t>(const float* src_ptr, int64_t* dst_ptr, size_t volume);
+
+template void Cast::backward_kernel_wrapper<double, float>(const double* src_ptr, float* dst_ptr, size_t volume);
+template void Cast::backward_kernel_wrapper<double, double>(const double* src_ptr, double* dst_ptr, size_t volume);
+template void Cast::backward_kernel_wrapper<double, int32_t>(const double* src_ptr, int32_t* dst_ptr, size_t volume);
+template void Cast::backward_kernel_wrapper<double, int64_t>(const double* src_ptr, int64_t* dst_ptr, size_t volume);
+
+template void Cast::backward_kernel_wrapper<int32_t, float>(const int32_t* src_ptr, float* dst_ptr, size_t volume);
+template void Cast::backward_kernel_wrapper<int32_t, double>(const int32_t* src_ptr, double* dst_ptr, size_t volume);
+template void Cast::backward_kernel_wrapper<int32_t, int32_t>(const int32_t* src_ptr, int32_t* dst_ptr, size_t volume);
+template void Cast::backward_kernel_wrapper<int32_t, int64_t>(const int32_t* src_ptr, int64_t* dst_ptr, size_t volume);
+
+template void Cast::backward_kernel_wrapper<int64_t, float>(const int64_t* src_ptr, float* dst_ptr, size_t volume);
+template void Cast::backward_kernel_wrapper<int64_t, double>(const int64_t* src_ptr, double* dst_ptr, size_t volume);
+template void Cast::backward_kernel_wrapper<int64_t, int32_t>(const int64_t* src_ptr, int32_t* dst_ptr, size_t volume);
+template void Cast::backward_kernel_wrapper<int64_t, int64_t>(const int64_t* src_ptr, int64_t* dst_ptr, size_t volume);
+
 }; //namespace FlexFlow

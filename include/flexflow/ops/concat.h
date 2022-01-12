@@ -9,6 +9,7 @@ class ConcatMeta : public OpMeta {
 public:
   ConcatMeta(FFHandler handle) : OpMeta(handle) {};
   int axis;
+  char op_name[MAX_OPNAME];
 };
 
 class Concat : public Op {
@@ -44,6 +45,13 @@ public:
                              const Legion::Domain& out_domain,
                              const Legion::Domain* in_domain,
                              ffStream_t stream);
+  static void forward_kernel_wrapper(const ConcatMeta *m,
+                                     float* output,
+                                     float const * const *inputs,
+                                     int num_inputs,
+                                     int axis,
+                                     const Legion::Domain& out_domain,
+                                     const Legion::Domain* in_domain);
   static void backward_kernel(const float* output_grad,
                               float** input_grads,
                               int num_inputs,
@@ -51,6 +59,13 @@ public:
                               const Legion::Domain& out_grad_domain,
                               const Legion::Domain* in_grad_domain,
                               ffStream_t stream);
+  static void backward_kernel_wrapper(const ConcatMeta *m,
+                                      const float* output_grad,
+                                      float** input_grads,
+                                      int num_inputs,
+                                      int axis,
+                                      const Legion::Domain& out_grad_domain,
+                                      const Legion::Domain* in_grad_domain);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;
