@@ -477,7 +477,8 @@ class BaseModel(object):
       layer.output_tensors[0].ffhandle = out_t
 
       assert layer.ffhandle == None, "layer handle is inited"
-      layer.ffhandle = self._ffmodel.get_layer_by_id(layer.layer_id)
+      # layer.ffhandle = self._ffmodel.get_layer_by_id(layer.layer_id)
+      layer.ffhandle = self._ffmodel.get_last_layer()
       assert layer.ffhandle != None, "layer handle is wrong"
 
   def save_image(self, batch_image_array, id):

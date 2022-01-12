@@ -761,7 +761,7 @@ class FFModel(object):
 
   def add_layer(self, op_type, name):
     layer_id = self._nb_layers
-    op_handle = ffc.flexflow_model_get_layer_by_id(self.handle, layer_id)
+    op_handle = ffc.flexflow_model_get_last_layer(self.handle)
     self._layers[self._nb_layers] = convert_op_handle_to_op(op_type, op_handle, idx=layer_id, name=name)
     self._nb_layers += 1
 
@@ -1881,6 +1881,9 @@ class FFModel(object):
 
   def get_layer_by_id(self, layer_id):
     return self._layers[layer_id]
+
+  def get_last_layer(self):
+    return self._layers[self._nb_layers-1]
 
   def get_layer_by_name(self, layer_name):
     for layer_id in self._layers:
