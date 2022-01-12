@@ -28,7 +28,7 @@ public:
                const ParallelTensor x,
                bool inplace,
                const char* name,
-	       float scalar);
+	             float scalar);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
@@ -36,10 +36,9 @@ public:
   bool can_inplace_output() override;
   bool has_inplace_output() override;
   void do_inplace_output() override;
-  static Op* create_operator_from_layer(
-      FFModel& model,
-      const Layer* layer,
-      const std::vector<ParallelTensor>& inputs);
+  static Op* create_operator_from_layer(FFModel& model,
+                                        const Layer* layer,
+                                        const std::vector<ParallelTensor>& inputs);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -51,31 +50,42 @@ public:
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
   template<typename T>
-  static void forward_task_with_type(
-      const Legion::Task *task,
-      const std::vector<Legion::PhysicalRegion> &regions,
-      Legion::Context ctx, Legion::Runtime *runtime);
+  static void forward_task_with_type(const Legion::Task *task,
+                                     const std::vector<Legion::PhysicalRegion> &regions,
+                                     Legion::Context ctx, Legion::Runtime *runtime);
   template<typename T>
-  static void backward_task_with_type(
-      const Legion::Task *task,
-      const std::vector<Legion::PhysicalRegion> &regions,
-      Legion::Context ctx, Legion::Runtime *runtime);
+  static void backward_task_with_type(const Legion::Task *task,
+                                      const std::vector<Legion::PhysicalRegion> &regions,
+                                      Legion::Context ctx, Legion::Runtime *runtime);
+  static void init_kernel(ElementUnaryMeta *m,
+                          const Legion::Domain& input_domain,
+                          const Legion::Domain& output_domain);
   template<typename T>
-  static void forward_kernel(
-      const ElementUnaryMeta* m,
-      const T* in_ptr,
-      T* out_ptr,
-      size_t num_elements,
-      ffStream_t stream);
+  static void forward_kernel(const ElementUnaryMeta* m,
+                             const T* in_ptr,
+                             T* out_ptr,
+                             size_t num_elements,
+                             ffStream_t stream);
   template<typename T>
-  static void backward_kernel(
-      const ElementUnaryMeta* m,
-      const T* in_ptr,
-      T* in_grad_ptr,
-      const T* out_ptr,
-      const T* out_grad_ptr,
-      size_t num_elements,
-      ffStream_t stream);
+  static void forward_kernel_wrapper(const ElementUnaryMeta* m,
+                                     const T* in_ptr,
+                                     T* out_ptr,
+                                     size_t num_elements);
+  template<typename T>
+  static void backward_kernel(const ElementUnaryMeta* m,
+                              const T* in_ptr,
+                              T* in_grad_ptr,
+                              const T* out_ptr,
+                              const T* out_grad_ptr,
+                              size_t num_elements,
+                              ffStream_t stream);
+  template<typename T>
+  static void backward_kernel_wrapper(const ElementUnaryMeta* m,
+                                      const T* in_ptr,
+                                      T* in_grad_ptr,
+                                      const T* out_ptr,
+                                      const T* out_grad_ptr,
+                                      size_t num_elements);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;
