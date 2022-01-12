@@ -1130,6 +1130,15 @@ flexflow_tensor_get_dim(
   return handle->dims[legion_axis];
 }
 
+int*
+flexflow_tensor_get_dims(
+  flexflow_tensor_t handle_)
+{
+  Tensor handle = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[Tensor] get dims [%d, %d, %d, %d]", handle->dims[3], handle->dims[2], handle->dims[1], handle->dims[0]);
+  return &(handle->dims[0]);
+}
+
 int
 flexflow_tensor_get_data_type(
   flexflow_tensor_t handle_)

@@ -526,6 +526,10 @@ flexflow_tensor_get_dim(
   flexflow_tensor_t handle,
   int legion_axis);
 
+int*
+flexflow_tensor_get_dims(
+  flexflow_tensor_t handle);
+
 int
 flexflow_tensor_get_data_type(
   flexflow_tensor_t handle);

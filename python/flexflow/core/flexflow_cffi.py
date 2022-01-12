@@ -648,18 +648,29 @@ class Tensor(object):
 
   def __get_dims(self):
     self.num_dims = ffc.flexflow_tensor_get_num_dims(self.handle)
-    #d = ffc.flexflow_tensor_get_dims(self.handle)
-    #fflogger.debug(d[0], d[1], d[2], d[3])
+    # if (self.num_dims == 1):
+    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 0),)
+    # elif (self.num_dims == 2):
+    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+    # elif (self.num_dims == 3):
+    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+    # elif (self.num_dims == 4):
+    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 3), ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+    # elif (self.num_dims == 5):
+    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 4), ffc.flexflow_tensor_get_dim(self.handle, 3), ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+    # else:
+    #   assert 0, "unknown num_dims"
+    d = ffc.flexflow_tensor_get_dims(self.handle)
     if (self.num_dims == 1):
-      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 0))
+      self.dims = (d[0],)
     elif (self.num_dims == 2):
-      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+      self.dims = (d[1], d[0])
     elif (self.num_dims == 3):
-      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+      self.dims = (d[2], d[1], d[0])
     elif (self.num_dims == 4):
-      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 3), ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+      self.dims = (d[3], d[2], d[1], d[0])
     elif (self.num_dims == 5):
-      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 4), ffc.flexflow_tensor_get_dim(self.handle, 3), ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+      self.dims = (d[4], d[3], d[2], d[1], d[0])
     else:
       assert 0, "unknown num_dims"
 
@@ -711,6 +722,7 @@ class Parameter(Tensor):
     np_shape = np_array.shape
     num_dims = len(np_shape)
     assert num_dims == self.num_dims, "please check dims (%d == %d)" %(num_dims, self.num_dims)
+    print(np_shape, self.dims)
     for i in range(0, num_dims):
       assert np_shape[i] == self.dims[i], "please check shape dim %d (%d == %d)" %(i, np_shape[i], self.dims[i])
     c_dims = ffi.new("int[]", self.dims)
