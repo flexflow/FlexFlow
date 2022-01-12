@@ -118,7 +118,6 @@ void Conv2D::init_kernel(const Conv2D *conv,
     checkCUDNN(miopenSetActivationDescriptor(m->actiDesc, miopenActivationRELU,
                                              0.0, 0.0, 0.0));
   }
-  return m;
 }
 
 /*static*/
