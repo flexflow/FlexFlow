@@ -44,10 +44,16 @@ public:
                              float const *input_ptr,
                              float *output_ptr,
                              ffStream_t stream);
+  static void forward_kernel_wrapper(DropoutMeta *m,
+                                     float const *input_ptr,
+                                     float *output_ptr);
   static void backward_kernel(DropoutMeta *m,
                               float const *output_grad_ptr,
                               float *input_grad_ptr,
                               ffStream_t stream);
+  static void backward_kernel_wrapper(DropoutMeta *m,
+                                      float const *output_grad_ptr,
+                                      float *input_grad_ptr);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;
