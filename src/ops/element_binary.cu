@@ -220,6 +220,8 @@ OpMeta* ElementBinary::init_task(const Task* task,
   m->profiling = eb->profiling;
   m->inplace_a = eb->inplace_a;
   m->has_same_operands = eb->has_same_operands;
+  m->trainableInputs[0] = eb->trainableInputs[0];
+  m->trainableInputs[1] = eb->trainableInputs[1];
   Domain input1_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain input2_domain, output_domain;
@@ -673,54 +675,62 @@ void ElementBinary::backward_kernel(const ElementBinaryMeta* m,
 
   if (m->op_type == OP_EW_ADD || m->op_type == OP_EW_SUB) {
     float alpha = 1.0f, beta = 1.0f;
-    checkCUDNN(cudnnGetTensorNdDescriptor(m->input1Tensor, 4,
-        &input_datatype, &input_ndims, input_dims, input_strides));
-    bool has_reduce = false;
-    assert(input_ndims == output_ndims);
-    for (int i = 0; i < input_ndims; i++)
-      if (input_dims[i] != output_dims[i])
-        has_reduce = true;
-    if (has_reduce) {
-      checkCUDNN(cudnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
-          nullptr/*indices*/, 0/*indicesSizeInBytes*/,
-          m->handle.workSpace, m->handle.workSpaceSize,
-          &alpha, m->outputTensor, out_grad_ptr,
-          &beta, m->input1Tensor, in1_grad_ptr));
-    } else {
-      checkCUDNN(cudnnAddTensor(m->handle.dnn,
-          &alpha, m->outputTensor, out_grad_ptr,
-          &beta, m->input1Tensor, in1_grad_ptr));
+    if (in1_grad_ptr != nullptr) {
+      checkCUDNN(cudnnGetTensorNdDescriptor(m->input1Tensor, 4,
+          &input_datatype, &input_ndims, input_dims, input_strides));
+      bool has_reduce = false;
+      assert(input_ndims == output_ndims);
+      for (int i = 0; i < input_ndims; i++)
+        if (input_dims[i] != output_dims[i])
+          has_reduce = true;
+      if (has_reduce) {
+        checkCUDNN(cudnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
+            nullptr/*indices*/, 0/*indicesSizeInBytes*/,
+            m->handle.workSpace, m->handle.workSpaceSize,
+            &alpha, m->outputTensor, out_grad_ptr,
+            &beta, m->input1Tensor, in1_grad_ptr));
+      } else {
+        checkCUDNN(cudnnAddTensor(m->handle.dnn,
+            &alpha, m->outputTensor, out_grad_ptr,
+            &beta, m->input1Tensor, in1_grad_ptr));
+      }
     }
     if (m->op_type == OP_EW_SUB)
       alpha = -1.0f;
-    checkCUDNN(cudnnGetTensorNdDescriptor(m->input2Tensor, 4,
-        &input_datatype, &input_ndims, input_dims, input_strides));
-    has_reduce = false;
-    assert(input_ndims == output_ndims);
-    for (int i = 0; i < input_ndims; i++)
-      if (input_dims[i] != output_dims[i])
-        has_reduce = true;
-    if (has_reduce) {
-      checkCUDNN(cudnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
-          nullptr/*indices*/, 0/*indicesSizeInBytes*/,
-          m->handle.workSpace, m->handle.workSpaceSize,
-          &alpha, m->outputTensor, out_grad_ptr,
-          &beta, m->input2Tensor, in2_grad_ptr));
-    } else {
-      checkCUDNN(cudnnAddTensor(m->handle.dnn,
-          &alpha, m->outputTensor, out_grad_ptr,
-          &beta, m->input2Tensor, in2_grad_ptr));
+    if (in2_grad_ptr != nullptr) {
+      checkCUDNN(cudnnGetTensorNdDescriptor(m->input2Tensor, 4,
+          &input_datatype, &input_ndims, input_dims, input_strides));
+      bool has_reduce = false;
+      assert(input_ndims == output_ndims);
+      for (int i = 0; i < input_ndims; i++)
+        if (input_dims[i] != output_dims[i])
+          has_reduce = true;
+      if (has_reduce) {
+        checkCUDNN(cudnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
+            nullptr/*indices*/, 0/*indicesSizeInBytes*/,
+            m->handle.workSpace, m->handle.workSpaceSize,
+            &alpha, m->outputTensor, out_grad_ptr,
+            &beta, m->input2Tensor, in2_grad_ptr));
+      } else {
+        checkCUDNN(cudnnAddTensor(m->handle.dnn,
+            &alpha, m->outputTensor, out_grad_ptr,
+            &beta, m->input2Tensor, in2_grad_ptr));
+      }
     }
   } else if (m->op_type == OP_EW_MUL) {
     float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f;
-    checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
-        &alpha1, m->outputTensor, out_grad_ptr,
-        &alpha2, m->input2Tensor, in2_ptr,
-        &beta, m->input1Tensor, in1_grad_ptr));
-    checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
-        &alpha1, m->outputTensor, out_grad_ptr,
-        &alpha2, m->input2Tensor, in1_ptr,
-        &beta, m->input1Tensor, in2_grad_ptr));
+    if (in1_grad_ptr != nullptr) {
+      checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
+          &alpha1, m->outputTensor, out_grad_ptr,
+          &alpha2, m->input2Tensor, in2_ptr,
+          &beta, m->input1Tensor, in1_grad_ptr));
+    }
+    if (in2_grad_ptr != nullptr) {
+      checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
+          &alpha1, m->outputTensor, out_grad_ptr,
+          &alpha2, m->input2Tensor, in1_ptr,
+          &beta, m->input1Tensor, in2_grad_ptr));
+    }
   } else {
     assert(false && "Unsupported ElementWise Binary Type");
   }
@@ -773,36 +783,46 @@ void ElementBinary::backward_task(const Task *task,
       out_grad_ptr = in0_grad_ptr;
     }
   } else {
-    assert(regions.size() == 3 || regions.size() == 5);
-    assert(task->regions.size() == regions.size());
+    int rid = 0;
     out_grad_ptr = helperGetTensorPointerRO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+    rid ++;
     Domain in0_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-    Domain in0_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
-    assert(out_grad_domain == in0_grad_domain);
+      ctx, task->regions[rid].region.get_index_space());
     assert(out_grad_domain == in0_domain);
     in0_ptr = helperGetTensorPointerRO<float>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    in0_grad_ptr = helperGetTensorPointerRW<float>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-    if (regions.size() == 3) {
+      regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+    rid++;
+    if (m->trainableInputs[0]) {
+      Domain in0_grad_domain = runtime->get_index_space_domain(
+        ctx, task->regions[rid].region.get_index_space());
+      assert(out_grad_domain == in0_grad_domain);
+      in0_grad_ptr = helperGetTensorPointerRW<float>(
+        regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+      rid++;
+    }
+    if (m->has_same_operands) {
       // in0 == in1
       in1_ptr = in0_ptr;
       in1_grad_ptr = in0_grad_ptr;
     } else {
       Domain in1_domain = runtime->get_index_space_domain(
-        ctx, task->regions[3].region.get_index_space());
-      Domain in1_grad_domain = runtime->get_index_space_domain(
-        ctx, task->regions[4].region.get_index_space());
-      //assert(out_grad_domain == in1_domain);
-      assert(in1_domain == in1_grad_domain);
+        ctx, task->regions[rid].region.get_index_space());
       in1_ptr = helperGetTensorPointerRO<float>(
-        regions[3], task->regions[3], FID_DATA, ctx, runtime);
-      in1_grad_ptr = helperGetTensorPointerRW<float>(
-        regions[4], task->regions[4], FID_DATA, ctx, runtime);
+        regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+      rid++;
+      if (m->trainableInputs[1]) {
+        Domain in1_grad_domain = runtime->get_index_space_domain(
+          ctx, task->regions[rid].region.get_index_space());
+        //assert(out_grad_domain == in1_domain);
+        assert(in1_domain == in1_grad_domain);
+        in1_grad_ptr = helperGetTensorPointerRW<float>(
+          regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+        rid++;
+      }
     }
+    assert(task->regions.size() == rid);
+    assert(task->regions.size() == regions.size());
   }
 
   cudaStream_t stream;
@@ -899,32 +919,37 @@ void ElementBinary::backward(const FFModel& ff)
       launcher.add_field(3, FID_DATA);
     }
   } else {
+    int rid = 0;
     // regions[0](I): output_grad
     launcher.add_region_requirement(
       RegionRequirement(outputs[0].part_grad, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
-    launcher.add_field(0, FID_DATA);
+    launcher.add_field(rid++, FID_DATA);
     // regions[1](I): input0
     launcher.add_region_requirement(
       RegionRequirement(input_lps[0], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0].region));
-    launcher.add_field(1, FID_DATA);
+    launcher.add_field(rid++, FID_DATA);
     // regions[2](I/O): input0_grad
-    launcher.add_region_requirement(
-      RegionRequirement(input_grad_lps[0], 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
-    launcher.add_field(2, FID_DATA);
-    if (inputs[0].region != inputs[1].region) {      
+    if (trainableInputs[0]) {
+      launcher.add_region_requirement(
+        RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, inputs[0].region_grad));
+      launcher.add_field(rid++, FID_DATA);
+    }
+    if (inputs[0].region != inputs[1].region) {
       // regions[3](I): input1
       launcher.add_region_requirement(
         RegionRequirement(input_lps[1], 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, inputs[1].region));
-      launcher.add_field(3, FID_DATA);
+      launcher.add_field(rid++, FID_DATA);
       // regions[4](I/O): input1_grad
-      launcher.add_region_requirement(
-        RegionRequirement(input_grad_lps[1], 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, inputs[1].region_grad));
-      launcher.add_field(4, FID_DATA);
+      if (trainableInputs[1]) {
+        launcher.add_region_requirement(
+          RegionRequirement(input_grad_lps[1], 0/*projection id*/,
+                            READ_WRITE, EXCLUSIVE, inputs[1].region_grad));
+        launcher.add_field(rid++, FID_DATA);
+      }
     }
   }
   runtime->execute_index_space(ctx, launcher);
