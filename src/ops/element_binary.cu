@@ -483,7 +483,6 @@ void ElementBinary::forward_task(const Task* task,
       assert(task->regions.size() == 2);
       Domain out_domain = runtime->get_index_space_domain(
           ctx, task->regions[1].region.get_index_space());
-      assert(out_domain == in1_domain);
       in1_ptr = helperGetTensorPointerRO<float>(
           regions[0], task->regions[0], FID_DATA, ctx, runtime);
       in2_ptr = in1_ptr;
