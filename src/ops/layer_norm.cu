@@ -83,7 +83,9 @@ void LayerNorm::create_weights(FFModel& model)
 #else
   ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
-
+  if (!elementwise_affine) {
+    return;
+  }
   // Create scale and bias
   Initializer* scale_initializer = new ConstantInitializer(1.0f);
   Initializer* bias_initializer = new ConstantInitializer(0.0f);
@@ -163,6 +165,8 @@ OpMeta* LayerNorm::init_task(const Task *task,
   LayerNorm* ln = (LayerNorm*) task->args;
   FFHandler handle = *((const FFHandler*) task->local_args);
   LayerNormMeta* meta = new LayerNormMeta(handle, ln);
+  meta->profiling = ln->profiling;
+  std::strcpy(meta->op_name, ln->name);
   return meta;
 }
 
@@ -275,6 +279,15 @@ void LayerNorm::forward_task(const Task *task,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   forward_kernel<float>(m, in_ptr, out_ptr, gamma_ptr, beta_ptr, stream);
+  if (m->profiling) {
+    printf("%s LayerNorm:\n", m->op_name);
+    print_tensor<float>(in_ptr, in_domain.get_volume(), "[LayerNorm:forward:input]");
+    print_tensor<float>(out_ptr, out_domain.get_volume(), "[LayerNorm:forward:output]");
+    if (m->elementwise_affine) {
+      print_tensor<float>(gamma_ptr, m->effective_num_elements, "[LayerNorm:forward:gamma]");
+      print_tensor<float>(beta_ptr, m->effective_num_elements, "[LayerNorm:forward:beta]");
+    }
+  }
 }
 
 template <typename T>
@@ -664,6 +677,17 @@ void LayerNorm::backward_task(const Task *task,
   checkCUDA(get_legion_stream(&stream));
   backward_kernel<float>(m, out_grad_ptr, in_ptr, in_grad_ptr,
       gamma_ptr, gamma_grad_ptr, beta_grad_ptr, stream);
+  if (m->profiling) {
+    printf("%s LayerNorm:\n", m->op_name);
+    print_tensor<float>(out_grad_ptr, out_grad_domain.get_volume(), "[LayerNorm:backward:out_grad]");
+    print_tensor<float>(in_ptr, in_domain.get_volume(), "[LayerNorm:backward:input]");
+    print_tensor<float>(in_grad_ptr, in_grad_domain.get_volume(), "[LayerNorm:backward:in_grad]");
+    if (m->elementwise_affine) {
+      print_tensor<float>(gamma_ptr, m->effective_num_elements, "[LayerNorm:backward:gamma_grad]");
+      print_tensor<float>(gamma_grad_ptr, m->effective_num_elements, "[LayerNorm:backward:gamma_grad]");
+      print_tensor<float>(beta_grad_ptr, m->effective_num_elements, "[LayerNorm:backward:beta_grad]");
+    }
+  }
 }
 
 template<typename T>
