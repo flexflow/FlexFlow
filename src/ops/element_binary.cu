@@ -116,7 +116,8 @@ bool ElementBinary::can_inplace_output(void)
       if (inputs[0].adim[i] != outputs[0].adim[i])
         return false;
     }
-    return true;
+    //FIXME: temporarily disabled inplace optimization
+    return false;
   }
   return false;
 }
