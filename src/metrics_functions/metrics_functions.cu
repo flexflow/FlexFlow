@@ -213,8 +213,9 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     TensorAccessorR<int, NDIM> acc_label(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    int num_samples = acc_logit.rect.hi[NDIM-1] - acc_logit.rect.lo[NDIM-1] + 1;
-    int num_classes = acc_logit.rect.volume() / num_samples;
+    int num_effective_samples = acc_label.rect.volume();
+    int num_classes = acc_logit.rect.hi[0] - acc_logit.rect.lo[0] + 1;
+    assert(num_effective_samples * num_classes == acc_logit.rect.volume());
     for (int i = 1; i < NDIM; i++) {
       assert(acc_label.rect.hi[i] == acc_logit.rect.hi[i]);
       assert(acc_label.rect.lo[i] == acc_logit.rect.lo[i]);
@@ -223,8 +224,8 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
     // Cannot measure categorical_crossentropy w/ sparse labels
     // Use measure_sparse_categorical_crossentropy instead
     assert(!me->measure_categorical_crossentropy);
-    update_metrics_sparse_label_kernel<<<GET_BLOCKS(num_samples), CUDA_NUM_THREADS, 0, stream>>>(
-        acc_logit.ptr, acc_label.ptr, perf, *me, num_samples, num_classes);
+    update_metrics_sparse_label_kernel<<<GET_BLOCKS(num_effective_samples), CUDA_NUM_THREADS, 0, stream>>>(
+        acc_logit.ptr, acc_label.ptr, perf, *me, num_effective_samples, num_classes);
   } else {
     TensorAccessorR<float, NDIM> acc_logit(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
