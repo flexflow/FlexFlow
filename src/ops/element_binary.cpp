@@ -144,7 +144,7 @@ void ElementBinary::forward_kernel_wrapper(const ElementBinaryMeta* m,
   }
   //print_tensor<float>(in1_ptr, in1_domain.get_volume(), "input1:");
   //print_tensor<float>(in2_ptr, in2_domain.get_volume(), "input2:");
-  ElementBinary::forward_kernel(m, in1_ptr, in2_ptr, out_ptr);
+  ElementBinary::forward_kernel(m, in1_ptr, in2_ptr, out_ptr, stream);
   //print_tensor<float>(out_ptr, in1_domain.get_volume(), "output:");
   if (m->profiling) {
     hipEventRecord(t_end, stream);

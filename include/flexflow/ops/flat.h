@@ -53,10 +53,16 @@ public:
                              float* output_ptr,
                              size_t num_elements,
                              ffStream_t stream);
+  static void forward_kernel_wrapper(const float* input_ptr,
+                                     float* output_ptr,
+                                     size_t num_elements);
   static void backward_kernel(float* input_grad_ptr,
                               const float* output_grad_ptr,
                               size_t num_elements,
                               ffStream_t stream);
+  static void backward_kernel_wrapper(float* input_grad_ptr,
+                                      const float* output_grad_ptr,
+                                      size_t num_elements);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;

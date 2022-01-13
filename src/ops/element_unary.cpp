@@ -52,7 +52,6 @@ void ElementUnary::init_kernel(ElementUnaryMeta *m,
   // input_domain == output_domain
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
 #endif
-  return m;
 }
 
 template<typename T>
