@@ -73,28 +73,46 @@ public:
                                 const std::vector<Legion::PhysicalRegion> &regions,
                                 Legion::Context ctx, Legion::Runtime *runtime);
   template<typename TI>
-  static void forward_kernel(
-      TI const *input_ptr,
-      float *output_ptr,
-      float const *weight_ptr,
-      int in_dim,
-      int out_dim,
-      int batch_size,
-      AggrMode aggr,
-      int outputSize,
-      ffStream_t stream);
+  static void forward_kernel(TI const *input_ptr,
+                             float *output_ptr,
+                             float const *weight_ptr,
+                             int in_dim,
+                             int out_dim,
+                             int batch_size,
+                             AggrMode aggr,
+                             int outputSize,
+                             ffStream_t stream);
   template<typename TI>
-  static void backward_kernel(
-      TI const *input_ptr,
-      float const *output_ptr,
-      float *weight_grad_ptr,
-      int in_dim,
-      int out_dim,
-      int batch_size,
-      AggrMode aggr,
-      int outputSize,
-      ffStream_t stream);
-
+  static void forward_kernel_wrapper(const EmbeddingMeta *m,
+                                     TI const *input_ptr,
+                                     float *output_ptr,
+                                     float const *weight_ptr,
+                                     int in_dim,
+                                     int out_dim,
+                                     int batch_size,
+                                     AggrMode aggr,
+                                     int outputSize);
+  template<typename TI>
+  static void backward_kernel(TI const *input_ptr,
+                              float const *output_ptr,
+                              float *weight_grad_ptr,
+                              int in_dim,
+                              int out_dim,
+                              int batch_size,
+                              AggrMode aggr,
+                              int outputSize,
+                              ffStream_t stream);
+  template<typename TI>
+  static void backward_kernel_wrapper(const EmbeddingMeta *m,
+                                      TI const *input_ptr,
+                                      float const *output_ptr,
+                                      float *weight_grad_ptr,
+                                      int in_dim,
+                                      int out_dim,
+                                      int batch_size,
+                                      AggrMode aggr,
+                                      int outputSize);
+  void rand_generate_int64_wrapper(int64_t* ptr, size_t size, int64_t p) const;
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;
