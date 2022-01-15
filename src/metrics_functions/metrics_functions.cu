@@ -65,6 +65,8 @@ void update_metrics_sparse_label_kernel(
 {
   CUDA_KERNEL_LOOP(b, num_samples)
   {
+    // TODO: Revisit this hack for mT5's pad token ID
+    if (labels[b] == -100) continue;
     if (metrics.measure_accuracy) {
       float max_val = -1.0f;
       int my_label = -1;
@@ -221,6 +223,7 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
       assert(acc_label.rect.lo[i] == acc_logit.rect.lo[i]);
     }
     assert(acc_label.rect.lo[0] == acc_label.rect.hi[0]);
+    print_tensor<int>(acc_label.ptr, acc_label.rect.volume(), "[label_tensor] ");
     // Cannot measure categorical_crossentropy w/ sparse labels
     // Use measure_sparse_categorical_crossentropy instead
     assert(!me->measure_categorical_crossentropy);

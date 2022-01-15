@@ -244,12 +244,18 @@ void Reshape::forward_task(const Task *task,
     int32_t* out_ptr = helperGetTensorPointerWO<int32_t>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
     forward_kernel<int32_t>(in_ptr, out_ptr, in_domain.get_volume(), stream);
+    checkCUDA(cudaDeviceSynchronize());
+    print_tensor<int32_t>(in_ptr, in_domain.get_volume(), "[Reshape:forward:input]");
+    print_tensor<int32_t>(out_ptr, out_domain.get_volume(), "[Reshape:forward:output]");
   } else if (type == DT_INT64) {
     const int64_t* in_ptr = helperGetTensorPointerRO<int64_t>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int64_t* out_ptr = helperGetTensorPointerWO<int64_t>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
     forward_kernel<int64_t>(in_ptr, out_ptr, in_domain.get_volume(), stream);
+    checkCUDA(cudaDeviceSynchronize());
+    print_tensor<int64_t>(in_ptr, in_domain.get_volume(), "[Reshape:forward:input]");
+    print_tensor<int64_t>(out_ptr, out_domain.get_volume(), "[Reshape:forward:output]");
   } else {
     assert(false && "Unsupported data type in Reshape forward");
   }

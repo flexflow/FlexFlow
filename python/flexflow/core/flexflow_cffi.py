@@ -90,6 +90,9 @@ class Op(object):
   def _add_to_model(self, model):
     ffc.flexflow_op_add_to_model(self.handle, model.handle)
 
+  def get_output_tensor(self):
+    return self.get_output_by_id(0)
+
 # -----------------------------------------------------------------------
 # Exp
 # -----------------------------------------------------------------------
@@ -141,8 +144,8 @@ class Conv2D(Op):
   def get_input_tensor(self):
     return self.get_input_by_id(0)
 
-  def get_output_tensor(self):
-    return self.get_output_by_id(0)
+  # def get_output_tensor(self):
+  #   return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Pool2D
@@ -154,8 +157,8 @@ class Pool2D(Op):
   def get_input_tensor(self):
     return self.get_input_by_id(0)
 
-  def get_output_tensor(self):
-    return self.get_output_by_id(0)
+  # def get_output_tensor(self):
+  #   return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Linear
@@ -173,8 +176,8 @@ class Linear(Op):
   def get_input_tensor(self):
     return self.get_input_by_id(0)
 
-  def get_output_tensor(self):
-    return self.get_output_by_id(0)
+  # def get_output_tensor(self):
+  #   return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Flat
@@ -186,8 +189,8 @@ class Flat(Op):
   def get_input_tensor(self):
     return self.get_input_by_id(0)
 
-  def get_output_tensor(self):
-    return self.get_output_by_id(0)
+  # def get_output_tensor(self):
+  #   return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Softmax
@@ -202,6 +205,9 @@ class Softmax(Op):
 class Embedding(Op):
   def __init__(self, handle, idx=None, name=None):
     super(Embedding, self).__init__(handle, idx, name)
+
+  def get_weight_tensor(self):
+    return self.get_parameter_by_id(0)
 
 # -----------------------------------------------------------------------
 # Concat
@@ -1890,7 +1896,8 @@ class FFModel(object):
       layer = self._layers[layer_id]
       if layer.name == layer_name:
         return layer
-    assert 0, "Can not find the layer with the name"
+    # assert 0, f"Cannot find the layer name {layer_name}"
+    print(f"Cannot find the layer {layer_name}")
     return None
 
   def get_tensor_by_id(self, id):
@@ -2066,8 +2073,8 @@ class UniformInitializer(Initializer):
 
 class NormInitializer(Initializer):
   __slots__ = ['norm_handle', '_norm_handle']
-  def __init__(self, seed, meanv, stddev):
-    self.norm_handle = ffc.flexflow_norm_initializer_create(seed, meanv, stddev)
+  def __init__(self, seed, mean, stddev):
+    self.norm_handle = ffc.flexflow_norm_initializer_create(seed, mean, stddev)
     self._norm_handle = ffi.gc(self.norm_handle, ffc.flexflow_norm_initializer_destroy)
     super(NormInitializer, self).__init__(self.norm_handle)
 
