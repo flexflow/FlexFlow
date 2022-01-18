@@ -413,5 +413,6 @@ void LayerNorm::backward_kernel_wrapper(const LayerNormMeta* m,
 }
 
 template void LayerNorm::forward_kernel_wrapper<float>(const LayerNormMeta* m, const float* in_ptr, float* out_ptr, float* gamma_ptr, float* beta_ptr);
+template void LayerNorm::backward_kernel_wrapper<float>(const LayerNormMeta* m, const float* output_grad_ptr, const float* input_ptr, float* input_grad_ptr, const float* gamma_ptr, float* gamma_grad_ptr, float* beta_grad_ptr);
 
 }; //namespace FlexFlow
