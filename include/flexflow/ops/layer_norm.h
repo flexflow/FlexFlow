@@ -44,6 +44,12 @@ public:
                              T *beta_ptr,
                              ffStream_t stream);
   template<typename T>
+  static void forward_kernel_wrapper(const LayerNormMeta *m,
+                                     const T *input_ptr,
+                                     T *output_ptr,
+                                     T *gamma_ptr,
+                                     T *beta_ptr);
+  template<typename T>
   static void backward_kernel(const LayerNormMeta *m,
                               const T* output_grad_ptr,
                               const T* input_ptr,
@@ -52,6 +58,14 @@ public:
                               T *gamma_grad_ptr,
                               T *beta_grad_ptr,
                               ffStream_t stream);
+  template<typename T>
+  static void backward_kernel_wrapper(const LayerNormMeta *m,
+                                      const T* output_grad_ptr,
+                                      const T* input_ptr,
+                                      T *input_grad_ptr,
+                                      const T *gamma_ptr,
+                                      T *gamma_grad_ptr,
+                                      T *beta_grad_ptr);
 public:
   bool elementwise_affine;
   int64_t effective_batch_size, effective_num_elements;

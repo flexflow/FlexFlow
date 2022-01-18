@@ -18,91 +18,10 @@
 
 namespace FlexFlow {
 
-// declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::coord_t;
-using Legion::Memory;
-using Legion::Machine;
-
 #define C10_WARP_SIZE 32
 constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 constexpr int kColwiseReduceTileSize = 32;
-
-#ifdef DEADCODE
-void LayerNorm::create_weights(FFModel& model)
-{
-  std::string pcname = name;
-  task_is = model.get_or_create_task_is(outputs[0].numDim, pcname);
-
-  // TODO: temp work, will let users to pick either NCCL or PS
-#ifdef FF_USE_NCCL
-  ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-  ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-
-  // Create scale and bias
-  Initializer* scale_initializer = new ConstantInitializer(1.0f);
-  Initializer* bias_initializer = new ConstantInitializer(0.0f);
-  const int dims[1] = {weights[0].adim[0]};
-  switch (outputs[0].numDim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      weights[0] = model.create_linear_weight<1, DIM>(this, dims, DT_FLOAT, \
-          scale_initializer, true/*create_grad*/, comm_type); \
-      weights[1] = model.create_linear_weight<1, DIM>(this, dims, DT_FLOAT, \
-          bias_initializer, true/*create_grad*/, comm_type); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-  }
-}
-
-void LayerNorm::create_output_and_partition(FFModel& model)
-{
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = model.get_or_create_task_is(outputs[0].numDim, pcname);
-  Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
-  Domain part_rect = runtime->get_index_space_domain(ctx, task_is);
-  {
-    int dims[MAX_TENSOR_DIM];
-    int ndims = outputs[0].numDim;
-    for (int i = 0; i < outputs[0].numDim; i++)
-      dims[i] = outputs[0].adim[ndims-1-i];
-    switch (ndims) {
-#define DIMFUNC(DIM) \
-      case DIM: \
-      { \
-        outputs[0] = model.create_tensor<DIM>(dims, outputs[0].data_type, this); \
-        break; \
-      }
-      LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    }
-    outputs[0].owner_op = this;
-    outputs[0].owner_idx = 0;
-  }
-  Domain input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0].part.get_index_partition());
-  // Currently assume output and input must be partitioned in the same way
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0].part;
-    input_grad_lps[0] = inputs[0].part_grad;
-  } else {
-    assert(false && "LayerNorm currently assume output/input have same partition");
-  }
-}
-#endif
 
 LayerNormMeta::LayerNormMeta(FFHandler handle, const LayerNorm* ln)
 : OpMeta(handle)
@@ -117,62 +36,6 @@ LayerNormMeta::LayerNormMeta(FFHandler handle, const LayerNorm* ln)
   checkCUDA(cudaMalloc(&db_ptr, sizeof(float) * effective_batch_size));
   checkCUDA(cudaMalloc(&scale_ptr, sizeof(float) * effective_batch_size));
   checkCUDA(cudaMalloc(&bias_ptr, sizeof(float) * effective_batch_size));
-}
-
-__host__
-OpMeta* LayerNorm::init_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
-                             Context ctx, Runtime *runtime)
-{
-  LayerNorm* ln = (LayerNorm*) task->args;
-  FFHandler handle = *((const FFHandler*) task->local_args);
-  LayerNormMeta* meta = new LayerNormMeta(handle, ln);
-  return meta;
-}
-
-/*
-  regions[0](I): input
-  regions[1](O): output
-  regions[2](I/O): gamma
-  regions[3](I/O): beta
-*/
-void LayerNorm::forward_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
-                             Context ctx, Runtime *runtime)
-{
-  const LayerNormMeta* m = *((LayerNormMeta**) task->local_args);
-  assert(task->regions.size() == regions.size());
-  const float *in_ptr = NULL;
-  float *out_ptr = NULL, *gamma_ptr = NULL, *beta_ptr = NULL;
-  Domain in_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  in_ptr = helperGetTensorPointerRO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  Domain out_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  out_ptr = helperGetTensorPointerWO<float>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  assert(in_domain == out_domain);
-  assert(in_domain.get_volume() == m->effective_num_elements * m->effective_batch_size);
-  if (m->elementwise_affine) {
-    assert(regions.size() == 4);
-    Domain gamma_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
-    gamma_ptr = helperGetTensorPointerRW<float>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-    Domain beta_domain = runtime->get_index_space_domain(
-      ctx, task->regions[3].region.get_index_space());
-    beta_ptr = helperGetTensorPointerRW<float>(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
-    assert(gamma_domain == beta_domain);
-    assert(gamma_domain.get_volume() == m->effective_num_elements);
-  } else {
-    assert(regions.size() == 2);
-  }
-
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  forward_kernel<float>(m, in_ptr, out_ptr, gamma_ptr, beta_ptr, stream);
 }
 
 template <typename T>
@@ -262,6 +125,7 @@ __global__ void LayerNormForwardCUDAKernel(
   }
 }
 
+/*static*/
 template<typename T>
 void LayerNorm::forward_kernel(const LayerNormMeta* m,
                                const T* in_ptr,
@@ -275,6 +139,19 @@ void LayerNorm::forward_kernel(const LayerNormMeta* m,
           m->effective_num_elements, m->eps, in_ptr, m->mean_ptr, m->rstd_ptr);
   LayerNormForwardCUDAKernel<float><<<m->effective_batch_size, kCUDANumThreads, 0, stream>>>(
       m->effective_num_elements, in_ptr, m->mean_ptr, m->rstd_ptr, gamma_ptr, beta_ptr, out_ptr);
+}
+
+/*static*/
+template<typename T>
+void LayerNorm::forward_kernel_wrapper(const LayerNormMeta* m,
+                                       const T* in_ptr,
+                                       T* out_ptr,
+                                       T* gamma_ptr,
+                                       T* beta_ptr)
+{
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  LayerNorm::forward_kernel<float>(m, in_ptr, out_ptr, gamma_ptr, beta_ptr, stream);
 }
 
 template <typename T>
@@ -460,62 +337,7 @@ __global__ void GammaBetaBackwardCUDAKernel(
   }
 }
 
-/*
-  regions[0](I): output_grad
-  regions[1](I): input
-  regions[2](I/O): input_grad
-  regions[3](I): gamma
-  regions[4](I/O): gamma_grad
-  regions[5](I/O): beta_grad
-   */
-void LayerNorm::backward_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
-                              Context ctx, Runtime *runtime) {
-  const LayerNormMeta* m = *((LayerNormMeta**) task->local_args);
-  assert(task->regions.size() == regions.size());
-  const float *in_ptr = NULL, *out_grad_ptr = NULL, *gamma_ptr = NULL;
-  float *in_grad_ptr = NULL, *gamma_grad_ptr = NULL, *beta_grad_ptr = NULL;
-  Domain out_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  out_grad_ptr = helperGetTensorPointerRO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  Domain in_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  in_ptr = helperGetTensorPointerRO<float>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  Domain in_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
-  in_grad_ptr = helperGetTensorPointerRW<float>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  assert(in_domain == out_grad_domain);
-  assert(in_domain.get_volume() == m->effective_num_elements * m->effective_batch_size);
-  if (m->elementwise_affine) {
-    assert(regions.size() == 6);
-    Domain gamma_domain = runtime->get_index_space_domain(
-      ctx, task->regions[3].region.get_index_space());
-    gamma_ptr = helperGetTensorPointerRO<float>(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
-    Domain gamma_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[4].region.get_index_space());
-    gamma_grad_ptr = helperGetTensorPointerRW<float>(
-      regions[4], task->regions[4], FID_DATA, ctx, runtime);
-    Domain beta_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[5].region.get_index_space());
-    beta_grad_ptr = helperGetTensorPointerRW<float>(
-      regions[5], task->regions[5], FID_DATA, ctx, runtime);
-    assert(gamma_domain == gamma_grad_domain);
-    assert(gamma_domain == beta_grad_domain);
-    assert(gamma_domain.get_volume() == m->effective_num_elements);
-  } else {
-    assert(regions.size() == 3);
-  }
-
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  backward_kernel<float>(m, out_grad_ptr, in_ptr, in_grad_ptr,
-      gamma_ptr, gamma_grad_ptr, beta_grad_ptr, stream);
-}
-
+/*static*/
 template<typename T>
 void LayerNorm::backward_kernel(const LayerNormMeta* m,
                                 const T* output_grad_ptr,
@@ -576,12 +398,22 @@ void LayerNorm::backward_kernel(const LayerNormMeta* m,
   }
 }
 
-bool LayerNorm::measure_operator_cost(
-    Simulator* sim,
-    const ParallelConfig& pc,
-    CostMetrics& cost_metrics) const
+/*static*/
+template<typename T>
+void LayerNorm::backward_kernel_wrapper(const LayerNormMeta* m,
+                                        const T* output_grad_ptr,
+                                        const T* input_ptr,
+                                        T* input_grad_ptr,
+                                        const T* gamma_ptr,
+                                        T* gamma_grad_ptr,
+                                        T* beta_grad_ptr)
 {
-  return false;
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  LayerNorm::backward_kernel<float>(m, output_grad_ptr, input_ptr, input_grad_ptr,
+                                    gamma_ptr, gamma_grad_ptr, beta_grad_ptr, stream);
 }
+
+template void LayerNorm::forward_kernel_wrapper<float>(const LayerNormMeta* m, const float* in_ptr, float* out_ptr, float* gamma_ptr, float* beta_ptr);
 
 }; //namespace FlexFlow
