@@ -955,21 +955,13 @@ void FFModel::create_disjoint_partition(const Tensor& tensor,
   }
   Rect<NDIM> rect = runtime->get_index_space_domain(ctx, tensor.region.get_index_space());
   Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
-//  Transform<NDIM, NDIM> transform;
-//  Point<NDIM> ext_hi;
-//  for (int i = 0; i < NDIM; i++) {
-//    int nparts = part_rect.hi[i] - part_rect.lo[i] + 1;
-//    ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
-//  }
-//  Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
-//  for (int i = 0; i < NDIM; i++)
-//    for (int j = 0; j < NDIM; j++)
-//      if (i == j)
-//        transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
-//      else
-//        transform[i][j] = 0;
-//  IndexPartition ip = runtime->create_partition_by_restriction(
-//      ctx, tensor.region.get_index_space(), part_is, transform, extent);
+  const Op* owner_op = tensor.owner_op;
+  std::string name = "";
+  if (owner_op != NULL)
+    name = std::string(owner_op->name);
+  ParallelConfig pc;
+  config.find_parallel_config(NDIM, name, pc);
+
   std::map<DomainPoint, Domain> domain_map;
   int part_idx = 0;
   for (PointInRectIterator<NDIM> pir(part_rect); pir(); pir++) {
@@ -981,12 +973,12 @@ void FFModel::create_disjoint_partition(const Tensor& tensor,
       lo.point_data[i] += point.point_data[i] * ((rect.hi[i] - rect.lo[i]) / nparts + 1);
       hi.point_data[i] += (point.point_data[i] + 1) * (rect.hi[i] - rect.lo[i]) / nparts;
     }
-    if (point.point_data[NDIM - 1] == 0) {
-      hi.point_data[NDIM - 1] += (rect.hi[NDIM - 1] - rect.lo[NDIM - 1]) / 4;
-    } else {
-      lo.point_data[NDIM - 1] += 1 + (rect.hi[NDIM - 1] - rect.lo[NDIM - 1]) / 4;
-      hi.point_data[NDIM - 1] += rect.hi[NDIM - 1];
+    float fraction = 0.0;
+    for (int j = 0; j < point.point_data[NDIM - 1]; j++) {
+      fraction += pc.device_relative_compute[point.point_data[j]];
     }
+    lo.point_data[NDIM - 1] += static_cast<int>(std::round(fraction * (rect.hi[NDIM - 1] - rect.lo[NDIM - 1] + 1)));
+    hi.point_data[NDIM - 1] += static_cast<int>(std::round((fraction + pc.device_relative_compute[point.point_data[NDIM - 1]]) * (rect.hi[NDIM - 1] - rect.lo[NDIM - 1] + 1))) - 1;
     part_idx++;
     Domain part(lo, hi);
     domain_map[point] = part;

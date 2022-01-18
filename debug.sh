@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=6,7 cgdb --args ./examples/cpp/SimpleNet/simplenet -ll:gpu 2 -ll:fsize 10000 -ll:zsize 32000 -e 10 -b 64 --import-strategy ../examples/cpp/SimpleNet/S_parallel_strategy_nonuniform.txt
