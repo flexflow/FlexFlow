@@ -17,6 +17,8 @@
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
+// declare Legion names
+using Legion::coord_t;
 
 __global__
 void reverse_forward_kernel(const float* in_ptr,
@@ -87,67 +89,6 @@ void Reverse::backward_kernel_wrapper(float const *out_grad_ptr,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Reverse::backward_kernel(out_grad_ptr, in_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size, input_size, stream);
-}
-
-bool Reverse::measure_operator_cost(Simulator* sim,
-                                    const ParallelConfig& pc,
-                                    CostMetrics& cost_metrics) const
-{
-  ParallelTensorBase sub_input, sub_output;
-  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
-    return false;
-  }
-  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, op_type)) {
-    return false;
-  }
-
-  sim->free_all();
-  float *input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  assert (input_ptr != NULL);
-  float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert (output_ptr != NULL);
-
-  coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
-  for (int i = 0; i < sub_output.num_dims; i++) {
-    if (i < axis) {
-      in_blk_size *= sub_output.dims[i].size;
-    } else if (i == axis) {
-      reverse_dim_size = sub_output.dims[i].size;
-    } else {
-      num_out_blks *= sub_output.dims[i].size;
-    }
-  }
-
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  std::function<void()> forward, backward;
-  forward = [&] {
-     forward_kernel(input_ptr, output_ptr, num_out_blks, reverse_dim_size, in_blk_size, sub_output.get_volume(), stream);
-  };
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    float *input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-    assert (input_grad_ptr != NULL);
-    float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-    assert (output_grad_ptr != NULL);
-    backward = [&] {
-      backward_kernel(output_grad_ptr, input_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size, sub_input.get_volume(), stream);
-    };
-  }
-
-  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    printf("[Measure Reverse] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-        name,
-        cost_metrics.forward_time,
-        cost_metrics.backward_time);
-  } else {
-    printf("[Measure Reverse] name(%s) forward_time(%.4lf)\n",
-        name,
-        cost_metrics.forward_time);
-  }
-
-  return true;
 }
 
 }; // namespace FlexFlow

@@ -51,14 +51,21 @@ public:
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;
-  static void forward_kernel(SoftmaxMeta const *m,
+  static void forward_kernel(const SoftmaxMeta *m,
                              float const *input_ptr,
                              float *output_ptr,
                              ffStream_t stream);
+  static void forward_kernel_wrapper(const SoftmaxMeta *m,
+                                     float const *input_ptr,
+                                     float *output_ptr);
   static void backward_kernel(float *input_grad_ptr,
                               float const *output_grad_ptr,
                               size_t num_elements,
                               ffStream_t stream);
+  static void backward_kernel_wrapper(const SoftmaxMeta *m,
+                                      float *input_grad_ptr,
+                                      float const *output_grad_ptr,
+                                      size_t num_elements);
   size_t get_params_hash() const override;
 private:
   template<int NDIM>
