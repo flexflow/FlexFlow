@@ -41,12 +41,22 @@ public:
                              Legion::Domain in_domain,
                              Legion::Domain out_domain,
 			                       ffStream_t stream);
+  static void forward_kernel_wrapper(const TransposeMeta* m,
+                                     const float* input_ptr,
+                                     float* output_ptr,
+                                     Legion::Domain in_domain,
+                                     Legion::Domain out_domain);
   static void backward_kernel(const TransposeMeta* m,
                               float* input_grad_ptr,
                               const float* output_grad_ptr,
                               Legion::Domain in_grad_domain,
                               Legion::Domain out_grad_domain,
 			                        ffStream_t stream);
+  static void backward_kernel_wrapper(const TransposeMeta* m,
+                                      float* input_grad_ptr,
+                                      const float* output_grad_ptr,
+                                      Legion::Domain in_grad_domain,
+                                      Legion::Domain out_grad_domain);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;

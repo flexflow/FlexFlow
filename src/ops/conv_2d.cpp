@@ -473,7 +473,7 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
          padding_h, padding_w,
          cost_metrics.forward_time, cost_metrics.backward_time);
 #endif  
-  return true;
+  return false;
 }
 
 }; // namespace FlexFlow
