@@ -18,25 +18,7 @@
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
 using Legion::coord_t;
-
-OpMeta* TopK::init_task(const Task* task,
-                        const std::vector<PhysicalRegion> &regions,
-                        Context ctx, Runtime* runtime)
-{
-  TopK* topk = (TopK*) task->args;
-  FFHandler handle = *((FFHandler*)task->local_args);
-  TopKMeta* m = new TopKMeta(handle);
-  m->profiling = topk->profiling;
-  m->sorted = topk->sorted;
-  return m;
-}
 
 enum class HeapType { kMinHeap, kMaxHeap };
 enum class PreferIndices { kLower, kHigher };
@@ -378,39 +360,14 @@ void TopK::forward_kernel(const TopKMeta* m,
     output_ptr, indices_ptr);
 }
 
-void TopK::forward_task(const Task* task,
-                        const std::vector<PhysicalRegion> &regions,
-                        Context ctx, Runtime* runtime)
+/*static*/
+void TopK::forward_kernel_wrapper(const TopKMeta* m,
+                                  const float* input_ptr,
+                                  float* output_ptr,
+                                  int* indices_ptr,
+                                  size_t batch_size, int length, int k,
+                                  bool sorted)
 {
-
-
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
-  //const TopK* topk = (const TopK*) task->args;
-  const TopKMeta* m = *((TopKMeta**)task->local_args);
-  Domain in1_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
-  Domain out1_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1].region.get_index_space());
-  Domain out2_domain = runtime->get_index_space_domain(
-    ctx, task->regions[2].region.get_index_space());
-
-  int in_cols = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
-  int out1_cols = out1_domain.hi()[0] - out1_domain.lo()[0] + 1;
-  int out2_cols = out2_domain.hi()[0] - out2_domain.lo()[0] + 1;
-
-  assert(out1_domain == out2_domain);
-  for (int i = 1; i < in1_domain.get_dim(); i++) {
-    assert(in1_domain.lo()[i] == out1_domain.lo()[i]);
-    assert(in1_domain.hi()[i] == out1_domain.hi()[i]);
-  }
-  const float* in_ptr = helperGetTensorPointerRO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float* value_ptr = helperGetTensorPointerWO<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  int* index_ptr = helperGetTensorPointerWO<int>(
-    regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -420,12 +377,9 @@ void TopK::forward_task(const Task* task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  int length = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
-  int k = out1_domain.hi()[0] - out1_domain.lo()[0] + 1; /*TODO: This prints to 5*/
-  size_t batch_size = in1_domain.get_volume() / length;
 
-  forward_kernel(m, in_ptr, value_ptr, index_ptr,
-      batch_size, length, k, m->sorted, stream);
+  TopK::forward_kernel(m, input_ptr, output_ptr, indices_ptr,
+                       batch_size, length, k, sorted, stream);
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
@@ -465,36 +419,13 @@ void TopK::backward_kernel(const TopKMeta* m,
     value_grad_ptr, indices_ptr, in_grad_ptr, batch_size, length, k);
 }
 
-/*
-  regions[0](I): out1_grad
-  regions[1](I): out2
-  regions[2](I/0): in_grad
-*/
-void TopK::backward_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
-                         Context ctx, Runtime* runtime)
-{
-  //const TopK* topk = (const TopK*) task->args;
-  const TopKMeta* m = *((TopKMeta**) task->local_args);
-  assert(regions.size() == 3);
-  Domain out1_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
-  Domain out2_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1].region.get_index_space());
-  Domain in_domain = runtime->get_index_space_domain(
-    ctx, task->regions[2].region.get_index_space());
-  assert(out1_domain == out2_domain);
-  for (int i = 1; i < in_domain.get_dim(); i++) {
-    assert(in_domain.lo()[i] == out1_domain.lo()[i]);
-    assert(in_domain.hi()[i] == out1_domain.hi()[i]);
-  }
-  const float* value_grad_ptr = helperGetTensorPointerRO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  const int* indices_ptr = helperGetTensorPointerRO<int>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  float* in_grad_ptr = helperGetTensorPointerRW<float>(
-    regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  
+/*static*/
+void TopK::backward_kernel_wrapper(const TopKMeta* m,
+                                   const float* value_grad_ptr,
+                                   const int* indices_ptr,
+                                   float* in_grad_ptr,
+                                   size_t batch_size, int length, int k)
+{  
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -504,11 +435,9 @@ void TopK::backward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  int length = in_domain.hi()[0] - in_domain.lo()[0] + 1;
-  int k = out1_domain.hi()[0] - out1_domain.lo()[0] + 1;
-  size_t batch_size = in_domain.get_volume() / length;
-  backward_kernel(m, value_grad_ptr, indices_ptr, in_grad_ptr,
-      batch_size, length, k, stream);
+
+  TopK::backward_kernel(m, value_grad_ptr, indices_ptr, in_grad_ptr,
+                        batch_size, length, k, stream);
   
   // TODO: missing profiling here
 }
@@ -516,15 +445,6 @@ void TopK::backward_task(const Task *task,
 TopKMeta::TopKMeta(FFHandler handler)
 : OpMeta(handler)
 {
-}
-
-bool TopK::measure_operator_cost(Simulator* sim,
-                                 const ParallelConfig& pc,
-                                 CostMetrics& cost_metrics) const
-{
-  // To be implemented
-  assert(false);
-  return false;
 }
 
 }; // namespace FlexFlow

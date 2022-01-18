@@ -35,18 +35,29 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;
   static void forward_kernel(const TopKMeta* m,
-                      const float* input_ptr,
-                      float* output_ptr,
-                      int* indices_ptr,
-                      size_t batch_size, int length, int k,
-                      bool sorted,
-                      ffStream_t stream);
+                             const float* input_ptr,
+                             float* output_ptr,
+                             int* indices_ptr,
+                             size_t batch_size, int length, int k,
+                             bool sorted,
+                             ffStream_t stream);
+  static void forward_kernel_wrapper(const TopKMeta* m,
+                                     const float* input_ptr,
+                                     float* output_ptr,
+                                     int* indices_ptr,
+                                     size_t batch_size, int length, int k,
+                                     bool sorted);
   static void backward_kernel(const TopKMeta* m,
-                       const float* out_grad_ptr,
-                       const int* indices_ptr,
-                       float* in_grad_ptr,
-                       size_t batch_size, int length, int k,
-		                   ffStream_t stream);
+                              const float* out_grad_ptr,
+                              const int* indices_ptr,
+                              float* in_grad_ptr,
+                              size_t batch_size, int length, int k,
+                              ffStream_t stream);
+  static void backward_kernel_wrapper(const TopKMeta* m,
+                                      const float* out_grad_ptr,
+                                      const int* indices_ptr,
+                                      float* in_grad_ptr,
+                                      size_t batch_size, int length, int k);
 public:
   int k;
   bool sorted;
