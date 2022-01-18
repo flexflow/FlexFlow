@@ -18,22 +18,6 @@
 #include "flexflow/utils/hip_helper.h"
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::coord_t;
-
-__host__
-OpMeta* Reverse::init_task(const Task* task,
-                           const std::vector<PhysicalRegion>& regions,
-                           Context ctx, Runtime* runtime)
-{
-  return NULL;
-}
 
 __global__
 void reverse_forward_kernel(const float* in_ptr,
@@ -54,6 +38,7 @@ void reverse_forward_kernel(const float* in_ptr,
   }
 }
 
+/*static*/
 void Reverse::forward_kernel(float const *in_ptr,
                              float *out_ptr,
                              coord_t num_out_blks,
@@ -66,39 +51,17 @@ void Reverse::forward_kernel(float const *in_ptr,
       in_ptr, out_ptr, num_out_blks, reverse_dim_size, in_blk_size);
 }
 
-
-__host__
-void Reverse::forward_task(const Task* task,
-                           const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime* runtime)
+/*static*/
+void Reverse::forward_kernel_wrapper(float const *in_ptr,
+                                     float *out_ptr,
+                                     coord_t num_out_blks,
+                                     coord_t reverse_dim_size,
+                                     coord_t in_blk_size,
+                                     coord_t output_size)
 {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  const Reverse* reverse = (const Reverse*) task->args;
-  Domain in_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
-  Domain out_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1].region.get_index_space());
-  assert(out_domain == in_domain);
-  const float* in_ptr = helperGetTensorPointerRO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float* out_ptr = helperGetTensorPointerWO<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  int axis = in_domain.get_dim() - reverse->axis - 1;
-  coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
-  for (int i = 0; i < out_domain.get_dim(); i++) {
-    if (i < axis)
-      in_blk_size *= out_domain.hi()[i] - out_domain.lo()[i] + 1;
-    else if (i == axis)
-      reverse_dim_size = out_domain.hi()[i] - out_domain.lo()[i] + 1;
-    else
-      num_out_blks *= out_domain.hi()[i] - out_domain.lo()[i] + 1;
-  }
-  int output_size = out_domain.get_volume();
-
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  forward_kernel(in_ptr, out_ptr, num_out_blks, reverse_dim_size, in_blk_size, output_size, stream);
+  Reverse::forward_kernel(in_ptr, out_ptr, num_out_blks, reverse_dim_size, in_blk_size, output_size, stream);
 }
 
 void Reverse::backward_kernel(float const *out_grad_ptr,
