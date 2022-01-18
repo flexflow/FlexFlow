@@ -21,6 +21,8 @@ using Legion::Context;
 using Legion::Runtime;
 using Legion::Domain;
 using Legion::Task;
+using Legion::Rect;
+using Legion::coord_t;
 using Legion::PhysicalRegion;
 using Legion::TaskLauncher;
 using Legion::IndexLauncher;
@@ -75,10 +77,36 @@ void Mean::init(const FFModel& ff)
 {
 }
 
+OpMeta* Mean::init_task(const Task *task,
+                        const std::vector<PhysicalRegion> &regions,
+                        Context ctx, Runtime *runtime)
+{
+  FFHandler handler = *((const FFHandler*) task->local_args);
+  OpMeta* m = new OpMeta(handler);
+  return m;
+}
+
 void Mean::forward(const FFModel& ff)
+{}
+
+void Mean::forward_task(const Task *task,
+                        const std::vector<PhysicalRegion> &regions,
+                        Context ctx, Runtime *runtime)
 {}
 
 void Mean::backward(const FFModel& ff)
 {}
+
+void Mean::backward_task(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx, Runtime *runtime)
+{}
+
+bool Mean::measure_operator_cost(Simulator* sim,
+                                 const ParallelConfig& pc,
+                                 CostMetrics& cost_metrics) const
+{
+  return false;
+}
 
 }; // namespace FlexFlow

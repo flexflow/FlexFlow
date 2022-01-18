@@ -18,39 +18,5 @@
 #include "flexflow/utils/hip_helper.h"
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::coord_t;
-
-OpMeta* Mean::init_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
-                        Context ctx, Runtime *runtime)
-{
-  FFHandler handler = *((const FFHandler*) task->local_args);
-  OpMeta* m = new OpMeta(handler);
-  return m;
-}
-
-void Mean::forward_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
-                        Context ctx, Runtime *runtime)
-{}
-
-void Mean::backward_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
-                         Context ctx, Runtime *runtime)
-{}
-
-bool Mean::measure_operator_cost(Simulator* sim,
-                                 const ParallelConfig& pc,
-                                 CostMetrics& cost_metrics) const
-{
-  return false;
-}
 
 }; // namespace FlexFlow
