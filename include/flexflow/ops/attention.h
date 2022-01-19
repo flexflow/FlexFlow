@@ -47,24 +47,40 @@ public:
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;
   static void forward_kernel(const MultiHeadAttentionMeta* m,
-                      const float* query_ptr,
-                      const float* key_ptr,
-                      const float* value_ptr,
-                      const float* weight_ptr,
-                      float* output_ptr,
-                      ffStream_t stream);
+                             const float* query_ptr,
+                             const float* key_ptr,
+                             const float* value_ptr,
+                             const float* weight_ptr,
+                             float* output_ptr,
+                             ffStream_t stream);
+  static void forward_kernel_wrapper(const MultiHeadAttentionMeta* m,
+                                     const float* query_ptr,
+                                     const float* key_ptr,
+                                     const float* value_ptr,
+                                     const float* weight_ptr,
+                                     float* output_ptr);
   static void backward_kernel(const MultiHeadAttentionMeta* m,
-                       const float* query_ptr,
-                       float* query_grad_ptr,
-                       const float* key_ptr,
-                       float* key_grad_ptr,
-                       const float* value_ptr,
-                       float* value_grad_ptr,
-                       const float* weight_ptr,
-                       float* weight_grad_ptr,
-                       const float* output_grad_ptr,
-                       ffStream_t stream);            
-  public:
+                              const float* query_ptr,
+                              float* query_grad_ptr,
+                              const float* key_ptr,
+                              float* key_grad_ptr,
+                              const float* value_ptr,
+                              float* value_grad_ptr,
+                              const float* weight_ptr,
+                              float* weight_grad_ptr,
+                              const float* output_grad_ptr,
+                              ffStream_t stream);
+  static void backward_kernel_wrapper(const MultiHeadAttentionMeta* m,
+                                      const float* query_ptr,
+                                      float* query_grad_ptr,
+                                      const float* key_ptr,
+                                      float* key_grad_ptr,
+                                      const float* value_ptr,
+                                      float* value_grad_ptr,
+                                      const float* weight_ptr,
+                                      float* weight_grad_ptr,
+                                      const float* output_grad_ptr);            
+public:
   int num_heads;
   float dropout;
   bool bias;

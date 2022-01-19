@@ -19,114 +19,37 @@
 namespace FlexFlow {
 
 // declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
 using Legion::coord_t;
 using Legion::Memory;
-using Legion::Machine;
-
-/*
-  regions[0](I): query
-  regions[1](I): key
-  regions[2](I): value
-  regions[3](I): weight
-  regions[4](O): output
-*/
-OpMeta* MultiHeadAttention::init_task(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
-    Context ctx, Runtime* runtime)
-{
-  const MultiHeadAttention* attn = (MultiHeadAttention*) task->args;
-  FFHandler handle = *((const FFHandler*) task->local_args);
-  TensorAccessorR<float, 4> acc_query(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 4> acc_key(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 4> acc_value(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 3> acc_weight(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_output(
-      regions[4], task->regions[4], FID_DATA, ctx, runtime,
-      false/*readOutput*/);
-  int num_samples = acc_query.rect.hi[2] - acc_query.rect.lo[2] + 1;
-  assert(attn->qoSeqLength == acc_query.rect.hi[1] - acc_query.rect.lo[1] + 1);
-  assert(attn->qSize == acc_query.rect.hi[0]-acc_query.rect.lo[0]+1);
-  assert(num_samples == acc_key.rect.hi[2]-acc_key.rect.lo[2]+1);
-  assert(attn->kvSeqLength == acc_key.rect.hi[1]-acc_key.rect.lo[1]+1);
-  assert(attn->kSize == acc_key.rect.hi[0]-acc_key.rect.lo[0]+1);
-  assert(num_samples == acc_value.rect.hi[2]-acc_value.rect.lo[2]+1);
-  assert(attn->kvSeqLength == acc_value.rect.hi[1]-acc_value.rect.lo[1]+1);
-  assert(attn->vSize == acc_value.rect.hi[0]-acc_value.rect.lo[0]+1);
-  int num_heads = acc_weight.rect.hi[1]-acc_weight.rect.lo[1]+1;
-  assert(num_samples == acc_output.rect.hi[2]-acc_output.rect.lo[2]+1);
-  assert(attn->qoSeqLength == acc_output.rect.hi[1]-acc_output.rect.lo[1]+1);
-  assert(attn->oProjSize == acc_output.rect.hi[0]-acc_output.rect.lo[0]+1);
-
-  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-         .only_kind(Memory::GPU_FB_MEM).best_affinity_to(task->target_proc).first();
-  MultiHeadAttentionMeta* m = new MultiHeadAttentionMeta(handle,
-      attn, gpu_mem, num_samples, num_heads);
-  m->profiling = attn->profiling;
-  assert(acc_weight.rect.volume() * sizeof(float) == m->weightSize);
-  return m;
-}
 
 /*static*/
-void MultiHeadAttention::forward_kernel(
-    const MultiHeadAttentionMeta* m,
-    const float* query_ptr,
-    const float* key_ptr,
-    const float* value_ptr,
-    const float* weight_ptr,
-    float* output_ptr,
-    cudaStream_t stream)
+void MultiHeadAttention::forward_kernel(const MultiHeadAttentionMeta* m,
+                                        const float* query_ptr,
+                                        const float* key_ptr,
+                                        const float* value_ptr,
+                                        const float* weight_ptr,
+                                        float* output_ptr,
+                                        cudaStream_t stream)
 {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   checkCUDNN(cudnnMultiHeadAttnForward(m->handle.dnn,
-      m->attnDesc, -1, m->loWinIdx, m->hiWinIdx,
-      m->devQoSeqArray, m->devKvSeqArray, m->qDesc,
-      query_ptr, NULL/*residual*/, m->kDesc, key_ptr,
-      m->vDesc, value_ptr, m->oDesc, output_ptr, m->weightSize,
-      weight_ptr, m->handle.workSpaceSize, m->handle.workSpace,
-      m->reserveSpaceSize, m->reserveSpace));
+                                       m->attnDesc, -1, m->loWinIdx, m->hiWinIdx,
+                                       m->devQoSeqArray, m->devKvSeqArray, m->qDesc,
+                                       query_ptr, NULL/*residual*/, m->kDesc, key_ptr,
+                                       m->vDesc, value_ptr, m->oDesc, output_ptr, m->weightSize,
+                                       weight_ptr, m->handle.workSpaceSize, m->handle.workSpace,
+                                       m->reserveSpaceSize, m->reserveSpace));
 }
 
-/*
-  regions[0](I): query
-  regions[1](I): key
-  regions[2](I): value
-  regions[3](I): weight
-  regions[4](O): output
-*/
-__host__
-void MultiHeadAttention::forward_task(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
-    Context ctx, Runtime* runtime)
-{
-  assert(regions.size() == 5);
-  assert(task->regions.size() == regions.size());
-  //const MultiHeadAttention* attn = (MultiHeadAttention*) task->args;
-  const MultiHeadAttentionMeta* m = *((MultiHeadAttentionMeta**) task->local_args);
-  TensorAccessorR<float, 4> acc_query(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 4> acc_key(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 4> acc_value(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 3> acc_weight(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_output(
-      regions[4], task->regions[4], FID_DATA, ctx, runtime,
-      false/*readOutput*/);
-      
+/*static*/
+void MultiHeadAttention::forward_kernel_wrapper(const MultiHeadAttentionMeta* m,
+                                                const float* query_ptr,
+                                                const float* key_ptr,
+                                                const float* value_ptr,
+                                                const float* weight_ptr,
+                                                float* output_ptr)
+{  
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
       
@@ -137,8 +60,8 @@ void MultiHeadAttention::forward_task(
     cudaEventRecord(t_start, stream);
   }
   MultiHeadAttention::forward_kernel(m,
-      acc_query.ptr, acc_key.ptr, acc_value.ptr,
-      acc_weight.ptr, acc_output.ptr, stream);
+                                     query_ptr, key_ptr, value_ptr,
+                                     weight_ptr, output_ptr, stream);
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -153,105 +76,47 @@ void MultiHeadAttention::forward_task(
 }
 
 /*static*/
-void MultiHeadAttention::backward_kernel(
-    const MultiHeadAttentionMeta* m,
-    const float* query_ptr,
-    float* query_grad_ptr,
-    const float* key_ptr,
-    float* key_grad_ptr,
-    const float* value_ptr,
-    float* value_grad_ptr,
-    const float* weight_ptr,
-    float* weight_grad_ptr,
-    const float* output_grad_ptr,
-    cudaStream_t stream)
+void MultiHeadAttention::backward_kernel(const MultiHeadAttentionMeta* m,
+                                         const float* query_ptr,
+                                         float* query_grad_ptr,
+                                         const float* key_ptr,
+                                         float* key_grad_ptr,
+                                         const float* value_ptr,
+                                         float* value_grad_ptr,
+                                         const float* weight_ptr,
+                                         float* weight_grad_ptr,
+                                         const float* output_grad_ptr,
+                                         cudaStream_t stream)
 {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   checkCUDNN(cudnnMultiHeadAttnBackwardData(m->handle.dnn,
-      m->attnDesc, m->loWinIdx, m->hiWinIdx, m->devQoSeqArray,
-      m->devKvSeqArray, m->oDesc, output_grad_ptr, m->qDesc,
-      query_grad_ptr, query_ptr, m->kDesc, key_grad_ptr, key_ptr,
-      m->vDesc, value_grad_ptr, value_ptr, m->weightSize, weight_ptr,
-      m->handle.workSpaceSize, m->handle.workSpace, m->reserveSpaceSize,
-      m->reserveSpace));
+                                            m->attnDesc, m->loWinIdx, m->hiWinIdx, m->devQoSeqArray,
+                                            m->devKvSeqArray, m->oDesc, output_grad_ptr, m->qDesc,
+                                            query_grad_ptr, query_ptr, m->kDesc, key_grad_ptr, key_ptr,
+                                            m->vDesc, value_grad_ptr, value_ptr, m->weightSize, weight_ptr,
+                                            m->handle.workSpaceSize, m->handle.workSpace, m->reserveSpaceSize,
+                                            m->reserveSpace));
   checkCUDNN(cudnnMultiHeadAttnBackwardWeights(m->handle.dnn,
-      m->attnDesc, CUDNN_WGRAD_MODE_ADD, m->qDesc,
-      query_ptr, m->kDesc, key_ptr, m->vDesc, value_ptr, m->oDesc,
-      output_grad_ptr, m->weightSize, weight_ptr, weight_grad_ptr,
-      m->handle.workSpaceSize, m->handle.workSpace,
-      m->reserveSpaceSize, m->reserveSpace));
+                                               m->attnDesc, CUDNN_WGRAD_MODE_ADD, m->qDesc,
+                                               query_ptr, m->kDesc, key_ptr, m->vDesc, value_ptr, m->oDesc,
+                                               output_grad_ptr, m->weightSize, weight_ptr, weight_grad_ptr,
+                                               m->handle.workSpaceSize, m->handle.workSpace,
+                                               m->reserveSpaceSize, m->reserveSpace));
 }
 
-/*
-  regions[0](I): query
-  regions[1](I): key
-  regions[2](I): value
-  regions[3](I): weight
-  regions[4](I): output_grad
-  regions[5](I/O): weight_grad
-  regions[6](I/O): query_grad
-  regions[7](I/O) (optional): key_grad
-  regions[8](I/O) (optional): value_grad
-*/
-__host__
-void MultiHeadAttention::backward_task(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
-    Context ctx, Runtime* runtime)
+/*static*/
+void MultiHeadAttention::backward_kernel_wrapper(const MultiHeadAttentionMeta* m,
+                                                 const float* query_ptr,
+                                                 float* query_grad_ptr,
+                                                 const float* key_ptr,
+                                                 float* key_grad_ptr,
+                                                 const float* value_ptr,
+                                                 float* value_grad_ptr,
+                                                 const float* weight_ptr,
+                                                 float* weight_grad_ptr,
+                                                 const float* output_grad_ptr)
 {
-  assert(regions.size() >= 7);
-  assert(task->regions.size() == regions.size());
-  //MultiHeadAttention* attn = (MultiHeadAttention*) task->args;
-  const MultiHeadAttentionMeta* m = *((MultiHeadAttentionMeta**) task->local_args);
-  TensorAccessorR<float, 4> acc_query(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 4> acc_key(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 4> acc_value(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 3> acc_weight(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 4> acc_output_grad(
-      regions[4], task->regions[4], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 3> acc_weight_grad(
-      regions[5], task->regions[5], FID_DATA, ctx, runtime,
-      true/*readOutput*/);
-  TensorAccessorW<float, 4> acc_query_grad(
-      regions[6], task->regions[6], FID_DATA, ctx, runtime,
-      true/*readOutput*/);
-  float *key_grad_ptr, *value_grad_ptr;
-  assert(acc_query_grad.rect == acc_query.rect);
-  assert(acc_weight_grad.rect.volume() == acc_weight.rect.volume());
-  if (regions.size() == 7) {
-    // assert query == key and query == value
-    assert(regions[0].get_logical_region() == regions[1].get_logical_region());
-    assert(regions[0].get_logical_region() == regions[2].get_logical_region());
-    key_grad_ptr = acc_query_grad.ptr;
-    value_grad_ptr = acc_query_grad.ptr;
-  } else if (regions.size() == 8) {
-    // assert query == key
-    assert(regions[0].get_logical_region() == regions[1].get_logical_region());
-    TensorAccessorW<float, 4> acc_value_grad(
-        regions[7], task->regions[7], FID_DATA, ctx, runtime,
-        true/*readOutput*/);
-    assert(acc_value_grad.rect == acc_value.rect);
-    key_grad_ptr = acc_query_grad.ptr;
-    value_grad_ptr = acc_value_grad.ptr;
-  } else {
-    assert(regions.size() == 10);
-    TensorAccessorW<float, 4> acc_key_grad(
-        regions[7], task->regions[7], FID_DATA, ctx, runtime,
-        true/*readOutput*/);
-    TensorAccessorW<float, 4> acc_value_grad(
-        regions[8], task->regions[8], FID_DATA, ctx, runtime,
-        true/*readOutput*/);
-    assert(acc_key.rect == acc_key_grad.rect);
-    assert(acc_value.rect == acc_value_grad.rect);
-    value_grad_ptr = acc_value_grad.ptr;
-    key_grad_ptr = acc_key_grad.ptr;
-  }
-  
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   
@@ -263,10 +128,10 @@ void MultiHeadAttention::backward_task(
   }
 
   MultiHeadAttention::backward_kernel(m,
-      acc_query.ptr, acc_query_grad.ptr,
-      acc_key.ptr, key_grad_ptr, acc_value.ptr, value_grad_ptr,
-      acc_weight.ptr, acc_weight_grad.ptr,
-      acc_output_grad.ptr, stream);
+                                      query_ptr, query_grad_ptr,
+                                      key_ptr, key_grad_ptr, value_ptr, value_grad_ptr,
+                                      weight_ptr, weight_grad_ptr,
+                                      output_grad_ptr, stream);
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -410,102 +275,6 @@ MultiHeadAttentionMeta::~MultiHeadAttentionMeta(void)
   checkCUDNN(cudnnDestroySeqDataDescriptor(kDesc));
   checkCUDNN(cudnnDestroySeqDataDescriptor(vDesc));
   checkCUDNN(cudnnDestroySeqDataDescriptor(oDesc));
-}
-
-bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
-                                               const ParallelConfig& pc,
-                                               CostMetrics& cost_metrics) const
-{
-  ParallelTensorBase sub_output, sub_query, sub_key, sub_value;
-  if (!inputs[0]->get_input_sub_tensor(pc, sub_query, OP_MULTIHEAD_ATTENTION))
-    return false;
-  if (!inputs[1]->get_input_sub_tensor(pc, sub_key, OP_MULTIHEAD_ATTENTION))
-    return false;
-  if (!inputs[2]->get_input_sub_tensor(pc, sub_value, OP_MULTIHEAD_ATTENTION))
-    return false;
-  if (!outputs[0]->get_input_sub_tensor(pc, sub_output, OP_MULTIHEAD_ATTENTION))
-    return false;
-  // Currently assume only data parallel
-  size_t num_weights = 0;
-  {
-    // Compute weight size
-    int qSize = sub_query.dims[0].size;
-    int kSize = sub_key.dims[0].size;
-    int vSize = sub_value.dims[0].size;
-    int qParas = qProjSize * qSize;
-    int kParas = kProjSize * kSize;
-    int vParas = vProjSize * vSize;
-    int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-    num_weights = num_heads * (qParas + kParas + vParas + oParas);
-  }
-  assert(sub_query.num_dims == 4);
-  int num_samples = sub_query.dims[2].size;
-
-  MultiHeadAttentionMeta* m = new MultiHeadAttentionMeta(sim->handler,
-      this, sim->memory, num_samples, num_heads);
-
-  // allocate tensors in simulator
-  sim->free_all();
-  const float* query_ptr =
-      (const float*)sim->allocate(sub_query.get_volume(), DT_FLOAT);
-  const float* key_ptr =
-      (const float*)sim->allocate(sub_key.get_volume(), DT_FLOAT);
-  const float* value_ptr =
-      (const float*)sim->allocate(sub_value.get_volume(), DT_FLOAT);
-  const float* weight_ptr =
-      (const float*)sim->allocate(num_weights, DT_FLOAT);
-  float* output_ptr =
-      (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert(output_ptr != NULL);
-
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  
-  std::function<void()> forward, backward;
-  forward = [&] {
-    forward_kernel(m, query_ptr, key_ptr, value_ptr, weight_ptr, output_ptr, stream);
-  };
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    float* query_grad_ptr =
-        (float*)sim->allocate(sub_query.get_volume(), DT_FLOAT);
-    float* key_grad_ptr =
-        (float*)sim->allocate(sub_key.get_volume(), DT_FLOAT);
-    float* value_grad_ptr =
-        (float*)sim->allocate(sub_value.get_volume(), DT_FLOAT);
-    float* weight_grad_ptr =
-        (float*)sim->allocate(num_weights, DT_FLOAT);
-    float* output_grad_ptr =
-        (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-    assert(output_grad_ptr != NULL);
-
-    backward = [&] {
-      backward_kernel(m, query_ptr, query_grad_ptr, key_ptr, key_grad_ptr,
-        value_ptr, value_grad_ptr, weight_ptr, weight_grad_ptr, output_grad_ptr, stream);
-    };
-  }
-
-  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) value(%d %d %d) output(%d %d %d)"
-         "forward_time(%.4lf) backward_time(%.4lf)\n",
-         sub_query.dims[2].size, sub_query.dims[1].size, sub_query.dims[0].size,
-         sub_key.dims[2].size, sub_key.dims[1].size, sub_key.dims[0].size,
-         sub_value.dims[2].size, sub_value.dims[1].size, sub_value.dims[0].size,
-         sub_output.dims[2].size, sub_output.dims[1].size, sub_output.dims[0].size,
-         cost_metrics.forward_time, cost_metrics.backward_time);
-  } else {
-    printf("[Measure MultiHeadAttention] query(%d %d %d) key(%d %d %d) value(%d %d %d) output(%d %d %d)"
-         "forward_time(%.4lf)\n",
-         sub_query.dims[2].size, sub_query.dims[1].size, sub_query.dims[0].size,
-         sub_key.dims[2].size, sub_key.dims[1].size, sub_key.dims[0].size,
-         sub_value.dims[2].size, sub_value.dims[1].size, sub_value.dims[0].size,
-         sub_output.dims[2].size, sub_output.dims[1].size, sub_output.dims[0].size,
-         cost_metrics.forward_time);
-  }
-  // Free multiheadattentionmeta
-  delete m;
-  return true;
 }
 
 }; // namespace FlexFlow
