@@ -23,6 +23,7 @@ using Legion::Context;
 using Legion::Runtime;
 using Legion::Domain;
 using Legion::Task;
+using Legion::PhysicalRegion;
 using Legion::TaskLauncher;
 using Legion::IndexLauncher;
 using Legion::FutureMap;
@@ -104,6 +105,80 @@ void Metrics::compute(FFModel* model,
     metrics_task.add_future(new_metrics[*it]);
   }
   model->current_metrics = runtime->execute_task(ctx, metrics_task);
+}
+
+PerfMetrics Metrics::compute_task(const Task *task,
+                                  const std::vector<PhysicalRegion> &regions,
+                                  Context ctx, Runtime *runtime)
+{
+  Domain domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+      return compute_task_with_dim<DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+  PerfMetrics invalid;
+  return invalid;
+}
+
+template<int NDIM>
+PerfMetrics Metrics::compute_task_with_dim(const Task *task,
+                                  const std::vector<PhysicalRegion> &regions,
+                                  Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  const Metrics* me = (Metrics*) task->args;
+  PerfMetrics perf_zc;
+
+  if (me->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
+    TensorAccessorR<float, NDIM> acc_logit(
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);
+    TensorAccessorR<int, NDIM> acc_label(
+        regions[1], task->regions[1], FID_DATA, ctx, runtime);
+    // assume that the leading dim is replica dim
+    assert(acc_logit.rect.hi[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
+    int num_samples = acc_logit.rect.hi[NDIM-2] - acc_logit.rect.lo[NDIM-2] + 1;
+    int num_classes = acc_logit.rect.volume() / num_samples;
+    for (int i = 1; i < NDIM; i++) {
+      assert(acc_label.rect.hi[i] == acc_logit.rect.hi[i]);
+      assert(acc_label.rect.lo[i] == acc_logit.rect.lo[i]);
+    }
+    assert(acc_label.rect.lo[0] == acc_label.rect.hi[0]);
+    // Cannot measure categorical_crossentropy w/ sparse labels
+    // Use measure_sparse_categorical_crossentropy instead
+    assert(!me->measure_categorical_crossentropy);
+    Metrics::update_metrics_sparse_label_kernel_wrapper(acc_logit.ptr,
+                                                        acc_label.ptr,
+                                                        me,
+                                                        num_samples,
+                                                        num_classes,
+                                                        perf_zc);
+  } else {
+    TensorAccessorR<float, NDIM> acc_logit(
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);
+    TensorAccessorR<float, NDIM> acc_label(
+        regions[1], task->regions[1], FID_DATA, ctx, runtime);
+    // other loss require label and logit have identical shape
+    assert(acc_logit.rect == acc_label.rect);
+    // assume that the leading dim is replica dim
+    assert(acc_logit.rect.hi[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
+    int num_samples = acc_logit.rect.hi[NDIM-2] - acc_logit.rect.lo[NDIM-2] + 1;
+    int num_classes = acc_logit.rect.volume() / num_samples;
+    // Use CUDA_NUM_THREADS may result in out of resources so we set #threads=256
+    Metrics::update_metrics_label_kernel_wrapper(acc_logit.ptr,
+                                                 acc_label.ptr,
+                                                 me,
+                                                 num_samples,
+                                                 num_classes,
+                                                 perf_zc);
+  }
+  return perf_zc;
 }
 
 PerfMetrics::PerfMetrics(void)

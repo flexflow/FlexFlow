@@ -52,6 +52,18 @@ public:
   static PerfMetrics compute_task_with_dim(const Legion::Task *task,
                                   const std::vector<Legion::PhysicalRegion> &regions,
                                   Legion::Context ctx, Legion::Runtime *runtime);
+  static void update_metrics_sparse_label_kernel_wrapper(const float *logit_ptr,
+                                                         const int *label_ptr,
+                                                         const Metrics *me,
+                                                         int num_samples,
+                                                         int num_classes,
+                                                         PerfMetrics &perf_zc);
+  static void update_metrics_label_kernel_wrapper(const float *logit_ptr,
+                                                  const float *label_ptr,
+                                                  const Metrics *me,
+                                                  int num_samples,
+                                                  int num_classes,
+                                                  PerfMetrics &perf_zc);
   void compute(FFModel* model, const ParallelTensor logit, const ParallelTensor label);
   template<int NDIM>
   void compute_with_dim(FFModel* model, const ParallelTensor logit, const ParallelTensor label);

@@ -19,23 +19,15 @@
 
 namespace FlexFlow {
 
-// declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::PhysicalRegion;
-
 const float LOG_MIN_VALUE = 0.00000001f;
 
 __global__
-void update_metrics_sparse_label_kernel(
-    const float* logits,
-    const int* labels,
-    PerfMetrics* perf,
-    const Metrics metrics,
-    int num_samples,
-    int num_classes)
+void update_metrics_sparse_label_kernel(const float* logits,
+                                        const int* labels,
+                                        PerfMetrics* perf,
+                                        const Metrics metrics,
+                                        int num_samples,
+                                        int num_classes)
 {
   CUDA_KERNEL_LOOP(b, num_samples)
   {
@@ -80,13 +72,12 @@ void update_metrics_sparse_label_kernel(
 }
 
 __global__
-void update_metrics_label_kernel(
-    const float* logits,
-    const float* labels,
-    PerfMetrics* perf,
-    const Metrics metrics,
-    int num_samples,
-    int num_classes)
+void update_metrics_label_kernel(const float* logits,
+                                 const float* labels,
+                                 PerfMetrics* perf,
+                                 const Metrics metrics,
+                                 int num_samples,
+                                 int num_classes)
 {
   CUDA_KERNEL_LOOP(b, num_samples)
   {
@@ -146,80 +137,46 @@ void update_metrics_label_kernel(
   }
 }
 
-__host__
-PerfMetrics Metrics::compute_task(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
-                                  Context ctx, Runtime *runtime)
+void Metrics::update_metrics_sparse_label_kernel_wrapper(const float *logit_ptr,
+                                                         const int *label_ptr,
+                                                         const Metrics *me,
+                                                         int num_samples,
+                                                         int num_classes,
+                                                         PerfMetrics &perf_zc)
 {
-  Domain domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-      return compute_task_with_dim<DIM>(task, regions, ctx, runtime);
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-  PerfMetrics invalid;
-  return invalid;
-}
-
-template<int NDIM>
-__host__
-PerfMetrics Metrics::compute_task_with_dim(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
-                                  Context ctx, Runtime *runtime)
-{
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  const Metrics* me = (Metrics*) task->args;
   PerfMetrics* perf;
-  PerfMetrics perf_zc;
   checkCUDA(hipMalloc(&perf, sizeof(PerfMetrics)));
   checkCUDA(hipMemcpy(perf, &perf_zc, sizeof(PerfMetrics), hipMemcpyHostToDevice));
 
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  if (me->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
-    TensorAccessorR<float, NDIM> acc_logit(
-        regions[0], task->regions[0], FID_DATA, ctx, runtime);
-    TensorAccessorR<int, NDIM> acc_label(
-        regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    // assume that the leading dim is replica dim
-    assert(acc_logit.rect.hi[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
-    int num_samples = acc_logit.rect.hi[NDIM-2] - acc_logit.rect.lo[NDIM-2] + 1;
-    int num_classes = acc_logit.rect.volume() / num_samples;
-    for (int i = 1; i < NDIM; i++) {
-      assert(acc_label.rect.hi[i] == acc_logit.rect.hi[i]);
-      assert(acc_label.rect.lo[i] == acc_logit.rect.lo[i]);
-    }
-    assert(acc_label.rect.lo[0] == acc_label.rect.hi[0]);
-    // Cannot measure categorical_crossentropy w/ sparse labels
-    // Use measure_sparse_categorical_crossentropy instead
-    assert(!me->measure_categorical_crossentropy);
-    hipLaunchKernelGGL(update_metrics_sparse_label_kernel, GET_BLOCKS(num_samples), CUDA_NUM_THREADS, 0, stream, 
-        acc_logit.ptr, acc_label.ptr, perf, *me, num_samples, num_classes);
-  } else {
-    TensorAccessorR<float, NDIM> acc_logit(
-        regions[0], task->regions[0], FID_DATA, ctx, runtime);
-    TensorAccessorR<float, NDIM> acc_label(
-        regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    // other loss require label and logit have identical shape
-    assert(acc_logit.rect == acc_label.rect);
-    // assume that the leading dim is replica dim
-    assert(acc_logit.rect.hi[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
-    int num_samples = acc_logit.rect.hi[NDIM-2] - acc_logit.rect.lo[NDIM-2] + 1;
-    int num_classes = acc_logit.rect.volume() / num_samples;
-    // Use CUDA_NUM_THREADS may result in out of resources so we set #threads=256
-    hipLaunchKernelGGL(update_metrics_label_kernel, GET_BLOCKS(num_samples), 256, 0, stream, 
-      acc_logit.ptr, acc_label.ptr, perf, *me, num_samples, num_classes);
-  }
+  hipLaunchKernelGGL(update_metrics_sparse_label_kernel, GET_BLOCKS(num_samples), CUDA_NUM_THREADS, 0, stream, 
+    logit_ptr, label_ptr, perf, *me, num_samples, num_classes);
+
   checkCUDA(hipStreamSynchronize(stream));
   checkCUDA(hipMemcpy(&perf_zc, perf, sizeof(PerfMetrics), hipMemcpyDeviceToHost));
   checkCUDA(hipFree(perf));
-  return perf_zc;
+}
+
+void Metrics::update_metrics_label_kernel_wrapper(const float *logit_ptr,
+                                                  const float *label_ptr,
+                                                  const Metrics *me,
+                                                  int num_samples,
+                                                  int num_classes,
+                                                  PerfMetrics &perf_zc)
+{
+  PerfMetrics* perf;
+  checkCUDA(hipMalloc(&perf, sizeof(PerfMetrics)));
+  checkCUDA(hipMemcpy(perf, &perf_zc, sizeof(PerfMetrics), hipMemcpyHostToDevice));
+
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  hipLaunchKernelGGL(update_metrics_label_kernel, GET_BLOCKS(num_samples), 256, 0, stream, 
+    logit_ptr, label_ptr, perf, *me, num_samples, num_classes);
+
+  checkCUDA(hipStreamSynchronize(stream));
+  checkCUDA(hipMemcpy(&perf_zc, perf, sizeof(PerfMetrics), hipMemcpyDeviceToHost));
+  checkCUDA(hipFree(perf));
 }
 
 }; // namespace FlexFlow
