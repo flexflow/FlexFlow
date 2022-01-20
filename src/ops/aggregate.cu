@@ -251,16 +251,4 @@ AggregateMeta::~AggregateMeta(void)
   checkCUDA(cudaFree(&dev_exp_grads));
 }
 
-
-bool Aggregate::measure_operator_cost(Simulator* sim,
-                                const ParallelConfig& pc,
-                                CostMetrics& cost_metrics) const
-{
-  //TODO: implement
-  cost_metrics.forward_time = 0.0f;
-  cost_metrics.backward_time = 0.0f;
-  cost_metrics.memory_requirement = 0;
-  return false;
-}
-
 }; // namespace FlexFlow 
