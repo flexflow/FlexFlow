@@ -62,104 +62,60 @@ void mean_squared_error_avg_loss_backward(
   }
 }
 
-__host__
-void Loss::backward_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
-                         Context ctx, Runtime *runtime)
+void Loss::sparse_categorical_crossentropy_loss_backward_kernel_wrapper(float *logit_grad_ptr,
+                                                                        const float *logit_ptr,
+                                                                        const int *label_ptr,
+                                                                        size_t logit_volume,
+                                                                        size_t logit_grad_volume,
+                                                                        int num_samples,
+                                                                        int num_classes,
+                                                                        int k,
+                                                                        float scale_factor)
 {
-  Domain domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-      return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-}
-
-template<int NDIM>
-__host__
-void Loss::backward_task_with_dim(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
-                         Context ctx, Runtime *runtime)
-{
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
-  const Loss* loss = (Loss*) task->args;
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  if (loss->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
-    //sparse_categorical_crossentropy has label of dim: (batch_size, 1)
-    TensorAccessorW<float, NDIM> acc_logit_grad(
-        regions[0], task->regions[0], FID_DATA, ctx, runtime,
-        true/*readOutput*/);
-    TensorAccessorR<float, NDIM> acc_logit(
-        regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    TensorAccessorR<int, NDIM> acc_label(
-        regions[2], task->regions[2], FID_DATA, ctx, runtime);
-    // assertion the outter-most dim is replica dim and replica degree is 1
-    assert(acc_logit.rect.hi[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
-    int num_samples = acc_logit.rect.hi[NDIM-2] - acc_logit.rect.lo[NDIM-2] + 1;
-    int num_classes = acc_logit.rect.volume() / num_samples;
-    assert(acc_logit_grad.rect == acc_logit.rect);
-    int k = 1;
-    if(loss->repl_labels) {
-      k = (acc_logit.rect.hi[NDIM-1]-acc_logit.rect.lo[NDIM-1]+1) /
-        (acc_label.rect.hi[NDIM-1]-acc_label.rect.lo[NDIM-1]+1);
-    }
-    for (int i = 1; i < NDIM-1; i++) {
-      assert(acc_label.rect.hi[i] == acc_logit.rect.hi[i]);
-      assert(acc_label.rect.lo[i] == acc_logit.rect.lo[i]);
-    }
-    assert(k*(acc_label.rect.hi[NDIM-1]-acc_label.rect.lo[NDIM-1]+1)
-      == acc_logit.rect.hi[NDIM-1]-acc_logit.rect.lo[NDIM-1]+1);
-    assert(acc_label.rect.lo[0] == acc_label.rect.hi[0]);
-    checkCUDA(hipMemcpy(acc_logit_grad.ptr, acc_logit.ptr,
-                         acc_logit.rect.volume() * sizeof(float),
-                         hipMemcpyDeviceToDevice));
-    hipLaunchKernelGGL(sparse_categorical_crossentropy_loss_backward, GET_BLOCKS(num_samples), CUDA_NUM_THREADS, 0, stream, 
-        acc_logit_grad.ptr, acc_label.ptr, num_samples, num_classes, k);
-    // Scale logit gradients by op->scale_factor
-    hipLaunchKernelGGL(scale_kernel, GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS, 0, stream,
-        acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor*k);
-  } else {
-    if(loss->repl_labels) assert(false && "Loss not yet supported for aggr_spec.");
-    TensorAccessorW<float, NDIM> acc_logit_grad(
-        regions[0], task->regions[0], FID_DATA, ctx, runtime,
-        true/*readOutput*/);
-    TensorAccessorR<float, NDIM> acc_logit(
-        regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    TensorAccessorR<float, NDIM> acc_label(
-        regions[2], task->regions[2], FID_DATA, ctx, runtime);
-    // other loss require label and logit have identical shape
-    assert(acc_logit.rect == acc_label.rect);
-    assert(acc_logit_grad.rect == acc_logit.rect);
-    // assertion the outter-most dim is replica dim and replica degree is 1
-    assert(acc_logit.rect.hi[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
-    int num_samples = acc_label.rect.hi[NDIM-2] - acc_label.rect.lo[NDIM-2] + 1;
-    int num_channels = acc_logit.rect.volume() / num_samples;
-    if (loss->loss_type == LOSS_CATEGORICAL_CROSSENTROPY) {
-      hipLaunchKernelGGL(categorical_crossentropy_loss_backward, GET_BLOCKS(acc_logit.rect.volume()), CUDA_NUM_THREADS, 0, stream,
-          acc_logit_grad.ptr, acc_logit.ptr, acc_label.ptr,
-          acc_logit.rect.volume());
-      // Scale logit gradients by loss->scale_factor
-      hipLaunchKernelGGL(scale_kernel, GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS, 0, stream,
-          acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor);
-    } else if (loss->loss_type == LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE) {
-      hipLaunchKernelGGL(mean_squared_error_avg_loss_backward, GET_BLOCKS(acc_logit.rect.volume()), CUDA_NUM_THREADS, 0, stream,
-          acc_logit_grad.ptr, acc_logit.ptr, acc_label.ptr,
-          acc_logit.rect.volume());
-      // Scale logit gradients by loss->scale_factor
-      hipLaunchKernelGGL(scale_kernel, GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS, 0, stream,
-          acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor);
-    } else {
-      fprintf(stderr, "Unsupported loss --- report this error to the FlexFlow developers\n");
-      assert(false);
-    }
-  }
+  checkCUDA(hipMemcpy(logit_grad_ptr, logit_ptr,
+                      logit_volume * sizeof(float),
+                      hipMemcpyDeviceToDevice));
+  hipLaunchKernelGGL(sparse_categorical_crossentropy_loss_backward, GET_BLOCKS(num_samples), CUDA_NUM_THREADS, 0, stream, 
+      logit_grad_ptr, label_ptr, num_samples, num_classes, k);
+  // Scale logit gradients by op->scale_factor
+  hipLaunchKernelGGL(scale_kernel, GET_BLOCKS(logit_grad_volume), CUDA_NUM_THREADS, 0, stream,
+      logit_grad_ptr, logit_grad_volume, 0, scale_factor*k);
+}
+
+void Loss::categorical_crossentropy_loss_backward_kernel_wrapper(float *logit_grad_ptr,
+                                                                 const float *logit_ptr,
+                                                                 const float *label_ptr,
+                                                                 size_t logit_volume,
+                                                                 size_t logit_grad_volume,
+                                                                 float scale_factor)
+{
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  hipLaunchKernelGGL(categorical_crossentropy_loss_backward, GET_BLOCKS(logit_volume), CUDA_NUM_THREADS, 0, stream,
+    logit_grad_ptr, logit_ptr, label_ptr,
+    logit_volume);
+  // Scale logit gradients by loss->scale_factor
+  hipLaunchKernelGGL(scale_kernel, GET_BLOCKS(logit_grad_volume), CUDA_NUM_THREADS, 0, stream,
+    logit_grad_ptr, logit_grad_volume, 0, scale_factor);
+}
+
+void Loss::mean_squared_error_avg_loss_backward_kernel_wrapper(float *logit_grad_ptr,
+                                                               const float *logit_ptr,
+                                                               const float *label_ptr,
+                                                               size_t logit_volume,
+                                                               size_t logit_grad_volume,
+                                                               float scale_factor)
+{
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  hipLaunchKernelGGL(mean_squared_error_avg_loss_backward, GET_BLOCKS(logit_volume), CUDA_NUM_THREADS, 0, stream,
+    logit_grad_ptr, logit_ptr, label_ptr,
+    logit_volume);
+  // Scale logit gradients by loss->scale_factor
+  hipLaunchKernelGGL(scale_kernel, GET_BLOCKS(logit_grad_volume), CUDA_NUM_THREADS, 0, stream,
+    logit_grad_ptr, logit_grad_volume, 0, scale_factor);
 }
 
 }; // namespace FlexFlow
