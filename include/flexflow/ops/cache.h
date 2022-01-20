@@ -35,6 +35,14 @@ public:
   static float update_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
+  template <typename T>
+  static void cache_forward(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion>& regions,
+                            Legion::Context ctx, Legion::Runtime* runtime);
+  template <typename T>
+  static float cache_update(const Legion::Task *task,
+                            const std::vector<Legion::PhysicalRegion>& regions,
+                            Legion::Context ctx, Legion::Runtime* runtime);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
                              CostMetrics& cost_metrics) const override;
