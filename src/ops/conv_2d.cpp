@@ -201,7 +201,7 @@ void Conv2D::backward_kernel(const Conv2DMeta* m,
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f;
-  //float beta = 0.0f;
+  float beta = 0.0f;
   if (m->relu) {
     miopenDataType_t dataType;
     int n, c, h, w, nStride, cStride, hStride, wStride;
@@ -212,8 +212,8 @@ void Conv2D::backward_kernel(const Conv2DMeta* m,
   // Compute filter gradiant
   // NOTE: we use alpha for kernel_grad to accumulate gradients
   checkCUDNN(miopenConvolutionBackwardWeights(m->handle.dnn, &alpha,
-                                             m->inputTensor, input_ptr,
                                              m->outputTensor, output_grad_ptr,
+                                             m->inputTensor, input_ptr,
                                              m->convDesc, m->bwdFilterAlgo,
                                              &alpha, m->filterDesc, kernel_grad_ptr,
                                              m->handle.workSpace, m->handle.workSpaceSize));
@@ -222,16 +222,16 @@ void Conv2D::backward_kernel(const Conv2DMeta* m,
   if (bias_grad_ptr != NULL) {
     checkCUDNN(miopenConvolutionBackwardBias(m->handle.dnn, &alpha,
                                              m->outputTensor, output_grad_ptr,
-                                             &alpha, m->biasTensor, bias_grad_ptr));
+                                             &beta, m->biasTensor, bias_grad_ptr));
   }
   // Compute data gradiant
   // NOTE: we use alpha for input_grad to accumulate gradients
   if (input_grad_ptr != NULL) {
     checkCUDNN(miopenConvolutionBackwardData(m->handle.dnn, &alpha,
-                                             m->filterDesc, kernel_ptr,
                                              m->outputTensor, output_grad_ptr,
+                                             m->filterDesc, kernel_ptr,
                                              m->convDesc, m->bwdDataAlgo,
-                                             &alpha, m->inputTensor, input_grad_ptr,
+                                             &beta, m->inputTensor, input_grad_ptr,
                                              m->handle.workSpace, m->handle.workSpaceSize));
   }
 
@@ -473,7 +473,7 @@ bool Conv2D::measure_operator_cost(Simulator* sim,
          padding_h, padding_w,
          cost_metrics.forward_time, cost_metrics.backward_time);
 #endif  
-  return false;
+  return true;
 }
 
 }; // namespace FlexFlow

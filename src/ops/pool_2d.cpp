@@ -124,11 +124,12 @@ void Pool2D::backward_kernel(const Pool2DMeta* m,
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f;
+  float beta = 0.0f;
   checkCUDNN(miopenPoolingBackward(m->handle.dnn, m->poolDesc,
                                    &alpha, m->outputTensor, output_ptr,
                                    m->outputTensor, output_grad_ptr,
                                    m->inputTensor, input_ptr,
-                                   &alpha, m->inputTensor, input_grad_ptr,
+                                   &beta, m->inputTensor, input_grad_ptr,
                                    m->handle.workSpace));
 
 }
