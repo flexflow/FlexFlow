@@ -28,30 +28,28 @@ void ElementUnary::init_kernel(ElementUnaryMeta *m,
                                const Domain& input_domain,
                                const Domain& output_domain)
 {
-#if 0
-  hipdnnActivationMode_t mode;
+  miopenActivationMode_t mode;
   switch (m->op_type) {
     case OP_SIGMOID:
-      mode = HIPDNN_ACTIVATION_SIGMOID;
+      mode = miopenActivationLOGISTIC;
       break;
     case OP_RELU:
-      mode = HIPDNN_ACTIVATION_RELU;
+      mode = miopenActivationRELU;
       break;
     case OP_TANH:
-      mode = HIPDNN_ACTIVATION_TANH;
+      mode = miopenActivationTANH;
       break;
     case OP_ELU:
-      mode = HIPDNN_ACTIVATION_ELU;
+      mode = miopenActivationELU;
       break;
     default:
       assert(false);
   }
-  checkCUDNN(hipdnnSetActivationDescriptor(m->actiDesc, mode,
-                                          HIPDNN_PROPAGATE_NAN, 0.0));
+  checkCUDNN(miopenSetActivationDescriptor(m->actiDesc, mode,
+                                          0.0, 0.0, 0.0));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
   // input_domain == output_domain
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
-#endif
 }
 
 template<typename T>
@@ -126,17 +124,15 @@ void ElementUnary::forward_kernel(const ElementUnaryMeta* m,
 {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-#if 0
   if (use_cudnn(m->op_type)) {
     float alpha = 1.0f, beta = 0.0f;
-    checkCUDNN(hipdnnActivationForward(m->handle.dnn, m->actiDesc,
+    checkCUDNN(miopenActivationForward(m->handle.dnn, m->actiDesc,
         &alpha, m->inputTensor, input_ptr,
         &beta, m->outputTensor, output_ptr));
   } else {
     hipLaunchKernelGGL(elewise_unary_forward_kernel, GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream, 
         num_elements, (T)m->scalar, m->op_type, input_ptr, output_ptr);
   }
-#endif
 }
 
 /*static*/
@@ -228,17 +224,16 @@ void ElementUnary::backward_kernel(const ElementUnaryMeta* m,
 {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-#if 0
   if (use_cudnn(m->op_type)) {
     float alpha = 1.0f;
-    checkCUDNN(hipdnnActivationBackward(m->handle.dnn, m->actiDesc,
+    float beta = 0.0f;
+    checkCUDNN(miopenActivationBackward(m->handle.dnn, m->actiDesc,
         &alpha, m->outputTensor, output_ptr, m->outputTensor, output_grad_ptr,
-        m->inputTensor, input_ptr, &alpha, m->inputTensor, input_grad_ptr));
+        m->inputTensor, input_ptr, &beta, m->inputTensor, input_grad_ptr));
   } else {
     hipLaunchKernelGGL(HIP_KERNEL_NAME(elewise_unary_backward_kernel<T>), GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream, 
         num_elements, m->scalar, m->op_type, output_ptr, output_grad_ptr, input_ptr, input_grad_ptr);
   }
-#endif
 }
 
 /*static*/
@@ -258,11 +253,9 @@ void ElementUnary::backward_kernel_wrapper(const ElementUnaryMeta* m,
 ElementUnaryMeta::ElementUnaryMeta(FFHandler handler)
 : OpMeta(handler)
 {
-#if 0
-  checkCUDNN(hipdnnCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(hipdnnCreateTensorDescriptor(&outputTensor));
-  checkCUDNN(hipdnnCreateActivationDescriptor(&actiDesc));
-#endif
+  checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
 }
 
 template void ElementUnary::forward_kernel_wrapper<float>(const ElementUnaryMeta* m, const float* input_ptr, float* output_ptr, size_t num_elements);
