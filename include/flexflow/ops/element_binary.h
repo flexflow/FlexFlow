@@ -12,6 +12,10 @@ public:
   cudnnTensorDescriptor_t input1Tensor, input2Tensor, outputTensor;
   cudnnOpTensorDescriptor_t opDesc;
   cudnnReduceTensorDescriptor_t reduceAddDesc;
+#else
+  miopenTensorDescriptor_t input1Tensor, input2Tensor, outputTensor;
+  miopenTensorOp_t opDesc;
+  miopenReduceTensorDescriptor_t reduceAddDesc;
 #endif
   OperatorType op_type;
   bool inplace_a, has_same_operands;

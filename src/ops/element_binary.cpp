@@ -28,27 +28,24 @@ void ElementBinary::init_kernel(ElementBinaryMeta* m,
                                 const Domain& input2_domain,
                                 const Domain& output_domain)
 {
-#if 0
-  hipdnnOpTensorOp_t mode;
+  miopenTensorOp_t mode;
   switch (m->op_type) {
     case OP_EW_ADD:
     case OP_EW_SUB:
-      mode = HIPDNN_OP_TENSOR_ADD;
+      mode = miopenTensorOpAdd;
       break;
     case OP_EW_MUL:
-      mode = HIPDNN_OP_TENSOR_MUL;
+      mode = miopenTensorOpMul;
       break;
     default:
       assert(false);
   }
-  checkCUDNN(hipdnnSetOpTensorDescriptor(m->opDesc, mode,
-      HIPDNN_DATA_FLOAT, HIPDNN_PROPAGATE_NAN));
-  checkCUDNN(hipdnnSetReduceTensorDescriptor(m->reduceAddDesc, HIPDNN_REDUCE_TENSOR_ADD,
-      HIPDNN_DATA_FLOAT, HIPDNN_PROPAGATE_NAN, HIPDNN_REDUCE_TENSOR_NO_INDICES, HIPDNN_32BIT_INDICES));
+  m->opDesc = mode;
+  checkCUDNN(miopenSetReduceTensorDescriptor(m->reduceAddDesc, MIOPEN_REDUCE_TENSOR_ADD,
+      miopenFloat, MIOPEN_PROPAGATE_NAN, MIOPEN_REDUCE_TENSOR_NO_INDICES, MIOPEN_32BIT_INDICES));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->input1Tensor, input1_domain));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->input2Tensor, input2_domain));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
-#endif  
 }
 
 __global__
@@ -105,9 +102,8 @@ void ElementBinary::forward_kernel(const ElementBinaryMeta* m,
                                    float* out_ptr,
                                    hipStream_t stream)
 {
-#if 0
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
-  checkCUDNN(hipdnnSetStream(m->handle.dnn, stream));
+  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 0.0f;
   switch (m->op_type) {
@@ -120,11 +116,10 @@ void ElementBinary::forward_kernel(const ElementBinaryMeta* m,
     default:
       assert(false);
   }
-  checkCUDNN(hipdnnOpTensor(m->handle.dnn, m->opDesc,
+  checkCUDNN(miopenOpTensor(m->handle.dnn, m->opDesc,
       &alpha1, m->input1Tensor, in1_ptr,
       &alpha2, m->input2Tensor, in2_ptr,
       &beta, m->outputTensor, out_ptr));
-#endif
 }
 
 /*static*/
@@ -227,71 +222,76 @@ void ElementBinary::backward_kernel(const ElementBinaryMeta* m,
                                     float* in2_grad_ptr,
                                     hipStream_t stream)
 {
-#if 0
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
-  checkCUDNN(hipdnnSetStream(m->handle.dnn, stream));
+  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   int output_ndims, input_ndims;
   int output_dims[MAX_TENSOR_DIM], input_dims[MAX_TENSOR_DIM];
   int output_strides[MAX_TENSOR_DIM], input_strides[MAX_TENSOR_DIM];
-  hipdnnDataType_t output_datatype, input_datatype;
-  checkCUDNN(hipdnnGetTensorNdDescriptor(m->outputTensor, 4,
-      &output_datatype, &output_ndims, output_dims, output_strides));
+  miopenDataType_t output_datatype, input_datatype;
+  output_ndims = 4;
+  checkCUDNN(miopenGet4dTensorDescriptor(m->outputTensor,
+      &output_datatype, &(output_dims[0]), &(output_dims[1]), &(output_dims[2]), &(output_dims[3]), 
+      &(output_strides[0]), &(output_strides[1]), &(output_strides[2]), &(output_strides[3])));
 
   if (m->op_type == OP_EW_ADD || m->op_type == OP_EW_SUB) {
-    float alpha = 1.0f, beta = 1.0f;
-    checkCUDNN(hipdnnGetTensorNdDescriptor(m->input1Tensor, 4,
-        &input_datatype, &input_ndims, input_dims, input_strides));
+    float alpha = 1.0f, alpha2 = 0.0f, beta = 1.0f;
+    input_ndims = 4;
+    checkCUDNN(miopenGet4dTensorDescriptor(m->input1Tensor,
+        &input_datatype, &(input_dims[0]), &(input_dims[1]), &(input_dims[2]), &(input_dims[3]),
+        &(input_strides[0]), &(input_strides[1]), &(input_strides[2]), &(input_strides[3])));
     bool has_reduce = false;
     assert(input_ndims == output_ndims);
     for (int i = 0; i < input_ndims; i++)
       if (input_dims[i] != output_dims[i])
         has_reduce = true;
     if (has_reduce) {
-      checkCUDNN(hipdnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
+      checkCUDNN(miopenReduceTensor(m->handle.dnn, m->reduceAddDesc,
           nullptr/*indices*/, 0/*indicesSizeInBytes*/,
           m->handle.workSpace, m->handle.workSpaceSize,
           &alpha, m->outputTensor, out_grad_ptr,
           &beta, m->input1Tensor, in1_grad_ptr));
     } else {
-      checkCUDNN(hipdnnAddTensor(m->handle.dnn,
+      checkCUDNN(miopenOpTensor(m->handle.dnn, miopenTensorOpAdd,
           &alpha, m->outputTensor, out_grad_ptr,
+          &alpha2, m->outputTensor, out_grad_ptr,
           &beta, m->input1Tensor, in1_grad_ptr));
     }
     if (m->op_type == OP_EW_SUB)
       alpha = -1.0f;
-    checkCUDNN(hipdnnGetTensorNdDescriptor(m->input2Tensor, 4,
-        &input_datatype, &input_ndims, input_dims, input_strides));
+    checkCUDNN(miopenGet4dTensorDescriptor(m->input2Tensor,
+        &input_datatype, &(input_dims[0]), &(input_dims[1]), &(input_dims[2]), &(input_dims[3]),
+        &(input_strides[0]), &(input_strides[1]), &(input_strides[2]), &(input_strides[3])));
     has_reduce = false;
     assert(input_ndims == output_ndims);
     for (int i = 0; i < input_ndims; i++)
       if (input_dims[i] != output_dims[i])
         has_reduce = true;
     if (has_reduce) {
-      checkCUDNN(hipdnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
+      checkCUDNN(miopenReduceTensor(m->handle.dnn, m->reduceAddDesc,
           nullptr/*indices*/, 0/*indicesSizeInBytes*/,
           m->handle.workSpace, m->handle.workSpaceSize,
           &alpha, m->outputTensor, out_grad_ptr,
           &beta, m->input2Tensor, in2_grad_ptr));
     } else {
-      checkCUDNN(hipdnnAddTensor(m->handle.dnn,
+      checkCUDNN(miopenOpTensor(m->handle.dnn, miopenTensorOpAdd,
           &alpha, m->outputTensor, out_grad_ptr,
+          &alpha2, m->outputTensor, out_grad_ptr,
           &beta, m->input2Tensor, in2_grad_ptr));
     }
   } else if (m->op_type == OP_EW_MUL) {
     float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f;
-    checkCUDNN(hipdnnOpTensor(m->handle.dnn, m->opDesc,
+    checkCUDNN(miopenOpTensor(m->handle.dnn, m->opDesc,
         &alpha1, m->outputTensor, out_grad_ptr,
         &alpha2, m->input2Tensor, in2_ptr,
         &beta, m->input1Tensor, in1_grad_ptr));
-    checkCUDNN(hipdnnOpTensor(m->handle.dnn, m->opDesc,
+    checkCUDNN(miopenOpTensor(m->handle.dnn, m->opDesc,
         &alpha1, m->outputTensor, out_grad_ptr,
         &alpha2, m->input2Tensor, in1_ptr,
         &beta, m->input1Tensor, in2_grad_ptr));
   } else {
     assert(false && "Unsupported ElementWise Binary Type");
   }
-#endif
 }
 
 /*static*/
@@ -347,14 +347,11 @@ void ElementBinary::backward_kernel_wrapper(const ElementBinaryMeta* m,
 ElementBinaryMeta::ElementBinaryMeta(FFHandler handler)
 : OpMeta(handler)
 {
-#if 0
-  checkCUDNN(hipdnnCreateTensorDescriptor(&input1Tensor));
-  checkCUDNN(hipdnnCreateTensorDescriptor(&input2Tensor));
-  checkCUDNN(hipdnnCreateTensorDescriptor(&outputTensor));
-  checkCUDNN(hipdnnCreateOpTensorDescriptor(&opDesc));
-  checkCUDNN(hipdnnCreateReduceTensorDescriptor(&reduceAddDesc));
+  checkCUDNN(miopenCreateTensorDescriptor(&input1Tensor));
+  checkCUDNN(miopenCreateTensorDescriptor(&input2Tensor));
+  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(miopenCreateReduceTensorDescriptor(&reduceAddDesc));
   op_type = OP_NOOP;
-#endif
 }
 
 }; // namespace FlexFlow
