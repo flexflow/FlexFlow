@@ -30,6 +30,8 @@ using Legion::coord_t;
 using Legion::Memory;
 using Legion::Machine;
 
+#define MIOPEN_BN_MIN_EPSILON 0.001
+
 /*
   regions[0]: input
   regions[1]: output
@@ -123,15 +125,13 @@ void BatchNorm::forward_kernel(BatchNormMeta *m,
 {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-#if 0
   float alpha = 1.0f, beta = 0.0f;
   //coord_t numChannels = m->numChannels;
-  checkCUDNN(hipdnnBatchNormalizationForwardTraining(
+  checkCUDNN(miopenBatchNormalizationForwardTraining(
              m->handle.dnn, m->mode, &alpha, &beta, m->inputTensor, input_ptr,
-             m->outputTensor, output_ptr, m->biasTensor, scale_ptr, bias_ptr,
-             1.0, m->runningMean, m->runningVar, HIPDNN_BN_MIN_EPSILON,
+             m->outputTensor, output_ptr, m->biasTensor, static_cast<void*>(const_cast<float*>(scale_ptr)), static_cast<void*>(const_cast<float*>(bias_ptr)),
+             1.0, m->runningMean, m->runningVar, MIOPEN_BN_MIN_EPSILON,
              m->saveMean, m->saveVar));
-#endif
 }
 
 /*
@@ -193,18 +193,16 @@ void BatchNorm::backward_kernel(BatchNormMeta *m,
 {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-#if 0
   float alpha = 1.0f;
   if (m->relu) {
     hipLaunchKernelGGL(reluBackward, GET_BLOCKS(numElements), CUDA_NUM_THREADS, 0, stream, output_grad_ptr, output_ptr, numElements);
   }
-  checkCUDNN(hipdnnBatchNormalizationBackward(
+  checkCUDNN(miopenBatchNormalizationBackward(
              m->handle.dnn, m->mode, &alpha, &alpha, &alpha, &alpha,
              m->inputTensor, input_ptr, m->outputTensor, output_grad_ptr,
              m->inputTensor, input_grad_ptr, m->biasTensor, scale_ptr,
-             scale_grad_ptr, bias_grad_ptr, HIPDNN_BN_MIN_EPSILON,
+             scale_grad_ptr, bias_grad_ptr, MIOPEN_BN_MIN_EPSILON,
              m->saveMean, m->saveVar));
-#endif
 }
 
 /*
@@ -275,31 +273,27 @@ BatchNormMeta::BatchNormMeta(FFHandler handler,
                              int output_w)
 : OpMeta(handler)
 {
-#if 0
-  checkCUDNN(hipdnnCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(hipdnnCreateTensorDescriptor(&biasTensor));
-  checkCUDNN(hipdnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(miopenCreateTensorDescriptor(&biasTensor));
+  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
   relu = bn->relu;
   profiling = bn->profiling;
-  mode = HIPDNN_BATCHNORM_SPATIAL;
-#if HIPDNN_VERSION >= 7000
-  mode = HIPDNN_BATCHNORM_SPATIAL_PERSISTENT;
-#endif
+  mode = miopenBNSpatial;
+// #if HIPDNN_VERSION >= 7000
+//   mode = HIPDNN_BATCHNORM_SPATIAL_PERSISTENT;
+// #endif
   fprintf(stderr, "output(%d,%d,%d,%d)\n",
     output_n, output_c, output_h, output_w);
-  checkCUDNN(hipdnnSetTensor4dDescriptor(inputTensor,
-                                        HIPDNN_TENSOR_NCHW,
-                                        HIPDNN_DATA_FLOAT,
+  checkCUDNN(miopenSet4dTensorDescriptor(inputTensor,
+                                        miopenFloat,
                                         output_n, output_c,
                                         output_h, output_w));
-  checkCUDNN(hipdnnSetTensor4dDescriptor(outputTensor,
-                                        HIPDNN_TENSOR_NCHW,
-                                        HIPDNN_DATA_FLOAT,
+  checkCUDNN(miopenSet4dTensorDescriptor(outputTensor,
+                                        miopenFloat,
                                         output_n, output_c,
                                         output_h, output_w));
-  checkCUDNN(hipdnnSetTensor4dDescriptor(biasTensor,
-                                        HIPDNN_TENSOR_NCHW,
-                                        HIPDNN_DATA_FLOAT,
+  checkCUDNN(miopenSet4dTensorDescriptor(biasTensor,
+                                        miopenFloat,
                                         1, output_c, 1, 1));
   // allocate memory for runningMean, runningVar, saveMean, saveVar
   {
@@ -322,24 +316,21 @@ BatchNormMeta::BatchNormMeta(FFHandler handler,
       runningVar, output_c, 0.0f);
   }
   if (relu) {
-    checkCUDNN(hipdnnCreateActivationDescriptor(&actiDesc));
-    checkCUDNN(hipdnnSetActivationDescriptor(actiDesc, HIPDNN_ACTIVATION_RELU,
-                                            HIPDNN_PROPAGATE_NAN, 0.0));
+    checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
+    checkCUDNN(miopenSetActivationDescriptor(actiDesc, miopenActivationRELU,
+                                            0.0, 0.0, 0.0));
   }
-#endif
 }
 
 BatchNormMeta::~BatchNormMeta(void)
 {
-#if 0
   reserveInst.destroy();
-  checkCUDNN(hipdnnDestroyTensorDescriptor(inputTensor));
-  checkCUDNN(hipdnnDestroyTensorDescriptor(biasTensor));
-  checkCUDNN(hipdnnDestroyTensorDescriptor(outputTensor));
+  checkCUDNN(miopenDestroyTensorDescriptor(inputTensor));
+  checkCUDNN(miopenDestroyTensorDescriptor(biasTensor));
+  checkCUDNN(miopenDestroyTensorDescriptor(outputTensor));
   if (relu) {
-    checkCUDNN(hipdnnDestroyActivationDescriptor(actiDesc));
+    checkCUDNN(miopenDestroyActivationDescriptor(actiDesc));
   }
-#endif
 }
 
 bool BatchNorm::measure_operator_cost(Simulator* sim,
