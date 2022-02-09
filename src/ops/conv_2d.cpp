@@ -215,7 +215,7 @@ void Conv2D::backward_kernel(const Conv2DMeta* m,
                                              m->outputTensor, output_grad_ptr,
                                              m->inputTensor, input_ptr,
                                              m->convDesc, m->bwdFilterAlgo,
-                                             &alpha, m->filterDesc, kernel_grad_ptr,
+                                             &beta, m->filterDesc, kernel_grad_ptr,
                                              m->handle.workSpace, m->handle.workSpaceSize));
   // Compute bias gradiant
   // NOTE: we use alpha for bias_grad to accumulate gradients

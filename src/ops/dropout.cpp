@@ -31,11 +31,9 @@ void Dropout::forward_kernel(DropoutMeta *m,
 {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-#if 0
-  checkCUDNN(cudnnDropoutForward(m->handle.dnn, m->dropoutDesc,
+  checkCUDNN(miopenDropoutForward(m->handle.dnn, m->dropoutDesc, m->inputTensor/* not used */,
       m->inputTensor, input_ptr, m->outputTensor, output_ptr,
       m->reserveSpace, m->reserveSpaceSize));
-#endif
 }
 
 /*static*/
@@ -55,11 +53,9 @@ void Dropout::backward_kernel(DropoutMeta *m,
 {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-#if 0
-  checkCUDNN(cudnnDropoutBackward(m->handle.dnn, m->dropoutDesc,
+  checkCUDNN(miopenDropoutBackward(m->handle.dnn, m->dropoutDesc, m->inputTensor/* not used */,
       m->outputTensor, output_grad_ptr, m->inputTensor, input_grad_ptr,
       m->reserveSpace, m->reserveSpaceSize));
-#endif
 }
 
 /*static*/
@@ -78,15 +74,14 @@ DropoutMeta::DropoutMeta(FFHandler handler,
                          const Domain& output_domain)
 : OpMeta(handler)
 {
-#if 0
   profiling = dropout->profiling;
-  checkCUDNN(hipdnnCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(hipdnnCreateTensorDescriptor(&outputTensor));
-  checkCUDNN(hipdnnCreateDropoutDescriptor(&dropoutDesc));
-  checkCUDNN(hipdnnDropoutGetStatesSize(handle.dnn, &(dropoutStateSize)));
+  checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(miopenCreateDropoutDescriptor(&dropoutDesc));
+  checkCUDNN(miopenDropoutGetStatesSize(handle.dnn, &(dropoutStateSize)));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, output_domain));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_domain));
-  checkCUDNN(cudnnDropoutGetReserveSpaceSize(outputTensor, &(reserveSpaceSize)));
+  checkCUDNN(miopenDropoutGetReserveSpaceSize(outputTensor, &(reserveSpaceSize)));
   {
     // allocate memory for dropoutStates and reserveSpace
     size_t totalSize = dropoutStateSize + reserveSpaceSize;
@@ -101,20 +96,18 @@ DropoutMeta::DropoutMeta(FFHandler handler,
   }
   //checkCUDA(hipMalloc(&dropoutStates, dropoutStateSize));
   //checkCUDA(hipMalloc(&reserveSpace, reserveSpaceSize));
-  checkCUDNN(hipdnnSetDropoutDescriptor(
-    dropoutDesc, handle.dnn, dropout->rate, dropoutStates, dropoutStateSize, dropout->seed
+  checkCUDNN(miopenSetDropoutDescriptor(
+    dropoutDesc, handle.dnn, dropout->rate, dropoutStates, dropoutStateSize, dropout->seed,
+    false, false, MIOPEN_RNG_PSEUDO_XORWOW
   ));
-#endif
 }
 
 DropoutMeta::~DropoutMeta(void)
 {
-#if 0
   reserveInst.destroy();
-  checkCUDNN(hipdnnDestroyTensorDescriptor(inputTensor));
-  checkCUDNN(hipdnnDestroyTensorDescriptor(outputTensor));
-  checkCUDNN(hipdnnDestroyDropoutDescriptor(dropoutDesc));
-#endif
+  checkCUDNN(miopenDestroyTensorDescriptor(inputTensor));
+  checkCUDNN(miopenDestroyTensorDescriptor(outputTensor));
+  checkCUDNN(miopenDestroyDropoutDescriptor(dropoutDesc));
 }
 
 }; // namespace
