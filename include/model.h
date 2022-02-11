@@ -628,6 +628,7 @@ public:
   cudnnReduceTensorDescriptor_t reduceAddDesc;
   OperatorType op_type;
   bool inplace_a, has_same_operands;
+  bool broadcast_input1, broadcast_input2;
 };
 
 class ElementBinary : public Op {
@@ -1076,6 +1077,7 @@ public:
   int64_t effective_batch_size, effective_num_elements;
   float eps;
   float *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;
+  char op_name[MAX_OPNAME];
 };
 
 class LinearMeta : public OpMeta {

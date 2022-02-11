@@ -80,6 +80,7 @@ public:
   int64_t effective_batch_size, effective_num_elements;
   float eps;
   float *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;
+  char op_name[MAX_OPNAME];
 };
 
 }; //namespace FlexFlow
