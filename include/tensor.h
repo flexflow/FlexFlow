@@ -50,6 +50,7 @@ struct Tensor {
   bool get_tensor(const FFModel* model,
                   T* data,
                   ParameterSyncType comm_type);
+  void update_tensor(const FFModel* model);
   int numDim, adim[MAX_TENSOR_DIM];
   DataType data_type;
   ParameterSyncType sync_type;

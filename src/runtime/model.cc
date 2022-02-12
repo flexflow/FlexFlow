@@ -250,6 +250,24 @@ Domain Tensor::get_domain() const
   return d;
 }
 
+void Tensor::update_tensor(const FFModel* ff)
+{
+  if (owner_op == nullptr)
+    return;
+  // No need to update if region is not NO_REGION
+  if (this->region != LogicalRegion::NO_REGION)
+    return;
+  for (const auto& l : ff->layers) {
+    if (l == owner_op) {
+      this->region = l->outputs[owner_idx].region;
+      this->part = l->outputs[owner_idx].part;
+      this->region_grad = l->outputs[owner_idx].region_grad;
+      this->part_grad = l->outputs[owner_idx].part_grad;
+      break;
+    }
+  }
+}
+
 Op::Op(FFModel& model,
        OperatorType _op_type,
        const char* _name,

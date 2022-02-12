@@ -340,6 +340,7 @@ bool Tensor::set_tensor(const FFModel* ff,
                         const T* data,
                         ParameterSyncType comm_type)
 {
+  update_tensor(ff);
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
   //TODO: check data type matches
@@ -394,6 +395,7 @@ bool Tensor::get_tensor(const FFModel* ff,
                         T* data,
                         ParameterSyncType comm_type)
 {
+  update_tensor(ff);
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
   LogicalRegion weight_lr = LogicalRegion::NO_REGION;
