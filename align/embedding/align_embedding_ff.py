@@ -10,7 +10,7 @@ from flexflow.type import AggrMode, ParameterSyncType
 sys.path.append("./align/")
 from align_utils import gen_tensor
 
-BATCH_SIZE = 8
+BATCH_SIZE = 1
 SEQ_LENGTH = 5
 OUT_DIR = "align/embedding/out/"
 
@@ -39,6 +39,8 @@ def run(backward: bool = False):
         (BATCH_SIZE, SEQ_LENGTH, embedding_dim),
         dtype="float32",
     )
+    print(f"[FlexFlow] inp[:16]={inp.flatten()[:16]}")
+    print(f"[FlexFlow] label[:16]={label.flatten()[:16]}")
 
     # Create, compile, and initialize a model consisting of a single embedding
     # layer that uses mean squared error as the loss function
@@ -89,25 +91,37 @@ def run(backward: bool = False):
     if backward:
         ffmodel.zero_gradients()
         ffmodel.backward()
-        ffmodel.update()
 
     # Synchronize
     ffmodel._ffconfig.end_trace(ffmodel._tracing_id)
     ffmodel_barrier(ffmodel)
 
-    # Save outputs and embedding's weight parameter
+    # Save forward pass output, embedding's weight parameter, and embedding's
+    # gradient
     output_np: np.ndarray = output_tensor.get_tensor(ffmodel, ParameterSyncType.PS)
     output_torch: torch.Tensor = torch.from_numpy(output_np)
+    print("[FlexFlow] Saving embedding forward pass output...")
     torch.save(output_torch, os.path.join(OUT_DIR, "ff_out.pt"))
-    # TODO: Save the gradient of the embedding layer
 
     embedding_layer: Op = ffmodel.get_layers()[0]
     assert isinstance(embedding_layer, Embedding)
     embedding_weight: Parameter = embedding_layer.get_weight_tensor()
     embedding_weight_np: np.ndarray = embedding_weight.get_weights(ffmodel)
     embedding_weight_torch: torch.Tensor = torch.from_numpy(embedding_weight_np)
+    print("[FlexFlow] Saving embedding weight...")
     torch.save(embedding_weight_torch, os.path.join(OUT_DIR, "ff_embed_weight.pt"))
+
+    if backward:
+        weight_grad_np: np.ndarray = embedding_weight.get_gradients(ffmodel, ParameterSyncType.PS)
+        weight_grad_torch: torch.Tensor = torch.from_numpy(weight_grad_np)
+        print("[FlexFlow] Saving gradient wrt embedding weight...")
+        torch.save(weight_grad_torch, os.path.join(OUT_DIR, "ff_weight_grad.pt"))
+        out_grad_np: np.ndarray = output_tensor.get_gradients(ffmodel, ParameterSyncType.PS)
+        out_grad_torch: torch.Tensor = torch.from_numpy(out_grad_np)
+        print("[FlexFlow] Saving gradient wrt embedding output...")
+        torch.save(out_grad_torch, os.path.join(OUT_DIR, "ff_out_grad.pt"))
 
 
 if __name__ == "__main__":
-    run()
+    backward = str(os.environ.get("FF_BACKWARD", True)) in ("True", "1")
+    run(backward)

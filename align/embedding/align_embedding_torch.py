@@ -9,7 +9,8 @@ from align_utils import gen_tensor
 
 assert torch.cuda.is_available(), "Expects at least one GPU"
 DEVICE = torch.device(0)
-BATCH_SIZE = 8
+# DEVICE = torch.device("cpu")
+BATCH_SIZE = 1
 SEQ_LENGTH = 5
 OUT_DIR = "align/embedding/out/"
 PRINT_LIMIT = 17
@@ -29,6 +30,7 @@ def run(backward: bool = False, verbose: bool = False):
         embedding_dim=embedding_dim,
         device=DEVICE,
     )
+    print("[PyTorch] Loading embedding weight from FlexFlow")
     embedding_weight = torch.load(os.path.join(OUT_DIR, "ff_embed_weight.pt"))
     assert embedding_weight.shape == embedding.weight.shape, \
         "Shape mismatch: " \
@@ -45,9 +47,12 @@ def run(backward: bool = False, verbose: bool = False):
         (BATCH_SIZE, SEQ_LENGTH, embedding_dim),
         dtype="float32",
     ).to(DEVICE)
+    print(f"[PyTorch] inp[:16]={inp.flatten()[:16]}")
+    print(f"[PyTorch] label[:16]={label.flatten()[:16]}")
 
     # Forward pass
     output = embedding(inp)
+    print("[PyTorch] Saving emebedding forward pass output...")
     torch.save(output, os.path.join(OUT_DIR, "torch_out.pt"))
 
     # Optional information print
@@ -64,10 +69,16 @@ def run(backward: bool = False, verbose: bool = False):
 
     # Optional backward pass
     if backward:
+        embedding.zero_grad()
+        output.retain_grad()  # save the gradient wrt embedding output
         loss_fn = torch.nn.MSELoss(reduction="mean")
         loss = loss_fn(output, label)
+        print(f"[PyTorch] loss={loss}")
         loss.backward()
-        torch.save(output.grad, os.path.join(OUT_DIR, "torch_grad.pt"))
+        print("[PyTorch] Saving gradient wrt embedding weight...")
+        torch.save(embedding.weight.grad, os.path.join(OUT_DIR, "torch_weight_grad.pt"))
+        print("[PyTorch] Saving gradient wrt embedding output...")
+        torch.save(output.grad, os.path.join(OUT_DIR, "torch_out_grad.pt"))
 
 
 if __name__ == "__main__":

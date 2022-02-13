@@ -56,14 +56,11 @@ def gen_tensor(
         )
     else:
         np_array = np.random.randn(*shape)
-    return torch.from_numpy(np_array)
+    return torch.from_numpy(np_array).to(str_dtype_to_torch_dtype(dtype))
 
 
 def diff_tensors(t1: torch.Tensor, t2: torch.Tensor):
     """Compares two tensors for equality."""
-    assert t1.shape == t2.shape, f"Shape mismatch: t1={t1.shape} t2={t2.shape}"
-    assert t1.dtype == t2.dtype, f"dtype mismatch: t1={t1.dtype} t2={t2.dtype}"
-    diff = t1 - t2
-    assert torch.allclose(t1, t2), f"diff={diff}\n" \
-        "Number of mismatched elements: " \
-        f"{torch.count_nonzero(diff)}/{diff.numel()}"
+    assert t1.shape == t2.shape, f"Shape mismatch: {t1.shape} != {t2.shape}"
+    assert t1.dtype == t2.dtype, f"dtype mismatch: {t1.dtype} != {t2.dtype}"
+    torch.testing.assert_close(t1, t2)
