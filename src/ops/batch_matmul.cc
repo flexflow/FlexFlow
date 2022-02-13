@@ -46,6 +46,7 @@ Tensor FFModel::batch_matmul(const Tensor A,
   layers.push_back(bmm);
   return bmm->outputs[0];
 #endif
+  return nullptr;
 }
 
 // return A*B
