@@ -49,7 +49,8 @@ struct Tensor {
   template <typename T>
   bool get_tensor(const FFModel* model,
                   T* data,
-                  ParameterSyncType comm_type);
+                  ParameterSyncType comm_type,
+                  bool return_gradients = false);
   void update_tensor(const FFModel* model);
   int numDim, adim[MAX_TENSOR_DIM];
   DataType data_type;

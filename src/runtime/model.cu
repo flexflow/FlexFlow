@@ -393,14 +393,18 @@ bool Tensor::set_tensor(const FFModel* ff,
 template <typename T>
 bool Tensor::get_tensor(const FFModel* ff,
                         T* data,
-                        ParameterSyncType comm_type)
+                        ParameterSyncType comm_type,
+                        bool return_gradients)
 {
   update_tensor(ff);
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
   LogicalRegion weight_lr = LogicalRegion::NO_REGION;
   if (comm_type == ParameterSyncType::PS) {
-    weight_lr = region;
+    if (return_gradients)
+      weight_lr = region_grad;
+    else
+      weight_lr = region;
   } else {
     assert(owner_op != NULL);
     Domain domain = runtime->get_index_space_domain(ctx, owner_op->task_is);
@@ -409,8 +413,13 @@ bool Tensor::get_tensor(const FFModel* ff,
       case DIM: \
       { \
         DomainPoint point = Point<DIM>::ZEROES(); \
-        weight_lr = runtime->get_logical_subregion_by_color( \
-            ctx, part, point); \
+        if (return_gradients) { \
+          weight_lr = runtime->get_logical_subregion_by_color( \
+              ctx, part_grad, point); \
+        } else { \
+          weight_lr = runtime->get_logical_subregion_by_color( \
+              ctx, part, point); \
+        } \
         break; \
       }
       LEGION_FOREACH_N(DIMFUNC)
@@ -422,7 +431,12 @@ bool Tensor::get_tensor(const FFModel* ff,
   for (int i = 0; i < numDim; i++) {
     volume = volume * adim[i];
   }
-  RegionRequirement req(weight_lr, READ_ONLY, EXCLUSIVE, region);
+  LogicalRegion lr = LogicalRegion::NO_REGION;
+  if (return_gradients)
+    lr = region_grad;
+  else
+    lr = region;
+  RegionRequirement req(weight_lr, READ_ONLY, EXCLUSIVE, lr);
   req.add_field(FID_DATA);
   InlineLauncher launcher(req);
   PhysicalRegion pr = runtime->map_region(ctx, launcher);
@@ -462,10 +476,10 @@ bool Parameter::get_weights(const FFModel* ff,
 }
 
 template bool Tensor::set_tensor<float>(const FFModel* ff, const std::vector<int>& dims, const float* data, ParameterSyncType comm_type);
-template bool Tensor::get_tensor<float>(const FFModel* ff, float* data, ParameterSyncType comm_type);
+template bool Tensor::get_tensor<float>(const FFModel* ff, float* data, ParameterSyncType comm_type, bool get_gradients);
 template bool Tensor::set_tensor<int>(const FFModel* ff, const std::vector<int>& dims, const int* data, ParameterSyncType comm_type);
-template bool Tensor::get_tensor<int>(const FFModel* ff, int* data, ParameterSyncType comm_type);
+template bool Tensor::get_tensor<int>(const FFModel* ff, int* data, ParameterSyncType comm_type, bool get_gradients);
 template bool Tensor::set_tensor<int64_t>(const FFModel* ff, const std::vector<int>& dims, const int64_t* data, ParameterSyncType comm_type);
-template bool Tensor::get_tensor<int64_t>(const FFModel* ff, int64_t* data, ParameterSyncType comm_type);
+template bool Tensor::get_tensor<int64_t>(const FFModel* ff, int64_t* data, ParameterSyncType comm_type, bool get_gradients);
 template bool Parameter::set_weights<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
 template bool Parameter::get_weights<float>(const FFModel* ff, float* data);

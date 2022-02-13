@@ -632,13 +632,38 @@ class Tensor(object):
     c_comm_type = enum_to_int(ParameterSyncType, comm_type)
     if np_array.dtype == np.float32:
       raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, c_comm_type)
+      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, c_comm_type, false)
     elif np_array.dtype == np.int32:
       raw_ptr = ffi.cast("int*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, c_comm_type)
+      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, c_comm_type, false)
     elif np_array.dtype == np.int64:
       raw_ptr = ffi.cast("int64_t*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, c_comm_type)
+      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, c_comm_type, false)
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    assert ret_val == True
+    return np_array
+
+  def get_gradients(self, ffmodel, comm_type):
+    shape = self.dims
+    if self.data_type == DataType.DT_FLOAT:
+      np_array = np.empty(shape, dtype=np.float32)
+    elif self.data_type == DataType.DT_INT32:
+      np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
+    else:
+      assert 0, f"Unsupported datatype: {self.data_type}"
+    np_raw_ptr = np_array.__array_interface__['data']
+    c_comm_type = enum_to_int(ParameterSyncType, comm_type)
+    if np_array.dtype == np.float32:
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, c_comm_type, true)
+    elif np_array.dtype == np.int32:
+      raw_ptr = ffi.cast("int*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, c_comm_type, true)
+    elif np_array.dtype == np.int64:
+      raw_ptr = ffi.cast("int64_t*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, c_comm_type, true)
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
     assert ret_val == True
     return np_array
