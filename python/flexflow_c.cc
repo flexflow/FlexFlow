@@ -1196,11 +1196,12 @@ flexflow_tensor_get_tensor_float(
   flexflow_tensor_t handle_,
   flexflow_model_t model_,
   float *data,
-  enum ParameterSyncType comm_type)
+  enum ParameterSyncType comm_type,
+  bool get_gradients)
 {
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
-  return handle->get_tensor<float>(model, data, comm_type);
+  return handle->get_tensor<float>(model, data, comm_type, get_gradients);
 }
   
 bool
@@ -1226,11 +1227,12 @@ flexflow_tensor_get_tensor_int(
   flexflow_tensor_t handle_,
   flexflow_model_t model_,
   int *data,
-  enum ParameterSyncType comm_type)
+  enum ParameterSyncType comm_type,
+  bool get_gradients)
 {
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
-  return handle->get_tensor<int>(model, data, comm_type);
+  return handle->get_tensor<int>(model, data, comm_type, get_gradients);
 }
 
 bool
@@ -1256,11 +1258,12 @@ flexflow_tensor_get_tensor_int64(
   flexflow_tensor_t handle_,
   flexflow_model_t model_,
   int64_t *data,
-  enum ParameterSyncType comm_type)
+  enum ParameterSyncType comm_type,
+  bool get_gradients)
 {
   Tensor *handle = FFCObjectWrapper::unwrap(handle_);
   const FFModel *model = FFCObjectWrapper::unwrap_const(model_);
-  return handle->get_tensor<int64_t>(model, data, comm_type);
+  return handle->get_tensor<int64_t>(model, data, comm_type, get_gradients);
 }
 
 // -----------------------------------------------------------------------
