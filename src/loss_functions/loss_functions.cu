@@ -133,7 +133,7 @@ void Loss::backward_task_with_dim(const Task *task,
                          cudaMemcpyDeviceToDevice));
     sparse_categorical_crossentropy_loss_backward<<<GET_BLOCKS(num_samples), CUDA_NUM_THREADS, 0, stream>>>(
         acc_logit_grad.ptr, acc_label.ptr, num_samples, num_classes, k);
-    // Scale logit gradients by op->scale_factor
+    // Scale logit gradients by loss->scale_factor
     scale_kernel<<<GET_BLOCKS(acc_logit_grad.rect.volume()), CUDA_NUM_THREADS, 0, stream>>>(
         acc_logit_grad.ptr, acc_logit_grad.rect.volume(), 0, loss->scale_factor*k);
   } else {
@@ -199,7 +199,12 @@ void Loss::backward_with_dim(FFModel* model,
                              const Tensor* label)
 {
   // Compute scale factor for loss backpropagation
-  scale_factor = 1.0f/ logit->adim[logit->numDim-1];
+  if (loss_type == LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE) {
+    assert(logit->get_volume() == label->get_volume());
+    scale_factor = 2.0f / logit->get_volume();
+  } else {
+    scale_factor = 1.0f / model->config.batchSize;
+  }
   //scale_factor = 1.0f;
   // Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;
