@@ -60,6 +60,7 @@ Tensor FFModel::multihead_attention(const Tensor query,
     return attn->outputs[0];
   }
 #endif
+  return nullptr;
 }
 
 MultiHeadAttention::MultiHeadAttention(FFModel& model,

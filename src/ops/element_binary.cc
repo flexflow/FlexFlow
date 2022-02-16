@@ -400,32 +400,37 @@ void ElementBinary::backward(const FFModel& ff)
       launcher.add_field(3, FID_DATA);
     }
   } else {
+    int rid = 0;
     // regions[0](I): output_grad
     launcher.add_region_requirement(
       RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
-    launcher.add_field(0, FID_DATA);
+    launcher.add_field(rid++, FID_DATA);
     // regions[1](I): input0
     launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
-    launcher.add_field(1, FID_DATA);
+    launcher.add_field(rid++, FID_DATA);
     // regions[2](I/O): input0_grad
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
-    launcher.add_field(2, FID_DATA);
+    if (trainableInputs[0]) {
+      launcher.add_region_requirement(
+        RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
+      launcher.add_field(rid++, FID_DATA);
+    }
     if (inputs[0]->region == inputs[1]->region) {
       // regions[3](I): input1
       launcher.add_region_requirement(
         RegionRequirement(inputs[1]->part, 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, inputs[1]->region));
-      launcher.add_field(3, FID_DATA);
+      launcher.add_field(rid++, FID_DATA);
       // regions[4](I/O): input1_grad
-      launcher.add_region_requirement(
-        RegionRequirement(inputs[1]->part_grad, 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, inputs[1]->region_grad));
-      launcher.add_field(4, FID_DATA);
+      if (trainableInputs[1]) {
+        launcher.add_region_requirement(
+          RegionRequirement(inputs[1]->part_grad, 0/*projection id*/,
+                            READ_WRITE, EXCLUSIVE, inputs[1]->region_grad));
+        launcher.add_field(rid++, FID_DATA);
+      }
     }
   }
   runtime->execute_index_space(ctx, launcher);
@@ -478,36 +483,45 @@ void ElementBinary::backward_task(const Task *task,
       out_grad_ptr = in0_grad_ptr;
     }
   } else {
-    assert(regions.size() == 3 || regions.size() == 5);
-    assert(task->regions.size() == regions.size());
+    int rid = 0;
     out_grad_ptr = helperGetTensorPointerRO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+    rid ++;
     Domain in0_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-    Domain in0_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
-    assert(out_grad_domain == in0_grad_domain);
-    assert(out_grad_domain == in0_domain);
+      ctx, task->regions[rid].region.get_index_space());
     in0_ptr = helperGetTensorPointerRO<float>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    in0_grad_ptr = helperGetTensorPointerRW<float>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-    if (regions.size() == 3) {
+      regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+    rid++;
+    if (m->trainableInputs[0]) {
+      Domain in0_grad_domain = runtime->get_index_space_domain(
+        ctx, task->regions[rid].region.get_index_space());
+      assert(in0_domain == in0_grad_domain);
+      in0_grad_ptr = helperGetTensorPointerRW<float>(
+        regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+      rid++;
+    }
+    if (m->has_same_operands) {
       // in0 == in1
       in1_ptr = in0_ptr;
       in1_grad_ptr = in0_grad_ptr;
     } else {
       Domain in1_domain = runtime->get_index_space_domain(
-        ctx, task->regions[3].region.get_index_space());
-      Domain in1_grad_domain = runtime->get_index_space_domain(
-        ctx, task->regions[4].region.get_index_space());
-      //assert(out_grad_domain == in1_domain);
-      assert(in1_domain == in1_grad_domain);
+        ctx, task->regions[rid].region.get_index_space());
       in1_ptr = helperGetTensorPointerRO<float>(
-        regions[3], task->regions[3], FID_DATA, ctx, runtime);
-      in1_grad_ptr = helperGetTensorPointerRW<float>(
-        regions[4], task->regions[4], FID_DATA, ctx, runtime);
+        regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+      rid++;
+      if (m->trainableInputs[1]) {
+        Domain in1_grad_domain = runtime->get_index_space_domain(
+          ctx, task->regions[rid].region.get_index_space());
+        //assert(out_grad_domain == in1_domain);
+        assert(in1_domain == in1_grad_domain);
+        in1_grad_ptr = helperGetTensorPointerRW<float>(
+          regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+        rid++;
+      }
     }
+    assert(task->regions.size() == rid);
+    assert(task->regions.size() == regions.size());
   }
 
   ElementBinary::backward_kernel_wrapper(m, out_grad_ptr, in0_ptr, in1_ptr, in0_grad_ptr, in1_grad_ptr);

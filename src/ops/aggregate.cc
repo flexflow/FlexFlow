@@ -41,6 +41,7 @@ Tensor FFModel::aggregate(const Tensor* inputs, /* gate_preds, gate_assign, full
   layers.push_back(aggr);
   return aggr->outputs[0];
 #endif
+  return nullptr;
 }
 
 

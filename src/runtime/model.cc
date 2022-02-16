@@ -68,7 +68,6 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_model("Model");
 LegionRuntime::Logger::Category log_measure("measure");
 
-
 Op::Op(FFModel& model,
        OperatorType op_type,
        const char* name,

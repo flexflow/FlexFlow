@@ -56,6 +56,7 @@ bool TensorBase::set_tensor(
   ParallelTensor ptensor = nullptr;
   ff->get_parallel_tensor_from_tensor(this, ptensor);
   ptensor->set_tensor<T>(ff, dim_sizes, data);
+  return true;
 }
 
 template <typename T>
@@ -65,6 +66,7 @@ bool TensorBase::get_tensor(
   ParallelTensor ptensor = nullptr;
   ff->get_parallel_tensor_from_tensor(this, ptensor);
   ptensor->get_tensor<T>(ff, data);
+  return true;
 }
 
 bool ParallelTensorShape::is_valid() const {

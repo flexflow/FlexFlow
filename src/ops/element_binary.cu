@@ -104,7 +104,6 @@ void ElementBinary::forward_kernel(const ElementBinaryMeta* m,
 {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 0.0f;
   switch (m->op_type) {
     case OP_EW_SUB:
@@ -116,10 +115,24 @@ void ElementBinary::forward_kernel(const ElementBinaryMeta* m,
     default:
       assert(false);
   }
-  checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
-      &alpha1, m->input1Tensor, in1_ptr,
-      &alpha2, m->input2Tensor, in2_ptr,
-      &beta, m->outputTensor, out_ptr));
+  // cudnn currently does not support broadcasting the first input in cudnnOpTensor
+  if (m->broadcast_input1) {
+    // currently only handle add and sub
+    assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD);
+    checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
+        &beta, m->outputTensor, out_ptr,
+        &alpha1, m->input1Tensor, in1_ptr,
+        &beta, m->outputTensor, out_ptr));
+    checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
+        &beta, m->outputTensor, out_ptr,
+        &alpha2, m->input2Tensor, in2_ptr,
+        &alpha1, m->outputTensor, out_ptr));
+  } else {
+    checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
+        &alpha1, m->input1Tensor, in1_ptr,
+        &alpha2, m->input2Tensor, in2_ptr,
+        &beta, m->outputTensor, out_ptr));
+  }
 }
 
 /*static*/
@@ -225,63 +238,50 @@ void ElementBinary::backward_kernel(const ElementBinaryMeta* m,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
-  int output_ndims, input_ndims;
-  int output_dims[MAX_TENSOR_DIM], input_dims[MAX_TENSOR_DIM];
-  int output_strides[MAX_TENSOR_DIM], input_strides[MAX_TENSOR_DIM];
-  cudnnDataType_t output_datatype, input_datatype;
-  checkCUDNN(cudnnGetTensorNdDescriptor(m->outputTensor, 4,
-      &output_datatype, &output_ndims, output_dims, output_strides));
-
   if (m->op_type == OP_EW_ADD || m->op_type == OP_EW_SUB) {
     float alpha = 1.0f, beta = 1.0f;
-    checkCUDNN(cudnnGetTensorNdDescriptor(m->input1Tensor, 4,
-        &input_datatype, &input_ndims, input_dims, input_strides));
-    bool has_reduce = false;
-    assert(input_ndims == output_ndims);
-    for (int i = 0; i < input_ndims; i++)
-      if (input_dims[i] != output_dims[i])
-        has_reduce = true;
-    if (has_reduce) {
-      checkCUDNN(cudnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
-          nullptr/*indices*/, 0/*indicesSizeInBytes*/,
-          m->handle.workSpace, m->handle.workSpaceSize,
-          &alpha, m->outputTensor, out_grad_ptr,
-          &beta, m->input1Tensor, in1_grad_ptr));
-    } else {
-      checkCUDNN(cudnnAddTensor(m->handle.dnn,
-          &alpha, m->outputTensor, out_grad_ptr,
-          &beta, m->input1Tensor, in1_grad_ptr));
+    if (in1_grad_ptr != nullptr) {
+      if (m->broadcast_input1) {
+        checkCUDNN(cudnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
+            nullptr/*indices*/, 0/*indicesSizeInBytes*/,
+            m->handle.workSpace, m->handle.workSpaceSize,
+            &alpha, m->outputTensor, out_grad_ptr,
+            &beta, m->input1Tensor, in1_grad_ptr));
+      } else {
+        checkCUDNN(cudnnAddTensor(m->handle.dnn,
+            &alpha, m->outputTensor, out_grad_ptr,
+            &beta, m->input1Tensor, in1_grad_ptr));
+      }
     }
     if (m->op_type == OP_EW_SUB)
       alpha = -1.0f;
-    checkCUDNN(cudnnGetTensorNdDescriptor(m->input2Tensor, 4,
-        &input_datatype, &input_ndims, input_dims, input_strides));
-    has_reduce = false;
-    assert(input_ndims == output_ndims);
-    for (int i = 0; i < input_ndims; i++)
-      if (input_dims[i] != output_dims[i])
-        has_reduce = true;
-    if (has_reduce) {
-      checkCUDNN(cudnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
-          nullptr/*indices*/, 0/*indicesSizeInBytes*/,
-          m->handle.workSpace, m->handle.workSpaceSize,
-          &alpha, m->outputTensor, out_grad_ptr,
-          &beta, m->input2Tensor, in2_grad_ptr));
-    } else {
-      checkCUDNN(cudnnAddTensor(m->handle.dnn,
-          &alpha, m->outputTensor, out_grad_ptr,
-          &beta, m->input2Tensor, in2_grad_ptr));
+    if (in2_grad_ptr != nullptr) {
+      if (m->broadcast_input2) {
+        checkCUDNN(cudnnReduceTensor(m->handle.dnn, m->reduceAddDesc,
+            nullptr/*indices*/, 0/*indicesSizeInBytes*/,
+            m->handle.workSpace, m->handle.workSpaceSize,
+            &alpha, m->outputTensor, out_grad_ptr,
+            &beta, m->input2Tensor, in2_grad_ptr));
+      } else {
+        checkCUDNN(cudnnAddTensor(m->handle.dnn,
+            &alpha, m->outputTensor, out_grad_ptr,
+            &beta, m->input2Tensor, in2_grad_ptr));
+      }
     }
   } else if (m->op_type == OP_EW_MUL) {
     float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f;
-    checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
-        &alpha1, m->outputTensor, out_grad_ptr,
-        &alpha2, m->input2Tensor, in2_ptr,
-        &beta, m->input1Tensor, in1_grad_ptr));
-    checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
-        &alpha1, m->outputTensor, out_grad_ptr,
-        &alpha2, m->input2Tensor, in1_ptr,
-        &beta, m->input1Tensor, in2_grad_ptr));
+    if (in1_grad_ptr != nullptr) {
+      checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
+          &alpha1, m->outputTensor, out_grad_ptr,
+          &alpha2, m->input2Tensor, in2_ptr,
+          &beta, m->input1Tensor, in1_grad_ptr));
+    }
+    if (in2_grad_ptr != nullptr) {
+      checkCUDNN(cudnnOpTensor(m->handle.dnn, m->opDesc,
+          &alpha1, m->outputTensor, out_grad_ptr,
+          &alpha2, m->input2Tensor, in1_ptr,
+          &beta, m->input1Tensor, in2_grad_ptr));
+    }
   } else {
     assert(false && "Unsupported ElementWise Binary Type");
   }
