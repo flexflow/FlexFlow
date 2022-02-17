@@ -21,29 +21,13 @@ namespace FlexFlow {
 // declare Legion names
 using Legion::Context;
 using Legion::Runtime;
-using Legion::Domain;
 using Legion::Task;
-using Legion::Rect;
 using Legion::PhysicalRegion;
-using Legion::coord_t;
-using Legion::Memory;
-
-OpMeta* Cache::init_task(const Task* task,
-                        const std::vector<PhysicalRegion> &regions,
-                        Context ctx, Runtime* runtime)
-{
-  Cache* c = (Cache*) task->args;
-  FFHandler handle = *((const FFHandler*) task->local_args);
-  CacheMeta* m = new CacheMeta(handle);
-  m->cache_score = 0.0f;
-  m->profiling = c->profiling;
-  return m;
-}
 
 template <typename T>
-void cache_forward(const Task *task,
-                  const std::vector<PhysicalRegion>& regions,
-                  Context ctx, Runtime* runtime)
+void Cache::cache_forward(const Task *task,
+                          const std::vector<PhysicalRegion>& regions,
+                          Context ctx, Runtime* runtime)
 {
   Cache* c = ((Arg*)(task->args))->cache;
   const CacheMeta* m = *((CacheMeta**)task->local_args);
@@ -62,33 +46,10 @@ void cache_forward(const Task *task,
 }
 
 
-void Cache::forward_task(const Task *task,
-                        const std::vector<PhysicalRegion>& regions,
-                        Context ctx, Runtime* runtime)
-{
-  Cache* c = ((Arg*)(task->args))->cache;
-  assert((int)regions.size() == 1);
-  assert((int)task->regions.size() == 1);
-
-  switch(c->inputs[0]->data_type)
-  {
-    case DT_FLOAT:
-      cache_forward<float>(task, regions, ctx, runtime);
-      break;
-    case DT_INT32:
-      cache_forward<int32_t>(task, regions, ctx, runtime);
-      break;
-    default:
-      assert(false && "unsupported data type");
-      break;
-  }
-}
-
-
 template <typename T>
-float cache_update(const Task *task,
-                  const std::vector<PhysicalRegion>& regions,
-                  Context ctx, Runtime* runtime)
+float Cache::cache_update(const Task *task,
+                          const std::vector<PhysicalRegion>& regions,
+                          Context ctx, Runtime* runtime)
 {
   Cache* c = ((Arg*)(task->args))->cache;
   int batch_ctr = ((Arg*)(task->args))->batch_ctr;
@@ -104,40 +65,14 @@ float cache_update(const Task *task,
   return cache_score;
 }
 
-void Cache::use_cached(bool c) {
-  load_cached = c;
-}
-
-float Cache::update_task(const Task *task,
-                      const std::vector<PhysicalRegion>& regions,
-                      Context ctx, Runtime* runtime)
-{
-  Cache* c = ((Arg*)(task->args))->cache;
-  switch(c->inputs[0]->data_type)
-  {
-    case DT_FLOAT:
-      return cache_update<float>(task, regions, ctx, runtime);
-    case DT_INT32:
-      return cache_update<int32_t>(task, regions, ctx, runtime);
-    default:
-      assert(false && "unsupported data type");
-      return -1.0f;
-  }
-}
-
 CacheMeta::CacheMeta(FFHandler handler)
 : OpMeta(handler)
 {}
 
-bool Cache::measure_operator_cost(Simulator* sim,
-                                 const ParallelConfig& pc,
-                                 CostMetrics& cost_metrics) const
-{
-  //TODO: implement
-  cost_metrics.forward_time = 0.0f;
-  cost_metrics.backward_time = 0.0f;
-  cost_metrics.memory_requirement = 0;
-  return false;
-}
+template void Cache::cache_forward<float>(const Task *task, const std::vector<PhysicalRegion>& regions, Context ctx, Runtime* runtime);
+template void Cache::cache_forward<int32_t>(const Task *task, const std::vector<PhysicalRegion>& regions, Context ctx, Runtime* runtime);
+
+template float Cache::cache_update<float>(const Task *task, const std::vector<PhysicalRegion>& regions, Context ctx, Runtime* runtime);
+template float Cache::cache_update<int32_t>(const Task *task, const std::vector<PhysicalRegion>& regions, Context ctx, Runtime* runtime);
 
 }; // namespace FlexFlow

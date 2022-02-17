@@ -33,6 +33,10 @@ ifndef NCCL_HOME
 NCCL_HOME = $(CUDA_HOME)
 endif
 
+ifndef HIPLIB_HOME
+HIPLIB_HOME = /opt/rocm-4.3.1
+endif
+
 #ifndef MPI_HOME
 #MPI_HOME = $(patsubst %/bin/mpicc,%,$(shell which mpicc | head -1))
 #endif
@@ -45,24 +49,25 @@ endif
 
 GEN_SRC += ${FF_HOME}/src/runtime/accessor.cc\
 		${FF_HOME}/src/runtime/graph.cc\
-    ${FF_HOME}/src/runtime/initializer.cc\
-    ${FF_HOME}/src/runtime/layer.cc\
-    ${FF_HOME}/src/runtime/machine_model.cc\
-    ${FF_HOME}/src/runtime/machine_view.cc\
-    ${FF_HOME}/src/runtime/model.cc\
+		${FF_HOME}/src/runtime/initializer.cc\
+		${FF_HOME}/src/runtime/layer.cc\
+		${FF_HOME}/src/runtime/machine_model.cc\
+		${FF_HOME}/src/runtime/machine_view.cc\
+		${FF_HOME}/src/runtime/model.cc\
 		${FF_HOME}/src/runtime/optimizer.cc\
 		${FF_HOME}/src/runtime/parallel_op.cc\
-    ${FF_HOME}/src/runtime/recursive_logger.cc\
-    ${FF_HOME}/src/runtime/simulator.cc\
-    ${FF_HOME}/src/runtime/strategy.cc\
-    ${FF_HOME}/src/runtime/substitution.cc\
-    ${FF_HOME}/src/runtime/tensor.cc\
-    ${FF_HOME}/src/mapper/mapper.cc\
+		${FF_HOME}/src/runtime/recursive_logger.cc\
+		${FF_HOME}/src/runtime/simulator.cc\
+		${FF_HOME}/src/runtime/strategy.cc\
+		${FF_HOME}/src/runtime/substitution.cc\
+		${FF_HOME}/src/runtime/tensor.cc\
+		${FF_HOME}/src/mapper/mapper.cc\
 		${FF_HOME}/src/ops/aggregate.cc\
-    ${FF_HOME}/src/ops/aggregate_spec.cc\
+		${FF_HOME}/src/ops/aggregate_spec.cc\
 		${FF_HOME}/src/ops/attention.cc\
-    ${FF_HOME}/src/ops/batch_matmul.cc\
+		${FF_HOME}/src/ops/batch_matmul.cc\
 		${FF_HOME}/src/ops/batch_norm.cc\
+		${FF_HOME}/src/ops/cast.cc\
 		${FF_HOME}/src/ops/cache.cc\
 		${FF_HOME}/src/ops/concat.cc\
 		${FF_HOME}/src/ops/conv_2d.cc\
@@ -73,7 +78,9 @@ GEN_SRC += ${FF_HOME}/src/runtime/accessor.cc\
 		${FF_HOME}/src/ops/flat.cc\
 		${FF_HOME}/src/ops/fused.cc\
 		${FF_HOME}/src/ops/group_by.cc\
+		${FF_HOME}/src/ops/layer_norm.cc\
 		${FF_HOME}/src/ops/linear.cc\
+		${FF_HOME}/src/ops/mean.cc\
 		${FF_HOME}/src/ops/noop.cc\
 		${FF_HOME}/src/ops/pool_2d.cc\
 		${FF_HOME}/src/ops/reshape.cc\
@@ -93,12 +100,13 @@ GEN_SRC += ${FF_HOME}/src/runtime/accessor.cc\
 
 FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/aggregate.cu\
-    ${FF_HOME}/src/ops/aggregate_spec.cu\
+		${FF_HOME}/src/ops/aggregate_spec.cu\
 		${FF_HOME}/src/ops/attention.cu\
 		${FF_HOME}/src/ops/batch_matmul.cu\
 		${FF_HOME}/src/ops/batch_norm.cu\
-		${FF_HOME}/src/ops/concat.cu\
 		${FF_HOME}/src/ops/cache.cu\
+		${FF_HOME}/src/ops/cast.cu\
+		${FF_HOME}/src/ops/concat.cu\
 		${FF_HOME}/src/ops/dropout.cu\
 		${FF_HOME}/src/ops/element_binary.cu\
 		${FF_HOME}/src/ops/element_unary.cu\
@@ -106,7 +114,9 @@ FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/ops/flat.cu\
 		${FF_HOME}/src/ops/fused.cu\
 		${FF_HOME}/src/ops/group_by.cu\
+		${FF_HOME}/src/ops/layer_norm.cu\
 		${FF_HOME}/src/ops/linear.cu\
+		${FF_HOME}/src/ops/mean.cu\
 		${FF_HOME}/src/ops/pool_2d.cu\
 		${FF_HOME}/src/ops/reshape.cu\
 		${FF_HOME}/src/ops/reverse.cu\
@@ -129,15 +139,60 @@ FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
 		${FF_HOME}/src/runtime/simulator.cu\
 		${FF_HOME}/src/runtime/tensor.cu
 		
+FF_HIP_SRC	+= ${FF_HOME}/src/ops/conv_2d.cpp\
+		${FF_HOME}/src/ops/aggregate.cpp\
+		${FF_HOME}/src/ops/aggregate_spec.cpp\
+		${FF_HOME}/src/ops/attention.cpp\
+		${FF_HOME}/src/ops/batch_matmul.cpp\
+		${FF_HOME}/src/ops/batch_norm.cpp\
+		${FF_HOME}/src/ops/cache.cpp\
+		${FF_HOME}/src/ops/cast.cpp\
+		${FF_HOME}/src/ops/concat.cpp\
+		${FF_HOME}/src/ops/dropout.cpp\
+		${FF_HOME}/src/ops/element_binary.cpp\
+		${FF_HOME}/src/ops/element_unary.cpp\
+		${FF_HOME}/src/ops/embedding.cpp\
+		${FF_HOME}/src/ops/flat.cpp\
+		${FF_HOME}/src/ops/fused.cpp\
+		${FF_HOME}/src/ops/group_by.cpp\
+		${FF_HOME}/src/ops/layer_norm.cpp\
+		${FF_HOME}/src/ops/linear.cpp\
+		${FF_HOME}/src/ops/mean.cpp\
+		${FF_HOME}/src/ops/pool_2d.cpp\
+		${FF_HOME}/src/ops/reshape.cpp\
+		${FF_HOME}/src/ops/reverse.cpp\
+		${FF_HOME}/src/ops/softmax.cpp\
+		${FF_HOME}/src/ops/split.cpp\
+		${FF_HOME}/src/ops/topk.cpp\
+		${FF_HOME}/src/ops/transpose.cpp\
+		${FF_HOME}/src/parallel_ops/combine.cpp\
+		${FF_HOME}/src/parallel_ops/partition.cpp\
+		${FF_HOME}/src/parallel_ops/replicate.cpp\
+		${FF_HOME}/src/parallel_ops/reduction.cpp\
+		${FF_HOME}/src/parallel_ops/fused_parallel_op.cpp\
+		${FF_HOME}/src/loss_functions/loss_functions.cpp\
+		${FF_HOME}/src/metrics_functions/metrics_functions.cpp\
+		${FF_HOME}/src/runtime/accessor_kernel.cpp\
+    ${FF_HOME}/src/runtime/hip_helper.cpp\
+		${FF_HOME}/src/runtime/initializer_kernel.cpp\
+		${FF_HOME}/src/runtime/model.cpp\
+		${FF_HOME}/src/runtime/optimizer_kernel.cpp\
+		${FF_HOME}/src/runtime/simulator.cpp\
+		${FF_HOME}/src/runtime/tensor.cpp
+		
 GEN_GPU_SRC += $(FF_CUDA_SRC)
-GEN_HIP_SRC += $(FF_CUDA_SRC)
+ifeq ($(strip $(HIP_TARGET)),CUDA)
+  GEN_HIP_SRC += $(FF_CUDA_SRC)
+else
+  GEN_HIP_SRC += $(FF_HIP_SRC)
+endif
 
 ifneq ($(strip $(FF_USE_PYTHON)), 1)
   GEN_SRC		+= ${FF_HOME}/src/runtime/cpp_driver.cc
 endif
 
-INC_FLAGS	+= -I${FF_HOME}/include/ -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
-LD_FLAGS	+= -lcudnn -lcublas -lcurand -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64
+
+INC_FLAGS	+= -I${FF_HOME}/include
 CC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 NVCC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 HIPCC_FLAGS     += -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
@@ -162,12 +217,21 @@ endif
 ifeq ($(strip $(USE_CUDA)),1)
 CC_FLAGS	+= -DFF_USE_CUDA
 NVCC_FLAGS	+= -DFF_USE_CUDA
+INC_FLAGS	+= -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
+LD_FLAGS	+= -lcudnn -lcublas -lcurand -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64
 endif
 
 ifeq ($(strip $(USE_HIP)),1)
 ifeq ($(strip $(HIP_TARGET)),CUDA)
 CC_FLAGS	+= -DFF_USE_HIP_CUDA
 HIPCC_FLAGS	+= -DFF_USE_HIP_CUDA
+INC_FLAGS	+= -I$(CUDNN_HOME)/include -I$(CUDA_HOME)/include
+LD_FLAGS	+= -lcudnn -lcublas -lcurand -L$(CUDNN_HOME)/lib64 -L$(CUDA_HOME)/lib64
+else
+CC_FLAGS	+= -DFF_USE_HIP_ROCM
+HIPCC_FLAGS	+= -DFF_USE_HIP_ROCM
+INC_FLAGS	+= -I$(HIPLIB_HOME)/include -I$(HIPLIB_HOME)/include/miopen -I$(HIPLIB_HOME)/include/rocrand -I$(HIPLIB_HOME)/include/hiprand 
+LD_FLAGS	+= -lMIOpen -lhipblas -lhiprand -L$(HIPLIB_HOME)/lib
 endif
 endif
 

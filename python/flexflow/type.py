@@ -1,3 +1,5 @@
+from .config import *
+
 from enum import Enum
 
 class ActiMode(Enum):
@@ -17,11 +19,12 @@ class PoolType(Enum):
   POOL_AVG = 31
 
 class DataType(Enum):
-  DT_FLOAT = 40
-  DT_DOUBLE = 41
-  DT_INT32 = 42
-  DT_INT64 = 43
-  DT_BOOLEAN = 44
+  DT_BOOLEAN = 40
+  DT_INT32 = 41
+  DT_INT64 = 42
+  DT_FLOAT = 43
+  DT_DOUBLE = 44
+  DT_NONE = 49
 
 class LossType(Enum):
   LOSS_CATEGORICAL_CROSSENTROPY = 50
@@ -71,6 +74,9 @@ class OpType(Enum):
   SUBTRACT = 2042
   MULTIPLY = 2043
   DIVIDE = 2044
+  POW = 2045
+  MEAN = 2046
+  RSQRT = 2047
   INPUT = 2050
   OUTPUT = 2051
   MULTIHEAD_ATTENTION = 2060
@@ -88,6 +94,13 @@ class OpType(Enum):
   SCALAR_SUB = 2090
   SCALAR_TRUEDIV = 2091
   INIT_PARAM = 2092
+  FLOAT = 2100
+  CONTIGUOUS = 2101
+  TO = 2102
+  UNSQUEEZE = 2103
+  TYPE_AS = 2104
+  VIEW = 2105
+  ATTRIBUTE = 2200
 def enum_to_int(enum, enum_item):
   for item in enum:
     if (enum_item == item):
@@ -95,7 +108,7 @@ def enum_to_int(enum, enum_item):
 
   print(enum_item)
   print(enum)
-  assert 0, "unknow enum type " + str(enum_item) + " " + str(enum)
+  assert 0, "unknown enum type " + str(enum_item) + " " + str(enum)
   return -1
 
 def int_to_enum(enum, value):
@@ -103,7 +116,7 @@ def int_to_enum(enum, value):
     if (item.value == value):
       return item
 
-  assert 0, "unknow enum value " + str(value) + " " + str(enum)
+  assert 0, "unknown enum value " + str(value) + " " + str(enum)
   
 def enum_to_str(enum, enum_item):
   name = enum(enum_item).name
@@ -114,4 +127,4 @@ def str_to_enum(enum, value):
     if (item.name == value):
       return item
 
-  assert 0, "unknow enum value " + value + " " + str(enum)
+  assert 0, "unknown enum value " + value + " " + str(enum)

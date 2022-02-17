@@ -6,23 +6,8 @@ using Legion::Rect;
 using Legion::coord_t;
 
 namespace FlexFlow {
-#ifdef LEGION_USE_HIP
-#ifdef __HIP_PLATFORM_NVCC__
-extern "C" {
-cudaStream_t hipGetTaskStream();
-}
 
-cudaError_t get_legion_stream(cudaStream_t *stream)
-{
-#ifdef DISABLE_LEGION_CUDA_HIJACK
-  *stream = (cudaStream_t)0;
-#else
-  *stream = hipGetTaskStream();
-#endif
-  return cudaSuccess;
-}
-#endif
-#else
+#ifdef FF_USE_CUDA
 cudaError_t get_legion_stream(cudaStream_t *stream)
 {
 #ifdef DISABLE_LEGION_CUDA_HIJACK
@@ -32,7 +17,23 @@ cudaError_t get_legion_stream(cudaStream_t *stream)
   return cudaStreamCreate(stream);
 #endif
 }
+#elif FF_USE_HIP_CUDA
+extern "C" {
+  cudaStream_t hipGetTaskStream();
+}
+cudaError_t get_legion_stream(cudaStream_t *stream)
+{
+#ifdef DISABLE_LEGION_CUDA_HIJACK
+  *stream = (cudaStream_t)0;
+#else
+  *stream = hipGetTaskStream();
 #endif
+  return cudaSuccess;
+}  
+#else
+#error "Unknown device, please make sure if CUDA is enabled"
+#endif
+
 }; // namespace
 
 using FlexFlow::get_legion_stream;
@@ -153,9 +154,10 @@ void apply_add(float *data_ptr, const float *replica_ptr, size_t size)
   }
 }
 
+template<typename T>
 __global__
-void apply_add_with_scale(float *data_ptr, const float *grad_ptr,
-                          size_t size, float scale)
+void apply_add_with_scale(T *data_ptr, const T *grad_ptr,
+                          size_t size, T scale)
 {
   CUDA_KERNEL_LOOP(i, size)
   {
@@ -364,8 +366,14 @@ template __global__ void add_kernel<float>(float* dst, const float* src, size_t 
 template __global__ void add_kernel<double>(double* dst, const double* src, size_t size);
 
 template __global__ void copy_kernel<float>(float* dst, const float* src, coord_t size);
-template __global__ void copy_kernel<int>(int* dst, const int* src, coord_t size);
+template __global__ void copy_kernel<int32_t>(int32_t* dst, const int32_t* src, coord_t size);
+template __global__ void copy_kernel<int64_t>(int64_t* dst, const int64_t* src, coord_t size);
+
+template __global__ void apply_add_with_scale<float>(float *data_ptr, const float *grad_ptr, size_t size, float scale);
+template __global__ void apply_add_with_scale<double>(double *data_ptr, const double *grad_ptr, size_t size, double scale);
+template __global__ void apply_add_with_scale<int32_t>(int32_t *data_ptr, const int32_t *grad_ptr, size_t size, int32_t scale);
+template __global__ void apply_add_with_scale<int64_t>(int64_t *data_ptr, const int64_t *grad_ptr, size_t size, int64_t scale);
 
 template __host__ void print_tensor<float>(const float* ptr, size_t rect, const char* prefix);
-template __host__ void print_tensor<long>(const long* ptr, size_t rect, const char* prefix);
-
+template __host__ void print_tensor<int32_t>(const int32_t* ptr, size_t rect, const char* prefix);
+template __host__ void print_tensor<int64_t>(const int64_t* ptr, size_t rect, const char* prefix);

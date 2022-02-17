@@ -43,6 +43,13 @@ public:
   int seed;
 };
 
+struct ZeroInitMeta {
+  static const int MAX_NUM_REGIONS = 64;
+  int num_regions;
+  DataType data_types[MAX_NUM_REGIONS];
+};
+
+
 class ZeroInitializer : public Initializer
 {
 public:

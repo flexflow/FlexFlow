@@ -622,22 +622,15 @@ bool Op::estimate_sync_cost(Simulator* sim,
   return true;
 }
 
+
+
 float Simulator::default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TENSOR_DIM],
                                             int tensor_ndims, 
                                             const MachineView& view) 
 {
-  ParallelTensorBase tensor_base;
-  tensor_base.num_dims = tensor_ndims;
-  tensor_base.data_type = DT_FLOAT;
-  int num_replica_dims = 0;
-  for (int i = 0; i < tensor_ndims; i++) {
-    tensor_base.dims[i] = tensor_dims[i];
-    if (tensor_dims[i].is_replica_dim) {
-      num_replica_dims++;
-    }
-  }
+  ParallelTensorShape tensor_shape(tensor_ndims, tensor_dims, DT_FLOAT);
 
-  return this->default_estimate_sync_cost(&tensor_base, view, num_replica_dims);
+  return this->default_estimate_sync_cost(tensor_shape, view, tensor_shape.get_num_replica_dims());
 }
 
 float Simulator::default_estimate_sync_cost(const ParallelTensor tensor,
@@ -652,8 +645,8 @@ float Simulator::default_estimate_sync_cost(ParallelTensorShape const& tensor_sh
                                             int num_replicate_dims)
 {
   // Currently only support 1 replicate_dim
-  assert(num_replicate_dims == 1);
-  if (tensor_shape.dims[tensor_shape.num_dims-1].degree == 1) {
+  int num_replicas = tensor_shape.get_num_replicas();
+  if (num_replicas == 1) {
     // No replications
     return 0.0f;
   } else {

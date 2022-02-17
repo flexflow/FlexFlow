@@ -12,10 +12,10 @@ public:
         const std::vector<int>& split,
         int axis,
         const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
+  void print_layer(const FFModel& model) override {assert(0);}
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -32,10 +32,29 @@ public:
                              Legion::coord_t in_blk_size,
                              Legion::coord_t num_blks,
                              int numOutputs,
-                             cudaStream_t stream);
+                             ffStream_t stream);
+  static void forward_kernel_wrapper(float **out_ptrs,
+                                     float const *in_ptr,
+                                     Legion::coord_t const *out_blk_sizes,
+                                     Legion::coord_t in_blk_size,
+                                     Legion::coord_t num_blks,
+                                     int numOutputs);
+  static void backward_kernel(float *in_grad_ptr,
+                              float const **out_grad_ptr,
+                              Legion::coord_t const *out_blk_sizes,
+                              Legion::coord_t in_blk_size,
+                              Legion::coord_t num_blks,
+                              int numOutputs,
+                              ffStream_t stream);
+  static void backward_kernel_wrapper(float *in_grad_ptr,
+                                      float const **out_grad_ptr,
+                                      Legion::coord_t const *out_blk_sizes,
+                                      Legion::coord_t in_blk_size,
+                                      Legion::coord_t num_blks,
+                                      int numOutputs);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
 
   size_t get_params_hash() const override;
 public:

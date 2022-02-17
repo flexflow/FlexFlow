@@ -14,7 +14,11 @@
  */
 
 #include "flexflow/model.h"
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
 #include "flexflow/utils/cuda_helper.h"
+#else
+#include "flexflow/utils/hip_helper.h"
+#endif
 #include "flexflow/mapper.h"
 #include "flexflow/utils/test_utils.h"
 #include <dirent.h>
@@ -26,28 +30,30 @@
 #include "legion/legion_utilities.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/aggregate_spec.h"
-#include "flexflow/ops/cache.h"
-#include "flexflow/ops/reverse.h"
-#include "flexflow/ops/groupby.h"
-#include "flexflow/ops/transpose.h"
-#include "flexflow/ops/linear.h"
-#include "flexflow/ops/conv_2d.h"
-#include "flexflow/ops/pool_2d.h"
-#include "flexflow/ops/embedding.h"
-#include "flexflow/ops/batch_norm.h"
-#include "flexflow/ops/batch_matmul.h"
-#include "flexflow/ops/flat.h"
-#include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/attention.h"
-#include "flexflow/ops/element_binary.h"
-#include "flexflow/ops/softmax.h"
-#include "flexflow/ops/dropout.h"
-#include "flexflow/ops/split.h"
-#include "flexflow/ops/noop.h"
+#include "flexflow/ops/batch_matmul.h"
+#include "flexflow/ops/batch_norm.h"
+#include "flexflow/ops/cache.h"
+#include "flexflow/ops/cast.h"
 #include "flexflow/ops/concat.h"
-#include "flexflow/ops/reshape.h"
-#include "flexflow/ops/topk.h"
+#include "flexflow/ops/conv_2d.h"
+#include "flexflow/ops/dropout.h"
+#include "flexflow/ops/element_unary.h"
+#include "flexflow/ops/element_binary.h"
+#include "flexflow/ops/embedding.h"
+#include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
+#include "flexflow/ops/groupby.h"
+#include "flexflow/ops/linear.h"
+#include "flexflow/ops/layer_norm.h"
+#include "flexflow/ops/noop.h"
+#include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/reshape.h"
+#include "flexflow/ops/reverse.h"
+#include "flexflow/ops/softmax.h"
+#include "flexflow/ops/split.h"
+#include "flexflow/ops/topk.h"
+#include "flexflow/ops/transpose.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -61,7 +67,6 @@ using namespace Legion;
 
 LegionRuntime::Logger::Category log_model("Model");
 LegionRuntime::Logger::Category log_measure("measure");
-
 
 Op::Op(FFModel& model,
        OperatorType op_type,
@@ -230,8 +235,26 @@ void Op::zero_grad(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   Context ctx = ff.config.lg_ctx;
   ArgumentMap argmap;
-  IndexLauncher launcher(ZERO_INIT_TASK_ID, outputs[0]->parallel_is,
-                         TaskArgument(NULL, 0), argmap,
+  ZeroInitMeta meta;
+  meta.num_regions = numWeights + numOutputs;
+  assert(meta.num_regions <= ZeroInitMeta::MAX_NUM_REGIONS);
+  IndexSpace parallel_is = IndexSpace::NO_SPACE;
+  for (int i = 0; i < numWeights; i++) {
+    meta.data_types[i] = weights[i]->data_type;
+    if (parallel_is == IndexSpace::NO_SPACE)
+      parallel_is = weights[i]->parallel_is;
+    else
+      assert(parallel_is == weights[i]->parallel_is);
+  }
+  for (int i = 0; i < numOutputs; i++) {
+    meta.data_types[i + numWeights] = outputs[i]->data_type;
+    if (parallel_is == IndexSpace::NO_SPACE)
+      parallel_is = outputs[i]->parallel_is;
+    else
+      assert(parallel_is == outputs[i]->parallel_is);
+  }
+  IndexLauncher launcher(ZERO_INIT_TASK_ID, parallel_is,
+                         TaskArgument(&meta, sizeof(ZeroInitMeta)), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          outputs[0]->machine_view.hash());
   for (int i = 0; i < numWeights; i++) {
@@ -1588,8 +1611,9 @@ void FFModel::map_weight_with_dim(ParallelTensor weight, const Op* parallel_op)
   }
 }
 
-bool FFModel::get_parallel_tensor_from_tensor(const Tensor tensor,
-                                              ParallelTensor& parallel_tensor)
+bool FFModel::get_parallel_tensor_from_tensor(
+    const Tensor tensor,
+    ParallelTensor& parallel_tensor) const
 {
   assert(tensor->parallel_tensor != nullptr);
   parallel_tensor = tensor->parallel_tensor;
@@ -1760,7 +1784,8 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const ParallelTensor
   assert(tensor->num_dims == NDIM);
   if (config.computationMode == COMP_MODE_TRAINING) {
     // Current assume forward and grad share the same index space
-    assert(tensor->region.get_index_space() == tensor->region_grad.get_index_space());
+    if (tensor->region_grad != LogicalRegion::NO_REGION)
+      assert(tensor->region.get_index_space() == tensor->region_grad.get_index_space());
   }
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -1788,7 +1813,8 @@ void FFModel::create_data_parallel_partition_with_diff_dims(const ParallelTensor
   assert(runtime->is_index_partition_complete(ctx, ip));
   part_fwd = runtime->get_logical_partition(ctx, tensor->region, ip);
   if (config.computationMode == COMP_MODE_TRAINING) {
-    part_bwd = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
+    if (tensor->region_grad != LogicalRegion::NO_REGION)
+      part_bwd = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
   } else {
     part_bwd = LogicalPartition::NO_PART;
   }
@@ -2474,6 +2500,12 @@ Op* FFModel::create_operator_from_layer(Layer* layer,
       operators.push_back(op);
       return op;
     }
+    case OP_RESHAPE:
+    {
+      Op* op = Reshape::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_SOFTMAX:
     {
       Op* op = Softmax::create_operator_from_layer(*this, layer, inputs);
@@ -3078,6 +3110,9 @@ std::string FFModel::get_operator_type_name(OperatorType type) const
     case OP_WEIGHT: return "Weight";
     case OP_NOOP: return "NoOp";
     case OP_FUSED: return "FusedOp";
+    case OP_RSQRT: return "Rsqrt";
+    case OP_POW: return "Pow";
+    case OP_MEAN: return "Mean";
     // Parallel Ops
     case OP_REPARTITION: return "Repartition";
     case OP_COMBINE: return "Combine";
@@ -3626,6 +3661,28 @@ void register_flexflow_internal_tasks()
     Runtime::preregister_task_variant<ElementBinary::backward_task>(
         registrar, "ElementWiseBinary Backward Task");
   }
+  // Cast
+  {
+    TaskVariantRegistrar registrar(CAST_INIT_TASK_ID, "Cast Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Cast::init_task>(
+        registrar, "Cast Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CAST_FWD_TASK_ID, "Cast Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Cast::forward_task>(
+        registrar, "Cast Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(CAST_BWD_TASK_ID, "Cast Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Cast::backward_task>(
+        registrar, "Cast Backward Task");
+  }
   // Conv2D task
   {
     TaskVariantRegistrar registrar(CONV2D_INIT_TASK_ID, "Conv2D Init");
@@ -3872,6 +3929,28 @@ void register_flexflow_internal_tasks()
     registrar.set_leaf();
     Runtime::preregister_task_variant<BatchMatmul::backward_task>(
         registrar, "BatchMatmul Backward Task");
+  }
+  // LayerNorm task
+  {
+    TaskVariantRegistrar registrar(LAYERNORM_INIT_TASK_ID, "layernorm_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, LayerNorm::init_task>(
+        registrar, "layernorm_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(LAYERNORM_FWD_TASK_ID, "layernorm_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<LayerNorm::forward_task>(
+        registrar, "layernorm_fwd_task");
+  }
+  {
+    TaskVariantRegistrar registrar(LAYERNORM_BWD_TASK_ID, "layernorm_bwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<LayerNorm::backward_task>(
+        registrar, "layernorm_bwd_task");
   }
   // Linear task
   {

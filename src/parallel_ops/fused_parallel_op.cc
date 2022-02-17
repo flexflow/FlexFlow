@@ -260,4 +260,16 @@ Node FFModel::get_or_create_fused_parallel_node(const ParallelTensor input,
   return ret;
 }
 
+void FusedParallelOp::forward_task(
+    const Task *task,
+    const std::vector<PhysicalRegion>& regions,
+    Context ctx, Runtime* runtime)
+{}
+
+void FusedParallelOp::backward_task(
+    const Task *task,
+    const std::vector<PhysicalRegion>& regions,
+    Context ctx, Runtime* runtime)
+{}
+
 }; // namespace FlexFlow

@@ -49,13 +49,13 @@ struct TensorBase {
   //bool is_valid_machine_view(const MachineView& view) const;
   void print(const std::string& name) const;
   //static bool update_parallel_ids(int numdim, ParallelDim* dims);
-  //template <typename T>
-  //bool set_tensor(const FFModel* model,
-  //                 const std::vector<int>& dims,
-  //                 const T* data);
-  //template <typename T>
-  //bool get_tensor(const FFModel* model,
-  //                T* data);
+  template <typename T>
+  bool set_tensor(const FFModel* model,
+                   const std::vector<int>& dims,
+                   const T* data);
+  template <typename T>
+  bool get_tensor(const FFModel* model,
+                  T* data);
   //TensorShape get_shape() const;
 private:
   //template <typename T>

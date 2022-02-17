@@ -11,10 +11,7 @@ def top_level_task():
 
   dims_input = [ffconfig.batch_size, 3, 32, 32]
   input_tensor = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
-  
-  torch_model = PyTorchModel("cnn.ff")
-  
-  output_tensors = torch_model.apply(ffmodel, [input_tensor, input_tensor])
+  output_tensors = PyTorchModel.file_to_ff("cnn.ff", ffmodel, [input_tensor, input_tensor])
 
   t = ffmodel.softmax(output_tensors[0])
 
@@ -67,3 +64,4 @@ def top_level_task():
 if __name__ == "__main__":
   print("cifar10 cnn")
   top_level_task()
+

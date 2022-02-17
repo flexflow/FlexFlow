@@ -38,6 +38,14 @@ struct ParallelDim {
     return true;
   }
 
+  bool operator!=(const ParallelDim &rhs) const
+  {
+    if (size != rhs.size) return true;
+    if (degree != rhs.degree) return true;
+    if (parallel_idx != rhs.parallel_idx) return true;
+    return false;
+  }
+
   int size = 0;
   int degree = UNKNOWN_DEGREE;
   int parallel_idx = UNKNOWN_INDEX;
@@ -45,6 +53,9 @@ struct ParallelDim {
 };
 
 struct ParallelTensorShape {
+  ParallelTensorShape() = default;
+  ParallelTensorShape(int num_dims, ParallelDim const dims[MAX_TENSOR_DIM], DataType data_type);
+
   int num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   DataType data_type;
@@ -54,6 +65,9 @@ struct ParallelTensorShape {
 
   size_t get_piece_size() const;
   bool is_valid() const;
+
+  int get_num_replica_dims() const;
+  int get_num_replicas() const;
   
   std::unordered_map<int, int> get_mv_dim_to_tensor_dim_mapping() const;
   std::unordered_map<int, int> get_tensor_dim_to_mv_dim_mapping() const;
@@ -94,6 +108,8 @@ struct ParallelTensorBase {
   size_t get_owner_independent_hash() const;
   size_t get_volume() const;
   size_t get_total_num_parts() const;
+  int get_num_replica_dims() const;
+  int get_num_replicas() const;
   Legion::Domain get_domain() const;
   bool check_valid() const;
   bool is_valid_machine_view(const MachineView& view) const;

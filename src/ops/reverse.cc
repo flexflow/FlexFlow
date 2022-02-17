@@ -14,7 +14,6 @@
  */
 
 #include "flexflow/ops/reverse.h"
-#include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -22,6 +21,9 @@ using Legion::Context;
 using Legion::Runtime;
 using Legion::Domain;
 using Legion::Task;
+using Legion::Rect;
+using Legion::coord_t;
+using Legion::PhysicalRegion;
 using Legion::TaskLauncher;
 using Legion::IndexLauncher;
 using Legion::FutureMap;
@@ -130,6 +132,13 @@ void Reverse::init(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+OpMeta* Reverse::init_task(const Task* task,
+                           const std::vector<PhysicalRegion>& regions,
+                           Context ctx, Runtime* runtime)
+{
+  return NULL;
+}
+
 void Reverse::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
@@ -148,6 +157,37 @@ void Reverse::forward(const FFModel& ff)
       WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+void Reverse::forward_task(const Task* task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime* runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  const Reverse* reverse = (const Reverse*) task->args;
+  Domain in_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain out_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+  assert(out_domain == in_domain);
+  const float* in_ptr = helperGetTensorPointerRO<float>(
+    regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  float* out_ptr = helperGetTensorPointerWO<float>(
+    regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  int axis = in_domain.get_dim() - reverse->axis - 1;
+  coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
+  for (int i = 0; i < out_domain.get_dim(); i++) {
+    if (i < axis)
+      in_blk_size *= out_domain.hi()[i] - out_domain.lo()[i] + 1;
+    else if (i == axis)
+      reverse_dim_size = out_domain.hi()[i] - out_domain.lo()[i] + 1;
+    else
+      num_out_blks *= out_domain.hi()[i] - out_domain.lo()[i] + 1;
+  }
+  int output_size = out_domain.get_volume();
+
+  Reverse::forward_kernel_wrapper(in_ptr, out_ptr, num_out_blks, reverse_dim_size, in_blk_size, output_size);
 }
 
 void Reverse::backward(const FFModel& ff)
@@ -170,6 +210,96 @@ void Reverse::backward(const FFModel& ff)
                       READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+void Reverse::backward_task(const Task* task,
+                            const std::vector<PhysicalRegion> &regions,
+                            Context ctx, Runtime* runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  const Reverse* reverse = (const Reverse*) task->args;
+  Domain out_grad_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain in_grad_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+  assert(out_grad_domain == in_grad_domain);
+  const float* out_grad_ptr = helperGetTensorPointerRO<float>(
+    regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  float* in_grad_ptr = helperGetTensorPointerRW<float>(
+    regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  // We reuse the forward kernel for backward tasks
+  int axis = in_grad_domain.get_dim() - reverse->axis - 1;
+  coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
+  for (int i = 0; i < in_grad_domain.get_dim(); i++) {
+    if (i < axis)
+      in_blk_size *= in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1;
+    else if (i == axis)
+      reverse_dim_size = in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1;
+    else
+      num_out_blks *= in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1;
+  }
+
+  Reverse::backward_kernel_wrapper(out_grad_ptr, in_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size, in_grad_domain.get_volume());
+}
+
+bool Reverse::measure_operator_cost(Simulator* sim,
+                                    const ParallelConfig& pc,
+                                    CostMetrics& cost_metrics) const
+{
+  ParallelTensorBase sub_input, sub_output;
+  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
+    return false;
+  }
+  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, op_type)) {
+    return false;
+  }
+
+  sim->free_all();
+  float *input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert (input_ptr != NULL);
+  float *output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_ptr != NULL);
+
+  coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
+  for (int i = 0; i < sub_output.num_dims; i++) {
+    if (i < axis) {
+      in_blk_size *= sub_output.dims[i].size;
+    } else if (i == axis) {
+      reverse_dim_size = sub_output.dims[i].size;
+    } else {
+      num_out_blks *= sub_output.dims[i].size;
+    }
+  }
+
+  std::function<void()> forward, backward;
+  forward = [&] {
+     forward_kernel_wrapper(input_ptr, output_ptr, num_out_blks, reverse_dim_size, in_blk_size, sub_output.get_volume());
+  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float *input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    assert (input_grad_ptr != NULL);
+    float *output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert (output_grad_ptr != NULL);
+    backward = [&] {
+      backward_kernel_wrapper(output_grad_ptr, input_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size, sub_input.get_volume());
+    };
+  }
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure Reverse] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time,
+        cost_metrics.backward_time);
+  } else {
+    printf("[Measure Reverse] name(%s) forward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time);
+  }
+
+  return true;
 }
 
 }; // namespace FlexFlow

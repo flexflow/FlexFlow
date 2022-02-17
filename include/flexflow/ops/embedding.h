@@ -21,6 +21,7 @@ namespace Output {
 class EmbeddingMeta : public OpMeta {
 public:
   EmbeddingMeta(FFHandler handle): OpMeta(handle) {}
+  DataType input_data_type;
   AggrMode aggr;
 };
 
@@ -44,11 +45,11 @@ public:
             Embedding const &other,
             const ParallelTensor input,
             bool allocate_weights);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
   //void update(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
+  void print_layer(const FFModel& model) override {assert(0);}
   //Parameter* get_parameter(int index);
   //void create_weights(FFModel& model);
   //void create_input_partition(FFModel& model);
@@ -71,7 +72,8 @@ public:
   static void backward_task_cpu(const Legion::Task *task,
                                 const std::vector<Legion::PhysicalRegion> &regions,
                                 Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_kernel(int64_t const *input_ptr,
+  template<typename TI>
+  static void forward_kernel(TI const *input_ptr,
                              float *output_ptr,
                              float const *weight_ptr,
                              int in_dim,
@@ -79,8 +81,19 @@ public:
                              int batch_size,
                              AggrMode aggr,
                              int outputSize,
-                             cudaStream_t stream);
-  static void backward_kernel(int64_t const *input_ptr,
+                             ffStream_t stream);
+  template<typename TI>
+  static void forward_kernel_wrapper(const EmbeddingMeta *m,
+                                     TI const *input_ptr,
+                                     float *output_ptr,
+                                     float const *weight_ptr,
+                                     int in_dim,
+                                     int out_dim,
+                                     int batch_size,
+                                     AggrMode aggr,
+                                     int outputSize);
+  template<typename TI>
+  static void backward_kernel(TI const *input_ptr,
                               float const *output_ptr,
                               float *weight_grad_ptr,
                               int in_dim,
@@ -88,23 +101,36 @@ public:
                               int batch_size,
                               AggrMode aggr,
                               int outputSize,
-                              cudaStream_t stream);
+                              ffStream_t stream);
+  template<typename TI>
+  static void backward_kernel_wrapper(const EmbeddingMeta *m,
+                                      TI const *input_ptr,
+                                      float const *output_ptr,
+                                      float *weight_grad_ptr,
+                                      int in_dim,
+                                      int out_dim,
+                                      int batch_size,
+                                      AggrMode aggr,
+                                      int outputSize);
+  void rand_generate_int64_wrapper(int64_t* ptr, size_t size, int64_t p) const;
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
 
   size_t get_params_hash() const override;  
 
   EmbeddingParams get_params() const;
 private:
-  template<int NDIM>
-  static void forward_task_with_dim(const Legion::Task *task,
-                                    const std::vector<Legion::PhysicalRegion> &regions,
-                                    Legion::Context ctx, Legion::Runtime *runtime);
-  template<int NDIM>
-  static void backward_task_with_dim(const Legion::Task *task,
-                                     const std::vector<Legion::PhysicalRegion> &regions,
-                                     Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename TI>
+  static void forward_task_with_type(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename TI>
+  static void backward_task_with_type(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
 
   int input_vocab_size_replica_dim() const;
   int input_channel_out_replica_dim() const;

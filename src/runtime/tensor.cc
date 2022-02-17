@@ -42,6 +42,33 @@ size_t TensorBase::get_volume() const
   return volume;
 }
 
+template <typename T>
+bool TensorBase::set_tensor(
+    const FFModel* ff,
+    const std::vector<int>& dim_sizes,
+    const T* data) {
+  if (num_dims != (int)dim_sizes.size())
+    return false;
+  for (int i = 0; i < num_dims; i++) {
+    if (dims[num_dims-1-i] != dim_sizes[i])
+      return false;
+  }
+  ParallelTensor ptensor = nullptr;
+  ff->get_parallel_tensor_from_tensor(this, ptensor);
+  ptensor->set_tensor<T>(ff, dim_sizes, data);
+  return true;
+}
+
+template <typename T>
+bool TensorBase::get_tensor(
+    const FFModel* ff,
+    T* data) {
+  ParallelTensor ptensor = nullptr;
+  ff->get_parallel_tensor_from_tensor(this, ptensor);
+  ptensor->get_tensor<T>(ff, data);
+  return true;
+}
+
 bool ParallelTensorShape::is_valid() const {
   bool used[MAX_TENSOR_DIM];
   std::fill_n(used, MAX_TENSOR_DIM, false);
@@ -387,6 +414,14 @@ size_t ParallelTensorBase::get_total_num_parts() const
   return parts;
 }
 
+int ParallelTensorBase::get_num_replica_dims() const { 
+  return this->get_shape().get_num_replica_dims();
+}
+
+int ParallelTensorBase::get_num_replicas() const {
+  return this->get_shape().get_num_replicas();
+}
+
 Domain ParallelTensorBase::get_domain() const
 {
   Domain d;
@@ -453,6 +488,16 @@ void ParallelTensorBase::print(const std::string& name) const
 
 }
 
+ParallelTensorShape::ParallelTensorShape(int num_dims, 
+                                         ParallelDim const dims[MAX_TENSOR_DIM], 
+                                         DataType data_type)
+  : num_dims(num_dims), data_type(data_type)
+{
+  for (int i = 0; i < num_dims; i++) {
+    this->dims[i] = dims[i];
+  }
+}
+
 ParallelTensorShape ParallelTensorBase::get_shape() const {
   ParallelTensorShape shape;
   shape.num_dims = this->num_dims;
@@ -462,6 +507,28 @@ ParallelTensorShape ParallelTensorBase::get_shape() const {
   }
 
   return shape;
+}
+
+int ParallelTensorShape::get_num_replica_dims() const {
+  int num_replica_dims = 0;
+  for (int i = 0; i < this->num_dims; i++) {
+    if (this->dims[i].is_replica_dim) {
+      num_replica_dims++; 
+    }
+  }
+
+  return num_replica_dims;
+}
+
+int ParallelTensorShape::get_num_replicas() const {
+  int num_replicas = 1;
+  for (int i = 0; i < this->num_dims; i++) {
+    if (this->dims[i].is_replica_dim) {
+      num_replicas *= this->dims[i].degree;
+    }
+  }
+
+  return num_replicas;
 }
 
 std::ostream& operator<<(std::ostream &s, ParallelTensorShape const &shape) {
@@ -511,7 +578,130 @@ bool ParallelTensorBase::is_valid_machine_view(const MachineView& view) const
   return true;
 }
 
+template <typename T>
+bool ParallelTensorBase::set_tensor(
+    const FFModel* ff,
+    const std::vector<int>& dim_sizes,
+    const T* data)
+{
+  Context ctx = ff->config.lg_ctx;
+  Runtime* runtime = ff->config.lg_hlr;
+  //TODO: check data type matches
+  //TODO: Currently we use a task launch, change to index launch for NCCL parameter
+  size_t volume = 1, num_replicas = 0;
+  if (sync_type == ParameterSyncType::NCCL) {
+    Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+    num_replicas = domain.get_volume();
+  } else if (sync_type == ParameterSyncType::PS) {
+    num_replicas = 1;
+  } else {
+    assert(false);
+  }
+  for (size_t i = 0; i < dim_sizes.size(); i++) {
+    volume = volume * dim_sizes[i];
+  }
+  RegionRequirement req(region, READ_WRITE, EXCLUSIVE, region);
+  req.add_field(FID_DATA);
+  InlineLauncher launcher(req);
+  PhysicalRegion pr = runtime->map_region(ctx, launcher);
+  pr.wait_until_valid();
+  switch (num_dims) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      TensorAccessorW<T, DIM> acc(pr, req, FID_DATA, ctx, runtime, true); \
+      assert(acc.rect.volume() == volume * num_replicas); \
+      T* ptr = acc.ptr; \
+      for (size_t i = 0; i < num_replicas; i++) { \
+        memcpy(ptr, data, volume * sizeof(T)); \
+        ptr += volume; \
+      } \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      // Unsupported dim
+      assert(false);
+  }
+  runtime->unmap_region(ctx, pr);
+  return true;
+}
+
+template <typename T>
+bool ParallelTensorBase::get_tensor(
+    const FFModel* ff,
+    T* data)
+{
+  Context ctx = ff->config.lg_ctx;
+  Runtime* runtime = ff->config.lg_hlr;
+  LogicalRegion weight_lr = LogicalRegion::NO_REGION;
+  if (sync_type == ParameterSyncType::PS) {
+    weight_lr = region;
+  } else {
+    assert(owner_op != NULL);
+    Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+    switch (domain.get_dim()) {
+#define DIMFUNC(DIM) \
+      case DIM: \
+      { \
+        DomainPoint point = Point<DIM>::ZEROES(); \
+        weight_lr = runtime->get_logical_subregion_by_color( \
+            ctx, part, point); \
+        break; \
+      }
+      LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    }
+  }
+  //TODO: check data type matches
+  size_t volume = 1;
+  for (int i = 0; i < num_dims; i++) {
+    volume = volume * dims[i].size;
+  }
+  RegionRequirement req(weight_lr, READ_ONLY, EXCLUSIVE, region);
+  req.add_field(FID_DATA);
+  InlineLauncher launcher(req);
+  PhysicalRegion pr = runtime->map_region(ctx, launcher);
+  pr.wait_until_valid();
+  switch (num_dims) {
+#define DIMFUNC(DIM) \
+    case DIM: \
+    { \
+      TensorAccessorR<T, DIM> acc(pr, req, FID_DATA, ctx, runtime); \
+      assert(acc.rect.volume() == volume); \
+      memcpy(data, acc.ptr, volume * sizeof(T)); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      // Unsupported dim
+      assert(false);
+  }
+  runtime->unmap_region(ctx, pr);
+  return true;
+}
+
 template float* ParallelTensorBase::get_raw_ptr<float>(FFConfig &config);
 template int32_t* ParallelTensorBase::get_raw_ptr<int32_t>(FFConfig &config);
+
+template bool TensorBase::set_tensor<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
+template bool TensorBase::get_tensor<float>(const FFModel* ff, float* data);
+template bool TensorBase::set_tensor<double>(const FFModel* ff, const std::vector<int>& dims, const double* data);
+template bool TensorBase::get_tensor<double>(const FFModel* ff, double* data);
+template bool TensorBase::set_tensor<int32_t>(const FFModel* ff, const std::vector<int>& dims, const int32_t* data);
+template bool TensorBase::get_tensor<int32_t>(const FFModel* ff, int32_t* data);
+template bool TensorBase::set_tensor<int64_t>(const FFModel* ff, const std::vector<int>& dims, const int64_t* data);
+template bool TensorBase::get_tensor<int64_t>(const FFModel* ff, int64_t* data);
+
+template bool ParallelTensorBase::set_tensor<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
+template bool ParallelTensorBase::get_tensor<float>(const FFModel* ff, float* data);
+template bool ParallelTensorBase::set_tensor<double>(const FFModel* ff, const std::vector<int>& dims, const double* data);
+template bool ParallelTensorBase::get_tensor<double>(const FFModel* ff, double* data);
+template bool ParallelTensorBase::set_tensor<int32_t>(const FFModel* ff, const std::vector<int>& dims, const int32_t* data);
+template bool ParallelTensorBase::get_tensor<int32_t>(const FFModel* ff, int32_t* data);
+template bool ParallelTensorBase::set_tensor<int64_t>(const FFModel* ff, const std::vector<int>& dims, const int64_t* data);
+template bool ParallelTensorBase::get_tensor<int64_t>(const FFModel* ff, int64_t* data);
 
 }; // namespace FlexFlow

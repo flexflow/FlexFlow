@@ -6,6 +6,10 @@ namespace FlexFlow {
 using Legion::Context;
 using Legion::Runtime;
 using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::PhysicalRegion;
+using Legion::coord_t;
 using Legion::TaskLauncher;
 using Legion::IndexLauncher;
 using Legion::FutureMap;
@@ -178,6 +182,15 @@ void Flat::init(const FFModel& ff)
   set_opmeta_from_futuremap(ff, fm);
 }
 
+OpMeta* Flat::init_task(const Task *task,
+                        const std::vector<PhysicalRegion> &regions,
+                        Context ctx, Runtime *runtime)
+{
+  FFHandler handler = *((const FFHandler*) task->local_args);
+  FlatMeta* m = new FlatMeta(handler);
+  return m;
+}
+
 void Flat::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
@@ -199,6 +212,27 @@ void Flat::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+/*
+  regions[0](I): input
+  regions[1](O): output
+*/
+void Flat::forward_task(const Task *task,
+                        const std::vector<PhysicalRegion> &regions,
+                        Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  TensorAccessorR<float, Input::NUMDIM> acc_input(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, Output::NUMDIM> acc_output(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime,
+      false/*readOutput*/);
+  assert(acc_input.rect.volume() == acc_output.rect.volume());
+
+  Flat::forward_kernel_wrapper(acc_input.ptr, acc_output.ptr, acc_input.rect.volume());
+  //checkCUDA(cudaDeviceSynchronize());
+}
+
 void Flat::backward(const FFModel& ff)
 {
   ArgumentMap argmap;
@@ -218,6 +252,26 @@ void Flat::backward(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I/O) : input_grad
+  regions[1](I) : output_grad
+*/
+void Flat::backward_task(const Task *task,
+                         const std::vector<PhysicalRegion> &regions,
+                         Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  TensorAccessorW<float, Input::NUMDIM> acc_input_grad(
+    regions[0], task->regions[0], FID_DATA, ctx, runtime,
+    true/*readOutput*/);
+  TensorAccessorR<float, Output::NUMDIM> acc_output_grad(
+    regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());
+
+  Flat::backward_kernel_wrapper(acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
 }
 
 Domain Flat::get_input_tensor_shape(const ParallelConfig& pc,
@@ -243,6 +297,55 @@ Domain Flat::get_input_tensor_shape(const ParallelConfig& pc,
 
 void Flat::serialize(Legion::Serializer& sez) const {
   return; 
+}
+
+bool Flat::measure_operator_cost(Simulator* sim,
+                                 const ParallelConfig& pc,
+                                 CostMetrics& cost_metrics) const
+{
+  ParallelTensorBase sub_input, sub_output;
+  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
+    return false;
+  }
+  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, op_type)) {
+    return false;
+  }
+
+  sim->free_all();
+  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert (input_ptr != NULL);
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_ptr != NULL);
+  size_t num_elements = sub_output.get_volume();
+
+  std::function<void()> forward, backward;
+  forward = [&] {
+    forward_kernel_wrapper(input_ptr, output_ptr, num_elements);
+  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert (output_grad_ptr != NULL);
+    assert (input_grad_ptr != NULL);
+    backward = [&] {
+      backward_kernel_wrapper(input_grad_ptr, output_grad_ptr, num_elements);
+    };
+  }
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    log_measure.debug("[Measure Flat] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time,
+        cost_metrics.backward_time);
+  } else {
+    log_measure.debug("[Measure Flat] name(%s) forward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time);
+  }
+
+  return true;
 }
 
 using PCG::Node;

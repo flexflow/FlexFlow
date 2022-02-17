@@ -40,6 +40,27 @@ public:
   void backward(FFModel* model, const ParallelTensor logit, const ParallelTensor label);
   template<int NDIM>
   void backward_with_dim(FFModel* model, const ParallelTensor logit, const ParallelTensor label);
+  static void sparse_categorical_crossentropy_loss_backward_kernel_wrapper(float *logit_grad_ptr,
+                                                                           const float *logit_ptr,
+                                                                           const int *label_ptr,
+                                                                           size_t logit_volume,
+                                                                           size_t logit_grad_volume,
+                                                                           int num_samples,
+                                                                           int num_classes,
+                                                                           int k,
+                                                                           float scale_factor);
+  static void categorical_crossentropy_loss_backward_kernel_wrapper(float *logit_grad_ptr,
+                                                                    const float *logit_ptr,
+                                                                    const float *label_ptr,
+                                                                    size_t logit_volume,
+                                                                    size_t logit_grad_volume,
+                                                                    float scale_factor);
+  static void mean_squared_error_avg_loss_backward_kernel_wrapper(float *logit_grad_ptr,
+                                                                  const float *logit_ptr,
+                                                                  const float *label_ptr,
+                                                                  size_t logit_volume,
+                                                                  size_t logit_grad_volume,
+                                                                  float scale_factor);
 public:
   FFModel* model;
   LossType loss_type;

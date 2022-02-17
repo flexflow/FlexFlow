@@ -79,6 +79,11 @@ void Layer::add_float_property(const std::string& key, float value)
   float_properties[key] = value;
 }
 
+void Layer::add_int_vector_property(const std::string& key, const std::vector<int>& value)
+{
+  int_vector_properties[key] = value;
+}
+
 void Layer::add_initializer(const std::string& key,
                             Initializer* initializer)
 {
@@ -101,6 +106,18 @@ bool Layer::get_float_property(const std::string& key, float& value) const
 {
   const auto& it = float_properties.find(key);
   if (it == float_properties.end()) {
+    assert(false);
+    return false;
+  } else {
+    value = it->second;
+    return true;
+  }
+}
+
+bool Layer::get_int_vector_property(const std::string& key, std::vector<int>& value) const
+{
+  const auto& it = int_vector_properties.find(key);
+  if (it == int_vector_properties.end()) {
     assert(false);
     return false;
   } else {

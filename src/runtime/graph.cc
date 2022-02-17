@@ -21,6 +21,7 @@
 #include "flexflow/ops/conv_2d.h"
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/reshape.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/flat.h"
@@ -762,7 +763,6 @@ void Graph::replace_subgraph_with_nonempty(std::unordered_set<Node> const &curre
   using FlexFlow::PCG::Utils::get_edges;
 
   Node new_sink_node = replaceWith.find_sink_node();
-  Node new_source_node = replaceWith.find_source_node();
 
   Graph old_subgraph = this->subgraph(currentNodes);
   Node old_sink_node = old_subgraph.find_sink_node();
@@ -778,11 +778,14 @@ void Graph::replace_subgraph_with_nonempty(std::unordered_set<Node> const &curre
   }
 
   std::unordered_set<Edge> old_in_edges = this->inEdges.at(old_source_node);
-  for (Edge const &old_in_edge : old_in_edges) {
-    Edge new_in_edge(old_in_edge);
-    new_in_edge.dstOp = new_source_node;
-    this->remove_edge(old_in_edge, false);
-    this->add_edge(new_in_edge);
+  if (!old_in_edges.empty()) {
+    Node new_source_node = replaceWith.find_source_node();
+    for (Edge const &old_in_edge : old_in_edges) {
+      Edge new_in_edge(old_in_edge);
+      new_in_edge.dstOp = new_source_node;
+      this->remove_edge(old_in_edge, false);
+      this->add_edge(new_in_edge);
+    }
   }
 
   std::unordered_set<Edge> old_out_edges = this->outEdges.at(old_sink_node);
@@ -1023,6 +1026,118 @@ std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> Graph::split_at_node(N
   };
 }
 
+void Graph::remove_input_nodes() {
+  using FlexFlow::PCG::Utils::nodes;
+
+  for (auto const &n : nodes(*this)) {
+    if (n.ptr->op_type == OP_INPUT) {
+      this->remove_node(n, true/*purge_edges*/);
+    }
+  }
+}
+
+Node Graph::clone_node(Node const &n) {
+  Node cloned = n;
+  cloned.original_guid = n.guid;
+  cloned.guid = this->model->node_global_guid++;
+  this->add_node(cloned);
+  return cloned;
+}
+
+Node Graph::declone_node(Node const &n) {
+  assert (n.original_guid.has_value());
+  Node decloned = n;
+  decloned.guid = n.original_guid.value();
+  decloned.original_guid = tl::nullopt;
+  this->add_node(decloned);
+  return decloned;
+}
+
+std::pair<Node, std::unordered_set<Node>> Graph::deduplicate_input_node(Node const &n) {
+  using FlexFlow::PCG::Utils::nodes;
+  using FlexFlow::PCG::Utils::outgoing_edges;
+
+  assert (n.original_guid.has_value());
+  std::unordered_set<Node> old_all_nodes = nodes(*this);
+  Node decloned = this->declone_node(n);
+
+  std::unordered_set<Node> old_nodes;
+  std::unordered_set<Edge> new_edges;
+  for (Node const &nn : old_all_nodes) {
+    if (nn.original_guid == n.original_guid) {
+      old_nodes.insert(nn);
+      for (Edge const &e : outgoing_edges(*this, nn)) {
+        Edge decloned_edge(e);
+        decloned_edge.replace_node(nn, decloned);
+        new_edges.insert(decloned_edge);
+      }
+      this->remove_node(nn, true/*purge_edges*/);
+    }
+  }
+
+  for (Edge const &e : new_edges) {
+    this->add_edge(e);
+  }
+
+  return { decloned, old_nodes };
+}
+
+std::unordered_map<Node, Node> Graph::deduplicate_input_nodes() {
+  using FlexFlow::PCG::Utils::nodes;
+
+  std::unordered_map<Node, Node> deduplication_map;
+
+  bool done;
+  while (true) {
+    done = true;
+    for (Node const &n : nodes(*this)) {
+      if (n.original_guid.has_value()) {
+        done = false;
+        auto kv = this->deduplicate_input_node(n);
+        for (auto const &r : kv.second) {
+          deduplication_map[r] = kv.first;
+        }
+        break;
+      }
+    }
+    if (done) { 
+      break;
+    }
+  }
+
+  return deduplication_map;
+}
+
+void Graph::duplicate_input_node(Node const &n) {
+  using FlexFlow::PCG::Utils::successors;
+  using FlexFlow::PCG::Utils::outgoing_edges;
+
+  assert (n.ptr->op_type == OP_INPUT);
+
+  std::unordered_map<Node, Node> clones;
+
+  for (auto const &s : successors(*this, n)) {
+    clones[s] = this->clone_node(n);
+  }
+
+  for (auto const &e : outgoing_edges(*this, n)) {
+    Edge cloned(e);
+    cloned.srcOp = clones.at(e.dstOp);
+    this->add_edge(cloned);
+  }
+  this->remove_node(n, true/*purge_edges*/);
+}
+
+void Graph::duplicate_input_nodes() {
+  using FlexFlow::PCG::Utils::nodes;
+
+  for (auto const &n : nodes(*this)) {
+    if (n.ptr->op_type == OP_INPUT) {
+      this->duplicate_input_node(n);
+    }
+  }
+}
+
 std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>>
 Graph::split_horizontal(Node const &source_node, Node const &sink_node) const
 {
@@ -1070,6 +1185,7 @@ std::ostream& operator<<(std::ostream &s, GraphCostResult const &r) {
 
 std::ostream& operator<<(std::ostream &s, GraphOptimizeResult const &r) {
   s << "GraphOptimizeResult{cost=" << r.cost << "}";
+  return s;
 }
 
 template <>
@@ -1540,6 +1656,8 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
         break;
       }
       case OP_EW_ADD:
+      case OP_EW_SUB:
+      case OP_EW_MUL:
       {
         sez.serialize(op->op_type);
         break;
@@ -1807,6 +1925,8 @@ void FFModel::deserialize_graph_optimal_view(
         break;
       }
       case OP_EW_ADD:
+      case OP_EW_SUB:
+      case OP_EW_MUL:
       {
         assert(num_inputs == 2);
         OperatorType op_type;
@@ -1827,6 +1947,11 @@ void FFModel::deserialize_graph_optimal_view(
       case OP_POOL2D:
       {
         node = Pool2D::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_RESHAPE:
+      {
+        node = Reshape::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_LINEAR:

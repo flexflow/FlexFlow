@@ -255,6 +255,14 @@ public:
   void contract_out_node(const Node&);
   float optimal_cost() const;
   std::unordered_map<Node, MachineView> optimal_views() const;
+  void remove_input_nodes();
+  void duplicate_input_node(Node const &);
+  void duplicate_input_nodes();
+  Node clone_node(Node const &);
+  std::pair<Node, std::unordered_set<Node>> deduplicate_input_node(Node const &);
+  std::unordered_map<Node, Node> deduplicate_input_nodes();
+  Node declone_node(Node const &);
+
 
 
   size_t hash(void) const;

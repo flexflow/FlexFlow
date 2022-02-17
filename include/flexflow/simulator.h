@@ -33,6 +33,7 @@ class LinearMeta;
 class Pool2DMeta;
 class ElementUnaryMeta;
 class ElementBinaryMeta;
+class EmbeddingMeta;
 //class SoftmaxMeta;
 class BatchMatmulMeta;
 //class BatchNormMeta;
@@ -613,7 +614,11 @@ public:
   int warmup_times, repeat_times;
   TaskManager* task_manager;
   CompMode computationMode;
+#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudaEvent_t start_event, end_event;
+#else
+  hipEvent_t start_event, end_event;
+#endif
   std::unordered_map<size_t, CostMetrics> hash_to_operator_cost;
 public:
   Conv2DMeta* conv2d_meta;
@@ -621,6 +626,7 @@ public:
   Pool2DMeta* pool2d_meta;
   ElementUnaryMeta* ele_unary_meta;
   ElementBinaryMeta* ele_binary_meta;
+  EmbeddingMeta* embedding_meta;
   //SoftmaxMeta *softmax_meta;
   BatchMatmulMeta *batch_matmul_meta;
   //BatchNormMeta *batch_norm_meta;

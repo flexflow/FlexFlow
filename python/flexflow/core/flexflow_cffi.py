@@ -22,7 +22,7 @@ import logging
 import warnings
 import numpy as np
 from .flexflow_logger import fflogger
-from .flexflow_type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
+from flexflow.type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
 from .flexflow_cffi_header import ffc, ffi
 
 ff_tracing_id = 200
@@ -216,6 +216,13 @@ class Concat(Op):
 class BatchNorm(Op):
   def __init__(self, handle, idx=None, name=None):
     super(BatchNorm, self).__init__(handle, idx, name)
+    
+# -----------------------------------------------------------------------
+# LayerNorm
+# -----------------------------------------------------------------------
+class LayerNorm(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(LayerNorm, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Dropout
@@ -251,6 +258,27 @@ class ScalarSub(Op):
 class ScalarTrueDiv(Op):
   def __init__(self, handle, idx=None, name=None):
     super(ScalarTrueDiv, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Rsqrt
+# -----------------------------------------------------------------------
+class Rsqrt(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Rsqrt, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Pow
+# -----------------------------------------------------------------------
+class Pow(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Pow, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Mean
+# -----------------------------------------------------------------------
+class Mean(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Mean, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Relu
@@ -396,7 +424,9 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
   elif op_type == OpType.DROPOUT:
     return Dropout(handle, idx, name)
   elif op_type == OpType.BATCH_NORM:
-    return Batch_Norm(handle, idx, name)
+    return BatchNorm(handle, idx, name)
+  elif op_type == OpType.LAYER_NORM:
+    return LayerNorm(handle, idx, name)
   elif op_type == OpType.BATCH_MATMUL:
     return Batch_Matmul(handle, idx, name)
   elif op_type == OpType.SPLIT:
@@ -411,8 +441,14 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Reverse(handle, idx, name)
   elif op_type == OpType.MULTIHEAD_ATTENTION:
     return Reverse(handle, idx, name)
+  elif op_type == OpType.RSQRT:
+    return Rsqrt(handle, idx, name)
+  elif op_type == OpType.POW:
+    return Pow(handle, idx, name)
+  elif op_type == OpType.MEAN:
+    return Mean(handle, idx, name)
   else:
-    assert 0, "unknow layer type {}".format(op_type)
+    assert 0, "unknown layer type {}".format(op_type)
     return None
 
 # -----------------------------------------------------------------------
@@ -582,8 +618,10 @@ class Tensor(object):
       np_array = np.empty(shape, dtype=np.float32)
     elif self.data_type == DataType.DT_INT32:
       np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
     else:
-      assert 0, "Unsupported datatype"
+      assert 0, f"Unsupported datatype: {self.data_type}"
     np_raw_ptr = np_array.__array_interface__['data']
     c_comm_type = enum_to_int(ParameterSyncType, comm_type)
     if np_array.dtype == np.float32:
@@ -592,6 +630,9 @@ class Tensor(object):
     elif np_array.dtype == np.int32:
       raw_ptr = ffi.cast("int*", np_raw_ptr[0])
       ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, c_comm_type)
+    elif np_array.dtype == np.int64:
+      raw_ptr = ffi.cast("int64_t*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, c_comm_type)
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
     assert ret_val == True
     return np_array
@@ -607,33 +648,44 @@ class Tensor(object):
 
   def __get_dims(self):
     self.num_dims = ffc.flexflow_tensor_get_num_dims(self.handle)
-    #d = ffc.flexflow_tensor_get_dims(self.handle)
-    #fflogger.debug(d[0], d[1], d[2], d[3])
+    # if (self.num_dims == 1):
+    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 0),)
+    # elif (self.num_dims == 2):
+    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+    # elif (self.num_dims == 3):
+    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+    # elif (self.num_dims == 4):
+    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 3), ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+    # elif (self.num_dims == 5):
+    #   self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 4), ffc.flexflow_tensor_get_dim(self.handle, 3), ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+    # else:
+    #   assert 0, "unknown num_dims"
+    d = ffc.flexflow_tensor_get_dims(self.handle)
     if (self.num_dims == 1):
-      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 0))
+      self.dims = (d[0],)
     elif (self.num_dims == 2):
-      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+      self.dims = (d[1], d[0])
     elif (self.num_dims == 3):
-      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+      self.dims = (d[2], d[1], d[0])
     elif (self.num_dims == 4):
-      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 3), ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+      self.dims = (d[3], d[2], d[1], d[0])
     elif (self.num_dims == 5):
-      self.dims = (ffc.flexflow_tensor_get_dim(self.handle, 4), ffc.flexflow_tensor_get_dim(self.handle, 3), ffc.flexflow_tensor_get_dim(self.handle, 2), ffc.flexflow_tensor_get_dim(self.handle, 1), ffc.flexflow_tensor_get_dim(self.handle, 0))
+      self.dims = (d[4], d[3], d[2], d[1], d[0])
     else:
       assert 0, "unknown num_dims"
 
   def __get_data_type(self):
     dtype = ffc.flexflow_tensor_get_data_type(self.handle)
     if (dtype == 40):
-      self.data_type = DataType.DT_FLOAT
-    elif (dtype == 41):
-      self.data_type = DataType.DT_DOUBLE
-    elif (dtype == 42):
-      self.data_type = DataType.DT_INT32
-    elif (dtype == 43):
-      self.data_type = DataType.DT_INT64
-    elif (dtype == 44):
       self.data_type = DataType.DT_BOOLEAN
+    elif (dtype == 41):
+      self.data_type = DataType.DT_INT32
+    elif (dtype == 42):
+      self.data_type = DataType.DT_INT64
+    elif (dtype == 43):
+      self.data_type = DataType.DT_FLOAT
+    elif (dtype == 44):
+      self.data_type = DataType.DT_DOUBLE
     else:
       assert 0, "unknown data type"
 
@@ -670,6 +722,7 @@ class Parameter(Tensor):
     np_shape = np_array.shape
     num_dims = len(np_shape)
     assert num_dims == self.num_dims, "please check dims (%d == %d)" %(num_dims, self.num_dims)
+    print(np_shape, self.dims)
     for i in range(0, num_dims):
       assert np_shape[i] == self.dims[i], "please check shape dim %d (%d == %d)" %(i, np_shape[i], self.dims[i])
     c_dims = ffi.new("int[]", self.dims)
@@ -696,7 +749,7 @@ class Parameter(Tensor):
 class FFModel(object):
   """
   """
-  __slots__ = ['handle', '_handle', '_layers', '_nb_layers', '_ffconfig', '_tracing_id']
+  __slots__ = ['handle', '_handle', '_layers', '_nb_layers', '_ffconfig', '_tracing_id', 'initializers']
   def __init__(self, ffconfig):
     """Constructor of FFModel.
            
@@ -713,13 +766,14 @@ class FFModel(object):
     global ff_tracing_id
     self._tracing_id = ff_tracing_id
     ff_tracing_id += 1
+    self.initializers = {}
 
   def get_layers(self):
     return self._layers
 
   def add_layer(self, op_type, name):
     layer_id = self._nb_layers
-    op_handle = ffc.flexflow_model_get_layer_by_id(self.handle, layer_id)
+    op_handle = ffc.flexflow_model_get_last_layer(self.handle)
     self._layers[self._nb_layers] = convert_op_handle_to_op(op_type, op_handle, idx=layer_id, name=name)
     self._nb_layers += 1
 
@@ -848,6 +902,67 @@ class FFModel(object):
     self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
 
+  def rsqrt(self, input, name=None):
+    """Layer that computes the element-wise reciprocal square-root.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_rsqrt(self.handle, input.handle, c_name)
+    self.add_layer(OpType.RSQRT, name)
+    return Tensor(handle, owner_op_type=OpType.RSQRT)
+
+  def pow(self, input, exponent, name=None):
+    """Layer that computes the element-wise power.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param exponent: exponent to raise each element in the input tensor.
+    :type exponent: float
+
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_pow(self.handle, input.handle, exponent, c_name)
+    self.add_layer(OpType.POW, name)
+    return Tensor(handle, owner_op_type=OpType.POW)
+
+  def mean(self, input, dims, keepdims=False, name=None):
+    """Layer that computes the mean of the input tensor across the given
+    dimensions.
+
+    :param input: the input Tensor.
+    :type input: Tensor
+
+    :param dims: dimensions to take the mean over.
+    :type dims: list
+
+    :param keepdims: keeps the dimensions in :attr:`dims` as size 1 if True and
+                     collapses the dimension if False. Default is False.
+    :type keepdims: bool
+
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    dims = list(dims)
+    c_dims = ffi.new("int[]", dims)
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_mean(self.handle, input.handle, c_dims, len(dims), keepdims, c_name)
+    self.add_layer(OpType.MEAN, name)
+    return Tensor(handle, owner_op_type=OpType.MEAN)
+
   def conv2d(self, input, out_channels, 
              kernel_h, kernel_w, 
              stride_h, stride_w, 
@@ -944,18 +1059,18 @@ class FFModel(object):
     self.add_layer(OpType.CONV2D, name)
     return Tensor(handle, owner_op_type=OpType.CONV2D)
 
-  def embedding(self, input, num_entires, out_dim, 
+  def embedding(self, input, num_embeddings, embedding_dim, 
                 aggr, shared_op=None, kernel_initializer=None, name=None):
     """Layer that turns positive integers into dense vectors of fixed size
              
     :param input: the input Tensor.
     :type input: Tensor
     
-    :param num_entires: size of the vocabulary, i.e. maximum integer index + 1
-    :type num_entires: int
+    :param num_embeddings: size of the vocabulary, i.e. maximum integer index + 1
+    :type num_embeddings: int
                 
-    :param out_dim: dimension of the dense embedding.
-    :type out_dim: int
+    :param embedding_dim: dimension of the dense embedding.
+    :type embedding_dim: int
                 
     :param aggr: aggregation mode. Options are AGGR_MODE_NONE, AGGR_MODE_SUM and AGGR_MODE_AVG.
     :type aggr: AggrMode
@@ -974,8 +1089,20 @@ class FFModel(object):
     c_name = get_c_name(name)
     shared_op_handle = self.__get_op_handle(shared_op)
     c_aggr = enum_to_int(AggrMode, aggr)
-    assert (type(kernel_initializer) is GlorotUniformInitializer) or (type(kernel_initializer) is ZeroInitializer) or (type(kernel_initializer) is UniformInitializer) or (type(kernel_initializer) is NormInitializer), "unknow initializer type"
-    handle = ffc.flexflow_model_add_embedding(self.handle,  input.handle, num_entires, out_dim, c_aggr, shared_op_handle, kernel_initializer.handle, c_name)
+    if kernel_initializer is None:
+      kernel_initializer = GlorotUniformInitializer(42)
+    assert (type(kernel_initializer) is GlorotUniformInitializer) or \
+      (type(kernel_initializer) is ZeroInitializer) or \
+      (type(kernel_initializer) is UniformInitializer) or \
+      (type(kernel_initializer) is NormInitializer), \
+      f"Unknown initializer type: {kernel_initializer}"
+    handle = ffc.flexflow_model_add_embedding(
+      self.handle, input.handle, num_embeddings, embedding_dim, c_aggr,
+      shared_op_handle, kernel_initializer.handle, c_name,
+    )
+    # NOTE: We must keep a reference to the initializer or else it will be
+    # immediately destructed
+    self.initializers[name] = kernel_initializer
     self.add_layer(OpType.EMBEDDING, name)
     return Tensor(handle, owner_op_type=OpType.EMBEDDING)
 
@@ -1075,6 +1202,13 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_batch_norm(self.handle, input.handle, relu, c_name)
     self.add_layer(OpType.BATCH_NORM, name)
     return Tensor(handle, owner_op_type=OpType.BATCH_NORM)
+    
+  def layer_norm(self, input, axes, elementwise_affine=True, eps=1e-5, name=None):
+    c_name = get_c_name(name)
+    c_axes = ffi.new("int[]", axes)
+    handle = ffc.flexflow_model_add_layer_norm(self.handle, input.handle, len(axes), c_axes, elementwise_affine, eps, c_name)
+    self.add_layer(OpType.LAYER_NORM, name)
+    return Tensor(handle, owner_op_type=OpType.LAYER_NORM)
 
   def batch_matmul(self, A, B, a_seq_length_dim=None, b_seq_length_dim=None, name=None):
     """Layer that applied batched matrix multiplication onto two input Tensors, :attr:`output = x * y`.
@@ -1655,6 +1789,7 @@ class FFModel(object):
       comp_mode = CompMode.TRAINING
     c_comp_mode = enum_to_int(CompMode, comp_mode)
     ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics), c_comp_mode)
+    print("Compiled ffmodel!")
 
   def fit(self, x=None, y=None, batch_size=None, epochs=1):
     """Trains the model for a fixed number of epochs (iterations on a dataset).
@@ -1766,6 +1901,9 @@ class FFModel(object):
   def get_layer_by_id(self, layer_id):
     return self._layers[layer_id]
 
+  def get_last_layer(self):
+    return self._layers[self._nb_layers-1]
+
   def get_layer_by_name(self, layer_name):
     for layer_id in self._layers:
       layer = self._layers[layer_id]
@@ -1816,6 +1954,8 @@ class FFModel(object):
       datatype = DataType.DT_FLOAT
     elif (full_array.dtype == "int32"):
       datatype = DataType.DT_INT32
+    elif (full_array.dtype == "int64"):
+       datatype = DataType.DT_INT64
     else:
       assert 0, "unsupported datatype"
 
@@ -1841,11 +1981,13 @@ class FFModel(object):
       datatype = DataType.DT_FLOAT
     elif (full_array.dtype == "int32"):
       datatype = DataType.DT_INT32
+    elif (full_array.dtype == "int64"):
+       datatype = DataType.DT_INT64
     else:
       assert 0, "unsupported datatype"
     np_raw_ptr = full_array.__array_interface__['data']
     raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-    print("numpy array: %s, %s, %s" %( str(np_raw_ptr), str(raw_ptr), hex(np_raw_ptr[0])))
+    print("numpy array: %s, %s, %s" % (str(np_raw_ptr), str(raw_ptr), hex(np_raw_ptr[0])))
     dataloader = SingleDataLoader(self, batch_tensor, raw_ptr, num_samples, datatype)
 
     return dataloader

@@ -9,11 +9,17 @@ class ElementBinaryMeta : public OpMeta {
 public:
   ElementBinaryMeta(FFHandler handle);
 #if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
+  cudnnTensorDescriptor_t input1Tensor, input2Tensor, outputTensor;
   cudnnOpTensorDescriptor_t opDesc;
+  cudnnReduceTensorDescriptor_t reduceAddDesc;
+#else
+  miopenTensorDescriptor_t input1Tensor, input2Tensor, outputTensor;
+  miopenTensorOp_t opDesc;
+  miopenReduceTensorDescriptor_t reduceAddDesc;
 #endif
   OperatorType op_type;
-  bool inplace_a;
+  bool inplace_a, has_same_operands;
+  bool broadcast_input1, broadcast_input2;
 };
 
 class ElementBinary : public Op {
@@ -24,18 +30,16 @@ public:
                 const ParallelTensor y,
                 bool inplace_a,
                 const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model) {assert(0);}
-  bool can_inplace_output();
-  bool has_inplace_output();
-  void do_inplace_output();
-  static Op* create_operator_from_layer(
-      FFModel& model,
-      const Layer* layer,
-      const std::vector<ParallelTensor>& inputs);
-
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
+  void print_layer(const FFModel& model) override {assert(0);}
+  bool can_inplace_output() override;
+  bool has_inplace_output() override;
+  void do_inplace_output() override;
+  static Op* create_operator_from_layer(FFModel& model,
+                                        const Layer* layer,
+                                        const std::vector<ParallelTensor>& inputs);
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
@@ -45,24 +49,38 @@ public:
   static void backward_task(const Legion::Task *task,
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
-  bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+  static void init_kernel(ElementBinaryMeta* m,
+                          const Legion::Domain& input1_domain,
+                          const Legion::Domain& input2_domain,
+                          const Legion::Domain& output_domain);
   static void forward_kernel(const ElementBinaryMeta* m,
-                      const float* in1_ptr,
-                      const float* in2_ptr,
-                      float* out_ptr,
-                      cudaStream_t stream);
+                             const float* in1_ptr,
+                             const float* in2_ptr,
+                             float* out_ptr,
+                             ffStream_t stream);
+  static void forward_kernel_wrapper(const ElementBinaryMeta* m,
+                                     const float* in1_ptr,
+                                     const float* in2_ptr,
+                                     float* out_ptr);
   static void backward_kernel(const ElementBinaryMeta* m,
-                       const float* out_grad_ptr,
-                       const float* in1_ptr,
-                       const float* in2_ptr,
-                       float* in1_grad_ptr,
-                       float* in2_grad_ptr,
-                       cudaStream_t stream);
+                              const float* out_grad_ptr,
+                              const float* in1_ptr,
+                              const float* in2_ptr,
+                              float* in1_grad_ptr,
+                              float* in2_grad_ptr,
+                              ffStream_t stream);
+  static void backward_kernel_wrapper(const ElementBinaryMeta* m,
+                                      const float* out_grad_ptr,
+                                      const float* in1_ptr,
+                                      const float* in2_ptr,
+                                      float* in1_grad_ptr,
+                                      float* in2_grad_ptr);
   size_t get_params_hash() const override;
+  bool measure_operator_cost(Simulator* sim,
+                            const ParallelConfig& pc,
+                            CostMetrics& cost_metrics) const override;
 public:
-  bool inplace_a;
+  bool inplace_a, has_same_operands;
 };
 
 }; // namespace FlexFlow

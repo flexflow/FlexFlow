@@ -8,6 +8,10 @@ namespace FlexFlow {
 // declare Legion names
 using Legion::Context;
 using Legion::Runtime;
+using Legion::Domain;
+using Legion::Task;
+using Legion::Rect;
+using Legion::coord_t;
 using Legion::PhysicalRegion;
 using Legion::TaskLauncher;
 using Legion::IndexLauncher;
@@ -31,8 +35,6 @@ Tensor FFModel::conv2d(const Tensor input,
                        Initializer* bias_initializer,
                        char const *name)
 {
-  //FIXME: temporarily disable use_bias
-  use_bias = false;
   assert(input->num_dims == 4); /*NCHW*/
 
   Layer *conv = new Layer(this, OP_CONV2D, name, 1/*inputs*/,
@@ -73,24 +75,6 @@ Tensor FFModel::conv2d(const Tensor input,
   conv->add_initializer("bias", bias_initializer);
   layers.push_back(conv);
   return conv->outputs[0];
-
-#ifdef DEADCODE
-  Conv2D *conv = new Conv2D(
-      *this, 
-      input, 
-      outChannels,
-      kernelH, kernelW,
-      strideH, strideW, 
-      paddingH, paddingW, 
-      activation,
-      groups,
-      false, // use_bias, // TODO FIXME @lockshaw
-      false,
-      name
-  );
-  layers.push_back(conv);
-  return conv->outputs[0];
-#endif
 }
 
 Op* Conv2D::create_operator_from_layer(
@@ -130,7 +114,7 @@ Op* Conv2D::create_operator_from_layer(
       paddingH, paddingW, 
       activation,
       groups,
-      false, // use_bias, // TODO FIXME @lockshaw
+      use_bias, 
       false, // allocate_weights
       layer->name);
 }
@@ -178,6 +162,10 @@ Node FFModel::get_or_create_conv2d_node(const ParallelTensor input,
                                         const Conv2DParams& params)
 {
   if (!params.is_valid(input)) {
+    return Node::INVALID_NODE;
+  }
+  // Currently disable parallelizing the height and width dimension
+  if (input->dims[0].degree > 1 || input->dims[1].degree > 1) {
     return Node::INVALID_NODE;
   }
 
@@ -517,6 +505,76 @@ void Conv2D::init(const FFModel& ff)
   set_opmeta_from_futuremap(ff, fm);
 }
 
+/*
+  regions[0]: input
+  regions[1]: output
+  regions[2](I): filter
+  regions[3](I): bias
+  regions[4](O): filter_grad
+  regions[5](O): input_grad
+*/
+OpMeta* Conv2D::init_task(const Task *task,
+                          const std::vector<PhysicalRegion> &regions,
+                          Context ctx, Runtime *runtime)
+{
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
+  const Conv2D* conv = (Conv2D*) task->args;
+  FFHandler handle = *((const FFHandler*) task->local_args);
+  TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, Conv2DOutput::NUMDIM> acc_output(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime,
+      false/*readOutput*/);
+  TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, Conv2DBias::NUMDIM> acc_bias(
+      regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, Conv2DKernel::NUMDIM> acc_kernel_grad(
+      regions[3], task->regions[3], FID_DATA, ctx, runtime,
+      false/*readOutput*/);
+  //TensorAccessorW<float, 4> acc_input_grad(
+  //    regions[4], task->regions[4], FID_DATA, ctx, runtime,
+  //    false/*readOutput*/);
+
+  Conv2DMeta* m = new Conv2DMeta(handle);
+  m->relu = conv->activation == AC_MODE_RELU;
+  m->use_bias = conv->use_bias;
+  m->profiling = conv->profiling;
+  m->trainableInputs[0] = conv->trainableInputs[0];
+  std::strcpy(m->op_name, conv->name);
+
+  int input_w = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
+  int input_h = acc_input.rect.hi[1] - acc_input.rect.lo[1] + 1;
+  int input_c = acc_input.rect.hi[2] - acc_input.rect.lo[2] + 1;
+  int input_n = acc_input.rect.hi[3] - acc_input.rect.lo[3] + 1;
+  int output_w = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
+  int output_h = acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1;
+  int output_c = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
+  int output_n = acc_output.rect.hi[3] - acc_output.rect.lo[3] + 1;
+
+  printf("init conv (input): n(%d) c(%d) h(%d) w(%d)\n",
+         input_n, input_c, input_h, input_w);
+  printf("init conv (output): n(%d) c(%d) h(%d) w(%d)\n",
+          output_n, output_c, output_h, output_w);
+
+  //printf("convDim: padding(%d %d) stride(%d %d)\n", conv->padding_h, conv->padding_w, conv->stride_h, conv->stride_w);
+  int pad_h = ((output_h - 1) * conv->stride_h + conv->kernel_h - input_h + 1) / 2;
+  int pad_w = ((output_w - 1) * conv->stride_w + conv->kernel_w - input_w + 1) / 2;
+  if (pad_h != conv->padding_h)
+    printf("Warning: changing conv_padding_h to satisfy output_h size\n");
+  if (pad_w != conv->padding_w)
+    printf("Warning: changing conv_padding_w to satisfy output_w size\n");
+
+  Conv2D::init_kernel(conv, m, 
+                      input_w, input_h, input_c, input_n,
+                      output_w, output_h, output_c, output_n,
+                      pad_h, pad_w,
+                      acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_kernel_grad.ptr);
+
+  return m;
+}
+
 void Conv2D::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
@@ -546,6 +604,37 @@ void Conv2D::forward(const FFModel& ff)
     launcher.add_field(3, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I): input
+  regions[1](O): output
+  regions[2](I): filter
+  regions[3](I): bias
+*/
+void Conv2D::forward_task(const Task *task,
+                          const std::vector<PhysicalRegion> &regions,
+                          Context ctx, Runtime *runtime)
+{
+  //Conv2D* conv = (Conv2D*) task->args;
+  const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
+  assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
+  assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));
+  TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, Conv2DOutput::NUMDIM> acc_output(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime,
+      false/*readOutput*/);
+  TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  const float* acc_bias_ptr = NULL;
+  if (m->use_bias) { 
+    TensorAccessorR<float, Conv2DBias::NUMDIM> acc_bias(
+        regions[3], task->regions[3], FID_DATA, ctx, runtime);
+    acc_bias_ptr = acc_bias.ptr;
+  }
+
+  Conv2D::forward_kernel_wrapper(m, acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_bias_ptr);
 }
 
 void Conv2D::backward(const FFModel& ff)
@@ -599,6 +688,65 @@ void Conv2D::backward(const FFModel& ff)
     launcher.add_field(rid++, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  region(I): input
+  region(I/O): input_grad (if trainableInputs[0])
+  region(I): output
+  region(I/O): output_grad
+  region(I): filter
+  region(I/O): filter_grad
+  region(I/O): bias_grad (if use_bias)
+*/
+void Conv2D::backward_task(const Task *task,
+                           const std::vector<PhysicalRegion> &regions,
+                           Context ctx, Runtime *runtime)
+{
+  //Conv2D* conv = (Conv2D*) task->args;
+  const Conv2DMeta* m = *((Conv2DMeta**) task->local_args);
+  assert(regions.size() == (5 + static_cast<size_t>(m->trainableInputs[0]) + static_cast<size_t>(m->use_bias)));
+  assert(task->regions.size() == (5 + static_cast<size_t>(m->trainableInputs[0]) + static_cast<size_t>(m->use_bias)));
+  size_t rid = 0;
+  TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
+      regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+  rid ++;
+  float* acc_input_grad_ptr = NULL;
+  if (m->trainableInputs[0]) {
+    TensorAccessorW<float, Conv2DInput::NUMDIM> acc_input_grad(
+        regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
+        true/*readOutput*/);
+    acc_input_grad_ptr = acc_input_grad.ptr;
+    rid ++;
+  }
+  TensorAccessorR<float, Conv2DOutput::NUMDIM> acc_output(
+      regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+  rid ++;
+  TensorAccessorW<float, Conv2DOutput::NUMDIM> acc_output_grad(
+      regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
+      true/*readOutput*/);
+  rid ++;
+  TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
+      regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
+  rid ++;
+  TensorAccessorW<float, Conv2DKernel::NUMDIM> acc_kernel_grad(
+      regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
+      true/*readOutput*/);
+  rid ++;
+  float* acc_bias_grad_ptr = NULL;
+  if (m->use_bias) { 
+    TensorAccessorW<float, Conv2DBias::NUMDIM> acc_bias_grad(
+        regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
+        true/*readOutput*/);
+    acc_bias_grad_ptr = static_cast<float*>(acc_bias_grad.ptr);
+    rid ++;
+  }
+  assert(rid == regions.size());
+
+  Conv2D::backward_kernel_wrapper(m, acc_input.ptr, acc_input_grad_ptr,
+                                  acc_output.ptr, acc_output_grad.ptr,
+                                  acc_kernel.ptr, acc_kernel_grad.ptr,
+                                  acc_bias_grad_ptr);
 }
 
 void Conv2D::print_layer(const FFModel& ff)

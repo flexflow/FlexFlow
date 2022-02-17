@@ -12,6 +12,9 @@ public:
 #if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t outputTensor;
   cudnnActivationDescriptor_t actiDesc;
+#else
+  miopenTensorDescriptor_t outputTensor;
+  miopenActivationDescriptor_t actiDesc;
 #endif
   const float *one_ptr;
   ActiMode activation;
@@ -76,7 +79,7 @@ public:
          int out_dim,
          ActiMode activation,
          bool _use_bias,
-	 DataType _data_type,
+         DataType _data_type,
          bool allocate_weights,
          const char* name);
   Linear(NodeCache& node_cache,
@@ -92,17 +95,20 @@ public:
          ParallelTensor const input, 
          bool allocate_weights);
 
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void print_layer(const FFModel& model);
-  bool get_int_parameter(PMParameter, int*) const;
+  void init(const FFModel&) override;
+  void forward(const FFModel&) override;
+  void backward(const FFModel&) override;
+  void print_layer(const FFModel& model) override;
+  bool get_int_parameter(PMParameter, int*) const override;
   static Op* create_operator_from_layer(FFModel& model,
                                         const Layer* layer,
                                         const std::vector<ParallelTensor>& inputs);
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
+  static void init_kernel(LinearMeta *m,
+                          int batch_size,
+                          int channel);
   static void forward_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
@@ -115,7 +121,13 @@ public:
                              const void* filter_ptr,
                              const void* bias_ptr,
                              int in_dim, int out_dim, int batch_size,
-                             cudaStream_t stream);
+                             ffStream_t stream);
+  static void forward_kernel_wrapper(const LinearMeta* m,
+                                     const void* input_ptr,
+                                     void* output_ptr,
+                                     const void* filter_ptr,
+                                     const void* bias_ptr,
+                                     int in_dim, int out_dim, int batch_size);
   static void backward_kernel(const LinearMeta* m,
                               const void* input_ptr,
                               void* input_grad_ptr,
@@ -125,15 +137,24 @@ public:
                               void* kernel_grad_ptr,
                               void* bias_ptr,
                               int in_dim, int out_dim, int batch_size,
-                              cudaStream_t stream);
+                              ffStream_t stream);
+  static void backward_kernel_wrapper(const LinearMeta* m,
+                                      const void* input_ptr,
+                                      void* input_grad_ptr,
+                                      const void* output_ptr,
+                                      void* output_grad_ptr,
+                                      const void* kernel_ptr,
+                                      void* kernel_grad_ptr,
+                                      void* bias_ptr,
+                                      int in_dim, int out_dim, int batch_size);
   bool measure_operator_cost(Simulator* sim,
                              const ParallelConfig& pc,
-                             CostMetrics& cost_metrics) const;
+                             CostMetrics& cost_metrics) const override;
   bool estimate_sync_cost(Simulator* sim,
                           const MachineView& pc,
                           CostMetrics& cost_metrics) const override;
-  ParallelConfig get_random_parallel_config(const FFModel& ff) const;
-  bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const;
+  ParallelConfig get_random_parallel_config(const FFModel& ff) const override;
+  bool is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const override;
 
   void serialize(Legion::Serializer&) const override;
   static PCG::Node deserialize(FFModel &ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);

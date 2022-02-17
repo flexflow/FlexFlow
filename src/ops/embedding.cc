@@ -45,26 +45,30 @@ Tensor FFModel::embedding(const Tensor input,
 {
   Layer* embed = new Layer(this, OP_EMBEDDING, name, 1/*inputs*/,
                            1/*weights*/, 1/*outputs*/, input);
-  int numdims = input->num_dims;
-  int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdims; i++)
-    dims[i] = input->dims[i];
-  dims[0] = out_dim;
+  if (aggr == AGGR_MODE_NONE) {
+    int numdims = input->num_dims + 1;
+    int dims[MAX_TENSOR_DIM];
+    for (int i = 1; i < numdims; i++)
+      dims[i] = input->dims[i-1];
+    dims[0] = out_dim;
+    embed->outputs[0] = create_tensor_legion_ordering(
+        numdims, dims, embed->data_type, embed, 0, true/*create_grad*/);
+  } else {
+    int numdims = input->num_dims;
+    int dims[MAX_TENSOR_DIM];
+    for (int i = 0; i < numdims; i++)
+      dims[i] = input->dims[i];
+    dims[0] = out_dim;
+    embed->outputs[0] = create_tensor_legion_ordering(
+        numdims, dims, embed->data_type, embed, 0, true/*create_grad*/);
+  }
   embed->data_type = DT_FLOAT;
-  embed->outputs[0] = create_tensor_legion_ordering(
-      numdims, dims, embed->data_type, embed, 0, false/*create_grad*/);
   embed->add_int_property("num_entries", num_entries);
   embed->add_int_property("out_dim", out_dim);
   embed->add_int_property("aggr_mode", aggr);
   embed->add_initializer("kernel", kernel_initializer);
   layers.push_back(embed);
   return embed->outputs[0];
-#ifdef DEADCODE
-  Embedding* embed = new Embedding(*this, input, num_entries, out_dim,
-                                   aggr, false/*allocate_weights*/, name);
-  layers.push_back(embed);
-  return embed->outputs[0];
-#endif
 }
 
 EmbeddingParams Embedding::get_params() const {
@@ -116,7 +120,8 @@ int Embedding::input_channel_out_replica_dim() const {
 }
 
 int Embedding::output_vocab_size_replica_dim() const {
-  return this->inputs[0]->num_dims - 1;
+  assert(this->outputs[0] != nullptr);
+  return this->outputs[0]->num_dims - 1;
 }
 
 int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
@@ -190,8 +195,6 @@ Embedding::Embedding(FFModel& model,
 : Op(model, OP_EMBEDDING, name, 1/*inputs*/, 1/*weights*/, allocate_weights, 1/*outputs*/, _input),
   num_entries(_num_entries), out_channels(_out_channels), aggr(_aggr)
 {
-  this->register_mappings();
-
   std::vector<ParallelDim *> weight_dim_sets;
 
   int weight_ndim;
@@ -204,6 +207,9 @@ Embedding::Embedding(FFModel& model,
   ParallelDim output_dims[MAX_TENSOR_DIM];
   int output_ndim = this->output_size(output_dims);
 
+  // register mappings between inputs/weights and outputs
+  this->register_mappings();
+
   this->solve_parallel_dim_mappings(
     { _input->dims },
     weight_dim_sets,
@@ -214,7 +220,8 @@ Embedding::Embedding(FFModel& model,
     Initializer *weight_initializer = new GlorotUniform(std::rand()/*seed*/);
 
     weights[0] = model.create_parallel_weight_legion_ordering(
-        weight_ndim, weight_dims, DT_FLOAT, nullptr/*owner_op*/, true/*create_grad*/, weight_initializer, CHOSEN_SYNC_TYPE);
+        weight_ndim, weight_dims, DT_FLOAT, nullptr/*owner_op*/, true/*create_grad*/,
+        weight_initializer, CHOSEN_SYNC_TYPE);
   }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(output_ndim, output_dims, DT_FLOAT, this);
@@ -259,6 +266,19 @@ void Embedding::init(const FFModel& ff)
   set_opmeta_from_futuremap(ff, fm);
 }
 
+OpMeta* Embedding::init_task(const Task *task,
+                             const std::vector<PhysicalRegion> &regions,
+                             Context ctx, Runtime* runtime)
+{
+  const Embedding* embed = (Embedding*) task->args;
+  FFHandler handle = *((const FFHandler*) task->local_args);
+  EmbeddingMeta* m = new EmbeddingMeta(handle);
+  m->input_data_type = embed->inputs[0]->data_type;
+  m->profiling = embed->profiling;
+  m->aggr = embed->aggr;
+  return m;
+}
+
 void Embedding::forward(const FFModel& ff)
 {
   ArgumentMap argmap;
@@ -288,6 +308,84 @@ void Embedding::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+/*
+  regions[0](I): input
+  regions[1](O): output
+  regions[2](I): kernel
+*/
+void Embedding::forward_task(const Task*task,
+                             const std::vector<PhysicalRegion>& regions,
+                             Context ctx, Runtime* runtime)
+{
+  const EmbeddingMeta* m = *((EmbeddingMeta**) task->local_args);
+  if (m->input_data_type == DT_INT32) {
+    forward_task_with_type<int32_t>(task, regions, ctx, runtime);
+  } else if (m->input_data_type == DT_INT64) {
+    forward_task_with_type<int64_t>(task, regions, ctx, runtime);
+  } else {
+    assert(false && "Unsupported data type in Embedding forward");
+  }
+}
+
+template<typename TI>
+void Embedding::forward_task_with_type(const Task *task,
+                                       const std::vector<PhysicalRegion> &regions,
+                                       Context ctx, Runtime* runtime)
+{
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3);
+  //const Embedding* embed = (Embedding*) task->args;
+  const EmbeddingMeta* m = *((EmbeddingMeta**) task->local_args);
+  Domain input_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain output_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+  Domain kernel_domain = runtime->get_index_space_domain(
+    ctx, task->regions[2].region.get_index_space());
+  if (m->aggr == AGGR_MODE_NONE) {
+    assert(kernel_domain.get_dim() == 2);
+    assert(input_domain.get_dim() + 1 == output_domain.get_dim());
+    for (size_t i = 0; i < input_domain.get_dim(); i++) {
+      assert(input_domain.hi()[i] == output_domain.hi()[i+1]);
+      assert(input_domain.lo()[i] == output_domain.lo()[i+1]);
+    }
+    assert(kernel_domain.hi()[0] - kernel_domain.lo()[0]
+        == output_domain.hi()[0] - output_domain.lo()[0]);
+  } else {
+    assert(kernel_domain.get_dim() == 2);
+    assert(input_domain.get_dim() + 1 == output_domain.get_dim());
+    for (size_t i = 1; i < input_domain.get_dim(); i++) {
+      assert(input_domain.hi()[i] == output_domain.hi()[i]);
+      assert(input_domain.lo()[i] == output_domain.lo()[i]);
+    }
+    assert(kernel_domain.hi()[0] - kernel_domain.lo()[0]
+        == output_domain.hi()[0] - output_domain.lo()[0]);
+  }
+  const TI* input_ptr = helperGetTensorPointerRO<TI>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  float* output_ptr = helperGetTensorPointerWO<float>(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  const float* kernel_ptr = helperGetTensorPointerRO<float>(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+
+  int in_dim, out_dim, effective_batch_size;
+  if (m->aggr == AGGR_MODE_NONE) {
+    in_dim = 1;
+    out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
+    effective_batch_size = output_domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input_domain.get_volume());
+  } else {
+    in_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
+    out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
+    effective_batch_size = output_domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input_domain.get_volume());
+  }
+
+  Embedding::forward_kernel_wrapper<TI>(m, input_ptr, output_ptr, kernel_ptr,
+                                        in_dim, out_dim, effective_batch_size,
+                                        m->aggr, output_domain.get_volume());
+}
+
 void Embedding::backward(const FFModel& ff)
 {
   ArgumentMap argmap;
@@ -314,6 +412,152 @@ void Embedding::backward(const FFModel& ff)
                         READ_WRITE, EXCLUSIVE, weights[0]->region_grad));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+void Embedding::backward_task(const Task*task,
+                             const std::vector<PhysicalRegion>& regions,
+                             Context ctx, Runtime* runtime)
+{
+  const EmbeddingMeta* m = *((EmbeddingMeta**) task->local_args);
+  if (m->input_data_type == DT_INT32) {
+    backward_task_with_type<int32_t>(task, regions, ctx, runtime);
+  } else if (m->input_data_type == DT_INT64) {
+    backward_task_with_type<int64_t>(task, regions, ctx, runtime);
+  } else {
+    assert(false && "Unsupported data type in Embedding forward");
+  }
+}
+
+template<typename TI>
+void Embedding::backward_task_with_type(const Task *task,
+                                        const std::vector<PhysicalRegion> &regions,
+                                        Context ctx, Runtime *runtime) 
+{
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3);
+  //const Embedding* embed = (Embedding*) task->args;
+  const EmbeddingMeta* m = *((EmbeddingMeta**) task->local_args);
+  Domain input_domain = runtime->get_index_space_domain(
+    ctx, task->regions[0].region.get_index_space());
+  Domain output_grad_domain = runtime->get_index_space_domain(
+    ctx, task->regions[1].region.get_index_space());
+  Domain kernel_grad_domain = runtime->get_index_space_domain(
+    ctx, task->regions[2].region.get_index_space());
+  if (m->aggr == AGGR_MODE_NONE) {
+    assert(kernel_grad_domain.get_dim() == 2);
+    assert(input_domain.get_dim() + 1 == output_grad_domain.get_dim());
+    for (size_t i = 0; i < input_domain.get_dim(); i++) {
+      assert(input_domain.hi()[i] == output_grad_domain.hi()[i+1]);
+      assert(input_domain.lo()[i] == output_grad_domain.lo()[i+1]);
+    }
+    assert(kernel_grad_domain.hi()[0] - kernel_grad_domain.lo()[0]
+        == output_grad_domain.hi()[0] - output_grad_domain.lo()[0]);
+  } else {
+    assert(kernel_grad_domain.get_dim() == 2);
+    assert(input_domain.get_dim() + 1 == output_grad_domain.get_dim());
+    for (size_t i = 1; i < input_domain.get_dim(); i++) {
+      assert(input_domain.hi()[i] == output_grad_domain.hi()[i]);
+      assert(input_domain.lo()[i] == output_grad_domain.lo()[i]);
+    }
+    assert(kernel_grad_domain.hi()[0] - kernel_grad_domain.lo()[0]
+        == output_grad_domain.hi()[0] - output_grad_domain.lo()[0]);
+  }
+  const TI* input_ptr = helperGetTensorPointerRO<TI>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  const float* output_grad_ptr = helperGetTensorPointerWO<float>(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  float* kernel_grad_ptr = helperGetTensorPointerRW<float>(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+
+  int in_dim, out_dim, effective_batch_size;
+  if (m->aggr == AGGR_MODE_NONE) {
+    in_dim = 1;
+    out_dim = output_grad_domain.hi()[0] - output_grad_domain.lo()[0] + 1;
+    effective_batch_size = output_grad_domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input_domain.get_volume());
+  } else {
+    in_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
+    out_dim = output_grad_domain.hi()[0] - output_grad_domain.lo()[0] + 1;
+    effective_batch_size = output_grad_domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input_domain.get_volume());
+  }
+
+  Embedding::backward_kernel_wrapper<TI>(m, input_ptr, output_grad_ptr, kernel_grad_ptr,
+                                         in_dim, out_dim, effective_batch_size,
+                                         m->aggr, output_grad_domain.get_volume());
+}
+
+bool Embedding::measure_operator_cost(Simulator* sim,
+                                      const ParallelConfig& pc,
+                                      CostMetrics& cost_metrics) const
+{
+  ParallelTensorBase sub_input, sub_output;
+  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
+    return false;
+  }
+  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, op_type)) {
+    return false;
+  }
+
+  EmbeddingMeta *m = sim->embedding_meta;
+  assert(m->profiling == false);
+
+  sim->free_all();
+  bool out_of_memory = false;
+  int64_t *input_ptr = (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
+  out_of_memory = out_of_memory || (input_ptr == NULL);
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  out_of_memory = out_of_memory || (output_ptr == NULL);
+  float *weight_ptr = (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
+  out_of_memory = out_of_memory || (weight_ptr == NULL);
+  if (out_of_memory) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
+  int in_dim = sub_input.dims[0].size;
+  int out_dim = sub_input.dims[0].size;
+  assert (sub_input.dims[1] == sub_output.dims[1]);
+  int batch_size = sub_input.dims[1].size;
+
+  // Randomly initialize the intput tensor to avoid out of index range issues
+  rand_generate_int64_wrapper(input_ptr, sub_input.get_volume(), num_entries);
+  std::function<void()> forward, backward;
+  forward = [&] {
+    forward_kernel_wrapper(m, input_ptr, output_ptr, weight_ptr, in_dim, out_dim, batch_size, this->aggr, sub_output.get_volume());
+  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float *weight_grad_ptr = (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
+    out_of_memory = out_of_memory || (weight_grad_ptr == NULL);
+    float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    out_of_memory = out_of_memory || (output_grad_ptr == NULL);
+    int64_t *input_grad_ptr = (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
+    out_of_memory = out_of_memory || (input_grad_ptr == NULL);
+    if (out_of_memory) {
+      cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+      cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+      return true;
+    }
+    backward = [&] {
+      backward_kernel_wrapper(m, input_grad_ptr, output_grad_ptr, weight_grad_ptr, in_dim, out_dim, batch_size,
+        this->aggr, sub_output.get_volume());
+    };
+  }
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure Embedding] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time,
+        cost_metrics.backward_time);
+  } else {
+    printf("[Measure Embedding] name(%s) forward_time(%.4lf)\n",
+        name,
+        cost_metrics.forward_time);
+  }
+
+  return true;
 }
 
 using PCG::Node;

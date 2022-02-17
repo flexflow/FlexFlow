@@ -185,6 +185,28 @@ flexflow_model_add_divide(
   const char *name);
 
 flexflow_tensor_t
+flexflow_model_add_rsqrt(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_,
+  const char *name);
+
+flexflow_tensor_t
+flexflow_model_add_pow(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_,
+  const float exponent,
+  const char *name);
+
+flexflow_tensor_t
+flexflow_model_add_mean(
+  flexflow_model_t handle_,
+  const flexflow_tensor_t input_,
+  int *dims,
+  int n,
+  bool keepdims,
+  const char *name);
+
+flexflow_tensor_t
 flexflow_model_add_conv2d(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
@@ -226,6 +248,16 @@ flexflow_model_add_batch_norm(
   flexflow_model_t handle,
   const flexflow_tensor_t input,
   bool relu,
+  const char *name);
+
+flexflow_tensor_t
+flexflow_model_add_layer_norm(
+  flexflow_model_t handle,
+  const flexflow_tensor_t input,
+  int n,
+  int* axes,
+  bool elementwise_affine,
+  float eps, 
   const char *name);
 
 flexflow_tensor_t
@@ -417,6 +449,10 @@ flexflow_op_t
 flexflow_model_get_layer_by_id(
   flexflow_model_t handle,
   int layer_id);
+  
+flexflow_op_t
+flexflow_model_get_last_layer(
+  flexflow_model_t handle);
 
 flexflow_tensor_t
 flexflow_model_get_parameter_by_id(
@@ -490,6 +526,10 @@ flexflow_tensor_get_dim(
   flexflow_tensor_t handle,
   int legion_axis);
 
+int*
+flexflow_tensor_get_dims(
+  flexflow_tensor_t handle);
+
 int
 flexflow_tensor_get_data_type(
   flexflow_tensor_t handle);
@@ -543,6 +583,22 @@ flexflow_tensor_get_tensor_int(
   flexflow_tensor_t handle,
   flexflow_model_t model,
   int *data);
+
+bool
+flexflow_tensor_set_tensor_int64(
+  flexflow_tensor_t handle,
+  flexflow_model_t model,
+  int num_dim,
+  int *dims,
+  const int64_t *data,
+  enum ParameterSyncType comm_type);
+
+bool
+flexflow_tensor_get_tensor_int64(
+  flexflow_tensor_t handle,
+  flexflow_model_t model,
+  int64_t *data,
+  enum ParameterSyncType comm_type);
 
 // -----------------------------------------------------------------------
 // Parameter

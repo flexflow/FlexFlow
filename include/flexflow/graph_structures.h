@@ -188,6 +188,10 @@ namespace FlexFlow::PCG::Utils {
     std::unordered_set<edge_type> get_incoming_edges(G const &g, vertex_type const &n) const {
       Invalid invalid;
 
+      if (n == invalid()) {
+        return {};
+      }
+
       std::unordered_set<edge_type> edges = this->base.get_incoming_edges(g, n);
       if (edges.empty()) {
         edge_type e;

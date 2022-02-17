@@ -25,8 +25,7 @@
 #include "loss_functions.h"
 #include "metrics_functions.h"
 #include "recompile.h"
-#include <cuda_runtime.h>
-#include <curand.h>
+#include "device.h"
 #include <unistd.h>
 #include <functional>
 #include "tl/optional.h"
@@ -70,6 +69,9 @@ enum TaskIDs {
   CACHE_INIT_TASK_ID,
   CACHE_FWD_TASK_ID,
   CACHE_UPDATE_TASK_ID,
+  CAST_INIT_TASK_ID,
+  CAST_FWD_TASK_ID,
+  CAST_BWD_TASK_ID,
   AGGREGATE_INIT_TASK_ID,
   AGGREGATE_FWD_TASK_ID,
   AGGREGATE_BWD_TASK_ID,
@@ -86,6 +88,9 @@ enum TaskIDs {
   BATCHMATMUL_INIT_TASK_ID,
   BATCHMATMUL_FWD_TASK_ID,
   BATCHMATMUL_BWD_TASK_ID,
+  LAYERNORM_INIT_TASK_ID,
+  LAYERNORM_FWD_TASK_ID,
+  LAYERNORM_BWD_TASK_ID,
   LINEAR_INIT_TASK_ID,
   LINEAR_INIT_PARA_TASK_ID,
   LINEAR_FWD_TASK_ID,
@@ -152,11 +157,14 @@ enum TaskIDs {
   GRAPH_OPTIMIZE_TASK_ID,
   // Python data loader
   PY_DL_FLOAT_LOAD_ENTIRE_CPU_TASK_ID,
-  PY_DL_INT_LOAD_ENTIRE_CPU_TASK_ID,
+  PY_DL_INT32_LOAD_ENTIRE_CPU_TASK_ID,
+  PY_DL_INT64_LOAD_ENTIRE_CPU_TASK_ID,
   PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
-  PY_DL_INT_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
+  PY_DL_INT32_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
+  PY_DL_INT64_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
   PY_DL_FLOAT_LOAD_BATCH_GPU_TASK_ID,
-  PY_DL_INT_LOAD_BATCH_GPU_TASK_ID,
+  PY_DL_INT32_LOAD_BATCH_GPU_TASK_ID,
+  PY_DL_INT64_LOAD_BATCH_GPU_TASK_ID,
   // Parallel Ops
   REPARTITION_INIT_TASK_ID,
   REPARTITION_FWD_TASK_ID,
@@ -214,16 +222,6 @@ namespace PCG {
   class GraphSearchHelper;
   class Graph;
 };
-
-#ifdef LEGION_USE_HIP
-#ifdef __HIP_PLATFORM_NVCC__
-cudaError_t get_legion_stream(cudaStream_t *stream);
-#else
-hipError_t get_legion_stream(hipStream_t *stream);
-#endif
-#else
-cudaError_t get_legion_stream(cudaStream_t *stream);
-#endif
 
 class FFModel;
 class ParallelOp;
@@ -465,22 +463,26 @@ struct Node {
   inline bool operator==(const Node& b) const {
     if (guid != b.guid) return false;
     if (ptr != b.ptr) return false;
+    if (original_guid != b.original_guid) return false;
     return true;
   }
   inline bool operator!=(const Node& b) const {
     if (guid != b.guid) return true;
     if (ptr != b.ptr) return true;
+    if (original_guid != b.original_guid) return false;
     return false;
   }
   inline bool operator<(const Node& b) const {
     if (guid != b.guid) return guid < b.guid;
     if (ptr != b.ptr) return ptr < b.ptr;
+    if (original_guid != b.original_guid) return false;
     return false;
   }
   Node& operator=(const Node& n)
   {
     guid = n.guid;
     ptr = n.ptr;
+    original_guid = n.original_guid;
     return *this;
   }
   std::string op_to_string(const Op* ptr) const;
@@ -496,6 +498,8 @@ struct Node {
   static const Node INVALID_NODE;
   size_t guid;
   const Op* ptr;
+
+  tl::optional<size_t> original_guid = tl::nullopt;
 };
 
 }; // namespace PCG
@@ -504,6 +508,7 @@ class NoOp;
 
 ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
 
+class Cast;
 class Concat;
 class Conv2D;
 class Conv2DParams;
@@ -518,6 +523,8 @@ class LinearParams;
 class MultiHeadAttention;
 class Pool2D;
 class Pool2DParams;
+class Reshape;
+class ReshapeParams;
 class Softmax;
 class Combine;
 class Repartition;
@@ -558,6 +565,15 @@ public:
                 const Tensor y,
                 bool inplace_a = false,
                 char const *name = NULL);
+  // Add a rsqrt layer
+  Tensor rsqrt(const Tensor x,
+               bool inplace = true,
+               char const *name = NULL);
+  // Add a pow layer
+  Tensor pow(const Tensor x,
+             const float exponent,
+             bool inplace = true,
+             char const *name = NULL);
   // Add a scalar multiply layer
   Tensor scalar_multiply(const Tensor x,
 	      const float scalar,
@@ -643,6 +659,12 @@ public:
                 ActiMode activation = AC_MODE_NONE,
                 const char* name = NULL);
   // Add a batch_norm layer
+  Tensor layer_norm(const Tensor input,
+                    const std::vector<int>& axes,
+                    bool elementwise_affine,
+                    float eps,
+                    const char* name = NULL);
+  // Add a batch_norm layer
   Tensor batch_norm(const Tensor input,
                     bool relu = true,
                     const char* name = NULL);
@@ -661,11 +683,20 @@ public:
                Initializer* kernel_initializer = NULL,
                Initializer* bias_initializer = NULL,
                const char *name = NULL);
+  // Add a cast layer
+  Tensor cast(const Tensor input,
+              DataType dtype,
+              const char* name);
   // Add a concat layer
   Tensor concat(int n,
                 const Tensor* tensors,
                 int axis,
                 const char *name = NULL);
+  // Add a mean layer
+  Tensor mean(const Tensor input,
+              const std::vector<int>& dims,
+              bool keepdims,
+              const char *name);
   // Add a split layer
   void split(const Tensor input, Tensor* outputs,
              const std::vector<int>& split, int axis,
@@ -787,7 +818,7 @@ public:
   void map_tensor(ParallelTensor tensor, const Op* parallel_op);
   void map_weight(ParallelTensor tensor, const Op* parallel_op);
   bool get_parallel_tensor_from_tensor(const Tensor tensor,
-                                       ParallelTensor& parallel_tensor);
+                                       ParallelTensor& parallel_tensor) const;
 
   template<int NDIM>
   Tensor create_constant(const int dims[],
@@ -851,6 +882,8 @@ public:
   // ========================================
   PCG::Node get_or_create_noop_node(const ParallelTensor input);
   PCG::Node get_or_create_input_node(const ParallelTensorShape&);
+  PCG::Node get_or_create_cast_node(const ParallelTensor input,
+                                    DataType dtype);
   PCG::Node get_or_create_concat_node(int num_inputs,
                                       const ParallelTensor* inputs,
                                       int axis);
@@ -879,6 +912,10 @@ public:
                                               bool bias,
                                               bool add_bias_kv,
                                               bool add_zero_attn);
+  PCG::Node get_or_create_reshape_node(const ParallelTensor input,
+                                       const ReshapeParams& shape);
+  PCG::Node get_or_create_reshape_node(const ParallelTensor input,
+                                       const std::vector<int>& shape);
   PCG::Node get_or_create_softmax_node(const ParallelTensor input,
                                        int softmax_dim);
   PCG::Node get_or_create_repartition_node(const ParallelTensor input,
@@ -1056,6 +1093,7 @@ public:
   // Cached operators: key: operator hash, value: operator pointer
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
   std::unordered_map<size_t, NoOp*> cached_input_ops;
+  std::unordered_map<size_t, Cast*> cached_cast_ops;
   std::unordered_map<size_t, Concat*> cached_concat_ops;
   std::unordered_map<size_t, Conv2D*> cached_conv2d_ops;
   std::unordered_map<size_t, Dropout*> cached_dropout_ops;
@@ -1066,6 +1104,7 @@ public:
   std::unordered_map<size_t, Pool2D*> cached_pool2d_ops;
   std::unordered_map<size_t, Flat*> cached_flat_ops;
   std::unordered_map<size_t, MultiHeadAttention*> cached_multihead_attn_ops;
+  std::unordered_map<size_t, Reshape*> cached_reshape_ops;
   std::unordered_map<size_t, Softmax*> cached_softmax_ops;
   std::unordered_map<size_t, Repartition*> cached_repartition_ops;
   std::unordered_map<size_t, Replicate*> cached_replicate_ops;

@@ -17,34 +17,5 @@
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
-using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
-using Legion::Predicate;
-using Legion::coord_t;
-using Legion::Memory;
-using Legion::Machine;
-using Legion::InlineLauncher;
-void FusedParallelOp::forward_task(
-    const Task *task,
-    const std::vector<PhysicalRegion>& regions,
-    Context ctx, Runtime* runtime)
-{}
-
-void FusedParallelOp::backward_task(
-    const Task *task,
-    const std::vector<PhysicalRegion>& regions,
-    Context ctx, Runtime* runtime)
-{}
 
 }; // namespace FlexFlow
