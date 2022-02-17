@@ -41,6 +41,7 @@ public:
                         const std::vector<Legion::PhysicalRegion> &regions,
                         Legion::Context ctx, Legion::Runtime *runtime);
   int seed;
+  float scale;
 };
 
 struct ZeroInitMeta {

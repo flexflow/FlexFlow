@@ -41,10 +41,16 @@ void Loss::backward(FFModel* model,
                     const ParallelTensor logit,
                     const ParallelTensor label)
 {
-  // Compute scale factor for loss backpropagation
   int last_non_replica_dim = logit->num_dims-1;
   while (logit->dims[last_non_replica_dim].is_replica_dim)
     last_non_replica_dim -= 1;
+  // Compute scale factor for loss backpropagation
+  if (loss_type == LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE) {
+    assert(logit->get_volume() == label->get_volume());
+    scale_factor = 2.0f / logit->get_volume();
+  } else {
+    scale_factor = 1.0f / model->config.batchSize;
+  }
   scale_factor = 1.0f/ logit->dims[last_non_replica_dim].size;
   //scale_factor = 1.0f;
   // Use the same parallel strategy as the owner of logit

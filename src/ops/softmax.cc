@@ -309,8 +309,6 @@ bool Softmax::measure_operator_cost(Simulator* sim,
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert (output_ptr != NULL);
 
-  assert(m->profiling == false);
-
   std::function<void()> forward, backward;
   forward = [&] {
     forward_kernel_wrapper(m, input_ptr, output_ptr);
