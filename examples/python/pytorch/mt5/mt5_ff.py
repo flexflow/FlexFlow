@@ -65,6 +65,15 @@ def preprocess_train() -> None:
     lm_labels = np.empty((y_shape[0], y_shape[1] - 1), dtype=np.long)
     y_ids[:, :] = y[:, :-1]
     lm_labels[:, :] = y[:, 1:]
+
+    TOKENIZER_PAD_TOKEN_ID = 0
+    NEW_PAD_TOKEN_ID = -100
+    # Shift embedding values from {1, ..., n} to {0, ..., n-1}
+    y_ids[y[:, :-1] != TOKENIZER_PAD_TOKEN_ID] -= 1
+    lm_labels[y[:, 1:] != TOKENIZER_PAD_TOKEN_ID] -= 1
+    # Relabel the pad token ID (i.e. `tokenizer.pad_token_id`) from 0 to -100
+    y_ids[y[:, :-1] == TOKENIZER_PAD_TOKEN_ID] = NEW_PAD_TOKEN_ID
+    lm_labels[y[:, 1:] == TOKENIZER_PAD_TOKEN_ID] = NEW_PAD_TOKEN_ID
     np.save(os.path.join(NUMPY_DIR, "train_y_ids.npy"), y_ids)
     np.save(os.path.join(NUMPY_DIR, "train_lm_labels.npy"), lm_labels)
 
@@ -120,7 +129,7 @@ def top_level_task():
     # NOTE: We cast down the label tensor data to 32-bit to accommodate the
     # label tensor's required dtype
     labels_dl = ffmodel.create_data_loader(
-        ffmodel.label_tensor, lm_labels.astype("float32")
+        ffmodel.label_tensor, lm_labels.astype("int32")
     )
 
     print("Initializing model layers...")

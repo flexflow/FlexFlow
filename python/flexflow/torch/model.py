@@ -13,14 +13,15 @@
 # limitations under the License.
 #
 
+from collections import OrderedDict
 from enum import Enum
 from typing import List
 
 import numpy as np
+from flexflow.core.flexflow_cffi import Tensor, NormInitializer
 from flexflow.type import (ActiMode, AggrMode, DataType, OpType,
                            ParameterSyncType, PoolType, enum_to_int,
                            enum_to_str, int_to_enum, str_to_enum)
-from flexflow.core.flexflow_cffi import Tensor
 
 try:
     import torch
@@ -832,6 +833,7 @@ class EmbeddingNode(ModuleNode):
             num_embeddings=num_embeddings,
             embedding_dim=embedding_dim,
             aggr=AggrMode.AGGR_MODE_NONE,
+            kernel_initializer=NormInitializer(seed=42, mean=0, stddev=1),
             name=name,
         )
 
@@ -2342,7 +2344,7 @@ class OutputNode(Node):
             # Destructively modify `output_tensors`
             output_tensors[:] += [node_to_output[other]]
 
-    def to_ff(self, node_to_output, output_tensors):
+    def to_ff(self, ffmodel, node_to_output, output_tensors):
         for other in self.innodes:
             # Destructively modify `output_tensors`
             if type(other) is immutable_dict:
@@ -2353,7 +2355,14 @@ class OutputNode(Node):
                         [node_to_output[other["last_hidden_state"].name]]
                 # NOTE: This case targets MT5ForConditionalGeneration
                 elif "logits" in other:
-                    output_tensors[:] += [node_to_output[other["logits"].name]]
+                    # NOTE: Manually add a softmax layer since the model is
+                    # traced from PyTorch, which includes the softmax in its
+                    # `CrossEntropyLoss()` implementation
+                    logits = node_to_output[other["logits"].name]
+                    softmax_logits = ffmodel.softmax(
+                        input=logits, name=self.name,
+                    )
+                    output_tensors[:] += [softmax_logits]
             else:
                 output_tensors[:] += [node_to_output[other.name]]
 
@@ -2382,8 +2391,8 @@ class PyTorchModel():
             "FlexFlow cannot work with CUDA version of PyTorch; " \
             "please install the CPU version."
         if self.is_hf_model:
-            from transformers.utils.fx import symbolic_trace as \
-                hf_symbolic_trace
+            from transformers.utils.fx import \
+                symbolic_trace as hf_symbolic_trace
             traced = hf_symbolic_trace(
                 self.model,
                 input_names=self.input_names,
@@ -2448,7 +2457,6 @@ class PyTorchModel():
                 layer_norm_graph.append(graph[i])
             i += 1
         return layer_norm_graph
-        # return graph
 
     def torch_to_ff(self, ffmodel, input_tensors, verbose=False):
         """
@@ -2469,7 +2477,7 @@ class PyTorchModel():
         """
         graph = self._trace_model()
         output_tensors = []
-        node_to_output = {}
+        node_to_output = OrderedDict()
         input_index = 0
 
         for node in graph:
@@ -2479,7 +2487,7 @@ class PyTorchModel():
                 node_output = node.to_ff(input_tensors, input_index)
                 input_index += 1
             elif isinstance(node, OutputNode):
-                node.to_ff(node_to_output, output_tensors)
+                node.to_ff(ffmodel, node_to_output, output_tensors)
                 node_output = None
             else:
                 node_output = node.to_ff(ffmodel, node_to_output)
