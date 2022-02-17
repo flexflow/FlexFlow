@@ -20,9 +20,13 @@
 #include "parallel_tensor.h"
 #include <memory>
 #include <fstream>
+#include <queue>
+#include <unordered_set>
 #include <unordered_map>
 
 namespace FlexFlow {
+
+#define MOD(a, b) ((a) % (b)) < 0 ? ((a) % (b)) + (b) : ((a) % (b))
 
 class Conv2DMeta;
 class LinearMeta;
@@ -94,11 +98,54 @@ public:
         PCI_TO_HOST_COMM,
         PCI_TO_DEV_COMM,
         NVLINK_COMM,
+        NW_COMM,
+        NW_NOMINAL,
     };
     CommDevType comm_type;
     float latency;
     float bandwidth;
     CommDevice(std::string const &name, CommDevType comm_type, int node_id, int socket_id, int device_id, float latency, float bandwidth);
+};
+
+
+typedef std::vector<CommDevice *> Route;
+/* first is an array of cumulative distribution */
+typedef std::pair<std::vector<float>, std::vector<Route> > EcmpRoutes;
+typedef std::vector<int> ConnectionMatrix;
+class NetworkRoutingStrategy;
+/**
+ * Nomincal communication device. 
+ * This is an communication device that allows "path expansion"
+ * With this device, its possible to store a taskgraph in the "logical" 
+ * view (p2p) while when doing the simulaion, expand to physical version
+ */
+class NominalCommDevice : public CommDevice {
+  public:
+    NominalCommDevice(std::string const &name, int device_id, int nnode, NetworkRoutingStrategy * routing);
+    /* pick one of the weighted ECMP path */
+    Route expand_to_physical() const;
+    const EcmpRoutes & get_all_routes();
+    void set_physical_paths(const EcmpRoutes& rs);
+    void reset();
+public:
+    NetworkRoutingStrategy * routing_strategy;
+    EcmpRoutes routes;
+    int nnode;
+    bool dirty = true;
+};
+
+/**
+ * Base class that provides the network routing strategy
+ */
+class NetworkRoutingStrategy {
+public:
+    virtual ~NetworkRoutingStrategy() = default;
+    /**
+     * For weighted ecmp support: the return type is a vector of pair of 
+     * <possible route, chance>
+     */
+    virtual EcmpRoutes get_routes(int src_node, int dst_node) = 0;
+    virtual std::vector<EcmpRoutes> get_routes_from_src(int src_node) = 0;
 };
 
 class MachineModel {
@@ -110,6 +157,8 @@ public:
   virtual int get_num_gpus() const = 0;
   virtual float get_intra_node_gpu_bandwidth() const = 0;
   virtual float get_inter_node_gpu_bandwidth() const = 0;
+  virtual float get_intra_node_gpu_latency() const = 0;
+  virtual float get_inter_node_gpu_latency() const = 0;
   virtual std::vector<CommDevice *> get_comm_path(MemDevice *src_mem, MemDevice *tar_mem) = 0;
   virtual std::string to_string() const = 0;
   int version;
@@ -125,6 +174,8 @@ public:
   int get_num_gpus() const;
   float get_intra_node_gpu_bandwidth() const;
   float get_inter_node_gpu_bandwidth() const;
+  float get_intra_node_gpu_latency() const {return 0;}
+  float get_inter_node_gpu_latency() const {return 0;}
   std::vector<CommDevice *> get_comm_path(MemDevice *src_mem, MemDevice *tar_mem);
   std::string to_string() const;
 private:
@@ -174,6 +225,8 @@ public:
     int get_num_gpus() const;
     float get_intra_node_gpu_bandwidth() const;
     float get_inter_node_gpu_bandwidth() const;
+    float get_intra_node_gpu_latency() const {return membus_latency;}
+    float get_inter_node_gpu_latency() const {return nic_latency;}
     std::vector<CommDevice *> get_comm_path(MemDevice *src_mem, MemDevice *tar_mem);
     std::string to_string() const;
 private:
@@ -239,6 +292,205 @@ private:
     void add_comm_path(std::vector<CommDevice::CommDevType> const &comm_device_list, MemDevice *src_mem, MemDevice *tar_mem, std::vector<CommDevice *> &ret);
 };
 
+
+/**
+ * Single shortest path routing based on hop count
+ */
+class WeightedShortestPathRoutingStrategy : public NetworkRoutingStrategy {
+public:
+    WeightedShortestPathRoutingStrategy(const ConnectionMatrix & c, 
+        const std::map<size_t, CommDevice*>& devmap, int total_devs);
+    virtual EcmpRoutes get_routes(int src_node, int dst_node);
+    virtual std::vector<EcmpRoutes> get_routes_from_src(int src_node);
+    void hop_count(int src_node, int dst_node, int & hop, int & narrowest);
+    std::vector<std::pair<int, int>> hop_count(int src_node);
+    void clear();
+public:
+    const ConnectionMatrix& conn;
+    const std::map<size_t, CommDevice*>& devmap;
+    int total_devs;
+};
+
+class ShortestPathNetworkRoutingStrategy : public NetworkRoutingStrategy {
+public:
+    ShortestPathNetworkRoutingStrategy(const ConnectionMatrix & c, 
+        const std::map<size_t, CommDevice*>& devmap, int total_devs);
+    virtual EcmpRoutes get_routes(int src_node, int dst_node);
+    virtual std::vector<EcmpRoutes> get_routes_from_src(int src_node);
+    void hop_count(int src_node, int dst_node, int & hop, int & narrowest);
+    std::vector<std::pair<int, int>> hop_count(int src_node);
+    void clear();
+public:
+    const ConnectionMatrix& conn;
+    const std::map<size_t, CommDevice*>& devmap;
+    int total_devs;
+};
+
+
+/**
+ * A (virtual base) class that generates network topology 
+ * Maybe this should be moved out of simulator
+ */
+class NetworkTopologyGenerator {
+public:
+  virtual ConnectionMatrix generate_topology() const = 0;
+  static void print_conn_matrix(const ConnectionMatrix &conn, int nnode, int nswitch) {
+    int nnwdevs = nnode + nswitch;
+    for (int i = 0; i < nnwdevs; i++) {
+      if (i == nnode) std::cout << std::endl;
+      for (int j = 0; j < nnwdevs; j++) {
+        if (j == nnode) std::cout << "\t";
+        std::cout << conn[i * nnwdevs + j] << "\t";
+      }
+      std::cout << std::endl;
+    }
+  }
+};
+
+/**
+ * Generate a flat network topology that's degree constraint and guaranteed
+ * to be connected
+ */
+class FlatDegConstraintNetworkTopologyGenerator : public NetworkTopologyGenerator {
+public:
+    FlatDegConstraintNetworkTopologyGenerator(int num_nodes, int degree);
+    virtual ConnectionMatrix generate_topology() const;
+public:
+    inline int get_id(int i, int j) const;
+    inline int get_if_in_use(int node, const ConnectionMatrix & conn) const;
+    int num_nodes;
+    int degree;
+};
+
+/**
+ * Generate an abstract-switch network topology
+ * good for simple simulation of a fattree
+ */
+class BigSwitchNetworkTopologyGenerator : public NetworkTopologyGenerator  {
+public:
+    BigSwitchNetworkTopologyGenerator(int num_nodes);
+    virtual ConnectionMatrix generate_topology() const;
+public: 
+    int num_nodes;
+};
+
+/**
+ * Generate a zero matrix
+ */
+class FlatEmptyNetworkTopologyGenerator : public NetworkTopologyGenerator  {
+public:
+    FlatEmptyNetworkTopologyGenerator(int num_nodes): num_nodes(num_nodes){}
+    virtual ConnectionMatrix generate_topology() const {return ConnectionMatrix(num_nodes*num_nodes, 0);} 
+public:
+    int num_nodes;
+};
+
+class FCTopologyGenerator : public NetworkTopologyGenerator  {
+public:
+    FCTopologyGenerator(int num_nodes): num_nodes(num_nodes){}
+    virtual ConnectionMatrix generate_topology() const {
+      ConnectionMatrix result = ConnectionMatrix(num_nodes*num_nodes, 1);
+      for (int i = 0; i < num_nodes; i++) result[i + i * num_nodes] = 0;
+      return result;
+    } 
+public:
+    int num_nodes;
+};
+/**
+ * A model that is network topology-aware.
+ * The network topology is represented as follows:
+ *      An adjacency matrix is used to represnt the network connection
+ *      The matrix has dimension (n+s)*(n+s) where n is the number of servers
+ *      in the cluster, and s is the number of switches in the cluster.
+ *      This implies that for a flat topology the matrix is n*n,
+ *      while for a FatTree topology the network will have the upper n*n
+ *      block to be 0. Switches has node_id starting from n.
+ *      Note that the "big switch" model has the convinent representation of
+ *      {{0, 1},{1, 0}} in block form.
+ * As a first implementation this class is based on the existing SimpleMachine
+ * model. We could use the enhanced version but it could be too much for the 
+ * MCMC search to run for thousand of iterations...
+ */
+class NetworkedMachineModel : public MachineModel  {
+public:
+    /**
+     * Constructor. A network topology specified as above needs to be provided
+     * in the form of a single vector.
+     */
+    NetworkedMachineModel(int num_nodes, 
+        int num_gpus_per_node, 
+        int num_switches, 
+        float network_latency,
+        const std::vector<int>& topology, 
+        size_t capacity, 
+        float link_bandwidth);
+    ~NetworkedMachineModel();
+    int get_version() const;
+    CompDevice *get_gpu(int device_id) const;
+    MemDevice *get_gpu_fb_mem(int devicd_id) const;
+    int get_num_gpus() const;
+    int get_num_nodes() const {return num_nodes;}
+    int get_total_devs() const {return num_nodes + num_switches;}
+    int get_num_switches() const {return num_switches;}
+    float get_intra_node_gpu_bandwidth() const;
+    float get_inter_node_gpu_bandwidth() const;
+    float get_link_bandwidth() const;
+    float get_link_bandwidth(int src, int dst) const;
+    float get_intra_node_gpu_latency() const {return 0;}
+    float get_inter_node_gpu_latency() const {return network_latency;}
+    void set_routing_strategy(NetworkRoutingStrategy* rs);
+    std::vector<CommDevice *> get_comm_path(MemDevice *src_mem, MemDevice *tar_mem);
+    std::string to_string() const;
+    /* return only the nominal device. For recording tg. */
+    CommDevice* get_nominal_path(MemDevice* src_mem, MemDevice *tar_mem) const;
+    /* stores the network topology as a json */
+    void save_topology_json(const std::string& fname) const;
+    void update_route();
+
+    void set_topology(const std::vector<int>& topology);
+    const ConnectionMatrix & get_conn_matrix();
+    const std::map<size_t, NominalCommDevice*>& get_nomm_comm_devs();
+
+    void set_pcie(bool state);
+    void set_pipeline(bool state);
+    
+    int num_nodes;
+    int num_gpus_per_node;
+    int num_gpus;
+    int num_switches;
+    int total_devs;
+    float inter_gpu_bandwidth;
+    float link_bandwidth;
+    float network_latency;
+    float gpu_dram_bandwidth;
+
+    bool pipelined;
+    bool pcie_on;
+
+    // float gpu_dram_bandwidth;
+    /* Note that every non-zero entry corrsepond to a device in in_to_nw_comm_device */
+    ConnectionMatrix conn_matrix;
+    NetworkRoutingStrategy* routing_strategy;
+    std::map<int, CompDevice*> id_to_gpu;
+    std::map<int, MemDevice*> id_to_gpu_fb_mem;
+    // don't model PCIE for speed
+    std::map<int, CommDevice*> id_to_gputodram_comm_device;
+    std::map<int, CommDevice*> id_to_dramtogpu_comm_device;
+    std::map<size_t, CommDevice*> ids_to_inter_gpu_comm_device;
+    
+    /* this refers to the actual links in the system */
+    std::map<size_t, CommDevice*> ids_to_nw_comm_device;
+    /* on the other hand, this represents the "nomical" communication device
+      * or the "logical connection" in side the system. Note that this is
+      * keyed on GPUs only 
+      */
+    std::map<size_t, NominalCommDevice*> ids_to_nw_nominal_device;
+
+public:
+    std::map<size_t, uint64_t> logical_traffic_demand;
+    std::map<size_t, uint64_t> physical_traffic_matrix;
+};
+
 struct OpSyncTask {
   Op const *op;
   int unsatisfied_dependencies;
@@ -260,6 +512,8 @@ public:
     TASK_COMM,
     TASK_UPDATE,
     TASK_BARRIER,
+    TASK_NOMINAL_COMM,
+    TASK_ALLREDUCE
   };
   SimTask();
   void add_next_task(SimTask* task);
@@ -269,8 +523,11 @@ public:
   Device* device;
   MemDevice *mem;
   int counter;
+  size_t xfer_size;
+  size_t xfer_left;
   std::vector<SimTask*> next_tasks;
   //const char *op_name;
+  bool store;
   std::string name;
   std::string get_type_str() const;
 };
@@ -289,16 +546,20 @@ public:
   SimTask* new_barrier_task();
   SimTask* new_update_task();
   SimTask* new_comm_task();
+  SimTask* new_nominal_comm_task();
   SimTask* new_comm_task(std::string const &name, CommDevice *comm_device, size_t message_size);
+  SimTask* new_nominal_comm_task(std::string const &name, CommDevice *comm_device, size_t message_size);
   SimTask* new_forward_task(const Op* op, int idx);
+  SimTask* new_allreduce_task(const Op* op, const std::vector<int> &node_ids, size_t message_size); 
   SimTask* new_backward_task(const Op* op, int idx);
   SimTask* get_forward_task(const Op* op, int idx);
   SimTask* get_backward_task(const Op* op, int idx);
-private:
+  
   SimTask* new_task();
 public:
   size_t global_task_id, max_num_tasks;
   SimTask** tasks;
+  
   std::map<size_t, SimTask*> hash_to_forward_task, hash_to_backward_task;
 };
 
@@ -376,6 +637,48 @@ private:
                                        const MachineView& source_view,
                                        const MachineView& target_view) const;
 };
+
+
+/**
+ * An alternative implementation of the simulator which uses the "logical 
+ * task graph", defined as a taskgraph that only records computation
+ * and communication on a logical level.
+ */
+class LogicalTaskgraphBasedSimulator: public Simulator {
+public: 
+  LogicalTaskgraphBasedSimulator(const FFModel* model,
+            FFHandler handler,
+            Legion::Memory memory,
+            MachineModel *machine);
+  
+  SimTask *new_comm_task_unrecorded();
+  SimTask *new_update_task_unrecorded();
+  virtual float simulate_runtime(const FFModel* model,
+      const std::map<const Op*, ParallelConfig>& global,
+      CompMode comp_mode);
+  virtual float simulate_runtime(const FFModel* model,
+      const std::map<const Op*, ParallelConfig>& global,
+      CompMode comp_mode,
+      std::string const &export_file_name);
+  virtual float route_transfer(SimTask * transfer_task, 
+                              float start_time,
+                              std::map<Device*, float> &device_times);
+  virtual float route_transfer_seg(SimTask * transfer_task, 
+                            float start_time,
+                            std::map<Device*, float> &device_times,
+                            bool & finished);
+  virtual void expand_allreduce(SimTask * allreduce_task, float start_time,std::priority_queue<SimTask*, std::vector<SimTask*>, SimTaskCompare>& ready_queue);
+  void add_task_dependencies_with_xfer(
+      SimTask* src_task, SimTask* dst_task, size_t message_size);
+  static void simulation_task(const Legion::Task *task,
+                                  const std::vector<Legion::PhysicalRegion> &regions,
+                                  Legion::Context ctx, Legion::Runtime *runtime);
+  bool segment_transfer;
+  size_t segment_size;
+
+  // flatbuffers::FlatBufferBuilder builder;
+};
+
 
 }; // namespace FlexFlow
 #endif
