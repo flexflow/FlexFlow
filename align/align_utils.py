@@ -2,6 +2,11 @@ from typing import Any, Dict, Tuple
 
 import numpy as np
 import torch
+import os
+
+from typing import Iterable, NamedTuple
+
+BATCH_SIZE = 16
 
 
 def make_deterministic(seed: int = 42) -> None:
@@ -12,7 +17,9 @@ def make_deterministic(seed: int = 42) -> None:
     torch.backends.cudnn.deterministic = True
 
 
-def str_dtype_to_torch_dtype(dtype: str):
+def str_dtype_to_torch_dtype(dtype: str) -> torch.dtype:
+    """Converts a string representation of a dtype to the corresponding
+    PyTorch dtype."""
     if dtype == "int32":
         return torch.int32
     elif dtype == "int64":
@@ -26,7 +33,9 @@ def str_dtype_to_torch_dtype(dtype: str):
 
 
 def gen_tensor(
-    shape: Tuple[int, ...], dtype: str = "float32", **kwargs: Dict[str, Any],
+    shape: Tuple[int, ...],
+    dtype: str = "float32",
+    **kwargs: Dict[str, Any],
 ) -> torch.Tensor:
     """
     Generates a random tensor on host with the given shape. If ``dtype`` names
@@ -52,15 +61,50 @@ def gen_tensor(
         high = kwargs.get("high", 6)
         assert high > low, f"Invalid range: [{low}, {high})"
         np_array = np.random.randint(
-            low=low, high=high, size=shape, dtype=dtype,
+            low=low,
+            high=high,
+            size=shape,
+            dtype=dtype,
         )
     else:
         np_array = np.random.randn(*shape)
     return torch.from_numpy(np_array).to(str_dtype_to_torch_dtype(dtype))
 
 
-def diff_tensors(t1: torch.Tensor, t2: torch.Tensor):
+def diff_tensors(t1: torch.Tensor, t2: torch.Tensor):  # TODO: deprecate
     """Compares two tensors for equality."""
     assert t1.shape == t2.shape, f"Shape mismatch: {t1.shape} != {t2.shape}"
     assert t1.dtype == t2.dtype, f"dtype mismatch: {t1.dtype} != {t2.dtype}"
     torch.testing.assert_close(t1, t2)
+
+
+class TensorAlignmentData(NamedTuple):
+    """
+    This contains the data for aligning FlexFlow and PyTorch on a tensor
+    quantity. It includes a pair of filepaths (``ff_filepath`` and
+    ``torch_filepath``) to PyTorch tensors (saved as ``.pt`` files)
+    representing the FlexFlow and PyTorch versions of the tensor quantity
+    given by ``tensor_name``.
+    """
+    tensor_name: str
+    ff_filepath: str
+    torch_filepath: str
+
+
+def align_tensors(tensor_alignment_data_iter: Iterable[TensorAlignmentData]):
+    """
+    Checks the alignment between tensors specified by
+    ``tensor_alignment_data_iter``. Each element in the iterable specifies a
+    single tensor quantity to align between FlexFlow and PyTorch.
+    """
+    for tensor_alignment_data in tensor_alignment_data_iter:
+        ff_filepath = tensor_alignment_data.ff_filepath
+        torch_filepath = tensor_alignment_data.torch_filepath
+        assert os.path.exists(ff_filepath), \
+            f"Missing FlexFlow tensor at {ff_filepath}"
+        assert os.path.exists(torch_filepath), \
+            f"Missing PyTorch tensor at {torch_filepath}"
+        ff_tensor = torch.load(ff_filepath).cpu()
+        torch_tensor = torch.load(torch_filepath).cpu()
+        print(f"Checking {tensor_alignment_data.tensor_name} alignment...")
+        torch.testing.assert_close(ff_tensor, torch_tensor)

@@ -127,21 +127,22 @@ def train_step_ff():
         d.next_batch(ffmodel)
     ffmodel._ffconfig.begin_trace(ffmodel._tracing_id)
     ffmodel.forward()
-    # ffmodel.zero_gradients()
-    # ffmodel.backward()
-    # ffmodel.update()
+    ffmodel.zero_gradients()
+    ffmodel.backward()
+    ffmodel.update()
     ffmodel._ffconfig.end_trace(ffmodel._tracing_id)
     ffmodel._ffconfig.get_current_time()  # synchronization barrier
 
     # Print per-layer information
-    for i, node in enumerate(node_to_output):
-        layer = ffmodel.get_layer_by_name(node)
-        if layer is not None and hasattr(layer, "get_output_tensor"):
-            np_array = layer.get_output_tensor().get_tensor(ffmodel, ParameterSyncType.PS)
-            # print(f"{node}\t{np.linalg.norm(np_array):.3f}")
-            print(f"{node}\t{np_array}\n")
-            if i > 3:
-                break
+    # for i, node in enumerate(node_to_output):
+    #     layer = ffmodel.get_layer_by_name(node)
+    #     if layer is not None and hasattr(layer, "get_output_tensor"):
+    #         np_array = layer.get_output_tensor().get_tensor(ffmodel, ParameterSyncType.PS)
+    #         # print(f"{node}\t{np.linalg.norm(np_array):.3f}")
+    #         # print(f"{node}\t{np_array}\n")
+    #         print(f"{i}: {node}")
+    #         if i > 5:
+    #             break
 
 
 if __name__ == "__main__":
