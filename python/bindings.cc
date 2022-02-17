@@ -150,7 +150,7 @@ bool get_weights(Parameter parameter, FFModel &model, py::array &full_array)
   py::buffer_info info = full_array.request();
   if (info.format == "f") {
     assert(parameter->parallel_tensor != nullptr);
-    return parameter->parallel_tensor->get_tensor<float>(&model, static_cast<float*>(info.ptr));
+    return parameter->parallel_tensor->get_tensor<float>(&model, static_cast<float*>(info.ptr), false/*get_gradients*/);
   } else {
     assert(0);
     return false;

@@ -121,7 +121,8 @@ struct ParallelTensorBase {
                    const T* data);
   template <typename T>
   bool get_tensor(const FFModel* model,
-                  T* data);
+                  T* data,
+		  bool get_parameters);
   ParallelTensorShape get_shape() const;
 
 private:

@@ -62,10 +62,11 @@ bool TensorBase::set_tensor(
 template <typename T>
 bool TensorBase::get_tensor(
     const FFModel* ff,
-    T* data) {
+    T* data,
+    bool get_gradients) {
   ParallelTensor ptensor = nullptr;
   ff->get_parallel_tensor_from_tensor(this, ptensor);
-  ptensor->get_tensor<T>(ff, data);
+  ptensor->get_tensor<T>(ff, data, get_gradients);
   return true;
 }
 
@@ -631,13 +632,14 @@ bool ParallelTensorBase::set_tensor(
 template <typename T>
 bool ParallelTensorBase::get_tensor(
     const FFModel* ff,
-    T* data)
+    T* data,
+    bool get_gradients)
 {
   Context ctx = ff->config.lg_ctx;
   Runtime* runtime = ff->config.lg_hlr;
   LogicalRegion weight_lr = LogicalRegion::NO_REGION;
   if (sync_type == ParameterSyncType::PS) {
-    weight_lr = region;
+    weight_lr = get_gradients ? region_grad : region;
   } else {
     assert(owner_op != NULL);
     Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
@@ -647,7 +649,7 @@ bool ParallelTensorBase::get_tensor(
       { \
         DomainPoint point = Point<DIM>::ZEROES(); \
         weight_lr = runtime->get_logical_subregion_by_color( \
-            ctx, part, point); \
+            ctx, get_gradients ? part_grad : part, point); \
         break; \
       }
       LEGION_FOREACH_N(DIMFUNC)
@@ -659,7 +661,7 @@ bool ParallelTensorBase::get_tensor(
   for (int i = 0; i < num_dims; i++) {
     volume = volume * dims[i].size;
   }
-  RegionRequirement req(weight_lr, READ_ONLY, EXCLUSIVE, region);
+  RegionRequirement req(weight_lr, READ_ONLY, EXCLUSIVE, get_gradients ? region_grad : region);
   req.add_field(FID_DATA);
   InlineLauncher launcher(req);
   PhysicalRegion pr = runtime->map_region(ctx, launcher);
@@ -687,21 +689,21 @@ template float* ParallelTensorBase::get_raw_ptr<float>(FFConfig &config);
 template int32_t* ParallelTensorBase::get_raw_ptr<int32_t>(FFConfig &config);
 
 template bool TensorBase::set_tensor<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
-template bool TensorBase::get_tensor<float>(const FFModel* ff, float* data);
+template bool TensorBase::get_tensor<float>(const FFModel* ff, float* data, bool get_gradients);
 template bool TensorBase::set_tensor<double>(const FFModel* ff, const std::vector<int>& dims, const double* data);
-template bool TensorBase::get_tensor<double>(const FFModel* ff, double* data);
+template bool TensorBase::get_tensor<double>(const FFModel* ff, double* data, bool get_gradients);
 template bool TensorBase::set_tensor<int32_t>(const FFModel* ff, const std::vector<int>& dims, const int32_t* data);
-template bool TensorBase::get_tensor<int32_t>(const FFModel* ff, int32_t* data);
+template bool TensorBase::get_tensor<int32_t>(const FFModel* ff, int32_t* data, bool get_gradients);
 template bool TensorBase::set_tensor<int64_t>(const FFModel* ff, const std::vector<int>& dims, const int64_t* data);
-template bool TensorBase::get_tensor<int64_t>(const FFModel* ff, int64_t* data);
+template bool TensorBase::get_tensor<int64_t>(const FFModel* ff, int64_t* data, bool get_gradients);
 
 template bool ParallelTensorBase::set_tensor<float>(const FFModel* ff, const std::vector<int>& dims, const float* data);
-template bool ParallelTensorBase::get_tensor<float>(const FFModel* ff, float* data);
+template bool ParallelTensorBase::get_tensor<float>(const FFModel* ff, float* data, bool get_gradients);
 template bool ParallelTensorBase::set_tensor<double>(const FFModel* ff, const std::vector<int>& dims, const double* data);
-template bool ParallelTensorBase::get_tensor<double>(const FFModel* ff, double* data);
+template bool ParallelTensorBase::get_tensor<double>(const FFModel* ff, double* data, bool get_gradients);
 template bool ParallelTensorBase::set_tensor<int32_t>(const FFModel* ff, const std::vector<int>& dims, const int32_t* data);
-template bool ParallelTensorBase::get_tensor<int32_t>(const FFModel* ff, int32_t* data);
+template bool ParallelTensorBase::get_tensor<int32_t>(const FFModel* ff, int32_t* data, bool get_gradients);
 template bool ParallelTensorBase::set_tensor<int64_t>(const FFModel* ff, const std::vector<int>& dims, const int64_t* data);
-template bool ParallelTensorBase::get_tensor<int64_t>(const FFModel* ff, int64_t* data);
+template bool ParallelTensorBase::get_tensor<int64_t>(const FFModel* ff, int64_t* data, bool get_gradients);
 
 }; // namespace FlexFlow

@@ -1218,11 +1218,12 @@ bool
 flexflow_tensor_get_tensor_float(
   flexflow_tensor_t handle_,
   flexflow_model_t model_,
-  float *data)
+  float *data,
+  bool get_gradients)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
-  return handle->get_tensor<float>(model, data);
+  return handle->get_tensor<float>(model, data, get_gradients);
 }
   
 bool
@@ -1246,11 +1247,12 @@ bool
 flexflow_tensor_get_tensor_int(
   flexflow_tensor_t handle_,
   flexflow_model_t model_,
-  int *data)
+  int *data,
+  bool get_gradients)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
-  return handle->get_tensor<int>(model, data);
+  return handle->get_tensor<int>(model, data, get_gradients);
 }
 
 bool
@@ -1274,11 +1276,12 @@ bool
 flexflow_tensor_get_tensor_int64(
   flexflow_tensor_t handle_,
   flexflow_model_t model_,
-  int64_t *data)
+  int64_t *data,
+  bool get_gradients)
 {
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
-  return handle->get_tensor<int64_t>(model, data);
+  return handle->get_tensor<int64_t>(model, data, get_gradients);
 }
 
 // -----------------------------------------------------------------------

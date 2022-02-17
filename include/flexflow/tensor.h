@@ -55,7 +55,8 @@ struct TensorBase {
                    const T* data);
   template <typename T>
   bool get_tensor(const FFModel* model,
-                  T* data);
+                  T* data,
+		  bool get_gradients);
   //TensorShape get_shape() const;
 private:
   //template <typename T>
