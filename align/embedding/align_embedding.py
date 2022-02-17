@@ -41,17 +41,6 @@ def align_embedding_bwd():
         print("[SUCCESS] Gradients align!")
     except AssertionError as e:
         print("[FAILURE] Gradients did not align!", e)
-        neq_mask = weight_grad_ff != weight_grad_torch
-        neq_where_mask = torch.nonzero(neq_mask, as_tuple=False)
-        # for i in range(neq_where_mask.shape[0]):
-        #     index = neq_where_mask[i]
-        #     index0 = index[0].item()
-        #     index1 = index[1].item()
-        #     print(
-        #         f"({index0}, {index1}) "
-        #         f"FF={grad_ff[index0][index1]:5f} "
-        #         f"torch={grad_torch[index0][index1]:5f}"
-        #     )
 
 
 if __name__ == "__main__":

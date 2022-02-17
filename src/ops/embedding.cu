@@ -438,12 +438,12 @@ void Embedding::forward_task_with_type(const Task *task,
       in_dim, out_dim, effective_batch_size,
       m->aggr, output_domain.get_volume(), stream);
 
-  // if (m->profiling) {
-  checkCUDA(cudaDeviceSynchronize());
-  print_tensor<TI>(input_ptr, input_domain.get_volume(), "[Embedding:forward:input]");
-  print_tensor<float>(kernel_ptr, kernel_domain.get_volume(), "[Embedding:forward:weight]");
-  print_tensor<float>(output_ptr, output_domain.get_volume(), "[Embedding:forward:output]");
-  // }
+  if (m->profiling) {
+    checkCUDA(cudaDeviceSynchronize());
+    //print_tensor<TI>(input_ptr, input_domain.get_volume(), "[Embedding:forward:input]");
+    //print_tensor<float>(kernel_ptr, kernel_domain.get_volume(), "[Embedding:forward:weight]");
+    //print_tensor<float>(output_ptr, output_domain.get_volume(), "[Embedding:forward:output]");
+  }
 }
 
 void Embedding::forward(const FFModel& ff)

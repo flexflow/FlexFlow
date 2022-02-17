@@ -1921,8 +1921,7 @@ class FFModel(object):
       layer = self._layers[layer_id]
       if layer.name == layer_name:
         return layer
-    # assert 0, f"Cannot find the layer name {layer_name}"
-    print(f"Cannot find the layer {layer_name}")
+    assert 0, f"Cannot find the layer {layer_name}"
     return None
 
   def get_tensor_by_id(self, id):

@@ -2496,8 +2496,7 @@ class PyTorchModel():
             if node_output is not None:
                 node_to_output[node.name] = node_output
 
-        # TODO: Revisit (changed the return value for alignment debugging)
-        return output_tensors, node_to_output
+        return output_tensors
 
     @staticmethod
     def file_to_ff(filename, ffmodel, input_tensors):

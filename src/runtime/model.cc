@@ -1613,8 +1613,7 @@ void FFModel::compile(LossType loss_type,
 
   // Perform inplace optimizations
   for (size_t l = 1; l < layers.size(); l++) {
-    // if (layers[l]->can_inplace_output()) {
-    if (false) {
+    if (layers[l]->can_inplace_output()) {
       // Assume outputs[0] is inplace with inputs[0]
       assert(layers[l]->numOutputs == 1);
       if (layers[l]->inputs[0].owner_op != NULL) {
