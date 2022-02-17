@@ -10,7 +10,7 @@ from align_utils import gen_tensor
 assert torch.cuda.is_available(), "Expects at least one GPU"
 DEVICE = torch.device(0)
 # DEVICE = torch.device("cpu")
-BATCH_SIZE = 1
+BATCH_SIZE = 16
 SEQ_LENGTH = 5
 OUT_DIR = "align/embedding/out/"
 PRINT_LIMIT = 17
@@ -79,7 +79,6 @@ def run(backward: bool = False, verbose: bool = False):
         torch.save(embedding.weight.grad, os.path.join(OUT_DIR, "torch_weight_grad.pt"))
         print("[PyTorch] Saving gradient wrt embedding output...")
         torch.save(output.grad, os.path.join(OUT_DIR, "torch_out_grad.pt"))
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

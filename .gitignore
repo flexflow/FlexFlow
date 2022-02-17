@@ -144,3 +144,6 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Saved PyTorch tensors
+*.pt

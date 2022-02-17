@@ -10,10 +10,9 @@ from flexflow.type import AggrMode, ParameterSyncType
 sys.path.append("./align/")
 from align_utils import gen_tensor
 
-BATCH_SIZE = 1
+BATCH_SIZE = 16
 SEQ_LENGTH = 5
 OUT_DIR = "align/embedding/out/"
-
 
 def ffmodel_barrier(ffmodel):
     # Use `get_current_time()` as a forced sync barrier

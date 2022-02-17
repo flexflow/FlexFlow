@@ -144,8 +144,8 @@ class Conv2D(Op):
   def get_input_tensor(self):
     return self.get_input_by_id(0)
 
-  # def get_output_tensor(self):
-  #   return self.get_output_by_id(0)
+  def get_output_tensor(self):
+    return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Pool2D
@@ -157,8 +157,8 @@ class Pool2D(Op):
   def get_input_tensor(self):
     return self.get_input_by_id(0)
 
-  # def get_output_tensor(self):
-  #   return self.get_output_by_id(0)
+  def get_output_tensor(self):
+    return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Linear
@@ -176,8 +176,8 @@ class Linear(Op):
   def get_input_tensor(self):
     return self.get_input_by_id(0)
 
-  # def get_output_tensor(self):
-  #   return self.get_output_by_id(0)
+  def get_output_tensor(self):
+    return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Flat
@@ -189,8 +189,8 @@ class Flat(Op):
   def get_input_tensor(self):
     return self.get_input_by_id(0)
 
-  # def get_output_tensor(self):
-  #   return self.get_output_by_id(0)
+  def get_output_tensor(self):
+    return self.get_output_by_id(0)
 
 # -----------------------------------------------------------------------
 # Softmax
