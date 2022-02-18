@@ -87,7 +87,7 @@ Concat::Concat(FFModel& model,
                int _legion_axis,
                const char* name)
 : Op(model, OP_CONCAT, name, _n/*inputs*/, 0/*weights*/, 1/*outputs*/, _tensors),
-  axis(_legion_axis)
+  legion_axis(_legion_axis)
 {
   //TODO: swich to use the Legion dim ordering
   int num_dim = inputs[0]->num_dims;
@@ -98,7 +98,7 @@ Concat::Concat(FFModel& model,
     assert(inputs[i]->data_type == inputs[0]->data_type);
     assert(inputs[i]->num_dims == inputs[0]->num_dims);
     for (int j = 0; j < num_dim; j++) {
-      if (j != axis)
+      if (j != legion_axis)
         assert(inputs[i]->dims[j] == inputs[0]->dims[j]);
       else {
         // Assert that the concat dim cannot be parallelized
@@ -114,7 +114,7 @@ Concat::Concat(FFModel& model,
 
 void Concat::init_meta(ConcatMeta *m) const
 {
-  m->axis = this->axis;
+  m->legion_axis = this->legion_axis;
 }
 
 void Concat::init(const FFModel& ff)
@@ -214,7 +214,7 @@ void Concat::forward_task(const Task *task,
     inputs[i] = helperGetTensorPointerRO<float>(
         regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
   
-  Concat::forward_kernel_wrapper(m, output, inputs, cc->numInputs, cc->axis, out_domain, in_domain);
+  Concat::forward_kernel_wrapper(m, output, inputs, cc->numInputs, cc->legion_axis, out_domain, in_domain);
 }
 
 void Concat::backward(const FFModel& ff)
@@ -270,7 +270,7 @@ void Concat::backward_task(const Task *task,
     input_grads[i] = helperGetTensorPointerRW<float>(
         regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
 
-  Concat::backward_kernel_wrapper(m, output_grad, input_grads, cc->numInputs, cc->axis,
+  Concat::backward_kernel_wrapper(m, output_grad, input_grads, cc->numInputs, cc->legion_axis,
                                   out_grad_domain, in_grad_domains);
 }
 
@@ -278,7 +278,7 @@ bool Concat::get_int_parameter(PMParameter para, int* value) const
 {
   switch (para) {
     case PM_AXIS:
-      *value = axis;
+      *value = legion_axis;
       return true;
     default:
       return Op::get_int_parameter(para, value);
@@ -329,7 +329,7 @@ bool Concat::measure_operator_cost(Simulator* sim,
 
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel_wrapper(m, output_ptr, input_ptrs, numInputs, axis, out_domain, in_domains);
+    forward_kernel_wrapper(m, output_ptr, input_ptrs, numInputs, legion_axis, out_domain, in_domains);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     for (int i = 0; i < numInputs; i++) {
@@ -345,7 +345,7 @@ bool Concat::measure_operator_cost(Simulator* sim,
     }
     backward = [&] {
       backward_kernel_wrapper(m, output_grad_ptr, input_grad_ptrs,
-                              numInputs, axis, out_domain, in_domains);
+                              numInputs, legion_axis, out_domain, in_domains);
     };
   }
 
@@ -366,10 +366,10 @@ bool Concat::measure_operator_cost(Simulator* sim,
 
 Node FFModel::get_or_create_concat_node(int num_inputs,
                                         const ParallelTensor* inputs,
-                                        int axis)
+                                        int legion_axis)
 {
   size_t hash = std::hash<int>()(num_inputs);
-  hash = hash * 31 + std::hash<int>()(axis);
+  hash = hash * 31 + std::hash<int>()(legion_axis);
   for (int i = 0; i < num_inputs; i++)
     hash = hash * 31 + inputs[i]->get_owner_independent_hash();
   const auto& it = cached_concat_ops.find(hash);
@@ -377,7 +377,7 @@ Node FFModel::get_or_create_concat_node(int num_inputs,
   if (it != cached_concat_ops.end()) {
     concat = it->second;
   } else {
-    concat = new Concat(*this, num_inputs, inputs, axis, NULL);
+    concat = new Concat(*this, num_inputs, inputs, legion_axis, NULL);
     cached_concat_ops[hash] = concat;
   }
   Node ret;
@@ -388,7 +388,7 @@ Node FFModel::get_or_create_concat_node(int num_inputs,
 
 size_t Concat::get_params_hash() const {
   size_t hash = std::hash<int>()(this->numInputs);
-  hash_combine(hash, this->axis);
+  hash_combine(hash, this->legion_axis);
   for (int i = 0; i < this->numInputs; i++) {
     hash_combine(hash, inputs[0]->get_owner_independent_hash());
   }

@@ -2549,7 +2549,16 @@ bool FFModel::convert_graph_to_operators(const Graph* graph,
       case OP_CONCAT:
       {
         Concat* concat = (Concat*) node.ptr;
-        new_op = new Concat(*this, (int)inList.size(), inputs, concat->axis, NULL);
+        new_op = new Concat(*this, (int)inList.size(), inputs, concat->legion_axis, NULL);
+        break;
+      }
+      case OP_SPLIT:
+      {
+        Split* split = (Split*) node.ptr;
+	std::vector<int> splits;
+	for (int i = 0; i < split->numOutputs; i++)
+          splits.push_back(split->outputs[i]->dims[split->legion_axis].size);
+        new_op = new Split(*this, inputs[0], splits, split->legion_axis, NULL);
         break;
       }
       case OP_EMBEDDING:

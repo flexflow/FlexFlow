@@ -152,7 +152,7 @@ void FusedOp::forward_task(const Task* task,
         assert(fused->op_num_outputs[op] == 1);
         ConcatMeta* m = (ConcatMeta*) metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
-        Concat::forward_kernel(my_op[0], my_ip, num_inputs, m->axis,
+        Concat::forward_kernel(my_op[0], my_ip, num_inputs, m->legion_axis,
             my_od[0], my_id, stream);
         break;
       }
@@ -469,7 +469,7 @@ void FusedOp::backward_task(const Task* task,
         assert(fused->op_num_outputs[op] == 1);
         ConcatMeta* m = (ConcatMeta*) metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
-        Concat::backward_kernel(my_grad_op[0], my_grad_ip, num_inputs, m->axis,
+        Concat::backward_kernel(my_grad_op[0], my_grad_ip, num_inputs, m->legion_axis,
             my_grad_od[0], my_grad_id, stream);
         break;
       }

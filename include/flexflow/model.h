@@ -526,6 +526,7 @@ class Pool2DParams;
 class Reshape;
 class ReshapeParams;
 class Softmax;
+class Split;
 class Combine;
 class Repartition;
 class Reduction;
@@ -886,7 +887,7 @@ public:
                                     DataType dtype);
   PCG::Node get_or_create_concat_node(int num_inputs,
                                       const ParallelTensor* inputs,
-                                      int axis);
+                                      int legion_axis);
   PCG::Node get_or_create_element_binary_node(const ParallelTensor input1,
                                               const ParallelTensor input2,
                                               OperatorType type);
@@ -918,6 +919,9 @@ public:
                                        const std::vector<int>& shape);
   PCG::Node get_or_create_softmax_node(const ParallelTensor input,
                                        int softmax_dim);
+  PCG::Node get_or_create_split_node(const ParallelTensor input,
+                                     const std::vector<int>& splits,
+                                     int legion_axis);
   PCG::Node get_or_create_repartition_node(const ParallelTensor input,
                                            int repartition_dim,
                                            int repartition_degree);
@@ -1106,6 +1110,7 @@ public:
   std::unordered_map<size_t, MultiHeadAttention*> cached_multihead_attn_ops;
   std::unordered_map<size_t, Reshape*> cached_reshape_ops;
   std::unordered_map<size_t, Softmax*> cached_softmax_ops;
+  std::unordered_map<size_t, Split*> cached_split_ops;
   std::unordered_map<size_t, Repartition*> cached_repartition_ops;
   std::unordered_map<size_t, Replicate*> cached_replicate_ops;
   std::unordered_map<size_t, Reduction*> cached_reduction_ops;

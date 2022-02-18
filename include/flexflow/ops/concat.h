@@ -8,7 +8,7 @@ namespace FlexFlow {
 class ConcatMeta : public OpMeta {
 public:
   ConcatMeta(FFHandler handle) : OpMeta(handle) {};
-  int axis;
+  int legion_axis;
   char op_name[MAX_OPNAME];
 };
 
@@ -72,7 +72,7 @@ public:
 
   size_t get_params_hash() const override;
 public:
-  int axis;
+  int legion_axis;
 };
 
 }; // namespace FlexFlow

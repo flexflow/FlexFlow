@@ -32,6 +32,7 @@ using Legion::ArgumentMap;
 using Legion::TaskArgument;
 using Legion::RegionRequirement;
 using Legion::Predicate;
+using PCG::Node;
 
 void FFModel::split(const Tensor input,
                     Tensor* outputs,
@@ -39,7 +40,20 @@ void FFModel::split(const Tensor input,
                     int axis,
                     const char* name)
 {
-  assert(false);
+  Layer* split = new Layer(this, OP_SPLIT, name, 1/*inputs*/,
+                           0/*weights*/, splits.size()/*outputs*/, input);
+  int numdim = input->num_dims;
+  int dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < numdim; i++)
+    dims[i] = input->dims[i];
+  for (size_t i = 0; i < splits.size(); i++) {
+    dims[numdim-axis-1] = splits[i];
+    split->outputs[i] = create_tensor_legion_ordering(
+        numdim, dims, input->data_type, split, 0, true/*create_grad*/);
+    outputs[i] = split->outputs[i];
+  }
+  split->add_int_property("legion_axis", numdim-axis-1);
+  layers.push_back(split);
 #ifdef DEADCODE
   Split* split = new Split(*this, input, splits, axis, name);
   layers.push_back(split);
@@ -48,12 +62,26 @@ void FFModel::split(const Tensor input,
 #endif
 }
 
+Op* Split::create_operator_from_layer(
+    FFModel& model,
+    const Layer* layer,
+    const std::vector<ParallelTensor>& inputs) {
+  long long value;
+  layer->get_int_property("legion_axis", value);
+  int legion_axis = value;
+  std::vector<int> splits;
+  for (int i = 0; i < layer->numOutputs; i++)
+    splits.push_back(layer->outputs[i]->dims[legion_axis]);
+  assert(inputs.size() == 1);
+  return new Split(model, inputs[0], splits, legion_axis, layer->name);
+}
+
 size_t Split::get_params_hash() const {
   size_t hash = 0;
   for (int i = 0; i < this->numInputs; i++) {
     hash_combine(hash, this->inputs[i]->get_owner_independent_hash()); 
   }
-  hash_combine(hash, this->axis);
+  hash_combine(hash, this->legion_axis);
 
   return hash;
 }
@@ -61,15 +89,14 @@ size_t Split::get_params_hash() const {
 Split::Split(FFModel& model,
              const ParallelTensor input,
              const std::vector<int>& splits,
-             int _axis,
+             int _legion_axis,
              const char* name)
 : Op(model, OP_SPLIT, name, 1/*inputs*/, 0/*weights*/, splits.size()/*outputs*/, input),
-  axis(input->num_dims-1-_axis)
+  legion_axis(_legion_axis)
 {
   numOutputs = splits.size();
   // Note that we use the Legion dim ordering
-  // axis = input->num_dims-1-_axis
-  assert(axis >= 0);
+  assert(legion_axis >= 0);
   numWeights = 0;
   int split_size = 0;
   for (int i = 0; i < numOutputs; i++) {
@@ -78,16 +105,16 @@ Split::Split(FFModel& model,
     ParallelDim dims[MAX_TENSOR_DIM];
     for (int j = 0; j < numdim; j++)
       dims[j] = input->dims[j];
-    dims[axis].size = splits[i];
+    dims[legion_axis].size = splits[i];
     // Assert the _axis dim cannot be parallelized
-    assert(dims[axis].degree == 1);
-    assert(dims[axis].parallel_idx == -1);
+    assert(dims[legion_axis].degree == 1);
+    assert(dims[legion_axis].parallel_idx == -1);
     outputs[i] = model.create_parallel_tensor_legion_ordering(
         numdim, dims, input->data_type,
         this/*owner_op*/, i/*owner_idx*/);
   }
   // Check split sizes
-  assert(split_size == input->dims[axis].size);
+  assert(split_size == input->dims[legion_axis].size);
 }
 
 void Split::init(const FFModel& ff)
@@ -172,17 +199,17 @@ void Split::forward_task(const Task *task,
   const float* in_ptr = helperGetTensorPointerRO<float>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   coord_t num_blks, in_blk_size, out_blk_size[MAX_NUM_OUTPUTS];
-  calc_block_size(num_blks, in_blk_size, in_domain, split->axis);
+  calc_block_size(num_blks, in_blk_size, in_domain, split->legion_axis);
   for (int i = 0; i < split->numOutputs; i++) {
     Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[i+1].region.get_index_space());
     out_ptr[i] = helperGetTensorPointerWO<float>(
       regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
     coord_t out_num_blks;
-    calc_block_size(out_num_blks, out_blk_size[i], out_domain, split->axis);
+    calc_block_size(out_num_blks, out_blk_size[i], out_domain, split->legion_axis);
     assert(out_num_blks == num_blks);
     for (int j = 0; j < out_domain.get_dim(); j++)
-      if (j != split->axis) {
+      if (j != split->legion_axis) {
         assert(out_domain.hi()[j] == in_domain.hi()[j]);
         assert(out_domain.lo()[j] == in_domain.lo()[j]);
       }
@@ -229,17 +256,17 @@ void Split::backward_task(const Task *task,
   float* in_grad_ptr = helperGetTensorPointerRW<float>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   coord_t num_blks, in_blk_size, out_blk_size[MAX_NUM_OUTPUTS];
-  calc_block_size(num_blks, in_blk_size, in_grad_domain, split->axis);
+  calc_block_size(num_blks, in_blk_size, in_grad_domain, split->legion_axis);
   for (int i = 0; i < split->numOutputs; i++) {
     Domain out_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[i+1].region.get_index_space());
     out_grad_ptr[i] = helperGetTensorPointerRO<float>(
       regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
     coord_t out_num_blks;
-    calc_block_size(out_num_blks, out_blk_size[i], out_grad_domain, split->axis);
+    calc_block_size(out_num_blks, out_blk_size[i], out_grad_domain, split->legion_axis);
     assert(out_num_blks == num_blks);
     for (int j = 0; j < out_grad_domain.get_dim(); j++)
-      if (j != split->axis) {
+      if (j != split->legion_axis) {
         assert(out_grad_domain.hi()[j] == in_grad_domain.hi()[j]);
         assert(out_grad_domain.lo()[j] == in_grad_domain.lo()[j]);
       }
@@ -267,15 +294,15 @@ bool Split::measure_operator_cost(Simulator* sim,
   size_t total_volume = 0;
   float* input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   coord_t num_blks, in_blk_size, out_blk_size[MAX_NUM_OUTPUTS];
-  calc_block_size(num_blks, in_blk_size, in_domain, axis);
+  calc_block_size(num_blks, in_blk_size, in_domain, legion_axis);
   for (int i = 0; i < numOutputs; i++) {
     Domain out_domain = sub_output[i].get_domain();
     output_ptr[i] = (float*)sim->allocate(sub_output[i].get_volume(), DT_FLOAT);
     coord_t out_num_blks;
-    calc_block_size(out_num_blks, out_blk_size[i], out_domain, axis);
+    calc_block_size(out_num_blks, out_blk_size[i], out_domain, legion_axis);
     assert(out_num_blks == num_blks);
     for (int j = 0; j < out_domain.get_dim(); j++)
-      if (j != axis) {
+      if (j != legion_axis) {
         assert(out_domain.hi()[j] == in_domain.hi()[j]);
         assert(out_domain.lo()[j] == in_domain.lo()[j]);
       }
@@ -304,5 +331,28 @@ bool Split::measure_operator_cost(Simulator* sim,
   }
   return true;
 }
+
+Node FFModel::get_or_create_split_node(const ParallelTensor input,
+                                       const std::vector<int>& splits,
+                                       int legion_axis) {
+  size_t hash = input->get_owner_independent_hash();
+  hash = hash * 31 + std::hash<int>()(legion_axis);
+  hash = hash * 31 + std::hash<int>()((int)splits.size());
+  for (size_t i = 0; i < splits.size(); i++)
+    hash = hash * 31 + splits[i];
+  const auto& it = cached_split_ops.find(hash);
+  Split* split = nullptr;
+  if (it != cached_split_ops.end()) {
+    split = it->second;
+  } else {
+    split = new Split(*this, input, splits, legion_axis, NULL);
+    cached_split_ops[hash] = split;
+  }
+  Node ret;
+  ret.guid = node_global_guid ++;
+  ret.ptr = split;
+  return ret;
+}
+
 
 }; // namespace FlexFlow

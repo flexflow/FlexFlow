@@ -10,12 +10,16 @@ public:
   Split(FFModel& model,
         const ParallelTensor input,
         const std::vector<int>& split,
-        int axis,
+        int legion_axis,
         const char* name);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
   void print_layer(const FFModel& model) override {assert(0);}
+  static Op* create_operator_from_layer(
+      FFModel& model,
+      const Layer* layer,
+      const std::vector<ParallelTensor>& inputs);
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,
@@ -58,7 +62,7 @@ public:
 
   size_t get_params_hash() const override;
 public:
-  int axis;
+  int legion_axis;
 };
 
 }; // namespace FlexFlow

@@ -28,6 +28,7 @@
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/concat.h"
+#include "flexflow/ops/split.h"
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/replicate.h"
 #include "flexflow/parallel_ops/reduction.h"
@@ -1328,7 +1329,7 @@ T SearchHelper::estimate_xfer_cost(
       assert(sink.node.ptr->inputs[it2.dstIdx]->is_valid_machine_view(source.view));
 
       float estimated_xfer_cost = this->model->simulator->estimate_xfer_cost(
-          sink.node.ptr, it2.srcIdx, source.view, sink.view);
+          sink.node.ptr, it2.dstIdx, source.view, sink.view);
       //printf("Estimated xfer cost from %s to %s: %fms\n", source.node.ptr->name, sink.node.ptr->name, estimated_xfer_cost);
       op_cost += estimated_xfer_cost;
     }
@@ -1644,7 +1645,16 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
       case OP_CONCAT:
       {
         Concat* concat = (Concat*) op;
-        sez.serialize(concat->axis);
+        sez.serialize(concat->legion_axis);
+        break;
+      }
+      case OP_SPLIT:
+      {
+        Split* split = (Split*) op;
+        sez.serialize(split->legion_axis);
+        sez.serialize(split->numOutputs);
+        for (int i = 0; i < split->numOutputs; i++)
+          sez.serialize(split->outputs[i]->dims[split->legion_axis].size);
         break;
       }
       case OP_EMBEDDING:
@@ -1908,9 +1918,24 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_CONCAT:
       {
-        int axis;
-        dez.deserialize(axis);
-        node = get_or_create_concat_node(num_inputs, inputs, axis);
+        int legion_axis;
+        dez.deserialize(legion_axis);
+        node = get_or_create_concat_node(num_inputs, inputs, legion_axis);
+        break;
+      }
+      case OP_SPLIT:
+      {
+        int legion_axis;
+        dez.deserialize(legion_axis);
+        int num_outputs;
+        dez.deserialize(num_outputs);
+        std::vector<int> splits;
+        for (int i = 0; i < num_outputs; i++) {
+          int dim_size;
+          dez.deserialize(dim_size);
+          splits.push_back(dim_size);
+        }
+        node = get_or_create_split_node(inputs[0], splits, legion_axis);
         break;
       }
       case OP_EMBEDDING:
