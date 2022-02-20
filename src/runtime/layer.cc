@@ -15,7 +15,7 @@ Layer::Layer(FFModel* model,
              const Tensor _input4)
 : op_type(_type), layer_guid(model->layer_global_guid++),
   numInputs(_numInputs), numWeights(_numWeights),
-  numOutputs(_numOutputs)
+  numOutputs(_numOutputs), data_type(DT_FLOAT)
 {
   std::string pcname;
   if (_name == nullptr) {
@@ -49,7 +49,7 @@ Layer::Layer(FFModel* model,
              const Tensor* _tensors)
 : op_type(_type), layer_guid(model->layer_global_guid++),
   numInputs(_numInputs), numWeights(_numWeights),
-  numOutputs(_numOutputs)
+  numOutputs(_numOutputs), data_type(DT_FLOAT)
 {
   std::string pcname;
   if (_name == nullptr) {

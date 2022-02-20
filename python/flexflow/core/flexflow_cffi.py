@@ -718,7 +718,7 @@ class Tensor(object):
     elif (dtype == 44):
       self.data_type = DataType.DT_DOUBLE
     else:
-      assert 0, "unknown data type"
+      assert 0, "unknown data type {}".format(dtype)
 
   def __get_owner_op(self, op_type):
     op_handle = ffc.flexflow_tensor_get_owner_op(self.handle)

@@ -127,16 +127,37 @@ int Embedding::output_vocab_size_replica_dim() const {
 int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
   ParallelTensor const &input = this->inputs[0];
 
-  const int REPLICA = this->output_vocab_size_replica_dim();
   const int OUT_CHANNELS = Output::OUT_CHANNELS;
-
-  output_dims[OUT_CHANNELS].size = this->out_channels;
-  for (int i = 1; i < input->num_dims; i++) {
-    output_dims[i] = input->dims[i]; 
+  if (aggr == AGGR_MODE_NONE) {
+    int num_dims = input->num_dims + 1;
+    for (int i = 1; i < num_dims - 1; i++)
+      output_dims[i] = input->dims[i-1];
+    assert(OUT_CHANNELS == 0);
+    output_dims[OUT_CHANNELS].size = this->out_channels;
+    output_dims[OUT_CHANNELS].degree = 1;
+    output_dims[OUT_CHANNELS].parallel_idx = -1;
+    // Currently do not support parallelizing over the replica dim
+    output_dims[num_dims-1].size = 1;
+    output_dims[num_dims-1].degree = 1;
+    output_dims[num_dims-1].parallel_idx = -1;
+    output_dims[num_dims-1].is_replica_dim = true;
+    return num_dims;
+  } else {
+    int num_dims = input->num_dims;
+    for (int i = 1; i < num_dims - 1; i++)
+      output_dims[i] = input->dims[i];
+    assert(OUT_CHANNELS == 0);
+    output_dims[OUT_CHANNELS].size = this->out_channels;
+    output_dims[OUT_CHANNELS].degree = 1;
+    output_dims[OUT_CHANNELS].parallel_idx = -1;
+    // Currently do not support parallelizing over the replica dim
+    output_dims[num_dims-1].size = 1;
+    output_dims[num_dims-1].degree = 1;
+    output_dims[num_dims-1].parallel_idx = -1;
+    output_dims[num_dims-1].is_replica_dim = true;
+    return num_dims;
   }
-  output_dims[REPLICA].is_replica_dim = true;
-
-  return input->num_dims;
+  //const int REPLICA = this->output_vocab_size_replica_dim();
 }
 
 int Embedding::weight_size(ParallelDim weight_dims[MAX_TENSOR_DIM]) {
@@ -145,13 +166,25 @@ int Embedding::weight_size(ParallelDim weight_dims[MAX_TENSOR_DIM]) {
   weight_dims[Weight::OUT_CHANNELS].size = this->out_channels;
   weight_dims[Weight::VOCAB_SIZE].size = this->num_entries;
   for (int i = 2; i < input->num_dims; i++) {
-    weight_dims[i].is_replica_dim = true;     
+    weight_dims[i].size = input->dims[i-1].degree;
+    weight_dims[i].degree = weight_dims[i].size;
+    weight_dims[i].parallel_idx = input->dims[i-1].parallel_idx;
+    weight_dims[i].is_replica_dim = true;
   }
-
   return input->num_dims;
 }
 
 void Embedding::register_output_mappings() {
+  if (aggr == AGGR_MODE_NONE) {
+    int num_dims = this->inputs[0]->num_dims + 1;
+    for (int i = 1; i < num_dims-1; i++)
+      this->register_output_parallel_dims(i-1, i);
+  } else {
+    int num_dims = this->inputs[0]->num_dims;
+    for (int i = 1; i < num_dims-1; i++)
+      this->register_output_parallel_dims(i, i);
+  }
+#ifdef DEADCODE
   this->register_output_parallel_dims({
     { this->input_vocab_size_replica_dim(), this->output_vocab_size_replica_dim() },
     { this->input_channel_out_replica_dim(), Output::OUT_CHANNELS },
@@ -160,16 +193,19 @@ void Embedding::register_output_mappings() {
   for (int i = 1; i < this->inputs[0]->num_dims - 1; i++) {
     this->register_output_parallel_dims(i - 1, i);
   }
+#endif
 }
 
 void Embedding::register_weight_mappings() {
+#ifdef DEADCODE
   this->register_weight_parallel_dims({
     { this->input_vocab_size_replica_dim(), Weight::VOCAB_SIZE },
     { this->input_channel_out_replica_dim(), Weight::OUT_CHANNELS },
   });
+#endif
 
   for (int i = 2; i < this->inputs[0]->num_dims; i++) {
-    this->register_weight_parallel_dims(i - 2, i);
+    this->register_weight_parallel_dims(i - 1, i);
   }
 }
 
