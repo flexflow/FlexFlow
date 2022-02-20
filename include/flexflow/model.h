@@ -891,7 +891,8 @@ public:
   PCG::Node get_or_create_element_binary_node(const ParallelTensor input1,
                                               const ParallelTensor input2,
                                               OperatorType type);
-  PCG::Node get_or_create_embedding_node(const ParallelTensor input,
+  PCG::Node get_or_create_embedding_node(const LayerID& layer_guid,
+                                         const ParallelTensor input,
                                          int num_entries,
                                          int out_channels,
                                          AggrMode aggr);

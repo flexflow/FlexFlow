@@ -35,6 +35,7 @@ struct EmbeddingParams {
 class Embedding : public Op {
 public:
   Embedding(FFModel& model,
+            const LayerID& _layer_guid,
             const ParallelTensor _input,
             int _num_entries,
             int _out_channels,

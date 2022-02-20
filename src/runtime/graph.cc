@@ -1660,6 +1660,7 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
       case OP_EMBEDDING:
       {
         Embedding* embed = (Embedding*) op;
+        sez.serialize(embed->layer_guid.id);
         sez.serialize(embed->num_entries);
         sez.serialize(embed->out_channels);
         sez.serialize(embed->aggr);
@@ -1943,10 +1944,13 @@ void FFModel::deserialize_graph_optimal_view(
         assert(num_inputs == 1);
         AggrMode aggr;
         int num_entries, out_channels;
+        size_t id;
+        dez.deserialize(id);
+        LayerID layer_guid(id);
         dez.deserialize(num_entries);
         dez.deserialize(out_channels);
         dez.deserialize(aggr);
-        node = get_or_create_embedding_node(inputs[0], num_entries, out_channels, aggr);
+        node = get_or_create_embedding_node(layer_guid, inputs[0], num_entries, out_channels, aggr);
         break;
       }
       case OP_EW_ADD:

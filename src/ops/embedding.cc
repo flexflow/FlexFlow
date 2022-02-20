@@ -62,6 +62,11 @@ Tensor FFModel::embedding(const Tensor input,
     embed->outputs[0] = create_tensor_legion_ordering(
         numdims, dims, embed->data_type, embed, 0, true/*create_grad*/);
   }
+  {
+    int dims[2] = {out_dim, num_entries};
+    embed->weights[0] = create_weight_legion_ordering(2, dims, DT_FLOAT,
+        embed, true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
+  }
   embed->data_type = DT_FLOAT;
   embed->add_int_property("num_entries", num_entries);
   embed->add_int_property("out_dim", out_dim);
@@ -106,7 +111,7 @@ Op* Embedding::create_operator_from_layer(
   AggrMode aggr = (AggrMode) value;
   Initializer *kernel_initializer;
   layer->get_initializer("kernel", kernel_initializer);
-  return new Embedding(model,
+  return new Embedding(model, layer->layer_guid,
       inputs[0], num_entries, out_dim, aggr,
       false/*allocate_weights*/, layer->name);
 }
@@ -164,7 +169,11 @@ int Embedding::weight_size(ParallelDim weight_dims[MAX_TENSOR_DIM]) {
   ParallelTensor const &input = this->inputs[0];
 
   weight_dims[Weight::OUT_CHANNELS].size = this->out_channels;
+  weight_dims[Weight::OUT_CHANNELS].degree = 1;
+  weight_dims[Weight::OUT_CHANNELS].parallel_idx = -1;
   weight_dims[Weight::VOCAB_SIZE].size = this->num_entries;
+  weight_dims[Weight::VOCAB_SIZE].degree = 1;
+  weight_dims[Weight::VOCAB_SIZE].parallel_idx = -1;
   for (int i = 2; i < input->num_dims; i++) {
     weight_dims[i].size = input->dims[i-1].degree;
     weight_dims[i].degree = weight_dims[i].size;
@@ -218,10 +227,11 @@ Embedding::Embedding(FFModel& model,
                      Embedding const &other,
                      const ParallelTensor input,
                      bool allocate_weights) 
-: Embedding(model, input, other.num_entries, other.out_channels, other.aggr, allocate_weights, other.name) 
+: Embedding(model, other.layer_guid, input, other.num_entries, other.out_channels, other.aggr, allocate_weights, other.name) 
 { }
 
 Embedding::Embedding(FFModel& model,
+                     const LayerID& _layer_guid,
                      const ParallelTensor _input,
                      int _num_entries,
                      int _out_channels,
@@ -231,6 +241,7 @@ Embedding::Embedding(FFModel& model,
 : Op(model, OP_EMBEDDING, name, 1/*inputs*/, 1/*weights*/, allocate_weights, 1/*outputs*/, _input),
   num_entries(_num_entries), out_channels(_out_channels), aggr(_aggr)
 {
+  layer_guid = _layer_guid;
   std::vector<ParallelDim *> weight_dim_sets;
 
   int weight_ndim;
@@ -379,7 +390,7 @@ void Embedding::forward_task_with_type(const Task *task,
   Domain kernel_domain = runtime->get_index_space_domain(
     ctx, task->regions[2].region.get_index_space());
   if (m->aggr == AGGR_MODE_NONE) {
-    assert(kernel_domain.get_dim() == 2);
+    //assert(kernel_domain.get_dim() == 2);
     assert(input_domain.get_dim() + 1 == output_domain.get_dim());
     for (size_t i = 0; i < input_domain.get_dim(); i++) {
       assert(input_domain.hi()[i] == output_domain.hi()[i+1]);
@@ -388,7 +399,7 @@ void Embedding::forward_task_with_type(const Task *task,
     assert(kernel_domain.hi()[0] - kernel_domain.lo()[0]
         == output_domain.hi()[0] - output_domain.lo()[0]);
   } else {
-    assert(kernel_domain.get_dim() == 2);
+    //assert(kernel_domain.get_dim() == 2);
     assert(input_domain.get_dim() + 1 == output_domain.get_dim());
     for (size_t i = 1; i < input_domain.get_dim(); i++) {
       assert(input_domain.hi()[i] == output_domain.hi()[i]);
@@ -480,7 +491,7 @@ void Embedding::backward_task_with_type(const Task *task,
   Domain kernel_grad_domain = runtime->get_index_space_domain(
     ctx, task->regions[2].region.get_index_space());
   if (m->aggr == AGGR_MODE_NONE) {
-    assert(kernel_grad_domain.get_dim() == 2);
+    //assert(kernel_grad_domain.get_dim() == 2);
     assert(input_domain.get_dim() + 1 == output_grad_domain.get_dim());
     for (size_t i = 0; i < input_domain.get_dim(); i++) {
       assert(input_domain.hi()[i] == output_grad_domain.hi()[i+1]);
@@ -489,7 +500,7 @@ void Embedding::backward_task_with_type(const Task *task,
     assert(kernel_grad_domain.hi()[0] - kernel_grad_domain.lo()[0]
         == output_grad_domain.hi()[0] - output_grad_domain.lo()[0]);
   } else {
-    assert(kernel_grad_domain.get_dim() == 2);
+    //assert(kernel_grad_domain.get_dim() == 2);
     assert(input_domain.get_dim() + 1 == output_grad_domain.get_dim());
     for (size_t i = 1; i < input_domain.get_dim(); i++) {
       assert(input_domain.hi()[i] == output_grad_domain.hi()[i]);
@@ -552,16 +563,17 @@ bool Embedding::measure_operator_cost(
     cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
     return true;
   }
-  int in_dim = sub_input.dims[0].size;
-  int out_dim = sub_input.dims[0].size;
-  assert (sub_input.dims[1] == sub_output.dims[1]);
-  int batch_size = sub_input.dims[1].size;
+
+  int in_dim = aggr == AGGR_MODE_NONE ? 1 : sub_input.dims[0].size;
+  int out_dim = sub_output.dims[0].size;
+  int effective_batch_size = sub_output.get_volume() / out_dim;
+  assert(effective_batch_size * in_dim == sub_input.get_volume());
 
   // Randomly initialize the intput tensor to avoid out of index range issues
   rand_generate_int64_wrapper(input_ptr, sub_input.get_volume(), num_entries);
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel_wrapper(m, input_ptr, output_ptr, weight_ptr, in_dim, out_dim, batch_size, this->aggr, sub_output.get_volume());
+    forward_kernel_wrapper(m, input_ptr, output_ptr, weight_ptr, in_dim, out_dim, effective_batch_size, this->aggr, sub_output.get_volume());
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *weight_grad_ptr = (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
@@ -576,7 +588,7 @@ bool Embedding::measure_operator_cost(
       return true;
     }
     backward = [&] {
-      backward_kernel_wrapper(m, input_grad_ptr, output_grad_ptr, weight_grad_ptr, in_dim, out_dim, batch_size,
+      backward_kernel_wrapper(m, input_grad_ptr, output_grad_ptr, weight_grad_ptr, in_dim, out_dim, effective_batch_size,
         this->aggr, sub_output.get_volume());
     };
   }
@@ -598,11 +610,12 @@ bool Embedding::measure_operator_cost(
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_embedding_node(const ParallelTensor input,
-                                           int num_entries,
-                                           int out_channels,
-                                           AggrMode aggr)
-{
+Node FFModel::get_or_create_embedding_node(
+    const LayerID& layer_guid,
+    const ParallelTensor input,
+    int num_entries,
+    int out_channels,
+    AggrMode aggr) {
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(num_entries);
   hash = hash * 31 + std::hash<int>()(out_channels);
@@ -612,7 +625,7 @@ Node FFModel::get_or_create_embedding_node(const ParallelTensor input,
   if (it != cached_embedding_ops.end()) {
     embed = it->second;
   } else {
-    embed = new Embedding(*this, input, num_entries, out_channels,
+    embed = new Embedding(*this, layer_guid, input, num_entries, out_channels,
                           aggr, false/*allocate_weights*/, NULL);
     cached_embedding_ops[hash] = embed;
   }
