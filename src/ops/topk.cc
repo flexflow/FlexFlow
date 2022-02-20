@@ -243,10 +243,10 @@ void TopK::backward_task(const Task *task,
                                 batch_size, length, k);
 }
 
-bool TopK::measure_operator_cost(Simulator* sim,
-                                 const ParallelConfig& pc,
-                                 CostMetrics& cost_metrics) const
-{
+bool TopK::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const {
   // To be implemented
   assert(false);
   return false;

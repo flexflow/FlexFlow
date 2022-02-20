@@ -294,9 +294,10 @@ void Group_by::backward_task(const Task *task,
                                    data_dim);
 }
 
-bool Group_by::measure_operator_cost(Simulator* sim,
-                                 const ParallelConfig& pc,
-                                 CostMetrics& cost_metrics) const
+bool Group_by::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const
 {
   //TODO: implement
   cost_metrics.forward_time = 0.0f;

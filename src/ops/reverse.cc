@@ -243,15 +243,15 @@ void Reverse::backward_task(const Task* task,
   Reverse::backward_kernel_wrapper(out_grad_ptr, in_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size, in_grad_domain.get_volume());
 }
 
-bool Reverse::measure_operator_cost(Simulator* sim,
-                                    const ParallelConfig& pc,
-                                    CostMetrics& cost_metrics) const
-{
+bool Reverse::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
-  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
   }
-  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, op_type)) {
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
   }
 

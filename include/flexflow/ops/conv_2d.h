@@ -179,7 +179,7 @@ public:
                                       float* kernel_grad_ptr,
                                       float* bias_grad_ptr);
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
   bool estimate_sync_cost(Simulator* sim,
                           const MachineView& pc,

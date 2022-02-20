@@ -138,7 +138,7 @@ void Combine::backward(const FFModel& ff)
 
 bool Combine::measure_operator_cost(
     Simulator* sim,
-    const ParallelConfig& pc,
+    const MachineView& mv,
     CostMetrics& cost_metrics) const
 {
   //TODO: to be implemented

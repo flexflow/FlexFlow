@@ -64,7 +64,7 @@ public:
                                       const float* output_grad_ptr,
                                       size_t num_elements);
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
   Legion::Domain get_input_tensor_shape(const ParallelConfig& pc, int input_idx, int part_idx) const override;
 

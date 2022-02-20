@@ -254,10 +254,10 @@ float Cache::update_task(const Task *task,
   }
 }
 
-bool Cache::measure_operator_cost(Simulator* sim,
-                                 const ParallelConfig& pc,
-                                 CostMetrics& cost_metrics) const
-{
+bool Cache::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const {
   //TODO: implement
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;

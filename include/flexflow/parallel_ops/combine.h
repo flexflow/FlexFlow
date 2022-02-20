@@ -38,7 +38,7 @@ public:
       size_t num_elements);
   bool measure_operator_cost(
       Simulator* sim,
-      const ParallelConfig& pc,
+      const MachineView& mv,
       CostMetrics& cost_metrics) const override;
 
   size_t get_params_hash() const override;

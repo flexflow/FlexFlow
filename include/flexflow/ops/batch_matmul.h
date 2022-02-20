@@ -72,7 +72,7 @@ public:
                                       float* c_grad_ptr,
                                       int m, int n, int k, int batch);
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
 private:
   template<int NDIM>

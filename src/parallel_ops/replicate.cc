@@ -157,7 +157,7 @@ void Replicate::backward(const FFModel& ff)
 
 bool Replicate::measure_operator_cost(
     Simulator* sim,
-    const ParallelConfig& pc,
+    const MachineView& pc,
     CostMetrics& cost_metrics) const
 {
   cost_metrics.forward_time = 0.0f;

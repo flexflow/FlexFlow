@@ -535,16 +535,16 @@ size_t ElementBinary::get_params_hash() const {
   return hash;
 }
 
-bool ElementBinary::measure_operator_cost(Simulator* sim,
-                                          const ParallelConfig& pc,
-                                          CostMetrics& cost_metrics) const
-{
+bool ElementBinary::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const {
   ParallelTensorBase sub_output, sub_input1, sub_input2;
-  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type))
+  if (!outputs[0]->get_sub_tensor(mv, sub_output))
     return false;
-  if (!inputs[0]->get_input_sub_tensor(pc, sub_input1, op_type))
+  if (!inputs[0]->get_sub_tensor(mv, sub_input1))
     return false;
-  if (!inputs[1]->get_input_sub_tensor(pc, sub_input2, op_type))
+  if (!inputs[1]->get_sub_tensor(mv, sub_input2))
     return false;
   ElementBinaryMeta* m = sim->ele_binary_meta;
   m->op_type = op_type;

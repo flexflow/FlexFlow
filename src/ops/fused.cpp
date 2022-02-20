@@ -640,13 +640,4 @@ void FusedOp::backward_task(const Task* task,
   //  print_tensor<float>(output_grad_ptr[i], output_grad_domain[i].get_volume(), "[Fused:backward:output_grad]");
 }
 
-bool FusedOp::measure_operator_cost(Simulator* sim,
-                                    const ParallelConfig& pc,
-                                    CostMetrics& cost_metrics) const
-{
-  // The search should happen before fusion
-  assert(false);
-  return false;
-}
-
 }; // namespace FlexFlow

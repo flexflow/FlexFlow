@@ -437,6 +437,8 @@ void Simulator::add_task_dependencies_with_xfer(SimTask* src_task,
 
 CostMetrics Simulator::measure_operator_cost(const Op* op, const ParallelConfig& config)
 {
+  assert(false);
+#ifdef DEADCODE
   size_t hash = 17 * 31 + op->get_untyped_params_hash();
   hash = hash * 31 + std::hash<int>()(config.device_type);
   hash = hash * 31 + std::hash<int>()(config.nDims);
@@ -455,6 +457,7 @@ CostMetrics Simulator::measure_operator_cost(const Op* op, const ParallelConfig&
   } else {
     return iter->second;
   }
+#endif
 }
 
 ParallelConfig Op::view_to_pc(MachineView const &view) const {
@@ -479,14 +482,27 @@ ParallelConfig Op::view_to_pc(MachineView const &view) const {
   return config;
 }
 
-CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& view)
+CostMetrics Simulator::measure_operator_cost(const Op* op, const MachineView& mv)
 {
-  ParallelConfig config = op->view_to_pc(view);
-  CostMetrics cost_metrics = this->measure_operator_cost(op, config);
-  // First, estimate operator sync cost
-  // We don't care about cache since the estimate is cheap
-  op->estimate_sync_cost(this, view, cost_metrics);
-  return cost_metrics;
+  size_t hash = 17 * 31 + op->get_untyped_params_hash();
+  hash = hash * 31 + std::hash<int>()(mv.device_type);
+  hash = hash * 31 + std::hash<int>()(mv.ndims);
+  for (int i = 0; i < mv.ndims; i++)
+    hash = hash * 31 + std::hash<int>()(mv.dim[i]);
+  std::unordered_map<size_t, CostMetrics>::const_iterator iter =
+    hash_to_operator_cost.find(hash);
+  if (iter == hash_to_operator_cost.end()) {
+    CostMetrics cost_metrics;
+    bool is_implemented = op->measure_operator_cost(this, mv, cost_metrics);
+    if (! is_implemented) {
+      handle_measure_operator_cost_unimplemented(op);
+    }
+    op->estimate_sync_cost(this, mv, cost_metrics);
+    hash_to_operator_cost[hash] = cost_metrics;
+    return cost_metrics;
+  } else {
+    return iter->second;
+  }
 }
 
 float Simulator::estimate_repartition_xfer_cost(int repartition_dim,

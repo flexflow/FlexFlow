@@ -386,4 +386,13 @@ void FusedOp::backward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+bool FusedOp::measure_operator_cost(Simulator* sim,
+                                    const MachineView& mv,
+                                    CostMetrics& cost_metrics) const
+{
+  // The search should happen before fusion
+  assert(false);
+  return false;
+}
+
 }; // namespace FlexFlow

@@ -77,7 +77,7 @@ public:
                                       float* in2_grad_ptr);
   size_t get_params_hash() const override;
   bool measure_operator_cost(Simulator* sim,
-                            const ParallelConfig& pc,
+                            const MachineView& pc,
                             CostMetrics& cost_metrics) const override;
 public:
   bool inplace_a, has_same_operands;

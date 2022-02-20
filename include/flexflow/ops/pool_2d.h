@@ -109,7 +109,7 @@ public:
                                       const float* output_ptr,
                                       const float* output_grad_ptr);
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
 
   void serialize(Legion::Serializer &) const override;

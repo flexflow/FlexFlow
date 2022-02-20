@@ -139,7 +139,7 @@ void Reduction::backward(const FFModel& ff)
 
 bool Reduction::measure_operator_cost(
     Simulator* sim,
-    const ParallelConfig& pc,
+    const MachineView& pc,
     CostMetrics& cost_metrics) const
 {
   cost_metrics.forward_time = 0.0f;

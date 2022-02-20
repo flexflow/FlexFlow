@@ -438,18 +438,19 @@ bool MultiHeadAttention::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
-bool MultiHeadAttention::measure_operator_cost(Simulator* sim,
-                                               const ParallelConfig& pc,
-                                               CostMetrics& cost_metrics) const
+bool MultiHeadAttention::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const
 {
   ParallelTensorBase sub_output, sub_query, sub_key, sub_value;
-  if (!inputs[0]->get_input_sub_tensor(pc, sub_query, OP_MULTIHEAD_ATTENTION))
+  if (!inputs[0]->get_sub_tensor(mv, sub_query))
     return false;
-  if (!inputs[1]->get_input_sub_tensor(pc, sub_key, OP_MULTIHEAD_ATTENTION))
+  if (!inputs[1]->get_sub_tensor(mv, sub_key))
     return false;
-  if (!inputs[2]->get_input_sub_tensor(pc, sub_value, OP_MULTIHEAD_ATTENTION))
+  if (!inputs[2]->get_sub_tensor(mv, sub_value))
     return false;
-  if (!outputs[0]->get_input_sub_tensor(pc, sub_output, OP_MULTIHEAD_ATTENTION))
+  if (!outputs[0]->get_sub_tensor(mv, sub_output))
     return false;
   // Currently assume only data parallel
   size_t num_weights = 0;

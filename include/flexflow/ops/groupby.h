@@ -51,7 +51,7 @@ public:
                                       int batch_size,
                                       int data_dim);
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
 public:
   int n;

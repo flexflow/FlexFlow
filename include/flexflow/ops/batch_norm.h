@@ -30,14 +30,14 @@ public:
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
   static void forward_kernel(BatchNormMeta *m,
                              float const *input_ptr,
                              float *output_ptr,
                              float const *scale_ptr,
-                             float const *bias_ptr,
-                             ffStream_t stream);
+                             float const *bias_ptr);
+                             //ffStream_t stream);
   static void backward_kernel(BatchNormMeta *m,
                               float const *input_ptr,
                               float *output_grad_ptr,
@@ -46,8 +46,8 @@ public:
                               float const *scale_ptr,
                               float *scale_grad_ptr,
                               float *bias_grad_ptr,
-                              size_t numElements,
-                              ffStream_t stream);
+                              size_t numElements);
+                              //ffStream_t stream);
 public:
   bool relu;
   int num_replica;

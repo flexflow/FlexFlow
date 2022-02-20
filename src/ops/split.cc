@@ -277,16 +277,15 @@ void Split::backward_task(const Task *task,
   Split::backward_kernel_wrapper(in_grad_ptr, out_grad_ptr, out_blk_size, in_blk_size, num_blks, split->numOutputs);
 }
 
-bool Split::measure_operator_cost(Simulator* sim,
-                                  const ParallelConfig& pc,
-                                  CostMetrics& cost_metrics) const
-{
-  //TODO: implement measure_forward
+bool Split::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const {
   ParallelTensorBase sub_output[MAX_NUM_OUTPUTS], sub_input;
   for (int i = 0; i < numOutputs; i++)
-    if (!outputs[i]->get_output_sub_tensor(pc, sub_output[i], OP_SPLIT))
+    if (!outputs[i]->get_sub_tensor(mv, sub_output[i]))
       return false;
-  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, OP_SPLIT))
+  if (!inputs[0]->get_sub_tensor(mv, sub_input))
     return false;
   Domain in_domain = sub_input.get_domain();
   sim->free_all();

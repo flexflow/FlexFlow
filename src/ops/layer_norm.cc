@@ -412,9 +412,8 @@ void LayerNorm::backward_task(const Task *task,
 
 bool LayerNorm::measure_operator_cost(
     Simulator* sim,
-    const ParallelConfig& pc,
-    CostMetrics& cost_metrics) const
-{
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const {
   return false;
 }
 

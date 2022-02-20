@@ -44,7 +44,7 @@ public:
                             const std::vector<Legion::PhysicalRegion> &regions,
                             Legion::Context ctx, Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& mv,
                              CostMetrics& cost_metrics) const override;
   static void forward_kernel(const MultiHeadAttentionMeta* m,
                              const float* query_ptr,

@@ -49,7 +49,7 @@ public:
                  Legion::Rect<2> const &input,
                  Legion::Rect<2> const &output) const;
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
   static void forward_kernel(const SoftmaxMeta *m,
                              float const *input_ptr,

@@ -81,7 +81,7 @@ public:
                                       ODT* dst_ptr,
                                       size_t volume);
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const;
 };
 

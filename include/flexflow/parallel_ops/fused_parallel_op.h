@@ -35,7 +35,7 @@ public:
       size_t num_elements);
   bool measure_operator_cost(
       Simulator* sim,
-      const ParallelConfig& pc,
+      const MachineView& mv,
       CostMetrics& cost_metrics) const override;
   void set_parallel_ops(const std::vector<ParallelOpInfo>& _parallel_ops);
   bool check_no_redundant_parallel_ops(void) const;

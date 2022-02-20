@@ -390,18 +390,18 @@ void BatchMatmul::print_layer(const FFModel& ff)
   return;
 }
 
-bool BatchMatmul::measure_operator_cost(Simulator* sim,
-                                        const ParallelConfig& pc,
-                                        CostMetrics& cost_metrics) const
-{
+bool BatchMatmul::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& pc,
+    CostMetrics& cost_metrics) const {
   ParallelTensorBase sub_output, sub_input0, sub_input1;
-  if (! outputs[0]->get_output_sub_tensor(pc, sub_output, OP_BATCHMATMUL)) {
+  if (! outputs[0]->get_sub_tensor(pc, sub_output)) {
     return false;
   }
-  if (! inputs[0]->get_input_sub_tensor(pc, sub_input0, OP_BATCHMATMUL)) {
+  if (! inputs[0]->get_sub_tensor(pc, sub_input0)) {
     return false;
   }
-  if (! inputs[1]->get_input_sub_tensor(pc, sub_input1, OP_BATCHMATMUL)) {
+  if (! inputs[1]->get_sub_tensor(pc, sub_input1)) {
     return false;
   }
 

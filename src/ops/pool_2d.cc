@@ -471,14 +471,15 @@ void Pool2D::serialize(Legion::Serializer& sez) const {
   sez.serialize(this->activation);
 }
 
-bool Pool2D::measure_operator_cost(Simulator* sim,
-                                   const ParallelConfig& pc,
-                                   CostMetrics& cost_metrics) const
+bool Pool2D::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const
 {
   ParallelTensorBase sub_output, sub_input;
-  if(!outputs[0]->get_output_sub_tensor(pc, sub_output, OP_POOL2D))
+  if(!outputs[0]->get_sub_tensor(mv, sub_output))
     return false;
-  if(!inputs[0]->get_input_sub_tensor(pc, sub_input, OP_POOL2D))
+  if(!inputs[0]->get_sub_tensor(mv, sub_input))
     return false;
   int input_w = sub_input.dims[0].size;
   int input_h = sub_input.dims[1].size;

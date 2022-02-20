@@ -641,14 +641,14 @@ bool Linear::use_activation(ActiMode mode)
   return false;
 }
 
-bool Linear::measure_operator_cost(Simulator* sim,
-                                   const ParallelConfig& pc,
-                                   CostMetrics& cost_metrics) const
-{
+bool Linear::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
-  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, OP_LINEAR))
+  if (!outputs[0]->get_sub_tensor(mv, sub_output))
     return false;
-  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, OP_LINEAR))
+  if (!inputs[0]->get_sub_tensor(mv, sub_input))
     return false;
   int input_c = sub_input.dims[0].size;
   int input_n = sub_input.get_volume() / input_c;

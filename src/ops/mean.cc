@@ -102,9 +102,10 @@ void Mean::backward_task(const Task *task,
                          Context ctx, Runtime *runtime)
 {}
 
-bool Mean::measure_operator_cost(Simulator* sim,
-                                 const ParallelConfig& pc,
-                                 CostMetrics& cost_metrics) const
+bool Mean::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const
 {
   return false;
 }

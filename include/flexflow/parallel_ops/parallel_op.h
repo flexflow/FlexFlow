@@ -33,7 +33,7 @@ public:
   virtual void create_input_partition(FFModel& model) = 0;
   void print_layer(const FFModel& model) {};
   virtual bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const = 0;
   virtual bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const = 0;
   virtual bool is_parallel_op() const;

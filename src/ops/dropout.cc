@@ -321,15 +321,16 @@ Node Dropout::deserialize(FFModel& ff, Legion::Deserializer& dez, ParallelTensor
   return ff.get_or_create_dropout_node(inputs[0], params);
 }
 
-bool Dropout::measure_operator_cost(Simulator* sim,
-                                    const ParallelConfig& pc,
-                                    CostMetrics& cost_metrics) const
+bool Dropout::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const
 {
   ParallelTensorBase sub_input, sub_output;
-  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
   }
-  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, op_type)) {
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
   }
   assert(sub_input.get_domain() == sub_output.get_domain());

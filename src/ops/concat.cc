@@ -285,17 +285,17 @@ bool Concat::get_int_parameter(PMParameter para, int* value) const
   }
 }
 
-bool Concat::measure_operator_cost(Simulator* sim,
-                                   const ParallelConfig& pc,
-                                   CostMetrics& cost_metrics) const
-{
+bool Concat::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const {
   assert (numInputs <= MAX_NUM_INPUTS);
   ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_output;
-  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
   }
   for (int i = 0; i < numInputs; i++) {
-    if (!inputs[i]->get_input_sub_tensor(pc, sub_inputs[i], op_type)) {
+    if (!inputs[i]->get_sub_tensor(mv, sub_inputs[i])) {
       return false;
     }
   }

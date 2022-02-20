@@ -52,7 +52,7 @@ public:
                                       Legion::coord_t in_blk_size,
                                       Legion::coord_t input_size);
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
 public:
   int axis;

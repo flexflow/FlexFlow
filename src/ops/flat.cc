@@ -299,15 +299,15 @@ void Flat::serialize(Legion::Serializer& sez) const {
   return; 
 }
 
-bool Flat::measure_operator_cost(Simulator* sim,
-                                 const ParallelConfig& pc,
-                                 CostMetrics& cost_metrics) const
-{
+bool Flat::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
-  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
   }
-  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, op_type)) {
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
   }
 

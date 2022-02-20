@@ -178,4 +178,70 @@ void BatchNorm::backward(const FFModel& ff)
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
 }
 
+bool BatchNorm::measure_operator_cost(
+    Simulator* sim,
+    const MachineView& mv,
+    CostMetrics& cost_metrics) const {
+  ParallelTensorBase sub_input, sub_output;
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
+    return false;
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
+    return false;
+  }
+
+  int output_w = sub_output.dims[0].size;
+  int output_h = sub_output.dims[1].size;
+  int output_c = sub_output.dims[2].size;
+  int output_n = sub_output.dims[3].size;
+  BatchNormMeta *m = new BatchNormMeta(sim->handler, this, sim->memory,
+      output_n, output_c, output_h, output_w);
+
+  sim->free_all();
+  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert (input_ptr != NULL);
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert (output_ptr != NULL);
+  float *bias_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
+  assert (bias_ptr != NULL);
+  float *scale_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
+  assert (scale_ptr != NULL);
+  
+  std::function<void()> forward, backward;
+  forward = [&] {
+    forward_kernel(m, input_ptr, output_ptr, scale_ptr, bias_ptr);
+  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    assert (input_grad_ptr != NULL);
+    float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert (output_grad_ptr != NULL);
+    float *scale_grad_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
+    assert (scale_grad_ptr != NULL);
+    float *bias_grad_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
+    assert (bias_grad_ptr != NULL);
+
+    backward = [&] {
+      backward_kernel(m, input_ptr, output_grad_ptr, output_ptr, input_grad_ptr,
+          scale_ptr, scale_grad_ptr, bias_grad_ptr, sub_output.get_volume());
+    };
+  }
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure BatchNorm] name(%s) size(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
+        name, sub_input.get_volume(),
+        cost_metrics.forward_time,
+        cost_metrics.backward_time);
+  } else {
+    printf("[Measure BatchNorm] name(%s) size(%zu) forward_time(%.4lf)\n",
+        name, sub_input.get_volume(),
+        cost_metrics.forward_time);
+  }
+  // Free batchnormmeta
+  delete m;
+  return true;
+}
+
 }; // namespace FlexFlow

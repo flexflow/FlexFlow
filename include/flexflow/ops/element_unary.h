@@ -87,7 +87,7 @@ public:
                                       const T* out_grad_ptr,
                                       size_t num_elements);
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
   static bool use_cudnn(OperatorType type);
 

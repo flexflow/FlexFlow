@@ -59,7 +59,7 @@ public:
                                       const T* output_grad_ptr,
                                       size_t num_elements);
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
   size_t get_params_hash() const override;
   void serialize(Legion::Serializer& s) const override;

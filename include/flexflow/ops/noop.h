@@ -21,7 +21,7 @@ public:
   void backward(const FFModel&) override;
   void print_layer(const FFModel& model) override {assert(0);}
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,

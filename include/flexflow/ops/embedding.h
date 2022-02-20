@@ -114,7 +114,7 @@ public:
                                       int outputSize);
   void rand_generate_int64_wrapper(int64_t* ptr, size_t size, int64_t p) const;
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
 
   size_t get_params_hash() const override;  

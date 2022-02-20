@@ -387,7 +387,7 @@ public:
   virtual void backward(const FFModel&) = 0;
   virtual void print_layer(const FFModel& model) = 0;
   virtual bool measure_operator_cost(Simulator* sim,
-                                     const ParallelConfig& pc,
+                                     const MachineView& mv,
                                      CostMetrics& cost_metrics) const = 0;
   virtual bool estimate_sync_cost(Simulator* sim,
                                   const MachineView& pc,

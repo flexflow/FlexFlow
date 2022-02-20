@@ -280,6 +280,23 @@ bool ParallelTensorBase::get_input_sub_tensor_via_mappings(const ParallelConfig&
   return true;
 }
 
+bool ParallelTensorBase::get_sub_tensor(
+    const MachineView& mv,
+    ParallelTensorBase& sub_tensor) const {
+  sub_tensor.num_dims = this->num_dims;
+  for (int i = 0; i < sub_tensor.num_dims; i++) {
+    sub_tensor.dims[i] = this->dims[i];
+    if (this->dims[i].parallel_idx != -1) {
+      int idx = this->dims[i].parallel_idx;
+      assert(idx >= 0);
+      assert(this->dims[i].degree == mv.dim[idx]);
+      sub_tensor.dims[i].size /= mv.dim[idx];
+      sub_tensor.dims[i].degree /= mv.dim[idx];
+    }
+  }
+  return true;
+}
+
 bool ParallelTensorBase::get_input_sub_tensor(
     const ParallelConfig& pc,
     ParallelTensorBase& tensor,

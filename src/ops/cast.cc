@@ -287,7 +287,7 @@ void Cast::backward_task(const Task *task,
 
 bool Cast::measure_operator_cost(
     Simulator*sim,
-    const ParallelConfig& pc,
+    const MachineView& mv,
     CostMetrics& cost_metrics) const {
   // Assume cast has no cost
   cost_metrics.forward_time = 0.0f;

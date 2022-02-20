@@ -102,6 +102,9 @@ struct ParallelTensorBase {
   bool get_input_sub_tensor(const ParallelConfig& pc,
                             ParallelTensorBase& tensor,
                             OperatorType type);
+  bool get_sub_tensor(
+      const MachineView& mv,
+      ParallelTensorBase& subtensor) const;
   bool get_output_sub_tensor(const ParallelConfig& pc,
                              ParallelTensorBase& tensor,
                              OperatorType type);

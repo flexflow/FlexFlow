@@ -348,7 +348,7 @@ Conv2DMeta::Conv2DMeta(FFHandler handler)
 }
 
 bool Conv2D::measure_operator_cost(Simulator* sim,
-                                   const ParallelConfig& pc,
+                                   const MachineView& pc,
                                    CostMetrics& cost_metrics) const
 {
 #if 0

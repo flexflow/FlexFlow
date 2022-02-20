@@ -120,9 +120,11 @@ void BatchNorm::forward_kernel(BatchNormMeta *m,
                                float const *input_ptr,
                                float *output_ptr,
                                float const *scale_ptr,
-                               float const *bias_ptr,
-                               hipStream_t stream)
+                               float const *bias_ptr)
+                               //hipStream_t stream)
 {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
@@ -167,7 +169,7 @@ void BatchNorm::forward_task(const Task *task,
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_scale.ptr, acc_bias.ptr, stream);
+  forward_kernel(m, acc_input.ptr, acc_output.ptr, acc_scale.ptr, acc_bias.ptr/*, stream*/);
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
@@ -188,9 +190,11 @@ void BatchNorm::backward_kernel(BatchNormMeta *m,
                                 float const *scale_ptr,
                                 float *scale_grad_ptr,
                                 float *bias_grad_ptr,
-                                size_t numElements,
-                                hipStream_t stream)
+                                size_t numElements)
+                                //hipStream_t stream)
 {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f;
@@ -252,7 +256,7 @@ void BatchNorm::backward_task(const Task *task,
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  backward_kernel(m, acc_input.ptr, acc_output_grad.ptr, acc_output.ptr, acc_input_grad.ptr, acc_scale.ptr, acc_scale_grad.ptr, acc_bias_grad.ptr, acc_output.rect.volume(), stream);
+  backward_kernel(m, acc_input.ptr, acc_output_grad.ptr, acc_output.ptr, acc_input_grad.ptr, acc_scale.ptr, acc_scale_grad.ptr, acc_bias_grad.ptr, acc_output.rect.volume()/*, stream*/);
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
@@ -331,77 +335,6 @@ BatchNormMeta::~BatchNormMeta(void)
   if (relu) {
     checkCUDNN(miopenDestroyActivationDescriptor(actiDesc));
   }
-}
-
-bool BatchNorm::measure_operator_cost(Simulator* sim,
-                                      const ParallelConfig& pc,
-                                      CostMetrics& cost_metrics) const
-{
-#if 0
-  ParallelTensorBase sub_input, sub_output;
-  if (!outputs[0]->get_output_sub_tensor(pc, sub_output, op_type)) {
-    return false;
-  }
-  if (!inputs[0]->get_input_sub_tensor(pc, sub_input, op_type)) {
-    return false;
-  }
-
-  int output_w = sub_output.dims[0].size;
-  int output_h = sub_output.dims[1].size;
-  int output_c = sub_output.dims[2].size;
-  int output_n = sub_output.dims[3].size;
-  BatchNormMeta *m = new BatchNormMeta(sim->handler, this, sim->memory,
-      output_n, output_c, output_h, output_w);
-
-  sim->free_all();
-  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  assert (input_ptr != NULL);
-  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert (output_ptr != NULL);
-  float *bias_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
-  assert (bias_ptr != NULL);
-  float *scale_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
-  assert (scale_ptr != NULL);
-  
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  
-  std::function<void()> forward, backward;
-  forward = [&] {
-    forward_kernel(m, input_ptr, output_ptr, scale_ptr, bias_ptr, stream);
-  };
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    float *input_grad_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-    assert (input_grad_ptr != NULL);
-    float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-    assert (output_grad_ptr != NULL);
-    float *scale_grad_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
-    assert (scale_grad_ptr != NULL);
-    float *bias_grad_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
-    assert (bias_grad_ptr != NULL);
-
-    backward = [&] {
-      backward_kernel(m, input_ptr, output_grad_ptr, output_ptr, input_grad_ptr,
-          scale_ptr, scale_grad_ptr, bias_grad_ptr, sub_output.get_volume(), stream);
-    };
-  }
-
-  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    printf("[Measure BatchNorm] name(%s) size(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
-        name, sub_input.get_volume(),
-        cost_metrics.forward_time,
-        cost_metrics.backward_time);
-  } else {
-    printf("[Measure BatchNorm] name(%s) size(%zu) forward_time(%.4lf)\n",
-        name, sub_input.get_volume(),
-        cost_metrics.forward_time);
-  }
-  // Free batchnormmeta
-  delete m;
-#endif
-  return true;
 }
 
 }; // namespace FlexFlow

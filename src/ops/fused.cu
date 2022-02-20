@@ -176,7 +176,7 @@ void FusedOp::forward_task(const Task* task,
         assert(my_wd[0].get_dim() == 1);
         assert(my_wd[1].get_dim() == 1);
         BatchNormMeta* m = (BatchNormMeta*) metas->meta[op];
-        BatchNorm::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1], stream);
+        BatchNorm::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1]/*, stream*/);
         break;
       }
       case OP_DROPOUT:
@@ -496,7 +496,7 @@ void FusedOp::backward_task(const Task* task,
         BatchNormMeta* m = (BatchNormMeta*) metas->meta[op];
         BatchNorm::backward_kernel(m, my_ip[0], my_grad_op[0], my_op[0],
             my_grad_ip[0], my_wp[0], my_grad_wp[0], my_grad_wp[1],
-            my_od[0].get_volume(), stream);
+            my_od[0].get_volume()/*, stream*/);
         break;
       }
       case OP_DROPOUT:
@@ -637,15 +637,6 @@ void FusedOp::backward_task(const Task* task,
   //  print_tensor<float>(input_grad_ptr[i], input_grad_domain[i].get_volume(), "[Fused:backward:input_grad]");
   //for (int i = 0; i < fused->numOutputs; i++)
   //  print_tensor<float>(output_grad_ptr[i], output_grad_domain[i].get_volume(), "[Fused:backward:output_grad]");
-}
-
-bool FusedOp::measure_operator_cost(Simulator* sim,
-                                    const ParallelConfig& pc,
-                                    CostMetrics& cost_metrics) const
-{
-  // The search should happen before fusion
-  assert(false);
-  return false;
 }
 
 }; // namespace FlexFlow

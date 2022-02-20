@@ -58,7 +58,7 @@ public:
                                       Legion::Domain in_grad_domain,
                                       Legion::Domain out_grad_domain);
   bool measure_operator_cost(Simulator* sim,
-                             const ParallelConfig& pc,
+                             const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
 public:
   int perm[MAX_TENSOR_DIM];
