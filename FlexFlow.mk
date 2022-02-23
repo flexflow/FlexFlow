@@ -54,6 +54,7 @@ GEN_SRC += ${FF_HOME}/src/runtime/accessor.cc\
 		${FF_HOME}/src/runtime/machine_model.cc\
 		${FF_HOME}/src/runtime/machine_view.cc\
 		${FF_HOME}/src/runtime/model.cc\
+		${FF_HOME}/src/runtime/network.cc\
 		${FF_HOME}/src/runtime/optimizer.cc\
 		${FF_HOME}/src/runtime/parallel_op.cc\
 		${FF_HOME}/src/runtime/recursive_logger.cc\
