@@ -52,7 +52,7 @@ OpMeta* FusedOp::init_task(const Task *task,
   FusedOpMeta* local_meta = new FusedOpMeta();
   memcpy(local_meta, metas, sizeof(FusedOpMeta));
   local_meta->fused_op = (FusedOp*) malloc(sizeof(FusedOp));
-  memcpy(local_meta->fused_op, fused, sizeof(FusedOp));
+  memcpy(static_cast<void*>(local_meta->fused_op), static_cast<const void*>(fused), sizeof(FusedOp));
   return ((OpMeta*)local_meta);
 }
 
@@ -153,7 +153,7 @@ void FusedOp::forward_task(const Task* task,
         assert(fused->op_num_outputs[op] == 1);
         ConcatMeta* m = (ConcatMeta*) metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
-        Concat::forward_kernel(my_op[0], my_ip, num_inputs, m->axis,
+        Concat::forward_kernel(my_op[0], my_ip, num_inputs, m->legion_axis,
             my_od[0], my_id, stream);
         break;
       }
@@ -177,7 +177,7 @@ void FusedOp::forward_task(const Task* task,
         assert(my_wd[0].get_dim() == 1);
         assert(my_wd[1].get_dim() == 1);
         BatchNormMeta* m = (BatchNormMeta*) metas->meta[op];
-        BatchNorm::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1], stream);
+        BatchNorm::forward_kernel(m, my_ip[0], my_op[0], my_wp[0], my_wp[1]/*, stream*/);
         break;
       }
       case OP_DROPOUT:
@@ -470,7 +470,7 @@ void FusedOp::backward_task(const Task* task,
         assert(fused->op_num_outputs[op] == 1);
         ConcatMeta* m = (ConcatMeta*) metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
-        Concat::backward_kernel(my_grad_op[0], my_grad_ip, num_inputs, m->axis,
+        Concat::backward_kernel(my_grad_op[0], my_grad_ip, num_inputs, m->legion_axis,
             my_grad_od[0], my_grad_id, stream);
         break;
       }
@@ -497,7 +497,7 @@ void FusedOp::backward_task(const Task* task,
         BatchNormMeta* m = (BatchNormMeta*) metas->meta[op];
         BatchNorm::backward_kernel(m, my_ip[0], my_grad_op[0], my_op[0],
             my_grad_ip[0], my_wp[0], my_grad_wp[0], my_grad_wp[1],
-            my_od[0].get_volume(), stream);
+            my_od[0].get_volume()/*, stream*/);
         break;
       }
       case OP_DROPOUT:

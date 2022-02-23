@@ -55,8 +55,6 @@ void UniformInitializer::init_task(const Task* task,
   hiprandSetStream(gen, stream);
   //fprintf(stderr, "seed = %d\n", initializer->seed);
 
-
-
   for (size_t i = 0; i < regions.size(); i++) {
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
@@ -123,39 +121,11 @@ void GlorotUniform::init_task(const Task* task,
 {
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
+  const GlorotUniform* gu = (const GlorotUniform*) task->args;
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  float* w;
-  float scale = 0;
-  switch (domain.get_dim()) {
-    case 2:
-    {
-      TensorAccessorW<float, 2> accW(regions[0], task->regions[0],
-          FID_DATA, ctx, runtime, false/*readOutput*/);
-      w = accW.ptr;
-      int outputDim = accW.rect.hi[1] - accW.rect.lo[1] + 1;
-      int inputDim = accW.rect.hi[0] - accW.rect.lo[0] + 1;
-      scale = sqrt(6.0 / (inputDim + outputDim));
-      break;
-    }
-    case 3:
-    {
-      init_task_inner<3>(task, regions, ctx, runtime, domain, w, scale);
-      break;
-    }
-    case 4:
-    {
-      init_task_inner<4>(task, regions, ctx, runtime, domain, w, scale);
-      break;
-    }
-    case 5:
-    {
-      init_task_inner<5>(task, regions, ctx, runtime, domain, w, scale);
-      break;
-    }
-    default:
-      assert(false);
-  }
+  float* w = helperGetTensorPointerWO<float>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
   hiprandGenerator_t gen;
   hiprandCreateGenerator(&gen, HIPRAND_RNG_PSEUDO_DEFAULT);
   hipStream_t stream;
@@ -164,10 +134,10 @@ void GlorotUniform::init_task(const Task* task,
 
   GlorotUniform* initializer = (GlorotUniform*) task->args;
   hiprandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
-  fprintf(stderr, "seed = %d scale = %.4lf\n", initializer->seed, scale);
+  fprintf(stderr, "seed = %d scale = %.4lf\n", initializer->seed, gu->scale);
   checkCUDA(hiprandGenerateUniform(gen, w, domain.get_volume()));
   hipLaunchKernelGGL(scale_kernel, GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream,
-      w, domain.get_volume(), -scale, scale);
+      w, domain.get_volume(), -gu->scale, gu->scale);
   checkCUDA(hipDeviceSynchronize());
   hiprandDestroyGenerator(gen);
 }

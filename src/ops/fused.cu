@@ -51,7 +51,7 @@ OpMeta* FusedOp::init_task(const Task *task,
   FusedOpMeta* local_meta = new FusedOpMeta();
   memcpy(local_meta, metas, sizeof(FusedOpMeta));
   local_meta->fused_op = (FusedOp*) malloc(sizeof(FusedOp));
-  memcpy(local_meta->fused_op, fused, sizeof(FusedOp));
+  memcpy(static_cast<void*>(local_meta->fused_op), static_cast<const void*>(fused), sizeof(FusedOp));
   return ((OpMeta*)local_meta);
 }
 

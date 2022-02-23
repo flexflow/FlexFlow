@@ -155,7 +155,7 @@ void Embedding::forward_kernel_wrapper(const EmbeddingMeta *m,
   checkCUDA(get_legion_stream(&stream));
   forward_kernel<TI>(input_ptr, output_ptr, weight_ptr,
       in_dim, out_dim, batch_size,
-      m->aggr, outputSize, stream);
+      aggr, outputSize, stream);
 
   if (m->profiling) {
     checkCUDA(hipDeviceSynchronize());
@@ -202,7 +202,7 @@ void Embedding::backward_kernel_wrapper(const EmbeddingMeta *m,
   checkCUDA(get_legion_stream(&stream));
   Embedding::backward_kernel<TI>(input_ptr, output_ptr, weight_grad_ptr,
                                  in_dim, out_dim, batch_size,
-                                 m->aggr, outputSize, stream);
+                                 aggr, outputSize, stream);
 
   if (m->profiling) {
     checkCUDA(hipDeviceSynchronize());
