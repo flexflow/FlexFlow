@@ -608,11 +608,11 @@ class Tensor(object):
     if np_array.dtype == np.float32:
       assert self.data_type == DataType.DT_FLOAT, "Wrong datatype"
       raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_set_tensor_float(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr, c_comm_type)
+      ret_val = ffc.flexflow_tensor_set_tensor_float(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
     elif np_array.dtype == np.int32:
       assert self.data_type == DataType.DT_INT32, "Wrong datatype"
       raw_ptr = ffi.cast("int*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_set_tensor_int(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr, c_comm_type)
+      ret_val = ffc.flexflow_tensor_set_tensor_int(self.handle, ffmodel.handle, num_dims, c_dims, raw_ptr)
     else:
       assert 0, "Unsupported datatype"
     fflogger.debug("set tensor raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(np_shape)))
@@ -632,13 +632,13 @@ class Tensor(object):
     c_comm_type = enum_to_int(ParameterSyncType, comm_type)
     if np_array.dtype == np.float32:
       raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, c_comm_type, False)
+      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, False)
     elif np_array.dtype == np.int32:
       raw_ptr = ffi.cast("int*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, c_comm_type, False)
+      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, False)
     elif np_array.dtype == np.int64:
       raw_ptr = ffi.cast("int64_t*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, c_comm_type, False)
+      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, False)
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
     assert ret_val == True
     return np_array
@@ -657,13 +657,13 @@ class Tensor(object):
     c_comm_type = enum_to_int(ParameterSyncType, comm_type)
     if np_array.dtype == np.float32:
       raw_ptr = ffi.cast("float*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, c_comm_type, True)
+      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, True)
     elif np_array.dtype == np.int32:
       raw_ptr = ffi.cast("int*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, c_comm_type, True)
+      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, True)
     elif np_array.dtype == np.int64:
       raw_ptr = ffi.cast("int64_t*", np_raw_ptr[0])
-      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, c_comm_type, True)
+      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, True)
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
     assert ret_val == True
     return np_array

@@ -1615,8 +1615,25 @@ bool FFModel::get_parallel_tensor_from_tensor(
     const Tensor tensor,
     ParallelTensor& parallel_tensor) const
 {
-  assert(tensor->parallel_tensor != nullptr);
-  parallel_tensor = tensor->parallel_tensor;
+  // check if tensor->parallel_tensor is already set
+  if (tensor->parallel_tensor != nullptr) {
+    parallel_tensor = tensor->parallel_tensor;
+    return true;
+  }
+  if (tensor->owner_layer != nullptr) {
+    Op* mapped_op = nullptr;
+    for (const auto& op : operators) {
+      if (op->layer_guid == tensor->owner_layer->layer_guid) {
+        assert(mapped_op == nullptr);
+        mapped_op = op;
+      }
+    }
+    if (mapped_op != nullptr) {
+      parallel_tensor = mapped_op->outputs[tensor->owner_idx];
+      return true;
+    }
+  }
+  assert(false);
   return true;
 }
 
