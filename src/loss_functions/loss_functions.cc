@@ -51,7 +51,6 @@ void Loss::backward(FFModel* model,
   } else {
     scale_factor = 1.0f / model->config.batchSize;
   }
-  scale_factor = 1.0f/ logit->dims[last_non_replica_dim].size;
   //scale_factor = 1.0f;
   // Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;
