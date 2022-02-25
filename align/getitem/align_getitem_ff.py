@@ -10,7 +10,7 @@ from align_ff_utils import compile_ffmodel, init_ffmodel, run_fwd_bwd, save_tens
 from align_utils import gen_tensor, BATCH_SIZE
 
 SEQ_LENGTH = 5
-OUT_DIR = "align/getitem/out/"
+OUT_DIR = os.path.join("align", "getitem", "out")
 
 
 def run():
@@ -40,13 +40,12 @@ def run():
     )
 
     compile_ffmodel(ffmodel)
-    inp_dl, label_dl = init_ffmodel(
-        ffmodel,
-        attention_mask_tensor,
-        attention_mask,
-        label,
+    dls = init_ffmodel(
+        ffmodel, ((attention_mask_tensor, attention_mask),), label,
     )
-    run_fwd_bwd(ffmodel, ffconfig, inp_dl, label_dl, run_bwd=False)
+    assert len(dls) == 2
+    inp_dl, label_dl = dls
+    run_fwd_bwd(ffmodel, ffconfig, (inp_dl,), label_dl, run_bwd=False)
 
     save_tensor_ff(extended_attention_mask, ffmodel, os.path.join(OUT_DIR, "ff_out.pt"))
 

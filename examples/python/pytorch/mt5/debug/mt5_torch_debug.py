@@ -7,7 +7,7 @@ import torch
 from transformers import MT5ForConditionalGeneration
 from transformers.modeling_outputs import Seq2SeqLMOutput
 
-assert torch.cuda.is_available(), "This script requires GPU"
+assert torch.cuda.is_available(), "Expects at least one GPU"
 DEVICE = torch.device(0)
 PRETRAINED_MODEL_NAME = "google/mt5-small"
 
@@ -161,7 +161,7 @@ def train_step_torch(
     )
     model = model.to(DEVICE)
     model.train()
-    model = instrument_model(model, print_tensor_hook_ctor)
+    # model = instrument_model(model, print_tensor_hook_ctor)
     model_load_time = time.time() - start_time
     if print_model:
         # Print each layer in the model in DAG order

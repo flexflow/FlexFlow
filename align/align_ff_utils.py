@@ -1,17 +1,17 @@
 import os
 import sys
-from typing import Tuple
+from typing import Iterable, Tuple
 
 import numpy as np
 import torch
 from flexflow.core import *
-from flexflow.core.flexflow_cffi import (FFConfig, FFModel, Op, Parameter,
+from flexflow.core.flexflow_cffi import (FFConfig, FFModel, Parameter,
                                          SingleDataLoader, Tensor)
 from flexflow.type import ParameterSyncType
 
 
 def ffmodel_barrier(ffmodel):
-    # Use `get_current_time()` as a forced sync barrier
+    # Use `get_current_time()` as a forced synchronization barrier
     ffmodel._ffconfig.get_current_time()
 
 
@@ -27,31 +27,33 @@ def compile_ffmodel(ffmodel: FFModel):
 
 def init_ffmodel(
     ffmodel: FFModel,
-    input_tensor: Tensor,
-    inp: torch.Tensor,
+    input_tensors: Iterable[Tuple[Tensor, torch.Tensor]],
     label: torch.Tensor,
-) -> Tuple[SingleDataLoader, SingleDataLoader]:
+) -> Tuple[SingleDataLoader, ...]:
     """Initializes the FFModel by creating the data loaders and initializing
     the model layers."""
-    inp_dl = ffmodel.create_data_loader(input_tensor, inp.numpy())
-    label_dl = ffmodel.create_data_loader(
-        ffmodel.label_tensor,
-        label.numpy(),
+    dls = []
+    for input_tensor, inp in input_tensors:
+        dls.append(
+            ffmodel.create_data_loader(input_tensor, inp.numpy())
+        )
+    dls.append(
+        ffmodel.create_data_loader(ffmodel.label_tensor, label.numpy())
     )
     ffmodel.init_layers()
-    return (inp_dl, label_dl)
+    return tuple(dls)
 
 
 def run_fwd_bwd(
     ffmodel: FFModel,
     ffconfig: FFConfig,
-    inp_dl: SingleDataLoader,
+    input_dls: Iterable[SingleDataLoader],
     label_dl: SingleDataLoader,
     run_bwd: bool = True,
 ) -> None:
     """Runs a single forward pass and backward pass."""
     batch_size = ffconfig.batch_size
-    dataloaders = [inp_dl, label_dl]
+    dataloaders = list(input_dls) + [label_dl]
     num_samples = label_dl.num_samples
     ffmodel._tracing_id += 1
     for d in dataloaders:
@@ -70,10 +72,17 @@ def run_fwd_bwd(
     ffmodel_barrier(ffmodel)
 
 
+def ensure_dir_exists(filepath: str):
+    """Ensures the directory containing ``filepath`` exists."""
+    if not os.path.exists(os.path.dirname(filepath)):
+        os.makedirs(os.path.dirname(filepath))
+
+
 def save_tensor_ff(tensor_ff: Tensor, ffmodel: FFModel, filepath: str) -> None:
     """Saves the FlexFlow tensor ``tensor_ff`` to the filepath ``filepath``."""
     tensor_np: np.ndarray = tensor_ff.get_tensor(ffmodel, ParameterSyncType.PS)
     tensor_torch: torch.Tensor = torch.from_numpy(tensor_np)
+    ensure_dir_exists(filepath)
     torch.save(tensor_torch, filepath)
 
 
@@ -82,6 +91,7 @@ def save_tensor_grad_ff(tensor_ff: Tensor, ffmodel: FFModel, filepath: str) -> N
     ``filepath``."""
     grad_np: np.ndarray = tensor_ff.get_gradients(ffmodel, ParameterSyncType.PS)
     grad_torch: torch.Tensor = torch.from_numpy(grad_np)
+    ensure_dir_exists(filepath)
     torch.save(grad_torch, filepath)
 
 
@@ -90,6 +100,7 @@ def save_param_ff(param_ff: Parameter, ffmodel: FFModel, filepath: str) -> None:
     ``filepath``."""
     param_np: np.ndarray = param_ff.get_weights(ffmodel)
     param_torch: torch.Tensor = torch.from_numpy(param_np)
+    ensure_dir_exists(filepath)
     torch.save(param_torch, filepath)
 
 
@@ -98,4 +109,5 @@ def save_param_grad_ff(param_ff: Parameter, ffmodel: FFModel, filepath: str) -> 
     filepath ``filepath``."""
     grad_np: np.ndarray = param_ff.get_gradients(ffmodel, ParameterSyncType.PS)
     grad_torch: torch.Tensor = torch.from_numpy(grad_np)
+    ensure_dir_exists(filepath)
     torch.save(grad_torch, filepath)

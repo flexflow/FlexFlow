@@ -11,7 +11,7 @@ assert torch.cuda.is_available(), "Expects at least one GPU"
 DEVICE = torch.device(0)
 BATCH_SIZE = 16
 SEQ_LENGTH = 5
-OUT_DIR = "align/layernorm/out/"
+OUT_DIR = os.path.join("align", "layernorm", "out")
 
 
 class T5LayerNorm(torch.nn.Module):

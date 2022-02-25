@@ -12,7 +12,7 @@ from align_ff_utils import (compile_ffmodel, init_ffmodel, run_fwd_bwd,
 from align_utils import gen_tensor, BATCH_SIZE
 
 SEQ_LENGTH = 5
-OUT_DIR = "align/layernorm/out/"
+OUT_DIR = os.path.join("align", "layernorm", "out")
 
 
 def run():
@@ -39,8 +39,10 @@ def run():
     )
 
     compile_ffmodel(ffmodel)
-    inp_dl, label_dl = init_ffmodel(ffmodel, input_tensor, inp, label)
-    run_fwd_bwd(ffmodel, ffconfig, inp_dl, label_dl)
+    dls = init_ffmodel(ffmodel, ((input_tensor, inp),), label)
+    assert len(dls) == 2
+    inp_dl, label_dl = dls
+    run_fwd_bwd(ffmodel, ffconfig, (inp_dl,), label_dl)
 
     layernorm_layer: Op = ffmodel.get_layers()[0]
     assert isinstance(layernorm_layer, LayerNorm)

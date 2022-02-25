@@ -47,6 +47,9 @@ class Node():
         self.op_type = None
         self._ir_string = None
 
+    def __repr__(self):
+        return f"{type(self).__name__}: {self.name}"
+
     def parse_inoutnodes(self, nodes):
         """Parses the given input or output nodes, and returns a string
         representation."""
@@ -198,9 +201,6 @@ class ModuleNode(Node):
         self.innodes = node.args
         self.outnodes = node.users
         self.module = module
-
-    def __repr__(self):
-        return f"ModuleNode: {self.name}"
 
     @staticmethod
     def construct_node(node, module):
@@ -860,9 +860,6 @@ class FunctionNode(Node):
         self.function = node.target
         self.kwargs = node.kwargs
         self.op_type = None
-
-    def __repr__(self):
-        return f"FunctionNode: {self.name}"
 
     class ScalarPosition(Enum):
         LEFT = 0
@@ -2221,9 +2218,6 @@ class AttributeNode(Node):
         self.attr = self.fetch_attr(model)
         self.op_type = OpType.ATTRIBUTE
 
-    def __repr__(self):
-        return f"AttributeNode: {self.name}"
-
     def fetch_attr(self, model):
         atoms = self.attr_name.split('.')
         attr_iter = model
@@ -2283,9 +2277,6 @@ class InputNode(Node):
         self.outnodes = node.users
         self.op_type = OpType.INPUT
 
-    def __repr__(self):
-        return f"InputNode: {self.name}"
-
     def parse(self):
         s = [self.name]
         s.append(self.parse_inoutnodes(self.innodes))
@@ -2307,9 +2298,6 @@ class OutputNode(Node):
         self.innodes = node.args
         self.outnodes = None
         self.op_type = OpType.OUTPUT
-
-    def __repr__(self):
-        return f"OutputNode: {self.name}"
 
     def parse(self):
         # TODO: Assumes only one output
@@ -2474,6 +2462,8 @@ class PyTorchModel():
 
         Returns:
             output_tensors (List[Tensor]): Output tensors of the model.
+            node_to_output (OrderedDict[str, Tensor]): Mapping from node name
+                to the node's output tensor.
         """
         graph = self._trace_model()
         output_tensors = []

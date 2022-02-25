@@ -14,7 +14,7 @@ from align_ff_utils import (compile_ffmodel, init_ffmodel, run_fwd_bwd,
 from align_utils import BATCH_SIZE, gen_tensor
 
 SEQ_LENGTH = 5
-OUT_DIR = "align/view_embedding/out/"
+OUT_DIR = os.path.join("align", "view_embedding", "out")
 
 
 def run():
@@ -50,8 +50,10 @@ def run():
     )
 
     compile_ffmodel(ffmodel)
-    inp_dl, label_dl = init_ffmodel(ffmodel, input_tensor, inp, label)
-    run_fwd_bwd(ffmodel, ffconfig, inp_dl, label_dl)
+    dls = init_ffmodel(ffmodel, ((input_tensor, inp),), label)
+    assert len(dls) == 2
+    inp_dl, label_dl = dls
+    run_fwd_bwd(ffmodel, ffconfig, (inp_dl,), label_dl)
 
     embedding_layer: Op = ffmodel.get_layers()[1]
     assert isinstance(embedding_layer, Embedding)

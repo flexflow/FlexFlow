@@ -9,7 +9,7 @@ from align_utils import gen_tensor, BATCH_SIZE
 assert torch.cuda.is_available(), "Expects at least one GPU"
 DEVICE = torch.device(0)
 SEQ_LENGTH = 5
-OUT_DIR = "align/layernorm/out/"
+OUT_DIR = os.path.join("align", "layernorm", "out")
 
 
 def run():
