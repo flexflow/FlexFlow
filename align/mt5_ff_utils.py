@@ -35,12 +35,10 @@ def init_ff_mt5():
     Initializes the FlexFlow representation of the HuggingFace mT5 model.
 
     Returns:
-        (ffmodel, node_to_output, input_dls, label_dl)
+        (ffmodel, input_dls, label_dl)
 
         ffmodel (FFModel): Compiled and initialized FlexFlow model representing
             HuggingFace mT5.
-        node_to_output (OrderedDict[str, Tensor]): Mapping from operator node
-            names to their output tensors, maintained in topological order.
         input_dls (List[SingleDataLoader]): List consisting of the encoder
             input IDs, encoder attention mask, and decoder input IDs
             dataloaders.
@@ -64,9 +62,7 @@ def init_ff_mt5():
         batch_size=ffconfig.batch_size,
         seq_length=(input_ids.shape[1], decoder_input_ids.shape[1]),
     )
-    output_tensors, node_to_output = mt5_model.torch_to_ff(
-        ffmodel, input_tensors,
-    )
+    output_tensors = mt5_model.torch_to_ff(ffmodel, input_tensors)
     ffoptimizer = SGDOptimizer(ffmodel, lr=0.01)
     ffmodel.compile(
         optimizer=ffoptimizer,
@@ -90,7 +86,7 @@ def init_ff_mt5():
     )
     input_dls = [input_ids_dl, attention_mask_dl, decoder_input_ids_dl]
     ffmodel.init_layers()
-    return (ffmodel, node_to_output, input_dls, label_dl)
+    return (ffmodel, input_dls, label_dl)
 
 
 def extract_mt5_subgraph(
@@ -146,12 +142,10 @@ def init_ff_mt5_encoder(encoder_labels_filepath: str):
     encoder.
 
     Returns:
-        (ffmodel, node_to_output, input_dls, label_dl)
+        (ffmodel, input_dls, label_dl)
 
         ffmodel (FFModel): Compiled and initialized FlexFlow model representing
             HuggingFace mT5's encoder.
-        node_to_output (OrderedDict[str, Tensor]): Mapping from operator node
-            names to their output tensors, maintained in topological order.
         input_dls (List[SingleDataLoader]): List consisting of the encoder
             input IDs, encoder attention mask, and decoder input IDs
             dataloaders.
@@ -199,4 +193,4 @@ def init_ff_mt5_encoder(encoder_labels_filepath: str):
     label_dl = ffmodel.create_data_loader(ffmodel.label_tensor, labels)
     input_dls = [input_ids_dl, attention_mask_dl, decoder_input_ids_dl]
     ffmodel.init_layers()
-    return (ffmodel, node_to_output, input_dls, label_dl)
+    return (ffmodel, input_dls, label_dl)

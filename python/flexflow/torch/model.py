@@ -2462,8 +2462,6 @@ class PyTorchModel():
 
         Returns:
             output_tensors (List[Tensor]): Output tensors of the model.
-            node_to_output (OrderedDict[str, Tensor]): Mapping from node name
-                to the node's output tensor.
         """
         graph = self._trace_model()
         output_tensors = []
@@ -2486,8 +2484,7 @@ class PyTorchModel():
             if node_output is not None:
                 node_to_output[node.name] = node_output
 
-        # TODO: Revisit (changed the return value for alignment debugging)
-        return output_tensors, node_to_output
+        return output_tensors
 
     @staticmethod
     def file_to_ff(filename, ffmodel, input_tensors):

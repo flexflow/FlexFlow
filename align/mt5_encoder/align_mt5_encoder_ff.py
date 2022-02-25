@@ -17,7 +17,7 @@ def run():
     assert os.path.exists(ENCODER_LABELS_PATH), \
         "Make sure to generate the encoder labels file (e.g. by modifying " \
         "the transformers library source code)"
-    ffmodel, node_to_output, input_dls, label_dl = init_ff_mt5_encoder(
+    ffmodel, input_dls, label_dl = init_ff_mt5_encoder(
         ENCODER_LABELS_PATH,
     )
     run_fwd_bwd(ffmodel, ffmodel._ffconfig, input_dls, label_dl)
