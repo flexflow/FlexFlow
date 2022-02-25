@@ -8,7 +8,7 @@ git clone --recursive https://github.com/flexflow/FlexFlow.git
 ```
 
 ## FlexFlow Python dependencies
-* The FlexFlow Python support requires several additional Python libraries, please check [this](https://github.com/flexflow/FlexFlow/blob/master/python/requirements.txt) for details. 
+* The FlexFlow Python support requires several additional Python libraries, please check [this](https://github.com/flexflow/FlexFlow/blob/master/requirements.txt) for details. 
 We recommend to use `pip` or `conda` to install the dependencies. 
 
 Note: all Python dependencies will be automatically installed if install the FlexFlow Python Interface using the PyPi repository (see the Installation below).
