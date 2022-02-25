@@ -71,13 +71,6 @@ def gen_tensor(
     return torch.from_numpy(np_array).to(str_dtype_to_torch_dtype(dtype))
 
 
-def diff_tensors(t1: torch.Tensor, t2: torch.Tensor):  # TODO: deprecate
-    """Compares two tensors for equality."""
-    assert t1.shape == t2.shape, f"Shape mismatch: {t1.shape} != {t2.shape}"
-    assert t1.dtype == t2.dtype, f"dtype mismatch: {t1.dtype} != {t2.dtype}"
-    torch.testing.assert_close(t1, t2)
-
-
 class TensorAlignmentData(NamedTuple):
     """
     This contains the data for aligning FlexFlow and PyTorch on a tensor
