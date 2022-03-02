@@ -16,7 +16,6 @@ using py::literals::operator""_a;
 
 namespace {
 
-#if 0
 static Context ctx;
 
 void begin_flexflow_task(std::vector<std::string> args) {
@@ -49,7 +48,7 @@ void begin_flexflow_task(std::vector<std::string> args) {
   Runtime *runtime = Runtime::get_runtime();
   // Then we can bind make this thread into an implicit top-level task
   ctx = runtime->begin_implicit_task(PYTHON_TOP_LEVEL_TASK_ID, 0/*mapper id*/,
-                                     Processor::LOC_PROC, "flexflow_top_level_task",
+                                     Processor::LOC_PROC, "legion_python_main",
                                      true/*control replicable*/);
 }
 
@@ -60,7 +59,6 @@ void finish_flexflow_task() {
   // wait for the shutdown of the runtime to complete
   Runtime::wait_for_shutdown();
 }
-#endif
 
 double get_current_time(FFConfig &config)
 {
@@ -269,8 +267,8 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
   m.attr("cuda_enabled") =
       true;
 
-  // m.def("begin_flexflow_task", &begin_flexflow_task);
-  // m.def("finish_flexflow_task", &finish_flexflow_task);
+  m.def("begin_flexflow_task", &begin_flexflow_task);
+  m.def("finish_flexflow_task", &finish_flexflow_task);
 
   py::enum_<ActiMode>(m, "ActiMode")
       .value("AC_MODE_NONE", ActiMode::AC_MODE_NONE)

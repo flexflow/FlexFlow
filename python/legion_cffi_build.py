@@ -52,7 +52,7 @@ def build(defines_dir, output_dir, runtime_dir):
     if output_dir is None:
         output_dir = os.path.dirname(os.path.realpath(__file__))
 
-    with open(os.path.join(output_dir, 'legion_cffi.py'), 'wb') as f:
+    with open(os.path.join(output_dir, 'legion_cffi_header.py'), 'wb') as f:
         f.write(content.encode('utf-8'))
 
 if __name__ == "__main__":

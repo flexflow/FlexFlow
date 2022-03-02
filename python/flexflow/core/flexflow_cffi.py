@@ -19,7 +19,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import os
 import subprocess
 import logging
-# import warnings
+import warnings
 import numpy as np
 from .flexflow_logger import fflogger
 from flexflow.type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
@@ -2279,4 +2279,4 @@ class RegionNdarray(object):
       'typestr': field_type,
       'data': (base_ptr, read_only),
       'strides': strides,
-    }
+    

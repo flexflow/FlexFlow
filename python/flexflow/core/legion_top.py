@@ -29,7 +29,7 @@ import threading
 import importlib
 import traceback
 
-from legion_cffi import ffi, lib as c
+from .legion_cffi_header import ffi, lib as c
 
 try:
     unicode # Python 2

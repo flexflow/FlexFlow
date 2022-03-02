@@ -215,10 +215,6 @@ int main(int argc, char **argv)
     // Ineractive console means no control replication
     control_replicate = false;
   }
-  for (int i = 1; i < argc; i++) {
-    printf("%s\n", argv[i]);
-  }
-  printf("CR %d\n", control_replicate);
 
   register_flexflow(argc, argv);
 
