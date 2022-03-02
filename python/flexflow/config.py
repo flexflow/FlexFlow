@@ -16,7 +16,7 @@
 import os
 
 # python binding
-_FF_PYTHON_BINDING = 'pybind11'
+_FF_PYTHON_BINDING = 'cffi'
 
 if 'FF_USE_CFFI' in os.environ:
   use_pybind = not int(os.environ['FF_USE_CFFI'])

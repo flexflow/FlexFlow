@@ -182,7 +182,7 @@ enum TaskIDs {
   PYTHON_TOP_LEVEL_TASK_ID = 11111,
 };
 
-enum ShardingID {
+enum FFShardingID {
   DataParallelShardingID = 135,
 };
 

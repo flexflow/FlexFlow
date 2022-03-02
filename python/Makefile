@@ -24,11 +24,14 @@ ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 USE_HIP         ?= 0
 HIP_TARGET      ?= CUDA
 USE_GPU_REDUCTIONS ?= 0
+MAX_FIELDS      ?= 256
 FF_USE_NCCL  ?= 0
 FF_USE_NATIVE_PYTHON ?= 0
 # FF_PYTHON_USE_INDEX_LOADER = 1
 
 USE_PYTHON := 1
+SHARED_OBJECTS := 1
+
 ifndef PYTHON_LIB
   ifndef PYTHON_ROOT
     PYTHON_EXE := $(shell which python3 | head -1)
@@ -110,12 +113,12 @@ include $(FF_HOME)/FlexFlow.mk
 
 NO_BUILD_ALL=1
 .PHONY: all
-all: $(OUTFILE) flexflow/core/legion_cffi_header.py flexflow/core/flexflow_cffi_header.py $(FF_BYBIND_LIB)
+all: $(OUTFILE) legion_cffi.py flexflow/core/flexflow_cffi_header.py $(FF_BYBIND_LIB)
 
 DEFINE_HEADERS_DIR ?= ./
 
-flexflow/core/legion_cffi_header.py: legion_cffi_header.py.in legion_cffi_build.py $(LG_RT_DIR)/legion.h
-	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR) --output-dir flexflow/core
+legion_cffi.py: legion_cffi_header.py.in legion_cffi_build.py $(LG_RT_DIR)/legion.h
+	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR)
 	
 flexflow/core/flexflow_cffi_header.py: flexflow_cffi_header.py.in flexflow_cffi_build.py flexflow_c.h
 	$(PYTHON_EXE) flexflow_cffi_build.py --ffhome-dir $(FF_HOME) --libname $(FF_BYBIND_LIB_NAME) --output-dir flexflow/core

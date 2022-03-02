@@ -16,6 +16,7 @@ using py::literals::operator""_a;
 
 namespace {
 
+#if 0
 static Context ctx;
 
 void begin_flexflow_task(std::vector<std::string> args) {
@@ -59,6 +60,7 @@ void finish_flexflow_task() {
   // wait for the shutdown of the runtime to complete
   Runtime::wait_for_shutdown();
 }
+#endif
 
 double get_current_time(FFConfig &config)
 {
@@ -267,8 +269,8 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
   m.attr("cuda_enabled") =
       true;
 
-  m.def("begin_flexflow_task", &begin_flexflow_task);
-  m.def("finish_flexflow_task", &finish_flexflow_task);
+  // m.def("begin_flexflow_task", &begin_flexflow_task);
+  // m.def("finish_flexflow_task", &finish_flexflow_task);
 
   py::enum_<ActiMode>(m, "ActiMode")
       .value("AC_MODE_NONE", ActiMode::AC_MODE_NONE)

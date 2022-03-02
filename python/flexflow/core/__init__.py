@@ -41,7 +41,7 @@ if flexflow_init_import():
   else:
     print("Using flexflow python")
     
-  from .flexflow_top import flexflow_top_level_task, get_legion_runtime, get_legion_context
+  #from ./../flexflow_top import flexflow_top_level_task, get_legion_runtime, get_legion_context
 
 else:
   pass
