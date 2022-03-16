@@ -131,8 +131,8 @@ class NominalCommDevice : public CommDevice {
 public:
     NetworkRoutingStrategy * routing_strategy;
     EcmpRoutes routes;
-    int nnode;
     bool dirty = true;
+    int nnode;
 };
 
 /**

@@ -149,9 +149,9 @@ Route NominalCommDevice::expand_to_physical() const
   }
 
   assert(routes.first.size() > 0 || device_id / nnode == device_id % nnode);
-  int pick = 0;
+  size_t pick = 0;
   double choice = std_uniform(gen);
-  for (int i = 0; i < routes.first.size(); i++) {
+  for (size_t i = 0; i < routes.first.size(); i++) {
     if (choice > routes.first[i]) break;
     pick = i;
   }
@@ -1102,7 +1102,7 @@ float LogicalTaskgraphBasedSimulator::simulate_runtime(
     CostMetrics cost_metrics = measure_operator_cost(op, config);
     float forward_time = cost_metrics.forward_time;
     float backward_time = cost_metrics.backward_time;
-    SimTask *ar_task = nullptr;
+    // SimTask *ar_task = nullptr;
     for (int j = 0; j < config.num_parts(); j++) {
       SimTask* task1 = task_manager->new_forward_task(op, j);
       task_to_op[task1] = op;
@@ -1630,7 +1630,7 @@ SimTask* TaskManager::new_allreduce_task(const Op *op, const std::vector<int> &n
   SimTask* task = new_task();
   task->type = SimTask::TASK_ALLREDUCE;
   // task->counter = node_ids[0];
-  for (int i = 0; i < node_ids.size(); i++) {
+  for (size_t i = 0; i < node_ids.size(); i++) {
     task->next_tasks.push_back(reinterpret_cast<SimTask*>(node_ids[i]));
   } 
   task->xfer_size = message_size;

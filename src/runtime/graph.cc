@@ -1488,7 +1488,7 @@ T Graph::generic_optimal_cost() const
   using FlexFlow::PCG::Utils::GraphStructure;
 
   Graph reduced_graph = this->reduced();
-  GraphStructure<Graph> s;
+  //GraphStructure<Graph> s;
   //if (source_node.ptr->op_type == OP_INPUT) {
   //  for (auto const &e : s.get_outgoing_edges(reduced_graph, source_node)) {
   //    reduced_graph.remove_edge(e, false/*remove_node_if_unused*/);

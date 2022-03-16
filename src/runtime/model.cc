@@ -894,7 +894,6 @@ void Op::set_argumentmap_for_init(const FFModel& ff,
     { \
       Rect<DIM> rect = domain; \
       MachineView view = outputs[0]->machine_view; \
-      int idx = 0; \
       for (PointInRectIterator<DIM> it(rect); it(); it++) { \
         FFHandler handle = ff.handlers[view.get_device_id(*it)]; \
         argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler))); \

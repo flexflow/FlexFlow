@@ -30,9 +30,8 @@ ParallelOpJoinResult try_join_parallel_ops(ParallelOpInfo const &_first, Paralle
     joined.parallel_degree *= second.parallel_degree;
     result.op = joined;
     result.join_did_succeed = true;
-  } else if ((first.op_type == OP_REPARTITION && second.op_type == OP_COMBINE
-                || first.op_type == OP_COMBINE && second.op_type == OP_REPARTITION) 
-             ) {
+  } else if ((first.op_type == OP_REPARTITION && second.op_type == OP_COMBINE)
+              || (first.op_type == OP_COMBINE && second.op_type == OP_REPARTITION)) {
     if (first.parallel_degree < second.parallel_degree) {
       swap(first, second);
     }

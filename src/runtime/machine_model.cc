@@ -906,8 +906,8 @@ std::string EnhancedMachineModel::to_string() const
 NetworkedMachineModel::NetworkedMachineModel(int num_nodes,
                                              int num_gpus_per_node, int num_switches, float network_latency,
                                              const std::vector<int> &topology, size_t capacity, float link_bandwidth)
-    : num_nodes(num_nodes), num_gpus_per_node(num_gpus_per_node), network_latency(network_latency),
-      num_switches(num_switches), link_bandwidth(link_bandwidth), conn_matrix(topology)
+    : num_nodes(num_nodes), num_gpus_per_node(num_gpus_per_node), num_switches(num_switches),
+      link_bandwidth(link_bandwidth), network_latency(network_latency), conn_matrix(topology)
 {
   version = 0;
 

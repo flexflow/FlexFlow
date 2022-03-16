@@ -186,8 +186,8 @@ void Cast::forward_task_with_2_type(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
-  Domain input_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
+  // Domain input_domain = runtime->get_index_space_domain(
+  //   ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
     ctx, task->regions[1].region.get_index_space());
   const IDT* input_ptr = helperGetTensorPointerRO<IDT>(
@@ -258,8 +258,8 @@ void Cast::backward_task_with_2_type(const Task *task,
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
-  Domain input_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
+  // Domain input_domain = runtime->get_index_space_domain(
+  //   ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
     ctx, task->regions[1].region.get_index_space());
   const IDT* input_ptr = helperGetTensorPointerRO<IDT>(
