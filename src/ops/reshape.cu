@@ -66,10 +66,20 @@ void Reshape::backward_kernel_wrapper(T* input_grad_ptr,
   Reshape::backward_kernel<T>(input_grad_ptr, output_grad_ptr, num_elements, stream);
 }
 
+template void Reshape::forward_kernel<float>(const float* input_ptr, float* output_ptr, size_t num_elements, cudaStream_t stream);
+template void Reshape::forward_kernel<double>(const double* input_ptr, double* output_ptr, size_t num_elements, cudaStream_t stream);
+template void Reshape::forward_kernel<int32_t>(const int32_t* input_ptr, int32_t* output_ptr, size_t num_elements, cudaStream_t stream);
+template void Reshape::forward_kernel<int64_t>(const int64_t* input_ptr, int64_t* output_ptr, size_t num_elements, cudaStream_t stream);
+
 template void Reshape::forward_kernel_wrapper<float>(const float* input_ptr, float* output_ptr, size_t volume);
 template void Reshape::forward_kernel_wrapper<double>(const double* input_ptr, double* output_ptr, size_t volume);
 template void Reshape::forward_kernel_wrapper<int32_t>(const int32_t* input_ptr, int32_t* output_ptr, size_t volume);
 template void Reshape::forward_kernel_wrapper<int64_t>(const int64_t* input_ptr, int64_t* output_ptr, size_t volume);
+
+template void Reshape::backward_kernel<float>(float* input_grad_ptr, const float* output_grad_ptr, size_t num_elements, cudaStream_t stream);
+template void Reshape::backward_kernel<double>(double* input_grad_ptr, const double* output_grad_ptr, size_t num_elements, cudaStream_t stream);
+template void Reshape::backward_kernel<int32_t>(int32_t* input_grad_ptr, const int32_t* output_grad_ptr, size_t num_elements, cudaStream_t stream);
+template void Reshape::backward_kernel<int64_t>(int64_t* input_grad_ptr, const int64_t* output_grad_ptr, size_t num_elements, cudaStream_t stream);
 
 template void Reshape::backward_kernel_wrapper<float>(float* in_grad_ptr, const float* out_grad_ptr, size_t volume);
 template void Reshape::backward_kernel_wrapper<double>(double* in_grad_ptr, const double* out_grad_ptr, size_t volume);
