@@ -1,0 +1,36 @@
+syntax = "proto2";
+
+package GraphSubst;
+
+message Parameter {
+  required int32 key = 1;
+  required int32 value = 2;
+}
+
+message Tensor {
+  required int32 opId = 1;
+  required int32 tsId = 2;
+}
+
+message Operator {
+  required int32 type = 1;
+  repeated Tensor input = 2;
+  repeated Parameter para = 3;
+}
+
+message MapOutput {
+  required int32 srcOpId = 1;
+  required int32 dstOpId = 2;
+  required int32 srcTsId = 3;
+  required int32 dstTsId = 4;
+}
+
+message Rule {
+  repeated Operator srcOp = 1;
+  repeated Operator dstOp = 2;
+  repeated MapOutput mappedOutput = 3;
+}
+
+message RuleCollection {
+  repeated Rule rule = 1;
+}
