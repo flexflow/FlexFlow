@@ -40,6 +40,7 @@ void from_json(json const &j, MapOutput &m) {
 }
 
 void from_json(json const &j, Rule &r) {
+    j.at("name").get_to(r.name);
     j.at("srcOp").get_to(r.srcOp);
     j.at("dstOp").get_to(r.dstOp);
     j.at("mappedOutput").get_to(r.mappedOutput);
@@ -82,6 +83,8 @@ int get_num_inputs(Operator const &op) {
         case OP_EW_MAX:
         case OP_EW_MIN:
             return 2;
+        case OP_SPLIT:
+            return 1;
         case OP_LINEAR:
             return 1;
         case OP_RELU: 
@@ -92,6 +95,14 @@ int get_num_inputs(Operator const &op) {
             return 1;
         case OP_CONCAT:
             return op.at(PM_NUM_INPUTS).value();
+        case OP_INPUT:
+            return 0;
+        case OP_REPARTITION:
+        case OP_COMBINE:
+        case OP_REPLICATE:
+        case OP_REDUCTION:
+        case OP_PIPELINE:
+            return 1;
         default:
             json j = op.op_type;
             std::string s = j;
@@ -147,6 +158,7 @@ void create_xfer(GraphXfer &xfer, Rule const &r) {
 
     xfer.srcOps = create_rule_graph(r.srcOp, get_input_tensor);
     xfer.dstOps = create_rule_graph(r.dstOp, get_input_tensor);
+    xfer.name = r.name;
     
     for (MapOutput const &m : r.mappedOutput) {
         TensorX srcTensorX = xfer.srcOps[m.srcOpId]->outputs[m.srcTsId];

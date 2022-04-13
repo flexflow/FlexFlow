@@ -3,6 +3,7 @@
 #include <cassert>
 #include <sstream>
 #include <type_traits>
+#include <iomanip>
 
 #include "rules.pb.h"
 #include <nlohmann/json.hpp>
@@ -168,7 +169,7 @@ namespace nlohmann {
     template <typename T>
     struct adl_serializer<::google::protobuf::RepeatedPtrField<T>> {
         static void to_json(json &j, ::google::protobuf::RepeatedPtrField<T> const &fs) {
-            j = json{};
+            j = std::vector<json>{};
             for (auto const &i : fs) {
                 json j2 = i;
                 j.push_back(j2);
@@ -220,6 +221,11 @@ namespace nlohmann {
                 {"_t", "RuleCollection"},
                 {"rule", c.rule()}
             };
+            for (int i = 0; i < j["rule"].size(); ++i) {
+                std::ostringstream oss;
+                oss << "taso_rule_" << i;
+                j["rule"][i]["name"] = oss.str();
+            }
         }
     };
 }
@@ -244,6 +250,6 @@ int main(int argc, char **argv) {
 
   json j = rule_collection;
   std::ofstream output(argv[2]);
-  output << j << std::endl;
+  output << std::setw(2) << j << std::endl;
   return 0;
 }
