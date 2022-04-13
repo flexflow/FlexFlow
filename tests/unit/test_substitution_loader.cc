@@ -11,6 +11,8 @@ TEST(substitution_loader, basic) {
 
     sl::Rule example_rule;
 
+    example_rule.name = "test_rule";
+
     sl::Tensor input_tensor1;
     input_tensor1.opId = -1;
     input_tensor1.tsId = 0;
@@ -73,6 +75,8 @@ TEST(substitution_loader, basic) {
     GraphXfer *xfer = new GraphXfer(nullptr);
     create_xfer(*xfer, example_rule);
 
+    EXPECT_EQ(xfer->name, "test_rule");
+
     EXPECT_EQ(xfer->srcOps.size(), 2);
     EXPECT_EQ(xfer->srcOps[0]->type, OP_EW_ADD);
     EXPECT_EQ(xfer->srcOps[1]->type, OP_LINEAR);
@@ -133,4 +137,13 @@ TEST(substitution_loader, operator_deserialization) {
     EXPECT_EQ(o.input[1].opId, -3);
     EXPECT_EQ(o.input[1].tsId, 0);
     EXPECT_EQ(o.para.size(), 0);
+}
+
+TEST(substitution_loader, load_full_file) {
+    sl::RuleCollection collection = sl::load_rule_collection_from_path("tests/unit/graph_subst_3_v2.json");
+    EXPECT_EQ(collection.rules.size(), 640);
+
+    std::vector<GraphXfer*> xfers = create_xfers(nullptr, collection);
+    EXPECT_EQ(xfers.size(), 640);
+
 }
