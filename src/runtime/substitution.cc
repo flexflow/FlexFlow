@@ -37,6 +37,7 @@
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/graph.h"
 #include "flexflow/graph_structures.h"
+#include "flexflow/substitution_loader.h"
 
 namespace FlexFlow::PCG {
 
@@ -46,6 +47,14 @@ LegionRuntime::Logger::Category log_xfers("xfers");
 LegionRuntime::Logger::Category log_xfer_matches("xfer_matches");
 
 const TensorX TensorX::NO_TX = TensorX();
+
+bool TensorX::operator==(TensorX const &other) const {
+  return this->op == other.op && this->idx == other.idx;
+}
+
+bool TensorX::operator!=(TensorX const &other) const {
+  return !this->operator==(other);
+}
 
 GraphXfer* create_combine_inception(FFModel* model,
                                     int num_convs,
