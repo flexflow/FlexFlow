@@ -62,6 +62,9 @@ struct TensorX {
   tl::optional<ParallelTensor> to_tensor(const GraphXfer* xfer) const;
   OpX* op;
   int idx;
+
+  bool operator==(TensorX const &other) const;
+  bool operator!=(TensorX const &other) const;
 };
 
 struct TensorXCompare {
