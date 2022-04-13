@@ -149,7 +149,6 @@ enum OperatorType {
   OP_FUSED_PARALLEL,
 };
 
-//This must be consistent with python/taso/_cython/CCore.pxd
 enum PMParameter {
   PM_OP_TYPE,   	// AnyOp
   PM_NUM_INPUTS,	// AnyOp
