@@ -138,7 +138,7 @@ namespace nlohmann {
         static void to_json(json &j, gs::Tensor const &t) {
             j = json{
                 {"_t", "Tensor"},
-                {"opId", static_cast<OpType>(t.opid())},
+                {"opId", t.opid()},
                 {"tsId", t.tsid()}
             };
         }
@@ -181,9 +181,9 @@ namespace nlohmann {
         static void to_json(json &j, gs::Operator const &o) {
             j = json{
                 {"_t", "Operator"},
-                {"type", o.type()},
-                {"input", o.para()},
-                {"para", o.input()},
+                {"type", static_cast<OpType>(o.type())},
+                {"input", o.input()},
+                {"para", o.para()},
             };
         }
     };
