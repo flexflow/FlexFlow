@@ -12,6 +12,7 @@ respectively).
 Assuming those two `conda` environments, we may run
 ```
 cd FlexFlow
-./align/embedding/align_embedding.sh
+./align/embedding/gen_tensors.sh
+python -m pytest align/align_test.py
 ```
 to check the alignment between FlexFlow and PyTorch for the embedding operator.

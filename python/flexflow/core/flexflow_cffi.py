@@ -230,6 +230,12 @@ class LayerNorm(Op):
   def __init__(self, handle, idx=None, name=None):
     super(LayerNorm, self).__init__(handle, idx, name)
 
+  def get_weight_tensor(self):
+    return self.get_parameter_by_id(0)
+
+  def get_bias_tensor(self):
+    return self.get_parameter_by_id(1)
+
 # -----------------------------------------------------------------------
 # Dropout
 # -----------------------------------------------------------------------
@@ -1938,7 +1944,7 @@ class FFModel(object):
       layer = self._layers[layer_id]
       if layer.name == layer_name:
         return layer
-    assert 0, f"Cannot find the layer {layer_name}"
+    assert 0, f"Cannot find the layer with name {layer_name}"
     return None
 
   def get_tensor_by_id(self, id):

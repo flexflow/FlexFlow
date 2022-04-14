@@ -4,6 +4,7 @@ import sys
 import torch
 from flexflow.core import *
 from flexflow.core.flexflow_cffi import Embedding, Op, Parameter
+from flexflow.torch.model import FunctionNode
 from flexflow.type import AggrMode
 
 sys.path.append("./align/")
@@ -13,7 +14,7 @@ from align_ff_utils import (compile_ffmodel, init_ffmodel, run_fwd_bwd,
 from align_utils import BATCH_SIZE, gen_tensor
 
 SEQ_LENGTH = 5
-OUT_DIR = os.path.join("align", "embedding", "out")
+OUT_DIR = os.path.join("align", "view_embedding", "out")
 
 
 def run():
@@ -33,29 +34,34 @@ def run():
     ffconfig = FFConfig()
     ffmodel = FFModel(ffconfig)
     input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_INT64)
-    output_tensor = ffmodel.embedding(
+    # Treat `view()` as a special case of `reshape()`
+    view_tensor = ffmodel.reshape(
         input=input_tensor,
+        shape=FunctionNode.get_view_shape(input_tensor, (-1, inp.shape[-1])),
+        name="view",
+    )
+    output_tensor = ffmodel.embedding(
+        input=view_tensor,
         num_embeddings=NUM_EMBEDDINGS,
         embedding_dim=EMBEDDING_DIM,
         aggr=AggrMode.AGGR_MODE_NONE,
         kernel_initializer=NormInitializer(seed=42, mean=0, stddev=1),
         name="embedding",
     )
+
     compile_ffmodel(ffmodel)
     dls = init_ffmodel(ffmodel, ((input_tensor, inp),), label)
     assert len(dls) == 2
     inp_dl, label_dl = dls
     run_fwd_bwd(ffmodel, ffconfig, (inp_dl,), label_dl)
 
-    embedding_layer: Op = ffmodel.get_layers()[0]
+    embedding_layer: Op = ffmodel.get_layers()[1]
     assert isinstance(embedding_layer, Embedding)
     embedding_weight: Parameter = embedding_layer.get_weight_tensor()
     save_tensor_ff(output_tensor, ffmodel, os.path.join(OUT_DIR, "ff_out.pt"))
     save_tensor_grad_ff(output_tensor, ffmodel, os.path.join(OUT_DIR, "ff_out_grad.pt"))
     save_param_ff(embedding_weight, ffmodel, os.path.join(OUT_DIR, "ff_weight.pt"))
-    save_param_grad_ff(
-        embedding_weight, ffmodel, os.path.join(OUT_DIR, "ff_weight_grad.pt")
-    )
+    save_param_grad_ff(embedding_weight, ffmodel, os.path.join(OUT_DIR, "ff_weight_grad.pt"))
 
 
 if __name__ == "__main__":
