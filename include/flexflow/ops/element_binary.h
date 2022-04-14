@@ -81,6 +81,7 @@ public:
                             CostMetrics& cost_metrics) const override;
 public:
   bool inplace_a, has_same_operands;
+  bool broadcast_input1, broadcast_input2;
 };
 
 }; // namespace FlexFlow

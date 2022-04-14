@@ -73,7 +73,7 @@ list(APPEND CC_FLAGS
 
 list(APPEND NVCC_FLAGS
   -std=c++11)
-	
+
 add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
 link_libraries(${LD_FLAGS})
@@ -142,11 +142,11 @@ if(FF_USE_AVX2)
     -DFF_USE_AVX2
     -mavx2)
 endif()
-  
+
 list(APPEND FF_NVCC_FLAGS
   -Wno-deprecated-gpu-targets
   -DMAX_TENSOR_DIM=${FF_MAX_DIM})
-  
+
 list(APPEND FF_LD_FLAGS
   -lrt
   -ldl
@@ -161,17 +161,17 @@ list(APPEND FLEXFLOW_INCLUDE_DIRS
   ${FLEXFLOW_ROOT}/include
   ${FLEXFLOW_ROOT})
 
-file(GLOB_RECURSE FLEXFLOW_HDR 
-  LIST_DIRECTORIES False 
+file(GLOB_RECURSE FLEXFLOW_HDR
+  LIST_DIRECTORIES False
   ${FLEXFLOW_ROOT}/include/*.h)
 
-file(GLOB_RECURSE FLEXFLOW_SRC 
-  LIST_DIRECTORIES False 
+file(GLOB_RECURSE FLEXFLOW_SRC
+  LIST_DIRECTORIES False
   ${FLEXFLOW_ROOT}/src/*.cc)
 list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc")
 
-file(GLOB_RECURSE FLEXFLOW_GPU_SRC 
-  LIST_DIRECTORIES False 
+file(GLOB_RECURSE FLEXFLOW_GPU_SRC
+  LIST_DIRECTORIES False
   ${FLEXFLOW_ROOT}/src/*.cu)
 
 set(FLEXFLOW_CPP_DRV_SRC
@@ -224,7 +224,7 @@ if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/ResNet)
 endif()
 
-if(FF_BUILD_RESNEXT OR FF_BUILD_ALL_EXAMPLES) 
+if(FF_BUILD_RESNEXT OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/resnext50)
 endif()
 
@@ -236,11 +236,11 @@ if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/MLP_Unify)
 endif()
 
-if(FF_BUILD_SPLIT_TEST OR FF_BUILD_ALL_EXAMPLES) 
+if(FF_BUILD_SPLIT_TEST OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/split_test)
 endif()
 
-if(FF_BUILD_SPLIT_TEST_2 OR FF_BUILD_ALL_EXAMPLES) 
+if(FF_BUILD_SPLIT_TEST_2 OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/split_test_2)
 endif()
 
@@ -249,7 +249,7 @@ if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)
 endif()
 
 #TODO: Once functional add to BUILD_ALL_EXAMPLES
-if(FF_BUILD_CANDLE_UNO)
+if(FF_BUILD_CANDLE_UNO OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/candle_uno)
 endif()
 

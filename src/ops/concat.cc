@@ -44,6 +44,8 @@ Tensor FFModel::concat(int n,
   Layer* concat = new Layer(this, OP_CONCAT, name, n/*inputs*/,
                             0/*weights*/, 1/*outputs*/, tensors);
   int numdim = tensors[0]->num_dims;
+  // Making sure axis is between [0, numdim)
+  axis = (axis % numdim + numdim) % numdim;
   int dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++)
     dims[i] = tensors[0]->dims[i];
@@ -60,8 +62,6 @@ Tensor FFModel::concat(int n,
   }
   concat->outputs[0] = create_tensor_legion_ordering(
       numdim, dims, tensors[0]->data_type, concat, 0, true/*create_grad*/);
-  // Making sure axis is between [0, numdim)
-  axis = (axis % numdim + numdim) % numdim;
   concat->add_int_property("legion_axis", numdim-axis-1);
   layers.push_back(concat);
   return concat->outputs[0];

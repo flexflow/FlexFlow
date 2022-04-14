@@ -120,10 +120,25 @@ ElementBinary::ElementBinary(FFModel& model,
   int numdim = std::max(in1->num_dims, in2->num_dims);
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
-    assert(in1->dims[i] == in2->dims[i]);
-    dims[i] = in1->dims[i];
+    if (i >= in1->num_dims) {
+      dims[i] = in2->dims[i];
+    } else if (i >= in2->num_dims) {
+      dims[i] = in1->dims[i];
+    } else if (in1->dims[i].size == in2->dims[i].size) {
+      assert(in1->dims[i] == in2->dims[i]);
+      dims[i] = in1->dims[i];
+    } else if (in1->dims[i].size == 1) {
+      dims[i] = in2->dims[i];
+    } else if (in2->dims[i].size == 1) {
+      dims[i] = in1->dims[i];
+    } else {
+      assert(false && "Operands could not be broadcast together");
+      exit(0);
+    }
   }
   outputs[0] = model.create_parallel_tensor_legion_ordering(numdim, dims, in1->data_type, this);
+  broadcast_input1 = (inputs[0]->get_volume() != outputs[0]->get_volume());
+  broadcast_input2 = (inputs[1]->get_volume() != outputs[0]->get_volume());
 }
 
 bool ElementBinary::can_inplace_output(void)
@@ -210,6 +225,8 @@ OpMeta* ElementBinary::init_task(const Task* task,
   m->profiling = eb->profiling;
   m->inplace_a = eb->inplace_a;
   m->has_same_operands = eb->has_same_operands;
+  m->broadcast_input1 = eb->broadcast_input1;
+  m->broadcast_input2 = eb->broadcast_input2;
   Domain input1_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain input2_domain, output_domain;
