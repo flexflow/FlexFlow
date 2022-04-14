@@ -400,7 +400,7 @@ void Embedding::forward_task_with_type(const Task *task,
         == output_domain.hi()[0] - output_domain.lo()[0]);
   } else {
     //assert(kernel_domain.get_dim() == 2);
-    assert(input_domain.get_dim() + 1 == output_domain.get_dim());
+    assert(input_domain.get_dim() == output_domain.get_dim());
     for (size_t i = 1; i < input_domain.get_dim(); i++) {
       assert(input_domain.hi()[i] == output_domain.hi()[i]);
       assert(input_domain.lo()[i] == output_domain.lo()[i]);
@@ -501,7 +501,7 @@ void Embedding::backward_task_with_type(const Task *task,
         == output_grad_domain.hi()[0] - output_grad_domain.lo()[0]);
   } else {
     //assert(kernel_grad_domain.get_dim() == 2);
-    assert(input_domain.get_dim() + 1 == output_grad_domain.get_dim());
+    assert(input_domain.get_dim()  == output_grad_domain.get_dim());
     for (size_t i = 1; i < input_domain.get_dim(); i++) {
       assert(input_domain.hi()[i] == output_grad_domain.hi()[i]);
       assert(input_domain.lo()[i] == output_grad_domain.lo()[i]);

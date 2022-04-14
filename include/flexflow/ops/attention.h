@@ -17,6 +17,7 @@ public:
                      int _kdim, int _vdim,
                      float _dropout, bool _bias,
                      bool _add_bias_kv, bool _add_zero_attn,
+                     bool allocate_weights,
                      const char* name);
   MultiHeadAttention(FFModel& model,
                      const ParallelTensor _query,
@@ -27,12 +28,23 @@ public:
                      int _kdim, int _vdim,
                      float _dropout, bool _bias,
                      bool _add_bias_kv, bool _add_zero_attn,
+                     bool allocate_weights,
                      const char* name);
+  MultiHeadAttention(FFModel& model,
+                     MultiHeadAttention const &other,
+                     const ParallelTensor query,
+                     const ParallelTensor key,
+                     const ParallelTensor value,
+                     bool allocate_weights);
+  static Op* create_operator_from_layer(FFModel& model,
+                                        const Layer* layer,
+                                        const std::vector<ParallelTensor>& inputs);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
   void print_layer(const FFModel& model) override {assert(0);}
   bool get_int_parameter(PMParameter, int*) const override;
+  size_t get_params_hash() const override;
 
   static OpMeta* init_task(const Legion::Task *task,
                            const std::vector<Legion::PhysicalRegion> &regions,

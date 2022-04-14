@@ -818,7 +818,10 @@ bool Op::check_output_input_weight_parallel_dims(bool allocate_weights) const
         if (!allocate_weights) {
           continue;
         }
-        assert (record.weight_idx < this->numWeights);
+        if (record.weight_idx >= this->numWeights) {
+          // The case where some weights are not used (e.g., no bias for linear)
+          continue;
+        }
         assert (record.weight_dim < this->weights[record.weight_idx]->num_dims);
         other_dim = weights[record.weight_idx]->dims[record.weight_dim];
         break;
@@ -2448,6 +2451,12 @@ Op* FFModel::create_operator_from_layer(Layer* layer,
       //Repartition* part = new Repartition(*this, pt, num_dims-1, config.numNodes * config.workersPerNode);
       //operators.push_back(part);
       return operators[operators.size()-1];
+    }
+    case OP_MULTIHEAD_ATTENTION:
+    {
+      Op* op = MultiHeadAttention::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
     }
     case OP_CONCAT:
     {

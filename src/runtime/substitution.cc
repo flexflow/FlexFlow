@@ -2600,37 +2600,9 @@ bool FFModel::convert_graph_to_operators(const Graph* graph,
       {
         assert(inList.size() == 3);
         MultiHeadAttention* attn = (MultiHeadAttention*) node.ptr;
-        // Create weight tensor
-        ParallelTensor kernel;
-        {
-          int num_dims = inputs[0]->num_dims;
-          // Compute weight size
-          int qParas = attn->qProjSize * attn->qSize;
-          int kParas = attn->kProjSize * attn->kSize;
-          int vParas = attn->vProjSize * attn->vSize;
-          int oParas = attn->oProjSize * (attn->vProjSize > 0 ? attn->vProjSize : attn->vSize);
-          ParallelDim dims[3];
-          dims[0] = inputs[0]->dims[num_dims-2];
-          dims[0].size = dims[0].degree;
-          dims[1] = inputs[0]->dims[num_dims-1];
-          dims[1].size = attn->num_heads;
-          dims[2].size = qParas + kParas + vParas + oParas;
-          int seed = std::rand();
-          Initializer* initializer = new GlorotUniform(seed);
-#ifdef FF_USE_NCCL
-          ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-          ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-          kernel = create_parallel_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
-                                             true/*create_grad*/, initializer,
-                                             comm_type);
-        }
-        new_op = new MultiHeadAttention(*this, inputs[0], inputs[1], inputs[2], kernel,
-                                        attn->oProjSize, attn->num_heads,
-                                        attn->qProjSize, attn->vProjSize,
-                                        attn->dropout, attn->bias,
-                                        attn->add_bias_kv, attn->add_zero_attn, NULL);
+        new_op = new MultiHeadAttention(*this, *attn,
+                                        inputs[0], inputs[1], inputs[2], true);
+        break;
         break;
       }
       case OP_SOFTMAX:

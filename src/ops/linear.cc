@@ -234,7 +234,7 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
   TensorAccessorW<float, NDIM> acc_output(
       regions[0], task->regions[0], FID_DATA, ctx, runtime,
       false/*readOutput*/);
-  TensorAccessorW<float, 3> acc_kernel(
+  TensorAccessorW<float, NDIM> acc_kernel(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
   // TensorAccessorR<float, 1> acc_bias(
@@ -267,7 +267,7 @@ void Linear::forward(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(LINEAR_FWD_TASK_ID, parallel_is,
-                         TaskArgument(NULL, 0), argmap,
+                         TaskArgument(nullptr, 0), argmap,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
@@ -329,7 +329,7 @@ void Linear::forward_task_with_dim(const Task *task,
   TensorAccessorW<float, NDIM> acc_output(
       regions[1], task->regions[1], FID_DATA, ctx, runtime,
       false/*readOutput*/);
-  TensorAccessorR<float, 3> acc_kernel(
+  TensorAccessorR<float, NDIM> acc_kernel(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   int in_dim = acc_input.rect.hi[0] - acc_input.rect.lo[0] + 1;
   int out_dim = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
@@ -469,10 +469,10 @@ void Linear::backward_task_with_dim(const Task *task,
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
       true/*readOutput*/);
   rid++;
-  TensorAccessorR<float, 3> acc_kernel(
+  TensorAccessorR<float, NDIM> acc_kernel(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
   rid++;
-  TensorAccessorW<float, 3> acc_kernel_grad(
+  TensorAccessorW<float, NDIM> acc_kernel_grad(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime,
       true/*readOutput*/);
   rid++;

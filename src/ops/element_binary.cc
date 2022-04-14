@@ -373,7 +373,7 @@ void ElementBinary::backward(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
   IndexLauncher launcher(ELEMENTBINARY_BWD_TASK_ID, parallel_is,
-      TaskArgument(NULL, 0), argmap,
+      TaskArgument(nullptr, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       outputs[0]->machine_view.hash());
   if (inplace_a) {
@@ -387,7 +387,7 @@ void ElementBinary::backward(const FFModel& ff)
       RegionRequirement(inputs[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
     launcher.add_field(1, FID_DATA);
-    if (inputs[0]->region == inputs[1]->region) {
+    if (inputs[0]->region != inputs[1]->region) {
       // regions[3](I): input1
       launcher.add_region_requirement(
         RegionRequirement(inputs[1]->part, 0/*projection id*/,
@@ -418,7 +418,7 @@ void ElementBinary::backward(const FFModel& ff)
                           READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
       launcher.add_field(rid++, FID_DATA);
     }
-    if (inputs[0]->region == inputs[1]->region) {
+    if (inputs[0]->region != inputs[1]->region) {
       // regions[3](I): input1
       launcher.add_region_requirement(
         RegionRequirement(inputs[1]->part, 0/*projection id*/,

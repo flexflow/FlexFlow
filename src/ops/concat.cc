@@ -60,6 +60,8 @@ Tensor FFModel::concat(int n,
   }
   concat->outputs[0] = create_tensor_legion_ordering(
       numdim, dims, tensors[0]->data_type, concat, 0, true/*create_grad*/);
+  // Making sure axis is between [0, numdim)
+  axis = (axis % numdim + numdim) % numdim;
   concat->add_int_property("legion_axis", numdim-axis-1);
   layers.push_back(concat);
   return concat->outputs[0];
@@ -81,7 +83,6 @@ Op* Concat::create_operator_from_layer(
   return new Concat(model, inputs.size(), inputs.data(), legion_axis, layer->name);
 }
 
-
 Concat::Concat(FFModel& model,
                int _n, const ParallelTensor* _tensors,
                int _legion_axis,
@@ -89,11 +90,12 @@ Concat::Concat(FFModel& model,
 : Op(model, OP_CONCAT, name, _n/*inputs*/, 0/*weights*/, 1/*outputs*/, _tensors),
   legion_axis(_legion_axis)
 {
+  printf("legion_axis = %d\n", legion_axis);
   //TODO: swich to use the Legion dim ordering
   int num_dim = inputs[0]->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < num_dim; i++)
-    dims[i] = inputs[0]->dims[num_dim-1-i];
+    dims[i] = inputs[0]->dims[i];
   for (int i = 1; i < numInputs; i++) {
     assert(inputs[i]->data_type == inputs[0]->data_type);
     assert(inputs[i]->num_dims == inputs[0]->num_dims);
@@ -104,12 +106,12 @@ Concat::Concat(FFModel& model,
         // Assert that the concat dim cannot be parallelized
         assert(inputs[i]->dims[j].parallel_idx == -1);
         assert(inputs[i]->dims[j].degree == 1);
-        dims[num_dim-1-j].size += inputs[i]->dims[j].size;
+        dims[j].size += inputs[i]->dims[j].size;
       }
     }
   }
   numOutputs = 1;
-  outputs[0] = model.create_parallel_tensor(num_dim, dims, inputs[0]->data_type, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(num_dim, dims, inputs[0]->data_type, this);
 }
 
 void Concat::init_meta(ConcatMeta *m) const

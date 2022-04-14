@@ -1,4 +1,4 @@
-/* Copyright 2021 Facebook
+/* Copyright 2022 CMU, Facebook
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/attention.h"
+#include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
 
@@ -49,18 +50,73 @@ Tensor FFModel::multihead_attention(const Tensor query,
                                     Initializer* kernel_initializer,
                                     const char* name)
 {
-#ifdef DEADCODE
+  Layer* li = new Layer(this, OP_MULTIHEAD_ATTENTION, name, 3/*inputs*/,
+                        0/*weights*/, 1/*outputs*/, query, key, value);
   {
-    MultiHeadAttention* attn = new MultiHeadAttention(*this, query, key, value,
-                                                      embed_dim, num_heads,
-                                                      kdim, vdim, dropout, bias,
-                                                      add_bias_kv, add_zero_attn,
-                                                      name);
-    layers.push_back(attn);
-    return attn->outputs[0];
+    int numdims = query->num_dims;
+    int dims[MAX_TENSOR_DIM];
+    for (int i = 0; i < numdims; i++)
+      dims[i] = query->dims[i];
+    dims[0] = embed_dim;
+    li->outputs[0] = create_tensor_legion_ordering(numdims, dims, DT_FLOAT,
+                                                   li, 0, true/*create_grad*/);
   }
-#endif
-  return nullptr;
+  li->data_type = DT_FLOAT;
+  li->add_int_property("embed_dim", embed_dim);
+  li->add_int_property("num_heads", num_heads);
+  li->add_int_property("kdim", kdim);
+  li->add_int_property("vdim", vdim);
+  li->add_int_property("bias", bias);
+  li->add_int_property("add_bias_kv", add_bias_kv);
+  li->add_int_property("add_zero_attn", add_zero_attn);
+  li->add_float_property("dropout", dropout);
+  layers.push_back(li);
+  return li->outputs[0];
+}
+
+Op* MultiHeadAttention::create_operator_from_layer(
+    FFModel& model,
+    const Layer* layer,
+    const std::vector<ParallelTensor>& inputs) {
+  long long value;
+  layer->get_int_property("embed_dim", value);
+  int embed_dim = value;
+  layer->get_int_property("num_heads", value);
+  int num_heads = value;
+  layer->get_int_property("kdim", value);
+  int kdim = value;
+  layer->get_int_property("vdim", value);
+  int vdim = value;
+  float dropout;
+  layer->get_float_property("dropout", dropout);
+  layer->get_int_property("bias", value);
+  bool bias = (bool)value;
+  layer->get_int_property("add_bias_kv", value);
+  bool add_bias_kv = (bool)value;
+  layer->get_int_property("add_zero_attn", value);
+  bool add_zero_attn = (bool)value;
+  return new MultiHeadAttention(model, inputs[0], inputs[1], inputs[2],
+                                embed_dim, num_heads, kdim, vdim,
+                                dropout, bias, add_bias_kv,
+                                add_zero_attn, false/*allocate_weights*/,
+                                layer->name);
+}
+
+size_t MultiHeadAttention::get_params_hash() const {
+  size_t hash0 = inputs[0]->get_owner_independent_hash();
+  size_t hash1 = inputs[1]->get_owner_independent_hash();
+  size_t hash2 = inputs[2]->get_owner_independent_hash();
+  hash_combine(hash0, hash1);
+  hash_combine(hash0, hash2);
+  hash_combine(hash0, this->num_heads);
+  hash_combine(hash0, this->bias);
+  hash_combine(hash0, this->add_bias_kv);
+  hash_combine(hash0, this->add_zero_attn);
+  hash_combine(hash0, this->qProjSize);
+  hash_combine(hash0, this->kProjSize);
+  hash_combine(hash0, this->vProjSize);
+  hash_combine(hash0, this->oProjSize);
+  return hash0;
 }
 
 MultiHeadAttention::MultiHeadAttention(FFModel& model,
@@ -71,6 +127,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
                                        int _kdim, int _vdim,
                                        float _dropout, bool _bias,
                                        bool _add_bias_kv, bool _add_zero_attn,
+                                       bool allocate_weights,
                                        const char* name)
                                        //Initializer* _bias_initializer)
 : Op(model, OP_MULTIHEAD_ATTENTION, name, 3/*inputs*/, 0/*weights*/, 1/*outputs*/,
@@ -111,6 +168,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
                                        int _kdim, int _vdim,
                                        float _dropout, bool _bias,
                                        bool _add_bias_kv, bool _add_zero_attn,
+                                       bool allocate_weights,
                                        const char* name)
                                        //Initializer* _bias_initializer)
 : Op(model, OP_MULTIHEAD_ATTENTION, name, 3/*inputs*/, 1/*weights*/, 1/*outputs*/,
@@ -134,18 +192,54 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
   dims[0].size = _embed_dim;
   // Currently require no parallelism along this dim
   assert(dims[0].degree == 1);
-
+  if (allocate_weights) {
+    // Create weight tensor
+    int num_dims = inputs[0]->num_dims;
+    // Compute weight size
+    int qParas = this->qProjSize * this->qSize;
+    int kParas = this->kProjSize * this->kSize;
+    int vParas = this->vProjSize * this->vSize;
+    int oParas = this->oProjSize * (this->vProjSize > 0 ? this->vProjSize : this->vSize);
+    ParallelDim dims[3];
+    dims[0] = inputs[0]->dims[num_dims-2];
+    dims[0].size = dims[0].degree;
+    dims[1] = inputs[0]->dims[num_dims-1];
+    dims[1].size = this->num_heads;
+    dims[2].size = qParas + kParas + vParas + oParas;
+    int seed = std::rand();
+    Initializer* initializer = new GlorotUniform(seed);
+#ifdef USE_NCCL
+    ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+    ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+    weights[0] = model.create_parallel_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
+                                       true/*create_grad*/, initializer,
+                                       comm_type);
+  }
   outputs[0] = model.create_parallel_tensor_legion_ordering(_query->num_dims,
                                                    dims, DT_FLOAT, this);
+
   /* for (int i = 0; i < numdim; i++) { */
   /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
   /* } */
-  assert(_weight->num_dims == 3);
   /* register_output_weight_parallel_dims(outputs[0], numdim-1, _weight, 1); */
   /* register_output_weight_parallel_dims(outputs[0], numdim-2, _weight, 2); */
   // Check correctness
   /* assert(check_output_input_weight_parallel_dims()); */
 }
+
+MultiHeadAttention::MultiHeadAttention(FFModel& model,
+                                       MultiHeadAttention const &other,
+                                       const ParallelTensor query,
+                                       const ParallelTensor key,
+                                       const ParallelTensor value,
+                                       bool allocate_weights)
+: MultiHeadAttention(model, query, key, value, other.oProjSize, other.num_heads,
+                     other.qProjSize, other.vProjSize, other.dropout, other.bias,
+                     other.add_bias_kv, other.add_zero_attn,
+                     allocate_weights, other.name) {}
+
 
 void MultiHeadAttention::init(const FFModel& ff)
 {
@@ -237,6 +331,7 @@ void MultiHeadAttention::forward(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
+  int idx = 0;
   IndexLauncher launcher(ATTENTION_FWD_TASK_ID, parallel_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -244,19 +339,19 @@ void MultiHeadAttention::forward(const FFModel& ff)
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->part, 0/*projection id*/,
           READ_ONLY, EXCLUSIVE, inputs[0]->region));
-  launcher.add_field(0, FID_DATA);
+  launcher.add_field(idx++, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(inputs[1]->part, 0/*projection id*/,
           READ_ONLY, EXCLUSIVE, inputs[1]->region));
-  launcher.add_field(1, FID_DATA);
+  launcher.add_field(idx++, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(inputs[2]->part, 0/*projection id*/,
           READ_ONLY, EXCLUSIVE, inputs[2]->region));
-  launcher.add_field(2, FID_DATA);
+  launcher.add_field(idx++, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(weights[0]->part, 0/*projection id*/,
           READ_ONLY, EXCLUSIVE, weights[0]->region));
-  launcher.add_field(3, FID_DATA);
+  launcher.add_field(idx++, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(outputs[0]->part, 0/*projection id*/,
           WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
@@ -465,7 +560,7 @@ bool MultiHeadAttention::measure_operator_cost(
     int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
     num_weights = num_heads * (qParas + kParas + vParas + oParas);
   }
-  assert(sub_query.num_dims == 4);
+  assert(sub_query.num_dims == 5);
   int num_samples = sub_query.dims[2].size;
 
   MultiHeadAttentionMeta* m = new MultiHeadAttentionMeta(sim->handler,
@@ -559,13 +654,14 @@ Node FFModel::get_or_create_multihead_attn_node(const ParallelTensor query,
   hash = hash * 31 + std::hash<int>()((int)add_bias_kv);
   hash = hash * 31 + std::hash<int>()((int)add_zero_attn);
   const auto& it = cached_multihead_attn_ops.find(hash);
-  MultiHeadAttention* attn = NULL;
+  MultiHeadAttention* attn = nullptr;
   if (it != cached_multihead_attn_ops.end()) {
     attn = it->second;
   } else {
     attn = new MultiHeadAttention(*this, query, key, value, embed_dim, num_heads,
                                   kdim, vdim, dropout, bias,
-                                  add_bias_kv, add_zero_attn, NULL);
+                                  add_bias_kv, add_zero_attn, false/*create_weights*/,
+                                  nullptr);
     cached_multihead_attn_ops[hash] = attn;
   }
   Node ret;
