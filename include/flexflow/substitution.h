@@ -21,8 +21,11 @@
 #include <queue>
 #include "tl/optional.h"
 #include "flexflow/utils/recursive_logger.h"
+#include "flexflow/substitution_loader.h"
 
 namespace FlexFlow::PCG {
+
+namespace sl = FlexFlow::substitution_loader;
 
 enum Compare {
   COMPARE_EQ,
@@ -99,6 +102,10 @@ public:
   std::vector<PMConstraint> pmConstraints;
   std::vector<TNConstraint> tnConstraints;
 };
+
+OpX *create_opx(sl::Operator const &op, TensorX const &input1 = TensorX::NO_TX, TensorX const &input2 = TensorX::NO_TX, TensorX const &input3 = TensorX::NO_TX, TensorX const &input4 = TensorX::NO_TX);
+void create_xfer(GraphXfer &xfer, sl::Rule const &r);
+std::vector<GraphXfer*> create_xfers(FFModel *model, sl::RuleCollection const &rules);
 
 class GraphCompare {
 public:
