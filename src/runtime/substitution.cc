@@ -37,7 +37,6 @@
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/graph.h"
 #include "flexflow/graph_structures.h"
-#include "flexflow/substitution_loader.h"
 
 namespace FlexFlow::PCG {
 
@@ -499,6 +498,7 @@ void GraphXfer::find_matches(Graph const *graph, std::vector<GraphXferMatch>& ma
   this->find_matches(0, graph, matches);
 }
 
+
 void GraphXfer::find_matches(int depth, Graph const *graph, std::vector<GraphXferMatch>& matches) {
   log_xfer_matches.spew() << "find_matches at depth: " << depth;
   if (depth >= (int)srcOps.size()) {
@@ -809,6 +809,14 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
     && (degree > model->config.cpusPerNode * model->config.numNodes))
       return false;
   }
+  int num_inputs;
+  if (opx->get_pm_constraint(PM_NUM_INPUTS, num_inputs) && opx->inputs.size() != num_inputs) {
+    return false;
+  }
+  int num_outputs;
+  if (opx->get_pm_constraint(PM_NUM_OUTPUTS, num_outputs) && opx->outputs.size() != num_outputs) {
+    return false;
+  }
   switch (opx->type) {
     case OP_NOOP:
     {
@@ -820,6 +828,27 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
       int axis;
       assert(opx->get_pm_constraint(PM_AXIS, axis));
       op = model->get_or_create_concat_node(opx->inputs.size(), inputs, axis);
+      break;
+    }
+    case OP_SPLIT:
+    {
+      int axis;
+      assert (opx->get_pm_constraint(PM_AXIS, axis));
+      int num_outputs = opx->outputs.size();
+      int input_size = inputs[0]->dims[axis].size;
+      
+      if (input_size % num_outputs != 0) {
+        op = Node::INVALID_NODE;
+        // std::ostringstream oss;
+        // oss << "Cannot create Split node. Failed check input_size % num_outputs == 0 (" 
+        //     << input_size << " % " << num_outputs << " == 0)";
+        // throw std::runtime_error(oss.str());
+      } else {
+        int split_size = input_size / num_outputs;
+        std::vector<int> split_sizes(num_outputs, split_size);
+        assert (split_sizes.size() == num_outputs);
+        op = model->get_or_create_split_node(inputs[0], split_sizes, axis);
+      }
       break;
     }
     case OP_EW_ADD:
@@ -924,7 +953,7 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
     }
     default:
     {
-      printf("opx->type = %d\n", opx->type);
+      std::cout << "opx->type = " << get_op_type_name(opx->type) << std::endl;
       assert(false);
     }
   }
@@ -1259,6 +1288,162 @@ std::string GraphXfer::get_name() const {
   }
 }
 
+int get_num_outputs(sl::Operator const &op) {
+    switch (op.op_type) {
+        case OP_SPLIT:
+            return op.at(PM_NUM_OUTPUTS).value();
+        default:
+            return 1;
+    }
+}
+
+int get_num_inputs(sl::Operator const &op) {
+    switch (op.op_type) {
+        case OP_EW_ADD: // binary ops
+        case OP_EW_SUB:
+        case OP_EW_MUL:
+        case OP_EW_DIV:
+        case OP_EW_EQUAL:
+        case OP_EW_GREATER:
+        case OP_EW_LESS:
+        case OP_EW_MAX:
+        case OP_EW_MIN:
+            return 2;
+        case OP_SPLIT:
+            return 1;
+        case OP_LINEAR:
+            return 1;
+        case OP_RELU: 
+        case OP_IDENTITY:
+        case OP_SIGMOID:
+        case OP_TANH:
+        case OP_ELU:
+            return 1;
+        case OP_CONCAT:
+            return op.at(PM_NUM_INPUTS).value();
+        case OP_INPUT:
+            return 0;
+        case OP_REPARTITION:
+        case OP_COMBINE:
+        case OP_REPLICATE:
+        case OP_REDUCTION:
+        case OP_PIPELINE:
+            return 1;
+        default:
+            throw std::runtime_error("Unknown num_inputs for operator " + get_op_type_name(op.op_type));
+    }
+}
+
+OpX *create_opx(sl::Operator const &op, TensorX const &input1, TensorX const &input2, TensorX const &input3, TensorX const &input4) {
+    int num_inputs = get_num_inputs(op);
+    int num_outputs = get_num_outputs(op);
+    
+    OpX *opx = new OpX(op.op_type, num_inputs, num_outputs, input1, input2, input3, input4);
+    for (sl::Parameter const &p : op.para) {
+        if (p.key == PM_PARALLEL_DEGREE) {
+          tl::optional<PMParameter> degree_key = tl::nullopt;
+          switch (op.op_type) {
+            case OP_REPARTITION:
+              degree_key = PM_REPARTITION_DEGREE;
+              break;
+            case OP_COMBINE:
+              degree_key = PM_COMBINE_DEGREE;
+              break;
+            case OP_REDUCTION:
+              degree_key = PM_REDUCTION_DEGREE;
+              break;
+            case OP_REPLICATE:
+              degree_key = PM_REPLICATE_DEGREE;
+              break;
+          }
+
+          if (degree_key.has_value()) {
+            opx->add_pm_constraint(COMPARE_EQ, degree_key.value(), p.value);
+          }
+        } else if (p.key == PM_PARALLEL_DIM) {
+          tl::optional<PMParameter> dim_key = tl::nullopt;
+          switch (op.op_type) {
+            case OP_REPARTITION:
+              dim_key = PM_REPARTITION_DIM;
+              break;
+            case OP_COMBINE:
+              dim_key = PM_COMBINE_DIM;
+              break;
+            case OP_REDUCTION:
+              dim_key = PM_REDUCTION_DIM;
+              break;
+            case OP_REPLICATE:
+              dim_key = PM_REPLICATE_DIM;
+              break;
+          }
+
+          if (dim_key.has_value()) {
+            opx->add_pm_constraint(COMPARE_EQ, dim_key.value(), p.value);
+          }
+        } else {
+          opx->add_pm_constraint(COMPARE_EQ, p.key, p.value);
+        }
+    }
+
+    return opx;
+}
+
+std::vector<OpX *> create_rule_graph(std::vector<sl::Operator> const &ops, std::function<TensorX(int, int)> const &get_input_tensor) {
+    std::vector<OpX *> rule_graph;
+
+    for (int i = 0; i < ops.size(); i++) {
+        sl::Operator const &op = ops[i];
+        std::array<TensorX, 4> inputs;
+        std::fill(inputs.begin(), inputs.end(), TensorX::NO_TX);
+
+        for (int j = 0; j < op.input.size(); j++) {
+            int opId = op.input[j].opId;
+            int tsId = op.input[j].tsId;
+            if (opId < 0) {
+                inputs[j] = get_input_tensor(opId, tsId);
+            } else {
+                inputs[j] = rule_graph[opId]->outputs[tsId];
+            }
+        }
+
+        OpX *opx = create_opx(ops[i], inputs[0], inputs[1], inputs[2], inputs[3]);
+        rule_graph.push_back(opx);
+    }
+
+    return rule_graph;
+}
+
+void create_xfer(GraphXfer &xfer, sl::Rule const &r) {
+    std::unordered_map<std::pair<int, int>, TensorX> input_tensors;
+    std::function<TensorX(int,int)> get_input_tensor = [&xfer, &input_tensors](int opId, int tsId) -> TensorX {
+        if (input_tensors.find({opId, tsId}) == input_tensors.end()) {
+            input_tensors[{opId, tsId}] = xfer.new_tensor();
+        }
+        return input_tensors.at({opId, tsId});
+    };
+
+    xfer.srcOps = create_rule_graph(r.srcOp, get_input_tensor);
+    xfer.dstOps = create_rule_graph(r.dstOp, get_input_tensor);
+    xfer.name = r.name;
+    
+    for (sl::MapOutput const &m : r.mappedOutput) {
+        TensorX srcTensorX = xfer.srcOps[m.srcOpId]->outputs[m.srcTsId];
+        TensorX dstTensorX = xfer.dstOps[m.dstOpId]->outputs[m.dstTsId];
+        xfer.map_output(srcTensorX, dstTensorX);
+    }
+}
+
+std::vector<GraphXfer*> create_xfers(FFModel *model, sl::RuleCollection const &rules) {
+    std::vector<GraphXfer*> xfers;
+    for (sl::Rule const &r : rules.rules) {
+        GraphXfer *xfer = new GraphXfer(model);
+        create_xfer(*xfer, r);
+        xfers.push_back(xfer);
+    }
+    return xfers;
+}
+
+
 GraphSearchHelper::GraphSearchHelper(FFModel *model) 
   : model(model), config(model->config)
 { 
@@ -1299,6 +1484,12 @@ void GraphSearchHelper::generate_all_pcg_xfers()
     if (16 % it == 0) {
       all_pcg_xfers.push_back(create_replicate_attention_reduce(this->model, 16/*num_heads*/, it));
     }
+  }
+
+  if (config.substitution_json_path.has_value()) {
+    sl::RuleCollection rule_collection = sl::load_rule_collection_from_path(config.substitution_json_path.value());
+    std::vector<GraphXfer*> xfers = create_xfers(this->model, rule_collection);
+    all_pcg_xfers.insert(all_pcg_xfers.end(), xfers.begin(), xfers.end());
   }
 
   {
@@ -1618,7 +1809,7 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph, Si
     log_xfers.info("[%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)",
            counter, cur_graph->optimal_cost(), best_cost, candidates.size());
 
-    log_xfers.debug() << "Considering " << xfers.size() << " possible xfers";
+    log_xfers.warning() << "Considering " << xfers.size() << " possible xfers";
     for (size_t i = 0; i < xfers.size(); i++) {
       int num_matches_found = 0,
           num_matches_rejected = 0;
