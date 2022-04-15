@@ -4,6 +4,12 @@
 #include <fstream>
 #include <sstream>
 #include "tl/optional.h"
+#include <vector>
+#include <cassert>
+#include <map>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 class RecordFormatter {
   friend RecordFormatter &operator<<(RecordFormatter &r, std::string const &tok) {
@@ -45,8 +51,12 @@ private:
 template <typename T>
 class DotFile {
 private:
-  size_t node_id;
+  size_t node_id = 0;
+  size_t subgraph_id = 0;
   std::map<T,size_t> node_ids;
+  std::unordered_map<size_t, std::unordered_set<size_t>> subgraphs;
+  std::unordered_map<size_t, std::unordered_set<size_t>> subgraph_children;
+  std::unordered_map<size_t, tl::optional<size_t>> subgraph_parents;
   tl::optional<std::ofstream> owned_fstream = tl::nullopt;
   tl::optional<std::ostream&> out = tl::nullopt;
   std::string get_node_name(size_t node_id) const {
@@ -73,9 +83,9 @@ private:
     this->get_ostream() << "digraph taskgraph {" << std::endl;
   }
 public:
-  DotFile() : node_id(0) {}
+  DotFile() {}
   DotFile(std::string const &filename) 
-    : node_id(0), owned_fstream(filename) 
+    : owned_fstream(filename) 
   { 
     this->start_output();
   }
@@ -115,6 +125,18 @@ public:
       }
     );
   }
+
+  void dump_subgraph(size_t subgraph) {
+    this->get_ostream() << "subgraph cluster_" << subgraph << " {" << std::endl;
+    for (size_t node_id : this->subgraphs.at(subgraph)) {
+      this->get_ostream() << "node" << node_id << ";" << std::endl;
+    }
+    for (size_t child_subgraph : this->subgraph_children.at(subgraph)) {
+      dump_subgraph(child_subgraph);
+    }
+    this->get_ostream() << "}" << std::endl;
+  }
+
   void add_edge(T const &src, T const &dst) {
     this->reserve_node(src);
     this->reserve_node(dst);
@@ -123,8 +145,41 @@ public:
     this->get_ostream() << "  " << src_name << " -> " << dst_name << ";" << std::endl;
   }
   void close() {
+    for (size_t subgraph = 0; subgraph < this->subgraph_id; subgraph++) {
+      if (!this->subgraph_parents.at(subgraph).has_value()) {
+        this->dump_subgraph(subgraph);
+      }
+    }
+
     this->get_ostream() << "}";
     this->get_ostream().flush();
+  }
+
+  size_t add_subgraph(tl::optional<size_t> parent_id = tl::nullopt) {
+    size_t subgraph = this->subgraph_id;
+    subgraph_id++;
+    this->subgraph_children[subgraph];
+    if (parent_id.has_value()) {
+      this->subgraph_children.at(parent_id.value()).insert(subgraph);
+    }
+    this->subgraph_parents[subgraph] = parent_id;
+    this->subgraphs[subgraph];
+    return subgraph;
+  }
+
+  void add_node_to_subgraph(T const &node, size_t subgraph) {
+    this->reserve_node(node);
+    if (subgraph >= this->subgraph_id) {
+      std::ostringstream oss;
+      oss << "Invalid subgraph_id " << subgraph 
+          << " (should be less than " << this->subgraph_id << ")";
+      throw std::runtime_error(oss.str());
+    }
+    this->subgraphs[subgraph].insert(this->node_ids.at(node));
+    tl::optional<size_t> parent = this->subgraph_parents.at(subgraph);
+    if (parent.has_value()) {
+      this->add_node_to_subgraph(node, parent.value());
+    }
   }
 };
 

@@ -180,6 +180,11 @@ file(GLOB_RECURSE FLEXFLOW_GPU_SRC
 set(FLEXFLOW_CPP_DRV_SRC
   ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)
 
+add_library(substitution_loader SHARED
+  ${FLEXFLOW_ROOT}/src/runtime/substitution_loader.cc)
+target_include_directories(substitution_loader PRIVATE ${FLEXFLOW_INCLUDE_DIRS})
+target_link_libraries(substitution_loader nlohmann_json::nlohmann_json)
+
 #message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
 
 # compile flexflow lib
@@ -210,6 +215,7 @@ option(FF_BUILD_SPLIT_TEST_2 "build split test 2 example" OFF)
 option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
 option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
 option(FF_BUILD_SUBSTITUTION_TOOL "build substitution conversion tool" OFF)
+option(FF_BUILD_VISUALIZATION_TOOL "build substitution visualization tool" OFF)
 
 if(FF_BUILD_UNIT_TESTS)
   set(BUILD_GMOCK OFF)
@@ -219,7 +225,11 @@ if(FF_BUILD_UNIT_TESTS)
 endif()
 
 if(FF_BUILD_SUBSTITUTION_TOOL)
-  add_subdirectory(src/tools)
+  add_subdirectory(src/tools/protobuf_to_json)
+endif()
+
+if(FF_BUILD_VISUALIZATION_TOOL)
+  add_subdirectory(src/tools/substitutions_to_dot)
 endif()
 
 # Python

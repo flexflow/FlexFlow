@@ -147,6 +147,7 @@ enum OperatorType {
   OP_REDUCTION,
   OP_PIPELINE,
   OP_FUSED_PARALLEL,
+  OP_INVALID,
 };
 
 enum PMParameter {
@@ -179,6 +180,9 @@ enum PMParameter {
   PM_REDUCTION_DEGREE,  // Reduction
   PM_SOFTMAX_DIM,       // Softmax
   PM_NUM_HEADS,         // MultiHeadAttention
+  PM_INVALID,
+  PM_PARALLEL_DIM,
+  PM_PARALLEL_DEGREE,
 };
 
 enum TNParameter {

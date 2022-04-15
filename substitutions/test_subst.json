@@ -1,0 +1,127 @@
+{
+  "_t": "RuleCollection",
+  "rule": [
+    {
+      "_t": "Rule",
+      "srcOp": [
+        {
+          "_t": "Operator",
+          "input": [
+            {
+              "_t": "Tensor",
+              "opId": -1,
+              "tsId": 0
+            },
+            {
+              "_t": "Tensor",
+              "opId": -2,
+              "tsId": 0
+            }
+          ],
+          "para": [
+          ],
+          "type": "OP_EW_ADD"
+        }
+      ],
+      "name": "example_subst",
+      "dstOp": [
+        {
+          "_t": "Operator",
+          "input": [
+            {
+              "_t": "Tensor",
+              "opId": -1,
+              "tsId": 0
+            }
+          ],
+          "para": [
+            {
+              "_t": "Parameter",
+              "key": "PM_PARALLEL_DIM",
+              "value": 1
+            },
+            {
+              "_t": "Parameter",
+              "key": "PM_PARALLEL_DEGREE",
+              "value": 2
+            }
+          ],
+          "type": "OP_PARTITION"
+        },
+        {
+          "_t": "Operator",
+          "input": [
+            {
+              "_t": "Tensor",
+              "opId": -2,
+              "tsId": 0
+            }
+          ],
+          "para": [
+            {
+              "_t": "Parameter",
+              "key": "PM_PARALLEL_DIM",
+              "value": 1
+            },
+            {
+              "_t": "Parameter",
+              "key": "PM_PARALLEL_DEGREE",
+              "value": 2
+            }
+          ],
+          "type": "OP_PARTITION"
+        },
+        {
+          "_t": "Operator",
+          "input": [
+            {
+              "_t": "Tensor",
+              "opId": 0,
+              "tsId": 0
+            },
+            {
+              "_t": "Tensor",
+              "opId": 1,
+              "tsId": 0
+            }
+          ],
+          "para": [
+          ],
+          "type": "OP_EW_ADD"
+        },
+        {
+          "_t": "Operator",
+          "input": [
+            {
+              "_t": "Tensor",
+              "opId": 2,
+              "tsId": 0
+            }
+          ],
+          "para": [
+            {
+              "_t": "Parameter",
+              "key": "PM_PARALLEL_DIM",
+              "value": 1
+            },
+            {
+              "_t": "Parameter",
+              "key": "PM_PARALLEL_DEGREE",
+              "value": 2
+            }
+          ],
+          "type": "OP_COMBINE"
+        }
+      ],
+      "mappedOutput": [
+        {
+          "_t": "MapOutput",
+          "dstOpId": 3,
+          "dstTsId": 0,
+          "srcOpId": 0,
+          "srcTsId": 0
+        }
+      ]
+    }
+  ]
+}
