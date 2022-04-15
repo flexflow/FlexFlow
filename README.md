@@ -1,124 +1,119 @@
-# Unity
+# FlexFlow
 
-## Getting Started
+FlexFlow is a deep learning framework that accelerates distributed DNN training by automatically searching for efficient parallelization strategies. FlexFlow provides a drop-in replacement for TensorFlow Keras and PyTorch. Running existing Keras and PyTorch programs in FlexFlow only requires [a few lines of changes to the program](https://flexflow.ai/keras).
 
-The following AMI provides a full environment for running Unity. A TODO machine should be used for the evaluation.
+## Install FlexFlow
+To install FlexFlow from source code, please read the [instructions](INSTALL.md). If you would like to quickly try FlexFlow, we also provide prebuilt [docker images](INSTALL.md) with all dependencies pre-installed. You can also use `conda` to install the FlexFlow Python package (coming soon).
 
-If the evaluator would prefer that we spin up the AWS instance ourselves, we encourage the evaluator to contact us and inform of us when they plan to do their evaluation so we can ensure the machine is running at that point. 
-
-As a starting point, the evaluator can run the following command to test out a small toy model:
-
-```
-$ cd ~/FlexFlow
-$ ./build/examples/cpp/split_test/split_test -ll:gpu 4 -ll:fsize 13000 -ll:zsize 16384 -ll:csize 40000 --budget 10 --batch-size 32 [TODO ensure this is correct]
-```
-
-## Detailed Instructions
-
-### Availability
-
-The Unity source code can be found at https://github.com/flexflow/FlexFlow/tree/osdi2022ae. 
-Unity is maintained as part of the open-source FlexFlow project.
-
-### Artifact Claims
-
-For the models evaluated in the paper (i.e. ResNeXt-50, BERT-Large, DLRM, CANDLE-Uno, Inception-v3, MLP, and XDL), the evaluator should be able to use Unity to optimize and run the models.
-Since access to the machine with 192 GPUs cannot be shared, we expect the evaluator to run and optimize the models on a smaller machine setup (likely 4-8 GPUs).
-We expect the reviewer to see increased throughput as compared to the unoptimized data-parallel model across these models.
-
-### Running other models
-
-Model performance can be seen via the [TODO document how to determine the model throughput]. 
-All of the models are run for [TODO] iterations on artificial data to generate this throughput number.
-
-Running in data parallel: [TODO document how to run models in data parallel]
-
-The total running time for all of the below commands should be under roughly [TODO] minutes on the AWS instance.
-
-#### ResNeXt-50
-
-```
-$ [TODO]
+## TensorFlow Keras Support
+Users can use FlexFlow to accelerate the training procedure of existing TensorFlow Keras models by just changing the following import header lines.
+```python
+from flexflow.keras.models import Model, Sequential
+from flexflow.keras.layers import Input, Dense, Conv2D, ...
+from flexflow.keras.callbacks import Callback, ...
 ```
 
-#### BERT-Large
+FlexFlow uses a Python function called `top_level_task()` as the entry point of a program and automatically parallelize DNN training across all GPUs on all compute nodes. For example, the following code snippet shows parallelizing AlexNet training on the CIFAR10 dataset in FlexFlow. 
+```python
+def top_level_task():
+  model = Sequential()
+  model.add(Conv2D(filters=64, input_shape=(3,229,229), kernel_size=(11,11), strides=(4,4), padding=(2,2), activation="relu"))
+  model.add(MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="valid"))
+  model.add(Conv2D(filters=192, kernel_size=(5,5), strides=(1,1), padding=(2,2), activation="relu"))
+  ## More lines for model construction
+  model.add(Activation("softmax"))
+  ## Model compilation
+  model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+  ## Model training
+  (x_train, y_train) = cifar10.load_data()
+  model.fit(x_train, y_train, epochs=30)
 
-```
-$ [TODO]
-```
-
-#### DLRM
-
-```
-$ [TODO]
-```
-
-#### CANDLE-Uno
-
-```
-$ [TODO]
-```
-
-#### Inception-v3
-
-```
-$ [TODO]
+if __name__ == "__main__":
+  top_level_task()
 ```
 
-#### MLP
+During model compilation (i.e., `model.compile` in Keras), FlexFlow can [autotune](https://flexflow.ai/search) the parallelization performance by searching for efficient strategies on the given parallel machine. Next, `model.fit` performs DNN training on all available GPUs (potentially across multiple nodes) using the best discovered strategy. As a result, users don't need to manually design and optimize the device assignments.
 
-```
-$ [TODO]
-```
+**More FlexFlow Keras examples**: see the [keras examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/keras).
 
-#### XDL
+## PyTorch Support
+Users can also use FlexFlow to optimize the parallelization performance of existing PyTorch models in two steps. First, a PyTorch model can be exported to the FlexFlow model format using `flexflow.torch.fx.torch_to_flexflow`.
+```python
+import torch
+import flexflow.torch.fx as fx
 
-```
-$ [TODO]
-```
-
-### Rebuilding Unity
-
-When using the provided AMI, the evaluator can rebuild the artifact as follows:
-```
-$ cd ~/FlexFlow/build
-$ make -j $(nproc)
-```
-Building should take no more than roughly 20 minutes on the recommended AWS instance.
-
-### Evaluating Search
-
-While the runtime cannot execute the model on sizes larger than the provided machine, the search algorithm can be run for larger problem sizes to check its scalability/running time.
-To run search as if on a larger machine/cluster, the following command line flags can be added to the standard invocation:
-
-```
-$ <standard-invocation> --search-num-nodes <desired-num-nodes> --search-num-workers <desired-num-gpus-per-node>
+model = MyPyTorchModule()
+fx.torch_to_flexflow(model, "mymodel.ff")
 ```
 
-### Generating Substitutions
+Second, a FlexFlow program can directly import a previously saved PyTorch model and [autotune](SEARCH.md) the parallelization performance for a given parallel machine.
 
-Unity is capable of automatically generating and verifying the graph substitutions used in optimization. 
-The process for generating these is described below.
-Substitution generation can be run as described in Section 4 as follows: 
 ```
-$ 
-```
-Note that substitution generation can take up to 30 minutes to complete.
+from flexflow.pytorch.model import PyTorchModel
 
-To verify the generated substitutions:
-```
-$ [TODO]
-```
-There shoudl be a total of [TODO] substitutions generated.
-Verification requires roughly [TODO] minutes to complete.
-
-To view the generated substitutions, the following command can be used to transform the outputted protobuf file into json:
-```
-$ ~/FlexFlow/build/src/tools/protobuf_to_json [TODO]
+def top_level_task():
+  torch_model = PyTorchModel("mymodel.ff")
+  output_tensor = torch_model.apply(ffmodel, input_tensor)
+  ## Model compilation
+  ffmodel.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+  ## Model training
+  (x_train, y_train) = cifar10.load_data()
+  ffmodel.fit(x_train, y_train, epochs=30)
 ```
 
-Individual substitutions can be viewed as dot graphs via the following command:
-```
-$ ~/FlexFlow/build/src/tools/substitution_to_dot [TODO]
-```
-The output of this command can be visualized by copying and pasting it into https://dreampuf.github.io/GraphvizOnline/.
+**More FlexFlow PyTorch examples**: see the [pytorch examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/pytorch).
+
+## ONNX Support
+Similar to the PyTorch front-end, FlexFlow also supports training existing ONNX models by loading the models using `flexflow.onnx.model.ONNXModel`.
+
+**More FlexFlow ONNX examples**: see the [ONNX examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/keras).
+
+## C++ Interface
+For users that prefer to program in C/C++. FlexFlow supports a C++ program inference that is equivalent to its Python APIs.
+
+**More FlexFlow C++ examples**: see the [C++ examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/c++).
+
+
+## Command-Line Flags
+In addition to setting runtime configurations in a FlexFlow Python/C++ program, the FlexFlow runtime also accepts command-line arguments for various runtime parameters: 
+
+FlexFlow training flags:
+* `-e` or `--epochs`: number of total epochs to run (default: 1)
+* `-b` or `--batch-size`: global batch size in each iteration (default: 64)
+* `-p` or `--print-freq`: print frequency (default: 10)
+* `-d` or `--dataset`: path to the training dataset. If not set, synthetic data is used to conduct training.
+
+Legion runtime flags:
+* `-ll:gpu`: number of GPU processors to use on each node (default: 0)
+* `-ll:fsize`: size of device memory on each GPU (in MB)
+* `-ll:zsize`: size of zero-copy memory (pinned DRAM with direct GPU access) on each node (in MB). This is used for prefecthing training images from disk.
+* `-ll:cpu`: number of data loading workers (default: 4)
+* `-ll:util`: number of utility threads to create per process (default: 1)
+* `-ll:bgwork`: number of background worker threads to create per process (default: 1)
+
+Performance auto-tuning flags:
+* `--search-budget` or `--budget`: the number of iterations for the MCMC search (default: 0)
+* `--search-alpha` or `--alpha`: a hyper-parameter for the search procedure (default: 0.05)
+* `--export-strategy` or `--export`: path to export the best discovered strategy (default: None)
+* `--import-strategy` or `--import`: path to import a previous saved strategy (default: None)
+* `--enable-parameter-parallel`: allow FlexFlow to explore parameter parallelism for performance auto-tuning. (By default FlexFlow only considers data and model parallelism.)
+* `--enable-attribute-parallel`: allow FlexFlow to explore attribute parallelism for performance auto-tuning. (By default FlexFlow only considers data and model parallelism.)
+For performance tuning related flags: see [performance autotuning](https://flexflow.ai/search).
+
+## Contributing
+Please let us know if you encounter any bugs or have any suggestions by [submitting an issue](https://github.com/flexflow/flexflow/issues).
+
+We welcome all contributions to FlexFlow from bug fixes to new features and extensions.
+
+Please subscribe to the FlexFlow users mailing list for 
+
+## Citations
+* Zhihao Jia, Matei Zaharia, and Alex Aiken. [Beyond Data and Model Parallelism for Deep Neural Networks](https://cs.stanford.edu/~zhihao/papers/sysml19a.pdf). In Proceedings of the 2nd Conference on Machine Learning and Systems (MLSys), Palo Alto, CA, April 2019.
+
+* Zhihao Jia, Sina Lin, Charles R. Qi, and Alex Aiken. [Exploring Hidden Dimensions in Parallelizing Convolutional Neural Networks](http://proceedings.mlr.press/v80/jia18a/jia18a.pdf). In Proceedings of the International Conference on Machine Learning (ICML), Stockholm, Sweden, July 2018.
+
+## The Team
+FlexFlow is developed and maintained by teams at CMU, Facebook, Los Alamos National Lab, MIT, and Stanford (alphabetically).
+
+## License
+FlexFlow uses Apache License 2.0.
