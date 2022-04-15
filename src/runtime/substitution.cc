@@ -37,7 +37,6 @@
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/graph.h"
 #include "flexflow/graph_structures.h"
-#include "flexflow/substitution_loader.h"
 
 namespace FlexFlow::PCG {
 
