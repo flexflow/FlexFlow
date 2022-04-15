@@ -10,68 +10,71 @@ As a starting point, the evaluator can run the following command to test out a s
 
 ```
 $ cd ~/FlexFlow
-$ ./build/examples/cpp/split_test/split_test -ll:gpu 4 -ll:fsize 13000 -ll:zsize 16384 -ll:csize 40000 --budget 10 --batch-size 32 
+$ ./build/examples/cpp/split_test/split_test -ll:gpu 4 -ll:fsize 13000 -ll:zsize 16384 -ll:csize 40000 --budget 10 --batch-size 32 [TODO ensure this is correct]
 ```
 
 ## Detailed Instructions
 
 ### Availability
 
-The Unity source code can be found at . 
-Unity is maintained as part of the open-source FlexFlow project for distributed DNN training.
+The Unity source code can be found at https://github.com/flexflow/FlexFlow/tree/osdi2022ae. 
+Unity is maintained as part of the open-source FlexFlow project.
 
 ### Artifact Claims
 
 For the models evaluated in the paper (i.e. ResNeXt-50, BERT-Large, DLRM, CANDLE-Uno, Inception-v3, MLP, and XDL), the evaluator should be able to use Unity to optimize and run the models.
 Since access to the machine with 192 GPUs cannot be shared, we expect the evaluator to run and optimize the models on a smaller machine setup (likely 4-8 GPUs).
-We expect the reviewer to see increased throughput as compared to the unoptimized data-parallel model.
+We expect the reviewer to see increased throughput as compared to the unoptimized data-parallel model across these models.
 
 ### Running other models
 
-Model performance can be seen via the 
+Model performance can be seen via the [TODO document how to determine the model throughput]. 
+All of the models are run for [TODO] iterations on artificial data to generate this throughput number.
 
-Running in data parallel:
+Running in data parallel: [TODO document how to run models in data parallel]
+
+The total running time for all of the below commands should be under roughly [TODO] minutes on the AWS instance.
 
 #### ResNeXt-50
 
 ```
-$
+$ [TODO]
 ```
 
 #### BERT-Large
 
 ```
-$
+$ [TODO]
 ```
 
 #### DLRM
 
 ```
-$ 
+$ [TODO]
 ```
 
 #### CANDLE-Uno
 
 ```
-$
+$ [TODO]
 ```
 
 #### Inception-v3
 
 ```
-$
+$ [TODO]
 ```
 
 #### MLP
 
 ```
-$
+$ [TODO]
 ```
 
 #### XDL
 
 ```
-$
+$ [TODO]
 ```
 
 ### Rebuilding Unity
@@ -79,8 +82,9 @@ $
 When using the provided AMI, the evaluator can rebuild the artifact as follows:
 ```
 $ cd ~/FlexFlow/build
-$ ../cmake.sh
+$ make -j $(nproc)
 ```
+Building should take no more than roughly 20 minutes on the recommended AWS instance.
 
 ### Evaluating Search
 
@@ -91,5 +95,30 @@ To run search as if on a larger machine/cluster, the following command line flag
 $ <standard-invocation> --search-num-nodes <desired-num-nodes> --search-num-workers <desired-num-gpus-per-node>
 ```
 
-### Controlling Hyperparameters
+### Generating Substitutions
 
+Unity is capable of automatically generating and verifying the graph substitutions used in optimization. 
+The process for generating these is described below.
+Substitution generation can be run as described in Section 4 as follows: 
+```
+$ 
+```
+Note that substitution generation can take up to 30 minutes to complete.
+
+To verify the generated substitutions:
+```
+$ [TODO]
+```
+There shoudl be a total of [TODO] substitutions generated.
+Verification requires roughly [TODO] minutes to complete.
+
+To view the generated substitutions, the following command can be used to transform the outputted protobuf file into json:
+```
+$ ~/FlexFlow/build/src/tools/protobuf_to_json [TODO]
+```
+
+Individual substitutions can be viewed as dot graphs via the following command:
+```
+$ ~/FlexFlow/build/src/tools/substitution_to_dot [TODO]
+```
+The output of this command can be visualized by copying and pasting it into https://dreampuf.github.io/GraphvizOnline/.
