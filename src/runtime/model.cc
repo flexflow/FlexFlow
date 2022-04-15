@@ -3339,6 +3339,7 @@ FFConfig::FFConfig()
   export_strategy_task_graph_file = "";
   export_strategy_computation_graph_file = "";
   dataset_path = "";
+  substitution_json_path = tl::nullopt;
   syntheticInput = false;
   perform_fusion = false;
   base_optimize_threshold = DefaultConfig::base_optimize_threshold;
@@ -3510,6 +3511,10 @@ void FFConfig::parse_args(char **argv, int argc)
     }
     if (!strcmp(argv[i], "--python-data-loader-type")) {
       python_data_loader_type = atoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--substitution-json")) {
+      substitution_json_path = std::string(argv[++i]);
       continue;
     }
   }

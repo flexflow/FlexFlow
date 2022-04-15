@@ -43,6 +43,7 @@ void FlexFlow::top_level_task(const Task* task,
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
+  return;
   ff.init_operators();
   {
     runtime->issue_execution_fence(ctx);
