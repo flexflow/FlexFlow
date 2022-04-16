@@ -2,7 +2,7 @@
 
 ## Getting Started
 
-The following AMI provides a full environment for running Unity. An AWS p3.8xlarge machine should be used for the evaluation.
+The following AMI provides a full environment for running Unity. An AWS p3.8xlarge machine should be used for the evaluation. To find the AMI for Unity's artifact, search for `unity-osdi22ae` under the public images in the US East (Ohio, us-east-2) region. For any questions regarding this process, please contact us. 
 
 If the evaluator would prefer that we spin up the AWS instance ourselves, we encourage the evaluator to contact us and inform of us when they plan to do their evaluation so we can ensure the machine is running at that point. 
 
