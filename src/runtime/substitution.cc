@@ -2148,7 +2148,6 @@ std::vector<ParallelTensorShape> GraphSearchHelper::possible_split_output_tensor
 
 void GraphSearchHelper::subgraph_optimize(Graph *subgraph) 
 {
-  
 }
 
 template <>

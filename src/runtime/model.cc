@@ -2448,8 +2448,10 @@ Op* FFModel::create_operator_from_layer(Layer* layer,
       assert(tensor->parallel_tensor == nullptr);
       tensor->parallel_tensor = pt;
       // start from data parllel tensor
-      //Repartition* part = new Repartition(*this, pt, num_dims-1, config.numNodes * config.workersPerNode);
-      //operators.push_back(part);
+      if (config.only_data_parallel) {
+        Repartition* part = new Repartition(*this, pt, num_dims-1, config.numNodes * config.workersPerNode);
+        operators.push_back(part);
+      }
       return operators[operators.size()-1];
     }
     case OP_MULTIHEAD_ATTENTION:
@@ -2578,6 +2580,9 @@ void FFModel::compile(LossType loss_type,
   //  load_strategies_from_file(config.import_strategy_file, config.strategies);
   //}
   // Construct operators from layers
+  if (config.only_data_parallel) {
+    fprintf(stderr, "Note: only_data_parallel is specified, FlexFlow compiles a data-parallel PCG.\n");
+  }
   create_operators_from_layers();
   // Launch the graph optimize task
   {

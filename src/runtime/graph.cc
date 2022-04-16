@@ -1588,9 +1588,36 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
   model->simulator = simulator;
   std::unique_ptr<Graph> best_graph;
   std::unordered_map<Node, MachineView> optimal_views;
-  model->graph_optimize(model->config.search_budget,
-                        model->config.only_data_parallel,
-                        best_graph, optimal_views);
+  if (model->config.only_data_parallel) {
+    Graph* graph = new Graph(model);
+    std::unordered_map<const FlexFlow::Op*, Node> op_to_node_map;
+    for (const FlexFlow::Op* dstOp : model->operators) {
+      Node dstNode;
+      dstNode.ptr = dstOp;
+      dstNode.guid = model->node_global_guid++;
+      op_to_node_map[dstOp] = dstNode;
+      for (int j = 0; j < dstOp->numInputs; j++) {
+        const FlexFlow::Op* srcOp = dstOp->inputs[j]->owner_op;
+        assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
+        Node srcNode = op_to_node_map[srcOp];
+        graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
+      }
+    }
+    best_graph = std::unique_ptr<Graph>(graph);
+    MachineView data_parallel_view;
+    data_parallel_view.device_type = MachineView::GPU;
+    data_parallel_view.ndims = 1;
+    data_parallel_view.dim[0] = model->config.numNodes * model->config.workersPerNode;
+    data_parallel_view.stride[0] = 1;
+    data_parallel_view.start_device_id = 0;
+    for (const auto& node : best_graph->inEdges) {
+      optimal_views[node.first] = data_parallel_view;
+    }
+  } else {
+    model->graph_optimize(model->config.search_budget,
+                          model->config.only_data_parallel,
+                          best_graph, optimal_views);
+  }
   Serializer sez;
   // First serialize graph
   sez.serialize(best_graph->inEdges.size());
