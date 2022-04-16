@@ -104,8 +104,8 @@ void FlexFlow::top_level_task(const Task* task,
   {
     assert(feature_shapes.find(it->second) != feature_shapes.end());
     int shape = feature_shapes[it->second];
-    const int dims[] = {1, ff_config.batchSize, shape};
-    Tensor input = ff.create_tensor<3>(dims, DT_FLOAT);
+    const int dims[] = {ff_config.batchSize, shape};
+    Tensor input = ff.create_tensor<2>(dims, DT_FLOAT);
     all_inputs.push_back(input);
     if (input_models.find(it->second) != input_models.end()) {
       Tensor encoded = build_feature_model(&ff, input, candle_config.dense_feature_layers);
