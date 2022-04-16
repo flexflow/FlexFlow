@@ -104,31 +104,3 @@ To run search as if on a larger machine/cluster, the following command line flag
 ```
 $ <standard-invocation> --search-num-nodes <desired-num-nodes> --search-num-workers <desired-num-gpus-per-node>
 ```
-
-### Generating Substitutions
-
-Unity is capable of automatically generating and verifying the graph substitutions used in optimization. 
-The process for generating these is described below.
-Substitution generation can be run as described in Section 4 as follows: 
-```
-$ 
-```
-Note that substitution generation can take up to 30 minutes to complete.
-
-To verify the generated substitutions:
-```
-$ [TODO]
-```
-There shoudl be a total of [TODO] substitutions generated.
-Verification requires roughly [TODO] minutes to complete.
-
-To view the generated substitutions, the following command can be used to transform the outputted protobuf file into json:
-```
-$ ~/FlexFlow/build/src/tools/protobuf_to_json [TODO]
-```
-
-Individual substitutions can be viewed as dot graphs via the following command:
-```
-$ ~/FlexFlow/build/src/tools/substitution_to_dot [TODO]
-```
-The output of this command can be visualized by copying and pasting it into https://dreampuf.github.io/GraphvizOnline/.
