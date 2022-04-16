@@ -38,43 +38,43 @@ The total running time for all of the below commands should be under roughly 20 
 #### ResNeXt-50
 
 ```
-$ $FF_HOME/scripts/resnext-50.sh
+$ $FF_HOME/scripts/osdi22ae/resnext-50.sh
 ```
 
 #### BERT-Large
 
 ```
-$ $FF_HOME/scripts/bert-large.sh
+$ $FF_HOME/scripts/osdi22ae/bert-large.sh
 ```
 
 #### DLRM
 
 ```
-$ $FF_HOME/scripts/dlrm.sh 
+$ $FF_HOME/scripts/osdi22ae/dlrm.sh 
 ```
 
 #### CANDLE-Uno
 
 ```
-$ ./scripts/candle-uno.sh
+$ ./scripts/osdi22ae/candle-uno.sh
 ```
 
 #### Inception-v3
 
 ```
-$ $FF_HOME/scripts/inception-v3.sh
+$ $FF_HOME/scripts/osdi22ae/inception-v3.sh
 ```
 
 #### MLP
 
 ```
-$ $FF_HOME/scripts/mlp.sh
+$ $FF_HOME/scripts/osdi22ae/mlp.sh
 ```
 
 #### XDL
 
 ```
-$ $FF_HOME/scripts/xdl.sh
+$ $FF_HOME/scripts/osdi22ae/xdl.sh
 ```
 
 The scripts use the following Unity flags to control the execution of a Unity's application:
