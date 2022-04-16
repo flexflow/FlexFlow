@@ -33,48 +33,57 @@ All of the models are run for [TODO] iterations on artificial data to generate t
 
 Running in data parallel: [TODO document how to run models in data parallel]
 
-The total running time for all of the below commands should be under roughly [TODO] minutes on the AWS instance.
+The total running time for all of the below commands should be under roughly 20 minutes on the AWS instance. The execution of a Unity application can be controlled by the following flags
+
+* -e or --epochs: number of total epochs to run (default: 1)
+* -b or --batch-size: global batch size in each iteration (default: 64)
+* -p or --print-freq: print frequency (default: 10)
+* -ll:gpu: number of GPU processors to use on each node (default: 0)
+* -ll:fsize: size of device memory on each GPU (in MB)
+* -ll:zsize: size of zero-copy memory (pinned DRAM with direct GPU access) on each node (in MB). 
+* --budget: the search budget
+* --only-data-parallel: this flag disables Unity's search and train models in data parallelism
 
 #### ResNeXt-50
 
 ```
-$ [TODO]
+$ ./scripts/resnext-50.sh
 ```
 
 #### BERT-Large
 
 ```
-$ [TODO]
+$ ./scripts/bert-large.sh
 ```
 
 #### DLRM
 
 ```
-$ [TODO]
+$ ./scripts/dlrm.sh 
 ```
 
 #### CANDLE-Uno
 
 ```
-$ [TODO]
+$ ./scripts/candle-uno.sh
 ```
 
 #### Inception-v3
 
 ```
-$ [TODO]
+$ ./scripts/inception-v3.sh
 ```
 
 #### MLP
 
 ```
-$ [TODO]
+$ ./scripts/mlp.sh
 ```
 
 #### XDL
 
 ```
-$ [TODO]
+$ ./scripts/xdl.sh
 ```
 
 ### Rebuilding Unity
