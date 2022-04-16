@@ -2,7 +2,7 @@
 
 ## Getting Started
 
-The following AMI provides a full environment for running Unity. A TODO machine should be used for the evaluation.
+The following AMI provides a full environment for running Unity. An AWS p3.8xlarge machine should be used for the evaluation.
 
 If the evaluator would prefer that we spin up the AWS instance ourselves, we encourage the evaluator to contact us and inform of us when they plan to do their evaluation so we can ensure the machine is running at that point. 
 
@@ -10,7 +10,7 @@ As a starting point, the evaluator can run the following command to test out a s
 
 ```
 $ cd ~/FlexFlow
-$ ./build/examples/cpp/split_test/split_test -ll:gpu 4 -ll:fsize 13000 -ll:zsize 16384 -ll:csize 40000 --budget 10 --batch-size 32 [TODO ensure this is correct]
+$ ./build/examples/cpp/split_test/split_test -ll:gpu 4 -ll:fsize 13000 -ll:zsize 16384 -ll:csize 40000 --budget 10 --batch-size 32
 ```
 
 ## Detailed Instructions
@@ -28,10 +28,9 @@ We expect the reviewer to see increased throughput as compared to the unoptimize
 
 ### Running other models
 
-Model performance can be seen via the [TODO document how to determine the model throughput]. 
-All of the models are run for [TODO] iterations on artificial data to generate this throughput number.
+In this artifact, we evaluate Unity's performance of a DNN model by measuring its training throughput (i.e., number of training samples processed per second). Each application in this artifact will print the achieved throughput number in the last line. All of the models are run for 100 iterations on artificial data to generate this throughput number.
 
-Running in data parallel: [TODO document how to run models in data parallel]
+To disable Unity's search procedure and run model in data parallel, you can simply add the commond line flag `--only-data-parallel`.
 
 The total running time for all of the below commands should be under roughly 20 minutes on the AWS instance. 
 
