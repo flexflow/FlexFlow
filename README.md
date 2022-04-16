@@ -9,7 +9,8 @@ If the evaluator would prefer that we spin up the AWS instance ourselves, we enc
 As a starting point, the evaluator can run the following command to test out a small toy model:
 
 ```
-$ cd ~/FlexFlow
+$ export FF_HOME = /path/to/flexflow
+$ cd $FF_HOME
 $ ./build/examples/cpp/split_test/split_test -ll:gpu 4 -ll:fsize 13000 -ll:zsize 16384 -ll:csize 40000 --budget 10 --batch-size 32
 ```
 
@@ -37,19 +38,19 @@ The total running time for all of the below commands should be under roughly 20 
 #### ResNeXt-50
 
 ```
-$ ./scripts/resnext-50.sh
+$ $FF_HOME/scripts/resnext-50.sh
 ```
 
 #### BERT-Large
 
 ```
-$ ./scripts/bert-large.sh
+$ $FF_HOME/scripts/bert-large.sh
 ```
 
 #### DLRM
 
 ```
-$ ./scripts/dlrm.sh 
+$ $FF_HOME/scripts/dlrm.sh 
 ```
 
 #### CANDLE-Uno
@@ -61,19 +62,19 @@ $ ./scripts/candle-uno.sh
 #### Inception-v3
 
 ```
-$ ./scripts/inception-v3.sh
+$ $FF_HOME/scripts/inception-v3.sh
 ```
 
 #### MLP
 
 ```
-$ ./scripts/mlp.sh
+$ $FF_HOME/scripts/mlp.sh
 ```
 
 #### XDL
 
 ```
-$ ./scripts/xdl.sh
+$ $FF_HOME/scripts/xdl.sh
 ```
 
 The scripts use the following Unity flags to control the execution of a Unity's application:
@@ -91,7 +92,7 @@ The scripts use the following Unity flags to control the execution of a Unity's 
 
 When using the provided AMI, the evaluator can rebuild the artifact as follows:
 ```
-$ cd ~/FlexFlow/build
+$ cd $FF_HOME/build
 $ make -j $(nproc)
 ```
 Building should take no more than roughly 20 minutes on the recommended AWS instance.
