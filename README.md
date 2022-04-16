@@ -56,7 +56,7 @@ $ $FF_HOME/scripts/osdi22ae/dlrm.sh
 #### CANDLE-Uno
 
 ```
-$ ./scripts/osdi22ae/candle-uno.sh
+$ $FF_HOME/scripts/osdi22ae/candle-uno.sh
 ```
 
 #### Inception-v3
