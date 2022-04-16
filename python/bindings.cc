@@ -409,6 +409,7 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def("tanh", &FFModel::tanh, "x"_a, "name"_a = nullptr)
       .def("elu", &FFModel::elu, "x"_a, "inplace"_a = true, "name"_a = nullptr)
       // Layers
+      .def("embedding", &FFModel::embedding, "input"_a, "num_embeddings"_a, "embedding_dim"_a, "aggr"_a, "shared_op"_a = nullptr, "kernel_initializer"_a = nullptr, "name"_a = nullptr)
       .def("conv2d", &FFModel::conv2d, "input"_a, "out_channels"_a, "kernel_h"_a, "kernel_w"_a, "stride_h"_a, "stride_w"_a, "padding_h"_a, "padding_w"_a, "activation"_a = ActiMode::AC_MODE_NONE, "groups"_a = 1, "use_bias"_a = true, "shared_op"_a = nullptr, "kernel_initializer"_a = nullptr, "bias_initializer"_a = nullptr, "name"_a = nullptr)
       .def("dropout", &FFModel::dropout, "input"_a, "rate"_a, "seed"_a = 0, "name"_a = nullptr)
       .def("pool2d", &FFModel::pool2d, "input"_a, "kernel_h"_a, "kernel_w"_a, "stride_h"_a, "stride_w"_a, "padding_h"_a, "padding_w"_a, "pool_type"_a = PoolType::POOL_MAX, "activation"_a = ActiMode::AC_MODE_NONE, "name"_a = nullptr)
