@@ -372,6 +372,6 @@ protected:
 void update_mappers(Machine machine,
     Runtime *rt,
     const std::set<Processor> &local_procs);
-#endif
-
 }; // namespace FlexFlow
+
+#endif

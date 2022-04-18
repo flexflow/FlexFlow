@@ -1530,7 +1530,6 @@ void FFMapper::default_select_constraints(
 void update_mappers(Machine machine, Runtime *runtime,
                     const std::set<Processor> &local_procs)
 {
-
 /*
   for (unsigned idx = 0; idx < proc_mem_affinities.size(); ++idx) {
     Machine::ProcessorMemoryAffinity& affinity = proc_mem_affinities[idx];
