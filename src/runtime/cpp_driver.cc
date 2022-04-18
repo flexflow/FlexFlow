@@ -44,6 +44,6 @@ int main(int argc, char** argv)
 
   FFMapper::register_sharding_functor(argc, argv);
 
-  Runtime::add_registration_callback(update_mappers);
+  Runtime::add_registration_callback(FlexFlow::update_mappers);
   return Runtime::start(argc, argv);
 }
