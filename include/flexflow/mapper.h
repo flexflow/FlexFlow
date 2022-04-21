@@ -59,6 +59,9 @@ public:
   virtual const char* get_mapper_name(void) const;
   virtual MapperSyncModel get_mapper_sync_model(void) const;
 public:
+  static void update_mappers(Machine machine,
+                             Runtime *rt,
+                             const std::set<Processor> &local_procs);
   static void register_sharding_functor(int argv, char** argc);
   virtual void select_task_options(const MapperContext    ctx,
                                    const Task&    task,
@@ -333,45 +336,5 @@ protected:
   std::vector<InstanceCreationLog> created_instances;
 };
 
-#ifdef DEADCODE
-class FFMapper : public DefaultMapper {
-public:
-  FFMapper(MapperRuntime *rt, Machine machine, Processor local,
-           const char *mapper_name,
-           std::map<MappingTagID, ParallelConfig>* strategies);
-public:
-  virtual void slice_task(const MapperContext ctx,
-                          const Task& task,
-                          const SliceTaskInput& input,
-                          SliceTaskOutput& output);
-  virtual void select_sharding_functor(const MapperContext ctx,
-                                       const Task& task,
-                                       const SelectShardingFunctorInput& input,
-                                       SelectShardingFunctorOutput& output);
-  virtual void select_task_options(const MapperContext ctx,
-                                   const Task& task,
-                                   TaskOptions& output);
-  virtual Memory default_policy_select_target_memory(MapperContext ctx,
-                                                     Processor target_proc,
-                                                     const RegionRequirement &req,
-                                                     MemoryConstraint mc);
-  virtual void map_task(const MapperContext ctx,
-                        const Task& task,
-                        const MapTaskInput& input,
-                        MapTaskOutput& output);
-protected:
-  std::vector<Processor>& gpus;
-  std::map<Processor, Memory>& proc_fbmems, proc_zcmems;
-  std::vector<Processor>& cpus;
-  std::map<unsigned long long, Processor> cache_update_tasks;
-  // We use MappingTagID has the key since we will pass the tag to the mapper
-  std::map<MappingTagID, ParallelConfig>& strategies;
-};
-#endif
-
-void update_mappers(Machine machine,
-    Runtime *rt,
-    const std::set<Processor> &local_procs);
 }; // namespace FlexFlow
-
 #endif
