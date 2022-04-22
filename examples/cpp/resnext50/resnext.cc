@@ -9,7 +9,7 @@ using FlexFlow::FFConfig;
 
 LegionRuntime::Logger::Category log_app("resnext");
 
-Tensor resnext_block(FFModel &ff, Tensor input, int stride_h, int stride_w, int out_channels, int groups) {
+Tensor resnext_block(FFModel &ff, Tensor input, int stride_h, int stride_w, int out_channels, int groups, bool has_residual=false) {
   Tensor t = ff.conv2d(
       input, 
       out_channels,
@@ -38,7 +38,7 @@ Tensor resnext_block(FFModel &ff, Tensor input, int stride_h, int stride_w, int 
       AC_MODE_NONE
   );
 
-  if (stride_h > 1 || input->dims[2] != out_channels * 2) {
+  if ((stride_h > 1 || input->dims[2] != out_channels * 2) && has_residual) {
     input = ff.conv2d(
         input, 
         2 * out_channels,
@@ -47,9 +47,9 @@ Tensor resnext_block(FFModel &ff, Tensor input, int stride_h, int stride_w, int 
         0, 0, 
         AC_MODE_RELU
     );
+    t = ff.relu(ff.add(input, t), false);
   }
-
-  return ff.relu(ff.add(input, t), false);
+  return t;
 }
 
 void FlexFlow::top_level_task(const Task* task,
