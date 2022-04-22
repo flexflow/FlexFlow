@@ -1525,10 +1525,12 @@ void GraphSearchHelper::generate_all_pcg_xfers()
     all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_RELU, false));
     all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_SIGMOID, false));
     all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_NONE, false));
-    all_pcg_xfers.push_back(create_partition_add_combine(this->model, 2/*parallel_dims*/, it/*num_parts*/));
     all_pcg_xfers.push_back(create_partition_add_combine(this->model, 1/*parallel_dims*/, it/*num_parts*/));
+    all_pcg_xfers.push_back(create_partition_add_combine(this->model, 2/*parallel_dims*/, it/*num_parts*/));
     all_pcg_xfers.push_back(create_partition_add_combine(this->model, 3/*parallel_dims*/, it/*num_parts*/));
+    all_pcg_xfers.push_back(create_partition_add_combine(this->model, 4/*parallel_dims*/, it/*num_parts*/));
     all_pcg_xfers.push_back(create_partition_relu_combine(this->model, 3/*parallel_dims*/, it/*num_parts*/));
+    all_pcg_xfers.push_back(create_partition_relu_combine(this->model, 4/*parallel_dims*/, it/*num_parts*/));
     all_pcg_xfers.push_back(create_partition_softmax_combine(this->model, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
     for (int num_combines = 1; num_combines < 5; num_combines++) {
       all_pcg_xfers.push_back(leading_relu_branch_combine(this->model, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
