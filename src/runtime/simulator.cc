@@ -594,6 +594,43 @@ float Simulator::estimate_xfer_cost(const Op* op,
                                                     fake_output_shape, input_tensor->get_shape(),
                                                     sink_view, source_view);
       }
+      case OP_FUSED_PARALLEL:
+      {
+        const FusedParallelOp *fused = (const FusedParallelOp*) op;
+        const ParallelTensor input_tensor = op->inputs[0];
+        const ParallelTensor output_tensor = op->outputs[0];
+        ParallelTensorShape input_shape = input_tensor->get_shape();
+        ParallelTensorShape output_shape = output_tensor->get_shape();
+        //FIXME: we currently calculate an over estimation
+        size_t input_piece_size = input_shape.get_piece_size();
+        size_t output_piece_size = output_shape.get_piece_size();
+        bool inter_node = false;
+        for (Domain::DomainPointIterator it1(source_view.get_domain()); it1; it1++) {
+          DomainPoint source_dp(*it1);
+          int source_node_id = source_view.get_device_id(source_dp);
+          for (Domain::DomainPointIterator it2(sink_view.get_domain()); it2; it2++) {
+            DomainPoint sink_dp(*it2);
+            int sink_node_id = sink_view.get_device_id(sink_dp);
+            if (sink_node_id != source_node_id) {
+              inter_node = true;
+              break;
+            }
+          }
+          if (inter_node)
+            break;
+        }
+        float max_xfer_cost = 0.0f;
+        if (inter_node) {
+          // inter_node case
+          float bandwidth = machine->get_inter_node_gpu_bandwidth();
+          max_xfer_cost = std::max(input_piece_size, output_piece_size) / bandwidth;
+        } else {
+          // intra_node case
+          float bandwidth = machine->get_intra_node_gpu_bandwidth();
+          max_xfer_cost = std::max(input_piece_size, output_piece_size) / bandwidth;
+        }
+        return 2 * max_xfer_cost;
+      }
       default:
         assert(false);
     }

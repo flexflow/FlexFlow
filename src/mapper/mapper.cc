@@ -17,6 +17,9 @@
 
 namespace FlexFlow {
 
+using namespace Legion;
+using namespace Mapping;
+
 LegionRuntime::Logger::Category log_ff_mapper("Mapper");
 
 FFShardingFunctor::FFShardingFunctor(int _gpus_per_node,
