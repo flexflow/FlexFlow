@@ -114,14 +114,14 @@ void FlexFlow::top_level_task(const Task* task,
 
   std::vector<Tensor> sparse_inputs;
   for (size_t i = 0; i < dlrmConfig.embedding_size.size(); i++) {
-    const int dims[] = {1, ffConfig.batchSize, dlrmConfig.embedding_bag_size};
-    Tensor input = ff.create_tensor<3>(dims, DT_INT64);
+    const int dims[] = {ffConfig.batchSize, dlrmConfig.embedding_bag_size};
+    Tensor input = ff.create_tensor<2>(dims, DT_INT64);
     sparse_inputs.push_back(input);
   }
   Tensor dense_input;
   {
-    const int dims[] = {1, ffConfig.batchSize, dlrmConfig.mlp_bot[0]};
-    dense_input = ff.create_tensor<3>(dims, DT_FLOAT);
+    const int dims[] = {ffConfig.batchSize, dlrmConfig.mlp_bot[0]};
+    dense_input = ff.create_tensor<2>(dims, DT_FLOAT);
   }
   //Tensor label;
   //{

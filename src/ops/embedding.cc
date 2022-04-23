@@ -617,9 +617,10 @@ Node FFModel::get_or_create_embedding_node(
     int out_channels,
     AggrMode aggr) {
   size_t hash = input->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(num_entries);
-  hash = hash * 31 + std::hash<int>()(out_channels);
-  hash = hash * 31 + std::hash<int>()(aggr);
+  hash_combine(hash, layer_guid.id);
+  hash_combine(hash, std::hash<int>()(num_entries));
+  hash_combine(hash, std::hash<int>()(out_channels));
+  hash_combine(hash, std::hash<int>()(aggr));
   const auto& it = cached_embedding_ops.find(hash);
   Embedding* embed = NULL;
   if (it != cached_embedding_ops.end()) {
