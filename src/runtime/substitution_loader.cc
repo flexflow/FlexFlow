@@ -45,7 +45,7 @@ void from_json(json const &j, Operator &o) {
     j.at("para").get_to(o.para);
     if (o.op_type == OP_INVALID) {
         std::ostringstream oss;
-        oss << "Attempted to load invalid OperatorType: " << j.at("key");
+        oss << "Attempted to load invalid OperatorType: " << j.at("type");
         throw std::runtime_error(oss.str());
     }
 }

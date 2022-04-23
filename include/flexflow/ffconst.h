@@ -183,6 +183,7 @@ enum PMParameter {
   PM_INVALID,
   PM_PARALLEL_DIM,
   PM_PARALLEL_DEGREE,
+  PM_PAD,
 };
 
 enum TNParameter {
