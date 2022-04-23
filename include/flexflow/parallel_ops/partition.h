@@ -5,6 +5,12 @@
 
 namespace FlexFlow {
 
+class RepartitionMeta : public OpMeta {
+public:
+  RepartitionMeta(FFHandler handle);
+  DataType data_type;
+};
+
 class Repartition : public ParallelOp {
 public:
   Repartition(FFModel& model,
@@ -18,11 +24,25 @@ public:
   void backward(const FFModel&) override;
   bool get_int_parameter(PMParameter, int*) const override;
   bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const override;
+  static OpMeta* init_task(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_task(
       const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,
       Legion::Context ctx, Legion::Runtime *runtime);
   static void backward_task(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename T>
+  static void forward_task_with_type(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename T>
+  static void backward_task_with_type(
       const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,
       Legion::Context ctx, Legion::Runtime *runtime);
