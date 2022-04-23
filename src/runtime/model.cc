@@ -4278,6 +4278,13 @@ void register_flexflow_internal_tasks()
   // ParallelOp Task
   // Repartition
   {
+    TaskVariantRegistrar registrar(REPARTITION_INIT_TASK_ID, "Repartition Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Repartition::init_task>(
+        registrar, "Repartition init Task");
+  }
+  {
     TaskVariantRegistrar registrar(REPARTITION_FWD_TASK_ID, "Repartition Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
