@@ -77,13 +77,23 @@ Combine::Combine(
   //outputs[0]->print("Combine::output");
 }
 
+OpMeta* Combine::init_task(
+    const Task *task,
+    const std::vector<PhysicalRegion> &regions,
+    Context ctx, Runtime *runtime) {
+  Combine* rep = (Combine*) task->args;
+  FFHandler handle = *((FFHandler*) task->local_args);
+  //CombineMeta* m = new CombineMeta(handle);
+  //m->data_type = rep->outputs[0]->data_type;
+  return nullptr;
+}
+
 void Combine::init(const FFModel& ff)
 {
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
   assert(numOutputs == 1);
   assert(numInputs == 1);
   IndexLauncher launcher(COMBINE_INIT_TASK_ID, parallel_is,
@@ -100,8 +110,6 @@ void Combine::init(const FFModel& ff)
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  set_opmeta_from_futuremap(ff, fm);
-
 }
 
 void Combine::create_input_partition(FFModel& ff)
@@ -121,9 +129,10 @@ void Combine::forward(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  set_argumentmap_for_forward(ff, argmap);
+  assert(inputs[0]->data_type == outputs[0]->data_type);
+  DataType data_type = inputs[0]->data_type;
   IndexLauncher launcher(COMBINE_FWD_TASK_ID, outputs[0]->parallel_is,
-      TaskArgument(NULL, 0), argmap,
+      TaskArgument(&data_type, sizeof(data_type)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
@@ -144,9 +153,10 @@ void Combine::backward(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  set_argumentmap_for_backward(ff, argmap);
+  assert(inputs[0]->data_type == outputs[0]->data_type);
+  DataType data_type = inputs[0]->data_type;
   IndexLauncher launcher(COMBINE_BWD_TASK_ID, inputs[0]->parallel_is,
-      TaskArgument(NULL, 0), argmap,
+      TaskArgument(&data_type, sizeof(DataType)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       inputs[0]->machine_view.hash());
   launcher.add_region_requirement(
@@ -253,14 +263,14 @@ void Combine::forward_task(
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const CombineMeta* m = *((CombineMeta**)task->local_args);
-  if (m->data_type == DT_FLOAT) {
+  DataType data_type = *((DataType*) task->args);
+  if (data_type == DT_FLOAT) {
     forward_task_with_type<float>(task, regions, ctx, runtime);
-  } else if (m->data_type == DT_DOUBLE) {
+  } else if (data_type == DT_DOUBLE) {
     forward_task_with_type<double>(task, regions, ctx, runtime);
-  } else if (m->data_type == DT_INT32) {
+  } else if (data_type == DT_INT32) {
     forward_task_with_type<int32_t>(task, regions, ctx, runtime);
-  } else if (m->data_type == DT_INT64) {
+  } else if (data_type == DT_INT64) {
     forward_task_with_type<int64_t>(task, regions, ctx, runtime);
   } else {
     assert(false && "Unsupported data type in Combine forward");
@@ -294,14 +304,14 @@ void Combine::backward_task(
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const CombineMeta* m = *((CombineMeta**)task->local_args);
-  if (m->data_type == DT_FLOAT) {
+  DataType data_type = *((DataType*) task->args);
+  if (data_type == DT_FLOAT) {
     backward_task_with_type<float>(task, regions, ctx, runtime);
-  } else if (m->data_type == DT_DOUBLE) {
+  } else if (data_type == DT_DOUBLE) {
     backward_task_with_type<double>(task, regions, ctx, runtime);
-  } else if (m->data_type == DT_INT32) {
+  } else if (data_type == DT_INT32) {
     backward_task_with_type<int32_t>(task, regions, ctx, runtime);
-  } else if (m->data_type == DT_INT64) {
+  } else if (data_type == DT_INT64) {
     backward_task_with_type<int64_t>(task, regions, ctx, runtime);
   } else {
     assert(false && "Unsupported data type in Combine backward");

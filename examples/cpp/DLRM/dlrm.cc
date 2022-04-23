@@ -24,7 +24,7 @@ LegionRuntime::Logger::Category log_app("DLRM");
 void parse_input_args(char **argv, int argc, DLRMConfig& apConfig);
 
 DLRMConfig::DLRMConfig(void)
-  : sparse_feature_size(2), sigmoid_bot(-1), sigmoid_top(-1),
+  : sparse_feature_size(64), sigmoid_bot(-1), sigmoid_top(-1),
     embedding_bag_size(1), loss_threshold(0.0f),
     arch_interaction_op("cat"), dataset_path(""), data_size(-1) {
     embedding_size.push_back(1000000);
@@ -34,8 +34,10 @@ DLRMConfig::DLRMConfig(void)
     //embedding_size.push_back(4);
     //embedding_size.push_back(4);
     mlp_bot.push_back(4);
-    mlp_bot.push_back(2);
-    mlp_top.push_back(8);
+    mlp_bot.push_back(64);
+    mlp_bot.push_back(64);
+    mlp_top.push_back(64);
+    mlp_top.push_back(64);
     mlp_top.push_back(2);
   }
 
