@@ -49,7 +49,7 @@ NLOHMANN_JSON_SERIALIZE_ENUM( OpType, {
     {OpType::OP_INPUT, "OP_INPUT"},
     {OpType::OP_WEIGHT, "OP_WEIGHT"},
     {OpType::OP_ANY, "OP_ANY"},
-    {OpType::OP_CONV2D, "OP_CONV2d"},
+    {OpType::OP_CONV2D, "OP_CONV2D"},
     {OpType::OP_DROPOUT, "OP_DROPOUT"},
     {OpType::OP_LINEAR, "OP_LINEAR"},
     {OpType::OP_POOL2D_MAX, "OP_POOL2D_MAX"},

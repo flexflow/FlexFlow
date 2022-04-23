@@ -1313,6 +1313,8 @@ int get_num_inputs(sl::Operator const &op) {
             return 1;
         case OP_LINEAR:
             return 1;
+        case OP_CONV2D:
+            return 1;
         case OP_RELU: 
         case OP_IDENTITY:
         case OP_SIGMOID:
@@ -1380,6 +1382,9 @@ OpX *create_opx(sl::Operator const &op, TensorX const &input1, TensorX const &in
           if (dim_key.has_value()) {
             opx->add_pm_constraint(COMPARE_EQ, dim_key.value(), p.value);
           }
+        } else if (p.key == PM_PAD) {
+          opx->add_pm_constraint(COMPARE_EQ, PM_PADDING_H, p.value);
+          opx->add_pm_constraint(COMPARE_EQ, PM_PADDING_W, p.value);
         } else {
           opx->add_pm_constraint(COMPARE_EQ, p.key, p.value);
         }
