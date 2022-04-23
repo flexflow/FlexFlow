@@ -24,6 +24,10 @@ public:
   void backward(const FFModel&) override;
   bool get_int_parameter(PMParameter, int*) const override;
   bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const override;
+  static OpMeta* init_task(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
   static void forward_task(
       const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,
