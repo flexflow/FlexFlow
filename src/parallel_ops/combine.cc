@@ -79,7 +79,29 @@ Combine::Combine(
 
 void Combine::init(const FFModel& ff)
 {
-  forward(ff);
+  parallel_is = outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  set_argumentmap_for_init(ff, argmap);
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  IndexLauncher launcher(COMBINE_INIT_TASK_ID, parallel_is,
+      TaskArgument(this, sizeof(Combine)), argmap,
+      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+      outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(
+      RegionRequirement(input_lp, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
+
 }
 
 void Combine::create_input_partition(FFModel& ff)
@@ -99,6 +121,7 @@ void Combine::forward(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
+  set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(COMBINE_FWD_TASK_ID, outputs[0]->parallel_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -121,6 +144,7 @@ void Combine::backward(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
+  set_argumentmap_for_backward(ff, argmap);
   IndexLauncher launcher(COMBINE_BWD_TASK_ID, inputs[0]->parallel_is,
       TaskArgument(NULL, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -229,18 +253,38 @@ void Combine::forward_task(
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
+  const CombineMeta* m = *((CombineMeta**)task->local_args);
+  if (m->data_type == DT_FLOAT) {
+    forward_task_with_type<float>(task, regions, ctx, runtime);
+  } else if (m->data_type == DT_DOUBLE) {
+    forward_task_with_type<double>(task, regions, ctx, runtime);
+  } else if (m->data_type == DT_INT32) {
+    forward_task_with_type<int32_t>(task, regions, ctx, runtime);
+  } else if (m->data_type == DT_INT64) {
+    forward_task_with_type<int64_t>(task, regions, ctx, runtime);
+  } else {
+    assert(false && "Unsupported data type in Combine forward");
+  }
+}
+
+template<typename DT>
+void Combine::forward_task_with_type(
+    const Task *task,
+    const std::vector<PhysicalRegion> &regions,
+    Context ctx, Runtime *runtime)
+{
   Domain input_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
     ctx, task->regions[1].region.get_index_space());
   assert(output_domain == input_domain);
 
-  const float* input_ptr = helperGetTensorPointerRO<float>(
+  const DT* input_ptr = helperGetTensorPointerRO<DT>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float* output_ptr = helperGetTensorPointerWO<float>(
+  DT* output_ptr = helperGetTensorPointerWO<DT>(
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  forward_kernel<float>(input_ptr, output_ptr, output_domain.get_volume());
+  forward_kernel<DT>(input_ptr, output_ptr, output_domain.get_volume());
 }
 
 void Combine::backward_task(
@@ -250,18 +294,38 @@ void Combine::backward_task(
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
+  const CombineMeta* m = *((CombineMeta**)task->local_args);
+  if (m->data_type == DT_FLOAT) {
+    backward_task_with_type<float>(task, regions, ctx, runtime);
+  } else if (m->data_type == DT_DOUBLE) {
+    backward_task_with_type<double>(task, regions, ctx, runtime);
+  } else if (m->data_type == DT_INT32) {
+    backward_task_with_type<int32_t>(task, regions, ctx, runtime);
+  } else if (m->data_type == DT_INT64) {
+    backward_task_with_type<int64_t>(task, regions, ctx, runtime);
+  } else {
+    assert(false && "Unsupported data type in Combine backward");
+  }
+}
+
+template<typename DT>
+void Combine::backward_task_with_type(
+    const Task* task,
+    const std::vector<PhysicalRegion> &regions,
+    Context ctx, Runtime *runtime)
+{
   Domain output_grad_domain = runtime->get_index_space_domain(
     ctx, task->regions[0].region.get_index_space());
   Domain input_grad_domain = runtime->get_index_space_domain(
     ctx, task->regions[1].region.get_index_space());
   assert(output_grad_domain == input_grad_domain);
 
-  const float* output_grad_ptr = helperGetTensorPointerRO<float>(
+  const DT* output_grad_ptr = helperGetTensorPointerRO<DT>(
     regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float* input_grad_ptr = helperGetTensorPointerRW<float>(
+  DT* input_grad_ptr = helperGetTensorPointerRW<DT>(
     regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  backward_kernel<float>(output_grad_ptr, input_grad_ptr, output_grad_domain.get_volume());
+  backward_kernel<DT>(output_grad_ptr, input_grad_ptr, output_grad_domain.get_volume());
 }
 
 }; // namespace FlexFlow

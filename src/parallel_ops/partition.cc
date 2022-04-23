@@ -278,7 +278,7 @@ void Repartition::forward_task(
   } else if (m->data_type == DT_INT64) {
     forward_task_with_type<int64_t>(task, regions, ctx, runtime);
   } else {
-    assert(false && "Unsupported data type in Embedding forward");
+    assert(false && "Unsupported data type in Repartition forward");
   }
 }
 

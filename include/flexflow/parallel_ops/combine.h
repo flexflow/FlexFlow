@@ -5,6 +5,12 @@
 
 namespace FlexFlow {
 
+class CombineMeta : public OpMeta {
+public:
+  CombineMeta(FFHandler handle);
+  DataType data_type;
+};
+
 class Combine : public ParallelOp {
 public:
   Combine(FFModel& model,
@@ -23,6 +29,16 @@ public:
       const std::vector<Legion::PhysicalRegion> &regions,
       Legion::Context ctx, Legion::Runtime *runtime);
   static void backward_task(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename T>
+  static void forward_task_with_type(
+      const Legion::Task *task,
+      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Context ctx, Legion::Runtime *runtime);
+  template<typename T>
+  static void backward_task_with_type(
       const Legion::Task *task,
       const std::vector<Legion::PhysicalRegion> &regions,
       Legion::Context ctx, Legion::Runtime *runtime);
