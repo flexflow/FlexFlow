@@ -4300,6 +4300,13 @@ void register_flexflow_internal_tasks()
   }
   // Combine
   {
+    TaskVariantRegistrar registrar(COMBINE_INIT_TASK_ID, "Combine Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta*, Combine::init_task>(
+        registrar, "Combine init Task");
+  }
+  {
     TaskVariantRegistrar registrar(COMBINE_FWD_TASK_ID, "Combine Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();

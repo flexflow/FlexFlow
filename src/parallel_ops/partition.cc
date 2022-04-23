@@ -79,11 +79,7 @@ OpMeta* Repartition::init_task(
     const Task *task,
     const std::vector<PhysicalRegion> &regions,
     Context ctx, Runtime *runtime) {
-  Repartition* rep = (Repartition*) task->args;
-  FFHandler handle = *((FFHandler*) task->local_args);
-  RepartitionMeta* m = new RepartitionMeta(handle);
-  m->data_type = rep->outputs[0]->data_type;
-  return m;
+  return nullptr;
 }
 
 void Repartition::init(const FFModel& ff)
@@ -92,11 +88,10 @@ void Repartition::init(const FFModel& ff)
   parallel_is = outputs[0]->parallel_is;
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
   assert(numOutputs == 1);
   assert(numInputs == 1);
   IndexLauncher launcher(REPARTITION_INIT_TASK_ID, parallel_is,
-      TaskArgument(this, sizeof(Repartition)), argmap,
+      TaskArgument(nullptr, 0), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
@@ -109,7 +104,6 @@ void Repartition::init(const FFModel& ff)
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  set_opmeta_from_futuremap(ff, fm);
 }
 
 void Repartition::create_input_partition(FFModel& ff)
@@ -129,9 +123,10 @@ void Repartition::forward(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  set_argumentmap_for_forward(ff, argmap);
+  assert(inputs[0]->data_type == outputs[0]->data_type);
+  DataType data_type = inputs[0]->data_type;
   IndexLauncher launcher(REPARTITION_FWD_TASK_ID, outputs[0]->parallel_is,
-      TaskArgument(NULL, 0), argmap,
+      TaskArgument(&data_type, sizeof(DataType)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
@@ -155,9 +150,10 @@ void Repartition::backward(const FFModel& ff)
   Runtime* runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  set_argumentmap_for_backward(ff, argmap);
+  assert(inputs[0]->data_type == outputs[0]->data_type);
+  DataType data_type = inputs[0]->data_type;
   IndexLauncher launcher(REPARTITION_BWD_TASK_ID, inputs[0]->parallel_is,
-      TaskArgument(NULL, 0), argmap,
+      TaskArgument(&data_type, sizeof(DataType)), argmap,
       Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
       inputs[0]->machine_view.hash());
   launcher.add_region_requirement(
@@ -268,14 +264,14 @@ void Repartition::forward_task(
     Context ctx, Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const RepartitionMeta* m = *((RepartitionMeta**)task->local_args);
-  if (m->data_type == DT_FLOAT) {
+  DataType data_type = *((DataType*) task->args);
+  if (data_type == DT_FLOAT) {
     forward_task_with_type<float>(task, regions, ctx, runtime);
-  } else if (m->data_type == DT_DOUBLE) {
+  } else if (data_type == DT_DOUBLE) {
     forward_task_with_type<double>(task, regions, ctx, runtime);
-  } else if (m->data_type == DT_INT32) {
+  } else if (data_type == DT_INT32) {
     forward_task_with_type<int32_t>(task, regions, ctx, runtime);
-  } else if (m->data_type == DT_INT64) {
+  } else if (data_type == DT_INT64) {
     forward_task_with_type<int64_t>(task, regions, ctx, runtime);
   } else {
     assert(false && "Unsupported data type in Repartition forward");
@@ -308,14 +304,14 @@ void Repartition::backward_task(
 {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const RepartitionMeta* m = *((RepartitionMeta**)task->local_args);
-  if (m->data_type == DT_FLOAT) {
+  DataType data_type = *((DataType*) task->args);
+  if (data_type == DT_FLOAT) {
     backward_task_with_type<float>(task, regions, ctx, runtime);
-  } else if (m->data_type == DT_DOUBLE) {
+  } else if (data_type == DT_DOUBLE) {
     backward_task_with_type<double>(task, regions, ctx, runtime);
-  } else if (m->data_type == DT_INT32) {
+  } else if (data_type == DT_INT32) {
     backward_task_with_type<int32_t>(task, regions, ctx, runtime);
-  } else if (m->data_type == DT_INT64) {
+  } else if (data_type == DT_INT64) {
     backward_task_with_type<int64_t>(task, regions, ctx, runtime);
   } else {
     assert(false && "Unsupported data type in Embedding forward");
