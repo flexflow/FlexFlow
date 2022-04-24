@@ -10,43 +10,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-
-class RecordFormatter {
-  friend RecordFormatter &operator<<(RecordFormatter &r, std::string const &tok) {
-    r.pieces.push_back(tok);
-
-    return r;
-  }
-
-  friend RecordFormatter &operator<<(RecordFormatter &r, RecordFormatter const &sub_r) {
-    std::ostringstream oss;
-    oss << sub_r;
-    r << oss.str();
-
-    return r;
-  }
-
-  friend RecordFormatter &operator<<(RecordFormatter &r, std::ostringstream &oss) {
-    r << oss.str();
-
-    return r;
-  }
-
-  friend std::ostream &operator<<(std::ostream &s, RecordFormatter const &r) {
-    s << "{ ";
-    for (size_t i = 0; i < r.pieces.size(); i++) {
-      s << r.pieces[i];
-      if (i + 1 < r.pieces.size()) {
-        s << " | ";
-      }
-    }
-    s << " }";
-
-    return s;
-  }
-private:
-  std::vector<std::string> pieces;
-};
+#include "flexflow/utils/dot/record_formatter.h"
 
 template <typename T>
 class DotFile {

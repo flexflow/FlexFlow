@@ -3,7 +3,7 @@
 
 #include "flexflow/basic_graph.h"
 #include "flexflow/graph_structures.h"
-#include "flexflow/utils/dot_file.h"
+#include "flexflow/utils/dot/dot_file.h"
 #include "tl/optional.h"
 #include <queue>
 #include <algorithm>

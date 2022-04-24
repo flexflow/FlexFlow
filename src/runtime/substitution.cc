@@ -16,7 +16,7 @@
 #include <iomanip>
 #include "flexflow/substitution.h"
 #include <chrono>
-#include "flexflow/utils/dot_file.h"
+#include "flexflow/utils/dot/dot_file.h"
 #include "flexflow/dominators.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/linear.h"
@@ -1238,12 +1238,15 @@ void create_mapping_xfers(FFModel *model, int degree, std::vector<GraphXfer*> &x
     subst->srcOps.push_back(original_op);
 
     OpX *pre;
+    std::string pre_name;
     switch (output_mappings.at(input_dim).operation.value()) {
       case MappingOperation::PARTITION: 
         pre = subst->create_repartition(input, input_dim, degree);
+        pre_name = "partition";
         break;
       case MappingOperation::REPLICATE:
         pre = subst->create_replicate(input, input_dim, degree);
+        pre_name = "replicate";
         break;
     }
     subst->dstOps.push_back(pre);
@@ -1252,12 +1255,15 @@ void create_mapping_xfers(FFModel *model, int degree, std::vector<GraphXfer*> &x
     subst->dstOps.push_back(new_op);
 
     OpX *post;
+    std::string post_name;
     switch (output_mappings.at(input_dim).operation.value()) {
       case MappingOperation::PARTITION: 
         post = subst->create_combine(new_op->outputs[0], output_dim, degree);
+        post_name = "combine";
         break;
       case MappingOperation::REPLICATE:
         post = subst->create_reduction(new_op->outputs[0], output_dim, degree);
+        post_name = "reduce";
         break;
     }
     subst->dstOps.push_back(post);
@@ -1268,7 +1274,7 @@ void create_mapping_xfers(FFModel *model, int degree, std::vector<GraphXfer*> &x
     std::string op_type_name = model->get_operator_type_name(new_op->type);
     std::transform(op_type_name.begin(), op_type_name.end(), op_type_name.begin(),
         [](unsigned char c) { return std::tolower(c); });
-    oss << "partition_" << op_type_name << "_combine["
+    oss << "mapping::" << pre_name << "_" << op_type_name << "_" << post_name << "["
         << "input_dim=" << input_dim
         << ",degree=" << degree
         << "]";
@@ -1665,7 +1671,7 @@ tl::optional<Node> GraphSearchHelper::find_split_node(Graph const *graph, int ba
   using FlexFlow::PCG::Utils::MultisourceGraphStructure;
   using FlexFlow::PCG::Utils::roots;
 
-  this->logger->enter();
+  TAG_ENTER(this->logger);
 
   int graph_size = nodes(*graph).size();
   this->logger->debug() << "Finding split node for graph (size " << graph_size 
@@ -1686,16 +1692,17 @@ tl::optional<Node> GraphSearchHelper::find_split_node(Graph const *graph, int ba
   std::vector<GraphXferMatch> matches;
   this->find_rewrite_matches(graph, matches);
   this->logger->debug() << "Found " << matches.size() << " rewrite matches";
-  this->logger->enter();
-  for (GraphXferMatch const &match : matches) {
-    auto msg = this->logger->spew();
-    msg << match.get_xfer()->get_name() << " : ";
-    std::unordered_set<Node> nodes = match.get_nodes();
-    for (Node const &node : nodes) { 
-      msg << node.to_string() << " ";
+  {
+    TAG_ENTER(this->logger);
+    for (GraphXferMatch const &match : matches) {
+      auto msg = this->logger->spew();
+      msg << match.get_xfer()->get_name() << " : ";
+      std::unordered_set<Node> nodes = match.get_nodes();
+      for (Node const &node : nodes) { 
+        msg << node.to_string() << " ";
+      }
     }
   }
-  this->logger->leave();
 
   for (GraphXferMatch const &match : matches) { 
     for (Edge const &e : edges) {
@@ -1706,19 +1713,25 @@ tl::optional<Node> GraphSearchHelper::find_split_node(Graph const *graph, int ba
   }
 
   this->logger->debug() << "Edge weights: ";
-  this->logger->enter();
-  for (Edge const &e : edges) {
-    this->logger->debug() << e.srcOp.to_string() << "/" << e.srcIdx << " -> " 
-                          << e.dstOp.to_string() << "/" << e.dstIdx << " : " 
-                          << edge_scores.at(e);
+
+
+  {
+    TAG_ENTER(this->logger);
+    for (Edge const &e : edges) {
+      this->logger->debug() << e.srcOp.to_string() << "/" << e.srcIdx << " -> " 
+                            << e.dstOp.to_string() << "/" << e.dstIdx << " : " 
+                            << edge_scores.at(e);
+    }
   }
-  this->logger->leave();
 
   std::unordered_map<Node, std::unordered_set<Node>> post_dominator_map = post_dominators<Graph, MultisourceGraphStructure<Graph>>(*graph);
   Node source_node;
   {
-    std::unordered_set<Node> source_nodes = roots<Graph, MultisourceGraphStructure<Graph>>(*graph);
-    assert (source_nodes.size() == 1);
+    std::unordered_set<Node> source_nodes = roots<Graph>(*graph);
+    if (source_nodes.size() != 1) {
+      source_nodes = roots<Graph, MultisourceGraphStructure<Graph>>(*graph);
+    }
+      assert (source_nodes.size() == 1);
     source_node = *source_nodes.begin();
   }
   std::unordered_set<Node> possible_bottlenecks = post_dominator_map.at(source_node);
@@ -1727,56 +1740,58 @@ tl::optional<Node> GraphSearchHelper::find_split_node(Graph const *graph, int ba
   int best_weight = 0;
   tl::optional<Node> best = tl::nullopt;
   int best_size = graph_size;
-  this->logger->enter();
-  for (Node const &possible_bottleneck : possible_bottlenecks) {
-    if (possible_bottleneck == sink_node || possible_bottleneck == source_node) {
-      continue;
-    }
+  {
+    TAG_ENTER(this->logger);
 
-    int weight = 0; 
-    for (Edge const &e : graph->outEdges.at(possible_bottleneck)) {
-      weight += edge_scores.at(e);
-    }
-    this->logger->debug() << "Potential bottleneck node " << possible_bottleneck.to_string() << " has weight " << weight;
-    if (weight < best_weight) {
-      best_weight = weight;
-      best = possible_bottleneck;
-    } else if (weight == best_weight) {
-      // break ties by trying to choosing the split that produces the pre_graph with size closest to the threshold, 
-      // favoring everything with smaller size over everything with larger size
-      std::unique_ptr<Graph> pre_graph, post_graph;
-      std::tie(pre_graph, post_graph) = graph->split_at_node(possible_bottleneck);
-      int current_size = nodes(*pre_graph).size();
+    for (Node const &possible_bottleneck : possible_bottlenecks) {
+      if (possible_bottleneck == sink_node || possible_bottleneck == source_node) {
+        continue;
+      }
 
-      bool best_is_under = best_size <= base_optimize_threshold;
-      bool current_is_under = current_size <= base_optimize_threshold;
-
-      bool condition1 = current_is_under && !best_is_under;
-      bool condition2 = current_is_under && best_is_under && current_size > best_size;
-      bool condition3 = !current_is_under && !best_is_under && current_size < best_size;
-
-      if (condition1 || condition2 || condition3) {
+      int weight = 0; 
+      for (Edge const &e : graph->outEdges.at(possible_bottleneck)) {
+        weight += edge_scores.at(e);
+      }
+      this->logger->debug() << "Potential bottleneck node " << possible_bottleneck.to_string() << " has weight " << weight;
+      if (weight < best_weight) {
         best_weight = weight;
         best = possible_bottleneck;
-        best_size = current_size;
+      } else if (weight == best_weight) {
+        // break ties by trying to choosing the split that produces the pre_graph with size closest to the threshold, 
+        // favoring everything with smaller size over everything with larger size
+        std::unique_ptr<Graph> pre_graph, post_graph;
+        std::tie(pre_graph, post_graph) = graph->split_at_node(possible_bottleneck);
+        int current_size = nodes(*pre_graph).size();
+
+        bool best_is_under = best_size <= base_optimize_threshold;
+        bool current_is_under = current_size <= base_optimize_threshold;
+
+        bool condition1 = current_is_under && !best_is_under;
+        bool condition2 = current_is_under && best_is_under && current_size > best_size;
+        bool condition3 = !current_is_under && !best_is_under && current_size < best_size;
+
+        if (condition1 || condition2 || condition3) {
+          best_weight = weight;
+          best = possible_bottleneck;
+          best_size = current_size;
+        }
       }
     }
   }
-  this->logger->leave();
-  this->logger->leave();
 
   return best;
 }
 
 std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph, SimplificationSettings const &simplification_settings) {
   // Construct graph substitutions
-  this->logger->enter();
+  TAG_ENTER(this->logger);
 
   this->logger->debug() << "Optimizing base graph: ";
-  this->logger->enter();
-  /* graph_log_representation(r_graph, *this->logger); */
-  // r_graph->print_dot();
-  this->logger->leave();
+  {
+    TAG_ENTER(this->logger);
+    /* graph_log_representation(r_graph, *this->logger); */
+    // r_graph->print_dot();
+  }
   this->logger->debug() << "Starting cost: " << r_graph->optimal_cost();
 
   std::vector<GraphXfer*> xfers;
@@ -1833,7 +1848,6 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph, Si
 
   this->logger->debug() << "Optimized cost: " << best_graph->optimal_cost();
   //best_graph->print_dot();
-  this->logger->leave();
   return std::unique_ptr<Graph>(best_graph);
 }
 
@@ -1933,154 +1947,158 @@ T GraphSearchHelper::generic_sequence_optimize(
 {
   /* int starting_depth = this->logger->get_depth(); */
 
-  this->logger->enter();
+  TAG_ENTER(this->logger);
 
   size_t hash = gs_dp_state_hash(graph, sink_node, output_shape, input_shape);
   tl::optional<T> cached = this->try_get_cost_from_cache<T>(hash);
   if (cached.has_value()) {
     this->logger->spew() << "Optimizing graph with " << graph->inEdges.size() << " nodes";
-    this->logger->enter();
-    this->logger->spew() << "Nodes: ";
-    this->logger->enter();
-    graph_log_representation(graph, *this->logger);
-    this->logger->leave();
-    this->logger->spew() << "Retrieved value from cache: " << cached.value();
-    this->logger->leave();
-    this->logger->leave();
+    {
+      TAG_ENTER(this->logger);
+      this->logger->spew() << "Nodes: ";
+      {
+        TAG_ENTER(this->logger);
+        graph_log_representation(graph, *this->logger);
+      }
+      this->logger->spew() << "Retrieved value from cache: " << cached.value();
+    }
 
     /* this->logger->check_same_as(starting_depth); */
     return cached.value();
   }
 
   this->logger->debug() << "Optimizing graph with " << graph->inEdges.size() << " nodes";
-  this->logger->enter();
-  this->logger->spew() << "Nodes: ";
-  this->logger->enter();
-  graph_log_representation(graph, *this->logger);
-  this->logger->leave();
-  this->logger->debug() << "Graph hash: " << std::setw(32) << std::setfill('0') << graph->hash();
-  if (input_shape.has_value()) {
-    this->logger->debug() << "Input shape: " << input_shape.value();
-  } else {
-    this->logger->debug() << "Input shape: <none>";
-  }
-  if (output_shape.has_value()) {
-    this->logger->debug() << "Output shape: " << output_shape.value();
-  } else {
-    this->logger->debug() << "Output shape: <none>";
-  }
-
-  tl::optional<Node> bottleneck = this->find_split_node(graph, this->config.base_optimize_threshold);
-  /* Node bottleneck = graph->find_nontrivial_bottleneck_node(sink_node, source_node); */
-
   T return_value;
-  if (!bottleneck.has_value()) {
-    this->logger->debug() << "Applying base case";
-    Graph to_optimize(*graph);
+  {
+    TAG_ENTER(this->logger);
+    this->logger->spew() << "Nodes: ";
+    {
+      TAG_ENTER(this->logger);
+      graph_log_representation(graph, *this->logger);
+    }
+    this->logger->debug() << "Graph hash: " << std::setw(32) << std::setfill('0') << graph->hash();
     if (input_shape.has_value()) {
-      Node input_node = this->model->get_or_create_input_node(input_shape.value());
-      Node noop_node = this->model->get_or_create_noop_node(input_node.ptr->outputs[0]);
-      Graph input_graph(this->model);
-      Edge e(input_node, noop_node, 0, 0);
-      input_graph.add_edge(e);
-
-      Node old_source_node = graph->find_source_node();
-      ParallelTensorShape old_source_output_shape = old_source_node.ptr->outputs[0]->get_shape();
-      input_graph.reshape_output_tensor(old_source_output_shape);
-
-      Node new_sink_node = input_graph.find_sink_node();
-      assert (new_sink_node.ptr->numOutputs == 1);
-      assert (new_sink_node.ptr->outputs[0]->get_shape() == old_source_output_shape);
-
-      to_optimize.replace_subgraph({old_source_node}, input_graph);
+      this->logger->debug() << "Input shape: " << input_shape.value();
+    } else {
+      this->logger->debug() << "Input shape: <none>";
     }
-    SimplificationSettings settings;
     if (output_shape.has_value()) {
-      to_optimize.reshape_output_tensor(output_shape.value());
-      Node sink_node = to_optimize.find_sink_node();
-      Node noop_node = this->model->get_or_create_noop_node(sink_node.ptr->outputs[0]);
-      to_optimize.add_edge(sink_node, noop_node, 0, 0);
+      this->logger->debug() << "Output shape: " << output_shape.value();
     } else {
-      settings.remove_trailing_parallel_ops = true;
+      this->logger->debug() << "Output shape: <none>";
     }
-    settings.simplify_parallel_ops = true;
-    std::unique_ptr<Graph> optimized = this->base_optimize(&to_optimize, settings);
-    this->logger->leave();
-    return_value = get_optimal_cost<T>(std::move(optimized)); //optimized->generic_optimal_cost<T>();
-  } else {
-    this->logger->debug() << "Applying recursive case on bottleneck " << bottleneck.value().guid;
-    std::unique_ptr<Graph> pre_graph, post_graph;
-    std::tie(pre_graph, post_graph) = graph->split_at_node(bottleneck.value());
 
-    MachineResource resources(this->model->config);
-    std::vector<MachineView> valid_machine_views = this->model->search->get_valid_machine_views(bottleneck.value().ptr, resources);
+    tl::optional<Node> bottleneck = this->find_split_node(graph, this->config.base_optimize_threshold);
+    /* Node bottleneck = graph->find_nontrivial_bottleneck_node(sink_node, source_node); */
 
-    float best_cost = std::numeric_limits<float>::infinity();
-    tl::optional<ParallelTensorShape> best_shape = tl::nullopt;
-    this->logger->enter();
-    for (ParallelTensorShape const &bottleneck_output_shape : this->possible_split_output_tensor_shapes(bottleneck.value())) {
-      this->logger->debug() << "Considering boundary shape " << bottleneck_output_shape;
-      this->logger->enter();
-      // TODO @lockshaw we really should create the merged graph here since it's possible though unlikely for there 
-      // to be hidden transfer costs between modules due to device assignment changes across the boundaries
-      
-      // We wait to add the communication nodes between boundaries so we don't accidentally split on them 
-      // and keep processing the pure computation graph
-      // The bottleneck node is kept in the postgraph purely as a placeholder and will be replaced with an Input/NoOp
-      // sequence before any rewrites are actually performed
-      //this->logger->debug() << "Finding cost of pre_graph (" << bottleneck_output_shape << ")";
-      //float pre_cost = this->generic_sequence_optimize<float>(pre_graph.get(), bottleneck.value(), bottleneck_output_shape, input_shape);
-      //this->logger->debug() << "Cost of pre_graph (" << bottleneck_output_shape << "): " << pre_cost;
-      //this->logger->debug() << "Finding cost of post_graph (" << bottleneck_output_shape << ")";
-      //float post_cost = this->generic_sequence_optimize<float>(post_graph.get(), sink_node, output_shape, bottleneck_output_shape);
-      //this->logger->debug() << "Cost of post_graph (" << bottleneck_output_shape << "): " << post_cost;
-      //float current_cost = pre_cost + post_cost;
-      float current_cost = this->execute_sequence_split<float>(
-        pre_graph,
-        post_graph,
-        output_shape,
-        input_shape,
-        sink_node,
-        bottleneck.value(),
-        bottleneck_output_shape
-      );
+    if (!bottleneck.has_value()) {
+      this->logger->debug() << "Applying base case";
+      Graph to_optimize(*graph);
+      if (input_shape.has_value()) {
+        Node input_node = this->model->get_or_create_input_node(input_shape.value());
+        Node noop_node = this->model->get_or_create_noop_node(input_node.ptr->outputs[0]);
+        Graph input_graph(this->model);
+        Edge e(input_node, noop_node, 0, 0);
+        input_graph.add_edge(e);
 
-      if (current_cost < best_cost) {
-        best_cost = current_cost;
-        best_shape = bottleneck_output_shape;
+        Node old_source_node = graph->find_source_node();
+        ParallelTensorShape old_source_output_shape = old_source_node.ptr->outputs[0]->get_shape();
+        input_graph.reshape_output_tensor(old_source_output_shape);
+
+        Node new_sink_node = input_graph.find_sink_node();
+        assert (new_sink_node.ptr->numOutputs == 1);
+        assert (new_sink_node.ptr->outputs[0]->get_shape() == old_source_output_shape);
+
+        to_optimize.replace_subgraph({old_source_node}, input_graph);
       }
-      this->logger->leave();
-      this->logger->debug() << "Boundary shape " << bottleneck_output_shape << " has cost: " << current_cost;
-    }
-    this->logger->leave();
-
-    if (best_shape.has_value()) {
-      this->logger->debug() << "Best intermediate shape found: " << best_shape.value();
+      SimplificationSettings settings;
+      if (output_shape.has_value()) {
+        to_optimize.reshape_output_tensor(output_shape.value());
+        Node sink_node = to_optimize.find_sink_node();
+        Node noop_node = this->model->get_or_create_noop_node(sink_node.ptr->outputs[0]);
+        to_optimize.add_edge(sink_node, noop_node, 0, 0);
+      } else {
+        settings.remove_trailing_parallel_ops = true;
+      }
+      settings.simplify_parallel_ops = true;
+      std::unique_ptr<Graph> optimized = this->base_optimize(&to_optimize, settings);
+      return_value = get_optimal_cost<T>(std::move(optimized)); //optimized->generic_optimal_cost<T>();
     } else {
-      this->logger->debug() << "No valid intermediate shapes found";
+      this->logger->debug() << "Applying recursive case on bottleneck " << bottleneck.value().guid;
+      std::unique_ptr<Graph> pre_graph, post_graph;
+      std::tie(pre_graph, post_graph) = graph->split_at_node(bottleneck.value());
+
+      MachineResource resources(this->model->config);
+      std::vector<MachineView> valid_machine_views = this->model->search->get_valid_machine_views(bottleneck.value().ptr, resources);
+
+      float best_cost = std::numeric_limits<float>::infinity();
+      tl::optional<ParallelTensorShape> best_shape = tl::nullopt;
+      {
+        TAG_ENTER(this->logger);
+        for (ParallelTensorShape const &bottleneck_output_shape : this->possible_split_output_tensor_shapes(bottleneck.value())) {
+          this->logger->debug() << "Considering boundary shape " << bottleneck_output_shape;
+          float current_cost;
+          {
+            TAG_ENTER(this->logger);
+            // TODO @lockshaw we really should create the merged graph here since it's possible though unlikely for there 
+            // to be hidden transfer costs between modules due to device assignment changes across the boundaries
+            
+            // We wait to add the communication nodes between boundaries so we don't accidentally split on them 
+            // and keep processing the pure computation graph
+            // The bottleneck node is kept in the postgraph purely as a placeholder and will be replaced with an Input/NoOp
+            // sequence before any rewrites are actually performed
+            //this->logger->debug() << "Finding cost of pre_graph (" << bottleneck_output_shape << ")";
+            //float pre_cost = this->generic_sequence_optimize<float>(pre_graph.get(), bottleneck.value(), bottleneck_output_shape, input_shape);
+            //this->logger->debug() << "Cost of pre_graph (" << bottleneck_output_shape << "): " << pre_cost;
+            //this->logger->debug() << "Finding cost of post_graph (" << bottleneck_output_shape << ")";
+            //float post_cost = this->generic_sequence_optimize<float>(post_graph.get(), sink_node, output_shape, bottleneck_output_shape);
+            //this->logger->debug() << "Cost of post_graph (" << bottleneck_output_shape << "): " << post_cost;
+            //float current_cost = pre_cost + post_cost;
+            current_cost = this->execute_sequence_split<float>(
+              pre_graph,
+              post_graph,
+              output_shape,
+              input_shape,
+              sink_node,
+              bottleneck.value(),
+              bottleneck_output_shape
+            );
+
+            if (current_cost < best_cost) {
+              best_cost = current_cost;
+              best_shape = bottleneck_output_shape;
+            }
+          }
+          this->logger->debug() << "Boundary shape " << bottleneck_output_shape << " has cost: " << current_cost;
+        }
+      }
+
+      if (best_shape.has_value()) {
+        this->logger->debug() << "Best intermediate shape found: " << best_shape.value();
+      } else {
+        this->logger->debug() << "No valid intermediate shapes found";
+      }
+
+      if (best_cost != std::numeric_limits<float>::infinity()) {
+        return_value = this->execute_sequence_split<T>(
+          pre_graph,
+          post_graph,
+          output_shape,
+          input_shape,
+          sink_node,
+          bottleneck.value(),
+          best_shape.value()
+        );
+      }
     }
 
-    if (best_cost != std::numeric_limits<float>::infinity()) {
-      return_value = this->execute_sequence_split<T>(
-        pre_graph,
-        post_graph,
-        output_shape,
-        input_shape,
-        sink_node,
-        bottleneck.value(),
-        best_shape.value()
-      );
-    }
+    this->try_cache_result<T>(hash, return_value);
   }
-
-  this->try_cache_result<T>(hash, return_value);
-  this->logger->leave();
-  this->logger->leave();
   return return_value;
 }
 
 std::vector<ParallelTensorShape> GraphSearchHelper::possible_split_output_tensor_shapes(Node const &source_node) const {
-  this->logger->enter();
+  TAG_ENTER(this->logger);
 
   this->logger->debug() << "Finding possible output tensor shapes for node " << source_node.guid;
   assert (source_node.ptr->numOutputs == 1);
@@ -2103,53 +2121,54 @@ std::vector<ParallelTensorShape> GraphSearchHelper::possible_split_output_tensor
   }
   without_replicas.push_back(base_shape);
 
-  this->logger->enter();
-  while (true) {
-    bool is_done = true;
-    for (int i = 0; i < output_tensor->num_dims; i++) {
-      degrees[i] *= 2;
-      if (degrees[i] > num_devices) {
-        degrees[i] = 1;
-      } else {
-        is_done = false;
+  {
+    TAG_ENTER(this->logger);
+    while (true) {
+      bool is_done = true;
+      for (int i = 0; i < output_tensor->num_dims; i++) {
+        degrees[i] *= 2;
+        if (degrees[i] > num_devices) {
+          degrees[i] = 1;
+        } else {
+          is_done = false;
+          break;
+        }
+      }
+      std::ostringstream oss;
+      for (int i = 0; i < output_tensor->num_dims; i++) {
+        oss << degrees[i] << " ";
+      }
+      this->logger->spew() << "Considering: " << oss.str();
+      if (is_done) {
         break;
       }
-    }
-    std::ostringstream oss;
-    for (int i = 0; i < output_tensor->num_dims; i++) {
-      oss << degrees[i] << " ";
-    }
-    this->logger->spew() << "Considering: " << oss.str();
-    if (is_done) {
-      break;
-    }
 
-    bool is_valid = true;
-    int total_degree = 1;
-    ParallelTensorShape shape;
-    shape.num_dims = output_tensor->num_dims;
-    for (int i = 0; i < output_tensor->num_dims; i++) {
-      total_degree *= degrees[i];
-      shape.dims[i].degree = degrees[i];
-      shape.dims[i].size = output_tensor->dims[i].size;
-      if (shape.dims[i].size % shape.dims[i].degree != 0) {
-        is_valid = false;
+      bool is_valid = true;
+      int total_degree = 1;
+      ParallelTensorShape shape;
+      shape.num_dims = output_tensor->num_dims;
+      for (int i = 0; i < output_tensor->num_dims; i++) {
+        total_degree *= degrees[i];
+        shape.dims[i].degree = degrees[i];
+        shape.dims[i].size = output_tensor->dims[i].size;
+        if (shape.dims[i].size % shape.dims[i].degree != 0) {
+          is_valid = false;
+        }
+      }
+      if (total_degree <= num_devices && is_valid) {
+        without_replicas.push_back(shape);
       }
     }
-    if (total_degree <= num_devices && is_valid) {
-      without_replicas.push_back(shape);
-    }
   }
-  this->logger->leave();
 
   this->logger->debug() << "Found " << without_replicas.size() << " possible tensor output shapes without replicas";
   this->logger->debug() << "They are:";
-  this->logger->enter();
-  for (auto const & shape : without_replicas) {
-    this->logger->debug() << shape;
+  {
+    TAG_ENTER(this->logger);
+    for (auto const & shape : without_replicas) {
+      this->logger->debug() << shape;
+    }
   }
-  this->logger->leave();
-  this->logger->leave();
   return without_replicas;
 }
 

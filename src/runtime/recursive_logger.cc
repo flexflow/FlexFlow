@@ -32,6 +32,19 @@ void RecursiveLogger::enter() {
 
 void RecursiveLogger::leave() { 
   this->depth--;
+  assert (this->depth >= 0);
+}
+
+std::unique_ptr<DepthTag> RecursiveLogger::enter_tag() {
+  return std::unique_ptr<DepthTag>(new DepthTag(*this));
+}
+
+DepthTag::DepthTag(RecursiveLogger &_logger) : logger(_logger) { 
+  this->logger.enter();
+}
+
+DepthTag::~DepthTag() {
+  this->logger.leave(); 
 }
 
 }; // namespace FlexFlow

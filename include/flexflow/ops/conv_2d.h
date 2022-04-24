@@ -1,10 +1,16 @@
 #ifndef _FLEXFLOW_CONV_2D_H
 #define _FLEXFLOW_CONV_2D_H
 
-#include "flexflow/model.h"
 #include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/node.h"
+#include "flexflow/device.h"
 
 namespace FlexFlow {
+  
+class FFModel;
+class Layer;
   
 namespace Conv2DInput {
   static constexpr int INDEX = 0;
@@ -68,6 +74,8 @@ struct Conv2DParams {
                   ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,
                   ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const;
   size_t get_hash(const ParallelTensor input) const;
+
+  friend bool operator==(Conv2DParams const &lhs, Conv2DParams const &rhs);
 private:
   void mark_replica_dims(const ParallelTensor input, 
                          ParallelDim output_dims[MAX_TENSOR_DIM],
@@ -195,6 +203,8 @@ public:
   size_t get_params_hash() const override;
 
   Conv2DParams get_params() const;
+
+  tl::optional<RecordFormatter> as_dot() const override;
 public:
   int in_channels, out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   ActiMode activation;
@@ -203,5 +213,13 @@ public:
 };
 
 }; // namespace FlexFlow
+
+namespace std { 
+  template <>
+  struct hash<FlexFlow::Conv2DParams> {
+    size_t operator()(FlexFlow::Conv2DParams const &) const;
+  };
+}; // namespace std
+
 
 #endif // _FLEXFLOW_CONV_2D_H
