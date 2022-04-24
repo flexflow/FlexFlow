@@ -132,6 +132,16 @@ size_t ParallelTensorShape::get_piece_size() const {
   return piece_size;
 }
 
+RecordFormatter ParallelTensorShape::as_dot() const {
+  RecordFormatter r;
+  for (int i = 0; i < this->num_dims; i++) {
+    std::ostringstream oss;
+    oss << "" << this->dims[i].size << "/" << this->dims[i].degree;
+    r << oss.str();
+  }
+  return r;
+}
+
 std::unordered_map<int, int> ParallelTensorShape::get_mv_dim_to_tensor_dim_mapping() const {
   std::unordered_map<int, int> result;
   for (int i = 0; i < this->num_dims; i++) {

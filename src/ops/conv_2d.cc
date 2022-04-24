@@ -2,6 +2,7 @@
 #include "legion/legion_utilities.h"
 #include "flexflow/utils/hash_utils.h"
 #include "flexflow/layer.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
   
@@ -173,7 +174,8 @@ Node FFModel::get_or_create_conv2d_node(const ParallelTensor input,
 
   Conv2D *conv = NULL;
 
-  const auto &it = this->cached_conv2d_ops.find(hash);
+  std::pair<ParallelTensorShape, Conv2DParams> key{input->get_shape(), params};
+  const auto &it = this->cached_conv2d_ops.find(key);
   if (it != cached_conv2d_ops.end()) {
     conv = it->second;
   } else {
@@ -189,10 +191,71 @@ Node FFModel::get_or_create_conv2d_node(const ParallelTensor input,
                       params.use_bias,
                       false/*allocate_weights*/,
                       NULL);
-    cached_conv2d_ops[hash] = conv;
+    cached_conv2d_ops[key] = conv;
   }
 
+  // size_t test_hash1 = 4577313447550563550;
+  // hash_combine(test_hash1, 1000098);
+  // hash_combine(test_hash1, 384);
+
+  // size_t test_hash2 = 4577313447550563550;
+  // hash_combine(test_hash2, 1000101);
+  // hash_combine(test_hash2, 448);
+
+  // assert (test_hash1 != test_hash2);
+
+  // Conv2DParams test_params1;
+  // LayerID layer_id1(1000098);
+  // test_params1.layer_guid = layer_id1;
+  // test_params1.out_channels = 384;
+  // test_params1.kernel_h = 1;
+  // test_params1.kernel_w = 1;
+  // test_params1.stride_h = 1;
+  // test_params1.stride_w = 1;
+  // test_params1.padding_h = 0;
+  // test_params1.padding_w = 0;
+  // test_params1.groups = 1;
+  // test_params1.activation = AC_MODE_NONE;
+  // test_params1.use_bias = true;
+
+  // Conv2DParams test_params2;
+  // LayerID layer_id2(1000101);
+  // test_params2.layer_guid = layer_id2;
+  // test_params2.out_channels = 448;
+  // test_params2.kernel_h = 1;
+  // test_params2.kernel_w = 1;
+  // test_params2.stride_h = 1;
+  // test_params2.stride_w = 1;
+  // test_params2.padding_h = 0;
+  // test_params2.padding_w = 0;
+  // test_params2.groups = 1;
+  // test_params2.activation = AC_MODE_NONE;
+  // test_params2.use_bias = true;
+
+  // assert (test_params1.get_hash(input) != test_params2.get_hash(input));
+
+  // size_t thing = 4574693366283544798;
+  // size_t thing2 = thing;
+  // hash_combine(thing, (int)384);
+  // hash_combine(thing2, (int)448);
+  // assert (thing != thing2);
+  // assert (conv->get_params().get_hash(input) == hash);
+
+  assert (conv->get_params() == params);
   return this->new_node(conv);
+}
+
+bool operator==(Conv2DParams const &lhs, Conv2DParams const &rhs) {
+  return lhs.layer_guid == rhs.layer_guid && 
+      lhs.kernel_h == rhs.kernel_h &&
+      lhs.kernel_w == rhs.kernel_w && 
+      lhs.stride_h == rhs.stride_h && 
+      lhs.stride_w == rhs.stride_w && 
+      lhs.padding_h == rhs.padding_h && 
+      lhs.padding_w == rhs.padding_w &&
+      lhs.groups == rhs.groups && 
+      lhs.activation == rhs.activation && 
+      lhs.use_bias == rhs.use_bias;
 }
 
 Node FFModel::get_or_create_conv2d_node(const LayerID& layer_guid,
@@ -415,7 +478,7 @@ Conv2D::Conv2D(FFModel& model,
                bool allocate_weights,
                const char* name)
 : Op(model, OP_CONV2D, name, 1/*inputs*/, use_bias ? 2 : 1/*weights*/, allocate_weights, 1/*outputs*/, input),
-  in_channels(input->dims[Conv2DInput::CHANNEL].size),
+  in_channels(input->dims[Conv2DInput::CHANNEL].size/input->dims[Conv2DInput::CHANNEL].degree),
   out_channels(outChannels),
   kernel_h(kernelH), kernel_w(kernelW),
   stride_h(strideH), stride_w(strideW),
@@ -916,4 +979,41 @@ Node Conv2D::deserialize(FFModel& ff, Legion::Deserializer& dez, ParallelTensor 
       use_bias);
 }
 
+tl::optional<RecordFormatter> Conv2D::as_dot() const {
+  RecordFormatter rr;
+  RecordFormatter r;
+
+  r << this->inputs[0]->get_shape().as_dot();
+  r << "in_channels" << this->in_channels;
+  r << "out_channels" << this->out_channels;
+  r << "kernel_h" << this->kernel_h;
+  r << "kernel_w" << this->kernel_w;
+  r << "padding_h" << this->padding_h;
+  r << "padding_w" << this->padding_w;
+  r << "stride_h" << this->stride_h;
+  r << "stride_w" << this->stride_w;
+  r << this->outputs[0]->get_shape().as_dot();
+  rr << r;
+
+  return rr;
+}
+
 }; // namespace FlexFlow
+
+namespace std {
+  size_t hash<FlexFlow::Conv2DParams>::operator()(FlexFlow::Conv2DParams const &params) const {
+    size_t key = 0;
+    hash_combine(key, params.layer_guid.id);
+    hash_combine(key, params.out_channels);
+    hash_combine(key, params.kernel_h);
+    hash_combine(key, params.kernel_w);
+    hash_combine(key, params.stride_h);
+    hash_combine(key, params.stride_w);
+    hash_combine(key, params.padding_h);
+    hash_combine(key, params.padding_w);
+    hash_combine(key, params.activation);
+    hash_combine(key, params.groups);
+    hash_combine(key, params.use_bias);
+    return key;
+  }
+};

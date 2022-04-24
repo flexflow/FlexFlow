@@ -1,4 +1,4 @@
-#include "flexflow/utils/dot_file.h"
+#include "flexflow/utils/dot/dot_file.h"
 #include "flexflow/substitution_loader.h"
 #include "tl/optional.h"
 #include <cassert>
