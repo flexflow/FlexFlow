@@ -41,7 +41,6 @@ namespace FlexFlow::PCG {
 using namespace Legion;
 using FlexFlow::MachineView;
 
-LegionRuntime::Logger::Category log_dp("DP");
 LegionRuntime::Logger::Category log_graph("graph");
 LegionRuntime::Logger::Category log_simplify("graph_simplify");
 
@@ -77,7 +76,9 @@ bool Edge::operator==(const Edge& rhs) const
 
 SearchHelper::SearchHelper(FFModel *model)
   : model(model)
-{ }
+{ 
+  this->logger = std::unique_ptr<RecursiveLogger>(new RecursiveLogger("DP"));
+}
 
 template <typename T>
 T SearchHelper::execute_sequence_split(
@@ -172,26 +173,6 @@ T SearchHelper::find_optimal_sequence_graph_time(
   return optimal;
 }
 
-Realm::LoggerMessage SearchHelper::debug() const {
-  Realm::LoggerMessage msg = log_dp.debug();
-  msg << this->depth;
-  for (int i = 0; i < this->depth; i++) {
-    msg << "  ";
-  }
-
-  return msg;
-}
-
-Realm::LoggerMessage SearchHelper::spew() const {
-  Realm::LoggerMessage msg = log_dp.spew();
-  msg << this->depth;
-  for (int i = 0; i < this->depth; i++) {
-    msg << "  ";
-  }
-
-  return msg;
-}
-
 template <typename T>
 T SearchHelper::execute_nonsequence_split(
   std::unique_ptr<Graph> const &first_graph,
@@ -208,14 +189,14 @@ T SearchHelper::execute_nonsequence_split(
   }
   switch (split.type) {
     case SplitType::SEQUENTIAL:
-      this->debug() << "Exploring sequential nonsequence split";
+      this->logger->debug() << "Exploring sequential nonsequence split";
       return sequence_cost<T>(
           this->graph_cost<T>(first, source, sink, resources, false),
           this->graph_cost<T>(second, source, sink, resources, false)
       );
     case SplitType::VERTICAL:
     {
-      this->debug() << "Exploring vertical nonsequence split (" << split.param << ", " << split.flip_graphs << ")";
+      this->logger->debug() << "Exploring vertical nonsequence split (" << split.param << ", " << split.flip_graphs << ")";
       MachineResource firstRes = resources, 
                       secondRes = resources;
       firstRes.num_nodes = split.param;
@@ -229,7 +210,7 @@ T SearchHelper::execute_nonsequence_split(
     }
     case SplitType::HORIZONTAL: 
     {
-      this->debug() << "Exploring horizontal nonsequence split (" << split.param << ", " << split.flip_graphs << ")";
+      this->logger->debug() << "Exploring horizontal nonsequence split (" << split.param << ", " << split.flip_graphs << ")";
       MachineResource firstRes = resources, 
                       secondRes = resources;
       firstRes.available_gpus_per_node = split.param;
@@ -315,7 +296,7 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
         resources,
         split
     );
-    this->debug() << "Found cost: " << cost;
+    this->logger->debug() << "Found cost: " << cost;
 
     if (cost < best_cost) { 
       best_cost = cost;
@@ -325,13 +306,13 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
   
   switch (best_split.type) {
     case SplitType::SEQUENTIAL:
-      this->debug() << "Best split: SEQUENTIAL";
+      this->logger->debug() << "Best split: SEQUENTIAL";
       break;
     case SplitType::VERTICAL:
-      this->debug() << "Best split: VERTICAL(" << best_split.param << ", " << best_split.flip_graphs << ")";
+      this->logger->debug() << "Best split: VERTICAL(" << best_split.param << ", " << best_split.flip_graphs << ")";
       break;
     case SplitType::HORIZONTAL:
-      this->debug() << "Best split: HORIZONTAL(" << best_split.param << ", " << best_split.flip_graphs << ")";
+      this->logger->debug() << "Best split: HORIZONTAL(" << best_split.param << ", " << best_split.flip_graphs << ")";
       break;
   }
   T optimal = this->execute_nonsequence_split<T>(
@@ -553,7 +534,7 @@ bool Graph::check_correctness(void)
 
 std::vector<MachineView> SearchHelper::get_valid_machine_views(Node const &node, const MachineResource& resource, bool log) const
 {
-  log_dp.info() << "Getting valid machine views for " << node.to_string();
+  this->logger->info() << "Getting valid machine views for " << node.to_string();
   return this->get_valid_machine_views(node.ptr, resource, log);
 }
 
@@ -567,8 +548,9 @@ std::vector<MachineView> SearchHelper::get_valid_machine_views(const Op* op, con
     cached_op_views = iter->second.get();
   } else {
     auto to_cache = std::unique_ptr<std::vector<MachineView>>(new std::vector<MachineView>());
-    if (log) 
-      log_dp.info() << "Considering a total of " << this->model->all_valid_views.size() << " potential valid views";
+    if (log) {
+      this->logger->info() << "Considering a total of " << this->model->all_valid_views.size() << " potential valid views";
+    }
     for (size_t i = 0; i < this->model->all_valid_views.size(); i++) {
       bool valid = true;
       for (int j = 0; j < op->numOutputs; j++) {
@@ -585,8 +567,9 @@ std::vector<MachineView> SearchHelper::get_valid_machine_views(const Op* op, con
               }
             }
             oss << ")";
-            if (log)
-              log_dp.info() << "Rejecting machine view: " << oss.str();
+            if (log) {
+              this->logger->info() << "Rejecting machine view: " << oss.str();
+            }
           }
           break; 
         }
@@ -603,8 +586,9 @@ std::vector<MachineView> SearchHelper::get_valid_machine_views(const Op* op, con
             }
           }
           oss << ")";
-          if (log)
-            log_dp.info() << "Accepting machine view: " << oss.str();
+          if (log) {
+            this->logger->info() << "Accepting machine view: " << oss.str();
+          }
         }
         to_cache->push_back(this->model->all_valid_views[i]);
       }
@@ -612,8 +596,9 @@ std::vector<MachineView> SearchHelper::get_valid_machine_views(const Op* op, con
     cached_operator_valid_views[op->op_guid] = std::move(to_cache);
     cached_op_views = cached_operator_valid_views.at(op->op_guid).get();
   }
-  if (log)
-    log_dp.info() << "Found " << cached_op_views->size() << " cached op views";
+  if (log) {
+    this->logger->info() << "Found " << cached_op_views->size() << " cached op views";
+  }
   for (size_t i = 0; i < cached_op_views->size(); i++) {
     MachineView view = (*cached_op_views)[i];
     if (view.device_type == MachineView::GPU)
@@ -1286,13 +1271,13 @@ std::pair<bool, GraphCostResult> SearchHelper::try_get_cost_from_cache<GraphCost
 
 template <>
 void SearchHelper::try_cache_result<float>(size_t hash, float const &value) const {
-  this->debug() << "cached_graph_costs[" << hash << "] = " << value;
+  this->logger->debug() << "cached_graph_costs[" << hash << "] = " << value;
   this->cached_graph_costs[hash] = value;
 }
 
 template <>
 void SearchHelper::try_cache_result<GraphCostResult>(size_t hash, GraphCostResult const &value) const {
-  this->debug() << "cached_graph_costs[" << hash << "=" << value.cost << "]";
+  this->logger->debug() << "cached_graph_costs[" << hash << "=" << value.cost << "]";
   this->cached_graph_costs[hash] = value.cost;
 }
 
@@ -1374,8 +1359,8 @@ T SearchHelper::graph_cost(const Graph* graph,
                           const MachineResource& resources,
                           bool include_sink_compute_time) const
 {
-  this->depth++;
-  this->debug() << "sink(" << sink.node.guid << ") "
+  TAG_ENTER(this->logger);
+  this->logger->debug() << "sink(" << sink.node.guid << ") "
                  << "sink.view(" << sink.view.ndims << " " << sink.view.start_device_id << " " << sink.view.dim[0] << ") "
                  << "source(" << source.node.guid << ") "
                  << "source.view(" << source.view.ndims << " " << source.view.start_device_id << " " << source.view.dim[0] << ") "
@@ -1389,7 +1374,7 @@ T SearchHelper::graph_cost(const Graph* graph,
     assert(graph->outEdges.find(source.node) != graph->outEdges.end());
 
   size_t hash = dp_state_hash(graph, sink.node, sink.view, source.node, source.view, resources);
-  log_dp.spew("hash = %zu", hash);
+  this->logger->spew() << "hash = " << hash;
 
   T result;
 
@@ -1400,12 +1385,12 @@ T SearchHelper::graph_cost(const Graph* graph,
   } else {
     if (graph->inEdges.size() <= 2) {
       result = this->estimate_xfer_cost<T>(graph, source, sink);
-      this->debug() << "Estimated xfer cost is " << this->get_cost(result);
+      this->logger->debug() << "Estimated xfer cost is " << this->get_cost(result);
     } else {
       Node bn_node = graph->find_bottleneck_node(sink.node, source.node);
       if (bn_node != Node::INVALID_NODE) {
         // We found a bottleneck node
-        this->debug() << "Found bn_node = " << bn_node.guid;
+        this->logger->debug() << "Found bn_node = " << bn_node.guid;
 
         result = this->find_optimal_sequence_graph_time<T>(
           graph,
@@ -1435,14 +1420,13 @@ T SearchHelper::graph_cost(const Graph* graph,
 
   if (include_sink_compute_time) {
     CostMetrics metrics = this->model->simulator->measure_operator_cost(sink.node.ptr, sink.view);
-    this->debug() << "Sink node cost: " 
+    this->logger->debug() << "Sink node cost: " 
                   << "forward(" << metrics.forward_time << ") "
                   << "backward(" << metrics.backward_time << ") " 
                   << "sync(" << metrics.sync_time << ")";
     this->add_operator_cost<T>(sink, metrics.forward_time + metrics.backward_time + metrics.sync_time, &result);
   }
 
-  this->depth--;
   return result;
 }
 
@@ -1497,7 +1481,7 @@ T Graph::generic_optimal_cost() const
   //}
 
   Node sink_node = reduced_graph.find_sink_node();
-  log_dp.info() << "Found sink node: " << sink_node.to_string();
+  this->search->logger->info() << "Found sink node: " << sink_node.to_string();
 
   MachineResource resource(model->config);
 
@@ -1505,9 +1489,9 @@ T Graph::generic_optimal_cost() const
 
   T optimal = search->infinity<T>();
 
-  log_dp.info() << "Exploring " << valid_views.size() << " valid views";
+  this->search->logger->info() << "Exploring " << valid_views.size() << " valid views";
   for (MachineView const &sink_view : valid_views) {
-    log_dp.info() << "  Exploring valid view " << sink_view;
+    this->search->logger->info() << "  Exploring valid view " << sink_view;
     T new_cost = search->graph_cost<T>(
         &reduced_graph,
         {Node::INVALID_NODE, MachineView::NO_VIEW},

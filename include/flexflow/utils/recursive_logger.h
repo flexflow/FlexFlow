@@ -29,6 +29,7 @@ public:
   /* RecursiveLogger(LegionRuntime::Logger::Category const &); */
   RecursiveLogger(std::string const &category_name);
 
+  Realm::LoggerMessage info();
   Realm::LoggerMessage debug();
   Realm::LoggerMessage spew();
   void enter();
@@ -37,6 +38,8 @@ public:
   std::unique_ptr<DepthTag> enter_tag();
 private:
   int depth = 0;
+
+  void print_prefix(Realm::LoggerMessage &) const;
 
   LegionRuntime::Logger::Category logger;
 };

@@ -21,6 +21,7 @@
 #include "flexflow/basic_graph.h"
 #include "flexflow/graph_structures.h"
 #include "legion/legion_utilities.h"
+#include "flexflow/utils/recursive_logger.h"
 
 extern LegionRuntime::Logger::Category log_dp;
 
@@ -199,6 +200,9 @@ public:
 
   template <typename T>
   void check_matches_graph(Graph const *, T const &, Node const &) const;
+
+public:
+  mutable std::unique_ptr<RecursiveLogger> logger;
 private:
   template <typename T>
   T execute_nonsequence_split(std::unique_ptr<Graph> const &first_graph, 
@@ -215,13 +219,9 @@ private:
                            NodeAssignment const &sink,
                            MachineResource const &resources,
                            SequenceSplit const &split) const;
+
 private:
   FFModel *model;
-
-  Realm::LoggerMessage debug() const;
-  Realm::LoggerMessage spew() const;
-
-  mutable int depth = 0;
 
   mutable std::unordered_map<size_t, float> cached_graph_costs;
   mutable std::unordered_map<size_t, std::unique_ptr<const std::vector<MachineView>>> cached_operator_valid_views;
