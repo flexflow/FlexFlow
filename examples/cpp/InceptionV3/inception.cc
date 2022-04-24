@@ -169,7 +169,6 @@ void FlexFlow::top_level_task(const Task* task,
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
 
-  return;
   // Data Loader
   /* DataLoader data_loader(ff, inceptionConfig, input, ff.label_tensor); */
   ff.init_operators();
