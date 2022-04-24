@@ -2,8 +2,27 @@
 #define _FLEXFLOW_RECURSIVE_LOGGER_H
 
 #include "legion/legion_utilities.h"
+#include <memory>
+
+#define CONCAT(a, b) CONCAT_INNER(a, b)
+#define CONCAT_INNER(a, b) a ## b
+#define UNIQUE_TAG() CONCAT(tag, __COUNTER__)
+#define TAG_ENTER(mlogger) auto UNIQUE_TAG() = mlogger->enter_tag()
 
 namespace FlexFlow {
+
+class RecursiveLogger;
+
+class DepthTag {
+public:
+  DepthTag() = delete;
+  DepthTag(RecursiveLogger &);
+  DepthTag(DepthTag const &) = delete;
+  ~DepthTag();
+private:
+  RecursiveLogger &logger;
+
+};
 
 class RecursiveLogger {
 public:
@@ -14,6 +33,8 @@ public:
   Realm::LoggerMessage spew();
   void enter();
   void leave();
+
+  std::unique_ptr<DepthTag> enter_tag();
 private:
   int depth = 0;
 

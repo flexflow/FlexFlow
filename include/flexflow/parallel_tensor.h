@@ -19,6 +19,8 @@
 #include "flexflow/machine_view.h"
 #include "flexflow/ffconst.h"
 #include <unordered_map>
+#include "flexflow/utils/dot/record_formatter.h"
+#include <ostream>
 
 namespace FlexFlow {
 
@@ -63,6 +65,8 @@ struct ParallelTensorShape {
   bool operator==(const ParallelTensorShape& other) const;
   bool operator!=(const ParallelTensorShape& other) const;
 
+  RecordFormatter as_dot() const;
+
   size_t get_piece_size() const;
   bool is_valid() const;
 
@@ -72,6 +76,8 @@ struct ParallelTensorShape {
   std::unordered_map<int, int> get_mv_dim_to_tensor_dim_mapping() const;
   std::unordered_map<int, int> get_tensor_dim_to_mv_dim_mapping() const;
 };
+
+
 std::ostream& operator<<(std::ostream&, ParallelTensorShape const &);
 
 }; // namespace FlexFlow

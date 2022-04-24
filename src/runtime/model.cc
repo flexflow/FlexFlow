@@ -201,7 +201,12 @@ void Op::do_inplace_output()
 }
 
 tl::optional<RecordFormatter> Op::as_dot() const {
-  return tl::nullopt;
+  if (this->numOutputs != 1) {
+    return tl::nullopt;
+  }
+
+  ParallelTensor const &output = this->outputs[0];
+  return output->get_shape().as_dot();
 }
 
 ParallelTensor Op::get_parameter(int index)

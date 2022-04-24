@@ -16,7 +16,7 @@
 #include "flexflow/simulator.h"
 #include "flexflow/model.h"
 #include "queue"
-#include "flexflow/utils/dot_file.h"
+#include "flexflow/utils/dot/dot_file.h"
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/replicate.h"

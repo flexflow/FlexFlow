@@ -17,7 +17,7 @@
 #define _FLEXFLOW_GRAPH_H_
 #include "flexflow/model.h"
 #include <unordered_set>
-#include "flexflow/utils/dot_file.h"
+#include "flexflow/utils/dot/dot_file.h"
 #include "flexflow/basic_graph.h"
 #include "flexflow/graph_structures.h"
 #include "legion/legion_utilities.h"
