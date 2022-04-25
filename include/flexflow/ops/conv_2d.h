@@ -68,24 +68,24 @@ struct Conv2DParams {
   ActiMode activation;
   bool use_bias;
 
-  bool is_valid(const ParallelTensor input) const;
-  void solve_dims(const ParallelTensor input,
+  bool is_valid(ParallelTensorShape const &input) const;
+  void solve_dims(ParallelTensorShape const &input,
                   ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
                   ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,
                   ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const;
-  size_t get_hash(const ParallelTensor input) const;
+  // size_t get_hash(const ParallelTensor input) const;
 
   friend bool operator==(Conv2DParams const &lhs, Conv2DParams const &rhs);
 private:
-  void mark_replica_dims(const ParallelTensor input, 
+  void mark_replica_dims(ParallelTensorShape const &input, 
                          ParallelDim output_dims[MAX_TENSOR_DIM],
                          ParallelDim kernel_dims[MAX_TENSOR_DIM],
                          ParallelDim bias_dims[MAX_TENSOR_DIM]) const;
-  int output_size(const ParallelTensor input,
+  int output_size(ParallelTensorShape const &input,
                   ParallelDim output_dims[MAX_TENSOR_DIM]) const; 
-  int kernel_size(const ParallelTensor input,
+  int kernel_size(ParallelTensorShape const &input_shape,
                   ParallelDim kernel_dims[MAX_TENSOR_DIM]) const; 
-  int bias_size(const ParallelTensor input,
+  int bias_size(ParallelTensorShape const &input,
                 ParallelDim bias_dims[MAX_TENSOR_DIM]) const; 
 };
 
@@ -115,6 +115,8 @@ public:
 
 class Conv2D : public Op {
 public:
+  using Params = Conv2DParams;
+
   Conv2D(FFModel& model,
          const LayerID& layer_guid,
          const ParallelTensor input,
@@ -131,6 +133,11 @@ public:
          Conv2D const &other, 
          const ParallelTensor input,
          bool allocate_weights);
+  Conv2D(FFModel& model,
+         Conv2DParams const &params,
+         ParallelTensor input,
+         bool allocate_weights,
+         const char* name);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
@@ -200,7 +207,9 @@ public:
   static void construct_mappings(std::vector<ParallelDimMappingRecord> &, bool use_bias);
   static void construct_weight_mappings(std::vector<ParallelDimMappingRecord> &, bool use_bias);
 
-  size_t get_params_hash() const override;
+  std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>, Conv2D*> &get_cache(FFModel &ff) const;
+
+  // size_t get_params_hash() const override;
 
   Conv2DParams get_params() const;
 

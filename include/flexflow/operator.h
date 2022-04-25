@@ -4,7 +4,6 @@
 #include <vector>
 #include "flexflow/machine_view.h"
 #include "flexflow/parallel_tensor.h"
-#include "simulator.h"
 #include "flexflow/fftype.h"
 
 namespace FlexFlow {
@@ -12,6 +11,8 @@ namespace FlexFlow {
 extern LegionRuntime::Logger::Category log_measure;
 
 class OpMeta;
+class Simulator;
+class CostMetrics;
 
 enum class MappingRecordType {
   INPUT_OUTPUT,

@@ -1,10 +1,16 @@
 #ifndef _FLEXFLOW_LINEAR_H
 #define _FLEXFLOW_LINEAR_H
 
-#include "flexflow/model.h"
-#include "flexflow/node_cache.h"
+#include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/node.h"
+#include "flexflow/device.h"
 
 namespace FlexFlow {
+
+class FFModel;
+class Layer;
 
 class LinearMeta : public OpMeta {
 public:
@@ -26,7 +32,7 @@ public:
 class LinearParams {
 public:
   LayerID layer_guid;
-  int in_channels, out_channels;
+  int out_channels;
   bool use_bias;
   DataType data_type;
   ActiMode activation;
@@ -45,7 +51,6 @@ public:
                   ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,
                   ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const;
   void construct_mappings(std::vector<ParallelDimMappingRecord>&, ParallelTensorShape const &) const;
-  size_t get_hash(const ParallelTensor input) const;
 
   enum NamedDimensions {
     INPUT_CHANNEL,
@@ -60,6 +65,8 @@ public:
   };
 
   std::unordered_map<NamedDimensions, int> get_dimension_names(ParallelTensorShape const &input_name) const;
+
+  friend bool operator==(LinearParams const &lhs, LinearParams const &rhs);
 private:
   void mark_replica_dims(ParallelTensorShape const &input_shape,
                          ParallelDim output_dims[MAX_TENSOR_DIM],
@@ -73,6 +80,8 @@ private:
 
 class Linear : public Op {
 public:
+  using Params = LinearParams;
+
   Linear(FFModel& model,
          const LayerID& layer_guid,
          const ParallelTensor input,
@@ -82,18 +91,17 @@ public:
          DataType _data_type,
          bool allocate_weights,
          const char* name);
-  Linear(NodeCache& node_cache,
-         const ParallelTensor input,
-         int out_dim,
-         ActiMode activation,
-         bool use_bias,
-	 DataType _data_type,
-         bool allocate_weights,
-         const char* name);
   Linear(FFModel& model, 
          Linear const &other, 
          ParallelTensor const input, 
          bool allocate_weights);
+  Linear(FFModel& model, 
+         LinearParams const &params,
+         ParallelTensor input,
+         bool allocate_weights,
+         const char *name);
+
+
 
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
@@ -159,7 +167,8 @@ public:
   void serialize(Legion::Serializer&) const override;
   static PCG::Node deserialize(FFModel &ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);
 
-  size_t get_params_hash() const override;
+  // size_t get_params_hash() const override;
+  LinearParams get_params() const;
 private:
   Linear(int guid,
          bool profiling,
@@ -189,7 +198,6 @@ private:
   void register_weight_mappings();
 
 
-  LinearParams get_params() const;
 public:
   int in_channels, out_channels;
   ActiMode activation;
@@ -198,5 +206,12 @@ public:
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+  template <>
+  struct hash<FlexFlow::LinearParams> {
+    size_t operator()(FlexFlow::LinearParams const &) const;
+  };
+};
 
 #endif // _FLEXLOW_LINEAR_H
