@@ -3,6 +3,7 @@
 #include "flexflow/utils/hash_utils.h"
 #include "flexflow/layer.h"
 #include "flexflow/model.h"
+#include "mpark/variant.hpp"
 
 namespace FlexFlow {
   
@@ -137,112 +138,33 @@ Conv2DParams Conv2D::get_params() const {
   return params;
 }
 
-size_t Conv2DParams::get_hash(const ParallelTensor input) const {
-  size_t hash = input->get_owner_independent_hash();
-  hash_combine(hash, this->layer_guid.id);
-  hash_combine(hash, this->out_channels);
-  hash_combine(hash, this->kernel_h);
-  hash_combine(hash, this->kernel_w);
-  hash_combine(hash, this->stride_h);
-  hash_combine(hash, this->stride_w);
-  hash_combine(hash, this->padding_h);
-  hash_combine(hash, this->padding_w);
-  hash_combine(hash, this->activation);
-  hash_combine(hash, this->groups);
-  hash_combine(hash, this->use_bias);
+// size_t Conv2DParams::get_hash(const ParallelTensor input) const {
+//   size_t hash = input->get_owner_independent_hash();
+//   hash_combine(hash, this->layer_guid.id);
+//   hash_combine(hash, this->out_channels);
+//   hash_combine(hash, this->kernel_h);
+//   hash_combine(hash, this->kernel_w);
+//   hash_combine(hash, this->stride_h);
+//   hash_combine(hash, this->stride_w);
+//   hash_combine(hash, this->padding_h);
+//   hash_combine(hash, this->padding_w);
+//   hash_combine(hash, this->activation);
+//   hash_combine(hash, this->groups);
+//   hash_combine(hash, this->use_bias);
 
-  return hash;
-}
+//   return hash;
+// }
 
-size_t Conv2D::get_params_hash() const {
-  return this->get_params().get_hash(this->inputs[0]);
-}
+// size_t Conv2D::get_params_hash() const {
+//   return this->get_params().get_hash(this->inputs[0]);
+// }
 
 using PCG::Node;
-Node FFModel::get_or_create_conv2d_node(const ParallelTensor input,
-                                        const Conv2DParams& params)
-{
-  if (!params.is_valid(input)) {
-    return Node::INVALID_NODE;
-  }
-  // Currently disable parallelizing the height and width dimension
-  if (input->dims[0].degree > 1 || input->dims[1].degree > 1) {
-    return Node::INVALID_NODE;
-  }
 
-  size_t hash = params.get_hash(input);
 
-  Conv2D *conv = NULL;
-
-  std::pair<ParallelTensorShape, Conv2DParams> key{input->get_shape(), params};
-  const auto &it = this->cached_conv2d_ops.find(key);
-  if (it != cached_conv2d_ops.end()) {
-    conv = it->second;
-  } else {
-    conv = new Conv2D(*this,
-                      params.layer_guid,
-                      input, 
-                      params.out_channels, 
-                      params.kernel_h, params.kernel_w, 
-                      params.stride_h, params.stride_w,
-                      params.padding_h, params.padding_w,
-                      params.activation, 
-                      params.groups, 
-                      params.use_bias,
-                      false/*allocate_weights*/,
-                      NULL);
-    cached_conv2d_ops[key] = conv;
-  }
-
-  // size_t test_hash1 = 4577313447550563550;
-  // hash_combine(test_hash1, 1000098);
-  // hash_combine(test_hash1, 384);
-
-  // size_t test_hash2 = 4577313447550563550;
-  // hash_combine(test_hash2, 1000101);
-  // hash_combine(test_hash2, 448);
-
-  // assert (test_hash1 != test_hash2);
-
-  // Conv2DParams test_params1;
-  // LayerID layer_id1(1000098);
-  // test_params1.layer_guid = layer_id1;
-  // test_params1.out_channels = 384;
-  // test_params1.kernel_h = 1;
-  // test_params1.kernel_w = 1;
-  // test_params1.stride_h = 1;
-  // test_params1.stride_w = 1;
-  // test_params1.padding_h = 0;
-  // test_params1.padding_w = 0;
-  // test_params1.groups = 1;
-  // test_params1.activation = AC_MODE_NONE;
-  // test_params1.use_bias = true;
-
-  // Conv2DParams test_params2;
-  // LayerID layer_id2(1000101);
-  // test_params2.layer_guid = layer_id2;
-  // test_params2.out_channels = 448;
-  // test_params2.kernel_h = 1;
-  // test_params2.kernel_w = 1;
-  // test_params2.stride_h = 1;
-  // test_params2.stride_w = 1;
-  // test_params2.padding_h = 0;
-  // test_params2.padding_w = 0;
-  // test_params2.groups = 1;
-  // test_params2.activation = AC_MODE_NONE;
-  // test_params2.use_bias = true;
-
-  // assert (test_params1.get_hash(input) != test_params2.get_hash(input));
-
-  // size_t thing = 4574693366283544798;
-  // size_t thing2 = thing;
-  // hash_combine(thing, (int)384);
-  // hash_combine(thing2, (int)448);
-  // assert (thing != thing2);
-  // assert (conv->get_params().get_hash(input) == hash);
-
-  assert (conv->get_params() == params);
-  return this->new_node(conv);
+template <>
+std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>, Conv2D*> &FFModel::get_cache() {
+  return this->cached_conv2d_ops;
 }
 
 bool operator==(Conv2DParams const &lhs, Conv2DParams const &rhs) {
@@ -281,10 +203,10 @@ Node FFModel::get_or_create_conv2d_node(const LayerID& layer_guid,
   params.groups = groups;
   params.use_bias = use_bias;
 
-  return this->get_or_create_conv2d_node(input, params);
+  return this->get_or_create_node<Conv2D>(input, params);
 }
 
-void Conv2DParams::mark_replica_dims(const ParallelTensor input,
+void Conv2DParams::mark_replica_dims(ParallelTensorShape const &input,
                                      ParallelDim output_dims[MAX_TENSOR_DIM], 
                                      ParallelDim kernel_dims[MAX_TENSOR_DIM], 
                                      ParallelDim bias_dims[MAX_TENSOR_DIM]) const 
@@ -303,37 +225,37 @@ void Conv2DParams::mark_replica_dims(const ParallelTensor input,
   }
 }
 
-int Conv2DParams::output_size(const ParallelTensor input,
+int Conv2DParams::output_size(ParallelTensorShape const &input,
                               ParallelDim output_dims[MAX_TENSOR_DIM]) const {
-  int input_w = input->dims[Conv2DInput::WIDTH].size;
-  int input_h = input->dims[Conv2DInput::HEIGHT].size;
+  int input_w = input.dims[Conv2DInput::WIDTH].size;
+  int input_h = input.dims[Conv2DInput::HEIGHT].size;
 
-  output_dims[Conv2DOutput::SAMPLE].size = input->dims[Conv2DInput::SAMPLE].size;
+  output_dims[Conv2DOutput::SAMPLE].size = input.dims[Conv2DInput::SAMPLE].size;
   output_dims[Conv2DOutput::CHANNEL].size = out_channels;
   output_dims[Conv2DOutput::HEIGHT].size = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
   output_dims[Conv2DOutput::WIDTH].size = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
 
-  return input->num_dims;
+  return input.num_dims;
 };
 
-int Conv2DParams::kernel_size(const ParallelTensor input,
+int Conv2DParams::kernel_size(ParallelTensorShape const &input,
                               ParallelDim kernel_dims[MAX_TENSOR_DIM]) const {
   kernel_dims[Conv2DKernel::CHANNEL_OUT].size = this->out_channels;
-  kernel_dims[Conv2DKernel::CHANNEL_IN].size = input->dims[Conv2DInput::CHANNEL].size / this->groups;
-  kernel_dims[Conv2DKernel::HEIGHT].size = this->kernel_h * input->dims[Conv2DInput::HEIGHT].degree;
-  kernel_dims[Conv2DKernel::WIDTH].size = this->kernel_w * input->dims[Conv2DInput::WIDTH].degree;
+  kernel_dims[Conv2DKernel::CHANNEL_IN].size = input.dims[Conv2DInput::CHANNEL].size / this->groups;
+  kernel_dims[Conv2DKernel::HEIGHT].size = this->kernel_h * input.dims[Conv2DInput::HEIGHT].degree;
+  kernel_dims[Conv2DKernel::WIDTH].size = this->kernel_w * input.dims[Conv2DInput::WIDTH].degree;
 
   return Conv2DKernel::NUMDIM;
 }
 
-int Conv2DParams::bias_size(const ParallelTensor input,
+int Conv2DParams::bias_size(ParallelTensorShape const &input,
                             ParallelDim bias_dims[MAX_TENSOR_DIM]) const {
   bias_dims[Conv2DBias::CHANNEL].size = this->out_channels;
 
   return Conv2DBias::NUMDIM;
 };
 
-void Conv2DParams::solve_dims(const ParallelTensor input, 
+void Conv2DParams::solve_dims(ParallelTensorShape const &input, 
                               ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims,
                               ParallelDim kernel_dims[MAX_TENSOR_DIM], int* kernel_ndims,  
                               ParallelDim bias_dims[MAX_TENSOR_DIM], int* bias_ndims) const 
@@ -362,7 +284,7 @@ void Conv2DParams::solve_dims(const ParallelTensor input,
 
   solve_parallel_dim_mappings(
       mapping, 
-      {input->dims},
+      {input.dims},
       weight_dim_sets,
       output_dim_sets
   );
@@ -448,18 +370,46 @@ Conv2D::Conv2D(FFModel& model,
          other.name) 
 { }
 
-bool Conv2DParams::is_valid(const ParallelTensor input) const {
+Conv2D::Conv2D(FFModel& model,
+               Conv2DParams const &params,
+               ParallelTensor const input,
+               bool allocate_weights,
+               const char* name) 
+  : Conv2D(model,
+           params.layer_guid,
+           input,
+           params.out_channels,
+           params.kernel_h,
+           params.kernel_w,
+           params.stride_h,
+           params.stride_w,
+           params.padding_h,
+           params.padding_w,
+           params.activation,
+           params.groups,
+           params.use_bias,
+           allocate_weights,
+           name)
+{ }
+
+
+bool Conv2DParams::is_valid(ParallelTensorShape const &input) const {
   ParallelTensorShape output_shape, kernel_shape, bias_shape;
   this->solve_dims(input, 
                    output_shape.dims, &output_shape.num_dims,
                    kernel_shape.dims, &kernel_shape.num_dims,
                    bias_shape.dims, &bias_shape.num_dims);
   bool is_valid = true;
-  is_valid &= input->check_valid();
+  is_valid &= input.is_valid();
   is_valid &= output_shape.is_valid();
   is_valid &= kernel_shape.is_valid();
   if (use_bias) { 
     is_valid &= bias_shape.is_valid();
+  }
+
+  // TODO FIXME: Currently disable parallelizing the height and width dimension
+  if (input.dims[0].degree > 1 || input.dims[1].degree > 1) {
+    return false;
   }
 
   return is_valid;
@@ -503,7 +453,7 @@ Conv2D::Conv2D(FFModel& model,
   this->construct_mappings(
       *this->parallel_dims_mapping, this->use_bias);
   this->get_params().solve_dims(
-      this->inputs[0],
+      this->inputs[0]->get_shape(),
       output_dims, &output_ndims,
       kernel_dims, &kernel_ndims,
       bias_dims, &bias_ndims);
@@ -917,7 +867,7 @@ bool Conv2D::estimate_sync_cost(Simulator* sim,
   int kernel_ndims,
       bias_ndims;
   
-  this->get_params().solve_dims(this->inputs[0], 
+  this->get_params().solve_dims(this->inputs[0]->get_shape(), 
                                 nullptr, nullptr,
                                 kernel_dims, &kernel_ndims,
                                 bias_dims, &bias_ndims);

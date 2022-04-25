@@ -102,6 +102,9 @@ include(legion)
 # json
 include(json)
 
+# variant
+include(variant)
+
 if(FF_USE_PYTHON)
   list(APPEND FF_CC_FLAGS
     -DBINDINGS_AUGMENT_PYTHONPATH)
@@ -195,7 +198,7 @@ else()
 endif()
 
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-target_link_libraries(flexflow ${LEGION_LIBRARY} nlohmann_json::nlohmann_json)
+target_link_libraries(flexflow ${LEGION_LIBRARY} nlohmann_json::nlohmann_json mpark_variant)
 
 if(FF_USE_NCCL)
   add_dependencies(flexflow ${NCCL_NAME})

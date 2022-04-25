@@ -23,6 +23,11 @@
 #include <queue>
 #include <unordered_set>
 #include <unordered_map>
+#include "mpark/variant.hpp"
+#include "flexflow/utils/hash_utils.h"
+#include "flexflow/operator_params.h"
+
+namespace mp = mpark;
 
 namespace FlexFlow {
 
@@ -566,6 +571,11 @@ public:
 
 size_t data_type_size(DataType);
 
+using ProfilingRecordKey = std::tuple<
+  OperatorParameters,
+  MachineView
+>;
+
 class Simulator {
 public:
   static constexpr float MAXIMUM_TASK_RUN_TIME = 1e7;
@@ -620,6 +630,7 @@ public:
   hipEvent_t start_event, end_event;
 #endif
   std::unordered_map<size_t, CostMetrics> hash_to_operator_cost;
+  std::unordered_map<ProfilingRecordKey, CostMetrics> strict_hash_to_operator_cost;
 public:
   Conv2DMeta* conv2d_meta;
   LinearMeta* linear_meta;

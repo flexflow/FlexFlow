@@ -364,16 +364,6 @@ bool Op::is_adoptable_parallel_config(FFModel const &ff, ParallelConfig const &p
   return false;
 }
 
-size_t Op::get_untyped_params_hash() const {
-  size_t hash = this->get_params_hash();
-  hash_combine(hash, this->op_type);
-  return hash;
-}
-
-size_t Op::get_params_hash() const {
-  assert (false);
-}
-
 bool Op::is_valid_parallel_config(const FFModel& ff, const ParallelConfig& pc) const
 {
   // By default only data parallelism is allowed
@@ -1183,6 +1173,7 @@ PCG::Node FFModel::new_node(Op *op) {
 
   return ret;
 }
+
 
 Tensor FFModel::create_tensor(
     int numdim,

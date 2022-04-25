@@ -867,7 +867,7 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
     {
       Conv2D* conv = (Conv2D*)opx->matchOpX->mapOp.ptr;
       Conv2DParams params = conv->get_params();
-      op = model->get_or_create_conv2d_node(inputs[0], params);
+      op = model->get_or_create_node<Conv2D>(inputs[0], params);
       break;
     }
     case OP_POOL2D:

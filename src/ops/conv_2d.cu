@@ -15,6 +15,7 @@
 
 #include "flexflow/ops/conv_2d.h"
 #include "flexflow/utils/cuda_helper.h"
+#include "flexflow/simulator.h"
 
 namespace FlexFlow {
 
