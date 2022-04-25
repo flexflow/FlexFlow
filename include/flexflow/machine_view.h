@@ -85,4 +85,12 @@ struct ParallelConfig {
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+  template <>
+  struct hash<FlexFlow::MachineView> {
+    size_t operator()(FlexFlow::MachineView const &) const;
+  };
+}; // namespace std
+
 #endif // _FLEXFLOW_MACHINE_VIEW_H

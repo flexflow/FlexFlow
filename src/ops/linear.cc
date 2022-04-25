@@ -1,6 +1,8 @@
 #include "flexflow/ops/linear.h"
 #include "legion/legion_utilities.h"
 #include "flexflow/utils/hash_utils.h"
+#include "flexflow/layer.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
   
@@ -79,9 +81,9 @@ Op* Linear::create_operator_from_layer(FFModel& model,
                     layer->data_type, false/*allocate_weights*/, layer->name);
 }
 
-size_t Linear::get_params_hash() const {
-  return this->get_params().get_hash(this->inputs[0]);
-}
+// size_t Linear::get_params_hash() const {
+//   return this->get_params().get_hash(this->inputs[0]);
+// }
 
 Linear::Linear(FFModel& model,
                Linear const &other, 
@@ -90,6 +92,22 @@ Linear::Linear(FFModel& model,
 : Linear(model, other.layer_guid, input, other.out_channels, other.activation,
          other.use_bias, other.data_type, allocate_weights, other.name)
 { }
+
+Linear::Linear(FFModel &model,
+               LinearParams const &params,
+               ParallelTensor const input,
+               bool allocate_weights,
+               const char* name) 
+  : Linear(model,
+           params.layer_guid,
+           input,
+           params.out_channels,
+           params.activation,
+           params.use_bias,
+           params.data_type,
+           allocate_weights,
+           name)
+{ } 
 
 Linear::Linear(FFModel& model,
                const LayerID& _layer_guid,
@@ -721,25 +739,10 @@ bool Linear::measure_operator_cost(
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_linear_node(const ParallelTensor input,
-                                        const LinearParams& params) 
-{
-  if (!params.is_valid(input->get_shape())) {
-    return Node::INVALID_NODE;
-  }
 
-  size_t hash = params.get_hash(input);
-  
-  Linear* li = NULL;
-  auto it = cached_linear_ops.find(hash);
-  if (it != cached_linear_ops.end()) {
-    li = it->second;
-  } else {
-    li = new Linear(*this, params.layer_guid, input, params.out_channels, params.activation, params.use_bias, params.data_type, false/*allocate_weights*/, NULL);
-    cached_linear_ops[hash] = li;
-  }
-
-  return this->new_node(li);
+template <>
+std::unordered_map<std::pair<ParallelTensorShape, LinearParams>, Linear*> &FFModel::get_cache() {
+  return this->cached_linear_ops;
 }
 
 Node FFModel::get_or_create_linear_node(const LayerID& layer_guid,
@@ -755,10 +758,15 @@ Node FFModel::get_or_create_linear_node(const LayerID& layer_guid,
   params.use_bias = use_bias;
   params.data_type = DT_FLOAT;// TODO: currently assume data type is float
 
-  auto dimension_names = params.get_dimension_names(input->get_shape()); 
-  params.in_channels = input->dims[dimension_names.at(LinearParams::INPUT_CHANNEL)].size;
+  return this->get_or_create_node<Linear>(input, params);
+}
 
-  return this->get_or_create_linear_node(input, params);
+bool operator==(LinearParams const &lhs, LinearParams const &rhs) {
+  return lhs.layer_guid == rhs.layer_guid &&
+         lhs.out_channels == rhs.out_channels && 
+         lhs.use_bias == rhs.use_bias && 
+         lhs.data_type == rhs.data_type && 
+         lhs.activation == rhs.activation;
 }
 
 void Linear::serialize(Legion::Serializer& sez) const { 
@@ -793,20 +801,8 @@ LinearParams Linear::get_params() const {
   params.use_bias = this->use_bias;
   params.data_type = this->data_type;
   params.activation = this->activation;
-  params.in_channels = this->in_channels;
 
   return params;
-}
-
-size_t LinearParams::get_hash(const ParallelTensor input) const {
-  size_t hash = input->get_owner_independent_hash();
-  hash_combine(hash, this->layer_guid.id);
-  hash_combine(hash, this->out_channels);
-  hash_combine(hash, this->activation);
-  hash_combine(hash, this->use_bias);
-  hash_combine(hash, this->data_type);
-  // hash_combine(hash, this->in_channels); // TODO FIXME @lockshaw do we need in_channels in the hash (and in params)
-  return hash;
 }
 
 bool LinearParams::is_valid(ParallelTensorShape const &input_shape) const {
@@ -852,10 +848,6 @@ void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
   assert ((output_dims == nullptr) == (output_ndims == nullptr));
   assert ((kernel_dims == nullptr) == (kernel_ndims == nullptr));
   assert ((bias_dims == nullptr) == (bias_ndims == nullptr));
-  {
-    auto dimension_names = this->get_dimension_names(input_shape);
-    assert (input_shape.dims[dimension_names.at(INPUT_CHANNEL)].size == this->in_channels);
-  }
 
   std::vector<ParallelDimMappingRecord> mapping;
   this->construct_mappings(mapping, input_shape);
@@ -903,7 +895,7 @@ void LinearParams::calculate_nonreplica_dim_sizes(ParallelTensorShape const &inp
     *output_ndims = num_dims;
   }
   if (kernel_dims != nullptr) {
-    kernel_dims[dimension_names.at(KERNEL_CHANNEL_IN)].size = this->in_channels;
+    kernel_dims[dimension_names.at(KERNEL_CHANNEL_IN)].size = input_shape.dims[INPUT_CHANNEL].size / input_shape.dims[INPUT_CHANNEL].degree;
     kernel_dims[dimension_names.at(KERNEL_CHANNEL_OUT)].size = this->out_channels;
     *kernel_ndims = num_dims;
   }
@@ -974,3 +966,15 @@ void LinearParams::construct_mappings(std::vector<ParallelDimMappingRecord>& map
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+  size_t hash<FlexFlow::LinearParams>::operator()(FlexFlow::LinearParams const &params) const {
+    size_t key = 0;
+    hash_combine(key, params.layer_guid.id);
+    hash_combine(key, params.out_channels);
+    hash_combine(key, params.use_bias);
+    hash_combine(key, params.data_type);
+    hash_combine(key, params.activation);
+    return key;
+  }
+}; // namespace std

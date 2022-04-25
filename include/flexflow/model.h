@@ -32,9 +32,9 @@
 #include "utils/dot/record_formatter.h"
 #include "layer.h"
 #include <utility>
-#include "flexflow/ops/conv_2d.h"
 #include "flexflow/node.h"
 #include "flexflow/utils/hash_utils.h"
+#include "flexflow/operator_params.h"
 
 #include "ffconst.h"
 #include "fftype.h"
@@ -614,6 +614,33 @@ public:
   // ========================================
   // Internal PCG::Node creation APIs
   // ========================================
+  template <typename T>
+  PCG::Node get_or_create_node(ParallelTensor const input, typename T::Params const &params) {
+    using Params = typename T::Params;  
+
+    if (!params.is_valid(input->get_shape())) {
+      return PCG::Node::INVALID_NODE;
+    }
+
+    T *op = nullptr;
+
+    std::pair<ParallelTensorShape, Params> key{input->get_shape(), params};
+    auto &cache = this->get_cache<T>();
+    const auto &it = cache.find(key);
+    if (it != cache.end()) {
+      op = it->second;
+    } else {
+      op = new T(*this, params, input, false, NULL);
+      cache[key] = op;
+    }
+
+    assert (op->get_params() == params);
+    return this->new_node(op);
+  }
+
+  template <typename T>
+  std::unordered_map<std::pair<ParallelTensorShape, typename T::Params>, T*> &get_cache();
+
   PCG::Node get_or_create_noop_node(const ParallelTensor input);
   PCG::Node get_or_create_input_node(const ParallelTensorShape&);
   PCG::Node get_or_create_cast_node(const ParallelTensor input,
@@ -634,8 +661,6 @@ public:
                                       int out_dim,
                                       ActiMode activation,
                                       bool use_bias);
-  PCG::Node get_or_create_linear_node(const ParallelTensor input,
-                                      const LinearParams& params);
   PCG::Node get_or_create_multihead_attn_node(const ParallelTensor query,
                                               const ParallelTensor key,
                                               const ParallelTensor value,
@@ -679,8 +704,6 @@ public:
                                       ActiMode activation, 
                                       int groups,
                                       bool use_bias);
-  PCG::Node get_or_create_conv2d_node(const ParallelTensor input,
-                                      const Conv2DParams& params);
   PCG::Node get_or_create_dropout_node(const ParallelTensor input,
                                        const DropoutParams& params);
   PCG::Node get_or_create_pool2d_node(const ParallelTensor input,
@@ -838,7 +861,7 @@ public:
   std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;
   std::unordered_map<size_t, ElementUnary*> cached_element_unary_ops;
   std::unordered_map<size_t, Embedding*> cached_embedding_ops;
-  std::unordered_map<size_t, Linear*> cached_linear_ops;
+  std::unordered_map<std::pair<ParallelTensorShape, LinearParams>, Linear*> cached_linear_ops;
   std::unordered_map<size_t, Pool2D*> cached_pool2d_ops;
   std::unordered_map<size_t, Flat*> cached_flat_ops;
   std::unordered_map<size_t, MultiHeadAttention*> cached_multihead_attn_ops;
