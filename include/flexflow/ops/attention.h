@@ -10,6 +10,7 @@ class MultiHeadAttentionMeta;
 class MultiHeadAttention : public Op {
 public:
   MultiHeadAttention(FFModel& model,
+                     const LayerID& layer_guid,
                      const ParallelTensor _query,
                      const ParallelTensor _key,
                      const ParallelTensor _value,
