@@ -12,6 +12,7 @@ As a starting point, the evaluator can run the following command to test out a s
 $ export FF_HOME = /path/to/flexflow
 $ cd $FF_HOME
 $ ./build/examples/cpp/split_test/split_test -ll:gpu 4 -ll:fsize 13000 -ll:zsize 16384 -ll:csize 40000 --budget 10 --batch-size 32
+```
 
 ## Detailed Instructions
 
