@@ -31,9 +31,9 @@ Tensor create_attention_encoder(FFModel* model, const Tensor& input,
                         int hidden_dim, int num_heads,
                         int kdim, int vdim)
 {
-  Tensor t = model->add(model->multihead_attention(input, input, input,
-      hidden_dim, num_heads, kdim, vdim), input);
-  return model->dense(model->dense(t, hidden_dim, AC_MODE_RELU), hidden_dim);
+  Tensor t = model->multihead_attention(input, input, input,
+      hidden_dim, num_heads, kdim, vdim);
+  return model->dense(model->dense(t, hidden_dim, AC_MODE_RELU, false/*bias*/), hidden_dim, AC_MODE_NONE, false/*bias*/);
 }
 
 void create_attention_encoder_decoder(
@@ -44,12 +44,12 @@ void create_attention_encoder_decoder(
 {
   Tensor t1 = model->add(model->multihead_attention(input1, input1, input1,
       hidden_dim, num_heads, kdim, vdim), input1);
-  t1 = model->dense(model->dense(t1, hidden_dim, AC_MODE_RELU), hidden_dim);
+  t1 = model->dense(model->dense(t1, hidden_dim, AC_MODE_RELU, false/*bias*/), hidden_dim, AC_MODE_NONE, false/*bias*/);
   Tensor t2 = model->add(model->multihead_attention(input2, input2, input2,
       hidden_dim, num_heads, kdim, vdim), input2);
   t2 = model->add(model->multihead_attention(t2, t1, t1,
       hidden_dim, num_heads, kdim, vdim), t2);
-  t2 = model->dense(model->dense(t2, hidden_dim, AC_MODE_RELU), hidden_dim);
+  t2 = model->dense(model->dense(t2, hidden_dim, AC_MODE_RELU, false/*bias*/), hidden_dim, AC_MODE_NONE, false/*bias*/);
   output1 = t1;
   output2 = t2;
 }
@@ -59,7 +59,7 @@ TransformerConfig::TransformerConfig(void)
   hidden_size = 1024;
   embedding_size = 1024;
   num_heads = 16;
-  num_layers = 24;
+  num_layers = 12;
   sequence_length = 512;
 }
 
@@ -111,8 +111,8 @@ void FlexFlow::top_level_task(const Task* task,
   FFModel ff(ffConfig);
   Tensor input;
   {
-    const int dims[] = {1, ffConfig.batchSize, tfConfig.sequence_length, tfConfig.hidden_size};
-    input = ff.create_tensor<4>(dims, DT_FLOAT);
+    const int dims[] = {ffConfig.batchSize, tfConfig.sequence_length, tfConfig.hidden_size};
+    input = ff.create_tensor<3>(dims, DT_FLOAT);
   }
   //Tensor t = create_emb(&ff, input, tfConfig.embedding_size, tfConfig.hidden_size);
   //Tensor input1 = input, input2 = input;
@@ -129,7 +129,7 @@ void FlexFlow::top_level_task(const Task* task,
     //input1 = t1;
     //input2 = t2;
   }
-  t = ff.dense(t, 1);
+  t = ff.dense(t, 1, AC_MODE_NONE, false/*bias*/);
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.01f);
   std::vector<MetricsType> metrics;
   //metrics.push_back(METRICS_ACCURACY);

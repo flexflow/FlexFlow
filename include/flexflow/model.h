@@ -661,7 +661,8 @@ public:
                                       int out_dim,
                                       ActiMode activation,
                                       bool use_bias);
-  PCG::Node get_or_create_multihead_attn_node(const ParallelTensor query,
+  PCG::Node get_or_create_multihead_attn_node(const LayerID& layer_guid,
+                                              const ParallelTensor query,
                                               const ParallelTensor key,
                                               const ParallelTensor value,
                                               int embed_dim,

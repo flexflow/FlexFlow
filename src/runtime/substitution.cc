@@ -901,7 +901,7 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
       assert(opx->matchOpX->mapOp.ptr != NULL);
       MultiHeadAttention* attn = (MultiHeadAttention*) opx->matchOpX->mapOp.ptr;
       assert(opx->get_pm_constraint(PM_NUM_HEADS, num_heads));
-      op = model->get_or_create_multihead_attn_node(inputs[0], inputs[1], inputs[2],
+      op = model->get_or_create_multihead_attn_node(attn->layer_guid, inputs[0], inputs[1], inputs[2],
                                                     attn->oProjSize, num_heads,
                                                     attn->qProjSize, attn->vProjSize,
                                                     attn->dropout, attn->bias,
