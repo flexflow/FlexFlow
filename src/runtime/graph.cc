@@ -1687,6 +1687,7 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
       case OP_MULTIHEAD_ATTENTION:
       {
         MultiHeadAttention* attn = (MultiHeadAttention*) op;
+        sez.serialize(attn->layer_guid.id);
         sez.serialize(attn->oProjSize);
         sez.serialize(attn->num_heads);
         sez.serialize(attn->qProjSize);
@@ -2022,6 +2023,9 @@ void FFModel::deserialize_graph_optimal_view(
         int embed_dim, num_heads, k_dim, v_dim;
         float dropout;
         bool bias, add_bias_kv, add_zero_attn;
+        size_t id;
+        dez.deserialize(id);
+        LayerID layer_guid(id);
         dez.deserialize(embed_dim);
         dez.deserialize(num_heads);
         dez.deserialize(k_dim);
@@ -2030,7 +2034,7 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(bias);
         dez.deserialize(add_bias_kv);
         dez.deserialize(add_zero_attn);
-        node = get_or_create_multihead_attn_node(inputs[0], inputs[1], inputs[2],
+        node = get_or_create_multihead_attn_node(layer_guid, inputs[0], inputs[1], inputs[2],
                                                  embed_dim, num_heads,
                                                  k_dim, v_dim, dropout,
                                                  bias, add_bias_kv, add_zero_attn);

@@ -51,7 +51,7 @@ Tensor FFModel::multihead_attention(const Tensor query,
                                     const char* name)
 {
   Layer* li = new Layer(this, OP_MULTIHEAD_ATTENTION, name, 3/*inputs*/,
-                        0/*weights*/, 1/*outputs*/, query, key, value);
+                        1/*weights*/, 1/*outputs*/, query, key, value);
   {
     int numdims = query->num_dims;
     int dims[MAX_TENSOR_DIM];
@@ -60,6 +60,18 @@ Tensor FFModel::multihead_attention(const Tensor query,
     dims[0] = embed_dim;
     li->outputs[0] = create_tensor_legion_ordering(numdims, dims, DT_FLOAT,
                                                    li, 0, true/*create_grad*/);
+  }
+  {
+    // Compute weight size
+    int qProjSize = kdim, kProjSize = kdim, vProjSize = kdim, oProjSize = embed_dim;
+    int qSize = query->dims[0], kSize = key->dims[0], vSize = value->dims[0];
+    int qParas = qProjSize * qSize;
+    int kParas = kProjSize * kSize;
+    int vParas = vProjSize * vSize;
+    int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
+    int dims[2] = {qParas + kParas + vParas + oParas, num_heads};
+    li->weights[0] = create_weight_legion_ordering(2, dims, DT_FLOAT, li,
+        true/*create_grad*/, kernel_initializer, CHOSEN_SYNC_TYPE);
   }
   li->data_type = DT_FLOAT;
   li->add_int_property("embed_dim", embed_dim);
@@ -95,7 +107,8 @@ Op* MultiHeadAttention::create_operator_from_layer(
   bool add_bias_kv = (bool)value;
   layer->get_int_property("add_zero_attn", value);
   bool add_zero_attn = (bool)value;
-  return new MultiHeadAttention(model, inputs[0], inputs[1], inputs[2],
+  return new MultiHeadAttention(model, layer->layer_guid,
+                                inputs[0], inputs[1], inputs[2],
                                 embed_dim, num_heads, kdim, vdim,
                                 dropout, bias, add_bias_kv,
                                 add_zero_attn, false/*allocate_weights*/,
@@ -120,6 +133,7 @@ size_t MultiHeadAttention::get_params_hash() const {
 }
 
 MultiHeadAttention::MultiHeadAttention(FFModel& model,
+                                       const LayerID& _layer_guid,
                                        const ParallelTensor _query,
                                        const ParallelTensor _key,
                                        const ParallelTensor _value,
@@ -130,7 +144,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
                                        bool allocate_weights,
                                        const char* name)
                                        //Initializer* _bias_initializer)
-: Op(model, OP_MULTIHEAD_ATTENTION, name, 3/*inputs*/, 0/*weights*/, 1/*outputs*/,
+: Op(model, OP_MULTIHEAD_ATTENTION, name, 3/*inputs*/, 1/*weights*/, 1/*outputs*/,
      _query, _key, _value),
   num_heads(_num_heads), dropout(_dropout), bias(_bias),
   add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
@@ -139,6 +153,9 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
   qoSeqLength(_query->dims[1].size), kvSeqLength(_key->dims[1].size)
   //bias_initializer(_bias_initializer)
 {
+  // overwrite layer_guid
+  layer_guid = _layer_guid;
+
   // assert key and value have the same sequence length
   assert(_key->dims[1] == _value->dims[1]);
   numOutputs = 1;
@@ -149,6 +166,33 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
   dims[0].size = _embed_dim;
   // Currently require no parallelism along this dim
   assert(dims[0].degree == 1);
+  if (allocate_weights) {
+    // Create weight tensor
+    int num_dims = inputs[0]->num_dims;
+    // Compute weight size
+    int qParas = this->qProjSize * this->qSize;
+    int kParas = this->kProjSize * this->kSize;
+    int vParas = this->vProjSize * this->vSize;
+    int oParas = this->oProjSize * (this->vProjSize > 0 ? this->vProjSize : this->vSize);
+    ParallelDim dims[3];
+    dims[0] = inputs[0]->dims[num_dims-2];
+    dims[0].size = dims[0].degree;
+    dims[1] = inputs[0]->dims[num_dims-1];
+    dims[1].size = this->num_heads;
+    dims[2].size = qParas + kParas + vParas + oParas;
+    dims[2].degree = 1;
+    dims[2].parallel_idx = -1;
+    int seed = std::rand();
+    Initializer* initializer = new GlorotUniform(seed);
+#ifdef USE_NCCL
+    ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+    ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+    weights[0] = model.create_parallel_weight<3>(dims, DT_FLOAT, NULL/*owner_op*/,
+                                       true/*create_grad*/, initializer,
+                                       comm_type);
+  }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(_query->num_dims,
                                                    dims, DT_FLOAT, this);
@@ -235,7 +279,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel& model,
                                        const ParallelTensor key,
                                        const ParallelTensor value,
                                        bool allocate_weights)
-: MultiHeadAttention(model, query, key, value, other.oProjSize, other.num_heads,
+: MultiHeadAttention(model, other.layer_guid, query, key, value, other.oProjSize, other.num_heads,
                      other.qProjSize, other.vProjSize, other.dropout, other.bias,
                      other.add_bias_kv, other.add_zero_attn,
                      allocate_weights, other.name) {}
@@ -560,7 +604,7 @@ bool MultiHeadAttention::measure_operator_cost(
     int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
     num_weights = num_heads * (qParas + kParas + vParas + oParas);
   }
-  assert(sub_query.num_dims == 5);
+  assert(sub_query.num_dims == 4);
   int num_samples = sub_query.dims[2].size;
 
   MultiHeadAttentionMeta* m = new MultiHeadAttentionMeta(sim->handler,
@@ -631,7 +675,8 @@ bool MultiHeadAttention::measure_operator_cost(
 
 using PCG::Node;
 
-Node FFModel::get_or_create_multihead_attn_node(const ParallelTensor query,
+Node FFModel::get_or_create_multihead_attn_node(const LayerID& layer_guid,
+                                                const ParallelTensor query,
                                                 const ParallelTensor key,
                                                 const ParallelTensor value,
                                                 int embed_dim,
@@ -643,22 +688,24 @@ Node FFModel::get_or_create_multihead_attn_node(const ParallelTensor query,
                                                 bool add_bias_kv,
                                                 bool add_zero_attn)
 {
-  size_t hash = query->get_owner_independent_hash();
-  hash = hash * 31 + key->get_owner_independent_hash();
-  hash = hash * 31 + value->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(embed_dim);
-  hash = hash * 31 + std::hash<int>()(num_heads);
-  hash = hash * 31 + std::hash<int>()(kdim);
-  hash = hash * 31 + std::hash<int>()(vdim);
-  hash = hash * 31 + std::hash<int>()((int)bias);
-  hash = hash * 31 + std::hash<int>()((int)add_bias_kv);
-  hash = hash * 31 + std::hash<int>()((int)add_zero_attn);
+  size_t hash = 0;
+  hash_combine(hash, layer_guid.id);
+  hash_combine(hash, query->get_owner_independent_hash());
+  hash_combine(hash, key->get_owner_independent_hash());
+  hash_combine(hash, value->get_owner_independent_hash());
+  hash_combine(hash, std::hash<int>()(embed_dim));
+  hash_combine(hash, std::hash<int>()(num_heads));
+  hash_combine(hash, std::hash<int>()(kdim));
+  hash_combine(hash, std::hash<int>()(vdim));
+  hash_combine(hash, std::hash<int>()((int)bias));
+  hash_combine(hash, std::hash<int>()((int)add_bias_kv));
+  hash_combine(hash, std::hash<int>()((int)add_zero_attn));
   const auto& it = cached_multihead_attn_ops.find(hash);
   MultiHeadAttention* attn = nullptr;
   if (it != cached_multihead_attn_ops.end()) {
     attn = it->second;
   } else {
-    attn = new MultiHeadAttention(*this, query, key, value, embed_dim, num_heads,
+    attn = new MultiHeadAttention(*this, layer_guid, query, key, value, embed_dim, num_heads,
                                   kdim, vdim, dropout, bias,
                                   add_bias_kv, add_zero_attn, false/*create_weights*/,
                                   nullptr);
