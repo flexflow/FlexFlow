@@ -79,6 +79,9 @@ instance/
 # Sphinx documentation
 docs/_build/
 
+# Doxygen documentation
+docs/doxygen/html/
+
 # PyBuilder
 .pybuilder/
 target/
@@ -147,3 +150,5 @@ cython_debug/
 
 # Saved PyTorch tensors
 *.pt
+
+
