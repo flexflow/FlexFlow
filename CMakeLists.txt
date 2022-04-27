@@ -209,6 +209,7 @@ option(FF_BUILD_RESNET "build resnet example" OFF)
 option(FF_BUILD_RESNEXT "build resnext example" OFF)
 option(FF_BUILD_ALEXNET "build alexnet example" OFF)
 option(FF_BUILD_DLRM "build DLRM example" OFF)
+option(FF_BUILD_XDL "build XDL example" OFF)
 option(FF_BUILD_INCEPTION "build inception example" OFF)
 option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
 option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
@@ -282,6 +283,10 @@ if(FF_BUILD_DLRM OR FF_BUILD_ALL_EXAMPLES)
 
   #add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc)
   #target_include_directories(generate_dlrm_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
+endif()
+
+if(FF_BUILD_XDL OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/XDL)
 endif()
 
 if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_EXAMPLES)
