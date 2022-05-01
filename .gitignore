@@ -80,7 +80,7 @@ instance/
 docs/_build/
 
 # Doxygen documentation
-docs/doxygen/html/
+docs/doxygen/output/html/
 
 # PyBuilder
 .pybuilder/
@@ -150,5 +150,3 @@ cython_debug/
 
 # Saved PyTorch tensors
 *.pt
-
-
