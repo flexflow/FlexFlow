@@ -1,4 +1,8 @@
-/* Copyright 2020 Facebook
+/**
+ * @file parallel_tensor.h
+ * @brief Parallel Tensor Representation
+ *
+ * @copyright Copyright 2020 Facebook
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,13 +56,28 @@ struct ParallelDim {
   bool is_replica_dim = false;
 };
 
+/**
+ * @brief Represent the shape of a ParallelTensor.
+ */
 struct ParallelTensorShape {
+
+  /**
+   * @brief Default constructor.
+   */
   ParallelTensorShape() = default;
+
+  /**
+   * @brief Construct a new ParallelTensorShape object.
+   * 
+   * @param num_dims Number of dimensions
+   * @param dims Details of each dimension
+   * @param data_type The data type
+   */
   ParallelTensorShape(int num_dims, ParallelDim const dims[MAX_TENSOR_DIM], DataType data_type);
 
-  int num_dims;
-  ParallelDim dims[MAX_TENSOR_DIM];
-  DataType data_type;
+  int num_dims; ///< Number of dimensions
+  ParallelDim dims[MAX_TENSOR_DIM]; ///< Details of each dimension
+  DataType data_type; ///< Data type
 
   bool operator==(const ParallelTensorShape& other) const;
   bool operator!=(const ParallelTensorShape& other) const;
@@ -72,6 +91,7 @@ struct ParallelTensorShape {
   std::unordered_map<int, int> get_mv_dim_to_tensor_dim_mapping() const;
   std::unordered_map<int, int> get_tensor_dim_to_mv_dim_mapping() const;
 };
+
 std::ostream& operator<<(std::ostream&, ParallelTensorShape const &);
 
 }; // namespace FlexFlow
@@ -87,6 +107,12 @@ namespace FlexFlow {
 
 class FFConfig;
 
+/**
+ * @brief Base structure of the parallel tensor representation.
+ *
+ * @details Parallel tensor is the fundamental component to support the representation and
+ * exploration of parallelization strategies.
+ */
 struct ParallelTensorBase {
   static constexpr ParallelTensorBase* NO_TENSOR = nullptr;
   ParallelTensorBase(void) = default;
