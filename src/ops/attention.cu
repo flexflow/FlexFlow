@@ -49,8 +49,7 @@ void MultiHeadAttention::forward_kernel_wrapper(const MultiHeadAttentionMeta* m,
                                                 const float* value_ptr,
                                                 const float* weight_ptr,
                                                 float* output_ptr)
-{
-  return;
+{  
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
       
