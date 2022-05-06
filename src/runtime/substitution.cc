@@ -498,7 +498,6 @@ void GraphXfer::find_matches(Graph const *graph, std::vector<GraphXferMatch>& ma
   this->find_matches(0, graph, matches);
 }
 
-
 void GraphXfer::find_matches(int depth, Graph const *graph, std::vector<GraphXferMatch>& matches) {
   log_xfer_matches.spew() << "find_matches at depth: " << depth;
   if (depth >= (int)srcOps.size()) {
@@ -1831,7 +1830,7 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph, Si
     log_xfers.info("[%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)",
            counter, cur_graph->optimal_cost(), best_cost, candidates.size());
 
-    log_xfers.warning() << "Considering " << xfers.size() << " possible xfers";
+    log_xfers.debug() << "Considering " << xfers.size() << " possible xfers";
     for (size_t i = 0; i < xfers.size(); i++) {
       int num_matches_found = 0,
           num_matches_rejected = 0;
