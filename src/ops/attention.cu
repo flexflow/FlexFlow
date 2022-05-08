@@ -50,7 +50,6 @@ void MultiHeadAttention::forward_kernel_wrapper(const MultiHeadAttentionMeta* m,
                                                 const float* weight_ptr,
                                                 float* output_ptr)
 {
-  return;
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
       
@@ -89,7 +88,6 @@ void MultiHeadAttention::backward_kernel(const MultiHeadAttentionMeta* m,
                                          const float* output_grad_ptr,
                                          cudaStream_t stream)
 {
-  return;
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   checkCUDNN(cudnnMultiHeadAttnBackwardData(m->handle.dnn,
