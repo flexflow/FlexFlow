@@ -1,4 +1,9 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/**
+ * @file noop.cc
+ * @brief Implement the NoOp operator.
+ *
+ * @copyright Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford
+ * (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,38 +18,41 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/noop.h"
+// It is very unfortunate that we have to include model.h before noop.h here.
+// The reason is that model.h contains too many types both above and below the
+// abstraction level of NoOp. Ideally, model.h should be split into multiple
+// headers to separate abstractions and improve compilation speed.
+#include "flexflow/model.h"
+
 #include "flexflow/utils/hash_utils.h"
+#include "flexflow/ops/noop.h"
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
 using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
-using Legion::Predicate;
+using Legion::Context;
 using Legion::coord_t;
-using Legion::Memory;
-using Legion::Machine;
+using Legion::Domain;
+using Legion::FutureMap;
+using Legion::IndexLauncher;
 using Legion::InlineLauncher;
-using Legion::LogicalRegion;
 using Legion::LogicalPartition;
+using Legion::LogicalRegion;
+using Legion::Machine;
+using Legion::Memory;
+using Legion::PhysicalRegion;
+using Legion::Predicate;
+using Legion::Rect;
+using Legion::RegionRequirement;
+using Legion::Runtime;
+using Legion::Task;
+using Legion::TaskArgument;
+using Legion::TaskLauncher;
 
-NoOp::NoOp(FFModel& model,
-           OperatorType _type,
-           const ParallelTensor _output,
+NoOp::NoOp(FFModel& model, OperatorType _type, const ParallelTensor _output,
            const char* _name)
-: Op(model, _type, _name, 0/*inputs*/, 0/*weights*/, 1/*outputs*/),
-  input_tensor_guid(0)
-{
+    : Op(model, _type, _name, 0 /*inputs*/, 0 /*weights*/, 1 /*outputs*/),
+      input_tensor_guid(0) {
   // NOOP takes one input and has one output
   // both of them are _output
   if (op_type == OP_NOOP) {
@@ -56,14 +64,10 @@ NoOp::NoOp(FFModel& model,
   outputs[0]->owner_idx = 0;
 }
 
-NoOp::NoOp(FFModel& model,
-           OperatorType _type,
-           size_t _input_tensor_guid,
-           const ParallelTensor _output,
-           const char* _name)
-: Op(model, _type, _name, 0/*inputs*/, 0/*weights*/, 1/*outputs*/),
-  input_tensor_guid(_input_tensor_guid)
-{
+NoOp::NoOp(FFModel& model, OperatorType _type, size_t _input_tensor_guid,
+           const ParallelTensor _output, const char* _name)
+    : Op(model, _type, _name, 0 /*inputs*/, 0 /*weights*/, 1 /*outputs*/),
+      input_tensor_guid(_input_tensor_guid) {
   // NOOP takes one input and has one output
   // both of them are _output
   if (op_type == OP_NOOP) {
@@ -75,23 +79,20 @@ NoOp::NoOp(FFModel& model,
   outputs[0]->owner_idx = 0;
 }
 
-OpMeta* NoOp::init_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
-                        Context ctx, Runtime* runtime)
-{
-  FFHandler handle = *((const FFHandler*) task->local_args);
+OpMeta* NoOp::init_task(const Task* task,
+                        const std::vector<PhysicalRegion>& regions, Context ctx,
+                        Runtime* runtime) {
+  FFHandler handle = *((const FFHandler*)task->local_args);
   OpMeta* m = new OpMeta(handle);
   return m;
 }
 
-void NoOp::init(const FFModel& ff)
-{
+void NoOp::init(const FFModel& ff) {
   parallel_is = outputs[0]->parallel_is;
   // For OP_INPUT, initialize tensor to zero
   if (op_type == OP_INPUT) {
     assert(outputs[0]->region != LogicalRegion::NO_REGION);
-    if (outputs[0]->part == LogicalPartition::NO_PART)
-      return;
+    if (outputs[0]->part == LogicalPartition::NO_PART) return;
     ConstantInitializer* initializer = NULL;
     if (outputs[0]->data_type == DT_FLOAT) {
       initializer = new ConstantInitializer(0.0f);
@@ -103,13 +104,14 @@ void NoOp::init(const FFModel& ff)
     Runtime* runtime = ff.config.lg_hlr;
     Context ctx = ff.config.lg_ctx;
     ArgumentMap argmap;
-    IndexLauncher launcher(CONSTANT_INIT_TASK_ID, parallel_is,
-                           TaskArgument(initializer, sizeof(ConstantInitializer)), argmap,
-                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           outputs[0]->machine_view.hash());
+    IndexLauncher launcher(
+        CONSTANT_INIT_TASK_ID, parallel_is,
+        TaskArgument(initializer, sizeof(ConstantInitializer)), argmap,
+        Predicate::TRUE_PRED, false /*must*/, 0 /*mapper_id*/,
+        outputs[0]->machine_view.hash());
     launcher.add_region_requirement(
-        RegionRequirement(outputs[0]->part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+        RegionRequirement(outputs[0]->part, 0 /*projection id*/, WRITE_ONLY,
+                          EXCLUSIVE, outputs[0]->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   } else if (op_type == OP_WEIGHT) {
@@ -118,8 +120,8 @@ void NoOp::init(const FFModel& ff)
     Runtime* runtime = ff.config.lg_hlr;
     set_argumentmap_for_init(ff, argmap);
     IndexLauncher launcher(NOOP_INIT_TASK_ID, parallel_is,
-                           TaskArgument(NULL, 0), argmap,
-                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           TaskArgument(NULL, 0), argmap, Predicate::TRUE_PRED,
+                           false /*must*/, 0 /*mapper_id*/,
                            outputs[0]->machine_view.hash());
     FutureMap fm = runtime->execute_index_space(ctx, launcher);
     fm.wait_all_results();
@@ -127,35 +129,29 @@ void NoOp::init(const FFModel& ff)
   }
 }
 
-void NoOp::forward(const FFModel& ff)
-{}
+void NoOp::forward(const FFModel& ff) {}
 
-void NoOp::backward(const FFModel& ff)
-{}
+void NoOp::backward(const FFModel& ff) {}
 
-bool NoOp::measure_operator_cost(
-    Simulator* sim,
-    const MachineView& mv,
-    CostMetrics& cost_metrics) const {
+bool NoOp::measure_operator_cost(Simulator* sim, const MachineView& mv,
+                                 CostMetrics& cost_metrics) const {
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
   cost_metrics.memory_requirement = 0;
   return true;
 }
 
-size_t NoOp::get_params_hash() const {
-  size_t hash = 0;
-  for (int i = 0; i < this->numInputs; i++) {
-    hash_combine(hash, this->inputs[i]);
+// TODO: optimize the performance
+NoOpParams NoOp::get_params() const {
+  auto vec = std::vector<ParallelTensor>{};
+  for (auto i = 0; i < numInputs; i++) {
+    vec.emplace_back(inputs[i]);
   }
-  hash_combine(hash, this->op_type);
-
-  return hash;
+  return NoOpParams{vec, op_type};
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_noop_node(const ParallelTensor input)
-{
+Node FFModel::get_or_create_noop_node(const ParallelTensor input) {
   size_t hash = input->get_owner_independent_hash();
   NoOp* noop = NULL;
   const auto& it = cached_noop_ops.find(hash);
@@ -166,14 +162,14 @@ Node FFModel::get_or_create_noop_node(const ParallelTensor input)
     cached_noop_ops[hash] = noop;
   }
   Node ret;
-  ret.guid = node_global_guid ++;
+  ret.guid = node_global_guid++;
   ret.ptr = noop;
   return ret;
 }
 
-Node FFModel::get_or_create_input_node(const ParallelTensorShape& output_shape)
-{
-  size_t hash = std::hash<ParallelTensorShape>{}(output_shape); 
+Node FFModel::get_or_create_input_node(
+    const ParallelTensorShape& output_shape) {
+  size_t hash = std::hash<ParallelTensorShape>{}(output_shape);
   NoOp* input = NULL;
   const auto& it = cached_input_ops.find(hash);
   if (it != cached_input_ops.end()) {
@@ -181,7 +177,7 @@ Node FFModel::get_or_create_input_node(const ParallelTensorShape& output_shape)
   } else {
     ParallelTensor tensor = new ParallelTensorBase();
     tensor->parallel_tensor_guid = parallel_tensor_global_guid++;
-    tensor->data_type = DT_FLOAT; // TODO FIXME @lockshaw
+    tensor->data_type = DT_FLOAT;  // TODO FIXME @lockshaw
     tensor->num_dims = output_shape.num_dims;
     int parallel_idx = 0;
     for (int i = 0; i < output_shape.num_dims; i++) {
@@ -194,16 +190,16 @@ Node FFModel::get_or_create_input_node(const ParallelTensorShape& output_shape)
         tensor->dims[i].parallel_idx = -1;
       }
     }
-    assert (tensor->check_valid());
+    assert(tensor->check_valid());
     input = new NoOp(*this, OP_INPUT, tensor, NULL);
   }
 
   return this->new_node(input);
 }
 
-tl::optional<RecordFormatter> NoOp::as_dot() const { 
+tl::optional<RecordFormatter> NoOp::as_dot() const {
   RecordFormatter rf;
-  { 
+  {
     std::ostringstream oss;
     oss << "shape(" << this->outputs[0]->get_shape() << ")";
     rf << oss.str();
@@ -211,4 +207,4 @@ tl::optional<RecordFormatter> NoOp::as_dot() const {
   return rf;
 }
 
-}; // namespace FlexFlow
+};  // namespace FlexFlow

@@ -1,4 +1,8 @@
-/* Copyright 2020 Stanford
+/**
+ * @file simulator.cc
+ * @brief 
+ * 
+ * @copyright Copyright 2020 Stanford
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -482,12 +486,32 @@ ParallelConfig Op::view_to_pc(MachineView const &view) const {
   return config;
 }
 
+/**
+ * @brief Try to get the operator's parameters.
+ *
+ * @note This function can be improved to avoid forcibly casting the const Op*
+ * to a specific operator pointer type. Ideally, this should be implemented as a
+ * dynamic dispatch on the Op base class (i.e. define a get_params() virtual
+ * function on Op class).
+ *
+ * To avoid the forcibly casting from a const Op pointer to a specific operator
+ * pointer. Developers may use
+ * `dynamic_cast<SpecificOp*>((const_cast<Op*>(op)))->get_params()` as the
+ * return value. For example:
+ * `dynamic_cast<NoOp*>((const_cast<Op*>(op)))->get_params()`. However, it is
+ * too long and not obvious.
+ *
+ * @param op A const pointer to Op
+ * @return tl::optional<OperatorParameters> An option to hold the parameters.
+ */
 tl::optional<OperatorParameters> get_op_parameters(const Op* op) {
   switch (op->op_type) {
     case OP_LINEAR:
       return ((Linear*)op)->get_params();
     case OP_CONV2D:
       return ((Conv2D*)op)->get_params();
+    case OP_NOOP:
+      return ((NoOp*)op)->get_params();
     default:
       return tl::nullopt;
   }
