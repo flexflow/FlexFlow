@@ -854,7 +854,7 @@ public:
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
-  std::unordered_map<size_t, NoOp*> cached_input_ops;
+  std::unordered_map<ParallelTensorShape, NoOp*> cached_input_ops;
   std::unordered_map<size_t, Cast*> cached_cast_ops;
   std::unordered_map<size_t, Concat*> cached_concat_ops;
   std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>, Conv2D*> cached_conv2d_ops;
