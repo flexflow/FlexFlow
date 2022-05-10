@@ -1398,7 +1398,24 @@ OpX *create_opx(sl::Operator const &op, TensorX const &input1, TensorX const &in
     return opx;
 }
 
-std::vector<OpX *> create_rule_graph(std::vector<sl::Operator> const &ops, std::function<TensorX(int, int)> const &get_input_tensor) {
+OpX* find_opx_with_type(std::vector<OpX*> const &src_ops,
+                        OperatorType op_type)
+{
+  OpX* matchOpX = nullptr;
+  for (size_t k = 0; k < src_ops.size(); k++) {
+    if (src_ops[k]->type == op_type) {
+      assert(matchOpX == nullptr);
+      matchOpX = src_ops[k];
+    }
+  }
+  assert(matchOpX != nullptr);
+  return matchOpX;
+}
+
+std::vector<OpX *> create_rule_graph(GraphXfer& xfer,
+                                     std::vector<sl::Operator> const &ops,
+                                     std::function<TensorX(int, int)> const &get_input_tensor,
+                                     std::vector<OpX*>* const src_ops) {
     std::vector<OpX *> rule_graph;
 
     for (int i = 0; i < ops.size(); i++) {
@@ -1416,7 +1433,26 @@ std::vector<OpX *> create_rule_graph(std::vector<sl::Operator> const &ops, std::
             }
         }
 
-        OpX *opx = create_opx(ops[i], inputs[0], inputs[1], inputs[2], inputs[3]);
+        // We need the matched OpX for constructing conv2d/pool2d/linear
+        OpX *opx = nullptr;
+        switch (ops[i].op_type) {
+          case OP_CONV2D:
+          {
+            OpX* matchOpX = src_ops == nullptr ?
+                nullptr : find_opx_with_type(*src_ops, ops[i].op_type);
+            opx = xfer.create_conv2d(inputs[0], matchOpX);
+            break;
+          }
+          case OP_POOL2D:
+          {
+            OpX* matchOpX = src_ops == nullptr ?
+                nullptr : find_opx_with_type(*src_ops, ops[i].op_type);
+            opx = xfer.create_pool2d(inputs[0], matchOpX);
+            break;
+          }
+          default:
+            opx = create_opx(ops[i], inputs[0], inputs[1], inputs[2], inputs[3]);
+        }
         rule_graph.push_back(opx);
     }
 
@@ -1432,9 +1468,12 @@ void create_xfer(GraphXfer &xfer, sl::Rule const &r) {
         return input_tensors.at({opId, tsId});
     };
 
-    xfer.srcOps = create_rule_graph(r.srcOp, get_input_tensor);
-    xfer.dstOps = create_rule_graph(r.dstOp, get_input_tensor);
+    xfer.srcOps = create_rule_graph(xfer, r.srcOp, get_input_tensor, nullptr);
+    xfer.dstOps = create_rule_graph(xfer, r.dstOp, get_input_tensor, &xfer.srcOps);
     xfer.name = r.name;
+    if (xfer.srcOps.size() == 1) {
+      printf("Here!\n");
+    }
     
     for (sl::MapOutput const &m : r.mappedOutput) {
         TensorX srcTensorX = xfer.srcOps[m.srcOpId]->outputs[m.srcTsId];
@@ -1511,7 +1550,6 @@ void GraphSearchHelper::generate_all_pcg_xfers()
 
     log_xfers.debug() << oss.str();
   }
-
   for (int num_dims = 3; num_dims <= 4; num_dims++) {
     all_pcg_xfers.push_back(create_linear_relu_merge(this->model, num_dims, true));
     all_pcg_xfers.push_back(create_linear_relu_merge(this->model, num_dims, false));
