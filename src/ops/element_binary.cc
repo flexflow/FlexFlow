@@ -1,6 +1,7 @@
 #include "flexflow/ops/element_binary.h"
 #include "legion/legion_utilities.h"
 #include "flexflow/utils/hash_utils.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
   
@@ -96,6 +97,10 @@ Tensor FFModel::divide(const Tensor in1,
   return this->binary(OP_EW_DIV, in1, in2, inplace_a, name);
 }
 
+bool operator==(const ElementBinaryParams& lhs, const ElementBinaryParams& rhs) {
+  return lhs.type == rhs.type;
+}
+
 ElementBinary::ElementBinary(FFModel& model,
                              OperatorType _op_type,
                              const ParallelTensor in1,
@@ -140,6 +145,12 @@ ElementBinary::ElementBinary(FFModel& model,
   broadcast_input1 = (inputs[0]->get_volume() != outputs[0]->get_volume());
   broadcast_input2 = (inputs[1]->get_volume() != outputs[0]->get_volume());
 }
+
+ElementBinary::ElementBinary(FFModel& model,
+                             const ElementBinaryParams& params,
+                             const std::vector<ParallelTensor>& inputs,
+                             const char* name)
+  : ElementBinary(model, params.type, inputs[0], inputs[1], false, name) {}
 
 bool ElementBinary::can_inplace_output(void)
 {
@@ -544,14 +555,6 @@ void ElementBinary::backward_task(const Task *task,
   ElementBinary::backward_kernel_wrapper(m, out_grad_ptr, in0_ptr, in1_ptr, in0_grad_ptr, in1_grad_ptr);
 }
 
-size_t ElementBinary::get_params_hash() const {
-  size_t hash = this->inputs[0]->get_owner_independent_hash();
-  hash_combine(hash, this->inputs[1]->get_owner_independent_hash());
-  hash_combine(hash, this->op_type);
-
-  return hash;
-}
-
 bool ElementBinary::measure_operator_cost(
     Simulator* sim,
     const MachineView& mv,
@@ -623,26 +626,35 @@ bool ElementBinary::measure_operator_cost(
   return true;
 }
 
+ElementBinaryParams ElementBinary::get_params() const {
+  ElementBinaryParams params;
+  params.type = op_type;
+  return params;
+}
+
 using PCG::Node;
 Node FFModel::get_or_create_element_binary_node(const ParallelTensor input1,
                                                 const ParallelTensor input2,
                                                 OperatorType op_type)
 {
-  size_t hash = input1->get_owner_independent_hash();
-  hash = hash * 31 + input2->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(op_type);
-  const auto& it = cached_element_binary_ops.find(hash);
-  ElementBinary* eb = NULL;
-  if (it != cached_element_binary_ops.end()) {
-    eb = it->second;
-  } else {
-    eb = new ElementBinary(*this, op_type, input1, input2, false/*inplace*/, NULL);
-    cached_element_binary_ops[hash] = eb;
-  }
-  Node ret;
-  ret.guid = node_global_guid ++;
-  ret.ptr = eb;
-  return ret;
+  std::vector<ParallelTensor> inputs{input1, input2};
+  ElementBinaryParams params;
+  params.type = op_type;
+
+  return get_or_create_node<ElementBinary>(inputs, params);
+}
+
+template <>
+std::unordered_map<std::pair<ParallelTensorShapes, ElementBinaryParams>, ElementBinary*> &FFModel::get_cache_multi_inputs() {
+  return this->cached_element_binary_ops;
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+  size_t hash<FlexFlow::ElementBinaryParams>::operator()(const FlexFlow::ElementBinaryParams& params) const {
+    size_t key = 0;
+    hash_combine(key, params.type);
+    return key;
+  }
+}; // namespace std

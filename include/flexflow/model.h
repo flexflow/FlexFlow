@@ -887,7 +887,7 @@ public:
   std::unordered_map<std::pair<ParallelTensorShapes, ConcatParams>, Concat*> cached_concat_ops;
   std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>, Conv2D*> cached_conv2d_ops;
   std::unordered_map<size_t, Dropout*> cached_dropout_ops;
-  std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;
+  std::unordered_map<std::pair<ParallelTensorShapes, ElementBinaryParams>, ElementBinary*> cached_element_binary_ops;
   std::unordered_map<size_t, ElementUnary*> cached_element_unary_ops;
   std::unordered_map<size_t, Embedding*> cached_embedding_ops;
   std::unordered_map<std::pair<ParallelTensorShape, LinearParams>, Linear*> cached_linear_ops;
