@@ -16,6 +16,7 @@
 #include "flexflow/ops/concat.h"
 #include "legion/legion_utilities.h"
 #include "flexflow/utils/hash_utils.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
 
@@ -35,6 +36,22 @@ using Legion::TaskArgument;
 using Legion::RegionRequirement;
 using Legion::Predicate;
 using PCG::Node;
+
+
+template <>
+std::unordered_map<std::pair<ParallelTensorShapes, ConcatParams>, Concat*> &FFModel::get_cache_multi_inputs() {
+  return this->cached_concat_ops;
+}
+
+bool operator==(const ConcatParams &lhs, const ConcatParams &rhs) {
+  return lhs.axis == rhs.axis;
+}
+
+ConcatParams Concat::get_params() const {
+  ConcatParams params;
+  params.axis = legion_axis;
+  return params;
+}
 
 Tensor FFModel::concat(int n,
                        const Tensor* tensors,
@@ -113,6 +130,12 @@ Concat::Concat(FFModel& model,
   numOutputs = 1;
   outputs[0] = model.create_parallel_tensor_legion_ordering(num_dim, dims, inputs[0]->data_type, this);
 }
+
+Concat::Concat(FFModel& model,
+               const ConcatParams& params,
+               const std::vector<ParallelTensor>& inputs,
+               const char* name)
+  : Concat(model, inputs.size(), inputs.data(), params.axis, name) {}
 
 void Concat::init_meta(ConcatMeta *m) const
 {
@@ -370,32 +393,21 @@ Node FFModel::get_or_create_concat_node(int num_inputs,
                                         const ParallelTensor* inputs,
                                         int legion_axis)
 {
-  size_t hash = std::hash<int>()(num_inputs);
-  hash = hash * 31 + std::hash<int>()(legion_axis);
-  for (int i = 0; i < num_inputs; i++)
-    hash = hash * 31 + inputs[i]->get_owner_independent_hash();
-  const auto& it = cached_concat_ops.find(hash);
-  Concat* concat = NULL;
-  if (it != cached_concat_ops.end()) {
-    concat = it->second;
-  } else {
-    concat = new Concat(*this, num_inputs, inputs, legion_axis, NULL);
-    cached_concat_ops[hash] = concat;
-  }
-  Node ret;
-  ret.guid = node_global_guid ++;
-  ret.ptr = concat;
-  return ret;
-}
-
-size_t Concat::get_params_hash() const {
-  size_t hash = std::hash<int>()(this->numInputs);
-  hash_combine(hash, this->legion_axis);
-  for (int i = 0; i < this->numInputs; i++) {
-    hash_combine(hash, inputs[0]->get_owner_independent_hash());
+  std::vector<ParallelTensor> _inputs;
+  for (int i = 0; i < num_inputs; ++i) {
+    _inputs.push_back(inputs[i]);
   }
 
-  return hash;
+  ConcatParams params;
+  params.axis = legion_axis;
+
+  return this->get_or_create_node<Concat>(_inputs, params);
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+  size_t hash<FlexFlow::ConcatParams>::operator()(const FlexFlow::ConcatParams &params) const {
+    return hash<int>{}(params.axis);
+  }
+}; // namespace std

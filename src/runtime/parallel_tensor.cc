@@ -581,6 +581,14 @@ namespace std {
     }
     return key;
   }
+  size_t hash<FlexFlow::ParallelTensorShapes>::operator()(FlexFlow::ParallelTensorShapes const &shapes) const {
+    size_t key = 0;
+    hash_combine(key, shapes.size());
+    for (const auto& shape : shapes) {
+      hash_combine(key, shape);
+    }
+    return key;
+  }
 };
 
 namespace FlexFlow {

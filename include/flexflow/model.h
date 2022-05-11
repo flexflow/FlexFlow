@@ -639,7 +639,35 @@ public:
   }
 
   template <typename T>
+  PCG::Node get_or_create_node(const std::vector<ParallelTensor>& inputs, typename T::Params const& params) {
+    using Params = typename T::Params;
+
+    ParallelTensorShapes input_shapes;
+    for (const auto& input : inputs) {
+      input_shapes.push_back(input->get_shape());
+    }
+
+    T* op = nullptr;
+
+    std::pair<ParallelTensorShapes, Params> key{input_shapes, params};
+    auto &cache = this->get_cache_multi_inputs<T>();
+    const auto &it = cache.find(key);
+    if (it != cache.end()) {
+      op = it->second;
+    } else {
+      op = new T(*this, params, inputs, NULL);
+      cache[key] = op;
+    }
+
+    assert(op->get_params() == params);
+    return this->new_node(op);
+  }
+
+  template <typename T>
   std::unordered_map<std::pair<ParallelTensorShape, typename T::Params>, T*> &get_cache();
+
+  template <typename T>
+  std::unordered_map<std::pair<ParallelTensorShapes, typename T::Params>, T*> &get_cache_multi_inputs();
 
   PCG::Node get_or_create_noop_node(const ParallelTensor input);
   PCG::Node get_or_create_input_node(const ParallelTensorShape&);
@@ -856,7 +884,7 @@ public:
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
   std::unordered_map<size_t, NoOp*> cached_input_ops;
   std::unordered_map<size_t, Cast*> cached_cast_ops;
-  std::unordered_map<size_t, Concat*> cached_concat_ops;
+  std::unordered_map<std::pair<ParallelTensorShapes, ConcatParams>, Concat*> cached_concat_ops;
   std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>, Conv2D*> cached_conv2d_ops;
   std::unordered_map<size_t, Dropout*> cached_dropout_ops;
   std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;

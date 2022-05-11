@@ -99,12 +99,18 @@ struct ParallelTensorShape {
 
 std::ostream& operator<<(std::ostream&, ParallelTensorShape const &);
 
+typedef std::vector<ParallelTensorShape> ParallelTensorShapes;
+
 }; // namespace FlexFlow
 
 namespace std {
   template <>
   struct hash<FlexFlow::ParallelTensorShape> {
     size_t operator()(FlexFlow::ParallelTensorShape const &) const;
+  };
+  template <>
+  struct hash<FlexFlow::ParallelTensorShapes> {
+    size_t operator()(FlexFlow::ParallelTensorShapes const &) const;
   };
 }
 

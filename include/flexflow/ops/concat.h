@@ -1,9 +1,20 @@
 #ifndef _FLEXFLOW_CONCAT_H
 #define _FLEXFLOW_CONCAT_H
 
-#include "flexflow/model.h"
+#include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/node.h"
+#include "flexflow/device.h"
+#include "flexflow/layer.h"
 
 namespace FlexFlow {
+
+struct ConcatParams {
+  int axis;
+
+  friend bool operator==(const ConcatParams&, const ConcatParams&);
+};
 
 class ConcatMeta : public OpMeta {
 public:
@@ -14,10 +25,16 @@ public:
 
 class Concat : public Op {
 public:
+  using Params = ConcatParams;
+
   Concat(FFModel& model,
          int n,
          const ParallelTensor* inputs,
          int axis,
+         const char* name);
+  Concat(FFModel& model,
+         const ConcatParams& params,
+         const std::vector<ParallelTensor>& inputs,
          const char* name);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
@@ -70,11 +87,20 @@ public:
                              const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
 
-  size_t get_params_hash() const override;
+  // size_t get_params_hash() const override;
+
+  Params get_params() const;
 public:
   int legion_axis;
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+  template <>
+  struct hash<FlexFlow::ConcatParams> {
+    size_t operator()(const FlexFlow::ConcatParams&) const;
+  };
+}; // namespace std
 
 #endif // _FLEXFLOW_CONCAT_H
