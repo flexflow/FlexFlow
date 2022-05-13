@@ -1341,7 +1341,12 @@ int get_num_inputs(sl::Operator const &op) {
     }
 }
 
-OpX *create_opx(sl::Operator const &op, TensorX const &input1, TensorX const &input2, TensorX const &input3, TensorX const &input4) {
+OpX *create_opx(sl::Operator const &op,
+                int parallel_degree,
+                TensorX const &input1,
+                TensorX const &input2,
+                TensorX const &input3,
+                TensorX const &input4) {
     int num_inputs = get_num_inputs(op);
     int num_outputs = get_num_outputs(op);
     
@@ -1365,7 +1370,9 @@ OpX *create_opx(sl::Operator const &op, TensorX const &input1, TensorX const &in
           }
 
           if (degree_key.has_value()) {
-            opx->add_pm_constraint(COMPARE_EQ, degree_key.value(), p.value);
+            // Assume the generator only consider a parallel degree of 2
+            assert(p.value == 2);
+            opx->add_pm_constraint(COMPARE_EQ, degree_key.value(), parallel_degree);
           }
         } else if (p.key == PM_PARALLEL_DIM) {
           tl::optional<PMParameter> dim_key = tl::nullopt;
@@ -1415,7 +1422,8 @@ OpX* find_opx_with_type(std::vector<OpX*> const &src_ops,
 std::vector<OpX *> create_rule_graph(GraphXfer& xfer,
                                      std::vector<sl::Operator> const &ops,
                                      std::function<TensorX(int, int)> const &get_input_tensor,
-                                     std::vector<OpX*>* const src_ops) {
+                                     std::vector<OpX*>* const src_ops,
+                                     int parallel_degree) {
     std::vector<OpX *> rule_graph;
 
     for (int i = 0; i < ops.size(); i++) {
@@ -1451,7 +1459,7 @@ std::vector<OpX *> create_rule_graph(GraphXfer& xfer,
             break;
           }
           default:
-            opx = create_opx(ops[i], inputs[0], inputs[1], inputs[2], inputs[3]);
+            opx = create_opx(ops[i], parallel_degree, inputs[0], inputs[1], inputs[2], inputs[3]);
         }
         rule_graph.push_back(opx);
     }
@@ -1459,7 +1467,7 @@ std::vector<OpX *> create_rule_graph(GraphXfer& xfer,
     return rule_graph;
 }
 
-void create_xfer(GraphXfer &xfer, sl::Rule const &r) {
+void create_xfer(GraphXfer &xfer, sl::Rule const &r, int parallel_degree) {
     std::unordered_map<std::pair<int, int>, TensorX> input_tensors;
     std::function<TensorX(int,int)> get_input_tensor = [&xfer, &input_tensors](int opId, int tsId) -> TensorX {
         if (input_tensors.find({opId, tsId}) == input_tensors.end()) {
@@ -1468,8 +1476,8 @@ void create_xfer(GraphXfer &xfer, sl::Rule const &r) {
         return input_tensors.at({opId, tsId});
     };
 
-    xfer.srcOps = create_rule_graph(xfer, r.srcOp, get_input_tensor, nullptr);
-    xfer.dstOps = create_rule_graph(xfer, r.dstOp, get_input_tensor, &xfer.srcOps);
+    xfer.srcOps = create_rule_graph(xfer, r.srcOp, get_input_tensor, nullptr, parallel_degree);
+    xfer.dstOps = create_rule_graph(xfer, r.dstOp, get_input_tensor, &xfer.srcOps, parallel_degree);
     xfer.name = r.name;
     if (xfer.srcOps.size() == 1) {
       printf("Here!\n");
@@ -1482,12 +1490,81 @@ void create_xfer(GraphXfer &xfer, sl::Rule const &r) {
     }
 }
 
-std::vector<GraphXfer*> create_xfers(FFModel *model, sl::RuleCollection const &rules) {
+bool check_opxes_have_same_type_and_constraints(const OpX& src_opx, const OpX& dst_opx) {
+  if (src_opx.type != dst_opx.type)
+    return false;
+  if (src_opx.pmConstraints.size() != dst_opx.pmConstraints.size())
+    return false;
+  if (src_opx.tnConstraints.size() != dst_opx.tnConstraints.size())
+    return false;
+  for (const auto& c1 : src_opx.pmConstraints) {
+    bool found_same = false;
+    for (const auto& c2 : dst_opx.pmConstraints) {
+      if (c1.comp == c2.comp && c1.para == c2.para && c1.value == c2.value)
+        found_same = true;
+    }
+    if (!found_same)
+      return false;
+  }
+  for (const auto& c1 : src_opx.tnConstraints) {
+    bool found_same = false;
+    for (const auto& c2 : dst_opx.tnConstraints) {
+      if (c1.singlePara && c2.singlePara) {
+        if (c1.comp == c2.comp && c1.para1 == c2.para1 && c1.dim1 == c2.dim1 && c1.value == c2.value)
+          found_same = true;
+      } else if ((!c1.singlePara) && (!c2.singlePara)) {
+        if (c1.comp == c2.comp && c1.para1 == c2.para1 && c1.para2 == c2.para2
+          && c1.dim1 == c2.dim1 && c1.dim2 == c2.dim2)
+          found_same = true;
+      }
+    }
+    if (!found_same)
+      return false;
+  }
+
+  return true;
+}
+
+std::vector<GraphXfer*> create_xfers(FFModel *model,
+                                     sl::RuleCollection const &rules,
+                                     int parallel_degree) {
     std::vector<GraphXfer*> xfers;
     for (sl::Rule const &r : rules.rules) {
         GraphXfer *xfer = new GraphXfer(model);
-        create_xfer(*xfer, r);
-        xfers.push_back(xfer);
+        create_xfer(*xfer, r, parallel_degree);
+        if (xfer->srcOps.size() == 1 && xfer->dstOps.size() == 1) {
+          delete xfer;
+          continue;
+        }
+        // Pruning redundant xfer
+        bool found_same_xfer = false;
+        for (const auto& old_xfer : xfers) {
+          bool same = true;
+          if (old_xfer->srcOps.size() != xfer->srcOps.size()) {
+            same = false;
+            continue;
+          }
+          for (size_t i = 0; i < old_xfer->srcOps.size(); i++)
+            if (!check_opxes_have_same_type_and_constraints(*old_xfer->srcOps[i], *xfer->srcOps[i]))
+              same = false;
+          if (!same)
+            continue;
+          if (old_xfer->dstOps.size() != xfer->dstOps.size()) {
+            same = false;
+            continue;
+          }
+          for (size_t i = 0; i < old_xfer->dstOps.size(); i++)
+            if (!check_opxes_have_same_type_and_constraints(*old_xfer->dstOps[i], *xfer->dstOps[i]))
+              same = false;
+          if (same) {
+            found_same_xfer = true;
+            break;
+          }
+        }
+        if (!found_same_xfer && xfer->srcOps.size() == 1)
+          xfers.push_back(xfer);
+        else
+          delete(xfer);
     }
     return xfers;
 }
@@ -1526,21 +1603,6 @@ void GraphSearchHelper::generate_all_pcg_xfers()
       all_parallel_degrees.push_back(i * workersPerNode);
     }
   }
-  for (const auto& it : single_node_parallel_degrees) {
-    all_pcg_xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_RELU, false));
-    all_pcg_xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_SIGMOID, false));
-    all_pcg_xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_NONE, false));
-    if (16 % it == 0) {
-      all_pcg_xfers.push_back(create_replicate_attention_reduce(this->model, 16/*num_heads*/, it));
-    }
-  }
-
-  if (config.substitution_json_path.has_value()) {
-    sl::RuleCollection rule_collection = sl::load_rule_collection_from_path(config.substitution_json_path.value());
-    std::vector<GraphXfer*> xfers = create_xfers(this->model, rule_collection);
-    all_pcg_xfers.insert(all_pcg_xfers.end(), xfers.begin(), xfers.end());
-  }
-
   {
     std::ostringstream oss;
     oss << "Generating all_pcg_xfers for all parallel degrees: ";
@@ -1550,48 +1612,74 @@ void GraphSearchHelper::generate_all_pcg_xfers()
 
     log_xfers.debug() << oss.str();
   }
-  for (int num_dims = 3; num_dims <= 4; num_dims++) {
-    all_pcg_xfers.push_back(create_linear_relu_merge(this->model, num_dims, true));
-    all_pcg_xfers.push_back(create_linear_relu_merge(this->model, num_dims, false));
-  }
-  for (const int degree : all_parallel_degrees) {
-    create_mapping_xfers<Conv2D>(this->model, degree, all_pcg_xfers);
-    create_mapping_xfers<Pool2D>(this->model, degree, all_pcg_xfers);
-    create_mapping_xfers<Flat>(this->model, degree, all_pcg_xfers);
+
+  for (const auto& it : single_node_parallel_degrees) {
+    all_pcg_xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_RELU, false));
+    all_pcg_xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_SIGMOID, false));
+    all_pcg_xfers.push_back(create_replicate_linear_combine(this->model, 3, it, AC_MODE_NONE, false));
+    if (16 % it == 0) {
+      all_pcg_xfers.push_back(create_replicate_attention_reduce(this->model, 16/*num_heads*/, it));
+    }
   }
   for (const auto& it : all_parallel_degrees) {
     all_pcg_xfers.push_back(create_partition_attention_combine(this->model, 16/*num_heads*/, it));
-    // rewrites for the inception model
-    for (int i = 3; i <= 6; i++) {
-      all_pcg_xfers.push_back(create_combine_inception(this->model, i-1/*num_convs*/, 5/*num_dims*/, it));
-      all_pcg_xfers.push_back(create_combine_concat(this->model, i/*num_inputs*/, 5/*num_dims*/, it));
+  }
+
+  if (config.substitution_json_path.has_value()) {
+    // Currently only consider a subset of all_parallel_degrees
+    std::vector<int> considered_parallel_degrees;
+    considered_parallel_degrees.push_back(workersPerNode);
+    if (numNodes > 1)
+      considered_parallel_degrees.push_back(numNodes * workersPerNode);
+    sl::RuleCollection rule_collection = sl::load_rule_collection_from_path(config.substitution_json_path.value());
+    for (int degree : considered_parallel_degrees) {
+      std::vector<GraphXfer*> xfers = create_xfers(this->model, rule_collection, degree);
+      all_pcg_xfers.insert(all_pcg_xfers.end(), xfers.begin(), xfers.end());
     }
-    //all_pcg_xfers.push_back(create_partition_conv2d_combine(this->model, 5/*num_dims*/, it));
-    all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_RELU, false));
-    all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_SIGMOID, false));
-    all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_NONE, false));
-    all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_RELU, false));
-    all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_SIGMOID, false));
-    all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_NONE, false));
-    all_pcg_xfers.push_back(create_partition_add_combine(this->model, 1/*parallel_dims*/, it/*num_parts*/));
-    all_pcg_xfers.push_back(create_partition_add_combine(this->model, 2/*parallel_dims*/, it/*num_parts*/));
-    all_pcg_xfers.push_back(create_partition_add_combine(this->model, 3/*parallel_dims*/, it/*num_parts*/));
-    all_pcg_xfers.push_back(create_partition_add_combine(this->model, 4/*parallel_dims*/, it/*num_parts*/));
-    all_pcg_xfers.push_back(create_partition_relu_combine(this->model, 3/*parallel_dims*/, it/*num_parts*/));
-    all_pcg_xfers.push_back(create_partition_relu_combine(this->model, 4/*parallel_dims*/, it/*num_parts*/));
-    all_pcg_xfers.push_back(create_partition_softmax_combine(this->model, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
-    for (int num_combines = 1; num_combines < 5; num_combines++) {
-      all_pcg_xfers.push_back(leading_relu_branch_combine(this->model, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
-      all_pcg_xfers.push_back(leading_relu_branch_partition(this->model, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
+  } else {
+    // Manual substitutions
+    for (int num_dims = 3; num_dims <= 4; num_dims++) {
+      all_pcg_xfers.push_back(create_linear_relu_merge(this->model, num_dims, true));
+      all_pcg_xfers.push_back(create_linear_relu_merge(this->model, num_dims, false));
     }
-    {
-      std::unordered_set<int> concat_num_inputs;
-      for (size_t i = 0; i < this->model->operators.size(); i++)
-        if (this->model->operators[i]->op_type == OP_CONCAT)
-          concat_num_inputs.insert(this->model->operators[i]->numInputs);
-      for (const auto& it2 : concat_num_inputs) {
-        all_pcg_xfers.push_back(create_partition_concat_combine(this->model, it2/*num_inputs*/, 0/*concat_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
-        all_pcg_xfers.push_back(create_partition_concat_combine(this->model, it2/*num_inputs*/, 2/*concat_dim*/, 3/*parallel_dims*/, it/*num_parts*/));
+    for (const int degree : all_parallel_degrees) {
+      create_mapping_xfers<Conv2D>(this->model, degree, all_pcg_xfers);
+      create_mapping_xfers<Pool2D>(this->model, degree, all_pcg_xfers);
+      create_mapping_xfers<Flat>(this->model, degree, all_pcg_xfers);
+    }
+    for (const auto& it : all_parallel_degrees) {
+      // rewrites for the inception model
+      for (int i = 3; i <= 6; i++) {
+        all_pcg_xfers.push_back(create_combine_inception(this->model, i-1/*num_convs*/, 5/*num_dims*/, it));
+        all_pcg_xfers.push_back(create_combine_concat(this->model, i/*num_inputs*/, 5/*num_dims*/, it));
+      }
+      //all_pcg_xfers.push_back(create_partition_conv2d_combine(this->model, 5/*num_dims*/, it));
+      all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_RELU, false));
+      all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_SIGMOID, false));
+      all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 3/*num_dims*/, it, AC_MODE_NONE, false));
+      all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_RELU, false));
+      all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_SIGMOID, false));
+      all_pcg_xfers.push_back(create_partition_linear_combine(this->model, 4/*num_dims*/, it, AC_MODE_NONE, false));
+      all_pcg_xfers.push_back(create_partition_add_combine(this->model, 1/*parallel_dims*/, it/*num_parts*/));
+      all_pcg_xfers.push_back(create_partition_add_combine(this->model, 2/*parallel_dims*/, it/*num_parts*/));
+      all_pcg_xfers.push_back(create_partition_add_combine(this->model, 3/*parallel_dims*/, it/*num_parts*/));
+      all_pcg_xfers.push_back(create_partition_add_combine(this->model, 4/*parallel_dims*/, it/*num_parts*/));
+      all_pcg_xfers.push_back(create_partition_relu_combine(this->model, 3/*parallel_dims*/, it/*num_parts*/));
+      all_pcg_xfers.push_back(create_partition_relu_combine(this->model, 4/*parallel_dims*/, it/*num_parts*/));
+      all_pcg_xfers.push_back(create_partition_softmax_combine(this->model, 0/*softmax_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
+      for (int num_combines = 1; num_combines < 5; num_combines++) {
+        all_pcg_xfers.push_back(leading_relu_branch_combine(this->model, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
+        all_pcg_xfers.push_back(leading_relu_branch_partition(this->model, 3/*parallel_dim*/, it/*num_parts*/, num_combines));
+      }
+      {
+        std::unordered_set<int> concat_num_inputs;
+        for (size_t i = 0; i < this->model->operators.size(); i++)
+          if (this->model->operators[i]->op_type == OP_CONCAT)
+            concat_num_inputs.insert(this->model->operators[i]->numInputs);
+        for (const auto& it2 : concat_num_inputs) {
+          all_pcg_xfers.push_back(create_partition_concat_combine(this->model, it2/*num_inputs*/, 0/*concat_dim*/, 1/*parallel_dims*/, it/*num_parts*/));
+          all_pcg_xfers.push_back(create_partition_concat_combine(this->model, it2/*num_inputs*/, 2/*concat_dim*/, 3/*parallel_dims*/, it/*num_parts*/));
+        }
       }
     }
   }

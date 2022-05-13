@@ -1317,7 +1317,6 @@ Parameter FFModel::create_weight_legion_ordering(
   return create_weight(numdim, c_dims, data_type, layer, create_grad, initializer, sync_type);
 }
 
-
 Parameter FFModel::create_weight(
     int numdim,
     const int dims[],
