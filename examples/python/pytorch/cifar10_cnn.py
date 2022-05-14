@@ -1,6 +1,6 @@
 from flexflow.core import *
 from flexflow.keras.datasets import cifar10
-from flexflow.torch.model import PyTorchModel
+from flexflow.torch.model import file_to_ff
 
 #from accuracy import ModelAccuracy
 
@@ -11,7 +11,7 @@ def top_level_task():
 
   dims_input = [ffconfig.batch_size, 3, 32, 32]
   input_tensor = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
-  output_tensors = PyTorchModel.file_to_ff("cnn.ff", ffmodel, [input_tensor, input_tensor])
+  output_tensors = file_to_ff("cnn.ff", ffmodel, [input_tensor, input_tensor])
 
   t = ffmodel.softmax(output_tensors[0])
 
