@@ -2551,3 +2551,7 @@ class PyTorchModel():
         with open(filename, "w") as f:
             for line in s:
                 f.write(line + "\n")
+
+
+# Make the static method `file_to_ff()` available without importing `torch`
+file_to_ff = PyTorchModel.file_to_ff
