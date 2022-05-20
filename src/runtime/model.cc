@@ -3192,6 +3192,21 @@ PerfMetrics FFModel::update_metrics_task(const Task *task,
   return all_metrics;
 }
 
+template <>
+std::tuple<> FFModel::get_input_shape(const std::tuple<> &) {
+  return std::tuple<>();
+}
+
+template <>
+ParallelTensorShape FFModel::get_input_shape(const ParallelTensor &input) {
+  return input->get_shape();
+}
+
+template <>
+std::pair<ParallelTensorShape, ParallelTensorShape> FFModel::get_input_shape(const std::pair<ParallelTensor, ParallelTensor> &inputs) {
+  return std::make_pair(inputs.first->get_shape(), inputs.second->get_shape());
+}
+
 void Op::prefetch(const FFModel& ff)
 {
   // TODO: perform prefetch for performance imporvement

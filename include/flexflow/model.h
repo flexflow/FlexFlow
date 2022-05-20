@@ -615,22 +615,24 @@ public:
   // Internal PCG::Node creation APIs
   // ========================================
   template <typename T>
-  PCG::Node get_or_create_node(ParallelTensor const input, typename T::Params const &params) {
+  PCG::Node get_or_create_node(typename T::InputType input, typename T::Params const &params) {
     using Params = typename T::Params;  
 
-    if (!params.is_valid(input->get_shape())) {
+    auto input_shapes = get_input_shape<typename T::InputType, typename T::InputShapeType>(input);
+
+    if (!params.is_valid(input_shapes)) {
       return PCG::Node::INVALID_NODE;
     }
 
     T *op = nullptr;
 
-    std::pair<ParallelTensorShape, Params> key{input->get_shape(), params};
+    std::pair<typename T::InputShapeType, Params> key{input_shapes, params};
     auto &cache = this->get_cache<T>();
     const auto &it = cache.find(key);
     if (it != cache.end()) {
       op = it->second;
     } else {
-      op = new T(*this, params, input, false, NULL);
+      op = new T(*this, params, input, NULL);
       cache[key] = op;
     }
 
@@ -639,35 +641,7 @@ public:
   }
 
   template <typename T>
-  PCG::Node get_or_create_node(const std::vector<ParallelTensor>& inputs, typename T::Params const& params) {
-    using Params = typename T::Params;
-
-    ParallelTensorShapes input_shapes;
-    for (const auto& input : inputs) {
-      input_shapes.push_back(input->get_shape());
-    }
-
-    T* op = nullptr;
-
-    std::pair<ParallelTensorShapes, Params> key{input_shapes, params};
-    auto &cache = this->get_cache_multi_inputs<T>();
-    const auto &it = cache.find(key);
-    if (it != cache.end()) {
-      op = it->second;
-    } else {
-      op = new T(*this, params, inputs, NULL);
-      cache[key] = op;
-    }
-
-    assert(op->get_params() == params);
-    return this->new_node(op);
-  }
-
-  template <typename T>
-  std::unordered_map<std::pair<ParallelTensorShape, typename T::Params>, T*> &get_cache();
-
-  template <typename T>
-  std::unordered_map<std::pair<ParallelTensorShapes, typename T::Params>, T*> &get_cache_multi_inputs();
+  std::unordered_map<std::pair<typename T::InputShapeType, typename T::Params>, T*> &get_cache();
 
   PCG::Node get_or_create_noop_node(const ParallelTensor input);
   PCG::Node get_or_create_input_node(const ParallelTensorShape&);
@@ -884,10 +858,10 @@ public:
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
   std::unordered_map<size_t, NoOp*> cached_input_ops;
   std::unordered_map<size_t, Cast*> cached_cast_ops;
-  std::unordered_map<std::pair<ParallelTensorShapes, ConcatParams>, Concat*> cached_concat_ops;
+  std::unordered_map<std::pair<ConcatInputShape, ConcatParams>, Concat*> cached_concat_ops;
   std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>, Conv2D*> cached_conv2d_ops;
   std::unordered_map<size_t, Dropout*> cached_dropout_ops;
-  std::unordered_map<std::pair<ParallelTensorShapes, ElementBinaryParams>, ElementBinary*> cached_element_binary_ops;
+  std::unordered_map<std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>, ElementBinaryParams>, ElementBinary*> cached_element_binary_ops;
   std::unordered_map<size_t, ElementUnary*> cached_element_unary_ops;
   std::unordered_map<size_t, Embedding*> cached_embedding_ops;
   std::unordered_map<std::pair<ParallelTensorShape, LinearParams>, Linear*> cached_linear_ops;
@@ -934,7 +908,24 @@ private:
                        char const *name = NULL,
 		       float scalar = 0.0);
   PCG::Node new_node(Op *);
+
+  template <typename InputType, typename InputShapeType>
+  InputShapeType get_input_shape(const InputType& input) {
+    assert(false);
+  }
 };
+
+template <>
+std::tuple<> FFModel::get_input_shape(const std::tuple<> &);
+
+template <>
+ParallelTensorShape FFModel::get_input_shape(const ParallelTensor &);
+
+template <>
+std::pair<ParallelTensorShape, ParallelTensorShape> FFModel::get_input_shape(const std::pair<ParallelTensor, ParallelTensor> &);
+
+template <>
+ConcatInputShape FFModel::get_input_shape(const std::vector<ParallelTensor> &);
 
 class UtilityTasks {
 public:

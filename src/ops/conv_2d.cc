@@ -373,7 +373,6 @@ Conv2D::Conv2D(FFModel& model,
 Conv2D::Conv2D(FFModel& model,
                Conv2DParams const &params,
                ParallelTensor const input,
-               bool allocate_weights,
                const char* name) 
   : Conv2D(model,
            params.layer_guid,
@@ -388,7 +387,7 @@ Conv2D::Conv2D(FFModel& model,
            params.activation,
            params.groups,
            params.use_bias,
-           allocate_weights,
+           false,
            name)
 { }
 

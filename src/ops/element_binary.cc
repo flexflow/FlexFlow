@@ -97,6 +97,10 @@ Tensor FFModel::divide(const Tensor in1,
   return this->binary(OP_EW_DIV, in1, in2, inplace_a, name);
 }
 
+bool ElementBinaryParams::is_valid(const std::pair<ParallelTensorShape, ParallelTensorShape>&) const {
+  return true;
+}
+
 bool operator==(const ElementBinaryParams& lhs, const ElementBinaryParams& rhs) {
   return lhs.type == rhs.type;
 }
@@ -148,9 +152,9 @@ ElementBinary::ElementBinary(FFModel& model,
 
 ElementBinary::ElementBinary(FFModel& model,
                              const ElementBinaryParams& params,
-                             const std::vector<ParallelTensor>& inputs,
+                             const std::pair<ParallelTensor, ParallelTensor>& inputs,
                              const char* name)
-  : ElementBinary(model, params.type, inputs[0], inputs[1], false, name) {}
+  : ElementBinary(model, params.type, inputs.first, inputs.second, false, name) {}
 
 bool ElementBinary::can_inplace_output(void)
 {
@@ -637,7 +641,7 @@ Node FFModel::get_or_create_element_binary_node(const ParallelTensor input1,
                                                 const ParallelTensor input2,
                                                 OperatorType op_type)
 {
-  std::vector<ParallelTensor> inputs{input1, input2};
+  auto inputs = std::make_pair(input1, input2);
   ElementBinaryParams params;
   params.type = op_type;
 
@@ -645,7 +649,7 @@ Node FFModel::get_or_create_element_binary_node(const ParallelTensor input1,
 }
 
 template <>
-std::unordered_map<std::pair<ParallelTensorShapes, ElementBinaryParams>, ElementBinary*> &FFModel::get_cache_multi_inputs() {
+std::unordered_map<std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>, ElementBinaryParams>, ElementBinary*> &FFModel::get_cache() {
   return this->cached_element_binary_ops;
 }
 

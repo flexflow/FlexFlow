@@ -13,8 +13,10 @@ namespace FlexFlow {
 struct ElementBinaryParams {
   OperatorType type;
 
-  friend bool operator==(const ElementBinaryParams &, const ElementBinaryParams &);
+  bool is_valid(const std::pair<ParallelTensorShape, ParallelTensorShape>&) const;
 };
+
+bool operator==(const ElementBinaryParams &, const ElementBinaryParams &);
 
 class ElementBinaryMeta : public OpMeta {
 public:
@@ -36,6 +38,8 @@ public:
 class ElementBinary : public Op {
 public:
   using Params = ElementBinaryParams;
+  using InputType = std::pair<ParallelTensor, ParallelTensor>;
+  using InputShapeType = std::pair<ParallelTensorShape, ParallelTensorShape>;
 
   ElementBinary(FFModel& model,
                 OperatorType type,
@@ -45,7 +49,7 @@ public:
                 const char* name);
   ElementBinary(FFModel& model,
                 const Params& params,
-                const std::vector<ParallelTensor>& inputs,
+                const InputType& inputs,
                 const char* name);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;

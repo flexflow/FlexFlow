@@ -116,6 +116,8 @@ public:
 class Conv2D : public Op {
 public:
   using Params = Conv2DParams;
+  using InputType = ParallelTensor;
+  using InputShapeType = ParallelTensorShape;
 
   Conv2D(FFModel& model,
          const LayerID& layer_guid,
@@ -136,7 +138,6 @@ public:
   Conv2D(FFModel& model,
          Conv2DParams const &params,
          ParallelTensor input,
-         bool allocate_weights,
          const char* name);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;

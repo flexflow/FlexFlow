@@ -96,7 +96,6 @@ Linear::Linear(FFModel& model,
 Linear::Linear(FFModel &model,
                LinearParams const &params,
                ParallelTensor const input,
-               bool allocate_weights,
                const char* name) 
   : Linear(model,
            params.layer_guid,
@@ -105,7 +104,7 @@ Linear::Linear(FFModel &model,
            params.activation,
            params.use_bias,
            params.data_type,
-           allocate_weights,
+           false,
            name)
 { } 
 
