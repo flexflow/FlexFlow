@@ -10,16 +10,10 @@
 
 namespace FlexFlow {
 
-struct ConcatInputShape {
-  std::vector<ParallelTensorShape> shapes;
-};
-
-bool operator==(const ConcatInputShape&, const ConcatInputShape&);
-
 struct ConcatParams {
   int axis;
   
-  bool is_valid(const ConcatInputShape &) const;
+  bool is_valid(const std::vector<ParallelTensorShape> &) const;
 };
 
 bool operator==(const ConcatParams&, const ConcatParams&);
@@ -34,8 +28,7 @@ public:
 class Concat : public Op {
 public:
   using Params = ConcatParams;
-  using InputType = std::vector<ParallelTensor>;
-  using InputShapeType = ConcatInputShape;
+  using Input = std::vector<ParallelTensor>;
 
   Concat(FFModel& model,
          int n,
@@ -45,6 +38,7 @@ public:
   Concat(FFModel& model,
          const ConcatParams& params,
          const std::vector<ParallelTensor>& inputs,
+         bool allocate_weights,
          const char* name);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
@@ -110,11 +104,6 @@ namespace std {
   template <>
   struct hash<FlexFlow::ConcatParams> {
     size_t operator()(const FlexFlow::ConcatParams&) const;
-  };
-  
-  template <>
-  struct hash<FlexFlow::ConcatInputShape> {
-    size_t operator()(const FlexFlow::ConcatInputShape&) const;
   };
 }; // namespace std
 

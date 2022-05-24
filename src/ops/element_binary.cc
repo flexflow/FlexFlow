@@ -153,8 +153,9 @@ ElementBinary::ElementBinary(FFModel& model,
 ElementBinary::ElementBinary(FFModel& model,
                              const ElementBinaryParams& params,
                              const std::pair<ParallelTensor, ParallelTensor>& inputs,
+                             bool inplace_a,
                              const char* name)
-  : ElementBinary(model, params.type, inputs.first, inputs.second, false, name) {}
+  : ElementBinary(model, params.type, inputs.first, inputs.second, inplace_a, name) {}
 
 bool ElementBinary::can_inplace_output(void)
 {

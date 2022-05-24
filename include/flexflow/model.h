@@ -267,6 +267,25 @@ class Replicate;
 class FusedParallelOp;
 class ParallelOpInfo;
 
+// TODO: Move to an appropriate place
+template <typename OldType>
+struct ToShape {
+  using type = ParallelTensorShape;
+};
+
+template <template<typename...> typename Container>
+struct ToShape<Container<>> {
+  using type = Container<>;
+};
+
+template <typename OldType, typename... Args, template<typename...> typename Container>
+struct ToShape<Container<OldType, Args...>> {
+  using type = Container<ParallelTensorShape, typename ToShape<Args>::type...>;
+};
+
+template <typename Input>
+typename ToShape<Input>::type get_input_shape(const Input& input);
+
 class FFModel {
 public:
   FFModel(FFConfig &config);
@@ -615,10 +634,10 @@ public:
   // Internal PCG::Node creation APIs
   // ========================================
   template <typename T>
-  PCG::Node get_or_create_node(typename T::InputType input, typename T::Params const &params) {
-    using Params = typename T::Params;  
+  PCG::Node get_or_create_node(const typename T::Input& input, typename T::Params const &params) {
+    using Params = typename T::Params;
 
-    auto input_shapes = get_input_shape<typename T::InputType, typename T::InputShapeType>(input);
+    auto input_shapes = get_input_shape<typename T::Input>(input);
 
     if (!params.is_valid(input_shapes)) {
       return PCG::Node::INVALID_NODE;
@@ -626,13 +645,13 @@ public:
 
     T *op = nullptr;
 
-    std::pair<typename T::InputShapeType, Params> key{input_shapes, params};
+    std::pair<typename ToShape<typename T::Input>::type, Params> key{input_shapes, params};
     auto &cache = this->get_cache<T>();
     const auto &it = cache.find(key);
     if (it != cache.end()) {
       op = it->second;
     } else {
-      op = new T(*this, params, input, NULL);
+      op = new T(*this, params, input, false/*allocate_weights or inplace_a*/, NULL/*name*/);
       cache[key] = op;
     }
 
@@ -641,7 +660,7 @@ public:
   }
 
   template <typename T>
-  std::unordered_map<std::pair<typename T::InputShapeType, typename T::Params>, T*> &get_cache();
+  std::unordered_map<std::pair<typename ToShape<typename T::Input>::type, typename T::Params>, T*> &get_cache();
 
   PCG::Node get_or_create_noop_node(const ParallelTensor input);
   PCG::Node get_or_create_input_node(const ParallelTensorShape&);
@@ -858,7 +877,7 @@ public:
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
   std::unordered_map<size_t, NoOp*> cached_input_ops;
   std::unordered_map<size_t, Cast*> cached_cast_ops;
-  std::unordered_map<std::pair<ConcatInputShape, ConcatParams>, Concat*> cached_concat_ops;
+  std::unordered_map<std::pair<std::vector<ParallelTensorShape>, ConcatParams>, Concat*> cached_concat_ops;
   std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>, Conv2D*> cached_conv2d_ops;
   std::unordered_map<size_t, Dropout*> cached_dropout_ops;
   std::unordered_map<std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>, ElementBinaryParams>, ElementBinary*> cached_element_binary_ops;
@@ -908,24 +927,7 @@ private:
                        char const *name = NULL,
 		       float scalar = 0.0);
   PCG::Node new_node(Op *);
-
-  template <typename InputType, typename InputShapeType>
-  InputShapeType get_input_shape(const InputType& input) {
-    assert(false);
-  }
 };
-
-template <>
-std::tuple<> FFModel::get_input_shape(const std::tuple<> &);
-
-template <>
-ParallelTensorShape FFModel::get_input_shape(const ParallelTensor &);
-
-template <>
-std::pair<ParallelTensorShape, ParallelTensorShape> FFModel::get_input_shape(const std::pair<ParallelTensor, ParallelTensor> &);
-
-template <>
-ConcatInputShape FFModel::get_input_shape(const std::vector<ParallelTensor> &);
 
 class UtilityTasks {
 public:

@@ -39,19 +39,15 @@ using PCG::Node;
 
 
 template <>
-std::unordered_map<std::pair<ConcatInputShape, ConcatParams>, Concat*> &FFModel::get_cache() {
+std::unordered_map<std::pair<std::vector<ParallelTensorShape>, ConcatParams>, Concat*> &FFModel::get_cache() {
   return this->cached_concat_ops;
-}
-
-bool operator==(const ConcatInputShape& lhs, const ConcatInputShape &rhs) {
-  return lhs == rhs;
 }
 
 bool operator==(const ConcatParams &lhs, const ConcatParams &rhs) {
   return lhs.axis == rhs.axis;
 }
 
-bool ConcatParams::is_valid(const ConcatInputShape &) const {
+bool ConcatParams::is_valid(const std::vector<ParallelTensorShape> &) const {
   return true;
 }
 
@@ -59,15 +55,6 @@ ConcatParams Concat::get_params() const {
   ConcatParams params;
   params.axis = legion_axis;
   return params;
-}
-
-template <>
-ConcatInputShape FFModel::get_input_shape(const std::vector<ParallelTensor> &inputs) {
-  ConcatInputShape input_shapes;
-  for (const auto &input : inputs) {
-    input_shapes.shapes.push_back(input->get_shape());
-  }
-  return input_shapes;
 }
 
 Tensor FFModel::concat(int n,
@@ -151,6 +138,7 @@ Concat::Concat(FFModel& model,
 Concat::Concat(FFModel& model,
                const ConcatParams& params,
                const std::vector<ParallelTensor>& inputs,
+               bool allocate_weights,
                const char* name)
   : Concat(model, inputs.size(), inputs.data(), params.axis, name) {}
 
@@ -426,14 +414,5 @@ Node FFModel::get_or_create_concat_node(int num_inputs,
 namespace std {
   size_t hash<FlexFlow::ConcatParams>::operator()(const FlexFlow::ConcatParams &params) const {
     return hash<int>{}(params.axis);
-  }
-
-  size_t hash<FlexFlow::ConcatInputShape>::operator()(const FlexFlow::ConcatInputShape &shapes) const {
-    size_t key = 0;
-    hash_combine(key, shapes.shapes.size());
-    for (const auto& shape : shapes.shapes) {
-      hash_combine(key, shapes);
-    }
-    return key;
   }
 }; // namespace std

@@ -38,8 +38,7 @@ public:
 class ElementBinary : public Op {
 public:
   using Params = ElementBinaryParams;
-  using InputType = std::pair<ParallelTensor, ParallelTensor>;
-  using InputShapeType = std::pair<ParallelTensorShape, ParallelTensorShape>;
+  using Input = std::pair<ParallelTensor, ParallelTensor>;
 
   ElementBinary(FFModel& model,
                 OperatorType type,
@@ -49,7 +48,8 @@ public:
                 const char* name);
   ElementBinary(FFModel& model,
                 const Params& params,
-                const InputType& inputs,
+                const Input& inputs,
+                bool inplace_a,
                 const char* name);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
