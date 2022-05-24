@@ -38,8 +38,8 @@ public:
   Concat(FFModel& model,
          const ConcatParams& params,
          const std::vector<ParallelTensor>& inputs,
-         bool allocate_weights,
-         const char* name);
+         const char* name=NULL,
+         bool allocate_weights=false);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;

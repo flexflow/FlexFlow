@@ -138,8 +138,8 @@ Concat::Concat(FFModel& model,
 Concat::Concat(FFModel& model,
                const ConcatParams& params,
                const std::vector<ParallelTensor>& inputs,
-               bool allocate_weights,
-               const char* name)
+               const char* name,
+               bool allocate_weights)
   : Concat(model, inputs.size(), inputs.data(), params.axis, name) {}
 
 void Concat::init_meta(ConcatMeta *m) const

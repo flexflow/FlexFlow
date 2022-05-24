@@ -137,8 +137,8 @@ public:
   Conv2D(FFModel& model,
          Conv2DParams const &params,
          ParallelTensor input,
-         bool allocate_weights,
-         const char* name);
+         const char* name=NULL,
+         bool allocate_weights=false);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;

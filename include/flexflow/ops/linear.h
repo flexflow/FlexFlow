@@ -99,8 +99,8 @@ public:
   Linear(FFModel& model, 
          LinearParams const &params,
          ParallelTensor input,
-         bool allocate_weights,
-         const char *name);
+         const char *name=NULL,
+         bool allocate_weights=false);
 
 
 

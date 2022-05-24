@@ -268,19 +268,23 @@ class FusedParallelOp;
 class ParallelOpInfo;
 
 // TODO: Move to an appropriate place
-template <typename OldType>
+/*
+  This is used to create a type that recursively replaces value type ParallelTensor by ParallelTensorShape in T.
+  E.g., ToShape<std::tuple<int, ParallelTensor>>::type gives std::tuple<int, ParallelTensorShape>
+*/
+template <typename T>
 struct ToShape {
+  using type = T;
+};
+
+template <>
+struct ToShape<ParallelTensor> {
   using type = ParallelTensorShape;
 };
 
-template <template<typename...> typename Container>
-struct ToShape<Container<>> {
-  using type = Container<>;
-};
-
-template <typename OldType, typename... Args, template<typename...> typename Container>
-struct ToShape<Container<OldType, Args...>> {
-  using type = Container<ParallelTensorShape, typename ToShape<Args>::type...>;
+template <typename... Args, template<typename...> typename Container>
+struct ToShape<Container<Args...>> {
+  using type = Container<typename ToShape<Args>::type...>;
 };
 
 template <typename Input>
@@ -651,7 +655,7 @@ public:
     if (it != cache.end()) {
       op = it->second;
     } else {
-      op = new T(*this, params, input, false/*allocate_weights or inplace_a*/, NULL/*name*/);
+      op = new T(*this, params, input);
       cache[key] = op;
     }
 
