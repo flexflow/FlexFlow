@@ -162,11 +162,6 @@ Conv2DParams Conv2D::get_params() const {
 using PCG::Node;
 
 
-template <>
-std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>, Conv2D*> &FFModel::get_cache() {
-  return this->cached_conv2d_ops;
-}
-
 bool operator==(Conv2DParams const &lhs, Conv2DParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid && 
       lhs.kernel_h == rhs.kernel_h &&
@@ -373,8 +368,8 @@ Conv2D::Conv2D(FFModel& model,
 Conv2D::Conv2D(FFModel& model,
                Conv2DParams const &params,
                ParallelTensor const input,
-               bool allocate_weights,
-               const char* name) 
+               const char* name,
+               bool allocate_weights)
   : Conv2D(model,
            params.layer_guid,
            input,

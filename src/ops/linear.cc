@@ -96,8 +96,8 @@ Linear::Linear(FFModel& model,
 Linear::Linear(FFModel &model,
                LinearParams const &params,
                ParallelTensor const input,
-               bool allocate_weights,
-               const char* name) 
+               const char* name,
+               bool allocate_weights) 
   : Linear(model,
            params.layer_guid,
            input,
@@ -739,11 +739,6 @@ bool Linear::measure_operator_cost(
 }
 
 using PCG::Node;
-
-template <>
-std::unordered_map<std::pair<ParallelTensorShape, LinearParams>, Linear*> &FFModel::get_cache() {
-  return this->cached_linear_ops;
-}
 
 Node FFModel::get_or_create_linear_node(const LayerID& layer_guid,
                                         const ParallelTensor input,

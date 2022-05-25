@@ -81,6 +81,7 @@ private:
 class Linear : public Op {
 public:
   using Params = LinearParams;
+  using Input = ParallelTensor;
 
   Linear(FFModel& model,
          const LayerID& layer_guid,
@@ -98,8 +99,8 @@ public:
   Linear(FFModel& model, 
          LinearParams const &params,
          ParallelTensor input,
-         bool allocate_weights,
-         const char *name);
+         const char *name = nullptr,
+         bool allocate_weights = false);
 
 
 

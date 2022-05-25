@@ -1,9 +1,22 @@
 #ifndef _FLEXFLOW_ELEMENT_BINARY_H
 #define _FLEXFLOW_ELEMENT_BINARY_H
 
-#include "flexflow/model.h"
+#include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/node.h"
+#include "flexflow/device.h"
+#include "flexflow/layer.h"
 
 namespace FlexFlow {
+
+struct ElementBinaryParams {
+  OperatorType type;
+
+  bool is_valid(const std::pair<ParallelTensorShape, ParallelTensorShape>&) const;
+};
+
+bool operator==(const ElementBinaryParams &, const ElementBinaryParams &);
 
 class ElementBinaryMeta : public OpMeta {
 public:
@@ -24,12 +37,20 @@ public:
 
 class ElementBinary : public Op {
 public:
+  using Params = ElementBinaryParams;
+  using Input = std::pair<ParallelTensor, ParallelTensor>;
+
   ElementBinary(FFModel& model,
                 OperatorType type,
                 const ParallelTensor x,
                 const ParallelTensor y,
                 bool inplace_a,
                 const char* name);
+  ElementBinary(FFModel& model,
+                const Params& params,
+                const Input& inputs,
+                const char* name = nullptr,
+                bool inplace_a = false);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
@@ -75,15 +96,22 @@ public:
                                       const float* in2_ptr,
                                       float* in1_grad_ptr,
                                       float* in2_grad_ptr);
-  size_t get_params_hash() const override;
   bool measure_operator_cost(Simulator* sim,
                             const MachineView& pc,
                             CostMetrics& cost_metrics) const override;
+  Params get_params() const;
 public:
   bool inplace_a, has_same_operands;
   bool broadcast_input1, broadcast_input2;
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+  template<>
+  struct hash<FlexFlow::ElementBinaryParams> {
+    size_t operator()(const FlexFlow::ElementBinaryParams&) const;
+  };
+}; // namespace std
 
 #endif // _FLEXFFLOW_ELEMENT_BINARY_H

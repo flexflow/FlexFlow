@@ -61,6 +61,18 @@ namespace std {
       return seed;
     }
   };
+
+  template <typename T>
+  struct hash<std::vector<T>> {
+    size_t operator()(const std::vector<T> &vec) const {
+      size_t seed = 0;
+      hash_combine(seed, vec.size());
+      for (const auto& ele : vec) {
+        hash_combine(seed, ele);
+      }
+      return seed;
+    }
+  };
 }
 
 #endif // _FLEXFLOW_HASH_UTILS_H

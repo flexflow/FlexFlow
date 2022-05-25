@@ -116,6 +116,7 @@ public:
 class Conv2D : public Op {
 public:
   using Params = Conv2DParams;
+  using Input = ParallelTensor;
 
   Conv2D(FFModel& model,
          const LayerID& layer_guid,
@@ -136,8 +137,8 @@ public:
   Conv2D(FFModel& model,
          Conv2DParams const &params,
          ParallelTensor input,
-         bool allocate_weights,
-         const char* name);
+         const char* name = nullptr,
+         bool allocate_weights = false);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
@@ -206,10 +207,6 @@ public:
   static void construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
   static void construct_mappings(std::vector<ParallelDimMappingRecord> &, bool use_bias);
   static void construct_weight_mappings(std::vector<ParallelDimMappingRecord> &, bool use_bias);
-
-  std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>, Conv2D*> &get_cache(FFModel &ff) const;
-
-  // size_t get_params_hash() const override;
 
   Conv2DParams get_params() const;
 

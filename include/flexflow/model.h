@@ -35,6 +35,7 @@
 #include "flexflow/node.h"
 #include "flexflow/utils/hash_utils.h"
 #include "flexflow/operator_params.h"
+#include "flexflow/utils/tuple.h"
 
 #include "ffconst.h"
 #include "fftype.h"
@@ -266,6 +267,42 @@ class Reduction;
 class Replicate;
 class FusedParallelOp;
 class ParallelOpInfo;
+
+// TODO: Move to an appropriate place
+/*
+  This is used to create a type that recursively replaces value type ParallelTensor by ParallelTensorShape in T.
+  E.g., ToShape<std::tuple<int, ParallelTensor>>::type gives std::tuple<int, ParallelTensorShape>
+*/
+template <typename T>
+struct ToShape {
+  using type = T;
+};
+
+template <>
+struct ToShape<ParallelTensor> {
+  using type = ParallelTensorShape;
+};
+
+template <typename... Args, template<typename...> typename Container>
+struct ToShape<Container<Args...>> {
+  using type = Container<typename ToShape<Args>::type...>;
+};
+
+// TODO: Move to an appropriate place
+template <typename Input>
+typename ToShape<Input>::type get_input_shape(const Input& input) = delete;
+
+template <>
+std::tuple<> get_input_shape(const std::tuple<> &);
+
+template <>
+ParallelTensorShape get_input_shape(const ParallelTensor &input);
+
+template <>
+std::pair<ParallelTensorShape, ParallelTensorShape> get_input_shape(const std::pair<ParallelTensor, ParallelTensor> &inputs);
+
+template<>
+std::vector<ParallelTensorShape> get_input_shape(const std::vector<ParallelTensor>& inputs);
 
 class FFModel {
 public:
@@ -615,32 +652,36 @@ public:
   // Internal PCG::Node creation APIs
   // ========================================
   template <typename T>
-  PCG::Node get_or_create_node(ParallelTensor const input, typename T::Params const &params) {
-    using Params = typename T::Params;  
+  PCG::Node get_or_create_node(const typename T::Input& input, typename T::Params const &params) {
+    using Params = typename T::Params;
 
-    if (!params.is_valid(input->get_shape())) {
+    auto input_shapes = get_input_shape<typename T::Input>(input);
+
+    if (!params.is_valid(input_shapes)) {
       return PCG::Node::INVALID_NODE;
     }
 
     T *op = nullptr;
 
-    std::pair<ParallelTensorShape, Params> key{input->get_shape(), params};
-    auto &cache = this->get_cache<T>();
+    std::pair<typename ToShape<typename T::Input>::type, Params> key{input_shapes, params};
+    auto &cache = get<
+      std::unordered_map<
+        std::pair<typename ToShape<typename T::Input>::type, Params>,
+        T*
+      >
+    >(this->cached_ops);
     const auto &it = cache.find(key);
     if (it != cache.end()) {
       op = it->second;
     } else {
-      op = new T(*this, params, input, false, NULL);
+      op = new T(*this, params, input);
       cache[key] = op;
     }
 
     assert (op->get_params() == params);
     return this->new_node(op);
   }
-
-  template <typename T>
-  std::unordered_map<std::pair<ParallelTensorShape, typename T::Params>, T*> &get_cache();
-
+  
   PCG::Node get_or_create_noop_node(const ParallelTensor input);
   PCG::Node get_or_create_input_node(const ParallelTensorShape&);
   PCG::Node get_or_create_cast_node(const ParallelTensor input,
@@ -853,16 +894,18 @@ public:
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
+  std::tuple<
+    std::unordered_map<std::pair<std::vector<ParallelTensorShape>, ConcatParams>, Concat*>,
+    std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>, Conv2D*>,
+    std::unordered_map<std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>, ElementBinaryParams>, ElementBinary*>,
+    std::unordered_map<std::pair<ParallelTensorShape, LinearParams>, Linear*>
+  > cached_ops;
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
   std::unordered_map<size_t, NoOp*> cached_input_ops;
   std::unordered_map<size_t, Cast*> cached_cast_ops;
-  std::unordered_map<size_t, Concat*> cached_concat_ops;
-  std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>, Conv2D*> cached_conv2d_ops;
   std::unordered_map<size_t, Dropout*> cached_dropout_ops;
-  std::unordered_map<size_t, ElementBinary*> cached_element_binary_ops;
   std::unordered_map<size_t, ElementUnary*> cached_element_unary_ops;
   std::unordered_map<size_t, Embedding*> cached_embedding_ops;
-  std::unordered_map<std::pair<ParallelTensorShape, LinearParams>, Linear*> cached_linear_ops;
   std::unordered_map<size_t, Pool2D*> cached_pool2d_ops;
   std::unordered_map<size_t, Flat*> cached_flat_ops;
   std::unordered_map<size_t, MultiHeadAttention*> cached_multihead_attn_ops;
