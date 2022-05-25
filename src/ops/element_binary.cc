@@ -649,11 +649,6 @@ Node FFModel::get_or_create_element_binary_node(const ParallelTensor input1,
   return get_or_create_node<ElementBinary>(inputs, params);
 }
 
-template <>
-std::unordered_map<std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>, ElementBinaryParams>, ElementBinary*> &FFModel::get_cache() {
-  return this->cached_element_binary_ops;
-}
-
 }; // namespace FlexFlow
 
 namespace std {

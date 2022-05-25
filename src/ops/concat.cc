@@ -38,11 +38,6 @@ using Legion::Predicate;
 using PCG::Node;
 
 
-template <>
-std::unordered_map<std::pair<std::vector<ParallelTensorShape>, ConcatParams>, Concat*> &FFModel::get_cache() {
-  return this->cached_concat_ops;
-}
-
 bool operator==(const ConcatParams &lhs, const ConcatParams &rhs) {
   return lhs.axis == rhs.axis;
 }

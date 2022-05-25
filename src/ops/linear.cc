@@ -740,11 +740,6 @@ bool Linear::measure_operator_cost(
 
 using PCG::Node;
 
-template <>
-std::unordered_map<std::pair<ParallelTensorShape, LinearParams>, Linear*> &FFModel::get_cache() {
-  return this->cached_linear_ops;
-}
-
 Node FFModel::get_or_create_linear_node(const LayerID& layer_guid,
                                         const ParallelTensor input,
                                         int out_dim,

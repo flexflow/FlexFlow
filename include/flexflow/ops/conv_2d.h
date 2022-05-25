@@ -208,10 +208,6 @@ public:
   static void construct_mappings(std::vector<ParallelDimMappingRecord> &, bool use_bias);
   static void construct_weight_mappings(std::vector<ParallelDimMappingRecord> &, bool use_bias);
 
-  std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>, Conv2D*> &get_cache(FFModel &ff) const;
-
-  // size_t get_params_hash() const override;
-
   Conv2DParams get_params() const;
 
   tl::optional<RecordFormatter> as_dot() const override;
