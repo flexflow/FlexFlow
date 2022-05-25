@@ -35,6 +35,7 @@
 #include "flexflow/node.h"
 #include "flexflow/utils/hash_utils.h"
 #include "flexflow/operator_params.h"
+#include "flexflow/utils/tuple.h"
 
 #include "ffconst.h"
 #include "fftype.h"
@@ -663,7 +664,12 @@ public:
     T *op = nullptr;
 
     std::pair<typename ToShape<typename T::Input>::type, Params> key{input_shapes, params};
-    auto &cache = cached_ops;
+    auto &cache = get<
+      std::unordered_map<
+        std::pair<typename ToShape<typename T::Input>::type, Params>,
+        T*
+      >
+    >(this->cached_ops);
     const auto &it = cache.find(key);
     if (it != cache.end()) {
       op = (T*)it->second;
@@ -888,14 +894,11 @@ public:
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
-  std::unordered_map<
-    mp::variant<
-      std::pair<std::vector<ParallelTensorShape>, ConcatParams>,
-      std::pair<ParallelTensorShape, Conv2DParams>,
-      std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>, ElementBinaryParams>,
-      std::pair<ParallelTensorShape, LinearParams>
-    >,
-    Op*
+  std::tuple<
+    std::unordered_map<std::pair<std::vector<ParallelTensorShape>, ConcatParams>, Concat*>,
+    std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>, Conv2D*>,
+    std::unordered_map<std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>, ElementBinaryParams>, ElementBinary*>,
+    std::unordered_map<std::pair<ParallelTensorShape, LinearParams>, Linear*>
   > cached_ops;
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
   std::unordered_map<size_t, NoOp*> cached_input_ops;

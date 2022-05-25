@@ -1,10 +1,12 @@
 #include "gtest/gtest.h"
 #include "flexflow/substitution_loader.h"
+#include "flexflow/substitution.h"
 
 namespace sl = FlexFlow::substitution_loader;
 //using namespace FlexFlow::substitution_loader;
 using json = nlohmann::json;
 using FlexFlow::PCG::GraphXfer;
+using FlexFlow::PCG::create_xfers;
 
 TEST(substitution_loader, basic) {
     // Yes, I know this substitution is not correct. It's just for testing.    
