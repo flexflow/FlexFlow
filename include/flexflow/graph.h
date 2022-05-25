@@ -22,6 +22,7 @@
 #include "flexflow/graph_structures.h"
 #include "legion/legion_utilities.h"
 #include "flexflow/utils/recursive_logger.h"
+#include "flexflow/memory_optimization.h"
 
 extern LegionRuntime::Logger::Category log_dp;
 
@@ -317,6 +318,20 @@ struct GraphOptimizeResult {
   std::unordered_map<Node, MachineView> views;
 
   friend std::ostream& operator<<(std::ostream &, GraphOptimizeResult const &);
+};
+
+/**
+ * @brief Experimental. Hold the optimization results with memory information.
+ * To be merged with GraphOptimizeResult.
+ */
+struct GraphOptimizeResultWithMemory {
+  tl::optional<Graph> graph;  ///< Optimized PCG
+  float cost;                 ///< Run time cost
+  MemoryUsage mem_cost;       ///< Memory usage
+  ///< Corresponding machine views (device placement views)
+  std::unordered_map<Node, MachineView> views;
+
+  friend std::ostream &operator<<(std::ostream &, GraphOptimizeResultWithMemory const &);
 };
 
 namespace Utils {

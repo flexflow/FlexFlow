@@ -1174,6 +1174,11 @@ std::ostream& operator<<(std::ostream &s, GraphOptimizeResult const &r) {
   return s;
 }
 
+std::ostream& operator<<(std::ostream &s, GraphOptimizeResultWithMemory const &r) {
+  s << "GraphOptimizeResultWithMemory{run_time_cost=" << r.cost << ", memory_cost=" << r.mem_cost << "}";
+  return s;
+}
+
 template <>
 GraphCostResult sequence_cost<GraphCostResult>(GraphCostResult const &first, GraphCostResult const &second) {
   GraphCostResult result(first);
@@ -1541,6 +1546,15 @@ size_t dp_state_hash(const Graph* graph,
   return key;
 }
 
+/**
+ * @brief Starting point of Unity search procedure. Registered on Legion runtime.
+ * 
+ * @param task Legion task to get FFModel and other configs
+ * @param regions Not used
+ * @param ctx Not used
+ * @param runtime Not used
+ * @return GraphOptimalViewSerialized Serialized optimal PCG
+ */
 GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
     const std::vector<PhysicalRegion> &regions,
     Context ctx, Runtime *runtime)
@@ -1598,10 +1612,13 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
       optimal_views[node.first] = data_parallel_view;
     }
   } else {
+    // Main step to optimize the PCG of an FFModel
     model->graph_optimize(model->config.search_budget,
                           model->config.only_data_parallel,
                           best_graph, optimal_views);
   }
+
+  // Following lines are to serialize the optimized PCG.
   Serializer sez;
   // First serialize graph
   sez.serialize(best_graph->inEdges.size());

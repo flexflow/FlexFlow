@@ -232,6 +232,11 @@ public:
                       bool only_data_parallel,
                       std::unique_ptr<Graph>& best_graph,
                       std::unordered_map<Node, MachineView>& optimal_views);
+  // Experimental. To be merged with graph_optimize eventually.
+  void graph_optimize_with_memory(size_t budget, 
+                      bool only_data_parallel,
+                      std::unique_ptr<Graph>& best_graph,
+                      std::unordered_map<Node, MachineView>& optimal_views);
   void graph_optimize_no_split(
       size_t budget, 
       bool only_data_parallel,
@@ -243,6 +248,13 @@ private:
                               Node const &sink_node,
                               tl::optional<ParallelTensorShape> const &output_shape,
                               tl::optional<ParallelTensorShape> const &input_shape);
+
+  // Experimental. To be merged with generic_sequence_optimize eventually.
+  template <typename T>
+  T generic_sequence_optimize_with_memory(
+      Graph const* graph, Node const& sink_node,
+      tl::optional<ParallelTensorShape> const& output_shape,
+      tl::optional<ParallelTensorShape> const& input_shape);
 
   float sequence_optimize(Graph const *graph, 
                           Node const &sink_node, 
@@ -282,6 +294,7 @@ private:
   std::vector<GraphXfer*> all_pcg_xfers;
   FFModel* model;
   FFConfig const &config;
+  MemoryOptimConfig mem_config;
   std::unique_ptr<RecursiveLogger> logger;
 };
 
