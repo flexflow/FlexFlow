@@ -53,9 +53,9 @@ class MemoryOptimConfig {
  public:
   MemoryUsageType mem_usage_type;    ///< How to represent memory cost
   MemorySearchAlgo mem_search_algo;  ///< How to search for the optimal schedule
-  float run_time_cost_factor;  ///< The weight factor of run time cost in the
-                               ///< overall cost function; used in
-                               ///< MULTI_OBJECTIVE algorithm
+  float run_time_cost_factor;        ///< The weight factor of run time cost in the
+                                     ///< overall cost function; used in
+                                     ///< MULTI_OBJECTIVE algorithm
 
   MemoryOptimConfig()
       : mem_usage_type{MemoryUsageType::GLOBAL},
@@ -80,8 +80,7 @@ class MemoryUsage {
   /// Public APIs
   ///
   MemoryUsage() : usage_type{MemoryUsageType::GLOBAL}, num{0.0} {}
-  MemoryUsage(MemoryUsageType _usage_type, float _num)
-      : usage_type{_usage_type}, num{_num} {}
+  MemoryUsage(MemoryUsageType _usage_type, float _num) : usage_type{_usage_type}, num{_num} {}
 
   std::string to_string() const {
     std::string str = "(MemoryUsageType:";

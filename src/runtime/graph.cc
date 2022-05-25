@@ -1205,6 +1205,28 @@ GraphOptimizeResult sequence_cost<GraphOptimizeResult>(GraphOptimizeResult const
   return result;
 }
 
+/**
+ * @brief Specialization of sequence_cost<T> to combine two GraphOptimizeResultWithMemory. This
+ * reuses the parts of combining run time costs. This should be merged with other versions of
+ * sequence_cost<T>.
+ */
+template <>
+GraphOptimizeResultWithMemory sequence_cost<GraphOptimizeResultWithMemory>(GraphOptimizeResultWithMemory const &first, GraphOptimizeResultWithMemory const &second) {
+  GraphOptimizeResultWithMemory result;
+  result.cost = first.cost + second.cost;
+  result.views.insert(first.views.cbegin(), first.views.cend());
+  result.views.insert(second.views.cbegin(), second.views.cend());
+
+  result.graph = second.graph;
+  Node second_src = result.graph.value().find_source_node();
+  result.graph.value().replace_subgraph({second_src}, first.graph.value());
+
+  // New: Combine memory cost
+  result.mem_cost = first.mem_cost + second.mem_cost;
+
+  return result;
+}
+
 template <>
 GraphCostResult parallel_cost<GraphCostResult>(GraphCostResult const &first, GraphCostResult const &second) {
   GraphCostResult result;

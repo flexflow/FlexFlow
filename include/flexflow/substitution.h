@@ -269,12 +269,25 @@ private:
                            Node const &sink_node,
                            Node const &bottleneck, 
                            ParallelTensorShape const &bottleneck_output_shape);
+  // Experimental. To be merged with execute_sequence_split().
+  template <typename T>
+  T execute_sequence_split_with_memory(std::unique_ptr<Graph> const &pre_graph,
+                           std::unique_ptr<Graph> const &post_graph,
+                           tl::optional<ParallelTensorShape> const &output_shape,
+                           tl::optional<ParallelTensorShape> const &input_shape,
+                           Node const &sink_node,
+                           Node const &bottleneck, 
+                           ParallelTensorShape const &bottleneck_output_shape);
+
   void generate_all_pcg_xfers();
   void load_graph_substitutions(std::vector<GraphXfer*> &xfers) const;
   Graph *construct_graph();
   void subgraph_optimize(Graph *subgraph);
 
   std::unique_ptr<Graph> base_optimize(Graph const *, SimplificationSettings const &simplification_settings);
+
+  // Experimental. To be merged with base_optimize().
+  std::unique_ptr<Graph> base_optimize_with_memory(Graph const *, SimplificationSettings const &simplification_settings);
 
   std::vector<ParallelTensorShape> possible_split_output_tensor_shapes(Node const &) const;
   
