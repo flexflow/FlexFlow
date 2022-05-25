@@ -96,7 +96,6 @@ public:
                                       const float* in2_ptr,
                                       float* in1_grad_ptr,
                                       float* in2_grad_ptr);
-  // size_t get_params_hash() const override;
   bool measure_operator_cost(Simulator* sim,
                             const MachineView& pc,
                             CostMetrics& cost_metrics) const override;

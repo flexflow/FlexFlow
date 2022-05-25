@@ -91,8 +91,6 @@ public:
                              const MachineView& pc,
                              CostMetrics& cost_metrics) const override;
 
-  // size_t get_params_hash() const override;
-
   Params get_params() const;
 public:
   int legion_axis;
