@@ -49,8 +49,8 @@ public:
   ElementBinary(FFModel& model,
                 const Params& params,
                 const Input& inputs,
-                const char* name=NULL,
-                bool inplace_a=false);
+                const char* name = nullptr,
+                bool inplace_a = false);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;

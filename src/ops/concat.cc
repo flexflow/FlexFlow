@@ -43,6 +43,7 @@ bool operator==(const ConcatParams &lhs, const ConcatParams &rhs) {
 }
 
 bool ConcatParams::is_valid(const std::vector<ParallelTensorShape> &) const {
+  // TODO: more check on the input shape
   return true;
 }
 
@@ -133,8 +134,7 @@ Concat::Concat(FFModel& model,
 Concat::Concat(FFModel& model,
                const ConcatParams& params,
                const std::vector<ParallelTensor>& inputs,
-               const char* name,
-               bool allocate_weights)
+               const char* name)
   : Concat(model, inputs.size(), inputs.data(), params.axis, name) {}
 
 void Concat::init_meta(ConcatMeta *m) const

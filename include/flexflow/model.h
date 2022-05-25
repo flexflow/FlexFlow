@@ -672,7 +672,7 @@ public:
     >(this->cached_ops);
     const auto &it = cache.find(key);
     if (it != cache.end()) {
-      op = (T*)it->second;
+      op = it->second;
     } else {
       op = new T(*this, params, input);
       cache[key] = op;
