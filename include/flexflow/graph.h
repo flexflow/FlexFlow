@@ -112,6 +112,29 @@ struct GraphCostResult {
   friend std::ostream& operator<<(std::ostream &, GraphCostResult const &);
 };
 
+/**
+ * @brief Experimental. Hold the cost information of a PCG. To be merged with GraphCostResult.
+ */
+struct GraphCostResultWithMemory {
+  float cost;            ///< Run time cost
+  MemoryUsage mem_cost;  ///< Memory usage
+  ///< Corresponding machine views (device placement views)
+  std::unordered_map<Node, MachineView> views;
+
+  /**
+   * @brief Get the multi-objective cost that combines the run time and memory cost.
+   * 
+   * @return float Numerical value to represent the overall cost
+   */
+  float get_multi_obj_cost() const;
+
+  static GraphCostResultWithMemory invalid();
+
+  bool operator<(GraphCostResultWithMemory const &other) const;
+
+  friend std::ostream &operator<<(std::ostream &, GraphCostResultWithMemory const &);
+};
+
 template <typename T>
 T sequence_cost(T const &first, T const &second);
 
@@ -197,6 +220,16 @@ public:
   void add_operator_cost(NodeAssignment const &, float, T *) const;
 
   template <typename T>
+  void add_sink_node_costs(const NodeAssignment &sink, float run_time, T *result) const;
+
+  /**
+   * @brief Add run time cost and memory cost of the operator to the graph cost.
+   * This is a temp workaround and should be refactored eventually.
+   */
+  void add_operator_cost_with_memory(NodeAssignment const &node, float node_run_time_cost,
+                                     MemoryUsage node_mem_cost, GraphCostResultWithMemory *cost) const;
+
+  template <typename T>
   float get_cost(T const &) const;
 
   template <typename T>
@@ -255,6 +288,7 @@ public:
   Graph subgraph(std::unordered_set<Node> const &nodes) const;
   void contract_out_node(const Node&);
   float optimal_cost() const;
+  float optimal_cost_with_memory(const float run_time_cost_factor) const; // Experimental. To be merged with optimal_cost().
   std::unordered_map<Node, MachineView> optimal_views() const;
   void remove_input_nodes();
   void duplicate_input_node(Node const &);

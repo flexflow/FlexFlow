@@ -53,6 +53,10 @@ void top_level_task(const Task* task,
   std::unique_ptr<Graph> best_graph;
   std::unordered_map<Node, MachineView> optimal_views;
   gsh.graph_optimize(10, false, best_graph, optimal_views);
+
+  // Experimental. Change the function call above to this line to test the search procedure with memory consideration.
+  // gsh.graph_optimize_with_memory(10, false, best_graph, optimal_views);
+
   // {
     // runtime->issue_execution_fence(ctx);
     // TimingLauncher timer(MEASURE_MICRO_SECONDS);

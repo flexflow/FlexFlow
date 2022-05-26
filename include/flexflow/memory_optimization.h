@@ -83,20 +83,20 @@ class MemoryUsage {
   MemoryUsage(MemoryUsageType _usage_type, float _num) : usage_type{_usage_type}, num{_num} {}
 
   std::string to_string() const {
-    std::string str = "(MemoryUsageType:";
+    std::string type_name;
     switch (usage_type) {
       case MemoryUsageType::GLOBAL:
-        str += "GLOBAL";
+        type_name = "GLOBAL";
         break;
       case MemoryUsageType::PER_DEVICE_MAX:
-        str += "PER_DEVICE_MAX";
+        type_name = "PER_DEVICE_MAX";
         break;
       case MemoryUsageType::PER_DEVICE_ALL:
-        assert(("Not supporting detailed per-device memory usage now.", false));
+        // Not supporting detailed per-device memory usage now.
+        assert(false);
         break;
     }
-    str += (", Usage: %f)", num);
-    return str;
+    return "(MemoryUsageType:" + type_name + ", Usage:" + std::to_string(num) + ")";
   }
 
   MemoryUsage& operator+=(const MemoryUsage& rhs) {
@@ -111,7 +111,8 @@ class MemoryUsage {
         num = std::max(num, rhs.num);
         break;
       case MemoryUsageType::PER_DEVICE_ALL:
-        assert(("Not supporting detailed per-device memory usage now.", false));
+        // Not supporting detailed per-device memory usage now.
+        assert(false);
         break;
     }
 

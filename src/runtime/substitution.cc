@@ -1780,26 +1780,25 @@ void GraphSearchHelper::graph_optimize_with_memory(
   // Export an empty schedule if needed.
   std::unordered_map<Node, MachineView> empty_strategy;
   if (!this->config.export_strategy_computation_graph_file.empty()) {
-    graph->export_strategy_computation_graph(
-        empty_strategy, this->config.export_strategy_computation_graph_file);
+    graph->export_strategy_computation_graph(empty_strategy,
+                                             this->config.export_strategy_computation_graph_file);
   }
 
   Node sink_node = graph->find_sink_node();
 
   // Main step to find the optimal graph.
-  GraphOptimizeResult optimal =
-      this->generic_sequence_optimize<GraphOptimizeResult>(
-          graph, sink_node, tl::nullopt /*output_shape*/,
-          tl::nullopt /*input_shape*/);
+  // GraphOptimizeResult optimal =
+  //     this->generic_sequence_optimize<GraphOptimizeResult>(
+  //         graph, sink_node, tl::nullopt /*output_shape*/,
+  //         tl::nullopt /*input_shape*/);
 
-  // GraphOptimizeResultWithMemory optimal_with_memory =
-  //     this->generic_sequence_optimize_with_memory<
-  //         GraphOptimizeResultWithMemory>(graph, sink_node, tl::nullopt,
-  //                                        tl::nullopt);
+  GraphOptimizeResultWithMemory optimal =
+      this->generic_sequence_optimize_with_memory<GraphOptimizeResultWithMemory>(
+          graph, sink_node, tl::nullopt, tl::nullopt);
 
-  this->logger->debug() << "Total cache size: "
-                        << this->cached_optimized_graphs.size();
-  std::cout << "Optimal cost: " << optimal.cost << std::endl;
+  this->logger->debug() << "Total cache size: " << this->cached_optimized_graphs.size();
+  std::cout << "Optimal run time cost: " << optimal.cost << ", memory usage: " << optimal.mem_cost
+            << std::endl;
 
   // Further simplify the "optimal" graph/schedule to have a more efficient
   // graph and more accurate cost.
@@ -1812,10 +1811,8 @@ void GraphSearchHelper::graph_optimize_with_memory(
   best_graph->simplify(settings);
 
   // Get the real optimal machine views.
-  std::unordered_map<Node, MachineView> duplicated_optimal_views =
-      best_graph->optimal_views();
-  std::unordered_map<Node, Node> deduplication_map =
-      best_graph->deduplicate_input_nodes();
+  std::unordered_map<Node, MachineView> duplicated_optimal_views = best_graph->optimal_views();
+  std::unordered_map<Node, Node> deduplication_map = best_graph->deduplicate_input_nodes();
   std::unordered_map<Node, MachineView> real_optimal_views;
   for (auto const& kv : duplicated_optimal_views) {
     if (deduplication_map.find(kv.first) != deduplication_map.end()) {
@@ -2077,36 +2074,40 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph, Si
  */
 std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(
     Graph const* r_graph, SimplificationSettings const& simplification_settings) {
-  // Construct graph substitutions
   TAG_ENTER(this->logger);
-
   this->logger->debug() << "Optimizing base graph: ";
   {
     TAG_ENTER(this->logger);
     /* graph_log_representation(r_graph, *this->logger); */
     // r_graph->print_dot();
   }
-  this->logger->debug() << "Starting cost: " << r_graph->optimal_cost();
+  this->logger->debug() << "Starting cost: "
+                        << r_graph->optimal_cost_with_memory(mem_config.run_time_cost_factor);
 
+  // Construct graph substitutions
   std::vector<GraphXfer*> xfers;
   this->load_graph_substitutions(xfers);
 
-  Graph* graph = new Graph(*r_graph);
-
+  // Prepare for the search
   std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
   std::unordered_set<size_t> hashmap;
+
+  Graph* graph = new Graph(*r_graph);
   candidates.push(graph);
   hashmap.insert(graph->hash());
+
   Graph* best_graph = new Graph(*graph);
-  float best_cost = best_graph->optimal_cost();
+  float best_cost = best_graph->optimal_cost_with_memory(mem_config.run_time_cost_factor);
+
   int counter = 0;
   const float alpha = this->model->config.search_alpha;
-
   int budget = model->config.search_budget;
   if (budget == 0) {
     log_xfers.warning() << "Base search budget is set to 0. This is probably not what you want "
                            "(use the --budget flag to set the base search budget)";
   }
+
+  // Actual exploration
   for (int iter = 0; iter < budget || budget == -1; iter++) {
     log_xfers.spew() << "Considering " << candidates.size() << " candidates";
     if (candidates.empty()) {
@@ -2115,16 +2116,18 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(
 
     Graph* cur_graph = candidates.top();
     candidates.pop();
-    if (cur_graph->optimal_cost() < best_graph->optimal_cost()) {
+    if (cur_graph->optimal_cost_with_memory(mem_config.run_time_cost_factor) <
+        best_graph->optimal_cost_with_memory(mem_config.run_time_cost_factor)) {
       delete best_graph;
       best_graph = cur_graph;
-      best_cost = cur_graph->optimal_cost();
-    } else if (cur_graph->optimal_cost() > best_cost * alpha) {
+      best_cost = cur_graph->optimal_cost_with_memory(mem_config.run_time_cost_factor);
+    } else if (cur_graph->optimal_cost_with_memory(mem_config.run_time_cost_factor) >
+               best_cost * alpha) {
       continue;
     }
-
     log_xfers.info("[%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)", counter,
-                   cur_graph->optimal_cost(), best_cost, candidates.size());
+                   cur_graph->optimal_cost_with_memory(mem_config.run_time_cost_factor), best_cost,
+                   candidates.size());
 
     log_xfers.debug() << "Considering " << xfers.size() << " possible xfers";
     for (size_t i = 0; i < xfers.size(); i++) {
@@ -2134,16 +2137,16 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(
                     simplification_settings, num_matches_found, num_matches_rejected);
       log_xfers.debug() << "Rejected [ " << num_matches_rejected << " / " << num_matches_found
                         << " ] matches";
-      /* std::cout << "." << std::flush; */
     }
-    /* std::cout << std::endl; */
+
     if (best_graph != cur_graph) {
       delete cur_graph;
     }
   }
 
-  this->logger->debug() << "Optimized cost: " << best_graph->optimal_cost();
-  // best_graph->print_dot();
+  this->logger->debug() << "Optimized cost: "
+                        << best_graph->optimal_cost_with_memory(mem_config.run_time_cost_factor);
+
   return std::unique_ptr<Graph>(best_graph);
 }
 
@@ -2177,6 +2180,7 @@ tl::optional<float> GraphSearchHelper::try_get_cost_from_cache<float>(size_t has
   }
 }
 
+// TODO: how to handle this? -> Handle this by handling graph_cost<float> but consider memory usage.
 template <>
 float GraphSearchHelper::get_optimal_cost<float>(std::unique_ptr<Graph> optimized) const {
   return optimized->generic_optimal_cost<float>(); 
@@ -2197,6 +2201,20 @@ GraphOptimizeResult GraphSearchHelper::get_optimal_cost<GraphOptimizeResult>(std
   return result;
 }
 
+/**
+ * @brief Experimental. To be merged with other versions eventually.
+ */
+template <>
+GraphOptimizeResultWithMemory GraphSearchHelper::get_optimal_cost<GraphOptimizeResultWithMemory>(std::unique_ptr<Graph> optimized) const {
+  GraphOptimizeResultWithMemory result;
+  result.graph = *optimized;
+  GraphCostResultWithMemory gcr = optimized->generic_optimal_cost<GraphCostResultWithMemory>();
+  result.cost = gcr.cost;
+  result.views = gcr.views;
+  result.mem_cost = gcr.mem_cost;
+  return result;
+}
+
 template <>
 tl::optional<GraphCostResult> GraphSearchHelper::try_get_cost_from_cache<GraphCostResult>(size_t hash) const {
   return tl::nullopt;
@@ -2204,6 +2222,11 @@ tl::optional<GraphCostResult> GraphSearchHelper::try_get_cost_from_cache<GraphCo
 
 template <>
 tl::optional<GraphOptimizeResult> GraphSearchHelper::try_get_cost_from_cache<GraphOptimizeResult>(size_t hash) const {
+  return tl::nullopt;
+}
+
+template <>
+tl::optional<GraphOptimizeResultWithMemory> GraphSearchHelper::try_get_cost_from_cache<GraphOptimizeResultWithMemory>(size_t hash) const {
   return tl::nullopt;
 }
 
@@ -2217,6 +2240,9 @@ void GraphSearchHelper::try_cache_result<GraphCostResult>(size_t hash, GraphCost
 
 template <>
 void GraphSearchHelper::try_cache_result<GraphOptimizeResult>(size_t hash, GraphOptimizeResult const &value) { }
+
+template <>
+void GraphSearchHelper::try_cache_result<GraphOptimizeResultWithMemory>(size_t hash, GraphOptimizeResultWithMemory const &value) { }
 
 /**
  * @brief Get the cost/result of PCG if sequentially split it.
@@ -2520,7 +2546,7 @@ T GraphSearchHelper::generic_sequence_optimize_with_memory(
       settings.simplify_parallel_ops = true;
 
       // Call base optimization to perform graph substitution.
-      std::unique_ptr<Graph> optimized = this->base_optimize(&to_optimize, settings);
+      std::unique_ptr<Graph> optimized = this->base_optimize_with_memory(&to_optimize, settings);
       return_value = get_optimal_cost<T>(std::move(optimized));
     } else {
       this->logger->debug() << "Applying recursive case on bottleneck " << bottleneck.value().guid;
@@ -3216,6 +3242,9 @@ void FFModel::graph_optimize(size_t budget,
                              std::unordered_map<Node, MachineView>& optimal_views)
 {
   this->graph_search->graph_optimize(budget, only_data_parallel, best_graph, optimal_views);
+
+  // Experimental. Change the function call above to this line to search with memory consideration.
+  // this->graph_search->graph_optimize_with_memory(budget, only_data_parallel, best_graph, optimal_views);
 }
 
 bool FFModel::convert_graph_to_operators(const Graph* graph,
