@@ -3,8 +3,10 @@
 #include "tl/optional.h"
 #include <cassert>
 #include <iostream>
+#include "flexflow/ffconst_utils.h"
 
 using namespace FlexFlow::substitution_loader;
+using FlexFlow::get_operator_type_name;
 
 enum class NodeType { 
     SRC, 
@@ -86,7 +88,7 @@ int main(int argc, char **argv) {
         Operator const &o = r.srcOp[i];
         Node srcOpNode = {NodeType::SRC, i, 0};
         {
-            dot.add_node(srcOpNode, label_map(get_op_type_name(o.op_type), srcOpNode));
+            dot.add_node(srcOpNode, label_map(get_operator_type_name(o.op_type), srcOpNode));
             dot.add_node_to_subgraph(srcOpNode, src_body_subgraph);
         }
 
@@ -110,7 +112,7 @@ int main(int argc, char **argv) {
         Operator const &o = r.dstOp[j];
         Node dstOpNode = {NodeType::DST, j, 0};
         {
-            dot.add_node(dstOpNode, label_map(get_op_type_name(o.op_type), dstOpNode));
+            dot.add_node(dstOpNode, label_map(get_operator_type_name(o.op_type), dstOpNode));
             dot.add_node_to_subgraph(dstOpNode, dst_body_subgraph);
         }
 

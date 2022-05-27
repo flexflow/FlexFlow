@@ -131,8 +131,6 @@ NLOHMANN_JSON_SERIALIZE_ENUM( OperatorType, {
     {OP_FUSED_PARALLEL, "OP_FUSED_PARALLEL"}
 })
 
-std::string get_op_type_name(OperatorType type);
-
 namespace FlexFlow::substitution_loader {
     using json = nlohmann::json;
 
