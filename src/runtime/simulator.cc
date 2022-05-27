@@ -488,6 +488,11 @@ tl::optional<OperatorParameters> get_op_parameters(const Op* op) {
       return ((Linear*)op)->get_params();
     case OP_CONV2D:
       return ((Conv2D*)op)->get_params();
+    case OP_EW_ADD:
+    case OP_EW_SUB:
+    case OP_EW_MUL:
+    case OP_EW_DIV:
+      return ((ElementBinary*)op)->get_params();
     default:
       return tl::nullopt;
   }

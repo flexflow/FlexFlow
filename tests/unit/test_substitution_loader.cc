@@ -7,6 +7,7 @@ namespace sl = FlexFlow::substitution_loader;
 using json = nlohmann::json;
 using FlexFlow::PCG::GraphXfer;
 using FlexFlow::PCG::create_xfers;
+using FlexFlow::PCG::create_xfer;
 
 TEST(substitution_loader, basic) {
     // Yes, I know this substitution is not correct. It's just for testing.    
@@ -75,7 +76,7 @@ TEST(substitution_loader, basic) {
     example_rule.mappedOutput = {map_output};
 
     GraphXfer *xfer = new GraphXfer(nullptr);
-    create_xfer(*xfer, example_rule);
+    create_xfer(*xfer, example_rule, 2);
 
     EXPECT_EQ(xfer->name, "test_rule");
 
@@ -145,7 +146,7 @@ TEST(substitution_loader, load_full_file) {
     sl::RuleCollection collection = sl::load_rule_collection_from_path("tests/unit/graph_subst_3_v2.json");
     EXPECT_EQ(collection.rules.size(), 640);
 
-    std::vector<GraphXfer*> xfers = create_xfers(nullptr, collection);
+    std::vector<GraphXfer*> xfers = create_xfers(nullptr, collection, 2);
     EXPECT_EQ(xfers.size(), 640);
 
 }

@@ -4,12 +4,6 @@
 
 using json = nlohmann::json;
 
-std::string get_op_type_name(OperatorType type) {
-    json j = type;
-    std::string s = j;
-    return s;
-}
-
 namespace FlexFlow::substitution_loader {
 
 void from_json(json const &j, Parameter &p) {

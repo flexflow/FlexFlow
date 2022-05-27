@@ -109,8 +109,9 @@ OpX *create_opx(sl::Operator const &op,
                 TensorX const &input2 = TensorX::NO_TX,
                 TensorX const &input3 = TensorX::NO_TX,
                 TensorX const &input4 = TensorX::NO_TX);
-void create_xfer(GraphXfer &xfer, sl::Rule const &r);
-std::vector<GraphXfer*> create_xfers(FFModel *model, sl::RuleCollection const &rules);
+void create_xfer(GraphXfer &xfer, sl::Rule const &r, int parallel_degree);
+std::vector<GraphXfer*> create_xfers(
+  FFModel *model, sl::RuleCollection const &rules, int parallel_degree);
 
 class GraphCompare {
 public:
