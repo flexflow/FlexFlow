@@ -232,6 +232,11 @@ public:
                       bool only_data_parallel,
                       std::unique_ptr<Graph>& best_graph,
                       std::unordered_map<Node, MachineView>& optimal_views);
+  // Experimental. To be merged with graph_optimize eventually.
+  void graph_optimize_with_memory(size_t budget, 
+                      bool only_data_parallel,
+                      std::unique_ptr<Graph>& best_graph,
+                      std::unordered_map<Node, MachineView>& optimal_views);
   void graph_optimize_no_split(
       size_t budget, 
       bool only_data_parallel,
@@ -243,6 +248,13 @@ private:
                               Node const &sink_node,
                               tl::optional<ParallelTensorShape> const &output_shape,
                               tl::optional<ParallelTensorShape> const &input_shape);
+
+  // Experimental. To be merged with generic_sequence_optimize eventually.
+  template <typename T>
+  T generic_sequence_optimize_with_memory(
+      Graph const* graph, Node const& sink_node,
+      tl::optional<ParallelTensorShape> const& output_shape,
+      tl::optional<ParallelTensorShape> const& input_shape);
 
   float sequence_optimize(Graph const *graph, 
                           Node const &sink_node, 
@@ -257,12 +269,25 @@ private:
                            Node const &sink_node,
                            Node const &bottleneck, 
                            ParallelTensorShape const &bottleneck_output_shape);
+  // Experimental. To be merged with execute_sequence_split().
+  template <typename T>
+  T execute_sequence_split_with_memory(std::unique_ptr<Graph> const &pre_graph,
+                           std::unique_ptr<Graph> const &post_graph,
+                           tl::optional<ParallelTensorShape> const &output_shape,
+                           tl::optional<ParallelTensorShape> const &input_shape,
+                           Node const &sink_node,
+                           Node const &bottleneck, 
+                           ParallelTensorShape const &bottleneck_output_shape);
+
   void generate_all_pcg_xfers();
   void load_graph_substitutions(std::vector<GraphXfer*> &xfers) const;
   Graph *construct_graph();
   void subgraph_optimize(Graph *subgraph);
 
   std::unique_ptr<Graph> base_optimize(Graph const *, SimplificationSettings const &simplification_settings);
+
+  // Experimental. To be merged with base_optimize().
+  std::unique_ptr<Graph> base_optimize_with_memory(Graph const *, SimplificationSettings const &simplification_settings);
 
   std::vector<ParallelTensorShape> possible_split_output_tensor_shapes(Node const &) const;
   
@@ -282,6 +307,7 @@ private:
   std::vector<GraphXfer*> all_pcg_xfers;
   FFModel* model;
   FFConfig const &config;
+  MemoryOptimConfig mem_config;
   std::unique_ptr<RecursiveLogger> logger;
 };
 

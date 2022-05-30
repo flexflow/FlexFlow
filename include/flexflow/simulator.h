@@ -26,6 +26,7 @@
 #include "mpark/variant.hpp"
 #include "flexflow/utils/hash_utils.h"
 #include "flexflow/operator_params.h"
+#include "flexflow/memory_optimization.h"
 
 namespace mp = mpark;
 
@@ -594,6 +595,9 @@ public:
                            int input_idx,
                            const MachineView& source_view,
                            const MachineView& sink_view);
+  std::pair<float, PCG::MemoryUsage> estimate_xfer_cost_with_memory(const Op *op, int input_idx,
+                                                                    const MachineView &source_view,
+                                                                    const MachineView &sink_view);
   float default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TENSOR_DIM],
                                    int tensor_ndims,
                                    const MachineView& view);

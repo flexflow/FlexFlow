@@ -80,6 +80,9 @@ SearchHelper::SearchHelper(FFModel *model)
   this->logger = std::unique_ptr<RecursiveLogger>(new RecursiveLogger("DP"));
 }
 
+/**
+ * @brief Combine results from sub-problems.
+ */
 template <typename T>
 T SearchHelper::execute_sequence_split(
     std::unique_ptr<Graph> const &pre_graph,
@@ -95,6 +98,11 @@ T SearchHelper::execute_sequence_split(
   );
 }
 
+/**
+ * @brief Starting point to get sequential split time cost.
+ * 
+ * @tparam T float or GraphCostResult
+ */
 template <typename T>
 T SearchHelper::find_optimal_sequence_graph_time(
   Graph const *g,
@@ -256,6 +264,11 @@ NonsequenceSplit NonsequenceSplit::horizontal(int param, bool flip_graphs) {
   return s;
 }
 
+/**
+ * @brief Starting point to get parallel split time cost.
+ * 
+ * @tparam T float or GraphCostResult
+ */
 template <typename T>
 T SearchHelper::find_optimal_nonsequence_graph_time(
   Graph const *g,
@@ -1160,12 +1173,30 @@ GraphCostResult GraphCostResult::invalid() {
   return {std::numeric_limits<float>::infinity(), {}};
 }
 
+GraphCostResultWithMemory GraphCostResultWithMemory::invalid() {
+  return {std::numeric_limits<float>::infinity(), MemoryUsage{}, {}};
+}
+
+// TODO: only a workaround here now, need to find a proper way to pass in the config factor
+float GraphCostResultWithMemory::get_multi_obj_cost() const {
+  return this->cost;
+}
+
 bool GraphCostResult::operator<(GraphCostResult const &other) const {
   return this->cost < other.cost;
 }
 
+bool GraphCostResultWithMemory::operator<(GraphCostResultWithMemory const &other) const {
+  return this->get_multi_obj_cost() < other.get_multi_obj_cost();
+}
+
 std::ostream& operator<<(std::ostream &s, GraphCostResult const &r) {
   s << "GraphCostResult{cost=" << r.cost << "}";
+  return s;
+}
+
+std::ostream& operator<<(std::ostream &s, GraphCostResultWithMemory const &r) {
+  s << "GraphCostResultWithMemory{run_time_cost=" << r.cost << ", memory_cost=" << r.mem_cost << "}";
   return s;
 }
 
@@ -1174,10 +1205,24 @@ std::ostream& operator<<(std::ostream &s, GraphOptimizeResult const &r) {
   return s;
 }
 
+std::ostream& operator<<(std::ostream &s, GraphOptimizeResultWithMemory const &r) {
+  s << "GraphOptimizeResultWithMemory{run_time_cost=" << r.cost << ", memory_cost=" << r.mem_cost << "}";
+  return s;
+}
+
 template <>
 GraphCostResult sequence_cost<GraphCostResult>(GraphCostResult const &first, GraphCostResult const &second) {
   GraphCostResult result(first);
   result.cost += second.cost;
+  result.views.insert(second.views.cbegin(), second.views.cend());
+  return result;
+}
+
+template <>
+GraphCostResultWithMemory sequence_cost<GraphCostResultWithMemory>(GraphCostResultWithMemory const &first, GraphCostResultWithMemory const &second) {
+  GraphCostResultWithMemory result(first);
+  result.cost += second.cost;
+  result.mem_cost += second.mem_cost;
   result.views.insert(second.views.cbegin(), second.views.cend());
   return result;
 }
@@ -1200,10 +1245,43 @@ GraphOptimizeResult sequence_cost<GraphOptimizeResult>(GraphOptimizeResult const
   return result;
 }
 
+/**
+ * @brief Specialization of sequence_cost<T> to combine two GraphOptimizeResultWithMemory. This
+ * reuses the parts of combining run time costs. This should be merged with other versions of
+ * sequence_cost<T>.
+ */
+template <>
+GraphOptimizeResultWithMemory sequence_cost<GraphOptimizeResultWithMemory>(GraphOptimizeResultWithMemory const &first, GraphOptimizeResultWithMemory const &second) {
+  GraphOptimizeResultWithMemory result;
+  result.cost = first.cost + second.cost;
+  result.views.insert(first.views.cbegin(), first.views.cend());
+  result.views.insert(second.views.cbegin(), second.views.cend());
+
+  result.graph = second.graph;
+  Node second_src = result.graph.value().find_source_node();
+  result.graph.value().replace_subgraph({second_src}, first.graph.value());
+
+  // New: Combine memory cost
+  result.mem_cost = first.mem_cost + second.mem_cost;
+
+  return result;
+}
+
 template <>
 GraphCostResult parallel_cost<GraphCostResult>(GraphCostResult const &first, GraphCostResult const &second) {
   GraphCostResult result;
   result.cost = std::max(first.cost, second.cost);
+  result.views.insert(first.views.cbegin(), first.views.cend());
+  result.views.insert(second.views.cbegin(), second.views.cend());
+
+  return result;
+}
+
+template <>
+GraphCostResultWithMemory parallel_cost<GraphCostResultWithMemory>(GraphCostResultWithMemory const &first, GraphCostResultWithMemory const &second) {
+  GraphCostResultWithMemory result;
+  result.cost = std::max(first.cost, second.cost);
+  result.mem_cost = first.mem_cost + second.mem_cost;
   result.views.insert(first.views.cbegin(), first.views.cend());
   result.views.insert(second.views.cbegin(), second.views.cend());
 
@@ -1225,6 +1303,12 @@ bool SearchHelper::is_invalid<GraphCostResult>(GraphCostResult const &cost) cons
   return cost.cost == std::numeric_limits<float>::infinity();
 }
 
+template <>
+bool SearchHelper::is_invalid<GraphCostResultWithMemory>(GraphCostResultWithMemory const &cost) const {
+  // TODO: change this. What will happen if combining the memory cost?
+  return cost.cost == std::numeric_limits<float>::infinity();
+}
+
 /**
  * @brief Asserts that the results of graph optimization are valid for the graph 
  * 
@@ -1235,6 +1319,25 @@ bool SearchHelper::is_invalid<GraphCostResult>(GraphCostResult const &cost) cons
  */
 template <>
 void SearchHelper::check_matches_graph<GraphCostResult>(Graph const *g, GraphCostResult const &r, Node const &sink) const {
+  using FlexFlow::PCG::Utils::nodes;
+
+  if (this->is_invalid(r)) {
+    return;
+  }
+
+  std::unordered_set<Node> g_nodes = nodes(*g);
+  g_nodes.erase(sink);
+
+  std::unordered_set<Node> r_nodes;
+  for (auto const &kv : r.views) {
+    r_nodes.insert(kv.first);
+  }
+
+  assert( g_nodes == r_nodes );
+}
+
+template <>
+void SearchHelper::check_matches_graph<GraphCostResultWithMemory>(Graph const *g, GraphCostResultWithMemory const &r, Node const &sink) const {
   using FlexFlow::PCG::Utils::nodes;
 
   if (this->is_invalid(r)) {
@@ -1270,6 +1373,11 @@ std::pair<bool, GraphCostResult> SearchHelper::try_get_cost_from_cache<GraphCost
 }
 
 template <>
+std::pair<bool, GraphCostResultWithMemory> SearchHelper::try_get_cost_from_cache<GraphCostResultWithMemory>(size_t hash) const {
+  return {false, GraphCostResultWithMemory::invalid()};
+}
+
+template <>
 void SearchHelper::try_cache_result<float>(size_t hash, float const &value) const {
   this->logger->debug() << "cached_graph_costs[" << hash << "] = " << value;
   this->cached_graph_costs[hash] = value;
@@ -1279,6 +1387,12 @@ template <>
 void SearchHelper::try_cache_result<GraphCostResult>(size_t hash, GraphCostResult const &value) const {
   this->logger->debug() << "cached_graph_costs[" << hash << "=" << value.cost << "]";
   this->cached_graph_costs[hash] = value.cost;
+}
+
+template <>
+void SearchHelper::try_cache_result<GraphCostResultWithMemory>(size_t hash, GraphCostResultWithMemory const &value) const {
+  this->logger->debug() << "cached_graph_costs[" << hash << "=" << value.get_multi_obj_cost() << "]";
+  this->cached_graph_costs[hash] = value.get_multi_obj_cost();
 }
 
 template <>
@@ -1292,6 +1406,13 @@ GraphCostResult SearchHelper::infinity<GraphCostResult>() const {
 }
 
 template <>
+GraphCostResultWithMemory SearchHelper::infinity<GraphCostResultWithMemory>() const {
+  return {std::numeric_limits<float>::infinity(),
+          MemoryUsage(MemoryUsageType::GLOBAL, std::numeric_limits<float>::infinity()),
+          {}};
+}
+
+template <>
 float SearchHelper::empty<float>() const {
   return 0.0f;
 }
@@ -1299,6 +1420,11 @@ float SearchHelper::empty<float>() const {
 template <>
 GraphCostResult SearchHelper::empty<GraphCostResult>() const {
   return { 0.0f, {} };
+}
+
+template <>
+GraphCostResultWithMemory SearchHelper::empty<GraphCostResultWithMemory>() const {
+  return { 0.0f, MemoryUsage{}, {} };
 }
 
 template <typename T>
@@ -1331,6 +1457,40 @@ T SearchHelper::estimate_xfer_cost(
   return result;
 }
 
+/**
+ * @brief Specialization to avoid changing many calls. Should be refactored.
+ */
+template <>
+GraphCostResultWithMemory SearchHelper::estimate_xfer_cost<GraphCostResultWithMemory>(
+    Graph const *graph, NodeAssignment const &source, NodeAssignment const &sink) const {
+  GraphCostResultWithMemory result = this->empty<GraphCostResultWithMemory>();
+
+  if (source.node != Node::INVALID_NODE) {
+    const auto &inList = graph->inEdges.find(sink.node)->second;
+    float op_cost = 0.0f;
+    MemoryUsage mem_cost{};
+    for (const auto &it2 : inList) {
+      assert(it2.srcOp == source.node);
+      assert(sink.node.ptr->inputs[it2.dstIdx]->is_valid_machine_view(source.view));
+
+      std::pair<float, MemoryUsage> estimated_xfer_cost =
+          this->model->simulator->estimate_xfer_cost_with_memory(sink.node.ptr, it2.dstIdx,
+                                                                 source.view, sink.view);
+
+      op_cost += estimated_xfer_cost.first;
+      mem_cost += estimated_xfer_cost.second;
+    }
+    this->add_operator_cost_with_memory(source, op_cost, mem_cost, &result);
+  } else {
+    Node real_source = graph->find_source_node();
+    assert(real_source.ptr->op_type == OP_INPUT);
+    // TODO: this should not pass in zero MemoryUsage. Should be more accurate.
+    this->add_operator_cost_with_memory({real_source, MachineView::NO_VIEW}, 0.0f, MemoryUsage{}, &result);
+  }
+
+  return result;
+}
+
 template <>
 void SearchHelper::add_operator_cost<float>(NodeAssignment const &node, float node_cost, float *cost) const {
   *cost += node_cost;
@@ -1339,6 +1499,19 @@ void SearchHelper::add_operator_cost<float>(NodeAssignment const &node, float no
 template <>
 void SearchHelper::add_operator_cost<GraphCostResult>(NodeAssignment const &node, float node_cost, GraphCostResult *cost) const {
   cost->cost += node_cost;
+  cost->views[node.node] = node.view;
+}
+
+/**
+ * @brief Add an operator's run time and memory cost to the graph cost.
+ * This is ugly. The whole procedure to propgate costs should be refactored.
+ */
+void SearchHelper::add_operator_cost_with_memory(NodeAssignment const &node,
+                                                 float node_run_time_cost,
+                                                 MemoryUsage node_mem_cost,
+                                                 GraphCostResultWithMemory *cost) const {
+  cost->cost += node_run_time_cost;
+  cost->mem_cost += node_mem_cost;
   cost->views[node.node] = node.view;
 }
 
@@ -1352,6 +1525,36 @@ float SearchHelper::get_cost<GraphCostResult>(GraphCostResult const &gcr) const 
   return gcr.cost;
 }
 
+template <>
+float SearchHelper::get_cost<GraphCostResultWithMemory>(GraphCostResultWithMemory const &gcr) const {
+  return gcr.get_multi_obj_cost();
+}
+
+/**
+ * @brief Helper function to add sink node costs. Useful to handle GraphCostResultWithMemory
+ * specialization.
+ */
+template <typename T>
+void SearchHelper::add_sink_node_costs(const NodeAssignment &sink, float run_time,
+                                       T *result) const {
+  this->add_operator_cost<T>(sink, run_time, result);
+}
+
+/**
+ * @brief Specialization of add_sink_node_costs<T> to handle memory consideration. Should be
+ * refactored.
+ */
+template <>
+void SearchHelper::add_sink_node_costs(const NodeAssignment &sink, float run_time,
+                                       GraphCostResultWithMemory *result) const {
+  this->add_operator_cost_with_memory(sink, run_time, MemoryUsage{}, result);
+}
+
+/**
+ * @brief Core function to analyze the cost of a graph.
+ * 
+ * @tparam T float or GraphCostResult (or GraphCostResultWithMemory in memory optimization)
+ */
 template <typename T>
 T SearchHelper::graph_cost(const Graph* graph,
                           const NodeAssignment& source,
@@ -1424,14 +1627,30 @@ T SearchHelper::graph_cost(const Graph* graph,
                   << "forward(" << metrics.forward_time << ") "
                   << "backward(" << metrics.backward_time << ") " 
                   << "sync(" << metrics.sync_time << ")";
-    this->add_operator_cost<T>(sink, metrics.forward_time + metrics.backward_time + metrics.sync_time, &result);
+    this->add_sink_node_costs<T>(sink, metrics.forward_time + metrics.backward_time + metrics.sync_time, &result);
   }
 
   return result;
 }
 
+/**
+ * @brief Get the optimal run time cost of a PCG.
+ * @details This is the current single metric used to decide which PCG is better in the Unity's
+ * search algorithm.
+ */
 float Graph::optimal_cost() const {
   return this->generic_optimal_cost<float>();
+}
+
+/**
+ * @brief Experimental. Get a single number to represent the multi-objective cost of a PCG. To be
+ * merged with Graph::optimal_cost().
+ */
+float Graph::optimal_cost_with_memory(const float run_time_cost_factor) const {
+  auto optimal = this->generic_optimal_cost<GraphCostResultWithMemory>();
+  float run_time_cost = optimal.cost;
+  float mem_cost = optimal.mem_cost.num;
+  return (run_time_cost_factor * run_time_cost + (1 - run_time_cost_factor) * mem_cost);
 }
 
 std::unordered_map<Node, MachineView> Graph::optimal_views() const {
@@ -1541,6 +1760,15 @@ size_t dp_state_hash(const Graph* graph,
   return key;
 }
 
+/**
+ * @brief Starting point of Unity search procedure. Registered on Legion runtime.
+ * 
+ * @param task Legion task to get FFModel and other configs
+ * @param regions Not used
+ * @param ctx Not used
+ * @param runtime Not used
+ * @return GraphOptimalViewSerialized Serialized optimal PCG
+ */
 GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
     const std::vector<PhysicalRegion> &regions,
     Context ctx, Runtime *runtime)
@@ -1598,10 +1826,13 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
       optimal_views[node.first] = data_parallel_view;
     }
   } else {
+    // Main step to optimize the PCG of an FFModel
     model->graph_optimize(model->config.search_budget,
                           model->config.only_data_parallel,
                           best_graph, optimal_views);
   }
+
+  // Following lines are to serialize the optimized PCG.
   Serializer sez;
   // First serialize graph
   sez.serialize(best_graph->inEdges.size());
