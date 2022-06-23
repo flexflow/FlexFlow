@@ -2114,7 +2114,6 @@ T GraphSearchHelper::generic_sequence_optimize(
     }
 
     tl::optional<Node> bottleneck = this->find_split_node(graph, this->config.base_optimize_threshold);
-    /* Node bottleneck = graph->find_nontrivial_bottleneck_node(sink_node, source_node); */
 
     if (!bottleneck.has_value()) {
       this->logger->debug() << "Applying base case";
