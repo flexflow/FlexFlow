@@ -574,11 +574,11 @@ bool ElementBinary::measure_operator_cost(
     return false;
   ElementBinaryMeta* m = sim->ele_binary_meta;
   m->op_type = op_type;
-  m->profiling = eb->profiling;
-  m->inplace_a = eb->inplace_a;
-  m->has_same_operands = eb->has_same_operands;
-  m->broadcast_input1 = eb->broadcast_input1;
-  m->broadcast_input2 = eb->broadcast_input2;
+  m->profiling = this->profiling;
+  m->inplace_a = this->inplace_a;
+  m->has_same_operands = this->has_same_operands;
+  m->broadcast_input1 = this->broadcast_input1;
+  m->broadcast_input2 = this->broadcast_input2;
   Domain input1_domain = sub_input1.get_domain();
   Domain input2_domain = sub_input2.get_domain();
   Domain output_domain = sub_output.get_domain();
