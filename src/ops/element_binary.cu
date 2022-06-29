@@ -345,6 +345,11 @@ ElementBinaryMeta::ElementBinaryMeta(FFHandler handler)
   checkCUDNN(cudnnCreateOpTensorDescriptor(&opDesc));
   checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceAddDesc));
   op_type = OP_NOOP;
+  profiling = false;
+  inplace_a = false;
+  has_same_operands = false;
+  broadcast_input1 = false;
+  broadcast_input2 = false;
 }
 
 }; // namespace FlexFlow
