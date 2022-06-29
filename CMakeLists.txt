@@ -191,6 +191,7 @@ add_library(substitution_loader SHARED
 target_include_directories(substitution_loader PRIVATE ${FLEXFLOW_INCLUDE_DIRS})
 target_link_libraries(substitution_loader nlohmann_json::nlohmann_json)
 
+
 #message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
 
 # compile flexflow lib

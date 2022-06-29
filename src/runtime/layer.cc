@@ -1,5 +1,6 @@
 #include "flexflow/layer.h"
 #include "flexflow/model.h"
+#include "flexflow/ffconst_utils.h"
 
 namespace FlexFlow {
 
@@ -20,7 +21,7 @@ Layer::Layer(FFModel* model,
 {
   std::string pcname;
   if (_name == nullptr) {
-    pcname = model->get_operator_type_name(op_type);
+    pcname = get_operator_type_name(op_type);
   } else {
     pcname = std::string(_name);
   }
@@ -55,7 +56,7 @@ Layer::Layer(FFModel* model,
 {
   std::string pcname;
   if (_name == nullptr) {
-    pcname = model->get_operator_type_name(op_type);
+    pcname = get_operator_type_name(op_type);
   } else {
     pcname = std::string(_name);
   }

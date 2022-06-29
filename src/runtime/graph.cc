@@ -654,32 +654,6 @@ Node Graph::find_bottleneck_node(const Node& sink_node, const Node& source_node)
   return bn_node;
 }
 
-Node Graph::find_nontrivial_bottleneck_node(const Node& sink_node, const Node& source_node) const {
-  using FlexFlow::PCG::Utils::imm_post_dominators;
-
-  std::unordered_map<Node, Node> ipd = imm_post_dominators(*this);
-
-  Node source(source_node);
-  Node bn_node;
-  bool should_continue = true;
-  while (should_continue) {
-    bn_node = ipd.at(source);
-    if (bn_node == sink_node) {
-      return Node::INVALID_NODE;
-    }
-    should_continue = false;
-    for (Edge const &e : this->outEdges.at(source)) {
-      if (e.dstOp == bn_node) {
-        source = bn_node;
-        should_continue = true;
-        break;
-      }
-    }
-  }
-
-  return bn_node;
-}
-
 void Edge::replace_node(const Node& currentOp, const Node& replaceWith) {
   if (this->srcOp == currentOp) {
     this->srcOp = replaceWith;

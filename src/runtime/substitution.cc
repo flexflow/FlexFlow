@@ -37,6 +37,7 @@
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/graph.h"
 #include "flexflow/graph_structures.h"
+#include "flexflow/ffconst_utils.h"
 
 namespace FlexFlow::PCG {
 
@@ -952,7 +953,7 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
     }
     default:
     {
-      std::cout << "opx->type = " << get_op_type_name(opx->type) << std::endl;
+      std::cout << "opx->type = " << get_operator_type_name(opx->type) << std::endl;
       assert(false);
     }
   }
@@ -1270,7 +1271,7 @@ void create_mapping_xfers(FFModel *model, int degree, std::vector<GraphXfer*> &x
     subst->map_output(original_op->outputs[0], post->outputs[0]);
 
     std::ostringstream oss;
-    std::string op_type_name = model->get_operator_type_name(new_op->type);
+    std::string op_type_name = get_operator_type_name(new_op->type);
     std::transform(op_type_name.begin(), op_type_name.end(), op_type_name.begin(),
         [](unsigned char c) { return std::tolower(c); });
     oss << "mapping::" << pre_name << "_" << op_type_name << "_" << post_name << "["
@@ -1337,7 +1338,9 @@ int get_num_inputs(sl::Operator const &op) {
         case OP_PIPELINE:
             return 1;
         default:
-            throw std::runtime_error("Unknown num_inputs for operator " + get_op_type_name(op.op_type));
+            throw std::runtime_error(
+              "Unknown num_inputs for operator " + get_operator_type_name(op.op_type)
+            );
     }
 }
 
@@ -2340,7 +2343,6 @@ T GraphSearchHelper::generic_sequence_optimize(
     }
 
     tl::optional<Node> bottleneck = this->find_split_node(graph, this->config.base_optimize_threshold);
-    /* Node bottleneck = graph->find_nontrivial_bottleneck_node(sink_node, source_node); */
 
     if (!bottleneck.has_value()) {
       this->logger->debug() << "Applying base case";

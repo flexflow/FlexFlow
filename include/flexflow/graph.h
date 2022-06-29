@@ -312,7 +312,6 @@ public:
              const std::vector<Legion::PhysicalRegion> &regions,
              Legion::Context ctx, Legion::Runtime *runtime);
   Node find_bottleneck_node(const Node& sink_node, const Node& source_node) const;
-  Node find_nontrivial_bottleneck_node(const Node& sink_node, const Node& source_node) const;
   void print_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, std::string const &out_filename) const;
   void export_strategy_computation_graph(std::unordered_map<Node, MachineView> const &strategy, DotFile<Node> &dot) const;
