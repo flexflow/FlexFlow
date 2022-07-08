@@ -114,6 +114,7 @@ public:
   //                          ParallelConfig& config) const;
 public:
   int epochs, batchSize, printFreq;
+  int ubatchUnit; //shicao
   //int inputHeight, inputWidth;
   int numNodes, cpusPerNode, workersPerNode;
   float learningRate, weightDecay;

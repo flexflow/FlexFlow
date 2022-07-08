@@ -1499,45 +1499,253 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
 
   Point<NDIM> hi;
   for (int i = 0; i < NDIM; i++)
-    hi[i] = tensor->dims[i].size - 1;
+    hi[i] = tensor->dims[i].size - 1; //shicao TODO check dim order and increase batch dim size
   Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
   IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
   tensor->region = runtime->create_logical_region(ctx, is, fs);
   if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
     tensor->region_grad = runtime->create_logical_region(ctx, is, fs);
   }
-  
+
   // Step 2: create partitions if parallel_op != NULL
+  // if (parallel_op != NULL) {
+  //   IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
+  //   //Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  //   Transform<NDIM, TDIM> transform;
+  //   Point<NDIM> ext_hi;
+  //   for (int i = 0; i < NDIM; i++) {
+  //     int nparts = tensor->dims[i].degree;
+  //     ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
+  //   }
+  //   Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
+  //   for (int i = 0; i < NDIM; i++)
+  //     for (int j = 0; j < TDIM; j++)
+  //       if (tensor->dims[i].parallel_idx == j)
+  //         transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
+  //       else
+  //         transform[i][j] = 0;
+  //   IndexPartition ip = runtime->create_partition_by_restriction(
+  //       ctx, is, part_is, transform, extent);
+  //   assert(runtime->is_index_partition_disjoint(ctx, ip));
+  //   assert(runtime->is_index_partition_complete(ctx, ip));
+  //   tensor->part = runtime->get_logical_partition(ctx, tensor->region, ip);
+  //   if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
+  //     tensor->part_grad = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
+  //   }
+  // }
+  
+  // shicao for pipeline, Step 2: create hierarchical partitions for output
+  // first-level partition: pipeline parallelism: TODO: check if create_equal_partition partitions on dim[0] by default
+  Rect<1> ubdim_rect(0, tensor->pipe_num_part_out-1);
+  IndexSpaceT<1> ub_is = runtime->create_index_space(ctx, ubdim_rect);
+  IndexPartition ub_ip = runtime->create_equal_partition(ctx, is, ub_is);
+  LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
+  int idx = 0;
+  for (PointInRectIterator<1> it(ubdim_rect); it(); it++, idx++) {
+      DomainPoint dp(*it);
+      tensor->out_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
+  }
+
+  //second-level partition: intra-stage parallelism
   if (parallel_op != NULL) {
     IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
     //Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
-    Transform<NDIM, TDIM> transform;
-    Point<NDIM> ext_hi;
-    for (int i = 0; i < NDIM; i++) {
-      int nparts = tensor->dims[i].degree;
-      ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
+    for (int k = 0; k < tensor->pipe_num_part_out; k++){
+      IndexSpaceT<NDIM> sub_is = tensor->out_subregions[k].get_index_space();
+      Rect<NDIM> sub_rect = runtime->get_index_space_domain(ctx, sub_is);
+      Transform<NDIM, TDIM> transform;
+      Point<NDIM> ext_hi;
+      Point<NDIM> ext_lo;
+      for (int i = 0; i < NDIM; i++) {
+        int nparts = tensor->dims[i].degree;
+        ext_hi[i] = (sub_rect.hi[i] - sub_rect.lo[i] + nparts) / nparts - 1 + sub_rect.lo[i];
+        ext_lo[i] = sub_rect.lo[i];
+      }
+      Rect<NDIM> extent(ext_lo, ext_hi);
+      for (int i = 0; i < NDIM; i++)
+        for (int j = 0; j < TDIM; j++)
+          if (tensor->dims[i].parallel_idx == j)
+            transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
+          else
+            transform[i][j] = 0;
+      IndexPartition ip = runtime->create_partition_by_restriction(
+          ctx, sub_is, part_is, transform, extent);
+      assert(runtime->is_index_partition_disjoint(ctx, ip));
+      assert(runtime->is_index_partition_complete(ctx, ip));
+      tensor->out_pipepart[k] = runtime->get_logical_partition(ctx, tensor->out_subregions[k], ip);
+      if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
+        tensor->out_pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->out_subregion_grad[k], ip);
+      }
+
     }
-    Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
-    for (int i = 0; i < NDIM; i++)
-      for (int j = 0; j < TDIM; j++)
-        if (tensor->dims[i].parallel_idx == j)
-          transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
-        else
-          transform[i][j] = 0;
-    IndexPartition ip = runtime->create_partition_by_restriction(
-        ctx, is, part_is, transform, extent);
-    assert(runtime->is_index_partition_disjoint(ctx, ip));
-    assert(runtime->is_index_partition_complete(ctx, ip));
-    tensor->part = runtime->get_logical_partition(ctx, tensor->region, ip);
-    if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
-      tensor->part_grad = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
-    }
+    
   }
+
+  // shicao for pipeline, Step 2: create multiple partitions
+  // if (parallel_op != NULL) {
+  //   IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
+  //   //Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
+  //   /*
+  //   ubatch dim: change extent to obtain #pipe_buf_size partitions
+  //   | task_is | task_is | ... | task_is |
+  //   */
+  //   int ubSize = tensor->dim[i].size/tensor->pipe_buf_size;
+  //   for(int k = 0; k < tensor->pipe_buf_size; k++){
+  //     Point<NDIM> high;
+  //     for (int i = 0; i < NDIM; i++){
+  //       if(i==0){
+  //         high[i] = ubSize - 1;
+  //       }
+  //       else{
+  //         high[i] = tensor->dims[i].size - 1;
+  //       }
+        
+  //     }
+  //     Rect<NDIM> rectt(Point<NDIM>::ZEROES(), high);
+  //     Transform<NDIM, TDIM> transform;
+  //     Point<NDIM> ext_hi;
+  //     Point<NDIM> ext_lo;
+  //     for (int i = 0; i < NDIM; i++) {
+  //       int nparts = tensor->dims[i].degree;
+  //       ext_hi[i] = (rectt.hi[i] - rectt.lo[i] + nparts) / nparts - 1;
+  //       ext_lo[i] = 0;
+  //     }
+  //     ext_hi[0] += ubSize * k;
+  //     ext_lo[0] = ubSize * k;
+
+  //     Rect<NDIM> extent(ext_lo, ext_hi);
+  //     for (int i = 0; i < NDIM; i++)
+  //       for (int j = 0; j < TDIM; j++)
+  //         if (tensor->dims[i].parallel_idx == j)
+  //           transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
+  //         else
+  //           transform[i][j] = 0;
+  //     IndexPartition ip = runtime->create_partition_by_restriction(
+  //         ctx, is, part_is, transform, extent);
+  //     assert(runtime->is_index_partition_disjoint(ctx, ip));
+  //     // assert(runtime->is_index_partition_complete(ctx, ip)); shicao: is this one important?? dependency/privileges checked on point level? coherence granularity?
+  //     tensor->pipepart[k] = runtime->get_logical_partition(ctx, tensor->region, ip);
+  //     if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
+  //       tensor->pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
+  //     }
+
+  //   }
+    
+  // }
   // Step 3: initialize the tensor
   if (tensor->initializer != NULL) {
     tensor->initializer->init(this, tensor);
   }
 }
+
+
+void FFModel::map_input_tensors(ParallelTensor tensor, const Op* op)
+{
+  switch (tensor->num_dims) {
+#define DIMFUNC(NDIM) \
+    case NDIM: \
+    { \
+      map_input_tensor_with_dim<NDIM>(tensor, op); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      // Unsupported dim
+      assert(false);
+    }
+  }
+}
+
+template<int NDIM>
+void FFModel::map_input_tensor_with_dim(ParallelTensor tensor, const Op* parallel_op)
+{
+  tensor->parallel_is = get_or_create_task_is(tensor);
+  assert(tensor->owner_op != NULL);
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
+  Domain task_domain = runtime->get_index_space_domain(ctx, tensor->parallel_is);
+  switch (task_domain.get_dim()) {
+#define DIMFUNC(TDIM) \
+    case TDIM: \
+    { \
+      map_input_tensor_with_dim2<NDIM, TDIM>(tensor, parallel_op); \
+      break; \
+    }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+    {
+      assert(false && "Unsupported Task Dim");
+    }
+  }
+}
+
+template<int NDIM, int TDIM>
+void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
+{
+  // Step 0: check we are the owner or the owner is NULL
+  // in which case set the owner to us
+  if (tensor->owner_op == NULL) {
+    tensor->owner_op = parallel_op;
+    tensor->owner_idx = -1; // meaning tensor is not an output of op
+  } else {
+    // assert tensor->owner_op == parallel_op or parallel_op == nullptr,
+    // which indicates the tensor is not parallelized
+    assert(tensor->owner_op == parallel_op || parallel_op == nullptr);
+  }
+  
+  // shicao for pipeline, Step 2: create hierarchical partitions for input
+  // first-level partition: pipeline parallelism: TODO: check if create_equal_partition partitions on dim[0] by default
+  IndexSpaceT<NDIM> is = tensor->region.get_index_space();
+  Rect<1> ubdim_rect(0, tensor->pipe_num_part_in-1);
+  IndexSpaceT<1> ub_is = runtime->create_index_space(ctx, ubdim_rect);
+  IndexPartition ub_ip = runtime->create_equal_partition(ctx, is, ub_is);
+  LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
+  int idx = 0;
+  for (PointInRectIterator<1> it(ubdim_rect); it(); it++, idx++) {
+      DomainPoint dp(*it);
+      tensor.in_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
+  }
+
+  //second-level partition: intra-stage parallelism
+  if (parallel_op != NULL) {
+    IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
+    //Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
+    for (int k = 0; k < tensor->pipe_num_part_in; k++){
+      IndexSpaceT<NDIM> sub_is = tensor->in_subregions[k].get_index_space();
+      Rect<NDIM> sub_rect = runtime->get_index_space_domain(ctx, sub_is);
+      Transform<NDIM, TDIM> transform;
+      Point<NDIM> ext_hi;
+      Point<NDIM> ext_lo;
+      for (int i = 0; i < NDIM; i++) {
+        int nparts = tensor->dims[i].degree;
+        ext_hi[i] = (sub_rect.hi[i] - sub_rect.lo[i] + nparts) / nparts - 1 + sub_rect.lo[i];
+        ext_lo[i] = sub_rect.lo[i];
+      }
+      Rect<NDIM> extent(ext_lo, ext_hi);
+      for (int i = 0; i < NDIM; i++)
+        for (int j = 0; j < TDIM; j++)
+          if (tensor->dims[i].parallel_idx == j)
+            transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
+          else
+            transform[i][j] = 0;
+      IndexPartition ip = runtime->create_partition_by_restriction(
+          ctx, sub_is, part_is, transform, extent);
+      assert(runtime->is_index_partition_disjoint(ctx, ip));
+      assert(runtime->is_index_partition_complete(ctx, ip));
+      tensor->in_pipepart[k] = runtime->get_logical_partition(ctx, tensor->in_subregions[k], ip);
+      if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
+        tensor->out_pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->in_subregion_grad[k], ip);
+      }
+
+    }
+    
+  }
+}
+
+
 
 void FFModel::map_weight(ParallelTensor weight, const Op* op)
 {
@@ -1658,6 +1866,7 @@ void FFModel::create_disjoint_partition(int num_dims,
   }
 }
 
+//shicao TODO: need to change to partition on all the subregions
 template<int NDIM, int TDIM>
 void FFModel::create_disjoint_partition_with_dim2(const ParallelDim dims[],
                                                   const IndexSpaceT<TDIM>& part_is,
@@ -2680,11 +2889,18 @@ void FFModel::compile(LossType loss_type,
       assert(op->weights[i]->region != LogicalRegion::NO_REGION);
       parameters.push_back(op->weights[i]);
     }
+    //TODO: add flags for enable pipeline
     for (int i = 0; i < op->numOutputs; i++) {
       // Output tensor
       map_tensor(op->outputs[i], op);
     }
+    for (int i = 0; i< op->numInputs; i++) {
+      //shicao for pipeline parallelism
+      map_input_tensors(op->inputs[i], op);
+    }
+
     if (op->is_parallel_op())
+      // intra-stage parallelism, TODO: this should partition on subregion when pipeline is enabled
       ((ParallelOp*)op)->create_input_partition(*this);
     // op->map_output_tensors(*this);
   }

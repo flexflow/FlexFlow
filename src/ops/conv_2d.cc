@@ -614,6 +614,37 @@ void Conv2D::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Conv2D::pipeforward(const FFModel& ff, int input_idx, int output_idx)
+{
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  set_argumentmap_for_forward(ff, argmap);
+  IndexLauncher launcher(CONV2D_FWD_TASK_ID, parallel_is,
+                         TaskArgument(NULL, 0), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->in_pipepart[input_idx], 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0]->in_subregions[input_idx]));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->out_pipepart[output_idx], 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->out_subregions[input_idx]));
+  launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[0]->region));
+  launcher.add_field(2, FID_DATA);
+  if (use_bias) {
+    launcher.add_region_requirement(
+        RegionRequirement(weights[1]->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, weights[1]->region));
+    launcher.add_field(3, FID_DATA);
+  }
+  runtime->execute_index_space(ctx, launcher);
+}
+
 /*
   regions[0](I): input
   regions[1](O): output
@@ -677,6 +708,59 @@ void Conv2D::backward(const FFModel& ff)
   launcher.add_region_requirement(
       RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
                         READ_WRITE, EXCLUSIVE, outputs[0]->region_grad));
+  launcher.add_field(rid++, FID_DATA);
+  // regions[4](I): filter
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[0]->region));
+  launcher.add_field(rid++, FID_DATA);
+  // regions[5](I/O): filter_grad
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part_grad, 0/*projection id*/,
+                        READ_WRITE, EXCLUSIVE, weights[0]->region_grad));
+  launcher.add_field(rid++, FID_DATA);
+  if (use_bias) {
+    // regions[6](I/O): bias_grad
+    launcher.add_region_requirement(
+        RegionRequirement(weights[1]->part_grad, 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, weights[1]->region_grad));
+    launcher.add_field(rid++, FID_DATA);
+  }
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+}
+
+void Conv2D::pipebackward(const FFModel& ff, int input_idx, int output_idx)
+{
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  set_argumentmap_for_backward(ff, argmap);
+  IndexLauncher launcher(CONV2D_BWD_TASK_ID, parallel_is,
+                         TaskArgument(NULL, 0), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  int rid = 0;
+  // regions[0](I): input
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->in_pipepart[input_idx], 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0]->in_subregions[input_idx]));
+  launcher.add_field(rid++, FID_DATA);
+  // regions[1](I/O): input_grad
+  if (trainableInputs[0]) {
+    launcher.add_region_requirement(
+        RegionRequirement(inputs[0]->in_pipepart_grad[input_idx], 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, inputs[0]->in_subregion_grad[input_idx]));
+    launcher.add_field(rid++, FID_DATA);
+  }
+  // regions[2](I): output
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->out_pipepart[output_idx], 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, outputs[0]->out_subregions[output_idx]));
+  launcher.add_field(rid++, FID_DATA);
+  // regions[3](I/O): output_grad
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->out_pipepart_grad[output_idx], 0/*projection id*/,
+                        READ_WRITE, EXCLUSIVE, outputs[0]->out_subregion_grad[output_idx]));
   launcher.add_field(rid++, FID_DATA);
   // regions[4](I): filter
   launcher.add_region_requirement(

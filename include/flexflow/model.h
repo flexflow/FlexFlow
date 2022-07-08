@@ -587,6 +587,7 @@ public:
 
 
   void map_tensor(ParallelTensor tensor, const Op* parallel_op);
+  void map_input_tensors(ParallelTensor tensor, const Op* parallel_op);
   void map_weight(ParallelTensor tensor, const Op* parallel_op);
   bool get_parallel_tensor_from_tensor(const Tensor tensor,
                                        ParallelTensor& parallel_tensor) const;
@@ -892,6 +893,7 @@ public:
   std::vector<ParallelTensor> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
+  std::vector<StageInfo*> stages; //shicao
   // Cached operators: key: operator hash, value: operator pointer
   std::tuple<
     std::unordered_map<std::pair<std::vector<ParallelTensorShape>, ConcatParams>, Concat*>,

@@ -32,6 +32,14 @@ class Op;
 class FFModel;
 class Initializer;
 
+//shicao
+struct StageInfo {
+  int bufSize;
+  int nFnB;
+  int ubatchSize;
+}
+
+
 struct ParallelDim {
   static constexpr int UNKNOWN_DEGREE = -1;
   static constexpr int UNKNOWN_INDEX = -2;
@@ -166,6 +174,10 @@ public:
 
   size_t parallel_tensor_guid = 0;
   int num_dims = 0;
+  //shicao for pipeline
+  int pipe_buf_size = 1;
+  int pipe_num_part_in = 1;
+  int pipe_num_part_out = 1;
   //int adim[MAX_TENSOR_DIM];
   ParallelDim dims[MAX_TENSOR_DIM];
   DataType data_type = DT_NONE;
@@ -183,6 +195,16 @@ public:
                         region_grad = Legion::LogicalRegion::NO_REGION;
   Legion::LogicalPartition part = Legion::LogicalPartition::NO_PART, 
                            part_grad = Legion::LogicalPartition::NO_PART;
+  //shicao for pipeline, multiple partitions, TODO: initilize the ptr somewhere
+  Legion::LogicalRegion* in_subregions = nullptr;
+  Legion::LogicalRegion* out_subregions = nullptr;
+  Legion::LogicalRegion* in_subregion_grad = nullptr;
+  Legion::LogicalRegion* out_subregion_grad = nullptr;
+  Legion::LogicalPartition* in_pipepart = nullptr;
+  Legion::LogicalPartition* out_pipepart = nullptr;
+  Legion::LogicalPartition* in_pipepart_grad = nullptr;
+  Legion::LogicalPartition* out_pipepart_grad = nullptr;
+
   Legion::PhysicalRegion physical_region;
 };
 

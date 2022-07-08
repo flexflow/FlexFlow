@@ -141,7 +141,9 @@ public:
          bool allocate_weights = false);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
+  void pipeforward(const FFModel&, int input_idx, int output_idx) override;
   void backward(const FFModel&) override;
+  void pipebackward(const FFModel&, int input_idx, int output_idx) override;
   //void update(const FFModel&);
   void print_layer(const FFModel& model) override;
   //Parameter* get_parameter(int index);
