@@ -211,6 +211,7 @@ public:
   DataType data_type;
   // the guid of the layer associated with the current operator
   // layer_guid is used to match layer with op
+  size_t stage_guid;
   LayerID layer_guid; 
   size_t op_guid;
   char name[MAX_OPNAME];

@@ -2895,8 +2895,17 @@ void FFModel::compile(LossType loss_type,
       map_tensor(op->outputs[i], op);
     }
     for (int i = 0; i< op->numInputs; i++) {
-      //shicao for pipeline parallelism
-      map_input_tensors(op->inputs[i], op);
+      //shicao for pipeline parallelism, map boarder input tensors
+      if(op->inputs[i]->owner_op->stage_guid != op->stage_guid){
+        map_input_tensors(op->inputs[i], op);
+      }
+      else{
+        op->inputs[i]->in_pipepart = op->inputs[i]->out_pipepart;
+        op->inputs[i]->in_pipepart_grad = op->inputs[i]->out_pipepart_grad;
+        op->inputs[i]->in_subregions = op->inputs[i]->out_subregions;
+        op->inputs[i]->in_subregion_grad = op->inputs[i]->out_subregion_grad;
+      }
+     
     }
 
     if (op->is_parallel_op())
