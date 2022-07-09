@@ -1737,16 +1737,14 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
       assert(runtime->is_index_partition_complete(ctx, ip));
       tensor->in_pipepart[k] = runtime->get_logical_partition(ctx, tensor->in_subregions[k], ip);
       if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
-        tensor->out_pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->in_subregion_grad[k], ip);
-      }
-
+      tensor->in_pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->in_subregion_grad[k], ip);
     }
     
   }
 }
 
 
-
+//TODO
 void FFModel::map_weight(ParallelTensor weight, const Op* op)
 {
   switch (weight->num_dims) {
@@ -2794,16 +2792,22 @@ void FFModel::compile(LossType loss_type,
     TaskLauncher launcher(GRAPH_OPTIMIZE_TASK_ID,
         TaskArgument(&model, sizeof(FFModel*)));
     Future future = runtime->execute_task(ctx, launcher);
-
+    
+    //TODO, replace this part with gpp computation graph construction given the result of the gpp optimizer
     PCG::GraphOptimalViewSerialized ret = future.get_result<PCG::GraphOptimalViewSerialized>();
     Deserializer dez(ret.data, ret.total_bytes);
     // Reconstruct operators
     PCG::Graph* best_graph = new PCG::Graph(this);
     std::unordered_map<PCG::Node, MachineView> optimal_views;
-    deserialize_graph_optimal_view(dez, best_graph, optimal_views);
+    std::unordered_map<PCG::Node, StageInfo> optimal_partition;
+    deserialize_graph_optimal_view(dez, best_graph, optimal_views, optimal_partition);
     operators.clear();
-    convert_graph_to_operators(best_graph, optimal_views);
+    //shicao
+    convert_graph_to_operators(best_graph, optimal_views, optimal_partition);
+    //TODO
+    // convert_gpp_graph_to_operators(best_graph, optimal_views);
     delete best_graph;
+
     for (const auto& layer : layers) {
       // map inputs to parallel tensor
       if (layer->op_type == OP_INPUT) {
@@ -2896,15 +2900,13 @@ void FFModel::compile(LossType loss_type,
     }
     for (int i = 0; i< op->numInputs; i++) {
       //shicao for pipeline parallelism, map boarder input tensors
-      if(op->inputs[i]->owner_op->stage_guid != op->stage_guid){
-        map_input_tensors(op->inputs[i], op);
-      }
-      else{
-        op->inputs[i]->in_pipepart = op->inputs[i]->out_pipepart;
-        op->inputs[i]->in_pipepart_grad = op->inputs[i]->out_pipepart_grad;
-        op->inputs[i]->in_subregions = op->inputs[i]->out_subregions;
-        op->inputs[i]->in_subregion_grad = op->inputs[i]->out_subregion_grad;
-      }
+      map_input_tensors(op->inputs[i], op);
+      // else{
+      //   op->inputs[i]->in_pipepart = op->inputs[i]->out_pipepart;
+      //   op->inputs[i]->in_pipepart_grad = op->inputs[i]->out_pipepart_grad;
+      //   op->inputs[i]->in_subregions = op->inputs[i]->out_subregions;
+      //   op->inputs[i]->in_subregion_grad = op->inputs[i]->out_subregion_grad;
+      // }
      
     }
 

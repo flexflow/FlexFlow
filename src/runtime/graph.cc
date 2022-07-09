@@ -1546,6 +1546,8 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
   model->simulator = simulator;
   std::unique_ptr<Graph> best_graph;
   std::unordered_map<Node, MachineView> optimal_views;
+  //shicao
+  std::unordered_map<Node, StageInfo> optimal_partition;
   if (model->config.only_data_parallel) {
     Graph* graph = new Graph(model);
     std::unordered_map<const FlexFlow::Op*, Node> op_to_node_map;
@@ -1562,14 +1564,44 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
       }
     }
     best_graph = std::unique_ptr<Graph>(graph);
+
+    //TODO the below should be output of the optimizer, now some dummy code a random 3-stage partition
+    StageInfo sinfo;
+    sinfo.sid = 0;
+    sinfo.ubatchSize = 1;
+    sinfo.bufSize = 6;
+    sinfo.nFnB = 1
+    sinfo.device_num = 1;
     MachineView data_parallel_view;
     data_parallel_view.device_type = MachineView::GPU;
     data_parallel_view.ndims = 1;
-    data_parallel_view.dim[0] = model->config.numNodes * model->config.workersPerNode;
+    // data_parallel_view.dim[0] = model->config.numNodes * model->config.workersPerNode;
+    data_parallel_view.dim[0] = sinfo.device_num;
     data_parallel_view.stride[0] = 1;
     data_parallel_view.start_device_id = 0;
+    int op_per_stage = model->operators.size() / 3;
+    int num = 0;
+
     for (const auto& node : best_graph->inEdges) {
       optimal_views[node.first] = data_parallel_view;
+      optimal_partition[node.first] = sinfo;
+      if(num == op_per_stage) {
+        sinfo.sid = 1;
+        sinfo.bufSize = 4;
+        sinfo.ubatchSize = 2;
+        sinfo.device_num = 2;
+        data_parallel_view.dim[0] = sinfo.device_num;
+        data_parallel_view.start_device_id = 1;
+      }
+      if(num == 2*op_per_stage){
+        sinfo.sid = 2;
+        sinfo.bufSize = 1;
+        sinfo.ubatchSize = 1;
+        sinfo.device_num = 1;
+        data_parallel_view.dim[0] = sinfo.device_num;
+        data_parallel_view.start_device_id = 3;
+      }
+      num++;
     }
   } else {
     model->graph_optimize(model->config.search_budget,
@@ -1730,6 +1762,14 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
     sez.serialize(it.first.guid);
     sez.serialize(it.second);
   }
+  // Third, serialize optimal partition
+  printf("opotimal_partition.size = %zu\n", optimal_partition.size());
+  sez.serialize(optimal_partition.size());
+  for (const auto & it : optimal_partition) {
+    sez.serialize((size_t) 23456789); // safe guard
+    sez.serialize(it.first.guid);
+    sez.serialize(it.second);
+  }
 #ifdef DEADCODE
   // Third, serialize input mappings
   sez.serialize((size_t)23456789);
@@ -1841,7 +1881,8 @@ void FFModel::construct_optimal_view(const Graph *graph,
 void FFModel::deserialize_graph_optimal_view(
     Legion::Deserializer& dez,
     Graph* graph,
-    std::unordered_map<Node, MachineView>& optimal_views) {
+    std::unordered_map<Node, MachineView>& optimal_views,
+    std::unordered_map<Node, StageInfo>& optimal_partition) {
   //Deserializer dez(serialized.data, serialized.total_bytes);
   std::unordered_map<size_t, Node> guid_to_nodes;
   size_t num_nodes;
@@ -2109,6 +2150,20 @@ void FFModel::deserialize_graph_optimal_view(
     assert(guid_to_nodes.find(guid) != guid_to_nodes.end());
     dez.deserialize(view);
     optimal_views[guid_to_nodes[guid]] = view;
+  }
+
+  size_t num_partitions;
+  dez.deserialize(num_partitions);
+  printf("partitions.size() = %zu\n", num_views);
+  for (size_t i = 0; i < num_partitions; i++) {
+    size_t safecode, guid;
+    StageInfo sinfo;
+    dez.deserialize(safecode);
+    assert(safecode == 23456789);
+    dez.deserialize(guid);
+    assert(guid_to_nodes.find(guid) != guid_to_nodes.end());
+    dez.deserialize(sinfo);
+    optimal_partitions[guid_to_nodes[guid]] = sinfo;
   }
 #ifdef DEADCODE
   // Third, deserialize input mappings

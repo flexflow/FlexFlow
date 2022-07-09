@@ -642,9 +642,9 @@ public:
   void deserialize_graph_optimal_view(
       Legion::Deserializer& dez,
       PCG::Graph* graph,
-      std::unordered_map<PCG::Node, MachineView>& optimal_views);
+      std::unordered_map<PCG::Node, MachineView>& optimal_views, std::unordered_map<PCG::Node, StageInfo>& optimal_partition);
   bool convert_graph_to_operators(const PCG::Graph* graph,
-                               const std::unordered_map<PCG::Node, MachineView>& optimal_views);
+                               const std::unordered_map<PCG::Node, MachineView>& optimal_views, const std::unordered_map<PCG::Node, StageInfo>& optimal_partition);
   static void register_all_machine_views(int num_nodes,
                                          int gpus_per_node,
                                          int cpus_per_node,
@@ -893,7 +893,6 @@ public:
   std::vector<ParallelTensor> parameters;
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
-  std::vector<StageInfo*> stages; //shicao
   // Cached operators: key: operator hash, value: operator pointer
   std::tuple<
     std::unordered_map<std::pair<std::vector<ParallelTensorShape>, ConcatParams>, Concat*>,

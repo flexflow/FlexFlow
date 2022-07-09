@@ -2863,7 +2863,7 @@ void FFModel::graph_optimize(size_t budget,
 }
 
 bool FFModel::convert_graph_to_operators(const Graph* graph,
-                                      const std::unordered_map<Node, MachineView>& optimal_views)
+                                      const std::unordered_map<Node, MachineView>& optimal_views, const std::unordered_map<Node, StageInfo>& optimal_partition)
 {
   // Clear operators
   operators.clear();
@@ -3021,6 +3021,17 @@ bool FFModel::convert_graph_to_operators(const Graph* graph,
     // Set machine view for the weight tensors of this operator
     for (int i = 0; i < new_op->numWeights; i++) {
       new_op->weights[i]->machine_view = view;
+    }
+    //set pipeline info for the op, the input and output tensors of this operator
+    StageInfo sinfo = optimal_partitions.find(node)->second;
+    new_op->stage_guid = sinfo.sid;
+    new_op->ubSize = sinfo.ubatchSize;
+    for (int i = 0; i < new_op->numOutputs; i++) {
+      new_op->outputs[i]->pipe_buf_size = sinfo.bufSize;
+      new_op->outputs[i]->pipe_num_part_out = sinfo.bufSize / sinfo.ubatchSize;
+    }
+    for (int i = 0; i < new_op->numIutputs; i++) {
+      new_op->inputs[i]->pipe_num_part_in = new_op->inputs[i]->pipe_buf_size / sinfo.ubatchSize;
     }
     node_to_op[node] = new_op;
     operators.push_back(new_op);
