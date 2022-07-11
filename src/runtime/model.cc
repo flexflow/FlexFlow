@@ -1439,6 +1439,8 @@ void FFModel::map_tensor(ParallelTensor tensor, const Op* op)
 template<int NDIM>
 void FFModel::map_tensor_with_dim(ParallelTensor tensor, const Op* parallel_op)
 {
+  //shicao gpp: generate taskIS from optimal MachineView
+  // tensor->parallel_is = get_or_create_task_is(tensor->machine_view);
   tensor->parallel_is = get_or_create_task_is(tensor);
   assert(tensor->owner_op != NULL);
   Context ctx = config.lg_ctx;
@@ -1499,8 +1501,7 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
 
   Point<NDIM> hi;
   for (int i = 0; i < NDIM; i++)
-    hi[i] = tensor->dims[i].size - 1; //shicao TODO check dim order and increase batch dim size
-  Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
+    hi[i] = tensor->dims[i].size - 1;
   IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
   tensor->region = runtime->create_logical_region(ctx, is, fs);
   if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
@@ -1535,13 +1536,18 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
   // }
   
   // shicao for pipeline, Step 2: create hierarchical partitions for output
-  // first-level partition: pipeline parallelism: TODO: check if create_equal_partition partitions on dim[0] by default
-  Rect<1> ubdim_rect(0, tensor->pipe_num_part_out-1);
-  IndexSpaceT<1> ub_is = runtime->create_index_space(ctx, ubdim_rect);
+  // first-level partition: pipeline parallelism: TODO: check if this create_equal_partition partitions on dim[3]
+  Point<NDIM> ext_lo;
+  for (int i = 0; i < NDIM - 1; i++) {
+    p_hi[i] = 0;
+  }
+  p_hi[NDIM-1] = tensor->pipe_num_part_out-1;
+  Rect<NDIM> ubdim_rect(Point<NDIM>::ZEROES(), p_hi);
+  IndexSpaceT<NDIM> ub_is = runtime->create_index_space(ctx, ubdim_rect);
   IndexPartition ub_ip = runtime->create_equal_partition(ctx, is, ub_is);
   LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
   int idx = 0;
-  for (PointInRectIterator<1> it(ubdim_rect); it(); it++, idx++) {
+  for (PointInRectIterator<NDIM> it(ubdim_rect); it(); it++, idx++) {
       DomainPoint dp(*it);
       tensor->out_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
   }
@@ -1697,14 +1703,19 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
   }
   
   // shicao for pipeline, Step 2: create hierarchical partitions for input
-  // first-level partition: pipeline parallelism: TODO: check if create_equal_partition partitions on dim[0] by default
+  // first-level partition: pipeline parallelism: TODO: check if create_equal_partition partitions on dim[3]
   IndexSpaceT<NDIM> is = tensor->region.get_index_space();
-  Rect<1> ubdim_rect(0, tensor->pipe_num_part_in-1);
-  IndexSpaceT<1> ub_is = runtime->create_index_space(ctx, ubdim_rect);
-  IndexPartition ub_ip = runtime->create_equal_partition(ctx, is, ub_is);
+  Point<NDIM> ext_lo;
+  for (int i = 0; i < NDIM - 1; i++) {
+    p_hi[i] = 0;
+  }
+  p_hi[NDIM-1] = tensor->pipe_num_part_out-1;
+  Rect<NDIM> ubdim_rect(Point<NDIM>::ZEROES(), p_hi);
+  IndexSpaceT<NDIM> ub_is = runtime->create_index_space(ctx, ubdim_rect);
+  IndexPartition ub_ip = runtime->create_equal_partition(ctx, is, ub_is); //TODO: may use create_partition_by_restriction
   LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
   int idx = 0;
-  for (PointInRectIterator<1> it(ubdim_rect); it(); it++, idx++) {
+  for (PointInRectIterator<NDIM> it(ubdim_rect); it(); it++, idx++) {
       DomainPoint dp(*it);
       tensor.in_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
   }
@@ -1737,9 +1748,9 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
       assert(runtime->is_index_partition_complete(ctx, ip));
       tensor->in_pipepart[k] = runtime->get_logical_partition(ctx, tensor->in_subregions[k], ip);
       if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
-      tensor->in_pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->in_subregion_grad[k], ip);
+        tensor->in_pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->in_subregion_grad[k], ip);
+      }
     }
-    
   }
 }
 
@@ -2463,8 +2474,14 @@ void FFModel::init_operators()
 void FFModel::forward(int seq_length)
 {
   iter_config.seq_length = seq_length;
-  for (size_t i = 0; i < operators.size(); i++)
-    operators[i]->forward(*this);
+  for (size_t i = 0; i < operators.size(); i++){
+    // operators[i]->forward(*this);
+    for (size_t j = 0; j < operators[i]->nFnB; j++){
+      operators[i]->pipeforward(*this);
+    }
+  }
+  
+    
 }
 
 
@@ -2512,7 +2529,10 @@ void FFModel::backward(int seq_length)
     // TODO: If operator serves for metrics and for further prop
     //if(l == metrics_input && metrics_input < (int)operators.size()-1)
     //  continue;
-    operators[l]->backward(*this);
+    // operators[l]->backward(*this);
+    for (size_t j = 0; j < operators[i]->nFnB; j++){
+      operators[i]->pipebackward(*this);
+    }
   }
 }
 
@@ -2650,10 +2670,11 @@ Op* FFModel::create_operator_from_layer(Layer* layer,
       assert(tensor->parallel_tensor == nullptr);
       tensor->parallel_tensor = pt;
       // start from data parllel tensor
-      if (config.only_data_parallel) {
-        Repartition* part = new Repartition(*this, pt, num_dims-1, config.numNodes * config.workersPerNode);
-        operators.push_back(part);
-      }
+      // shicao do not want parallel_op in GPP
+      // if (config.only_data_parallel) {
+      //   Repartition* part = new Repartition(*this, pt, num_dims-1, config.numNodes * config.workersPerNode);
+      //   operators.push_back(part);
+      // }
       return operators[operators.size()-1];
     }
     case OP_MULTIHEAD_ATTENTION:
@@ -2901,13 +2922,6 @@ void FFModel::compile(LossType loss_type,
     for (int i = 0; i< op->numInputs; i++) {
       //shicao for pipeline parallelism, map boarder input tensors
       map_input_tensors(op->inputs[i], op);
-      // else{
-      //   op->inputs[i]->in_pipepart = op->inputs[i]->out_pipepart;
-      //   op->inputs[i]->in_pipepart_grad = op->inputs[i]->out_pipepart_grad;
-      //   op->inputs[i]->in_subregions = op->inputs[i]->out_subregions;
-      //   op->inputs[i]->in_subregion_grad = op->inputs[i]->out_subregion_grad;
-      // }
-     
     }
 
     if (op->is_parallel_op())
@@ -4677,6 +4691,7 @@ void register_flexflow_internal_tasks()
   template ParallelParameter FFModel::create_parallel_weight<DIM>(const ParallelDim dims[], DataType data_type, const Op* owner_op, bool create_grad,\
     Initializer* initializer, ParameterSyncType sync_type);\
   template void FFModel::map_tensor_with_dim<DIM>(ParallelTensor tensor, const Op* parallel_op); \
+  template void FFModel::map_input_tensor_with_dim<DIM>(ParallelTensor tensor, const Op* parallel_op); \
   template void FFModel::map_weight_with_dim<DIM>(ParallelTensor weight, const Op* parallel_op); \
   template Tensor FFModel::create_constant<DIM>(const int* dims, float value, DataType data_type); \
   template void FFModel::create_disjoint_partition<DIM>(const ParallelTensor tensor, const IndexSpaceT<DIM>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
@@ -4685,6 +4700,7 @@ void register_flexflow_internal_tasks()
 
 #define DIMFUNC(D1,D2) \
   template void FFModel::map_tensor_with_dim2<D1,D2>(ParallelTensor tensor, const Op* parallel_op); \
+  template void FFModel::map_input_tensor_with_dim2<D1,D2>(ParallelTensor tensor, const Op* parallel_op); \
   template void FFModel::create_disjoint_partition_with_dim2<D1,D2>(const ParallelDim dims[], const IndexSpaceT<D2>& part_is, const LogicalRegion& region, LogicalPartition& part); \
   template void FFModel::create_aliased_partition_with_dim2<D1,D2>(const ParallelDim dims[], int aliased_dim, const IndexSpaceT<D2>& part_is, const LogicalRegion& region, LogicalPartition& part); \
   template void FFModel::create_data_parallel_partition_with_diff_dims<D1, D2>(const ParallelTensor tensor, const IndexSpaceT<D2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);

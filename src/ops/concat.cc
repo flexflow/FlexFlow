@@ -212,6 +212,31 @@ void Concat::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Concat::pipeforward(const FFModel& ff)
+{
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  set_argumentmap_for_forward(ff, argmap);
+  IndexLauncher launcher(CONCAT_FWD_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Concat)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(
+    RegionRequirement(outputs[0]->out_pipepart[fwd_output_idx], 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->out_subregions[fwd_output_idx]));
+  launcher.add_field(0, FID_DATA);
+  for (int i = 0; i < numInputs; i++) {
+    launcher.add_region_requirement(
+      RegionRequirement(inputs[i]->in_pipepart[fwd_input_idx[i]], 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, inputs[i]->in_subregions[fwd_input_idx[i]]));
+    launcher.add_field(i + 1, FID_DATA);
+    fwd_input_idx[i] = (fwd_input_idx[i] + 1) / inputs[i]->pipe_num_part_in;
+  }
+  fwd_output_idx = (fwd_output_idx + 1) / outputs[0]->pipe_num_part_out;
+  runtime->execute_index_space(ctx, launcher);
+}
+
 /*
   regions[0](O): output
   regions[1..numInputs](I): inputs
@@ -264,6 +289,33 @@ void Concat::backward(const FFModel& ff)
     //printf("concat[%d]: region(%d,%d,%d)\n", i+1, lr.get_index_space().get_id(), lr.get_field_space().get_id(), lr.get_tree_id());
     launcher.add_field(i + 1, FID_DATA);
   }
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void Concat::pipebackward(const FFModel& ff)
+{
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  set_argumentmap_for_backward(ff, argmap);
+  IndexLauncher launcher(CONCAT_BWD_TASK_ID, parallel_is,
+    TaskArgument(this, sizeof(Concat)), argmap,
+    Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+    outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(
+    RegionRequirement(outputs[0]->out_pipepart_grad[bwd_output_idx], 0/*projection id*/,
+      READ_ONLY, EXCLUSIVE, outputs[0]->out_subregion_grad[bwd_output_idx]));
+  launcher.add_field(0, FID_DATA);
+  for (int i = 0; i < numInputs; i++) {
+    launcher.add_region_requirement(
+      RegionRequirement(inputs[i]->in_pipepart_grad[bwd_input_idx[i]], 0/*projection id*/,
+        READ_WRITE, EXCLUSIVE, inputs[i]->in_subregion_grad[bwd_input_idx[i]]));
+    //LogicalRegion lr = inputs[i]->region_grad;
+    //printf("concat[%d]: region(%d,%d,%d)\n", i+1, lr.get_index_space().get_id(), lr.get_field_space().get_id(), lr.get_tree_id());
+    launcher.add_field(i + 1, FID_DATA);
+    bwd_input_idx[i] = (bwd_input_idx[i] + 1) / inputs[i]->pipe_num_part_in;
+  }
+  bwd_output_idx = (bwd_output_idx + 1) / outputs[0]->pipe_num_part_out;
   runtime->execute_index_space(ctx, launcher);
 }
 

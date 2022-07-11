@@ -931,6 +931,10 @@ private:
   template<int NDIM, int TDIM>
   void map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op);
   template<int NDIM>
+  void map_input_tensor_with_dim(ParallelTensor tensor, const Op* parallel_op);
+  template<int NDIM, int TDIM>
+  void map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op);
+  template<int NDIM>
   void map_weight_with_dim(ParallelTensor weight, const Op* parallel_op);
 
   Tensor binary(OperatorType op,

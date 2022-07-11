@@ -156,9 +156,9 @@ public:
   // Pure virtual functions that must be implemented
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
-  virtual void pipeforward(const FFModel&, int input_idx, int output_idx) = 0;
+  virtual void pipeforward(const FFModel&,) = 0;
   virtual void backward(const FFModel&) = 0;
-  virtual void pipebackward(const FFModel&, int input_idx, int output_idx) = 0;
+  virtual void pipebackward(const FFModel&) = 0;
   virtual void print_layer(const FFModel& model) = 0;
   virtual bool measure_operator_cost(Simulator* sim,
                                      const MachineView& mv,
@@ -223,6 +223,7 @@ public:
   OpMeta* meta[MAX_NUM_WORKERS];
   int numInputs, numWeights, numOutputs;
   int ubSize;
+  int nFnB;
   bool profiling;
 #ifdef FF_USE_NCCL
   ncclUniqueId ncclId;

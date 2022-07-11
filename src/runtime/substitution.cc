@@ -3022,11 +3022,17 @@ bool FFModel::convert_graph_to_operators(const Graph* graph,
     for (int i = 0; i < new_op->numWeights; i++) {
       new_op->weights[i]->machine_view = view;
     }
-    //set pipeline info for the op, the input and output tensors of this operator
+    //set pipeline info for the op, the input and output tensors of this operator, scale thr ubatch dimension according to bufSize
     StageInfo sinfo = optimal_partitions.find(node)->second;
     new_op->stage_guid = sinfo.sid;
     new_op->ubSize = sinfo.ubatchSize;
+    new_op->nFnB = sinfo.nFnB;
     for (int i = 0; i < new_op->numOutputs; i++) {
+      new_op->outputs[i]->dims[3].size *= sinfo.bufSize; // TODO check dim[3] is ubatch dim?
+      //since we do not have parallel op, parallel dim info set here? only support data parallelism now
+      new_op->outputs[i]->dims[3].degree = sinfo.device_num;
+      new_op->outputs[i]->dims[3].parallel_idx += 1;
+      //pipe info
       new_op->outputs[i]->pipe_buf_size = sinfo.bufSize;
       new_op->outputs[i]->pipe_num_part_out = sinfo.bufSize / sinfo.ubatchSize;
     }

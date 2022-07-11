@@ -34,11 +34,11 @@ class Initializer;
 
 //shicao
 struct StageInfo {
-  int sid;
-  int bufSize;
-  int nFnB;
-  int ubatchSize;
-  int device_num;
+  int sid = 0;
+  int bufSize = 1;
+  int nFnB = 1;
+  int ubatchSize = 1;
+  int device_num = 1;
 }
 
 

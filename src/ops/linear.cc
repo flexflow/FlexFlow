@@ -289,12 +289,12 @@ void Linear::forward(const FFModel& ff)
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
+      RegionRequirement(inputs[0]->in_pipepart[fwd_input_idx], 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0]->in_subregions[fwd_input_idx]));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+      RegionRequirement(outputs[0]->out_pipepart[fwd_output_idx], 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->out_subregions[fwd_output_idx]));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(weights[0]->part, 0/*projection id*/,
@@ -306,6 +306,8 @@ void Linear::forward(const FFModel& ff)
                           READ_ONLY, EXCLUSIVE, weights[1]->region));
     launcher.add_field(3, FID_DATA);
   }
+  fwd_input_idx = (fwd_input_idx + 1) / inputs[0]->pipe_num_part_in;
+  fwd_output_idx = (fwd_output_idx + 1) / outputs[0]->pipe_num_part_out;
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -419,6 +421,65 @@ void Linear::backward(const FFModel& ff)
                             READ_WRITE, EXCLUSIVE, weights[1]->region_grad));
       launcher.add_field(rid++, FID_DATA);
     }
+    runtime->execute_index_space(ctx, launcher);
+  }
+  assert(replica == NULL);
+}
+
+void Linear::pipebackward(const FFModel& ff)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  {
+    ArgumentMap argmap;
+    set_argumentmap_for_backward(ff, argmap);
+    IndexLauncher launcher(LINEAR_BWD_TASK_ID, parallel_is,
+                           TaskArgument(NULL, 0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           outputs[0]->machine_view.hash());
+    int rid = 0;
+    // regions[0](I): input
+    launcher.add_region_requirement(
+        RegionRequirement(inputs[0]->in_pipepart[bwd_input_idx], 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, inputs[0]->in_subregions[fwd_input_idx]));
+    launcher.add_field(rid++, FID_DATA);
+    // regions[1](I/O): replica_grad
+    assert(replica == NULL);
+    if (trainableInputs[0]) {
+      launcher.add_region_requirement(
+          RegionRequirement(inputs[0]->in_pipepart_grad[bwd_input_idx], 0/*projection id*/,
+                            READ_WRITE, EXCLUSIVE, inputs[0]->in_subregion_grad[bwd_input_idx]));
+      launcher.add_field(rid++, FID_DATA);
+    }
+    // regions[2](I): output
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[0]->out_pipepart[bwd_output_idx], 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, outputs[0]->out_subregions[bwd_output_idx]));
+    launcher.add_field(rid++, FID_DATA);
+    // regions[3](I/O): output_grad
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[0]->out_pipepart_grad[bwd_output_idx], 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, outputs[0]->out_subregion_grad[bwd_output_idx]));
+    launcher.add_field(rid++, FID_DATA);
+    // regions[4](I): filter
+    launcher.add_region_requirement(
+        RegionRequirement(weights[0]->part, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, weights[0]->region));
+    launcher.add_field(rid++, FID_DATA);
+    // regions[5](I/O): filter_grad
+    launcher.add_region_requirement(
+        RegionRequirement(weights[0]->part_grad, 0/*projection id*/,
+                          READ_WRITE, EXCLUSIVE, weights[0]->region_grad));
+    launcher.add_field(rid++, FID_DATA);
+    if (use_bias) {
+      // regions[6](I/O): bias_grad
+      launcher.add_region_requirement(
+          RegionRequirement(weights[1]->part_grad, 0/*projection id*/,
+                            READ_WRITE, EXCLUSIVE, weights[1]->region_grad));
+      launcher.add_field(rid++, FID_DATA);
+    }
+    bwd_input_idx = (bwd_input_idx + 1) / inputs[0]->pipe_num_part_in;
+    bwd_output_idx = (bwd_output_idx + 1) / outputs[0]->pipe_num_part_out;
     runtime->execute_index_space(ctx, launcher);
   }
   assert(replica == NULL);

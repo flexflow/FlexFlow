@@ -69,6 +69,9 @@ public:
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
+  void pipeinit(const FFModel&) override;
+  void pipeforward(const FFModel&) override;
+  void pipebackward(const FFModel&) override;
   void update(const FFModel&);
   void print_layer(const FFModel& model) override {assert(0);}
   static Op* create_operator_from_layer(
@@ -128,6 +131,10 @@ public:
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
   ActiMode activation;
+  int fwd_input_idx = 0;
+  int fwd_output_idx = 0;
+  int bwd_input_idx = 0;
+  int bwd_output_idx = 0;
 };
 
 }; // namespace FlexFlow

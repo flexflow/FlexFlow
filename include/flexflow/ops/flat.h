@@ -35,6 +35,9 @@ public:
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
+  void pipeinit(const FFModel&) override;
+  void pipeforward(const FFModel&) override;
+  void pipebackward(const FFModel&) override;
   void print_layer(const FFModel& model) override {assert(0);}
   static Op* create_operator_from_layer(FFModel& model,
                                         const Layer* layer,
@@ -74,6 +77,12 @@ public:
   static void construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
 
   size_t get_params_hash() const override;
+
+public:
+  int fwd_input_idx = 0;
+  int bwd_input_idx = 0;
+  int fwd_output_idx = 0;
+  int bwd_output_idx = 0;
 };
 
 }; // namespace FlexFlow

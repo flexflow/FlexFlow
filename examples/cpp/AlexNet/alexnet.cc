@@ -85,7 +85,7 @@ void FlexFlow::top_level_task(const Task* task,
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
-  // Data Loader
+  // Data Loader TODO: change
   DataLoader data_loader(ff, &alexnetConfig, input, ff.label_tensor);
   ff.init_operators();
   //Start timer
