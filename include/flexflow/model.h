@@ -887,6 +887,7 @@ public:
   int metrics_input;
   ParallelTensor parallel_label_tensor;
   Tensor label_tensor;
+  int iter_perbatch;
 
   std::vector<Layer*> layers;
   std::vector<Op*> operators;

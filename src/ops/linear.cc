@@ -215,6 +215,47 @@ void Linear::init(const FFModel& ff)
   set_opmeta_from_futuremap(ff, fm);
 }
 
+void Linear::pipeinit(const FFModel& ff)
+{
+  assert(check_output_input_weight_same_parallel_is());
+  //assert(check_output_input_weight_same_machine_view());
+  parallel_is = outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  set_argumentmap_for_init(ff, argmap);
+  IndexLauncher launcher(LINEAR_INIT_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Linear)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  //launcher.add_region_requirement(
+  //    RegionRequirement(input_lps[0], 0/*projection id*/,
+  //                      READ_ONLY, EXCLUSIVE, inputs[0]->region));
+  //launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->out_pipepart[0], 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->out_subregions[0]));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, weights[0]->region));
+  launcher.add_field(1, FID_DATA);
+  // launcher.add_region_requirement(
+  //     RegionRequirement(weights[1]->part, 0/*projection id*/,
+  //                       READ_ONLY, EXCLUSIVE, weights[1]->region));
+  // launcher.add_field(3, FID_DATA);
+  if (ff.config.computationMode == COMP_MODE_TRAINING) {
+    // Add inputs[0].region_grad to avoid Legion warning
+    //launcher.add_region_requirement(
+    //    RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+    //        WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
+    //launcher.add_field(2, FID_DATA);
+  }
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
+}
+
 /*
   regions[0](O): output
   regions[1](I): kernel

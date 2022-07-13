@@ -46,12 +46,17 @@ public:
                                   const std::vector<PhysicalRegion> &regions,
                                   Context ctx,
                                   Runtime* runtime);
+  //                                
   void next_batch(FlexFlow::FFModel&);
+  void next_label_ubatch(FlexFlow::FFModel&);
+  void next_input_ubatch(FlexFlow::FFModel&);
   void reset(void);
 public:
-  int num_samples, next_index;
+  int num_samples, next_index, next_input_index, next_label_index;
   FlexFlow::Tensor full_input, batch_input;
   FlexFlow::Tensor full_label, batch_label;
+  int input_idx = 0;
+  int label_idx = 0;
 };
 
 struct SampleIdxs {

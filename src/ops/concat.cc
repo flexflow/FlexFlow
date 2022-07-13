@@ -175,6 +175,39 @@ void Concat::init(const FFModel& ff)
   set_opmeta_from_futuremap(ff, fm);
 }
 
+void Concat::pipeinit(const FFModel& ff)
+{
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  set_argumentmap_for_init(ff, argmap);
+  IndexLauncher launcher(CONCAT_INIT_TASK_ID, parallel_is,
+    TaskArgument(this, sizeof(Concat)), argmap,
+    Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+    outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(
+    RegionRequirement(outputs[0]->out_pipepart[0], 0/*projection id*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->out_subregions[0]));
+  launcher.add_field(0, FID_DATA);
+  for (int i = 0; i < numInputs; i++) {
+    launcher.add_region_requirement(
+      RegionRequirement(inputs[i]->in_pipepart[0], 0/*projection id*/,
+        READ_ONLY, EXCLUSIVE, inputs[i]->in_subregions[0]));
+    launcher.add_field(i + 1, FID_DATA);
+  }
+  for (int i = 0; i < numInputs; i++) {
+    launcher.add_region_requirement(
+      RegionRequirement(inputs[i]->in_pipepart_grad[0], 0/*projection id*/,
+        WRITE_ONLY, EXCLUSIVE, inputs[i]->in_subregion_grad[0]));
+    launcher.add_field(i + numInputs + 1, FID_DATA);
+  }
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
+}
+
 OpMeta* Concat::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
                           Context ctx, Runtime *runtime)

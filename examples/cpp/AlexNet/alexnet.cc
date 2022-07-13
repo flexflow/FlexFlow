@@ -48,14 +48,16 @@ void FlexFlow::top_level_task(const Task* task,
     char **argv = command_args.argv;
     int argc = command_args.argc;
     parse_input_args(argv, argc, alexnetConfig);
-    log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-        ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
+    // log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
+    //     ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
+    log_app.print("ubatchSize(%d) workersPerNodes(%d) numNodes(%d)",
+        ffConfig.ubatchUnit, ffConfig.workersPerNode, ffConfig.numNodes);
   }
   FFModel ff(ffConfig);
 
   Tensor input;
   {
-    const int dims[] = {ffConfig.batchSize, 3, 229, 229};
+    const int dims[] = {ffConfig.ubatchUnit, 3, 229, 229};
     input = ff.create_tensor<4>(dims, DT_FLOAT);
   }
   //Tensor label;
@@ -102,19 +104,30 @@ void FlexFlow::top_level_task(const Task* task,
     int iterations = data_loader.num_samples / ffConfig.batchSize;
 
     for (int iter = 0; iter < iterations; iter++) {
-      if (std::strlen(alexnetConfig.dataset_path) == 0) {
-        // Only load data once for random input
-        if (iter == 0 && epoch == 0)
-          data_loader.next_batch(ff);
-      } else {
-        data_loader.next_batch(ff);
-      }
       runtime->begin_trace(ctx, 111/*trace_id*/);
-      ff.forward();
-      ff.zero_gradients();
-      ff.backward();
+      for (int iter_inner =0; iter_inner < ff.iter_perbatch; iter_inner++){
+        if (std::strlen(alexnetConfig.dataset_path) == 0) {
+          // Only load data once for random input
+          if (iter == 0 && epoch == 0)
+            data_loader.next_batch(ff);
+        } else {
+          //shicao pipeline
+          for (int i=0; i < data_loader.batch_input->parallel_tensor->owner_op->nFnB; i++){
+            data_loader.next_input_ubatch(ff);
+          }
+
+          for (int i=0; i < ff.get_final_operator()->nFnB; i++){
+            data_loader.next_label_ubatch(ff);
+          }
+        }
+        
+        ff.forward();
+        ff.backward();
+      }
       ff.update();
+      ff.zero_gradients();
       runtime->end_trace(ctx, 111/*trace_id*/);
+      
     }
   }
   // End timer
@@ -338,9 +351,87 @@ void DataLoader::next_batch(FFModel& ff)
   next_index += ff.config.batchSize;
 }
 
+void DataLoader::next_input_ubatch(FFModel& ff)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  // Load input
+  {
+    IndexSpaceT<4> task_is = (IndexSpaceT<4>) batch_input->parallel_tensor->parallel_is;
+    Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
+    int idx = next_input_index;
+    for (PointInRectIterator<4> it(rect); it(); it++) {
+      SampleIdxs meta;
+      int ubSize = batch_input->parallel_tensor->owner_op->ubSize;
+      assert(ubSize % (rect.hi[3] - rect.lo[3] + 1) == 0);
+      meta.num_samples = ubSize / (rect.hi[3] - rect.lo[3] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
+    IndexLauncher launcher(FlexFlow::CUSTOM_GPU_TASK_ID_1, task_is,
+                           TaskArgument(NULL,0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           batch_input->parallel_tensor->machine_view.hash());
+    launcher.add_region_requirement(
+        RegionRequirement(full_input->parallel_tensor->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_input->parallel_tensor->region,
+                          MAP_TO_ZC_MEMORY));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_input->parallel_tensor->in_pipepart[input_idx], 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_input->parallel_tensor->in_subregions[input_idx]));
+    launcher.add_field(1, FID_DATA);
+    input_idx = (input_idx + 1) / batch_input->parallel_tensor->pipe_num_part_in;
+    runtime->execute_index_space(ctx, launcher);
+  }
+  next_input_index += ubSize;
+}
+
+void DataLoader::next_label_ubatch(FFModel& ff)
+{
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  // Load label
+  {
+    IndexSpaceT<2> task_is = IndexSpaceT<2>(batch_label->parallel_tensor->parallel_is);
+    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
+    int idx = next_label_index;
+    for (PointInRectIterator<2> it(rect); it(); it++) {
+      SampleIdxs meta;
+      int ubSize = batch_label->parallel_tensor->pipe_buf_size / batch_label->parallel_tensor->pipe_num_part_out;
+      assert(ubSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
+      meta.num_samples = ubSize/ (rect.hi[1] - rect.lo[1] + 1);
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
+    IndexLauncher launcher(FlexFlow::CUSTOM_GPU_TASK_ID_2, task_is,
+                           TaskArgument(NULL,0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           batch_label->parallel_tensor->machine_view.hash());
+    launcher.add_region_requirement(
+        RegionRequirement(full_label->parallel_tensor->region, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, full_label->parallel_tensor->region,
+                          MAP_TO_ZC_MEMORY));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_label->parallel_tensor->out_pipepart[label_idx], 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, batch_label->parallel_tensor->out_subregions[label_idx]));
+    launcher.add_field(1, FID_DATA);
+    label_idx = (label_idx + 1) / batch_label->parallel_tensor->pipe_num_part_out;
+    runtime->execute_index_space(ctx, launcher);
+  }
+  next_label_index += ubSize;
+}
+
 void DataLoader::reset()
 {
   next_index = 0;
+  next_label_index = 0;
+  next_input_index = 0;
 }
 
 void FlexFlow::register_custom_tasks()

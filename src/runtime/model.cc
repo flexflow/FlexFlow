@@ -2844,6 +2844,7 @@ void FFModel::compile(LossType loss_type,
         }
         assert(parallel_tensor != nullptr);
         tensor->parallel_tensor = parallel_tensor;
+        iter_perbatch = config.batchSize / (parallel_tensor->owner_op->ubSize * parallel_tensor->owner_op->nFnB);
       }
       // map weights to parallel_tensor
       for (int i = 0; i < layer->numWeights; i++) {
@@ -3077,6 +3078,10 @@ void FFModel::compile(LossType loss_type,
       parallel_label_tensor = create_parallel_tensor_legion_ordering(num_p_dims, p_dims, label_type); \
       label_tensor->parallel_tensor = parallel_label_tensor; \
       parallel_label_tensor->machine_view = final_operator->outputs[0]->machine_view; \
+      parallel_label_tensor->pipe_buf_size = final_operator->outputs[0]->pipe_buf_size; \
+      parallel_label_tensor->pipe_num_part_in = final_operator->outputs[0]->pipe_num_part_in; \
+      parallel_label_tensor->pipe_num_part_out = final_operator->outputs[0]->pipe_num_part_out; \
+      //TODO: owner_op?
       map_tensor(parallel_label_tensor, parallel_label_tensor->owner_op); \
       break; \
     }

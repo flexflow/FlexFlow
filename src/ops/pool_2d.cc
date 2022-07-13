@@ -306,6 +306,31 @@ void Pool2D::init(const FFModel& ff)
   set_opmeta_from_futuremap(ff, fm);
 }
 
+void Pool2D::pipeinit(const FFModel& ff)
+{
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  set_argumentmap_for_init(ff, argmap);
+  IndexLauncher init_launcher(POOL2D_INIT_TASK_ID, parallel_is,
+                              TaskArgument(this, sizeof(Pool2D)), argmap,
+                              Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                              outputs[0]->machine_view.hash());
+  init_launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->in_pipepart[0], 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0]->in_subregions[0]));
+  init_launcher.add_field(0, FID_DATA);
+  init_launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->out_pipepart[0], 0/*projection id*/,
+                        WRITE_DISCARD, EXCLUSIVE, outputs[0]->out_subregions[0]));
+  init_launcher.add_field(1, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
+}
+
 /*
   regions[0]: input
   regions[1]: output
