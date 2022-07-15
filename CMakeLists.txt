@@ -208,7 +208,7 @@ endif()
 # build binary
 option(FF_BUILD_RESNET "build resnet example" OFF)
 option(FF_BUILD_RESNEXT "build resnext example" OFF)
-option(FF_BUILD_ALEXNET "build alexnet example" OFF)
+option(FF_BUILD_ALEXNET "build alexnet example" ON)
 option(FF_BUILD_DLRM "build DLRM example" OFF)
 option(FF_BUILD_XDL "build XDL example" OFF)
 option(FF_BUILD_INCEPTION "build inception example" OFF)

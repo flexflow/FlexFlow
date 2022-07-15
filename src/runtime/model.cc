@@ -1502,6 +1502,7 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
   Point<NDIM> hi;
   for (int i = 0; i < NDIM; i++)
     hi[i] = tensor->dims[i].size - 1;
+  Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
   IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
   tensor->region = runtime->create_logical_region(ctx, is, fs);
   if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
@@ -1557,7 +1558,7 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
     IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
     //Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
     for (int k = 0; k < tensor->pipe_num_part_out; k++){
-      IndexSpaceT<NDIM> sub_is = tensor->out_subregions[k].get_index_space();
+      IndexSpaceT<NDIM> sub_is = (IndexSpaceT<NDIM>) tensor->out_subregions[k].get_index_space();
       Rect<NDIM> sub_rect = runtime->get_index_space_domain(ctx, sub_is);
       Transform<NDIM, TDIM> transform;
       Point<NDIM> ext_hi;
@@ -1706,7 +1707,7 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
   
   // shicao for pipeline, Step 2: create hierarchical partitions for input
   // first-level partition: pipeline parallelism: TODO: check if create_equal_partition partitions on dim[3]
-  IndexSpaceT<NDIM> is = tensor->region.get_index_space();
+  IndexSpaceT<NDIM> is = (IndexSpaceT<NDIM>) tensor->region.get_index_space();
   Point<NDIM> p_hi;
   for (int i = 0; i < NDIM - 1; i++) {
     p_hi[i] = 0;
@@ -1727,7 +1728,7 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
     IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
     //Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
     for (int k = 0; k < tensor->pipe_num_part_in; k++){
-      IndexSpaceT<NDIM> sub_is = tensor->in_subregions[k].get_index_space();
+      IndexSpaceT<NDIM> sub_is = (IndexSpaceT<NDIM>)  tensor->in_subregions[k].get_index_space();
       Rect<NDIM> sub_rect = runtime->get_index_space_domain(ctx, sub_is);
       Transform<NDIM, TDIM> transform;
       Point<NDIM> ext_hi;
@@ -2532,8 +2533,8 @@ void FFModel::backward(int seq_length)
     //if(l == metrics_input && metrics_input < (int)operators.size()-1)
     //  continue;
     // operators[l]->backward(*this);
-    for (size_t j = 0; j < operators[i]->nFnB; j++){
-      operators[i]->pipebackward(*this);
+    for (size_t j = 0; j < operators[l]->nFnB; j++){
+      operators[l]->pipebackward(*this);
     }
   }
 }
@@ -3083,7 +3084,6 @@ void FFModel::compile(LossType loss_type,
       parallel_label_tensor->pipe_buf_size = final_operator->outputs[0]->pipe_buf_size; \
       parallel_label_tensor->pipe_num_part_in = final_operator->outputs[0]->pipe_num_part_in; \
       parallel_label_tensor->pipe_num_part_out = final_operator->outputs[0]->pipe_num_part_out; \
-      //TODO: owner_op?
       map_tensor(parallel_label_tensor, parallel_label_tensor->owner_op); \
       break; \
     }

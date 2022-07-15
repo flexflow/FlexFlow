@@ -2164,7 +2164,7 @@ void FFModel::deserialize_graph_optimal_view(
     dez.deserialize(guid);
     assert(guid_to_nodes.find(guid) != guid_to_nodes.end());
     dez.deserialize(sinfo);
-    optimal_partitions[guid_to_nodes[guid]] = sinfo;
+    optimal_partition[guid_to_nodes[guid]] = sinfo;
   }
 #ifdef DEADCODE
   // Third, deserialize input mappings

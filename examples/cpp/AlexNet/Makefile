@@ -25,7 +25,7 @@ ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 # Put the binary file name here
 OUTFILE		?= alexnet
 # List all the application source files here
-GEN_SRC		= alexnet_new.cc
+GEN_SRC		= alexnet.cc
 GEN_GPU_SRC	= alexnet.cu
 
 ifndef FF_HOME

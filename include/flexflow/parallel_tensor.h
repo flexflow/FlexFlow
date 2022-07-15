@@ -39,7 +39,7 @@ struct StageInfo {
   int nFnB = 1;
   int ubatchSize = 1;
   int device_num = 1;
-}
+};
 
 
 struct ParallelDim {

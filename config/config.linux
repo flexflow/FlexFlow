@@ -40,13 +40,13 @@ FF_USE_GASNET=OFF
 FF_GASNET_CONDUIT=ibv
 
 # build C++ examples
-FF_BUILD_ALL_EXAMPLES=ON
+FF_BUILD_ALL_EXAMPLES=OFF
 
 # enable avx2
 FF_USE_AVX2=OFF
 
 # set MAX_DIM
-FF_MAX_DIM=4
+FF_MAX_DIM=5
 
 . $(dirname $0)/config.inc
 run_cmake $*

@@ -355,6 +355,7 @@ void DataLoader::next_input_ubatch(FFModel& ff)
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  int ubSize = batch_input->parallel_tensor->owner_op->ubSize;
   // Load input
   {
     IndexSpaceT<4> task_is = (IndexSpaceT<4>) batch_input->parallel_tensor->parallel_is;
@@ -363,7 +364,6 @@ void DataLoader::next_input_ubatch(FFModel& ff)
     int idx = next_input_index;
     for (PointInRectIterator<4> it(rect); it(); it++) {
       SampleIdxs meta;
-      int ubSize = batch_input->parallel_tensor->owner_op->ubSize;
       assert(ubSize % (rect.hi[3] - rect.lo[3] + 1) == 0);
       meta.num_samples = ubSize / (rect.hi[3] - rect.lo[3] + 1);
       for (int i = 0; i < meta.num_samples; i++)
@@ -393,6 +393,7 @@ void DataLoader::next_label_ubatch(FFModel& ff)
 {
   Context ctx = ff.config.lg_ctx;
   Runtime* runtime = ff.config.lg_hlr;
+  int ubSize = batch_label->parallel_tensor->pipe_buf_size / batch_label->parallel_tensor->pipe_num_part_out;
   // Load label
   {
     IndexSpaceT<2> task_is = IndexSpaceT<2>(batch_label->parallel_tensor->parallel_is);
@@ -401,7 +402,6 @@ void DataLoader::next_label_ubatch(FFModel& ff)
     int idx = next_label_index;
     for (PointInRectIterator<2> it(rect); it(); it++) {
       SampleIdxs meta;
-      int ubSize = batch_label->parallel_tensor->pipe_buf_size / batch_label->parallel_tensor->pipe_num_part_out;
       assert(ubSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
       meta.num_samples = ubSize/ (rect.hi[1] - rect.lo[1] + 1);
       for (int i = 0; i < meta.num_samples; i++)

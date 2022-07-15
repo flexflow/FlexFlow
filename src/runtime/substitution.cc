@@ -3023,7 +3023,7 @@ bool FFModel::convert_graph_to_operators(const Graph* graph,
       new_op->weights[i]->machine_view = view;
     }
     //set pipeline info for the op, the input and output tensors of this operator, scale thr ubatch dimension according to bufSize
-    StageInfo sinfo = optimal_partitions.find(node)->second;
+    StageInfo sinfo = optimal_partition.find(node)->second;
     new_op->stage_guid = sinfo.sid;
     new_op->ubSize = sinfo.ubatchSize;
     new_op->nFnB = sinfo.nFnB;
@@ -3036,7 +3036,7 @@ bool FFModel::convert_graph_to_operators(const Graph* graph,
       new_op->outputs[i]->pipe_buf_size = sinfo.bufSize;
       new_op->outputs[i]->pipe_num_part_out = sinfo.bufSize / sinfo.ubatchSize;
     }
-    for (int i = 0; i < new_op->numIutputs; i++) {
+    for (int i = 0; i < new_op->numInputs; i++) {
       new_op->inputs[i]->pipe_num_part_in = new_op->inputs[i]->pipe_buf_size / sinfo.ubatchSize;
     }
     node_to_op[node] = new_op;
