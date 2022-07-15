@@ -1537,7 +1537,7 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
   
   // shicao for pipeline, Step 2: create hierarchical partitions for output
   // first-level partition: pipeline parallelism: TODO: check if this create_equal_partition partitions on dim[3]
-  Point<NDIM> ext_lo;
+  Point<NDIM> p_hi;
   for (int i = 0; i < NDIM - 1; i++) {
     p_hi[i] = 0;
   }
@@ -1691,6 +1691,8 @@ void FFModel::map_input_tensor_with_dim(ParallelTensor tensor, const Op* paralle
 template<int NDIM, int TDIM>
 void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
 {
+  Context ctx = config.lg_ctx;
+  Runtime* runtime = config.lg_hlr;
   // Step 0: check we are the owner or the owner is NULL
   // in which case set the owner to us
   if (tensor->owner_op == NULL) {
@@ -1705,7 +1707,7 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
   // shicao for pipeline, Step 2: create hierarchical partitions for input
   // first-level partition: pipeline parallelism: TODO: check if create_equal_partition partitions on dim[3]
   IndexSpaceT<NDIM> is = tensor->region.get_index_space();
-  Point<NDIM> ext_lo;
+  Point<NDIM> p_hi;
   for (int i = 0; i < NDIM - 1; i++) {
     p_hi[i] = 0;
   }
@@ -1717,7 +1719,7 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
   int idx = 0;
   for (PointInRectIterator<NDIM> it(ubdim_rect); it(); it++, idx++) {
       DomainPoint dp(*it);
-      tensor.in_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
+      tensor->in_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
   }
 
   //second-level partition: intra-stage parallelism
@@ -3464,6 +3466,7 @@ void FFIterationConfig::reset()
 struct DefaultConfig {
   const static int epochs = 1;
   //const static int iterations = 1;
+  const static int ubatchUnit = 1;
   const static int batchSize = 64;
   const static bool profiling = false;
   constexpr static float learningRate = 0.01f;
@@ -3476,7 +3479,7 @@ struct DefaultConfig {
   const static size_t simulatorWorkSpaceSize = (size_t)2 * 1024 * 1024 * 1024; //2GB
   constexpr static float searchAlpha = 1.2f;
   const static bool searchOverlapBackwardUpdate = false;
-  const static bool onlyDataParallel = false;
+  const static bool onlyDataParallel = true;
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
@@ -3495,6 +3498,7 @@ FFConfig::FFConfig()
 {
   epochs = DefaultConfig::epochs;
   //iterations = DefaultConfig::iterations;
+  ubatchUnit = DefaultConfig::ubatchUnit;
   batchSize = DefaultConfig::batchSize;
   profiling = DefaultConfig::profiling;
   learningRate = DefaultConfig::learningRate;

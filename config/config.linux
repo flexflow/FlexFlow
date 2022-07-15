@@ -22,16 +22,16 @@ BUILD_TYPE=Release
 #FF_CUDA_ARCH=xx
 
 # set CUDNN dir in case cmake cannot autodetect a path
-CUDNN_DIR=/usr/local/cuda-11.0
+CUDNN_DIR=/usr/local/cuda-11
 
 # set CUDA dir in case cmake cannot autodetect a path
-CUDA_DIR=/usr/local/cuda-11.0
+CUDA_DIR=/usr/local/cuda-11
 
 # enable Python
-FF_USE_PYTHON=ON
+FF_USE_PYTHON=OFF
 
 # enable NCCL
-FF_USE_NCCL=ON
+FF_USE_NCCL=OFF
 
 # enable GASNet
 FF_USE_GASNET=OFF
@@ -46,7 +46,7 @@ FF_BUILD_ALL_EXAMPLES=ON
 FF_USE_AVX2=OFF
 
 # set MAX_DIM
-FF_MAX_DIM=5
+FF_MAX_DIM=4
 
 . $(dirname $0)/config.inc
 run_cmake $*

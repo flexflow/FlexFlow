@@ -192,7 +192,7 @@ void Softmax::forward(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Softmax::forward(const FFModel& ff)
+void Softmax::pipeforward(const FFModel& ff)
 {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;

@@ -1570,7 +1570,7 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
     sinfo.sid = 0;
     sinfo.ubatchSize = 1;
     sinfo.bufSize = 6;
-    sinfo.nFnB = 2
+    sinfo.nFnB = 2;
     sinfo.device_num = 1;
     MachineView data_parallel_view;
     data_parallel_view.device_type = MachineView::GPU;

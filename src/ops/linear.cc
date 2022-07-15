@@ -330,6 +330,38 @@ void Linear::forward(const FFModel& ff)
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part, 0/*projection id*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part, 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, weights[0]->region));
+  launcher.add_field(2, FID_DATA);
+  if (use_bias) {
+    launcher.add_region_requirement(
+        RegionRequirement(weights[1]->part, 0/*projection id*/,
+                          READ_ONLY, EXCLUSIVE, weights[1]->region));
+    launcher.add_field(3, FID_DATA);
+  }
+  runtime->execute_index_space(ctx, launcher);
+}
+
+
+void Linear::pipeforward(const FFModel& ff)
+{
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  set_argumentmap_for_forward(ff, argmap);
+  IndexLauncher launcher(LINEAR_FWD_TASK_ID, parallel_is,
+                         TaskArgument(nullptr, 0), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(
       RegionRequirement(inputs[0]->in_pipepart[fwd_input_idx], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->in_subregions[fwd_input_idx]));
   launcher.add_field(0, FID_DATA);
