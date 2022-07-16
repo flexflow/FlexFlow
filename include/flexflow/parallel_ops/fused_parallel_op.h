@@ -13,6 +13,9 @@ public:
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
+  void pipeinit(const FFModel&)  override {assert(0);}
+  void pipeforward(const FFModel&)  override {assert(0);}
+  void pipebackward(const FFModel&)  override {assert(0);}
   bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const override;
   void create_input_partition(FFModel& model) override;
   static void forward_task(

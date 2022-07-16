@@ -30,6 +30,9 @@ public:
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
   virtual void backward(const FFModel&) = 0;
+  virtual void pipeinit(const FFModel&) = 0;
+  virtual void pipeforward(const FFModel&) = 0;
+  virtual void pipebackward(const FFModel&) = 0;
   virtual void create_input_partition(FFModel& model) = 0;
   void print_layer(const FFModel& model) {};
   virtual bool measure_operator_cost(Simulator* sim,

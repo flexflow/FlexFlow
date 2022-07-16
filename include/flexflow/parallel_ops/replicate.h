@@ -16,6 +16,9 @@ public:
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
+  void pipeinit(const FFModel&)  override {assert(0);}
+  void pipeforward(const FFModel&)  override {assert(0);}
+  void pipebackward(const FFModel&)  override {assert(0);}
   bool get_int_parameter(PMParameter, int*) const override;
   bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const override;
   static void forward_task(
