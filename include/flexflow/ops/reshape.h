@@ -26,6 +26,9 @@ public:
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
+  void pipeinit(const FFModel&)  override {assert(0);}
+  void pipeforward(const FFModel&)  override {assert(0);}
+  void pipebackward(const FFModel&)  override {assert(0);}
   void print_layer(const FFModel& model) override {assert(0);}
   static Op* create_operator_from_layer(FFModel& model,
                                         const Layer* layer,

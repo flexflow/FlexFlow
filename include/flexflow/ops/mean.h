@@ -14,6 +14,9 @@ public:
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
+  void pipeinit(const FFModel&)  override {assert(0);}
+  void pipeforward(const FFModel&)  override {assert(0);}
+  void pipebackward(const FFModel&)  override {assert(0);}
   void print_layer(const FFModel& model) {assert(0);}
 
   static OpMeta* init_task(const Legion::Task *task,

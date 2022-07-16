@@ -155,11 +155,11 @@ public:
   virtual bool get_weight_parameter(TNParameter, DIMParameter, int*) const;
   // Pure virtual functions that must be implemented
   virtual void init(const FFModel&) = 0;
-  virtual void pipeinit(const FFModel&);
+  virtual void pipeinit(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
-  virtual void pipeforward(const FFModel&);
+  virtual void pipeforward(const FFModel&) = 0;
   virtual void backward(const FFModel&) = 0;
-  virtual void pipebackward(const FFModel&);
+  virtual void pipebackward(const FFModel&) = 0;
   virtual void print_layer(const FFModel& model) = 0;
   virtual bool measure_operator_cost(Simulator* sim,
                                      const MachineView& mv,

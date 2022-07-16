@@ -32,6 +32,9 @@ public:
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
+  void pipeinit(const FFModel&);
+  void pipeforward(const FFModel&);
+  void pipebackward(const FFModel&);
   void print_layer(const FFModel& model) {assert(0);}
   static Op* create_operator_from_layer(
       FFModel& model,
