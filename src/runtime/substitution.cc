@@ -3028,10 +3028,11 @@ bool FFModel::convert_graph_to_operators(const Graph* graph,
     new_op->ubSize = sinfo.ubatchSize;
     new_op->nFnB = sinfo.nFnB;
     for (int i = 0; i < new_op->numOutputs; i++) {
-      new_op->outputs[i]->dims[3].size *= sinfo.bufSize; // TODO check dim[3] is ubatch dim?
+      int ndims = new_op->outputs[i]->num_dims;
+      //new_op->outputs[i]->dims[ndims-2].size *= sinfo.bufSize; // TODO check dim[3] is ubatch dim?
       //since we do not have parallel op, parallel dim info set here? only support data parallelism now
-      new_op->outputs[i]->dims[3].degree = sinfo.device_num;
-      new_op->outputs[i]->dims[3].parallel_idx += 1;
+      new_op->outputs[i]->dims[ndims-2].degree = sinfo.device_num;
+      //new_op->outputs[i]->dims[3].parallel_idx += 1;
       //pipe info
       new_op->outputs[i]->pipe_buf_size = sinfo.bufSize;
       new_op->outputs[i]->pipe_num_part_out = sinfo.bufSize / sinfo.ubatchSize;

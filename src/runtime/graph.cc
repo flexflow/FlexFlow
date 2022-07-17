@@ -1569,7 +1569,7 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
     StageInfo sinfo;
     sinfo.sid = 0;
     sinfo.ubatchSize = 1;
-    sinfo.bufSize = 6;
+    sinfo.bufSize = 4;
     sinfo.nFnB = 2;
     sinfo.device_num = 1;
     MachineView data_parallel_view;
@@ -1579,7 +1579,7 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
     data_parallel_view.dim[0] = sinfo.device_num;
     data_parallel_view.stride[0] = 1;
     data_parallel_view.start_device_id = 0;
-    int op_per_stage = model->operators.size() / 3;
+    int op_per_stage = model->operators.size() / 2;
     int num = 0;
 
     for (const auto& node : best_graph->inEdges) {
@@ -1587,20 +1587,12 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
       optimal_partition[node.first] = sinfo;
       if(num == op_per_stage) {
         sinfo.sid = 1;
-        sinfo.bufSize = 4;
+        sinfo.bufSize = 2;
         sinfo.ubatchSize = 2;
-        sinfo.device_num = 2;
+        sinfo.device_num = 1;
         sinfo.nFnB = 1;
         data_parallel_view.dim[0] = sinfo.device_num;
         data_parallel_view.start_device_id = 1;
-      }
-      if(num == 2*op_per_stage){
-        sinfo.sid = 2;
-        sinfo.bufSize = 1;
-        sinfo.ubatchSize = 1;
-        sinfo.device_num = 1;
-        data_parallel_view.dim[0] = sinfo.device_num;
-        data_parallel_view.start_device_id = 3;
       }
       num++;
     }

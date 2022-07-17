@@ -50,8 +50,8 @@ void FlexFlow::top_level_task(const Task* task,
     parse_input_args(argv, argc, alexnetConfig);
     // log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
     //     ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
-    log_app.print("ubatchSize(%d) workersPerNodes(%d) numNodes(%d)",
-        ffConfig.ubatchUnit, ffConfig.workersPerNode, ffConfig.numNodes);
+    log_app.print("ubatchSize(%d) workersPerNodes(%d) numNodes(%d) dataset(%s)",
+        ffConfig.ubatchUnit, ffConfig.workersPerNode, ffConfig.numNodes, alexnetConfig.dataset_path);
   }
   FFModel ff(ffConfig);
 
@@ -88,6 +88,7 @@ void FlexFlow::top_level_task(const Task* task,
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
   // Data Loader TODO: change
+  log_app.print("DEBUG: finish model compilation");
   DataLoader data_loader(ff, &alexnetConfig, input, ff.label_tensor);
   ff.init_operators();
   //Start timer
@@ -204,7 +205,7 @@ DataLoader::DataLoader(FFModel& ff,
   launcher.add_field(1, FID_DATA);
   runtime->execute_task(ctx, launcher);
   reset();
-  next_batch(ff);
+  //next_batch(ff);
 }
 
 __inline__

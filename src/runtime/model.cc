@@ -1542,7 +1542,7 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
   for (int i = 0; i < NDIM - 1; i++) {
     p_hi[i] = 0;
   }
-  p_hi[NDIM-1] = tensor->pipe_num_part_out-1;
+  p_hi[NDIM-2] = tensor->pipe_num_part_out-1;
   Rect<NDIM> ubdim_rect(Point<NDIM>::ZEROES(), p_hi);
   IndexSpaceT<NDIM> ub_is = runtime->create_index_space(ctx, ubdim_rect);
   IndexPartition ub_ip = runtime->create_equal_partition(ctx, is, ub_is);
@@ -1694,25 +1694,16 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
-  // Step 0: check we are the owner or the owner is NULL
-  // in which case set the owner to us
-  if (tensor->owner_op == NULL) {
-    tensor->owner_op = parallel_op;
-    tensor->owner_idx = -1; // meaning tensor is not an output of op
-  } else {
-    // assert tensor->owner_op == parallel_op or parallel_op == nullptr,
-    // which indicates the tensor is not parallelized
-    assert(tensor->owner_op == parallel_op || parallel_op == nullptr);
-  }
   
   // shicao for pipeline, Step 2: create hierarchical partitions for input
-  // first-level partition: pipeline parallelism: TODO: check if create_equal_partition partitions on dim[3]
+  // first-level partition: pipeline parallelism: TODO: check if create_equal_partition partitions on dim[3],here max_tensor_dim=5, last dim is replica
+  log_model.print("DEBUG: map_input_tensor(%d, %d) for op(%s, %zu)",tensor->num_dims,tensor->dims[NDIM-2].size, optype_to_string(parallel_op->op_type).data(), parallel_op->op_guid);
   IndexSpaceT<NDIM> is = (IndexSpaceT<NDIM>) tensor->region.get_index_space();
   Point<NDIM> p_hi;
   for (int i = 0; i < NDIM - 1; i++) {
     p_hi[i] = 0;
   }
-  p_hi[NDIM-1] = tensor->pipe_num_part_out-1;
+  p_hi[NDIM-2] = tensor->pipe_num_part_in-1;
   Rect<NDIM> ubdim_rect(Point<NDIM>::ZEROES(), p_hi);
   IndexSpaceT<NDIM> ub_is = runtime->create_index_space(ctx, ubdim_rect);
   IndexPartition ub_ip = runtime->create_equal_partition(ctx, is, ub_is); //TODO: may use create_partition_by_restriction
@@ -1755,6 +1746,7 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
       }
     }
   }
+  log_model.print("DEBUG: finish map_input_tensor for op(%s, %zu)",optype_to_string(parallel_op->op_type).data(), parallel_op->op_guid);
 }
 
 
@@ -2921,6 +2913,9 @@ void FFModel::compile(LossType loss_type,
     //TODO: add flags for enable pipeline
     for (int i = 0; i < op->numOutputs; i++) {
       // Output tensor
+      // scale sample dim
+      int ndims = op->outputs[i]->num_dims;
+      op->outputs[i]->dims[ndims-2].size *= op->outputs[i]->pipe_buf_size;
       map_tensor(op->outputs[i], op);
     }
     for (int i = 0; i< op->numInputs; i++) {
