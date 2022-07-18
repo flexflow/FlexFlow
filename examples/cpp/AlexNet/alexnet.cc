@@ -18,6 +18,7 @@
 #include <fstream>
 #include <string>
 using namespace Legion;
+using namespace FlexFlow;
 using FlexFlow::FFModel;
 using FlexFlow::Tensor;
 using FlexFlow::FFConfig;
@@ -177,18 +178,47 @@ DataLoader::DataLoader(FFModel& ff,
   {
     batch_input = input;
     const int dims[] = {num_samples, input->dims[2], input->dims[1], input->dims[0]};
+    ParallelDim pdims[4];
+    pdims[0].size = num_samples;
+    pdims[0].parallel_idx = -1;
+    pdims[1].size = input->dims[2];
+    pdims[2].size = input->dims[1];
+    pdims[3].size = input->dims[0];
+    pdims[1].parallel_idx = -1;
+    pdims[2].parallel_idx = -1;
+    pdims[3].parallel_idx = -1;
+    pdims[0].degree = 1;
+    pdims[1].degree = 1;
+    pdims[2].degree = 1;
+    pdims[3].degree = 1;
     full_input = ff.create_tensor<4>(dims, DT_FLOAT);
-    ff.map_tensor(full_input, NULL);
+    log_app.print("Created full input tensor...");
+    full_input->parallel_tensor = ff.create_parallel_tensor<4>(pdims, DT_FLOAT);
+    log_app.print("Created full input parallel tensor...");
+    ff.map_tensor(full_input->parallel_tensor, NULL);
+    log_app.print("Mapped full input parallel tensor...");
   }
   // Create full label
   {
     batch_label = label;
     const int dims[] = {num_samples, label->dims[0]};
+    ParallelDim pdims[2];
+    pdims[0].size = num_samples;
+    pdims[1].size = input->dims[0];
+    pdims[0].parallel_idx = -1;
+    pdims[1].parallel_idx = -1;
+    pdims[0].degree = 1;
+    pdims[1].degree = 1;
     full_label = ff.create_tensor<2>(dims, DT_INT32);
-    ff.map_tensor(full_label, NULL);
+    full_label->parallel_tensor = ff.create_parallel_tensor<2>(pdims, DT_INT32);
+    log_app.print("Created full label parallel tensor...");
+    ff.map_tensor(full_label->parallel_tensor, NULL);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
+  assert(full_input->parallel_tensor != nullptr);
+  assert(full_input->parallel_tensor->region != LogicalRegion::NO_REGION);
+  assert(full_label->parallel_tensor->region != LogicalRegion::NO_REGION);
   TaskLauncher launcher(FlexFlow::CUSTOM_CPU_TASK_ID_1,
       TaskArgument(alexnet, sizeof(AlexNetConfig)));
   // regions[0]: full_input

@@ -1470,6 +1470,9 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
   if(parallel_op != NULL){
     log_model.print("DEBUG: map_tensor(%d, %d) for op(%s, %zu)",tensor->num_dims,tensor->dims[NDIM-2].size, optype_to_string(parallel_op->op_type).data(), parallel_op->op_guid);
   }
+  else{
+    log_model.print("DEBUG: map_tensor(%d, %d)",tensor->num_dims,tensor->dims[NDIM-2].size);
+  }
   
   if (tensor->owner_op == NULL) {
     tensor->owner_op = parallel_op;
@@ -1514,33 +1517,33 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
   }
 
   // Step 2: create partitions if parallel_op != NULL for weight tensors
-  if (parallel_op->op_type == OP_WEIGHT) {
-    IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
-    //Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
-    Transform<NDIM, TDIM> transform;
-    Point<NDIM> ext_hi;
-    for (int i = 0; i < NDIM; i++) {
-      int nparts = tensor->dims[i].degree;
-      ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
+  if (parallel_op != NULL){
+    if (parallel_op->op_type == OP_WEIGHT) {
+      IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
+      //Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
+      Transform<NDIM, TDIM> transform;
+      Point<NDIM> ext_hi;
+      for (int i = 0; i < NDIM; i++) {
+        int nparts = tensor->dims[i].degree;
+        ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
+      }
+      Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
+      for (int i = 0; i < NDIM; i++)
+        for (int j = 0; j < TDIM; j++)
+          if (tensor->dims[i].parallel_idx == j)
+            transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
+          else
+            transform[i][j] = 0;
+      IndexPartition ip = runtime->create_partition_by_restriction(
+          ctx, is, part_is, transform, extent);
+      assert(runtime->is_index_partition_disjoint(ctx, ip));
+      assert(runtime->is_index_partition_complete(ctx, ip));
+      tensor->part = runtime->get_logical_partition(ctx, tensor->region, ip);
+      if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
+        tensor->part_grad = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
+      }
     }
-    Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
-    for (int i = 0; i < NDIM; i++)
-      for (int j = 0; j < TDIM; j++)
-        if (tensor->dims[i].parallel_idx == j)
-          transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
-        else
-          transform[i][j] = 0;
-    IndexPartition ip = runtime->create_partition_by_restriction(
-        ctx, is, part_is, transform, extent);
-    assert(runtime->is_index_partition_disjoint(ctx, ip));
-    assert(runtime->is_index_partition_complete(ctx, ip));
-    tensor->part = runtime->get_logical_partition(ctx, tensor->region, ip);
-    if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
-      tensor->part_grad = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
-    }
-  }
-  else {
-    if (parallel_op != NULL) {
+    else {
       // shicao for pipeline, Step 2: create hierarchical partitions for output
       // first-level partition: pipeline parallelism: TODO: check if this create_equal_partition partitions on dim[3]
       Point<NDIM> p_hi;
@@ -1587,11 +1590,8 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
         if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
           tensor->out_pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->out_subregion_grad[k], ip);
         }
-
       }
-      
     }
-
   }
   
   
