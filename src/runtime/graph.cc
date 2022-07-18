@@ -1583,6 +1583,7 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
     int num = 0;
 
     for (const auto& node : best_graph->inEdges) {
+      printf("Node type(%s)", node.first.to_string().c_str());
       optimal_views[node.first] = data_parallel_view;
       optimal_partition[node.first] = sinfo;
       if(num == op_per_stage) {

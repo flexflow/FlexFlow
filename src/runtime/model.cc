@@ -1471,7 +1471,7 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
     log_model.print("DEBUG: map_tensor(%d, %d) for op(%s, %zu)",tensor->num_dims,tensor->dims[NDIM-2].size, optype_to_string(parallel_op->op_type).data(), parallel_op->op_guid);
   }
   else{
-    log_model.print("DEBUG: map_tensor(%d, %d)",tensor->num_dims,tensor->dims[NDIM-2].size);
+    log_model.print("DEBUG: map_tensor(%d, %d, %d)",tensor->num_dims,tensor->dims[0].size,tensor->dims[1].size);
   }
   
   if (tensor->owner_op == NULL) {
@@ -2471,7 +2471,7 @@ void FFModel::reset_metrics()
 void FFModel::init_operators()
 {
   for (size_t i = 0; i < operators.size(); i++)
-    operators[i]->init(*this);
+    operators[i]->pipeinit(*this);
 }
 
 void FFModel::forward(int seq_length)
@@ -3062,8 +3062,10 @@ void FFModel::compile(LossType loss_type,
   int num_p_dims = final_operator->outputs[0]->num_dims;
   int num_dims = 0;
   // FIXME: Currently assume 1st input for 1st operator = batch_size
+  log_model.print("final op(%s)",optype_to_string(final_operator->op_type).data());
   for (int i = 0; i < num_p_dims; i++) {
     p_dims[i] = final_operator->outputs[0]->dims[i];
+    log_model.print("label dim[%d]:%d",i, p_dims[i].size);
     if (!p_dims[i].is_replica_dim)
       dims[num_dims++] = p_dims[i].size;
   }

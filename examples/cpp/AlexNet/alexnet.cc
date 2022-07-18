@@ -172,7 +172,7 @@ DataLoader::DataLoader(FFModel& ff,
     log_app.print("Start loading dataset from %s", alexnet->dataset_path);
     size_t filesize = get_file_size(alexnet->dataset_path);
     assert(filesize % 3073 == 0);
-    num_samples = filesize / 3073;
+    num_samples = filesize / 3073 / 100;
   }
   // Create full input
   {
@@ -204,11 +204,12 @@ DataLoader::DataLoader(FFModel& ff,
     const int dims[] = {num_samples, label->dims[0]};
     ParallelDim pdims[2];
     pdims[0].size = num_samples;
-    pdims[1].size = input->dims[0];
+    pdims[1].size = label->dims[0];
     pdims[0].parallel_idx = -1;
     pdims[1].parallel_idx = -1;
     pdims[0].degree = 1;
     pdims[1].degree = 1;
+    log_app.print("Full label tensor(%d, %d)", label->dims[0], num_samples);
     full_label = ff.create_tensor<2>(dims, DT_INT32);
     full_label->parallel_tensor = ff.create_parallel_tensor<2>(pdims, DT_INT32);
     log_app.print("Created full label parallel tensor...");
@@ -235,6 +236,7 @@ DataLoader::DataLoader(FFModel& ff,
   launcher.add_field(1, FID_DATA);
   runtime->execute_task(ctx, launcher);
   reset();
+  log_app.print("Reset sample idx");
   //next_batch(ff);
 }
 
@@ -300,6 +302,7 @@ void DataLoader::load_entire_dataset(const Task *task,
   unsigned char* buffer = (unsigned char*) malloc(3073);
   unsigned char* image = (unsigned char*) malloc(3 * height * width);
   for (off_t i = 0; i < num_samples; i++) {
+    log_app.print("Loading sample (%ld)", i);
     size_t ret = fread(buffer, sizeof(unsigned char), 3073, file);
     assert(ret = 3073);
     if ((i+1) % 1000 == 0)

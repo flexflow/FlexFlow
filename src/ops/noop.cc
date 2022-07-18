@@ -127,10 +127,59 @@ void NoOp::init(const FFModel& ff)
   }
 }
 
+void NoOp::pipeinit(const FFModel& ff)
+{
+  parallel_is = outputs[0]->parallel_is;
+  // For OP_INPUT, initialize tensor to zero
+  if (op_type == OP_INPUT) {
+    assert(outputs[0]->region != LogicalRegion::NO_REGION);
+    if (outputs[0]->part == LogicalPartition::NO_PART)
+      return;
+    ConstantInitializer* initializer = NULL;
+    if (outputs[0]->data_type == DT_FLOAT) {
+      initializer = new ConstantInitializer(0.0f);
+    } else if (outputs[0]->data_type == DT_INT64) {
+      initializer = new ConstantInitializer((int64_t)0);
+    } else if (outputs[0]->data_type == DT_INT32) {
+      initializer = new ConstantInitializer((int)0);
+    }
+    Runtime* runtime = ff.config.lg_hlr;
+    Context ctx = ff.config.lg_ctx;
+    ArgumentMap argmap;
+    IndexLauncher launcher(CONSTANT_INIT_TASK_ID, parallel_is,
+                           TaskArgument(initializer, sizeof(ConstantInitializer)), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           outputs[0]->machine_view.hash());
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[0]->part, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  } else if (op_type == OP_WEIGHT) {
+    ArgumentMap argmap;
+    Context ctx = ff.config.lg_ctx;
+    Runtime* runtime = ff.config.lg_hlr;
+    set_argumentmap_for_init(ff, argmap);
+    IndexLauncher launcher(NOOP_INIT_TASK_ID, parallel_is,
+                           TaskArgument(NULL, 0), argmap,
+                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                           outputs[0]->machine_view.hash());
+    FutureMap fm = runtime->execute_index_space(ctx, launcher);
+    fm.wait_all_results();
+    set_opmeta_from_futuremap(ff, fm);
+  }
+}
+
 void NoOp::forward(const FFModel& ff)
 {}
 
+void NoOp::pipeforward(const FFModel& ff)
+{}
+
 void NoOp::backward(const FFModel& ff)
+{}
+
+void NoOp::pipebackward(const FFModel& ff)
 {}
 
 bool NoOp::measure_operator_cost(
