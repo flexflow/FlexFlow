@@ -237,7 +237,11 @@ DataLoader::DataLoader(FFModel& ff,
   runtime->execute_task(ctx, launcher);
   reset();
   log_app.print("Reset sample idx");
-  //next_batch(ff);
+  next_input_ubatch(ff);
+  next_input_ubatch(ff);
+  next_input_ubatch(ff);
+  next_input_ubatch(ff);
+  next_label_ubatch(ff);
 }
 
 __inline__
@@ -392,19 +396,19 @@ void DataLoader::next_input_ubatch(FFModel& ff)
   int ubSize = batch_input->parallel_tensor->owner_op->ubSize;
   // Load input
   {
-    IndexSpaceT<4> task_is = (IndexSpaceT<4>) batch_input->parallel_tensor->parallel_is;
-    Rect<4> rect = runtime->get_index_space_domain(ctx, task_is);
+    // IndexSpaceT<4> task_is = (IndexSpaceT<4>) batch_input->parallel_tensor->parallel_is;
+    Domain domain = runtime->get_index_space_domain(ctx, batch_input->parallel_tensor->parallel_is);
     ArgumentMap argmap;
     int idx = next_input_index;
-    for (PointInRectIterator<4> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ubSize % (rect.hi[3] - rect.lo[3] + 1) == 0);
-      meta.num_samples = ubSize / (rect.hi[3] - rect.lo[3] + 1);
+      int ndims = batch_input->parallel_tensor->num_dims;
+      meta.num_samples = ubSize / batch_input->parallel_tensor->dims[ndims-2].degree;
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(FlexFlow::CUSTOM_GPU_TASK_ID_1, task_is,
+    IndexLauncher launcher(FlexFlow::CUSTOM_GPU_TASK_ID_1, batch_input->parallel_tensor->parallel_is,
                            TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            batch_input->parallel_tensor->machine_view.hash());
@@ -430,19 +434,19 @@ void DataLoader::next_label_ubatch(FFModel& ff)
   int ubSize = batch_label->parallel_tensor->pipe_buf_size / batch_label->parallel_tensor->pipe_num_part_out;
   // Load label
   {
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(batch_label->parallel_tensor->parallel_is);
-    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    //IndexSpaceT<2> task_is = IndexSpaceT<2>(batch_label->parallel_tensor->parallel_is);
+    Domain domain = runtime->get_index_space_domain(ctx, batch_label->parallel_tensor->parallel_is);
     ArgumentMap argmap;
     int idx = next_label_index;
-    for (PointInRectIterator<2> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ubSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-      meta.num_samples = ubSize/ (rect.hi[1] - rect.lo[1] + 1);
+      int ndims = batch_label->parallel_tensor->num_dims;
+      meta.num_samples = ubSize/ batch_label->parallel_tensor->dims[ndims-2].degree;
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(FlexFlow::CUSTOM_GPU_TASK_ID_2, task_is,
+    IndexLauncher launcher(FlexFlow::CUSTOM_GPU_TASK_ID_2, batch_label->parallel_tensor->parallel_is,
                            TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            batch_label->parallel_tensor->machine_view.hash());

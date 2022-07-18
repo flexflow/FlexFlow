@@ -1560,7 +1560,7 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
       for (int i = 0; i < NDIM; i++){
         trans[i][0] = 0;
       }
-      trans[NDIM-2][0] = ext.hi[i] - ext.lo[i] + 1;
+      trans[NDIM-2][0] = ext.hi[NDIM-2] - ext.lo[NDIM-2] + 1;
       IndexPartition ub_ip = runtime->create_partition_by_restriction(ctx, is, ub_is, trans, ext);
       LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
       int idx = 0;
@@ -1715,6 +1715,7 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
   // first-level partition: pipeline parallelism: TODO: check if create_equal_partition partitions on dim[3],here max_tensor_dim=5, last dim is replica
   log_model.print("DEBUG: map_input_tensor(%d, %d) for op(%s, %zu)",tensor->num_dims,tensor->dims[NDIM-2].size, optype_to_string(parallel_op->op_type).data(), parallel_op->op_guid);
   IndexSpaceT<NDIM> is = (IndexSpaceT<NDIM>) tensor->region.get_index_space();
+  Rect<NDIM> rect = runtime->get_index_space_domain(ctx, is);
 
   Rect<1> ubdim_rect(0, tensor->pipe_num_part_in-1);
   IndexSpaceT<1> ub_is = runtime->create_index_space(ctx, ubdim_rect);
@@ -1730,7 +1731,7 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
   for (int i = 0; i < NDIM; i++){
     trans[i][0] = 0;
   }
-  trans[NDIM-2][0] = ext.hi[i] - ext.lo[i] + 1;
+  trans[NDIM-2][0] = ext.hi[NDIM-2] - ext.lo[NDIM-2] + 1;
   IndexPartition ub_ip = runtime->create_partition_by_restriction(ctx, is, ub_is, trans, ext);
   LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
   int idx = 0;
