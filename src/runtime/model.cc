@@ -1467,7 +1467,10 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
 {
   // Step 0: check we are the owner or the owner is NULL
   // in which case set the owner to us
-  log_model.print("DEBUG: map_tensor(%d, %d) for op(%s, %zu)",tensor->num_dims,tensor->dims[NDIM-2].size, optype_to_string(parallel_op->op_type).data(), parallel_op->op_guid);
+  if(parallel_op != NULL){
+    log_model.print("DEBUG: map_tensor(%d, %d) for op(%s, %zu)",tensor->num_dims,tensor->dims[NDIM-2].size, optype_to_string(parallel_op->op_type).data(), parallel_op->op_guid);
+  }
+  
   if (tensor->owner_op == NULL) {
     tensor->owner_op = parallel_op;
     tensor->owner_idx = -1; // meaning tensor is not an output of op
@@ -1537,25 +1540,25 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
     }
   }
   else {
-    // shicao for pipeline, Step 2: create hierarchical partitions for output
-    // first-level partition: pipeline parallelism: TODO: check if this create_equal_partition partitions on dim[3]
-    Point<NDIM> p_hi;
-    for (int i = 0; i < NDIM - 1; i++) {
-      p_hi[i] = 0;
-    }
-    p_hi[NDIM-2] = tensor->pipe_num_part_out-1;
-    Rect<NDIM> ubdim_rect(Point<NDIM>::ZEROES(), p_hi);
-    IndexSpaceT<NDIM> ub_is = runtime->create_index_space(ctx, ubdim_rect);
-    IndexPartition ub_ip = runtime->create_equal_partition(ctx, is, ub_is);
-    LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
-    int idx = 0;
-    for (PointInRectIterator<NDIM> it(ubdim_rect); it(); it++, idx++) {
-        DomainPoint dp(*it);
-        tensor->out_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
-    }
-
-    //second-level partition: intra-stage parallelism
     if (parallel_op != NULL) {
+      // shicao for pipeline, Step 2: create hierarchical partitions for output
+      // first-level partition: pipeline parallelism: TODO: check if this create_equal_partition partitions on dim[3]
+      Point<NDIM> p_hi;
+      for (int i = 0; i < NDIM - 1; i++) {
+        p_hi[i] = 0;
+      }
+      p_hi[NDIM-2] = tensor->pipe_num_part_out-1;
+      Rect<NDIM> ubdim_rect(Point<NDIM>::ZEROES(), p_hi);
+      IndexSpaceT<NDIM> ub_is = runtime->create_index_space(ctx, ubdim_rect);
+      IndexPartition ub_ip = runtime->create_equal_partition(ctx, is, ub_is);
+      LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
+      int idx = 0;
+      for (PointInRectIterator<NDIM> it(ubdim_rect); it(); it++, idx++) {
+          DomainPoint dp(*it);
+          tensor->out_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
+      }
+
+      //second-level partition: intra-stage parallelism
       IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
       //Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
       for (int k = 0; k < tensor->pipe_num_part_out; k++){

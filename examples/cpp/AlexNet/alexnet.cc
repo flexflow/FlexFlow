@@ -178,14 +178,14 @@ DataLoader::DataLoader(FFModel& ff,
     batch_input = input;
     const int dims[] = {num_samples, input->dims[2], input->dims[1], input->dims[0]};
     full_input = ff.create_tensor<4>(dims, DT_FLOAT);
-    //ff.map_tensor(full_input, NULL);
+    ff.map_tensor(full_input, NULL);
   }
   // Create full label
   {
     batch_label = label;
     const int dims[] = {num_samples, label->dims[0]};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
-    //ff.map_tensor(full_label, NULL);
+    ff.map_tensor(full_label, NULL);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
