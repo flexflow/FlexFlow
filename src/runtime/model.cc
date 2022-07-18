@@ -2471,7 +2471,15 @@ void FFModel::reset_metrics()
 void FFModel::init_operators()
 {
   for (size_t i = 0; i < operators.size(); i++)
-    operators[i]->pipeinit(*this);
+    if (operators[i]->op_type == OP_INPUT) {
+      for (size_t j = 0; j < operators[i]->outputs[0]->pipe_num_part_out; j++){
+        operators[i]->pipeinit(*this);
+      }
+    }
+    else{
+      operators[i]->pipeinit(*this);
+    }
+    
 }
 
 void FFModel::forward(int seq_length)

@@ -34,6 +34,7 @@ public:
   tl::optional<RecordFormatter> as_dot() const override;
 public:
   size_t input_tensor_guid;
+  int init_output_idx = 0;
 };
 
 }; // namespace FlexFlow
