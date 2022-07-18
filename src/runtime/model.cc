@@ -1546,17 +1546,25 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
     else {
       // shicao for pipeline, Step 2: create hierarchical partitions for output
       // first-level partition: pipeline parallelism: TODO: check if this create_equal_partition partitions on dim[3]
-      Point<NDIM> p_hi;
-      for (int i = 0; i < NDIM - 1; i++) {
-        p_hi[i] = 0;
+      Rect<1> ubdim_rect(0, tensor->pipe_num_part_out-1);
+      IndexSpaceT<1> ub_is = runtime->create_index_space(ctx, ubdim_rect);
+
+      Transform<NDIM, 1> trans;
+      Point<NDIM> ex_hi;
+      for (int i = 0; i < NDIM; i++) {
+        ex_hi[i] = rect.hi[i] - rect.lo[i];
       }
-      p_hi[NDIM-2] = tensor->pipe_num_part_out-1;
-      Rect<NDIM> ubdim_rect(Point<NDIM>::ZEROES(), p_hi);
-      IndexSpaceT<NDIM> ub_is = runtime->create_index_space(ctx, ubdim_rect);
-      IndexPartition ub_ip = runtime->create_equal_partition(ctx, is, ub_is);
+      int np = tensor->pipe_num_part_out;
+      ex_hi[NDIM-2] = (rect.hi[NDIM-2] - rect.lo[NDIM-2] + np) / np - 1;
+      Rect<NDIM> ext(Point<NDIM>::ZEROES(), ex_hi);
+      for (int i = 0; i < NDIM; i++){
+        trans[i][0] = 0;
+      }
+      trans[NDIM-2][0] = ext.hi[i] - ext.lo[i] + 1;
+      IndexPartition ub_ip = runtime->create_partition_by_restriction(ctx, is, ub_is, trans, ext);
       LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
       int idx = 0;
-      for (PointInRectIterator<NDIM> it(ubdim_rect); it(); it++, idx++) {
+      for (PointInRectIterator<1> it(ubdim_rect); it(); it++, idx++) {
           DomainPoint dp(*it);
           tensor->out_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
       }
@@ -1707,17 +1715,26 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
   // first-level partition: pipeline parallelism: TODO: check if create_equal_partition partitions on dim[3],here max_tensor_dim=5, last dim is replica
   log_model.print("DEBUG: map_input_tensor(%d, %d) for op(%s, %zu)",tensor->num_dims,tensor->dims[NDIM-2].size, optype_to_string(parallel_op->op_type).data(), parallel_op->op_guid);
   IndexSpaceT<NDIM> is = (IndexSpaceT<NDIM>) tensor->region.get_index_space();
-  Point<NDIM> p_hi;
-  for (int i = 0; i < NDIM - 1; i++) {
-    p_hi[i] = 0;
+
+  Rect<1> ubdim_rect(0, tensor->pipe_num_part_in-1);
+  IndexSpaceT<1> ub_is = runtime->create_index_space(ctx, ubdim_rect);
+
+  Transform<NDIM, 1> trans;
+  Point<NDIM> ex_hi;
+  for (int i = 0; i < NDIM; i++) {
+    ex_hi[i] = rect.hi[i] - rect.lo[i];
   }
-  p_hi[NDIM-2] = tensor->pipe_num_part_in-1;
-  Rect<NDIM> ubdim_rect(Point<NDIM>::ZEROES(), p_hi);
-  IndexSpaceT<NDIM> ub_is = runtime->create_index_space(ctx, ubdim_rect);
-  IndexPartition ub_ip = runtime->create_equal_partition(ctx, is, ub_is); //TODO: may use create_partition_by_restriction
+  int np = tensor->pipe_num_part_in;
+  ex_hi[NDIM-2] = (rect.hi[NDIM-2] - rect.lo[NDIM-2] + np) / np - 1;
+  Rect<NDIM> ext(Point<NDIM>::ZEROES(), ex_hi);
+  for (int i = 0; i < NDIM; i++){
+    trans[i][0] = 0;
+  }
+  trans[NDIM-2][0] = ext.hi[i] - ext.lo[i] + 1;
+  IndexPartition ub_ip = runtime->create_partition_by_restriction(ctx, is, ub_is, trans, ext);
   LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
   int idx = 0;
-  for (PointInRectIterator<NDIM> it(ubdim_rect); it(); it++, idx++) {
+  for (PointInRectIterator<1> it(ubdim_rect); it(); it++, idx++) {
       DomainPoint dp(*it);
       tensor->in_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
   }
