@@ -521,7 +521,7 @@ void Linear::pipebackward(const FFModel& ff)
     if (trainableInputs[0]) {
       launcher.add_region_requirement(
           RegionRequirement(inputs[0]->in_pipepart_grad[bwd_input_idx], 0/*projection id*/,
-                            READ_WRITE, EXCLUSIVE, inputs[0]->in_subregion_grad[bwd_input_idx]));
+                            READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
       launcher.add_field(rid++, FID_DATA);
     }
     // regions[2](I): output
@@ -532,7 +532,7 @@ void Linear::pipebackward(const FFModel& ff)
     // regions[3](I/O): output_grad
     launcher.add_region_requirement(
         RegionRequirement(outputs[0]->out_pipepart_grad[bwd_output_idx], 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, outputs[0]->out_subregion_grad[bwd_output_idx]));
+                          READ_WRITE, EXCLUSIVE, outputs[0]->region_grad));
     launcher.add_field(rid++, FID_DATA);
     // regions[4](I): filter
     launcher.add_region_requirement(

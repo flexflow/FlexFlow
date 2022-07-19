@@ -287,11 +287,11 @@ void Softmax::pipebackward(const FFModel& ff)
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->in_pipepart_grad[bwd_input_idx], 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[0]->in_subregion_grad[bwd_input_idx]));
+                        READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(outputs[0]->out_pipepart_grad[bwd_output_idx], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, outputs[0]->out_subregion_grad[bwd_output_idx]));
+                        READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   bwd_input_idx = (bwd_input_idx + 1) % inputs[0]->pipe_num_part_in;
   bwd_output_idx = (bwd_output_idx + 1) % outputs[0]->pipe_num_part_out;

@@ -109,6 +109,7 @@ void FlexFlow::top_level_task(const Task* task,
     int iterations = data_loader.num_samples / ffConfig.batchSize;
 
     for (int iter = 0; iter < iterations; iter++) {
+      log_app.print("hereeee iter %d",iter);
       runtime->begin_trace(ctx, 111/*trace_id*/);
       for (int iter_inner =0; iter_inner < ff.iter_perbatch; iter_inner++){
         if (std::strlen(alexnetConfig.dataset_path) == 0) {
@@ -130,10 +131,12 @@ void FlexFlow::top_level_task(const Task* task,
 	log_app.print("DEBUG: backward...");
         ff.backward();
       }
+      log_app.print("DEBUG:update weight");
       ff.update();
+      log_app.print("DEBUG:zero gradients");
       ff.zero_gradients();
+      log_app.print("DEBUG:zero gradients finish");
       runtime->end_trace(ctx, 111/*trace_id*/);
-      
     }
   }
   // End timer

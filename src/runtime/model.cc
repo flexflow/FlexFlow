@@ -1568,14 +1568,6 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
           DomainPoint dp(*it);
           tensor->out_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
       }
-      if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
-          LogicalPartition ub_lp_grad = runtime->get_logical_partition(ctx, tensor->region_grad, ub_ip);
-          int id = 0;
-          for (PointInRectIterator<1> it(ubdim_rect); it(); it++, id++) {
-              DomainPoint dp(*it);
-              tensor->out_subregion_grad[id] = runtime->get_logical_subregion_by_color(ctx, ub_lp_grad, dp); //Do we have to store subregions?
-          }
-      }
 
       //second-level partition: intra-stage parallelism
       IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
@@ -1602,9 +1594,9 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
             ctx, sub_is, part_is, transform, extent);
         assert(runtime->is_index_partition_disjoint(ctx, ip));
         assert(runtime->is_index_partition_complete(ctx, ip));
-        tensor->out_pipepart[k] = runtime->get_logical_partition(ctx, tensor->out_subregions[k], ip);
+        tensor->out_pipepart[k] = runtime->get_logical_partition(ctx, tensor->region, ip);
         if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
-          tensor->out_pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->out_subregion_grad[k], ip);
+          tensor->out_pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
         }
       }
     }
@@ -2594,6 +2586,7 @@ void FFModel::update()
 {
   optimizer->next();
   for (size_t i = 0; i < parameters.size(); i++) {
+    log_model.print("Updating param %zu", i);
     optimizer->update(parameters[i]);
   }
 }
@@ -3373,8 +3366,10 @@ void FFModel::mcmc_optimize(std::map<const Op*, ParallelConfig>& best,
 
 void FFModel::zero_gradients(void)
 {
-  for (int l = operators.size() - 1; l >= 0; l--)
+  for (int l = operators.size() - 1; l >= 0; l--){
+    log_model.print("Zero gradients for op(%s)", optype_to_string(operators[l]->op_type).data());
     operators[l]->zero_grad(*this);
+  }
 }
 
 void FFModel::print_layers(int id)
