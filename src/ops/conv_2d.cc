@@ -530,7 +530,7 @@ void Conv2D::pipeinit(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->out_pipepart[0], 0/*projection id*/,
+      RegionRequirement(outputs[0]->out_pipepart[init_output_idx], 0/*projection id*/,
                         WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
@@ -549,6 +549,7 @@ void Conv2D::pipeinit(const FFModel& ff)
   //    RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
   //                      WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
   //launcher.add_field(4, FID_DATA);
+  init_output_idx = (init_output_idx + 1) % outputs[0]->pipe_num_part_out;
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);

@@ -233,7 +233,7 @@ void Linear::pipeinit(const FFModel& ff)
   //                      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   //launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->out_pipepart[0], 0/*projection id*/,
+      RegionRequirement(outputs[0]->out_pipepart[init_output_idx], 0/*projection id*/,
                         WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
@@ -251,6 +251,7 @@ void Linear::pipeinit(const FFModel& ff)
     //        WRITE_ONLY, EXCLUSIVE, inputs[0].region_grad));
     //launcher.add_field(2, FID_DATA);
   }
+  init_output_idx = (init_output_idx + 1) % outputs[0]->pipe_num_part_out;
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
