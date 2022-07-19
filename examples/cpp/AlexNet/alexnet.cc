@@ -470,6 +470,7 @@ void DataLoader::reset()
   next_index = 0;
   next_label_index = 0;
   next_input_index = 0;
+  input_idx = 0;
 }
 
 void FlexFlow::register_custom_tasks()
