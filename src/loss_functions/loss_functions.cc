@@ -58,9 +58,9 @@ void Loss::backward(FFModel* model,
   Runtime* runtime = model->config.lg_hlr;
   Domain part_domain = runtime->get_index_space_domain(ctx, logit->parallel_is);
   Domain logit_domain = runtime->get_index_partition_color_space(
-      ctx, logit->part.get_index_partition());
+      ctx, logit->out_pipepart[loss_bwd_idx].get_index_partition());
   Domain label_domain = runtime->get_index_partition_color_space(
-      ctx, label->part.get_index_partition());
+      ctx, label->out_pipepart[loss_bwd_idx].get_index_partition());
   if((logit_domain != part_domain) || (label_domain != part_domain)) {
     fprintf(stderr, "Encounter inconsistency in parallelizing loss computation");
     assert(false);

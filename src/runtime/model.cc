@@ -2525,7 +2525,8 @@ void FFModel::compute_metrics()
 {
   Op* final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
-  for (size_t i = 0; j < final_operator->nFnB; i++){
+  log_model.print("Compute Metrics...");
+  for (size_t i = 0; i < final_operator->nFnB; i++){
     metrics_op->compute(this, final_operator->outputs[0], parallel_label_tensor);
   }
 }
@@ -2545,7 +2546,8 @@ void FFModel::backward(int seq_length)
   Op* final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
   log_model.print("loss op backward...");
-  for (size_t i = 0; j < final_operator->nFnB; i++){
+  for (size_t i = 0; i < final_operator->nFnB; i++){
+    log_model.print("Launching %zu Loss op backward",i);
     loss_op->backward(this, final_operator->outputs[0], parallel_label_tensor);
   }
   // Perform backpropagation
@@ -2961,7 +2963,17 @@ void FFModel::compile(LossType loss_type,
     }
     for (int i = 0; i< op->numInputs; i++) {
       //shicao for pipeline parallelism, map boarder input tensors
-      map_input_tensors(op->inputs[i], op);
+      if (op->inputs[i]->pipe_num_part_in == op->inputs[i]->pipe_num_part_out){
+        for (int j = 0; j < op->inputs[i]->pipe_num_part_in; j++){
+          op->inputs[i]->in_pipepart[j] = op->inputs[i]->out_pipepart[j];
+          op->inputs[i]->in_pipepart_grad[j] = op->inputs[i]->out_pipepart_grad[j];
+          op->inputs[i]->in_subregions[j] = op->inputs[i]->out_subregions[j];
+          op->inputs[i]->in_subregion_grad[j] = op->inputs[i]->out_subregion_grad[j];
+        }
+      }
+      else {
+        map_input_tensors(op->inputs[i], op);
+      }
     }
 
     if (op->is_parallel_op())
