@@ -92,6 +92,7 @@ void FlexFlow::top_level_task(const Task* task,
   log_app.print("DEBUG: finish model compilation");
   DataLoader data_loader(ff, &alexnetConfig, input, ff.label_tensor);
   ff.init_operators();
+  log_app.print("DEBUG: finish op init");
   //Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -100,7 +101,9 @@ void FlexFlow::top_level_task(const Task* task,
     future.get_void_result();
   }
   double ts_start = Realm::Clock::current_time_in_microseconds();
+  printf("Start Traning.....\n");
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
+    printf("Current Epoch: %d\n", epoch);
     data_loader.reset();
     ff.reset_metrics();
     int iterations = data_loader.num_samples / ffConfig.batchSize;
@@ -122,8 +125,9 @@ void FlexFlow::top_level_task(const Task* task,
             data_loader.next_label_ubatch(ff);
           }
         }
-        
+        log_app.print("DEBUG: forward...");
         ff.forward();
+	log_app.print("DEBUG: backward...");
         ff.backward();
       }
       ff.update();
@@ -237,9 +241,6 @@ DataLoader::DataLoader(FFModel& ff,
   runtime->execute_task(ctx, launcher);
   reset();
   log_app.print("Reset sample idx");
-  next_input_ubatch(ff);
-  next_input_ubatch(ff);
-  next_input_ubatch(ff);
   next_input_ubatch(ff);
   next_label_ubatch(ff);
 }
@@ -400,6 +401,7 @@ void DataLoader::next_input_ubatch(FFModel& ff)
     Domain domain = runtime->get_index_space_domain(ctx, batch_input->parallel_tensor->parallel_is);
     ArgumentMap argmap;
     int idx = next_input_index;
+    printf("Loading Input to buffer %d\n", input_idx);
     for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
       int ndims = batch_input->parallel_tensor->num_dims;
@@ -421,7 +423,7 @@ void DataLoader::next_input_ubatch(FFModel& ff)
         RegionRequirement(batch_input->parallel_tensor->in_pipepart[input_idx], 0/*projection id*/,
                           WRITE_ONLY, EXCLUSIVE, batch_input->parallel_tensor->in_subregions[input_idx]));
     launcher.add_field(1, FID_DATA);
-    input_idx = (input_idx + 1) / batch_input->parallel_tensor->pipe_num_part_in;
+    input_idx = (input_idx + 1) % batch_input->parallel_tensor->pipe_num_part_in;
     runtime->execute_index_space(ctx, launcher);
   }
   next_input_index += ubSize;
@@ -438,6 +440,7 @@ void DataLoader::next_label_ubatch(FFModel& ff)
     Domain domain = runtime->get_index_space_domain(ctx, batch_label->parallel_tensor->parallel_is);
     ArgumentMap argmap;
     int idx = next_label_index;
+    printf("Loading label to buffer %d\n", label_idx);
     for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
       int ndims = batch_label->parallel_tensor->num_dims;
@@ -446,6 +449,7 @@ void DataLoader::next_label_ubatch(FFModel& ff)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
+    assert(batch_label->parallel_tensor->out_subregions[label_idx] != LogicalRegion::NO_REGION);
     IndexLauncher launcher(FlexFlow::CUSTOM_GPU_TASK_ID_2, batch_label->parallel_tensor->parallel_is,
                            TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -459,7 +463,7 @@ void DataLoader::next_label_ubatch(FFModel& ff)
         RegionRequirement(batch_label->parallel_tensor->out_pipepart[label_idx], 0/*projection id*/,
                           WRITE_ONLY, EXCLUSIVE, batch_label->parallel_tensor->out_subregions[label_idx]));
     launcher.add_field(1, FID_DATA);
-    label_idx = (label_idx + 1) / batch_label->parallel_tensor->pipe_num_part_out;
+    label_idx = (label_idx + 1) % batch_label->parallel_tensor->pipe_num_part_out;
     runtime->execute_index_space(ctx, launcher);
   }
   next_label_index += ubSize;
@@ -471,6 +475,7 @@ void DataLoader::reset()
   next_label_index = 0;
   next_input_index = 0;
   input_idx = 0;
+  label_idx = 0;
 }
 
 void FlexFlow::register_custom_tasks()

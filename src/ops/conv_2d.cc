@@ -683,8 +683,8 @@ void Conv2D::pipeforward(const FFModel& ff)
                           READ_ONLY, EXCLUSIVE, weights[1]->region));
     launcher.add_field(3, FID_DATA);
   }
-  fwd_input_idx = (fwd_input_idx + 1) / inputs[0]->pipe_num_part_in;
-  fwd_output_idx = (fwd_output_idx + 1) / outputs[0]->pipe_num_part_out;
+  fwd_input_idx = (fwd_input_idx + 1) % inputs[0]->pipe_num_part_in;
+  fwd_output_idx = (fwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -822,8 +822,8 @@ void Conv2D::pipebackward(const FFModel& ff)
                           READ_WRITE, EXCLUSIVE, weights[1]->region_grad));
     launcher.add_field(rid++, FID_DATA);
   }
-  bwd_input_idx = (bwd_input_idx + 1) / inputs[0]->pipe_num_part_in;
-  bwd_output_idx = (bwd_output_idx + 1) / outputs[0]->pipe_num_part_out;
+  bwd_input_idx = (bwd_input_idx + 1) % inputs[0]->pipe_num_part_in;
+  bwd_output_idx = (bwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
 }
 

@@ -422,8 +422,8 @@ void Pool2D::pipeforward(const FFModel& ff)
                         WRITE_DISCARD, EXCLUSIVE, outputs[0]->out_subregions[fwd_output_idx]));
   launcher.add_field(1, FID_DATA);
 
-  fwd_input_idx = (fwd_input_idx + 1) / inputs[0]->pipe_num_part_in;
-  fwd_output_idx = (fwd_output_idx + 1) / outputs[0]->pipe_num_part_out;
+  fwd_input_idx = (fwd_input_idx + 1) % inputs[0]->pipe_num_part_in;
+  fwd_output_idx = (fwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
 
   runtime->execute_index_space(ctx, launcher);
 }
@@ -514,8 +514,8 @@ void Pool2D::pipebackward(const FFModel& ff)
                         READ_ONLY, EXCLUSIVE, outputs[0]->out_subregion_grad[bwd_output_idx]));
   launcher.add_field(3, FID_DATA);
 
-  bwd_input_idx = (bwd_input_idx + 1) / inputs[0]->pipe_num_part_in;
-  bwd_output_idx = (bwd_output_idx + 1) / outputs[0]->pipe_num_part_out;
+  bwd_input_idx = (bwd_input_idx + 1) % inputs[0]->pipe_num_part_in;
+  bwd_output_idx = (bwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
 
   runtime->execute_index_space(ctx, launcher);
 }

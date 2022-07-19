@@ -2506,6 +2506,7 @@ void FFModel::forward(int seq_length)
   for (size_t i = 0; i < operators.size(); i++){
     // operators[i]->forward(*this);
     for (size_t j = 0; j < operators[i]->nFnB; j++){
+      log_model.print("Launching %zu pipeforward for op(%s)",j, optype_to_string(operators[i]->op_type).data());
       operators[i]->pipeforward(*this);
     }
   }
@@ -2541,6 +2542,7 @@ void FFModel::backward(int seq_length)
   // Compute the gradients of the final operator wrt loss
   Op* final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
+  log_model.print("loss op backward...");
   loss_op->backward(this, final_operator->outputs[0], parallel_label_tensor);
   // Perform backpropagation
   // std::set<LogicalRegion> resetedInputGrads;
@@ -2560,6 +2562,7 @@ void FFModel::backward(int seq_length)
     //  continue;
     // operators[l]->backward(*this);
     for (size_t j = 0; j < operators[l]->nFnB; j++){
+      log_model.print("Launching %zu pipebackward for op(%s)",j, optype_to_string(operators[l]->op_type).data());
       operators[l]->pipebackward(*this);
     }
   }
