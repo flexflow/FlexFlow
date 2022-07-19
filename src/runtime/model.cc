@@ -1568,6 +1568,14 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
           DomainPoint dp(*it);
           tensor->out_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
       }
+      if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
+          LogicalPartition ub_lp_grad = runtime->get_logical_partition(ctx, tensor->region_grad, ub_ip);
+          int id = 0;
+          for (PointInRectIterator<1> it(ubdim_rect); it(); it++, id++) {
+              DomainPoint dp(*it);
+              tensor->out_subregion_grad[id] = runtime->get_logical_subregion_by_color(ctx, ub_lp_grad, dp); //Do we have to store subregions?
+          }
+      }
 
       //second-level partition: intra-stage parallelism
       IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
@@ -1738,6 +1746,14 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
   for (PointInRectIterator<1> it(ubdim_rect); it(); it++, idx++) {
       DomainPoint dp(*it);
       tensor->in_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
+  }
+  if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
+      LogicalPartition ub_lp_grad = runtime->get_logical_partition(ctx, tensor->region_grad, ub_ip);
+      int id = 0;
+      for (PointInRectIterator<1> it(ubdim_rect); it(); it++, id++) {
+          DomainPoint dp(*it);
+          tensor->in_subregion_grad[id] = runtime->get_logical_subregion_by_color(ctx, ub_lp_grad, dp); //Do we have to store subregions?
+      }
   }
 
   //second-level partition: intra-stage parallelism
