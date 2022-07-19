@@ -189,18 +189,18 @@ void Concat::pipeinit(const FFModel& ff)
     outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->out_pipepart[0], 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0]->out_subregions[0]));
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
       RegionRequirement(inputs[i]->in_pipepart[0], 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i]->in_subregions[0]));
+        READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(i + 1, FID_DATA);
   }
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
       RegionRequirement(inputs[i]->in_pipepart_grad[0], 0/*projection id*/,
-        WRITE_ONLY, EXCLUSIVE, inputs[i]->in_subregion_grad[0]));
+        WRITE_ONLY, EXCLUSIVE, inputs[i]->region_grad));
     launcher.add_field(i + numInputs + 1, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
@@ -257,12 +257,12 @@ void Concat::pipeforward(const FFModel& ff)
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->out_pipepart[fwd_output_idx], 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0]->out_subregions[fwd_output_idx]));
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
       RegionRequirement(inputs[i]->in_pipepart[fwd_input_idx[i]], 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i]->in_subregions[fwd_input_idx[i]]));
+        READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(i + 1, FID_DATA);
     fwd_input_idx[i] = (fwd_input_idx[i] + 1) / inputs[i]->pipe_num_part_in;
   }
@@ -337,12 +337,12 @@ void Concat::pipebackward(const FFModel& ff)
     outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(outputs[0]->out_pipepart_grad[bwd_output_idx], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, outputs[0]->out_subregion_grad[bwd_output_idx]));
+      READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
     launcher.add_region_requirement(
       RegionRequirement(inputs[i]->in_pipepart_grad[bwd_input_idx[i]], 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i]->in_subregion_grad[bwd_input_idx[i]]));
+        READ_WRITE, EXCLUSIVE, inputs[i]->region_grad));
     //LogicalRegion lr = inputs[i]->region_grad;
     //printf("concat[%d]: region(%d,%d,%d)\n", i+1, lr.get_index_space().get_id(), lr.get_field_space().get_id(), lr.get_tree_id());
     launcher.add_field(i + 1, FID_DATA);

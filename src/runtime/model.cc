@@ -1563,41 +1563,37 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
       trans[NDIM-2][0] = ext.hi[NDIM-2] - ext.lo[NDIM-2] + 1;
       IndexPartition ub_ip = runtime->create_partition_by_restriction(ctx, is, ub_is, trans, ext);
       LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
-      int idx = 0;
-      for (PointInRectIterator<1> it(ubdim_rect); it(); it++, idx++) {
-          DomainPoint dp(*it);
-          tensor->out_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
-      }
-
       //second-level partition: intra-stage parallelism
       IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
-      //Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
-      for (int k = 0; k < tensor->pipe_num_part_out; k++){
-        IndexSpaceT<NDIM> sub_is = (IndexSpaceT<NDIM>) tensor->out_subregions[k].get_index_space();
-        Rect<NDIM> sub_rect = runtime->get_index_space_domain(ctx, sub_is);
-        Transform<NDIM, TDIM> transform;
-        Point<NDIM> ext_hi;
-        Point<NDIM> ext_lo;
-        for (int i = 0; i < NDIM; i++) {
-          int nparts = tensor->dims[i].degree;
-          ext_hi[i] = (sub_rect.hi[i] - sub_rect.lo[i] + nparts) / nparts - 1 + sub_rect.lo[i];
-          ext_lo[i] = sub_rect.lo[i];
-        }
-        Rect<NDIM> extent(ext_lo, ext_hi);
-        for (int i = 0; i < NDIM; i++)
-          for (int j = 0; j < TDIM; j++)
-            if (tensor->dims[i].parallel_idx == j)
-              transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
-            else
-              transform[i][j] = 0;
-        IndexPartition ip = runtime->create_partition_by_restriction(
-            ctx, sub_is, part_is, transform, extent);
-        assert(runtime->is_index_partition_disjoint(ctx, ip));
-        assert(runtime->is_index_partition_complete(ctx, ip));
-        tensor->out_pipepart[k] = runtime->get_logical_partition(ctx, tensor->region, ip);
-        if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
-          tensor->out_pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
-        }
+      int k = 0;
+      for (PointInRectIterator<1> it(ubdim_rect); it(); it++, k++) {
+          DomainPoint dp(*it);
+          LogicalRegion subregion = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp);
+          IndexSpaceT<NDIM> sub_is = (IndexSpaceT<NDIM>) subregion.get_index_space();
+          Rect<NDIM> sub_rect = runtime->get_index_space_domain(ctx, sub_is);
+          Transform<NDIM, TDIM> transform;
+          Point<NDIM> ext_hi;
+          Point<NDIM> ext_lo;
+          for (int i = 0; i < NDIM; i++) {
+            int nparts = tensor->dims[i].degree;
+            ext_hi[i] = (sub_rect.hi[i] - sub_rect.lo[i] + nparts) / nparts - 1 + sub_rect.lo[i];
+            ext_lo[i] = sub_rect.lo[i];
+          }
+          Rect<NDIM> extent(ext_lo, ext_hi);
+          for (int i = 0; i < NDIM; i++)
+            for (int j = 0; j < TDIM; j++)
+              if (tensor->dims[i].parallel_idx == j)
+                transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
+              else
+                transform[i][j] = 0;
+          IndexPartition ip = runtime->create_partition_by_restriction(
+              ctx, sub_is, part_is, transform, extent);
+          assert(runtime->is_index_partition_disjoint(ctx, ip));
+          assert(runtime->is_index_partition_complete(ctx, ip));
+          tensor->out_pipepart[k] = runtime->get_logical_partition(ctx, tensor->region, ip);
+          if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
+            tensor->out_pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
+          }
       }
     }
   }
@@ -1734,26 +1730,14 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
   trans[NDIM-2][0] = ext.hi[NDIM-2] - ext.lo[NDIM-2] + 1;
   IndexPartition ub_ip = runtime->create_partition_by_restriction(ctx, is, ub_is, trans, ext);
   LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
-  int idx = 0;
-  for (PointInRectIterator<1> it(ubdim_rect); it(); it++, idx++) {
-      DomainPoint dp(*it);
-      tensor->in_subregions[idx] = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp); //Do we have to store subregions?
-  }
-  if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
-      LogicalPartition ub_lp_grad = runtime->get_logical_partition(ctx, tensor->region_grad, ub_ip);
-      int id = 0;
-      for (PointInRectIterator<1> it(ubdim_rect); it(); it++, id++) {
-          DomainPoint dp(*it);
-          tensor->in_subregion_grad[id] = runtime->get_logical_subregion_by_color(ctx, ub_lp_grad, dp); //Do we have to store subregions?
-      }
-  }
-
   //second-level partition: intra-stage parallelism
-  if (parallel_op != NULL) {
-    IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
-    //Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
-    for (int k = 0; k < tensor->pipe_num_part_in; k++){
-      IndexSpaceT<NDIM> sub_is = (IndexSpaceT<NDIM>)  tensor->in_subregions[k].get_index_space();
+  IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
+  assert(parallel_op != NULL)
+  int k = 0;
+  for (PointInRectIterator<1> it(ubdim_rect); it(); it++, k++) {
+      DomainPoint dp(*it);
+      LogicalRegion subregion = runtime->get_logical_subregion_by_color(ctx, ub_lp, dp);
+      IndexSpaceT<NDIM> sub_is = (IndexSpaceT<NDIM>) subregion.get_index_space();
       Rect<NDIM> sub_rect = runtime->get_index_space_domain(ctx, sub_is);
       Transform<NDIM, TDIM> transform;
       Point<NDIM> ext_hi;
@@ -1774,12 +1758,12 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
           ctx, sub_is, part_is, transform, extent);
       assert(runtime->is_index_partition_disjoint(ctx, ip));
       assert(runtime->is_index_partition_complete(ctx, ip));
-      tensor->in_pipepart[k] = runtime->get_logical_partition(ctx, tensor->in_subregions[k], ip);
+      tensor->in_pipepart[k] = runtime->get_logical_partition(ctx, tensor->region, ip);
       if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
-        tensor->in_pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->in_subregion_grad[k], ip);
+        tensor->in_pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
       }
-    }
   }
+  
   log_model.print("DEBUG: finish map_input_tensor for op(%s, %zu)",optype_to_string(parallel_op->op_type).data(), parallel_op->op_guid);
 }
 

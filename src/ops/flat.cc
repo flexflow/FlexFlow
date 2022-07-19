@@ -196,11 +196,11 @@ void Flat::pipeinit(const FFModel& ff)
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->in_pipepart[0], 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[0]->in_subregions[0]));
+                        READ_WRITE, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(outputs[0]->out_pipepart[0], 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, outputs[0]->out_subregions[0]));
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -249,11 +249,11 @@ void Flat::pipeforward(const FFModel& ff)
     outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
     RegionRequirement(inputs[0]->in_pipepart[fwd_input_idx], 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0]->in_subregions[fwd_input_idx]));
+      READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(outputs[0]->out_pipepart[fwd_output_idx], 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, outputs[0]->out_subregions[fwd_output_idx]));
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   fwd_input_idx = (fwd_input_idx + 1) % inputs[0]->pipe_num_part_in;
   fwd_output_idx = (fwd_output_idx + 1) % outputs[0]->pipe_num_part_out;

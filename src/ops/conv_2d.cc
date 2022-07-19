@@ -527,11 +527,11 @@ void Conv2D::pipeinit(const FFModel& ff)
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->in_pipepart[0], 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[0]->in_subregions[0]));
+                        READ_WRITE, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(outputs[0]->out_pipepart[0], 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, outputs[0]->out_subregions[0]));
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(weights[0]->part, 0/*projection id*/,
@@ -667,11 +667,11 @@ void Conv2D::pipeforward(const FFModel& ff)
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->in_pipepart[fwd_input_idx], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0]->in_subregions[fwd_input_idx]));
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(outputs[0]->out_pipepart[fwd_output_idx], 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, outputs[0]->out_subregions[fwd_input_idx]));
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(weights[0]->part, 0/*projection id*/,
@@ -786,7 +786,7 @@ void Conv2D::pipebackward(const FFModel& ff)
   // regions[0](I): input
   launcher.add_region_requirement(
       RegionRequirement(inputs[0]->in_pipepart[bwd_input_idx], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0]->in_subregions[bwd_input_idx]));
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(rid++, FID_DATA);
   // regions[1](I/O): input_grad
   if (trainableInputs[0]) {
@@ -798,7 +798,7 @@ void Conv2D::pipebackward(const FFModel& ff)
   // regions[2](I): output
   launcher.add_region_requirement(
       RegionRequirement(outputs[0]->out_pipepart[bwd_output_idx], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, outputs[0]->out_subregions[bwd_output_idx]));
+                        READ_ONLY, EXCLUSIVE, outputs[0]->region));
   launcher.add_field(rid++, FID_DATA);
   // regions[3](I/O): output_grad
   launcher.add_region_requirement(

@@ -152,8 +152,9 @@ void NoOp::pipeinit(const FFModel& ff)
                            outputs[0]->machine_view.hash());
     launcher.add_region_requirement(
         RegionRequirement(outputs[0]->out_pipepart[init_output_idx], 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, outputs[0]->out_subregions[init_output_idx]));
+                          WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
     launcher.add_field(0, FID_DATA);
+    init_output_idx = (init_output_idx + 1) / outputs[0]->pipe_num_part_out;
     runtime->execute_index_space(ctx, launcher);
   } else if (op_type == OP_WEIGHT) {
     ArgumentMap argmap;
@@ -165,7 +166,6 @@ void NoOp::pipeinit(const FFModel& ff)
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                            outputs[0]->machine_view.hash());
     FutureMap fm = runtime->execute_index_space(ctx, launcher);
-    init_output_idx = (init_output_idx + 1) / outputs[0]->pipe_num_part_out;
     fm.wait_all_results();
     set_opmeta_from_futuremap(ff, fm);
   }
