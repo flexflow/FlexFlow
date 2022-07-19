@@ -1548,24 +1548,9 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
   std::unordered_map<Node, MachineView> optimal_views;
   //shicao
   std::unordered_map<Node, StageInfo> optimal_partition;
+  //TODO the below should be output of the optimizer, now some dummy code a random 3-stage partition
+  
   if (model->config.only_data_parallel) {
-    Graph* graph = new Graph(model);
-    std::unordered_map<const FlexFlow::Op*, Node> op_to_node_map;
-    for (const FlexFlow::Op* dstOp : model->operators) {
-      Node dstNode;
-      dstNode.ptr = dstOp;
-      dstNode.guid = model->node_global_guid++;
-      op_to_node_map[dstOp] = dstNode;
-      for (int j = 0; j < dstOp->numInputs; j++) {
-        const FlexFlow::Op* srcOp = dstOp->inputs[j]->owner_op;
-        assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
-        Node srcNode = op_to_node_map[srcOp];
-        graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
-      }
-    }
-    best_graph = std::unique_ptr<Graph>(graph);
-
-    //TODO the below should be output of the optimizer, now some dummy code a random 3-stage partition
     StageInfo sinfo;
     sinfo.sid = 0;
     sinfo.ubatchSize = 1;
@@ -1582,10 +1567,17 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
     int op_per_stage = model->operators.size() / 2;
     int num = 0;
 
-    for (const auto& node : best_graph->inEdges) {
-      printf("Node type(%s)", node.first.to_string().c_str());
-      optimal_views[node.first] = data_parallel_view;
-      optimal_partition[node.first] = sinfo;
+    Graph* graph = new Graph(model);
+    std::unordered_map<const FlexFlow::Op*, Node> op_to_node_map;
+    for (const FlexFlow::Op* dstOp : model->operators) {
+      Node dstNode;
+      dstNode.ptr = dstOp;
+      dstNode.guid = model->node_global_guid++;
+      op_to_node_map[dstOp] = dstNode;
+
+      printf("Node type(%s)", dstNode.to_string().c_str());
+      optimal_views[dstNode] = data_parallel_view;
+      optimal_partition[dstNode] = sinfo;
       if(num == op_per_stage) {
         sinfo.sid = 1;
         sinfo.bufSize = 2;
@@ -1596,7 +1588,16 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
         data_parallel_view.start_device_id = 1;
       }
       num++;
+
+      for (int j = 0; j < dstOp->numInputs; j++) {
+        const FlexFlow::Op* srcOp = dstOp->inputs[j]->owner_op;
+        assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
+        Node srcNode = op_to_node_map[srcOp];
+        graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
+      }
     }
+    best_graph = std::unique_ptr<Graph>(graph);
+
   } else {
     model->graph_optimize(model->config.search_budget,
                           model->config.only_data_parallel,
