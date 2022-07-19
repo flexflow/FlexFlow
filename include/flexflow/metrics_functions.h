@@ -75,6 +75,7 @@ public:
   bool measure_mean_squared_error;
   bool measure_root_mean_squared_error;
   bool measure_mean_absolute_error;
+  int mtr_cpt_idx = 0;
 };
 
 }; // namespace FlexFlow

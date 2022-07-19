@@ -77,9 +77,9 @@ void Metrics::compute(FFModel* model,
   Runtime* runtime = model->config.lg_hlr;
   Domain part_domain = runtime->get_index_space_domain(ctx, logit->parallel_is);
   Domain logit_domain = runtime->get_index_partition_color_space(
-      ctx, logit->part.get_index_partition());
+      ctx, logit->out_pipepart[mtr_cpt_idx].get_index_partition());
   Domain label_domain = runtime->get_index_partition_color_space(
-      ctx, label->part.get_index_partition());
+      ctx, label->out_pipepart[mtr_cpt_idx].get_index_partition());
   if((logit_domain != part_domain) || (label_domain != part_domain)) {
     fprintf(stderr, "Encounter inconsistency in parallelizing loss computation\n");
     assert(false);
@@ -90,12 +90,12 @@ void Metrics::compute(FFModel* model,
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          logit->machine_view.hash());
   launcher.add_region_requirement(
-      RegionRequirement(logit->part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, logit->region));
+      RegionRequirement(logit->out_pipepart[mtr_cpt_idx], 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, logit->out_subregions[mtr_cpt_idx]));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(label->part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, label->region));
+      RegionRequirement(label->out_pipepart[mtr_cpt_idx], 0/*projection id*/,
+                        READ_ONLY, EXCLUSIVE, label->out_subregions[mtr_cpt_idx]));
   launcher.add_field(1, FID_DATA);
   FutureMap new_metrics = runtime->execute_index_space(ctx, launcher);
   // Update metrics
@@ -104,6 +104,7 @@ void Metrics::compute(FFModel* model,
   for (Domain::DomainPointIterator it(part_domain); it; it++) {
     metrics_task.add_future(new_metrics[*it]);
   }
+  mtr_cpt_idx = (mtr_cpt_idx + 1) % logit->pipe_num_part_out;
   model->current_metrics = runtime->execute_task(ctx, metrics_task);
 }
 

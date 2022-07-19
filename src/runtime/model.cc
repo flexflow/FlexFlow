@@ -2525,7 +2525,9 @@ void FFModel::compute_metrics()
 {
   Op* final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
-  metrics_op->compute(this, final_operator->outputs[0], parallel_label_tensor);
+  for (size_t i = 0; j < final_operator->nFnB; i++){
+    metrics_op->compute(this, final_operator->outputs[0], parallel_label_tensor);
+  }
 }
 
 void FFModel::get_metrics()
@@ -2543,7 +2545,9 @@ void FFModel::backward(int seq_length)
   Op* final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
   log_model.print("loss op backward...");
-  loss_op->backward(this, final_operator->outputs[0], parallel_label_tensor);
+  for (size_t i = 0; j < final_operator->nFnB; i++){
+    loss_op->backward(this, final_operator->outputs[0], parallel_label_tensor);
+  }
   // Perform backpropagation
   // std::set<LogicalRegion> resetedInputGrads;
   for (int l = operators.size() - 1; l >= 0; l--) {
