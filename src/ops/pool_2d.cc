@@ -320,7 +320,7 @@ void Pool2D::pipeinit(const FFModel& ff)
                               outputs[0]->machine_view.hash());
   init_launcher.add_region_requirement(
       RegionRequirement(inputs[0]->in_pipepart[0], 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, inputs[0]->region));
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
   init_launcher.add_field(0, FID_DATA);
   init_launcher.add_region_requirement(
       RegionRequirement(outputs[0]->out_pipepart[0], 0/*projection id*/,

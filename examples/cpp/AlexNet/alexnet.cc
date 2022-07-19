@@ -424,7 +424,7 @@ void DataLoader::next_input_ubatch(FFModel& ff)
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
         RegionRequirement(batch_input->parallel_tensor->in_pipepart[input_idx], 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_input->parallel_tensor->in_subregions[input_idx]));
+                          WRITE_ONLY, EXCLUSIVE, batch_input->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
     input_idx = (input_idx + 1) % batch_input->parallel_tensor->pipe_num_part_in;
     runtime->execute_index_space(ctx, launcher);
@@ -452,7 +452,7 @@ void DataLoader::next_label_ubatch(FFModel& ff)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    assert(batch_label->parallel_tensor->out_subregions[label_idx] != LogicalRegion::NO_REGION);
+    assert(batch_label->parallel_tensor->region != LogicalRegion::NO_REGION);
     IndexLauncher launcher(FlexFlow::CUSTOM_GPU_TASK_ID_2, batch_label->parallel_tensor->parallel_is,
                            TaskArgument(NULL,0), argmap,
                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
@@ -464,7 +464,7 @@ void DataLoader::next_label_ubatch(FFModel& ff)
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
         RegionRequirement(batch_label->parallel_tensor->out_pipepart[label_idx], 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_label->parallel_tensor->out_subregions[label_idx]));
+                          WRITE_ONLY, EXCLUSIVE, batch_label->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
     label_idx = (label_idx + 1) % batch_label->parallel_tensor->pipe_num_part_out;
     runtime->execute_index_space(ctx, launcher);

@@ -76,11 +76,11 @@ void Loss::backward(FFModel* model,
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(logit->out_pipepart[loss_bwd_idx], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, logit->out_subregions[loss_bwd_idx]));
+                        READ_ONLY, EXCLUSIVE, logit->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(label->out_pipepart[loss_bwd_idx], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, label->out_subregions[loss_bwd_idx]));
+                        READ_ONLY, EXCLUSIVE, label->region));
   launcher.add_field(2, FID_DATA);
   loss_bwd_idx = (loss_bwd_idx + 1) % logit->pipe_num_part_out;
   runtime->execute_index_space(ctx, launcher);

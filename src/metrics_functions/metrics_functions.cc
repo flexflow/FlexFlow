@@ -91,11 +91,11 @@ void Metrics::compute(FFModel* model,
                          logit->machine_view.hash());
   launcher.add_region_requirement(
       RegionRequirement(logit->out_pipepart[mtr_cpt_idx], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, logit->out_subregions[mtr_cpt_idx]));
+                        READ_ONLY, EXCLUSIVE, logit->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(label->out_pipepart[mtr_cpt_idx], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, label->out_subregions[mtr_cpt_idx]));
+                        READ_ONLY, EXCLUSIVE, label->region));
   launcher.add_field(1, FID_DATA);
   FutureMap new_metrics = runtime->execute_index_space(ctx, launcher);
   // Update metrics

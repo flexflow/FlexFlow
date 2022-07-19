@@ -1732,7 +1732,7 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
   LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
   //second-level partition: intra-stage parallelism
   IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
-  assert(parallel_op != NULL)
+  assert(parallel_op != NULL);
   int k = 0;
   for (PointInRectIterator<1> it(ubdim_rect); it(); it++, k++) {
       DomainPoint dp(*it);
@@ -2956,17 +2956,16 @@ void FFModel::compile(LossType loss_type,
     }
     for (int i = 0; i< op->numInputs; i++) {
       //shicao for pipeline parallelism, map boarder input tensors
-      if (op->inputs[i]->pipe_num_part_in == op->inputs[i]->pipe_num_part_out){
-        for (int j = 0; j < op->inputs[i]->pipe_num_part_in; j++){
-          op->inputs[i]->in_pipepart[j] = op->inputs[i]->out_pipepart[j];
-          op->inputs[i]->in_pipepart_grad[j] = op->inputs[i]->out_pipepart_grad[j];
-          op->inputs[i]->in_subregions[j] = op->inputs[i]->out_subregions[j];
-          op->inputs[i]->in_subregion_grad[j] = op->inputs[i]->out_subregion_grad[j];
-        }
-      }
-      else {
-        map_input_tensors(op->inputs[i], op);
-      }
+      map_input_tensors(op->inputs[i], op);
+      //if (op->inputs[i]->pipe_num_part_in == op->inputs[i]->pipe_num_part_out){
+        //for (int j = 0; j < op->inputs[i]->pipe_num_part_in; j++){
+          //op->inputs[i]->in_pipepart[j] = op->inputs[i]->out_pipepart[j];
+          //op->inputs[i]->in_pipepart_grad[j] = op->inputs[i]->out_pipepart_grad[j];
+        //}
+      //}
+      //else {
+        //map_input_tensors(op->inputs[i], op);
+      //}
     }
 
     if (op->is_parallel_op())
