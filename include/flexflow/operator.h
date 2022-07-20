@@ -178,6 +178,8 @@ public:
   // Helper functions
   void prefetch(const FFModel&);
   void zero_grad(const FFModel&);
+  void zero_input_grad(const FFModel&);
+  void zero_weight_grad(const FFModel&);
   ParallelTensor get_parameter(int index);
   virtual bool can_inplace_output();
   virtual bool has_inplace_output();
@@ -225,6 +227,7 @@ public:
   int numInputs, numWeights, numOutputs;
   int ubSize;
   int nFnB;
+  int zero_grad_idx[MAX_NUM_OUTPUTS];
   bool profiling;
 #ifdef FF_USE_NCCL
   ncclUniqueId ncclId;

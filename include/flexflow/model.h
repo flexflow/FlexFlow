@@ -855,6 +855,8 @@ public:
                bool use_propagation) const;
   void recompile_on_condition(RecompileState& r);
   void zero_gradients();
+  void zero_weight_gradients();
+  void zero_input_gradients();
   void print_layers(int id);
 
   std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> get_bwd_edge_map() const;

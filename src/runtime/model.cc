@@ -279,6 +279,73 @@ void Op::zero_grad(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Op::zero_weight_grad(const FFModel& ff)
+{
+  // Do nothing for input and weight
+  if (op_type == OP_INPUT || op_type == OP_WEIGHT)
+    return;
+  Runtime* runtime = ff.config.lg_hlr;
+  Context ctx = ff.config.lg_ctx;
+  ArgumentMap argmap;
+  ZeroInitMeta meta;
+  meta.num_regions = numWeights + numOutputs;
+  assert(meta.num_regions <= ZeroInitMeta::MAX_NUM_REGIONS);
+  IndexSpace parallel_is = IndexSpace::NO_SPACE;
+  for (int i = 0; i < numWeights; i++) {
+    meta.data_types[i] = weights[i]->data_type;
+    if (parallel_is == IndexSpace::NO_SPACE)
+      parallel_is = weights[i]->parallel_is;
+    else
+      assert(parallel_is == weights[i]->parallel_is);
+  }
+  IndexLauncher launcher(ZERO_INIT_TASK_ID, parallel_is,
+                         TaskArgument(&meta, sizeof(ZeroInitMeta)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  for (int i = 0; i < numWeights; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(weights[i]->part_grad, 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, weights[i]->region_grad));
+    launcher.add_field(i, FID_DATA);
+  }
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void Op::zero_input_grad(const FFModel& ff)
+{
+  // Do nothing for input and weight
+  if (op_type == OP_INPUT || op_type == OP_WEIGHT)
+    return;
+  Runtime* runtime = ff.config.lg_hlr;
+  Context ctx = ff.config.lg_ctx;
+  ArgumentMap argmap;
+  ZeroInitMeta meta;
+  meta.num_regions = numWeights + numOutputs;
+  assert(meta.num_regions <= ZeroInitMeta::MAX_NUM_REGIONS);
+  IndexSpace parallel_is = IndexSpace::NO_SPACE;
+  for (int i = 0; i < numOutputs; i++) {
+    meta.data_types[i] = outputs[i]->data_type;
+    if (parallel_is == IndexSpace::NO_SPACE)
+      parallel_is = outputs[i]->parallel_is;
+    else
+      assert(parallel_is == outputs[i]->parallel_is);
+  }
+  IndexLauncher launcher(ZERO_INIT_TASK_ID, parallel_is,
+                         TaskArgument(&meta, sizeof(ZeroInitMeta)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  for (int i = 0; i < numOutputs; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[i]->out_pipepart_grad[zero_grad_idx[i]], 0/*projection id*/,
+                          WRITE_ONLY, EXCLUSIVE, outputs[i]->region_grad));
+    //LogicalRegion lr = outputs[i]->region_grad;
+    //printf("zero_grad:output[%d]: region(%d,%d,%d)\n", i, lr.get_index_space().get_id(), lr.get_field_space().get_id(), lr.get_tree_id());
+    launcher.add_field(i, FID_DATA);
+    zero_grad_idx[i] = (zero_grad_idx[i] + 1) % outputs[i]->pipe_num_part_out;
+  }
+  runtime->execute_index_space(ctx, launcher);
+}
+
 ParallelConfig Op::get_data_parallel_config(const FFModel& ff) const
 {
   return get_basic_data_parallel_config(
@@ -2950,16 +3017,15 @@ void FFModel::compile(LossType loss_type,
     }
     for (int i = 0; i< op->numInputs; i++) {
       //shicao for pipeline parallelism, map boarder input tensors
-      map_input_tensors(op->inputs[i], op);
-      //if (op->inputs[i]->pipe_num_part_in == op->inputs[i]->pipe_num_part_out){
-        //for (int j = 0; j < op->inputs[i]->pipe_num_part_in; j++){
-          //op->inputs[i]->in_pipepart[j] = op->inputs[i]->out_pipepart[j];
-          //op->inputs[i]->in_pipepart_grad[j] = op->inputs[i]->out_pipepart_grad[j];
-        //}
-      //}
-      //else {
-        //map_input_tensors(op->inputs[i], op);
-      //}
+      if (op->inputs[i]->pipe_num_part_in == op->inputs[i]->pipe_num_part_out){
+        for (int j = 0; j < op->inputs[i]->pipe_num_part_in; j++){
+          op->inputs[i]->in_pipepart[j] = op->inputs[i]->out_pipepart[j];
+          op->inputs[i]->in_pipepart_grad[j] = op->inputs[i]->out_pipepart_grad[j];
+        }
+      }
+      else {
+        map_input_tensors(op->inputs[i], op);
+      }
     }
 
     if (op->is_parallel_op())
@@ -3346,6 +3412,24 @@ void FFModel::zero_gradients(void)
   for (int l = operators.size() - 1; l >= 0; l--){
     log_model.print("Zero gradients for op(%s)", optype_to_string(operators[l]->op_type).data());
     operators[l]->zero_grad(*this);
+  }
+}
+
+void FFModel::zero_weight_gradients(void)
+{
+  for (int l = operators.size() - 1; l >= 0; l--){
+    log_model.print("Zero weight gradients for op(%s)", optype_to_string(operators[l]->op_type).data());
+    operators[l]->zero_weight_grad(*this);
+  }
+}
+
+void FFModel::zero_input_gradients(void)
+{
+  for (int l = operators.size() - 1; l >= 0; l--){
+    for (size_t j = 0; j < operators[i]->nFnB; j++){
+      log_model.print("Zero %zu input gradients of for op(%s)", j, optype_to_string(operators[l]->op_type).data());
+      operators[l]->zero_input_grad(*this);
+    }
   }
 }
 

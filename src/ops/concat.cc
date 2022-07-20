@@ -264,9 +264,9 @@ void Concat::pipeforward(const FFModel& ff)
       RegionRequirement(inputs[i]->in_pipepart[fwd_input_idx[i]], 0/*projection id*/,
         READ_ONLY, EXCLUSIVE, inputs[i]->region));
     launcher.add_field(i + 1, FID_DATA);
-    fwd_input_idx[i] = (fwd_input_idx[i] + 1) / inputs[i]->pipe_num_part_in;
+    fwd_input_idx[i] = (fwd_input_idx[i] + 1) % inputs[i]->pipe_num_part_in;
   }
-  fwd_output_idx = (fwd_output_idx + 1) / outputs[0]->pipe_num_part_out;
+  fwd_output_idx = (fwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -346,9 +346,9 @@ void Concat::pipebackward(const FFModel& ff)
     //LogicalRegion lr = inputs[i]->region_grad;
     //printf("concat[%d]: region(%d,%d,%d)\n", i+1, lr.get_index_space().get_id(), lr.get_field_space().get_id(), lr.get_tree_id());
     launcher.add_field(i + 1, FID_DATA);
-    bwd_input_idx[i] = (bwd_input_idx[i] + 1) / inputs[i]->pipe_num_part_in;
+    bwd_input_idx[i] = (bwd_input_idx[i] + 1) % inputs[i]->pipe_num_part_in;
   }
-  bwd_output_idx = (bwd_output_idx + 1) / outputs[0]->pipe_num_part_out;
+  bwd_output_idx = (bwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
   runtime->execute_index_space(ctx, launcher);
 }
 

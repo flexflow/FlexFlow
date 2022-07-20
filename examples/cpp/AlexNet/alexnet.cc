@@ -109,8 +109,8 @@ void FlexFlow::top_level_task(const Task* task,
     int iterations = data_loader.num_samples / ffConfig.batchSize;
 
     for (int iter = 0; iter < iterations; iter++) {
-      log_app.print("hereeee iter %d",iter);
-      runtime->begin_trace(ctx, 111/*trace_id*/);
+      log_app.print("********************************hereeee iter %d******************",iter);
+      // runtime->begin_trace(ctx, 111/*trace_id*/);
       for (int iter_inner =0; iter_inner < ff.iter_perbatch; iter_inner++){
         if (std::strlen(alexnetConfig.dataset_path) == 0) {
           // Only load data once for random input
@@ -128,15 +128,16 @@ void FlexFlow::top_level_task(const Task* task,
         }
         log_app.print("DEBUG: forward...");
         ff.forward();
-	log_app.print("DEBUG: backward...");
+        log_app.print("DEBUG: zero input gradients...");
+        ff.zero_input_gradients();
+	      log_app.print("DEBUG: backward...");
         ff.backward();
       }
       log_app.print("DEBUG:update weight");
       ff.update();
-      log_app.print("DEBUG:zero gradients");
-      ff.zero_gradients();
-      log_app.print("DEBUG:zero gradients finish");
-      runtime->end_trace(ctx, 111/*trace_id*/);
+      log_app.print("DEBUG:zero weight gradients");
+      ff.zero_weight_gradients();
+      // runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
   // End timer
@@ -179,7 +180,7 @@ DataLoader::DataLoader(FFModel& ff,
     log_app.print("Start loading dataset from %s", alexnet->dataset_path);
     size_t filesize = get_file_size(alexnet->dataset_path);
     assert(filesize % 3073 == 0);
-    num_samples = filesize / 3073 / 100;
+    num_samples = filesize / 3073 / 500;
   }
   // Create full input
   {
@@ -245,7 +246,6 @@ DataLoader::DataLoader(FFModel& ff,
   reset();
   log_app.print("Reset sample idx");
   next_input_ubatch(ff);
-  next_label_ubatch(ff);
 }
 
 __inline__
