@@ -288,7 +288,7 @@ void Op::zero_weight_grad(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   ArgumentMap argmap;
   ZeroInitMeta meta;
-  meta.num_regions = numWeights + numOutputs;
+  meta.num_regions = numWeights;
   assert(meta.num_regions <= ZeroInitMeta::MAX_NUM_REGIONS);
   IndexSpace parallel_is = IndexSpace::NO_SPACE;
   for (int i = 0; i < numWeights; i++) {
@@ -320,7 +320,7 @@ void Op::zero_input_grad(const FFModel& ff)
   Context ctx = ff.config.lg_ctx;
   ArgumentMap argmap;
   ZeroInitMeta meta;
-  meta.num_regions = numWeights + numOutputs;
+  meta.num_regions = numOutputs;
   assert(meta.num_regions <= ZeroInitMeta::MAX_NUM_REGIONS);
   IndexSpace parallel_is = IndexSpace::NO_SPACE;
   for (int i = 0; i < numOutputs; i++) {
@@ -3418,15 +3418,17 @@ void FFModel::zero_gradients(void)
 void FFModel::zero_weight_gradients(void)
 {
   for (int l = operators.size() - 1; l >= 0; l--){
-    log_model.print("Zero weight gradients for op(%s)", optype_to_string(operators[l]->op_type).data());
-    operators[l]->zero_weight_grad(*this);
+    if (operators[l]->numWeights > 0){
+      log_model.print("Zero weight gradients for op(%s)", optype_to_string(operators[l]->op_type).data());
+      operators[l]->zero_weight_grad(*this);
+    }
   }
 }
 
 void FFModel::zero_input_gradients(void)
 {
   for (int l = operators.size() - 1; l >= 0; l--){
-    for (size_t j = 0; j < operators[i]->nFnB; j++){
+    for (size_t j = 0; j < operators[l]->nFnB; j++){
       log_model.print("Zero %zu input gradients of for op(%s)", j, optype_to_string(operators[l]->op_type).data());
       operators[l]->zero_input_grad(*this);
     }
