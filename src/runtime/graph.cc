@@ -101,7 +101,7 @@ T SearchHelper::execute_sequence_split(
 /**
  * @brief Starting point to get sequential split time cost.
  * 
- * @tparam T float or GraphCostResult
+ * @tparam T float or GraphCostResult (or GraphCostResultWithMemory in memory optimization)
  */
 template <typename T>
 T SearchHelper::find_optimal_sequence_graph_time(
@@ -267,7 +267,7 @@ NonsequenceSplit NonsequenceSplit::horizontal(int param, bool flip_graphs) {
 /**
  * @brief Starting point to get parallel split time cost.
  * 
- * @tparam T float or GraphCostResult
+ * @tparam T float or GraphCostResult (or GraphCostResultWithMemory in memory optimization)
  */
 template <typename T>
 T SearchHelper::find_optimal_nonsequence_graph_time(
@@ -1433,6 +1433,7 @@ T SearchHelper::estimate_xfer_cost(
 
 /**
  * @brief Specialization to avoid changing many calls. Should be refactored.
+ * @details Note that this function is only called when the graph has no more than 2 nodes
  */
 template <>
 GraphCostResultWithMemory SearchHelper::estimate_xfer_cost<GraphCostResultWithMemory>(
@@ -1440,26 +1441,25 @@ GraphCostResultWithMemory SearchHelper::estimate_xfer_cost<GraphCostResultWithMe
   GraphCostResultWithMemory result = this->empty<GraphCostResultWithMemory>();
 
   if (source.node != Node::INVALID_NODE) {
+    // Get the in-edges of the sink node
     const auto &inList = graph->inEdges.find(sink.node)->second;
-    float op_cost = 0.0f;
-    MemoryUsage mem_cost{};
+    float op_cost = 0.0f;  // run time cost
     for (const auto &it2 : inList) {
+      // For all edges between source node and sink node
       assert(it2.srcOp == source.node);
       assert(sink.node.ptr->inputs[it2.dstIdx]->is_valid_machine_view(source.view));
 
-      std::pair<float, MemoryUsage> estimated_xfer_cost =
-          this->model->simulator->estimate_xfer_cost_with_memory(sink.node.ptr, it2.dstIdx,
-                                                                 source.view, sink.view);
-
-      op_cost += estimated_xfer_cost.first;
-      mem_cost += estimated_xfer_cost.second;
+      float estimated_xfer_cost = this->model->simulator->estimate_xfer_cost(
+          sink.node.ptr, it2.dstIdx, source.view, sink.view);
+      op_cost += estimated_xfer_cost;
     }
-    this->add_operator_cost_with_memory(source, op_cost, mem_cost, &result);
+    this->add_operator_cost_with_memory(source, op_cost, MemoryUsage{}, &result);
   } else {
+    // The real source must be an input operator
     Node real_source = graph->find_source_node();
     assert(real_source.ptr->op_type == OP_INPUT);
-    // TODO: this should not pass in zero MemoryUsage. Should be more accurate.
-    this->add_operator_cost_with_memory({real_source, MachineView::NO_VIEW}, 0.0f, MemoryUsage{}, &result);
+    this->add_operator_cost_with_memory({real_source, MachineView::NO_VIEW}, 0.0f, MemoryUsage{},
+                                        &result);
   }
 
   return result;
@@ -1478,7 +1478,8 @@ void SearchHelper::add_operator_cost<GraphCostResult>(NodeAssignment const &node
 
 /**
  * @brief Add an operator's run time and memory cost to the graph cost.
- * This is ugly. The whole procedure to propgate costs should be refactored.
+ * This is ugly. The whole procedure to propagate costs should be refactored.
+ * "cost" is updated within this function.
  */
 void SearchHelper::add_operator_cost_with_memory(NodeAssignment const &node,
                                                  float node_run_time_cost,
@@ -1504,24 +1505,22 @@ float SearchHelper::get_cost<GraphCostResultWithMemory>(GraphCostResultWithMemor
   return gcr.get_multi_obj_cost();
 }
 
-/**
- * @brief Helper function to add sink node costs. Useful to handle GraphCostResultWithMemory
- * specialization.
- */
 template <typename T>
-void SearchHelper::add_sink_node_costs(const NodeAssignment &sink, float run_time,
+void SearchHelper::add_sink_node_costs(const NodeAssignment &sink, CostMetrics metrics,
                                        T *result) const {
-  this->add_operator_cost<T>(sink, run_time, result);
+  this->add_operator_cost<T>(sink, metrics.forward_time + metrics.backward_time + metrics.sync_time,
+                             result);
 }
 
 /**
- * @brief Specialization of add_sink_node_costs<T> to handle memory consideration. Should be
- * refactored.
+ * @brief Specialization of add_sink_node_costs to handle GraphCostResultWithMemory
  */
 template <>
-void SearchHelper::add_sink_node_costs(const NodeAssignment &sink, float run_time,
-                                       GraphCostResultWithMemory *result) const {
-  this->add_operator_cost_with_memory(sink, run_time, MemoryUsage{}, result);
+void SearchHelper::add_sink_node_costs<GraphCostResultWithMemory>(
+    const NodeAssignment &sink, CostMetrics metrics, GraphCostResultWithMemory *result) const {
+  this->add_operator_cost_with_memory(
+      sink, metrics.forward_time + metrics.backward_time + metrics.sync_time,
+      MemoryUsage{MemoryUsageType::GLOBAL, (float)metrics.memory_requirement}, result);
 }
 
 /**
@@ -1561,6 +1560,7 @@ T SearchHelper::graph_cost(const Graph* graph,
     result = from_cache.second;
   } else {
     if (graph->inEdges.size() <= 2) {
+      // When there are no more than 2 nodes in the graph
       result = this->estimate_xfer_cost<T>(graph, source, sink);
       this->logger->debug() << "Estimated xfer cost is " << this->get_cost(result);
     } else {
@@ -1597,11 +1597,12 @@ T SearchHelper::graph_cost(const Graph* graph,
 
   if (include_sink_compute_time) {
     CostMetrics metrics = this->model->simulator->measure_operator_cost(sink.node.ptr, sink.view);
-    this->logger->debug() << "Sink node cost: " 
-                  << "forward(" << metrics.forward_time << ") "
-                  << "backward(" << metrics.backward_time << ") " 
-                  << "sync(" << metrics.sync_time << ")";
-    this->add_sink_node_costs<T>(sink, metrics.forward_time + metrics.backward_time + metrics.sync_time, &result);
+    this->logger->debug() << "Sink node cost: "
+                          << "forward(" << metrics.forward_time << ") "
+                          << "backward(" << metrics.backward_time << ") "
+                          << "sync(" << metrics.sync_time << ") "
+                          << "memory(" << metrics.memory_requirement << ")";
+    this->add_sink_node_costs<T>(sink, metrics, &result);
   }
 
   return result;

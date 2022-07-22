@@ -699,21 +699,6 @@ float Simulator::estimate_xfer_cost(const Op* op,
   }
 }
 
-/**
- * @brief Return the estimated run time and memory cost of an op.
- * 
- * @param op 
- * @param input_idx 
- * @param source_view 
- * @param sink_view 
- * @return std::pair<float, MemoryUsage> 
- */
-std::pair<float, PCG::MemoryUsage> Simulator::estimate_xfer_cost_with_memory(
-    const Op* op, int input_idx, const MachineView& source_view, const MachineView& sink_view) {
-  // TODO: edit this, placeholder
-  return std::make_pair(0.0, PCG::MemoryUsage{});
-}
-
 bool Op::estimate_sync_cost(Simulator* sim,
                             const MachineView& view,
                             CostMetrics& cost_metrics) const

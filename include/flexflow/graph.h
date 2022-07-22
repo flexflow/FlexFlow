@@ -220,14 +220,15 @@ public:
   void add_operator_cost(NodeAssignment const &, float, T *) const;
 
   template <typename T>
-  void add_sink_node_costs(const NodeAssignment &sink, float run_time, T *result) const;
+  void add_sink_node_costs(const NodeAssignment &sink, CostMetrics metrics, T *result) const;
 
   /**
    * @brief Add run time cost and memory cost of the operator to the graph cost.
    * This is a temp workaround and should be refactored eventually.
    */
   void add_operator_cost_with_memory(NodeAssignment const &node, float node_run_time_cost,
-                                     MemoryUsage node_mem_cost, GraphCostResultWithMemory *cost) const;
+                                     MemoryUsage node_mem_cost,
+                                     GraphCostResultWithMemory *cost) const;
 
   template <typename T>
   float get_cost(T const &) const;

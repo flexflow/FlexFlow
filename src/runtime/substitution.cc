@@ -1770,7 +1770,7 @@ void GraphSearchHelper::graph_optimize(size_t budget,
 void GraphSearchHelper::graph_optimize_with_memory(
     size_t budget, bool only_data_parallel, std::unique_ptr<Graph>& best_graph,
     std::unordered_map<Node, MachineView>& optimal_views) {
-  this->logger->debug() << "Starting graph optimization";
+  this->logger->debug() << "Starting graph optimization with memory consideration";
 
   // Construct graph structure
   Graph* graph = this->construct_graph();
@@ -2092,6 +2092,7 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(
   this->load_graph_substitutions(xfers);
 
   // Prepare for the search
+  // TODO: need to change GraphCompare to GraphCompareWithMemory
   std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
   std::unordered_set<size_t> hashmap;
 
@@ -2469,7 +2470,8 @@ T GraphSearchHelper::generic_sequence_optimize_with_memory(
   TAG_ENTER(this->logger);
 
   // Try to find the result from cache first. But this will only get the cached result if the
-  // returned type is float. What does this float mean for?
+  // returned type is float. The float number means the best run time cost with only machine
+  // quantity (without distinguishing machine identities).
   size_t hash = gs_dp_state_hash(graph, sink_node, output_shape, input_shape);
   tl::optional<T> cached = this->try_get_cost_from_cache<T>(hash);
   if (cached.has_value()) {
@@ -3243,10 +3245,10 @@ void FFModel::graph_optimize(size_t budget,
                              std::unique_ptr<Graph>& best_graph,
                              std::unordered_map<Node, MachineView>& optimal_views)
 {
-  this->graph_search->graph_optimize(budget, only_data_parallel, best_graph, optimal_views);
+  // this->graph_search->graph_optimize(budget, only_data_parallel, best_graph, optimal_views);
 
   // Experimental. Change the function call above to this line to search with memory consideration.
-  // this->graph_search->graph_optimize_with_memory(budget, only_data_parallel, best_graph, optimal_views);
+  this->graph_search->graph_optimize_with_memory(budget, only_data_parallel, best_graph, optimal_views);
 }
 
 bool FFModel::convert_graph_to_operators(const Graph* graph,
