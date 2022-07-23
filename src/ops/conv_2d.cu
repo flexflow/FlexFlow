@@ -174,10 +174,10 @@ void Conv2D::forward_kernel_wrapper(const Conv2DMeta* m,
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
-    print_tensor<float>(input_ptr, 16, "[Conv2D:forward:input]");
-    print_tensor<float>(filter_ptr, 16, "[Conv2D:forward:kernel]");
-    print_tensor<float>(bias_ptr, 16, "[Conv2D:forward:bias]");
-    print_tensor<float>(output_ptr, 16, "[Conv2D:forward:output]");
+    //print_tensor<float>(input_ptr, 16, "[Conv2D:forward:input]");
+    //print_tensor<float>(filter_ptr, 16, "[Conv2D:forward:kernel]");
+    //print_tensor<float>(bias_ptr, 16, "[Conv2D:forward:bias]");
+    //print_tensor<float>(output_ptr, 16, "[Conv2D:forward:output]");
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);

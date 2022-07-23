@@ -67,8 +67,8 @@ void Softmax::forward_kernel_wrapper(SoftmaxMeta const *m,
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
-    // print_tensor<float>(acc_input.ptr, acc_input.rect.volume(), "[Softmax:forward:input]");
-    // print_tensor<float>(acc_output.ptr, acc_output.rect.volume(), "[Softmax:forward:output]");
+    print_tensor<float>(input_ptr, 10, "[Softmax:forward:input]");
+    print_tensor<float>(output_ptr, 10, "[Softmax:forward:output]");
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
@@ -107,8 +107,8 @@ void Softmax::backward_kernel_wrapper(const SoftmaxMeta *m,
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
-    // print_tensor<float>(acc_output_grad.ptr, acc_output_grad.rect.volume(), "[Softmax:backward:output_grad]");
-    // print_tensor<float>(acc_input_grad.ptr, acc_input_grad.rect.volume(), "[Softmax:backward:input_grad]");
+    print_tensor<float>(output_grad_ptr, 10, "[Softmax:backward:output_grad]");
+    print_tensor<float>(input_grad_ptr, 10, "[Softmax:backward:input_grad]");
     float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);

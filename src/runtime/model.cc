@@ -1535,7 +1535,7 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
   // Step 0: check we are the owner or the owner is NULL
   // in which case set the owner to us
   if(parallel_op != NULL){
-    log_model.print("DEBUG: map_tensor(%d, %d) for op(%s, %zu)",tensor->num_dims,tensor->dims[NDIM-2].size, optype_to_string(parallel_op->op_type).data(), parallel_op->op_guid);
+    log_model.print("DEBUG: map_tensor(%d,%d,%d) for op(%s, %zu)",tensor->num_dims,tensor->dims[0].size,tensor->dims[NDIM-2].size, optype_to_string(parallel_op->op_type).data(), parallel_op->op_guid);
   }
   else{
     log_model.print("DEBUG: map_tensor(%d, %d, %d)",tensor->num_dims,tensor->dims[0].size,tensor->dims[1].size);

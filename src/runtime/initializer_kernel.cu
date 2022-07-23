@@ -139,6 +139,8 @@ void GlorotUniform::init_task(const Task* task,
       w, domain.get_volume(), -gu->scale, gu->scale);
   checkCUDA(cudaDeviceSynchronize());
   curandDestroyGenerator(gen);
+  printf("tensor size: %ld\n",domain.get_volume());
+  print_tensor<float>(w, 20, "[Init:weight]");
 }
 
 

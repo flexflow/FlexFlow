@@ -83,7 +83,7 @@ void FlexFlow::top_level_task(const Task* task,
   t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);
   t = ff.dense(t, 10);
   t = ff.softmax(t);
-  Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
+  Optimizer* optimizer = new SGDOptimizer(&ff, 0.01f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
@@ -104,13 +104,15 @@ void FlexFlow::top_level_task(const Task* task,
   printf("Start Traning.....\n");
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     printf("Current Epoch: %d\n", epoch);
+    ff.zero_input_gradients();
+    ff.zero_weight_gradients();
     data_loader.reset();
     ff.reset_metrics();
     int iterations = data_loader.num_samples / ffConfig.batchSize;
 
     for (int iter = 0; iter < iterations; iter++) {
       log_app.print("********************************hereeee iter %d******************",iter);
-      // runtime->begin_trace(ctx, 111/*trace_id*/);
+      runtime->begin_trace(ctx, 111/*trace_id*/);
       for (int iter_inner =0; iter_inner < ff.iter_perbatch; iter_inner++){
         if (std::strlen(alexnetConfig.dataset_path) == 0) {
           // Only load data once for random input
@@ -137,7 +139,7 @@ void FlexFlow::top_level_task(const Task* task,
       ff.update();
       log_app.print("DEBUG:zero weight gradients");
       ff.zero_weight_gradients();
-      // runtime->end_trace(ctx, 111/*trace_id*/);
+      runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
   // End timer
@@ -180,7 +182,7 @@ DataLoader::DataLoader(FFModel& ff,
     log_app.print("Start loading dataset from %s", alexnet->dataset_path);
     size_t filesize = get_file_size(alexnet->dataset_path);
     assert(filesize % 3073 == 0);
-    num_samples = filesize / 3073 / 1000 - 6;
+    num_samples = filesize / 3073 / 100;
   }
   // Create full input
   {
@@ -310,7 +312,7 @@ void DataLoader::load_entire_dataset(const Task *task,
   unsigned char* buffer = (unsigned char*) malloc(3073);
   unsigned char* image = (unsigned char*) malloc(3 * height * width);
   for (off_t i = 0; i < num_samples; i++) {
-    log_app.print("Loading sample (%ld)", i);
+    //log_app.print("Loading sample (%ld)", i);
     size_t ret = fread(buffer, sizeof(unsigned char), 3073, file);
     assert(ret = 3073);
     if ((i+1) % 1000 == 0)
