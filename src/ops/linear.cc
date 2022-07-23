@@ -197,7 +197,7 @@ void Linear::init(const FFModel& ff)
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(weights[0]->part, 0/*projection id*/,
-                        WRITE_ONLY, EXCLUSIVE, weights[0]->region));
+                        READ_ONLY, EXCLUSIVE, weights[0]->region));
   launcher.add_field(1, FID_DATA);
   // launcher.add_region_requirement(
   //     RegionRequirement(weights[1]->part, 0/*projection id*/,
