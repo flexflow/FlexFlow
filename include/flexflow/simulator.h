@@ -53,6 +53,7 @@ struct CostMetrics {
   CostMetrics(): forward_time(0.0f), backward_time(0.0f), sync_time(0.0f), memory_requirement(0) {}
   float forward_time, backward_time;
   float sync_time;
+  // TODO: split this into more detailed parts
   size_t memory_requirement;
 };
 

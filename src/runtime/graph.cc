@@ -1518,9 +1518,10 @@ void SearchHelper::add_sink_node_costs(const NodeAssignment &sink, CostMetrics m
 template <>
 void SearchHelper::add_sink_node_costs<GraphCostResultWithMemory>(
     const NodeAssignment &sink, CostMetrics metrics, GraphCostResultWithMemory *result) const {
+  auto mem_value = (float)((float)metrics.memory_requirement / 1e6);
   this->add_operator_cost_with_memory(
       sink, metrics.forward_time + metrics.backward_time + metrics.sync_time,
-      MemoryUsage{MemoryUsageType::GLOBAL, (float)metrics.memory_requirement}, result);
+      MemoryUsage{MemoryUsageType::GLOBAL, mem_value}, result);
 }
 
 /**
@@ -1625,7 +1626,15 @@ float Graph::optimal_cost_with_memory(const float run_time_cost_factor) const {
   auto optimal = this->generic_optimal_cost<GraphCostResultWithMemory>();
   float run_time_cost = optimal.cost;
   float mem_cost = optimal.mem_cost.num;
-  return (run_time_cost_factor * run_time_cost + (1 - run_time_cost_factor) * mem_cost);
+  auto combined_cost =
+      (run_time_cost_factor * run_time_cost + (1 - run_time_cost_factor) * mem_cost);
+  std::string output_str = "Multi-objective cost: run time cost: " + std::to_string(run_time_cost) +
+                           ", mem cost: " + std::to_string(mem_cost) +
+                           ", combined cost: " + std::to_string(combined_cost) +
+                           " (with run time cost factor: " + std::to_string(run_time_cost_factor) +
+                           ")";
+  this->search->logger->spew() << output_str;
+  return combined_cost;
 }
 
 std::unordered_map<Node, MachineView> Graph::optimal_views() const {

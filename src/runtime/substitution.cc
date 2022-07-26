@@ -576,8 +576,9 @@ void GraphXfer::find_matches(int depth, Graph const *graph, std::vector<GraphXfe
   }
 }
 
+template<typename GraphComp>
 void GraphXfer::run(int depth, Graph* graph,
-                    std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>& candidates,
+                    std::priority_queue<Graph*, std::vector<Graph*>, GraphComp>& candidates,
                     std::unordered_set<size_t>& hashmap, float threshold, int maxNumOps, 
                     SimplificationSettings const &simplification_settings,
                     int& num_matches_found, int& num_matches_rejected)
@@ -1572,9 +1573,9 @@ std::vector<GraphXfer*> create_xfers(FFModel *model,
     return xfers;
 }
 
-
+// Experimental: change this mem_config to control run time cost factor
 GraphSearchHelper::GraphSearchHelper(FFModel *model) 
-  : model(model), config(model->config), mem_config()
+  : model(model), config(model->config), mem_config(0.9)
 { 
   this->logger = std::unique_ptr<RecursiveLogger>(new RecursiveLogger("gs"));
   generate_all_pcg_xfers();
@@ -2078,7 +2079,7 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(Graph const *r_graph, Si
 std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(
     Graph const* r_graph, SimplificationSettings const& simplification_settings) {
   TAG_ENTER(this->logger);
-  this->logger->debug() << "Optimizing base graph: ";
+  this->logger->debug() << "Optimizing base graph with memory: ";
   {
     TAG_ENTER(this->logger);
     /* graph_log_representation(r_graph, *this->logger); */
@@ -2092,8 +2093,8 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(
   this->load_graph_substitutions(xfers);
 
   // Prepare for the search
-  // TODO: need to change GraphCompare to GraphCompareWithMemory
-  std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare> candidates;
+  std::priority_queue<Graph*, std::vector<Graph*>, GraphCompareWithMemory> candidates(
+      GraphCompareWithMemory{mem_config.run_time_cost_factor});
   std::unordered_set<size_t> hashmap;
 
   Graph* graph = new Graph(*r_graph);

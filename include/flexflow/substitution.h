@@ -120,6 +120,17 @@ public:
   }
 };
 
+class GraphCompareWithMemory {
+  float run_time_cost_factor;
+
+ public:
+  GraphCompareWithMemory(float factor) : run_time_cost_factor{factor} {}
+  bool operator()(Graph* lhs, Graph* rhs) {
+    return lhs->optimal_cost_with_memory(run_time_cost_factor) >
+           rhs->optimal_cost_with_memory(run_time_cost_factor);
+  }
+};
+
 class GraphXferMatch {
 public:
   GraphXferMatch(GraphXfer const *);
@@ -205,8 +216,9 @@ public:
 
   std::string get_name() const;
 
+  template<typename GraphComp>
   void run(int depth, Graph* graph,
-           std::priority_queue<Graph*, std::vector<Graph*>, GraphCompare>&,
+           std::priority_queue<Graph*, std::vector<Graph*>, GraphComp>&,
            std::unordered_set<size_t>&, float threshold, int maxNumOps, 
            SimplificationSettings const &simplification_settings,
            int& num_matches_found, int& num_matches_rejected);

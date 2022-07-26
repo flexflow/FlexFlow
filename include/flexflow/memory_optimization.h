@@ -61,6 +61,10 @@ class MemoryOptimConfig {
       : mem_usage_type{MemoryUsageType::GLOBAL},
         mem_search_algo{MemorySearchAlgo::MULTI_OBJECTIVE},
         run_time_cost_factor{0.5} {}
+  MemoryOptimConfig(float factor)
+      : mem_usage_type{MemoryUsageType::GLOBAL},
+        mem_search_algo{MemorySearchAlgo::MULTI_OBJECTIVE},
+        run_time_cost_factor{factor} {}
 };
 
 namespace PCG {
@@ -132,6 +136,14 @@ class MemoryUsage {
     s << usage.to_string();
     return s;
   }
+};
+
+/**
+ * @brief The choice of memory optimizations applied to a Graph.
+ */
+class MemOptDecision {
+ public:
+ private:
 };
 
 }  // namespace PCG
