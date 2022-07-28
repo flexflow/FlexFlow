@@ -954,7 +954,7 @@ flexflow_model_get_perf_metrics(
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   PerfMetrics *perf_metrics = new PerfMetrics();
   *perf_metrics = handle->current_metrics.get_result<PerfMetrics>();
-  DEBUG_PRINT("[Model] create PerfMetrics %p, train_correct %d\n", perf_metrics, perf_metrics->train_correct);
+  DEBUG_PRINT("[Model] create PerfMetrics %p, train_correct %d", perf_metrics, perf_metrics->train_correct);
   return FFCObjectWrapper::wrap(perf_metrics);
 }
 
