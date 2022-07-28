@@ -6,6 +6,7 @@
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/element_binary.h"
+#include "flexflow/ops/element_unary.h"
 
 namespace mp = mpark;
 
@@ -15,7 +16,8 @@ using OperatorParameters = mp::variant<
 Conv2DParams,
 LinearParams,
 ConcatParams,
-ElementBinaryParams
+ElementBinaryParams,
+ElementUnaryParams
 >;
 
 }; // namespace FlexFlow

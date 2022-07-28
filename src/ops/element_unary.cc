@@ -1,6 +1,7 @@
 #include "flexflow/ops/element_unary.h"
 #include "legion/legion_utilities.h"
 #include "flexflow/utils/hash_utils.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
   
@@ -52,14 +53,10 @@ Op* ElementUnary::create_operator_from_layer(
       layer->name, scalar);
 }
 
-size_t ElementUnary::get_params_hash() const {
-  size_t hash = this->inputs[0]->get_owner_independent_hash();
-  hash_combine(hash, this->op_type);
-  hash_combine(hash, this->inplace);
-  if (this->op_type == OP_SCALAR_MULTIPLY) {
-    hash_combine(hash, this->scalar);
-  }
-  return hash;
+ElementUnaryParams ElementUnary::get_params() const {
+  ElementUnaryParams params;
+  params.op_type = op_type;
+  return params;
 }
 
 using PCG::Node;
@@ -68,27 +65,11 @@ Node FFModel::get_or_create_element_unary_node(const ParallelTensor input,
                                                bool inplace,
                                                float scalar)
 {
-  if (input->dims[input->num_dims-1].degree != 1) {
-    return Node::INVALID_NODE;
-  }
+  ElementUnaryParams params;
+  params.op_type = op;
+  params.scalar = scalar;
 
-  size_t hash = input->get_owner_independent_hash();
-  hash_combine(hash, op);
-  hash_combine(hash, inplace);
-  if (op == OP_SCALAR_MULTIPLY) {
-    hash_combine(hash, scalar);
-  }
-
-  ElementUnary *unary;
-  const auto &it = this->cached_element_unary_ops.find(hash);
-  if (it != cached_element_unary_ops.end()) { 
-    unary = it->second;
-  } else {
-    unary = new ElementUnary(*this, op, input, inplace, NULL, scalar);
-    cached_element_unary_ops[hash] = unary;
-  }
-
-  return this->new_node(unary);
+  return get_or_create_node<ElementUnary>(input, params);
 }
 
 Tensor FFModel::exp(const Tensor x,
@@ -159,6 +140,15 @@ Tensor FFModel::pow(const Tensor x, const float exponent, bool inplace, const ch
   return this->unary(OP_POW, x, inplace, name, exponent);
 }
 
+bool ElementUnaryParams::is_valid(const ParallelTensorShape &) const {
+  // TODO: more check on the input shape
+  return true
+}
+
+bool operator==(const ElementUnaryParams& lhs, const ElementUnaryParams& rhs) {
+  return lhs.type == rhs.type;
+}
+
 ElementUnary::ElementUnary(FFModel& model,
                            OperatorType _op_type,
                            const ParallelTensor x,
@@ -175,6 +165,13 @@ ElementUnary::ElementUnary(FFModel& model,
   }
   outputs[0] = model.create_parallel_tensor_legion_ordering(numdim, dims, x->data_type, this);
 }
+// TODO: should inplace be in params?
+ElementUnary::ElementUnary(FFModel& model,
+                           const ElementUnaryParams& params,
+                           const ParallelTensor input,
+                           const char* name,
+                           bool inplace)
+  : ElementUnary(model, params.type, input, inplace, name, params.scalar) {}
 
 bool ElementUnary::can_inplace_output(void)
 {
@@ -571,3 +568,14 @@ Op *ElementUnary::materialize(FFModel& ff, ParallelTensor inputs[], int num_inpu
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+  size_t hash<FlexFlow::ElementUnaryParams>::operator()(const FlexFlow::ElementUnaryParams& params) const {
+    size_t key = 0;
+    hash_combine(key, params.op_type);
+    hash_combine(key, params.data_type);
+    hash_combine(key, params.scalar);
+    // TODO: hash_combine(key, params.inplace);
+    return key;
+  }
+}; // namespace std
