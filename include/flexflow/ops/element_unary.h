@@ -12,7 +12,6 @@ namespace FlexFlow {
 
 struct ElementUnaryParams {
   OperatorType op_type;
-  DataType data_type;
   // TODO: bool inplace;
   float scalar;
 

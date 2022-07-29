@@ -55,7 +55,8 @@ Op* ElementUnary::create_operator_from_layer(
 
 ElementUnaryParams ElementUnary::get_params() const {
   ElementUnaryParams params;
-  params.op_type = op_type;
+  params.op_type = this->op_type;
+  params.scalar = this->scalar;
   return params;
 }
 
@@ -146,7 +147,8 @@ bool ElementUnaryParams::is_valid(const ParallelTensorShape &) const {
 }
 
 bool operator==(const ElementUnaryParams& lhs, const ElementUnaryParams& rhs) {
-  return lhs.type == rhs.type;
+  return lhs.op_type == rhs.op_type && 
+          lhs.scalar == rhs.scalar;
 }
 
 ElementUnary::ElementUnary(FFModel& model,
@@ -171,7 +173,7 @@ ElementUnary::ElementUnary(FFModel& model,
                            const ParallelTensor input,
                            const char* name,
                            bool inplace)
-  : ElementUnary(model, params.type, input, inplace, name, params.scalar) {}
+  : ElementUnary(model, params.op_type, input, inplace, name, params.scalar) {}
 
 bool ElementUnary::can_inplace_output(void)
 {
@@ -573,7 +575,6 @@ namespace std {
   size_t hash<FlexFlow::ElementUnaryParams>::operator()(const FlexFlow::ElementUnaryParams& params) const {
     size_t key = 0;
     hash_combine(key, params.op_type);
-    hash_combine(key, params.data_type);
     hash_combine(key, params.scalar);
     // TODO: hash_combine(key, params.inplace);
     return key;
