@@ -127,6 +127,9 @@ void NoOp::init(const FFModel& ff)
   }
 }
 
+void NoOp::reset_idx(const FFModel& ff){
+}
+
 void NoOp::pipeinit(const FFModel& ff)
 {
   parallel_is = outputs[0]->parallel_is;

@@ -180,6 +180,7 @@ public:
   void prefetch(const FFModel&);
   void zero_grad(const FFModel&);
   void zero_input_grad(const FFModel&);
+  void reset_zeroig_idx(const FFModel&);
   void zero_weight_grad(const FFModel&);
   ParallelTensor get_parameter(int index);
   virtual bool can_inplace_output();

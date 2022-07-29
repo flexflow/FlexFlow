@@ -346,6 +346,12 @@ void Op::zero_input_grad(const FFModel& ff)
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Op::reset_zeroig_idx(const FFModel&){
+  for (int i = 0; i < numOutputs; i++) {
+    zero_grad_idx[i] = 0;
+  }
+}
+
 ParallelConfig Op::get_data_parallel_config(const FFModel& ff) const
 {
   return get_basic_data_parallel_config(
@@ -2570,8 +2576,9 @@ void FFModel::forward(int seq_length)
 void FFModel::reset_pipe_idx()
 {
   for (size_t i = 0; i < operators.size(); i++){
-      log_model.print("Reset_idx for op(%s)",j, optype_to_string(operators[i]->op_type).data());
+      log_model.print("Reset_idx for op(%s)", optype_to_string(operators[i]->op_type).data());
       operators[i]->reset_idx(*this);
+      operators[i]->reset_zeroig_idx(*this);
   }
 }
 

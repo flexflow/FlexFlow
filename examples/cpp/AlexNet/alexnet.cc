@@ -83,8 +83,8 @@ void FlexFlow::top_level_task(const Task* task,
   t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);
   t = ff.dense(t, 10);
   t = ff.softmax(t);
-  //Optimizer* optimizer = new AdamOptimizer(&ff, 0.0001f);
-  Optimizer* optimizer = new SGDOptimizer(&ff, 0.01f);
+  Optimizer* optimizer = new AdamOptimizer(&ff, 0.0001f);
+  //Optimizer* optimizer = new SGDOptimizer(&ff, 0.01f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
@@ -93,6 +93,7 @@ void FlexFlow::top_level_task(const Task* task,
   log_app.print("DEBUG: finish model compilation");
   DataLoader data_loader(ff, &alexnetConfig, input, ff.label_tensor);
   ff.init_operators();
+  ff.zero_weight_gradients();
   log_app.print("DEBUG: finish op init");
   //Start timer
   {
@@ -105,7 +106,7 @@ void FlexFlow::top_level_task(const Task* task,
   printf("Start Training.....\n");
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     printf("Current Epoch: %d\n", epoch);
-    ff.zero_weight_gradients();
+    //ff.zero_weight_gradients();
     data_loader.reset();
     ff.reset_metrics();
     int iterations = data_loader.num_samples / ffConfig.batchSize;
@@ -113,7 +114,10 @@ void FlexFlow::top_level_task(const Task* task,
     for (int iter = 0; iter < iterations; iter++) {
       log_app.print("********************************hereeee iter %d******************",iter);
       ff.reset_pipe_idx();
+      data_loader.reset_idx();
       runtime->begin_trace(ctx, 111/*trace_id*/);
+      //ff.reset_pipe_idx();
+      //data_loader.reset_idx();
       for (int iter_inner =0; iter_inner < ff.iter_perbatch; iter_inner++){
         if (std::strlen(alexnetConfig.dataset_path) == 0) {
           // Only load data once for random input
@@ -480,6 +484,12 @@ void DataLoader::reset()
   next_index = 0;
   next_label_index = 0;
   next_input_index = 0;
+  input_idx = 0;
+  label_idx = 0;
+}
+
+void DataLoader::reset_idx()
+{
   input_idx = 0;
   label_idx = 0;
 }

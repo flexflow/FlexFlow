@@ -51,6 +51,7 @@ public:
   void next_label_ubatch(FlexFlow::FFModel&);
   void next_input_ubatch(FlexFlow::FFModel&);
   void reset(void);
+  void reset_idx(void);
 public:
   int num_samples, next_index, next_input_index, next_label_index;
   FlexFlow::Tensor full_input, batch_input;
