@@ -56,6 +56,7 @@ Op* ElementUnary::create_operator_from_layer(
 ElementUnaryParams ElementUnary::get_params() const {
   ElementUnaryParams params;
   params.op_type = this->op_type;
+  params.inplace = this->inplace;
   params.scalar = this->scalar;
   return params;
 }
@@ -68,6 +69,7 @@ Node FFModel::get_or_create_element_unary_node(const ParallelTensor input,
 {
   ElementUnaryParams params;
   params.op_type = op;
+  params.inplace = inplace;
   params.scalar = scalar;
 
   return get_or_create_node<ElementUnary>(input, params);
@@ -148,7 +150,8 @@ bool ElementUnaryParams::is_valid(const ParallelTensorShape &) const {
 
 bool operator==(const ElementUnaryParams& lhs, const ElementUnaryParams& rhs) {
   return lhs.op_type == rhs.op_type && 
-          lhs.scalar == rhs.scalar;
+         lhs.scalar == rhs.scalar &&
+         lhs.inplace = rhs.inplace;
 }
 
 ElementUnary::ElementUnary(FFModel& model,
@@ -167,13 +170,12 @@ ElementUnary::ElementUnary(FFModel& model,
   }
   outputs[0] = model.create_parallel_tensor_legion_ordering(numdim, dims, x->data_type, this);
 }
-// TODO: should inplace be in params?
+
 ElementUnary::ElementUnary(FFModel& model,
                            const ElementUnaryParams& params,
                            const ParallelTensor input,
-                           const char* name,
-                           bool inplace)
-  : ElementUnary(model, params.op_type, input, inplace, name, params.scalar) {}
+                           const char* name)
+  : ElementUnary(model, params.op_type, input, params.inplace, name, params.scalar) {}
 
 bool ElementUnary::can_inplace_output(void)
 {
@@ -576,7 +578,7 @@ namespace std {
     size_t key = 0;
     hash_combine(key, params.op_type);
     hash_combine(key, params.scalar);
-    // TODO: hash_combine(key, params.inplace);
+    hash_combine(key, params.inplace);
     return key;
   }
 }; // namespace std

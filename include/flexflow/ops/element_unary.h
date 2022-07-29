@@ -12,7 +12,7 @@ namespace FlexFlow {
 
 struct ElementUnaryParams {
   OperatorType op_type;
-  // TODO: bool inplace;
+  bool inplace;
   float scalar;
 
   bool is_valid(const ParallelTensorShape &) const;
@@ -50,8 +50,7 @@ public:
   ElementUnary(FFModel& model,
                const Params& params,
                const Input x,
-               const char* name = nullptr,
-               bool inplace = false); // TODO: should this be in params?
+               const char* name = nullptr);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
