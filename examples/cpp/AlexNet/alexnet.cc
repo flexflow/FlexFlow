@@ -83,6 +83,7 @@ void FlexFlow::top_level_task(const Task* task,
   t = ff.dense(t, 4096, AC_MODE_RELU/*relu*/);
   t = ff.dense(t, 10);
   t = ff.softmax(t);
+  //Optimizer* optimizer = new AdamOptimizer(&ff, 0.0001f);
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.01f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
@@ -101,10 +102,9 @@ void FlexFlow::top_level_task(const Task* task,
     future.get_void_result();
   }
   double ts_start = Realm::Clock::current_time_in_microseconds();
-  printf("Start Traning.....\n");
+  printf("Start Training.....\n");
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     printf("Current Epoch: %d\n", epoch);
-    ff.zero_input_gradients();
     ff.zero_weight_gradients();
     data_loader.reset();
     ff.reset_metrics();
@@ -112,7 +112,7 @@ void FlexFlow::top_level_task(const Task* task,
 
     for (int iter = 0; iter < iterations; iter++) {
       log_app.print("********************************hereeee iter %d******************",iter);
-      runtime->begin_trace(ctx, 111/*trace_id*/);
+      //runtime->begin_trace(ctx, 111/*trace_id*/);
       for (int iter_inner =0; iter_inner < ff.iter_perbatch; iter_inner++){
         if (std::strlen(alexnetConfig.dataset_path) == 0) {
           // Only load data once for random input
@@ -139,7 +139,7 @@ void FlexFlow::top_level_task(const Task* task,
       ff.update();
       log_app.print("DEBUG:zero weight gradients");
       ff.zero_weight_gradients();
-      runtime->end_trace(ctx, 111/*trace_id*/);
+      //runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
   // End timer
@@ -182,7 +182,7 @@ DataLoader::DataLoader(FFModel& ff,
     log_app.print("Start loading dataset from %s", alexnet->dataset_path);
     size_t filesize = get_file_size(alexnet->dataset_path);
     assert(filesize % 3073 == 0);
-    num_samples = filesize / 3073 / 100;
+    num_samples = filesize / 3073;
   }
   // Create full input
   {

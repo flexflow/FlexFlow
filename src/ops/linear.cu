@@ -20,9 +20,12 @@ namespace FlexFlow {
 
 /*static*/
 void Linear::init_kernel(LinearMeta *m,
+                         const void* weight_ptr,
                          int batch_size,
                          int channel)
 {
+  if (weight_ptr != nullptr)
+    print_tensor<float>((float*)weight_ptr, 20, "[Linear:init:kernel]");
   if (use_activation(m->activation)) {
     cudnnActivationMode_t mode;
     switch (m->activation) {

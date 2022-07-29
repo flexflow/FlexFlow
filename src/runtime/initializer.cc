@@ -51,6 +51,10 @@ void GlorotUniform::init(const FFModel* ff,
   coord_t fan_out = c_out * receptive_field_size;
   scale = sqrt(6.0f / (fan_in + fan_out));
   printf("weights init scale %f for op (%s)\n", scale, optype_to_string(p->owner_op->op_type).data());
+  printf("weight_region_id(%d, %d, %d)\n",
+         p->region.get_index_space().get_id(),
+         p->region.get_field_space().get_id(),
+         p->region.get_tree_id());
   if (p->sync_type == ParameterSyncType::PS) {
     assert(p->num_dims >= 2);
     TaskLauncher launcher(GLOROT_INIT_TASK_ID,

@@ -1555,9 +1555,9 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
     sinfo.sid = 0;
     sinfo.ubatchSize = 10;
     //sinfo.bufSize = 4;
-    sinfo.bufSize = 10;
+    sinfo.bufSize = 40;
     //sinfo.nFnB = 2;
-    sinfo.nFnB = 1;
+    sinfo.nFnB = 2;
     sinfo.device_num = 1;
     MachineView data_parallel_view;
     data_parallel_view.device_type = MachineView::GPU;
@@ -1584,9 +1584,9 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
       if(num == op_per_stage) {
         sinfo.sid = 1;
         //sinfo.bufSize = 2;
-        sinfo.bufSize = 10;
+        sinfo.bufSize = 20;
 	//sinfo.ubatchSize = 2;
-        sinfo.ubatchSize = 10;
+        sinfo.ubatchSize = 20;
 	sinfo.device_num = 1;
         sinfo.nFnB = 1;
         data_parallel_view.dim[0] = sinfo.device_num;

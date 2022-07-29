@@ -119,6 +119,7 @@ public:
                            const std::vector<Legion::PhysicalRegion> &regions,
                            Legion::Context ctx, Legion::Runtime *runtime);
   static void init_kernel(LinearMeta *m,
+                          const void* weight_ptr,
                           int batch_size,
                           int channel);
   static void forward_task(const Legion::Task *task,

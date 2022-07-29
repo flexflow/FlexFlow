@@ -240,6 +240,10 @@ void Linear::pipeinit(const FFModel& ff)
       RegionRequirement(weights[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, weights[0]->region));
   launcher.add_field(1, FID_DATA);
+  //printf("[Linear:pipeinit] weight_region_id(%d, %d, %d)\n",
+         //weights[0]->region.get_index_space().get_id(),
+	 //weights[0]->region.get_field_space().get_id(),
+	 //weights[0]->region.get_tree_id());
   // launcher.add_region_requirement(
   //     RegionRequirement(weights[1]->part, 0/*projection id*/,
   //                       READ_ONLY, EXCLUSIVE, weights[1]->region));
@@ -315,7 +319,7 @@ OpMeta* Linear::init_task_with_dim(const Task *task,
   m->output_type = linear->outputs[0]->data_type;
   std::strcpy(m->op_name, linear->name);
 
-  Linear::init_kernel(m, batch_size, out_dim);
+  Linear::init_kernel(m, acc_kernel.ptr, batch_size, out_dim);
 
   return m;
 }
@@ -373,6 +377,10 @@ void Linear::pipeforward(const FFModel& ff)
   launcher.add_region_requirement(
       RegionRequirement(weights[0]->part, 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, weights[0]->region));
+  //printf("[Linear:pipeforward] weight_region_id(%d, %d, %d)\n",
+         //weights[0]->region.get_index_space().get_id(),
+	 //weights[0]->region.get_field_space().get_id(),
+	 //weights[0]->region.get_tree_id());
   launcher.add_field(2, FID_DATA);
   if (use_bias) {
     launcher.add_region_requirement(
@@ -814,7 +822,7 @@ bool Linear::measure_operator_cost(
   m->output_type = outputs[0]->data_type;
   assert(m->profiling == false);
 
-  Linear::init_kernel(m, output_n, output_c);
+  Linear::init_kernel(m, nullptr, output_n, output_c);
   
   // allocate tensors in simulator
   sim->free_all();
