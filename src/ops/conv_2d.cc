@@ -472,6 +472,15 @@ Conv2D::Conv2D(FFModel& model,
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
 
+void Conv2D::reset_idx(const FFModel& ff)
+{
+  fwd_input_idx = 0;
+  fwd_output_idx = 0;
+  bwd_input_idx = 0;
+  bwd_output_idx = 0;
+}
+
+
 void Conv2D::init(const FFModel& ff)
 {
   assert(check_output_input_weight_same_parallel_is());

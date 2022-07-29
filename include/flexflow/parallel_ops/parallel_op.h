@@ -30,6 +30,7 @@ public:
   virtual void init(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;
   virtual void backward(const FFModel&) = 0;
+  virtual void reset_idx(const FFModel&) = 0;
   virtual void pipeinit(const FFModel&) = 0;
   virtual void pipeforward(const FFModel&) = 0;
   virtual void pipebackward(const FFModel&) = 0;

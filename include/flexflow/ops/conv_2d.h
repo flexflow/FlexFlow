@@ -139,6 +139,7 @@ public:
          ParallelTensor input,
          const char* name = nullptr,
          bool allocate_weights = false);
+  void reset_idx(const FFModel&) override;
   void init(const FFModel&) override;
   void pipeinit(const FFModel&) override;
   void forward(const FFModel&) override;

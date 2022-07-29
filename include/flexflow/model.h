@@ -826,6 +826,7 @@ public:
   void get_metrics();
   void backward(int seq_length = -1);
   void update();
+  void reset_pipe_idx();
   bool apply_fusion(const std::vector<Op*>& operators, std::vector<Op*>& new_operators);
   Op* get_final_operator() const;
   void compile(LossType loss_type,

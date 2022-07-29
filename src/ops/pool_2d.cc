@@ -281,6 +281,14 @@ Pool2D::Pool2D(FFModel& model,
   outputs[0] = model.create_parallel_tensor_legion_ordering(output_ndims, output_dims, DT_FLOAT, this);
 }
 
+void Pool2D::reset_idx(const FFModel& ff){
+  fwd_input_idx = 0;
+  fwd_output_idx = 0;
+  bwd_input_idx = 0;
+  bwd_output_idx = 0;
+
+}
+
 void Pool2D::init(const FFModel& ff)
 {
   assert(check_output_input_weight_same_parallel_is());

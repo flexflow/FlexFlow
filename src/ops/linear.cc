@@ -174,6 +174,14 @@ Linear::Linear(FFModel& model,
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
 
+void Linear::reset_idx(const FFModel& ff){
+  fwd_input_idx = 0;
+  fwd_output_idx = 0;
+  bwd_input_idx = 0;
+  bwd_output_idx = 0;
+
+}
+
 void Linear::init(const FFModel& ff)
 {
   assert(check_output_input_weight_same_parallel_is());

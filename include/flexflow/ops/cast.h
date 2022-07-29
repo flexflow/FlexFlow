@@ -32,6 +32,7 @@ public:
   void init(const FFModel&);
   void forward(const FFModel&);
   void backward(const FFModel&);
+  void reset_idx(const FFModel&) override {assert(0);}
   void pipeinit(const FFModel&)  override {assert(0);}
   void pipeforward(const FFModel&)  override {assert(0);}
   void pipebackward(const FFModel&)  override {assert(0);}

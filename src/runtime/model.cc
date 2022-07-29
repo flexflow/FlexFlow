@@ -2567,6 +2567,14 @@ void FFModel::forward(int seq_length)
     
 }
 
+void FFModel::reset_pipe_idx()
+{
+  for (size_t i = 0; i < operators.size(); i++){
+      log_model.print("Reset_idx for op(%s)",j, optype_to_string(operators[i]->op_type).data());
+      operators[i]->reset_idx(*this);
+  }
+}
+
 
 void FFModel::recompile_on_condition(RecompileState &r)
 {

@@ -154,6 +154,7 @@ public:
   virtual bool get_input_parameter(TNParameter, DIMParameter, int*) const;
   virtual bool get_weight_parameter(TNParameter, DIMParameter, int*) const;
   // Pure virtual functions that must be implemented
+  virtual void reset_idx(const FFModel&) = 0;
   virtual void init(const FFModel&) = 0;
   virtual void pipeinit(const FFModel&) = 0;
   virtual void forward(const FFModel&) = 0;

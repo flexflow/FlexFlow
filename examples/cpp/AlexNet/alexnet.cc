@@ -112,7 +112,8 @@ void FlexFlow::top_level_task(const Task* task,
 
     for (int iter = 0; iter < iterations; iter++) {
       log_app.print("********************************hereeee iter %d******************",iter);
-      //runtime->begin_trace(ctx, 111/*trace_id*/);
+      ff.reset_pipe_idx();
+      runtime->begin_trace(ctx, 111/*trace_id*/);
       for (int iter_inner =0; iter_inner < ff.iter_perbatch; iter_inner++){
         if (std::strlen(alexnetConfig.dataset_path) == 0) {
           // Only load data once for random input
@@ -139,7 +140,7 @@ void FlexFlow::top_level_task(const Task* task,
       ff.update();
       log_app.print("DEBUG:zero weight gradients");
       ff.zero_weight_gradients();
-      //runtime->end_trace(ctx, 111/*trace_id*/);
+      runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
   // End timer

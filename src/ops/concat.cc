@@ -142,6 +142,15 @@ void Concat::init_meta(ConcatMeta *m) const
   m->legion_axis = this->legion_axis;
 }
 
+void Concat::reset_idx(const FFModel& ff){
+  for (int i = 0; i < numInputs; i++) {
+    fwd_input_idx[i] = 0;
+    bwd_input_idx[i] = 0;
+  }
+  fwd_output_idx = 0;
+  bwd_output_idx = 0;
+}
+
 void Concat::init(const FFModel& ff)
 {
   assert(check_output_input_weight_same_parallel_is());

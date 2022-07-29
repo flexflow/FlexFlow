@@ -82,6 +82,14 @@ Softmax::Softmax(FFModel& model,
   outputs[0] = model.create_parallel_tensor(numdim, dims, DT_FLOAT, this);
 }
 
+void Softmax::reset_idx(const FFModel& ff){
+  fwd_input_idx = 0;
+  fwd_output_idx = 0;
+  bwd_input_idx = 0;
+  bwd_output_idx = 0;
+
+}
+
 void Softmax::init(const FFModel& ff)
 {
   assert(check_output_input_weight_same_parallel_is());
