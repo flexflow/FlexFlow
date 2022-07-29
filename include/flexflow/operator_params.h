@@ -7,6 +7,7 @@
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
+#include "flexflow/ops/pool_2d.h"
 
 namespace mp = mpark;
 
@@ -17,7 +18,8 @@ Conv2DParams,
 LinearParams,
 ConcatParams,
 ElementBinaryParams,
-ElementUnaryParams
+ElementUnaryParams,
+Pool2DParams
 >;
 
 }; // namespace FlexFlow

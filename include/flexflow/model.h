@@ -898,14 +898,14 @@ public:
     std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>, Conv2D*>,
     std::unordered_map<std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>, ElementBinaryParams>, ElementBinary*>,
     std::unordered_map<std::pair<ParallelTensorShape, LinearParams>, Linear*>,
-    std::unordered_map<std::pair<ParallelTensorShape, ElementUnaryParams>, ElementUnary*>
+    std::unordered_map<std::pair<ParallelTensorShape, ElementUnaryParams>, ElementUnary*>,
+    std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>, Pool2D*>
   > cached_ops;
   std::unordered_map<size_t, NoOp*> cached_noop_ops;
   std::unordered_map<size_t, NoOp*> cached_input_ops;
   std::unordered_map<size_t, Cast*> cached_cast_ops;
   std::unordered_map<size_t, Dropout*> cached_dropout_ops;
   std::unordered_map<size_t, Embedding*> cached_embedding_ops;
-  std::unordered_map<size_t, Pool2D*> cached_pool2d_ops;
   std::unordered_map<size_t, Flat*> cached_flat_ops;
   std::unordered_map<size_t, MultiHeadAttention*> cached_multihead_attn_ops;
   std::unordered_map<size_t, Reshape*> cached_reshape_ops;
