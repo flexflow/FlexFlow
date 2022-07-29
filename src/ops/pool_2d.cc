@@ -1,6 +1,7 @@
 #include "flexflow/ops/pool_2d.h"
 #include "legion/legion_utilities.h"
 #include "flexflow/utils/hash_utils.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
   
@@ -114,56 +115,16 @@ bool Pool2DParams::is_valid(const ParallelTensor input) const {
   return is_valid;
 }
 
-size_t Pool2DParams::get_hash(const ParallelTensor input) const {
-  size_t hash = input->get_owner_independent_hash();
-  hash_combine(hash, this->kernel_h);
-  hash_combine(hash, this->kernel_w);
-  hash_combine(hash, this->stride_h);
-  hash_combine(hash, this->stride_w);
-  hash_combine(hash, this->padding_h);
-  hash_combine(hash, this->padding_w);
-  hash_combine(hash, this->pool_type);
-  hash_combine(hash, this->activation);
-
-  return hash;
-}
-
-size_t Pool2D::get_params_hash() const {
-  return this->get_params().get_hash(this->inputs[0]);
-}
-
 using PCG::Node;
-Node FFModel::get_or_create_pool2d_node(const ParallelTensor input,
-                                        const Pool2DParams& params)
-{
-  if (!params.is_valid(input)) {
-    return Node::INVALID_NODE;
-  }
-  // Currently disable parallelizing the height and width dimension
-  if (input->dims[0].degree > 1 || input->dims[1].degree > 1) {
-    return Node::INVALID_NODE;
-  }
-
-  Pool2D *pool;
-
-  size_t hash = params.get_hash(input);
-
-  const auto &it = this->cached_pool2d_ops.find(hash);
-  if (it != cached_pool2d_ops.end()) {
-    pool = it->second;
-  } else {
-    pool = new Pool2D(*this, 
-                      input, 
-                      params.kernel_h, params.kernel_w, 
-                      params.stride_h, params.stride_w,
-                      params.padding_h, params.padding_w,
-                      params.pool_type,
-                      params.activation, 
-                      NULL);
-    cached_pool2d_ops[hash] = pool;
-  }
-
-  return this->new_node(pool);
+bool operator==(const Pool2DParams& lhs, const Pool2DParams& rhs) {
+  return lhs.kernel_h = rhs.kernelH &&
+        lhs.kernel_w = rhs.kernelW &&
+        lhs.stride_h = rhs.strideH &&
+        lhs.stride_w = rhs.strideW &&
+        lhs.padding_h = rhs.paddingH &&
+        lhs.padding_w = rhs.paddingW &&
+        lhs.pool_type = rhs.type &&
+        lhs.activation = rhs.activation;
 }
 
 Node FFModel::get_or_create_pool2d_node(const ParallelTensor input,
@@ -183,7 +144,7 @@ Node FFModel::get_or_create_pool2d_node(const ParallelTensor input,
   params.pool_type = type;
   params.activation = activation;
 
-  return this->get_or_create_pool2d_node(input, params);
+  return this->get_or_create_node<Pool2D>(input, params);
 }
 
 int Pool2DParams::output_size(const ParallelTensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) const { 
@@ -280,6 +241,23 @@ Pool2D::Pool2D(FFModel& model,
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(output_ndims, output_dims, DT_FLOAT, this);
 }
+
+Pool2D::Pool2D(FFModel& model, 
+               const Pool2DParams& params,
+               const ParallelTensor input,
+               const char* name)
+  : Pool2D(model, 
+           input, 
+           params.kernel_h, 
+           params.kernel_w,
+           params.stride_h,
+           params.stride_w,
+           params.padding_h,
+           params.padding_w,
+           params.type,
+           params.activation,
+           name) 
+{ }
 
 void Pool2D::init(const FFModel& ff)
 {
@@ -573,3 +551,18 @@ Node Pool2D::deserialize(FFModel& ff, Legion::Deserializer& dez, ParallelTensor 
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+  size_t hash<FlexFlow::Pool2DParams>::operator()(const FlexFlow::Pool2DParams& params) const {
+    size_t key = 0;
+    hash_combine(key, params.kernel_h);
+    hash_combine(key, params.kernel_w);
+    hash_combine(key, params.stride_h);
+    hash_combine(key, params.stride_w);
+    hash_combine(key, params.padding_h);
+    hash_combine(key, params.padding_w);
+    hash_combine(key, params.pool_type);
+    hash_combine(key, params.activation);
+    return key;
+  }
+}; // namespace std
