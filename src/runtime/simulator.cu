@@ -100,6 +100,16 @@ Simulator::Simulator(const FFModel* model,
 Simulator::~Simulator(void)
 {
   simulatorInst.destroy();
+  cudaEventDestroy(start_event);
+  cudaEventDestroy(end_event);
+  delete conv2d_meta;
+  delete pool2d_meta;
+  delete ele_unary_meta;
+  delete ele_binary_meta;
+  delete batch_matmul_meta;
+  delete concat_meta;
+  delete transpose_meta;
+  delete task_manager;
 }
 
 __host__

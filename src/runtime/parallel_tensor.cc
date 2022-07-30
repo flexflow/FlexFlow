@@ -623,7 +623,7 @@ bool ParallelTensorBase::set_tensor(
   } else if (sync_type == ParameterSyncType::PS) {
     num_replicas = 1;
   } else {
-    assert(false);
+    num_replicas = 1;
   }
   for (size_t i = 0; i < dim_sizes.size(); i++) {
     volume = volume * dim_sizes[i];
