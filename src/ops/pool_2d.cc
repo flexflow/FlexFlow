@@ -117,14 +117,14 @@ bool Pool2DParams::is_valid(const ParallelTensor input) const {
 
 using PCG::Node;
 bool operator==(const Pool2DParams& lhs, const Pool2DParams& rhs) {
-  return lhs.kernel_h = rhs.kernelH &&
-        lhs.kernel_w = rhs.kernelW &&
-        lhs.stride_h = rhs.strideH &&
-        lhs.stride_w = rhs.strideW &&
-        lhs.padding_h = rhs.paddingH &&
-        lhs.padding_w = rhs.paddingW &&
-        lhs.pool_type = rhs.type &&
-        lhs.activation = rhs.activation;
+  return lhs.kernel_h == rhs.kernel_h &&
+        lhs.kernel_w == rhs.kernel_w &&
+        lhs.stride_h == rhs.stride_h &&
+        lhs.stride_w == rhs.stride_w &&
+        lhs.padding_h == rhs.padding_h &&
+        lhs.padding_w == rhs.padding_w &&
+        lhs.pool_type == rhs.pool_type &&
+        lhs.activation == rhs.activation;
 }
 
 Node FFModel::get_or_create_pool2d_node(const ParallelTensor input,

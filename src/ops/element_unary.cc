@@ -143,9 +143,9 @@ Tensor FFModel::pow(const Tensor x, const float exponent, bool inplace, const ch
   return this->unary(OP_POW, x, inplace, name, exponent);
 }
 
-bool ElementUnaryParams::is_valid(const ParallelTensorShape &) const {
+bool ElementUnaryParams::is_valid(const ParallelTensorShape & input) const {
   // TODO: more check on the input shape
-  return true
+  return input.is_valid();
 }
 
 bool operator==(const ElementUnaryParams& lhs, const ElementUnaryParams& rhs) {
