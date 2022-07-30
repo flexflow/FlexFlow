@@ -1542,8 +1542,8 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
     assert(false && "machine model creation error: currently only support machine-model-version = 0 or 1. When machine-model-version = 1, machine-model-file should not be empty.");
   }
   // Assume this task is running on GPU0
-  Simulator* simulator = new Simulator(model, model->handlers[0], gpu_mem, machine);
-  model->simulator = simulator;
+  std::shared_ptr<Simulator> simulator(new Simulator(model, model->handlers[0], gpu_mem, machine));
+  model->simulator = simulator.get();
   std::unique_ptr<Graph> best_graph;
   std::unordered_map<Node, MachineView> optimal_views;
   //shicao

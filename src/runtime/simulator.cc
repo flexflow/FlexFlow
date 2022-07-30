@@ -493,6 +493,8 @@ tl::optional<OperatorParameters> get_op_parameters(const Op* op) {
     case OP_EW_MUL:
     case OP_EW_DIV:
       return ((ElementBinary*)op)->get_params();
+    case OP_CONCAT:
+      return ((Concat*)op)->get_params();
     default:
       return tl::nullopt;
   }
