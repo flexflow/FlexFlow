@@ -19,20 +19,17 @@
 
 namespace FlexFlow {
 
-RecompileState::RecompileState(std::function<bool(FFModel*)> _trigger_func,
-                              std::function<void(FFModel*)> _alter_func,
-                              FFModel* _ff)
-: trigger_func(_trigger_func), alter_func(_alter_func), ff(_ff)
-{
+RecompileState::RecompileState(std::function<bool(FFModel *)> _trigger_func,
+                               std::function<void(FFModel *)> _alter_func,
+                               FFModel *_ff)
+    : trigger_func(_trigger_func), alter_func(_alter_func), ff(_ff) {
   recompilations = 0;
 }
 
-bool RecompileState::trigger() {
-  return trigger_func(ff);
-}
+bool RecompileState::trigger() { return trigger_func(ff); }
 
 void RecompileState::alter() {
-  if(recompilations == 0)
+  if (recompilations == 0)
     alter_func(ff);
   recompilations++;
 }

@@ -19,33 +19,30 @@
 
 #include <libgen.h>
 
-
 #include "flexflow/mapper.h"
 #include "flexflow_c.h"
 using namespace Legion;
 using namespace FlexFlow;
 
-//enum MainTaskIDs {
+// enum MainTaskIDs {
 //  PYTHON_TOP_LEVEL_TASK_ID = 11111,
 //};
 
-VariantID preregister_python_task_variant(
-  const TaskVariantRegistrar &registrar,
-  const char *module_name,
-  const char *function_name,
-  const void *userdata = NULL,
-  size_t userlen = 0)
-{
-  CodeDescriptor code_desc(Realm::Type::from_cpp_type<Processor::TaskFuncPtr>());
-  code_desc.add_implementation(new Realm::PythonSourceImplementation(module_name, function_name));
+VariantID preregister_python_task_variant(const TaskVariantRegistrar &registrar,
+                                          const char *module_name,
+                                          const char *function_name,
+                                          const void *userdata = NULL,
+                                          size_t userlen = 0) {
+  CodeDescriptor code_desc(
+      Realm::Type::from_cpp_type<Processor::TaskFuncPtr>());
+  code_desc.add_implementation(
+      new Realm::PythonSourceImplementation(module_name, function_name));
 
   return Runtime::preregister_task_variant(
-    registrar, code_desc, userdata, userlen,
-    registrar.task_variant_name);
+      registrar, code_desc, userdata, userlen, registrar.task_variant_name);
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
 #ifdef BINDINGS_AUGMENT_PYTHONPATH
   // Add the binary directory to PYTHONPATH. This is needed for
   // in-place builds to find legion.py.
@@ -91,13 +88,15 @@ int main(int argc, char **argv)
 
   Runtime::set_top_level_task_id(PYTHON_TOP_LEVEL_TASK_ID);
   {
-    TaskVariantRegistrar registrar(PYTHON_TOP_LEVEL_TASK_ID, "flexflow_top_level_task");
+    TaskVariantRegistrar registrar(PYTHON_TOP_LEVEL_TASK_ID,
+                                   "flexflow_top_level_task");
     registrar.add_constraint(ProcessorConstraint(Processor::PY_PROC));
-    //TODO: dataloader does not support CR
+    // TODO: dataloader does not support CR
     registrar.set_replicable();
-    preregister_python_task_variant(registrar, "flexflow.core", "flexflow_top_level_task");
+    preregister_python_task_variant(
+        registrar, "flexflow.core", "flexflow_top_level_task");
   }
-  
+
   register_flexflow_internal_tasks();
 
   register_c_custom_tasks();

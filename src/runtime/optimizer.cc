@@ -20,14 +20,12 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-Optimizer::Optimizer(const FFModel* _model)
-: model(_model) {}
+Optimizer::Optimizer(const FFModel *_model) : model(_model) {}
 
-ParallelTensor create_replica_parameter(const FFModel* model,
-                                        const ParallelTensor p)
-{
+ParallelTensor create_replica_parameter(const FFModel *model,
+                                        const ParallelTensor p) {
   Context ctx = model->config.lg_ctx;
-  Runtime* runtime = model->config.lg_hlr;
+  Runtime *runtime = model->config.lg_hlr;
   ParallelTensor v = new ParallelTensorBase(*p);
   v->region_grad = LogicalRegion::NO_REGION;
   v->part_grad = LogicalPartition::NO_PART;
@@ -44,96 +42,94 @@ ParallelTensor create_replica_parameter(const FFModel* model,
   return v;
 }
 
-SGDOptimizer::SGDOptimizer(const FFModel* _model,
-                           double _lr, double _momentum,
-                           bool _nesterov, double _weight_decay)
-: Optimizer(_model), lr(_lr), momentum(_momentum),
-  nesterov(_nesterov), weight_decay(_weight_decay)
-{}
+SGDOptimizer::SGDOptimizer(const FFModel *_model,
+                           double _lr,
+                           double _momentum,
+                           bool _nesterov,
+                           double _weight_decay)
+    : Optimizer(_model), lr(_lr), momentum(_momentum), nesterov(_nesterov),
+      weight_decay(_weight_decay) {}
 
-void SGDOptimizer::init(void)
-{
+void SGDOptimizer::init(void) {
   Context ctx = model->config.lg_ctx;
-  Runtime* runtime = model->config.lg_hlr;
-  Initializer* initializer = new ZeroInitializer();
+  Runtime *runtime = model->config.lg_hlr;
+  Initializer *initializer = new ZeroInitializer();
   for (size_t i = 0; i < model->parameters.size(); i++) {
     ParallelTensor p = model->parameters[i];
-    Domain domain = runtime->get_index_space_domain(
-        ctx, p->region.get_index_space());
+    Domain domain =
+        runtime->get_index_space_domain(ctx, p->region.get_index_space());
     switch (domain.get_dim()) {
-      case 0:
-      {
-        // Do not support 0-dim parameter
-        assert(false);
-        break;
+    case 0: {
+      // Do not support 0-dim parameter
+      assert(false);
+      break;
+    }
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5: {
+      if (momentum > 0.0f) {
+        v_values[p->region] = create_replica_parameter(model, p);
+        initializer->init(model, v_values[p->region]);
       }
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-      case 5:
-      {
-        if (momentum > 0.0f) {
-          v_values[p->region] = create_replica_parameter(model, p);
-          initializer->init(model, v_values[p->region]);
-        }
-        break;
-      }
-      default:
-      {
-        // Unsupported dim
-        assert(false);
-        break;
-      }
+      break;
+    }
+    default: {
+      // Unsupported dim
+      assert(false);
+      break;
+    }
     }
   }
   delete initializer;
 }
 
-void SGDOptimizer::next(void)
-{
-}
+void SGDOptimizer::next(void) {}
 
-void SGDOptimizer::update(const ParallelTensor p)
-{
+void SGDOptimizer::update(const ParallelTensor p) {
   Context ctx = model->config.lg_ctx;
-  Runtime* runtime = model->config.lg_hlr;
+  Runtime *runtime = model->config.lg_hlr;
   assert(p->owner_op != NULL);
   if (p->sync_type == ParameterSyncType::PS) {
     TaskLauncher launcher(SGD_UPD_PS_TASK_ID,
-        TaskArgument(this, sizeof(SGDOptimizer)),
-        Predicate::TRUE_PRED, 0/*mapper_id*/,
-        p->machine_view.hash());
+                          TaskArgument(this, sizeof(SGDOptimizer)),
+                          Predicate::TRUE_PRED,
+                          0 /*mapper_id*/,
+                          p->machine_view.hash());
     // regions[0]: region_grad
-    launcher.add_region_requirement(
-        RegionRequirement(p->region_grad,
-                          READ_ONLY, EXCLUSIVE, p->region_grad));
+    launcher.add_region_requirement(RegionRequirement(
+        p->region_grad, READ_ONLY, EXCLUSIVE, p->region_grad));
     launcher.add_field(0, FID_DATA);
     // regions[1]: region
     launcher.add_region_requirement(
-        RegionRequirement(p->region,
-                          READ_WRITE, EXCLUSIVE, p->region));
+        RegionRequirement(p->region, READ_WRITE, EXCLUSIVE, p->region));
     launcher.add_field(1, FID_DATA);
     if (momentum > 0.0f) {
       // regions[2]: v_region
       assert(v_values.find(p->region) != v_values.end());
       launcher.add_region_requirement(
           RegionRequirement(v_values[p->region]->region,
-                            READ_WRITE, EXCLUSIVE, v_values[p->region]->region));
+                            READ_WRITE,
+                            EXCLUSIVE,
+                            v_values[p->region]->region));
       launcher.add_field(2, FID_DATA);
     }
     runtime->execute_task(ctx, launcher);
     // Parameter prefetching optimizations to reduce comm. overhead
     // Directly send the parameters back to all worker devices after SGD
     ArgumentMap argmap;
-    IndexLauncher index_launcher(PS_PREFETCH_TASK_ID, p->parallel_is,
-        TaskArgument(NULL, 0), argmap,
-        Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-        p->machine_view.hash());
+    IndexLauncher index_launcher(PS_PREFETCH_TASK_ID,
+                                 p->parallel_is,
+                                 TaskArgument(NULL, 0),
+                                 argmap,
+                                 Predicate::TRUE_PRED,
+                                 false /*must*/,
+                                 0 /*mapper_id*/,
+                                 p->machine_view.hash());
     // regions[0]: region
-    index_launcher.add_region_requirement(
-        RegionRequirement(p->part, 0/*projection*/,
-                          READ_ONLY, EXCLUSIVE, p->region));
+    index_launcher.add_region_requirement(RegionRequirement(
+        p->part, 0 /*projection*/, READ_ONLY, EXCLUSIVE, p->region));
     index_launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, index_launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
@@ -141,59 +137,66 @@ void SGDOptimizer::update(const ParallelTensor p)
     ArgumentMap argmap;
     Domain domain = runtime->get_index_space_domain(ctx, p->parallel_is);
     switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-      case DIM: \
-      { \
-        Rect<DIM> rect = domain; \
-        int idx = 0; \
-        for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-          OpMeta* mp = p->owner_op->meta[idx++]; \
-          argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
-        } \
-        break; \
-      }
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      OpMeta *mp = p->owner_op->meta[idx++];                                   \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
+    }                                                                          \
+    break;                                                                     \
+  }
       LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-      default:
-        assert(false);
+    default:
+      assert(false);
     }
-    IndexLauncher launcher(SGD_UPD_NCCL_TASK_ID, p->parallel_is,
-        TaskArgument(this, sizeof(SGDOptimizer)), argmap,
-        Predicate::TRUE_PRED, false/*must_epoch*/, 0/*mapper_id*/,
-        p->machine_view.hash());
+    IndexLauncher launcher(SGD_UPD_NCCL_TASK_ID,
+                           p->parallel_is,
+                           TaskArgument(this, sizeof(SGDOptimizer)),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false /*must_epoch*/,
+                           0 /*mapper_id*/,
+                           p->machine_view.hash());
     // regions[0]: region_grad
-    launcher.add_region_requirement(
-        RegionRequirement(p->part_grad, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, p->region_grad));
+    launcher.add_region_requirement(RegionRequirement(p->part_grad,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      p->region_grad));
     launcher.add_field(0, FID_DATA);
     // regions[1]: region
-    launcher.add_region_requirement(
-        RegionRequirement(p->part, 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, p->region));
+    launcher.add_region_requirement(RegionRequirement(
+        p->part, 0 /*projection id*/, READ_WRITE, EXCLUSIVE, p->region));
     launcher.add_field(1, FID_DATA);
     if (momentum > 0.0f) {
       // regions[2]: v_value
       assert(v_values.find(p->region) != v_values.end());
       launcher.add_region_requirement(
-          RegionRequirement(v_values[p->region]->part, 0/*projection id*/,
-                            READ_WRITE, EXCLUSIVE, v_values[p->region]->region));
+          RegionRequirement(v_values[p->region]->part,
+                            0 /*projection id*/,
+                            READ_WRITE,
+                            EXCLUSIVE,
+                            v_values[p->region]->region));
       launcher.add_field(2, FID_DATA);
     }
-    //MustEpochLauncher must_epoch_launcher;
-    //must_epoch_launcher.add_index_task(launcher);
+    // MustEpochLauncher must_epoch_launcher;
+    // must_epoch_launcher.add_index_task(launcher);
     FutureMap fm = runtime->execute_index_space(ctx, launcher);
-    //runtime->execute_must_epoch(ctx, must_epoch_launcher);
+    // runtime->execute_must_epoch(ctx, must_epoch_launcher);
     runtime->issue_execution_fence(ctx);
   } else {
     assert(false);
   }
 }
 
-void SGDOptimizer::ps_update_task(const Task* task,
-                                  const std::vector<PhysicalRegion>& regions,
-                                  Context ctx, Runtime* runtime)
-{
-  const SGDOptimizer* op = (SGDOptimizer*) task->args;
+void SGDOptimizer::ps_update_task(const Task *task,
+                                  const std::vector<PhysicalRegion> &regions,
+                                  Context ctx,
+                                  Runtime *runtime) {
+  const SGDOptimizer *op = (SGDOptimizer *)task->args;
   if (op->momentum > 0.0f) {
     assert(regions.size() == 3);
     assert(task->regions.size() == 3);
@@ -201,59 +204,62 @@ void SGDOptimizer::ps_update_task(const Task* task,
     assert(regions.size() == 2);
     assert(task->regions.size() == 2);
   }
-  Domain domain = runtime->get_index_space_domain(ctx,
-      task->regions[1].region.get_index_space());
+  Domain domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
   const float *w_grad_ptr = NULL;
   float *w_ptr = NULL, *v_ptr = NULL;
   size_t size = 0, num_replicas = 0;
-  switch(domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      TensorAccessorR<float, DIM> accWGrad( \
-          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
-      TensorAccessorW<float, DIM> accW( \
-          regions[1], task->regions[1], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      for (int i = 0; i < domain.get_dim()-1; i++) { \
-        assert(accW.rect.lo[i] == accWGrad.rect.lo[i]); \
-        assert(accW.rect.hi[i] == accWGrad.rect.hi[i]); \
-      } \
-      size = accW.rect.volume(); \
-      assert(accWGrad.rect.volume() % accW.rect.volume() == 0); \
-      num_replicas = accWGrad.rect.volume() / accW.rect.volume(); \
-      w_grad_ptr = accWGrad.ptr; \
-      w_ptr = accW.ptr; \
-      if (op->momentum > 0.0f) { \
-        TensorAccessorW<float, DIM> accV( \
-            regions[2], task->regions[2], FID_DATA, ctx, runtime, \
-            true/*readOutput*/); \
-        assert(accW.rect == accV.rect); \
-        v_ptr = accV.ptr; \
-      } \
-      break; \
-    }
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    TensorAccessorR<float, DIM> accWGrad(                                      \
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);                 \
+    TensorAccessorW<float, DIM> accW(regions[1],                               \
+                                     task->regions[1],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     true /*readOutput*/);                     \
+    for (int i = 0; i < domain.get_dim() - 1; i++) {                           \
+      assert(accW.rect.lo[i] == accWGrad.rect.lo[i]);                          \
+      assert(accW.rect.hi[i] == accWGrad.rect.hi[i]);                          \
+    }                                                                          \
+    size = accW.rect.volume();                                                 \
+    assert(accWGrad.rect.volume() % accW.rect.volume() == 0);                  \
+    num_replicas = accWGrad.rect.volume() / accW.rect.volume();                \
+    w_grad_ptr = accWGrad.ptr;                                                 \
+    w_ptr = accW.ptr;                                                          \
+    if (op->momentum > 0.0f) {                                                 \
+      TensorAccessorW<float, DIM> accV(regions[2],                             \
+                                       task->regions[2],                       \
+                                       FID_DATA,                               \
+                                       ctx,                                    \
+                                       runtime,                                \
+                                       true /*readOutput*/);                   \
+      assert(accW.rect == accV.rect);                                          \
+      v_ptr = accV.ptr;                                                        \
+    }                                                                          \
+    break;                                                                     \
+  }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-    {
-      // Unsupported dims
-      assert(false);
-    }
+  default: {
+    // Unsupported dims
+    assert(false);
   }
-  
+  }
+
   ps_update_task_gpu(op, w_grad_ptr, size, num_replicas, w_ptr, v_ptr);
 }
 
 #ifdef FF_USE_NCCL
-void SGDOptimizer::nccl_update_task(
-    const Task* task,
-    const std::vector<PhysicalRegion>& regions,
-    Context ctx, Runtime* runtime)
-{
-  const SGDOptimizer* op = (SGDOptimizer*) task->args;
-  const OpMeta* meta = *((OpMeta**) task->local_args);
-  //FFHandler handler = *((FFHandler*) task->local_args);
+void SGDOptimizer::nccl_update_task(const Task *task,
+                                    const std::vector<PhysicalRegion> &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
+  const SGDOptimizer *op = (SGDOptimizer *)task->args;
+  const OpMeta *meta = *((OpMeta **)task->local_args);
+  // FFHandler handler = *((FFHandler*) task->local_args);
   if (op->momentum > 0.0f) {
     assert(regions.size() == 3);
     assert(task->regions.size() == 3);
@@ -261,40 +267,44 @@ void SGDOptimizer::nccl_update_task(
     assert(regions.size() == 2);
     assert(task->regions.size() == 2);
   }
-  Domain domain = runtime->get_index_space_domain(ctx,
-      task->regions[1].region.get_index_space());
+  Domain domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
   const float *w_grad_ptr = NULL;
   float *w_ptr = NULL, *v_ptr = NULL;
   size_t size = 0;
-  switch(domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      TensorAccessorR<float, DIM> accWGrad( \
-          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
-      TensorAccessorW<float, DIM> accW( \
-          regions[1], task->regions[1], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      assert(accW.rect == accWGrad.rect); \
-      size = accW.rect.volume(); \
-      w_grad_ptr = accWGrad.ptr; \
-      w_ptr = accW.ptr; \
-      if (op->momentum > 0.0f) { \
-        TensorAccessorW<float, DIM> accV( \
-            regions[2], task->regions[2], FID_DATA, ctx, runtime, \
-            true/*readOutput*/); \
-        assert(accW.rect == accV.rect); \
-        v_ptr = accV.ptr; \
-      } \
-      break; \
-    }
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    TensorAccessorR<float, DIM> accWGrad(                                      \
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);                 \
+    TensorAccessorW<float, DIM> accW(regions[1],                               \
+                                     task->regions[1],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     true /*readOutput*/);                     \
+    assert(accW.rect == accWGrad.rect);                                        \
+    size = accW.rect.volume();                                                 \
+    w_grad_ptr = accWGrad.ptr;                                                 \
+    w_ptr = accW.ptr;                                                          \
+    if (op->momentum > 0.0f) {                                                 \
+      TensorAccessorW<float, DIM> accV(regions[2],                             \
+                                       task->regions[2],                       \
+                                       FID_DATA,                               \
+                                       ctx,                                    \
+                                       runtime,                                \
+                                       true /*readOutput*/);                   \
+      assert(accW.rect == accV.rect);                                          \
+      v_ptr = accV.ptr;                                                        \
+    }                                                                          \
+    break;                                                                     \
+  }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-    {
-      // Unsupported dims
-      assert(false);
-    }
+  default: {
+    // Unsupported dims
+    assert(false);
+  }
   }
 
   nccl_update_task_gpu(op, meta, w_grad_ptr, size, w_ptr, v_ptr);
@@ -305,111 +315,111 @@ void SGDOptimizer::nccl_update_task(
 //                        Adam Optimizer
 // ------------------------------------------------------------------
 
-AdamOptimizer::AdamOptimizer(const FFModel* _model,
-                             double _alpha, double _beta1,
-                             double _beta2, double _weight_decay,
+AdamOptimizer::AdamOptimizer(const FFModel *_model,
+                             double _alpha,
+                             double _beta1,
+                             double _beta2,
+                             double _weight_decay,
                              double _epsilon)
-: Optimizer(_model), alpha(_alpha), beta1(_beta1), beta2(_beta2),
-  weight_decay(_weight_decay),
-  epsilon(_epsilon), alpha_t(_alpha), beta1_t(1.0f), beta2_t(1.0f)
-{}
+    : Optimizer(_model), alpha(_alpha), beta1(_beta1), beta2(_beta2),
+      weight_decay(_weight_decay), epsilon(_epsilon), alpha_t(_alpha),
+      beta1_t(1.0f), beta2_t(1.0f) {}
 
-void AdamOptimizer::init(void)
-{
+void AdamOptimizer::init(void) {
   Context ctx = model->config.lg_ctx;
-  Runtime* runtime = model->config.lg_hlr;
-  Initializer* initializer = new ZeroInitializer();
+  Runtime *runtime = model->config.lg_hlr;
+  Initializer *initializer = new ZeroInitializer();
   for (size_t i = 0; i < model->parameters.size(); i++) {
     ParallelTensor p = model->parameters[i];
-    Domain domain = runtime->get_index_space_domain(
-        ctx, p->region.get_index_space());
+    Domain domain =
+        runtime->get_index_space_domain(ctx, p->region.get_index_space());
     switch (domain.get_dim()) {
-      case 0:
-      {
-        // Do not support 0-dim parameter
-        assert(false);
-        break;
-      }
-      case 1:
-      case 2:
-      case 3:
-      case 4:
-      case 5:
-      {
-        v_values[p->region] = create_replica_parameter(model, p);
-        m_values[p->region] = create_replica_parameter(model, p);
-        initializer->init(model, v_values[p->region]);
-        initializer->init(model, m_values[p->region]);
-        break;
-      }
-      default:
-      {
-        // Unsupported dim
-        assert(false);
-        break;
-      }
+    case 0: {
+      // Do not support 0-dim parameter
+      assert(false);
+      break;
+    }
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5: {
+      v_values[p->region] = create_replica_parameter(model, p);
+      m_values[p->region] = create_replica_parameter(model, p);
+      initializer->init(model, v_values[p->region]);
+      initializer->init(model, m_values[p->region]);
+      break;
+    }
+    default: {
+      // Unsupported dim
+      assert(false);
+      break;
+    }
     }
   }
   delete initializer;
 }
 
-void AdamOptimizer::set_weight_decay(double _weight_decay)
-{
+void AdamOptimizer::set_weight_decay(double _weight_decay) {
   weight_decay = _weight_decay;
 }
 
-void AdamOptimizer::next(void)
-{
+void AdamOptimizer::next(void) {
   beta1_t *= beta1;
   beta2_t *= beta2;
   alpha_t = alpha * sqrt(1 - beta2_t) / (1 - beta1_t);
-  //fprintf(stderr, "lr = %.4lf alpha_t = %.4lf\n", alpha, alpha_t);
+  // fprintf(stderr, "lr = %.4lf alpha_t = %.4lf\n", alpha, alpha_t);
 }
 
-void AdamOptimizer::update(const ParallelTensor p)
-{
+void AdamOptimizer::update(const ParallelTensor p) {
   Context ctx = model->config.lg_ctx;
-  Runtime* runtime = model->config.lg_hlr;
+  Runtime *runtime = model->config.lg_hlr;
   assert(v_values.find(p->region) != v_values.end());
   assert(m_values.find(p->region) != m_values.end());
   assert(p->owner_op != NULL);
   if (p->sync_type == ParameterSyncType::PS) {
     TaskLauncher launcher(ADAM_UPD_PS_TASK_ID,
-        TaskArgument(this, sizeof(AdamOptimizer)),
-        Predicate::TRUE_PRED, 0/*mapper_id*/,
-        p->machine_view.hash());
+                          TaskArgument(this, sizeof(AdamOptimizer)),
+                          Predicate::TRUE_PRED,
+                          0 /*mapper_id*/,
+                          p->machine_view.hash());
     // regions[0]: region_grad
-    launcher.add_region_requirement(
-        RegionRequirement(p->region_grad,
-                          READ_ONLY, EXCLUSIVE, p->region_grad));
+    launcher.add_region_requirement(RegionRequirement(
+        p->region_grad, READ_ONLY, EXCLUSIVE, p->region_grad));
     launcher.add_field(0, FID_DATA);
     // regions[1]: region
     launcher.add_region_requirement(
-        RegionRequirement(p->region,
-                          READ_WRITE, EXCLUSIVE, p->region));
+        RegionRequirement(p->region, READ_WRITE, EXCLUSIVE, p->region));
     launcher.add_field(1, FID_DATA);
     // regions[2]: w_region
     launcher.add_region_requirement(
         RegionRequirement(v_values[p->region]->region,
-                          READ_WRITE, EXCLUSIVE, v_values[p->region]->region));
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          v_values[p->region]->region));
     launcher.add_field(2, FID_DATA);
     // regions[3]: m_region
     launcher.add_region_requirement(
         RegionRequirement(m_values[p->region]->region,
-                          READ_WRITE, EXCLUSIVE, m_values[p->region]->region));
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          m_values[p->region]->region));
     launcher.add_field(3, FID_DATA);
     runtime->execute_task(ctx, launcher);
     // Parameter prefetching optimizations to reduce comm. overhead
     // Directly send the parameters back to all worker devices after SGD
     ArgumentMap argmap;
-    IndexLauncher index_launcher(PS_PREFETCH_TASK_ID, p->parallel_is,
-        TaskArgument(NULL, 0), argmap,
-        Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-        p->machine_view.hash());
+    IndexLauncher index_launcher(PS_PREFETCH_TASK_ID,
+                                 p->parallel_is,
+                                 TaskArgument(NULL, 0),
+                                 argmap,
+                                 Predicate::TRUE_PRED,
+                                 false /*must*/,
+                                 0 /*mapper_id*/,
+                                 p->machine_view.hash());
     // regions[0]: region
-    index_launcher.add_region_requirement(
-        RegionRequirement(p->part, 0/*projection*/,
-                          READ_ONLY, EXCLUSIVE, p->region));
+    index_launcher.add_region_requirement(RegionRequirement(
+        p->part, 0 /*projection*/, READ_ONLY, EXCLUSIVE, p->region));
     index_launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, index_launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
@@ -417,153 +427,177 @@ void AdamOptimizer::update(const ParallelTensor p)
     ArgumentMap argmap;
     Domain domain = runtime->get_index_space_domain(ctx, p->parallel_is);
     switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-      case DIM: \
-      { \
-        Rect<DIM> rect = domain; \
-        int idx = 0; \
-        for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-          OpMeta* mp = p->owner_op->meta[idx++]; \
-          argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta*))); \
-        } \
-        break; \
-      }
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      OpMeta *mp = p->owner_op->meta[idx++];                                   \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
+    }                                                                          \
+    break;                                                                     \
+  }
       LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-      default:
-        assert(false);
+    default:
+      assert(false);
     }
-    IndexLauncher launcher(ADAM_UPD_NCCL_TASK_ID, p->parallel_is,
-        TaskArgument(this, sizeof(AdamOptimizer)), argmap,
-        Predicate::TRUE_PRED, false/*must_epoch*/, 0/*mapper_id*/,
-        p->machine_view.hash());
+    IndexLauncher launcher(ADAM_UPD_NCCL_TASK_ID,
+                           p->parallel_is,
+                           TaskArgument(this, sizeof(AdamOptimizer)),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false /*must_epoch*/,
+                           0 /*mapper_id*/,
+                           p->machine_view.hash());
     // regions[0]: region_grad
-    launcher.add_region_requirement(
-        RegionRequirement(p->part_grad, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, p->region_grad));
+    launcher.add_region_requirement(RegionRequirement(p->part_grad,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      p->region_grad));
     launcher.add_field(0, FID_DATA);
     // regions[1]: region
-    launcher.add_region_requirement(
-        RegionRequirement(p->part, 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, p->region));
+    launcher.add_region_requirement(RegionRequirement(
+        p->part, 0 /*projection id*/, READ_WRITE, EXCLUSIVE, p->region));
     launcher.add_field(1, FID_DATA);
     // regions[2]: w_region
     launcher.add_region_requirement(
-        RegionRequirement(v_values[p->region]->part, 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, v_values[p->region]->region));
+        RegionRequirement(v_values[p->region]->part,
+                          0 /*projection id*/,
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          v_values[p->region]->region));
     launcher.add_field(2, FID_DATA);
     // regions[3]: m_region
     launcher.add_region_requirement(
-        RegionRequirement(m_values[p->region]->part, 0/*projection id*/,
-                          READ_WRITE, EXCLUSIVE, m_values[p->region]->region));
+        RegionRequirement(m_values[p->region]->part,
+                          0 /*projection id*/,
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          m_values[p->region]->region));
     launcher.add_field(3, FID_DATA);
-    //MustEpochLauncher must_epoch_launcher;
-    //must_epoch_launcher.add_index_task(launcher);
+    // MustEpochLauncher must_epoch_launcher;
+    // must_epoch_launcher.add_index_task(launcher);
     FutureMap fm = runtime->execute_index_space(ctx, launcher);
-    //runtime->execute_must_epoch(ctx, must_epoch_launcher);
+    // runtime->execute_must_epoch(ctx, must_epoch_launcher);
     runtime->issue_execution_fence(ctx);
   } else {
     assert(false);
   }
 }
 
-void AdamOptimizer::ps_update_task(const Task* task,
-                                   const std::vector<PhysicalRegion>& regions,
-                                   Context ctx, Runtime* runtime)
-{
+void AdamOptimizer::ps_update_task(const Task *task,
+                                   const std::vector<PhysicalRegion> &regions,
+                                   Context ctx,
+                                   Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  const AdamOptimizer* op = (AdamOptimizer*) task->args;
-  Domain domain = runtime->get_index_space_domain(ctx,
-      task->regions[1].region.get_index_space());
+  const AdamOptimizer *op = (AdamOptimizer *)task->args;
+  Domain domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
   const float *w_grad_ptr = NULL;
   float *w_ptr = NULL, *v_ptr = NULL, *m_ptr = NULL;
   size_t size = 0, num_replicas = 0;
-  switch(domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      TensorAccessorR<float, DIM> accWGrad( \
-          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
-      TensorAccessorW<float, DIM> accW( \
-          regions[1], task->regions[1], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      TensorAccessorW<float, DIM> accV( \
-          regions[2], task->regions[2], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      TensorAccessorW<float, DIM> accM( \
-          regions[3], task->regions[3], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      size = accW.rect.volume(); \
-      assert(accWGrad.rect.volume() % accW.rect.volume() == 0); \
-      num_replicas = accWGrad.rect.volume() / accW.rect.volume(); \
-      w_grad_ptr = accWGrad.ptr; \
-      w_ptr = accW.ptr; \
-      v_ptr = accV.ptr; \
-      m_ptr = accM.ptr; \
-      break; \
-    }
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    TensorAccessorR<float, DIM> accWGrad(                                      \
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);                 \
+    TensorAccessorW<float, DIM> accW(regions[1],                               \
+                                     task->regions[1],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     true /*readOutput*/);                     \
+    TensorAccessorW<float, DIM> accV(regions[2],                               \
+                                     task->regions[2],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     true /*readOutput*/);                     \
+    TensorAccessorW<float, DIM> accM(regions[3],                               \
+                                     task->regions[3],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     true /*readOutput*/);                     \
+    size = accW.rect.volume();                                                 \
+    assert(accWGrad.rect.volume() % accW.rect.volume() == 0);                  \
+    num_replicas = accWGrad.rect.volume() / accW.rect.volume();                \
+    w_grad_ptr = accWGrad.ptr;                                                 \
+    w_ptr = accW.ptr;                                                          \
+    v_ptr = accV.ptr;                                                          \
+    m_ptr = accM.ptr;                                                          \
+    break;                                                                     \
+  }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-    {
-      // Unsupported dims
-      assert(false);
-    }
+  default: {
+    // Unsupported dims
+    assert(false);
+  }
   }
 
   ps_update_task_gpu(op, w_grad_ptr, size, num_replicas, w_ptr, v_ptr, m_ptr);
 }
 
 #ifdef FF_USE_NCCL
-void AdamOptimizer::nccl_update_task(const Task* task,
-                                     const std::vector<PhysicalRegion>& regions,
-                                     Context ctx, Runtime* runtime)
-{
+void AdamOptimizer::nccl_update_task(const Task *task,
+                                     const std::vector<PhysicalRegion> &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  const AdamOptimizer* op = (AdamOptimizer*) task->args;
-  const OpMeta* meta = *((OpMeta**) task->local_args);
-  //FFHandler handler = *((FFHandler*) task->local_args);
-  Domain domain = runtime->get_index_space_domain(ctx,
-      task->regions[1].region.get_index_space());
+  const AdamOptimizer *op = (AdamOptimizer *)task->args;
+  const OpMeta *meta = *((OpMeta **)task->local_args);
+  // FFHandler handler = *((FFHandler*) task->local_args);
+  Domain domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
   const float *w_grad_ptr = NULL;
   float *w_ptr = NULL, *v_ptr = NULL, *m_ptr = NULL;
   size_t size = 0;
-  switch(domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      TensorAccessorR<float, DIM> accWGrad( \
-          regions[0], task->regions[0], FID_DATA, ctx, runtime); \
-      TensorAccessorW<float, DIM> accW( \
-          regions[1], task->regions[1], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      TensorAccessorW<float, DIM> accV( \
-          regions[2], task->regions[2], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      TensorAccessorW<float, DIM> accM( \
-          regions[3], task->regions[3], FID_DATA, ctx, runtime, \
-          true/*readOutput*/); \
-      size = accW.rect.volume(); \
-      assert(accWGrad.rect == accW.rect); \
-      assert(accWGrad.rect == accV.rect); \
-      assert(accWGrad.rect == accM.rect); \
-      w_grad_ptr = accWGrad.ptr; \
-      w_ptr = accW.ptr; \
-      v_ptr = accV.ptr; \
-      m_ptr = accM.ptr; \
-      break; \
-    }
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    TensorAccessorR<float, DIM> accWGrad(                                      \
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);                 \
+    TensorAccessorW<float, DIM> accW(regions[1],                               \
+                                     task->regions[1],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     true /*readOutput*/);                     \
+    TensorAccessorW<float, DIM> accV(regions[2],                               \
+                                     task->regions[2],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     true /*readOutput*/);                     \
+    TensorAccessorW<float, DIM> accM(regions[3],                               \
+                                     task->regions[3],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     true /*readOutput*/);                     \
+    size = accW.rect.volume();                                                 \
+    assert(accWGrad.rect == accW.rect);                                        \
+    assert(accWGrad.rect == accV.rect);                                        \
+    assert(accWGrad.rect == accM.rect);                                        \
+    w_grad_ptr = accWGrad.ptr;                                                 \
+    w_ptr = accW.ptr;                                                          \
+    v_ptr = accV.ptr;                                                          \
+    m_ptr = accM.ptr;                                                          \
+    break;                                                                     \
+  }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-    {
-      // Unsupported dims
-      assert(false);
-    }
+  default: {
+    // Unsupported dims
+    assert(false);
   }
-  
+  }
+
   nccl_update_task_gpu(op, meta, w_grad_ptr, size, w_ptr, v_ptr, m_ptr);
 }
 #endif

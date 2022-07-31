@@ -27,10 +27,12 @@ void Split::forward_kernel(float **out_ptrs,
                            coord_t in_blk_size,
                            coord_t num_blks,
                            int numOutputs,
-                           cudaStream_t stream)
-{
+                           cudaStream_t stream) {
   for (int i = 0; i < numOutputs; i++) {
-    copy_with_stride<<<GET_BLOCKS(out_blk_sizes[i]*num_blks), CUDA_NUM_THREADS, 0, stream>>>(
+    copy_with_stride<<<GET_BLOCKS(out_blk_sizes[i] * num_blks),
+                       CUDA_NUM_THREADS,
+                       0,
+                       stream>>>(
         out_ptrs[i], in_ptr, num_blks, out_blk_sizes[i], in_blk_size);
     in_ptr += out_blk_sizes[i];
   }
@@ -42,11 +44,16 @@ void Split::forward_kernel_wrapper(float **out_ptrs,
                                    coord_t const *out_blk_sizes,
                                    coord_t in_blk_size,
                                    coord_t num_blks,
-                                   int numOutputs)
-{
+                                   int numOutputs) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  Split::forward_kernel(out_ptrs, in_ptr, out_blk_sizes, in_blk_size, num_blks, numOutputs, stream);
+  Split::forward_kernel(out_ptrs,
+                        in_ptr,
+                        out_blk_sizes,
+                        in_blk_size,
+                        num_blks,
+                        numOutputs,
+                        stream);
 }
 
 /*static*/
@@ -56,11 +63,13 @@ void Split::backward_kernel(float *in_grad_ptr,
                             coord_t in_blk_size,
                             coord_t num_blks,
                             int numOutputs,
-                            cudaStream_t stream)
-{
+                            cudaStream_t stream) {
   for (int i = 0; i < numOutputs; i++) {
-    add_with_stride<<<GET_BLOCKS(out_blk_sizes[i]*num_blks), CUDA_NUM_THREADS, 0, stream>>>(
-      in_grad_ptr, out_grad_ptr[i], num_blks, in_blk_size, out_blk_sizes[i]);
+    add_with_stride<<<GET_BLOCKS(out_blk_sizes[i] * num_blks),
+                      CUDA_NUM_THREADS,
+                      0,
+                      stream>>>(
+        in_grad_ptr, out_grad_ptr[i], num_blks, in_blk_size, out_blk_sizes[i]);
     in_grad_ptr += out_blk_sizes[i];
   }
 }
@@ -71,12 +80,17 @@ void Split::backward_kernel_wrapper(float *in_grad_ptr,
                                     coord_t const *out_blk_sizes,
                                     coord_t in_blk_size,
                                     coord_t num_blks,
-                                    int numOutputs)
-{
+                                    int numOutputs) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  Split::backward_kernel(in_grad_ptr, out_grad_ptr, out_blk_sizes, in_blk_size, num_blks, numOutputs, stream);
-  //checkCUDA(cudaDeviceSynchronize());
+  Split::backward_kernel(in_grad_ptr,
+                         out_grad_ptr,
+                         out_blk_sizes,
+                         in_blk_size,
+                         num_blks,
+                         numOutputs,
+                         stream);
+  // checkCUDA(cudaDeviceSynchronize());
 }
 
 }; // namespace FlexFlow

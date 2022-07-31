@@ -14,20 +14,19 @@
  */
 
 #include "resnet.h"
-#include <sstream>
 #include <fstream>
+#include <sstream>
 #include <string>
 using namespace Legion;
-using FlexFlow::FFModel;
-using FlexFlow::Tensor;
 using FlexFlow::FFConfig;
+using FlexFlow::FFModel;
 using FlexFlow::Optimizer;
 using FlexFlow::SGDOptimizer;
+using FlexFlow::Tensor;
 
 LegionRuntime::Logger::Category log_app("ResNet");
 
-void parse_input_args(char **argv, int argc, ResNetConfig& config)
-{
+void parse_input_args(char **argv, int argc, ResNetConfig &config) {
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--dataset")) {
       config.dataset_path = std::string(argv[++i]);
@@ -36,33 +35,33 @@ void parse_input_args(char **argv, int argc, ResNetConfig& config)
   }
 }
 
-Tensor BottleneckBlock(FFModel& ff,
-                       Tensor input,
-                       int out_channels,
-                       int stride)
-{
+Tensor
+BottleneckBlock(FFModel &ff, Tensor input, int out_channels, int stride) {
   Tensor t = ff.conv2d(input, out_channels, 1, 1, 1, 1, 0, 0, AC_MODE_NONE);
-  //t = ff.batch_norm(t);
-  
+  // t = ff.batch_norm(t);
+
   t = ff.conv2d(t, out_channels, 3, 3, stride, stride, 1, 1, AC_MODE_NONE);
-  //t = ff.batch_norm(t);
-  
-  t = ff.conv2d(t, 4*out_channels, 1, 1, 1, 1, 0, 0);
-  //t = ff.batch_norm(t, false);
-  
+  // t = ff.batch_norm(t);
+
+  t = ff.conv2d(t, 4 * out_channels, 1, 1, 1, 1, 0, 0);
+  // t = ff.batch_norm(t, false);
+
   if ((stride > 1) || (input->dims[2] != out_channels * 4)) {
-    printf("input->dims = %d out_channels*4 = %d\n", input->dims[2], out_channels*4);
-    input = ff.conv2d(input, 4*out_channels, 1, 1, stride, stride, 0, 0, AC_MODE_NONE);
-    //input = ff.batch_norm(input, false);
+    printf("input->dims = %d out_channels*4 = %d\n",
+           input->dims[2],
+           out_channels * 4);
+    input = ff.conv2d(
+        input, 4 * out_channels, 1, 1, stride, stride, 0, 0, AC_MODE_NONE);
+    // input = ff.batch_norm(input, false);
   }
   t = ff.add(input, t);
   return ff.relu(t, false);
 }
 
-void FlexFlow::top_level_task(const Task* task,
-                    const std::vector<PhysicalRegion>& regions,
-                    Context ctx, Runtime* runtime)
-{
+void FlexFlow::top_level_task(const Task *task,
+                              const std::vector<PhysicalRegion> &regions,
+                              Context ctx,
+                              Runtime *runtime) {
   FFConfig ffConfig;
   ResNetConfig resnetConfig;
   {
@@ -71,7 +70,9 @@ void FlexFlow::top_level_task(const Task* task,
     int argc = command_args.argc;
     parse_input_args(argv, argc, resnetConfig);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-        ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
+                  ffConfig.batchSize,
+                  ffConfig.workersPerNode,
+                  ffConfig.numNodes);
   }
   FFModel ff(ffConfig);
 
@@ -88,7 +89,7 @@ void FlexFlow::top_level_task(const Task* task,
   // Add layers
   Tensor t = input;
   t = ff.conv2d(input, 64, 7, 7, 2, 2, 3, 3);
-  //t = ff.batch_norm(t);
+  // t = ff.batch_norm(t);
   t = ff.pool2d(t, 3, 3, 2, 2, 1, 1);
 
   for (int i = 0; i < 3; i++)
@@ -98,18 +99,18 @@ void FlexFlow::top_level_task(const Task* task,
     t = BottleneckBlock(ff, t, 128, stride);
   }
   for (int i = 0; i < 6; i++) {
-    int stride = (i==0) ? 2 : 1;
+    int stride = (i == 0) ? 2 : 1;
     t = BottleneckBlock(ff, t, 256, stride);
   }
   for (int i = 0; i < 3; i++) {
-    int stride = (i==0) ? 2 : 1;
+    int stride = (i == 0) ? 2 : 1;
     t = BottleneckBlock(ff, t, 512, stride);
   }
   t = ff.pool2d(t, 7, 7, 1, 1, 0, 0, POOL_AVG);
   t = ff.flat(t);
   t = ff.dense(t, 10);
   t = ff.softmax(t);
-  Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
+  Optimizer *optimizer = new SGDOptimizer(&ff, 0.001f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
@@ -117,7 +118,7 @@ void FlexFlow::top_level_task(const Task* task,
   // Data Loader
   /* DataLoader data_loader(ff, resnetConfig, input, ff.label_tensor); */
   ff.init_operators();
-  //Start timer
+  // Start timer
   {
     runtime->issue_execution_fence(ctx);
     TimingLauncher timer(MEASURE_MICRO_SECONDS);
@@ -133,17 +134,17 @@ void FlexFlow::top_level_task(const Task* task,
     for (int iter = 0; iter < iterations; iter++) {
       if (resnetConfig.dataset_path.length() == 0) {
         // Only load data once for random input
-        //if (iter == 0 && epoch == 0)
+        // if (iter == 0 && epoch == 0)
         //  data_loader.next_batch(ff);
       } else {
         // data_loader.next_batch(ff);
       }
-      runtime->begin_trace(ctx, 111/*trace_id*/);
+      runtime->begin_trace(ctx, 111 /*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      runtime->end_trace(ctx, 111/*trace_id*/);
+      runtime->end_trace(ctx, 111 /*trace_id*/);
     }
   }
   // End timer
@@ -155,16 +156,16 @@ void FlexFlow::top_level_task(const Task* task,
   }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
+         run_time,
          128 * ffConfig.batchSize * ffConfig.epochs / run_time);
 }
 
-size_t get_file_size(const std::string& filename)
-{
-  streampos begin,end;
+size_t get_file_size(const std::string &filename) {
+  streampos begin, end;
   ifstream file(filename.c_str(), ios::binary);
   begin = file.tellg();
-  file.seekg (0, ios::end);
+  file.seekg(0, ios::end);
   end = file.tellg();
   file.close();
   size_t filesize = end - begin;
@@ -180,10 +181,12 @@ size_t get_file_size(const std::string& filename)
 /*   num_samples = 0; */
 /*   if (resnet.dataset_path == "") { */
 /*     log_app.print("Use random dataset..."); */
-/*     num_samples = 10 * ff.config.batchSize * ff.config.workersPerNode * ff.config.numNodes; */
+/*     num_samples = 10 * ff.config.batchSize * ff.config.workersPerNode *
+ * ff.config.numNodes; */
 /*     log_app.print("Number of random samples = %d\n", num_samples); */
 /*   } else { */
-/*     log_app.print("Start loading dataset from %s", resnet.dataset_path.c_str()); */
+/*     log_app.print("Start loading dataset from %s",
+ * resnet.dataset_path.c_str()); */
 /*     size_t filesize = get_file_size(resnet.dataset_path); */
 /*     assert(filesize % (3 * 360 * 360 + 1) == 0); */
 /*     num_samples = filesize / (3 * 360 * 360 + 1); */
@@ -191,7 +194,8 @@ size_t get_file_size(const std::string& filename)
 /*   // Create full input */
 /*   { */
 /*     batch_input = input; */
-/*     const int dims[] = {num_samples, input->dims[2].size, input->dims[1].size, input->dims[0].size}; */
+/*     const int dims[] = {num_samples, input->dims[2].size,
+ * input->dims[1].size, input->dims[0].size}; */
 /*     full_input = ff.create_tensor<4>(dims, DT_FLOAT); */
 /*   } */
 /*   // Create full label */
@@ -222,22 +226,24 @@ size_t get_file_size(const std::string& filename)
 /*   next_batch(ff); */
 /* } */
 
-__inline__
-int calc_offset(int c, int y, int x, int yscale, int xscale)
-{
+__inline__ int calc_offset(int c, int y, int x, int yscale, int xscale) {
   return (c * yscale * xscale + y * xscale + x);
 }
 
-void nearest_neigh(unsigned char* image,
-                   unsigned char* buffer,
-                   int height, int width,
-                   int orig_height, int orig_width,
-                   float height_scale, float width_scale)
-{
+void nearest_neigh(unsigned char *image,
+                   unsigned char *buffer,
+                   int height,
+                   int width,
+                   int orig_height,
+                   int orig_width,
+                   float height_scale,
+                   float width_scale) {
   for (int y = 0; y < height; y++) {
-    int y0 = std::min(static_cast<int>(roundf(y * height_scale)), orig_height - 1);
+    int y0 =
+        std::min(static_cast<int>(roundf(y * height_scale)), orig_height - 1);
     for (int x = 0; x < width; x++) {
-      int x0 = std::min(static_cast<int>(roundf(x * width_scale)), orig_width - 1);
+      int x0 =
+          std::min(static_cast<int>(roundf(x * width_scale)), orig_width - 1);
       for (int c = 0; c < 3; c++) {
         int origOffset = calc_offset(y0, x0, c, orig_width, 3);
         int offset = calc_offset(c, y, x, height, width);
@@ -284,7 +290,8 @@ void nearest_neigh(unsigned char* image,
 /*   unsigned char* buffer = (unsigned char*) malloc(3 * 360 * 360 + 1); */
 /*   unsigned char* image = (unsigned char*) malloc(3 * height * width); */
 /*   for (off_t i = 0; i < num_samples; i++) { */
-/*     size_t ret = fread(buffer, sizeof(unsigned char), 3 * 360 * 360 + 1, file); */
+/*     size_t ret = fread(buffer, sizeof(unsigned char), 3 * 360 * 360 + 1,
+ * file); */
 /*     assert(ret = 3 * 360 * 360 + 1); */
 /*     if ((i+1) % 1000 == 0) */
 /*       log_app.print("Loaded %ld samples", i+1); */
@@ -294,7 +301,8 @@ void nearest_neigh(unsigned char* image,
 /*     off_t input_offset = i * 3 * height * width; */
 /*     off_t image_offset = 0; */
 /*     for (off_t h = 0; h < 3*height*width; h++) */
-/*         input_ptr[input_offset++] = static_cast<float>(image[image_offset++]) / 255; */
+/*         input_ptr[input_offset++] = static_cast<float>(image[image_offset++])
+ * / 255; */
 /*   } */
 /*   log_app.print("Finish loading %d samples from %s\n", */
 /*       num_samples, resnet->dataset_path.c_str()); */
@@ -307,21 +315,24 @@ void nearest_neigh(unsigned char* image,
 /*   Runtime* runtime = ff.config.lg_hlr; */
 /*   // Load input */
 /*   { */
-/*     IndexSpaceT<4> task_is = IndexSpaceT<4>(ff.get_or_create_task_is(4, "")); */
+/*     IndexSpaceT<4> task_is = IndexSpaceT<4>(ff.get_or_create_task_is(4, ""));
+ */
 /*     Rect<4> rect = runtime->get_index_space_domain(ctx, task_is); */
 /*     ArgumentMap argmap; */
 /*     int idx = next_index; */
 /*     for (PointInRectIterator<4> it(rect); it(); it++) { */
 /*       SampleIdxs meta; */
 /*       assert(ff.config.batchSize % (rect.hi[3] - rect.lo[3] + 1) == 0); */
-/*       meta.num_samples = ff.config.batchSize / (rect.hi[3] - rect.lo[3] + 1); */
+/*       meta.num_samples = ff.config.batchSize / (rect.hi[3] - rect.lo[3] + 1);
+ */
 /*       for (int i = 0; i < meta.num_samples; i++) */
 /*         meta.idxs[i] = idx++; */
 /*       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs))); */
 /*     } */
 /*     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, task_is, */
 /*                            TaskArgument(NULL,0), argmap, */
-//                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/, */
+//                            Predicate::TRUE_PRED, false/*must*/,
+//                            0/*mapper_id*/, */
 /*                            FFConfig::get_hash_id("")); */
 /*     launcher.add_region_requirement( */
 //         RegionRequirement(full_input->region, 0/*projection id*/, */
@@ -336,21 +347,24 @@ void nearest_neigh(unsigned char* image,
 /*   } */
 /*   // Load label */
 /*   { */
-/*     IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, "")); */
+/*     IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
+ */
 /*     Rect<2> rect = runtime->get_index_space_domain(ctx, task_is); */
 /*     ArgumentMap argmap; */
 /*     int idx = next_index; */
 /*     for (PointInRectIterator<2> it(rect); it(); it++) { */
 /*       SampleIdxs meta; */
 /*       assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0); */
-/*       meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1); */
+/*       meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+ */
 /*       for (int i = 0; i < meta.num_samples; i++) */
 /*         meta.idxs[i] = idx++; */
 /*       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs))); */
 /*     } */
 /*     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is, */
 /*                            TaskArgument(NULL,0), argmap, */
-//                            Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/, */
+//                            Predicate::TRUE_PRED, false/*must*/,
+//                            0/*mapper_id*/, */
 /*                            FFConfig::get_hash_id("")); */
 /*     launcher.add_region_requirement( */
 //         RegionRequirement(full_label->region, 0/*projection id*/, */
@@ -371,15 +385,14 @@ void nearest_neigh(unsigned char* image,
 /*   next_index = 0; */
 /* } */
 
-void FlexFlow::register_custom_tasks()
-{
-}
+void FlexFlow::register_custom_tasks() {}
 
 /* void register_custom_tasks() */
 /* { */
 /*   // Load entire dataset */
 /*   { */
-/*     TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_1, "Load Entire Dataset"); */
+/*     TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_1, "Load Entire
+ * Dataset"); */
 /*     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC)); */
 /*     registrar.set_leaf(); */
 /*     Runtime::preregister_task_variant<DataLoader::load_entire_dataset>( */
