@@ -1,7 +1,12 @@
 #ifndef _FLEXFLOW_POOL_2D_H
 #define _FLEXFLOW_POOL_2D_H
 
-#include "flexflow/model.h"
+#include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/node.h"
+#include "flexflow/device.h"
+#include "flexflow/layer.h"
 
 namespace FlexFlow {
 
@@ -31,11 +36,12 @@ struct Pool2DParams {
   bool is_valid(const ParallelTensor input) const;
   void solve_dims(const ParallelTensor input, 
                   ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims) const;
-  size_t get_hash(const ParallelTensor input) const;
 private:
   int output_size(const ParallelTensor input,
                   ParallelDim output_dims[MAX_TENSOR_DIM]) const; 
 };
+
+bool operator==(const Pool2DParams&, const Pool2DParams&);
 
 class Pool2DMeta : public OpMeta {
 public:
@@ -55,6 +61,9 @@ public:
 
 class Pool2D : public Op {
 public:
+  using Params = Pool2DParams;
+  using Input = ParallelTensor;
+
   Pool2D(FFModel& model,
          const ParallelTensor input,
          int kernelH, int kernelW,
@@ -66,6 +75,10 @@ public:
   Pool2D(FFModel& model,
          Pool2D const &other,
          ParallelTensor const input);
+  Pool2D(FFModel& model, 
+         const Params& params,
+         const Input input,
+         const char* name = nullptr);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
@@ -117,8 +130,7 @@ public:
 
   static void construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
 
-  Pool2DParams get_params() const;
-  size_t get_params_hash() const override;
+  Params get_params() const;
 private:
   int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]); 
 
@@ -131,5 +143,12 @@ public:
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+  template <>
+  struct hash<FlexFlow::Pool2DParams> {
+    size_t operator()(const FlexFlow::Pool2DParams&) const;
+  };
+}; // namespace std
 
 #endif //_FLEXFLOW_POOL_2D_H

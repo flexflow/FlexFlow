@@ -1,9 +1,24 @@
 #ifndef _ELEMENT_UNARY_H
 #define _ELEMENT_UNARY_H
 
-#include "flexflow/model.h"
+#include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/node.h"
+#include "flexflow/device.h"
+#include "flexflow/layer.h"
 
 namespace FlexFlow {
+
+struct ElementUnaryParams {
+  OperatorType op_type;
+  bool inplace;
+  float scalar;
+
+  bool is_valid(const ParallelTensorShape &) const;
+};
+
+bool operator==(const ElementUnaryParams &, const ElementUnaryParams &);
 
 class ElementUnaryMeta : public OpMeta {
 public:
@@ -23,12 +38,19 @@ public:
 
 class ElementUnary : public Op {
 public:
+  using Params = ElementUnaryParams;
+  using Input = ParallelTensor;
+
   ElementUnary(FFModel& model,
                OperatorType type,
                const ParallelTensor x,
                bool inplace,
                const char* name,
 	             float scalar);
+  ElementUnary(FFModel& model,
+               const Params& params,
+               const Input x,
+               const char* name = nullptr);
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
@@ -95,7 +117,7 @@ public:
   static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);
   Op *materialize(FFModel& ff, ParallelTensor inputs[], int num_inputs) const override;
 
-  size_t get_params_hash() const override;
+  Params get_params() const;
 private:
   bool inplace;
 public:
@@ -103,5 +125,12 @@ public:
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+  template <>
+  struct hash<FlexFlow::ElementUnaryParams> {
+    size_t operator()(const FlexFlow::ElementUnaryParams&) const;
+  }
+}
 
 #endif // _ELEMENT_UNARY_H
