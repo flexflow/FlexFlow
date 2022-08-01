@@ -8,7 +8,7 @@ jobs:
       matrix:
         path:
           - check: 'src'
-            exclude_regex: '\\.proto$'
+            exclude_regex: '\.proto$'
           - check: 'include'
           - check: 'nmt'
           - check: 'python'
