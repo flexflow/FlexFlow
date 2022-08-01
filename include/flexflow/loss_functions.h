@@ -16,53 +16,63 @@
 #ifndef _FF_LOSS_FUNCTIONS_H_
 #define _FF_LOSS_FUNCTIONS_H_
 
-#include "legion.h"
 #include "ffconst.h"
+#include "legion.h"
 #include "parallel_tensor.h"
 
 namespace FlexFlow {
 
 class FFModel;
 
-class Loss
-{
+class Loss {
 public:
-  Loss(const std::string& loss, bool _repl_labels=false);
-  Loss(LossType _loss_type, bool _repl_labels=false);
+  Loss(const std::string &loss, bool _repl_labels = false);
+  Loss(LossType _loss_type, bool _repl_labels = false);
 
   static void backward_task(const Legion::Task *task,
                             const std::vector<Legion::PhysicalRegion> &regions,
-                            Legion::Context ctx, Legion::Runtime *runtime);
-  template<int NDIM>
-  static void backward_task_with_dim(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
-                            Legion::Context ctx, Legion::Runtime *runtime);
-  void backward(FFModel* model, const ParallelTensor logit, const ParallelTensor label);
-  template<int NDIM>
-  void backward_with_dim(FFModel* model, const ParallelTensor logit, const ParallelTensor label);
-  static void sparse_categorical_crossentropy_loss_backward_kernel_wrapper(float *logit_grad_ptr,
-                                                                           const float *logit_ptr,
-                                                                           const int *label_ptr,
-                                                                           size_t logit_volume,
-                                                                           size_t logit_grad_volume,
-                                                                           int num_samples,
-                                                                           int num_classes,
-                                                                           int k,
-                                                                           float scale_factor);
-  static void categorical_crossentropy_loss_backward_kernel_wrapper(float *logit_grad_ptr,
-                                                                    const float *logit_ptr,
-                                                                    const float *label_ptr,
-                                                                    size_t logit_volume,
-                                                                    size_t logit_grad_volume,
-                                                                    float scale_factor);
-  static void mean_squared_error_avg_loss_backward_kernel_wrapper(float *logit_grad_ptr,
-                                                                  const float *logit_ptr,
-                                                                  const float *label_ptr,
-                                                                  size_t logit_volume,
-                                                                  size_t logit_grad_volume,
-                                                                  float scale_factor);
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
+  template <int NDIM>
+  static void
+  backward_task_with_dim(const Legion::Task *task,
+                         const std::vector<Legion::PhysicalRegion> &regions,
+                         Legion::Context ctx,
+                         Legion::Runtime *runtime);
+  void backward(FFModel *model,
+                const ParallelTensor logit,
+                const ParallelTensor label);
+  template <int NDIM>
+  void backward_with_dim(FFModel *model,
+                         const ParallelTensor logit,
+                         const ParallelTensor label);
+  static void sparse_categorical_crossentropy_loss_backward_kernel_wrapper(
+      float *logit_grad_ptr,
+      const float *logit_ptr,
+      const int *label_ptr,
+      size_t logit_volume,
+      size_t logit_grad_volume,
+      int num_samples,
+      int num_classes,
+      int k,
+      float scale_factor);
+  static void categorical_crossentropy_loss_backward_kernel_wrapper(
+      float *logit_grad_ptr,
+      const float *logit_ptr,
+      const float *label_ptr,
+      size_t logit_volume,
+      size_t logit_grad_volume,
+      float scale_factor);
+  static void
+  mean_squared_error_avg_loss_backward_kernel_wrapper(float *logit_grad_ptr,
+                                                      const float *logit_ptr,
+                                                      const float *label_ptr,
+                                                      size_t logit_volume,
+                                                      size_t logit_grad_volume,
+                                                      float scale_factor);
+
 public:
-  FFModel* model;
+  FFModel *model;
   LossType loss_type;
   bool repl_labels; // for aggregate_spec: More predictions than labels
   // scale factor for computing the logit gradients

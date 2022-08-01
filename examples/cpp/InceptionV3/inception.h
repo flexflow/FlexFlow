@@ -18,4 +18,3 @@
 
 using namespace Legion;
 using namespace std;
-

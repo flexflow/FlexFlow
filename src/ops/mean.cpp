@@ -13,10 +13,8 @@
  * limitations under the License.
  */
 
-#include <hip/hip_runtime.h>
 #include "flexflow/ops/mean.h"
 #include "flexflow/utils/hip_helper.h"
+#include <hip/hip_runtime.h>
 
-namespace FlexFlow {
-
-}; // namespace FlexFlow
+namespace FlexFlow {}; // namespace FlexFlow

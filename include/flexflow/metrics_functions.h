@@ -24,34 +24,37 @@ namespace FlexFlow {
 class FFModel;
 class Metrics;
 
-class PerfMetrics
-{
+class PerfMetrics {
 public:
   PerfMetrics(void);
-  void update(const PerfMetrics& one);
+  void update(const PerfMetrics &one);
   void apply_scale(float scale_factor);
-  void print(const Metrics* m);
+  void print(const Metrics *m);
+
 public:
   int train_all, train_correct; // measure_accuracy
-  float cce_loss; // measure_categorical_crossentropy
-  float sparse_cce_loss; // measure_sparse_categorical_crossentropy
-  float mse_loss; // measure_mean_squared_error
-  float rmse_loss; // measure_root_mean_squared_error
-  float mae_loss; // measure_mean_absolute_error
+  float cce_loss;               // measure_categorical_crossentropy
+  float sparse_cce_loss;        // measure_sparse_categorical_crossentropy
+  float mse_loss;               // measure_mean_squared_error
+  float rmse_loss;              // measure_root_mean_squared_error
+  float mae_loss;               // measure_mean_absolute_error
   double start_time;
 };
 
-class Metrics
-{
+class Metrics {
 public:
-  Metrics(LossType _loss_type, const std::vector<MetricsType>& metrics);
-  static PerfMetrics compute_task(const Legion::Task *task,
-                                  const std::vector<Legion::PhysicalRegion> &regions,
-                                  Legion::Context ctx, Legion::Runtime *runtime);
-  template<int NDIM>
-  static PerfMetrics compute_task_with_dim(const Legion::Task *task,
-                                  const std::vector<Legion::PhysicalRegion> &regions,
-                                  Legion::Context ctx, Legion::Runtime *runtime);
+  Metrics(LossType _loss_type, const std::vector<MetricsType> &metrics);
+  static PerfMetrics
+  compute_task(const Legion::Task *task,
+               const std::vector<Legion::PhysicalRegion> &regions,
+               Legion::Context ctx,
+               Legion::Runtime *runtime);
+  template <int NDIM>
+  static PerfMetrics
+  compute_task_with_dim(const Legion::Task *task,
+                        const std::vector<Legion::PhysicalRegion> &regions,
+                        Legion::Context ctx,
+                        Legion::Runtime *runtime);
   static void update_metrics_sparse_label_kernel_wrapper(const float *logit_ptr,
                                                          const int *label_ptr,
                                                          const Metrics *me,
@@ -64,9 +67,14 @@ public:
                                                   int num_samples,
                                                   int num_classes,
                                                   PerfMetrics &perf_zc);
-  void compute(FFModel* model, const ParallelTensor logit, const ParallelTensor label);
-  template<int NDIM>
-  void compute_with_dim(FFModel* model, const ParallelTensor logit, const ParallelTensor label);
+  void compute(FFModel *model,
+               const ParallelTensor logit,
+               const ParallelTensor label);
+  template <int NDIM>
+  void compute_with_dim(FFModel *model,
+                        const ParallelTensor logit,
+                        const ParallelTensor label);
+
 public:
   LossType loss_type;
   bool measure_accuracy;

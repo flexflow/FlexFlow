@@ -1,69 +1,50 @@
 #include "flexflow/model.h"
 
 using namespace Legion;
-using FlexFlow::Tensor;
+using FlexFlow::FFConfig;
 using FlexFlow::FFModel;
 using FlexFlow::Optimizer;
 using FlexFlow::SGDOptimizer;
-using FlexFlow::FFConfig;
+using FlexFlow::Tensor;
 
 LegionRuntime::Logger::Category log_app("resnext");
 
-Tensor resnext_block(FFModel &ff, Tensor input, int stride_h, int stride_w, int out_channels, int groups, bool has_residual=false) {
-  Tensor t = ff.conv2d(
-      input, 
-      out_channels,
-      1, 1,
-      1, 1,
-      0, 0, 
-      AC_MODE_RELU
-  );
+Tensor resnext_block(FFModel &ff,
+                     Tensor input,
+                     int stride_h,
+                     int stride_w,
+                     int out_channels,
+                     int groups,
+                     bool has_residual = false) {
+  Tensor t = ff.conv2d(input, out_channels, 1, 1, 1, 1, 0, 0, AC_MODE_RELU);
 
   t = ff.conv2d(
-      t, 
-      out_channels,
-      3, 3, 
-      stride_h, stride_w,
-      1, 1, 
-      AC_MODE_RELU,
-      groups
-  );
+      t, out_channels, 3, 3, stride_h, stride_w, 1, 1, AC_MODE_RELU, groups);
 
-  t = ff.conv2d(
-      t, 
-      2 * out_channels,
-      1, 1, 
-      1, 1, 
-      0, 0, 
-      AC_MODE_NONE
-  );
+  t = ff.conv2d(t, 2 * out_channels, 1, 1, 1, 1, 0, 0, AC_MODE_NONE);
 
   if ((stride_h > 1 || input->dims[2] != out_channels * 2) && has_residual) {
     input = ff.conv2d(
-        input, 
-        2 * out_channels,
-        1, 1, 
-        stride_h, stride_w,
-        0, 0, 
-        AC_MODE_RELU
-    );
+        input, 2 * out_channels, 1, 1, stride_h, stride_w, 0, 0, AC_MODE_RELU);
     t = ff.relu(ff.add(input, t), false);
   }
   return t;
 }
 
-void FlexFlow::top_level_task(const Task* task,
-                    const std::vector<PhysicalRegion> &regions,
-                    Context ctx, Runtime *runtime)
-{
+void FlexFlow::top_level_task(const Task *task,
+                              const std::vector<PhysicalRegion> &regions,
+                              Context ctx,
+                              Runtime *runtime) {
   FFConfig ffConfig;
   /* { */
   /*   const InputArgs &command_args = HighLevelRuntime::get_input_args(); */
   /*   char **argv = command_args.argv; */
   /*   int argc = command_args.argc; */
   /*   parse_input_args(argv, argc, resnetConfig); */
-    log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-        ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
+  log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
+                ffConfig.batchSize,
+                ffConfig.workersPerNode,
+                ffConfig.numNodes);
   /* } */
   FFModel ff(ffConfig);
 
@@ -74,21 +55,8 @@ void FlexFlow::top_level_task(const Task* task,
   }
 
   Tensor t = input;
-  t = ff.conv2d(
-      t, 
-      64, 
-      7, 7,
-      2, 2, 
-      3, 3,
-      AC_MODE_RELU
-  );
-  t = ff.pool2d(
-      t, 
-      3, 3, 
-      2, 2, 
-      1, 1, 
-      POOL_MAX
-  );
+  t = ff.conv2d(t, 64, 7, 7, 2, 2, 3, 3, AC_MODE_RELU);
+  t = ff.pool2d(t, 3, 3, 2, 2, 1, 1, POOL_MAX);
 
   int stride;
 
@@ -113,18 +81,12 @@ void FlexFlow::top_level_task(const Task* task,
   }
 
   t = ff.relu(t, false);
-  t = ff.pool2d(
-      t, 
-      t->dims[0], t->dims[1], 
-      1, 1, 
-      0, 0, 
-      POOL_AVG
-  );
+  t = ff.pool2d(t, t->dims[0], t->dims[1], 1, 1, 0, 0, POOL_AVG);
   t = ff.flat(t);
   t = ff.dense(t, 1000 /*1000*/);
   t = ff.softmax(t);
 
-  Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
+  Optimizer *optimizer = new SGDOptimizer(&ff, 0.001f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
@@ -132,7 +94,7 @@ void FlexFlow::top_level_task(const Task* task,
   // Data Loader
   /* DataLoader data_loader(ff, resnetConfig, input, ff.label_tensor); */
   ff.init_operators();
-  //Start timer
+  // Start timer
   {
     runtime->issue_execution_fence(ctx);
     TimingLauncher timer(MEASURE_MICRO_SECONDS);
@@ -153,12 +115,12 @@ void FlexFlow::top_level_task(const Task* task,
       /* } else { */
       /*   data_loader.next_batch(ff); */
       /* } */
-      runtime->begin_trace(ctx, 111/*trace_id*/);
+      runtime->begin_trace(ctx, 111 /*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      runtime->end_trace(ctx, 111/*trace_id*/);
+      runtime->end_trace(ctx, 111 /*trace_id*/);
     }
   }
   // End timer
@@ -170,10 +132,9 @@ void FlexFlow::top_level_task(const Task* task,
   }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
+         run_time,
          128 * ffConfig.batchSize * ffConfig.epochs / run_time);
 }
 
-void FlexFlow::register_custom_tasks()
-{
-}
+void FlexFlow::register_custom_tasks() {}

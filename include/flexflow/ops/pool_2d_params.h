@@ -12,24 +12,23 @@ struct Pool2DParams {
   ActiMode activation;
 
   bool is_valid(ParallelTensorShape const &input) const;
-  void solve_dims(ParallelTensorShape const &input, 
-                  ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims) const;
+  void solve_dims(ParallelTensorShape const &input,
+                  ParallelDim output_dims[MAX_TENSOR_DIM],
+                  int *output_ndims) const;
+
 private:
   int output_size(ParallelTensorShape const &input,
-                  ParallelDim output_dims[MAX_TENSOR_DIM]) const; 
+                  ParallelDim output_dims[MAX_TENSOR_DIM]) const;
 };
 
-bool operator==(const Pool2DParams&, const Pool2DParams&);
-
+bool operator==(const Pool2DParams &, const Pool2DParams &);
 
 } // namespace FlexFlow
 
 namespace std {
-  template <>
-  struct hash<FlexFlow::Pool2DParams> {
-    size_t operator()(const FlexFlow::Pool2DParams&) const;
-  };
+template <> struct hash<FlexFlow::Pool2DParams> {
+  size_t operator()(const FlexFlow::Pool2DParams &) const;
+};
 } // namespace std
-
 
 #endif // _FLEXFLOW_POOL_2D_PARAMS_H

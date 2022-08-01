@@ -1,11 +1,12 @@
 #ifndef _FLEXFLOW_DISJOINT_SET_H
 #define _FLEXFLOW_DISJOINT_SET_H
 
-#include <unordered_map>
+#include <cassert>
+#include <map>
 #include <set>
+#include <unordered_map>
 
-template <typename T>
-class m_disjoint_set {
+template <typename T> class m_disjoint_set {
 public:
   void m_union(T const *l, T const *r) {
     this->add_node_if_missing(l);
@@ -25,6 +26,7 @@ public:
       return this->find(parent);
     }
   }
+
 private:
   void add_node_if_missing(T const *t) {
     if (mapping.find(t) == mapping.end()) {
@@ -34,8 +36,7 @@ private:
   std::unordered_map<T const *, T const *> mapping;
 };
 
-template <typename T, typename Compare = std::less<T>>
-class disjoint_set {
+template <typename T, typename Compare = std::less<T>> class disjoint_set {
 public:
   void m_union(T const &l, T const &r) {
     this->nodes.insert(l);
@@ -53,10 +54,11 @@ public:
     }
     return mapping;
   }
+
 private:
   T const *get_node(T const &t) {
     auto it = this->nodes.find(t);
-    assert (it != this->nodes.end());
+    assert(it != this->nodes.end());
     return &*it;
   }
 

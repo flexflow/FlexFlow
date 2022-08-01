@@ -13,55 +13,60 @@
  * limitations under the License.
  */
 
-#include <hip/hip_runtime.h>
 #include "flexflow/ops/flat.h"
 #include "flexflow/utils/hip_helper.h"
+#include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
 /*static*/
-void Flat::forward_kernel(const float* input_ptr,
-                          float* output_ptr,
+void Flat::forward_kernel(const float *input_ptr,
+                          float *output_ptr,
                           size_t num_elements,
-                          hipStream_t stream)
-{
-  checkCUDA(hipMemcpyAsync(output_ptr, input_ptr,
-                            num_elements * sizeof(float),
-                            hipMemcpyDeviceToDevice, stream));
+                          hipStream_t stream) {
+  checkCUDA(hipMemcpyAsync(output_ptr,
+                           input_ptr,
+                           num_elements * sizeof(float),
+                           hipMemcpyDeviceToDevice,
+                           stream));
 }
 
 /*static*/
-void Flat::forward_kernel_wrapper(const float* input_ptr,
-                                  float* output_ptr,
-                                  size_t num_elements)
-{
+void Flat::forward_kernel_wrapper(const float *input_ptr,
+                                  float *output_ptr,
+                                  size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Flat::forward_kernel(input_ptr, output_ptr, num_elements, stream);
-  //checkCUDA(hipDeviceSynchronize());
+  // checkCUDA(hipDeviceSynchronize());
 }
 
-void Flat::backward_kernel(float* input_grad_ptr,
-                           const float* output_grad_ptr,
+void Flat::backward_kernel(float *input_grad_ptr,
+                           const float *output_grad_ptr,
                            size_t num_elements,
-                           hipStream_t stream)
-{
+                           hipStream_t stream) {
   float alpha = 1.0f;
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_add_with_scale<float>), GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream, 
-      input_grad_ptr, output_grad_ptr, num_elements, alpha);
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_add_with_scale<float>),
+                     GET_BLOCKS(num_elements),
+                     CUDA_NUM_THREADS,
+                     0,
+                     stream,
+                     input_grad_ptr,
+                     output_grad_ptr,
+                     num_elements,
+                     alpha);
 }
 
-void Flat::backward_kernel_wrapper(float* input_grad_ptr,
-                                   const float* output_grad_ptr,
-                                   size_t num_elements)
-{
+void Flat::backward_kernel_wrapper(float *input_grad_ptr,
+                                   const float *output_grad_ptr,
+                                   size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Flat::backward_kernel(input_grad_ptr, output_grad_ptr, num_elements, stream);
-  //checkCUDA(hipMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
-  //                          acc_input_grad.rect.volume() * sizeof(float),
-  //                          hipMemcpyDeviceToDevice));
-  //checkCUDA(hipDeviceSynchronize());
+  // checkCUDA(hipMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
+  //                           acc_input_grad.rect.volume() * sizeof(float),
+  //                           hipMemcpyDeviceToDevice));
+  // checkCUDA(hipDeviceSynchronize());
 }
 
 }; // namespace FlexFlow

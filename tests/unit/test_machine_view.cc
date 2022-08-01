@@ -1,12 +1,12 @@
-#include "gtest/gtest.h"
 #include "flexflow/config.h"
 #include "flexflow/machine_view.h"
+#include "gtest/gtest.h"
 
 using namespace Legion;
 using namespace FlexFlow;
 
 TEST(machine_view_get_domain, basic) {
-  MachineView mv;  
+  MachineView mv;
   mv.ndims = 1;
   mv.start_device_id = 2;
   mv.dim[0] = 2;
@@ -15,7 +15,8 @@ TEST(machine_view_get_domain, basic) {
   Domain d;
   d.dim = 1;
   d.rect_data[0] = 0;
-  d.rect_data[0+d.dim] = 1; // Domain is includes, MachineView is exclusive on hi
+  d.rect_data[0 + d.dim] =
+      1; // Domain is includes, MachineView is exclusive on hi
 
   EXPECT_EQ(mv.get_domain(), d);
 }

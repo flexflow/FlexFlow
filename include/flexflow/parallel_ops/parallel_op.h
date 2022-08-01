@@ -7,7 +7,7 @@
 namespace FlexFlow {
 
 struct ParallelOpInfo {
-friend void swap(ParallelOpInfo &, ParallelOpInfo &);
+  friend void swap(ParallelOpInfo &, ParallelOpInfo &);
 
   OperatorType op_type;
   int parallel_dim;
@@ -19,24 +19,27 @@ struct ParallelOpJoinResult {
   bool join_did_succeed = false;
 };
 
-ParallelOpJoinResult try_join_parallel_ops(ParallelOpInfo const &, ParallelOpInfo const &);
+ParallelOpJoinResult try_join_parallel_ops(ParallelOpInfo const &,
+                                           ParallelOpInfo const &);
 
 class ParallelOp : public Op {
 public:
-  ParallelOp(FFModel& model,
+  ParallelOp(FFModel &model,
              OperatorType type,
-             const char* _name,
+             const char *_name,
              const ParallelTensor input);
-  virtual void init(const FFModel&) = 0;
-  virtual void forward(const FFModel&) = 0;
-  virtual void backward(const FFModel&) = 0;
-  virtual void create_input_partition(FFModel& model) = 0;
-  void print_layer(const FFModel& model) {};
-  virtual bool measure_operator_cost(Simulator* sim,
-                             const MachineView& pc,
-                             CostMetrics& cost_metrics) const = 0;
-  virtual bool append_parallel_op_info(std::vector<ParallelOpInfo>& parallel_ops) const = 0;
+  virtual void init(const FFModel &) = 0;
+  virtual void forward(const FFModel &) = 0;
+  virtual void backward(const FFModel &) = 0;
+  virtual void create_input_partition(FFModel &model) = 0;
+  void print_layer(const FFModel &model){};
+  virtual bool measure_operator_cost(Simulator *sim,
+                                     const MachineView &pc,
+                                     CostMetrics &cost_metrics) const = 0;
+  virtual bool
+  append_parallel_op_info(std::vector<ParallelOpInfo> &parallel_ops) const = 0;
   virtual bool is_parallel_op() const;
+
 public:
   Legion::LogicalPartition input_lp, output_grad_lp;
 };

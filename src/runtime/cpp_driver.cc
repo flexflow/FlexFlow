@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "flexflow/model.h"
-#include "flexflow/mapper.h"
 #include "dirent.h"
+#include "flexflow/mapper.h"
+#include "flexflow/model.h"
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -23,8 +23,7 @@ using namespace FlexFlow;
 // ========================================================
 // Task and mapper registrations
 // ========================================================
-int main(int argc, char** argv)
-{
+int main(int argc, char **argv) {
   // This needs to be set, otherwise NCCL will try to use group kernel launches,
   // which are not compatible with the Realm CUDA hijack.
   setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);

@@ -26,25 +26,27 @@ struct MoeConfig {
   std::string dataset_path;
 };
 
-
 class DataLoader {
 public:
-  DataLoader(FFModel& ff, const MoeConfig& alexnet,
-             Tensor _input, Tensor _label);
+  DataLoader(FFModel &ff,
+             const MoeConfig &alexnet,
+             Tensor _input,
+             Tensor _label);
   static void load_input(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx,
-                         Runtime* runtime);
+                         Runtime *runtime);
   static void load_label(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx,
-                         Runtime* runtime);
+                         Runtime *runtime);
   static void load_entire_dataset(const Task *task,
                                   const std::vector<PhysicalRegion> &regions,
                                   Context ctx,
-                                  Runtime* runtime);
-  void next_batch(FFModel&);
+                                  Runtime *runtime);
+  void next_batch(FFModel &);
   void reset(void);
+
 public:
   int num_samples, next_index;
   Tensor full_input, batch_input;

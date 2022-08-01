@@ -13,47 +13,51 @@
  * limitations under the License.
  */
 
+#include "flexflow/ops/fused.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/batch_matmul.h"
+#include "flexflow/ops/batch_norm.h"
+#include "flexflow/ops/concat.h"
 #include "flexflow/ops/conv_2d.h"
+#include "flexflow/ops/dropout.h"
+#include "flexflow/ops/element_binary.h"
+#include "flexflow/ops/element_unary.h"
+#include "flexflow/ops/flat.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/pool_2d.h"
-#include "flexflow/ops/flat.h"
-#include "flexflow/ops/concat.h"
-#include "flexflow/ops/dropout.h"
-#include "flexflow/ops/batch_norm.h"
-#include "flexflow/ops/batch_matmul.h"
-#include "flexflow/ops/element_unary.h"
-#include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/transpose.h"
-#include "flexflow/ops/fused.h"
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
 using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
-using Legion::Predicate;
-using Legion::PointInRectIterator;
-using Legion::LogicalRegion;
+using Legion::Context;
+using Legion::Domain;
+using Legion::FutureMap;
+using Legion::IndexLauncher;
 using Legion::LogicalPartition;
+using Legion::LogicalRegion;
+using Legion::PointInRectIterator;
+using Legion::Predicate;
+using Legion::Rect;
+using Legion::RegionRequirement;
+using Legion::Runtime;
+using Legion::Task;
+using Legion::TaskArgument;
+using Legion::TaskLauncher;
 
-FusedOp::FusedOp(FFModel& model, Op* op)
-: Op(model, OP_FUSED, op->name, 0/*weights*/, 0/*weights*/, 0/*outputs*/)
-{
+FusedOp::FusedOp(FFModel &model, Op *op)
+    : Op(model,
+         OP_FUSED,
+         op->name,
+         0 /*weights*/,
+         0 /*weights*/,
+         0 /*outputs*/) {
   numInputs = op->numInputs;
   for (int i = 0; i < numInputs; i++) {
     inputs[i] = op->inputs[i];
-    //input_lps[i] = op->input_lps[i];
-    //input_grad_lps[i] = op->input_grad_lps[i];   
+    // input_lps[i] = op->input_lps[i];
+    // input_grad_lps[i] = op->input_grad_lps[i];
   }
   numWeights = op->numWeights;
   for (int i = 0; i < numWeights; i++) {
@@ -87,18 +91,19 @@ FusedOp::FusedOp(FFModel& model, Op* op)
   }
 }
 
-bool FusedOp::add_operator(FFModel& model, Op* op)
-{
-  //Context ctx = model.config.lg_ctx;
-  //Runtime* runtime = model.config.lg_hlr;
-  // Currently assume fusion optimization is performed
-  // after map_tensors
-  // So parallel_is and op->parallel_is are not empty
-  //Domain my_domain = runtime->get_index_space_domain(ctx, outputs[0]->parallel_is);
-  //Domain op_domain = runtime->get_index_space_domain(ctx, op->outputs[0]->parallel_is);
-  //ParallelConfig my_config, op_config;
-  //assert(model.config.find_parallel_config(my_domain.get_dim(), name, my_config));
-  //assert(model.config.find_parallel_config(op_domain.get_dim(), op->name, op_config));
+bool FusedOp::add_operator(FFModel &model, Op *op) {
+  // Context ctx = model.config.lg_ctx;
+  // Runtime* runtime = model.config.lg_hlr;
+  //  Currently assume fusion optimization is performed
+  //  after map_tensors
+  //  So parallel_is and op->parallel_is are not empty
+  // Domain my_domain = runtime->get_index_space_domain(ctx,
+  // outputs[0]->parallel_is); Domain op_domain =
+  // runtime->get_index_space_domain(ctx, op->outputs[0]->parallel_is);
+  // ParallelConfig my_config, op_config;
+  // assert(model.config.find_parallel_config(my_domain.get_dim(), name,
+  // my_config)); assert(model.config.find_parallel_config(op_domain.get_dim(),
+  // op->name, op_config));
   MachineView my_view = outputs[0]->machine_view;
   MachineView op_view = op->outputs[0]->machine_view;
   if (my_view == op_view) {
@@ -112,15 +117,16 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
     weight_offset += op_num_weights[i];
     output_offset += op_num_outputs[i];
   }
-  if ((input_offset + op->numInputs > MAX_NUM_FUSED_TENSORS)
-  || (weight_offset + op->numWeights > MAX_NUM_FUSED_TENSORS)
-  || (output_offset + op->numOutputs > MAX_NUM_FUSED_TENSORS))
-  {
+  if ((input_offset + op->numInputs > MAX_NUM_FUSED_TENSORS) ||
+      (weight_offset + op->numWeights > MAX_NUM_FUSED_TENSORS) ||
+      (output_offset + op->numOutputs > MAX_NUM_FUSED_TENSORS)) {
     fprintf(stderr, "Cannot fuse. Consider increase MAX_NUM_FUSED_TENSORS\n");
     return false;
   }
   if (numOperators + 1 > MAX_NUM_FUSED_OPERATORS) {
-    fprintf(stderr, "Reach to the fusion limit. Consider increase MAX_NUM_FUSED_OPERATORS");
+    fprintf(
+        stderr,
+        "Reach to the fusion limit. Consider increase MAX_NUM_FUSED_OPERATORS");
     return false;
   }
   // Set inputs
@@ -137,7 +143,7 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
         break;
       }
     for (int j = 0; j < output_offset; j++)
-      if ((outputs[j]->region == op->inputs[i]->region)&&(!found)) {
+      if ((outputs[j]->region == op->inputs[i]->region) && (!found)) {
         // This input is one of my outputs
         assert(!found);
         assert(outputs[j]->region != LogicalRegion::NO_REGION);
@@ -150,10 +156,10 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
       // Do nothing
     } else {
       inputs[numInputs] = op->inputs[i];
-      //input_lps[numInputs] = op->input_lps[i];
-      //input_grad_lps[numInputs] = op->input_grad_lps[i];
-      op_input_source[input_offset+i] = SOURCE_INPUT;
-      op_input_idx[input_offset+i] = numInputs;
+      // input_lps[numInputs] = op->input_lps[i];
+      // input_grad_lps[numInputs] = op->input_grad_lps[i];
+      op_input_source[input_offset + i] = SOURCE_INPUT;
+      op_input_idx[input_offset + i] = numInputs;
       numInputs += 1;
     }
   }
@@ -175,8 +181,8 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
       weights[numWeights] = op->weights[i];
       weights[numWeights]->owner_op = this;
       weights[numWeights]->owner_idx = numWeights;
-      op_weight_source[weight_offset+i] = SOURCE_WEIGHT;
-      op_weight_idx[weight_offset+i] = numWeights;
+      op_weight_source[weight_offset + i] = SOURCE_WEIGHT;
+      op_weight_idx[weight_offset + i] = numWeights;
       numWeights += 1;
     }
   }
@@ -187,16 +193,17 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
       if (outputs[j]->region == op->outputs[i]->region) {
         assert(!found);
         found = true;
-        op_output_source[output_offset+i] = SOURCE_OUTPUT;
-        op_output_idx[output_offset+i] = j;
+        op_output_source[output_offset + i] = SOURCE_OUTPUT;
+        op_output_idx[output_offset + i] = j;
       }
     }
-    if (found) continue;
+    if (found)
+      continue;
     outputs[numOutputs] = op->outputs[i];
     outputs[numOutputs]->owner_op = this;
     outputs[numOutputs]->owner_idx = numOutputs;
-    op_output_source[output_offset+i] = SOURCE_OUTPUT;
-    op_output_idx[output_offset+i] = numOutputs;
+    op_output_source[output_offset + i] = SOURCE_OUTPUT;
+    op_output_idx[output_offset + i] = numOutputs;
     numOutputs += 1;
   }
   assert(op->numInputs > 0);
@@ -210,41 +217,41 @@ bool FusedOp::add_operator(FFModel& model, Op* op)
   numOperators += 1;
   assert(numOperators <= MAX_NUM_FUSED_OPERATORS);
   if (numInputs > MAX_NUM_INPUTS) {
-    fprintf(stderr, "Reach to the #inputs limit during fusion.\n"
-        "Consider increase MAX_NUM_INPUTS to allow more fusions.\n");
+    fprintf(stderr,
+            "Reach to the #inputs limit during fusion.\n"
+            "Consider increase MAX_NUM_INPUTS to allow more fusions.\n");
     return false;
   }
   if (numWeights > MAX_NUM_WEIGHTS) {
-    fprintf(stderr, "Reach to the #weights limit during fusion.\n"
-        "Consider increase MAX_NUM_WEIGHTS to allow more fusions.\n");
+    fprintf(stderr,
+            "Reach to the #weights limit during fusion.\n"
+            "Consider increase MAX_NUM_WEIGHTS to allow more fusions.\n");
     return false;
   }
   if (numOutputs > MAX_NUM_OUTPUTS) {
-    fprintf(stderr, "Reach to the #outputs limit during fusion.\n"
-        "Consider increase MAX_NUM_OUTPUTS to allow more fusions.\n");
+    fprintf(stderr,
+            "Reach to the #outputs limit during fusion.\n"
+            "Consider increase MAX_NUM_OUTPUTS to allow more fusions.\n");
   }
   return true;
 }
 
 #ifdef DEADCODE
-void FusedOp::create_weights(FFModel& model)
-{
+void FusedOp::create_weights(FFModel &model) {
   assert(false && "Weights should be created before fusion optimizations");
 }
 
-void FusedOp::map_output_tensors(FFModel& model)
-{
+void FusedOp::map_output_tensors(FFModel &model) {
   assert(false && "Outputs should be created before fusion optimizations");
 }
 #endif
 
-void FusedOp::init(const FFModel& ff)
-{
+void FusedOp::init(const FFModel &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Runtime *runtime = ff.config.lg_hlr;
   // Call init methods in individual operators
   Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
   for (int i = 0; i < numOperators; i++) {
@@ -255,141 +262,167 @@ void FusedOp::init(const FFModel& ff)
   for (size_t j = 0; j < domain.get_volume(); j++)
     fused_meta[j].numOperators = numOperators;
   switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        argmap.set_point(*it, TaskArgument(&fused_meta[idx++], sizeof(FusedOpMeta))); \
-      } \
-      break; \
-    }
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      argmap.set_point(*it,                                                    \
+                       TaskArgument(&fused_meta[idx++], sizeof(FusedOpMeta))); \
+    }                                                                          \
+    break;                                                                     \
+  }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false);
+  default:
+    assert(false);
   }
-  IndexLauncher launcher(FUSEDOP_INIT_TASK_ID, parallel_is,
-      TaskArgument(this, sizeof(FusedOp)), argmap,
-      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      outputs[0]->machine_view.hash());
+  IndexLauncher launcher(FUSEDOP_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(FusedOp)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      Rect<DIM> rect = domain; \
-      int idx = 0; \
-      for (PointInRectIterator<DIM> it(rect); it(); it++) { \
-        meta[idx++] = fm.get_result<OpMeta*>(*it); \
-      } \
-      break; \
-    }
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      meta[idx++] = fm.get_result<OpMeta *>(*it);                              \
+    }                                                                          \
+    break;                                                                     \
+  }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false);
+  default:
+    assert(false);
   }
 }
 
-void FusedOp::forward(const FFModel& ff)
-{
+void FusedOp::forward(const FFModel &ff) {
   // Set iter_config
   iter_config = ff.iter_config;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(FUSEDOP_FWD_TASK_ID, parallel_is,
-      TaskArgument(NULL, 0), argmap,
-      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      outputs[0]->machine_view.hash());
+  IndexLauncher launcher(FUSEDOP_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
   int offset = 0;
   for (int i = 0; i < numInputs; i++) {
     assert(inputs[i]->part != LogicalPartition::NO_PART);
     assert(inputs[i]->region != LogicalRegion::NO_REGION);
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[i]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i]->region));
-    launcher.add_field(offset+i, FID_DATA);
+    launcher.add_region_requirement(RegionRequirement(inputs[i]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      inputs[i]->region));
+    launcher.add_field(offset + i, FID_DATA);
   }
   offset += numInputs;
   for (int i = 0; i < numWeights; i++) {
     assert(weights[i]->region != LogicalRegion::NO_REGION);
-    launcher.add_region_requirement(
-      RegionRequirement(weights[i]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, weights[i]->region));
-    launcher.add_field(offset+i, FID_DATA);
+    launcher.add_region_requirement(RegionRequirement(weights[i]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[i]->region));
+    launcher.add_field(offset + i, FID_DATA);
   }
   offset += numWeights;
   for (int i = 0; i < numOutputs; i++) {
     assert(outputs[i]->region != LogicalRegion::NO_REGION);
-    launcher.add_region_requirement(
-      RegionRequirement(outputs[i]->part, 0/*projection id*/,
-        WRITE_ONLY, EXCLUSIVE, outputs[i]->region));
-    launcher.add_field(offset+i, FID_DATA);
+    launcher.add_region_requirement(RegionRequirement(outputs[i]->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      outputs[i]->region));
+    launcher.add_field(offset + i, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
 }
 
-void FusedOp::backward(const FFModel& ff)
-{
+void FusedOp::backward(const FFModel &ff) {
   // Set iter_config
   iter_config = ff.iter_config;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(FUSEDOP_BWD_TASK_ID, parallel_is,
-      TaskArgument(this, sizeof(FusedOp)), argmap,
-      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      outputs[0]->machine_view.hash());
+  IndexLauncher launcher(FUSEDOP_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(FusedOp)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
   int idx = 0;
   for (int i = 0; i < numInputs; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[i]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i]->region));
+    launcher.add_region_requirement(RegionRequirement(inputs[i]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      inputs[i]->region));
     launcher.add_field(idx++, FID_DATA);
   }
   for (int i = 0; i < numWeights; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(weights[i]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, weights[i]->region));
+    launcher.add_region_requirement(RegionRequirement(weights[i]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[i]->region));
     launcher.add_field(idx++, FID_DATA);
   }
   for (int i = 0; i < numOutputs; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(outputs[i]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, outputs[i]->region));
+    launcher.add_region_requirement(RegionRequirement(outputs[i]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      outputs[i]->region));
     launcher.add_field(idx++, FID_DATA);
   }
   for (int i = 0; i < numInputs; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[i]->part_grad, 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i]->region_grad));
+    launcher.add_region_requirement(RegionRequirement(inputs[i]->part_grad,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      inputs[i]->region_grad));
     launcher.add_field(idx++, FID_DATA);
   }
   for (int i = 0; i < numWeights; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(weights[i]->part_grad, 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, weights[i]->region_grad));
+    launcher.add_region_requirement(RegionRequirement(weights[i]->part_grad,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      weights[i]->region_grad));
     launcher.add_field(idx++, FID_DATA);
   }
   for (int i = 0; i < numOutputs; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(outputs[i]->part_grad, 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, outputs[i]->region_grad));
+    launcher.add_region_requirement(RegionRequirement(outputs[i]->part_grad,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      outputs[i]->region_grad));
     launcher.add_field(idx++, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
 }
 
-bool FusedOp::measure_operator_cost(Simulator* sim,
-                                    const MachineView& mv,
-                                    CostMetrics& cost_metrics) const
-{
+bool FusedOp::measure_operator_cost(Simulator *sim,
+                                    const MachineView &mv,
+                                    CostMetrics &cost_metrics) const {
   // The search should happen before fusion
   assert(false);
   return false;
