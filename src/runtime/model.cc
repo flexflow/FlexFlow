@@ -306,19 +306,7 @@ ParallelConfig Op::get_random_parallel_config(const FFModel &ff) const {
         continue;
       candidates.push_back(i * ff.config.workersPerNode);
     }
-  assert(candidates.size() > 0);
-  int idx = std::rand() % candidates.size();
-  int num_parts = candidates[idx];
-  ParallelConfig pc;
-  pc.device_type = ParallelConfig::GPU;
-  pc.nDims = outputs[0]->num_dims;
-  for (int i = 0; i < pc.nDims; i++)
-    pc.dim[i] = i == pc.nDims - 1 ? num_parts : 1;
-  int total_num_devices = ff.config.workersPerNode * ff.config.numNodes;
-  int start_idx = std::rand() % (total_num_devices - num_parts + 1);
-  for (int i = 0; i < num_parts; i++)
-    pc.device_ids[i] = start_idx + i;
-  return pc;
+  assert(candidates.size() > 0); int idx = std::rand() % candidates.size(); int num_parts = candidates[idx]; ParallelConfig pc; pc.device_type = ParallelConfig::GPU; pc.nDims = outputs[0]->num_dims; for (int i = 0; i < pc.nDims; i++) pc.dim[i] = i == pc.nDims - 1 ? num_parts : 1; int total_num_devices = ff.config.workersPerNode * ff.config.numNodes; int start_idx = std::rand() % (total_num_devices - num_parts + 1); for (int i = 0; i < num_parts; i++) pc.device_ids[i] = start_idx + i; return pc;
 }
 
 int Op::get_dimension() const { return this->outputs[0]->num_dims; }
