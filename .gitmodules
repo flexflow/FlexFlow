@@ -13,3 +13,6 @@
 [submodule "deps/variant"]
 	path = deps/variant
 	url = https://github.com/mpark/variant
+[submodule "deps/optional"]
+	path = deps/optional
+	url = https://github.com/TartanLlama/optional.git
