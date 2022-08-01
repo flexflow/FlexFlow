@@ -13,9 +13,20 @@
  * limitations under the License.
  */
 #pragma once
-#include "flexflow/model.h"
+#include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/node.h"
+#include "flexflow/device.h"
+#include "flexflow/layer.h"
 
 namespace FlexFlow {
+
+struct CastParams {
+  DataType dtype;
+  bool is_valid(const ParallelTensorShape &) const;
+}
+bool operator==(const CastParams &, const CastParams &);
 
 class CastMeta : public OpMeta {
 public:
@@ -25,10 +36,16 @@ public:
 
 class Cast : public Op {
 public:
+  using Params = CastParams;
+  using Input = ParallelTensor;
   Cast(FFModel &model,
        ParallelTensor const &input,
        DataType dtype,
        char const *name);
+  Cast(FFModel &model,
+       Params const &params,
+       Input const &input,
+       char const *name = nullptr);
   void init(FFModel const &);
   void forward(FFModel const &);
   void backward(FFModel const &);
@@ -95,6 +112,15 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const;
+  
+  Params get_params() const;
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+  template <>
+  struct hash<FlexFlow::CastParams> {
+    size_t operator()(const FlexFlow::CastParams&) const;
+  };
+}; // namespace std
