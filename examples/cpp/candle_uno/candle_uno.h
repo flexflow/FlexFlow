@@ -30,19 +30,21 @@ struct CandleConfig {
 
 class DataLoader {
 public:
-  DataLoader(FFModel& ff, const CandleConfig& candle,
-             const std::vector<Tensor>& _all_inputs,
+  DataLoader(FFModel &ff,
+             const CandleConfig &candle,
+             const std::vector<Tensor> &_all_inputs,
              Tensor _label);
   static void load_input(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx,
-                         Runtime* runtime);
+                         Runtime *runtime);
   static void load_entire_dataset(const Task *task,
                                   const std::vector<PhysicalRegion> &regions,
                                   Context ctx,
-                                  Runtime* runtime);
-  void next_batch(FFModel&);
+                                  Runtime *runtime);
+  void next_batch(FFModel &);
   void reset(void);
+
 public:
   int num_samples, next_index;
   std::vector<Tensor> full_inputs, batch_inputs;
@@ -53,4 +55,3 @@ struct SampleIdxs {
   int num_samples;
   int idxs[MAX_NUM_SAMPLES];
 };
-
