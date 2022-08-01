@@ -3,6 +3,8 @@
 
 #include <set>
 #include <unordered_map>
+#include <map>
+#include <cassert>
 
 template <typename T> class m_disjoint_set {
 public:

@@ -31,7 +31,7 @@
 #include "recompile.h"
 #include "simulator.h"
 #include "tensor.h"
-#include "tl/optional.h"
+#include "tl/optional.hpp"
 #include "utils/dot/record_formatter.h"
 #include <functional>
 #include <unistd.h>

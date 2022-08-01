@@ -1,10 +1,14 @@
 #ifndef _RANDOM_UTILS_H
 #define _RANDOM_UTILS_H
 
+#include <vector>
+#include <cstdlib>
+#include <stdexcept>
+
 float randf();
 
 template <typename T> T select_random(std::vector<T> const &values) {
-  return values[rand() % values.size()];
+  return values[std::rand() % values.size()];
 }
 
 template <typename T>

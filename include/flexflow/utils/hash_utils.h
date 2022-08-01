@@ -4,6 +4,7 @@
 #include <functional>
 #include <tuple>
 #include <type_traits>
+#include <vector>
 
 // tuple hashing pulled from
 // https://www.variadic.xyz/2018/01/15/hashing-stdpair-and-stdtuple/

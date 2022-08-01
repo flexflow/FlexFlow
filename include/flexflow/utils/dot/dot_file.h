@@ -2,7 +2,7 @@
 #define _DOT_FILE_H
 
 #include "flexflow/utils/dot/record_formatter.h"
-#include "tl/optional.h"
+#include "tl/optional.hpp"
 #include <cassert>
 #include <fstream>
 #include <map>

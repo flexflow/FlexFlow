@@ -2,7 +2,7 @@
 #define _FLEXFLOW_SUBSTITUTION_LOADER_H
 
 #include "flexflow/ffconst.h"
-#include "tl/optional.h"
+#include "tl/optional.hpp"
 #include <fstream>
 #include <nlohmann/json.hpp>
 

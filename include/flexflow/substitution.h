@@ -20,7 +20,7 @@
 #include "flexflow/parallel_tensor.h"
 #include "flexflow/substitution_loader.h"
 #include "flexflow/utils/recursive_logger.h"
-#include "tl/optional.h"
+#include "tl/optional.hpp"
 #include <queue>
 
 namespace FlexFlow::PCG {
