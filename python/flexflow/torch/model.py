@@ -2375,9 +2375,6 @@ class PyTorchModel():
         # decouple the two implementations
 
     def _trace_model(self):
-        assert not torch.cuda.is_available(), \
-            "FlexFlow cannot work with CUDA version of PyTorch; " \
-            "please install the CPU version."
         if self.is_hf_model:
             from transformers.utils.fx import \
                 symbolic_trace as hf_symbolic_trace
@@ -2463,6 +2460,9 @@ class PyTorchModel():
         Returns:
             output_tensors (List[Tensor]): Output tensors of the model.
         """
+        assert not torch.cuda.is_available(), \
+            "FlexFlow cannot work with CUDA version of PyTorch; " \
+            "please install the CPU version."
         graph = self._trace_model()
         output_tensors = []
         node_to_output = OrderedDict()
@@ -2551,3 +2551,7 @@ class PyTorchModel():
         with open(filename, "w") as f:
             for line in s:
                 f.write(line + "\n")
+
+
+# Make the static method `file_to_ff()` available without importing `torch`
+file_to_ff = PyTorchModel.file_to_ff

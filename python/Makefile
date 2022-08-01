@@ -61,6 +61,8 @@ ifndef PYTHON_LIB
   endif
 endif
 
+$(info    VAR is $(PYTHON_EXE))
+
 # Put the binary file name here
 OUTFILE		  ?= flexflow_python
 
@@ -72,8 +74,8 @@ else
 GEN_HIP_SRC	  ?= flexflow_dataloader.cpp # .cpp files
 endif
 
-PYBIND_INC    = $(shell $$PYTHON_EXE -m pybind11 --includes)
-PYBIND_EXT    = $(shell $$PYTHON_EXE-config --extension-suffix)
+PYBIND_INC    = $(shell $(PYTHON_EXE) -m pybind11 --includes)
+PYBIND_EXT    = $(shell $(PYTHON_EXE)-config --extension-suffix)
 FF_BYBIND_LIB = flexflow/core/flexflow_pybind11_internal$(PYBIND_EXT)
 FF_BYBIND_LIB_NAME = flexflow_pybind11_internal$(PYBIND_EXT)
 INC_FLAGS     += -I${FF_HOME}
