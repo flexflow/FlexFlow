@@ -18,16 +18,22 @@
 
 //#define DISABLE_COMPUTATION
 #include "legion.h"
-#include <cudnn.h>
-#include <cuda_runtime.h>
-#include <curand.h>
 #include <cublas_v2.h>
+#include <cuda_runtime.h>
+#include <cudnn.h>
+#include <curand.h>
 #include <unistd.h>
 using namespace Legion;
 
-template<typename FT, int N, typename T = coord_t> using AccessorRO = FieldAccessor<READ_ONLY,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
-template<typename FT, int N, typename T = coord_t> using AccessorRW = FieldAccessor<READ_WRITE,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
-template<typename FT, int N, typename T = coord_t> using AccessorWO = FieldAccessor<WRITE_ONLY,FT,N,T,Realm::AffineAccessor<FT,N,T> >;
+template <typename FT, int N, typename T = coord_t>
+using AccessorRO =
+    FieldAccessor<READ_ONLY, FT, N, T, Realm::AffineAccessor<FT, N, T>>;
+template <typename FT, int N, typename T = coord_t>
+using AccessorRW =
+    FieldAccessor<READ_WRITE, FT, N, T, Realm::AffineAccessor<FT, N, T>>;
+template <typename FT, int N, typename T = coord_t>
+using AccessorWO =
+    FieldAccessor<WRITE_ONLY, FT, N, T, Realm::AffineAccessor<FT, N, T>>;
 
 #define MAX_NUM_INPUTS 6
 #define MAX_NUM_OUTPUTS 6
@@ -83,7 +89,7 @@ enum TaskIDs {
   RNN_SOFTMAXDP_BWD_TASK_ID,
   PARAMS_INIT_TASK_ID,
   PARAMS_UPD_TASK_ID,
-  WORD_INIT_TASK_ID, //DUMMY_TASK_ID: To be removed
+  WORD_INIT_TASK_ID, // DUMMY_TASK_ID: To be removed
   ZERO_1D_INIT_TASK_ID,
   ZERO_2D_INIT_TASK_ID,
   ZERO_3D_INIT_TASK_ID,
@@ -110,28 +116,29 @@ struct DnnHandle {
 };
 
 struct Tensor {
-//  Tensor(int _numDim, int* _dim, LogicalRegion lr, LogicalPartition lp)
-//  {
-//    numDim = _numDim;
-//    for (int i = 0; i < numDim; i++)
-//      dim[i] = _dim[i];
-//    region = lr;
-//    partition = lp;
-//  }
+  //  Tensor(int _numDim, int* _dim, LogicalRegion lr, LogicalPartition lp)
+  //  {
+  //    numDim = _numDim;
+  //    for (int i = 0; i < numDim; i++)
+  //      dim[i] = _dim[i];
+  //    region = lr;
+  //    partition = lp;
+  //  }
   int numDim, adim[MAX_DIM], pdim[MAX_DIM];
   LogicalRegion region, region_grad;
   LogicalPartition partition, partition_grad;
 };
 
 struct TensorWithGrad {
-  //int dim[MAX_DIM];
+  // int dim[MAX_DIM];
   LogicalRegion region, region_grad;
   LogicalPartition partition, partition_grad;
 };
 
 class OpMeta {
 public:
-  OpMeta(DnnHandle _handle) : handle(_handle) {};
+  OpMeta(DnnHandle _handle) : handle(_handle){};
+
 public:
   DnnHandle handle;
 };
@@ -143,28 +150,28 @@ class DataLoader;
 class Op {
 public:
   Op(Tensor input);
-  Op(int num, Tensor* inputs);
-  virtual void init(const CnnModel&) = 0;
+  Op(int num, Tensor *inputs);
+  virtual void init(const CnnModel &) = 0;
 
-  virtual void forward(const CnnModel&) = 0;
+  virtual void forward(const CnnModel &) = 0;
 
-  virtual void backward(const CnnModel&) = 0;
+  virtual void backward(const CnnModel &) = 0;
 
-  virtual void update(const CnnModel&) = 0;
+  virtual void update(const CnnModel &) = 0;
+
 public:
   Tensor output;
-  //Op* pre_ops[MAX_NUM_INPUTS];
+  // Op* pre_ops[MAX_NUM_INPUTS];
   Tensor inputs[MAX_NUM_INPUTS];
   LogicalPartition input_lps[MAX_NUM_INPUTS];
   TensorWithGrad locals[MAX_NUM_LOCALS];
-  OpMeta* meta[MAX_NUM_WORKERS];
-  //std::vector<LogicalRegion> inputs, grads;
+  OpMeta *meta[MAX_NUM_WORKERS];
+  // std::vector<LogicalRegion> inputs, grads;
 };
-
 
 DnnHandle init_cudnn(const Task *task,
                      const std::vector<PhysicalRegion> &regions,
-                     Context ctx, Runtime *runtime);
-
+                     Context ctx,
+                     Runtime *runtime);
 
 #endif // _LEGION_OPS_H_

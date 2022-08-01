@@ -5,7 +5,7 @@
 #include <memory>
 
 #define CONCAT(a, b) CONCAT_INNER(a, b)
-#define CONCAT_INNER(a, b) a ## b
+#define CONCAT_INNER(a, b) a##b
 #define UNIQUE_TAG() CONCAT(tag, __COUNTER__)
 #define TAG_ENTER(mlogger) auto UNIQUE_TAG() = mlogger->enter_tag()
 
@@ -19,9 +19,9 @@ public:
   DepthTag(RecursiveLogger &);
   DepthTag(DepthTag const &) = delete;
   ~DepthTag();
+
 private:
   RecursiveLogger &logger;
-
 };
 
 class RecursiveLogger {
@@ -36,6 +36,7 @@ public:
   void leave();
 
   std::unique_ptr<DepthTag> enter_tag();
+
 private:
   int depth = 0;
 
@@ -44,5 +45,5 @@ private:
   LegionRuntime::Logger::Category logger;
 };
 
-}; // namespace FlexFlow 
+};     // namespace FlexFlow
 #endif // _FLEXFLOW_RECURSIVE_LOGGER_H

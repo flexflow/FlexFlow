@@ -14,29 +14,28 @@
  */
 
 #include "flexflow/ops/concat.h"
-#include "legion/legion_utilities.h"
-#include "flexflow/utils/hash_utils.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
+#include "legion/legion_utilities.h"
 
 namespace FlexFlow {
 
 // declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::coord_t;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
 using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
+using Legion::Context;
+using Legion::coord_t;
+using Legion::Domain;
+using Legion::FutureMap;
+using Legion::IndexLauncher;
+using Legion::PhysicalRegion;
 using Legion::Predicate;
+using Legion::Rect;
+using Legion::RegionRequirement;
+using Legion::Runtime;
+using Legion::Task;
+using Legion::TaskArgument;
+using Legion::TaskLauncher;
 using PCG::Node;
-
 
 bool operator==(const ConcatParams &lhs, const ConcatParams &rhs) {
   return lhs.axis == rhs.axis;
@@ -53,13 +52,15 @@ ConcatParams Concat::get_params() const {
   return params;
 }
 
-Tensor FFModel::concat(int n,
-                       const Tensor* tensors,
-                       int axis,
-                       const char *name)
-{
-  Layer* concat = new Layer(this, OP_CONCAT, name, n/*inputs*/,
-                            0/*weights*/, 1/*outputs*/, tensors);
+Tensor
+FFModel::concat(int n, const Tensor *tensors, int axis, const char *name) {
+  Layer *concat = new Layer(this,
+                            OP_CONCAT,
+                            name,
+                            n /*inputs*/,
+                            0 /*weights*/,
+                            1 /*outputs*/,
+                            tensors);
   int numdim = tensors[0]->num_dims;
   // Making sure axis is between [0, numdim)
   axis = (axis % numdim + numdim) % numdim;
@@ -78,37 +79,44 @@ Tensor FFModel::concat(int n,
     }
   }
   concat->outputs[0] = create_tensor_legion_ordering(
-      numdim, dims, tensors[0]->data_type, concat, 0, true/*create_grad*/);
-  concat->add_int_property("legion_axis", numdim-axis-1);
+      numdim, dims, tensors[0]->data_type, concat, 0, true /*create_grad*/);
+  concat->add_int_property("legion_axis", numdim - axis - 1);
   layers.push_back(concat);
   return concat->outputs[0];
 #ifdef DEADCODE
   assert(axis < 0);
-  Concat *cat = new Concat(*this, n, tensors, -1-axis, name);
+  Concat *cat = new Concat(*this, n, tensors, -1 - axis, name);
   layers.push_back(cat);
   return cat->outputs[0];
 #endif
 }
 
-Op* Concat::create_operator_from_layer(
-    FFModel& model,
-    const Layer* layer,
-    const std::vector<ParallelTensor>& inputs) {
+Op *Concat::create_operator_from_layer(
+    FFModel &model,
+    const Layer *layer,
+    const std::vector<ParallelTensor> &inputs) {
   long long value;
   layer->get_int_property("legion_axis", value);
   int legion_axis = value;
-  return new Concat(model, inputs.size(), inputs.data(), legion_axis, layer->name);
+  return new Concat(
+      model, inputs.size(), inputs.data(), legion_axis, layer->name);
 }
 
-Concat::Concat(FFModel& model,
-               int _n, const ParallelTensor* _tensors,
+Concat::Concat(FFModel &model,
+               int _n,
+               const ParallelTensor *_tensors,
                int _legion_axis,
-               const char* name)
-: Op(model, OP_CONCAT, name, _n/*inputs*/, 0/*weights*/, 1/*outputs*/, _tensors),
-  legion_axis(_legion_axis)
-{
+               const char *name)
+    : Op(model,
+         OP_CONCAT,
+         name,
+         _n /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/,
+         _tensors),
+      legion_axis(_legion_axis) {
   printf("legion_axis = %d\n", legion_axis);
-  //TODO: swich to use the Legion dim ordering
+  // TODO: swich to use the Legion dim ordering
   int num_dim = inputs[0]->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < num_dim; i++)
@@ -128,46 +136,55 @@ Concat::Concat(FFModel& model,
     }
   }
   numOutputs = 1;
-  outputs[0] = model.create_parallel_tensor_legion_ordering(num_dim, dims, inputs[0]->data_type, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(
+      num_dim, dims, inputs[0]->data_type, this);
 }
 
-Concat::Concat(FFModel& model,
-               const ConcatParams& params,
-               const std::vector<ParallelTensor>& inputs,
-               const char* name)
-  : Concat(model, inputs.size(), inputs.data(), params.axis, name) {}
+Concat::Concat(FFModel &model,
+               const ConcatParams &params,
+               const std::vector<ParallelTensor> &inputs,
+               const char *name)
+    : Concat(model, inputs.size(), inputs.data(), params.axis, name) {}
 
-void Concat::init_meta(ConcatMeta *m) const
-{
+void Concat::init_meta(ConcatMeta *m) const {
   m->legion_axis = this->legion_axis;
 }
 
-void Concat::init(const FFModel& ff)
-{
+void Concat::init(const FFModel &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(CONCAT_INIT_TASK_ID, parallel_is,
-    TaskArgument(this, sizeof(Concat)), argmap,
-    Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-    outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0]->part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+  IndexLauncher launcher(CONCAT_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Concat)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[i]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i]->region));
+    launcher.add_region_requirement(RegionRequirement(inputs[i]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      inputs[i]->region));
     launcher.add_field(i + 1, FID_DATA);
   }
   for (int i = 0; i < numInputs; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[i]->part_grad, 0/*projection id*/,
-        WRITE_ONLY, EXCLUSIVE, inputs[i]->region_grad));
+    launcher.add_region_requirement(RegionRequirement(inputs[i]->part_grad,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      inputs[i]->region_grad));
     launcher.add_field(i + numInputs + 1, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
@@ -175,13 +192,13 @@ void Concat::init(const FFModel& ff)
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta* Concat::init_task(const Task *task,
+OpMeta *Concat::init_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
-                          Context ctx, Runtime *runtime)
-{
-  Concat* cc = (Concat*) task->args;
-  FFHandler handler = *((const FFHandler*) task->local_args);
-  ConcatMeta* m = new ConcatMeta(handler);
+                          Context ctx,
+                          Runtime *runtime) {
+  Concat *cc = (Concat *)task->args;
+  FFHandler handler = *((const FFHandler *)task->local_args);
+  ConcatMeta *m = new ConcatMeta(handler);
   // Note that our internal axis index ordering is opposite to other frameworks
   cc->init_meta(m);
   m->profiling = cc->profiling;
@@ -189,24 +206,31 @@ OpMeta* Concat::init_task(const Task *task,
   return m;
 }
 
-void Concat::forward(const FFModel& ff)
-{
+void Concat::forward(const FFModel &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(CONCAT_FWD_TASK_ID, parallel_is,
-                         TaskArgument(this, sizeof(Concat)), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+  IndexLauncher launcher(CONCAT_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Concat)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0]->part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[i]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i]->region));
+    launcher.add_region_requirement(RegionRequirement(inputs[i]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      inputs[i]->region));
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
@@ -218,50 +242,60 @@ void Concat::forward(const FFModel& ff)
 */
 void Concat::forward_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
-                          Context ctx, Runtime *runtime)
-{
-  const Concat* cc = (Concat*) task->args;
-  const ConcatMeta* m = *((ConcatMeta**) task->local_args);
+                          Context ctx,
+                          Runtime *runtime) {
+  const Concat *cc = (Concat *)task->args;
+  const ConcatMeta *m = *((ConcatMeta **)task->local_args);
   // Note that our internal axis index ordering is opposite to other frameworks
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
   Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  //assert(out_domain.get_dim() == cc->outputs[0].num_dims);
+  // assert(out_domain.get_dim() == cc->outputs[0].num_dims);
   Domain in_domain[MAX_NUM_INPUTS];
   for (int i = 0; i < cc->numInputs; i++)
     in_domain[i] = runtime->get_index_space_domain(
-        ctx, task->regions[i+1].region.get_index_space());
+        ctx, task->regions[i + 1].region.get_index_space());
   float *output = helperGetTensorPointerWO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   const float *inputs[MAX_NUM_INPUTS];
   for (int i = 0; i < cc->numInputs; i++)
     inputs[i] = helperGetTensorPointerRO<float>(
-        regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
-  
-  Concat::forward_kernel_wrapper(m, output, inputs, cc->numInputs, cc->legion_axis, out_domain, in_domain);
+        regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
+
+  Concat::forward_kernel_wrapper(
+      m, output, inputs, cc->numInputs, cc->legion_axis, out_domain, in_domain);
 }
 
-void Concat::backward(const FFModel& ff)
-{
+void Concat::backward(const FFModel &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(CONCAT_BWD_TASK_ID, parallel_is,
-    TaskArgument(this, sizeof(Concat)), argmap,
-    Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-    outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
+  IndexLauncher launcher(CONCAT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Concat)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[i]->part_grad, 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[i]->region_grad));
-    //LogicalRegion lr = inputs[i]->region_grad;
-    //printf("concat[%d]: region(%d,%d,%d)\n", i+1, lr.get_index_space().get_id(), lr.get_field_space().get_id(), lr.get_tree_id());
+    launcher.add_region_requirement(RegionRequirement(inputs[i]->part_grad,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      inputs[i]->region_grad));
+    // LogicalRegion lr = inputs[i]->region_grad;
+    // printf("concat[%d]: region(%d,%d,%d)\n", i+1,
+    // lr.get_index_space().get_id(), lr.get_field_space().get_id(),
+    // lr.get_tree_id());
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
@@ -273,48 +307,51 @@ void Concat::backward(const FFModel& ff)
 */
 void Concat::backward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime)
-{
-  const Concat* cc = (Concat*) task->args;
-  const ConcatMeta* m = *((ConcatMeta**) task->local_args);
+                           Context ctx,
+                           Runtime *runtime) {
+  const Concat *cc = (Concat *)task->args;
+  const ConcatMeta *m = *((ConcatMeta **)task->local_args);
   // Note that our internal axis index ordering is opposite to other frameworks
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
   assert(cc->numInputs <= MAX_NUM_INPUTS);
   Domain out_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  //assert(out_grad_domain.get_dim() == cc->outputs[0].num_dims);
+  // assert(out_grad_domain.get_dim() == cc->outputs[0].num_dims);
   Domain in_grad_domains[MAX_NUM_INPUTS];
   for (int i = 0; i < cc->numInputs; i++)
     in_grad_domains[i] = runtime->get_index_space_domain(
-        ctx, task->regions[i+1].region.get_index_space());
+        ctx, task->regions[i + 1].region.get_index_space());
   const float *output_grad = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float *input_grads[MAX_NUM_INPUTS];
   for (int i = 0; i < cc->numInputs; i++)
     input_grads[i] = helperGetTensorPointerRW<float>(
-        regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
+        regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
 
-  Concat::backward_kernel_wrapper(m, output_grad, input_grads, cc->numInputs, cc->legion_axis,
-                                  out_grad_domain, in_grad_domains);
+  Concat::backward_kernel_wrapper(m,
+                                  output_grad,
+                                  input_grads,
+                                  cc->numInputs,
+                                  cc->legion_axis,
+                                  out_grad_domain,
+                                  in_grad_domains);
 }
 
-bool Concat::get_int_parameter(PMParameter para, int* value) const
-{
+bool Concat::get_int_parameter(PMParameter para, int *value) const {
   switch (para) {
-    case PM_AXIS:
-      *value = legion_axis;
-      return true;
-    default:
-      return Op::get_int_parameter(para, value);
+  case PM_AXIS:
+    *value = legion_axis;
+    return true;
+  default:
+    return Op::get_int_parameter(para, value);
   }
 }
 
-bool Concat::measure_operator_cost(
-    Simulator* sim,
-    const MachineView& mv,
-    CostMetrics& cost_metrics) const {
-  assert (numInputs <= MAX_NUM_INPUTS);
+bool Concat::measure_operator_cost(Simulator *sim,
+                                   const MachineView &mv,
+                                   CostMetrics &cost_metrics) const {
+  assert(numInputs <= MAX_NUM_INPUTS);
   ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
@@ -333,7 +370,8 @@ bool Concat::measure_operator_cost(
   float *input_grad_ptrs[MAX_NUM_INPUTS];
   bool out_of_memory = false;
   for (int i = 0; i < numInputs; i++) {
-    input_ptrs[i] = (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
+    input_ptrs[i] =
+        (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
     out_of_memory = out_of_memory || (input_ptrs[i] == NULL);
   }
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
@@ -354,14 +392,22 @@ bool Concat::measure_operator_cost(
 
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel_wrapper(m, output_ptr, input_ptrs, numInputs, legion_axis, out_domain, in_domains);
+    forward_kernel_wrapper(m,
+                           output_ptr,
+                           input_ptrs,
+                           numInputs,
+                           legion_axis,
+                           out_domain,
+                           in_domains);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     for (int i = 0; i < numInputs; i++) {
-      input_grad_ptrs[i] = (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
+      input_grad_ptrs[i] =
+          (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
       out_of_memory = out_of_memory || (input_grad_ptrs[i] == NULL);
     }
-    float *output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    float *output_grad_ptr =
+        (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     out_of_memory = out_of_memory || (output_grad_ptr == NULL);
     if (out_of_memory) {
       cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
@@ -369,30 +415,36 @@ bool Concat::measure_operator_cost(
       return true;
     }
     backward = [&] {
-      backward_kernel_wrapper(m, output_grad_ptr, input_grad_ptrs,
-                              numInputs, legion_axis, out_domain, in_domains);
+      backward_kernel_wrapper(m,
+                              output_grad_ptr,
+                              input_grad_ptrs,
+                              numInputs,
+                              legion_axis,
+                              out_domain,
+                              in_domains);
     };
   }
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   if (sim->computationMode == COMP_MODE_TRAINING) {
-    printf("[Measure Concat] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+    printf(
+        "[Measure Concat] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
         name,
         cost_metrics.forward_time,
         cost_metrics.backward_time);
   } else {
     printf("[Measure Concat] name(%s) forward_time(%.4lf)\n",
-        name, cost_metrics.forward_time);
+           name,
+           cost_metrics.forward_time);
   }
 
   return true;
 }
 
 Node FFModel::get_or_create_concat_node(int num_inputs,
-                                        const ParallelTensor* inputs,
-                                        int legion_axis)
-{
+                                        const ParallelTensor *inputs,
+                                        int legion_axis) {
   std::vector<ParallelTensor> _inputs;
   for (int i = 0; i < num_inputs; ++i) {
     _inputs.push_back(inputs[i]);
@@ -407,7 +459,8 @@ Node FFModel::get_or_create_concat_node(int num_inputs,
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::ConcatParams>::operator()(const FlexFlow::ConcatParams &params) const {
-    return hash<int>{}(params.axis);
-  }
+size_t hash<FlexFlow::ConcatParams>::operator()(
+    const FlexFlow::ConcatParams &params) const {
+  return hash<int>{}(params.axis);
+}
 }; // namespace std

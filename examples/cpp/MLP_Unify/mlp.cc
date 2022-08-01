@@ -13,23 +13,27 @@
  * limitations under the License.
  */
 
-#include <sstream>
-#include <fstream>
-#include <string>
 #include "flexflow/model.h"
+#include <fstream>
+#include <sstream>
+#include <string>
 using namespace Legion;
 using namespace FlexFlow;
 
-void FlexFlow::top_level_task(const Task* task,
-                    const std::vector<PhysicalRegion>& regions,
-                    Context ctx, Runtime* runtime)
-{
+void FlexFlow::top_level_task(const Task *task,
+                              const std::vector<PhysicalRegion> &regions,
+                              Context ctx,
+                              Runtime *runtime) {
   FFConfig ffConfig;
-  fprintf(stderr, "batchSize(%d) workersPerNodes(%d) numNodes(%d)\n",
-      ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
+  fprintf(stderr,
+          "batchSize(%d) workersPerNodes(%d) numNodes(%d)\n",
+          ffConfig.batchSize,
+          ffConfig.workersPerNode,
+          ffConfig.numNodes);
   FFModel ff(ffConfig);
 
-  std::vector<int> hidden_dims = {8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192};
+  std::vector<int> hidden_dims = {
+      8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192};
   Tensor input1, input2;
   {
     const int dims[] = {ffConfig.batchSize, 1024};
@@ -39,19 +43,20 @@ void FlexFlow::top_level_task(const Task* task,
   Tensor t1 = input1, t2 = input2;
   for (size_t i = 0; i < hidden_dims.size(); i++) {
     const int dims[] = {hidden_dims[i], t1->dims[0]};
-    ActiMode acti_mode = (i+1 == hidden_dims.size()) ? AC_MODE_NONE: AC_MODE_RELU;
+    ActiMode acti_mode =
+        (i + 1 == hidden_dims.size()) ? AC_MODE_NONE : AC_MODE_RELU;
     t1 = ff.dense(t1, hidden_dims[i], acti_mode, false);
     t2 = ff.dense(t2, hidden_dims[i], acti_mode, false);
   }
   Tensor t = ff.add(t1, t2);
   t = ff.softmax(t);
-  Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
+  Optimizer *optimizer = new SGDOptimizer(&ff, 0.001f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
   ff.init_operators();
-  //Start timer
+  // Start timer
   {
     runtime->issue_execution_fence(ctx);
     TimingLauncher timer(MEASURE_MICRO_SECONDS);
@@ -63,12 +68,12 @@ void FlexFlow::top_level_task(const Task* task,
     ff.reset_metrics();
     int iterations = 128;
     for (int iter = 0; iter < iterations; iter++) {
-      runtime->begin_trace(ctx, 111/*trace_id*/);
+      runtime->begin_trace(ctx, 111 /*trace_id*/);
       ff.forward();
       ff.zero_gradients();
-      //ff.backward();
-      //ff.update();
-      runtime->end_trace(ctx, 111/*trace_id*/);
+      // ff.backward();
+      // ff.update();
+      runtime->end_trace(ctx, 111 /*trace_id*/);
     }
   }
   // End timer
@@ -80,10 +85,9 @@ void FlexFlow::top_level_task(const Task* task,
   }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
+         run_time,
          ffConfig.batchSize * 128 * ffConfig.epochs / run_time);
 }
 
-void FlexFlow::register_custom_tasks()
-{
-}
+void FlexFlow::register_custom_tasks() {}

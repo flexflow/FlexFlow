@@ -18,52 +18,54 @@
 
 namespace FlexFlow {
 
-template<typename T>
-__global__
-void reduction_forward_kernel(
-    const T* input_ptr,
-    T* output_ptr,
-    size_t num_elements,
-    size_t num_replicas)
-{
-  CUDA_KERNEL_LOOP(i, num_elements)
-  {
+template <typename T>
+__global__ void reduction_forward_kernel(const T *input_ptr,
+                                         T *output_ptr,
+                                         size_t num_elements,
+                                         size_t num_replicas) {
+  CUDA_KERNEL_LOOP(i, num_elements) {
     output_ptr[i] = input_ptr[i];
     for (size_t j = 1; j < num_replicas; j++)
       output_ptr[i] += input_ptr[i + j * num_elements];
   }
 }
 
-template<typename T>
-void Reduction::forward_kernel(
-    const T* input_ptr,
-    T* output_ptr,
-    size_t num_elements,
-    size_t num_replicas)
-{
+template <typename T>
+void Reduction::forward_kernel(const T *input_ptr,
+                               T *output_ptr,
+                               size_t num_elements,
+                               size_t num_replicas) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   size_t total_elements = num_elements * num_replicas;
-  reduction_forward_kernel<T><<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS, 0, stream>>>(
-      input_ptr, output_ptr, num_elements, num_replicas);
+  reduction_forward_kernel<T>
+      <<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS, 0, stream>>>(
+          input_ptr, output_ptr, num_elements, num_replicas);
 }
 
-template<typename T>
-void Reduction::backward_kernel(
-    const T* output_grad_ptr,
-    T* input_grad_ptr,
-    size_t num_elements)
-{
+template <typename T>
+void Reduction::backward_kernel(const T *output_grad_ptr,
+                                T *input_grad_ptr,
+                                size_t num_elements) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  checkCUDA(cudaMemcpyAsync(input_grad_ptr, output_grad_ptr,
-      num_elements * sizeof(T),
-      cudaMemcpyDeviceToDevice,
-      stream));
+  checkCUDA(cudaMemcpyAsync(input_grad_ptr,
+                            output_grad_ptr,
+                            num_elements * sizeof(T),
+                            cudaMemcpyDeviceToDevice,
+                            stream));
 }
 
-template __global__ void reduction_forward_kernel<float>(const float* input_ptr, float* output_ptr, size_t num_elements, size_t num_replicas);
-template void Reduction::forward_kernel<float>(const float* input_ptr, float* output_ptr, size_t num_elements, size_t num_replicas);
-template void Reduction::backward_kernel<float>(const float* output_grad_ptr, float* input_grad_ptr, size_t num_elements);
+template __global__ void reduction_forward_kernel<float>(const float *input_ptr,
+                                                         float *output_ptr,
+                                                         size_t num_elements,
+                                                         size_t num_replicas);
+template void Reduction::forward_kernel<float>(const float *input_ptr,
+                                               float *output_ptr,
+                                               size_t num_elements,
+                                               size_t num_replicas);
+template void Reduction::backward_kernel<float>(const float *output_grad_ptr,
+                                                float *input_grad_ptr,
+                                                size_t num_elements);
 
 }; // namespace FlexFlow

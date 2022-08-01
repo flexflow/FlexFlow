@@ -1,15 +1,20 @@
 #ifndef _RANDOM_UTILS_H
 #define _RANDOM_UTILS_H
 
+#include <cstdlib>
+#include <stdexcept>
+#include <vector>
+
 float randf();
 
-template <typename T>
-T select_random(std::vector<T> const &values) {
-  return values[rand() % values.size()];
+template <typename T> T select_random(std::vector<T> const &values) {
+  return values[std::rand() % values.size()];
 }
 
 template <typename T>
-T select_random_determistic(std::vector<T> const &values, std::vector<float> const &weights, float value) {
+T select_random_determistic(std::vector<T> const &values,
+                            std::vector<float> const &weights,
+                            float value) {
   if (values.empty()) {
     throw std::invalid_argument("Values list must not be empty.");
   }
@@ -29,11 +34,11 @@ T select_random_determistic(std::vector<T> const &values, std::vector<float> con
     curr += weights[i];
   }
   return values[i];
-
 }
 
 template <typename T>
-T select_random(std::vector<T> const &values, std::vector<float> const &weights) {
+T select_random(std::vector<T> const &values,
+                std::vector<float> const &weights) {
   return select_random_determistic<T>(values, weights, randf());
 }
 

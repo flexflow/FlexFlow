@@ -1,55 +1,62 @@
-#include <vector>
-#include <queue>
-#include <limits>
-#include <random>
-#include <utility>
 #include <cmath>
-#include <unordered_set>
 #include <functional>
+#include <limits>
+#include <queue>
+#include <random>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 #include "flexflow/simulator.h"
 namespace FlexFlow {
-#define PRINT_EDGE(e, n) do {std::cout << "(" << e / n << ", " << e % n << ")";} while (0);
+#define PRINT_EDGE(e, n)                                                       \
+  do {                                                                         \
+    std::cout << "(" << e / n << ", " << e % n << ")";                         \
+  } while (0);
 
-#define INSERT_OR_ADD(_map, _key, _val) do {                                \
-  if ((_map).find(_key) == (_map).end()) {                                  \
-    (_map)[(_key)] = _val;                                                  \
-  } else {                                                                  \
-    (_map)[(_key)] += _val;                                                 \
-  }                                                                         \
-} while (0);                                                                \
+#define INSERT_OR_ADD(_map, _key, _val)                                        \
+  do {                                                                         \
+    if ((_map).find(_key) == (_map).end()) {                                   \
+      (_map)[(_key)] = _val;                                                   \
+    } else {                                                                   \
+      (_map)[(_key)] += _val;                                                  \
+    }                                                                          \
+  } while (0);
 
-static std::random_device rd; 
-static std::mt19937 gen = std::mt19937(rd()); 
+static std::random_device rd;
+static std::mt19937 gen = std::mt19937(rd());
 static std::uniform_real_distribution<float> unif(0, 1);
 
 // for summing connections...
 template <typename T>
-static std::vector<T> operator+(const std::vector<T>& a, const std::vector<T>& b)
-{
+static std::vector<T> operator+(const std::vector<T> &a,
+                                const std::vector<T> &b) {
   assert(a.size() == b.size());
 
   std::vector<T> result;
   result.reserve(a.size());
 
-  std::transform(a.begin(), a.end(), b.begin(), 
-                  std::back_inserter(result), std::plus<T>());
+  std::transform(a.begin(),
+                 a.end(),
+                 b.begin(),
+                 std::back_inserter(result),
+                 std::plus<T>());
   return result;
 }
 
 WeightedShortestPathRoutingStrategy::WeightedShortestPathRoutingStrategy(
-    const ConnectionMatrix & c, 
-    const std::map<size_t, CommDevice*>& devmap,
-    int total_devs) 
-: conn(c), devmap(devmap), total_devs(total_devs)
-{} 
+    const ConnectionMatrix &c,
+    const std::map<size_t, CommDevice *> &devmap,
+    int total_devs)
+    : conn(c), devmap(devmap), total_devs(total_devs) {}
 
-EcmpRoutes WeightedShortestPathRoutingStrategy::get_routes(int src_node, int dst_node) 
-{
+EcmpRoutes WeightedShortestPathRoutingStrategy::get_routes(int src_node,
+                                                           int dst_node) {
   int key = src_node * total_devs + dst_node;
 
   if (conn[key] > 0) {
-    return std::make_pair(std::vector<float>({1}), std::vector<Route>({Route({devmap.at(key)})}));
+    return std::make_pair(std::vector<float>({1}),
+                          std::vector<Route>({Route({devmap.at(key)})}));
   }
 
   // one-shortest path routing
@@ -57,9 +64,10 @@ EcmpRoutes WeightedShortestPathRoutingStrategy::get_routes(int src_node, int dst
   std::vector<int> prev(total_devs, -1);
   std::vector<bool> visited(total_devs, false);
 
-  std::priority_queue<std::pair<uint64_t, uint64_t>, 
-                      std::vector<std::pair<uint64_t, uint64_t> >,
-                      std::greater<std::pair<uint64_t, uint64_t> > > pq;
+  std::priority_queue<std::pair<uint64_t, uint64_t>,
+                      std::vector<std::pair<uint64_t, uint64_t>>,
+                      std::greater<std::pair<uint64_t, uint64_t>>>
+      pq;
   pq.push(std::make_pair(dist[src_node], src_node));
   dist[src_node] = 0;
 
@@ -75,7 +83,8 @@ EcmpRoutes WeightedShortestPathRoutingStrategy::get_routes(int src_node, int dst
       if (visited[i] || conn[min_node * total_devs + i] == 0) {
         continue;
       }
-      float new_dist = dist[min_node] + 1; // numeric_limits<uint64_t>::max() / get_bandwidth_bps(min_node, i);
+      float new_dist = dist[min_node] + 1; // numeric_limits<uint64_t>::max() /
+                                           // get_bandwidth_bps(min_node, i);
       if (new_dist < dist[i] || (new_dist == dist[i] && unif(gen) < 0.5)) {
         dist[i] = new_dist;
         prev[i] = min_node;
@@ -94,8 +103,10 @@ EcmpRoutes WeightedShortestPathRoutingStrategy::get_routes(int src_node, int dst
   return std::make_pair(std::vector<float>{1}, std::vector<Route>{result});
 }
 
-void WeightedShortestPathRoutingStrategy::hop_count(int src_node, int dst_node, int & hop, int & narrowest)
-{
+void WeightedShortestPathRoutingStrategy::hop_count(int src_node,
+                                                    int dst_node,
+                                                    int &hop,
+                                                    int &narrowest) {
   int key = src_node * total_devs + dst_node;
 
   if (conn[key] > 0) {
@@ -108,9 +119,10 @@ void WeightedShortestPathRoutingStrategy::hop_count(int src_node, int dst_node, 
   std::vector<int> prev(total_devs, -1);
   std::vector<bool> visited(total_devs, false);
 
-  std::priority_queue<std::pair<uint64_t, uint64_t>, 
-                      std::vector<std::pair<uint64_t, uint64_t> >,
-                      std::greater<std::pair<uint64_t, uint64_t> > > pq;
+  std::priority_queue<std::pair<uint64_t, uint64_t>,
+                      std::vector<std::pair<uint64_t, uint64_t>>,
+                      std::greater<std::pair<uint64_t, uint64_t>>>
+      pq;
   pq.push(std::make_pair(dist[src_node], src_node));
   dist[src_node] = 0;
   while (!pq.empty()) {
@@ -123,7 +135,8 @@ void WeightedShortestPathRoutingStrategy::hop_count(int src_node, int dst_node, 
       if (visited[i] || conn[min_node * total_devs + i] == 0) {
         continue;
       }
-      float new_dist = dist[min_node] + 1; // numeric_limits<uint64_t>::max() / get_bandwidth_bps(min_node, i);
+      float new_dist = dist[min_node] + 1; // numeric_limits<uint64_t>::max() /
+                                           // get_bandwidth_bps(min_node, i);
       if (new_dist < dist[i]) {
         dist[i] = new_dist;
         prev[i] = min_node;
@@ -135,23 +148,24 @@ void WeightedShortestPathRoutingStrategy::hop_count(int src_node, int dst_node, 
   narrowest = std::numeric_limits<int>::max();
   int curr = dst_node;
   while (prev[curr] != -1) {
-    if (narrowest > conn[prev[curr] * total_devs + curr]) narrowest = conn[prev[curr] * total_devs + curr];
+    if (narrowest > conn[prev[curr] * total_devs + curr])
+      narrowest = conn[prev[curr] * total_devs + curr];
     hop++;
     curr = prev[curr];
   }
   assert(hop > 0 || src_node == dst_node);
 }
 
-
-std::vector<EcmpRoutes> WeightedShortestPathRoutingStrategy::get_routes_from_src(int src_node) 
-{
+std::vector<EcmpRoutes>
+WeightedShortestPathRoutingStrategy::get_routes_from_src(int src_node) {
   std::vector<uint64_t> dist(total_devs, std::numeric_limits<uint64_t>::max());
   std::vector<int> prev(total_devs, -1);
   std::vector<bool> visited(total_devs, false);
 
-  std::priority_queue<std::pair<uint64_t, uint64_t>, 
-                      std::vector<std::pair<uint64_t, uint64_t> >,
-                      std::greater<std::pair<uint64_t, uint64_t> > > pq;
+  std::priority_queue<std::pair<uint64_t, uint64_t>,
+                      std::vector<std::pair<uint64_t, uint64_t>>,
+                      std::greater<std::pair<uint64_t, uint64_t>>>
+      pq;
   pq.push(std::make_pair(dist[src_node], src_node));
   dist[src_node] = 0;
   while (!pq.empty()) {
@@ -163,7 +177,8 @@ std::vector<EcmpRoutes> WeightedShortestPathRoutingStrategy::get_routes_from_src
       if (visited[i] || conn[min_node * total_devs + i] == 0) {
         continue;
       }
-      float new_dist = dist[min_node] + 1; // numeric_limits<uint64_t>::max() / get_bandwidth_bps(min_node, i);
+      float new_dist = dist[min_node] + 1; // numeric_limits<uint64_t>::max() /
+                                           // get_bandwidth_bps(min_node, i);
       if (new_dist < dist[i]) {
         dist[i] = new_dist;
         prev[i] = min_node;
@@ -174,7 +189,8 @@ std::vector<EcmpRoutes> WeightedShortestPathRoutingStrategy::get_routes_from_src
   std::vector<EcmpRoutes> final_result;
   for (int i = 0; i < total_devs; i++) {
     if (i == src_node) {
-      final_result.emplace_back(std::make_pair(std::vector<float>{}, std::vector<Route>{}));
+      final_result.emplace_back(
+          std::make_pair(std::vector<float>{}, std::vector<Route>{}));
       continue;
     }
     Route result = Route();
@@ -184,20 +200,22 @@ std::vector<EcmpRoutes> WeightedShortestPathRoutingStrategy::get_routes_from_src
       curr = prev[curr];
     }
     assert(result.size() > 0);
-    final_result.emplace_back(std::make_pair(std::vector<float>{1}, std::vector<Route>{result}));
+    final_result.emplace_back(
+        std::make_pair(std::vector<float>{1}, std::vector<Route>{result}));
   }
-  return final_result; 
+  return final_result;
 }
 
-std::vector<std::pair<int, int>> WeightedShortestPathRoutingStrategy::hop_count(int src_node) 
-{
+std::vector<std::pair<int, int>>
+WeightedShortestPathRoutingStrategy::hop_count(int src_node) {
   std::vector<uint64_t> dist(total_devs, std::numeric_limits<uint64_t>::max());
   std::vector<int> prev(total_devs, -1);
   std::vector<bool> visited(total_devs, false);
 
-  std::priority_queue<std::pair<uint64_t, uint64_t>, 
-                      std::vector<std::pair<uint64_t, uint64_t> >,
-                      std::greater<std::pair<uint64_t, uint64_t> > > pq;
+  std::priority_queue<std::pair<uint64_t, uint64_t>,
+                      std::vector<std::pair<uint64_t, uint64_t>>,
+                      std::greater<std::pair<uint64_t, uint64_t>>>
+      pq;
   pq.push(std::make_pair(dist[src_node], src_node));
   dist[src_node] = 0;
   while (!pq.empty()) {
@@ -209,7 +227,8 @@ std::vector<std::pair<int, int>> WeightedShortestPathRoutingStrategy::hop_count(
       if (visited[i] || conn[min_node * total_devs + i] == 0) {
         continue;
       }
-      float new_dist = dist[min_node] + 1; // numeric_limits<uint64_t>::max() / get_bandwidth_bps(min_node, i);
+      float new_dist = dist[min_node] + 1; // numeric_limits<uint64_t>::max() /
+                                           // get_bandwidth_bps(min_node, i);
       if (new_dist < dist[i]) {
         dist[i] = new_dist;
         prev[i] = min_node;
@@ -228,30 +247,30 @@ std::vector<std::pair<int, int>> WeightedShortestPathRoutingStrategy::hop_count(
     int narrowest = 0;
     int curr = i;
     while (prev[curr] != -1) {
-      if (!narrowest || (narrowest > conn[prev[curr] * total_devs + curr])) 
+      if (!narrowest || (narrowest > conn[prev[curr] * total_devs + curr]))
         narrowest = conn[prev[curr] * total_devs + curr];
       hop++;
       curr = prev[curr];
     }
     result.emplace_back(std::make_pair(hop, narrowest));
   }
-  return result; 
+  return result;
 }
 
 ShortestPathNetworkRoutingStrategy::ShortestPathNetworkRoutingStrategy(
-    const ConnectionMatrix & c, 
-    const std::map<size_t, CommDevice*>& devmap,
-    int total_devs) 
-: conn(c), devmap(devmap), total_devs(total_devs)
-{} 
+    const ConnectionMatrix &c,
+    const std::map<size_t, CommDevice *> &devmap,
+    int total_devs)
+    : conn(c), devmap(devmap), total_devs(total_devs) {}
 
-EcmpRoutes ShortestPathNetworkRoutingStrategy::get_routes(int src_node, int dst_node) 
-{
+EcmpRoutes ShortestPathNetworkRoutingStrategy::get_routes(int src_node,
+                                                          int dst_node) {
   int key = src_node * total_devs + dst_node;
   // std::cerr << "routing " << src_node << ", " << dst_node << std::endl;
 
   if (conn[key] > 0) {
-    return std::make_pair(std::vector<float>({1}), std::vector<Route>({Route({devmap.at(key)})}));
+    return std::make_pair(std::vector<float>({1}),
+                          std::vector<Route>({Route({devmap.at(key)})}));
   }
 
   // one-shortest path routing
@@ -276,7 +295,7 @@ EcmpRoutes ShortestPathNetworkRoutingStrategy::get_routes(int src_node, int dst_
       if (visited[i] || conn[min_node * total_devs + i] == 0) {
         continue;
       }
-      float new_dist = dist[min_node] + 1; 
+      float new_dist = dist[min_node] + 1;
       if (new_dist < dist[i] || (new_dist == dist[i] && unif(gen) < 0.5)) {
         dist[i] = new_dist;
         prev[i] = min_node;
@@ -295,8 +314,8 @@ EcmpRoutes ShortestPathNetworkRoutingStrategy::get_routes(int src_node, int dst_
   return std::make_pair(std::vector<float>{1}, std::vector<Route>{result});
 }
 
-std::vector<EcmpRoutes> ShortestPathNetworkRoutingStrategy::get_routes_from_src(int src_node) 
-{
+std::vector<EcmpRoutes>
+ShortestPathNetworkRoutingStrategy::get_routes_from_src(int src_node) {
   std::vector<uint64_t> dist(total_devs, std::numeric_limits<uint64_t>::max());
   std::vector<int> prev(total_devs, -1);
   std::vector<bool> visited(total_devs, false);
@@ -315,7 +334,7 @@ std::vector<EcmpRoutes> ShortestPathNetworkRoutingStrategy::get_routes_from_src(
       if (visited[i] || conn[min_node * total_devs + i] == 0) {
         continue;
       }
-      float new_dist = dist[min_node] + 1; 
+      float new_dist = dist[min_node] + 1;
       if (new_dist < dist[i] || (new_dist == dist[i] && unif(gen) < 0.5)) {
         dist[i] = new_dist;
         prev[i] = min_node;
@@ -327,7 +346,8 @@ std::vector<EcmpRoutes> ShortestPathNetworkRoutingStrategy::get_routes_from_src(
   std::vector<EcmpRoutes> final_result;
   for (int i = 0; i < total_devs; i++) {
     if (i == src_node) {
-      final_result.emplace_back(std::make_pair(std::vector<float>{}, std::vector<Route>{}));
+      final_result.emplace_back(
+          std::make_pair(std::vector<float>{}, std::vector<Route>{}));
       continue;
     }
     Route result = Route();
@@ -337,13 +357,16 @@ std::vector<EcmpRoutes> ShortestPathNetworkRoutingStrategy::get_routes_from_src(
       curr = prev[curr];
     }
     // assert(result.size() > 0);
-    final_result.emplace_back(std::make_pair(std::vector<float>{1}, std::vector<Route>{result}));
+    final_result.emplace_back(
+        std::make_pair(std::vector<float>{1}, std::vector<Route>{result}));
   }
-  return final_result; 
+  return final_result;
 }
 
-void ShortestPathNetworkRoutingStrategy::hop_count(int src_node, int dst_node, int & hop, int & narrowest)
-{
+void ShortestPathNetworkRoutingStrategy::hop_count(int src_node,
+                                                   int dst_node,
+                                                   int &hop,
+                                                   int &narrowest) {
   int key = src_node * total_devs + dst_node;
 
   if (conn[key] > 0) {
@@ -373,7 +396,7 @@ void ShortestPathNetworkRoutingStrategy::hop_count(int src_node, int dst_node, i
       if (visited[i] || conn[min_node * total_devs + i] == 0) {
         continue;
       }
-      float new_dist = dist[min_node] + 1; 
+      float new_dist = dist[min_node] + 1;
       if (new_dist < dist[i] || (new_dist == dist[i] && unif(gen) < 0.5)) {
         dist[i] = new_dist;
         prev[i] = min_node;
@@ -385,15 +408,16 @@ void ShortestPathNetworkRoutingStrategy::hop_count(int src_node, int dst_node, i
   narrowest = std::numeric_limits<int>::max();
   int curr = dst_node;
   while (prev[curr] != -1) {
-    if (narrowest > conn[prev[curr] * total_devs + curr]) narrowest = conn[prev[curr] * total_devs + curr];
+    if (narrowest > conn[prev[curr] * total_devs + curr])
+      narrowest = conn[prev[curr] * total_devs + curr];
     hop++;
     curr = prev[curr];
   }
   assert(hop > 0 || src_node == dst_node);
 }
 
-std::vector<std::pair<int, int>> ShortestPathNetworkRoutingStrategy::hop_count(int src_node) 
-{
+std::vector<std::pair<int, int>>
+ShortestPathNetworkRoutingStrategy::hop_count(int src_node) {
   std::vector<uint64_t> dist(total_devs, std::numeric_limits<uint64_t>::max());
   std::vector<int> prev(total_devs, -1);
   std::vector<bool> visited(total_devs, false);
@@ -412,7 +436,7 @@ std::vector<std::pair<int, int>> ShortestPathNetworkRoutingStrategy::hop_count(i
       if (visited[i] || conn[min_node * total_devs + i] == 0) {
         continue;
       }
-      float new_dist = dist[min_node] + 1; 
+      float new_dist = dist[min_node] + 1;
       if (new_dist < dist[i] || (new_dist == dist[i] && unif(gen) < 0.5)) {
         dist[i] = new_dist;
         prev[i] = min_node;
@@ -431,24 +455,24 @@ std::vector<std::pair<int, int>> ShortestPathNetworkRoutingStrategy::hop_count(i
     int narrowest = 0;
     int curr = i;
     while (prev[curr] != -1) {
-      if (!narrowest || (narrowest > conn[prev[curr] * total_devs + curr])) 
+      if (!narrowest || (narrowest > conn[prev[curr] * total_devs + curr]))
         narrowest = conn[prev[curr] * total_devs + curr];
       hop++;
       curr = prev[curr];
     }
     result.emplace_back(std::make_pair(hop, narrowest));
   }
-  return result; 
+  return result;
 }
 
-FlatDegConstraintNetworkTopologyGenerator::FlatDegConstraintNetworkTopologyGenerator(int num_nodes, int degree) 
-: num_nodes(num_nodes), degree(degree)
-{}
+FlatDegConstraintNetworkTopologyGenerator::
+    FlatDegConstraintNetworkTopologyGenerator(int num_nodes, int degree)
+    : num_nodes(num_nodes), degree(degree) {}
 
-ConnectionMatrix FlatDegConstraintNetworkTopologyGenerator::generate_topology() const
-{
-  ConnectionMatrix conn = std::vector<int>(num_nodes*num_nodes, 0);
-  
+ConnectionMatrix
+FlatDegConstraintNetworkTopologyGenerator::generate_topology() const {
+  ConnectionMatrix conn = std::vector<int>(num_nodes * num_nodes, 0);
+
   int allocated = 0;
   int curr_node = 0;
   std::unordered_set<int> visited_node;
@@ -461,7 +485,7 @@ ConnectionMatrix FlatDegConstraintNetworkTopologyGenerator::generate_topology() 
     int next_step = distrib(gen);
     if (next_step == curr_node) {
       continue;
-    } 
+    }
     if (visited_node.find(next_step) == visited_node.end()) {
       if (conn[get_id(curr_node, next_step)] == degree) {
         continue;
@@ -476,7 +500,7 @@ ConnectionMatrix FlatDegConstraintNetworkTopologyGenerator::generate_topology() 
 
   assert(allocated == (num_nodes - 1) * 2);
 
-  std::vector<std::pair<int, int> > node_with_avail_if;
+  std::vector<std::pair<int, int>> node_with_avail_if;
   for (int i = 0; i < num_nodes; i++) {
     int if_inuse = get_if_in_use(i, conn);
     if (if_inuse < degree) {
@@ -489,9 +513,12 @@ ConnectionMatrix FlatDegConstraintNetworkTopologyGenerator::generate_topology() 
 
   while (node_with_avail_if.size() > 1) {
     a = distrib(gen);
-    while ((b = distrib(gen)) == a);
+    while ((b = distrib(gen)) == a)
+      ;
 
-    assert(conn[get_id(node_with_avail_if[a].first, node_with_avail_if[b].first)] < degree);
+    assert(
+        conn[get_id(node_with_avail_if[a].first, node_with_avail_if[b].first)] <
+        degree);
     conn[get_id(node_with_avail_if[a].first, node_with_avail_if[b].first)]++;
     conn[get_id(node_with_avail_if[b].first, node_with_avail_if[a].first)]++;
     allocated += 2;
@@ -509,7 +536,8 @@ ConnectionMatrix FlatDegConstraintNetworkTopologyGenerator::generate_topology() 
       changed = true;
     }
     if (changed) {
-      distrib = std::uniform_int_distribution<>(0, node_with_avail_if.size() - 1);
+      distrib =
+          std::uniform_int_distribution<>(0, node_with_avail_if.size() - 1);
     }
   }
 
@@ -518,16 +546,14 @@ ConnectionMatrix FlatDegConstraintNetworkTopologyGenerator::generate_topology() 
   NetworkTopologyGenerator::print_conn_matrix(conn, num_nodes, 0);
 #endif
   return conn;
-  
 }
 
-int FlatDegConstraintNetworkTopologyGenerator::get_id(int i, int j) const
-{
+int FlatDegConstraintNetworkTopologyGenerator::get_id(int i, int j) const {
   return i * num_nodes + j;
 }
 
-int FlatDegConstraintNetworkTopologyGenerator::get_if_in_use(int node, const ConnectionMatrix & conn) const
-{
+int FlatDegConstraintNetworkTopologyGenerator::get_if_in_use(
+    int node, const ConnectionMatrix &conn) const {
   int result = 0;
   for (int i = 0; i < num_nodes; i++) {
     result += conn[get_id(node, i)];
@@ -535,18 +561,18 @@ int FlatDegConstraintNetworkTopologyGenerator::get_if_in_use(int node, const Con
   return result;
 }
 
-BigSwitchNetworkTopologyGenerator::BigSwitchNetworkTopologyGenerator(int num_nodes)
-: num_nodes(num_nodes)
-{}
+BigSwitchNetworkTopologyGenerator::BigSwitchNetworkTopologyGenerator(
+    int num_nodes)
+    : num_nodes(num_nodes) {}
 
-ConnectionMatrix BigSwitchNetworkTopologyGenerator::generate_topology() const 
-{
-  ConnectionMatrix conn = std::vector<int>((num_nodes+1)*(num_nodes+1), 0);
+ConnectionMatrix BigSwitchNetworkTopologyGenerator::generate_topology() const {
+  ConnectionMatrix conn =
+      std::vector<int>((num_nodes + 1) * (num_nodes + 1), 0);
   for (int i = 0; i < num_nodes; i++) {
-    conn[i * (num_nodes+1) + num_nodes] = 1;
-    conn[num_nodes * (num_nodes+1) + i] = 1;
+    conn[i * (num_nodes + 1) + num_nodes] = 1;
+    conn[num_nodes * (num_nodes + 1) + i] = 1;
   }
   return conn;
 }
 
-};
+}; // namespace FlexFlow

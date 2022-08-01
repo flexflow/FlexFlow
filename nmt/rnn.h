@@ -37,13 +37,13 @@ struct RnnConfig {
 struct SharedVariable {
   static const SharedVariable NO_VARIABLE; /*empty SharedVariable handle*/
   LogicalRegion region, gradients[MAX_NUM_WORKERS];
-  LogicalRegion subregions[2*MAX_NUM_PARTS];
+  LogicalRegion subregions[2 * MAX_NUM_PARTS];
   int masterOnNode[MAX_NUM_WORKERS];
   SharedVariable() {
     region = LogicalRegion::NO_REGION;
     for (int i = 0; i < MAX_NUM_WORKERS; i++)
       gradients[i] = LogicalRegion::NO_REGION;
-    for (int i = 0; i < 2*MAX_NUM_PARTS; i++)
+    for (int i = 0; i < 2 * MAX_NUM_PARTS; i++)
       subregions[i] = LogicalRegion::NO_REGION;
     for (int i = 0; i < MAX_NUM_WORKERS; i++)
       masterOnNode[i] = MASTER_NOT_ASSIGNED;
@@ -57,8 +57,8 @@ struct ParallelConfig {
 
 struct GlobalConfig {
   ParallelConfig linear[MAX_SEQ_LENGTH];
-  ParallelConfig lstm[MAX_NUM_LAYERS][2*MAX_SEQ_LENGTH];
-  ParallelConfig embed[2*MAX_SEQ_LENGTH];
+  ParallelConfig lstm[MAX_NUM_LAYERS][2 * MAX_SEQ_LENGTH];
+  ParallelConfig embed[2 * MAX_SEQ_LENGTH];
   ParallelConfig softmax[MAX_SEQ_LENGTH];
 };
 
@@ -67,19 +67,24 @@ class RnnModel;
 class RnnOp {
 public:
   RnnOp(Tensor input, ParallelConfig pc, SharedVariable _params);
-  RnnOp(Tensor t1, Tensor t2, Tensor t3, ParallelConfig pc, SharedVariable _params);
-  RnnOp(int num, Tensor* inputs);
-  virtual void init(const RnnModel&) = 0;
+  RnnOp(Tensor t1,
+        Tensor t2,
+        Tensor t3,
+        ParallelConfig pc,
+        SharedVariable _params);
+  RnnOp(int num, Tensor *inputs);
+  virtual void init(const RnnModel &) = 0;
 
-  virtual void forward(const RnnModel&) = 0;
+  virtual void forward(const RnnModel &) = 0;
 
-  virtual void backward(const RnnModel&) = 0;
+  virtual void backward(const RnnModel &) = 0;
 
-  virtual void update(const RnnModel&) = 0;
+  virtual void update(const RnnModel &) = 0;
+
 public:
   Tensor outputs[MAX_NUM_OUTPUTS];
   Tensor inputs[MAX_NUM_INPUTS];
-  OpMeta* meta[MAX_NUM_WORKERS];
+  OpMeta *meta[MAX_NUM_WORKERS];
   ParallelConfig paraConfig;
   SharedVariable params;
 };
@@ -90,11 +95,18 @@ struct LSTMTensors {
 
 class RnnModel {
 public:
-  RnnModel(int batch_size, int numLayers, int seqLength,
-           int hidden_size, int embed_size, int vocab_size,
-           int num_parts, int num_nodes, int num_workers_per_node,
+  RnnModel(int batch_size,
+           int numLayers,
+           int seqLength,
+           int hidden_size,
+           int embed_size,
+           int vocab_size,
+           int num_parts,
+           int num_nodes,
+           int num_workers_per_node,
            GlobalConfig global,
-           Context ctx, Runtime *runtime);
+           Context ctx,
+           Runtime *runtime);
 
   void init();
 
@@ -110,50 +122,63 @@ public:
 
   static void word_init_task(const Task *task,
                              const std::vector<PhysicalRegion> &regions,
-                             Context ctx, HighLevelRuntime *runtime);
+                             Context ctx,
+                             HighLevelRuntime *runtime);
 
   static void zero_1d_init_task(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,
-                                Context ctx, HighLevelRuntime *runtime);
+                                Context ctx,
+                                HighLevelRuntime *runtime);
 
   static void zero_2d_init_task(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,
-                                Context ctx, HighLevelRuntime *runtime);
+                                Context ctx,
+                                HighLevelRuntime *runtime);
 
   static void zero_3d_init_task(const Task *task,
                                 const std::vector<PhysicalRegion> &regions,
-                                Context ctx, HighLevelRuntime *runtime);
+                                Context ctx,
+                                HighLevelRuntime *runtime);
 
   static void dummy_task(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
-                         Context ctx, HighLevelRuntime *runtime);
+                         Context ctx,
+                         HighLevelRuntime *runtime);
 
   static void params_init_task(const Task *task,
                                const std::vector<PhysicalRegion> &regions,
-                               Context ctx, HighLevelRuntime *runtime);
+                               Context ctx,
+                               HighLevelRuntime *runtime);
 
   static void params_update_task(const Task *task,
                                  const std::vector<PhysicalRegion> &regions,
-                                 Context ctx, HighLevelRuntime *runtime);
+                                 Context ctx,
+                                 HighLevelRuntime *runtime);
 
-  LSTMTensors add_lstm_node(Tensor x, Tensor hx, Tensor cx,
-                            ParallelConfig pc, SharedVariable params);
+  LSTMTensors add_lstm_node(
+      Tensor x, Tensor hx, Tensor cx, ParallelConfig pc, SharedVariable params);
 
-  Tensor add_linear_node(Tensor x, int output_size,
-                         ParallelConfig pc, SharedVariable params);
+  Tensor add_linear_node(Tensor x,
+                         int output_size,
+                         ParallelConfig pc,
+                         SharedVariable params);
 
-  Tensor add_embed_node(Tensor x, int vocab_size, int output_size,
-                        ParallelConfig pc, SharedVariable params);
+  Tensor add_embed_node(Tensor x,
+                        int vocab_size,
+                        int output_size,
+                        ParallelConfig pc,
+                        SharedVariable params);
 
   Tensor add_softmaxDP_node(Tensor x, Tensor label, ParallelConfig pc);
+
 public:
   RnnConfig config;
-  std::vector<RnnOp*> layers;
+  std::vector<RnnOp *> layers;
   std::vector<SharedVariable> sharedVariables;
   DnnHandle dnn_handlers[MAX_NUM_WORKERS];
   Tensor srcs[MAX_SEQ_LENGTH], dsts[MAX_SEQ_LENGTH];
   LSTMTensors zero[MAX_NUM_LAYERS];
-  LSTMTensors lstm[MAX_NUM_LAYERS][2*MAX_SEQ_LENGTH];
+  LSTMTensors lstm[MAX_NUM_LAYERS][2 * MAX_SEQ_LENGTH];
   IndexSpaceT<1> part_is;
 };
 
@@ -163,33 +188,44 @@ public:
  */
 class LSTM : public RnnOp {
 public:
-  LSTM(RnnConfig config, Tensor x, Tensor hx, Tensor cx,
-       int batch_size, int input_size, int output_size,
-       ParallelConfig pc, SharedVariable params);
+  LSTM(RnnConfig config,
+       Tensor x,
+       Tensor hx,
+       Tensor cx,
+       int batch_size,
+       int input_size,
+       int output_size,
+       ParallelConfig pc,
+       SharedVariable params);
 
-  void init(const RnnModel&);
+  void init(const RnnModel &);
 
-  void forward(const RnnModel&);
+  void forward(const RnnModel &);
 
-  void backward(const RnnModel&);
+  void backward(const RnnModel &);
 
-  void update(const RnnModel&);
+  void update(const RnnModel &);
 
-  static OpMeta* init_task(const Task *task,
+  static OpMeta *init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
+                           Context ctx,
+                           Runtime *runtime);
 
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
+                           Context ctx,
+                           Runtime *runtime);
 
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
-                            Context ctx, HighLevelRuntime *runtime);
+                            Context ctx,
+                            HighLevelRuntime *runtime);
 
   static void update_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
-                          Context ctx, HighLevelRuntime *runtime);
+                          Context ctx,
+                          HighLevelRuntime *runtime);
+
 public:
   int batch_size, input_size, output_size;
   Rect<1> part_rect;
@@ -197,51 +233,59 @@ public:
 
 class LSTMMeta : public OpMeta {
 public:
-  LSTMMeta(DnnHandle handle) : OpMeta(handle) {};
+  LSTMMeta(DnnHandle handle) : OpMeta(handle){};
   cudnnRNNDescriptor_t rnnDesc;
   cudnnDropoutDescriptor_t dropoutDesc;
   cudnnTensorDescriptor_t xDescs[LSTM_PER_NODE_LENGTH],
-                          yDescs[LSTM_PER_NODE_LENGTH],
-                          cxDesc, hxDesc, cyDesc, hyDesc;
+      yDescs[LSTM_PER_NODE_LENGTH], cxDesc, hxDesc, cyDesc, hyDesc;
   cudnnFilterDescriptor_t wDesc;
   size_t reserveSpaceSize;
-  void* reserveSpace;
+  void *reserveSpace;
   bool profiling_runtime;
 };
 
 class Linear : public RnnOp {
 public:
-  Linear(RnnConfig config, Tensor input, int output_channels,
-         ParallelConfig pc, SharedVariable params,
+  Linear(RnnConfig config,
+         Tensor input,
+         int output_channels,
+         ParallelConfig pc,
+         SharedVariable params,
          IndexSpaceT<1> input_part_is);
 
-  void init(const RnnModel&);
+  void init(const RnnModel &);
 
-  void forward(const RnnModel&);
+  void forward(const RnnModel &);
 
-  void backward(const RnnModel&);
+  void backward(const RnnModel &);
 
   void update(const RnnModel &);
 
-  static OpMeta* init_task(const Task *task,
+  static OpMeta *init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
+                           Context ctx,
+                           Runtime *runtime);
 
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
+                           Context ctx,
+                           Runtime *runtime);
 
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
-                            Context ctx, HighLevelRuntime *runtime);
+                            Context ctx,
+                            HighLevelRuntime *runtime);
 
   static void backward2_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
-                            Context ctx, HighLevelRuntime *runtime);
+                             const std::vector<PhysicalRegion> &regions,
+                             Context ctx,
+                             HighLevelRuntime *runtime);
 
   static void update_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
-                          Context ctx, HighLevelRuntime *runtime);
+                          Context ctx,
+                          HighLevelRuntime *runtime);
+
 public:
   int batch_size, input_size, output_size;
   Tensor replica;
@@ -255,39 +299,48 @@ public:
 
 class LinearMeta : public OpMeta {
 public:
-  LinearMeta(DnnHandle handle) : OpMeta(handle) {};
-  float* one_ptr;
+  LinearMeta(DnnHandle handle) : OpMeta(handle){};
+  float *one_ptr;
   bool profiling_runtime;
 };
 
 class Embed : public RnnOp {
 public:
-  Embed(RnnConfig config, Tensor input, int embed_size, int output_size,
-        ParallelConfig pc, SharedVariable params);
+  Embed(RnnConfig config,
+        Tensor input,
+        int embed_size,
+        int output_size,
+        ParallelConfig pc,
+        SharedVariable params);
 
-  void init(const RnnModel&);
+  void init(const RnnModel &);
 
-  void forward(const RnnModel&);
+  void forward(const RnnModel &);
 
-  void backward(const RnnModel&);
+  void backward(const RnnModel &);
 
-  void update(const RnnModel&);
+  void update(const RnnModel &);
 
-  static OpMeta* init_task(const Task *task,
+  static OpMeta *init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
+                           Context ctx,
+                           Runtime *runtime);
 
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
+                           Context ctx,
+                           Runtime *runtime);
 
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
-                            Context ctx, HighLevelRuntime *runtime);
+                            Context ctx,
+                            HighLevelRuntime *runtime);
 
   static void update_task(const Task *task,
                           const std::vector<PhysicalRegion> &regions,
-                          Context ctx, HighLevelRuntime *runtime);
+                          Context ctx,
+                          HighLevelRuntime *runtime);
+
 public:
   int batchSize, outputSize, vocabSize;
   Rect<1> part_rect;
@@ -295,7 +348,7 @@ public:
 
 class EmbedMeta : public OpMeta {
 public:
-  EmbedMeta(DnnHandle handle) : OpMeta(handle) {};
+  EmbedMeta(DnnHandle handle) : OpMeta(handle){};
   bool profiling_runtime;
 };
 
@@ -338,28 +391,31 @@ public:
 */
 class SoftmaxDP : public RnnOp {
 public:
-  SoftmaxDP(RnnConfig config, Tensor logit, Tensor label,
-            ParallelConfig pc);
+  SoftmaxDP(RnnConfig config, Tensor logit, Tensor label, ParallelConfig pc);
 
-  void init(const RnnModel&);
+  void init(const RnnModel &);
 
-  void forward(const RnnModel&);
+  void forward(const RnnModel &);
 
-  void backward(const RnnModel&);
+  void backward(const RnnModel &);
 
-  void update(const RnnModel&);
+  void update(const RnnModel &);
 
-  static OpMeta* init_task(const Task *task,
+  static OpMeta *init_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
+                           Context ctx,
+                           Runtime *runtime);
 
   static void forward_task(const Task *task,
                            const std::vector<PhysicalRegion> &regions,
-                           Context ctx, Runtime *runtime);
+                           Context ctx,
+                           Runtime *runtime);
 
   static void backward_task(const Task *task,
                             const std::vector<PhysicalRegion> &regions,
-                            Context ctx, HighLevelRuntime *runtime);
+                            Context ctx,
+                            HighLevelRuntime *runtime);
+
 public:
   Rect<1> part_rect;
   Tensor label;
@@ -368,7 +424,7 @@ public:
 
 class SoftmaxDPMeta : public OpMeta {
 public:
-  SoftmaxDPMeta(DnnHandle handle) : OpMeta(handle) {};
+  SoftmaxDPMeta(DnnHandle handle) : OpMeta(handle){};
 #ifndef DISABLE_COMPUTATION
   cudnnTensorDescriptor_t inputTensor;
 #endif

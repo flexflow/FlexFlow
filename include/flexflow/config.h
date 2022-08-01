@@ -15,19 +15,19 @@
 
 #ifndef _FLEXFLOW_CONFIG_H_
 #define _FLEXFLOW_CONFIG_H_
-#include <cstring>
-#include "legion.h"
 #include "ffconst.h"
-#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
-#include <cudnn.h>
+#include "legion.h"
+#include <cstring>
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include <cublas_v2.h>
-#elif defined (FF_USE_HIP_ROCM)
-#include <miopen.h>
+#include <cudnn.h>
+#elif defined(FF_USE_HIP_ROCM)
 #include <hipblas.h>
+#include <miopen.h>
 #else
-#error "Unknown device" 
+#error "Unknown device"
 #endif
-#include "tl/optional.h"
+#include "tl/optional.hpp"
 #ifdef FF_USE_NCCL
 #include <nccl.h>
 #endif
@@ -54,14 +54,14 @@ namespace FlexFlow {
 
 #ifdef FF_USE_NCCL
 constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::NCCL;
-#else 
+#else
 constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::PS;
 #endif
 
 class FFConfig;
 
 struct FFHandler {
-#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnHandle_t dnn;
   cublasHandle_t blas;
 #else
@@ -79,47 +79,48 @@ struct FFHandler {
 struct FFInitInfo {
   size_t workSpaceSize;
   bool allowTensorOpMathConversion;
-  //int myRank, allRanks;
+  // int myRank, allRanks;
 };
 
-//bool load_strategies_from_file(const std::string& filename,
-//         std::map<Legion::MappingTagID, ParallelConfig>& strategies);
+// bool load_strategies_from_file(const std::string& filename,
+//          std::map<Legion::MappingTagID, ParallelConfig>& strategies);
 
-//bool save_strategies_to_file(const std::string& filename,
-//                             const std::map<std::string, ParallelConfig>& strategies);
+// bool save_strategies_to_file(const std::string& filename,
+//                              const std::map<std::string, ParallelConfig>&
+//                              strategies);
 
 class FFConfig {
 public:
-  enum PreservedIDs{
+  enum PreservedIDs {
     InvalidID = 0,
     DataParallelism_GPU = 1,
-    //DataParallelism_GPU_2D = 2,
-    //DataParallelism_GPU_3D = 3,
-    //DataParallelism_GPU_4D = 4,
-    //DataParallelism_GPU_5D = 5,
+    // DataParallelism_GPU_2D = 2,
+    // DataParallelism_GPU_3D = 3,
+    // DataParallelism_GPU_4D = 4,
+    // DataParallelism_GPU_5D = 5,
     DataParallelism_CPU = 11,
-    //DataParallelism_CPU_2D = 12,
-    //DataParallelism_CPU_3D = 13,
-    //DataParallelism_CPU_4D = 14,
-    //DataParallelism_CPU_5D = 15,
+    // DataParallelism_CPU_2D = 12,
+    // DataParallelism_CPU_3D = 13,
+    // DataParallelism_CPU_4D = 14,
+    // DataParallelism_CPU_5D = 15,
   };
 
   FFConfig();
-  //bool load_strategy_file(std::string filename);
-  //bool save_strategy_file(std::string filename);
-  void parse_args(char** argv, int argc);
-  static Legion::MappingTagID get_hash_id(const std::string& pcname);
-  //bool find_parallel_config(int ndims,
-  //                          const std::string& pcname,
-  //                          ParallelConfig& config) const;
+  // bool load_strategy_file(std::string filename);
+  // bool save_strategy_file(std::string filename);
+  void parse_args(char **argv, int argc);
+  static Legion::MappingTagID get_hash_id(const std::string &pcname);
+  // bool find_parallel_config(int ndims,
+  //                           const std::string& pcname,
+  //                           ParallelConfig& config) const;
 public:
   int epochs, batchSize, printFreq;
-  //int inputHeight, inputWidth;
+  // int inputHeight, inputWidth;
   int numNodes, cpusPerNode, workersPerNode;
   float learningRate, weightDecay;
   size_t workSpaceSize;
   Legion::Context lg_ctx;
-  Legion::Runtime* lg_hlr;
+  Legion::Runtime *lg_hlr;
   Legion::FieldSpace field_space;
   bool syntheticInput, profiling, perform_fusion;
   size_t simulator_work_space_size;
@@ -127,13 +128,13 @@ public:
   float search_alpha;
   bool search_overlap_backward_update;
   CompMode computationMode;
-  //Control parallelizable dimensions
+  // Control parallelizable dimensions
   bool only_data_parallel;
   bool enable_sample_parallel;
   bool enable_parameter_parallel;
   bool enable_attribute_parallel;
   bool enable_inplace_optimizations;
-  //Control Tensor Op Math Conversion
+  // Control Tensor Op Math Conversion
   bool allow_tensor_op_math_conversion;
   std::string dataset_path;
   std::string import_strategy_file;
@@ -142,7 +143,7 @@ public:
   std::string export_strategy_computation_graph_file;
   tl::optional<std::string> substitution_json_path = tl::nullopt;
   // We use MappingTagID as the key since we will pass the tag to the mapper
-  //std::map<Legion::MappingTagID, ParallelConfig> strategies;
+  // std::map<Legion::MappingTagID, ParallelConfig> strategies;
   int machine_model_version;
   std::string machine_model_file;
   int simulator_segment_size;
@@ -166,6 +167,6 @@ enum FieldIDs {
   FID_DATA,
 };
 
-}; // namespace
+}; // namespace FlexFlow
 
-#endif//_FLEXFLOW_CONFIG_H_
+#endif //_FLEXFLOW_CONFIG_H_

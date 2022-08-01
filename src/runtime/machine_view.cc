@@ -7,8 +7,7 @@ using namespace Legion;
 const MachineView MachineView::NO_VIEW = MachineView();
 
 MachineView::MachineView()
-: device_type(MachineView::GPU), ndims(0), start_device_id(0)
-{
+    : device_type(MachineView::GPU), ndims(0), start_device_id(0) {
   for (int i = 0; i < MAX_TENSOR_DIM; i++) {
     dim[i] = stride[i] = 0;
   }
@@ -19,7 +18,7 @@ Domain MachineView::get_domain() const {
   d.dim = this->ndims;
   for (int i = 0; i < d.dim; i++) {
     d.rect_data[i] = 0;
-    d.rect_data[i+d.dim] = this->dim[i]-1;
+    d.rect_data[i + d.dim] = this->dim[i] - 1;
   }
   return d;
 }
@@ -28,7 +27,7 @@ std::vector<int> MachineView::device_ids() const {
   std::vector<int> device_ids_list;
 
   if (this->ndims == 0) {
-    return { this->start_device_id };
+    return {this->start_device_id};
   }
 
   Domain d = this->get_domain();
@@ -39,8 +38,7 @@ std::vector<int> MachineView::device_ids() const {
   return device_ids_list;
 }
 
-size_t MachineView::num_parts() const
-{
+size_t MachineView::num_parts() const {
   size_t parts = 1;
   for (int i = 0; i < ndims; i++) {
     parts *= dim[i];
@@ -48,8 +46,7 @@ size_t MachineView::num_parts() const
   return parts;
 }
 
-size_t MachineView::hash() const
-{
+size_t MachineView::hash() const {
   size_t ret = 17;
   ret = ret * 31 + std::hash<int>()(device_type);
   ret = ret * 31 + std::hash<int>()(ndims);
@@ -61,9 +58,7 @@ size_t MachineView::hash() const
   return ret;
 }
 
-
-int MachineView::get_device_id(const DomainPoint& p) const
-{
+int MachineView::get_device_id(const DomainPoint &p) const {
   assert(p.get_dim() == ndims);
   assert(this->get_domain().contains(p));
   int idx = this->start_device_id;
@@ -72,24 +67,27 @@ int MachineView::get_device_id(const DomainPoint& p) const
   return idx;
 }
 
-bool MachineView::operator==(const MachineView& rhs) const
-{
-  if (device_type != rhs.device_type) return false;
-  if (ndims != rhs.ndims) return false;
-  if (start_device_id != rhs.start_device_id) return false;
+bool MachineView::operator==(const MachineView &rhs) const {
+  if (device_type != rhs.device_type)
+    return false;
+  if (ndims != rhs.ndims)
+    return false;
+  if (start_device_id != rhs.start_device_id)
+    return false;
   for (int i = 0; i < ndims; i++) {
-    if (dim[i] != rhs.dim[i]) return false;
-    if (stride[i] != rhs.stride[i]) return false;
+    if (dim[i] != rhs.dim[i])
+      return false;
+    if (stride[i] != rhs.stride[i])
+      return false;
   }
   return true;
 }
 
-bool MachineView::operator!=(const MachineView& rhs) const
-{
+bool MachineView::operator!=(const MachineView &rhs) const {
   return !(*this == rhs);
 }
 
-std::ostream& operator<<(std::ostream &s, MachineView const &view) {
+std::ostream &operator<<(std::ostream &s, MachineView const &view) {
   s << "MachineView<";
   for (int i = 0; i < view.ndims; i++) {
     int lo = view.start_device_id;
@@ -106,15 +104,12 @@ std::ostream& operator<<(std::ostream &s, MachineView const &view) {
 }
 
 MachineResource::MachineResource(FFConfig const &config)
-  : num_nodes(config.numNodes),
-    all_cpus_per_node(config.cpusPerNode),
-    available_cpus_per_node(config.cpusPerNode),
-    all_gpus_per_node(config.workersPerNode),
-    available_gpus_per_node(config.workersPerNode)
-{ }
+    : num_nodes(config.numNodes), all_cpus_per_node(config.cpusPerNode),
+      available_cpus_per_node(config.cpusPerNode),
+      all_gpus_per_node(config.workersPerNode),
+      available_gpus_per_node(config.workersPerNode) {}
 
-size_t MachineResource::hash() const
-{
+size_t MachineResource::hash() const {
   size_t ret = 17;
   ret = ret * 31 + std::hash<int>()(num_nodes);
   ret = ret * 31 + std::hash<int>()(available_gpus_per_node);
@@ -127,7 +122,8 @@ size_t MachineResource::hash() const
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::MachineView>::operator()(FlexFlow::MachineView const &mv) const {
-    return mv.hash();
-  }
+size_t
+hash<FlexFlow::MachineView>::operator()(FlexFlow::MachineView const &mv) const {
+  return mv.hash();
+}
 }; // namespace std

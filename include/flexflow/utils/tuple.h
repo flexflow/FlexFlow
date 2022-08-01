@@ -5,54 +5,47 @@
 #include <tuple>
 #include <type_traits>
 
-// Adapted from https://github.com/bitwizeshift/BackportCpp/blob/4f33a7f9b219f169e60d8ed2fd5731a3a23288e4/include/bpstd/tuple.hpp
+// Adapted from
+// https://github.com/bitwizeshift/BackportCpp/blob/4f33a7f9b219f169e60d8ed2fd5731a3a23288e4/include/bpstd/tuple.hpp
 
 namespace FlexFlow {
 
 namespace TupleUtils {
 
-template <typename T, std::size_t Index, typename...Types>
+template <typename T, std::size_t Index, typename... Types>
 struct index_of_impl;
 
-template <typename T, std::size_t Index, typename Type0, typename...Types>
+template <typename T, std::size_t Index, typename Type0, typename... Types>
 struct index_of_impl<T, Index, Type0, Types...>
-: index_of_impl<T, Index + 1, Types...>{};
+    : index_of_impl<T, Index + 1, Types...> {};
 
-template <typename T, std::size_t Index, typename...Types>
+template <typename T, std::size_t Index, typename... Types>
 struct index_of_impl<T, Index, T, Types...>
-: std::integral_constant<std::size_t, Index>{};
+    : std::integral_constant<std::size_t, Index> {};
 
-template <typename T, typename...Types>
-struct index_of : index_of_impl<T,0,Types...>{};
+template <typename T, typename... Types>
+struct index_of : index_of_impl<T, 0, Types...> {};
 
 }; // namespace TupleUtils
 
 template <typename T, typename... Types>
-T& get(std::tuple<Types...>& t)
-  noexcept
-{
-  return std::get<TupleUtils::index_of<T,Types...>::value>(t);
+T &get(std::tuple<Types...> &t) noexcept {
+  return std::get<TupleUtils::index_of<T, Types...>::value>(t);
 }
 
 template <typename T, typename... Types>
-T&& get(std::tuple<Types...>&& t)
-  noexcept
-{
-  return move(std::get<TupleUtils::index_of<T,Types...>::value>(t));
+T &&get(std::tuple<Types...> &&t) noexcept {
+  return move(std::get<TupleUtils::index_of<T, Types...>::value>(t));
 }
 
 template <typename T, typename... Types>
-const T& get(const std::tuple<Types...>& t)
-  noexcept
-{
-  return std::get<TupleUtils::index_of<T,Types...>::value>(t);
+const T &get(const std::tuple<Types...> &t) noexcept {
+  return std::get<TupleUtils::index_of<T, Types...>::value>(t);
 }
 
 template <typename T, typename... Types>
-const T&& get(const std::tuple<Types...>&& t)
-  noexcept
-{
-  return move(std::get<TupleUtils::index_of<T,Types...>::value>(t));
+const T &&get(const std::tuple<Types...> &&t) noexcept {
+  return move(std::get<TupleUtils::index_of<T, Types...>::value>(t));
 }
 
 }; // namespace FlexFlow

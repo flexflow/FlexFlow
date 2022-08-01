@@ -18,9 +18,9 @@
 
 using namespace Legion;
 using namespace std;
+using FlexFlow::FID_DATA;
 using FlexFlow::TensorAccessorR;
 using FlexFlow::TensorAccessorW;
-using FlexFlow::FID_DATA;
 
 struct AlexNetConfig {
   AlexNetConfig(void) {
@@ -32,22 +32,25 @@ struct AlexNetConfig {
 
 class DataLoader {
 public:
-  DataLoader(FlexFlow::FFModel& ff, const AlexNetConfig* alexnet,
-             FlexFlow::Tensor _input, FlexFlow::Tensor _label);
+  DataLoader(FlexFlow::FFModel &ff,
+             const AlexNetConfig *alexnet,
+             FlexFlow::Tensor _input,
+             FlexFlow::Tensor _label);
   static void load_input(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx,
-                         Runtime* runtime);
+                         Runtime *runtime);
   static void load_label(const Task *task,
                          const std::vector<PhysicalRegion> &regions,
                          Context ctx,
-                         Runtime* runtime);
+                         Runtime *runtime);
   static void load_entire_dataset(const Task *task,
                                   const std::vector<PhysicalRegion> &regions,
                                   Context ctx,
-                                  Runtime* runtime);
-  void next_batch(FlexFlow::FFModel&);
+                                  Runtime *runtime);
+  void next_batch(FlexFlow::FFModel &);
   void reset(void);
+
 public:
   int num_samples, next_index;
   FlexFlow::Tensor full_input, batch_input;
@@ -58,4 +61,3 @@ struct SampleIdxs {
   int num_samples;
   int idxs[MAX_NUM_SAMPLES];
 };
-
