@@ -117,7 +117,7 @@ Dropout::Dropout(FFModel &model,
 Dropout::Dropout(FFModel &model, 
                  const DropoutParams &params, 
                  const ParallelTensor input, 
-                 const char* name = nullptr)
+                 const char* name)
     : Dropout(model, input, params.rate, params.seed, name) {}
 
 #ifdef DEADCODE
