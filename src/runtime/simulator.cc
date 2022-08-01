@@ -541,6 +541,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
     return ((Pool2D *)op)->get_params();
   case OP_DROPOUT:
     return ((Dropout *)op)->get_params();
+  case OP_EMBEDDING:
+    return ((Embedding *)op)->get_params();
   default:
     return tl::nullopt;
   }

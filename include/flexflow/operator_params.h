@@ -8,6 +8,8 @@
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/pool_2d_params.h"
 #include "flexflow/ops/dropout.h"
+#include "flexflow/ops/cast.h"
+#include "flexflow/ops/embedding.h"
 #include "mpark/variant.hpp"
 
 namespace mp = mpark;
@@ -20,7 +22,9 @@ using OperatorParameters = mp::variant<Conv2DParams,
                                        ElementBinaryParams,
                                        ElementUnaryParams,
                                        Pool2DParams,
-                                       DropoutParams>;
+                                       CastParams,
+                                       DropoutParams,
+                                       EmbeddingParams>;
 
 }; // namespace FlexFlow
 
