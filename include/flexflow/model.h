@@ -897,27 +897,28 @@ public:
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
   std::tuple<
+      std::unordered_map<std::pair<ParallelTensorShape, CastParams>,
+                         Cast *>
       std::unordered_map<
           std::pair<std::vector<ParallelTensorShape>, ConcatParams>,
           Concat *>,
       std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>,
                          Conv2D *>,
+      std::unordered_map<std::pair<ParallelTensorShape, DropoutParams>,
+                         Dropout *>
       std::unordered_map<
           std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
                     ElementBinaryParams>,
           ElementBinary *>,
-      std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
-                         Linear *>,
       std::unordered_map<std::pair<ParallelTensorShape, ElementUnaryParams>,
                          ElementUnary *>,
+      std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
+                         Linear *>,
       std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>,
-                         Pool2D *>,
-      std::unordered_map<std::pair<ParallelTensorShape, DropoutParams>,
-                         Dropout *>>
+                         Pool2D *>>
       cached_ops;
   std::unordered_map<size_t, NoOp *> cached_noop_ops;
   std::unordered_map<size_t, NoOp *> cached_input_ops;
-  std::unordered_map<size_t, Cast *> cached_cast_ops;
   std::unordered_map<size_t, Embedding *> cached_embedding_ops;
   std::unordered_map<size_t, Flat *> cached_flat_ops;
   std::unordered_map<size_t, MultiHeadAttention *> cached_multihead_attn_ops;
