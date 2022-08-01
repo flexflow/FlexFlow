@@ -911,12 +911,13 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, ElementUnaryParams>,
                          ElementUnary *>,
       std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>,
-                         Pool2D *>>
+                         Pool2D *>,
+      std::unordered_map<std::pair<ParallelTensorShape, DropoutParams>,
+                         Dropout *>>
       cached_ops;
   std::unordered_map<size_t, NoOp *> cached_noop_ops;
   std::unordered_map<size_t, NoOp *> cached_input_ops;
   std::unordered_map<size_t, Cast *> cached_cast_ops;
-  std::unordered_map<size_t, Dropout *> cached_dropout_ops;
   std::unordered_map<size_t, Embedding *> cached_embedding_ops;
   std::unordered_map<size_t, Flat *> cached_flat_ops;
   std::unordered_map<size_t, MultiHeadAttention *> cached_multihead_attn_ops;
