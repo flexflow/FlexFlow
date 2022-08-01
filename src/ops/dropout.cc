@@ -148,7 +148,9 @@ void Dropout::map_output_tensors(FFModel &model) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: { assert(false && "Unsupported dim"); }
+  default: {
+    assert(false && "Unsupported dim");
+  }
   }
 }
 

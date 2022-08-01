@@ -1103,8 +1103,8 @@ tl::optional<RecordFormatter> Conv2D::as_dot() const {
 }; // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::Conv2DParams>::
-operator()(FlexFlow::Conv2DParams const &params) const {
+size_t hash<FlexFlow::Conv2DParams>::operator()(
+    FlexFlow::Conv2DParams const &params) const {
   size_t key = 0;
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.out_channels);

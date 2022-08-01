@@ -122,8 +122,8 @@ size_t MachineResource::hash() const {
 }; // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::MachineView>::
-operator()(FlexFlow::MachineView const &mv) const {
+size_t
+hash<FlexFlow::MachineView>::operator()(FlexFlow::MachineView const &mv) const {
   return mv.hash();
 }
 }; // namespace std

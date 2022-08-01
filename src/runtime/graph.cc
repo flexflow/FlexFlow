@@ -1709,7 +1709,9 @@ Graph::graph_optimize_task(const Task *task,
         sez.serialize(fused->parallel_ops[i]);
       break;
     }
-    default: { op->serialize(sez); }
+    default: {
+      op->serialize(sez);
+    }
     }
     sez.serialize((size_t)12345678); // safe guard for the end of an op
   }

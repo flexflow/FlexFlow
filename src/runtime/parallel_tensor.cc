@@ -570,8 +570,8 @@ std::ostream &operator<<(std::ostream &s, ParallelTensorShape const &shape) {
 }; // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::ParallelTensorShape>::
-operator()(FlexFlow::ParallelTensorShape const &shape) const {
+size_t hash<FlexFlow::ParallelTensorShape>::operator()(
+    FlexFlow::ParallelTensorShape const &shape) const {
   size_t key = 0;
   hash_combine(key, shape.num_dims);
   for (int i = 0; i < shape.num_dims; i++) {

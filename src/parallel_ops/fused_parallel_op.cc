@@ -72,7 +72,9 @@ FusedParallelOp::FusedParallelOp(
       dims[info.parallel_dim].size /= info.parallel_degree;
       break;
     }
-    default: { assert(false && "Unsupported parallel op"); }
+    default: {
+      assert(false && "Unsupported parallel op");
+    }
     }
     ParallelTensorBase::update_parallel_ids(numdim, dims);
   }

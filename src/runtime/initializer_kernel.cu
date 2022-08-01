@@ -291,7 +291,9 @@ void ConstantInitializer::init_task(const Task *task,
           w, domain.get_volume(), initializer->int32_value);
       break;
     }
-    default: { assert(false && "Unsupported Initialzier Type"); }
+    default: {
+      assert(false && "Unsupported Initialzier Type");
+    }
     }
   }
   checkCUDA(cudaDeviceSynchronize());

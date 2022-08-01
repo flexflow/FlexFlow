@@ -722,8 +722,8 @@ Node FFModel::get_or_create_element_binary_node(const ParallelTensor input1,
 }; // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::ElementBinaryParams>::
-operator()(const FlexFlow::ElementBinaryParams &params) const {
+size_t hash<FlexFlow::ElementBinaryParams>::operator()(
+    const FlexFlow::ElementBinaryParams &params) const {
   size_t key = 0;
   hash_combine(key, params.type);
   return key;

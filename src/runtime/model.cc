@@ -1452,7 +1452,9 @@ void FFModel::map_tensor_with_dim(ParallelTensor tensor,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: { assert(false && "Unsupported Task Dim"); }
+  default: {
+    assert(false && "Unsupported Task Dim");
+  }
   }
 }
 
@@ -1579,7 +1581,9 @@ void FFModel::map_weight_with_dim(ParallelTensor weight,
   }
       LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default: { assert(false); }
+    default: {
+      assert(false);
+    }
     }
     break;
   }
@@ -2832,7 +2836,9 @@ void FFModel::compile(LossType loss_type,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: { assert(false && "Unsupported dim"); }
+  default: {
+    assert(false && "Unsupported dim");
+  }
   }
   // init optimizer
   assert(optimizer != NULL);

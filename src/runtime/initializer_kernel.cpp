@@ -323,7 +323,9 @@ void ConstantInitializer::init_task(const Task *task,
                          initializer->int32_value);
       break;
     }
-    default: { assert(false && "Unsupported Initialzier Type"); }
+    default: {
+      assert(false && "Unsupported Initialzier Type");
+    }
     }
   }
   checkCUDA(hipDeviceSynchronize());

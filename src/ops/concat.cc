@@ -459,8 +459,8 @@ Node FFModel::get_or_create_concat_node(int num_inputs,
 }; // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::ConcatParams>::
-operator()(const FlexFlow::ConcatParams &params) const {
+size_t hash<FlexFlow::ConcatParams>::operator()(
+    const FlexFlow::ConcatParams &params) const {
   return hash<int>{}(params.axis);
 }
 }; // namespace std

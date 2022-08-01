@@ -1131,8 +1131,8 @@ void LinearParams::construct_mappings(
 }; // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::LinearParams>::
-operator()(FlexFlow::LinearParams const &params) const {
+size_t hash<FlexFlow::LinearParams>::operator()(
+    FlexFlow::LinearParams const &params) const {
   size_t key = 0;
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.out_channels);
