@@ -99,7 +99,7 @@ Pool2DParams Pool2D::get_params() const {
   return params;
 }
 
-bool Pool2DParams::is_valid(const ParallelTensor input) const {
+bool Pool2DParams::is_valid(ParallelTensorShape const &input) const {
   ParallelTensorShape output_shape;
 
   this->solve_dims(
@@ -108,9 +108,9 @@ bool Pool2DParams::is_valid(const ParallelTensor input) const {
   );
 
   bool is_valid = true;
-  is_valid &= input->check_valid();
+  is_valid &= input.is_valid();
   is_valid &= output_shape.is_valid();
-  is_valid &= (input->dims[Pool2DInput::REPLICA].degree == 1);
+  is_valid &= (input.dims[Pool2DInput::REPLICA].degree == 1);
 
   return is_valid;
 }
@@ -147,11 +147,11 @@ Node FFModel::get_or_create_pool2d_node(const ParallelTensor input,
   return this->get_or_create_node<Pool2D>(input, params);
 }
 
-int Pool2DParams::output_size(const ParallelTensor input, ParallelDim output_dims[MAX_TENSOR_DIM]) const { 
-  int input_w = input->dims[Pool2DInput::WIDTH].size;
-  int input_h = input->dims[Pool2DInput::HEIGHT].size;
-  int input_c = input->dims[Pool2DInput::CHANNEL].size;
-  int input_n = input->dims[Pool2DInput::SAMPLE].size;
+int Pool2DParams::output_size(ParallelTensorShape const &input, ParallelDim output_dims[MAX_TENSOR_DIM]) const { 
+  int input_w = input.dims[Pool2DInput::WIDTH].size;
+  int input_h = input.dims[Pool2DInput::HEIGHT].size;
+  int input_c = input.dims[Pool2DInput::CHANNEL].size;
+  int input_n = input.dims[Pool2DInput::SAMPLE].size;
 
   output_dims[Pool2DOutput::WIDTH].size = 1 + (input_w + 2 * padding_w - kernel_w) / stride_w;
   output_dims[Pool2DOutput::HEIGHT].size = 1 + (input_h + 2 * padding_h - kernel_h) / stride_h;
@@ -162,7 +162,7 @@ int Pool2DParams::output_size(const ParallelTensor input, ParallelDim output_dim
   return Pool2DOutput::NUMDIM;
 }
 
-void Pool2DParams::solve_dims(const ParallelTensor input, 
+void Pool2DParams::solve_dims(ParallelTensorShape const &input, 
                 ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims) const 
 {
   assert ((output_dims == nullptr) == (output_ndims == nullptr));
@@ -178,7 +178,7 @@ void Pool2DParams::solve_dims(const ParallelTensor input,
 
   solve_parallel_dim_mappings(
       mapping,
-      {input->dims},
+      {input.dims},
       {},
       output_dim_sets
   );
@@ -234,7 +234,7 @@ Pool2D::Pool2D(FFModel& model,
   ParallelDim output_dims[MAX_TENSOR_DIM];
   int output_ndims;
   this->get_params().solve_dims(
-      this->inputs[0],
+      this->inputs[0]->get_shape(),
       output_dims,
       &output_ndims
   );
@@ -254,7 +254,7 @@ Pool2D::Pool2D(FFModel& model,
            params.stride_w,
            params.padding_h,
            params.padding_w,
-           params.type,
+           params.pool_type,
            params.activation,
            name) 
 { }

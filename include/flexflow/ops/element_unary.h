@@ -130,7 +130,7 @@ namespace std {
   template <>
   struct hash<FlexFlow::ElementUnaryParams> {
     size_t operator()(const FlexFlow::ElementUnaryParams&) const;
-  }
+  };
 }
 
 #endif // _ELEMENT_UNARY_H

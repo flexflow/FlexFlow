@@ -1,6 +1,6 @@
 #include "flexflow/utils/dot/dot_file.h"
 #include "flexflow/substitution_loader.h"
-#include "tl/optional.h"
+#include "tl/optional.hpp"
 #include <cassert>
 #include <iostream>
 #include "flexflow/ffconst_utils.h"

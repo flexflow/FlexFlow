@@ -7,6 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/device.h"
 #include "flexflow/layer.h"
+#include "flexflow/ops/pool_2d_params.h"
 
 namespace FlexFlow {
 
@@ -27,21 +28,6 @@ namespace Pool2DOutput {
                 SAMPLE = 3,
                 REPLICA = 4;
 };
-
-struct Pool2DParams {
-  int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
-  PoolType pool_type;
-  ActiMode activation;
-
-  bool is_valid(const ParallelTensor input) const;
-  void solve_dims(const ParallelTensor input, 
-                  ParallelDim output_dims[MAX_TENSOR_DIM], int* output_ndims) const;
-private:
-  int output_size(const ParallelTensor input,
-                  ParallelDim output_dims[MAX_TENSOR_DIM]) const; 
-};
-
-bool operator==(const Pool2DParams&, const Pool2DParams&);
 
 class Pool2DMeta : public OpMeta {
 public:
@@ -143,12 +129,5 @@ public:
 };
 
 }; // namespace FlexFlow
-
-namespace std {
-  template <>
-  struct hash<FlexFlow::Pool2DParams> {
-    size_t operator()(const FlexFlow::Pool2DParams&) const;
-  };
-}; // namespace std
 
 #endif //_FLEXFLOW_POOL_2D_H

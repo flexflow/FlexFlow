@@ -19,7 +19,7 @@
 #include "flexflow/parallel_tensor.h"
 #include "flexflow/graph.h"
 #include <queue>
-#include "tl/optional.h"
+#include "tl/optional.hpp"
 #include "flexflow/utils/recursive_logger.h"
 #include "flexflow/substitution_loader.h"
 

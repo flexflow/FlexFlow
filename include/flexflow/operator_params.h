@@ -7,7 +7,7 @@
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
-#include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/pool_2d_params.h"
 
 namespace mp = mpark;
 

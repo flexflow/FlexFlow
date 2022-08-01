@@ -1,7 +1,7 @@
 #ifndef _NODE_H
 #define _NODE_H
 
-#include "tl/optional.h"
+#include "tl/optional.hpp"
 
 namespace FlexFlow {
 

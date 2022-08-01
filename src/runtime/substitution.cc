@@ -874,7 +874,7 @@ bool GraphXfer::create_new_operator(const OpX* opx, Node& op)
     {
       Pool2D* pool = (Pool2D*)opx->matchOpX->mapOp.ptr;
       Pool2DParams params = pool->get_params();
-      op = model->get_or_create_pool2d_node(inputs[0], params);
+      op = model->get_or_create_node<Pool2D>(inputs[0], params);
       break;
     }
     case OP_FLAT:

@@ -151,7 +151,7 @@ bool ElementUnaryParams::is_valid(const ParallelTensorShape & input) const {
 bool operator==(const ElementUnaryParams& lhs, const ElementUnaryParams& rhs) {
   return lhs.op_type == rhs.op_type && 
          lhs.scalar == rhs.scalar &&
-         lhs.inplace = rhs.inplace;
+         lhs.inplace == rhs.inplace;
 }
 
 ElementUnary::ElementUnary(FFModel& model,

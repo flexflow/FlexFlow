@@ -28,7 +28,7 @@
 #include "device.h"
 #include <unistd.h>
 #include <functional>
-#include "tl/optional.h"
+#include "tl/optional.hpp"
 #include "utils/dot/record_formatter.h"
 #include "layer.h"
 #include <utility>
@@ -754,8 +754,6 @@ public:
                                       int paddingH, int paddingW,
                                       PoolType type,
                                       ActiMode activation);
-  PCG::Node get_or_create_pool2d_node(const ParallelTensor input,
-                                      const Pool2DParams& params);
   PCG::Node get_or_create_flat_node(const ParallelTensor input);
   PCG::Node get_or_create_element_unary_node(const ParallelTensor input,
                                              OperatorType type,

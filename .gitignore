@@ -1,4 +1,5 @@
 # Compiled files
+/.tools/
 /python/flexflow_python
 /python/flexflow/core/legion_cffi.py
 *.pb.cc

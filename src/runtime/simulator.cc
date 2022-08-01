@@ -21,6 +21,7 @@
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/replicate.h"
 #include "flexflow/parallel_ops/reduction.h"
+#include "flexflow/ops/pool_2d.h"
 #include <unordered_set>
 #include <memory>
 #include <random>

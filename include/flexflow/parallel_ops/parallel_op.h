@@ -2,7 +2,7 @@
 #define _FLEXFLOW_PARALLEL_OP_H
 
 #include "flexflow/model.h"
-#include "tl/optional.h"
+#include "tl/optional.hpp"
 
 namespace FlexFlow {
 

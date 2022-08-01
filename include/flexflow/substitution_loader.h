@@ -4,7 +4,7 @@
 #include <nlohmann/json.hpp>
 #include "flexflow/ffconst.h"
 #include <fstream>
-#include "tl/optional.h"
+#include "tl/optional.hpp"
 
 
 NLOHMANN_JSON_SERIALIZE_ENUM( PMParameter, {
