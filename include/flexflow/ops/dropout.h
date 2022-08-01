@@ -1,7 +1,12 @@
 #ifndef _FLEXFLOW_DROPOUT_H
 #define _FLEXFLOW_DROPOUT_H
 
-#include "flexflow/model.h"
+#include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/node.h"
+#include "flexflow/device.h"
+#include "flexflow/layer.h"
 
 namespace FlexFlow {
 
@@ -10,17 +15,21 @@ class DropoutMeta;
 struct DropoutParams {
   float rate;
   unsigned long long seed;
-  size_t get_hash(const ParallelTensor input) const;
+  bool is_valid(const ParallelTensorShape &) const;
 };
+bool operator==(const DropoutParams &, const DropoutParams &);
 
 class Dropout : public Op {
 public:
+  using Params = DropoutParams;
+  using Input = ParallelTensor;
   Dropout(FFModel &model,
           const ParallelTensor input,
           float rate,
           unsigned long long seed,
           char const *name);
   Dropout(FFModel &model, Dropout const &other, const ParallelTensor input);
+  Dropout(FFModel &model, const Params &params, const Input input, const char* name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -68,9 +77,7 @@ public:
                                ParallelTensor inputs[],
                                int num_inputs);
 
-  size_t get_params_hash() const override;
-
-  DropoutParams get_params() const;
+  Params get_params() const;
 
 public:
   float rate;
@@ -97,5 +104,12 @@ public:
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+  template <>
+  struct hash<FlexFlow::DropoutParams> {
+    size_t operator()(const FlexFlow::DropoutParams&) const;
+  }
+} // namespace std
 
 #endif
