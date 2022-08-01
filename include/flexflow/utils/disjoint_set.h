@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_DISJOINT_SET_H
 #define _FLEXFLOW_DISJOINT_SET_H
 
+#include <cassert>
+#include <map>
 #include <set>
 #include <unordered_map>
-#include <map>
-#include <cassert>
 
 template <typename T> class m_disjoint_set {
 public:

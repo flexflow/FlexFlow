@@ -1,9 +1,9 @@
 #ifndef _RANDOM_UTILS_H
 #define _RANDOM_UTILS_H
 
-#include <vector>
 #include <cstdlib>
 #include <stdexcept>
+#include <vector>
 
 float randf();
 
