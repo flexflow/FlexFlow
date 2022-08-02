@@ -53,7 +53,7 @@ ConcatParams Concat::get_params() const {
 }
 
 Tensor
-FFModel::concat(int n, Tensor const *tensors, int axis, char const *name) {
+    FFModel::concat(int n, Tensor const *tensors, int axis, char const *name) {
   Layer *concat = new Layer(this,
                             OP_CONCAT,
                             name,
@@ -340,11 +340,11 @@ void Concat::backward_task(Task const *task,
 
 bool Concat::get_int_parameter(PMParameter para, int *value) const {
   switch (para) {
-  case PM_AXIS:
-    *value = legion_axis;
-    return true;
-  default:
-    return Op::get_int_parameter(para, value);
+    case PM_AXIS:
+      *value = legion_axis;
+      return true;
+    default:
+      return Op::get_int_parameter(para, value);
   }
 }
 

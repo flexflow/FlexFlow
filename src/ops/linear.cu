@@ -23,15 +23,15 @@ void Linear::init_kernel(LinearMeta *m, int batch_size, int channel) {
   if (use_activation(m->activation)) {
     cudnnActivationMode_t mode;
     switch (m->activation) {
-    case AC_MODE_RELU:
-      mode = CUDNN_ACTIVATION_RELU;
-      break;
-    case AC_MODE_SIGMOID:
-      mode = CUDNN_ACTIVATION_SIGMOID;
-      break;
-    default:
-      // Unsupported activation mode
-      assert(false);
+      case AC_MODE_RELU:
+        mode = CUDNN_ACTIVATION_RELU;
+        break;
+      case AC_MODE_SIGMOID:
+        mode = CUDNN_ACTIVATION_SIGMOID;
+        break;
+      default:
+        // Unsupported activation mode
+        assert(false);
     }
     checkCUDNN(cudnnSetActivationDescriptor(
         m->actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));

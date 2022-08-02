@@ -266,8 +266,8 @@ OpMeta *Linear::init_task(Task const *task,
     return init_task_with_dim<DIM>(task, regions, ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
   return NULL;
 }
@@ -374,8 +374,8 @@ void Linear::forward_task(Task const *task,
     return forward_task_with_dim<DIM>(task, regions, ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -517,8 +517,8 @@ void Linear::backward_task(Task const *task,
     return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -734,11 +734,11 @@ ParallelConfig Linear::get_random_parallel_config(FFModel const &ff) const {
 
 bool Linear::get_int_parameter(PMParameter para, int *value) const {
   switch (para) {
-  case PM_ACTI:
-    *value = (int)activation;
-    return true;
-  default:
-    return Op::get_int_parameter(para, value);
+    case PM_ACTI:
+      *value = (int)activation;
+      return true;
+    default:
+      return Op::get_int_parameter(para, value);
   }
 }
 
@@ -757,15 +757,15 @@ bool Linear::is_valid_parallel_config(FFModel const &ff,
 
 bool Linear::use_activation(ActiMode mode) {
   switch (mode) {
-  case AC_MODE_RELU:
-  case AC_MODE_SIGMOID:
-  case AC_MODE_TANH:
-    return true;
-  case AC_MODE_NONE:
-    return false;
-  default:
-    assert(0);
-    break;
+    case AC_MODE_RELU:
+    case AC_MODE_SIGMOID:
+    case AC_MODE_TANH:
+      return true;
+    case AC_MODE_NONE:
+      return false;
+    default:
+      assert(0);
+      break;
   }
   return false;
 }
@@ -1018,8 +1018,8 @@ void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
 }
 
 std::unordered_map<LinearParams::NamedDimensions, int>
-LinearParams::get_dimension_names(
-    ParallelTensorShape const &input_shape) const {
+    LinearParams::get_dimension_names(
+        ParallelTensorShape const &input_shape) const {
   int num_dims = input_shape.num_dims;
 
   return {{INPUT_CHANNEL, 0},

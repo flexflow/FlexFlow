@@ -82,10 +82,10 @@ void Op::inner_measure_operator_cost(Simulator *sim,
 }
 
 FFHandler
-UtilityTasks::init_cuda_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
+    UtilityTasks::init_cuda_task(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
+                                 Context ctx,
+                                 Runtime *runtime) {
   assert(regions.size() == 0);
   assert(task->local_arglen == sizeof(FFInitInfo));
   FFInitInfo const *info = (FFInitInfo *)task->local_args;
@@ -272,11 +272,11 @@ __global__ void apply_normalize(float *tensor_ptr,
   regions[0](O): input_images
   regions[1](I): input_rgb
 */
-__host__ void
-UtilityTasks::normalize_images_task(Task const *task,
-                                    std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime) {
+__host__ void UtilityTasks::normalize_images_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   AccessorWO<float, 3> const acc_tensor(regions[0], FID_DATA);

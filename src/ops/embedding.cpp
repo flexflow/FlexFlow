@@ -248,7 +248,9 @@ void Embedding::backward_kernel_wrapper(EmbeddingMeta const *m,
 }
 
 __global__ void rand_generate_int64(int64_t *ptr, size_t size, int64_t p) {
-  CUDA_KERNEL_LOOP(i, size) { ptr[i] = i % p; }
+  CUDA_KERNEL_LOOP(i, size) {
+    ptr[i] = i % p;
+  }
 }
 
 void Embedding::rand_generate_int64_wrapper(int64_t *ptr,
@@ -268,45 +270,45 @@ void Embedding::rand_generate_int64_wrapper(int64_t *ptr,
 }
 
 template void
-Embedding::forward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
-                                           int32_t const *input_ptr,
-                                           float *output_ptr,
-                                           float const *weight_ptr,
-                                           int in_dim,
-                                           int out_dim,
-                                           int batch_size,
-                                           AggrMode aggr,
-                                           int outputSize);
+    Embedding::forward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
+                                               int32_t const *input_ptr,
+                                               float *output_ptr,
+                                               float const *weight_ptr,
+                                               int in_dim,
+                                               int out_dim,
+                                               int batch_size,
+                                               AggrMode aggr,
+                                               int outputSize);
 template void
-Embedding::forward_kernel_wrapper<int64_t>(EmbeddingMeta const *m,
-                                           int64_t const *input_ptr,
-                                           float *output_ptr,
-                                           float const *weight_ptr,
-                                           int in_dim,
-                                           int out_dim,
-                                           int batch_size,
-                                           AggrMode aggr,
-                                           int outputSize);
+    Embedding::forward_kernel_wrapper<int64_t>(EmbeddingMeta const *m,
+                                               int64_t const *input_ptr,
+                                               float *output_ptr,
+                                               float const *weight_ptr,
+                                               int in_dim,
+                                               int out_dim,
+                                               int batch_size,
+                                               AggrMode aggr,
+                                               int outputSize);
 
 template void
-Embedding::backward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
-                                            int32_t const *input_ptr,
-                                            float const *output_ptr,
-                                            float *weight_grad_ptr,
-                                            int in_dim,
-                                            int out_dim,
-                                            int batch_size,
-                                            AggrMode aggr,
-                                            int outputSize);
+    Embedding::backward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
+                                                int32_t const *input_ptr,
+                                                float const *output_ptr,
+                                                float *weight_grad_ptr,
+                                                int in_dim,
+                                                int out_dim,
+                                                int batch_size,
+                                                AggrMode aggr,
+                                                int outputSize);
 template void
-Embedding::backward_kernel_wrapper<int64_t>(EmbeddingMeta const *m,
-                                            int64_t const *input_ptr,
-                                            float const *output_ptr,
-                                            float *weight_grad_ptr,
-                                            int in_dim,
-                                            int out_dim,
-                                            int batch_size,
-                                            AggrMode aggr,
-                                            int outputSize);
+    Embedding::backward_kernel_wrapper<int64_t>(EmbeddingMeta const *m,
+                                                int64_t const *input_ptr,
+                                                float const *output_ptr,
+                                                float *weight_grad_ptr,
+                                                int in_dim,
+                                                int out_dim,
+                                                int batch_size,
+                                                AggrMode aggr,
+                                                int outputSize);
 
 }; // namespace FlexFlow

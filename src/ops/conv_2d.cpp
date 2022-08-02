@@ -19,17 +19,17 @@
 
 namespace FlexFlow {
 
-miopenConvFwdAlgorithm_t
-selectConvolutionForwardAlgorithm(miopenHandle_t handle,
-                                  const miopenTensorDescriptor_t xDesc,
-                                  void const *x,
-                                  const miopenTensorDescriptor_t wDesc,
-                                  void const *w,
-                                  const miopenConvolutionDescriptor_t convDesc,
-                                  void *workSpace,
-                                  size_t workSpaceSize,
-                                  const miopenTensorDescriptor_t yDesc,
-                                  void *y);
+miopenConvFwdAlgorithm_t selectConvolutionForwardAlgorithm(
+    miopenHandle_t handle,
+    const miopenTensorDescriptor_t xDesc,
+    void const *x,
+    const miopenTensorDescriptor_t wDesc,
+    void const *w,
+    const miopenConvolutionDescriptor_t convDesc,
+    void *workSpace,
+    size_t workSpaceSize,
+    const miopenTensorDescriptor_t yDesc,
+    void *y);
 miopenConvBwdWeightsAlgorithm_t selectConvolutionBackwardFilterAlgorithm(
     miopenHandle_t handle,
     const miopenTensorDescriptor_t xDesc,
@@ -373,17 +373,17 @@ void Conv2D::backward_kernel_wrapper(Conv2DMeta const *m,
   }
 }
 
-miopenConvFwdAlgorithm_t
-selectConvolutionForwardAlgorithm(miopenHandle_t handle,
-                                  const miopenTensorDescriptor_t xDesc,
-                                  void const *x,
-                                  const miopenTensorDescriptor_t wDesc,
-                                  void const *w,
-                                  const miopenConvolutionDescriptor_t convDesc,
-                                  void *workSpace,
-                                  size_t workSpaceSize,
-                                  const miopenTensorDescriptor_t yDesc,
-                                  void *y) {
+miopenConvFwdAlgorithm_t selectConvolutionForwardAlgorithm(
+    miopenHandle_t handle,
+    const miopenTensorDescriptor_t xDesc,
+    void const *x,
+    const miopenTensorDescriptor_t wDesc,
+    void const *w,
+    const miopenConvolutionDescriptor_t convDesc,
+    void *workSpace,
+    size_t workSpaceSize,
+    const miopenTensorDescriptor_t yDesc,
+    void *y) {
   int const reqAlgCnt = 8;
   int cnt = 0;
   miopenConvAlgoPerf_t perfResults[reqAlgCnt];

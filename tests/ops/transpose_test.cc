@@ -9,7 +9,9 @@ LegionRuntime::Logger::Category log_app("transpose_test");
 
 struct TransposeTestMeta {
   int m, k, d;
-  TransposeTestMeta(int _m, int _k, int _d) { m = _m, k = _k, d = _d; }
+  TransposeTestMeta(int _m, int _k, int _d) {
+    m = _m, k = _k, d = _d;
+  }
 };
 
 TransposeTestMeta get_test_meta(const std::string file_path) {

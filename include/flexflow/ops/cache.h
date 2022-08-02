@@ -23,7 +23,9 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override { assert(0); }
+  void print_layer(FFModel const &model) override {
+    assert(0);
+  }
   // void create_weights(FFModel& model);
   // void create_output_and_partition(FFModel& model);
 

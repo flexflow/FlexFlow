@@ -182,14 +182,14 @@ bool Replicate::measure_operator_cost(Simulator *sim,
 
 bool Replicate::get_int_parameter(PMParameter para, int *value) const {
   switch (para) {
-  case PM_REPLICATE_DIM:
-    *value = replicate_dim;
-    return true;
-  case PM_REPLICATE_DEGREE:
-    *value = replicate_degree;
-    return true;
-  default:
-    return Op::get_int_parameter(para, value);
+    case PM_REPLICATE_DIM:
+      *value = replicate_dim;
+      return true;
+    case PM_REPLICATE_DEGREE:
+      *value = replicate_degree;
+      return true;
+    default:
+      return Op::get_int_parameter(para, value);
   }
 }
 

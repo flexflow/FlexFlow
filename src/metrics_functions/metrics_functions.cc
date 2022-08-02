@@ -40,27 +40,27 @@ Metrics::Metrics(LossType _loss_type, std::vector<MetricsType> const &metrics)
       measure_mean_absolute_error(false) {
   for (size_t i = 0; i < metrics.size(); i++) {
     switch (metrics[i]) {
-    case METRICS_ACCURACY:
-      measure_accuracy = true;
-      continue;
-    case METRICS_CATEGORICAL_CROSSENTROPY:
-      measure_categorical_crossentropy = true;
-      continue;
-    case METRICS_SPARSE_CATEGORICAL_CROSSENTROPY:
-      measure_sparse_categorical_crossentropy = true;
-      continue;
-    case METRICS_MEAN_SQUARED_ERROR:
-      measure_mean_squared_error = true;
-      continue;
-    case METRICS_ROOT_MEAN_SQUARED_ERROR:
-      measure_root_mean_squared_error = true;
-      continue;
-    case METRICS_MEAN_ABSOLUTE_ERROR:
-      measure_mean_absolute_error = true;
-      continue;
-    default:
-      fprintf(stderr, "Unrecogonized metrics type\n");
-      assert(false);
+      case METRICS_ACCURACY:
+        measure_accuracy = true;
+        continue;
+      case METRICS_CATEGORICAL_CROSSENTROPY:
+        measure_categorical_crossentropy = true;
+        continue;
+      case METRICS_SPARSE_CATEGORICAL_CROSSENTROPY:
+        measure_sparse_categorical_crossentropy = true;
+        continue;
+      case METRICS_MEAN_SQUARED_ERROR:
+        measure_mean_squared_error = true;
+        continue;
+      case METRICS_ROOT_MEAN_SQUARED_ERROR:
+        measure_root_mean_squared_error = true;
+        continue;
+      case METRICS_MEAN_ABSOLUTE_ERROR:
+        measure_mean_absolute_error = true;
+        continue;
+      default:
+        fprintf(stderr, "Unrecogonized metrics type\n");
+        assert(false);
     }
   }
 }
@@ -119,8 +119,8 @@ PerfMetrics Metrics::compute_task(Task const *task,
     return compute_task_with_dim<DIM>(task, regions, ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
   PerfMetrics invalid;
   return invalid;
@@ -128,10 +128,10 @@ PerfMetrics Metrics::compute_task(Task const *task,
 
 template <int NDIM>
 PerfMetrics
-Metrics::compute_task_with_dim(Task const *task,
-                               std::vector<PhysicalRegion> const &regions,
-                               Context ctx,
-                               Runtime *runtime) {
+    Metrics::compute_task_with_dim(Task const *task,
+                                   std::vector<PhysicalRegion> const &regions,
+                                   Context ctx,
+                                   Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   Metrics const *me = (Metrics *)task->args;

@@ -231,23 +231,23 @@ template void dump_tensor_task<4>(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime);
-template void
-initialize_tensor_from_file_task<1>(Task const *task,
-                                    std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime);
-template void
-initialize_tensor_from_file_task<2>(Task const *task,
-                                    std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime);
-template void
-initialize_tensor_from_file_task<3>(Task const *task,
-                                    std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime);
-template void
-initialize_tensor_from_file_task<4>(Task const *task,
-                                    std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime);
+template void initialize_tensor_from_file_task<1>(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime);
+template void initialize_tensor_from_file_task<2>(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime);
+template void initialize_tensor_from_file_task<3>(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime);
+template void initialize_tensor_from_file_task<4>(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime);

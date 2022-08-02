@@ -53,7 +53,8 @@ struct EdgeCompare {
 }; // namespace FlexFlow::PCG
 
 namespace std {
-template <> struct hash<FlexFlow::PCG::Edge> {
+template <>
+struct hash<FlexFlow::PCG::Edge> {
   size_t operator()(FlexFlow::PCG::Edge const &e) const {
     size_t res = 17;
     res = res * 31 + hash<size_t>()((size_t)e.srcOp.guid);
@@ -64,8 +65,11 @@ template <> struct hash<FlexFlow::PCG::Edge> {
   }
 };
 
-template <> struct hash<FlexFlow::PCG::Node> {
-  size_t operator()(FlexFlow::PCG::Node const &n) const { return n.guid; }
+template <>
+struct hash<FlexFlow::PCG::Node> {
+  size_t operator()(FlexFlow::PCG::Node const &n) const {
+    return n.guid;
+  }
 };
 }; // namespace std
 
@@ -105,9 +109,11 @@ struct GraphCostResult {
   friend std::ostream &operator<<(std::ostream &, GraphCostResult const &);
 };
 
-template <typename T> T sequence_cost(T const &first, T const &second);
+template <typename T>
+T sequence_cost(T const &first, T const &second);
 
-template <typename T> T parallel_cost(T const &first, T const &second);
+template <typename T>
+T parallel_cost(T const &first, T const &second);
 
 size_t dp_state_hash(Graph const *graph,
                      Node const &sink_node,
@@ -160,9 +166,9 @@ public:
   /*                                           std::unordered_map<Node,
    * MachineView>& optimal_views) const; */
   std::vector<MachineView>
-  get_valid_machine_views(Node const &node,
-                          MachineResource const &resource,
-                          bool log = false) const;
+      get_valid_machine_views(Node const &node,
+                              MachineResource const &resource,
+                              bool log = false) const;
   std::vector<MachineView> get_valid_machine_views(
       Op const *op, MachineResource const &resource, bool log = false) const;
 
@@ -172,11 +178,14 @@ public:
   template <typename T>
   void try_cache_result(size_t hash, T const &value) const;
 
-  template <typename T> T infinity() const;
+  template <typename T>
+  T infinity() const;
 
-  template <typename T> T empty() const;
+  template <typename T>
+  T empty() const;
 
-  template <typename T> bool is_invalid(T const &) const;
+  template <typename T>
+  bool is_invalid(T const &) const;
 
   template <typename T>
   T estimate_xfer_cost(Graph const *g,
@@ -186,7 +195,8 @@ public:
   template <typename T>
   void add_operator_cost(NodeAssignment const &, float, T *) const;
 
-  template <typename T> float get_cost(T const &) const;
+  template <typename T>
+  float get_cost(T const &) const;
 
   template <typename T>
   void check_matches_graph(Graph const *, T const &, Node const &) const;
@@ -235,8 +245,10 @@ public:
   void add_edge(Edge const &e);
   void remove_node(Node const &, bool purge_edges = false);
   void remove_edge(Edge const &e, bool remove_node_if_unused = true);
-  bool
-  has_edge(Node const &srcOp, Node const &dstOp, int srcIdx, int dstIdx) const;
+  bool has_edge(Node const &srcOp,
+                Node const &dstOp,
+                int srcIdx,
+                int dstIdx) const;
   bool has_edge(Edge const &e) const;
   void replace_subgraph(std::unordered_set<Node> const &currentNodes,
                         Graph const &replaceWith);
@@ -249,7 +261,7 @@ public:
   void duplicate_input_nodes();
   Node clone_node(Node const &);
   std::pair<Node, std::unordered_set<Node>>
-  deduplicate_input_node(Node const &);
+      deduplicate_input_node(Node const &);
   std::unordered_map<Node, Node> deduplicate_input_nodes();
   Node declone_node(Node const &);
 
@@ -262,10 +274,10 @@ public:
   bool has_loop(void);
   bool map_operators_to_layers(std::vector<Op *> &layers) const;
   static GraphOptimalViewSerialized
-  graph_optimize_task(Legion::Task const *task,
-                      std::vector<Legion::PhysicalRegion> const &regions,
-                      Legion::Context ctx,
-                      Legion::Runtime *runtime);
+      graph_optimize_task(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
   Node find_bottleneck_node(Node const &sink_node,
                             Node const &source_node) const;
   void print_strategy_computation_graph(
@@ -278,9 +290,9 @@ public:
       DotFile<Node> &dot) const;
 
   std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>>
-  split_at_node(Node const &bottleneck) const;
+      split_at_node(Node const &bottleneck) const;
   std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>>
-  split_horizontal(Node const &source_node, Node const &sink_node) const;
+      split_horizontal(Node const &source_node, Node const &sink_node) const;
 
   Graph reduced() const;
 
@@ -288,7 +300,7 @@ public:
   Node find_source_node() const;
   void reshape_output_tensor(ParallelTensorShape const &shape);
   std::unique_ptr<Graph>
-  with_output_tensor_reshaped_to(ParallelTensorShape const &shape) const;
+      with_output_tensor_reshaped_to(ParallelTensorShape const &shape) const;
 
   void simplify(SimplificationSettings const &);
   void simplify_parallel_ops();
@@ -296,7 +308,8 @@ public:
   static Graph singleton(FFModel *, Node const &);
   bool empty() const;
 
-  template <typename T> T generic_optimal_cost() const;
+  template <typename T>
+  T generic_optimal_cost() const;
 
 public:
   FFModel *model;
@@ -305,9 +318,8 @@ public:
 
 private:
   void remove_inverse_parallel_ops();
-  void
-  replace_subgraph_with_nonempty(std::unordered_set<Node> const &currentNodes,
-                                 Graph const &replaceWith);
+  void replace_subgraph_with_nonempty(
+      std::unordered_set<Node> const &currentNodes, Graph const &replaceWith);
 };
 
 struct GraphOptimizeResult {
@@ -319,7 +331,8 @@ struct GraphOptimizeResult {
 };
 
 namespace Utils {
-template <> struct GraphStructure<FlexFlow::PCG::Graph> {
+template <>
+struct GraphStructure<FlexFlow::PCG::Graph> {
   using G = FlexFlow::PCG::Graph;
   using graph_type = FlexFlow::PCG::Graph;
   using vertex_type = FlexFlow::PCG::Node;
@@ -355,9 +368,13 @@ template <> struct GraphStructure<FlexFlow::PCG::Graph> {
     }
   }
 
-  vertex_type get_src(G const &g, edge_type const &e) const { return e.srcOp; }
+  vertex_type get_src(G const &g, edge_type const &e) const {
+    return e.srcOp;
+  }
 
-  vertex_type get_dst(G const &g, edge_type const &e) const { return e.dstOp; }
+  vertex_type get_dst(G const &g, edge_type const &e) const {
+    return e.dstOp;
+  }
 
   void set_src(G const &g, edge_type &e, vertex_type const &n) const {
     e.srcOp = n;
@@ -368,17 +385,22 @@ template <> struct GraphStructure<FlexFlow::PCG::Graph> {
   }
 };
 
-template <> struct invalid_node<Graph, GraphStructure<Graph>> {
+template <>
+struct invalid_node<Graph, GraphStructure<Graph>> {
   using G = Graph;
   using Structure = GraphStructure<Graph>;
   using vertex_type = typename Structure::vertex_type;
 
-  vertex_type operator()() const { return vertex_type::INVALID_NODE; }
+  vertex_type operator()() const {
+    return vertex_type::INVALID_NODE;
+  }
 };
 
 template <>
 struct invalid_node<BasicGraph<Node>, GraphStructure<BasicGraph<Node>>> {
-  Node operator()() const { return Node::INVALID_NODE; }
+  Node operator()() const {
+    return Node::INVALID_NODE;
+  }
 };
 }; // namespace Utils
 }; // namespace FlexFlow::PCG

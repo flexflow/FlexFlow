@@ -25,14 +25,14 @@
 namespace FlexFlow {
 
 __global__ void
-gb_forward_kernel(float const *input,
-                  int const *exp_assign,
-                  float **outputs,
-                  int n,       // num experts
-                  int k,       // chosen experts
-                  float alpha, // factor additional memory assigned
-                  int batch_size,
-                  int data_dim) {
+    gb_forward_kernel(float const *input,
+                      int const *exp_assign,
+                      float **outputs,
+                      int n,       // num experts
+                      int k,       // chosen experts
+                      float alpha, // factor additional memory assigned
+                      int batch_size,
+                      int data_dim) {
   __shared__ float *chosen_exp_preds[MAX_K * MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread per block
@@ -64,14 +64,14 @@ gb_forward_kernel(float const *input,
 }
 
 __global__ void
-gb_backward_kernel(float *input_grad,
-                   int const *exp_assign,
-                   float **output_grads,
-                   int n,       // num experts
-                   int k,       // chosen experts
-                   float alpha, // factor additional memory assigned
-                   int batch_size,
-                   int data_dim) {
+    gb_backward_kernel(float *input_grad,
+                       int const *exp_assign,
+                       float **output_grads,
+                       int n,       // num experts
+                       int k,       // chosen experts
+                       float alpha, // factor additional memory assigned
+                       int batch_size,
+                       int data_dim) {
   __shared__ float *chosen_exp_grads[MAX_K * MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread
@@ -165,6 +165,8 @@ void Group_by::backward_kernel_wrapper(
 GroupByMeta::GroupByMeta(FFHandler handler, int n) : OpMeta(handler) {
   checkCUDA(cudaMalloc(&dev_region_ptrs, n * sizeof(float *)));
 }
-GroupByMeta::~GroupByMeta(void) { checkCUDA(cudaFree(&dev_region_ptrs)); }
+GroupByMeta::~GroupByMeta(void) {
+  checkCUDA(cudaFree(&dev_region_ptrs));
+}
 
 }; // namespace FlexFlow

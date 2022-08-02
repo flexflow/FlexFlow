@@ -263,8 +263,9 @@ SingleDataLoader *create_data_loader_attach(FFModel &model,
   return dataloader;
 }
 
-SingleDataLoader *
-create_data_loader(FFModel &model, Tensor batch_tensor, py::array &full_array) {
+SingleDataLoader *create_data_loader(FFModel &model,
+                                     Tensor batch_tensor,
+                                     py::array &full_array) {
   if (model.config.enable_control_replication) {
     assert(model.config.python_data_loader_type != 1);
     return create_data_loader_ptr(model, batch_tensor, full_array);

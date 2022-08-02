@@ -72,7 +72,7 @@ public:
   };
 
   std::unordered_map<NamedDimensions, int>
-  get_dimension_names(ParallelTensorShape const &input_name) const;
+      get_dimension_names(ParallelTensorShape const &input_name) const;
 
   friend bool operator==(LinearParams const &lhs, LinearParams const &rhs);
 
@@ -120,9 +120,9 @@ public:
   void print_layer(FFModel const &model) override;
   bool get_int_parameter(PMParameter, int *) const override;
   static Op *
-  create_operator_from_layer(FFModel &model,
-                             Layer const *layer,
-                             std::vector<ParallelTensor> const &inputs);
+      create_operator_from_layer(FFModel &model,
+                                 Layer const *layer,
+                                 std::vector<ParallelTensor> const &inputs);
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
@@ -207,22 +207,22 @@ private:
 
   template <int NDIM>
   static OpMeta *
-  init_task_with_dim(Legion::Task const *task,
-                     std::vector<Legion::PhysicalRegion> const &regions,
-                     Legion::Context ctx,
-                     Legion::Runtime *runtime);
-  template <int NDIM>
-  static void
-  forward_task_with_dim(Legion::Task const *task,
-                        std::vector<Legion::PhysicalRegion> const &regions,
-                        Legion::Context ctx,
-                        Legion::Runtime *runtime);
-  template <int NDIM>
-  static void
-  backward_task_with_dim(Legion::Task const *task,
+      init_task_with_dim(Legion::Task const *task,
                          std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
                          Legion::Runtime *runtime);
+  template <int NDIM>
+  static void
+      forward_task_with_dim(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
+  template <int NDIM>
+  static void
+      backward_task_with_dim(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   static bool use_activation(ActiMode mode);
 
   void register_mappings();
@@ -239,7 +239,8 @@ public:
 }; // namespace FlexFlow
 
 namespace std {
-template <> struct hash<FlexFlow::LinearParams> {
+template <>
+struct hash<FlexFlow::LinearParams> {
   size_t operator()(FlexFlow::LinearParams const &) const;
 };
 }; // namespace std

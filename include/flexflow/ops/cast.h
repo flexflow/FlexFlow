@@ -32,11 +32,13 @@ public:
   void init(FFModel const &);
   void forward(FFModel const &);
   void backward(FFModel const &);
-  void print_layer(FFModel const &model) { assert(0); }
+  void print_layer(FFModel const &model) {
+    assert(0);
+  }
   static Op *
-  create_operator_from_layer(FFModel &model,
-                             Layer const *layer,
-                             std::vector<ParallelTensor> const &inputs);
+      create_operator_from_layer(FFModel &model,
+                                 Layer const *layer,
+                                 std::vector<ParallelTensor> const &inputs);
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
@@ -46,41 +48,42 @@ public:
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
   template <typename IDT>
-  static void
-  forward_task_with_1_type(Legion::Task const *task,
-                           std::vector<Legion::PhysicalRegion> const &regions,
-                           Legion::Context ctx,
-                           Legion::Runtime *runtime);
+  static void forward_task_with_1_type(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
   template <typename IDT, typename ODT>
-  static void
-  forward_task_with_2_type(Legion::Task const *task,
-                           std::vector<Legion::PhysicalRegion> const &regions,
-                           Legion::Context ctx,
-                           Legion::Runtime *runtime);
+  static void forward_task_with_2_type(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
   static void backward_task(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   template <typename IDT>
-  static void
-  backward_task_with_1_type(Legion::Task const *task,
-                            std::vector<Legion::PhysicalRegion> const &regions,
-                            Legion::Context ctx,
-                            Legion::Runtime *runtime);
+  static void backward_task_with_1_type(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
   template <typename IDT, typename ODT>
-  static void
-  backward_task_with_2_type(Legion::Task const *task,
-                            std::vector<Legion::PhysicalRegion> const &regions,
-                            Legion::Context ctx,
-                            Legion::Runtime *runtime);
+  static void backward_task_with_2_type(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
   template <typename IDT, typename ODT>
   static void forward_kernel(const IDT *input_ptr,
                              ODT *output_ptr,
                              size_t volume,
                              ffStream_t stream);
   template <typename IDT, typename ODT>
-  static void
-  forward_kernel_wrapper(const IDT *input_ptr, ODT *output_ptr, size_t volume);
+  static void forward_kernel_wrapper(const IDT *input_ptr,
+                                     ODT *output_ptr,
+                                     size_t volume);
   template <typename IDT, typename ODT>
   static void backward_kernel(const IDT *src_ptr,
                               ODT *dst_ptr,
@@ -88,7 +91,7 @@ public:
                               ffStream_t stream);
   template <typename IDT, typename ODT>
   static void
-  backward_kernel_wrapper(const IDT *src_ptr, ODT *dst_ptr, size_t volume);
+      backward_kernel_wrapper(const IDT *src_ptr, ODT *dst_ptr, size_t volume);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const;

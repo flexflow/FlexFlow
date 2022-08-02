@@ -23,7 +23,9 @@ using namespace FlexFlow;
 
 ImgDataLoader::ImgDataLoader() {}
 
-void ImgDataLoader::reset() { next_index = 0; }
+void ImgDataLoader::reset() {
+  next_index = 0;
+}
 
 ImgDataLoader4D::ImgDataLoader4D(FFModel &ff,
                                  ParallelTensor input,
@@ -604,8 +606,8 @@ SingleDataLoader::SingleDataLoader(FFModel &ff,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
   int task_id = -1;
   if (datatype == DT_FLOAT) {
@@ -684,8 +686,8 @@ SingleDataLoader::SingleDataLoader(FFModel &ff,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
   reset();
   next_batch(ff);
@@ -750,7 +752,9 @@ void SingleDataLoader::index_loader_xd_launcher(FFModel &ff,
 #endif
 }
 
-void SingleDataLoader::reset() { next_index = 0; }
+void SingleDataLoader::reset() {
+  next_index = 0;
+}
 
 void SingleDataLoader::next_batch(FFModel &ff) {
   int task_id = -1;
@@ -769,8 +773,8 @@ void SingleDataLoader::next_batch(FFModel &ff) {
     break;
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -881,8 +885,8 @@ void SingleDataLoader::load_entire_dataset_from_numpy(
         task, regions, ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -939,8 +943,8 @@ void SingleDataLoader::index_load_entire_dataset_from_numpy(
         task, regions, ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 

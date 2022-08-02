@@ -23,8 +23,9 @@ struct SoftmaxDPInitParams {
   bool profiling;
 };
 
-Tensor
-RnnModel::add_softmaxDP_node(Tensor logit, Tensor label, ParallelConfig pc) {
+Tensor RnnModel::add_softmaxDP_node(Tensor logit,
+                                    Tensor label,
+                                    ParallelConfig pc) {
   assert(logit.numDim == 3);
   assert(logit.adim[2] == LSTM_PER_NODE_LENGTH);
   assert(logit.pdim[2] == LSTM_PER_NODE_LENGTH);

@@ -61,12 +61,12 @@ template void Repartition::backward_kernel<float>(float const *output_grad_ptr,
 template void Repartition::backward_kernel<double>(
     double const *output_grad_ptr, double *input_grad_ptr, size_t num_elements);
 template void
-Repartition::backward_kernel<int32_t>(int32_t const *output_grad_ptr,
-                                      int32_t *input_grad_ptr,
-                                      size_t num_elements);
+    Repartition::backward_kernel<int32_t>(int32_t const *output_grad_ptr,
+                                          int32_t *input_grad_ptr,
+                                          size_t num_elements);
 template void
-Repartition::backward_kernel<int64_t>(int64_t const *output_grad_ptr,
-                                      int64_t *input_grad_ptr,
-                                      size_t num_elements);
+    Repartition::backward_kernel<int64_t>(int64_t const *output_grad_ptr,
+                                          int64_t *input_grad_ptr,
+                                          size_t num_elements);
 
 }; // namespace FlexFlow

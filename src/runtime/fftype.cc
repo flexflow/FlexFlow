@@ -5,7 +5,9 @@ namespace FlexFlow {
 
 LayerID::LayerID() : id(0) {}
 
-LayerID::LayerID(size_t _id) : id(_id) { assert(is_valid_id()); }
+LayerID::LayerID(size_t _id) : id(_id) {
+  assert(is_valid_id());
+}
 
 bool LayerID::is_valid_id() const {
   return (id >= LAYER_GUID_FIRST_VALID && id <= LAYER_GUID_LAST_VALID);

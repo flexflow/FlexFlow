@@ -60,11 +60,11 @@ void UniformInitializer::init_task(Task const *task,
         ctx, task->regions[i].region.get_index_space());
     float *w;
     switch (domain.get_dim()) {
-    case 0: {
-      // Do not support 0-dim parameters
-      assert(false);
-      break;
-    }
+      case 0: {
+        // Do not support 0-dim parameters
+        assert(false);
+        break;
+      }
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
     TensorAccessorW<float, DIM> accW(regions[i],                               \
@@ -76,12 +76,12 @@ void UniformInitializer::init_task(Task const *task,
     w = accW.ptr;                                                              \
     break;                                                                     \
   }
-      LEGION_FOREACH_N(DIMFUNC)
+        LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default: {
-      assert(false);
-      break;
-    }
+      default: {
+        assert(false);
+        break;
+      }
     }
     hiprandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
     checkCUDA(hiprandGenerateUniform(gen, w, domain.get_volume()));
@@ -184,8 +184,8 @@ void NormInitializer::init_task(Task const *task,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
   hiprandGenerator_t gen;
   hiprandCreateGenerator(&gen, HIPRAND_RNG_PSEUDO_DEFAULT);
@@ -284,48 +284,48 @@ void ConstantInitializer::init_task(Task const *task,
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
     switch (initializer->data_type) {
-    case DT_FLOAT: {
-      float *w = helperGetTensorPointerWO<float>(
-          regions[i], task->regions[i], FID_DATA, ctx, runtime);
-      hipLaunchKernelGGL(assign_kernel,
-                         GET_BLOCKS(domain.get_volume()),
-                         CUDA_NUM_THREADS,
-                         0,
-                         stream,
-                         w,
-                         domain.get_volume(),
-                         initializer->float_value);
-      break;
-    }
-    case DT_INT64: {
-      int64_t *w = helperGetTensorPointerWO<int64_t>(
-          regions[i], task->regions[i], FID_DATA, ctx, runtime);
-      hipLaunchKernelGGL(assign_kernel,
-                         GET_BLOCKS(domain.get_volume()),
-                         CUDA_NUM_THREADS,
-                         0,
-                         stream,
-                         w,
-                         domain.get_volume(),
-                         initializer->int64_value);
-      break;
-    }
-    case DT_INT32: {
-      int *w = helperGetTensorPointerWO<int>(
-          regions[i], task->regions[i], FID_DATA, ctx, runtime);
-      hipLaunchKernelGGL(assign_kernel,
-                         GET_BLOCKS(domain.get_volume()),
-                         CUDA_NUM_THREADS,
-                         0,
-                         stream,
-                         w,
-                         domain.get_volume(),
-                         initializer->int32_value);
-      break;
-    }
-    default: {
-      assert(false && "Unsupported Initialzier Type");
-    }
+      case DT_FLOAT: {
+        float *w = helperGetTensorPointerWO<float>(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime);
+        hipLaunchKernelGGL(assign_kernel,
+                           GET_BLOCKS(domain.get_volume()),
+                           CUDA_NUM_THREADS,
+                           0,
+                           stream,
+                           w,
+                           domain.get_volume(),
+                           initializer->float_value);
+        break;
+      }
+      case DT_INT64: {
+        int64_t *w = helperGetTensorPointerWO<int64_t>(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime);
+        hipLaunchKernelGGL(assign_kernel,
+                           GET_BLOCKS(domain.get_volume()),
+                           CUDA_NUM_THREADS,
+                           0,
+                           stream,
+                           w,
+                           domain.get_volume(),
+                           initializer->int64_value);
+        break;
+      }
+      case DT_INT32: {
+        int *w = helperGetTensorPointerWO<int>(
+            regions[i], task->regions[i], FID_DATA, ctx, runtime);
+        hipLaunchKernelGGL(assign_kernel,
+                           GET_BLOCKS(domain.get_volume()),
+                           CUDA_NUM_THREADS,
+                           0,
+                           stream,
+                           w,
+                           domain.get_volume(),
+                           initializer->int32_value);
+        break;
+      }
+      default: {
+        assert(false && "Unsupported Initialzier Type");
+      }
     }
   }
   checkCUDA(hipDeviceSynchronize());

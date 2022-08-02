@@ -28,20 +28,20 @@ void ElementUnary::init_kernel(ElementUnaryMeta *m,
                                Domain const &output_domain) {
   cudnnActivationMode_t mode;
   switch (m->op_type) {
-  case OP_SIGMOID:
-    mode = CUDNN_ACTIVATION_SIGMOID;
-    break;
-  case OP_RELU:
-    mode = CUDNN_ACTIVATION_RELU;
-    break;
-  case OP_TANH:
-    mode = CUDNN_ACTIVATION_TANH;
-    break;
-  case OP_ELU:
-    mode = CUDNN_ACTIVATION_ELU;
-    break;
-  default:
-    assert(false);
+    case OP_SIGMOID:
+      mode = CUDNN_ACTIVATION_SIGMOID;
+      break;
+    case OP_RELU:
+      mode = CUDNN_ACTIVATION_RELU;
+      break;
+    case OP_TANH:
+      mode = CUDNN_ACTIVATION_TANH;
+      break;
+    case OP_ELU:
+      mode = CUDNN_ACTIVATION_ELU;
+      break;
+    default:
+      assert(false);
   }
   checkCUDNN(cudnnSetActivationDescriptor(
       m->actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
@@ -56,44 +56,44 @@ __global__ void elewise_unary_forward_kernel(
     coord_t volume, const T scalar, OperatorType type, const T *in, T *out) {
   CUDA_KERNEL_LOOP(i, volume) {
     switch (type) {
-    case OP_EXP: {
-      out[i] = (T)exp((float)in[i]);
-      break;
-    }
-    case OP_IDENTITY: {
-      out[i] = in[i];
-      break;
-    }
-    case OP_SCALAR_MULTIPLY: {
-      out[i] = in[i] * scalar;
-      break;
-    }
-    case OP_SCALAR_ADD: {
-      out[i] = in[i] + scalar;
-      break;
-    }
-    case OP_SCALAR_SUB: {
-      out[i] = in[i] - scalar;
-      break;
-    }
-    case OP_SCALAR_TRUE_DIV: {
-      out[i] = in[i] / scalar;
-      break;
-    }
-    case OP_GELU: {
-      out[i] = (T)(in[i] * 0.5 * erfc(-in[i] * M_SQRT1_2));
-      break;
-    }
-    case OP_RSQRT: {
-      out[i] = (T)(1.0f / sqrt((float)in[i]));
-      break;
-    }
-    case OP_POW: {
-      out[i] = (T)(powf(in[i], scalar));
-      break;
-    }
-    default:
-      assert(false);
+      case OP_EXP: {
+        out[i] = (T)exp((float)in[i]);
+        break;
+      }
+      case OP_IDENTITY: {
+        out[i] = in[i];
+        break;
+      }
+      case OP_SCALAR_MULTIPLY: {
+        out[i] = in[i] * scalar;
+        break;
+      }
+      case OP_SCALAR_ADD: {
+        out[i] = in[i] + scalar;
+        break;
+      }
+      case OP_SCALAR_SUB: {
+        out[i] = in[i] - scalar;
+        break;
+      }
+      case OP_SCALAR_TRUE_DIV: {
+        out[i] = in[i] / scalar;
+        break;
+      }
+      case OP_GELU: {
+        out[i] = (T)(in[i] * 0.5 * erfc(-in[i] * M_SQRT1_2));
+        break;
+      }
+      case OP_RSQRT: {
+        out[i] = (T)(1.0f / sqrt((float)in[i]));
+        break;
+      }
+      case OP_POW: {
+        out[i] = (T)(powf(in[i], scalar));
+        break;
+      }
+      default:
+        assert(false);
     }
   }
 }
@@ -148,49 +148,50 @@ __global__ void elewise_unary_backward_kernel(coord_t volume,
                                               T *input_grad) {
   CUDA_KERNEL_LOOP(i, volume) {
     switch (type) {
-    case OP_EXP: {
-      // TODO: change to use output instead of recomputing
-      input_grad[i] += (T)(output_grad[i] * exp((float)input[i]));
-      break;
-    }
-    case OP_IDENTITY: {
-      input_grad[i] += output_grad[i];
-      break;
-    }
-    case OP_SCALAR_MULTIPLY: {
-      input_grad[i] += output_grad[i] * scalar;
-      break;
-    }
-    case OP_SCALAR_ADD: {
-      input_grad[i] += output_grad[i];
-      break;
-    }
-    case OP_SCALAR_SUB: {
-      input_grad[i] += output_grad[i];
-      break;
-    }
-    case OP_SCALAR_TRUE_DIV: {
-      input_grad[i] += output_grad[i] / scalar;
-      break;
-    }
-    case OP_GELU: {
-      input_grad[i] =
-          (T)(output_grad[i] *
-              (0.5 * erfc(-input[i] * M_SQRT1_2) -
-               0.5 * M_SQRT1_2 * input[i] * exp(-input[i] * input[i] * 0.5)));
-      break;
-    }
-    case OP_RSQRT: {
-      input_grad[i] =
-          (T)(-0.5f * output_grad[i] * output[i] * output[i] * output[i]);
-      break;
-    }
-    case OP_POW: {
-      input_grad[i] = (T)(output_grad[i] * scalar * powf(input[i], scalar - 1));
-      break;
-    }
-    default:
-      assert(false);
+      case OP_EXP: {
+        // TODO: change to use output instead of recomputing
+        input_grad[i] += (T)(output_grad[i] * exp((float)input[i]));
+        break;
+      }
+      case OP_IDENTITY: {
+        input_grad[i] += output_grad[i];
+        break;
+      }
+      case OP_SCALAR_MULTIPLY: {
+        input_grad[i] += output_grad[i] * scalar;
+        break;
+      }
+      case OP_SCALAR_ADD: {
+        input_grad[i] += output_grad[i];
+        break;
+      }
+      case OP_SCALAR_SUB: {
+        input_grad[i] += output_grad[i];
+        break;
+      }
+      case OP_SCALAR_TRUE_DIV: {
+        input_grad[i] += output_grad[i] / scalar;
+        break;
+      }
+      case OP_GELU: {
+        input_grad[i] =
+            (T)(output_grad[i] *
+                (0.5 * erfc(-input[i] * M_SQRT1_2) -
+                 0.5 * M_SQRT1_2 * input[i] * exp(-input[i] * input[i] * 0.5)));
+        break;
+      }
+      case OP_RSQRT: {
+        input_grad[i] =
+            (T)(-0.5f * output_grad[i] * output[i] * output[i] * output[i]);
+        break;
+      }
+      case OP_POW: {
+        input_grad[i] =
+            (T)(output_grad[i] * scalar * powf(input[i], scalar - 1));
+        break;
+      }
+      default:
+        assert(false);
     }
   }
 }
@@ -259,53 +260,53 @@ ElementUnaryMeta::ElementUnaryMeta(FFHandler handler) : OpMeta(handler) {
 }
 
 template void
-ElementUnary::forward_kernel_wrapper<float>(ElementUnaryMeta const *m,
-                                            float const *input_ptr,
-                                            float *output_ptr,
-                                            size_t num_elements);
+    ElementUnary::forward_kernel_wrapper<float>(ElementUnaryMeta const *m,
+                                                float const *input_ptr,
+                                                float *output_ptr,
+                                                size_t num_elements);
 template void
-ElementUnary::forward_kernel_wrapper<double>(ElementUnaryMeta const *m,
-                                             double const *input_ptr,
-                                             double *output_ptr,
-                                             size_t num_elements);
+    ElementUnary::forward_kernel_wrapper<double>(ElementUnaryMeta const *m,
+                                                 double const *input_ptr,
+                                                 double *output_ptr,
+                                                 size_t num_elements);
 template void
-ElementUnary::forward_kernel_wrapper<int32_t>(ElementUnaryMeta const *m,
-                                              int32_t const *input_ptr,
-                                              int32_t *output_ptr,
-                                              size_t num_elements);
+    ElementUnary::forward_kernel_wrapper<int32_t>(ElementUnaryMeta const *m,
+                                                  int32_t const *input_ptr,
+                                                  int32_t *output_ptr,
+                                                  size_t num_elements);
 template void
-ElementUnary::forward_kernel_wrapper<int64_t>(ElementUnaryMeta const *m,
-                                              int64_t const *input_ptr,
-                                              int64_t *output_ptr,
-                                              size_t num_elements);
+    ElementUnary::forward_kernel_wrapper<int64_t>(ElementUnaryMeta const *m,
+                                                  int64_t const *input_ptr,
+                                                  int64_t *output_ptr,
+                                                  size_t num_elements);
 
 template void
-ElementUnary::backward_kernel_wrapper<float>(ElementUnaryMeta const *m,
-                                             float const *input_ptr,
-                                             float *input_grad_ptr,
-                                             float const *output_ptr,
-                                             float const *output_grad_ptr,
-                                             size_t num_elements);
+    ElementUnary::backward_kernel_wrapper<float>(ElementUnaryMeta const *m,
+                                                 float const *input_ptr,
+                                                 float *input_grad_ptr,
+                                                 float const *output_ptr,
+                                                 float const *output_grad_ptr,
+                                                 size_t num_elements);
 template void
-ElementUnary::backward_kernel_wrapper<double>(ElementUnaryMeta const *m,
-                                              double const *input_ptr,
-                                              double *input_grad_ptr,
-                                              double const *output_ptr,
-                                              double const *output_grad_ptr,
-                                              size_t num_elements);
-template void
-ElementUnary::backward_kernel_wrapper<int32_t>(ElementUnaryMeta const *m,
-                                               int32_t const *input_ptr,
-                                               int32_t *input_grad_ptr,
-                                               int32_t const *output_ptr,
-                                               int32_t const *output_grad_ptr,
-                                               size_t num_elements);
-template void
-ElementUnary::backward_kernel_wrapper<int64_t>(ElementUnaryMeta const *m,
-                                               int64_t const *input_ptr,
-                                               int64_t *input_grad_ptr,
-                                               int64_t const *output_ptr,
-                                               int64_t const *output_grad_ptr,
-                                               size_t num_elements);
+    ElementUnary::backward_kernel_wrapper<double>(ElementUnaryMeta const *m,
+                                                  double const *input_ptr,
+                                                  double *input_grad_ptr,
+                                                  double const *output_ptr,
+                                                  double const *output_grad_ptr,
+                                                  size_t num_elements);
+template void ElementUnary::backward_kernel_wrapper<int32_t>(
+    ElementUnaryMeta const *m,
+    int32_t const *input_ptr,
+    int32_t *input_grad_ptr,
+    int32_t const *output_ptr,
+    int32_t const *output_grad_ptr,
+    size_t num_elements);
+template void ElementUnary::backward_kernel_wrapper<int64_t>(
+    ElementUnaryMeta const *m,
+    int64_t const *input_ptr,
+    int64_t *input_grad_ptr,
+    int64_t const *output_ptr,
+    int64_t const *output_grad_ptr,
+    size_t num_elements);
 
 }; // namespace FlexFlow

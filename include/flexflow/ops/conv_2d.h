@@ -142,9 +142,9 @@ public:
   // void create_weights(FFModel& model);
   // void create_input_partition(FFModel& model);
   static Op *
-  create_operator_from_layer(FFModel &model,
-                             Layer const *layer,
-                             std::vector<ParallelTensor> const &inputs);
+      create_operator_from_layer(FFModel &model,
+                                 Layer const *layer,
+                                 std::vector<ParallelTensor> const &inputs);
 
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
@@ -216,7 +216,7 @@ public:
                                int num_inputs);
 
   static void
-  construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
+      construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
   static void construct_mappings(std::vector<ParallelDimMappingRecord> &,
                                  bool use_bias);
   static void construct_weight_mappings(std::vector<ParallelDimMappingRecord> &,
@@ -237,7 +237,8 @@ public:
 }; // namespace FlexFlow
 
 namespace std {
-template <> struct hash<FlexFlow::Conv2DParams> {
+template <>
+struct hash<FlexFlow::Conv2DParams> {
   size_t operator()(FlexFlow::Conv2DParams const &) const;
 };
 }; // namespace std

@@ -205,8 +205,8 @@ void Softmax::forward_task(Task const *task,
     return forward_task_with_dim<DIM>(task, regions, ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -275,8 +275,8 @@ void Softmax::backward_task(Task const *task,
     return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -313,11 +313,11 @@ void Softmax::backward_task_with_dim(Task const *task,
 
 bool Softmax::get_int_parameter(PMParameter para, int *value) const {
   switch (para) {
-  case PM_SOFTMAX_DIM:
-    *value = dim;
-    return true;
-  default:
-    return Op::get_int_parameter(para, value);
+    case PM_SOFTMAX_DIM:
+      *value = dim;
+      return true;
+    default:
+      return Op::get_int_parameter(para, value);
   }
 }
 

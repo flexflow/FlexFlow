@@ -48,14 +48,16 @@ public:
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   // void update(const FFModel&);
-  void print_layer(FFModel const &model) override { assert(0); }
+  void print_layer(FFModel const &model) override {
+    assert(0);
+  }
   // Parameter* get_parameter(int index);
   // void create_weights(FFModel& model);
   // void create_input_partition(FFModel& model);
   static Op *
-  create_operator_from_layer(FFModel &model,
-                             Layer const *layer,
-                             std::vector<ParallelTensor> const &inputs);
+      create_operator_from_layer(FFModel &model,
+                                 Layer const *layer,
+                                 std::vector<ParallelTensor> const &inputs);
 
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
@@ -70,15 +72,15 @@ public:
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   static void
-  forward_task_cpu(Legion::Task const *task,
-                   std::vector<Legion::PhysicalRegion> const &regions,
-                   Legion::Context ctx,
-                   Legion::Runtime *runtime);
+      forward_task_cpu(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx,
+                       Legion::Runtime *runtime);
   static void
-  backward_task_cpu(Legion::Task const *task,
-                    std::vector<Legion::PhysicalRegion> const &regions,
-                    Legion::Context ctx,
-                    Legion::Runtime *runtime);
+      backward_task_cpu(Legion::Task const *task,
+                        std::vector<Legion::PhysicalRegion> const &regions,
+                        Legion::Context ctx,
+                        Legion::Runtime *runtime);
   template <typename TI>
   static void forward_kernel(TI const *input_ptr,
                              float *output_ptr,
@@ -131,16 +133,16 @@ public:
 private:
   template <typename TI>
   static void
-  forward_task_with_type(Legion::Task const *task,
-                         std::vector<Legion::PhysicalRegion> const &regions,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime);
+      forward_task_with_type(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   template <typename TI>
-  static void
-  backward_task_with_type(Legion::Task const *task,
-                          std::vector<Legion::PhysicalRegion> const &regions,
-                          Legion::Context ctx,
-                          Legion::Runtime *runtime);
+  static void backward_task_with_type(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
 
   int input_vocab_size_replica_dim() const;
   int input_channel_out_replica_dim() const;

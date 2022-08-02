@@ -16,7 +16,8 @@ template <typename FT, int N, typename T = Legion::coord_t>
 using AccessorWO = Legion::
     FieldAccessor<WRITE_ONLY, FT, N, T, Realm::AffineAccessor<FT, N, T>>;
 
-template <typename DT, int dim> struct TensorAccessorR {
+template <typename DT, int dim>
+struct TensorAccessorR {
   TensorAccessorR(Legion::PhysicalRegion region,
                   Legion::RegionRequirement req,
                   Legion::FieldID fid,
@@ -28,7 +29,8 @@ template <typename DT, int dim> struct TensorAccessorR {
   const DT *ptr;
 };
 
-template <typename DT, int dim> struct TensorAccessorW {
+template <typename DT, int dim>
+struct TensorAccessorW {
   TensorAccessorW(Legion::PhysicalRegion region,
                   Legion::RegionRequirement req,
                   Legion::FieldID fid,

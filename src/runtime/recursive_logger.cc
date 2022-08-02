@@ -30,7 +30,9 @@ void RecursiveLogger::print_prefix(Realm::LoggerMessage &msg) const {
   }
 }
 
-void RecursiveLogger::enter() { this->depth++; }
+void RecursiveLogger::enter() {
+  this->depth++;
+}
 
 void RecursiveLogger::leave() {
   this->depth--;
@@ -45,6 +47,8 @@ DepthTag::DepthTag(RecursiveLogger &_logger) : logger(_logger) {
   this->logger.enter();
 }
 
-DepthTag::~DepthTag() { this->logger.leave(); }
+DepthTag::~DepthTag() {
+  this->logger.leave();
+}
 
 }; // namespace FlexFlow

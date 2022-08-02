@@ -26,11 +26,13 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override { assert(0); }
+  void print_layer(FFModel const &model) override {
+    assert(0);
+  }
   static Op *
-  create_operator_from_layer(FFModel &model,
-                             Layer const *layer,
-                             std::vector<ParallelTensor> const &inputs);
+      create_operator_from_layer(FFModel &model,
+                                 Layer const *layer,
+                                 std::vector<ParallelTensor> const &inputs);
 
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
@@ -74,7 +76,7 @@ public:
                   ParallelTensor inputs[],
                   int num_inputs) const override;
   static void
-  construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
+      construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
 
   size_t get_params_hash() const override;
 };

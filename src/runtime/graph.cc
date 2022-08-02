@@ -167,39 +167,39 @@ T SearchHelper::execute_nonsequence_split(
     std::swap(first, second);
   }
   switch (split.type) {
-  case SplitType::SEQUENTIAL:
-    this->logger->debug() << "Exploring sequential nonsequence split";
-    return sequence_cost<T>(
-        this->graph_cost<T>(first, source, sink, resources, false),
-        this->graph_cost<T>(second, source, sink, resources, false));
-  case SplitType::VERTICAL: {
-    this->logger->debug() << "Exploring vertical nonsequence split ("
-                          << split.param << ", " << split.flip_graphs << ")";
-    MachineResource firstRes = resources, secondRes = resources;
-    firstRes.num_nodes = split.param;
-    secondRes.num_nodes = resources.num_nodes - split.param;
-    secondRes.start_gpu_id =
-        resources.start_gpu_id + resources.all_gpus_per_node * split.param;
+    case SplitType::SEQUENTIAL:
+      this->logger->debug() << "Exploring sequential nonsequence split";
+      return sequence_cost<T>(
+          this->graph_cost<T>(first, source, sink, resources, false),
+          this->graph_cost<T>(second, source, sink, resources, false));
+    case SplitType::VERTICAL: {
+      this->logger->debug() << "Exploring vertical nonsequence split ("
+                            << split.param << ", " << split.flip_graphs << ")";
+      MachineResource firstRes = resources, secondRes = resources;
+      firstRes.num_nodes = split.param;
+      secondRes.num_nodes = resources.num_nodes - split.param;
+      secondRes.start_gpu_id =
+          resources.start_gpu_id + resources.all_gpus_per_node * split.param;
 
-    return parallel_cost<T>(
-        this->graph_cost<T>(first, source, sink, firstRes, false),
-        this->graph_cost<T>(second, source, sink, secondRes, false));
-  }
-  case SplitType::HORIZONTAL: {
-    this->logger->debug() << "Exploring horizontal nonsequence split ("
-                          << split.param << ", " << split.flip_graphs << ")";
-    MachineResource firstRes = resources, secondRes = resources;
-    firstRes.available_gpus_per_node = split.param;
-    secondRes.available_gpus_per_node =
-        resources.available_gpus_per_node - split.param;
-    secondRes.start_gpu_id = resources.start_gpu_id + split.param;
+      return parallel_cost<T>(
+          this->graph_cost<T>(first, source, sink, firstRes, false),
+          this->graph_cost<T>(second, source, sink, secondRes, false));
+    }
+    case SplitType::HORIZONTAL: {
+      this->logger->debug() << "Exploring horizontal nonsequence split ("
+                            << split.param << ", " << split.flip_graphs << ")";
+      MachineResource firstRes = resources, secondRes = resources;
+      firstRes.available_gpus_per_node = split.param;
+      secondRes.available_gpus_per_node =
+          resources.available_gpus_per_node - split.param;
+      secondRes.start_gpu_id = resources.start_gpu_id + split.param;
 
-    return parallel_cost<T>(
-        this->graph_cost<T>(first, source, sink, firstRes, false),
-        this->graph_cost<T>(second, source, sink, secondRes, false));
-  }
-  default:
-    assert(false);
+      return parallel_cost<T>(
+          this->graph_cost<T>(first, source, sink, firstRes, false),
+          this->graph_cost<T>(second, source, sink, secondRes, false));
+    }
+    default:
+      assert(false);
   }
 }
 
@@ -269,17 +269,17 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
   }
 
   switch (best_split.type) {
-  case SplitType::SEQUENTIAL:
-    this->logger->debug() << "Best split: SEQUENTIAL";
-    break;
-  case SplitType::VERTICAL:
-    this->logger->debug() << "Best split: VERTICAL(" << best_split.param << ", "
-                          << best_split.flip_graphs << ")";
-    break;
-  case SplitType::HORIZONTAL:
-    this->logger->debug() << "Best split: HORIZONTAL(" << best_split.param
-                          << ", " << best_split.flip_graphs << ")";
-    break;
+    case SplitType::SEQUENTIAL:
+      this->logger->debug() << "Best split: SEQUENTIAL";
+      break;
+    case SplitType::VERTICAL:
+      this->logger->debug() << "Best split: VERTICAL(" << best_split.param
+                            << ", " << best_split.flip_graphs << ")";
+      break;
+    case SplitType::HORIZONTAL:
+      this->logger->debug() << "Best split: HORIZONTAL(" << best_split.param
+                            << ", " << best_split.flip_graphs << ")";
+      break;
   }
   T optimal = this->execute_nonsequence_split<T>(
       first_graph, second_graph, source, sink, resources, best_split);
@@ -410,7 +410,9 @@ void Graph::print(void) const {
   }
 }
 
-void Graph::print_dot() const { this->print_dot(std::cout); }
+void Graph::print_dot() const {
+  this->print_dot(std::cout);
+}
 
 void Graph::print_dot(std::ostream &s) const {
   using FlexFlow::PCG::Utils::export_as_dot;
@@ -918,7 +920,7 @@ void Graph::simplify(SimplificationSettings const &settings) {
 }
 
 std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>>
-Graph::split_at_node(Node const &bottleneck) const {
+    Graph::split_at_node(Node const &bottleneck) const {
   using FlexFlow::PCG::Utils::topo_sort;
 
   auto first_graph = std::unique_ptr<Graph>(new Graph(this->model));
@@ -987,7 +989,7 @@ Node Graph::declone_node(Node const &n) {
 }
 
 std::pair<Node, std::unordered_set<Node>>
-Graph::deduplicate_input_node(Node const &n) {
+    Graph::deduplicate_input_node(Node const &n) {
   using FlexFlow::PCG::Utils::nodes;
   using FlexFlow::PCG::Utils::outgoing_edges;
 
@@ -1073,7 +1075,8 @@ void Graph::duplicate_input_nodes() {
 }
 
 std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>>
-Graph::split_horizontal(Node const &source_node, Node const &sink_node) const {
+    Graph::split_horizontal(Node const &source_node,
+                            Node const &sink_node) const {
   using FlexFlow::PCG::Utils::weakly_connected_components;
 
   Graph trimmed_graph(*this);
@@ -1140,8 +1143,8 @@ float sequence_cost<float>(float const &first, float const &second) {
 
 template <>
 GraphOptimizeResult
-sequence_cost<GraphOptimizeResult>(GraphOptimizeResult const &first,
-                                   GraphOptimizeResult const &second) {
+    sequence_cost<GraphOptimizeResult>(GraphOptimizeResult const &first,
+                                       GraphOptimizeResult const &second) {
   GraphOptimizeResult result;
   result.cost = first.cost + second.cost;
   result.views.insert(first.views.cbegin(), first.views.cend());
@@ -1169,7 +1172,8 @@ float parallel_cost<float>(float const &first, float const &second) {
   return std::max(first, second);
 }
 
-template <> bool SearchHelper::is_invalid<float>(float const &cost) const {
+template <>
+bool SearchHelper::is_invalid<float>(float const &cost) const {
   return cost == std::numeric_limits<float>::infinity();
 }
 
@@ -1214,7 +1218,7 @@ void SearchHelper::check_matches_graph<float>(Graph const *g,
 
 template <>
 std::pair<bool, float>
-SearchHelper::try_get_cost_from_cache<float>(size_t hash) const {
+    SearchHelper::try_get_cost_from_cache<float>(size_t hash) const {
   if (this->cached_graph_costs.find(hash) == this->cached_graph_costs.end()) {
     return {false, std::numeric_limits<float>::infinity()};
   } else {
@@ -1224,7 +1228,7 @@ SearchHelper::try_get_cost_from_cache<float>(size_t hash) const {
 
 template <>
 std::pair<bool, GraphCostResult>
-SearchHelper::try_get_cost_from_cache<GraphCostResult>(size_t hash) const {
+    SearchHelper::try_get_cost_from_cache<GraphCostResult>(size_t hash) const {
   return {false, GraphCostResult::invalid()};
 }
 
@@ -1243,17 +1247,23 @@ void SearchHelper::try_cache_result<GraphCostResult>(
   this->cached_graph_costs[hash] = value.cost;
 }
 
-template <> float SearchHelper::infinity<float>() const {
+template <>
+float SearchHelper::infinity<float>() const {
   return std::numeric_limits<float>::infinity();
 }
 
-template <> GraphCostResult SearchHelper::infinity<GraphCostResult>() const {
+template <>
+GraphCostResult SearchHelper::infinity<GraphCostResult>() const {
   return {std::numeric_limits<float>::infinity(), {}};
 }
 
-template <> float SearchHelper::empty<float>() const { return 0.0f; }
+template <>
+float SearchHelper::empty<float>() const {
+  return 0.0f;
+}
 
-template <> GraphCostResult SearchHelper::empty<GraphCostResult>() const {
+template <>
+GraphCostResult SearchHelper::empty<GraphCostResult>() const {
   return {0.0f, {}};
 }
 
@@ -1301,7 +1311,8 @@ void SearchHelper::add_operator_cost<GraphCostResult>(
   cost->views[node.node] = node.view;
 }
 
-template <> float SearchHelper::get_cost<float>(float const &f) const {
+template <>
+float SearchHelper::get_cost<float>(float const &f) const {
   return f;
 }
 
@@ -1437,7 +1448,8 @@ Graph Graph::reduced() const {
  * @return T the cost of the graph (along with any additional data in the return
  * type)
  */
-template <typename T> T Graph::generic_optimal_cost() const {
+template <typename T>
+T Graph::generic_optimal_cost() const {
   using FlexFlow::PCG::Utils::GraphStructure;
 
   Graph reduced_graph = this->reduced();
@@ -1510,10 +1522,10 @@ size_t dp_state_hash(Graph const *graph,
 }
 
 GraphOptimalViewSerialized
-Graph::graph_optimize_task(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+    Graph::graph_optimize_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
   FFModel *model = *((FFModel **)task->args);
   if (model->config.search_num_nodes.has_value()) {
     model->config.numNodes = model->config.search_num_nodes.value();
@@ -1619,99 +1631,99 @@ Graph::graph_optimize_task(Task const *task,
     sez.serialize(cur_node.guid);
     sez.serialize(op->op_type);
     switch (op->op_type) {
-    case OP_INPUT: {
-      assert(op->numOutputs == 1);
-      NoOp *noop = (NoOp *)op;
-      sez.serialize(noop->op_type);
-      sez.serialize(noop->input_tensor_guid);
-      sez.serialize(noop->outputs[0]->data_type);
-      sez.serialize(noop->outputs[0]->num_dims);
-      for (int i = 0; i < noop->outputs[0]->num_dims; i++)
-        sez.serialize(noop->outputs[0]->dims[i]);
-      break;
-    }
-    case OP_NOOP: {
-      break;
-    }
-    case OP_CONCAT: {
-      Concat *concat = (Concat *)op;
-      sez.serialize(concat->legion_axis);
-      break;
-    }
-    case OP_SPLIT: {
-      Split *split = (Split *)op;
-      sez.serialize(split->legion_axis);
-      sez.serialize(split->numOutputs);
-      for (int i = 0; i < split->numOutputs; i++)
-        sez.serialize(split->outputs[i]->dims[split->legion_axis].size);
-      break;
-    }
-    case OP_EMBEDDING: {
-      Embedding *embed = (Embedding *)op;
-      sez.serialize(embed->layer_guid.id);
-      sez.serialize(embed->num_entries);
-      sez.serialize(embed->out_channels);
-      sez.serialize(embed->aggr);
-      break;
-    }
-    case OP_EW_ADD:
-    case OP_EW_SUB:
-    case OP_EW_MUL: {
-      sez.serialize(op->op_type);
-      break;
-    }
-    case OP_MULTIHEAD_ATTENTION: {
-      MultiHeadAttention *attn = (MultiHeadAttention *)op;
-      sez.serialize(attn->layer_guid.id);
-      sez.serialize(attn->oProjSize);
-      sez.serialize(attn->num_heads);
-      sez.serialize(attn->qProjSize);
-      sez.serialize(attn->vProjSize);
-      sez.serialize(attn->dropout);
-      sez.serialize(attn->bias);
-      sez.serialize(attn->add_bias_kv);
-      sez.serialize(attn->add_zero_attn);
-      break;
-    }
-    case OP_SOFTMAX: {
-      Softmax *softmax = (Softmax *)op;
-      sez.serialize(softmax->dim);
-      break;
-    }
-    case OP_REPARTITION: {
-      Repartition *repart = (Repartition *)op;
-      sez.serialize(repart->repartition_dim);
-      sez.serialize(repart->repartition_degree);
-      break;
-    }
-    case OP_REPLICATE: {
-      Replicate *replicate = (Replicate *)op;
-      sez.serialize(replicate->replicate_dim);
-      sez.serialize(replicate->replicate_degree);
-      break;
-    }
-    case OP_REDUCTION: {
-      Reduction *reduction = (Reduction *)op;
-      sez.serialize(reduction->reduction_dim);
-      sez.serialize(reduction->reduction_degree);
-      break;
-    }
-    case OP_COMBINE: {
-      Combine *combine = (Combine *)op;
-      sez.serialize(combine->combine_dim);
-      sez.serialize(combine->combine_degree);
-      break;
-    }
-    case OP_FUSED_PARALLEL: {
-      FusedParallelOp *fused = (FusedParallelOp *)op;
-      sez.serialize(fused->num_parallel_ops);
-      for (int i = 0; i < fused->num_parallel_ops; i++)
-        sez.serialize(fused->parallel_ops[i]);
-      break;
-    }
-    default: {
-      op->serialize(sez);
-    }
+      case OP_INPUT: {
+        assert(op->numOutputs == 1);
+        NoOp *noop = (NoOp *)op;
+        sez.serialize(noop->op_type);
+        sez.serialize(noop->input_tensor_guid);
+        sez.serialize(noop->outputs[0]->data_type);
+        sez.serialize(noop->outputs[0]->num_dims);
+        for (int i = 0; i < noop->outputs[0]->num_dims; i++)
+          sez.serialize(noop->outputs[0]->dims[i]);
+        break;
+      }
+      case OP_NOOP: {
+        break;
+      }
+      case OP_CONCAT: {
+        Concat *concat = (Concat *)op;
+        sez.serialize(concat->legion_axis);
+        break;
+      }
+      case OP_SPLIT: {
+        Split *split = (Split *)op;
+        sez.serialize(split->legion_axis);
+        sez.serialize(split->numOutputs);
+        for (int i = 0; i < split->numOutputs; i++)
+          sez.serialize(split->outputs[i]->dims[split->legion_axis].size);
+        break;
+      }
+      case OP_EMBEDDING: {
+        Embedding *embed = (Embedding *)op;
+        sez.serialize(embed->layer_guid.id);
+        sez.serialize(embed->num_entries);
+        sez.serialize(embed->out_channels);
+        sez.serialize(embed->aggr);
+        break;
+      }
+      case OP_EW_ADD:
+      case OP_EW_SUB:
+      case OP_EW_MUL: {
+        sez.serialize(op->op_type);
+        break;
+      }
+      case OP_MULTIHEAD_ATTENTION: {
+        MultiHeadAttention *attn = (MultiHeadAttention *)op;
+        sez.serialize(attn->layer_guid.id);
+        sez.serialize(attn->oProjSize);
+        sez.serialize(attn->num_heads);
+        sez.serialize(attn->qProjSize);
+        sez.serialize(attn->vProjSize);
+        sez.serialize(attn->dropout);
+        sez.serialize(attn->bias);
+        sez.serialize(attn->add_bias_kv);
+        sez.serialize(attn->add_zero_attn);
+        break;
+      }
+      case OP_SOFTMAX: {
+        Softmax *softmax = (Softmax *)op;
+        sez.serialize(softmax->dim);
+        break;
+      }
+      case OP_REPARTITION: {
+        Repartition *repart = (Repartition *)op;
+        sez.serialize(repart->repartition_dim);
+        sez.serialize(repart->repartition_degree);
+        break;
+      }
+      case OP_REPLICATE: {
+        Replicate *replicate = (Replicate *)op;
+        sez.serialize(replicate->replicate_dim);
+        sez.serialize(replicate->replicate_degree);
+        break;
+      }
+      case OP_REDUCTION: {
+        Reduction *reduction = (Reduction *)op;
+        sez.serialize(reduction->reduction_dim);
+        sez.serialize(reduction->reduction_degree);
+        break;
+      }
+      case OP_COMBINE: {
+        Combine *combine = (Combine *)op;
+        sez.serialize(combine->combine_dim);
+        sez.serialize(combine->combine_degree);
+        break;
+      }
+      case OP_FUSED_PARALLEL: {
+        FusedParallelOp *fused = (FusedParallelOp *)op;
+        sez.serialize(fused->num_parallel_ops);
+        for (int i = 0; i < fused->num_parallel_ops; i++)
+          sez.serialize(fused->parallel_ops[i]);
+        break;
+      }
+      default: {
+        op->serialize(sez);
+      }
     }
     sez.serialize((size_t)12345678); // safe guard for the end of an op
   }
@@ -1866,207 +1878,208 @@ void FFModel::deserialize_graph_optimal_view(
     dez.deserialize(guid);
     dez.deserialize(op_type);
     switch (op_type) {
-    case OP_INPUT: {
-      assert(num_inputs == 0);
-      int num_dims;
-      ParallelDim dims[MAX_TENSOR_DIM];
-      OperatorType op_type;
-      dez.deserialize(op_type);
-      size_t input_tensor_guid;
-      dez.deserialize(input_tensor_guid);
-      DataType data_type;
-      dez.deserialize(data_type);
-      dez.deserialize(num_dims);
-      for (int i = 0; i < num_dims; i++)
-        dez.deserialize(dims[i]);
-      ParallelTensor t =
-          create_parallel_tensor_legion_ordering(num_dims,
-                                                 dims,
-                                                 data_type,
-                                                 nullptr,
-                                                 0,
-                                                 true /*create_grad*/,
-                                                 input_tensor_guid);
-      node.ptr = t->owner_op;
-      node.guid = node_global_guid++;
-      break;
-    }
-    case OP_NOOP: {
-      assert(num_inputs == 1);
-      node = get_or_create_noop_node(inputs[0]);
-      break;
-    }
-    case OP_CONCAT: {
-      int legion_axis;
-      dez.deserialize(legion_axis);
-      node = get_or_create_concat_node(num_inputs, inputs, legion_axis);
-      break;
-    }
-    case OP_SPLIT: {
-      int legion_axis;
-      dez.deserialize(legion_axis);
-      int num_outputs;
-      dez.deserialize(num_outputs);
-      std::vector<int> splits;
-      for (int i = 0; i < num_outputs; i++) {
-        int dim_size;
-        dez.deserialize(dim_size);
-        splits.push_back(dim_size);
+      case OP_INPUT: {
+        assert(num_inputs == 0);
+        int num_dims;
+        ParallelDim dims[MAX_TENSOR_DIM];
+        OperatorType op_type;
+        dez.deserialize(op_type);
+        size_t input_tensor_guid;
+        dez.deserialize(input_tensor_guid);
+        DataType data_type;
+        dez.deserialize(data_type);
+        dez.deserialize(num_dims);
+        for (int i = 0; i < num_dims; i++)
+          dez.deserialize(dims[i]);
+        ParallelTensor t =
+            create_parallel_tensor_legion_ordering(num_dims,
+                                                   dims,
+                                                   data_type,
+                                                   nullptr,
+                                                   0,
+                                                   true /*create_grad*/,
+                                                   input_tensor_guid);
+        node.ptr = t->owner_op;
+        node.guid = node_global_guid++;
+        break;
       }
-      node = get_or_create_split_node(inputs[0], splits, legion_axis);
-      break;
-    }
-    case OP_EMBEDDING: {
-      assert(num_inputs == 1);
-      AggrMode aggr;
-      int num_entries, out_channels;
-      size_t id;
-      dez.deserialize(id);
-      LayerID layer_guid(id);
-      dez.deserialize(num_entries);
-      dez.deserialize(out_channels);
-      dez.deserialize(aggr);
-      node = get_or_create_embedding_node(
-          layer_guid, inputs[0], num_entries, out_channels, aggr);
-      break;
-    }
-    case OP_EW_ADD:
-    case OP_EW_SUB:
-    case OP_EW_MUL: {
-      assert(num_inputs == 2);
-      OperatorType op_type;
-      dez.deserialize(op_type);
-      node = get_or_create_element_binary_node(inputs[0], inputs[1], op_type);
-      break;
-    }
-    case OP_CONV2D: {
-      node = Conv2D::deserialize(*this, dez, inputs, num_inputs);
-      break;
-    }
-    case OP_DROPOUT: {
-      node = Dropout::deserialize(*this, dez, inputs, num_inputs);
-      break;
-    }
-    case OP_POOL2D: {
-      node = Pool2D::deserialize(*this, dez, inputs, num_inputs);
-      break;
-    }
-    case OP_RESHAPE: {
-      node = Reshape::deserialize(*this, dez, inputs, num_inputs);
-      break;
-    }
-    case OP_LINEAR: {
-      node = Linear::deserialize(*this, dez, inputs, num_inputs);
-      break;
-    }
-    case OP_EXP:
-    case OP_SCALAR_MULTIPLY:
-    case OP_RELU:
-    case OP_SIGMOID:
-    case OP_TANH:
-    case OP_IDENTITY:
-    case OP_GELU:
-    case OP_ELU: {
-      node = ElementUnary::deserialize(*this, dez, inputs, num_inputs);
-      break;
-    }
-    case OP_FLAT: {
-      node = Flat::deserialize(*this, dez, inputs, num_inputs);
-      break;
-    }
-    case OP_MULTIHEAD_ATTENTION: {
-      assert(num_inputs == 3);
-      int embed_dim, num_heads, k_dim, v_dim;
-      float dropout;
-      bool bias, add_bias_kv, add_zero_attn;
-      size_t id;
-      dez.deserialize(id);
-      LayerID layer_guid(id);
-      dez.deserialize(embed_dim);
-      dez.deserialize(num_heads);
-      dez.deserialize(k_dim);
-      dez.deserialize(v_dim);
-      dez.deserialize(dropout);
-      dez.deserialize(bias);
-      dez.deserialize(add_bias_kv);
-      dez.deserialize(add_zero_attn);
-      node = get_or_create_multihead_attn_node(layer_guid,
-                                               inputs[0],
-                                               inputs[1],
-                                               inputs[2],
-                                               embed_dim,
-                                               num_heads,
-                                               k_dim,
-                                               v_dim,
-                                               dropout,
-                                               bias,
-                                               add_bias_kv,
-                                               add_zero_attn);
-      break;
-    }
-    case OP_SOFTMAX: {
-      assert(num_inputs == 1);
-      int softmax_dim;
-      dez.deserialize(softmax_dim);
-      node = get_or_create_softmax_node(inputs[0], softmax_dim);
-      break;
-    }
-    case OP_COMBINE: {
-      assert(num_inputs == 1);
-      int combine_dim, combine_degree;
-      dez.deserialize(combine_dim);
-      dez.deserialize(combine_degree);
-      node = get_or_create_combine_node(inputs[0], combine_dim, combine_degree);
-      break;
-    }
-    case OP_REPARTITION: {
-      assert(num_inputs == 1);
-      int repartition_dim, repartition_degree;
-      dez.deserialize(repartition_dim);
-      dez.deserialize(repartition_degree);
-      node = get_or_create_repartition_node(
-          inputs[0], repartition_dim, repartition_degree);
-      break;
-    }
-    case OP_REPLICATE: {
-      assert(num_inputs == 1);
-      int replicate_dim, replicate_degree;
-      dez.deserialize(replicate_dim);
-      dez.deserialize(replicate_degree);
-      node = get_or_create_replicate_node(
-          inputs[0], replicate_dim, replicate_degree);
-      break;
-    }
-    case OP_REDUCTION: {
-      assert(num_inputs == 1);
-      int reduction_dim, reduction_degree;
-      dez.deserialize(reduction_dim);
-      dez.deserialize(reduction_degree);
-      node = get_or_create_reduction_node(
-          inputs[0], reduction_dim, reduction_degree);
-      break;
-    }
-    case OP_FUSED_PARALLEL: {
-      assert(num_inputs == 1);
-      std::vector<ParallelOpInfo> parallel_ops;
-      int num_parallel_ops;
-      dez.deserialize(num_parallel_ops);
-      for (int i = 0; i < num_parallel_ops; i++) {
-        ParallelOpInfo info;
-        dez.deserialize(info);
-        parallel_ops.push_back(info);
+      case OP_NOOP: {
+        assert(num_inputs == 1);
+        node = get_or_create_noop_node(inputs[0]);
+        break;
       }
-      node = get_or_create_fused_parallel_node(inputs[0], parallel_ops);
-      break;
-    }
-    default: {
-      fprintf(stderr,
-              "The following operator type is currently not supported"
-              " for graph deserialization: %s\n"
-              "Report the issue to the FlexFlow developers",
-              optype_to_string(op_type).c_str());
-      assert(false && "Unsupported operator type");
-    }
+      case OP_CONCAT: {
+        int legion_axis;
+        dez.deserialize(legion_axis);
+        node = get_or_create_concat_node(num_inputs, inputs, legion_axis);
+        break;
+      }
+      case OP_SPLIT: {
+        int legion_axis;
+        dez.deserialize(legion_axis);
+        int num_outputs;
+        dez.deserialize(num_outputs);
+        std::vector<int> splits;
+        for (int i = 0; i < num_outputs; i++) {
+          int dim_size;
+          dez.deserialize(dim_size);
+          splits.push_back(dim_size);
+        }
+        node = get_or_create_split_node(inputs[0], splits, legion_axis);
+        break;
+      }
+      case OP_EMBEDDING: {
+        assert(num_inputs == 1);
+        AggrMode aggr;
+        int num_entries, out_channels;
+        size_t id;
+        dez.deserialize(id);
+        LayerID layer_guid(id);
+        dez.deserialize(num_entries);
+        dez.deserialize(out_channels);
+        dez.deserialize(aggr);
+        node = get_or_create_embedding_node(
+            layer_guid, inputs[0], num_entries, out_channels, aggr);
+        break;
+      }
+      case OP_EW_ADD:
+      case OP_EW_SUB:
+      case OP_EW_MUL: {
+        assert(num_inputs == 2);
+        OperatorType op_type;
+        dez.deserialize(op_type);
+        node = get_or_create_element_binary_node(inputs[0], inputs[1], op_type);
+        break;
+      }
+      case OP_CONV2D: {
+        node = Conv2D::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_DROPOUT: {
+        node = Dropout::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_POOL2D: {
+        node = Pool2D::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_RESHAPE: {
+        node = Reshape::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_LINEAR: {
+        node = Linear::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_EXP:
+      case OP_SCALAR_MULTIPLY:
+      case OP_RELU:
+      case OP_SIGMOID:
+      case OP_TANH:
+      case OP_IDENTITY:
+      case OP_GELU:
+      case OP_ELU: {
+        node = ElementUnary::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_FLAT: {
+        node = Flat::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_MULTIHEAD_ATTENTION: {
+        assert(num_inputs == 3);
+        int embed_dim, num_heads, k_dim, v_dim;
+        float dropout;
+        bool bias, add_bias_kv, add_zero_attn;
+        size_t id;
+        dez.deserialize(id);
+        LayerID layer_guid(id);
+        dez.deserialize(embed_dim);
+        dez.deserialize(num_heads);
+        dez.deserialize(k_dim);
+        dez.deserialize(v_dim);
+        dez.deserialize(dropout);
+        dez.deserialize(bias);
+        dez.deserialize(add_bias_kv);
+        dez.deserialize(add_zero_attn);
+        node = get_or_create_multihead_attn_node(layer_guid,
+                                                 inputs[0],
+                                                 inputs[1],
+                                                 inputs[2],
+                                                 embed_dim,
+                                                 num_heads,
+                                                 k_dim,
+                                                 v_dim,
+                                                 dropout,
+                                                 bias,
+                                                 add_bias_kv,
+                                                 add_zero_attn);
+        break;
+      }
+      case OP_SOFTMAX: {
+        assert(num_inputs == 1);
+        int softmax_dim;
+        dez.deserialize(softmax_dim);
+        node = get_or_create_softmax_node(inputs[0], softmax_dim);
+        break;
+      }
+      case OP_COMBINE: {
+        assert(num_inputs == 1);
+        int combine_dim, combine_degree;
+        dez.deserialize(combine_dim);
+        dez.deserialize(combine_degree);
+        node =
+            get_or_create_combine_node(inputs[0], combine_dim, combine_degree);
+        break;
+      }
+      case OP_REPARTITION: {
+        assert(num_inputs == 1);
+        int repartition_dim, repartition_degree;
+        dez.deserialize(repartition_dim);
+        dez.deserialize(repartition_degree);
+        node = get_or_create_repartition_node(
+            inputs[0], repartition_dim, repartition_degree);
+        break;
+      }
+      case OP_REPLICATE: {
+        assert(num_inputs == 1);
+        int replicate_dim, replicate_degree;
+        dez.deserialize(replicate_dim);
+        dez.deserialize(replicate_degree);
+        node = get_or_create_replicate_node(
+            inputs[0], replicate_dim, replicate_degree);
+        break;
+      }
+      case OP_REDUCTION: {
+        assert(num_inputs == 1);
+        int reduction_dim, reduction_degree;
+        dez.deserialize(reduction_dim);
+        dez.deserialize(reduction_degree);
+        node = get_or_create_reduction_node(
+            inputs[0], reduction_dim, reduction_degree);
+        break;
+      }
+      case OP_FUSED_PARALLEL: {
+        assert(num_inputs == 1);
+        std::vector<ParallelOpInfo> parallel_ops;
+        int num_parallel_ops;
+        dez.deserialize(num_parallel_ops);
+        for (int i = 0; i < num_parallel_ops; i++) {
+          ParallelOpInfo info;
+          dez.deserialize(info);
+          parallel_ops.push_back(info);
+        }
+        node = get_or_create_fused_parallel_node(inputs[0], parallel_ops);
+        break;
+      }
+      default: {
+        fprintf(stderr,
+                "The following operator type is currently not supported"
+                " for graph deserialization: %s\n"
+                "Report the issue to the FlexFlow developers",
+                optype_to_string(op_type).c_str());
+        assert(false && "Unsupported operator type");
+      }
     }
     {
       size_t safecode;

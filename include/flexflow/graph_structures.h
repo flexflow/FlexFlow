@@ -4,7 +4,8 @@
 #include "flexflow/basic_graph.h"
 
 namespace FlexFlow::PCG::Utils {
-template <typename BaseStructure> struct ReverseStructure {
+template <typename BaseStructure>
+struct ReverseStructure {
   using graph_type = typename BaseStructure::graph_type;
   using G = graph_type;
   using vertex_type = typename BaseStructure::vertex_type;
@@ -43,7 +44,8 @@ template <typename BaseStructure> struct ReverseStructure {
   BaseStructure base;
 };
 
-template <typename NotReversed, typename Reversed> struct UndirectedEdge {
+template <typename NotReversed, typename Reversed>
+struct UndirectedEdge {
   union Edge {
     NotReversed not_reversed;
     Reversed reversed;

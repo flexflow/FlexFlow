@@ -101,13 +101,15 @@ Simulator::Simulator(FFModel const *model,
   task_manager = new TaskManager(max_num_tasks);
 }
 
-Simulator::~Simulator(void) { simulatorInst.destroy(); }
+Simulator::~Simulator(void) {
+  simulatorInst.destroy();
+}
 
 __host__ void
-Simulator::strategy_search_task(Task const *task,
-                                std::vector<PhysicalRegion> const &regions,
-                                Context ctx,
-                                Runtime *runtime) {
+    Simulator::strategy_search_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   // This method should no longer be used
   assert(false);
 #ifdef DEADCODE

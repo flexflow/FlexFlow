@@ -101,10 +101,10 @@ public:
                                    SelectTaskSrcInput const &input,
                                    SelectTaskSrcOutput &output);
   virtual void
-  create_task_temporary_instance(const MapperContext ctx,
-                                 Task const &task,
-                                 CreateTaskTemporaryInput const &input,
-                                 CreateTaskTemporaryOutput &output);
+      create_task_temporary_instance(const MapperContext ctx,
+                                     Task const &task,
+                                     CreateTaskTemporaryInput const &input,
+                                     CreateTaskTemporaryOutput &output);
   virtual void speculate(const MapperContext ctx,
                          Task const &task,
                          SpeculativeOutput &output);
@@ -126,10 +126,10 @@ public: // Inline mapping calls
                                      SelectInlineSrcInput const &input,
                                      SelectInlineSrcOutput &output);
   virtual void
-  create_inline_temporary_instance(const MapperContext ctx,
-                                   InlineMapping const &inline_op,
-                                   CreateInlineTemporaryInput const &input,
-                                   CreateInlineTemporaryOutput &output);
+      create_inline_temporary_instance(const MapperContext ctx,
+                                       InlineMapping const &inline_op,
+                                       CreateInlineTemporaryInput const &input,
+                                       CreateInlineTemporaryOutput &output);
   virtual void report_profiling(const MapperContext ctx,
                                 InlineMapping const &inline_op,
                                 InlineProfilingInfo const &input);
@@ -144,10 +144,10 @@ public: // Copy mapping calls
                                    SelectCopySrcInput const &input,
                                    SelectCopySrcOutput &output);
   virtual void
-  create_copy_temporary_instance(const MapperContext ctx,
-                                 Copy const &copy,
-                                 CreateCopyTemporaryInput const &input,
-                                 CreateCopyTemporaryOutput &output);
+      create_copy_temporary_instance(const MapperContext ctx,
+                                     Copy const &copy,
+                                     CreateCopyTemporaryInput const &input,
+                                     CreateCopyTemporaryOutput &output);
   virtual void speculate(const MapperContext ctx,
                          Copy const &copy,
                          SpeculativeOutput &output);
@@ -169,10 +169,10 @@ public: // Close mapping calls
                                     SelectCloseSrcInput const &input,
                                     SelectCloseSrcOutput &output);
   virtual void
-  create_close_temporary_instance(const MapperContext ctx,
-                                  Close const &close,
-                                  CreateCloseTemporaryInput const &input,
-                                  CreateCloseTemporaryOutput &output);
+      create_close_temporary_instance(const MapperContext ctx,
+                                      Close const &close,
+                                      CreateCloseTemporaryInput const &input,
+                                      CreateCloseTemporaryOutput &output);
   virtual void report_profiling(const MapperContext ctx,
                                 Close const &close,
                                 CloseProfilingInfo const &input);
@@ -206,11 +206,11 @@ public: // Release mapping calls
                                       Release const &release,
                                       SelectReleaseSrcInput const &input,
                                       SelectReleaseSrcOutput &output);
-  virtual void
-  create_release_temporary_instance(const MapperContext ctx,
-                                    Release const &release,
-                                    CreateReleaseTemporaryInput const &input,
-                                    CreateReleaseTemporaryOutput &output);
+  virtual void create_release_temporary_instance(
+      const MapperContext ctx,
+      Release const &release,
+      CreateReleaseTemporaryInput const &input,
+      CreateReleaseTemporaryOutput &output);
   virtual void speculate(const MapperContext ctx,
                          Release const &release,
                          SpeculativeOutput &output);
@@ -224,10 +224,10 @@ public: // Release mapping calls
 
 public: // Partition mapping calls
   virtual void
-  select_partition_projection(const MapperContext ctx,
-                              Partition const &partition,
-                              SelectPartitionProjectionInput const &input,
-                              SelectPartitionProjectionOutput &output);
+      select_partition_projection(const MapperContext ctx,
+                                  Partition const &partition,
+                                  SelectPartitionProjectionInput const &input,
+                                  SelectPartitionProjectionOutput &output);
   virtual void map_partition(const MapperContext ctx,
                              Partition const &partition,
                              MapPartitionInput const &input,
@@ -297,8 +297,8 @@ public: // Mapping control and stealing
 
 private: // static inline methods
   static inline bool
-  physical_sort_func(std::pair<PhysicalInstance, unsigned> const &left,
-                     std::pair<PhysicalInstance, unsigned> const &right) {
+      physical_sort_func(std::pair<PhysicalInstance, unsigned> const &left,
+                         std::pair<PhysicalInstance, unsigned> const &right) {
     return (left.second < right.second);
   }
 
@@ -315,20 +315,20 @@ private: // Default helper functions
                              bool &created,
                              size_t *footprint);
   LayoutConstraintID
-  default_select_layout_constraints(MapperContext ctx,
-                                    Memory target_memory,
-                                    RegionRequirement const &req,
-                                    bool needs_field_constraint_check);
+      default_select_layout_constraints(MapperContext ctx,
+                                        Memory target_memory,
+                                        RegionRequirement const &req,
+                                        bool needs_field_constraint_check);
   void default_select_constraints(MapperContext ctx,
                                   LayoutConstraintSet &constraints,
                                   Memory target_memory,
                                   RegionRequirement const &req);
-  void
-  default_policy_select_sources(MapperContext ctx,
-                                PhysicalInstance const &target,
-                                std::vector<PhysicalInstance> const &sources,
-                                std::deque<PhysicalInstance> &ranking,
-                                Memory preferred_memory = Memory::NO_MEMORY);
+  void default_policy_select_sources(
+      MapperContext ctx,
+      PhysicalInstance const &target,
+      std::vector<PhysicalInstance> const &sources,
+      std::deque<PhysicalInstance> &ranking,
+      Memory preferred_memory = Memory::NO_MEMORY);
 
 private:
   unsigned long long compute_task_hash(Task const &task);

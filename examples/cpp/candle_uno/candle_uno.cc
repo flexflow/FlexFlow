@@ -429,7 +429,9 @@ void DataLoader::next_batch(FFModel &ff) {
   next_index += ff.config.batchSize;
 }
 
-void DataLoader::reset() { next_index = 0; }
+void DataLoader::reset() {
+  next_index = 0;
+}
 
 void FlexFlow::register_custom_tasks() {
   // Load entire dataset

@@ -29,7 +29,7 @@ public:
                             Legion::Runtime *runtime);
   template <typename T>
   static void
-  forward_kernel(const T *input_ptr, T *output_ptr, size_t num_elements);
+      forward_kernel(const T *input_ptr, T *output_ptr, size_t num_elements);
   template <typename T>
   static void backward_kernel(const T *output_grad_ptr,
                               T *input_grad_ptr,

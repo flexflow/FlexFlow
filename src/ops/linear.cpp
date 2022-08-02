@@ -24,15 +24,15 @@ void Linear::init_kernel(LinearMeta *m, int batch_size, int channel) {
   if (use_activation(m->activation)) {
     miopenActivationMode_t mode;
     switch (m->activation) {
-    case AC_MODE_RELU:
-      mode = miopenActivationRELU;
-      break;
-    case AC_MODE_SIGMOID:
-      mode = miopenActivationLOGISTIC;
-      break;
-    default:
-      // Unsupported activation mode
-      assert(false);
+      case AC_MODE_RELU:
+        mode = miopenActivationRELU;
+        break;
+      case AC_MODE_SIGMOID:
+        mode = miopenActivationLOGISTIC;
+        break;
+      default:
+        // Unsupported activation mode
+        assert(false);
     }
     checkCUDNN(miopenSetActivationDescriptor(m->actiDesc, mode, 0.0, 0.0, 0.0));
     checkCUDNN(miopenSet4dTensorDescriptor(m->outputTensor,

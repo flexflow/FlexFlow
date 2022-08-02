@@ -72,7 +72,7 @@ inline int GET_BLOCKS(int const N) {
 }
 
 __global__ void
-scale_kernel(float *ptr, Legion::coord_t size, float a, float b);
+    scale_kernel(float *ptr, Legion::coord_t size, float a, float b);
 
 __global__ void ones_kernel(float *ptr, Legion::coord_t size);
 
@@ -104,11 +104,13 @@ __host__ void sigmoid_backward_kernel(DataType data_type,
                                       hipStream_t stream);
 
 template <typename DT>
-__global__ void
-apply_add_with_scale(DT *data_ptr, const DT *grad_ptr, size_t size, DT scale);
+__global__ void apply_add_with_scale(DT *data_ptr,
+                                     const DT *grad_ptr,
+                                     size_t size,
+                                     DT scale);
 
 __global__ void
-gelu_forward_kernel(size_t size, float B, float C, float *input);
+    gelu_forward_kernel(size_t size, float B, float C, float *input);
 
 // Use by concat and split
 __global__ void add_with_stride(float *output,
@@ -132,8 +134,8 @@ template <typename T>
 void print_tensor(const T *ptr, size_t num_elements, char const *prefix);
 
 miopenStatus_t
-cudnnSetTensorDescriptorFromDomain(miopenTensorDescriptor_t tensor,
-                                   Legion::Domain domain);
+    cudnnSetTensorDescriptorFromDomain(miopenTensorDescriptor_t tensor,
+                                       Legion::Domain domain);
 
 hipblasDatatype_t ff_to_cuda_datatype(DataType type);
 

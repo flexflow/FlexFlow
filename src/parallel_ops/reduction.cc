@@ -90,7 +90,9 @@ void Reduction::create_input_partition(FFModel &ff) {
                               output_grad_lp);
 }
 
-void Reduction::init(FFModel const &ff) { forward(ff); }
+void Reduction::init(FFModel const &ff) {
+  forward(ff);
+}
 
 void Reduction::forward(FFModel const &ff) {
   ArgumentMap argmap;
@@ -157,14 +159,14 @@ bool Reduction::measure_operator_cost(Simulator *sim,
 
 bool Reduction::get_int_parameter(PMParameter para, int *value) const {
   switch (para) {
-  case PM_REDUCTION_DIM:
-    *value = reduction_dim;
-    return true;
-  case PM_REDUCTION_DEGREE:
-    *value = reduction_degree;
-    return true;
-  default:
-    return Op::get_int_parameter(para, value);
+    case PM_REDUCTION_DIM:
+      *value = reduction_dim;
+      return true;
+    case PM_REDUCTION_DEGREE:
+      *value = reduction_degree;
+      return true;
+    default:
+      return Op::get_int_parameter(para, value);
   }
 }
 

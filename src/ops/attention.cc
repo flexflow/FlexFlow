@@ -407,10 +407,10 @@ void MultiHeadAttention::init(FFModel const &ff) {
   regions[4](O): output
 */
 OpMeta *
-MultiHeadAttention::init_task(Task const *task,
-                              std::vector<PhysicalRegion> const &regions,
-                              Context ctx,
-                              Runtime *runtime) {
+    MultiHeadAttention::init_task(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
+                                  Context ctx,
+                                  Runtime *runtime) {
   MultiHeadAttention const *attn = (MultiHeadAttention *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   TensorAccessorR<float, 4> acc_query(
@@ -716,11 +716,11 @@ void MultiHeadAttention::backward_task(
 
 bool MultiHeadAttention::get_int_parameter(PMParameter para, int *value) const {
   switch (para) {
-  case PM_NUM_HEADS:
-    *value = num_heads;
-    return true;
-  default:
-    return Op::get_int_parameter(para, value);
+    case PM_NUM_HEADS:
+      *value = num_heads;
+      return true;
+    default:
+      return Op::get_int_parameter(para, value);
   }
 }
 

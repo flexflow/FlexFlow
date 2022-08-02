@@ -36,8 +36,8 @@ public:
   virtual bool measure_operator_cost(Simulator *sim,
                                      MachineView const &pc,
                                      CostMetrics &cost_metrics) const = 0;
-  virtual bool
-  append_parallel_op_info(std::vector<ParallelOpInfo> &parallel_ops) const = 0;
+  virtual bool append_parallel_op_info(
+      std::vector<ParallelOpInfo> &parallel_ops) const = 0;
   virtual bool is_parallel_op() const;
 
 public:

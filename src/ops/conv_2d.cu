@@ -19,17 +19,17 @@
 
 namespace FlexFlow {
 
-cudnnConvolutionFwdAlgo_t
-selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
-                                  const cudnnTensorDescriptor_t xDesc,
-                                  void const *x,
-                                  const cudnnFilterDescriptor_t wDesc,
-                                  void const *w,
-                                  const cudnnConvolutionDescriptor_t convDesc,
-                                  void *workSpace,
-                                  size_t workSpaceSize,
-                                  const cudnnTensorDescriptor_t yDesc,
-                                  void *y);
+cudnnConvolutionFwdAlgo_t selectConvolutionForwardAlgorithm(
+    cudnnHandle_t handle,
+    const cudnnTensorDescriptor_t xDesc,
+    void const *x,
+    const cudnnFilterDescriptor_t wDesc,
+    void const *w,
+    const cudnnConvolutionDescriptor_t convDesc,
+    void *workSpace,
+    size_t workSpaceSize,
+    const cudnnTensorDescriptor_t yDesc,
+    void *y);
 cudnnConvolutionBwdFilterAlgo_t selectConvolutionBackwardFilterAlgorithm(
     cudnnHandle_t handle,
     const cudnnTensorDescriptor_t xDesc,
@@ -371,17 +371,17 @@ void Conv2D::backward_kernel_wrapper(Conv2DMeta const *m,
   }
 }
 
-cudnnConvolutionFwdAlgo_t
-selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
-                                  const cudnnTensorDescriptor_t xDesc,
-                                  void const *x,
-                                  const cudnnFilterDescriptor_t wDesc,
-                                  void const *w,
-                                  const cudnnConvolutionDescriptor_t convDesc,
-                                  void *workSpace,
-                                  size_t workSpaceSize,
-                                  const cudnnTensorDescriptor_t yDesc,
-                                  void *y) {
+cudnnConvolutionFwdAlgo_t selectConvolutionForwardAlgorithm(
+    cudnnHandle_t handle,
+    const cudnnTensorDescriptor_t xDesc,
+    void const *x,
+    const cudnnFilterDescriptor_t wDesc,
+    void const *w,
+    const cudnnConvolutionDescriptor_t convDesc,
+    void *workSpace,
+    size_t workSpaceSize,
+    const cudnnTensorDescriptor_t yDesc,
+    void *y) {
   int const reqAlgCnt = 8;
   int cnt = 0;
   cudnnConvolutionFwdAlgoPerf_t perfResults[reqAlgCnt];
