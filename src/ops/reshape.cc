@@ -44,9 +44,8 @@ bool ReshapeParams::is_valid(const ParallelTensorShape & input) const {
 }
 
 ReshapeParams Reshape::get_params() const {
-  for (int n: this->shape) {
-    params.shape.push_back(n);
-  }
+  ReshapeParams params;
+  params.shape = this->shape;
   return params;
 }
 
