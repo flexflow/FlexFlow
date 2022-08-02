@@ -16,6 +16,7 @@
 #include "flexflow/ops/reshape.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -34,7 +35,20 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-ReshapeParams::ReshapeParams(std::vector<int> const &_shape) : shape(_shape) {}
+bool operator==(const ReshapeParams & lhs, const ReshapeParams & rhs) {
+  return lhs.shape == rhs.shape;
+}
+
+bool ReshapeParams::is_valid(const ParallelTensorShape & input) const {
+  return input.is_valid();
+}
+
+ReshapeParams Reshape::get_params() const {
+  for (int n: this->shape) {
+    params.shape.push_back(n);
+  }
+  return params;
+}
 
 Tensor FFModel::reshape(const Tensor input,
                         std::vector<int> const &shape,
@@ -113,6 +127,12 @@ Reshape::Reshape(FFModel &model,
       numdim, dims, input->data_type, this);
   assert(outputs[0]->get_volume() == inputs[0]->get_volume());
 }
+
+Reshape::Reshape(FFModel &model,
+                 ReshapeParams const &params,
+                 const ParallelTensor input,
+                 const char *name)
+    : Reshape(model, input, params.shape, name) {}
 
 void Reshape::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -377,18 +397,6 @@ bool Reshape::measure_operator_cost(Simulator *sim,
   return true;
 }
 
-size_t ReshapeParams::get_hash(const ParallelTensor input) const {
-  size_t hash = input->get_owner_independent_hash();
-  hash_combine(hash, shape.size());
-  for (size_t i = 0; i < shape.size(); i++)
-    hash_combine(hash, shape[i]);
-  return hash;
-}
-
-size_t Reshape::get_params_hash() const {
-  return this->get_params().get_hash(this->inputs[0]);
-}
-
 void Reshape::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->shape_length);
   for (size_t i = 0; i < this->shape_length; i++)
@@ -424,25 +432,21 @@ Op *Reshape::materialize(FFModel &ff,
 }
 
 Node FFModel::get_or_create_reshape_node(const ParallelTensor input,
-                                         ReshapeParams const &params) {
-  size_t hash = params.get_hash(input);
-  Reshape *reshape = nullptr;
-
-  auto const &it = this->cached_reshape_ops.find(hash);
-  if (it != cached_reshape_ops.end()) {
-    reshape = it->second;
-  } else {
-    reshape = new Reshape(*this, input, params.shape, nullptr);
-    cached_reshape_ops[hash] = reshape;
-  }
-
-  return this->new_node(reshape);
-}
-
-Node FFModel::get_or_create_reshape_node(const ParallelTensor input,
                                          std::vector<int> const &shape) {
-  ReshapeParams params(shape);
-  return this->get_or_create_reshape_node(input, params);
+  ReshapeParams params;
+  params.shape = shape;
+  return get_or_create_node<Reshape>(input, params);
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+  size_t hash<FlexFlow::ReshapeParams>::operator()(const FlexFlow::ReshapeParams& params) const {
+    size_t key = 0;
+    hash_combine(key, params.shape.size());
+    for (int n: params.shape) {
+      hash_combine(key, n);
+    }
+    return key;
+  }
+};
