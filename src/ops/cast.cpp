@@ -21,7 +21,9 @@ namespace FlexFlow {
 
 template <typename IDT, typename ODT>
 __global__ void cast_forward(const IDT *input, ODT *output, size_t volume) {
-  CUDA_KERNEL_LOOP(i, volume) { output[i] = (ODT)input[i]; }
+  CUDA_KERNEL_LOOP(i, volume) {
+    output[i] = (ODT)input[i];
+  }
 }
 
 /*static*/
@@ -52,8 +54,10 @@ void Cast::forward_kernel_wrapper(const IDT *input_ptr,
 
 template <typename IDT, typename ODT>
 __global__ void
-cast_backward(const IDT *input, ODT *output, size_t volume, ODT beta) {
-  CUDA_KERNEL_LOOP(i, volume) { output[i] = (ODT)input[i] + beta * output[i]; }
+    cast_backward(const IDT *input, ODT *output, size_t volume, ODT beta) {
+  CUDA_KERNEL_LOOP(i, volume) {
+    output[i] = (ODT)input[i] + beta * output[i];
+  }
 }
 
 /*static*/

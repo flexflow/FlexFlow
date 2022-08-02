@@ -63,15 +63,15 @@ Tensor FFModel::cache(
 #ifdef DEADCODE
   if (!score_f) {
     switch (input->data_type) {
-    case DT_FLOAT:
-      score_f = default_score<float>;
-      break;
-    case DT_INT32:
-      score_f = default_score<int32_t>;
-      break;
-    default:
-      assert(false && "unsupported data type");
-      break;
+      case DT_FLOAT:
+        score_f = default_score<float>;
+        break;
+      case DT_INT32:
+        score_f = default_score<int32_t>;
+        break;
+      default:
+        assert(false && "unsupported data type");
+        break;
     }
   }
   Cache *cache = new Cache(*this, input, num_batches, score_f, name);
@@ -115,7 +115,8 @@ Cache::~Cache() {
   free(batch_cmp);
 }
 
-template <typename T> void cache_init(Cache *cache, size_t vol) {
+template <typename T>
+void cache_init(Cache *cache, size_t vol) {
   // init pointer array
   cache->batch_ptrs = (void **)malloc(cache->num_batches * sizeof(T *));
   for (int i = 0; i < cache->num_batches; i++)
@@ -126,15 +127,15 @@ template <typename T> void cache_init(Cache *cache, size_t vol) {
 void Cache::init(FFModel const &ff) {
   size_t vol = inputs[0]->get_volume();
   switch (inputs[0]->data_type) {
-  case DT_FLOAT:
-    cache_init<float>(this, vol);
-    break;
-  case DT_INT32:
-    cache_init<int32_t>(this, vol);
-    break;
-  default:
-    assert(false && "unsupported data type");
-    break;
+    case DT_FLOAT:
+      cache_init<float>(this, vol);
+      break;
+    case DT_INT32:
+      cache_init<int32_t>(this, vol);
+      break;
+    default:
+      assert(false && "unsupported data type");
+      break;
   }
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -202,8 +203,8 @@ void Cache::forward(FFModel const &ff) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
   // Launch forward task
   if (load_cached) {
@@ -235,15 +236,15 @@ void Cache::forward_task(Task const *task,
   assert((int)task->regions.size() == 1);
 
   switch (c->inputs[0]->data_type) {
-  case DT_FLOAT:
-    Cache::cache_forward<float>(task, regions, ctx, runtime);
-    break;
-  case DT_INT32:
-    Cache::cache_forward<int32_t>(task, regions, ctx, runtime);
-    break;
-  default:
-    assert(false && "unsupported data type");
-    break;
+    case DT_FLOAT:
+      Cache::cache_forward<float>(task, regions, ctx, runtime);
+      break;
+    case DT_INT32:
+      Cache::cache_forward<int32_t>(task, regions, ctx, runtime);
+      break;
+    default:
+      assert(false && "unsupported data type");
+      break;
   }
 }
 
@@ -251,7 +252,9 @@ void Cache::backward(FFModel const &ff) {
   // Do nothing
 }
 
-void Cache::use_cached(bool c) { load_cached = c; }
+void Cache::use_cached(bool c) {
+  load_cached = c;
+}
 
 float Cache::update_task(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
@@ -259,13 +262,13 @@ float Cache::update_task(Task const *task,
                          Runtime *runtime) {
   Cache *c = ((Arg *)(task->args))->cache;
   switch (c->inputs[0]->data_type) {
-  case DT_FLOAT:
-    return Cache::cache_update<float>(task, regions, ctx, runtime);
-  case DT_INT32:
-    return Cache::cache_update<int32_t>(task, regions, ctx, runtime);
-  default:
-    assert(false && "unsupported data type");
-    return -1.0f;
+    case DT_FLOAT:
+      return Cache::cache_update<float>(task, regions, ctx, runtime);
+    case DT_INT32:
+      return Cache::cache_update<int32_t>(task, regions, ctx, runtime);
+    default:
+      assert(false && "unsupported data type");
+      return -1.0f;
   }
 }
 

@@ -36,7 +36,7 @@ void parse_input_args(char **argv, int argc, ResNetConfig &config) {
 }
 
 Tensor
-BottleneckBlock(FFModel &ff, Tensor input, int out_channels, int stride) {
+    BottleneckBlock(FFModel &ff, Tensor input, int out_channels, int stride) {
   Tensor t = ff.conv2d(input, out_channels, 1, 1, 1, 1, 0, 0, AC_MODE_NONE);
   // t = ff.batch_norm(t);
 

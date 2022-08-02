@@ -19,14 +19,14 @@
 namespace FlexFlow {
 
 __global__ void
-aggspec_forward_kernel(float **exp_preds,
-                       int const *exp_assign,
-                       float *output,
-                       int n,           // num experts
-                       int const k,     // num chosen experts
-                       int exp_samples, // max samples per expert
-                       int const batch_size,
-                       int out_dim) {
+    aggspec_forward_kernel(float **exp_preds,
+                           int const *exp_assign,
+                           float *output,
+                           int n,           // num experts
+                           int const k,     // num chosen experts
+                           int exp_samples, // max samples per expert
+                           int const batch_size,
+                           int out_dim) {
   __shared__ float
       *chosen_exp_preds[AGGREGATE_SPEC_MAX_K * AGGREGATE_SPEC_MAX_BATCH_SIZE];
 
@@ -76,7 +76,9 @@ __device__ void aggspec_backward_kernel_gate(float const *output_grad,
   __shared__ float gate_grad_sum[AGGREGATE_SPEC_MAX_BATCH_SIZE];
 
   // init gate_grad_sum to 0
-  CUDA_KERNEL_LOOP(i, batch_size) { gate_grad_sum[i] = 0.0f; }
+  CUDA_KERNEL_LOOP(i, batch_size) {
+    gate_grad_sum[i] = 0.0f;
+  }
 
   __syncthreads();
 
@@ -139,18 +141,18 @@ __device__ void aggspec_backward_kernel_exp(float const *output_grad,
 }
 
 __global__ void
-aggspec_backward_kernel(float **exp_grads,
-                        int const *exp_assign,
-                        int const *true_exp_assign,
-                        float const *gating_net_preds,
-                        float *full_gating_grads,
-                        float const *output_grads,
-                        int n,           // num experts
-                        int k,           // num chosen experts
-                        int exp_samples, // max samples per expert
-                        float lambda_bal,
-                        int batch_size,
-                        int out_dim) {
+    aggspec_backward_kernel(float **exp_grads,
+                            int const *exp_assign,
+                            int const *true_exp_assign,
+                            float const *gating_net_preds,
+                            float *full_gating_grads,
+                            float const *output_grads,
+                            int n,           // num experts
+                            int k,           // num chosen experts
+                            int exp_samples, // max samples per expert
+                            float lambda_bal,
+                            int batch_size,
+                            int out_dim) {
   __shared__ float
       *chosen_exp_grads[AGGREGATE_SPEC_MAX_K * AGGREGATE_SPEC_MAX_BATCH_SIZE];
   __shared__ int expert_bal[AGGREGATE_SPEC_MAX_N];

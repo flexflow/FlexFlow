@@ -19,7 +19,9 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override { assert(0); }
+  void print_layer(FFModel const &model) override {
+    assert(0);
+  }
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;

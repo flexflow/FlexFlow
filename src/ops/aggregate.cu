@@ -50,7 +50,9 @@ __global__ void agg_forward_kernel(float **exp_preds,
   }
 
   // set output tensor to 0
-  CUDA_KERNEL_LOOP(i, batch_size * out_dim) { output[i] = 0.0f; }
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
+    output[i] = 0.0f;
+  }
 
   __syncthreads();
 

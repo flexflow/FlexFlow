@@ -236,10 +236,10 @@ void solve_parallel_dim_mappings(
     std::vector<ParallelDim const *> const &inputs,
     std::vector<ParallelDim *> const &weights,
     std::vector<ParallelDim *> const &outputs);
-std::unordered_map<int, int>
-output_to_input_mapping(std::vector<ParallelDimMappingRecord> const &mapping);
-std::unordered_map<int, int>
-input_to_output_mapping(std::vector<ParallelDimMappingRecord> const &mapping);
+std::unordered_map<int, int> output_to_input_mapping(
+    std::vector<ParallelDimMappingRecord> const &mapping);
+std::unordered_map<int, int> input_to_output_mapping(
+    std::vector<ParallelDimMappingRecord> const &mapping);
 
 class NoOp;
 
@@ -277,9 +277,13 @@ class ParallelOpInfo;
   ParallelTensor by ParallelTensorShape in T. E.g., ToShape<std::tuple<int,
   ParallelTensor>>::type gives std::tuple<int, ParallelTensorShape>
 */
-template <typename T> struct ToShape { using type = T; };
+template <typename T>
+struct ToShape {
+  using type = T;
+};
 
-template <> struct ToShape<ParallelTensor> {
+template <>
+struct ToShape<ParallelTensor> {
   using type = ParallelTensorShape;
 };
 
@@ -292,17 +296,19 @@ struct ToShape<Container<Args...>> {
 template <typename Input>
 typename ToShape<Input>::type get_input_shape(Input const &input) = delete;
 
-template <> std::tuple<> get_input_shape(std::tuple<> const &);
+template <>
+std::tuple<> get_input_shape(std::tuple<> const &);
 
-template <> ParallelTensorShape get_input_shape(ParallelTensor const &input);
+template <>
+ParallelTensorShape get_input_shape(ParallelTensor const &input);
 
 template <>
 std::pair<ParallelTensorShape, ParallelTensorShape>
-get_input_shape(std::pair<ParallelTensor, ParallelTensor> const &inputs);
+    get_input_shape(std::pair<ParallelTensor, ParallelTensor> const &inputs);
 
 template <>
 std::vector<ParallelTensorShape>
-get_input_shape(std::vector<ParallelTensor> const &inputs);
+    get_input_shape(std::vector<ParallelTensor> const &inputs);
 
 class FFModel {
 public:
@@ -437,7 +443,7 @@ public:
                     char const *name = NULL);
   // Add a batch_norm layer
   Tensor
-  batch_norm(const Tensor input, bool relu = true, char const *name = NULL);
+      batch_norm(const Tensor input, bool relu = true, char const *name = NULL);
   // Add a batch_matmul layer
   Tensor batch_matmul(const Tensor A,
                       const Tensor B,
@@ -457,7 +463,7 @@ public:
   Tensor cast(const Tensor input, DataType dtype, char const *name);
   // Add a concat layer
   Tensor
-  concat(int n, Tensor const *tensors, int axis, char const *name = NULL);
+      concat(int n, Tensor const *tensors, int axis, char const *name = NULL);
   // Add a mean layer
   Tensor mean(const Tensor input,
               std::vector<int> const &dims,
@@ -506,13 +512,13 @@ public:
                                        int owner_idx = 0,
                                        bool create_grad = true);
   ParallelTensor
-  create_parallel_tensor_legion_ordering(int num_dim,
-                                         const ParallelDim dims[],
-                                         DataType data_type,
-                                         Op const *owner_op = NULL,
-                                         int owner_idx = 0,
-                                         bool create_grad = true,
-                                         size_t input_tensor_guid = 0);
+      create_parallel_tensor_legion_ordering(int num_dim,
+                                             const ParallelDim dims[],
+                                             DataType data_type,
+                                             Op const *owner_op = NULL,
+                                             int owner_idx = 0,
+                                             bool create_grad = true,
+                                             size_t input_tensor_guid = 0);
   Tensor create_tensor(int num_dim,
                        int const dims[],
                        DataType data_type,
@@ -540,13 +546,13 @@ public:
                                         bool create_grad = true,
                                         size_t input_tensor_guid = 0);
   Parameter
-  create_weight(int numdim,
-                int const dims[],
-                DataType data_type,
-                Layer const *owner_op = NULL,
-                bool create_grad = true,
-                Initializer *initializer = NULL,
-                ParameterSyncType sync_type = ParameterSyncType::NONE);
+      create_weight(int numdim,
+                    int const dims[],
+                    DataType data_type,
+                    Layer const *owner_op = NULL,
+                    bool create_grad = true,
+                    Initializer *initializer = NULL,
+                    ParameterSyncType sync_type = ParameterSyncType::NONE);
   Parameter create_weight_legion_ordering(
       int numdim,
       int const dims[],
@@ -556,21 +562,21 @@ public:
       Initializer *initializer = NULL,
       ParameterSyncType sync_type = ParameterSyncType::NONE);
   template <int NDIM>
-  ParallelParameter
-  create_parallel_weight(const ParallelDim dims[],
-                         DataType data_type,
-                         Op const *owner_op = NULL,
-                         bool create_grad = true,
-                         Initializer *initializer = NULL,
-                         ParameterSyncType sync_type = ParameterSyncType::NONE);
-  ParallelParameter
-  create_parallel_weight(int numdim,
-                         const ParallelDim dims[],
-                         DataType data_type,
-                         Op const *owner_op = NULL,
-                         bool create_grad = true,
-                         Initializer *initializer = NULL,
-                         ParameterSyncType sync_type = ParameterSyncType::NONE);
+  ParallelParameter create_parallel_weight(
+      const ParallelDim dims[],
+      DataType data_type,
+      Op const *owner_op = NULL,
+      bool create_grad = true,
+      Initializer *initializer = NULL,
+      ParameterSyncType sync_type = ParameterSyncType::NONE);
+  ParallelParameter create_parallel_weight(
+      int numdim,
+      const ParallelDim dims[],
+      DataType data_type,
+      Op const *owner_op = NULL,
+      bool create_grad = true,
+      Initializer *initializer = NULL,
+      ParameterSyncType sync_type = ParameterSyncType::NONE);
   ParallelParameter create_parallel_weight_legion_ordering(
       int numdim,
       const ParallelDim dims[],
@@ -765,11 +771,11 @@ public:
                                  Legion::LogicalRegion const &region,
                                  Legion::LogicalPartition &part);
   template <int NDIM, int TDIM>
-  void
-  create_disjoint_partition_with_dim2(const ParallelDim dims[],
-                                      Legion::IndexSpaceT<TDIM> const &part_is,
-                                      Legion::LogicalRegion const &region,
-                                      Legion::LogicalPartition &part);
+  void create_disjoint_partition_with_dim2(
+      const ParallelDim dims[],
+      Legion::IndexSpaceT<TDIM> const &part_is,
+      Legion::LogicalRegion const &region,
+      Legion::LogicalPartition &part);
   void create_aliased_partition(int num_dims,
                                 const ParallelDim dims[],
                                 int aliased_dim,
@@ -777,12 +783,12 @@ public:
                                 Legion::LogicalRegion const &region,
                                 Legion::LogicalPartition &part);
   template <int NDIM, int TDIM>
-  void
-  create_aliased_partition_with_dim2(const ParallelDim dims[],
-                                     int aliased_dim,
-                                     Legion::IndexSpaceT<TDIM> const &part_is,
-                                     Legion::LogicalRegion const &region,
-                                     Legion::LogicalPartition &part);
+  void create_aliased_partition_with_dim2(
+      const ParallelDim dims[],
+      int aliased_dim,
+      Legion::IndexSpaceT<TDIM> const &part_is,
+      Legion::LogicalRegion const &region,
+      Legion::LogicalPartition &part);
 
   template <int NDIM>
   void create_disjoint_partition(const ParallelTensor tensor,
@@ -805,10 +811,10 @@ public:
                                        Legion::IndexSpaceT<TDIM> const &part_is,
                                        DataType data_type);
   static PerfMetrics
-  update_metrics_task(Legion::Task const *task,
-                      std::vector<Legion::PhysicalRegion> const &regions,
-                      Legion::Context ctx,
-                      Legion::Runtime *runtime);
+      update_metrics_task(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
   void reset_metrics();
   void init_operators();
   void prefetch();
@@ -851,7 +857,7 @@ public:
   void print_layers(int id);
 
   std::unordered_map<Op *, std::vector<std::pair<Op *, int>>>
-  get_bwd_edge_map() const;
+      get_bwd_edge_map() const;
 
   // Internal funcitons
   Legion::IndexSpace get_or_create_task_is(ParallelConfig const &pc);
@@ -949,41 +955,41 @@ private:
                char const *name = NULL,
                float scalar = 0.0);
   ElementUnary *
-  unary(OperatorType op, char const *name = NULL, float scalar = 0.0);
+      unary(OperatorType op, char const *name = NULL, float scalar = 0.0);
   PCG::Node new_node(Op *);
 };
 
 class UtilityTasks {
 public:
   static FFHandler
-  init_cuda_task(Legion::Task const *task,
-                 std::vector<Legion::PhysicalRegion> const &regions,
-                 Legion::Context ctx,
-                 Legion::Runtime *runtime);
+      init_cuda_task(Legion::Task const *task,
+                     std::vector<Legion::PhysicalRegion> const &regions,
+                     Legion::Context ctx,
+                     Legion::Runtime *runtime);
   static void dummy_task(Legion::Task const *task,
                          std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
                          Legion::Runtime *runtime);
   static void
-  init_images_task(Legion::Task const *task,
-                   std::vector<Legion::PhysicalRegion> const &regions,
-                   Legion::Context ctx,
-                   Legion::Runtime *runtime);
+      init_images_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx,
+                       Legion::Runtime *runtime);
   static void
-  init_labels_task(Legion::Task const *task,
-                   std::vector<Legion::PhysicalRegion> const &regions,
-                   Legion::Context ctx,
-                   Legion::Runtime *runtime);
+      init_labels_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx,
+                       Legion::Runtime *runtime);
   static void
-  load_images_task(Legion::Task const *task,
-                   std::vector<Legion::PhysicalRegion> const &regions,
-                   Legion::Context ctx,
-                   Legion::Runtime *runtime);
+      load_images_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx,
+                       Legion::Runtime *runtime);
   static void
-  normalize_images_task(Legion::Task const *task,
-                        std::vector<Legion::PhysicalRegion> const &regions,
-                        Legion::Context ctx,
-                        Legion::Runtime *runtime);
+      normalize_images_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
 };
 
 void top_level_task(Legion::Task const *task,

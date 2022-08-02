@@ -46,13 +46,15 @@ public:
                      const ParallelTensor value,
                      bool allocate_weights);
   static Op *
-  create_operator_from_layer(FFModel &model,
-                             Layer const *layer,
-                             std::vector<ParallelTensor> const &inputs);
+      create_operator_from_layer(FFModel &model,
+                                 Layer const *layer,
+                                 std::vector<ParallelTensor> const &inputs);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override { assert(0); }
+  void print_layer(FFModel const &model) override {
+    assert(0);
+  }
   bool get_int_parameter(PMParameter, int *) const override;
   size_t get_params_hash() const override;
 

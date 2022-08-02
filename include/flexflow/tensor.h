@@ -50,8 +50,9 @@ struct TensorBase {
   void print(std::string const &name) const;
   // static bool update_parallel_ids(int numdim, ParallelDim* dims);
   template <typename T>
-  bool
-  set_tensor(FFModel const *model, std::vector<int> const &dims, const T *data);
+  bool set_tensor(FFModel const *model,
+                  std::vector<int> const &dims,
+                  const T *data);
   template <typename T>
   bool get_tensor(FFModel const *model, T *data, bool get_gradients);
   // TensorShape get_shape() const;

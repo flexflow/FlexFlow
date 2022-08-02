@@ -78,20 +78,24 @@ GraphXfer *create_partition_linear_combine(FFModel *model,
                                            ActiMode activation,
                                            bool use_bias);
 
-GraphXfer *
-create_partition_conv2d_combine(FFModel *model, int num_dims, int num_parts);
+GraphXfer *create_partition_conv2d_combine(FFModel *model,
+                                           int num_dims,
+                                           int num_parts);
 
 GraphXfer *create_partition_attention_combine(FFModel *model,
                                               int num_heads,
                                               int num_parts);
 
-GraphXfer *
-create_replicate_attention_reduce(FFModel *model, int num_heads, int num_parts);
+GraphXfer *create_replicate_attention_reduce(FFModel *model,
+                                             int num_heads,
+                                             int num_parts);
 
-GraphXfer *
-create_partition_add_combine(FFModel *model, int parallel_dim, int num_parts);
-GraphXfer *
-create_partition_relu_combine(FFModel *model, int parallel_dim, int num_parts);
+GraphXfer *create_partition_add_combine(FFModel *model,
+                                        int parallel_dim,
+                                        int num_parts);
+GraphXfer *create_partition_relu_combine(FFModel *model,
+                                         int parallel_dim,
+                                         int num_parts);
 
 GraphXfer *create_partition_concat_combine(FFModel *model,
                                            int num_inputs,
@@ -112,7 +116,7 @@ GraphXfer *leading_relu_branch_partition(FFModel *model,
                                          int num_parts,
                                          int num_partitions);
 GraphXfer *
-create_linear_relu_merge(FFModel *model, int num_dims, bool use_bias);
+    create_linear_relu_merge(FFModel *model, int num_dims, bool use_bias);
 
 PMConstraint::PMConstraint(Compare c, PMParameter p, int v)
     : comp(c), para(p), value(v) {}
@@ -239,38 +243,38 @@ bool GraphXfer::can_match(OpX *srcOp, Node const &op, Graph const *graph) {
     // printf("pmc[%d] para(%d) comp(%d) value(%d) actValue(%d)\n",
     //        i, pmc.para, pmc.comp, pmc.value, actValue);
     switch (pmc.comp) {
-    case COMPARE_EQ: {
-      if (actValue != pmc.value)
-        return false;
-      break;
-    }
-    case COMPARE_NE: {
-      if (actValue == pmc.value)
-        return false;
-      break;
-    }
-    case COMPARE_LT: {
-      if (actValue >= pmc.value)
-        return false;
-      break;
-    }
-    case COMPARE_LE: {
-      if (actValue > pmc.value)
-        return false;
-      break;
-    }
-    case COMPARE_GT: {
-      if (actValue <= pmc.value)
-        return false;
-      break;
-    }
-    case COMPARE_GE: {
-      if (actValue < pmc.value)
-        return false;
-      break;
-    }
-    default:
-      assert(false);
+      case COMPARE_EQ: {
+        if (actValue != pmc.value)
+          return false;
+        break;
+      }
+      case COMPARE_NE: {
+        if (actValue == pmc.value)
+          return false;
+        break;
+      }
+      case COMPARE_LT: {
+        if (actValue >= pmc.value)
+          return false;
+        break;
+      }
+      case COMPARE_LE: {
+        if (actValue > pmc.value)
+          return false;
+        break;
+      }
+      case COMPARE_GT: {
+        if (actValue <= pmc.value)
+          return false;
+        break;
+      }
+      case COMPARE_GE: {
+        if (actValue < pmc.value)
+          return false;
+        break;
+      }
+      default:
+        assert(false);
     }
   }
   // check inputs
@@ -332,38 +336,38 @@ bool GraphXfer::can_match(OpX *srcOp, Node const &op, Graph const *graph) {
       assert(op.ptr->get_tensor_parameter(tnc.para2, tnc.dim2, &expValue));
     }
     switch (tnc.comp) {
-    case COMPARE_EQ: {
-      if (actValue != expValue)
-        return false;
-      break;
-    }
-    case COMPARE_NE: {
-      if (actValue == expValue)
-        return false;
-      break;
-    }
-    case COMPARE_LT: {
-      if (actValue >= expValue)
-        return false;
-      break;
-    }
-    case COMPARE_LE: {
-      if (actValue > expValue)
-        return false;
-      break;
-    }
-    case COMPARE_GT: {
-      if (actValue <= expValue)
-        return false;
-      break;
-    }
-    case COMPARE_GE: {
-      if (actValue < expValue)
-        return false;
-      break;
-    }
-    default:
-      assert(false);
+      case COMPARE_EQ: {
+        if (actValue != expValue)
+          return false;
+        break;
+      }
+      case COMPARE_NE: {
+        if (actValue == expValue)
+          return false;
+        break;
+      }
+      case COMPARE_LT: {
+        if (actValue >= expValue)
+          return false;
+        break;
+      }
+      case COMPARE_LE: {
+        if (actValue > expValue)
+          return false;
+        break;
+      }
+      case COMPARE_GT: {
+        if (actValue <= expValue)
+          return false;
+        break;
+      }
+      case COMPARE_GE: {
+        if (actValue < expValue)
+          return false;
+        break;
+      }
+      default:
+        assert(false);
     }
   }
   return true;
@@ -427,11 +431,17 @@ void GraphXferMatch::add_output_mapping(TensorX const &src,
   this->mappedOutputs[src] = dst;
 }
 
-OpX *GraphXferMatch::at(Node const &n) const { return this->nodeToOpX.at(n); }
+OpX *GraphXferMatch::at(Node const &n) const {
+  return this->nodeToOpX.at(n);
+}
 
-Node GraphXferMatch::at(OpX *opx) const { return this->opXToNode.at(opx); }
+Node GraphXferMatch::at(OpX *opx) const {
+  return this->opXToNode.at(opx);
+}
 
-void GraphXferMatch::set_graph(Graph const *g) { this->graph_hash = g->hash(); }
+void GraphXferMatch::set_graph(Graph const *g) {
+  this->graph_hash = g->hash();
+}
 
 bool GraphXferMatch::containsNode(Graph const *g, Node const &n) const {
   assert(g->hash() == this->graph_hash);
@@ -448,7 +458,9 @@ bool GraphXferMatch::containsEdge(Graph const *g, Edge const &e) const {
   return contains_src && contains_dst;
 }
 
-GraphXfer const *GraphXferMatch::get_xfer() const { return this->xfer; }
+GraphXfer const *GraphXferMatch::get_xfer() const {
+  return this->xfer;
+}
 
 std::unordered_set<Node> GraphXferMatch::get_nodes() const {
   std::unordered_set<Node> nodes;
@@ -721,8 +733,8 @@ void Graph::reshape_output_tensor(ParallelTensorShape const &desired_shape) {
   }
 }
 
-std::unique_ptr<Graph>
-Graph::with_output_tensor_reshaped_to(ParallelTensorShape const &shape) const {
+std::unique_ptr<Graph> Graph::with_output_tensor_reshaped_to(
+    ParallelTensorShape const &shape) const {
   auto g = std::unique_ptr<Graph>(new Graph(*this));
   g->reshape_output_tensor(shape);
   return g;
@@ -822,142 +834,143 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     return false;
   }
   switch (opx->type) {
-  case OP_NOOP: {
-    op = model->get_or_create_noop_node(inputs[0]);
-    break;
-  }
-  case OP_CONCAT: {
-    int axis;
-    assert(opx->get_pm_constraint(PM_AXIS, axis));
-    op = model->get_or_create_concat_node(opx->inputs.size(), inputs, axis);
-    break;
-  }
-  case OP_SPLIT: {
-    int axis;
-    assert(opx->get_pm_constraint(PM_AXIS, axis));
-    int num_outputs = opx->outputs.size();
-    int input_size = inputs[0]->dims[axis].size;
-
-    if (input_size % num_outputs != 0) {
-      op = Node::INVALID_NODE;
-      // std::ostringstream oss;
-      // oss << "Cannot create Split node. Failed check input_size % num_outputs
-      // == 0 ("
-      //     << input_size << " % " << num_outputs << " == 0)";
-      // throw std::runtime_error(oss.str());
-    } else {
-      int split_size = input_size / num_outputs;
-      std::vector<int> split_sizes(num_outputs, split_size);
-      assert(split_sizes.size() == num_outputs);
-      op = model->get_or_create_split_node(inputs[0], split_sizes, axis);
+    case OP_NOOP: {
+      op = model->get_or_create_noop_node(inputs[0]);
+      break;
     }
-    break;
-  }
-  case OP_EW_ADD:
-  case OP_EW_SUB:
-  case OP_EW_MUL: {
-    op = model->get_or_create_element_binary_node(
-        inputs[0], inputs[1], opx->type);
-    break;
-  }
-  case OP_RELU: {
-    op = model->get_or_create_element_unary_node(
-        inputs[0], opx->type, false, 0.0f);
-    break;
-  }
-  case OP_CONV2D: {
-    Conv2D *conv = (Conv2D *)opx->matchOpX->mapOp.ptr;
-    Conv2DParams params = conv->get_params();
-    op = model->get_or_create_node<Conv2D>(inputs[0], params);
-    break;
-  }
-  case OP_POOL2D: {
-    Pool2D *pool = (Pool2D *)opx->matchOpX->mapOp.ptr;
-    Pool2DParams params = pool->get_params();
-    op = model->get_or_create_node<Pool2D>(inputs[0], params);
-    break;
-  }
-  case OP_FLAT: {
-    op = model->get_or_create_flat_node(inputs[0]);
-    break;
-  }
-  case OP_LINEAR: {
-    int activation;
-    assert(opx->matchOpX != NULL);
-    assert(opx->matchOpX->mapOp.ptr != NULL);
-    Linear *linear = (Linear *)opx->matchOpX->mapOp.ptr;
-    // assert(opx->get_pm_constraint(PM_OUTPUT_CHANNELS, output_channels));
-    assert(opx->get_pm_constraint(PM_ACTI, activation));
-    op = model->get_or_create_linear_node(linear->layer_guid,
-                                          inputs[0],
-                                          linear->out_channels,
-                                          (ActiMode)activation,
-                                          linear->use_bias);
-    break;
-  }
-  case OP_MULTIHEAD_ATTENTION: {
-    int num_heads;
-    assert(opx->matchOpX != NULL);
-    assert(opx->matchOpX->mapOp.ptr != NULL);
-    MultiHeadAttention *attn = (MultiHeadAttention *)opx->matchOpX->mapOp.ptr;
-    assert(opx->get_pm_constraint(PM_NUM_HEADS, num_heads));
-    op = model->get_or_create_multihead_attn_node(attn->layer_guid,
-                                                  inputs[0],
-                                                  inputs[1],
-                                                  inputs[2],
-                                                  attn->oProjSize,
-                                                  num_heads,
-                                                  attn->qProjSize,
-                                                  attn->vProjSize,
-                                                  attn->dropout,
-                                                  attn->bias,
-                                                  attn->add_bias_kv,
-                                                  attn->add_zero_attn);
-    break;
-  }
-  case OP_SOFTMAX: {
-    int softmax_dim;
-    assert(opx->get_pm_constraint(PM_SOFTMAX_DIM, softmax_dim));
-    op = model->get_or_create_softmax_node(inputs[0], softmax_dim);
-    break;
-  }
-  case OP_REPARTITION: {
-    int repartition_dim, repartition_degree;
-    assert(opx->get_pm_constraint(PM_REPARTITION_DIM, repartition_dim));
-    assert(opx->get_pm_constraint(PM_REPARTITION_DEGREE, repartition_degree));
-    op = model->get_or_create_repartition_node(
-        inputs[0], repartition_dim, repartition_degree);
-    break;
-  }
-  case OP_REPLICATE: {
-    int replicate_dim, replicate_degree;
-    assert(opx->get_pm_constraint(PM_REPLICATE_DIM, replicate_dim));
-    assert(opx->get_pm_constraint(PM_REPLICATE_DEGREE, replicate_degree));
-    op = model->get_or_create_replicate_node(
-        inputs[0], replicate_dim, replicate_degree);
-    break;
-  }
-  case OP_REDUCTION: {
-    int reduction_dim, reduction_degree;
-    assert(opx->get_pm_constraint(PM_REDUCTION_DIM, reduction_dim));
-    assert(opx->get_pm_constraint(PM_REDUCTION_DEGREE, reduction_degree));
-    op = model->get_or_create_reduction_node(
-        inputs[0], reduction_dim, reduction_degree);
-    break;
-  }
-  case OP_COMBINE: {
-    int combine_dim, combine_degree;
-    assert(opx->get_pm_constraint(PM_COMBINE_DIM, combine_dim));
-    assert(opx->get_pm_constraint(PM_COMBINE_DEGREE, combine_degree));
-    op = model->get_or_create_combine_node(
-        inputs[0], combine_dim, combine_degree);
-    break;
-  }
-  default: {
-    std::cout << "opx->type = " << get_operator_type_name(opx->type)
-              << std::endl;
-    assert(false);
-  }
+    case OP_CONCAT: {
+      int axis;
+      assert(opx->get_pm_constraint(PM_AXIS, axis));
+      op = model->get_or_create_concat_node(opx->inputs.size(), inputs, axis);
+      break;
+    }
+    case OP_SPLIT: {
+      int axis;
+      assert(opx->get_pm_constraint(PM_AXIS, axis));
+      int num_outputs = opx->outputs.size();
+      int input_size = inputs[0]->dims[axis].size;
+
+      if (input_size % num_outputs != 0) {
+        op = Node::INVALID_NODE;
+        // std::ostringstream oss;
+        // oss << "Cannot create Split node. Failed check input_size %
+        // num_outputs
+        // == 0 ("
+        //     << input_size << " % " << num_outputs << " == 0)";
+        // throw std::runtime_error(oss.str());
+      } else {
+        int split_size = input_size / num_outputs;
+        std::vector<int> split_sizes(num_outputs, split_size);
+        assert(split_sizes.size() == num_outputs);
+        op = model->get_or_create_split_node(inputs[0], split_sizes, axis);
+      }
+      break;
+    }
+    case OP_EW_ADD:
+    case OP_EW_SUB:
+    case OP_EW_MUL: {
+      op = model->get_or_create_element_binary_node(
+          inputs[0], inputs[1], opx->type);
+      break;
+    }
+    case OP_RELU: {
+      op = model->get_or_create_element_unary_node(
+          inputs[0], opx->type, false, 0.0f);
+      break;
+    }
+    case OP_CONV2D: {
+      Conv2D *conv = (Conv2D *)opx->matchOpX->mapOp.ptr;
+      Conv2DParams params = conv->get_params();
+      op = model->get_or_create_node<Conv2D>(inputs[0], params);
+      break;
+    }
+    case OP_POOL2D: {
+      Pool2D *pool = (Pool2D *)opx->matchOpX->mapOp.ptr;
+      Pool2DParams params = pool->get_params();
+      op = model->get_or_create_node<Pool2D>(inputs[0], params);
+      break;
+    }
+    case OP_FLAT: {
+      op = model->get_or_create_flat_node(inputs[0]);
+      break;
+    }
+    case OP_LINEAR: {
+      int activation;
+      assert(opx->matchOpX != NULL);
+      assert(opx->matchOpX->mapOp.ptr != NULL);
+      Linear *linear = (Linear *)opx->matchOpX->mapOp.ptr;
+      // assert(opx->get_pm_constraint(PM_OUTPUT_CHANNELS, output_channels));
+      assert(opx->get_pm_constraint(PM_ACTI, activation));
+      op = model->get_or_create_linear_node(linear->layer_guid,
+                                            inputs[0],
+                                            linear->out_channels,
+                                            (ActiMode)activation,
+                                            linear->use_bias);
+      break;
+    }
+    case OP_MULTIHEAD_ATTENTION: {
+      int num_heads;
+      assert(opx->matchOpX != NULL);
+      assert(opx->matchOpX->mapOp.ptr != NULL);
+      MultiHeadAttention *attn = (MultiHeadAttention *)opx->matchOpX->mapOp.ptr;
+      assert(opx->get_pm_constraint(PM_NUM_HEADS, num_heads));
+      op = model->get_or_create_multihead_attn_node(attn->layer_guid,
+                                                    inputs[0],
+                                                    inputs[1],
+                                                    inputs[2],
+                                                    attn->oProjSize,
+                                                    num_heads,
+                                                    attn->qProjSize,
+                                                    attn->vProjSize,
+                                                    attn->dropout,
+                                                    attn->bias,
+                                                    attn->add_bias_kv,
+                                                    attn->add_zero_attn);
+      break;
+    }
+    case OP_SOFTMAX: {
+      int softmax_dim;
+      assert(opx->get_pm_constraint(PM_SOFTMAX_DIM, softmax_dim));
+      op = model->get_or_create_softmax_node(inputs[0], softmax_dim);
+      break;
+    }
+    case OP_REPARTITION: {
+      int repartition_dim, repartition_degree;
+      assert(opx->get_pm_constraint(PM_REPARTITION_DIM, repartition_dim));
+      assert(opx->get_pm_constraint(PM_REPARTITION_DEGREE, repartition_degree));
+      op = model->get_or_create_repartition_node(
+          inputs[0], repartition_dim, repartition_degree);
+      break;
+    }
+    case OP_REPLICATE: {
+      int replicate_dim, replicate_degree;
+      assert(opx->get_pm_constraint(PM_REPLICATE_DIM, replicate_dim));
+      assert(opx->get_pm_constraint(PM_REPLICATE_DEGREE, replicate_degree));
+      op = model->get_or_create_replicate_node(
+          inputs[0], replicate_dim, replicate_degree);
+      break;
+    }
+    case OP_REDUCTION: {
+      int reduction_dim, reduction_degree;
+      assert(opx->get_pm_constraint(PM_REDUCTION_DIM, reduction_dim));
+      assert(opx->get_pm_constraint(PM_REDUCTION_DEGREE, reduction_degree));
+      op = model->get_or_create_reduction_node(
+          inputs[0], reduction_dim, reduction_degree);
+      break;
+    }
+    case OP_COMBINE: {
+      int combine_dim, combine_degree;
+      assert(opx->get_pm_constraint(PM_COMBINE_DIM, combine_dim));
+      assert(opx->get_pm_constraint(PM_COMBINE_DEGREE, combine_degree));
+      op = model->get_or_create_combine_node(
+          inputs[0], combine_dim, combine_degree);
+      break;
+    }
+    default: {
+      std::cout << "opx->type = " << get_operator_type_name(opx->type)
+                << std::endl;
+      assert(false);
+    }
   }
   // Check operator validness
   if (op == Node::INVALID_NODE)
@@ -974,32 +987,32 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
       assert(op.ptr->get_tensor_parameter(tnc.para2, tnc.dim2, &expValue));
     }
     switch (tnc.comp) {
-    case COMPARE_EQ:
-      if (actValue != expValue)
-        return false;
-      break;
-    case COMPARE_NE:
-      if (actValue == expValue)
-        return false;
-      break;
-    case COMPARE_LT:
-      if (actValue >= expValue)
-        return false;
-      break;
-    case COMPARE_LE:
-      if (actValue > expValue)
-        return false;
-      break;
-    case COMPARE_GT:
-      if (actValue <= expValue)
-        return false;
-      break;
-    case COMPARE_GE:
-      if (actValue < expValue)
-        return false;
-      break;
-    default:
-      assert(false);
+      case COMPARE_EQ:
+        if (actValue != expValue)
+          return false;
+        break;
+      case COMPARE_NE:
+        if (actValue == expValue)
+          return false;
+        break;
+      case COMPARE_LT:
+        if (actValue >= expValue)
+          return false;
+        break;
+      case COMPARE_LE:
+        if (actValue > expValue)
+          return false;
+        break;
+      case COMPARE_GT:
+        if (actValue <= expValue)
+          return false;
+        break;
+      case COMPARE_GE:
+        if (actValue < expValue)
+          return false;
+        break;
+      default:
+        assert(false);
     }
   }
   return true;
@@ -1153,39 +1166,39 @@ void Graph::export_strategy_computation_graph(
       MachineView mv = strategy.at(node);
       std::ostringstream oss;
       switch (node.ptr->op_type) {
-      case OP_REPARTITION: {
-        Repartition *rp = (Repartition *)node.ptr;
-        meta_row << std::to_string(rp->repartition_dim)
-                 << std::to_string(rp->repartition_degree);
-        break;
-      }
-      case OP_COMBINE: {
-        Combine *c = (Combine *)node.ptr;
-        meta_row << std::to_string(c->combine_dim)
-                 << std::to_string(c->combine_degree);
-        break;
-      }
-      case OP_REPLICATE: {
-        Replicate *r = (Replicate *)node.ptr;
-        meta_row << std::to_string(r->replicate_dim)
-                 << std::to_string(r->replicate_degree);
-        break;
-      }
-      case OP_REDUCTION: {
-        Reduction *r = (Reduction *)node.ptr;
-        meta_row << std::to_string(r->reduction_dim)
-                 << std::to_string(r->reduction_degree);
-        break;
-      }
-      default: {
-        if (mv.ndims == 0) {
-          meta_row << "N/A";
-        } else {
-          for (int i = 0; i < mv.ndims; i++) {
-            meta_row << std::to_string(mv.dim[i]);
+        case OP_REPARTITION: {
+          Repartition *rp = (Repartition *)node.ptr;
+          meta_row << std::to_string(rp->repartition_dim)
+                   << std::to_string(rp->repartition_degree);
+          break;
+        }
+        case OP_COMBINE: {
+          Combine *c = (Combine *)node.ptr;
+          meta_row << std::to_string(c->combine_dim)
+                   << std::to_string(c->combine_degree);
+          break;
+        }
+        case OP_REPLICATE: {
+          Replicate *r = (Replicate *)node.ptr;
+          meta_row << std::to_string(r->replicate_dim)
+                   << std::to_string(r->replicate_degree);
+          break;
+        }
+        case OP_REDUCTION: {
+          Reduction *r = (Reduction *)node.ptr;
+          meta_row << std::to_string(r->reduction_dim)
+                   << std::to_string(r->reduction_degree);
+          break;
+        }
+        default: {
+          if (mv.ndims == 0) {
+            meta_row << "N/A";
+          } else {
+            for (int i = 0; i < mv.ndims; i++) {
+              meta_row << std::to_string(mv.dim[i]);
+            }
           }
         }
-      }
       }
       for (int device_id : mv.device_ids()) {
         machine_view_row << std::to_string(device_id);
@@ -1239,14 +1252,14 @@ void create_mapping_xfers(
     OpX *pre;
     std::string pre_name;
     switch (output_mappings.at(input_dim).operation.value()) {
-    case MappingOperation::PARTITION:
-      pre = subst->create_repartition(input, input_dim, degree);
-      pre_name = "partition";
-      break;
-    case MappingOperation::REPLICATE:
-      pre = subst->create_replicate(input, input_dim, degree);
-      pre_name = "replicate";
-      break;
+      case MappingOperation::PARTITION:
+        pre = subst->create_repartition(input, input_dim, degree);
+        pre_name = "partition";
+        break;
+      case MappingOperation::REPLICATE:
+        pre = subst->create_replicate(input, input_dim, degree);
+        pre_name = "replicate";
+        break;
     }
     subst->dstOps.push_back(pre);
 
@@ -1257,14 +1270,14 @@ void create_mapping_xfers(
     OpX *post;
     std::string post_name;
     switch (output_mappings.at(input_dim).operation.value()) {
-    case MappingOperation::PARTITION:
-      post = subst->create_combine(new_op->outputs[0], output_dim, degree);
-      post_name = "combine";
-      break;
-    case MappingOperation::REPLICATE:
-      post = subst->create_reduction(new_op->outputs[0], output_dim, degree);
-      post_name = "reduce";
-      break;
+      case MappingOperation::PARTITION:
+        post = subst->create_combine(new_op->outputs[0], output_dim, degree);
+        post_name = "combine";
+        break;
+      case MappingOperation::REPLICATE:
+        post = subst->create_reduction(new_op->outputs[0], output_dim, degree);
+        post_name = "reduce";
+        break;
     }
     subst->dstOps.push_back(post);
 
@@ -1297,50 +1310,50 @@ std::string GraphXfer::get_name() const {
 
 int get_num_outputs(sl::Operator const &op) {
   switch (op.op_type) {
-  case OP_SPLIT:
-    return op.at(PM_NUM_OUTPUTS).value();
-  default:
-    return 1;
+    case OP_SPLIT:
+      return op.at(PM_NUM_OUTPUTS).value();
+    default:
+      return 1;
   }
 }
 
 int get_num_inputs(sl::Operator const &op) {
   switch (op.op_type) {
-  case OP_EW_ADD: // binary ops
-  case OP_EW_SUB:
-  case OP_EW_MUL:
-  case OP_EW_DIV:
-  case OP_EW_EQUAL:
-  case OP_EW_GREATER:
-  case OP_EW_LESS:
-  case OP_EW_MAX:
-  case OP_EW_MIN:
-    return 2;
-  case OP_SPLIT:
-    return 1;
-  case OP_LINEAR:
-    return 1;
-  case OP_CONV2D:
-    return 1;
-  case OP_RELU:
-  case OP_IDENTITY:
-  case OP_SIGMOID:
-  case OP_TANH:
-  case OP_ELU:
-    return 1;
-  case OP_CONCAT:
-    return op.at(PM_NUM_INPUTS).value();
-  case OP_INPUT:
-    return 0;
-  case OP_REPARTITION:
-  case OP_COMBINE:
-  case OP_REPLICATE:
-  case OP_REDUCTION:
-  case OP_PIPELINE:
-    return 1;
-  default:
-    throw std::runtime_error("Unknown num_inputs for operator " +
-                             get_operator_type_name(op.op_type));
+    case OP_EW_ADD: // binary ops
+    case OP_EW_SUB:
+    case OP_EW_MUL:
+    case OP_EW_DIV:
+    case OP_EW_EQUAL:
+    case OP_EW_GREATER:
+    case OP_EW_LESS:
+    case OP_EW_MAX:
+    case OP_EW_MIN:
+      return 2;
+    case OP_SPLIT:
+      return 1;
+    case OP_LINEAR:
+      return 1;
+    case OP_CONV2D:
+      return 1;
+    case OP_RELU:
+    case OP_IDENTITY:
+    case OP_SIGMOID:
+    case OP_TANH:
+    case OP_ELU:
+      return 1;
+    case OP_CONCAT:
+      return op.at(PM_NUM_INPUTS).value();
+    case OP_INPUT:
+      return 0;
+    case OP_REPARTITION:
+    case OP_COMBINE:
+    case OP_REPLICATE:
+    case OP_REDUCTION:
+    case OP_PIPELINE:
+      return 1;
+    default:
+      throw std::runtime_error("Unknown num_inputs for operator " +
+                               get_operator_type_name(op.op_type));
   }
 }
 
@@ -1359,18 +1372,18 @@ OpX *create_opx(sl::Operator const &op,
     if (p.key == PM_PARALLEL_DEGREE) {
       tl::optional<PMParameter> degree_key = tl::nullopt;
       switch (op.op_type) {
-      case OP_REPARTITION:
-        degree_key = PM_REPARTITION_DEGREE;
-        break;
-      case OP_COMBINE:
-        degree_key = PM_COMBINE_DEGREE;
-        break;
-      case OP_REDUCTION:
-        degree_key = PM_REDUCTION_DEGREE;
-        break;
-      case OP_REPLICATE:
-        degree_key = PM_REPLICATE_DEGREE;
-        break;
+        case OP_REPARTITION:
+          degree_key = PM_REPARTITION_DEGREE;
+          break;
+        case OP_COMBINE:
+          degree_key = PM_COMBINE_DEGREE;
+          break;
+        case OP_REDUCTION:
+          degree_key = PM_REDUCTION_DEGREE;
+          break;
+        case OP_REPLICATE:
+          degree_key = PM_REPLICATE_DEGREE;
+          break;
       }
 
       if (degree_key.has_value()) {
@@ -1381,18 +1394,18 @@ OpX *create_opx(sl::Operator const &op,
     } else if (p.key == PM_PARALLEL_DIM) {
       tl::optional<PMParameter> dim_key = tl::nullopt;
       switch (op.op_type) {
-      case OP_REPARTITION:
-        dim_key = PM_REPARTITION_DIM;
-        break;
-      case OP_COMBINE:
-        dim_key = PM_COMBINE_DIM;
-        break;
-      case OP_REDUCTION:
-        dim_key = PM_REDUCTION_DIM;
-        break;
-      case OP_REPLICATE:
-        dim_key = PM_REPLICATE_DIM;
-        break;
+        case OP_REPARTITION:
+          dim_key = PM_REPARTITION_DIM;
+          break;
+        case OP_COMBINE:
+          dim_key = PM_COMBINE_DIM;
+          break;
+        case OP_REDUCTION:
+          dim_key = PM_REDUCTION_DIM;
+          break;
+        case OP_REPLICATE:
+          dim_key = PM_REPLICATE_DIM;
+          break;
       }
 
       if (dim_key.has_value()) {
@@ -1423,11 +1436,11 @@ OpX *find_opx_with_type(std::vector<OpX *> const &src_ops,
 }
 
 std::vector<OpX *>
-create_rule_graph(GraphXfer &xfer,
-                  std::vector<sl::Operator> const &ops,
-                  std::function<TensorX(int, int)> const &get_input_tensor,
-                  std::vector<OpX *> *const src_ops,
-                  int parallel_degree) {
+    create_rule_graph(GraphXfer &xfer,
+                      std::vector<sl::Operator> const &ops,
+                      std::function<TensorX(int, int)> const &get_input_tensor,
+                      std::vector<OpX *> *const src_ops,
+                      int parallel_degree) {
   std::vector<OpX *> rule_graph;
 
   for (int i = 0; i < ops.size(); i++) {
@@ -1448,23 +1461,27 @@ create_rule_graph(GraphXfer &xfer,
     // We need the matched OpX for constructing conv2d/pool2d/linear
     OpX *opx = nullptr;
     switch (ops[i].op_type) {
-    case OP_CONV2D: {
-      OpX *matchOpX = src_ops == nullptr
-                          ? nullptr
-                          : find_opx_with_type(*src_ops, ops[i].op_type);
-      opx = xfer.create_conv2d(inputs[0], matchOpX);
-      break;
-    }
-    case OP_POOL2D: {
-      OpX *matchOpX = src_ops == nullptr
-                          ? nullptr
-                          : find_opx_with_type(*src_ops, ops[i].op_type);
-      opx = xfer.create_pool2d(inputs[0], matchOpX);
-      break;
-    }
-    default:
-      opx = create_opx(
-          ops[i], parallel_degree, inputs[0], inputs[1], inputs[2], inputs[3]);
+      case OP_CONV2D: {
+        OpX *matchOpX = src_ops == nullptr
+                            ? nullptr
+                            : find_opx_with_type(*src_ops, ops[i].op_type);
+        opx = xfer.create_conv2d(inputs[0], matchOpX);
+        break;
+      }
+      case OP_POOL2D: {
+        OpX *matchOpX = src_ops == nullptr
+                            ? nullptr
+                            : find_opx_with_type(*src_ops, ops[i].op_type);
+        opx = xfer.create_pool2d(inputs[0], matchOpX);
+        break;
+      }
+      default:
+        opx = create_opx(ops[i],
+                         parallel_degree,
+                         inputs[0],
+                         inputs[1],
+                         inputs[2],
+                         inputs[3]);
     }
     rule_graph.push_back(opx);
   }
@@ -1852,8 +1869,8 @@ void GraphSearchHelper::find_rewrite_matches(
 }
 
 tl::optional<Node>
-GraphSearchHelper::find_split_node(Graph const *graph,
-                                   int base_optimize_threshold) const {
+    GraphSearchHelper::find_split_node(Graph const *graph,
+                                       int base_optimize_threshold) const {
   using FlexFlow::PCG::Utils::get_edges;
   using FlexFlow::PCG::Utils::MultisourceGraphStructure;
   using FlexFlow::PCG::Utils::nodes;
@@ -2086,7 +2103,7 @@ float GraphSearchHelper::sequence_optimize(
 
 template <>
 tl::optional<float>
-GraphSearchHelper::try_get_cost_from_cache<float>(size_t hash) const {
+    GraphSearchHelper::try_get_cost_from_cache<float>(size_t hash) const {
   if (this->cached_optimized_graphs.find(hash) ==
       this->cached_optimized_graphs.end()) {
     return tl::nullopt;
@@ -2120,14 +2137,15 @@ GraphOptimizeResult GraphSearchHelper::get_optimal_cost<GraphOptimizeResult>(
 
 template <>
 tl::optional<GraphCostResult>
-GraphSearchHelper::try_get_cost_from_cache<GraphCostResult>(size_t hash) const {
+    GraphSearchHelper::try_get_cost_from_cache<GraphCostResult>(
+        size_t hash) const {
   return tl::nullopt;
 }
 
 template <>
 tl::optional<GraphOptimizeResult>
-GraphSearchHelper::try_get_cost_from_cache<GraphOptimizeResult>(
-    size_t hash) const {
+    GraphSearchHelper::try_get_cost_from_cache<GraphOptimizeResult>(
+        size_t hash) const {
   return tl::nullopt;
 }
 
@@ -2344,8 +2362,8 @@ T GraphSearchHelper::generic_sequence_optimize(
 }
 
 std::vector<ParallelTensorShape>
-GraphSearchHelper::possible_split_output_tensor_shapes(
-    Node const &source_node) const {
+    GraphSearchHelper::possible_split_output_tensor_shapes(
+        Node const &source_node) const {
   TAG_ENTER(this->logger);
 
   this->logger->debug() << "Finding possible output tensor shapes for node "
@@ -2475,8 +2493,9 @@ GraphXfer *create_partition_linear_combine(FFModel *model,
   return subst;
 }
 
-GraphXfer *
-create_partition_conv2d_combine(FFModel *model, int num_dims, int num_parts) {
+GraphXfer *create_partition_conv2d_combine(FFModel *model,
+                                           int num_dims,
+                                           int num_parts) {
   assert(num_dims == 5);
   GraphXfer *subst = new GraphXfer(model);
   TensorX input = subst->new_tensor();
@@ -2658,8 +2677,9 @@ GraphXfer *create_replicate_linear_combine(FFModel *model,
   return subst;
 }
 
-GraphXfer *
-create_partition_add_combine(FFModel *model, int parallel_dim, int num_parts) {
+GraphXfer *create_partition_add_combine(FFModel *model,
+                                        int parallel_dim,
+                                        int num_parts) {
   GraphXfer *subst = new GraphXfer(model);
   TensorX input1 = subst->new_tensor();
   TensorX input2 = subst->new_tensor();
@@ -2687,8 +2707,9 @@ create_partition_add_combine(FFModel *model, int parallel_dim, int num_parts) {
   return subst;
 }
 
-GraphXfer *
-create_combine_add_partition(FFModel *model, int parallel_dim, int num_parts) {
+GraphXfer *create_combine_add_partition(FFModel *model,
+                                        int parallel_dim,
+                                        int num_parts) {
   GraphXfer *subst = new GraphXfer(model);
   TensorX input1 = subst->new_tensor();
   TensorX input2 = subst->new_tensor();
@@ -2715,8 +2736,9 @@ create_combine_add_partition(FFModel *model, int parallel_dim, int num_parts) {
   return subst;
 }
 
-GraphXfer *
-create_partition_relu_combine(FFModel *model, int parallel_dim, int num_parts) {
+GraphXfer *create_partition_relu_combine(FFModel *model,
+                                         int parallel_dim,
+                                         int num_parts) {
   GraphXfer *subst = new GraphXfer(model);
   TensorX input = subst->new_tensor();
   OpX *relu1 = subst->create_element_unary(input, OP_RELU);
@@ -2742,8 +2764,9 @@ create_partition_relu_combine(FFModel *model, int parallel_dim, int num_parts) {
   return subst;
 }
 
-GraphXfer *
-create_combine_relu_partition(FFModel *model, int parallel_dim, int num_parts) {
+GraphXfer *create_combine_relu_partition(FFModel *model,
+                                         int parallel_dim,
+                                         int num_parts) {
   GraphXfer *subst = new GraphXfer(model);
   TensorX input = subst->new_tensor();
   OpX *relu1 = subst->create_element_unary(input, OP_RELU);
@@ -2941,7 +2964,7 @@ GraphXfer *leading_relu_branch_partition(FFModel *model,
 }
 
 GraphXfer *
-create_linear_relu_merge(FFModel *model, int num_dims, bool use_bias) {
+    create_linear_relu_merge(FFModel *model, int num_dims, bool use_bias) {
   GraphXfer *subst = new GraphXfer(model);
   TensorX input = subst->new_tensor();
   OpX *old_linear =
@@ -3011,116 +3034,116 @@ bool FFModel::convert_graph_to_operators(
     }
     Op *new_op = NULL;
     switch (node.ptr->op_type) {
-    case OP_INPUT: {
-      NoOp *noop = (NoOp *)node.ptr;
-      new_op = new NoOp(
-          *this, OP_INPUT, noop->input_tensor_guid, node.ptr->outputs[0]);
-      break;
-    }
-    case OP_CONCAT: {
-      Concat *concat = (Concat *)node.ptr;
-      new_op = new Concat(
-          *this, (int)inList.size(), inputs, concat->legion_axis, NULL);
-      break;
-    }
-    case OP_SPLIT: {
-      Split *split = (Split *)node.ptr;
-      std::vector<int> splits;
-      for (int i = 0; i < split->numOutputs; i++)
-        splits.push_back(split->outputs[i]->dims[split->legion_axis].size);
-      new_op = new Split(*this, inputs[0], splits, split->legion_axis, NULL);
-      break;
-    }
-    case OP_EMBEDDING: {
-      new_op = new Embedding(*this, *(Embedding *)node.ptr, inputs[0], true);
-      break;
-    }
-    case OP_EW_ADD:
-    case OP_EW_SUB:
-    case OP_EW_MUL: {
-      assert(inList.size() == 2);
-      ElementBinary *eb = (ElementBinary *)node.ptr;
-      new_op = new ElementBinary(
-          *this, eb->op_type, inputs[0], inputs[1], eb->inplace_a, NULL);
-      break;
-    }
-    case OP_POOL2D: {
-      new_op = new Pool2D(*this, *(Pool2D *)node.ptr, inputs[0]);
-      break;
-    }
-    case OP_CONV2D: {
-      new_op = new Conv2D(*this, *(Conv2D *)node.ptr, inputs[0], true);
-      break;
-    }
-    case OP_DROPOUT: {
-      new_op = new Dropout(*this, *(Dropout *)node.ptr, inputs[0]);
-      break;
-    }
-    case OP_LINEAR: {
-      new_op = new Linear(*this, *(Linear *)node.ptr, inputs[0], true);
-      break;
-    }
-    case OP_MULTIHEAD_ATTENTION: {
-      assert(inList.size() == 3);
-      MultiHeadAttention *attn = (MultiHeadAttention *)node.ptr;
-      new_op = new MultiHeadAttention(
-          *this, *attn, inputs[0], inputs[1], inputs[2], true);
-      break;
-      break;
-    }
-    case OP_SOFTMAX: {
-      assert(inList.size() == 1);
-      Softmax *softmax = (Softmax *)node.ptr;
-      new_op = new Softmax(*this, inputs[0], softmax->dim, NULL);
-      break;
-    }
-    case OP_COMBINE: {
-      assert(inList.size() == 1);
-      Combine *combine = (Combine *)node.ptr;
-      new_op = new Combine(
-          *this, inputs[0], combine->combine_dim, combine->combine_degree);
-      break;
-    }
-    case OP_REPARTITION: {
-      assert(inList.size() == 1);
-      Repartition *repart = (Repartition *)node.ptr;
-      new_op = new Repartition(*this,
+      case OP_INPUT: {
+        NoOp *noop = (NoOp *)node.ptr;
+        new_op = new NoOp(
+            *this, OP_INPUT, noop->input_tensor_guid, node.ptr->outputs[0]);
+        break;
+      }
+      case OP_CONCAT: {
+        Concat *concat = (Concat *)node.ptr;
+        new_op = new Concat(
+            *this, (int)inList.size(), inputs, concat->legion_axis, NULL);
+        break;
+      }
+      case OP_SPLIT: {
+        Split *split = (Split *)node.ptr;
+        std::vector<int> splits;
+        for (int i = 0; i < split->numOutputs; i++)
+          splits.push_back(split->outputs[i]->dims[split->legion_axis].size);
+        new_op = new Split(*this, inputs[0], splits, split->legion_axis, NULL);
+        break;
+      }
+      case OP_EMBEDDING: {
+        new_op = new Embedding(*this, *(Embedding *)node.ptr, inputs[0], true);
+        break;
+      }
+      case OP_EW_ADD:
+      case OP_EW_SUB:
+      case OP_EW_MUL: {
+        assert(inList.size() == 2);
+        ElementBinary *eb = (ElementBinary *)node.ptr;
+        new_op = new ElementBinary(
+            *this, eb->op_type, inputs[0], inputs[1], eb->inplace_a, NULL);
+        break;
+      }
+      case OP_POOL2D: {
+        new_op = new Pool2D(*this, *(Pool2D *)node.ptr, inputs[0]);
+        break;
+      }
+      case OP_CONV2D: {
+        new_op = new Conv2D(*this, *(Conv2D *)node.ptr, inputs[0], true);
+        break;
+      }
+      case OP_DROPOUT: {
+        new_op = new Dropout(*this, *(Dropout *)node.ptr, inputs[0]);
+        break;
+      }
+      case OP_LINEAR: {
+        new_op = new Linear(*this, *(Linear *)node.ptr, inputs[0], true);
+        break;
+      }
+      case OP_MULTIHEAD_ATTENTION: {
+        assert(inList.size() == 3);
+        MultiHeadAttention *attn = (MultiHeadAttention *)node.ptr;
+        new_op = new MultiHeadAttention(
+            *this, *attn, inputs[0], inputs[1], inputs[2], true);
+        break;
+        break;
+      }
+      case OP_SOFTMAX: {
+        assert(inList.size() == 1);
+        Softmax *softmax = (Softmax *)node.ptr;
+        new_op = new Softmax(*this, inputs[0], softmax->dim, NULL);
+        break;
+      }
+      case OP_COMBINE: {
+        assert(inList.size() == 1);
+        Combine *combine = (Combine *)node.ptr;
+        new_op = new Combine(
+            *this, inputs[0], combine->combine_dim, combine->combine_degree);
+        break;
+      }
+      case OP_REPARTITION: {
+        assert(inList.size() == 1);
+        Repartition *repart = (Repartition *)node.ptr;
+        new_op = new Repartition(*this,
+                                 inputs[0],
+                                 repart->repartition_dim,
+                                 repart->repartition_degree);
+        break;
+      }
+      case OP_REPLICATE: {
+        assert(inList.size() == 1);
+        Replicate *replicate = (Replicate *)node.ptr;
+        new_op = new Replicate(*this,
                                inputs[0],
-                               repart->repartition_dim,
-                               repart->repartition_degree);
-      break;
-    }
-    case OP_REPLICATE: {
-      assert(inList.size() == 1);
-      Replicate *replicate = (Replicate *)node.ptr;
-      new_op = new Replicate(*this,
-                             inputs[0],
-                             replicate->replicate_dim,
-                             replicate->replicate_degree);
-      break;
-    }
-    case OP_REDUCTION: {
-      assert(inList.size() == 1);
-      Reduction *reduction = (Reduction *)node.ptr;
-      new_op = new Reduction(*this,
-                             inputs[0],
-                             reduction->reduction_dim,
-                             reduction->reduction_degree);
-      break;
-    }
-    case OP_FUSED_PARALLEL: {
-      assert(inList.size() == 1);
-      FusedParallelOp *fused = (FusedParallelOp *)node.ptr;
-      std::vector<ParallelOpInfo> parallel_ops;
-      for (int i = 0; i < fused->num_parallel_ops; i++)
-        parallel_ops.push_back(fused->parallel_ops[i]);
-      new_op = new FusedParallelOp(*this, inputs[0], parallel_ops);
-      break;
-    }
-    default: {
-      new_op = node.ptr->materialize(*this, inputs, num_inputs);
-      break;
-    }
+                               replicate->replicate_dim,
+                               replicate->replicate_degree);
+        break;
+      }
+      case OP_REDUCTION: {
+        assert(inList.size() == 1);
+        Reduction *reduction = (Reduction *)node.ptr;
+        new_op = new Reduction(*this,
+                               inputs[0],
+                               reduction->reduction_dim,
+                               reduction->reduction_degree);
+        break;
+      }
+      case OP_FUSED_PARALLEL: {
+        assert(inList.size() == 1);
+        FusedParallelOp *fused = (FusedParallelOp *)node.ptr;
+        std::vector<ParallelOpInfo> parallel_ops;
+        for (int i = 0; i < fused->num_parallel_ops; i++)
+          parallel_ops.push_back(fused->parallel_ops[i]);
+        new_op = new FusedParallelOp(*this, inputs[0], parallel_ops);
+        break;
+      }
+      default: {
+        new_op = node.ptr->materialize(*this, inputs, num_inputs);
+        break;
+      }
     }
     // Set machine view for the output tensors of this operator
     assert(optimal_views.find(node) != optimal_views.end());

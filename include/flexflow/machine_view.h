@@ -77,7 +77,7 @@ struct ParallelConfig {
   int num_parts() const;
   bool is_data_parallel() const;
   ParallelConfig
-  change_data_parallel_dimensionality(int new_dimensionality) const;
+      change_data_parallel_dimensionality(int new_dimensionality) const;
   DeviceType device_type;
   int nDims, dim[MAX_TENSOR_DIM];
   int device_ids[MAX_NUM_WORKERS];
@@ -89,7 +89,8 @@ struct ParallelConfig {
 }; // namespace FlexFlow
 
 namespace std {
-template <> struct hash<FlexFlow::MachineView> {
+template <>
+struct hash<FlexFlow::MachineView> {
   size_t operator()(FlexFlow::MachineView const &) const;
 };
 }; // namespace std

@@ -99,8 +99,8 @@ void Loss::backward_task(Task const *task,
     return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 

@@ -177,13 +177,21 @@ Op::Op(FFModel &model,
   parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
 }
 
-bool Op::is_parallel_op() const { return false; }
+bool Op::is_parallel_op() const {
+  return false;
+}
 
-bool Op::can_inplace_output() { return false; }
+bool Op::can_inplace_output() {
+  return false;
+}
 
-bool Op::has_inplace_output() { return false; }
+bool Op::has_inplace_output() {
+  return false;
+}
 
-void Op::do_inplace_output() { assert(false); }
+void Op::do_inplace_output() {
+  assert(false);
+}
 
 tl::optional<RecordFormatter> Op::as_dot() const {
   if (this->numOutputs != 1) {
@@ -321,7 +329,9 @@ ParallelConfig Op::get_random_parallel_config(FFModel const &ff) const {
   return pc;
 }
 
-int Op::get_dimension() const { return this->outputs[0]->num_dims; }
+int Op::get_dimension() const {
+  return this->outputs[0]->num_dims;
+}
 
 ParallelConfig ParallelConfig::change_data_parallel_dimensionality(
     int new_dimensionality) const {
@@ -460,40 +470,40 @@ void solve_parallel_dim_mappings(
     ParallelDim const &input_dim = inputs[record.input_idx][record.input_dim];
 
     switch (record.get_type()) {
-    case MappingRecordType::INPUT_OUTPUT: {
-      if (record.output_idx >= outputs.size() ||
-          outputs[record.output_idx] == nullptr) {
-        continue;
-      }
+      case MappingRecordType::INPUT_OUTPUT: {
+        if (record.output_idx >= outputs.size() ||
+            outputs[record.output_idx] == nullptr) {
+          continue;
+        }
 
-      ParallelDim &output_dim = outputs[record.output_idx][record.output_dim];
-      output_dim.degree = input_dim.degree;
-      output_dim.parallel_idx = input_dim.parallel_idx;
+        ParallelDim &output_dim = outputs[record.output_idx][record.output_dim];
+        output_dim.degree = input_dim.degree;
+        output_dim.parallel_idx = input_dim.parallel_idx;
 
-      if (output_dim.is_replica_dim) {
-        output_dim.size = input_dim.degree;
-      }
-    } break;
-    case MappingRecordType::INPUT_WEIGHT: {
-      if (record.weight_idx >= weights.size() ||
-          weights[record.weight_idx] == nullptr) {
-        continue;
-      }
+        if (output_dim.is_replica_dim) {
+          output_dim.size = input_dim.degree;
+        }
+      } break;
+      case MappingRecordType::INPUT_WEIGHT: {
+        if (record.weight_idx >= weights.size() ||
+            weights[record.weight_idx] == nullptr) {
+          continue;
+        }
 
-      ParallelDim &weight_dim = weights[record.weight_idx][record.weight_dim];
-      weight_dim.degree = input_dim.degree;
-      weight_dim.parallel_idx = input_dim.parallel_idx;
+        ParallelDim &weight_dim = weights[record.weight_idx][record.weight_dim];
+        weight_dim.degree = input_dim.degree;
+        weight_dim.parallel_idx = input_dim.parallel_idx;
 
-      if (weight_dim.is_replica_dim) {
-        weight_dim.size = input_dim.degree;
-      }
-    } break;
+        if (weight_dim.is_replica_dim) {
+          weight_dim.size = input_dim.degree;
+        }
+      } break;
     }
   }
 }
 
-std::unordered_map<int, int>
-output_to_input_mapping(std::vector<ParallelDimMappingRecord> const &mapping) {
+std::unordered_map<int, int> output_to_input_mapping(
+    std::vector<ParallelDimMappingRecord> const &mapping) {
   std::unordered_map<int, int> dim_mapping;
   for (ParallelDimMappingRecord const &record : mapping) {
     if (record.get_type() == MappingRecordType::INPUT_OUTPUT) {
@@ -504,8 +514,8 @@ output_to_input_mapping(std::vector<ParallelDimMappingRecord> const &mapping) {
   return dim_mapping;
 }
 
-std::unordered_map<int, int>
-input_to_output_mapping(std::vector<ParallelDimMappingRecord> const &mapping) {
+std::unordered_map<int, int> input_to_output_mapping(
+    std::vector<ParallelDimMappingRecord> const &mapping) {
   std::unordered_map<int, int> dim_mapping;
   for (ParallelDimMappingRecord const &record : mapping) {
     if (record.get_type() == MappingRecordType::INPUT_OUTPUT) {
@@ -518,10 +528,10 @@ input_to_output_mapping(std::vector<ParallelDimMappingRecord> const &mapping) {
 
 #ifdef FF_USE_NCCL
 ncclUniqueId
-Op::get_nccl_unique_id_task(Task const *task,
-                            std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+    Op::get_nccl_unique_id_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
+                                Context ctx,
+                                Runtime *runtime) {
   ncclUniqueId ncclId;
   checkNCCL(ncclGetUniqueId(&ncclId));
   return ncclId;
@@ -810,22 +820,22 @@ bool Op::check_output_input_weight_parallel_dims(bool allocate_weights) const {
 
     ParallelDim other_dim;
     switch (record.get_type()) {
-    case MappingRecordType::INPUT_OUTPUT:
-      assert(record.output_idx < this->numOutputs);
-      assert(record.output_dim < this->outputs[record.output_idx]->num_dims);
-      other_dim = outputs[record.output_idx]->dims[record.output_dim];
-      break;
-    case MappingRecordType::INPUT_WEIGHT:
-      if (!allocate_weights) {
-        continue;
-      }
-      if (record.weight_idx >= this->numWeights) {
-        // The case where some weights are not used (e.g., no bias for linear)
-        continue;
-      }
-      assert(record.weight_dim < this->weights[record.weight_idx]->num_dims);
-      other_dim = weights[record.weight_idx]->dims[record.weight_dim];
-      break;
+      case MappingRecordType::INPUT_OUTPUT:
+        assert(record.output_idx < this->numOutputs);
+        assert(record.output_dim < this->outputs[record.output_idx]->num_dims);
+        other_dim = outputs[record.output_idx]->dims[record.output_dim];
+        break;
+      case MappingRecordType::INPUT_WEIGHT:
+        if (!allocate_weights) {
+          continue;
+        }
+        if (record.weight_idx >= this->numWeights) {
+          // The case where some weights are not used (e.g., no bias for linear)
+          continue;
+        }
+        assert(record.weight_dim < this->weights[record.weight_idx]->num_dims);
+        other_dim = weights[record.weight_idx]->dims[record.weight_dim];
+        break;
     }
 
     assert(other_dim.degree == input_dim.degree);
@@ -902,8 +912,8 @@ void Op::set_argumentmap_for_init(FFModel const &ff, ArgumentMap &argmap) {
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
 #endif
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -923,8 +933,8 @@ void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -945,8 +955,8 @@ void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -967,24 +977,24 @@ void Op::set_argumentmap_for_backward(FFModel const &ff, ArgumentMap &argmap) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
 bool Op::get_int_parameter(PMParameter para, int *value) const {
   switch (para) {
-  case PM_OP_TYPE:
-    *value = (int)op_type;
-    return true;
-  case PM_NUM_INPUTS:
-    *value = numInputs;
-    return true;
-  case PM_NUM_OUTPUTS:
-    *value = numOutputs;
-    return true;
-  default:
-    return false;
+    case PM_OP_TYPE:
+      *value = (int)op_type;
+      return true;
+    case PM_NUM_INPUTS:
+      *value = numInputs;
+      return true;
+    case PM_NUM_OUTPUTS:
+      *value = numOutputs;
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -1007,19 +1017,19 @@ bool Op::get_input_parameter(TNParameter tnp,
   if (inputIdx >= numInputs)
     return false;
   switch (dim) {
-  case DIM_3:
-    dimIdx++;
-  case DIM_2:
-    dimIdx++;
-  case DIM_1:
-    dimIdx++;
-  case DIM_0:
-    break;
-  case DIM_ND:
-    *value = inputs[inputIdx]->num_dims;
-    return true;
-  default:
-    return false;
+    case DIM_3:
+      dimIdx++;
+    case DIM_2:
+      dimIdx++;
+    case DIM_1:
+      dimIdx++;
+    case DIM_0:
+      break;
+    case DIM_ND:
+      *value = inputs[inputIdx]->num_dims;
+      return true;
+    default:
+      return false;
   }
   if (dimIdx >= inputs[inputIdx]->num_dims)
     return false;
@@ -1036,19 +1046,19 @@ bool Op::get_weight_parameter(TNParameter tnp,
   if (weightIdx >= numWeights)
     return false;
   switch (dim) {
-  case DIM_3:
-    dimIdx++;
-  case DIM_2:
-    dimIdx++;
-  case DIM_1:
-    dimIdx++;
-  case DIM_0:
-    break;
-  case DIM_ND:
-    *value = weights[weightIdx]->num_dims;
-    return true;
-  default:
-    return false;
+    case DIM_3:
+      dimIdx++;
+    case DIM_2:
+      dimIdx++;
+    case DIM_1:
+      dimIdx++;
+    case DIM_0:
+      break;
+    case DIM_ND:
+      *value = weights[weightIdx]->num_dims;
+      return true;
+    default:
+      return false;
   }
   if (dimIdx >= weights[weightIdx]->num_dims)
     return false;
@@ -1138,8 +1148,9 @@ ncclComm_t *FFModel::find_nccl_comms(MachineView const &view) const {
 #endif
 
 template <int NDIM>
-Tensor
-FFModel::create_constant(int const dims[], float value, DataType data_type) {
+Tensor FFModel::create_constant(int const dims[],
+                                float value,
+                                DataType data_type) {
   // FIXME: currently create gradients for constants since the current auto grad
   // algorithm computes gradients for all operators
   Tensor tensor = create_tensor<NDIM>(
@@ -1190,8 +1201,8 @@ Tensor FFModel::create_tensor(int numdim,
     return create_tensor<DIM>(dims, data_type, layer, idx, create_grad);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false && "Unsupported dim!");
+    default:
+      assert(false && "Unsupported dim!");
   }
 }
 
@@ -1209,8 +1220,8 @@ ParallelTensor FFModel::create_parallel_tensor(int numdim,
         dims, data_type, op, idx, create_grad, input_tensor_guid);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false && "Unsupported dim!");
+    default:
+      assert(false && "Unsupported dim!");
   }
 }
 
@@ -1227,13 +1238,13 @@ Tensor FFModel::create_tensor_legion_ordering(int numdim,
 }
 
 ParallelTensor
-FFModel::create_parallel_tensor_legion_ordering(int numdim,
-                                                const ParallelDim dims[],
-                                                DataType data_type,
-                                                Op const *op,
-                                                int idx,
-                                                bool create_grad,
-                                                size_t input_tensor_guid) {
+    FFModel::create_parallel_tensor_legion_ordering(int numdim,
+                                                    const ParallelDim dims[],
+                                                    DataType data_type,
+                                                    Op const *op,
+                                                    int idx,
+                                                    bool create_grad,
+                                                    size_t input_tensor_guid) {
   ParallelDim c_dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++)
     c_dims[i] = dims[numdim - 1 - i];
@@ -1398,19 +1409,19 @@ ParallelParameter FFModel::create_parallel_weight(int numdim,
         dims, data_type, owner_op, create_grad, initializer, sync_type);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false && "Unsupported dim!");
+    default:
+      assert(false && "Unsupported dim!");
   }
 }
 
-ParallelParameter
-FFModel::create_parallel_weight_legion_ordering(int numdim,
-                                                const ParallelDim dims[],
-                                                DataType data_type,
-                                                Op const *owner_op,
-                                                bool create_grad,
-                                                Initializer *initializer,
-                                                ParameterSyncType sync_type) {
+ParallelParameter FFModel::create_parallel_weight_legion_ordering(
+    int numdim,
+    const ParallelDim dims[],
+    DataType data_type,
+    Op const *owner_op,
+    bool create_grad,
+    Initializer *initializer,
+    ParameterSyncType sync_type) {
   ParallelDim c_dims[MAX_TENSOR_DIM];
   std::reverse_copy(dims, dims + numdim, c_dims);
 
@@ -1427,10 +1438,10 @@ void FFModel::map_tensor(ParallelTensor tensor, Op const *op) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    // Unsupported dim
-    assert(false);
-  }
+    default: {
+      // Unsupported dim
+      assert(false);
+    }
   }
 }
 
@@ -1452,9 +1463,9 @@ void FFModel::map_tensor_with_dim(ParallelTensor tensor,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    assert(false && "Unsupported Task Dim");
-  }
+    default: {
+      assert(false && "Unsupported Task Dim");
+    }
   }
 }
 
@@ -1478,20 +1489,20 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
   switch (tensor->data_type) {
-  case DT_FLOAT:
-    allocator.allocate_field(sizeof(float), FID_DATA);
-    break;
-  case DT_DOUBLE:
-    allocator.allocate_field(sizeof(double), FID_DATA);
-    break;
-  case DT_INT32:
-    allocator.allocate_field(sizeof(int32_t), FID_DATA);
-    break;
-  case DT_INT64:
-    allocator.allocate_field(sizeof(int64_t), FID_DATA);
-    break;
-  default:
-    assert(false);
+    case DT_FLOAT:
+      allocator.allocate_field(sizeof(float), FID_DATA);
+      break;
+    case DT_DOUBLE:
+      allocator.allocate_field(sizeof(double), FID_DATA);
+      break;
+    case DT_INT32:
+      allocator.allocate_field(sizeof(int32_t), FID_DATA);
+      break;
+    case DT_INT64:
+      allocator.allocate_field(sizeof(int64_t), FID_DATA);
+      break;
+    default:
+      assert(false);
   }
 
   Point<NDIM> hi;
@@ -1549,10 +1560,10 @@ void FFModel::map_weight(ParallelTensor weight, Op const *op) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    // Unsupported dim
-    assert(false);
-  }
+    default: {
+      // Unsupported dim
+      assert(false);
+    }
   }
 }
 
@@ -1570,35 +1581,35 @@ void FFModel::map_weight_with_dim(ParallelTensor weight,
   assert(parallel_op != NULL);
   int tdim = parallel_op->outputs[0]->num_dims;
   switch (parallel_op->op_type) {
-  case OP_LINEAR:
-  case OP_EMBEDDING:
-  case OP_MULTIHEAD_ATTENTION: {
-    switch (tdim) {
+    case OP_LINEAR:
+    case OP_EMBEDDING:
+    case OP_MULTIHEAD_ATTENTION: {
+      switch (tdim) {
 #define DIMFUNC(TDIM)                                                          \
   case TDIM: {                                                                 \
     map_linear_weight<NDIM, TDIM>(weight, parallel_op);                        \
     break;                                                                     \
   }
-      LEGION_FOREACH_N(DIMFUNC)
+        LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
+        default: {
+          assert(false);
+        }
+      }
+      break;
+    }
+    case OP_CONV2D:
+    case OP_BATCHNORM: {
+      map_conv_weight<NDIM>(weight, parallel_op);
+      break;
+    }
     default: {
-      assert(false);
+      fprintf(stderr,
+              "FlexFlow currently does not support this weight"
+              "type (%d). Report the error to the FlexFlow team.\n",
+              parallel_op->op_type);
+      assert(false && "Unsupported type for mapping weight");
     }
-    }
-    break;
-  }
-  case OP_CONV2D:
-  case OP_BATCHNORM: {
-    map_conv_weight<NDIM>(weight, parallel_op);
-    break;
-  }
-  default: {
-    fprintf(stderr,
-            "FlexFlow currently does not support this weight"
-            "type (%d). Report the error to the FlexFlow team.\n",
-            parallel_op->op_type);
-    assert(false && "Unsupported type for mapping weight");
-  }
   }
 }
 
@@ -1643,8 +1654,8 @@ void FFModel::create_disjoint_partition(int num_dims,
   }
     LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false && "Unsupported NDIM/TDIM");
+    default:
+      assert(false && "Unsupported NDIM/TDIM");
   }
 }
 
@@ -1697,8 +1708,8 @@ void FFModel::create_aliased_partition(int num_dims,
   }
     LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false && "Unsupported NDIM/TDIM");
+    default:
+      assert(false && "Unsupported NDIM/TDIM");
   }
 }
 
@@ -1844,17 +1855,17 @@ void FFModel::map_linear_weight(ParallelTensor weight, Op const *op) {
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
   switch (weight->data_type) {
-  case DT_FLOAT:
-    allocator.allocate_field(sizeof(float), FID_DATA);
-    break;
-  case DT_DOUBLE:
-    allocator.allocate_field(sizeof(double), FID_DATA);
-    break;
-  case DT_INT32:
-    allocator.allocate_field(sizeof(int), FID_DATA);
-    break;
-  default:
-    assert(false);
+    case DT_FLOAT:
+      allocator.allocate_field(sizeof(float), FID_DATA);
+      break;
+    case DT_DOUBLE:
+      allocator.allocate_field(sizeof(double), FID_DATA);
+      break;
+    case DT_INT32:
+      allocator.allocate_field(sizeof(int), FID_DATA);
+      break;
+    default:
+      assert(false);
   }
   int out_channels = weight->dims[weight->num_dims - 1].size;
   // Step 1: forward region and partition
@@ -1960,17 +1971,17 @@ void FFModel::map_conv_weight(ParallelTensor weight, Op const *op) {
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
   switch (weight->data_type) {
-  case DT_FLOAT:
-    allocator.allocate_field(sizeof(float), FID_DATA);
-    break;
-  case DT_DOUBLE:
-    allocator.allocate_field(sizeof(double), FID_DATA);
-    break;
-  case DT_INT32:
-    allocator.allocate_field(sizeof(int), FID_DATA);
-    break;
-  default:
-    assert(false);
+    case DT_FLOAT:
+      allocator.allocate_field(sizeof(float), FID_DATA);
+      break;
+    case DT_DOUBLE:
+      allocator.allocate_field(sizeof(double), FID_DATA);
+      break;
+    case DT_INT32:
+      allocator.allocate_field(sizeof(int), FID_DATA);
+      break;
+    default:
+      assert(false);
   }
   // Step 1: forward region and partition
   int out_channels = weight->dims[weight->num_dims - 1].size;
@@ -2076,17 +2087,17 @@ ParallelTensor FFModel::create_linear_replica(int const dims[],
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
   switch (data_type) {
-  case DT_FLOAT:
-    allocator.allocate_field(sizeof(float), FID_DATA);
-    break;
-  case DT_DOUBLE:
-    allocator.allocate_field(sizeof(double), FID_DATA);
-    break;
-  case DT_INT32:
-    allocator.allocate_field(sizeof(int), FID_DATA);
-    break;
-  default:
-    assert(false);
+    case DT_FLOAT:
+      allocator.allocate_field(sizeof(float), FID_DATA);
+      break;
+    case DT_DOUBLE:
+      allocator.allocate_field(sizeof(double), FID_DATA);
+      break;
+    case DT_INT32:
+      allocator.allocate_field(sizeof(int), FID_DATA);
+      break;
+    default:
+      assert(false);
   }
   Point<NDIM> hi;
   for (int i = 0; i < NDIM; i++)
@@ -2171,8 +2182,8 @@ IndexSpace FFModel::get_or_create_task_is(MachineView const &view) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
   printf("ndim(%d) dims[%d %d %d %d]\n",
          view.ndims,
@@ -2251,7 +2262,9 @@ void FFModel::compute_metrics() {
   metrics_op->compute(this, final_operator->outputs[0], parallel_label_tensor);
 }
 
-void FFModel::get_metrics() { metrics_input = operators.size() - 1; }
+void FFModel::get_metrics() {
+  metrics_input = operators.size() - 1;
+}
 
 void FFModel::backward(int seq_length) {
   iter_config.seq_length = seq_length;
@@ -2392,124 +2405,124 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
 Op *FFModel::create_operator_from_layer(
     Layer *layer, std::vector<ParallelTensor> const &inputs) {
   switch (layer->op_type) {
-  case OP_INPUT: {
-    // Input op cannot have an input
-    assert(inputs.size() == 0);
-    // Current assume we add one dimension before each tensor
-    Tensor tensor = layer->outputs[0];
-    int num_dims = tensor->num_dims;
-    ParallelDim dims[MAX_TENSOR_DIM];
-    for (int j = 0; j < num_dims; j++) {
-      dims[j].size = tensor->dims[j];
-      dims[j].degree = 1;
-      dims[j].parallel_idx = -1;
-      dims[j].is_replica_dim = false;
+    case OP_INPUT: {
+      // Input op cannot have an input
+      assert(inputs.size() == 0);
+      // Current assume we add one dimension before each tensor
+      Tensor tensor = layer->outputs[0];
+      int num_dims = tensor->num_dims;
+      ParallelDim dims[MAX_TENSOR_DIM];
+      for (int j = 0; j < num_dims; j++) {
+        dims[j].size = tensor->dims[j];
+        dims[j].degree = 1;
+        dims[j].parallel_idx = -1;
+        dims[j].is_replica_dim = false;
+      }
+      dims[num_dims].size = 1;
+      dims[num_dims].degree = 1;
+      dims[num_dims].parallel_idx = -1;
+      dims[num_dims].is_replica_dim = true;
+      // create_parallel_tensor adds an NoOp into operators
+      ParallelTensor pt =
+          create_parallel_tensor_legion_ordering(num_dims + 1,
+                                                 dims,
+                                                 tensor->data_type,
+                                                 nullptr,
+                                                 0,
+                                                 true /*gradients*/,
+                                                 tensor->tensor_guid);
+      // assert that this tensor hasn't been mapped before
+      assert(tensor->parallel_tensor == nullptr);
+      tensor->parallel_tensor = pt;
+      // start from data parllel tensor
+      if (config.only_data_parallel) {
+        Repartition *part = new Repartition(
+            *this, pt, num_dims - 1, config.numNodes * config.workersPerNode);
+        operators.push_back(part);
+      }
+      return operators[operators.size() - 1];
     }
-    dims[num_dims].size = 1;
-    dims[num_dims].degree = 1;
-    dims[num_dims].parallel_idx = -1;
-    dims[num_dims].is_replica_dim = true;
-    // create_parallel_tensor adds an NoOp into operators
-    ParallelTensor pt =
-        create_parallel_tensor_legion_ordering(num_dims + 1,
-                                               dims,
-                                               tensor->data_type,
-                                               nullptr,
-                                               0,
-                                               true /*gradients*/,
-                                               tensor->tensor_guid);
-    // assert that this tensor hasn't been mapped before
-    assert(tensor->parallel_tensor == nullptr);
-    tensor->parallel_tensor = pt;
-    // start from data parllel tensor
-    if (config.only_data_parallel) {
-      Repartition *part = new Repartition(
-          *this, pt, num_dims - 1, config.numNodes * config.workersPerNode);
-      operators.push_back(part);
+    case OP_MULTIHEAD_ATTENTION: {
+      Op *op =
+          MultiHeadAttention::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
     }
-    return operators[operators.size() - 1];
-  }
-  case OP_MULTIHEAD_ATTENTION: {
-    Op *op =
-        MultiHeadAttention::create_operator_from_layer(*this, layer, inputs);
-    operators.push_back(op);
-    return op;
-  }
-  case OP_CONCAT: {
-    Op *op = Concat::create_operator_from_layer(*this, layer, inputs);
-    operators.push_back(op);
-    return op;
-  }
-  case OP_CONV2D: {
-    Op *op = Conv2D::create_operator_from_layer(*this, layer, inputs);
-    operators.push_back(op);
-    return op;
-  }
-  case OP_DROPOUT: {
-    Op *op = Dropout::create_operator_from_layer(*this, layer, inputs);
-    operators.push_back(op);
-    return op;
-  }
-  case OP_EMBEDDING: {
-    Op *op = Embedding::create_operator_from_layer(*this, layer, inputs);
-    operators.push_back(op);
-    return op;
-  }
-  case OP_EW_ADD:
-  case OP_EW_SUB:
-  case OP_EW_MUL:
-  case OP_EW_DIV: {
-    Op *op = ElementBinary::create_operator_from_layer(*this, layer, inputs);
-    operators.push_back(op);
-    return op;
-  }
-  case OP_EXP:
-  case OP_SCALAR_MULTIPLY:
-  case OP_SCALAR_ADD:
-  case OP_SCALAR_SUB:
-  case OP_SCALAR_TRUE_DIV:
-  case OP_RELU:
-  case OP_SIGMOID:
-  case OP_TANH:
-  case OP_IDENTITY:
-  case OP_GELU:
-  case OP_ELU: {
-    Op *op = ElementUnary::create_operator_from_layer(*this, layer, inputs);
-    operators.push_back(op);
-    return op;
-  }
-  case OP_FLAT: {
-    Op *op = Flat::create_operator_from_layer(*this, layer, inputs);
-    operators.push_back(op);
-    return op;
-  }
-  case OP_LINEAR: {
-    Op *op = Linear::create_operator_from_layer(*this, layer, inputs);
-    operators.push_back(op);
-    return op;
-  }
-  case OP_POOL2D: {
-    Op *op = Pool2D::create_operator_from_layer(*this, layer, inputs);
-    operators.push_back(op);
-    return op;
-  }
-  case OP_RESHAPE: {
-    Op *op = Reshape::create_operator_from_layer(*this, layer, inputs);
-    operators.push_back(op);
-    return op;
-  }
-  case OP_SOFTMAX: {
-    Op *op = Softmax::create_operator_from_layer(*this, layer, inputs);
-    operators.push_back(op);
-    return op;
-  }
-  case OP_SPLIT: {
-    Op *op = Split::create_operator_from_layer(*this, layer, inputs);
-    operators.push_back(op);
-    return op;
-  }
-  default:
-    assert(false);
+    case OP_CONCAT: {
+      Op *op = Concat::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_CONV2D: {
+      Op *op = Conv2D::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_DROPOUT: {
+      Op *op = Dropout::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_EMBEDDING: {
+      Op *op = Embedding::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_EW_ADD:
+    case OP_EW_SUB:
+    case OP_EW_MUL:
+    case OP_EW_DIV: {
+      Op *op = ElementBinary::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_EXP:
+    case OP_SCALAR_MULTIPLY:
+    case OP_SCALAR_ADD:
+    case OP_SCALAR_SUB:
+    case OP_SCALAR_TRUE_DIV:
+    case OP_RELU:
+    case OP_SIGMOID:
+    case OP_TANH:
+    case OP_IDENTITY:
+    case OP_GELU:
+    case OP_ELU: {
+      Op *op = ElementUnary::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_FLAT: {
+      Op *op = Flat::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_LINEAR: {
+      Op *op = Linear::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_POOL2D: {
+      Op *op = Pool2D::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_RESHAPE: {
+      Op *op = Reshape::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_SOFTMAX: {
+      Op *op = Softmax::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_SPLIT: {
+      Op *op = Split::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    default:
+      assert(false);
   }
 }
 
@@ -2837,9 +2850,9 @@ void FFModel::compile(LossType loss_type,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    assert(false && "Unsupported dim");
-  }
+    default: {
+      assert(false && "Unsupported dim");
+    }
   }
   // init optimizer
   assert(optimizer != NULL);
@@ -3082,7 +3095,7 @@ void FFModel::print_layers(int id) {
 }
 
 std::unordered_map<Op *, std::vector<std::pair<Op *, int>>>
-FFModel::get_bwd_edge_map() const {
+    FFModel::get_bwd_edge_map() const {
   std::unordered_map<Op *, std::vector<std::pair<Op *, int>>> bwd_edge_map;
   for (auto const &op : this->operators) {
     for (int i = 0; i < op->numInputs; i++) {
@@ -3095,10 +3108,10 @@ FFModel::get_bwd_edge_map() const {
 };
 
 PerfMetrics
-FFModel::update_metrics_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
+    FFModel::update_metrics_task(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
+                                 Context ctx,
+                                 Runtime *runtime) {
   Metrics *m = (Metrics *)task->args;
   if (task->futures.size() == 0) {
     // Create an empty future
@@ -3120,23 +3133,25 @@ FFModel::update_metrics_task(Task const *task,
 }
 
 // TODO: Move to an appropriate place
-template <> std::tuple<> get_input_shape(std::tuple<> const &) {
+template <>
+std::tuple<> get_input_shape(std::tuple<> const &) {
   return std::tuple<>();
 }
 
-template <> ParallelTensorShape get_input_shape(ParallelTensor const &input) {
+template <>
+ParallelTensorShape get_input_shape(ParallelTensor const &input) {
   return input->get_shape();
 }
 
 template <>
 std::pair<ParallelTensorShape, ParallelTensorShape>
-get_input_shape(std::pair<ParallelTensor, ParallelTensor> const &inputs) {
+    get_input_shape(std::pair<ParallelTensor, ParallelTensor> const &inputs) {
   return std::make_pair(inputs.first->get_shape(), inputs.second->get_shape());
 }
 
 template <>
 std::vector<ParallelTensorShape>
-get_input_shape(std::vector<ParallelTensor> const &inputs) {
+    get_input_shape(std::vector<ParallelTensor> const &inputs) {
   std::vector<ParallelTensorShape> shapes;
   for (auto const &input : inputs) {
     shapes.push_back(input->get_shape());
@@ -3203,9 +3218,13 @@ bool DataLoader::shuffle_samples(void) {
 // ========================================================
 // class FFIterationConfig
 // ========================================================
-FFIterationConfig::FFIterationConfig() { seq_length = -1; }
+FFIterationConfig::FFIterationConfig() {
+  seq_length = -1;
+}
 
-void FFIterationConfig::reset() { seq_length = -1; }
+void FFIterationConfig::reset() {
+  seq_length = -1;
+}
 
 // ========================================================
 // class FFConfig
@@ -3453,128 +3472,128 @@ void FFConfig::parse_args(char **argv, int argc) {
 
 std::string optype_to_string(OperatorType op_type) {
   switch (op_type) {
-  case OP_INPUT:
-    return "Input";
-  case OP_WEIGHT:
-    return "Weight";
-  case OP_NOOP:
-    return "Noop";
-  case OP_CONV2D:
-    return "Conv";
-  case OP_DROPOUT:
-    return "Dropout";
-  case OP_EMBEDDING:
-    return "Embedding";
-  case OP_LINEAR:
-    return "Linear";
-  case OP_POOL2D:
-    return "Pool";
-  case OP_RELU:
-    return "Relu";
-  case OP_SIGMOID:
-    return "Sigmoid";
-  case OP_TANH:
-    return "TanH";
-  case OP_BATCHNORM:
-    return "Batchnorm";
-  case OP_CONCAT:
-    return "Concat";
-  case OP_SPLIT:
-    return "Split";
-  case OP_RESHAPE:
-    return "Reshape";
-  case OP_TRANSPOSE:
-    return "Transpose";
-  case OP_EW_ADD:
-    return "Add";
-  case OP_EW_MUL:
-    return "Mul";
-  case OP_MATMUL:
-    return "MatMul";
-  case OP_MUL:
-    return "Mul";
-  case OP_ENLARGE:
-    return "Enlarge";
-  case OP_SQUEEZE:
-    return "Squeeze";
-  case OP_UNSQUEEZE:
-    return "Unsqueeze";
-  case OP_EW_SUB:
-    return "Sub";
-  case OP_EW_DIV:
-    return "Div";
-  case OP_EW_EQUAL:
-    return "Equal";
-  case OP_EW_GREATER:
-    return "Greater";
-  case OP_EW_LESS:
-    return "Less";
-  case OP_EW_MAX:
-    return "Max";
-  case OP_EW_MIN:
-    return "Min";
-  case OP_REDUCE_ARGMAX:
-    return "ArgMax";
-  case OP_REDUCE_ARGMIN:
-    return "ArgMin";
-  case OP_REDUCE_MAX:
-    return "ReduceMax";
-  case OP_REDUCE_MEAN:
-    return "ReduceMean";
-  case OP_REDUCE_MIN:
-    return "ReduceMin";
-  case OP_REDUCE_PROD:
-    return "ReduceProd";
-  case OP_REDUCE_SUM:
-    return "ReduceSum";
-  case OP_PAD:
-    return "Pad";
-  case OP_SHAPE:
-    return "Shape";
-  case OP_SIZE:
-    return "Size";
-  case OP_TOPK:
-    return "TopK";
-  case OP_WHERE:
-    return "Where";
-  case OP_CEIL:
-    return "Ceil";
-  case OP_CAST:
-    return "Cast";
-  case OP_EXP:
-    return "Exp";
-  case OP_ROUND:
-    return "Round";
-  case OP_LOG:
-    return "Log";
-  case OP_LOGICAL_NOT:
-    return "Not";
-  case OP_SQRT:
-    return "Sqrt";
-  case OP_LEAKYRELU:
-    return "LeakyRelu";
-  case OP_SLICE:
-    return "Slice";
-  case OP_RESIZE:
-    return "Resize";
-  case OP_SOFTMAX:
-    return "Softmax";
-  case OP_MULTIHEAD_ATTENTION:
-    return "MultiHeadAttn";
-  case OP_REPARTITION:
-    return "Partition";
-  case OP_REPLICATE:
-    return "Replicate";
-  case OP_REDUCTION:
-    return "Reduction";
-  case OP_COMBINE:
-    return "Combine";
-  case OP_FUSED_PARALLEL:
-    return "FusedParallel";
-  case OP_FLAT:
-    return "Flat";
-  default:
-    return "Unknown_" + std::to_string(op_type);
+    case OP_INPUT:
+      return "Input";
+    case OP_WEIGHT:
+      return "Weight";
+    case OP_NOOP:
+      return "Noop";
+    case OP_CONV2D:
+      return "Conv";
+    case OP_DROPOUT:
+      return "Dropout";
+    case OP_EMBEDDING:
+      return "Embedding";
+    case OP_LINEAR:
+      return "Linear";
+    case OP_POOL2D:
+      return "Pool";
+    case OP_RELU:
+      return "Relu";
+    case OP_SIGMOID:
+      return "Sigmoid";
+    case OP_TANH:
+      return "TanH";
+    case OP_BATCHNORM:
+      return "Batchnorm";
+    case OP_CONCAT:
+      return "Concat";
+    case OP_SPLIT:
+      return "Split";
+    case OP_RESHAPE:
+      return "Reshape";
+    case OP_TRANSPOSE:
+      return "Transpose";
+    case OP_EW_ADD:
+      return "Add";
+    case OP_EW_MUL:
+      return "Mul";
+    case OP_MATMUL:
+      return "MatMul";
+    case OP_MUL:
+      return "Mul";
+    case OP_ENLARGE:
+      return "Enlarge";
+    case OP_SQUEEZE:
+      return "Squeeze";
+    case OP_UNSQUEEZE:
+      return "Unsqueeze";
+    case OP_EW_SUB:
+      return "Sub";
+    case OP_EW_DIV:
+      return "Div";
+    case OP_EW_EQUAL:
+      return "Equal";
+    case OP_EW_GREATER:
+      return "Greater";
+    case OP_EW_LESS:
+      return "Less";
+    case OP_EW_MAX:
+      return "Max";
+    case OP_EW_MIN:
+      return "Min";
+    case OP_REDUCE_ARGMAX:
+      return "ArgMax";
+    case OP_REDUCE_ARGMIN:
+      return "ArgMin";
+    case OP_REDUCE_MAX:
+      return "ReduceMax";
+    case OP_REDUCE_MEAN:
+      return "ReduceMean";
+    case OP_REDUCE_MIN:
+      return "ReduceMin";
+    case OP_REDUCE_PROD:
+      return "ReduceProd";
+    case OP_REDUCE_SUM:
+      return "ReduceSum";
+    case OP_PAD:
+      return "Pad";
+    case OP_SHAPE:
+      return "Shape";
+    case OP_SIZE:
+      return "Size";
+    case OP_TOPK:
+      return "TopK";
+    case OP_WHERE:
+      return "Where";
+    case OP_CEIL:
+      return "Ceil";
+    case OP_CAST:
+      return "Cast";
+    case OP_EXP:
+      return "Exp";
+    case OP_ROUND:
+      return "Round";
+    case OP_LOG:
+      return "Log";
+    case OP_LOGICAL_NOT:
+      return "Not";
+    case OP_SQRT:
+      return "Sqrt";
+    case OP_LEAKYRELU:
+      return "LeakyRelu";
+    case OP_SLICE:
+      return "Slice";
+    case OP_RESIZE:
+      return "Resize";
+    case OP_SOFTMAX:
+      return "Softmax";
+    case OP_MULTIHEAD_ATTENTION:
+      return "MultiHeadAttn";
+    case OP_REPARTITION:
+      return "Partition";
+    case OP_REPLICATE:
+      return "Replicate";
+    case OP_REDUCTION:
+      return "Reduction";
+    case OP_COMBINE:
+      return "Combine";
+    case OP_FUSED_PARALLEL:
+      return "FusedParallel";
+    case OP_FLAT:
+      return "Flat";
+    default:
+      return "Unknown_" + std::to_string(op_type);
   }
 }
 
@@ -4495,11 +4514,11 @@ LEGION_FOREACH_N(DIMFUNC)
       LogicalRegion const &region,                                             \
       LogicalPartition &part);                                                 \
   template void                                                                \
-  FFModel::create_data_parallel_partition_with_diff_dims<D1, D2>(              \
-      const ParallelTensor tensor,                                             \
-      IndexSpaceT<D2> const &part_is,                                          \
-      LogicalPartition &part_fwd,                                              \
-      LogicalPartition &part_bwd);
+      FFModel::create_data_parallel_partition_with_diff_dims<D1, D2>(          \
+          const ParallelTensor tensor,                                         \
+          IndexSpaceT<D2> const &part_is,                                      \
+          LogicalPartition &part_fwd,                                          \
+          LogicalPartition &part_bwd);
 LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
 

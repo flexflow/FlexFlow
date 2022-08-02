@@ -241,28 +241,30 @@ void FFMapper::register_sharding_functor(int argc, char **argv) {
 
 bool FFMapper::is_parameter_server_update_task(TaskID tid) {
   switch (tid) {
-  case SGD_UPD_PS_TASK_ID:
-  case ADAM_UPD_PS_TASK_ID:
-    return true;
-  default:
-    return false;
+    case SGD_UPD_PS_TASK_ID:
+    case ADAM_UPD_PS_TASK_ID:
+      return true;
+    default:
+      return false;
   }
 }
 
 bool FFMapper::is_initializer_task(TaskID tid) {
   switch (tid) {
-  case GLOROT_INIT_TASK_ID:
-  case ZERO_INIT_TASK_ID:
-  case CONSTANT_INIT_TASK_ID:
-  case UNIFORM_INIT_TASK_ID:
-  case NORMAL_INIT_TASK_ID:
-    return true;
-  default:
-    return false;
+    case GLOROT_INIT_TASK_ID:
+    case ZERO_INIT_TASK_ID:
+    case CONSTANT_INIT_TASK_ID:
+    case UNIFORM_INIT_TASK_ID:
+    case NORMAL_INIT_TASK_ID:
+      return true;
+    default:
+      return false;
   }
 }
 
-char const *FFMapper::get_mapper_name(void) const { return mapper_name; }
+char const *FFMapper::get_mapper_name(void) const {
+  return mapper_name;
+}
 
 Mapper::MapperSyncModel FFMapper::get_mapper_sync_model(void) const {
   return SERIALIZED_REENTRANT_MAPPER_MODEL;
@@ -468,8 +470,8 @@ void FFMapper::slice_task(const MapperContext ctx,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
   // In control replication, each mapper should only receive task slices
   // that should be assigned to local proccessors
@@ -1303,10 +1305,10 @@ void FFMapper::permit_steal_request(const MapperContext ctx,
 
 #ifdef DEADCODE
 Memory
-FFMapper::default_policy_select_target_memory(MapperContext ctx,
-                                              Processor target_proc,
-                                              RegionRequirement const &req,
-                                              MemoryConstraint mc) {
+    FFMapper::default_policy_select_target_memory(MapperContext ctx,
+                                                  Processor target_proc,
+                                                  RegionRequirement const &req,
+                                                  MemoryConstraint mc) {
   if (target_proc.kind() == Processor::TOC_PROC) {
     if (req.tag == MAP_TO_ZC_MEMORY) {
       assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
@@ -1329,16 +1331,16 @@ FFMapper::default_policy_select_target_memory(MapperContext ctx,
 #endif
 
 std::vector<Processor> const &
-FFMapper::all_procs_by_kind(Processor::Kind kind) {
+    FFMapper::all_procs_by_kind(Processor::Kind kind) {
   switch (kind) {
-  case Processor::LOC_PROC:
-    return all_cpus;
-  case Processor::TOC_PROC:
-    return all_gpus;
-  case Processor::PY_PROC:
-    return all_pys;
-  default:
-    assert(0);
+    case Processor::LOC_PROC:
+      return all_cpus;
+    case Processor::TOC_PROC:
+      return all_gpus;
+    case Processor::PY_PROC:
+      return all_pys;
+    default:
+      assert(0);
   }
   return all_cpus;
 }
@@ -1399,11 +1401,11 @@ bool FFMapper::default_make_instance(MapperContext ctx,
   return true;
 }
 
-LayoutConstraintID
-FFMapper::default_select_layout_constraints(MapperContext ctx,
-                                            Memory target_memory,
-                                            RegionRequirement const &req,
-                                            bool needs_field_constraint_check) {
+LayoutConstraintID FFMapper::default_select_layout_constraints(
+    MapperContext ctx,
+    Memory target_memory,
+    RegionRequirement const &req,
+    bool needs_field_constraint_check) {
   assert(req.privilege != LEGION_REDUCE);
   std::pair<Memory::Kind, FieldSpace> constraint_key(
       target_memory.kind(), req.region.get_field_space());

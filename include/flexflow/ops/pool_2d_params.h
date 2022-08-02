@@ -26,7 +26,8 @@ bool operator==(Pool2DParams const &, Pool2DParams const &);
 } // namespace FlexFlow
 
 namespace std {
-template <> struct hash<FlexFlow::Pool2DParams> {
+template <>
+struct hash<FlexFlow::Pool2DParams> {
   size_t operator()(FlexFlow::Pool2DParams const &) const;
 };
 } // namespace std

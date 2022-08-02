@@ -125,12 +125,16 @@ __host__ void SGDOptimizer::nccl_update_task_gpu(SGDOptimizer const *op,
 //                        Adam Optimizer
 // ==================================================================
 __global__ void
-add_kernel(int count, float scale, float const *src, float *dst) {
-  CUDA_KERNEL_LOOP(i, count) { dst[i] += src[i] * scale; }
+    add_kernel(int count, float scale, float const *src, float *dst) {
+  CUDA_KERNEL_LOOP(i, count) {
+    dst[i] += src[i] * scale;
+  }
 }
 
 __global__ void scale_kernel(int count, float a, float b, float *ptr) {
-  CUDA_KERNEL_LOOP(i, count) { ptr[i] = (b - a) * ptr[i] + a; }
+  CUDA_KERNEL_LOOP(i, count) {
+    ptr[i] = (b - a) * ptr[i] + a;
+  }
 }
 
 __global__ void adam_update(int count,

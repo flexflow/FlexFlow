@@ -184,9 +184,13 @@ bool ElementBinary::can_inplace_output(void) {
   return false;
 }
 
-bool ElementBinary::has_inplace_output(void) { return inplace_a; }
+bool ElementBinary::has_inplace_output(void) {
+  return inplace_a;
+}
 
-void ElementBinary::do_inplace_output(void) { inplace_a = true; }
+void ElementBinary::do_inplace_output(void) {
+  inplace_a = true;
+}
 
 void ElementBinary::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -364,10 +368,10 @@ void ElementBinary::forward(FFModel const &ff) {
   regions[2](O): output
 */
 __host__ void
-ElementBinary::forward_task(Task const *task,
-                            std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+    ElementBinary::forward_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
+                                Context ctx,
+                                Runtime *runtime) {
   // const ElementBinary* ele = (const ElementBinary*) task->args;
   ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
   Domain in1_domain = runtime->get_index_space_domain(

@@ -45,16 +45,16 @@ class Metrics {
 public:
   Metrics(LossType _loss_type, std::vector<MetricsType> const &metrics);
   static PerfMetrics
-  compute_task(Legion::Task const *task,
-               std::vector<Legion::PhysicalRegion> const &regions,
-               Legion::Context ctx,
-               Legion::Runtime *runtime);
+      compute_task(Legion::Task const *task,
+                   std::vector<Legion::PhysicalRegion> const &regions,
+                   Legion::Context ctx,
+                   Legion::Runtime *runtime);
   template <int NDIM>
   static PerfMetrics
-  compute_task_with_dim(Legion::Task const *task,
-                        std::vector<Legion::PhysicalRegion> const &regions,
-                        Legion::Context ctx,
-                        Legion::Runtime *runtime);
+      compute_task_with_dim(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
   static void update_metrics_sparse_label_kernel_wrapper(float const *logit_ptr,
                                                          int const *label_ptr,
                                                          Metrics const *me,

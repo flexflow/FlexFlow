@@ -206,8 +206,12 @@ public:
   int get_num_gpus() const;
   float get_intra_node_gpu_bandwidth() const;
   float get_inter_node_gpu_bandwidth() const;
-  float get_intra_node_gpu_latency() const { return 0; }
-  float get_inter_node_gpu_latency() const { return 0; }
+  float get_intra_node_gpu_latency() const {
+    return 0;
+  }
+  float get_inter_node_gpu_latency() const {
+    return 0;
+  }
   std::vector<CommDevice *> get_comm_path(MemDevice *src_mem,
                                           MemDevice *tar_mem);
   std::string to_string() const;
@@ -261,8 +265,12 @@ public:
   int get_num_gpus() const;
   float get_intra_node_gpu_bandwidth() const;
   float get_inter_node_gpu_bandwidth() const;
-  float get_intra_node_gpu_latency() const { return membus_latency; }
-  float get_inter_node_gpu_latency() const { return nic_latency; }
+  float get_intra_node_gpu_latency() const {
+    return membus_latency;
+  }
+  float get_inter_node_gpu_latency() const {
+    return nic_latency;
+  }
   std::vector<CommDevice *> get_comm_path(MemDevice *src_mem,
                                           MemDevice *tar_mem);
   std::string to_string() const;
@@ -330,11 +338,11 @@ private:
   void attach_nvlink(MemDevice *src_mem, MemDevice *tar_mem, CommDevice *comm);
   // return a list of specific communication devices based on the descriptions
   // of a communication path
-  void
-  add_comm_path(std::vector<CommDevice::CommDevType> const &comm_device_list,
-                MemDevice *src_mem,
-                MemDevice *tar_mem,
-                std::vector<CommDevice *> &ret);
+  void add_comm_path(
+      std::vector<CommDevice::CommDevType> const &comm_device_list,
+      MemDevice *src_mem,
+      MemDevice *tar_mem,
+      std::vector<CommDevice *> &ret);
 };
 
 /**
@@ -384,7 +392,7 @@ class NetworkTopologyGenerator {
 public:
   virtual ConnectionMatrix generate_topology() const = 0;
   static void
-  print_conn_matrix(ConnectionMatrix const &conn, int nnode, int nswitch) {
+      print_conn_matrix(ConnectionMatrix const &conn, int nnode, int nswitch) {
     int nnwdevs = nnode + nswitch;
     for (int i = 0; i < nnwdevs; i++) {
       if (i == nnode)
@@ -489,15 +497,25 @@ public:
   CompDevice *get_gpu(int device_id) const;
   MemDevice *get_gpu_fb_mem(int devicd_id) const;
   int get_num_gpus() const;
-  int get_num_nodes() const { return num_nodes; }
-  int get_total_devs() const { return num_nodes + num_switches; }
-  int get_num_switches() const { return num_switches; }
+  int get_num_nodes() const {
+    return num_nodes;
+  }
+  int get_total_devs() const {
+    return num_nodes + num_switches;
+  }
+  int get_num_switches() const {
+    return num_switches;
+  }
   float get_intra_node_gpu_bandwidth() const;
   float get_inter_node_gpu_bandwidth() const;
   float get_link_bandwidth() const;
   float get_link_bandwidth(int src, int dst) const;
-  float get_intra_node_gpu_latency() const { return 0; }
-  float get_inter_node_gpu_latency() const { return network_latency; }
+  float get_intra_node_gpu_latency() const {
+    return 0;
+  }
+  float get_inter_node_gpu_latency() const {
+    return network_latency;
+  }
   void set_routing_strategy(NetworkRoutingStrategy *rs);
   std::vector<CommDevice *> get_comm_path(MemDevice *src_mem,
                                           MemDevice *tar_mem);
@@ -658,9 +676,9 @@ public:
                            MachineView const &source_view,
                            MachineView const &sink_view);
   float
-  default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TENSOR_DIM],
-                             int tensor_ndims,
-                             MachineView const &view);
+      default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TENSOR_DIM],
+                                 int tensor_ndims,
+                                 MachineView const &view);
   float default_estimate_sync_cost(ParallelTensorShape const &tensor_shape,
                                    MachineView const &view,
                                    int num_replicate_dims);
@@ -675,10 +693,10 @@ public:
                          CompMode comp_mode,
                          std::string const &export_file_name);
   static void
-  strategy_search_task(Legion::Task const *task,
-                       std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime);
+      strategy_search_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
+                           Legion::Context ctx,
+                           Legion::Runtime *runtime);
 
 public:
   Realm::RegionInstance simulatorInst;
@@ -717,13 +735,13 @@ public:
   int max_num_segments; // simulation could be slow if the number of segments
                         // are too large
 private:
-  float
-  estimate_repartition_xfer_cost(int repartition_dim,
-                                 int repartition_degree,
-                                 ParallelTensorShape const &input_tensor_shape,
-                                 ParallelTensorShape const &output_tensor_shape,
-                                 MachineView const &source_view,
-                                 MachineView const &target_view) const;
+  float estimate_repartition_xfer_cost(
+      int repartition_dim,
+      int repartition_degree,
+      ParallelTensorShape const &input_tensor_shape,
+      ParallelTensorShape const &output_tensor_shape,
+      MachineView const &source_view,
+      MachineView const &target_view) const;
 };
 
 /**
@@ -741,14 +759,14 @@ public:
   SimTask *new_comm_task_unrecorded();
   SimTask *new_update_task_unrecorded();
   virtual float
-  simulate_runtime(FFModel const *model,
-                   std::map<Op const *, ParallelConfig> const &global,
-                   CompMode comp_mode);
+      simulate_runtime(FFModel const *model,
+                       std::map<Op const *, ParallelConfig> const &global,
+                       CompMode comp_mode);
   virtual float
-  simulate_runtime(FFModel const *model,
-                   std::map<Op const *, ParallelConfig> const &global,
-                   CompMode comp_mode,
-                   std::string const &export_file_name);
+      simulate_runtime(FFModel const *model,
+                       std::map<Op const *, ParallelConfig> const &global,
+                       CompMode comp_mode,
+                       std::string const &export_file_name);
   virtual float route_transfer(SimTask *transfer_task,
                                float start_time,
                                std::map<Device *, float> &device_times);
@@ -765,10 +783,10 @@ public:
                                        SimTask *dst_task,
                                        size_t message_size);
   static void
-  simulation_task(Legion::Task const *task,
-                  std::vector<Legion::PhysicalRegion> const &regions,
-                  Legion::Context ctx,
-                  Legion::Runtime *runtime);
+      simulation_task(Legion::Task const *task,
+                      std::vector<Legion::PhysicalRegion> const &regions,
+                      Legion::Context ctx,
+                      Legion::Runtime *runtime);
   bool segment_transfer;
   size_t segment_size;
 

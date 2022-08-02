@@ -64,9 +64,9 @@ void Concat::forward_kernel(float *output,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    fprintf(stderr, "Unsupported concat dimension number");
-    assert(false);
+    default:
+      fprintf(stderr, "Unsupported concat dimension number");
+      assert(false);
   }
 
   for (int i = 0; i < num_inputs; i++) {
@@ -142,9 +142,9 @@ void Concat::backward_kernel(float const *output_grad,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    fprintf(stderr, "Unsupported concat dimension number");
-    assert(false);
+    default:
+      fprintf(stderr, "Unsupported concat dimension number");
+      assert(false);
   }
 
   for (int i = 0; i < num_inputs; i++) {

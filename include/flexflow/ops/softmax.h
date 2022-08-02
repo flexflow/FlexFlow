@@ -32,11 +32,13 @@ public:
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   bool get_int_parameter(PMParameter, int *) const override;
-  void print_layer(FFModel const &model) override { assert(0); }
+  void print_layer(FFModel const &model) override {
+    assert(0);
+  }
   static Op *
-  create_operator_from_layer(FFModel &model,
-                             Layer const *layer,
-                             std::vector<ParallelTensor> const &inputs);
+      create_operator_from_layer(FFModel &model,
+                                 Layer const *layer,
+                                 std::vector<ParallelTensor> const &inputs);
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
@@ -75,16 +77,16 @@ public:
 private:
   template <int NDIM>
   static void
-  forward_task_with_dim(Legion::Task const *task,
-                        std::vector<Legion::PhysicalRegion> const &regions,
-                        Legion::Context ctx,
-                        Legion::Runtime *runtime);
+      forward_task_with_dim(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
   template <int NDIM>
   static void
-  backward_task_with_dim(Legion::Task const *task,
-                         std::vector<Legion::PhysicalRegion> const &regions,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime);
+      backward_task_with_dim(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
 
 public:
   int dim;

@@ -75,10 +75,10 @@ void Reverse::create_input_partition(FFModel &model) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    // Unsupported dim for Reverse operator
-    assert(false);
-  }
+    default: {
+      // Unsupported dim for Reverse operator
+      assert(false);
+    }
   }
 }
 

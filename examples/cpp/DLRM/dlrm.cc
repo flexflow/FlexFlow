@@ -688,7 +688,9 @@ void DataLoader::next_batch(FFModel &ff) {
 
 void DataLoader::shuffle() {}
 
-void DataLoader::reset() { next_index = 0; }
+void DataLoader::reset() {
+  next_index = 0;
+}
 
 void DataLoader::load_sparse_input_cpu(
     Task const *task,

@@ -59,27 +59,27 @@ void SGDOptimizer::init(void) {
     Domain domain =
         runtime->get_index_space_domain(ctx, p->region.get_index_space());
     switch (domain.get_dim()) {
-    case 0: {
-      // Do not support 0-dim parameter
-      assert(false);
-      break;
-    }
-    case 1:
-    case 2:
-    case 3:
-    case 4:
-    case 5: {
-      if (momentum > 0.0f) {
-        v_values[p->region] = create_replica_parameter(model, p);
-        initializer->init(model, v_values[p->region]);
+      case 0: {
+        // Do not support 0-dim parameter
+        assert(false);
+        break;
       }
-      break;
-    }
-    default: {
-      // Unsupported dim
-      assert(false);
-      break;
-    }
+      case 1:
+      case 2:
+      case 3:
+      case 4:
+      case 5: {
+        if (momentum > 0.0f) {
+          v_values[p->region] = create_replica_parameter(model, p);
+          initializer->init(model, v_values[p->region]);
+        }
+        break;
+      }
+      default: {
+        // Unsupported dim
+        assert(false);
+        break;
+      }
     }
   }
   delete initializer;
@@ -149,8 +149,8 @@ void SGDOptimizer::update(const ParallelTensor p) {
   }
       LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false);
+      default:
+        assert(false);
     }
     IndexLauncher launcher(SGD_UPD_NCCL_TASK_ID,
                            p->parallel_is,
@@ -243,10 +243,10 @@ void SGDOptimizer::ps_update_task(Task const *task,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    // Unsupported dims
-    assert(false);
-  }
+    default: {
+      // Unsupported dims
+      assert(false);
+    }
   }
 
   ps_update_task_gpu(op, w_grad_ptr, size, num_replicas, w_ptr, v_ptr);
@@ -301,10 +301,10 @@ void SGDOptimizer::nccl_update_task(Task const *task,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    // Unsupported dims
-    assert(false);
-  }
+    default: {
+      // Unsupported dims
+      assert(false);
+    }
   }
 
   nccl_update_task_gpu(op, meta, w_grad_ptr, size, w_ptr, v_ptr);
@@ -334,27 +334,27 @@ void AdamOptimizer::init(void) {
     Domain domain =
         runtime->get_index_space_domain(ctx, p->region.get_index_space());
     switch (domain.get_dim()) {
-    case 0: {
-      // Do not support 0-dim parameter
-      assert(false);
-      break;
-    }
-    case 1:
-    case 2:
-    case 3:
-    case 4:
-    case 5: {
-      v_values[p->region] = create_replica_parameter(model, p);
-      m_values[p->region] = create_replica_parameter(model, p);
-      initializer->init(model, v_values[p->region]);
-      initializer->init(model, m_values[p->region]);
-      break;
-    }
-    default: {
-      // Unsupported dim
-      assert(false);
-      break;
-    }
+      case 0: {
+        // Do not support 0-dim parameter
+        assert(false);
+        break;
+      }
+      case 1:
+      case 2:
+      case 3:
+      case 4:
+      case 5: {
+        v_values[p->region] = create_replica_parameter(model, p);
+        m_values[p->region] = create_replica_parameter(model, p);
+        initializer->init(model, v_values[p->region]);
+        initializer->init(model, m_values[p->region]);
+        break;
+      }
+      default: {
+        // Unsupported dim
+        assert(false);
+        break;
+      }
     }
   }
   delete initializer;
@@ -439,8 +439,8 @@ void AdamOptimizer::update(const ParallelTensor p) {
   }
       LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-    default:
-      assert(false);
+      default:
+        assert(false);
     }
     IndexLauncher launcher(ADAM_UPD_NCCL_TASK_ID,
                            p->parallel_is,
@@ -533,10 +533,10 @@ void AdamOptimizer::ps_update_task(Task const *task,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    // Unsupported dims
-    assert(false);
-  }
+    default: {
+      // Unsupported dims
+      assert(false);
+    }
   }
 
   ps_update_task_gpu(op, w_grad_ptr, size, num_replicas, w_ptr, v_ptr, m_ptr);
@@ -592,10 +592,10 @@ void AdamOptimizer::nccl_update_task(Task const *task,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    // Unsupported dims
-    assert(false);
-  }
+    default: {
+      // Unsupported dims
+      assert(false);
+    }
   }
 
   nccl_update_task_gpu(op, meta, w_grad_ptr, size, w_ptr, v_ptr, m_ptr);

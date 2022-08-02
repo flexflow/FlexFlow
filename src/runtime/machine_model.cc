@@ -143,7 +143,9 @@ SimpleMachineModel::SimpleMachineModel(int num_nodes,
 
 SimpleMachineModel::~SimpleMachineModel() {}
 
-int SimpleMachineModel::get_version() const { return version; }
+int SimpleMachineModel::get_version() const {
+  return version;
+}
 
 CompDevice *SimpleMachineModel::get_gpu(int device_id) const {
   assert(id_to_gpu.find(device_id) != id_to_gpu.end());
@@ -155,7 +157,9 @@ MemDevice *SimpleMachineModel::get_gpu_fb_mem(int device_id) const {
   return id_to_gpu_fb_mem.at(device_id);
 }
 
-int SimpleMachineModel::get_num_gpus() const { return num_gpus; }
+int SimpleMachineModel::get_num_gpus() const {
+  return num_gpus;
+}
 
 float SimpleMachineModel::get_intra_node_gpu_bandwidth() const {
   return inter_gpu_bandwidth;
@@ -166,7 +170,7 @@ float SimpleMachineModel::get_inter_node_gpu_bandwidth() const {
 }
 
 std::vector<CommDevice *>
-SimpleMachineModel::get_comm_path(MemDevice *src_mem, MemDevice *tar_mem) {
+    SimpleMachineModel::get_comm_path(MemDevice *src_mem, MemDevice *tar_mem) {
   std::vector<CommDevice *> ret;
   // on the same memory
   if (src_mem->mem_type == tar_mem->mem_type and
@@ -406,7 +410,9 @@ EnhancedMachineModel::EnhancedMachineModel(std::string file,
 
 EnhancedMachineModel::~EnhancedMachineModel() {}
 
-int EnhancedMachineModel::get_version() const { return version; }
+int EnhancedMachineModel::get_version() const {
+  return version;
+}
 
 void EnhancedMachineModel::set_comm_path(
     std::vector<CommDevice::CommDevType> &comm_path, std::string device_str) {
@@ -804,7 +810,9 @@ CommDevice *EnhancedMachineModel::get_next_nic_out(int socket_id) const {
     assert(false);
   }
 }
-int EnhancedMachineModel::get_num_gpus() const { return num_gpus; }
+int EnhancedMachineModel::get_num_gpus() const {
+  return num_gpus;
+}
 
 void EnhancedMachineModel::add_comm_path(
     std::vector<CommDevice::CommDevType> const &comm_device_list,
@@ -814,40 +822,41 @@ void EnhancedMachineModel::add_comm_path(
   MemDevice *cur_mem = src_mem;
   for (size_t i = 0; i < comm_device_list.size(); i++) {
     switch (comm_device_list[i]) {
-    case CommDevice::MEMBUS_COMM:
-      ret.emplace_back(membuses[cur_mem->socket_id]);
-      break;
-    case CommDevice::UPI_IN_COMM:
-      cur_mem = tar_mem;
-      ret.emplace_back(upi_ins[cur_mem->socket_id]);
-      break;
-    case CommDevice::UPI_OUT_COMM:
-      ret.emplace_back(upi_outs[cur_mem->socket_id]);
-      break;
-    case CommDevice::NIC_IN_COMM:
-      cur_mem = tar_mem;
-      ret.emplace_back(get_next_nic_in(cur_mem->socket_id));
-      break;
-    case CommDevice::NIC_OUT_COMM:
-      ret.emplace_back(get_next_nic_out(cur_mem->socket_id));
-      break;
-    case CommDevice::PCI_TO_HOST_COMM:
-      ret.emplace_back(pcis_to_host[cur_mem->socket_id]);
-      break;
-    case CommDevice::PCI_TO_DEV_COMM:
-      ret.emplace_back(pcis_to_device[cur_mem->socket_id]);
-      break;
-    case CommDevice::NVLINK_COMM:
-      ret.emplace_back(get_nvlink(src_mem, tar_mem));
-      break;
-    default:
-      break;
+      case CommDevice::MEMBUS_COMM:
+        ret.emplace_back(membuses[cur_mem->socket_id]);
+        break;
+      case CommDevice::UPI_IN_COMM:
+        cur_mem = tar_mem;
+        ret.emplace_back(upi_ins[cur_mem->socket_id]);
+        break;
+      case CommDevice::UPI_OUT_COMM:
+        ret.emplace_back(upi_outs[cur_mem->socket_id]);
+        break;
+      case CommDevice::NIC_IN_COMM:
+        cur_mem = tar_mem;
+        ret.emplace_back(get_next_nic_in(cur_mem->socket_id));
+        break;
+      case CommDevice::NIC_OUT_COMM:
+        ret.emplace_back(get_next_nic_out(cur_mem->socket_id));
+        break;
+      case CommDevice::PCI_TO_HOST_COMM:
+        ret.emplace_back(pcis_to_host[cur_mem->socket_id]);
+        break;
+      case CommDevice::PCI_TO_DEV_COMM:
+        ret.emplace_back(pcis_to_device[cur_mem->socket_id]);
+        break;
+      case CommDevice::NVLINK_COMM:
+        ret.emplace_back(get_nvlink(src_mem, tar_mem));
+        break;
+      default:
+        break;
     }
   }
 }
 
 std::vector<CommDevice *>
-EnhancedMachineModel::get_comm_path(MemDevice *src_mem, MemDevice *tar_mem) {
+    EnhancedMachineModel::get_comm_path(MemDevice *src_mem,
+                                        MemDevice *tar_mem) {
   std::vector<CommDevice *> ret;
   if (src_mem->device_id == tar_mem->device_id) {
     return ret;
@@ -1051,9 +1060,13 @@ NetworkedMachineModel::NetworkedMachineModel(int num_nodes,
   update_route();
 }
 
-NetworkedMachineModel::~NetworkedMachineModel() { delete routing_strategy; }
+NetworkedMachineModel::~NetworkedMachineModel() {
+  delete routing_strategy;
+}
 
-int NetworkedMachineModel::get_version() const { return version; }
+int NetworkedMachineModel::get_version() const {
+  return version;
+}
 
 void NetworkedMachineModel::update_route() {
   // nominal network links
@@ -1100,7 +1113,9 @@ MemDevice *NetworkedMachineModel::get_gpu_fb_mem(int device_id) const {
   return id_to_gpu_fb_mem.at(device_id);
 }
 
-int NetworkedMachineModel::get_num_gpus() const { return num_gpus; }
+int NetworkedMachineModel::get_num_gpus() const {
+  return num_gpus;
+}
 
 float NetworkedMachineModel::get_intra_node_gpu_bandwidth() const {
   return inter_gpu_bandwidth;
@@ -1124,7 +1139,8 @@ void NetworkedMachineModel::set_routing_strategy(NetworkRoutingStrategy *rs) {
 }
 
 std::vector<CommDevice *>
-NetworkedMachineModel::get_comm_path(MemDevice *src_mem, MemDevice *tar_mem) {
+    NetworkedMachineModel::get_comm_path(MemDevice *src_mem,
+                                         MemDevice *tar_mem) {
   /* This implementation very much is an extension of the simple_machine
    * model's version. no details about socket and memories
    */
@@ -1229,9 +1245,13 @@ void NetworkedMachineModel::save_topology_json(std::string const &fname) const {
   return;
 }
 
-void NetworkedMachineModel::set_pcie(bool state) { pcie_on = state; }
+void NetworkedMachineModel::set_pcie(bool state) {
+  pcie_on = state;
+}
 
-void NetworkedMachineModel::set_pipeline(bool state) { pipelined = state; }
+void NetworkedMachineModel::set_pipeline(bool state) {
+  pipelined = state;
+}
 
 void NetworkedMachineModel::set_topology(ConnectionMatrix const &conn) {
   conn_matrix = conn;
@@ -1253,7 +1273,7 @@ ConnectionMatrix const &NetworkedMachineModel::get_conn_matrix() {
 }
 
 std::map<size_t, NominalCommDevice *> const &
-NetworkedMachineModel::get_nomm_comm_devs() {
+    NetworkedMachineModel::get_nomm_comm_devs() {
   return ids_to_nw_nominal_device;
 }
 

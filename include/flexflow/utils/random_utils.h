@@ -7,7 +7,8 @@
 
 float randf();
 
-template <typename T> T select_random(std::vector<T> const &values) {
+template <typename T>
+T select_random(std::vector<T> const &values) {
   return values[std::rand() % values.size()];
 }
 

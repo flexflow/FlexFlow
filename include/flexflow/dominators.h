@@ -34,14 +34,14 @@ bool has_edge(G const &g,
 
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_set<typename Structure::edge_type>
-outgoing_edges(G const &g, typename Structure::vertex_type const &n) {
+    outgoing_edges(G const &g, typename Structure::vertex_type const &n) {
   Structure s;
   return s.get_outgoing_edges(g, n);
 }
 
 template <typename G, typename Structure = GraphStructure<G>>
 std::pair<typename Structure::vertex_type, typename Structure::vertex_type>
-get_basic_edge(G const &g, typename Structure::edge_type const &e) {
+    get_basic_edge(G const &g, typename Structure::edge_type const &e) {
   Structure s;
 
   return {s.get_src(g, e), s.get_dst(g, e)};
@@ -77,7 +77,7 @@ void successors(G const &g,
 
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_set<typename Structure::vertex_type>
-successors(G const &g, typename Structure::vertex_type const &node) {
+    successors(G const &g, typename Structure::vertex_type const &node) {
   // using N = typename Structure::vertex_type;
 
   std::unordered_set<typename Structure::vertex_type> succ;
@@ -88,7 +88,7 @@ successors(G const &g, typename Structure::vertex_type const &node) {
 
 template <typename G, typename Structure = GraphStructure<G>>
 tl::optional<typename Structure::vertex_type>
-successor(G const &g, typename Structure::vertex_type const &node) {
+    successor(G const &g, typename Structure::vertex_type const &node) {
   auto succs = successors<G, Structure>(g, node);
   if (succs.size() == 1) {
     return *succs.begin();
@@ -109,7 +109,7 @@ void predecessors(G const &g,
 
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_set<typename Structure::vertex_type>
-predecessors(G const &g, typename Structure::vertex_type const &node) {
+    predecessors(G const &g, typename Structure::vertex_type const &node) {
   // using N = typename Structure::vertex_type;
 
   std::unordered_set<typename Structure::vertex_type> pred;
@@ -120,7 +120,7 @@ predecessors(G const &g, typename Structure::vertex_type const &node) {
 
 template <typename G, typename Structure = GraphStructure<G>>
 tl::optional<typename Structure::vertex_type>
-predecessor(G const &g, typename Structure::vertex_type const &node) {
+    predecessor(G const &g, typename Structure::vertex_type const &node) {
   auto preds = predecessors<G, Structure>(g, node);
   if (preds.size() == 1) {
     return *preds.begin();
@@ -201,7 +201,7 @@ void topo_sort(G const &g,
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_map<typename Structure::vertex_type,
                    std::unordered_set<typename Structure::vertex_type>>
-dominators(G const &g) {
+    dominators(G const &g) {
   using N = typename Structure::vertex_type;
   // using E = typename Structure::edge_type;
 
@@ -239,14 +239,14 @@ dominators(G const &g) {
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_map<typename Structure::vertex_type,
                    std::unordered_set<typename Structure::vertex_type>>
-post_dominators(G const &g) {
+    post_dominators(G const &g) {
   return dominators<G, ReverseStructure<Structure>>(g);
 }
 
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_map<typename Structure::vertex_type,
                    typename Structure::vertex_type>
-imm_dominators(G const &g) {
+    imm_dominators(G const &g) {
   using N = typename Structure::vertex_type;
   // using E = typename Structure::edge_type;
 
@@ -330,7 +330,7 @@ void dfs(G const &g,
 
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_set<typename Structure::vertex_type>
-descendants(G const &g, typename Structure::vertex_type const &n) {
+    descendants(G const &g, typename Structure::vertex_type const &n) {
   using N = typename Structure::vertex_type;
   using E = typename Structure::edge_type;
 
@@ -350,7 +350,7 @@ descendants(G const &g, typename Structure::vertex_type const &n) {
 
 template <typename G, typename Structure = GraphStructure<G>>
 std::vector<std::unordered_set<typename Structure::vertex_type>>
-weakly_connected_components(G const &g) {
+    weakly_connected_components(G const &g) {
   using N = typename Structure::vertex_type;
   using E = typename Structure::edge_type;
 
@@ -373,7 +373,7 @@ weakly_connected_components(G const &g) {
 template <typename G, typename Structure = GraphStructure<G>>
 std::unordered_map<typename Structure::vertex_type,
                    typename Structure::vertex_type>
-imm_post_dominators(G const &g) {
+    imm_post_dominators(G const &g) {
   return imm_dominators<G, ReverseStructure<Structure>>(g);
 }
 
@@ -425,7 +425,8 @@ BasicGraph<typename Structure::vertex_type> transitive_reduction(G const &g) {
   return reduction;
 }
 
-template <typename N> void inplace_transitive_reduction(BasicGraph<N> &g) {
+template <typename N>
+void inplace_transitive_reduction(BasicGraph<N> &g) {
   using Structure = GraphStructure<BasicGraph<N>>;
   using G = BasicGraph<N>;
   using E = std::pair<N, N>;

@@ -17,7 +17,8 @@ TensorAccessorR<DT, dim>::TensorAccessorR(PhysicalRegion region,
   ptr = acc.ptr(rect);
 }
 
-template <typename DT, int dim> TensorAccessorR<DT, dim>::TensorAccessorR() {}
+template <typename DT, int dim>
+TensorAccessorR<DT, dim>::TensorAccessorR() {}
 
 GenericTensorAccessorR::GenericTensorAccessorR(int _num_dim,
                                                DataType _data_type,
@@ -48,10 +49,10 @@ GenericTensorAccessorR::GenericTensorAccessorR(int _num_dim,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    fprintf(stderr, "Unsupported accessor dimension");
-    assert(false);
-  }
+    default: {
+      fprintf(stderr, "Unsupported accessor dimension");
+      assert(false);
+    }
   }
 }
 
@@ -78,7 +79,8 @@ TensorAccessorW<DT, dim>::TensorAccessorW(PhysicalRegion region,
   }
 }
 
-template <typename DT, int dim> TensorAccessorW<DT, dim>::TensorAccessorW() {}
+template <typename DT, int dim>
+TensorAccessorW<DT, dim>::TensorAccessorW() {}
 
 GenericTensorAccessorW::GenericTensorAccessorW(int _num_dim,
                                                DataType _data_type,
@@ -113,10 +115,10 @@ GenericTensorAccessorW::GenericTensorAccessorW(int _num_dim,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    fprintf(stderr, "Unsupported accessor dimension");
-    assert(false);
-  }
+    default: {
+      fprintf(stderr, "Unsupported accessor dimension");
+      assert(false);
+    }
   }
 }
 
@@ -136,11 +138,11 @@ const DT *helperGetTensorPointerRO(PhysicalRegion region,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    fprintf(stderr, "Unsupported accessor dimension");
-    assert(false);
-    return NULL;
-  }
+    default: {
+      fprintf(stderr, "Unsupported accessor dimension");
+      assert(false);
+      return NULL;
+    }
   }
 }
 
@@ -161,11 +163,11 @@ DT *helperGetTensorPointerRW(PhysicalRegion region,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    fprintf(stderr, "Unsupported accessor dimension");
-    assert(false);
-    return NULL;
-  }
+    default: {
+      fprintf(stderr, "Unsupported accessor dimension");
+      assert(false);
+      return NULL;
+    }
   }
 }
 
@@ -186,11 +188,11 @@ DT *helperGetTensorPointerWO(PhysicalRegion region,
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    fprintf(stderr, "Unsupported accessor dimension");
-    assert(false);
-    return NULL;
-  }
+    default: {
+      fprintf(stderr, "Unsupported accessor dimension");
+      assert(false);
+      return NULL;
+    }
   }
 }
 

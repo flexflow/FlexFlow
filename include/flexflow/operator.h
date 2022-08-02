@@ -25,18 +25,18 @@ private:
 public:
   ParallelDimMappingRecord() = delete;
 
-  static ParallelDimMappingRecord
-  input_output_record(int input_idx,
-                      int input_dim,
-                      int output_idx,
-                      int output_dim,
-                      tl::optional<MappingOperation> operation = tl::nullopt);
-  static ParallelDimMappingRecord
-  input_weight_record(int input_idx,
-                      int input_dim,
-                      int weight_idx,
-                      int weight_dim,
-                      tl::optional<MappingOperation> operation = tl::nullopt);
+  static ParallelDimMappingRecord input_output_record(
+      int input_idx,
+      int input_dim,
+      int output_idx,
+      int output_dim,
+      tl::optional<MappingOperation> operation = tl::nullopt);
+  static ParallelDimMappingRecord input_weight_record(
+      int input_idx,
+      int input_dim,
+      int weight_idx,
+      int weight_dim,
+      tl::optional<MappingOperation> operation = tl::nullopt);
   MappingRecordType get_type() const;
 
 public:
@@ -49,11 +49,11 @@ public:
 
 class Op {
 public:
-  static void
-  construct_weight_parallel_dims(std::vector<ParallelDimMappingRecord> &records,
-                                 std::vector<std::pair<int, int>> mappings,
-                                 int input_idx = 0,
-                                 int weight_idx = 0);
+  static void construct_weight_parallel_dims(
+      std::vector<ParallelDimMappingRecord> &records,
+      std::vector<std::pair<int, int>> mappings,
+      int input_idx = 0,
+      int weight_idx = 0);
   static void construct_weight_parallel_dims(
       std::vector<ParallelDimMappingRecord> &records,
       std::vector<std::tuple<int, MappingOperation, int>> mappings,
@@ -67,11 +67,11 @@ public:
       int weight_idx = 0,
       tl::optional<MappingOperation> operation = tl::nullopt);
 
-  static void
-  construct_output_parallel_dims(std::vector<ParallelDimMappingRecord> &records,
-                                 std::vector<std::pair<int, int>> mappings,
-                                 int input_idx = 0,
-                                 int output_idx = 0);
+  static void construct_output_parallel_dims(
+      std::vector<ParallelDimMappingRecord> &records,
+      std::vector<std::pair<int, int>> mappings,
+      int input_idx = 0,
+      int output_idx = 0);
   static void construct_output_parallel_dims(
       std::vector<ParallelDimMappingRecord> &records,
       std::vector<std::tuple<int, MappingOperation, int>> mappings,
@@ -128,8 +128,8 @@ protected:
                                    std::function<void()> const &backward,
                                    CostMetrics &cost_metrics) const;
 
-  bool
-  check_output_input_weight_parallel_dims(bool allocate_weights = true) const;
+  bool check_output_input_weight_parallel_dims(
+      bool allocate_weights = true) const;
   bool check_output_input_weight_same_parallel_is() const;
   bool check_output_input_weight_same_machine_view() const;
 
@@ -215,7 +215,7 @@ public:
   virtual bool is_parallel_op() const;
   virtual void serialize(Legion::Serializer &) const;
   virtual Op *
-  materialize(FFModel &ff, ParallelTensor inputs[], int num_inputs) const;
+      materialize(FFModel &ff, ParallelTensor inputs[], int num_inputs) const;
   size_t get_untyped_params_hash() const;
   virtual size_t get_params_hash() const;
 
@@ -223,16 +223,16 @@ public:
 
   int get_dimension() const;
 #ifdef FF_USE_NCCL
-  static ncclUniqueId
-  get_nccl_unique_id_task(Legion::Task const *task,
-                          std::vector<Legion::PhysicalRegion> const &regions,
-                          Legion::Context ctx,
-                          Legion::Runtime *runtime);
+  static ncclUniqueId get_nccl_unique_id_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
   static ncclComm_t
-  init_nccl_comms_task(Legion::Task const *task,
-                       std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime);
+      init_nccl_comms_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
+                           Legion::Context ctx,
+                           Legion::Runtime *runtime);
 #endif
 protected:
   void set_argumentmap_for_init(FFModel const &ff, Legion::ArgumentMap &argmap);
@@ -242,10 +242,10 @@ protected:
                                     Legion::ArgumentMap &argmap);
   void set_opmeta_from_futuremap(FFModel const &ff,
                                  Legion::FutureMap const &fm);
-  void
-  solve_parallel_dim_mappings(std::vector<ParallelDim const *> const &inputs,
-                              std::vector<ParallelDim *> const &weights,
-                              std::vector<ParallelDim *> const &outputs) const;
+  void solve_parallel_dim_mappings(
+      std::vector<ParallelDim const *> const &inputs,
+      std::vector<ParallelDim *> const &weights,
+      std::vector<ParallelDim *> const &outputs) const;
 
 public:
   OperatorType op_type;

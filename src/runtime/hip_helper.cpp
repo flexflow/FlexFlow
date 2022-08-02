@@ -29,26 +29,36 @@ hipError_t get_legion_stream(hipStream_t *stream) {
 using FlexFlow::get_legion_stream;
 
 __global__ void scale_kernel(float *ptr, coord_t size, float a, float b) {
-  CUDA_KERNEL_LOOP(i, size) { ptr[i] = (b - a) * ptr[i] + a; }
+  CUDA_KERNEL_LOOP(i, size) {
+    ptr[i] = (b - a) * ptr[i] + a;
+  }
 }
 
 __global__ void ones_kernel(float *ptr, coord_t size) {
-  CUDA_KERNEL_LOOP(i, size) { ptr[i] = 1.0f; }
+  CUDA_KERNEL_LOOP(i, size) {
+    ptr[i] = 1.0f;
+  }
 }
 
 template <typename DT>
 __global__ void assign_kernel(DT *ptr, coord_t size, DT value) {
-  CUDA_KERNEL_LOOP(i, size) { ptr[i] = value; }
+  CUDA_KERNEL_LOOP(i, size) {
+    ptr[i] = value;
+  }
 }
 
 template <typename DT>
 __global__ void copy_kernel(DT *dst, const DT *src, coord_t size) {
-  CUDA_KERNEL_LOOP(i, size) { dst[i] = src[i]; }
+  CUDA_KERNEL_LOOP(i, size) {
+    dst[i] = src[i];
+  }
 }
 
 template <typename DT>
 __global__ void reluBackward(DT *grad_ptr, const DT *output, size_t n) {
-  CUDA_KERNEL_LOOP(i, n) { grad_ptr[i] = (output[i] > 0.0f) ? grad_ptr[i] : 0; }
+  CUDA_KERNEL_LOOP(i, n) {
+    grad_ptr[i] = (output[i] > 0.0f) ? grad_ptr[i] : 0;
+  }
 }
 
 __host__ void relu_backward_kernel(DataType data_type,
@@ -82,7 +92,7 @@ __host__ void relu_backward_kernel(DataType data_type,
 
 template <typename DT>
 __global__ void
-sigmoid_backward_function(DT *grad_ptr, const DT *output, size_t n) {
+    sigmoid_backward_function(DT *grad_ptr, const DT *output, size_t n) {
   CUDA_KERNEL_LOOP(i, n) {
     grad_ptr[i] = grad_ptr[i] * output[i] * (1.0f - output[i]);
   }
@@ -117,8 +127,10 @@ __host__ void sigmoid_backward_kernel(DataType data_type,
   }
 }
 
-__global__ void
-gelu_forward_kernel(size_t size, float const B, float const C, float *input) {
+__global__ void gelu_forward_kernel(size_t size,
+                                    float const B,
+                                    float const C,
+                                    float *input) {
   CUDA_KERNEL_LOOP(i, size) {
     float const in = input[i];
     float const cdf = 0.5f + 0.5f * tanh(in * (C * in * in + B));
@@ -127,19 +139,25 @@ gelu_forward_kernel(size_t size, float const B, float const C, float *input) {
 }
 
 __global__ void
-apply_add(float *data_ptr, float const *replica_ptr, size_t size) {
-  CUDA_KERNEL_LOOP(i, size) { data_ptr[i] += replica_ptr[i]; }
+    apply_add(float *data_ptr, float const *replica_ptr, size_t size) {
+  CUDA_KERNEL_LOOP(i, size) {
+    data_ptr[i] += replica_ptr[i];
+  }
 }
 
 template <typename T>
 __global__ void
-apply_add_with_scale(T *data_ptr, const T *grad_ptr, size_t size, T scale) {
-  CUDA_KERNEL_LOOP(i, size) { data_ptr[i] += grad_ptr[i] * scale; }
+    apply_add_with_scale(T *data_ptr, const T *grad_ptr, size_t size, T scale) {
+  CUDA_KERNEL_LOOP(i, size) {
+    data_ptr[i] += grad_ptr[i] * scale;
+  }
 }
 
 template <typename T>
 __global__ void add_kernel(T *data_ptr, const T *grad_ptr, size_t size) {
-  CUDA_KERNEL_LOOP(i, size) { data_ptr[i] += grad_ptr[i]; }
+  CUDA_KERNEL_LOOP(i, size) {
+    data_ptr[i] += grad_ptr[i];
+  }
 }
 
 __global__ void add_with_stride(float *output,
@@ -230,7 +248,7 @@ __host__ void print_tensor(const T *ptr, Rect<DIM> rect, char const *prefix) {
 
 template <typename T>
 __host__ void
-print_tensor(const T *ptr, size_t num_elements, char const *prefix) {
+    print_tensor(const T *ptr, size_t num_elements, char const *prefix) {
   // device synchronize to make sure the data are ready
   // checkCUDA(hipDeviceSynchronize());
   T *host_ptr;
@@ -252,103 +270,103 @@ print_tensor(const T *ptr, size_t num_elements, char const *prefix) {
 }
 
 miopenStatus_t
-cudnnSetTensorDescriptorFromDomain(miopenTensorDescriptor_t tensor,
-                                   Domain domain) {
+    cudnnSetTensorDescriptorFromDomain(miopenTensorDescriptor_t tensor,
+                                       Domain domain) {
   int dims[MAX_TENSOR_DIM];
   switch (domain.get_dim()) {
-  case 1: {
-    Rect<1> rect = domain;
-    dims[0] = rect.hi[0] - rect.lo[0] + 1;
-    return miopenSet4dTensorDescriptor(tensor, miopenFloat, dims[0], 1, 1, 1);
-  }
-  case 2: {
-    Rect<2> rect = domain;
-    dims[0] = rect.hi[0] - rect.lo[0] + 1;
-    dims[1] = rect.hi[1] - rect.lo[1] + 1;
-    return miopenSet4dTensorDescriptor(
-        tensor, miopenFloat, dims[1], dims[0], 1, 1);
-  }
-  case 3: {
-    Rect<3> rect = domain;
-    dims[0] = rect.hi[0] - rect.lo[0] + 1;
-    dims[1] = rect.hi[1] - rect.lo[1] + 1;
-    dims[2] = rect.hi[2] - rect.lo[2] + 1;
-    return miopenSet4dTensorDescriptor(
-        tensor, miopenFloat, dims[2], dims[1], dims[0], 1);
-  }
-  case 4: {
-    Rect<4> rect = domain;
-    dims[0] = rect.hi[0] - rect.lo[0] + 1;
-    dims[1] = rect.hi[1] - rect.lo[1] + 1;
-    dims[2] = rect.hi[2] - rect.lo[2] + 1;
-    dims[3] = rect.hi[3] - rect.lo[3] + 1;
-    return miopenSet4dTensorDescriptor(
-        tensor, miopenFloat, dims[3], dims[2], dims[1], dims[0]);
-  }
-  case 5: {
-    Rect<5> rect = domain;
-    int leading_dim_size = rect.hi[4] - rect.lo[4] + 1;
-    assert(leading_dim_size == 1);
-    dims[0] = rect.hi[0] - rect.lo[0] + 1;
-    dims[1] = rect.hi[1] - rect.lo[1] + 1;
-    dims[2] = rect.hi[2] - rect.lo[2] + 1;
-    dims[3] = rect.hi[3] - rect.lo[3] + 1;
-    return miopenSet4dTensorDescriptor(
-        tensor, miopenFloat, dims[3], dims[2], dims[1], dims[0]);
-  }
-  default:
-    assert(false && "Unsupported dim number");
+    case 1: {
+      Rect<1> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      return miopenSet4dTensorDescriptor(tensor, miopenFloat, dims[0], 1, 1, 1);
+    }
+    case 2: {
+      Rect<2> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, miopenFloat, dims[1], dims[0], 1, 1);
+    }
+    case 3: {
+      Rect<3> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, miopenFloat, dims[2], dims[1], dims[0], 1);
+    }
+    case 4: {
+      Rect<4> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      dims[3] = rect.hi[3] - rect.lo[3] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, miopenFloat, dims[3], dims[2], dims[1], dims[0]);
+    }
+    case 5: {
+      Rect<5> rect = domain;
+      int leading_dim_size = rect.hi[4] - rect.lo[4] + 1;
+      assert(leading_dim_size == 1);
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      dims[3] = rect.hi[3] - rect.lo[3] + 1;
+      return miopenSet4dTensorDescriptor(
+          tensor, miopenFloat, dims[3], dims[2], dims[1], dims[0]);
+    }
+    default:
+      assert(false && "Unsupported dim number");
   }
   return miopenStatusBadParm;
 }
 
 miopenDataType_t ff_to_cudnn_datatype(DataType type) {
   switch (type) {
-  case DT_FLOAT:
-    return miopenFloat;
-  case DT_DOUBLE:
-    // FIXME assert(0);
-    return miopenFloat;
-  case DT_INT32:
-    return miopenInt32;
-  default:
-    assert(false && "Unsupported cudnn data type");
+    case DT_FLOAT:
+      return miopenFloat;
+    case DT_DOUBLE:
+      // FIXME assert(0);
+      return miopenFloat;
+    case DT_INT32:
+      return miopenInt32;
+    default:
+      assert(false && "Unsupported cudnn data type");
   }
   return miopenFloat;
 }
 
 hipblasDatatype_t ff_to_cuda_datatype(DataType type) {
   switch (type) {
-  case DT_FLOAT:
-    return HIPBLAS_R_32F;
-  case DT_DOUBLE:
-    return HIPBLAS_R_64F;
-  case DT_INT32:
-    return HIPBLAS_R_32I;
-  default:
-    assert(false && "Unspoorted cuda data type");
+    case DT_FLOAT:
+      return HIPBLAS_R_32F;
+    case DT_DOUBLE:
+      return HIPBLAS_R_64F;
+    case DT_INT32:
+      return HIPBLAS_R_32I;
+    default:
+      assert(false && "Unspoorted cuda data type");
   }
   return HIPBLAS_R_32F;
 }
 
 template __global__ void
-assign_kernel<float>(float *ptr, coord_t size, float value);
+    assign_kernel<float>(float *ptr, coord_t size, float value);
 template __global__ void
-assign_kernel<int32_t>(int32_t *ptr, coord_t size, int32_t value);
+    assign_kernel<int32_t>(int32_t *ptr, coord_t size, int32_t value);
 template __global__ void
-assign_kernel<int64_t>(int64_t *ptr, coord_t size, int64_t value);
+    assign_kernel<int64_t>(int64_t *ptr, coord_t size, int64_t value);
 
 template __global__ void
-add_kernel<float>(float *dst, float const *src, size_t size);
+    add_kernel<float>(float *dst, float const *src, size_t size);
 template __global__ void
-add_kernel<double>(double *dst, double const *src, size_t size);
+    add_kernel<double>(double *dst, double const *src, size_t size);
 
 template __global__ void
-copy_kernel<float>(float *dst, float const *src, coord_t size);
+    copy_kernel<float>(float *dst, float const *src, coord_t size);
 template __global__ void
-copy_kernel<int32_t>(int32_t *dst, int32_t const *src, coord_t size);
+    copy_kernel<int32_t>(int32_t *dst, int32_t const *src, coord_t size);
 template __global__ void
-copy_kernel<int64_t>(int64_t *dst, int64_t const *src, coord_t size);
+    copy_kernel<int64_t>(int64_t *dst, int64_t const *src, coord_t size);
 
 template __global__ void apply_add_with_scale<float>(float *data_ptr,
                                                      float const *grad_ptr,
@@ -368,8 +386,8 @@ template __global__ void apply_add_with_scale<int64_t>(int64_t *data_ptr,
                                                        int64_t scale);
 
 template __host__ void
-print_tensor<float>(float const *ptr, size_t rect, char const *prefix);
+    print_tensor<float>(float const *ptr, size_t rect, char const *prefix);
 template __host__ void
-print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
+    print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
 template __host__ void
-print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
+    print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);

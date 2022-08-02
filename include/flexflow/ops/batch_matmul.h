@@ -89,9 +89,12 @@ public:
                              CostMetrics &cost_metrics) const override;
 
 private:
-  template <int NDIM> void init_with_dim(FFModel const &ff);
-  template <int NDIM> void forward_with_dim(FFModel const &ff);
-  template <int NDIM> void backward_with_dim(FFModel const &ff);
+  template <int NDIM>
+  void init_with_dim(FFModel const &ff);
+  template <int NDIM>
+  void forward_with_dim(FFModel const &ff);
+  template <int NDIM>
+  void backward_with_dim(FFModel const &ff);
 
 public:
   int a_seq_length_dim, b_seq_length_dim;

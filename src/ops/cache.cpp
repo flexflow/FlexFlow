@@ -78,25 +78,25 @@ float Cache::cache_update(Task const *task,
 CacheMeta::CacheMeta(FFHandler handler) : OpMeta(handler) {}
 
 template void
-Cache::cache_forward<float>(Task const *task,
-                            std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime);
+    Cache::cache_forward<float>(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
+                                Context ctx,
+                                Runtime *runtime);
 template void
-Cache::cache_forward<int32_t>(Task const *task,
-                              std::vector<PhysicalRegion> const &regions,
-                              Context ctx,
-                              Runtime *runtime);
+    Cache::cache_forward<int32_t>(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
+                                  Context ctx,
+                                  Runtime *runtime);
 
 template float
-Cache::cache_update<float>(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime);
+    Cache::cache_update<float>(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime);
 template float
-Cache::cache_update<int32_t>(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime);
+    Cache::cache_update<int32_t>(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
+                                 Context ctx,
+                                 Runtime *runtime);
 
 }; // namespace FlexFlow

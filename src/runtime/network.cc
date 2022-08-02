@@ -157,7 +157,7 @@ void WeightedShortestPathRoutingStrategy::hop_count(int src_node,
 }
 
 std::vector<EcmpRoutes>
-WeightedShortestPathRoutingStrategy::get_routes_from_src(int src_node) {
+    WeightedShortestPathRoutingStrategy::get_routes_from_src(int src_node) {
   std::vector<uint64_t> dist(total_devs, std::numeric_limits<uint64_t>::max());
   std::vector<int> prev(total_devs, -1);
   std::vector<bool> visited(total_devs, false);
@@ -207,7 +207,7 @@ WeightedShortestPathRoutingStrategy::get_routes_from_src(int src_node) {
 }
 
 std::vector<std::pair<int, int>>
-WeightedShortestPathRoutingStrategy::hop_count(int src_node) {
+    WeightedShortestPathRoutingStrategy::hop_count(int src_node) {
   std::vector<uint64_t> dist(total_devs, std::numeric_limits<uint64_t>::max());
   std::vector<int> prev(total_devs, -1);
   std::vector<bool> visited(total_devs, false);
@@ -315,7 +315,7 @@ EcmpRoutes ShortestPathNetworkRoutingStrategy::get_routes(int src_node,
 }
 
 std::vector<EcmpRoutes>
-ShortestPathNetworkRoutingStrategy::get_routes_from_src(int src_node) {
+    ShortestPathNetworkRoutingStrategy::get_routes_from_src(int src_node) {
   std::vector<uint64_t> dist(total_devs, std::numeric_limits<uint64_t>::max());
   std::vector<int> prev(total_devs, -1);
   std::vector<bool> visited(total_devs, false);
@@ -417,7 +417,7 @@ void ShortestPathNetworkRoutingStrategy::hop_count(int src_node,
 }
 
 std::vector<std::pair<int, int>>
-ShortestPathNetworkRoutingStrategy::hop_count(int src_node) {
+    ShortestPathNetworkRoutingStrategy::hop_count(int src_node) {
   std::vector<uint64_t> dist(total_devs, std::numeric_limits<uint64_t>::max());
   std::vector<int> prev(total_devs, -1);
   std::vector<bool> visited(total_devs, false);
@@ -470,7 +470,7 @@ FlatDegConstraintNetworkTopologyGenerator::
     : num_nodes(num_nodes), degree(degree) {}
 
 ConnectionMatrix
-FlatDegConstraintNetworkTopologyGenerator::generate_topology() const {
+    FlatDegConstraintNetworkTopologyGenerator::generate_topology() const {
   ConnectionMatrix conn = std::vector<int>(num_nodes * num_nodes, 0);
 
   int allocated = 0;

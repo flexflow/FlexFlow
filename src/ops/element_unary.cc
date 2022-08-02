@@ -178,11 +178,17 @@ ElementUnary::ElementUnary(FFModel &model,
     : ElementUnary(
           model, params.op_type, input, params.inplace, name, params.scalar) {}
 
-bool ElementUnary::can_inplace_output(void) { return true; }
+bool ElementUnary::can_inplace_output(void) {
+  return true;
+}
 
-bool ElementUnary::has_inplace_output(void) { return inplace; }
+bool ElementUnary::has_inplace_output(void) {
+  return inplace;
+}
 
-void ElementUnary::do_inplace_output(void) { inplace = true; }
+void ElementUnary::do_inplace_output(void) {
+  inplace = true;
+}
 
 bool ElementUnary::use_cudnn(OperatorType type) {
   if (type == OP_RELU)

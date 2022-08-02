@@ -100,12 +100,13 @@ void BatchMatmul::init(FFModel const &ff) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
-template <int NDIM> void BatchMatmul::init_with_dim(FFModel const &ff) {
+template <int NDIM>
+void BatchMatmul::init_with_dim(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -162,12 +163,13 @@ void BatchMatmul::forward(FFModel const &ff) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
-template <int NDIM> void BatchMatmul::forward_with_dim(FFModel const &ff) {
+template <int NDIM>
+void BatchMatmul::forward_with_dim(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -274,8 +276,8 @@ void BatchMatmul::backward(FFModel const &ff) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -288,7 +290,8 @@ void BatchMatmul::backward(FFModel const &ff) {
   regions[5](I/O): B_grad
   regions[6](I/O): C_grad
 */
-template <int NDIM> void BatchMatmul::backward_with_dim(FFModel const &ff) {
+template <int NDIM>
+void BatchMatmul::backward_with_dim(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -357,10 +360,10 @@ template <int NDIM> void BatchMatmul::backward_with_dim(FFModel const &ff) {
   regions[6](I/O): C_grad
 */
 __host__ void
-BatchMatmul::backward_task(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+    BatchMatmul::backward_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
   // Currently assume C is NULL
   assert(regions.size() == 6);
   assert(task->regions.size() == 6);
@@ -436,7 +439,9 @@ BatchMatmul::backward_task(Task const *task,
                                        batch);
 }
 
-void BatchMatmul::print_layer(FFModel const &ff) { return; }
+void BatchMatmul::print_layer(FFModel const &ff) {
+  return;
+}
 
 bool BatchMatmul::measure_operator_cost(Simulator *sim,
                                         MachineView const &pc,

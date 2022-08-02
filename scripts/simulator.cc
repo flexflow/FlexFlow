@@ -111,7 +111,7 @@ public:
   virtual float update(std::vector<OpConfig> const &vec) = 0;
 
   virtual Rect
-  get_tensor_shape(OpConfig c, int idx, Tensor t, bool is_input) = 0;
+      get_tensor_shape(OpConfig c, int idx, Tensor t, bool is_input) = 0;
   // virtual float xfer(Tensor t, OpConfig config, OpConfig preConfig) = 0;
   virtual OpConfig get_random_config() = 0;
 
@@ -357,7 +357,9 @@ float Pool2D::compute(OpConfig c) {
   return computeTime[idx];
 }
 
-float Pool2D::update(std::vector<OpConfig> const &vec) { return 0; }
+float Pool2D::update(std::vector<OpConfig> const &vec) {
+  return 0;
+}
 
 Rect Pool2D::get_tensor_shape(OpConfig config,
                               int idx,
@@ -420,9 +422,13 @@ private:
   int nConfigs, config_x[MAX_NUM_CONFIGS];
 };
 
-float Concat::compute(OpConfig c) { return 0.02 / c.nParts; }
+float Concat::compute(OpConfig c) {
+  return 0.02 / c.nParts;
+}
 
-float Concat::update(std::vector<OpConfig> const &vec) { return 0; }
+float Concat::update(std::vector<OpConfig> const &vec) {
+  return 0;
+}
 
 Rect Concat::get_tensor_shape(OpConfig config,
                               int idx,
@@ -479,9 +485,13 @@ private:
   int nConfigs, config_x[MAX_NUM_CONFIGS];
 };
 
-float Flat::compute(OpConfig c) { return 0; }
+float Flat::compute(OpConfig c) {
+  return 0;
+}
 
-float Flat::update(std::vector<OpConfig> const &vec) { return 0; }
+float Flat::update(std::vector<OpConfig> const &vec) {
+  return 0;
+}
 
 Rect Flat::get_tensor_shape(OpConfig config, int idx, Tensor t, bool is_input) {
   assert(config.nDims == 1);
@@ -850,7 +860,9 @@ private:
   int nConfigs, config_x[MAX_NUM_CONFIGS];
 };
 
-float Embed::compute(OpConfig c) { return 0.04f / c.nParts + 0.01; }
+float Embed::compute(OpConfig c) {
+  return 0.04f / c.nParts + 0.01;
+}
 
 float Embed::update(std::vector<OpConfig> const &vec) {
   int used[NUM_WORKERS];
@@ -1432,8 +1444,10 @@ void build_inception_model() {
   }
 }
 
-Tensor
-DenseBlock(Tensor input, int numLayers, int growthRate, std::string prefix) {
+Tensor DenseBlock(Tensor input,
+                  int numLayers,
+                  int growthRate,
+                  std::string prefix) {
   Tensor t, last = input;
   for (int i = 0; i < numLayers; i++) {
     t = add_conv_layer(

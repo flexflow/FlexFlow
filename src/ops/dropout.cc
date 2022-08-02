@@ -148,13 +148,14 @@ void Dropout::map_output_tensors(FFModel &model) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default: {
-    assert(false && "Unsupported dim");
-  }
+    default: {
+      assert(false && "Unsupported dim");
+    }
   }
 }
 
-template <int NDIM> void Dropout::map_output_tensors_with_dim(FFModel &model) {
+template <int NDIM>
+void Dropout::map_output_tensors_with_dim(FFModel &model) {
   // Retrive the task indexspace for the op
   task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
   Context ctx = model.config.lg_ctx;

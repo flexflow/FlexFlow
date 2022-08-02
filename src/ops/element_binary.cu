@@ -28,15 +28,15 @@ void ElementBinary::init_kernel(ElementBinaryMeta *m,
                                 Domain const &output_domain) {
   cudnnOpTensorOp_t mode;
   switch (m->op_type) {
-  case OP_EW_ADD:
-  case OP_EW_SUB:
-    mode = CUDNN_OP_TENSOR_ADD;
-    break;
-  case OP_EW_MUL:
-    mode = CUDNN_OP_TENSOR_MUL;
-    break;
-  default:
-    assert(false);
+    case OP_EW_ADD:
+    case OP_EW_SUB:
+      mode = CUDNN_OP_TENSOR_ADD;
+      break;
+    case OP_EW_MUL:
+      mode = CUDNN_OP_TENSOR_MUL;
+      break;
+    default:
+      assert(false);
   }
   checkCUDNN(cudnnSetOpTensorDescriptor(
       m->opDesc, mode, CUDNN_DATA_FLOAT, CUDNN_PROPAGATE_NAN));
@@ -62,32 +62,32 @@ __global__ void elewise_binary_forward_kernel(coord_t volume,
                                               float const *in2,
                                               float *out) {
   switch (type) {
-  case OP_EW_ADD: {
-    CUDA_KERNEL_LOOP(i, volume) {
-      out[i] = alpha * (in1[i] + in2[i]) + beta * out[i];
+    case OP_EW_ADD: {
+      CUDA_KERNEL_LOOP(i, volume) {
+        out[i] = alpha * (in1[i] + in2[i]) + beta * out[i];
+      }
+      break;
     }
-    break;
-  }
-  case OP_EW_SUB: {
-    CUDA_KERNEL_LOOP(i, volume) {
-      out[i] = alpha * (in1[i] - in2[i]) + beta * out[i];
+    case OP_EW_SUB: {
+      CUDA_KERNEL_LOOP(i, volume) {
+        out[i] = alpha * (in1[i] - in2[i]) + beta * out[i];
+      }
+      break;
     }
-    break;
-  }
-  case OP_EW_MUL: {
-    CUDA_KERNEL_LOOP(i, volume) {
-      out[i] = alpha * in1[i] * in2[i] + beta * out[i];
+    case OP_EW_MUL: {
+      CUDA_KERNEL_LOOP(i, volume) {
+        out[i] = alpha * in1[i] * in2[i] + beta * out[i];
+      }
+      break;
     }
-    break;
-  }
-  case OP_EW_DIV: {
-    CUDA_KERNEL_LOOP(i, volume) {
-      out[i] = alpha * (in1[i] / in2[i]) + beta * out[i];
+    case OP_EW_DIV: {
+      CUDA_KERNEL_LOOP(i, volume) {
+        out[i] = alpha * (in1[i] / in2[i]) + beta * out[i];
+      }
+      break;
     }
-    break;
-  }
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 
@@ -101,14 +101,14 @@ void ElementBinary::forward_kernel(ElementBinaryMeta const *m,
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 0.0f;
   switch (m->op_type) {
-  case OP_EW_SUB:
-    alpha2 = -1.0f;
-    break;
-  case OP_EW_ADD:
-  case OP_EW_MUL:
-    break;
-  default:
-    assert(false);
+    case OP_EW_SUB:
+      alpha2 = -1.0f;
+      break;
+    case OP_EW_ADD:
+    case OP_EW_MUL:
+      break;
+    default:
+      assert(false);
   }
   // cudnn currently does not support broadcasting the first input in
   // cudnnOpTensor
@@ -179,20 +179,20 @@ void ElementBinary::forward_kernel_wrapper(ElementBinaryMeta const *m,
     cudaEventDestroy(t_end);
     char const *opName;
     switch (m->op_type) {
-    case OP_EW_ADD:
-      opName = "Add";
-      break;
-    case OP_EW_SUB:
-      opName = "Sub";
-      break;
-    case OP_EW_MUL:
-      opName = "Mul";
-      break;
-    case OP_EW_DIV:
-      opName = "Div";
-      break;
-    default:
-      assert(false);
+      case OP_EW_ADD:
+        opName = "Add";
+        break;
+      case OP_EW_SUB:
+        opName = "Sub";
+        break;
+      case OP_EW_MUL:
+        opName = "Mul";
+        break;
+      case OP_EW_DIV:
+        opName = "Div";
+        break;
+      default:
+        assert(false);
     }
     log_measure.debug("[%s] forward time (CF) = %.2fms\n", opName, elapsed);
   }
@@ -209,29 +209,29 @@ __global__ void elewise_binary_backward_kernel(coord_t volume,
                                                float *in2_grad) {
   CUDA_KERNEL_LOOP(i, volume) {
     switch (type) {
-    case OP_EW_ADD: {
-      in1_grad[i] = alpha * out_grad[i] + beta * in1_grad[i];
-      in2_grad[i] = alpha * out_grad[i] + beta * in2_grad[i];
-      break;
-    }
-    case OP_EW_SUB: {
-      in1_grad[i] = alpha * out_grad[i] + beta * in1_grad[i];
-      in2_grad[i] = -alpha * out_grad[i] + beta * in2_grad[i];
-      break;
-    }
-    case OP_EW_MUL: {
-      in1_grad[i] = alpha * out_grad[i] * in2[i] + beta * in1_grad[i];
-      in2_grad[i] = alpha * out_grad[i] * in1[i] + beta * in2_grad[i];
-      break;
-    }
-    case OP_EW_DIV: {
-      in1_grad[i] = alpha * out_grad[i] / in2[i] + beta * in1_grad[i];
-      in2_grad[i] = -alpha * out_grad[i] * in1[i] / (in2[i] * in2[i]) +
-                    beta * in2_grad[i];
-      break;
-    }
-    default:
-      assert(false);
+      case OP_EW_ADD: {
+        in1_grad[i] = alpha * out_grad[i] + beta * in1_grad[i];
+        in2_grad[i] = alpha * out_grad[i] + beta * in2_grad[i];
+        break;
+      }
+      case OP_EW_SUB: {
+        in1_grad[i] = alpha * out_grad[i] + beta * in1_grad[i];
+        in2_grad[i] = -alpha * out_grad[i] + beta * in2_grad[i];
+        break;
+      }
+      case OP_EW_MUL: {
+        in1_grad[i] = alpha * out_grad[i] * in2[i] + beta * in1_grad[i];
+        in2_grad[i] = alpha * out_grad[i] * in1[i] + beta * in2_grad[i];
+        break;
+      }
+      case OP_EW_DIV: {
+        in1_grad[i] = alpha * out_grad[i] / in2[i] + beta * in1_grad[i];
+        in2_grad[i] = -alpha * out_grad[i] * in1[i] / (in2[i] * in2[i]) +
+                      beta * in2_grad[i];
+        break;
+      }
+      default:
+        assert(false);
     }
   }
 }
@@ -362,20 +362,20 @@ void ElementBinary::backward_kernel_wrapper(ElementBinaryMeta const *m,
     cudaEventDestroy(t_end);
     char const *opName;
     switch (m->op_type) {
-    case OP_EW_ADD:
-      opName = "Add";
-      break;
-    case OP_EW_SUB:
-      opName = "Sub";
-      break;
-    case OP_EW_MUL:
-      opName = "Mul";
-      break;
-    case OP_EW_DIV:
-      opName = "Div";
-      break;
-    default:
-      assert(false);
+      case OP_EW_ADD:
+        opName = "Add";
+        break;
+      case OP_EW_SUB:
+        opName = "Sub";
+        break;
+      case OP_EW_MUL:
+        opName = "Mul";
+        break;
+      case OP_EW_DIV:
+        opName = "Div";
+        break;
+      default:
+        assert(false);
     }
     printf("[%s] backward time (CB) = %.2fms\n", opName, elapsed);
   }

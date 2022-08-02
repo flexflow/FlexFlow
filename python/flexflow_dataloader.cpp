@@ -236,11 +236,11 @@ void SingleDataLoader::load_input_with_dim(
 }
 #endif
 
-template void
-SingleDataLoader::load_input<float>(Task const *task,
-                                    std::vector<PhysicalRegion> const &regions,
-                                    Context ctx,
-                                    Runtime *runtime);
+template void SingleDataLoader::load_input<float>(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime);
 template void SingleDataLoader::load_input<int32_t>(
     Task const *task,
     std::vector<PhysicalRegion> const &regions,

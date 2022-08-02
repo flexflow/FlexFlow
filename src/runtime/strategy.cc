@@ -118,13 +118,13 @@ bool load_strategies_from_file(
     ParallelConfig::DeviceType device_type =
         static_cast<ParallelConfig::DeviceType>(device_type_);
     switch (device_type) {
-    case ParallelConfig::GPU:
-    case ParallelConfig::CPU:
-      config.device_type = device_type;
-      break;
-    default:
-      fprintf(stderr, "Unsupported Device Type\n");
-      assert(false);
+      case ParallelConfig::GPU:
+      case ParallelConfig::CPU:
+        config.device_type = device_type;
+        break;
+      default:
+        fprintf(stderr, "Unsupported Device Type\n");
+        assert(false);
     }
     input >> config.nDims;
     // printf("ndims %d\n", config.nDims);
@@ -168,13 +168,13 @@ bool save_strategies_to_file(
     output << it->first << std::endl;
     ParallelConfig config = it->second;
     switch (config.device_type) {
-    case ParallelConfig::GPU:
-    case ParallelConfig::CPU:
-      output << config.device_type << std::endl;
-      break;
-    default:
-      fprintf(stderr, "Unsupported Device Type\n");
-      assert(false);
+      case ParallelConfig::GPU:
+      case ParallelConfig::CPU:
+        output << config.device_type << std::endl;
+        break;
+      default:
+        fprintf(stderr, "Unsupported Device Type\n");
+        assert(false);
     }
     int n = 1;
     output << config.nDims << std::endl;

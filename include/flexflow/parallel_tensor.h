@@ -107,7 +107,8 @@ std::ostream &operator<<(std::ostream &, ParallelTensorShape const &);
 }; // namespace FlexFlow
 
 namespace std {
-template <> struct hash<FlexFlow::ParallelTensorShape> {
+template <>
+struct hash<FlexFlow::ParallelTensorShape> {
   size_t operator()(FlexFlow::ParallelTensorShape const &) const;
 };
 } // namespace std
@@ -130,7 +131,8 @@ struct ParallelTensorBase {
   // bool operator==(const Tensor& rhs) const;
   void inline_map(FFConfig &config);
   void inline_unmap(FFConfig &config);
-  template <typename T> T *get_raw_ptr(FFConfig &config);
+  template <typename T>
+  T *get_raw_ptr(FFConfig &config);
   void attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major);
   void detach_raw_ptr(FFConfig &config);
   bool get_input_sub_tensor(ParallelConfig const &pc,
@@ -152,8 +154,9 @@ struct ParallelTensorBase {
   void print(std::string const &name) const;
   static bool update_parallel_ids(int numdim, ParallelDim *dims);
   template <typename T>
-  bool
-  set_tensor(FFModel const *model, std::vector<int> const &dims, const T *data);
+  bool set_tensor(FFModel const *model,
+                  std::vector<int> const &dims,
+                  const T *data);
   template <typename T>
   bool get_tensor(FFModel const *model, T *data, bool get_parameters);
   ParallelTensorShape get_shape() const;

@@ -64,10 +64,10 @@ public:
                          Legion::Context ctx,
                          Legion::Runtime *runtime);
   static void
-  load_entire_dataset(Legion::Task const *task,
-                      std::vector<Legion::PhysicalRegion> const &regions,
-                      Legion::Context ctx,
-                      Legion::Runtime *runtime);
+      load_entire_dataset(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
   static void load_entire_dataset_from_numpy(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,

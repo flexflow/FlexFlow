@@ -56,10 +56,10 @@ public:
                                  float *v_ptr);
 #ifdef FF_USE_NCCL
   static void
-  nccl_update_task(Legion::Task const *task,
-                   std::vector<Legion::PhysicalRegion> const &regions,
-                   Legion::Context ctx,
-                   Legion::Runtime *runtime);
+      nccl_update_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx,
+                       Legion::Runtime *runtime);
   static void nccl_update_task_gpu(SGDOptimizer const *op,
                                    OpMeta const *meta,
                                    float const *w_grad_ptr,
@@ -99,10 +99,10 @@ public:
                                  float *m_ptr);
 #ifdef FF_USE_NCCL
   static void
-  nccl_update_task(Legion::Task const *task,
-                   std::vector<Legion::PhysicalRegion> const &regions,
-                   Legion::Context ctx,
-                   Legion::Runtime *runtime);
+      nccl_update_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx,
+                       Legion::Runtime *runtime);
   static void nccl_update_task_gpu(AdamOptimizer const *op,
                                    OpMeta const *meta,
                                    float const *w_grad_ptr,

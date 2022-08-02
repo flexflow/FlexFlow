@@ -274,8 +274,8 @@ void FusedOp::init(FFModel const &ff) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
   IndexLauncher launcher(FUSEDOP_INIT_TASK_ID,
                          parallel_is,
@@ -299,8 +299,8 @@ void FusedOp::init(FFModel const &ff) {
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-  default:
-    assert(false);
+    default:
+      assert(false);
   }
 }
 

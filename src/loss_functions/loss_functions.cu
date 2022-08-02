@@ -21,11 +21,11 @@ namespace FlexFlow {
 using namespace Legion;
 
 __global__ void
-sparse_categorical_crossentropy_loss_backward(float *logit_grad,
-                                              int const *label,
-                                              coord_t num_samples,
-                                              coord_t num_classes,
-                                              int const k) {
+    sparse_categorical_crossentropy_loss_backward(float *logit_grad,
+                                                  int const *label,
+                                                  coord_t num_samples,
+                                                  coord_t num_classes,
+                                                  int const k) {
   CUDA_KERNEL_LOOP(i, num_samples) {
     int label_idx = label[i / k];
     logit_grad[i * num_classes + label_idx] -= 1.0f;
@@ -36,14 +36,18 @@ __global__ void categorical_crossentropy_loss_backward(float *logit_grad,
                                                        float const *logit,
                                                        float const *label,
                                                        coord_t num_elements) {
-  CUDA_KERNEL_LOOP(i, num_elements) { logit_grad[i] = logit[i] - label[i]; }
+  CUDA_KERNEL_LOOP(i, num_elements) {
+    logit_grad[i] = logit[i] - label[i];
+  }
 }
 
 __global__ void mean_squared_error_avg_loss_backward(float *logit_grad,
                                                      float const *logit,
                                                      float const *label,
                                                      coord_t num_elements) {
-  CUDA_KERNEL_LOOP(i, num_elements) { logit_grad[i] = logit[i] - label[i]; }
+  CUDA_KERNEL_LOOP(i, num_elements) {
+    logit_grad[i] = logit[i] - label[i];
+  }
 }
 
 void Loss::sparse_categorical_crossentropy_loss_backward_kernel_wrapper(

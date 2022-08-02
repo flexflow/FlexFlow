@@ -51,30 +51,30 @@ FusedParallelOp::FusedParallelOp(
   for (int i = 0; i < num_parallel_ops; i++) {
     ParallelOpInfo info = parallel_ops[i];
     switch (info.op_type) {
-    case OP_REPARTITION: {
-      dims[info.parallel_dim].degree *= info.parallel_degree;
-      break;
-    }
-    case OP_COMBINE: {
-      assert(dims[info.parallel_dim].degree % info.parallel_degree == 0);
-      dims[info.parallel_dim].degree /= info.parallel_degree;
-      break;
-    }
-    case OP_REPLICATE: {
-      dims[info.parallel_dim].size *= info.parallel_degree;
-      dims[info.parallel_dim].degree *= info.parallel_degree;
-      break;
-    }
-    case OP_REDUCTION: {
-      assert(dims[info.parallel_dim].degree % info.parallel_degree == 0);
-      assert(dims[info.parallel_dim].size % info.parallel_degree == 0);
-      dims[info.parallel_dim].degree /= info.parallel_degree;
-      dims[info.parallel_dim].size /= info.parallel_degree;
-      break;
-    }
-    default: {
-      assert(false && "Unsupported parallel op");
-    }
+      case OP_REPARTITION: {
+        dims[info.parallel_dim].degree *= info.parallel_degree;
+        break;
+      }
+      case OP_COMBINE: {
+        assert(dims[info.parallel_dim].degree % info.parallel_degree == 0);
+        dims[info.parallel_dim].degree /= info.parallel_degree;
+        break;
+      }
+      case OP_REPLICATE: {
+        dims[info.parallel_dim].size *= info.parallel_degree;
+        dims[info.parallel_dim].degree *= info.parallel_degree;
+        break;
+      }
+      case OP_REDUCTION: {
+        assert(dims[info.parallel_dim].degree % info.parallel_degree == 0);
+        assert(dims[info.parallel_dim].size % info.parallel_degree == 0);
+        dims[info.parallel_dim].degree /= info.parallel_degree;
+        dims[info.parallel_dim].size /= info.parallel_degree;
+        break;
+      }
+      default: {
+        assert(false && "Unsupported parallel op");
+      }
     }
     ParallelTensorBase::update_parallel_ids(numdim, dims);
   }

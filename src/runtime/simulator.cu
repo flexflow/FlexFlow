@@ -115,10 +115,10 @@ Simulator::~Simulator(void) {
 }
 
 __host__ void
-Simulator::strategy_search_task(Task const *task,
-                                std::vector<PhysicalRegion> const &regions,
-                                Context ctx,
-                                Runtime *runtime) {
+    Simulator::strategy_search_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   // This method should no longer be used
   assert(false);
 #ifdef DEADCODE

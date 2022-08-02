@@ -188,8 +188,9 @@ public:
                         int num_heads);
   OpX *create_softmax(TensorX const &input, int softmax_dim);
   // Parallel Ops
-  OpX *
-  create_repartition(TensorX const &input, int repartition_dim, int num_parts);
+  OpX *create_repartition(TensorX const &input,
+                          int repartition_dim,
+                          int num_parts);
   OpX *create_replicate(TensorX const &input, int replicate_dim, int num_parts);
   OpX *create_reduction(TensorX const &input, int reduction_dim, int num_parts);
   OpX *create_combine(TensorX const &input, int combine_dim, int num_parts);
@@ -237,11 +238,11 @@ public:
                       bool only_data_parallel,
                       std::unique_ptr<Graph> &best_graph,
                       std::unordered_map<Node, MachineView> &optimal_views);
-  void
-  graph_optimize_no_split(size_t budget,
-                          bool only_data_parallel,
-                          std::unique_ptr<Graph> &best_graph,
-                          std::unordered_map<Node, MachineView> &optimal_views);
+  void graph_optimize_no_split(
+      size_t budget,
+      bool only_data_parallel,
+      std::unique_ptr<Graph> &best_graph,
+      std::unordered_map<Node, MachineView> &optimal_views);
 
 private:
   template <typename T>
@@ -271,11 +272,11 @@ private:
   void subgraph_optimize(Graph *subgraph);
 
   std::unique_ptr<Graph>
-  base_optimize(Graph const *,
-                SimplificationSettings const &simplification_settings);
+      base_optimize(Graph const *,
+                    SimplificationSettings const &simplification_settings);
 
   std::vector<ParallelTensorShape>
-  possible_split_output_tensor_shapes(Node const &) const;
+      possible_split_output_tensor_shapes(Node const &) const;
 
   void find_rewrite_matches(Graph const *graph,
                             std::vector<GraphXferMatch> &matches) const;
@@ -285,7 +286,8 @@ private:
   template <typename T>
   tl::optional<T> try_get_cost_from_cache(size_t hash) const;
 
-  template <typename T> void try_cache_result(size_t hash, T const &value);
+  template <typename T>
+  void try_cache_result(size_t hash, T const &value);
 
   template <typename T>
   T get_optimal_cost(std::unique_ptr<Graph> optimized) const;

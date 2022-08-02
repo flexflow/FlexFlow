@@ -54,14 +54,16 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override { assert(0); }
+  void print_layer(FFModel const &model) override {
+    assert(0);
+  }
   bool can_inplace_output() override;
   bool has_inplace_output() override;
   void do_inplace_output() override;
   static Op *
-  create_operator_from_layer(FFModel &model,
-                             Layer const *layer,
-                             std::vector<ParallelTensor> const &inputs);
+      create_operator_from_layer(FFModel &model,
+                                 Layer const *layer,
+                                 std::vector<ParallelTensor> const &inputs);
 
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
@@ -77,16 +79,16 @@ public:
                             Legion::Runtime *runtime);
   template <typename T>
   static void
-  forward_task_with_type(Legion::Task const *task,
-                         std::vector<Legion::PhysicalRegion> const &regions,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime);
+      forward_task_with_type(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   template <typename T>
-  static void
-  backward_task_with_type(Legion::Task const *task,
-                          std::vector<Legion::PhysicalRegion> const &regions,
-                          Legion::Context ctx,
-                          Legion::Runtime *runtime);
+  static void backward_task_with_type(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
   static void init_kernel(ElementUnaryMeta *m,
                           Legion::Domain const &input_domain,
                           Legion::Domain const &output_domain);
@@ -142,7 +144,8 @@ public:
 }; // namespace FlexFlow
 
 namespace std {
-template <> struct hash<FlexFlow::ElementUnaryParams> {
+template <>
+struct hash<FlexFlow::ElementUnaryParams> {
   size_t operator()(FlexFlow::ElementUnaryParams const &) const;
 };
 } // namespace std

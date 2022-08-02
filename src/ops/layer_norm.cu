@@ -49,7 +49,8 @@ __device__ __forceinline__ T WARP_SHFL_DOWN(T value,
 #endif
 }
 
-template <typename T> __inline__ __device__ T WarpReduceSum(T val) {
+template <typename T>
+__inline__ __device__ T WarpReduceSum(T val) {
 #pragma unroll
   for (int offset = (C10_WARP_SIZE >> 1); offset > 0; offset >>= 1) {
     val += WARP_SHFL_DOWN(val, offset);
@@ -57,7 +58,8 @@ template <typename T> __inline__ __device__ T WarpReduceSum(T val) {
   return val;
 }
 
-template <typename T> __inline__ __device__ T BlockReduceSum(T val, T *shared) {
+template <typename T>
+__inline__ __device__ T BlockReduceSum(T val, T *shared) {
   int const lid = threadIdx.x % C10_WARP_SIZE;
   int const wid = threadIdx.x / C10_WARP_SIZE;
   val = WarpReduceSum(val);
@@ -75,7 +77,7 @@ template <typename T> __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 
 template <typename T>
 __global__ void
-RowwiseMomentsCUDAKernel(int64_t N, T eps, const T *X, T *mean, T *rstd) {
+    RowwiseMomentsCUDAKernel(int64_t N, T eps, const T *X, T *mean, T *rstd) {
   __shared__ T m_shared[C10_WARP_SIZE];
   __shared__ T v_shared[C10_WARP_SIZE];
   const int64_t i = blockIdx.x;
@@ -414,12 +416,12 @@ template void LayerNorm::forward_kernel_wrapper<float>(LayerNormMeta const *m,
                                                        float *gamma_ptr,
                                                        float *beta_ptr);
 template void
-LayerNorm::backward_kernel_wrapper<float>(LayerNormMeta const *m,
-                                          float const *output_grad_ptr,
-                                          float const *input_ptr,
-                                          float *input_grad_ptr,
-                                          float const *gamma_ptr,
-                                          float *gamma_grad_ptr,
-                                          float *beta_grad_ptr);
+    LayerNorm::backward_kernel_wrapper<float>(LayerNormMeta const *m,
+                                              float const *output_grad_ptr,
+                                              float const *input_ptr,
+                                              float *input_grad_ptr,
+                                              float const *gamma_ptr,
+                                              float *gamma_grad_ptr,
+                                              float *beta_grad_ptr);
 
 }; // namespace FlexFlow

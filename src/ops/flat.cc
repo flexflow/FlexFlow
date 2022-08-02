@@ -311,7 +311,9 @@ Domain Flat::get_input_tensor_shape(ParallelConfig const &pc,
   return d;
 }
 
-void Flat::serialize(Legion::Serializer &sez) const { return; }
+void Flat::serialize(Legion::Serializer &sez) const {
+  return;
+}
 
 bool Flat::measure_operator_cost(Simulator *sim,
                                  MachineView const &mv,

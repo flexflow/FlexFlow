@@ -150,45 +150,45 @@ flexflow_tensor_t flexflow_model_add_mean(flexflow_model_t handle_,
                                           char const *name);
 
 flexflow_tensor_t
-flexflow_model_add_conv2d(flexflow_model_t handle,
-                          const flexflow_tensor_t input,
-                          int out_channels,
-                          int kernel_h,
-                          int kernel_w,
-                          int stride_h,
-                          int stride_w,
-                          int padding_h,
-                          int padding_w,
-                          enum ActiMode activation /* AC_MODE_NONE */,
-                          int groups,
-                          bool use_bias /* True */,
-                          flexflow_op_t shared_op,
-                          flexflow_initializer_t kernel_initializer,
-                          flexflow_initializer_t bias_initializer,
-                          char const *name);
+    flexflow_model_add_conv2d(flexflow_model_t handle,
+                              const flexflow_tensor_t input,
+                              int out_channels,
+                              int kernel_h,
+                              int kernel_w,
+                              int stride_h,
+                              int stride_w,
+                              int padding_h,
+                              int padding_w,
+                              enum ActiMode activation /* AC_MODE_NONE */,
+                              int groups,
+                              bool use_bias /* True */,
+                              flexflow_op_t shared_op,
+                              flexflow_initializer_t kernel_initializer,
+                              flexflow_initializer_t bias_initializer,
+                              char const *name);
 
 flexflow_tensor_t
-flexflow_model_add_embedding(flexflow_model_t handle,
-                             const flexflow_tensor_t input,
-                             int num_entires,
-                             int out_dim,
-                             enum AggrMode aggr,
-                             flexflow_op_t shared_op,
-                             flexflow_initializer_t kernel_initializer,
-                             char const *name);
+    flexflow_model_add_embedding(flexflow_model_t handle,
+                                 const flexflow_tensor_t input,
+                                 int num_entires,
+                                 int out_dim,
+                                 enum AggrMode aggr,
+                                 flexflow_op_t shared_op,
+                                 flexflow_initializer_t kernel_initializer,
+                                 char const *name);
 
 flexflow_tensor_t
-flexflow_model_add_pool2d(flexflow_model_t handle,
-                          flexflow_tensor_t input,
-                          int kernel_h,
-                          int kernel_w,
-                          int stride_h,
-                          int stride_w,
-                          int padding_h,
-                          int padding_w,
-                          enum PoolType type /* POOL_MAX */,
-                          enum ActiMode activation /* AC_MODE_NONE */,
-                          char const *name);
+    flexflow_model_add_pool2d(flexflow_model_t handle,
+                              flexflow_tensor_t input,
+                              int kernel_h,
+                              int kernel_w,
+                              int stride_h,
+                              int stride_w,
+                              int padding_h,
+                              int padding_w,
+                              enum PoolType type /* POOL_MAX */,
+                              enum ActiMode activation /* AC_MODE_NONE */,
+                              char const *name);
 
 flexflow_tensor_t flexflow_model_add_batch_norm(flexflow_model_t handle,
                                                 const flexflow_tensor_t input,
@@ -204,23 +204,23 @@ flexflow_tensor_t flexflow_model_add_layer_norm(flexflow_model_t handle,
                                                 char const *name);
 
 flexflow_tensor_t
-flexflow_model_add_batch_matmul(flexflow_model_t handle,
-                                const flexflow_tensor_t a,
-                                const flexflow_tensor_t b,
-                                int a_seq_length_dim /* -1 */,
-                                int b_seq_length_dim /* -1 */);
+    flexflow_model_add_batch_matmul(flexflow_model_t handle,
+                                    const flexflow_tensor_t a,
+                                    const flexflow_tensor_t b,
+                                    int a_seq_length_dim /* -1 */,
+                                    int b_seq_length_dim /* -1 */);
 
 flexflow_tensor_t
-flexflow_model_add_dense(flexflow_model_t handle,
-                         const flexflow_tensor_t input,
-                         int out_dim,
-                         enum ActiMode activation /* AC_MODE_NONE */,
-                         bool use_bias /* true */,
-                         enum DataType data_type /*DT_FLOAT*/,
-                         flexflow_op_t shared_op,
-                         flexflow_initializer_t kernel_initializer,
-                         flexflow_initializer_t bias_initializer,
-                         char const *name);
+    flexflow_model_add_dense(flexflow_model_t handle,
+                             const flexflow_tensor_t input,
+                             int out_dim,
+                             enum ActiMode activation /* AC_MODE_NONE */,
+                             bool use_bias /* true */,
+                             enum DataType data_type /*DT_FLOAT*/,
+                             flexflow_op_t shared_op,
+                             flexflow_initializer_t kernel_initializer,
+                             flexflow_initializer_t bias_initializer,
+                             char const *name);
 
 flexflow_tensor_t flexflow_model_add_concat(flexflow_model_t handle,
                                             int n,
@@ -268,11 +268,11 @@ flexflow_tensor_t flexflow_model_add_relu(flexflow_model_t handle,
                                           char const *name);
 
 flexflow_tensor_t
-flexflow_model_add_scalar_multiply(flexflow_model_t handle,
-                                   const flexflow_tensor_t input,
-                                   float const scalar,
-                                   bool inplace,
-                                   char const *name);
+    flexflow_model_add_scalar_multiply(flexflow_model_t handle,
+                                       const flexflow_tensor_t input,
+                                       float const scalar,
+                                       bool inplace,
+                                       char const *name);
 
 flexflow_tensor_t flexflow_model_add_scalar_add(flexflow_model_t handle,
                                                 const flexflow_tensor_t input,
@@ -287,11 +287,11 @@ flexflow_tensor_t flexflow_model_add_scalar_sub(flexflow_model_t handle,
                                                 char const *name);
 
 flexflow_tensor_t
-flexflow_model_add_scalar_truediv(flexflow_model_t handle,
-                                  const flexflow_tensor_t input,
-                                  float const scalar,
-                                  bool inplace,
-                                  char const *name);
+    flexflow_model_add_scalar_truediv(flexflow_model_t handle,
+                                      const flexflow_tensor_t input,
+                                      float const scalar,
+                                      bool inplace,
+                                      char const *name);
 
 flexflow_tensor_t flexflow_model_add_gelu(flexflow_model_t handle,
                                           const flexflow_tensor_t input,
@@ -353,7 +353,7 @@ flexflow_tensor_t flexflow_model_get_parameter_by_id(flexflow_model_t handle,
                                                      int layer_id);
 
 flexflow_perf_metrics_t
-flexflow_model_get_perf_metrics(flexflow_model_t handle);
+    flexflow_model_get_perf_metrics(flexflow_model_t handle);
 
 // -----------------------------------------------------------------------
 // Tensor
@@ -472,11 +472,11 @@ flexflow_parameter_get_weights_float(
 // -----------------------------------------------------------------------
 
 flexflow_sgd_optimizer_t
-flexflow_sgd_optimizer_create(flexflow_model_t model,
-                              double lr,       /* 0.01f */
-                              double momentum, /* 0.0f */
-                              bool nesterov,   /* false */
-                              double weight_decay /* 0.0f */);
+    flexflow_sgd_optimizer_create(flexflow_model_t model,
+                                  double lr,       /* 0.01f */
+                                  double momentum, /* 0.0f */
+                                  bool nesterov,   /* false */
+                                  double weight_decay /* 0.0f */);
 
 void flexflow_sgd_optimizer_destroy(flexflow_sgd_optimizer_t handle);
 
@@ -487,12 +487,12 @@ void flexflow_sgd_optimizer_set_lr(flexflow_sgd_optimizer_t handle, double lr);
 // -----------------------------------------------------------------------
 
 flexflow_adam_optimizer_t
-flexflow_adam_optimizer_create(flexflow_model_t model,
-                               double alpha /*0.001f*/,
-                               double beta1 /*0.9f*/,
-                               double beta2 /*0.999f*/,
-                               double weight_decay /*0.0f*/,
-                               double epsilon /*1e-8*/);
+    flexflow_adam_optimizer_create(flexflow_model_t model,
+                                   double alpha /*0.001f*/,
+                                   double beta1 /*0.9f*/,
+                                   double beta2 /*0.999f*/,
+                                   double weight_decay /*0.0f*/,
+                                   double epsilon /*1e-8*/);
 
 void flexflow_adam_optimizer_destroy(flexflow_adam_optimizer_t handle);
 
@@ -509,7 +509,7 @@ flexflow_initializer_t flexflow_initializer_create_null();
 // -----------------------------------------------------------------------
 
 flexflow_glorot_uniform_initializer_t
-flexflow_glorot_uniform_initializer_create(int seed);
+    flexflow_glorot_uniform_initializer_create(int seed);
 
 void flexflow_glorot_uniform_initializer_destroy(
     flexflow_glorot_uniform_initializer_t handle);
@@ -527,7 +527,7 @@ void flexflow_zero_initializer_destroy(flexflow_zero_initializer_t handle);
 // -----------------------------------------------------------------------
 
 flexflow_uniform_initializer_t
-flexflow_uniform_initializer_create(int seed, float min, float max);
+    flexflow_uniform_initializer_create(int seed, float min, float max);
 
 void flexflow_uniform_initializer_destroy(
     flexflow_uniform_initializer_t handle);
@@ -537,7 +537,7 @@ void flexflow_uniform_initializer_destroy(
 // -----------------------------------------------------------------------
 
 flexflow_norm_initializer_t
-flexflow_norm_initializer_create(int seed, float mean, float stddev);
+    flexflow_norm_initializer_create(int seed, float mean, float stddev);
 
 void flexflow_norm_initializer_destroy(flexflow_norm_initializer_t handle);
 
@@ -567,10 +567,10 @@ flexflow_dlrm_config_t flexflow_dlrm_config_create();
 void flexflow_dlrm_config_destroy(flexflow_dlrm_config_t handle);
 
 char const *
-flexflow_dlrm_config_get_dataset_path(flexflow_dlrm_config_t handle);
+    flexflow_dlrm_config_get_dataset_path(flexflow_dlrm_config_t handle);
 
 char const *
-flexflow_dlrm_config_get_arch_interaction_op(flexflow_dlrm_config_t handle);
+    flexflow_dlrm_config_get_arch_interaction_op(flexflow_dlrm_config_t handle);
 
 int flexflow_dlrm_config_get_sparse_feature_size(flexflow_dlrm_config_t handle);
 
@@ -593,18 +593,18 @@ int *flexflow_dlrm_config_get_embedding_size(flexflow_dlrm_config_t handle);
 // -----------------------------------------------------------------------
 
 flexflow_dataloader_4d_t
-flexflow_dataloader_4d_create(flexflow_model_t ffmodel,
-                              flexflow_net_config_t netconfig,
-                              flexflow_tensor_t input,
-                              flexflow_tensor_t label);
+    flexflow_dataloader_4d_create(flexflow_model_t ffmodel,
+                                  flexflow_net_config_t netconfig,
+                                  flexflow_tensor_t input,
+                                  flexflow_tensor_t label);
 
 flexflow_dataloader_4d_t
-flexflow_dataloader_4d_create_v2(flexflow_model_t ffmodel,
-                                 flexflow_tensor_t input,
-                                 flexflow_tensor_t label,
-                                 flexflow_tensor_t full_input,
-                                 flexflow_tensor_t full_label,
-                                 int num_samples);
+    flexflow_dataloader_4d_create_v2(flexflow_model_t ffmodel,
+                                     flexflow_tensor_t input,
+                                     flexflow_tensor_t label,
+                                     flexflow_tensor_t full_input,
+                                     flexflow_tensor_t full_label,
+                                     int num_samples);
 
 void flexflow_dataloader_4d_destroy(flexflow_dataloader_4d_t handle);
 
@@ -619,12 +619,12 @@ void flowflow_dataloader_4d_next_batch(flexflow_dataloader_4d_t handle,
                                        flexflow_model_t ffmodel);
 
 flexflow_dataloader_2d_t
-flexflow_dataloader_2d_create_v2(flexflow_model_t ffmodel,
-                                 flexflow_tensor_t input,
-                                 flexflow_tensor_t label,
-                                 flexflow_tensor_t full_input,
-                                 flexflow_tensor_t full_label,
-                                 int num_samples);
+    flexflow_dataloader_2d_create_v2(flexflow_model_t ffmodel,
+                                     flexflow_tensor_t input,
+                                     flexflow_tensor_t label,
+                                     flexflow_tensor_t full_input,
+                                     flexflow_tensor_t full_label,
+                                     int num_samples);
 
 void flexflow_dataloader_2d_destroy(flexflow_dataloader_2d_t handle);
 
@@ -643,18 +643,18 @@ void flowflow_dataloader_2d_next_batch(flexflow_dataloader_2d_t handle,
 // -----------------------------------------------------------------------
 
 flexflow_single_dataloader_t
-flexflow_single_dataloader_create(flexflow_model_t ffmodel,
-                                  flexflow_tensor_t input,
-                                  flexflow_tensor_t full_input,
-                                  int num_samples,
-                                  enum DataType data_type);
+    flexflow_single_dataloader_create(flexflow_model_t ffmodel,
+                                      flexflow_tensor_t input,
+                                      flexflow_tensor_t full_input,
+                                      int num_samples,
+                                      enum DataType data_type);
 
 flexflow_single_dataloader_t
-flexflow_single_dataloader_create2(flexflow_model_t ffmodel,
-                                   flexflow_tensor_t input,
-                                   void *full_input_ptr,
-                                   int num_samples,
-                                   enum DataType data_type);
+    flexflow_single_dataloader_create2(flexflow_model_t ffmodel,
+                                       flexflow_tensor_t input,
+                                       void *full_input_ptr,
+                                       int num_samples,
+                                       enum DataType data_type);
 
 void flexflow_single_dataloader_destroy(flexflow_single_dataloader_t handle);
 

@@ -39,10 +39,10 @@ using Legion::Task;
   regions[3](I): bias
 */
 __host__ OpMeta *
-BatchNorm::init_task(Task const *task,
-                     std::vector<PhysicalRegion> const &regions,
-                     Context ctx,
-                     Runtime *runtime) {
+    BatchNorm::init_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   BatchNorm const *bm = (BatchNorm *)task->args;
@@ -76,10 +76,10 @@ BatchNorm::init_task(Task const *task,
   regions[1](O): bias, initilized to zeros
 */
 __host__ void
-BatchNorm::init_para_task(Task const *task,
-                          std::vector<PhysicalRegion> const &regions,
-                          Context ctx,
-                          Runtime *runtime) {
+    BatchNorm::init_para_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const BatchNorm* bm = (BatchNorm*) task->args;
@@ -182,10 +182,10 @@ void BatchNorm::forward_kernel(BatchNormMeta *m,
   regions[3](I): bias
 */
 __host__ void
-BatchNorm::forward_task(Task const *task,
-                        std::vector<PhysicalRegion> const &regions,
-                        Context ctx,
-                        Runtime *runtime) {
+    BatchNorm::forward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   // const BatchNorm* bm = (BatchNorm*) task->args;
@@ -282,10 +282,10 @@ void BatchNorm::backward_kernel(BatchNormMeta *m,
   regions[6](I/O): bias_grad
 */
 __host__ void
-BatchNorm::backward_task(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime) {
+    BatchNorm::backward_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
   // float beta = 0.0f;

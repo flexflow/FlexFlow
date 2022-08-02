@@ -23,45 +23,63 @@ using Legion::coord_t;
 enum class HeapType { kMinHeap, kMaxHeap };
 enum class PreferIndices { kLower, kHigher };
 
-template <typename T> struct Entry {
+template <typename T>
+struct Entry {
   int index;
   T value;
 };
 
-template <typename T> struct LinearData {
+template <typename T>
+struct LinearData {
   typedef Entry<T> Entry;
 
-  __device__ Entry &operator[](std::size_t index) const { return data[index]; }
+  __device__ Entry &operator[](std::size_t index) const {
+    return data[index];
+  }
 
-  __device__ int get_index(int i) const { return data[i].index; }
-  __device__ T get_value(int i) const { return data[i].value; }
+  __device__ int get_index(int i) const {
+    return data[i].index;
+  }
+  __device__ T get_value(int i) const {
+    return data[i].value;
+  }
 
   Entry *const data;
 };
 
-template <typename T> struct IndirectLinearData {
+template <typename T>
+struct IndirectLinearData {
   typedef Entry<T> Entry;
 
-  __device__ Entry &operator[](std::size_t index) const { return data[index]; }
+  __device__ Entry &operator[](std::size_t index) const {
+    return data[index];
+  }
 
   __device__ int get_index(int i) const {
     return backing_data[data[i].index].index;
   }
-  __device__ T get_value(int i) const { return data[i].value; }
+  __device__ T get_value(int i) const {
+    return data[i].value;
+  }
 
   Entry *const data;
   Entry *const backing_data;
 };
 
-template <typename T> struct StridedData {
+template <typename T>
+struct StridedData {
   typedef Entry<T> Entry;
 
   __device__ Entry &operator[](std::size_t index) const {
     return data[index * blockDim.x + threadIdx.x];
   }
 
-  __device__ int get_index(int i) const { return (*this)[i].index; }
-  __device__ T get_value(int i) const { return (*this)[i].value; }
+  __device__ int get_index(int i) const {
+    return (*this)[i].index;
+  }
+  __device__ T get_value(int i) const {
+    return (*this)[i].value;
+  }
 
   Entry *const data;
 };
@@ -94,7 +112,9 @@ struct IndexedHeap {
     }
   }
 
-  __device__ void assign(int i, Entry const &entry) { data[i] = entry; }
+  __device__ void assign(int i, Entry const &entry) {
+    data[i] = entry;
+  }
 
   __device__ void push_up(int i) {
     int child = i;
@@ -115,7 +135,9 @@ struct IndexedHeap {
     data[a] = tmp;
   }
 
-  __device__ void push_root_down(int k) { push_down(0, k); }
+  __device__ void push_root_down(int k) {
+    push_down(0, k);
+  }
 
   // MAX-HEAPIFY in Cormen
   __device__ void push_down(int node, int k) {
@@ -166,7 +188,9 @@ struct IndexedHeap {
     push_root_down(k);
   }
 
-  __device__ Entry const &root() { return data[0]; }
+  __device__ Entry const &root() {
+    return data[0];
+  }
 };
 
 template <HeapType heapType,
@@ -175,7 +199,7 @@ template <HeapType heapType,
           class Data,
           typename T>
 __device__ IndexedHeap<heapType, preferIndices, Data, T>
-make_indexed_heap(typename Data<T>::Entry *data) {
+    make_indexed_heap(typename Data<T>::Entry *data) {
   return IndexedHeap<heapType, preferIndices, Data, T>{Data<T>{data}};
 }
 

@@ -208,18 +208,18 @@ void SimTask::add_next_task(SimTask *task) {
 
 std::string SimTask::get_type_str() const {
   switch (type) {
-  case TASK_FORWARD:
-    return "Forward";
-  case TASK_BACKWARD:
-    return "Backward";
-  case TASK_COMM:
-    return "Comm";
-  case TASK_UPDATE:
-    return "Update";
-  case TASK_BARRIER:
-    return "Barrier";
-  default:
-    assert(false && "Unknown task type");
+    case TASK_FORWARD:
+      return "Forward";
+    case TASK_BACKWARD:
+      return "Backward";
+    case TASK_COMM:
+      return "Comm";
+    case TASK_UPDATE:
+      return "Update";
+    case TASK_BARRIER:
+      return "Barrier";
+    default:
+      assert(false && "Unknown task type");
   }
 }
 
@@ -318,22 +318,24 @@ SimTask *TaskManager::get_backward_task(Op const *op, int idx) {
   return hash_to_backward_task[hash];
 }
 
-void Simulator::free_all() { offset = 0; }
+void Simulator::free_all() {
+  offset = 0;
+}
 
 size_t data_type_size(DataType type) {
   switch (type) {
-  case DT_FLOAT:
-    return sizeof(float);
-  case DT_DOUBLE:
-    return sizeof(double);
-  case DT_INT32:
-    return sizeof(int32_t);
-  case DT_INT64:
-    return sizeof(int64_t);
-  case DT_BOOLEAN:
-    return sizeof(bool);
-  default:
-    assert(false);
+    case DT_FLOAT:
+      return sizeof(float);
+    case DT_DOUBLE:
+      return sizeof(double);
+    case DT_INT32:
+      return sizeof(int32_t);
+    case DT_INT64:
+      return sizeof(int64_t);
+    case DT_BOOLEAN:
+      return sizeof(bool);
+    default:
+      assert(false);
   }
 }
 
@@ -504,33 +506,33 @@ ParallelConfig Op::view_to_pc(MachineView const &view) const {
 
 tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
   switch (op->op_type) {
-  case OP_LINEAR:
-    return ((Linear *)op)->get_params();
-  case OP_CONV2D:
-    return ((Conv2D *)op)->get_params();
-  case OP_EW_ADD:
-  case OP_EW_SUB:
-  case OP_EW_MUL:
-  case OP_EW_DIV:
-    return ((ElementBinary *)op)->get_params();
-  case OP_EXP:
-  case OP_SCALAR_MULTIPLY:
-  case OP_SCALAR_ADD:
-  case OP_SCALAR_SUB:
-  case OP_SCALAR_TRUE_DIV:
-  case OP_RELU:
-  case OP_SIGMOID:
-  case OP_TANH:
-  case OP_IDENTITY:
-  case OP_GELU:
-  case OP_ELU:
-    return ((ElementUnary *)op)->get_params();
-  case OP_CONCAT:
-    return ((Concat *)op)->get_params();
-  case OP_POOL2D:
-    return ((Pool2D *)op)->get_params();
-  default:
-    return tl::nullopt;
+    case OP_LINEAR:
+      return ((Linear *)op)->get_params();
+    case OP_CONV2D:
+      return ((Conv2D *)op)->get_params();
+    case OP_EW_ADD:
+    case OP_EW_SUB:
+    case OP_EW_MUL:
+    case OP_EW_DIV:
+      return ((ElementBinary *)op)->get_params();
+    case OP_EXP:
+    case OP_SCALAR_MULTIPLY:
+    case OP_SCALAR_ADD:
+    case OP_SCALAR_SUB:
+    case OP_SCALAR_TRUE_DIV:
+    case OP_RELU:
+    case OP_SIGMOID:
+    case OP_TANH:
+    case OP_IDENTITY:
+    case OP_GELU:
+    case OP_ELU:
+      return ((ElementUnary *)op)->get_params();
+    case OP_CONCAT:
+      return ((Concat *)op)->get_params();
+    case OP_POOL2D:
+      return ((Pool2D *)op)->get_params();
+    default:
+      return tl::nullopt;
   }
 }
 
@@ -633,92 +635,92 @@ float Simulator::estimate_xfer_cost(Op const *op,
     assert(input_idx == 0);
     const ParallelTensor output_tensor = op->outputs[0];
     switch (op->op_type) {
-    case OP_REPARTITION: {
-      Repartition *rp = (Repartition *)op;
-      return this->estimate_repartition_xfer_cost(rp->repartition_dim,
-                                                  rp->repartition_degree,
-                                                  input_tensor->get_shape(),
-                                                  output_tensor->get_shape(),
-                                                  source_view,
-                                                  sink_view);
-    }
-    case OP_COMBINE: {
-      Combine *combine = (Combine *)op;
-      const ParallelTensor output_tensor = op->outputs[0];
-      return this->estimate_repartition_xfer_cost(combine->combine_dim,
-                                                  combine->combine_degree,
-                                                  output_tensor->get_shape(),
-                                                  input_tensor->get_shape(),
-                                                  sink_view,
-                                                  source_view);
-    }
-    case OP_REPLICATE: {
-      Replicate *replicate = (Replicate *)op;
-      ParallelTensorShape fake_input_shape = input_tensor->get_shape();
-      fake_input_shape.dims[replicate->replicate_dim].size *=
-          replicate->replicate_degree;
-      return this->estimate_repartition_xfer_cost(replicate->replicate_dim,
-                                                  replicate->replicate_degree,
-                                                  fake_input_shape,
-                                                  output_tensor->get_shape(),
-                                                  source_view,
-                                                  sink_view);
-    }
-    case OP_REDUCTION: {
-      Reduction *reduction = (Reduction *)op;
-      const ParallelTensor output_tensor = op->outputs[0];
-      ParallelTensorShape fake_output_shape = output_tensor->get_shape();
-      fake_output_shape.dims[reduction->reduction_dim].size *=
-          reduction->reduction_degree;
-      return this->estimate_repartition_xfer_cost(reduction->reduction_dim,
-                                                  reduction->reduction_degree,
-                                                  fake_output_shape,
-                                                  input_tensor->get_shape(),
-                                                  sink_view,
-                                                  source_view);
-    }
-    case OP_FUSED_PARALLEL: {
-      FusedParallelOp const *fused = (FusedParallelOp const *)op;
-      const ParallelTensor input_tensor = op->inputs[0];
-      const ParallelTensor output_tensor = op->outputs[0];
-      ParallelTensorShape input_shape = input_tensor->get_shape();
-      ParallelTensorShape output_shape = output_tensor->get_shape();
-      // FIXME: we currently calculate an over estimation
-      size_t input_piece_size = input_shape.get_piece_size();
-      size_t output_piece_size = output_shape.get_piece_size();
-      bool inter_node = false;
-      for (Domain::DomainPointIterator it1(source_view.get_domain()); it1;
-           it1++) {
-        DomainPoint source_dp(*it1);
-        int source_node_id = source_view.get_device_id(source_dp);
-        for (Domain::DomainPointIterator it2(sink_view.get_domain()); it2;
-             it2++) {
-          DomainPoint sink_dp(*it2);
-          int sink_node_id = sink_view.get_device_id(sink_dp);
-          if (sink_node_id != source_node_id) {
-            inter_node = true;
-            break;
+      case OP_REPARTITION: {
+        Repartition *rp = (Repartition *)op;
+        return this->estimate_repartition_xfer_cost(rp->repartition_dim,
+                                                    rp->repartition_degree,
+                                                    input_tensor->get_shape(),
+                                                    output_tensor->get_shape(),
+                                                    source_view,
+                                                    sink_view);
+      }
+      case OP_COMBINE: {
+        Combine *combine = (Combine *)op;
+        const ParallelTensor output_tensor = op->outputs[0];
+        return this->estimate_repartition_xfer_cost(combine->combine_dim,
+                                                    combine->combine_degree,
+                                                    output_tensor->get_shape(),
+                                                    input_tensor->get_shape(),
+                                                    sink_view,
+                                                    source_view);
+      }
+      case OP_REPLICATE: {
+        Replicate *replicate = (Replicate *)op;
+        ParallelTensorShape fake_input_shape = input_tensor->get_shape();
+        fake_input_shape.dims[replicate->replicate_dim].size *=
+            replicate->replicate_degree;
+        return this->estimate_repartition_xfer_cost(replicate->replicate_dim,
+                                                    replicate->replicate_degree,
+                                                    fake_input_shape,
+                                                    output_tensor->get_shape(),
+                                                    source_view,
+                                                    sink_view);
+      }
+      case OP_REDUCTION: {
+        Reduction *reduction = (Reduction *)op;
+        const ParallelTensor output_tensor = op->outputs[0];
+        ParallelTensorShape fake_output_shape = output_tensor->get_shape();
+        fake_output_shape.dims[reduction->reduction_dim].size *=
+            reduction->reduction_degree;
+        return this->estimate_repartition_xfer_cost(reduction->reduction_dim,
+                                                    reduction->reduction_degree,
+                                                    fake_output_shape,
+                                                    input_tensor->get_shape(),
+                                                    sink_view,
+                                                    source_view);
+      }
+      case OP_FUSED_PARALLEL: {
+        FusedParallelOp const *fused = (FusedParallelOp const *)op;
+        const ParallelTensor input_tensor = op->inputs[0];
+        const ParallelTensor output_tensor = op->outputs[0];
+        ParallelTensorShape input_shape = input_tensor->get_shape();
+        ParallelTensorShape output_shape = output_tensor->get_shape();
+        // FIXME: we currently calculate an over estimation
+        size_t input_piece_size = input_shape.get_piece_size();
+        size_t output_piece_size = output_shape.get_piece_size();
+        bool inter_node = false;
+        for (Domain::DomainPointIterator it1(source_view.get_domain()); it1;
+             it1++) {
+          DomainPoint source_dp(*it1);
+          int source_node_id = source_view.get_device_id(source_dp);
+          for (Domain::DomainPointIterator it2(sink_view.get_domain()); it2;
+               it2++) {
+            DomainPoint sink_dp(*it2);
+            int sink_node_id = sink_view.get_device_id(sink_dp);
+            if (sink_node_id != source_node_id) {
+              inter_node = true;
+              break;
+            }
           }
+          if (inter_node)
+            break;
         }
-        if (inter_node)
-          break;
+        float max_xfer_cost = 0.0f;
+        if (inter_node) {
+          // inter_node case
+          float bandwidth = machine->get_inter_node_gpu_bandwidth();
+          max_xfer_cost =
+              std::max(input_piece_size, output_piece_size) / bandwidth;
+        } else {
+          // intra_node case
+          float bandwidth = machine->get_intra_node_gpu_bandwidth();
+          max_xfer_cost =
+              std::max(input_piece_size, output_piece_size) / bandwidth;
+        }
+        return 2 * max_xfer_cost;
       }
-      float max_xfer_cost = 0.0f;
-      if (inter_node) {
-        // inter_node case
-        float bandwidth = machine->get_inter_node_gpu_bandwidth();
-        max_xfer_cost =
-            std::max(input_piece_size, output_piece_size) / bandwidth;
-      } else {
-        // intra_node case
-        float bandwidth = machine->get_intra_node_gpu_bandwidth();
-        max_xfer_cost =
-            std::max(input_piece_size, output_piece_size) / bandwidth;
-      }
-      return 2 * max_xfer_cost;
-    }
-    default:
-      assert(false);
+      default:
+        assert(false);
     }
   } else {
     // No cost if source_view == sink_view

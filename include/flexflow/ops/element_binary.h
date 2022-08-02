@@ -13,8 +13,8 @@ namespace FlexFlow {
 struct ElementBinaryParams {
   OperatorType type;
 
-  bool
-  is_valid(std::pair<ParallelTensorShape, ParallelTensorShape> const &) const;
+  bool is_valid(
+      std::pair<ParallelTensorShape, ParallelTensorShape> const &) const;
 };
 
 bool operator==(ElementBinaryParams const &, ElementBinaryParams const &);
@@ -55,14 +55,16 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override { assert(0); }
+  void print_layer(FFModel const &model) override {
+    assert(0);
+  }
   bool can_inplace_output() override;
   bool has_inplace_output() override;
   void do_inplace_output() override;
   static Op *
-  create_operator_from_layer(FFModel &model,
-                             Layer const *layer,
-                             std::vector<ParallelTensor> const &inputs);
+      create_operator_from_layer(FFModel &model,
+                                 Layer const *layer,
+                                 std::vector<ParallelTensor> const &inputs);
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
@@ -114,7 +116,8 @@ public:
 }; // namespace FlexFlow
 
 namespace std {
-template <> struct hash<FlexFlow::ElementBinaryParams> {
+template <>
+struct hash<FlexFlow::ElementBinaryParams> {
   size_t operator()(FlexFlow::ElementBinaryParams const &) const;
 };
 }; // namespace std

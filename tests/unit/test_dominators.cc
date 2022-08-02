@@ -8,7 +8,9 @@ using namespace FlexFlow::PCG::Utils;
 namespace FlexFlow::PCG::Utils {
 template <>
 struct invalid_node<::BasicGraph<int>, GraphStructure<::BasicGraph<int>>> {
-  int operator()() const { return -1; }
+  int operator()() const {
+    return -1;
+  }
 };
 } // namespace FlexFlow::PCG::Utils
 
