@@ -1,4 +1,5 @@
 #include "flexflow/ops/flat.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
 
@@ -73,43 +74,19 @@ void solve_dims(const ParallelTensor input,
   solve_parallel_dim_mappings(mapping, {input->dims}, {}, output_dim_sets);
 }
 
-bool is_valid(const ParallelTensor input) {
-  ParallelTensorShape output_shape;
-
-  solve_dims(input, output_shape.dims, &output_shape.num_dims);
-
-  bool is_valid = true;
-  is_valid &= input->check_valid();
-  is_valid &= output_shape.is_valid();
-  is_valid &= (input->dims[Input::WIDTH].degree == 1);
-  is_valid &= (input->dims[Input::WIDTH].degree == 1);
-
-  return is_valid;
+bool FlatParams::is_valid(const ParallelTensorShape & input) {
+  return input.is_valid();
 }
 
-size_t Flat::get_params_hash() const {
-  return this->inputs[0]->get_owner_independent_hash();
+bool operator==(const FlatParams &, const FlatParams &) {
+  // flat doesn't have params to compare
+  return true;
 }
 
 using PCG::Node;
 Node FFModel::get_or_create_flat_node(const ParallelTensor input) {
-  if (!is_valid(input)) {
-    return Node::INVALID_NODE;
-  }
-
-  size_t hash = input->get_owner_independent_hash();
-
-  Flat *flat;
-
-  auto const &it = this->cached_flat_ops.find(hash);
-  if (it != cached_flat_ops.end()) {
-    flat = it->second;
-  } else {
-    flat = new Flat(*this, input, NULL);
-    cached_flat_ops[hash] = flat;
-  }
-
-  return this->new_node(flat);
+  FlatParams params;
+  return get_or_create_node<Flat>(input, params);
 }
 
 /*static*/
@@ -143,6 +120,12 @@ Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
 
   assert(check_output_input_weight_parallel_dims());
 }
+
+Flat::Flat(FFModel &model, 
+           const FlatParams& params, 
+           const ParallelTensor input, 
+           const char *name)
+  : Flat(model, input, name) {}
 
 void Flat::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -374,6 +357,11 @@ bool Flat::measure_operator_cost(Simulator *sim,
   return true;
 }
 
+FlatParams Flat::get_params() const {
+  FlatParams params;
+  return params;
+}
+
 using PCG::Node;
 /*static*/
 Node Flat::deserialize(FFModel &ff,
@@ -392,3 +380,10 @@ Op *Flat::materialize(FFModel &ff,
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+  size_t hash<FlexFlow::FlatParams>::operator()(const FlexFlow::FlatParams& params) const {
+    size_t key = 0;
+    return key;
+  }
+};

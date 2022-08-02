@@ -914,6 +914,8 @@ public:
                          ElementUnary *>,
       std::unordered_map<std::pair<ParallelTensorShape, EmbeddingParams>,
                          Embedding *>,
+      std::unordered_map<std::pair<ParallelTensorShape, FlatParams>,
+                         Flat *>,
       std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
                          Linear *>,
       std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>,
@@ -921,7 +923,6 @@ public:
       cached_ops;
   std::unordered_map<size_t, NoOp *> cached_noop_ops;
   std::unordered_map<size_t, NoOp *> cached_input_ops;
-  std::unordered_map<size_t, Flat *> cached_flat_ops;
   std::unordered_map<size_t, MultiHeadAttention *> cached_multihead_attn_ops;
   std::unordered_map<size_t, Reshape *> cached_reshape_ops;
   std::unordered_map<size_t, Softmax *> cached_softmax_ops;
