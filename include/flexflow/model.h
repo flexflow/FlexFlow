@@ -922,11 +922,12 @@ public:
                          Pool2D *>,
       std::unordered_map<
           std::pair<std::vector<ParallelTensorShape>, MultiHeadAttentionParams>,
-          MultiHeadAttention *>>
+          MultiHeadAttention *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,
+                         Reshape *>>
       cached_ops;
   std::unordered_map<size_t, NoOp *> cached_noop_ops;
   std::unordered_map<size_t, NoOp *> cached_input_ops;
-  std::unordered_map<size_t, Reshape *> cached_reshape_ops;
   std::unordered_map<size_t, Softmax *> cached_softmax_ops;
   std::unordered_map<size_t, Split *> cached_split_ops;
   std::unordered_map<size_t, Repartition *> cached_repartition_ops;

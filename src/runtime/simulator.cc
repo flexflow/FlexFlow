@@ -541,6 +541,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
     return ((Flat *)op)->get_params();
   case OP_MULTIHEAD_ATTENTION:
     return ((MultiHeadAttention *)op)->get_params();
+  case OP_RESHAPE:
+    return ((Reshape *)op)->get_params();
   default:
     return tl::nullopt;
   }
