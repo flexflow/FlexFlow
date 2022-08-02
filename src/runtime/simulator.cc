@@ -539,6 +539,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
     return ((Embedding *)op)->get_params();
   case OP_FLAT:
     return ((Flat *)op)->get_params();
+  case OP_MULTIHEAD_ATTENTION:
+    return ((MultiHeadAttention *)op)->get_params();
   default:
     return tl::nullopt;
   }

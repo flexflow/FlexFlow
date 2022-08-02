@@ -376,6 +376,6 @@ Op *Flat::materialize(FFModel &ff,
 namespace std {
   size_t hash<FlexFlow::FlatParams>::operator()(const FlexFlow::FlatParams& params) const {
     size_t key = 0;
-    return key;
+    return hash<int>{}(key);
   }
 };
