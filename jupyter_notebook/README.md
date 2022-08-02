@@ -6,13 +6,12 @@ the FlexFlow Python binding.
 ## Quick Start
 ### Pre-requisite
 * Python >= 3.6
-* [Python binding of Legion](https://github.com/StanfordLegion/legion/tree/stable/bindings/python) 
-  or [Legate](https://github.com/nv-legate/legate.core) needs to be installed.
+* FlexFlow Python binding needs to be installed, please check the [installtion guide](https://github.com/flexflow/FlexFlow/blob/master/INSTALL.md)
 * Install Jupyter notebook
 
         pip install notebook
 
-### Install the Legion IPython kernel
+### Install the FlexFlow IPython kernel
 ```
 python ./install.py --(configurations)
 ```
@@ -50,7 +49,7 @@ just installed. It is shown as the display name of the kernel, e.g. `FlexFlow_SM
 
 ### Uninstall the kernel
 ```
-jupyter kernelspec uninstall legion_kernel_nocr
+jupyter kernelspec uninstall flexflow_kernel_nocr
 ```
 If the kernel is re-installed, the old one will be automatically uninstalled by the install.py
 
@@ -62,8 +61,8 @@ python ./install.py --help
 ```
 
 It is always preferred to use a json file. 
-The `flexflow_python.json` is the template respect to the legate wrapper and
-legion_python. Most entries are using the following format:
+The `flexflow_python.json` is the template respect to the
+flexflow_python. Most entries are using the following format:
 ```
 "cpus": {
     "cmd": "--cpus",
