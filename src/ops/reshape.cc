@@ -35,6 +35,7 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
+/* Params */
 bool operator==(const ReshapeParams & lhs, const ReshapeParams & rhs) {
   return lhs.shape == rhs.shape;
 }

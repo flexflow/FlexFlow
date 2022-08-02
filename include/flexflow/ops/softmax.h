@@ -1,9 +1,20 @@
 #ifndef _FLEXFLOW_SOFTMAX_H
 #define _FLEXFLOW_SOFTMAX_H
 
-#include "flexflow/model.h"
+#include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/node.h"
+#include "flexflow/device.h"
+#include "flexflow/layer.h"
 
 namespace FlexFlow {
+
+struct SoftmaxParams {
+  int dim;
+  bool is_valid(const ParallelTensorShape &) const;
+};
+bool operator==(const SoftmaxParams &, const SoftmaxParams &);
 
 class Softmax;
 
@@ -24,10 +35,16 @@ public:
 
 class Softmax : public Op {
 public:
+  using Params = SoftmaxParams;
+  using Input = ParallelTensor;
   Softmax(FFModel &model,
           const ParallelTensor logit,
           int dim,
           char const *name);
+  Softmax(FFModel &model,
+          Params const &params,
+          const Input input,
+          char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -72,7 +89,8 @@ public:
                                       float *input_grad_ptr,
                                       float const *output_grad_ptr,
                                       size_t num_elements);
-  size_t get_params_hash() const override;
+  
+  Params get_params() const;
 
 private:
   template <int NDIM>
@@ -93,5 +111,12 @@ public:
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+  template <>
+  struct hash<FlexFlow::SoftmaxParams> {
+    size_t operator()(const FlexFlow::SoftmaxParams&) const;
+  }
+} // namespace std
 
 #endif // _FLEXFLOW_SOFTMAX_H
