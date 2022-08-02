@@ -11,6 +11,7 @@
 #include "flexflow/ops/cast.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/attention.h"
 #include "mpark/variant.hpp"
 
 namespace mp = mpark;
@@ -26,7 +27,8 @@ using OperatorParameters = mp::variant<Conv2DParams,
                                        CastParams,
                                        DropoutParams,
                                        EmbeddingParams,
-                                       FlatParams>;
+                                       FlatParams,
+                                       MultiHeadAttentionParams>;
 
 }; // namespace FlexFlow
 

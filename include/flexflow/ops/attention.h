@@ -1,14 +1,32 @@
 #ifndef _FLEXFLOW_ATTENTION_H
 #define _FLEXFLOW_ATTENTION_H
 
-#include "flexflow/model.h"
+#include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/node.h"
+#include "flexflow/device.h"
+#include "flexflow/layer.h"
 
 namespace FlexFlow {
+
+struct MultiHeadAttentionParams {
+  LayerID layer_guid;
+  int embed_dim, num_heads, kdim, vdim;
+  float dropout,
+  bool bias, add_bias_kv, add_zero_attn;
+
+  bool is_valid(const std::vector<ParallelTensorShape> &) const;
+}
+bool operator==(const MultiHeadAttentionParams &, const MultiHeadAttentionParams &);
 
 class MultiHeadAttentionMeta;
 
 class MultiHeadAttention : public Op {
 public:
+  using Params = MultiHeadAttentionParams;
+  using Input = std::vector<ParallelTensor>;
+
   MultiHeadAttention(FFModel &model,
                      LayerID const &layer_guid,
                      const ParallelTensor _query,
@@ -45,6 +63,11 @@ public:
                      const ParallelTensor key,
                      const ParallelTensor value,
                      bool allocate_weights);
+  MultiHeadAttention(FFModel &model,
+                     const Params &params,
+                     const Input &inputs,
+                     bool allocate_weights = false,
+                     const char *name = nullptr);
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
@@ -56,7 +79,6 @@ public:
     assert(0);
   }
   bool get_int_parameter(PMParameter, int *) const override;
-  size_t get_params_hash() const override;
 
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
@@ -107,6 +129,8 @@ public:
                                       float const *weight_ptr,
                                       float *weight_grad_ptr,
                                       float const *output_grad_ptr);
+  
+  Params get_params() const;
 
 public:
   int num_heads;
@@ -138,5 +162,11 @@ public:
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+  template <> struct hash<FlexFlow::MultiHeadAttentionParams> {
+    size_t operator()(const FlexFlow::MultiHeadAttentionParams &) const;
+  };
+}; // namespace std
 
 #endif // _FLEXFLOW_ATTENTION_H
