@@ -1,17 +1,35 @@
 #ifndef _FLEXFLOW_SPLIT_H
 #define _FLEXFLOW_SPLIT_H
 
-#include "flexflow/model.h"
+#include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/node.h"
+#include "flexflow/device.h"
+#include "flexflow/layer.h"
 
 namespace FlexFlow {
 
+struct SplitParams {
+  std::vector<int> split;
+  int legion_axis;
+  bool is_valid(const ParallelTensorShape &) const;
+}
+bool operator==(const SplitParams &, const SplitParams &);
+
 class Split : public Op {
 public:
+  using Params = SplitParams;
+  using Input = ParallelTensor;
   Split(FFModel &model,
         const ParallelTensor input,
         std::vector<int> const &split,
         int legion_axis,
         char const *name);
+  Split(FFModel &model,
+        Params const &params,
+        const Input input,
+        char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -65,12 +83,19 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
-  size_t get_params_hash() const override;
+  Params get_params() const;
 
 public:
   int legion_axis;
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+  template <>
+  struct hash<FlexFlow::SplitParams> {
+    size_t operator()(const FlexFlow::SplitParams&) const;
+  }
+} // namespace std
 
 #endif // _FLEXFLOW_SPLIT_H

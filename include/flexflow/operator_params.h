@@ -13,6 +13,7 @@
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/reshape.h"
+#include "flexflow/ops/split.h"
 #include "mpark/variant.hpp"
 
 namespace mp = mpark;
@@ -30,7 +31,8 @@ using OperatorParameters = mp::variant<Conv2DParams,
                                        EmbeddingParams,
                                        FlatParams,
                                        MultiHeadAttentionParams,
-                                       ReshapeParams>;
+                                       ReshapeParams,
+                                       SplitParams>;
 
 }; // namespace FlexFlow
 
