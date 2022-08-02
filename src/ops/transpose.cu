@@ -28,10 +28,10 @@ struct TransposeStrides {
 };
 
 __global__ void transpose_simple_kernel(coord_t volume,
-                                        const float *in_ptr,
+                                        float const *in_ptr,
                                         float *out_ptr,
                                         const TransposeStrides info,
-                                        const float beta) {
+                                        float const beta) {
   CUDA_KERNEL_LOOP(o_idx, volume) {
     coord_t i_idx = 0;
     coord_t t = o_idx;
@@ -45,8 +45,8 @@ __global__ void transpose_simple_kernel(coord_t volume,
 }
 
 /*static*/
-void Transpose::forward_kernel(const TransposeMeta *m,
-                               const float *input_ptr,
+void Transpose::forward_kernel(TransposeMeta const *m,
+                               float const *input_ptr,
                                float *output_ptr,
                                Domain in_domain,
                                Domain out_domain,
@@ -69,8 +69,8 @@ void Transpose::forward_kernel(const TransposeMeta *m,
 }
 
 /*static*/
-void Transpose::forward_kernel_wrapper(const TransposeMeta *m,
-                                       const float *input_ptr,
+void Transpose::forward_kernel_wrapper(TransposeMeta const *m,
+                                       float const *input_ptr,
                                        float *output_ptr,
                                        Domain in_domain,
                                        Domain out_domain) {
@@ -81,9 +81,9 @@ void Transpose::forward_kernel_wrapper(const TransposeMeta *m,
 }
 
 /*static*/
-void Transpose::backward_kernel(const TransposeMeta *m,
+void Transpose::backward_kernel(TransposeMeta const *m,
                                 float *input_grad_ptr,
-                                const float *output_grad_ptr,
+                                float const *output_grad_ptr,
                                 Domain in_grad_domain,
                                 Domain out_grad_domain,
                                 cudaStream_t stream) {
@@ -108,9 +108,9 @@ void Transpose::backward_kernel(const TransposeMeta *m,
 }
 
 /*static*/
-void Transpose::backward_kernel_wrapper(const TransposeMeta *m,
+void Transpose::backward_kernel_wrapper(TransposeMeta const *m,
                                         float *input_grad_ptr,
-                                        const float *output_grad_ptr,
+                                        float const *output_grad_ptr,
                                         Domain in_grad_domain,
                                         Domain out_grad_domain) {
   cudaStream_t stream;

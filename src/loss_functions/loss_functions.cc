@@ -19,7 +19,7 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-Loss::Loss(const std::string &loss, bool _repl_labels) {
+Loss::Loss(std::string const &loss, bool _repl_labels) {
   repl_labels = _repl_labels;
   if (loss == "categorical_crossentropy")
     loss_type = LOSS_CATEGORICAL_CROSSENTROPY;
@@ -87,8 +87,8 @@ void Loss::backward(FFModel *model,
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Loss::backward_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+void Loss::backward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
   Domain domain = runtime->get_index_space_domain(
@@ -105,13 +105,13 @@ void Loss::backward_task(const Task *task,
 }
 
 template <int NDIM>
-void Loss::backward_task_with_dim(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+void Loss::backward_task_with_dim(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const Loss *loss = (Loss *)task->args;
+  Loss const *loss = (Loss *)task->args;
 
   if (loss->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
     // sparse_categorical_crossentropy has label of dim: (batch_size, 1)

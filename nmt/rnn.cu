@@ -17,13 +17,13 @@
 #include "rnn.h"
 #include "rnn_mapper.h"
 
-DnnHandle init_cudnn(const Task *task,
-                     const std::vector<PhysicalRegion> &regions,
+DnnHandle init_cudnn(Task const *task,
+                     std::vector<PhysicalRegion> const &regions,
                      Context ctx,
                      HighLevelRuntime *runtime) {
   assert(regions.size() == 0);
   assert(task->arglen == sizeof(size_t));
-  size_t workSpaceSize = *(const size_t *)task->args;
+  size_t workSpaceSize = *(size_t const *)task->args;
   DnnHandle handle;
   handle.workSpaceSize = workSpaceSize;
   printf("workSpaceSize = %zu\n", workSpaceSize);
@@ -353,8 +353,8 @@ RnnModel::RnnModel(int batch_size,
   sharedVariables.push_back(linear);
 }
 
-void RnnModel::word_init_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void RnnModel::word_init_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
   Rect<2> rect0 = runtime->get_index_space_domain(
@@ -367,7 +367,7 @@ void RnnModel::word_init_task(const Task *task,
   for (int i = 0; i < rect0.volume(); i++)
     host_ptr[i] = same ? 1 : i % 16;
   for (int i = 0; i < regions.size(); i++) {
-    const AccessorWO<int, 2> acc(regions[i], FID_DATA);
+    AccessorWO<int, 2> const acc(regions[i], FID_DATA);
     Rect<2> rect = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
     assert(acc.accessor.is_dense_arbitrary(rect));
@@ -492,12 +492,12 @@ void RnnModel::init() {
     layers[i]->init(*this);
 }
 
-void RnnModel::zero_3d_init_task(const Task *task,
-                                 const std::vector<PhysicalRegion> &regions,
+void RnnModel::zero_3d_init_task(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  Runtime *runtime) {
   for (int i = 0; i < task->regions.size(); i++) {
-    const AccessorWO<float, 3> acc_w(regions[i], FID_DATA);
+    AccessorWO<float, 3> const acc_w(regions[i], FID_DATA);
     Rect<3> rect_w = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
     assert(acc_w.accessor.is_dense_arbitrary(rect_w));
@@ -507,12 +507,12 @@ void RnnModel::zero_3d_init_task(const Task *task,
   }
 }
 
-void RnnModel::zero_2d_init_task(const Task *task,
-                                 const std::vector<PhysicalRegion> &regions,
+void RnnModel::zero_2d_init_task(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  Runtime *runtime) {
   for (int i = 0; i < task->regions.size(); i++) {
-    const AccessorWO<float, 2> acc_w(regions[i], FID_DATA);
+    AccessorWO<float, 2> const acc_w(regions[i], FID_DATA);
     Rect<2> rect_w = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
     assert(acc_w.accessor.is_dense_arbitrary(rect_w));
@@ -522,12 +522,12 @@ void RnnModel::zero_2d_init_task(const Task *task,
   }
 }
 
-void RnnModel::zero_1d_init_task(const Task *task,
-                                 const std::vector<PhysicalRegion> &regions,
+void RnnModel::zero_1d_init_task(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  Runtime *runtime) {
   for (int i = 0; i < task->regions.size(); i++) {
-    const AccessorWO<float, 1> acc_w(regions[i], FID_DATA);
+    AccessorWO<float, 1> const acc_w(regions[i], FID_DATA);
     Rect<1> rect_w = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
     assert(acc_w.accessor.is_dense_arbitrary(rect_w));
@@ -537,8 +537,8 @@ void RnnModel::zero_1d_init_task(const Task *task,
   }
 }
 
-void RnnModel::dummy_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+void RnnModel::dummy_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {}
 
@@ -601,14 +601,14 @@ void RnnModel::update() {
 /*
   regions[0](O): w
 */
-void RnnModel::params_init_task(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
+void RnnModel::params_init_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime) {
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
   float value = *((float *)task->args);
-  const AccessorWO<float, 1> acc_w(regions[0], FID_DATA);
+  AccessorWO<float, 1> const acc_w(regions[0], FID_DATA);
   Rect<1> rect_w = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_w.accessor.is_dense_arbitrary(rect_w));
@@ -647,24 +647,24 @@ void RnnModel::init_shared_variable(SharedVariable params) {
   regions[0]: (I/O): w
   regions[1..]: (O): w_grad
  */
-void RnnModel::params_update_task(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+void RnnModel::params_update_task(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime) {
   assert(regions.size() == task->regions.size());
   float rate = *((float *)task->args);
-  const AccessorRW<float, 1> acc_w(regions[0], FID_DATA);
+  AccessorRW<float, 1> const acc_w(regions[0], FID_DATA);
   Rect<1> rect_w = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_w.accessor.is_dense_arbitrary(rect_w));
   for (int i = 1; i < regions.size(); i++) {
-    const AccessorRO<float, 1> acc_w_grad(regions[i], FID_DATA);
+    AccessorRO<float, 1> const acc_w_grad(regions[i], FID_DATA);
     Rect<1> rect_w_grad = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
     assert(rect_w.contains(rect_w_grad));
     assert(acc_w_grad.accessor.is_dense_arbitrary(rect_w_grad));
     float *w_ptr = acc_w.ptr(rect_w_grad.lo);
-    const float *w_grad_ptr = acc_w_grad.ptr(rect_w_grad.lo);
+    float const *w_grad_ptr = acc_w_grad.ptr(rect_w_grad.lo);
     apply_add_with_scale<<<GET_BLOCKS(rect_w_grad.volume()),
                            CUDA_NUM_THREADS>>>(
         w_ptr, w_grad_ptr, rect_w_grad.volume(), rate);

@@ -19,8 +19,8 @@ using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("AlexNet");
 
-void top_level_task(const Task *task,
-                    const std::vector<PhysicalRegion> &regions,
+void top_level_task(Task const *task,
+                    std::vector<PhysicalRegion> const &regions,
                     Context ctx,
                     Runtime *runtime) {
   int npcs = 5, nn_shl[6] = {10, 10, 10, 10, 10, 1};
@@ -32,7 +32,7 @@ void top_level_task(const Task *task,
   FFModel ff(ffConfig);
   Tensor pcvec_n, pcvec, pcmax, pcmin;
   {
-    const int dims[] = {1, npcs};
+    int const dims[] = {1, npcs};
     pcvec_n = ff.create_tensor<2>(dims, "", DT_FLOAT);
     pcvec = ff.create_tensor<2>(dims, "", DT_FLOAT);
     pcmax = ff.create_tensor<2>(dims, "", DT_FLOAT);
@@ -42,7 +42,7 @@ void top_level_task(const Task *task,
   for (int i = 1; i <= 5; i++) {
     // Treat sb1(:,i) as different tensors for different i
     // to allow additional parallelism across i's
-    const int dims[] = {1, nn_shl[i]};
+    int const dims[] = {1, nn_shl[i]};
     sb[i] = ff.create_tensor<2>(dims, "", DT_FLOAT);
   }
   // do i=1,npcs
@@ -66,7 +66,7 @@ void top_level_task(const Task *task,
       // to avoid multiple creations
       Tensor one, two, minus_two;
       {
-        const int dims[] = {1, nn_shl[i]};
+        int const dims[] = {1, nn_shl[i]};
         one = ff.create_constant<2>(dims, "", 1, DT_FLOAT);
         two = ff.create_constant<2>(dims, "", 2, DT_FLOAT);
         minus_two = ff.create_constant<2>(dims, "", -2, DT_FLOAT);

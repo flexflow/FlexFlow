@@ -25,7 +25,7 @@ void begin_flexflow_task(std::vector<std::string> args) {
   // which are not compatible with the Realm CUDA hijack.
   setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
 
-  std::vector<const char *> argvec;
+  std::vector<char const *> argvec;
   argvec.push_back("python");
   for (auto &arg : args) {
     if (arg == "-ll:py") {
@@ -159,7 +159,7 @@ bool get_weights(Parameter parameter, FFModel &model, py::array &full_array) {
 
 bool set_weights(Parameter parameter,
                  FFModel &model,
-                 const std::vector<int> &dims,
+                 std::vector<int> const &dims,
                  py::array &full_array) {
   py::buffer_info info = full_array.request();
   if (info.format == "f") {
@@ -175,7 +175,7 @@ bool set_weights(Parameter parameter,
 //-------- FFModel --------
 
 Tensor create_tensor(FFModel &model,
-                     const std::vector<int> &dims,
+                     std::vector<int> const &dims,
                      DataType data_type,
                      bool create_grad) {
   Tensor tensor = NULL;
@@ -278,18 +278,18 @@ create_data_loader(FFModel &model, Tensor batch_tensor, py::array &full_array) {
 }
 
 Tensor concat(FFModel &model,
-              const std::vector<Tensor> &tensors,
+              std::vector<Tensor> const &tensors,
               int axis,
-              const char *name) {
+              char const *name) {
   int size = tensors.size();
   return model.concat(size, tensors.data(), axis, name);
 }
 
 std::vector<Tensor> split(FFModel &model,
-                          const Tensor &input,
-                          const std::vector<int> &split,
+                          Tensor const &input,
+                          std::vector<int> const &split,
                           int axis,
-                          const char *name) {
+                          char const *name) {
   std::vector<Tensor> outputs;
   outputs.resize(split.size());
   model.split(input, outputs.data(), split, axis, name);
@@ -339,7 +339,7 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
   py::class_<Optimizer>(m, "Optimizer");
 
   py::class_<SGDOptimizer, Optimizer>(m, "SGDOptimizer")
-      .def(py::init<const FFModel *, double, double, bool, double>(),
+      .def(py::init<FFModel const *, double, double, bool, double>(),
            "model"_a,
            "lr"_a = 0.01f,
            "momentum"_a = 0.0f,
@@ -349,7 +349,7 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
            [](SGDOptimizer &optimizer, double lr) { optimizer.lr = lr; });
 
   py::class_<AdamOptimizer, Optimizer>(m, "AdamOptimizer")
-      .def(py::init<const FFModel *, double, double, double, double, double>(),
+      .def(py::init<FFModel const *, double, double, double, double, double>(),
            "model"_a,
            "alpha"_a = 0.001f,
            "beta1"_a = 0.9f,
@@ -459,7 +459,7 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def_readwrite("optimizer", &FFModel::optimizer)
       .def("_compile",
            static_cast<void (FFModel::*)(
-               LossType, const std::vector<MetricsType> &, CompMode)>(
+               LossType, std::vector<MetricsType> const &, CompMode)>(
                &FFModel::compile),
            "loss_type"_a,
            "metrics"_a,

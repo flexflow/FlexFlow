@@ -40,27 +40,27 @@ struct ArgsConfig {
 class DataLoader {
 public:
   DataLoader(FFModel &ff,
-             const XDLConfig &xdl,
-             const std::vector<Tensor> &_sparse_inputs,
+             XDLConfig const &xdl,
+             std::vector<Tensor> const &_sparse_inputs,
              Tensor _label);
 
   void next_batch(FFModel &ff);
   void shuffle();
   void reset();
-  static void load_entire_dataset(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+  static void load_entire_dataset(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime);
-  static void load_sparse_input(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
+  static void load_sparse_input(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime);
-  static void load_sparse_input_cpu(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+  static void load_sparse_input_cpu(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime);
-  static void load_label(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+  static void load_label(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime);
 

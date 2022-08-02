@@ -48,8 +48,8 @@ void parse_input_args(char **argv, int argc, MoeConfig &config) {
 
 // Score: Running average over sample ratio of which experts are corr. cached
 float moe_score(float *cached_score,
-                const void *input,
-                const void *cached,
+                void const *input,
+                void const *cached,
                 int vol) {
   float gamma = 0.99f;
   *cached_score *= gamma;
@@ -104,14 +104,14 @@ void moe_alter(FFModel *ff) {
   ff->layers[17]->input_grad_lps[1] = ff->layers[3]->outputs[0].part_grad;
 }
 
-void top_level_task(const Task *task,
-                    const std::vector<PhysicalRegion> &regions,
+void top_level_task(Task const *task,
+                    std::vector<PhysicalRegion> const &regions,
                     Context ctx,
                     Runtime *runtime) {
   FFConfig ffConfig;
   MoeConfig moeConfig;
   {
-    const InputArgs &command_args = HighLevelRuntime::get_input_args();
+    InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
     parse_input_args(argv, argc, moeConfig);
@@ -124,7 +124,7 @@ void top_level_task(const Task *task,
 
   Tensor input;
   {
-    const int dims[] = {ffConfig.batchSize, DATA_DIMS};
+    int const dims[] = {ffConfig.batchSize, DATA_DIMS};
     input = ff.create_tensor<2>(dims, DT_FLOAT);
   }
 
@@ -219,7 +219,7 @@ void top_level_task(const Task *task,
 }
 
 DataLoader::DataLoader(FFModel &ff,
-                       const MoeConfig &moe,
+                       MoeConfig const &moe,
                        Tensor input,
                        Tensor label) {
   num_samples = NUM_SAMPLES;
@@ -230,19 +230,19 @@ DataLoader::DataLoader(FFModel &ff,
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {NUM_SAMPLES, input.adim[0]};
+    int const dims[] = {NUM_SAMPLES, input.adim[0]};
     full_input = ff.create_tensor<2>(dims, DT_FLOAT);
   }
   // Create full label
   {
     batch_label = label;
-    const int dims[] = {NUM_SAMPLES, label.adim[0]};
+    int const dims[] = {NUM_SAMPLES, label.adim[0]};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
   }
 
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
-  const MoeConfig *ptr = &moe;
+  MoeConfig const *ptr = &moe;
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
                         TaskArgument(&ptr, sizeof(MoeConfig *)));
   // regions[0]: full_input
@@ -365,8 +365,8 @@ void read_mnist(float *input_ptr, int *label_ptr) {
   }
 }
 
-void DataLoader::load_entire_dataset(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
+void DataLoader::load_entire_dataset(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
   // const MoeConfig* conf = *((MoeConfig**)task->args);
@@ -374,8 +374,8 @@ void DataLoader::load_entire_dataset(const Task *task,
   assert(task->regions.size() == regions.size());
 
   // get input and label pointer
-  const AccessorWO<float, 2> acc_input(regions[0], FID_DATA);
-  const AccessorWO<int, 2> acc_label(regions[1], FID_DATA);
+  AccessorWO<float, 2> const acc_input(regions[0], FID_DATA);
+  AccessorWO<int, 2> const acc_label(regions[1], FID_DATA);
   Rect<2> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));

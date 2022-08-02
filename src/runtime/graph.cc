@@ -48,7 +48,7 @@ const Node Node::INVALID_NODE = Node();
 
 Node::Node(void) : guid(0), ptr(NULL) {}
 
-std::string Node::op_to_string(const Op *op) const {
+std::string Node::op_to_string(Op const *op) const {
   return optype_to_string(op->op_type);
 }
 
@@ -56,10 +56,10 @@ Edge::Edge(void)
     : srcOp(Node::INVALID_NODE), dstOp(Node::INVALID_NODE), srcIdx(-1),
       dstIdx(-1) {}
 
-Edge::Edge(const Node &_srcOp, const Node &_dstOp, int _srcIdx, int _dstIdx)
+Edge::Edge(Node const &_srcOp, Node const &_dstOp, int _srcIdx, int _dstIdx)
     : srcOp(_srcOp), dstOp(_dstOp), srcIdx(_srcIdx), dstIdx(_dstIdx) {}
 
-bool Edge::operator==(const Edge &rhs) const {
+bool Edge::operator==(Edge const &rhs) const {
   if (srcOp != rhs.srcOp)
     return false;
   if (dstOp != rhs.dstOp)
@@ -109,8 +109,8 @@ T SearchHelper::find_optimal_sequence_graph_time(
   // this case since parallel_op does not trigger computation
   if (bn_node.ptr->is_parallel_op()) {
     bool found = false;
-    const auto &inList = g->inEdges.find(sink.node)->second;
-    for (const auto &e : inList) {
+    auto const &inList = g->inEdges.find(sink.node)->second;
+    for (auto const &e : inList) {
       if (e.srcOp == bn_node) {
         found = true;
         break;
@@ -291,8 +291,8 @@ T SearchHelper::find_optimal_nonsequence_graph_time(
 
 Graph::Graph(FFModel *_model) : model(_model), search(_model->search) {}
 
-void Graph::add_edge(const Node &srcOp,
-                     const Node &dstOp,
+void Graph::add_edge(Node const &srcOp,
+                     Node const &dstOp,
                      int srcIdx,
                      int dstIdx) {
   if (inEdges.find(dstOp) == inEdges.end()) {
@@ -308,12 +308,12 @@ void Graph::add_edge(const Node &srcOp,
   outEdges[srcOp].insert(e);
 }
 
-void Graph::add_node(const Node &node) {
+void Graph::add_node(Node const &node) {
   inEdges[node];
   outEdges[node];
 }
 
-void Graph::add_edge(const Edge &e) {
+void Graph::add_edge(Edge const &e) {
   inEdges[e.srcOp];
   outEdges[e.dstOp];
 
@@ -321,7 +321,7 @@ void Graph::add_edge(const Edge &e) {
   outEdges[e.srcOp].insert(e);
 }
 
-void Graph::remove_edge(const Edge &e, bool remove_node_if_unused) {
+void Graph::remove_edge(Edge const &e, bool remove_node_if_unused) {
   assert(outEdges[e.srcOp].find(e) != outEdges[e.srcOp].end());
   assert(inEdges[e.dstOp].find(e) != inEdges[e.dstOp].end());
   assert(outEdges[e.srcOp].erase(e) == 1);
@@ -338,15 +338,15 @@ void Graph::remove_edge(const Edge &e, bool remove_node_if_unused) {
   }
 }
 
-bool Graph::has_edge(const Node &srcOp,
-                     const Node &dstOp,
+bool Graph::has_edge(Node const &srcOp,
+                     Node const &dstOp,
                      int srcIdx,
                      int dstIdx) const {
   Edge e(srcOp, dstOp, srcIdx, dstIdx);
   return this->has_edge(e);
 }
 
-bool Graph::has_edge(const Edge &e) const {
+bool Graph::has_edge(Edge const &e) const {
   if (inEdges.find(e.dstOp) == inEdges.end()) {
     return false;
   }
@@ -358,14 +358,14 @@ bool Graph::has_edge(const Edge &e) const {
 
 void Graph::print(void) const {
   log_graph.print("Printing in-edge graph...");
-  for (const auto &it : inEdges) {
+  for (auto const &it : inEdges) {
     if (it.first.guid == 0)
       continue;
     log_graph.print("	guid(%zu) type(%s): ",
                     it.first.guid,
                     optype_to_string(it.first.ptr->op_type).data());
-    const std::unordered_set<Edge> &list = it.second;
-    for (const auto &it2 : list) {
+    std::unordered_set<Edge> const &list = it.second;
+    for (auto const &it2 : list) {
       Edge e = it2;
       log_graph.print(
           "         inEdge(guid(%zu) idx(%d))", e.srcOp.guid, e.srcIdx);
@@ -384,13 +384,13 @@ void Graph::print(void) const {
     // }
   }
   log_graph.print("Printing out-edge graph...");
-  for (const auto &it : outEdges) {
+  for (auto const &it : outEdges) {
     if (it.first.guid == 0)
       continue;
     log_graph.print(
         "	guid(%zu) type(%d): ", it.first.guid, it.first.ptr->op_type);
-    const std::unordered_set<Edge> &list = it.second;
-    for (const auto &it2 : list) {
+    std::unordered_set<Edge> const &list = it.second;
+    for (auto const &it2 : list) {
       Edge e = it2;
       log_graph.print(
           "         outEdge(guid(%zu) idx(%d))", e.dstOp.guid, e.dstIdx);
@@ -433,14 +433,14 @@ void Graph::print_dot(std::ostream &s) const {
 bool Graph::has_loop(void) {
   std::unordered_map<Node, int> todos;
   std::vector<Node> opList;
-  for (const auto &it : inEdges) {
-    const auto &inList = it.second;
+  for (auto const &it : inEdges) {
+    auto const &inList = it.second;
     todos[it.first] = (int)inList.size();
     if (todos[it.first] == 0)
       opList.push_back(it.first);
   }
 #ifdef DEADCODE
-  for (const auto &it : outEdges) {
+  for (auto const &it : outEdges) {
     if (inEdges.find(it.first) == inEdges.end()) {
       opList.push_back(it.first);
     }
@@ -449,8 +449,8 @@ bool Graph::has_loop(void) {
   size_t i = 0;
   while (i < opList.size()) {
     Node op = opList[i++];
-    const auto &outList = outEdges[op];
-    for (const auto &it2 : outList) {
+    auto const &outList = outEdges[op];
+    for (auto const &it2 : outList) {
       todos[it2.dstOp]--;
       if (todos[it2.dstOp] == 0) {
         opList.push_back(it2.dstOp);
@@ -463,7 +463,7 @@ bool Graph::has_loop(void) {
 bool Graph::check_correctness(void) {
   bool okay = true;
   for (auto it = outEdges.begin(); it != outEdges.end(); it++) {
-    const auto &list = it->second;
+    auto const &list = it->second;
     for (auto it2 = list.begin(); it2 != list.end(); it2++) {
       Edge e = *it2;
       if (!has_edge(e))
@@ -484,18 +484,18 @@ bool Graph::check_correctness(void) {
 }
 
 std::vector<MachineView> SearchHelper::get_valid_machine_views(
-    Node const &node, const MachineResource &resource, bool log) const {
+    Node const &node, MachineResource const &resource, bool log) const {
   this->logger->info() << "Getting valid machine views for "
                        << node.to_string();
   return this->get_valid_machine_views(node.ptr, resource, log);
 }
 
 std::vector<MachineView> SearchHelper::get_valid_machine_views(
-    const Op *op, const MachineResource &resource, bool log) const {
+    Op const *op, MachineResource const &resource, bool log) const {
   std::vector<MachineView> const *cached_op_views = NULL;
   std::vector<MachineView> valid_views;
 
-  const auto &iter = cached_operator_valid_views.find(op->op_guid);
+  auto const &iter = cached_operator_valid_views.find(op->op_guid);
   if (iter != cached_operator_valid_views.end()) {
     cached_op_views = iter->second.get();
   } else {
@@ -570,8 +570,8 @@ std::vector<MachineView> SearchHelper::get_valid_machine_views(
   return valid_views;
 }
 
-Node Graph::find_bottleneck_node(const Node &sink_node,
-                                 const Node &source_node) const {
+Node Graph::find_bottleneck_node(Node const &sink_node,
+                                 Node const &source_node) const {
   using FlexFlow::PCG::Utils::GraphStructure;
   using FlexFlow::PCG::Utils::imm_post_dominators;
   using FlexFlow::PCG::Utils::MultisourceGraphStructure;
@@ -597,7 +597,7 @@ Node Graph::find_bottleneck_node(const Node &sink_node,
   return bn_node;
 }
 
-void Edge::replace_node(const Node &currentOp, const Node &replaceWith) {
+void Edge::replace_node(Node const &currentOp, Node const &replaceWith) {
   if (this->srcOp == currentOp) {
     this->srcOp = replaceWith;
   }
@@ -822,7 +822,7 @@ void Graph::simplify(SimplificationSettings const &settings) {
     bool simplify = true;
     while (simplify) {
       simplify = false;
-      for (const auto &it : this->inEdges) {
+      for (auto const &it : this->inEdges) {
         if (it.first.ptr == NULL)
           continue;
         if (it.first.ptr->is_parallel_op()) {
@@ -840,7 +840,7 @@ void Graph::simplify(SimplificationSettings const &settings) {
             ((ParallelOp *)n2.ptr)->append_parallel_op_info(parallel_ops);
             Node new_node = model->get_or_create_fused_parallel_node(
                 n1.ptr->inputs[0], parallel_ops);
-            const auto &inList = this->inEdges.find(n1)->second;
+            auto const &inList = this->inEdges.find(n1)->second;
             assert(inList.size() == 1);
             Edge e1 = *inList.begin();
             // Update graph by adding edges
@@ -849,8 +849,8 @@ void Graph::simplify(SimplificationSettings const &settings) {
             this->remove_edge(e2);
             // make a copy of outList
             if (this->outEdges.find(n2) != this->outEdges.end()) {
-              const auto outList = this->outEdges.find(n2)->second;
-              for (const auto &e : outList) {
+              auto const outList = this->outEdges.find(n2)->second;
+              for (auto const &e : outList) {
                 this->add_edge(new_node, e.dstOp, 0, e.dstIdx);
                 this->remove_edge(e);
               }
@@ -867,7 +867,7 @@ void Graph::simplify(SimplificationSettings const &settings) {
   if (settings.remove_trailing_parallel_ops) {
     // Remove final parallel ops
     std::vector<Node> candidates;
-    for (const auto &it : this->outEdges) {
+    for (auto const &it : this->outEdges) {
       if (it.second.size() == 0 && it.first.ptr->op_type != OP_REDUCTION &&
           it.first.ptr->op_type != OP_FUSED_PARALLEL &&
           it.first.ptr->is_parallel_op()) {
@@ -877,7 +877,7 @@ void Graph::simplify(SimplificationSettings const &settings) {
     size_t index = 0;
     while (index < candidates.size()) {
       Node parallel_op = candidates[index++];
-      const auto &inList = this->inEdges.find(parallel_op)->second;
+      auto const &inList = this->inEdges.find(parallel_op)->second;
       assert(inList.size() == 1);
       Edge e = *inList.begin();
       this->remove_edge(e);
@@ -891,7 +891,7 @@ void Graph::simplify(SimplificationSettings const &settings) {
   if (settings.remove_noops) {
     // Remove NoOps
     std::vector<Node> noop_nodes;
-    for (const auto &it : this->inEdges) {
+    for (auto const &it : this->inEdges) {
       if (it.first.ptr == NULL)
         continue;
       if (it.first.ptr->op_type == OP_NOOP) {
@@ -901,13 +901,13 @@ void Graph::simplify(SimplificationSettings const &settings) {
     size_t index = 0;
     while (index < noop_nodes.size()) {
       Node noop = noop_nodes[index++];
-      const auto &inList = this->inEdges.find(noop)->second;
+      auto const &inList = this->inEdges.find(noop)->second;
       assert(inList.size() == 1);
       Edge in_edge = *inList.begin();
       // make a copy of outList
       if (this->outEdges.find(noop) != this->outEdges.end()) {
-        const auto outList = this->outEdges.find(noop)->second;
-        for (const auto &e : outList) {
+        auto const outList = this->outEdges.find(noop)->second;
+        for (auto const &e : outList) {
           this->add_edge(in_edge.srcOp, e.dstOp, in_edge.srcIdx, e.dstIdx);
           this->remove_edge(e);
         }
@@ -941,16 +941,16 @@ Graph::split_at_node(Node const &bottleneck) const {
     assert(used_nodes.size() < topo_sorted.size());
   }
 
-  for (const auto &it : this->inEdges) {
-    const auto &inList = it.second;
+  for (auto const &it : this->inEdges) {
+    auto const &inList = it.second;
     if (used_nodes.find(it.first) != used_nodes.end()) {
       // Add all in-edges of used_nodes in to the first_graph
-      for (const auto &it2 : inList) {
+      for (auto const &it2 : inList) {
         first_graph->add_edge(it2);
       }
     } else {
       // Add all in-edges of not_used_nodes into the second_graph
-      for (const auto &it2 : inList) {
+      for (auto const &it2 : inList) {
         second_graph->add_edge(it2);
       }
     }
@@ -1264,9 +1264,9 @@ T SearchHelper::estimate_xfer_cost(Graph const *graph,
   T result = this->empty<T>();
 
   if (source.node != Node::INVALID_NODE) {
-    const auto &inList = graph->inEdges.find(sink.node)->second;
+    auto const &inList = graph->inEdges.find(sink.node)->second;
     float op_cost = 0.0f;
-    for (const auto &it2 : inList) {
+    for (auto const &it2 : inList) {
       assert(it2.srcOp == source.node);
       assert(sink.node.ptr->inputs[it2.dstIdx]->is_valid_machine_view(
           source.view));
@@ -1312,10 +1312,10 @@ float SearchHelper::get_cost<GraphCostResult>(
 }
 
 template <typename T>
-T SearchHelper::graph_cost(const Graph *graph,
-                           const NodeAssignment &source,
-                           const NodeAssignment &sink,
-                           const MachineResource &resources,
+T SearchHelper::graph_cost(Graph const *graph,
+                           NodeAssignment const &source,
+                           NodeAssignment const &sink,
+                           MachineResource const &resources,
                            bool include_sink_compute_time) const {
   TAG_ENTER(this->logger);
   this->logger->debug() << "sink(" << sink.node.guid << ") "
@@ -1480,10 +1480,10 @@ template <typename T> T Graph::generic_optimal_cost() const {
 size_t Graph::hash(void) const {
   // Graph hash should be additive and independent to the ordering of the nodes
   size_t total_hash = 0;
-  for (const auto &it : inEdges) {
-    const auto &inList = it.second;
+  for (auto const &it : inEdges) {
+    auto const &inList = it.second;
     size_t node_hash = std::hash<size_t>()((size_t)it.first.ptr);
-    for (const auto &e : inList) {
+    for (auto const &e : inList) {
       size_t edge_hash = 17;
       edge_hash = edge_hash * 31 + std::hash<size_t>()((size_t)e.srcOp.ptr);
       edge_hash = edge_hash * 31 + std::hash<int>()(e.srcIdx);
@@ -1495,12 +1495,12 @@ size_t Graph::hash(void) const {
   return total_hash;
 }
 
-size_t dp_state_hash(const Graph *graph,
-                     const Node &sink_node,
-                     const MachineView &sink_view,
-                     const Node &source_node,
-                     const MachineView &source_view,
-                     const MachineResource &resource) {
+size_t dp_state_hash(Graph const *graph,
+                     Node const &sink_node,
+                     MachineView const &sink_view,
+                     Node const &source_node,
+                     MachineView const &source_view,
+                     MachineResource const &resource) {
   size_t key = graph->hash();
   hash_combine(key, sink_node.ptr);
   hash_combine(key, sink_view.hash());
@@ -1510,8 +1510,8 @@ size_t dp_state_hash(const Graph *graph,
 }
 
 GraphOptimalViewSerialized
-Graph::graph_optimize_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+Graph::graph_optimize_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   FFModel *model = *((FFModel **)task->args);
@@ -1554,14 +1554,14 @@ Graph::graph_optimize_task(const Task *task,
   std::unordered_map<Node, MachineView> optimal_views;
   if (model->config.only_data_parallel) {
     Graph *graph = new Graph(model);
-    std::unordered_map<const FlexFlow::Op *, Node> op_to_node_map;
-    for (const FlexFlow::Op *dstOp : model->operators) {
+    std::unordered_map<FlexFlow::Op const *, Node> op_to_node_map;
+    for (FlexFlow::Op const *dstOp : model->operators) {
       Node dstNode;
       dstNode.ptr = dstOp;
       dstNode.guid = model->node_global_guid++;
       op_to_node_map[dstOp] = dstNode;
       for (int j = 0; j < dstOp->numInputs; j++) {
-        const FlexFlow::Op *srcOp = dstOp->inputs[j]->owner_op;
+        FlexFlow::Op const *srcOp = dstOp->inputs[j]->owner_op;
         assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
         Node srcNode = op_to_node_map[srcOp];
         graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
@@ -1575,7 +1575,7 @@ Graph::graph_optimize_task(const Task *task,
         model->config.numNodes * model->config.workersPerNode;
     data_parallel_view.stride[0] = 1;
     data_parallel_view.start_device_id = 0;
-    for (const auto &node : best_graph->inEdges) {
+    for (auto const &node : best_graph->inEdges) {
       optimal_views[node.first] = data_parallel_view;
     }
   } else {
@@ -1589,8 +1589,8 @@ Graph::graph_optimize_task(const Task *task,
   sez.serialize(best_graph->inEdges.size());
   std::unordered_map<Node, int> todos;
   std::vector<Node> opList;
-  for (const auto &it : best_graph->inEdges) {
-    const auto &inList = it.second;
+  for (auto const &it : best_graph->inEdges) {
+    auto const &inList = it.second;
     todos[it.first] = (int)inList.size();
     if (todos[it.first] == 0)
       opList.push_back(it.first);
@@ -1598,23 +1598,23 @@ Graph::graph_optimize_task(const Task *task,
   size_t node_idx = 0;
   while (node_idx < opList.size()) {
     Node cur_node = opList[node_idx++];
-    const auto &outList = best_graph->outEdges[cur_node];
-    for (const auto &e : outList) {
+    auto const &outList = best_graph->outEdges[cur_node];
+    for (auto const &e : outList) {
       todos[e.dstOp]--;
       if (todos[e.dstOp] == 0) {
         opList.push_back(e.dstOp);
       }
     }
-    const auto &inList = best_graph->inEdges[cur_node];
+    auto const &inList = best_graph->inEdges[cur_node];
     sez.serialize(inList.size());
-    for (const auto &e : inList) {
+    for (auto const &e : inList) {
       sez.serialize(e.srcOp.guid);
       assert(e.dstOp.guid == cur_node.guid);
       sez.serialize(e.srcIdx);
       sez.serialize(e.dstIdx);
     }
     sez.serialize((size_t)10101010); // safe guard for the end of inedges
-    const Op *op = cur_node.ptr;
+    Op const *op = cur_node.ptr;
     assert(op != NULL);
     sez.serialize(cur_node.guid);
     sez.serialize(op->op_type);
@@ -1719,7 +1719,7 @@ Graph::graph_optimize_task(const Task *task,
   // Second, serialize optimal machine view
   printf("opotimal_views.size = %zu\n", optimal_views.size());
   sez.serialize(optimal_views.size());
-  for (const auto &it : optimal_views) {
+  for (auto const &it : optimal_views) {
     sez.serialize((size_t)98765432); // safe guard
     sez.serialize(it.first.guid);
     sez.serialize(it.second);
@@ -1791,12 +1791,12 @@ void FFModel::register_all_machine_views(
   /* } */
 }
 
-float FFModel::graph_cost(const Graph *graph,
-                          const Node &sink_node,
-                          const MachineView &sink_view,
-                          const Node &source_node,
-                          const MachineView &source_view,
-                          const MachineResource &resources,
+float FFModel::graph_cost(Graph const *graph,
+                          Node const &sink_node,
+                          MachineView const &sink_view,
+                          Node const &source_node,
+                          MachineView const &source_view,
+                          MachineResource const &resources,
                           bool include_sink_compute_time,
                           bool constructing_optimal_view) {
   assert(!graph->inEdges.empty());
@@ -1809,12 +1809,12 @@ float FFModel::graph_cost(const Graph *graph,
 }
 
 void FFModel::construct_optimal_view(
-    const Graph *graph,
-    const Node &sink_node,
-    const MachineView &sink_view,
-    const Node &source_node,
-    const MachineView &source_view,
-    const MachineResource &resources,
+    Graph const *graph,
+    Node const &sink_node,
+    MachineView const &sink_view,
+    Node const &source_node,
+    MachineView const &source_view,
+    MachineResource const &resources,
     bool include_sink_compute_time,
     float optimal_cost,
     std::unordered_map<Node, MachineView> &optimal_views) {
@@ -2109,15 +2109,15 @@ void FFModel::deserialize_graph_optimal_view(
 #endif
   assert(dez.get_remaining_bytes() == 0);
   printf("Deserialized Views...\n");
-  for (const auto &it : optimal_views) {
+  for (auto const &it : optimal_views) {
     printf("node[%zu]: type(%s) view(%d %d %d) ",
            it.first.guid,
            it.first.to_string().c_str(),
            it.second.ndims,
            it.second.dim[0],
            it.second.start_device_id);
-    const auto &list = graph->inEdges.at(it.first);
-    for (const auto &it2 : list) {
+    auto const &list = graph->inEdges.at(it.first);
+    for (auto const &it2 : list) {
       Edge e = it2;
       printf(" inEdge(node(%zu) idx(%d))", e.srcOp.guid, e.srcIdx);
     }

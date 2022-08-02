@@ -34,11 +34,11 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 Tensor FFModel::aggregate(
-    const Tensor
+    Tensor const
         *inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
     int n,
     float lambda_bal,
-    const char *name) {
+    char const *name) {
 #ifdef DEADCODE
   Aggregate *aggr = new Aggregate(*this, inputs, n, lambda_bal, name);
   layers.push_back(aggr);
@@ -48,10 +48,10 @@ Tensor FFModel::aggregate(
 }
 
 Aggregate::Aggregate(FFModel &model,
-                     const ParallelTensor *_inputs,
+                     ParallelTensor const *_inputs,
                      int _n,
                      float _lambda_bal,
-                     const char *name)
+                     char const *name)
     : Op(model,
          OP_AGGREGATE,
          name,
@@ -102,7 +102,7 @@ Aggregate::Aggregate(FFModel &model,
   numWeights = 0;
 }
 
-void Aggregate::init(const FFModel &ff) {
+void Aggregate::init(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -121,8 +121,8 @@ void Aggregate::init(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Aggregate::init_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+OpMeta *Aggregate::init_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
   Aggregate *agg = (Aggregate *)task->args;
@@ -132,7 +132,7 @@ OpMeta *Aggregate::init_task(const Task *task,
   return m;
 }
 
-void Aggregate::forward(const FFModel &ff) {
+void Aggregate::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -179,8 +179,8 @@ void Aggregate::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Aggregate::forward_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+void Aggregate::forward_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
   int n = ((Aggregate *)task->args)->n;
@@ -188,12 +188,12 @@ void Aggregate::forward_task(const Task *task,
   assert((int)regions.size() == n + 3);
   assert((int)task->regions.size() == n + 3);
 
-  const AggregateMeta *m = *((AggregateMeta **)task->local_args);
+  AggregateMeta const *m = *((AggregateMeta **)task->local_args);
 
   // get gate_pred, gate_assign, output
-  const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
-  const AccessorRO<int, 2> acc_gate_assign(regions[1], FID_DATA);
-  const AccessorWO<float, 2> acc_output(regions[n + 2], FID_DATA);
+  AccessorRO<float, 2> const acc_gate_pred(regions[0], FID_DATA);
+  AccessorRO<int, 2> const acc_gate_assign(regions[1], FID_DATA);
+  AccessorWO<float, 2> const acc_output(regions[n + 2], FID_DATA);
 
   Rect<2> rect_gate_pred = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -243,7 +243,7 @@ void Aggregate::forward_task(const Task *task,
                                     out_dim);
 }
 
-void Aggregate::backward(const FFModel &ff) {
+void Aggregate::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -316,11 +316,11 @@ void Aggregate::backward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Aggregate::backward_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void Aggregate::backward_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
-  const AggregateMeta *m = *((AggregateMeta **)task->local_args);
+  AggregateMeta const *m = *((AggregateMeta **)task->local_args);
   int n = ((Aggregate *)task->args)->n;
   float lambda_bal = ((Aggregate *)task->args)->lambda_bal;
 
@@ -328,11 +328,11 @@ void Aggregate::backward_task(const Task *task,
   assert((int)task->regions.size() == 2 * n + 5);
 
   // get gate_pred, gate_grad, gate_assign, output_grad
-  const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
-  const AccessorRO<int, 2> acc_gate_assign(regions[1], FID_DATA);
-  const AccessorRO<int, 2> acc_true_gate_assign(regions[2], FID_DATA);
-  const AccessorWO<float, 2> full_acc_gate_grad(regions[3], FID_DATA);
-  const AccessorRO<float, 2> acc_output_grad(regions[2 * n + 4], FID_DATA);
+  AccessorRO<float, 2> const acc_gate_pred(regions[0], FID_DATA);
+  AccessorRO<int, 2> const acc_gate_assign(regions[1], FID_DATA);
+  AccessorRO<int, 2> const acc_true_gate_assign(regions[2], FID_DATA);
+  AccessorWO<float, 2> const full_acc_gate_grad(regions[3], FID_DATA);
+  AccessorRO<float, 2> const acc_output_grad(regions[2 * n + 4], FID_DATA);
 
   Rect<2> rect_gate_pred = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -404,7 +404,7 @@ void Aggregate::backward_task(const Task *task,
 }
 
 bool Aggregate::measure_operator_cost(Simulator *sim,
-                                      const MachineView &mv,
+                                      MachineView const &mv,
                                       CostMetrics &cost_metrics) const {
   // TODO: implement
   cost_metrics.forward_time = 0.0f;

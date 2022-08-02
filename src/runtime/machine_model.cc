@@ -957,7 +957,7 @@ NetworkedMachineModel::NetworkedMachineModel(int num_nodes,
                                              int num_gpus_per_node,
                                              int num_switches,
                                              float network_latency,
-                                             const std::vector<int> &topology,
+                                             std::vector<int> const &topology,
                                              size_t capacity,
                                              float link_bandwidth)
     : num_nodes(num_nodes), num_gpus_per_node(num_gpus_per_node),
@@ -1225,7 +1225,7 @@ CommDevice *NetworkedMachineModel::get_nominal_path(MemDevice *src_mem,
 }
 
 // TODO
-void NetworkedMachineModel::save_topology_json(const std::string &fname) const {
+void NetworkedMachineModel::save_topology_json(std::string const &fname) const {
   return;
 }
 
@@ -1233,7 +1233,7 @@ void NetworkedMachineModel::set_pcie(bool state) { pcie_on = state; }
 
 void NetworkedMachineModel::set_pipeline(bool state) { pipelined = state; }
 
-void NetworkedMachineModel::set_topology(const ConnectionMatrix &conn) {
+void NetworkedMachineModel::set_topology(ConnectionMatrix const &conn) {
   conn_matrix = conn;
   int total_devs = num_nodes + num_switches;
   for (int i = 0; i < total_devs; i++) {
@@ -1248,11 +1248,11 @@ void NetworkedMachineModel::set_topology(const ConnectionMatrix &conn) {
   update_route();
 }
 
-const ConnectionMatrix &NetworkedMachineModel::get_conn_matrix() {
+ConnectionMatrix const &NetworkedMachineModel::get_conn_matrix() {
   return conn_matrix;
 }
 
-const std::map<size_t, NominalCommDevice *> &
+std::map<size_t, NominalCommDevice *> const &
 NetworkedMachineModel::get_nomm_comm_devs() {
   return ids_to_nw_nominal_device;
 }

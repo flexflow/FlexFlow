@@ -21,8 +21,8 @@ BMMTestMeta get_test_meta(const std::string file_path) {
   return BMMTestMeta(m, k, n, d);
 }
 
-void top_level_task(const Task *task,
-                    const std::vector<PhysicalRegion> &regions,
+void top_level_task(Task const *task,
+                    std::vector<PhysicalRegion> const &regions,
                     Context ctx,
                     Runtime *runtime) {
   // std::cout<< "test framework launched" << std::endl;
@@ -33,7 +33,7 @@ void top_level_task(const Task *task,
   // create input tensor
   Tensor dense_input1;
   {
-    const int dims[3] = {
+    int const dims[3] = {
         test_meta.d, test_meta.k, test_meta.m}; // target shape (d,k,m)
     // HACK: have to pass "batch_matmul" 3-dimensional strategy string id to
     // tell FF to distribute this tensor correctly
@@ -41,7 +41,7 @@ void top_level_task(const Task *task,
   }
   Tensor dense_input2;
   {
-    const int dims[3] = {
+    int const dims[3] = {
         test_meta.d, test_meta.k, test_meta.n}; // shape (n,k,d)
     // HACK: have to pass "batch_matmul" 3-dimensional strategy string id to
     // tell FF to distribute this tensor correctly

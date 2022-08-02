@@ -21,47 +21,47 @@ public:
 
 class Flat : public Op {
 public:
-  Flat(FFModel &model, const ParallelTensor input, const char *name);
+  Flat(FFModel &model, const ParallelTensor input, char const *name);
 
-  void init(const FFModel &) override;
-  void forward(const FFModel &) override;
-  void backward(const FFModel &) override;
-  void print_layer(const FFModel &model) override { assert(0); }
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
+  void print_layer(FFModel const &model) override { assert(0); }
   static Op *
   create_operator_from_layer(FFModel &model,
-                             const Layer *layer,
-                             const std::vector<ParallelTensor> &inputs);
+                             Layer const *layer,
+                             std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  static void forward_kernel(const float *input_ptr,
+  static void forward_kernel(float const *input_ptr,
                              float *output_ptr,
                              size_t num_elements,
                              ffStream_t stream);
-  static void forward_kernel_wrapper(const float *input_ptr,
+  static void forward_kernel_wrapper(float const *input_ptr,
                                      float *output_ptr,
                                      size_t num_elements);
   static void backward_kernel(float *input_grad_ptr,
-                              const float *output_grad_ptr,
+                              float const *output_grad_ptr,
                               size_t num_elements,
                               ffStream_t stream);
   static void backward_kernel_wrapper(float *input_grad_ptr,
-                                      const float *output_grad_ptr,
+                                      float const *output_grad_ptr,
                                       size_t num_elements);
   bool measure_operator_cost(Simulator *sim,
-                             const MachineView &pc,
+                             MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  Legion::Domain get_input_tensor_shape(const ParallelConfig &pc,
+  Legion::Domain get_input_tensor_shape(ParallelConfig const &pc,
                                         int input_idx,
                                         int part_idx) const override;
 

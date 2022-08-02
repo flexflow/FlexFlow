@@ -40,7 +40,7 @@ using Legion::TaskLauncher;
 ParallelTensor FFModel::combine(const ParallelTensor input,
                                 int combine_legion_dim,
                                 int combine_degree,
-                                const char *name) {
+                                char const *name) {
   assert(false);
 #ifdef DEADCODE
   Combine *comb =
@@ -54,7 +54,7 @@ Combine::Combine(FFModel &model,
                  const ParallelTensor _input,
                  int _combine_legion_dim,
                  int _combine_degree,
-                 const char *name)
+                 char const *name)
     : ParallelOp(model, OP_COMBINE, name, _input),
       combine_dim(_combine_legion_dim), combine_degree(_combine_degree) {
   int numdim = _input->num_dims;
@@ -72,8 +72,8 @@ Combine::Combine(FFModel &model,
   // outputs[0]->print("Combine::output");
 }
 
-OpMeta *Combine::init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+OpMeta *Combine::init_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   Combine *rep = (Combine *)task->args;
@@ -83,7 +83,7 @@ OpMeta *Combine::init_task(const Task *task,
   return nullptr;
 }
 
-void Combine::init(const FFModel &ff) {
+void Combine::init(FFModel const &ff) {
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -126,7 +126,7 @@ void Combine::create_input_partition(FFModel &ff) {
                                output_grad_lp);
 }
 
-void Combine::forward(const FFModel &ff) {
+void Combine::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -154,7 +154,7 @@ void Combine::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Combine::backward(const FFModel &ff) {
+void Combine::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -186,7 +186,7 @@ void Combine::backward(const FFModel &ff) {
 }
 
 bool Combine::measure_operator_cost(Simulator *sim,
-                                    const MachineView &mv,
+                                    MachineView const &mv,
                                     CostMetrics &cost_metrics) const {
   // TODO: to be implemented
   cost_metrics.forward_time = 0.05f;
@@ -236,7 +236,7 @@ Node FFModel::get_or_create_combine_node(const ParallelTensor input,
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(combine_dim);
   hash = hash * 31 + std::hash<int>()(combine_degree);
-  const auto &it = cached_combine_ops.find(hash);
+  auto const &it = cached_combine_ops.find(hash);
   Combine *combine = NULL;
   if (it != cached_combine_ops.end()) {
     combine = it->second;
@@ -266,8 +266,8 @@ tl::optional<RecordFormatter> Combine::as_dot() const {
 }
 
 /*static*/
-void Combine::forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+void Combine::forward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   assert(regions.size() == 2);
@@ -287,8 +287,8 @@ void Combine::forward_task(const Task *task,
 }
 
 template <typename DT>
-void Combine::forward_task_with_type(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
+void Combine::forward_task_with_type(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
   Domain input_domain = runtime->get_index_space_domain(
@@ -305,8 +305,8 @@ void Combine::forward_task_with_type(const Task *task,
   forward_kernel<DT>(input_ptr, output_ptr, output_domain.get_volume());
 }
 
-void Combine::backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+void Combine::backward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
   assert(regions.size() == 2);
@@ -327,8 +327,8 @@ void Combine::backward_task(const Task *task,
 
 template <typename DT>
 void Combine::backward_task_with_type(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   Domain output_grad_domain = runtime->get_index_space_domain(

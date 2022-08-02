@@ -22,9 +22,9 @@ namespace FlexFlow {
 cudnnConvolutionFwdAlgo_t
 selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
                                   const cudnnTensorDescriptor_t xDesc,
-                                  const void *x,
+                                  void const *x,
                                   const cudnnFilterDescriptor_t wDesc,
-                                  const void *w,
+                                  void const *w,
                                   const cudnnConvolutionDescriptor_t convDesc,
                                   void *workSpace,
                                   size_t workSpaceSize,
@@ -33,9 +33,9 @@ selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
 cudnnConvolutionBwdFilterAlgo_t selectConvolutionBackwardFilterAlgorithm(
     cudnnHandle_t handle,
     const cudnnTensorDescriptor_t xDesc,
-    const void *x,
+    void const *x,
     const cudnnTensorDescriptor_t dyDesc,
-    const void *dy,
+    void const *dy,
     const cudnnConvolutionDescriptor_t convDesc,
     void *workSpace,
     size_t workSpaceSize,
@@ -44,9 +44,9 @@ cudnnConvolutionBwdFilterAlgo_t selectConvolutionBackwardFilterAlgorithm(
 cudnnConvolutionBwdDataAlgo_t selectConvolutionBackwardDataAlgorithm(
     cudnnHandle_t handle,
     const cudnnFilterDescriptor_t wDesc,
-    const void *w,
+    void const *w,
     const cudnnTensorDescriptor_t dyDesc,
-    const void *dy,
+    void const *dy,
     const cudnnConvolutionDescriptor_t convDesc,
     void *workSpace,
     size_t workSpaceSize,
@@ -54,7 +54,7 @@ cudnnConvolutionBwdDataAlgo_t selectConvolutionBackwardDataAlgorithm(
     void *dx);
 
 /*static*/
-void Conv2D::init_kernel(const Conv2D *conv,
+void Conv2D::init_kernel(Conv2D const *conv,
                          Conv2DMeta *m,
                          int input_w,
                          int input_h,
@@ -66,9 +66,9 @@ void Conv2D::init_kernel(const Conv2D *conv,
                          int output_n,
                          int pad_h,
                          int pad_w,
-                         const float *input_ptr,
+                         float const *input_ptr,
                          float *output_ptr,
-                         const float *kernel_ptr,
+                         float const *kernel_ptr,
                          float *kernel_grad_ptr) {
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
                                         CUDNN_TENSOR_NCHW,
@@ -169,11 +169,11 @@ void Conv2D::init_kernel(const Conv2D *conv,
 }
 
 /*static*/
-void Conv2D::forward_kernel(const Conv2DMeta *m,
-                            const float *input_ptr,
+void Conv2D::forward_kernel(Conv2DMeta const *m,
+                            float const *input_ptr,
                             float *output_ptr,
-                            const float *filter_ptr,
-                            const float *bias_ptr,
+                            float const *filter_ptr,
+                            float const *bias_ptr,
                             cudaStream_t stream) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
@@ -215,11 +215,11 @@ void Conv2D::forward_kernel(const Conv2DMeta *m,
 }
 
 /*static*/
-void Conv2D::forward_kernel_wrapper(const Conv2DMeta *m,
-                                    const float *input_ptr,
+void Conv2D::forward_kernel_wrapper(Conv2DMeta const *m,
+                                    float const *input_ptr,
                                     float *output_ptr,
-                                    const float *filter_ptr,
-                                    const float *bias_ptr) {
+                                    float const *filter_ptr,
+                                    float const *bias_ptr) {
   // printf("fwdAlgo(%d), bwdFilterALgo(%d), bwdDataAlgo(%d)\n",
   // (int)m->fwdAlgo,(int) m->bwdFilterAlgo,(int) m->bwdDataAlgo);
   cudaStream_t stream;
@@ -250,12 +250,12 @@ void Conv2D::forward_kernel_wrapper(const Conv2DMeta *m,
 }
 
 /*static*/
-void Conv2D::backward_kernel(const Conv2DMeta *m,
-                             const float *input_ptr,
+void Conv2D::backward_kernel(Conv2DMeta const *m,
+                             float const *input_ptr,
                              float *input_grad_ptr,
-                             const float *output_ptr,
+                             float const *output_ptr,
                              float *output_grad_ptr,
-                             const float *kernel_ptr,
+                             float const *kernel_ptr,
                              float *kernel_grad_ptr,
                              float *bias_grad_ptr,
                              cudaStream_t stream) {
@@ -325,12 +325,12 @@ void Conv2D::backward_kernel(const Conv2DMeta *m,
 }
 
 /*static*/
-void Conv2D::backward_kernel_wrapper(const Conv2DMeta *m,
-                                     const float *input_ptr,
+void Conv2D::backward_kernel_wrapper(Conv2DMeta const *m,
+                                     float const *input_ptr,
                                      float *input_grad_ptr,
-                                     const float *output_ptr,
+                                     float const *output_ptr,
                                      float *output_grad_ptr,
-                                     const float *kernel_ptr,
+                                     float const *kernel_ptr,
                                      float *kernel_grad_ptr,
                                      float *bias_grad_ptr) {
   cudaStream_t stream;
@@ -374,15 +374,15 @@ void Conv2D::backward_kernel_wrapper(const Conv2DMeta *m,
 cudnnConvolutionFwdAlgo_t
 selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
                                   const cudnnTensorDescriptor_t xDesc,
-                                  const void *x,
+                                  void const *x,
                                   const cudnnFilterDescriptor_t wDesc,
-                                  const void *w,
+                                  void const *w,
                                   const cudnnConvolutionDescriptor_t convDesc,
                                   void *workSpace,
                                   size_t workSpaceSize,
                                   const cudnnTensorDescriptor_t yDesc,
                                   void *y) {
-  const int reqAlgCnt = 8;
+  int const reqAlgCnt = 8;
   int cnt = 0;
   cudnnConvolutionFwdAlgoPerf_t perfResults[reqAlgCnt];
   checkCUDNN(cudnnFindConvolutionForwardAlgorithmEx(handle,
@@ -409,15 +409,15 @@ selectConvolutionForwardAlgorithm(cudnnHandle_t handle,
 cudnnConvolutionBwdFilterAlgo_t selectConvolutionBackwardFilterAlgorithm(
     cudnnHandle_t handle,
     const cudnnTensorDescriptor_t xDesc,
-    const void *x,
+    void const *x,
     const cudnnTensorDescriptor_t dyDesc,
-    const void *dy,
+    void const *dy,
     const cudnnConvolutionDescriptor_t convDesc,
     void *workSpace,
     size_t workSpaceSize,
     const cudnnFilterDescriptor_t dwDesc,
     void *dw) {
-  const int reqAlgCnt = 8;
+  int const reqAlgCnt = 8;
   int cnt = 0;
   cudnnConvolutionBwdFilterAlgoPerf_t perfResults[reqAlgCnt];
   checkCUDNN(cudnnFindConvolutionBackwardFilterAlgorithmEx(handle,
@@ -444,15 +444,15 @@ cudnnConvolutionBwdFilterAlgo_t selectConvolutionBackwardFilterAlgorithm(
 cudnnConvolutionBwdDataAlgo_t selectConvolutionBackwardDataAlgorithm(
     cudnnHandle_t handle,
     const cudnnFilterDescriptor_t wDesc,
-    const void *w,
+    void const *w,
     const cudnnTensorDescriptor_t dyDesc,
-    const void *dy,
+    void const *dy,
     const cudnnConvolutionDescriptor_t convDesc,
     void *workSpace,
     size_t workSpaceSize,
     const cudnnTensorDescriptor_t dxDesc,
     void *dx) {
-  const int reqAlgCnt = 8;
+  int const reqAlgCnt = 8;
   int cnt = 0;
   cudnnConvolutionBwdDataAlgoPerf_t perfResults[reqAlgCnt];
   checkCUDNN(cudnnFindConvolutionBackwardDataAlgorithmEx(handle,
@@ -487,7 +487,7 @@ Conv2DMeta::Conv2DMeta(FFHandler handler) : OpMeta(handler) {
 
 // TODO: refactor it
 bool Conv2D::measure_operator_cost(Simulator *sim,
-                                   const MachineView &mv,
+                                   MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
   if (!outputs[0]->get_sub_tensor(mv, sub_output))
@@ -574,7 +574,7 @@ bool Conv2D::measure_operator_cost(Simulator *sim,
 
   // select forward algorithm
   {
-    const int reqAlgCnt = 8;
+    int const reqAlgCnt = 8;
     int cnt = 0;
     cudnnConvolutionFwdAlgoPerf_t perfResults[reqAlgCnt];
     checkCUDNN(cudnnFindConvolutionForwardAlgorithmEx(m->handle.dnn,
@@ -599,7 +599,7 @@ bool Conv2D::measure_operator_cost(Simulator *sim,
   }
   // select backward algorithm
   {
-    const int reqAlgCnt = 8;
+    int const reqAlgCnt = 8;
     int cnt = 0;
     cudnnConvolutionBwdFilterAlgoPerf_t perfResults[reqAlgCnt];
     checkCUDNN(
@@ -624,7 +624,7 @@ bool Conv2D::measure_operator_cost(Simulator *sim,
     //   perfResults[i].algo, perfResults[i].time);
   }
   if (trainableInputs[0]) {
-    const int reqAlgCnt = 8;
+    int const reqAlgCnt = 8;
     int cnt = 0;
     cudnnConvolutionBwdDataAlgoPerf_t perfResults[reqAlgCnt];
     checkCUDNN(

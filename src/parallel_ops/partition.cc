@@ -40,7 +40,7 @@ using Legion::TaskLauncher;
 ParallelTensor FFModel::repartition(const ParallelTensor input,
                                     int repartition_legion_dim,
                                     int repartition_degree,
-                                    const char *name) {
+                                    char const *name) {
   assert(false);
 #ifdef DEADCODE
   Repartition *part = new Repartition(
@@ -54,7 +54,7 @@ Repartition::Repartition(FFModel &model,
                          const ParallelTensor _input,
                          int _repartition_legion_dim,
                          int _repartition_degree,
-                         const char *name)
+                         char const *name)
     : ParallelOp(model, OP_REPARTITION, name, _input),
       repartition_dim(_repartition_legion_dim),
       repartition_degree(_repartition_degree) {
@@ -71,14 +71,14 @@ Repartition::Repartition(FFModel &model,
   // outputs[0]->print("Repartition::output");
 }
 
-OpMeta *Repartition::init_task(const Task *task,
-                               const std::vector<PhysicalRegion> &regions,
+OpMeta *Repartition::init_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
                                Context ctx,
                                Runtime *runtime) {
   return nullptr;
 }
 
-void Repartition::init(const FFModel &ff) {
+void Repartition::init(FFModel const &ff) {
   ArgumentMap argmap;
   parallel_is = outputs[0]->parallel_is;
   Context ctx = ff.config.lg_ctx;
@@ -121,7 +121,7 @@ void Repartition::create_input_partition(FFModel &ff) {
                                output_grad_lp);
 }
 
-void Repartition::forward(const FFModel &ff) {
+void Repartition::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -149,7 +149,7 @@ void Repartition::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Repartition::backward(const FFModel &ff) {
+void Repartition::backward(FFModel const &ff) {
   // skip backpropagation for input
   if (inputs[0]->owner_op != nullptr &&
       inputs[0]->owner_op->op_type == OP_INPUT)
@@ -186,7 +186,7 @@ void Repartition::backward(const FFModel &ff) {
 }
 
 bool Repartition::measure_operator_cost(Simulator *sim,
-                                        const MachineView &pc,
+                                        MachineView const &pc,
                                         CostMetrics &cost_metrics) const {
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
@@ -242,7 +242,7 @@ Node FFModel::get_or_create_repartition_node(const ParallelTensor input,
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(repartition_dim);
   hash = hash * 31 + std::hash<int>()(repartition_degree);
-  const auto &it = cached_repartition_ops.find(hash);
+  auto const &it = cached_repartition_ops.find(hash);
   Repartition *repartition = NULL;
   if (it != cached_repartition_ops.end()) {
     repartition = it->second;
@@ -273,8 +273,8 @@ tl::optional<RecordFormatter> Repartition::as_dot() const {
 }
 
 /*static*/
-void Repartition::forward_task(const Task *task,
-                               const std::vector<PhysicalRegion> &regions,
+void Repartition::forward_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
                                Context ctx,
                                Runtime *runtime) {
   assert(regions.size() == 2);
@@ -295,8 +295,8 @@ void Repartition::forward_task(const Task *task,
 
 template <typename DT>
 void Repartition::forward_task_with_type(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   Domain input_domain = runtime->get_index_space_domain(
@@ -313,8 +313,8 @@ void Repartition::forward_task_with_type(
   forward_kernel<DT>(input_ptr, output_ptr, output_domain.get_volume());
 }
 
-void Repartition::backward_task(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
+void Repartition::backward_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime) {
   assert(regions.size() == 2);
@@ -335,8 +335,8 @@ void Repartition::backward_task(const Task *task,
 
 template <typename DT>
 void Repartition::backward_task_with_type(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   Domain output_grad_domain = runtime->get_index_space_domain(

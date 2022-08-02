@@ -19,7 +19,7 @@
 namespace FlexFlow {
 
 /*static*/
-void Flat::forward_kernel(const float *input_ptr,
+void Flat::forward_kernel(float const *input_ptr,
                           float *output_ptr,
                           size_t num_elements,
                           cudaStream_t stream) {
@@ -31,7 +31,7 @@ void Flat::forward_kernel(const float *input_ptr,
 }
 
 /*static*/
-void Flat::forward_kernel_wrapper(const float *input_ptr,
+void Flat::forward_kernel_wrapper(float const *input_ptr,
                                   float *output_ptr,
                                   size_t num_elements) {
   cudaStream_t stream;
@@ -41,7 +41,7 @@ void Flat::forward_kernel_wrapper(const float *input_ptr,
 }
 
 void Flat::backward_kernel(float *input_grad_ptr,
-                           const float *output_grad_ptr,
+                           float const *output_grad_ptr,
                            size_t num_elements,
                            cudaStream_t stream) {
   float alpha = 1.0f;
@@ -51,7 +51,7 @@ void Flat::backward_kernel(float *input_grad_ptr,
 }
 
 void Flat::backward_kernel_wrapper(float *input_grad_ptr,
-                                   const float *output_grad_ptr,
+                                   float const *output_grad_ptr,
                                    size_t num_elements) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));

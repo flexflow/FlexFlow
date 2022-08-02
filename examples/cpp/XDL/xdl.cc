@@ -36,7 +36,7 @@ XDLConfig::XDLConfig(void)
 }
 
 Tensor create_mlp(FFModel *model,
-                  const Tensor &input,
+                  Tensor const &input,
                   std::vector<int> ln,
                   int sigmoid_layer) {
   Tensor t = input;
@@ -59,7 +59,7 @@ Tensor create_mlp(FFModel *model,
 }
 
 Tensor create_emb(FFModel *model,
-                  const Tensor &input,
+                  Tensor const &input,
                   int input_dim,
                   int output_dim,
                   int idx) {
@@ -73,7 +73,7 @@ Tensor create_emb(FFModel *model,
                           embed_init);
 }
 
-Tensor interact_features(FFModel *model, const std::vector<Tensor> &ly) {
+Tensor interact_features(FFModel *model, std::vector<Tensor> const &ly) {
   Tensor *inputs = (Tensor *)malloc(sizeof(Tensor) * (ly.size()));
   for (size_t i = 0; i < ly.size(); i++)
     inputs[i] = ly[i];
@@ -81,7 +81,7 @@ Tensor interact_features(FFModel *model, const std::vector<Tensor> &ly) {
   free(inputs);
 }
 
-void print_vector(const std::string &name, const std::vector<int> &vector) {
+void print_vector(std::string const &name, std::vector<int> const &vector) {
   std::ostringstream out;
   for (size_t i = 0; i < vector.size() - 1; i++)
     out << vector[i] << " ";
@@ -90,15 +90,15 @@ void print_vector(const std::string &name, const std::vector<int> &vector) {
   log_app.print("%s: %s", name.c_str(), out.str().c_str());
 }
 
-void FlexFlow::top_level_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void FlexFlow::top_level_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
   FFConfig ffConfig;
   // Parse input arguments
   XDLConfig xdlConfig;
   {
-    const InputArgs &command_args = HighLevelRuntime::get_input_args();
+    InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
     parse_input_args(argv, argc, xdlConfig);
@@ -115,7 +115,7 @@ void FlexFlow::top_level_task(const Task *task,
 
   std::vector<Tensor> sparse_inputs;
   for (size_t i = 0; i < xdlConfig.embedding_size.size(); i++) {
-    const int dims[] = {ffConfig.batchSize, xdlConfig.embedding_bag_size};
+    int const dims[] = {ffConfig.batchSize, xdlConfig.embedding_bag_size};
     Tensor input = ff.create_tensor<2>(dims, DT_INT64);
     sparse_inputs.push_back(input);
   }
@@ -243,8 +243,8 @@ void parse_input_args(char **argv, int argc, XDLConfig &config) {
 }
 
 DataLoader::DataLoader(FFModel &ff,
-                       const XDLConfig &xdl,
-                       const std::vector<Tensor> &_sparse_inputs,
+                       XDLConfig const &xdl,
+                       std::vector<Tensor> const &_sparse_inputs,
                        Tensor _label) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -259,17 +259,17 @@ DataLoader::DataLoader(FFModel &ff,
   log_app.print("Number of random samples = %d\n", num_samples);
 }
 
-void DataLoader::load_entire_dataset(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
+void DataLoader::load_entire_dataset(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   // Note that these instances are in ZCM, can only use
   // TensorAccessorW with readOutput flag
-  const AccessorWO<int64_t, 2> acc_sparse_input(regions[0], FID_DATA);
-  const AccessorWO<float, 2> acc_dense_input(regions[1], FID_DATA);
-  const AccessorWO<float, 2> acc_label_input(regions[2], FID_DATA);
+  AccessorWO<int64_t, 2> const acc_sparse_input(regions[0], FID_DATA);
+  AccessorWO<float, 2> const acc_dense_input(regions[1], FID_DATA);
+  AccessorWO<float, 2> const acc_label_input(regions[2], FID_DATA);
   Rect<2> rect_sparse_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<2> rect_dense_input = runtime->get_index_space_domain(
@@ -288,9 +288,9 @@ void DataLoader::load_entire_dataset(const Task *task,
   int num_dense_dims = rect_dense_input.hi[0] - rect_dense_input.lo[0] + 1;
   assert(num_samples == rect_label_input.hi[1] - rect_label_input.lo[1] + 1);
   assert(rect_label_input.hi[0] == rect_label_input.lo[0]);
-  const ArgsConfig xdl = *((const ArgsConfig *)task->args);
-  const int emb_size = xdl.embedding_size;
-  std::string file_name((const char *)xdl.dataset_path);
+  const ArgsConfig xdl = *((ArgsConfig const *)task->args);
+  int const emb_size = xdl.embedding_size;
+  std::string file_name((char const *)xdl.dataset_path);
   log_app.print("Start generating random input samples");
   for (size_t i = 0; i < rect_sparse_input.volume(); i++)
     sparse_input_ptr[i] = std::rand() % emb_size;
@@ -401,8 +401,8 @@ void DataLoader::shuffle() {}
 void DataLoader::reset() { next_index = 0; }
 
 void DataLoader::load_sparse_input_cpu(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   std::cout << "load_sparse_input_cpu" << std::endl;

@@ -33,50 +33,50 @@ struct EmbeddingParams {
 class Embedding : public Op {
 public:
   Embedding(FFModel &model,
-            const LayerID &_layer_guid,
+            LayerID const &_layer_guid,
             const ParallelTensor _input,
             int _num_entries,
             int _out_channels,
             AggrMode _aggr,
             bool allocate_weights,
-            const char *name);
+            char const *name);
   Embedding(FFModel &model,
             Embedding const &other,
             const ParallelTensor input,
             bool allocate_weights);
-  void init(const FFModel &) override;
-  void forward(const FFModel &) override;
-  void backward(const FFModel &) override;
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
   // void update(const FFModel&);
-  void print_layer(const FFModel &model) override { assert(0); }
+  void print_layer(FFModel const &model) override { assert(0); }
   // Parameter* get_parameter(int index);
   // void create_weights(FFModel& model);
   // void create_input_partition(FFModel& model);
   static Op *
   create_operator_from_layer(FFModel &model,
-                             const Layer *layer,
-                             const std::vector<ParallelTensor> &inputs);
+                             Layer const *layer,
+                             std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   static void
-  forward_task_cpu(const Legion::Task *task,
-                   const std::vector<Legion::PhysicalRegion> &regions,
+  forward_task_cpu(Legion::Task const *task,
+                   std::vector<Legion::PhysicalRegion> const &regions,
                    Legion::Context ctx,
                    Legion::Runtime *runtime);
   static void
-  backward_task_cpu(const Legion::Task *task,
-                    const std::vector<Legion::PhysicalRegion> &regions,
+  backward_task_cpu(Legion::Task const *task,
+                    std::vector<Legion::PhysicalRegion> const &regions,
                     Legion::Context ctx,
                     Legion::Runtime *runtime);
   template <typename TI>
@@ -90,7 +90,7 @@ public:
                              int outputSize,
                              ffStream_t stream);
   template <typename TI>
-  static void forward_kernel_wrapper(const EmbeddingMeta *m,
+  static void forward_kernel_wrapper(EmbeddingMeta const *m,
                                      TI const *input_ptr,
                                      float *output_ptr,
                                      float const *weight_ptr,
@@ -110,7 +110,7 @@ public:
                               int outputSize,
                               ffStream_t stream);
   template <typename TI>
-  static void backward_kernel_wrapper(const EmbeddingMeta *m,
+  static void backward_kernel_wrapper(EmbeddingMeta const *m,
                                       TI const *input_ptr,
                                       float const *output_ptr,
                                       float *weight_grad_ptr,
@@ -121,7 +121,7 @@ public:
                                       int outputSize);
   void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p) const;
   bool measure_operator_cost(Simulator *sim,
-                             const MachineView &pc,
+                             MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
   size_t get_params_hash() const override;
@@ -131,14 +131,14 @@ public:
 private:
   template <typename TI>
   static void
-  forward_task_with_type(const Legion::Task *task,
-                         const std::vector<Legion::PhysicalRegion> &regions,
+  forward_task_with_type(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
                          Legion::Runtime *runtime);
   template <typename TI>
   static void
-  backward_task_with_type(const Legion::Task *task,
-                          const std::vector<Legion::PhysicalRegion> &regions,
+  backward_task_with_type(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
                           Legion::Context ctx,
                           Legion::Runtime *runtime);
 

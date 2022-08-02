@@ -33,7 +33,7 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-Tensor FFModel::softmax(const Tensor _input, int dim, const char *name) {
+Tensor FFModel::softmax(const Tensor _input, int dim, char const *name) {
   Layer *sm = new Layer(this,
                         OP_SOFTMAX,
                         name,
@@ -61,8 +61,8 @@ Tensor FFModel::softmax(const Tensor _input, int dim, const char *name) {
 
 Op *Softmax::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("softmax_dim", value);
   int dim = (int)value;
@@ -75,7 +75,7 @@ Op *Softmax::create_operator_from_layer(
 Softmax::Softmax(FFModel &model,
                  const ParallelTensor _input,
                  int _dim,
-                 const char *name)
+                 char const *name)
     : Op(model,
          OP_SOFTMAX,
          name,
@@ -93,7 +93,7 @@ Softmax::Softmax(FFModel &model,
   outputs[0] = model.create_parallel_tensor(numdim, dims, DT_FLOAT, this);
 }
 
-void Softmax::init(const FFModel &ff) {
+void Softmax::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -129,14 +129,14 @@ void Softmax::init(const FFModel &ff) {
   regions[0]: input
   regions[1]: output
  */
-OpMeta *Softmax::init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+OpMeta *Softmax::init_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const Softmax *softmax = (Softmax *)task->args;
-  FFHandler handle = *((const FFHandler *)task->local_args);
+  Softmax const *softmax = (Softmax *)task->args;
+  FFHandler handle = *((FFHandler const *)task->local_args);
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
@@ -165,7 +165,7 @@ OpMeta *Softmax::init_task(const Task *task,
   return m;
 }
 
-void Softmax::forward(const FFModel &ff) {
+void Softmax::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -193,8 +193,8 @@ void Softmax::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Softmax::forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+void Softmax::forward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   Domain in_domain = runtime->get_index_space_domain(
@@ -215,14 +215,14 @@ void Softmax::forward_task(const Task *task,
   regions[1](O): output
 */
 template <int NDIM>
-void Softmax::forward_task_with_dim(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+void Softmax::forward_task_with_dim(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const Softmax* softmax = (Softmax*) task->args;
-  const SoftmaxMeta *m = *((SoftmaxMeta **)task->local_args);
+  SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
   TensorAccessorR<float, NDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, NDIM> acc_output(regions[1],
@@ -235,7 +235,7 @@ void Softmax::forward_task_with_dim(const Task *task,
   Softmax::forward_kernel_wrapper(m, acc_input.ptr, acc_output.ptr);
 }
 
-void Softmax::backward(const FFModel &ff) {
+void Softmax::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -263,8 +263,8 @@ void Softmax::backward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Softmax::backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+void Softmax::backward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
   Domain in_domain = runtime->get_index_space_domain(
@@ -288,14 +288,14 @@ void Softmax::backward_task(const Task *task,
 // = output_grad) since the upstream cross_entropy_loss function computes
 // performs softmax_cross_entropy_loss to avoid intermediate zeros
 template <int NDIM>
-void Softmax::backward_task_with_dim(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
+void Softmax::backward_task_with_dim(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const Softmax* softmax = (Softmax*) task->args;
-  const SoftmaxMeta *m = *((SoftmaxMeta **)task->local_args);
+  SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
   TensorAccessorW<float, NDIM> acc_input_grad(regions[0],
                                               task->regions[0],
                                               FID_DATA,
@@ -329,7 +329,7 @@ size_t Softmax::get_params_hash() const {
 }
 
 bool Softmax::measure_operator_cost(Simulator *sim,
-                                    const MachineView &mv,
+                                    MachineView const &mv,
                                     CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -388,7 +388,7 @@ Node FFModel::get_or_create_softmax_node(const ParallelTensor input,
                                          int softmax_dim) {
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(softmax_dim);
-  const auto &it = cached_softmax_ops.find(hash);
+  auto const &it = cached_softmax_ops.find(hash);
   Softmax *softmax = NULL;
   if (it != cached_softmax_ops.end()) {
     softmax = it->second;

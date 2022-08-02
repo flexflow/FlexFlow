@@ -26,12 +26,12 @@ using Legion::Runtime;
 using Legion::Task;
 
 template <typename T>
-void Cache::cache_forward(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+void Cache::cache_forward(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
   Cache *c = ((Arg *)(task->args))->cache;
-  const CacheMeta *m = *((CacheMeta **)task->local_args);
+  CacheMeta const *m = *((CacheMeta **)task->local_args);
   int batch_ctr = ((Arg *)(task->args))->batch_ctr;
   T **batch_ptrs = (T **)c->batch_ptrs;
   T *output_ptr = helperGetTensorPointerWO<T>(
@@ -50,8 +50,8 @@ void Cache::cache_forward(const Task *task,
 }
 
 template <typename T>
-float Cache::cache_update(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+float Cache::cache_update(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
   Cache *c = ((Arg *)(task->args))->cache;
@@ -78,24 +78,24 @@ float Cache::cache_update(const Task *task,
 CacheMeta::CacheMeta(FFHandler handler) : OpMeta(handler) {}
 
 template void
-Cache::cache_forward<float>(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+Cache::cache_forward<float>(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime);
 template void
-Cache::cache_forward<int32_t>(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+Cache::cache_forward<int32_t>(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime);
 
 template float
-Cache::cache_update<float>(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+Cache::cache_update<float>(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime);
 template float
-Cache::cache_update<int32_t>(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+Cache::cache_update<int32_t>(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime);
 

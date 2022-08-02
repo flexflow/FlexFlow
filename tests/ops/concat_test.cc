@@ -34,8 +34,8 @@ ConcatTestMeta get_test_meta(const std::string file_path) {
                         dense_projection_i_dim);
 }
 
-void top_level_task(const Task *task,
-                    const std::vector<PhysicalRegion> &regions,
+void top_level_task(Task const *task,
+                    std::vector<PhysicalRegion> const &regions,
                     Context ctx,
                     Runtime *runtime) {
   std::cout << "test framework launched" << std::endl;
@@ -53,7 +53,7 @@ void top_level_task(const Task *task,
   Tensor dense_embeddings[dense_embedding_channels];
   Tensor sparse_embeddings[sparse_embedding_channels];
   for (int i = 0; i < dense_embedding_channels; i++) {
-    const int dims[2] = {test_meta.batch_size, test_meta.i_dim};
+    int const dims[2] = {test_meta.batch_size, test_meta.i_dim};
     dense_embeddings[i] = ff.create_tensor<2>(dims, "", DT_FLOAT);
     // init tensor is checked, nothing wrong in init tensor
     // dense_embeddings[i] also checked, it's correct
@@ -62,7 +62,7 @@ void top_level_task(const Task *task,
   }
 
   for (int i = 0; i < sparse_embedding_channels; i++) {
-    const int dims[2] = {test_meta.batch_size, test_meta.i_dim};
+    int const dims[2] = {test_meta.batch_size, test_meta.i_dim};
     sparse_embeddings[i] = ff.create_tensor<2>(dims, "", DT_FLOAT);
     // init tensor is checked, nothing wrong in init tensor
     // sparse_embeddings[i] also checked, it's correct

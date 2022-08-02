@@ -21,7 +21,7 @@ private:
   //
   template <size_t Idx, typename... TupleTypes>
   inline typename std::enable_if<Idx == sizeof...(TupleTypes), void>::type
-  hash_combine_tup(size_t &seed, const std::tuple<TupleTypes...> &tup) const {}
+  hash_combine_tup(size_t &seed, std::tuple<TupleTypes...> const &tup) const {}
 
   //  this is the computation function
   //  continues till condition N < sizeof...(TupleTypes) holds
@@ -30,7 +30,7 @@ private:
       inline typename std::enable_if <
       Idx<sizeof...(TupleTypes), void>::type
       hash_combine_tup(size_t &seed,
-                       const std::tuple<TupleTypes...> &tup) const {
+                       std::tuple<TupleTypes...> const &tup) const {
     hash_combine(seed, std::get<Idx>(tup));
 
     //  on to next element
@@ -38,7 +38,7 @@ private:
   }
 
 public:
-  size_t operator()(const std::tuple<TupleArgs...> &tupleValue) const {
+  size_t operator()(std::tuple<TupleArgs...> const &tupleValue) const {
     size_t seed = 0;
     //  begin with the first iteration
     hash_combine_tup<0>(seed, tupleValue);
@@ -47,7 +47,7 @@ public:
 };
 
 template <typename L, typename R> struct hash<std::pair<L, R>> {
-  size_t operator()(const std::pair<L, R> &p) const {
+  size_t operator()(std::pair<L, R> const &p) const {
     size_t seed = 283746;
 
     hash_combine(seed, p.first);
@@ -58,10 +58,10 @@ template <typename L, typename R> struct hash<std::pair<L, R>> {
 };
 
 template <typename T> struct hash<std::vector<T>> {
-  size_t operator()(const std::vector<T> &vec) const {
+  size_t operator()(std::vector<T> const &vec) const {
     size_t seed = 0;
     hash_combine(seed, vec.size());
-    for (const auto &ele : vec) {
+    for (auto const &ele : vec) {
       hash_combine(seed, ele);
     }
     return seed;

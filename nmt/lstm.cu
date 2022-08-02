@@ -157,18 +157,18 @@ LSTM::LSTM(RnnConfig config,
   regions[5] (O): hy
   regions[6] (O): cy
 */
-OpMeta *LSTM::init_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
+OpMeta *LSTM::init_task(Task const *task,
+                        std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {
-  const int numLayers = 1;
-  const int seqLength = LSTM_PER_NODE_LENGTH;
-  const float dropoutRate = 0.2f;
+  int const numLayers = 1;
+  int const seqLength = LSTM_PER_NODE_LENGTH;
+  float const dropoutRate = 0.2f;
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
   Rect<1> para_rect = runtime->get_index_space_domain(
       ctx, task->regions[3].region.get_index_space());
-  const LSTMInitParams *lstm = (LSTMInitParams *)task->args;
+  LSTMInitParams const *lstm = (LSTMInitParams *)task->args;
   LSTMMeta *m = new LSTMMeta(lstm->handle);
 #ifndef DISABLE_COMPUTATION
   checkCUDNN(cudnnCreateRNNDescriptor(&m->rnnDesc));
@@ -244,7 +244,7 @@ OpMeta *LSTM::init_task(const Task *task,
 #endif
 }
 
-void LSTM::init(const RnnModel &model) {
+void LSTM::init(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
   Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
@@ -295,21 +295,21 @@ void LSTM::init(const RnnModel &model) {
   regions[5] (O): hy
   regions[6] (O): cy
 */
-void LSTM::forward_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
+void LSTM::forward_task(Task const *task,
+                        std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {
 #ifndef DISABLE_COMPUTATION
   assert(regions.size() == 7);
   assert(task->regions.size() == 7);
-  const LSTMMeta *m = *((LSTMMeta **)task->args);
-  const AccessorRO<float, 3> acc_x(regions[0], FID_DATA);
-  const AccessorRO<float, 2> acc_hx(regions[1], FID_DATA);
-  const AccessorRO<float, 2> acc_cx(regions[2], FID_DATA);
-  const AccessorRO<float, 1> acc_w(regions[3], FID_DATA);
-  const AccessorWO<float, 3> acc_y(regions[4], FID_DATA);
-  const AccessorWO<float, 2> acc_hy(regions[5], FID_DATA);
-  const AccessorWO<float, 2> acc_cy(regions[6], FID_DATA);
+  LSTMMeta const *m = *((LSTMMeta **)task->args);
+  AccessorRO<float, 3> const acc_x(regions[0], FID_DATA);
+  AccessorRO<float, 2> const acc_hx(regions[1], FID_DATA);
+  AccessorRO<float, 2> const acc_cx(regions[2], FID_DATA);
+  AccessorRO<float, 1> const acc_w(regions[3], FID_DATA);
+  AccessorWO<float, 3> const acc_y(regions[4], FID_DATA);
+  AccessorWO<float, 2> const acc_hy(regions[5], FID_DATA);
+  AccessorWO<float, 2> const acc_cy(regions[6], FID_DATA);
   Rect<3> rect_x, rect_y;
   Rect<2> rect_hx, rect_cx, rect_hy, rect_cy;
   Rect<1> rect_w;
@@ -337,10 +337,10 @@ void LSTM::forward_task(const Task *task,
   assert(rect_hx == rect_cx);
   assert(rect_hx == rect_hy);
   assert(rect_hx == rect_cy);
-  const float *x_ptr = acc_x.ptr(rect_x.lo);
-  const float *hx_ptr = acc_hx.ptr(rect_hx.lo);
-  const float *cx_ptr = acc_cx.ptr(rect_cx.lo);
-  const float *w_ptr = acc_w.ptr(rect_w.lo);
+  float const *x_ptr = acc_x.ptr(rect_x.lo);
+  float const *hx_ptr = acc_hx.ptr(rect_hx.lo);
+  float const *cx_ptr = acc_cx.ptr(rect_cx.lo);
+  float const *w_ptr = acc_w.ptr(rect_w.lo);
   float *y_ptr = acc_y.ptr(rect_y.lo);
   float *hy_ptr = acc_hy.ptr(rect_hy.lo);
   float *cy_ptr = acc_cy.ptr(rect_cy.lo);
@@ -389,7 +389,7 @@ void LSTM::forward_task(const Task *task,
 #endif
 }
 
-void LSTM::forward(const RnnModel &model) {
+void LSTM::forward(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
   Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
@@ -439,28 +439,28 @@ void LSTM::forward(const RnnModel &model) {
  regions[12] (I): hy_grad
  regions[13] (I): cy_grad
 */
-void LSTM::backward_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+void LSTM::backward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
 #ifndef DISABLE_COMPUTATION
   assert(regions.size() == 14);
   assert(task->regions.size() == 14);
-  const LSTMMeta *m = *((LSTMMeta **)task->args);
-  const AccessorRO<float, 3> acc_x(regions[0], FID_DATA);
-  const AccessorRO<float, 2> acc_hx(regions[1], FID_DATA);
-  const AccessorRO<float, 2> acc_cx(regions[2], FID_DATA);
-  const AccessorRO<float, 1> acc_w(regions[3], FID_DATA);
-  const AccessorRO<float, 3> acc_y(regions[4], FID_DATA);
-  const AccessorRO<float, 2> acc_hy(regions[5], FID_DATA);
-  const AccessorRO<float, 2> acc_cy(regions[6], FID_DATA);
-  const AccessorWO<float, 3> acc_x_grad(regions[7], FID_DATA);
-  const AccessorWO<float, 2> acc_hx_grad(regions[8], FID_DATA);
-  const AccessorWO<float, 2> acc_cx_grad(regions[9], FID_DATA);
-  const AccessorRW<float, 1> acc_w_grad(regions[10], FID_DATA);
-  const AccessorRO<float, 3> acc_y_grad(regions[11], FID_DATA);
-  const AccessorRO<float, 2> acc_hy_grad(regions[12], FID_DATA);
-  const AccessorRO<float, 2> acc_cy_grad(regions[13], FID_DATA);
+  LSTMMeta const *m = *((LSTMMeta **)task->args);
+  AccessorRO<float, 3> const acc_x(regions[0], FID_DATA);
+  AccessorRO<float, 2> const acc_hx(regions[1], FID_DATA);
+  AccessorRO<float, 2> const acc_cx(regions[2], FID_DATA);
+  AccessorRO<float, 1> const acc_w(regions[3], FID_DATA);
+  AccessorRO<float, 3> const acc_y(regions[4], FID_DATA);
+  AccessorRO<float, 2> const acc_hy(regions[5], FID_DATA);
+  AccessorRO<float, 2> const acc_cy(regions[6], FID_DATA);
+  AccessorWO<float, 3> const acc_x_grad(regions[7], FID_DATA);
+  AccessorWO<float, 2> const acc_hx_grad(regions[8], FID_DATA);
+  AccessorWO<float, 2> const acc_cx_grad(regions[9], FID_DATA);
+  AccessorRW<float, 1> const acc_w_grad(regions[10], FID_DATA);
+  AccessorRO<float, 3> const acc_y_grad(regions[11], FID_DATA);
+  AccessorRO<float, 2> const acc_hy_grad(regions[12], FID_DATA);
+  AccessorRO<float, 2> const acc_cy_grad(regions[13], FID_DATA);
 
   Rect<3> rect_x, rect_y, rect_x_grad, rect_y_grad;
   Rect<2> rect_hx, rect_cx, rect_hy, rect_cy, rect_hx_grad, rect_cx_grad,
@@ -510,20 +510,20 @@ void LSTM::backward_task(const Task *task,
   assert(acc_hy_grad.accessor.is_dense_arbitrary(rect_hy_grad));
   assert(acc_cy_grad.accessor.is_dense_arbitrary(rect_cy_grad));
 
-  const float *x_ptr = acc_x.ptr(rect_x.lo);
-  const float *hx_ptr = acc_hx.ptr(rect_hx.lo);
-  const float *cx_ptr = acc_cx.ptr(rect_cx.lo);
-  const float *w_ptr = acc_w.ptr(rect_w.lo);
-  const float *y_ptr = acc_y.ptr(rect_y.lo);
-  const float *hy_ptr = acc_hy.ptr(rect_hy.lo);
-  const float *cy_ptr = acc_cy.ptr(rect_cy.lo);
+  float const *x_ptr = acc_x.ptr(rect_x.lo);
+  float const *hx_ptr = acc_hx.ptr(rect_hx.lo);
+  float const *cx_ptr = acc_cx.ptr(rect_cx.lo);
+  float const *w_ptr = acc_w.ptr(rect_w.lo);
+  float const *y_ptr = acc_y.ptr(rect_y.lo);
+  float const *hy_ptr = acc_hy.ptr(rect_hy.lo);
+  float const *cy_ptr = acc_cy.ptr(rect_cy.lo);
   float *x_grad_ptr = acc_x_grad.ptr(rect_x_grad.lo);
   float *hx_grad_ptr = acc_hx_grad.ptr(rect_hx_grad.lo);
   float *cx_grad_ptr = acc_cx_grad.ptr(rect_cx_grad.lo);
   float *w_grad_ptr = acc_w_grad.ptr(rect_w_grad.lo);
-  const float *y_grad_ptr = acc_y_grad.ptr(rect_y_grad.lo);
-  const float *hy_grad_ptr = acc_hy_grad.ptr(rect_hy_grad.lo);
-  const float *cy_grad_ptr = acc_cy_grad.ptr(rect_cy_grad.lo);
+  float const *y_grad_ptr = acc_y_grad.ptr(rect_y_grad.lo);
+  float const *hy_grad_ptr = acc_hy_grad.ptr(rect_hy_grad.lo);
+  float const *cy_grad_ptr = acc_cy_grad.ptr(rect_cy_grad.lo);
 
   cudaEvent_t t_start, t_end;
   if (m->profiling_runtime) {
@@ -594,7 +594,7 @@ void LSTM::backward_task(const Task *task,
 #endif
 }
 
-void LSTM::backward(const RnnModel &model) {
+void LSTM::backward(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
   Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
@@ -649,4 +649,4 @@ void LSTM::backward(const RnnModel &model) {
   }
 }
 
-void LSTM::update(const RnnModel &model) {}
+void LSTM::update(RnnModel const &model) {}

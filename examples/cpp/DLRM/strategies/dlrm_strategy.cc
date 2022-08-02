@@ -11,13 +11,13 @@
 class FFStrategy {
 public:
   FFStrategy(int _gpus_per_node, int _embs_per_node, int _num_nodes);
-  bool add_conv_config(const std::string &name,
-                       const std::string &device_type,
+  bool add_conv_config(std::string const &name,
+                       std::string const &device_type,
                        int num_par_n,
                        int num_par_c,
-                       const std::string &input_memory,
-                       const std::string &output_memory);
-  FFProtoBuf::Op_DeviceType to_device_type(const std::string &name) {
+                       std::string const &input_memory,
+                       std::string const &output_memory);
+  FFProtoBuf::Op_DeviceType to_device_type(std::string const &name) {
     if (name == "gpu" || name == "GPU") {
       return FFProtoBuf::Op_DeviceType_GPU;
     } else if (name == "cpu" || name == "CPU") {
@@ -28,7 +28,7 @@ public:
     return FFProtoBuf::Op_DeviceType_GPU;
   }
 
-  FFProtoBuf::Op_MemoryType to_memory_type(const std::string &name) {
+  FFProtoBuf::Op_MemoryType to_memory_type(std::string const &name) {
     if (name == "gpu_memory" || name == "FBM") {
       return FFProtoBuf::Op_MemoryType_FBM;
     } else if (name == "cpu_memory" || name == "ZCM") {
@@ -38,46 +38,46 @@ public:
     }
     return FFProtoBuf::Op_MemoryType_FBM;
   }
-  bool add_embed_config(const std::string &name,
-                        const std::string &device_type,
-                        const std::string &input_memory_type,
-                        const std::string &weight_memory_type,
-                        const std::string &output_memory_type,
+  bool add_embed_config(std::string const &name,
+                        std::string const &device_type,
+                        std::string const &input_memory_type,
+                        std::string const &weight_memory_type,
+                        std::string const &output_memory_type,
                         int gpu_id);
-  bool add_concat_config(const std::string &name,
-                         const std::string &device_type,
-                         const std::string &input_memory_type,
-                         const std::string &output_memory_type,
+  bool add_concat_config(std::string const &name,
+                         std::string const &device_type,
+                         std::string const &input_memory_type,
+                         std::string const &output_memory_type,
                          int num_parts_sample,
-                         const std::vector<int> &device_ids);
-  bool add_batch_matmul_config(const std::string &name,
-                               const std::string &device_type,
-                               const std::string &input1_memory_type,
-                               const std::string &input2_memory_type,
-                               const std::string &output_memory_type,
+                         std::vector<int> const &device_ids);
+  bool add_batch_matmul_config(std::string const &name,
+                               std::string const &device_type,
+                               std::string const &input1_memory_type,
+                               std::string const &input2_memory_type,
+                               std::string const &output_memory_type,
                                int num_parts_sample,
-                               const std::vector<int> &device_ids);
-  bool add_linear_config(const std::string &name,
-                         const std::string &device_type,
-                         const std::string &input_memory_type,
-                         const std::string &weight_memory_type,
-                         const std::string &output_memory_type,
+                               std::vector<int> const &device_ids);
+  bool add_linear_config(std::string const &name,
+                         std::string const &device_type,
+                         std::string const &input_memory_type,
+                         std::string const &weight_memory_type,
+                         std::string const &output_memory_type,
                          int num_parts_channel,
                          int num_parts_sample,
-                         const std::vector<int> &device_ids);
-  bool add_mse_config(const std::string &name,
-                      const std::string &device_type,
-                      const std::string &input_memory_type,
+                         std::vector<int> const &device_ids);
+  bool add_mse_config(std::string const &name,
+                      std::string const &device_type,
+                      std::string const &input_memory_type,
                       int num_parts_batch,
-                      const std::vector<int> &device_ids);
-  bool add_transpose_config(const std::string &name,
-                            const std::string &device_type,
-                            const std::string &input_memory_type,
-                            const std::string &output_memory_type,
+                      std::vector<int> const &device_ids);
+  bool add_transpose_config(std::string const &name,
+                            std::string const &device_type,
+                            std::string const &input_memory_type,
+                            std::string const &output_memory_type,
                             int num_parts_sample,
-                            const std::vector<int> &device_ids);
+                            std::vector<int> const &device_ids);
 
-  void export_file(const std::string &file);
+  void export_file(std::string const &file);
 
 private:
   int gpus_per_node, embs_per_node, num_nodes;
@@ -93,11 +93,11 @@ FFStrategy::FFStrategy(int _gpus_per_node, int _num_nodes, int _embs_per_node)
   }
 }
 
-bool FFStrategy::add_embed_config(const std::string &name,
-                                  const std::string &device_type,
-                                  const std::string &input_memory_type,
-                                  const std::string &weight_memory_type,
-                                  const std::string &output_memory_type,
+bool FFStrategy::add_embed_config(std::string const &name,
+                                  std::string const &device_type,
+                                  std::string const &input_memory_type,
+                                  std::string const &weight_memory_type,
+                                  std::string const &output_memory_type,
                                   int gpu_id) {
   FFProtoBuf::Op *op = strategy.add_ops();
   op->set_name(name);
@@ -113,12 +113,12 @@ bool FFStrategy::add_embed_config(const std::string &name,
   return true;
 }
 
-bool FFStrategy::add_concat_config(const std::string &name,
-                                   const std::string &device_type,
-                                   const std::string &input_memory_type,
-                                   const std::string &output_memory_type,
+bool FFStrategy::add_concat_config(std::string const &name,
+                                   std::string const &device_type,
+                                   std::string const &input_memory_type,
+                                   std::string const &output_memory_type,
                                    int num_parts_sample,
-                                   const std::vector<int> &device_ids) {
+                                   std::vector<int> const &device_ids) {
   FFProtoBuf::Op *op = strategy.add_ops();
   op->set_name(name);
   op->set_device_type(to_device_type(device_type));
@@ -131,13 +131,13 @@ bool FFStrategy::add_concat_config(const std::string &name,
     op->add_device_ids(device_ids[i]);
 }
 
-bool FFStrategy::add_batch_matmul_config(const std::string &name,
-                                         const std::string &device_type,
-                                         const std::string &input1_memory_type,
-                                         const std::string &input2_memory_type,
-                                         const std::string &output_memory_type,
+bool FFStrategy::add_batch_matmul_config(std::string const &name,
+                                         std::string const &device_type,
+                                         std::string const &input1_memory_type,
+                                         std::string const &input2_memory_type,
+                                         std::string const &output_memory_type,
                                          int num_parts_sample,
-                                         const std::vector<int> &device_ids) {
+                                         std::vector<int> const &device_ids) {
   FFProtoBuf::Op *op = strategy.add_ops();
   op->set_name(name);
   op->set_device_type(to_device_type(device_type));
@@ -152,12 +152,12 @@ bool FFStrategy::add_batch_matmul_config(const std::string &name,
     op->add_device_ids(device_ids[i]);
 }
 
-bool FFStrategy::add_transpose_config(const std::string &name,
-                                      const std::string &device_type,
-                                      const std::string &input_memory_type,
-                                      const std::string &output_memory_type,
+bool FFStrategy::add_transpose_config(std::string const &name,
+                                      std::string const &device_type,
+                                      std::string const &input_memory_type,
+                                      std::string const &output_memory_type,
                                       int num_parts_sample,
-                                      const std::vector<int> &device_ids) {
+                                      std::vector<int> const &device_ids) {
   FFProtoBuf::Op *op = strategy.add_ops();
   op->set_name(name);
   op->set_device_type(to_device_type(device_type));
@@ -171,14 +171,14 @@ bool FFStrategy::add_transpose_config(const std::string &name,
     op->add_device_ids(device_ids[i]);
 }
 
-bool FFStrategy::add_linear_config(const std::string &name,
-                                   const std::string &device_type,
-                                   const std::string &input_memory_type,
-                                   const std::string &weight_memory_type,
-                                   const std::string &output_memory_type,
+bool FFStrategy::add_linear_config(std::string const &name,
+                                   std::string const &device_type,
+                                   std::string const &input_memory_type,
+                                   std::string const &weight_memory_type,
+                                   std::string const &output_memory_type,
                                    int num_parts_channel,
                                    int num_parts_sample,
-                                   const std::vector<int> &device_ids) {
+                                   std::vector<int> const &device_ids) {
   FFProtoBuf::Op *op = strategy.add_ops();
   op->set_name(name);
   op->set_device_type(to_device_type(device_type));
@@ -192,11 +192,11 @@ bool FFStrategy::add_linear_config(const std::string &name,
     op->add_device_ids(device_ids[i]);
 }
 
-bool FFStrategy::add_mse_config(const std::string &name,
-                                const std::string &device_type,
-                                const std::string &input_memory_type,
+bool FFStrategy::add_mse_config(std::string const &name,
+                                std::string const &device_type,
+                                std::string const &input_memory_type,
                                 int num_parts_sample,
-                                const std::vector<int> &device_ids) {
+                                std::vector<int> const &device_ids) {
   FFProtoBuf::Op *op = strategy.add_ops();
   op->set_name(name);
   op->set_device_type(to_device_type(device_type));
@@ -208,7 +208,7 @@ bool FFStrategy::add_mse_config(const std::string &name,
     op->add_device_ids(device_ids[i]);
 }
 
-void FFStrategy::export_file(const std::string &output) {
+void FFStrategy::export_file(std::string const &output) {
   std::fstream outputFile(output.c_str(), std::ios::out | std::ios::trunc);
   strategy.SerializeToOstream(&outputFile);
 }

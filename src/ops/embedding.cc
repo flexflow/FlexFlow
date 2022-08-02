@@ -39,9 +39,9 @@ Tensor FFModel::embedding(const Tensor input,
                           int num_entries,
                           int out_dim,
                           AggrMode aggr,
-                          const Layer *shared_op,
+                          Layer const *shared_op,
                           Initializer *kernel_initializer,
-                          const char *name) {
+                          char const *name) {
   Layer *embed = new Layer(this,
                            OP_EMBEDDING,
                            name,
@@ -109,8 +109,8 @@ size_t Embedding::get_params_hash() const {
 
 Op *Embedding::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("num_entries", value);
   int num_entries = value;
@@ -146,7 +146,7 @@ int Embedding::output_vocab_size_replica_dim() const {
 int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
   ParallelTensor const &input = this->inputs[0];
 
-  const int OUT_CHANNELS = Output::OUT_CHANNELS;
+  int const OUT_CHANNELS = Output::OUT_CHANNELS;
   if (aggr == AGGR_MODE_NONE) {
     int num_dims = input->num_dims + 1;
     for (int i = 1; i < num_dims - 1; i++)
@@ -252,13 +252,13 @@ Embedding::Embedding(FFModel &model,
                 other.name) {}
 
 Embedding::Embedding(FFModel &model,
-                     const LayerID &_layer_guid,
+                     LayerID const &_layer_guid,
                      const ParallelTensor _input,
                      int _num_entries,
                      int _out_channels,
                      AggrMode _aggr,
                      bool allocate_weights,
-                     const char *name)
+                     char const *name)
     : Op(model,
          OP_EMBEDDING,
          name,
@@ -306,7 +306,7 @@ Embedding::Embedding(FFModel &model,
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
 
-void Embedding::init(const FFModel &ff) {
+void Embedding::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -352,12 +352,12 @@ void Embedding::init(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Embedding::init_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+OpMeta *Embedding::init_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
-  const Embedding *embed = (Embedding *)task->args;
-  FFHandler handle = *((const FFHandler *)task->local_args);
+  Embedding const *embed = (Embedding *)task->args;
+  FFHandler handle = *((FFHandler const *)task->local_args);
   EmbeddingMeta *m = new EmbeddingMeta(handle);
   m->input_data_type = embed->inputs[0]->data_type;
   m->profiling = embed->profiling;
@@ -365,7 +365,7 @@ OpMeta *Embedding::init_task(const Task *task,
   return m;
 }
 
-void Embedding::forward(const FFModel &ff) {
+void Embedding::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -408,11 +408,11 @@ void Embedding::forward(const FFModel &ff) {
   regions[1](O): output
   regions[2](I): kernel
 */
-void Embedding::forward_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+void Embedding::forward_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
-  const EmbeddingMeta *m = *((EmbeddingMeta **)task->local_args);
+  EmbeddingMeta const *m = *((EmbeddingMeta **)task->local_args);
   if (m->input_data_type == DT_INT32) {
     forward_task_with_type<int32_t>(task, regions, ctx, runtime);
   } else if (m->input_data_type == DT_INT64) {
@@ -424,14 +424,14 @@ void Embedding::forward_task(const Task *task,
 
 template <typename TI>
 void Embedding::forward_task_with_type(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   // const Embedding* embed = (Embedding*) task->args;
-  const EmbeddingMeta *m = *((EmbeddingMeta **)task->local_args);
+  EmbeddingMeta const *m = *((EmbeddingMeta **)task->local_args);
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
@@ -461,7 +461,7 @@ void Embedding::forward_task_with_type(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float *output_ptr = helperGetTensorPointerWO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  const float *kernel_ptr = helperGetTensorPointerRO<float>(
+  float const *kernel_ptr = helperGetTensorPointerRO<float>(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
   int in_dim, out_dim, effective_batch_size;
@@ -488,7 +488,7 @@ void Embedding::forward_task_with_type(
                                         output_domain.get_volume());
 }
 
-void Embedding::backward(const FFModel &ff) {
+void Embedding::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -525,11 +525,11 @@ void Embedding::backward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Embedding::backward_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void Embedding::backward_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
-  const EmbeddingMeta *m = *((EmbeddingMeta **)task->local_args);
+  EmbeddingMeta const *m = *((EmbeddingMeta **)task->local_args);
   if (m->input_data_type == DT_INT32) {
     backward_task_with_type<int32_t>(task, regions, ctx, runtime);
   } else if (m->input_data_type == DT_INT64) {
@@ -541,14 +541,14 @@ void Embedding::backward_task(const Task *task,
 
 template <typename TI>
 void Embedding::backward_task_with_type(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   // const Embedding* embed = (Embedding*) task->args;
-  const EmbeddingMeta *m = *((EmbeddingMeta **)task->local_args);
+  EmbeddingMeta const *m = *((EmbeddingMeta **)task->local_args);
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain output_grad_domain = runtime->get_index_space_domain(
@@ -576,7 +576,7 @@ void Embedding::backward_task_with_type(
   }
   const TI *input_ptr = helperGetTensorPointerRO<TI>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  const float *output_grad_ptr = helperGetTensorPointerWO<float>(
+  float const *output_grad_ptr = helperGetTensorPointerWO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   float *kernel_grad_ptr = helperGetTensorPointerRW<float>(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
@@ -606,7 +606,7 @@ void Embedding::backward_task_with_type(
 }
 
 bool Embedding::measure_operator_cost(Simulator *sim,
-                                      const MachineView &mv,
+                                      MachineView const &mv,
                                       CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -700,7 +700,7 @@ bool Embedding::measure_operator_cost(Simulator *sim,
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_embedding_node(const LayerID &layer_guid,
+Node FFModel::get_or_create_embedding_node(LayerID const &layer_guid,
                                            const ParallelTensor input,
                                            int num_entries,
                                            int out_channels,
@@ -710,7 +710,7 @@ Node FFModel::get_or_create_embedding_node(const LayerID &layer_guid,
   hash_combine(hash, std::hash<int>()(num_entries));
   hash_combine(hash, std::hash<int>()(out_channels));
   hash_combine(hash, std::hash<int>()(aggr));
-  const auto &it = cached_embedding_ops.find(hash);
+  auto const &it = cached_embedding_ops.find(hash);
   Embedding *embed = NULL;
   if (it != cached_embedding_ops.end()) {
     embed = it->second;
@@ -731,14 +731,14 @@ Node FFModel::get_or_create_embedding_node(const LayerID &layer_guid,
   return ret;
 }
 
-void EmbeddingLookup_int64_t_float_float__avx2_fma(const int block_size,
-                                                   const int output_size,
-                                                   const int index_size,
-                                                   const int data_size,
-                                                   const float *input,
-                                                   const int64_t *indices,
-                                                   const int *lengths,
-                                                   const float *weight,
+void EmbeddingLookup_int64_t_float_float__avx2_fma(int const block_size,
+                                                   int const output_size,
+                                                   int const index_size,
+                                                   int const data_size,
+                                                   float const *input,
+                                                   int64_t const *indices,
+                                                   int const *lengths,
+                                                   float const *weight,
                                                    bool normalize_by_lengths,
                                                    float *out) {
 #ifdef FF_USE_AVX2
@@ -772,14 +772,14 @@ void EmbeddingLookup_int64_t_float_float__avx2_fma(const int block_size,
           wgt = weight[dataInd];
         }
         __m256 vwgt = _mm256_set1_ps(wgt);
-        const float *ip = &input[idx * block_size];
+        float const *ip = &input[idx * block_size];
         const int64_t next_T0 = (dataInd < index_size - prefdist_T0)
                                     ? (dataInd + prefdist_T0)
                                     : dataInd;
         const int64_t idx_pref_T0 = indices[next_T0];
         assert(idx >= 0 && idx_pref_T0 >= 0 && idx < data_size &&
                idx_pref_T0 < data_size);
-        const float *ip_next_T0 = &input[idx_pref_T0 * block_size];
+        float const *ip_next_T0 = &input[idx_pref_T0 * block_size];
         vop0 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (0)), vop0);
         _mm_prefetch((&ip_next_T0[0]), _MM_HINT_T0);
         vop8 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (8)), vop8);
@@ -871,14 +871,14 @@ void EmbeddingLookup_int64_t_float_float__avx2_fma(const int block_size,
           wgt = weight[dataInd];
         }
         __m256 vwgt = _mm256_set1_ps(wgt);
-        const float *ip = &input[idx * block_size];
+        float const *ip = &input[idx * block_size];
         const int64_t next_T0 = (dataInd < index_size - prefdist_T0)
                                     ? (dataInd + prefdist_T0)
                                     : dataInd;
         const int64_t idx_pref_T0 = indices[next_T0];
         assert(idx >= 0 && idx_pref_T0 >= 0 && idx < data_size &&
                idx_pref_T0 < data_size);
-        const float *ip_next_T0 = &input[idx_pref_T0 * block_size];
+        float const *ip_next_T0 = &input[idx_pref_T0 * block_size];
         vop0 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (0)), vop0);
         _mm_prefetch((&ip_next_T0[0]), _MM_HINT_T0);
         vop8 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (8)), vop8);
@@ -934,14 +934,14 @@ void EmbeddingLookup_int64_t_float_float__avx2_fma(const int block_size,
           wgt = weight[dataInd];
         }
         __m256 vwgt = _mm256_set1_ps(wgt);
-        const float *ip = &input[idx * block_size];
+        float const *ip = &input[idx * block_size];
         const int64_t next_T0 = (dataInd < index_size - prefdist_T0)
                                     ? (dataInd + prefdist_T0)
                                     : dataInd;
         const int64_t idx_pref_T0 = indices[next_T0];
         assert(idx >= 0 && idx_pref_T0 >= 0 && idx < data_size &&
                idx_pref_T0 < data_size);
-        const float *ip_next_T0 = &input[idx_pref_T0 * block_size];
+        float const *ip_next_T0 = &input[idx_pref_T0 * block_size];
         vop0 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (0)), vop0);
         _mm_prefetch((&ip_next_T0[0]), _MM_HINT_T0);
         vop8 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (8)), vop8);
@@ -984,14 +984,14 @@ void EmbeddingLookup_int64_t_float_float__avx2_fma(const int block_size,
           wgt = weight[dataInd];
         }
         __m256 vwgt = _mm256_set1_ps(wgt);
-        const float *ip = &input[idx * block_size];
+        float const *ip = &input[idx * block_size];
         const int64_t next_T0 = (dataInd < index_size - prefdist_T0)
                                     ? (dataInd + prefdist_T0)
                                     : dataInd;
         const int64_t idx_pref_T0 = indices[next_T0];
         assert(idx >= 0 && idx_pref_T0 >= 0 && idx < data_size &&
                idx_pref_T0 < data_size);
-        const float *ip_next_T0 = &input[idx_pref_T0 * block_size];
+        float const *ip_next_T0 = &input[idx_pref_T0 * block_size];
         j = 0;
         for (; j + 8 <= block_size; j += 8) {
           _mm256_storeu_ps(&op[j],
@@ -1023,10 +1023,10 @@ void EmbeddingLookup_int64_t_float_float__avx2_fma(const int block_size,
 #endif
 }
 
-void embed_forward(const int64_t *input,
-                   const int *lengths,
+void embed_forward(int64_t const *input,
+                   int const *lengths,
                    float *output,
-                   const float *embed,
+                   float const *embed,
                    int block_size,
                    int output_size,
                    int index_size,
@@ -1043,9 +1043,9 @@ void embed_forward(const int64_t *input,
                                                 output);
 }
 
-void embed_backward_generic(const int64_t *input,
-                            const int *lengths,
-                            const float *output,
+void embed_backward_generic(int64_t const *input,
+                            int const *lengths,
+                            float const *output,
                             float *embed,
                             int block_size,
                             int output_size,
@@ -1062,9 +1062,9 @@ void embed_backward_generic(const int64_t *input,
   }
 }
 
-void embed_backward(const int64_t *input,
-                    const int *lengths,
-                    const float *output,
+void embed_backward(int64_t const *input,
+                    int const *lengths,
+                    float const *output,
                     float *embed,
                     int block_size,
                     int output_size,
@@ -1080,16 +1080,16 @@ void embed_backward(const int64_t *input,
                          data_size);
 }
 
-void Embedding::forward_task_cpu(const Task *task,
-                                 const std::vector<PhysicalRegion> &regions,
+void Embedding::forward_task_cpu(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   // const Embedding* embed = (Embedding*) task->args;
-  const AccessorRO<int64_t, 2> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 2> acc_output(regions[1], FID_DATA);
-  const AccessorRO<float, 2> acc_weight(regions[2], FID_DATA);
+  AccessorRO<int64_t, 2> const acc_input(regions[0], FID_DATA);
+  AccessorWO<float, 2> const acc_output(regions[1], FID_DATA);
+  AccessorRO<float, 2> const acc_weight(regions[2], FID_DATA);
   Rect<2> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<2> rect_output = runtime->get_index_space_domain(
@@ -1123,16 +1123,16 @@ void Embedding::forward_task_cpu(const Task *task,
                 data_size);
 }
 
-void Embedding::backward_task_cpu(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+void Embedding::backward_task_cpu(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   // const Embedding* embed = (Embedding*) task->args;
-  const AccessorRO<int64_t, 2> acc_input(regions[0], FID_DATA);
-  const AccessorRO<float, 2> acc_output(regions[1], FID_DATA);
-  const AccessorRW<float, 2> acc_weight(regions[2], FID_DATA);
+  AccessorRO<int64_t, 2> const acc_input(regions[0], FID_DATA);
+  AccessorRO<float, 2> const acc_output(regions[1], FID_DATA);
+  AccessorRW<float, 2> const acc_weight(regions[2], FID_DATA);
   Rect<2> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<2> rect_output = runtime->get_index_space_domain(

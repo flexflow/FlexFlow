@@ -16,8 +16,8 @@
 #include "flexflow/utils/cuda_helper.h"
 #include "xdl.h"
 
-void DataLoader::load_sparse_input(const Task *task,
-                                   const std::vector<PhysicalRegion> &regions,
+void DataLoader::load_sparse_input(Task const *task,
+                                   std::vector<PhysicalRegion> const &regions,
                                    Context ctx,
                                    Runtime *runtime) {
   assert(regions.size() == 2);
@@ -62,8 +62,8 @@ void DataLoader::load_sparse_input(const Task *task,
   // "[DataLoader:load_sparse]");
 }
 
-void DataLoader::load_label(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+void DataLoader::load_label(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
   assert(regions.size() == 2);

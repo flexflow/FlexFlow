@@ -28,7 +28,7 @@ GlorotUniform::GlorotUniform(int _seed) : Initializer(), seed(_seed) {}
 
 GlorotUniform::~GlorotUniform(void) {}
 
-void GlorotUniform::init(const FFModel *ff, const ParallelTensor p) {
+void GlorotUniform::init(FFModel const *ff, const ParallelTensor p) {
   Context ctx = ff->config.lg_ctx;
   Runtime *runtime = ff->config.lg_hlr;
   int dim = p->num_dims - 1;
@@ -80,7 +80,7 @@ ZeroInitializer::ZeroInitializer(void) : Initializer() {}
 
 ZeroInitializer::~ZeroInitializer(void) {}
 
-void ZeroInitializer::init(const FFModel *ff, const ParallelTensor p) {
+void ZeroInitializer::init(FFModel const *ff, const ParallelTensor p) {
   Context ctx = ff->config.lg_ctx;
   Runtime *runtime = ff->config.lg_hlr;
   if (p->sync_type == ParameterSyncType::PS) {
@@ -118,8 +118,8 @@ void ZeroInitializer::init(const FFModel *ff, const ParallelTensor p) {
   }
 }
 
-void ZeroInitializer::init_task_cpu(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+void ZeroInitializer::init_task_cpu(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
   assert(regions.size() == task->regions.size());
@@ -134,7 +134,7 @@ void ZeroInitializer::init_task_cpu(const Task *task,
       break;
     }
     case 1: {
-      const AccessorWO<float, 1> accW(regions[i], FID_DATA);
+      AccessorWO<float, 1> const accW(regions[i], FID_DATA);
       Rect<1> rect = runtime->get_index_space_domain(
           ctx, task->regions[i].region.get_index_space());
       assert(accW.accessor.is_dense_arbitrary(rect));
@@ -142,7 +142,7 @@ void ZeroInitializer::init_task_cpu(const Task *task,
       break;
     }
     case 2: {
-      const AccessorWO<float, 2> accW(regions[i], FID_DATA);
+      AccessorWO<float, 2> const accW(regions[i], FID_DATA);
       Rect<2> rect = runtime->get_index_space_domain(
           ctx, task->regions[i].region.get_index_space());
       assert(accW.accessor.is_dense_arbitrary(rect));
@@ -150,7 +150,7 @@ void ZeroInitializer::init_task_cpu(const Task *task,
       break;
     }
     case 3: {
-      const AccessorWO<float, 3> accW(regions[i], FID_DATA);
+      AccessorWO<float, 3> const accW(regions[i], FID_DATA);
       Rect<3> rect = runtime->get_index_space_domain(
           ctx, task->regions[i].region.get_index_space());
       assert(accW.accessor.is_dense_arbitrary(rect));
@@ -173,7 +173,7 @@ UniformInitializer::UniformInitializer(int _seed, float _min, float _max)
 
 UniformInitializer::~UniformInitializer(void) {}
 
-void UniformInitializer::init(const FFModel *ff, const ParallelTensor p) {
+void UniformInitializer::init(FFModel const *ff, const ParallelTensor p) {
   Context ctx = ff->config.lg_ctx;
   Runtime *runtime = ff->config.lg_hlr;
   if (p->sync_type == ParameterSyncType::PS) {
@@ -210,7 +210,7 @@ NormInitializer::NormInitializer(int _seed, float _mean, float _stddev)
 
 NormInitializer::~NormInitializer(void) {}
 
-void NormInitializer::init(const FFModel *ff, const ParallelTensor p) {
+void NormInitializer::init(FFModel const *ff, const ParallelTensor p) {
   Context ctx = ff->config.lg_ctx;
   Runtime *runtime = ff->config.lg_hlr;
   if (p->sync_type == ParameterSyncType::PS) {
@@ -254,7 +254,7 @@ ConstantInitializer::ConstantInitializer(int _value)
 
 ConstantInitializer::~ConstantInitializer(void) {}
 
-void ConstantInitializer::init(const FFModel *ff, const ParallelTensor p) {
+void ConstantInitializer::init(FFModel const *ff, const ParallelTensor p) {
   Context ctx = ff->config.lg_ctx;
   Runtime *runtime = ff->config.lg_hlr;
   if (p->sync_type == ParameterSyncType::PS) {
@@ -287,8 +287,8 @@ void ConstantInitializer::init(const FFModel *ff, const ParallelTensor p) {
 }
 
 void ConstantInitializer::init_task_cpu(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   ConstantInitializer *initializer = (ConstantInitializer *)task->args;
@@ -306,7 +306,7 @@ void ConstantInitializer::init_task_cpu(
       break;
     }
     case 1: {
-      const AccessorWO<float, 1> accW(regions[i], FID_DATA);
+      AccessorWO<float, 1> const accW(regions[i], FID_DATA);
       Rect<1> rect = runtime->get_index_space_domain(
           ctx, task->regions[i].region.get_index_space());
       assert(accW.accessor.is_dense_arbitrary(rect));
@@ -314,7 +314,7 @@ void ConstantInitializer::init_task_cpu(
       break;
     }
     case 2: {
-      const AccessorWO<float, 2> accW(regions[i], FID_DATA);
+      AccessorWO<float, 2> const accW(regions[i], FID_DATA);
       Rect<2> rect = runtime->get_index_space_domain(
           ctx, task->regions[i].region.get_index_space());
       assert(accW.accessor.is_dense_arbitrary(rect));
@@ -322,7 +322,7 @@ void ConstantInitializer::init_task_cpu(
       break;
     }
     case 3: {
-      const AccessorWO<float, 3> accW(regions[i], FID_DATA);
+      AccessorWO<float, 3> const accW(regions[i], FID_DATA);
       Rect<3> rect = runtime->get_index_space_domain(
           ctx, task->regions[i].region.get_index_space());
       assert(accW.accessor.is_dense_arbitrary(rect));

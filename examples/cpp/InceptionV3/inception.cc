@@ -120,8 +120,8 @@ Tensor InceptionE(FFModel &ff, Tensor input) {
   return output;
 }
 
-void FlexFlow::top_level_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void FlexFlow::top_level_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
   FFConfig ffConfig;
@@ -139,7 +139,7 @@ void FlexFlow::top_level_task(const Task *task,
 
   Tensor input;
   {
-    const int dims[] = {ffConfig.batchSize, 3, 299, 299};
+    int const dims[] = {ffConfig.batchSize, 3, 299, 299};
     input = ff.create_tensor<4>(dims, DT_FLOAT);
   }
   // Tensor label;

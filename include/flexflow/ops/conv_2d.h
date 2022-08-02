@@ -110,7 +110,7 @@ public:
   using Input = ParallelTensor;
 
   Conv2D(FFModel &model,
-         const LayerID &layer_guid,
+         LayerID const &layer_guid,
          const ParallelTensor input,
          int outChannels,
          int kernelH,
@@ -123,7 +123,7 @@ public:
          int groups,
          bool use_bias,
          bool allocate_weights,
-         const char *name);
+         char const *name);
   Conv2D(FFModel &model,
          Conv2D const &other,
          const ParallelTensor input,
@@ -131,26 +131,26 @@ public:
   Conv2D(FFModel &model,
          Conv2DParams const &params,
          ParallelTensor input,
-         const char *name = nullptr,
+         char const *name = nullptr,
          bool allocate_weights = false);
-  void init(const FFModel &) override;
-  void forward(const FFModel &) override;
-  void backward(const FFModel &) override;
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
   // void update(const FFModel&);
-  void print_layer(const FFModel &model) override;
+  void print_layer(FFModel const &model) override;
   // Parameter* get_parameter(int index);
   // void create_weights(FFModel& model);
   // void create_input_partition(FFModel& model);
   static Op *
   create_operator_from_layer(FFModel &model,
-                             const Layer *layer,
-                             const std::vector<ParallelTensor> &inputs);
+                             Layer const *layer,
+                             std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void init_kernel(const Conv2D *conv,
+  static void init_kernel(Conv2D const *conv,
                           Conv2DMeta *m,
                           int input_w,
                           int input_h,
@@ -162,51 +162,51 @@ public:
                           int output_n,
                           int pad_h,
                           int pad_w,
-                          const float *input_ptr,
+                          float const *input_ptr,
                           float *output_ptr,
-                          const float *kernel_ptr,
+                          float const *kernel_ptr,
                           float *kernel_grad_ptr);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  static void forward_kernel(const Conv2DMeta *m,
-                             const float *input_ptr,
+  static void forward_kernel(Conv2DMeta const *m,
+                             float const *input_ptr,
                              float *output_ptr,
-                             const float *filter_ptr,
-                             const float *bias_ptr,
+                             float const *filter_ptr,
+                             float const *bias_ptr,
                              ffStream_t stream);
-  static void forward_kernel_wrapper(const Conv2DMeta *m,
-                                     const float *input_ptr,
+  static void forward_kernel_wrapper(Conv2DMeta const *m,
+                                     float const *input_ptr,
                                      float *output_ptr,
-                                     const float *filter_ptr,
-                                     const float *bias_ptr);
-  static void backward_kernel(const Conv2DMeta *m,
-                              const float *input_ptr,
+                                     float const *filter_ptr,
+                                     float const *bias_ptr);
+  static void backward_kernel(Conv2DMeta const *m,
+                              float const *input_ptr,
                               float *input_grad_ptr,
-                              const float *output_ptr,
+                              float const *output_ptr,
                               float *output_grad_ptr,
-                              const float *kernel_ptr,
+                              float const *kernel_ptr,
                               float *kernel_grad_ptr,
                               float *bias_ptr,
                               ffStream_t stream);
-  static void backward_kernel_wrapper(const Conv2DMeta *m,
-                                      const float *input_ptr,
+  static void backward_kernel_wrapper(Conv2DMeta const *m,
+                                      float const *input_ptr,
                                       float *input_grad_ptr,
-                                      const float *output_ptr,
+                                      float const *output_ptr,
                                       float *output_grad_ptr,
-                                      const float *kernel_ptr,
+                                      float const *kernel_ptr,
                                       float *kernel_grad_ptr,
                                       float *bias_grad_ptr);
   bool measure_operator_cost(Simulator *sim,
-                             const MachineView &pc,
+                             MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
   bool estimate_sync_cost(Simulator *sim,
-                          const MachineView &pc,
+                          MachineView const &pc,
                           CostMetrics &cost_metrics) const override;
 
   void serialize(Legion::Serializer &s) const override;

@@ -48,7 +48,7 @@ Tensor FFModel::multihead_attention(const Tensor query,
                                     bool add_bias_kv,
                                     bool add_zero_attn,
                                     Initializer *kernel_initializer,
-                                    const char *name) {
+                                    char const *name) {
   Layer *li = new Layer(this,
                         OP_MULTIHEAD_ATTENTION,
                         name,
@@ -100,8 +100,8 @@ Tensor FFModel::multihead_attention(const Tensor query,
 
 Op *MultiHeadAttention::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("embed_dim", value);
   int embed_dim = value;
@@ -154,7 +154,7 @@ size_t MultiHeadAttention::get_params_hash() const {
 }
 
 MultiHeadAttention::MultiHeadAttention(FFModel &model,
-                                       const LayerID &_layer_guid,
+                                       LayerID const &_layer_guid,
                                        const ParallelTensor _query,
                                        const ParallelTensor _key,
                                        const ParallelTensor _value,
@@ -167,7 +167,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
                                        bool _add_bias_kv,
                                        bool _add_zero_attn,
                                        bool allocate_weights,
-                                       const char *name)
+                                       char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
          OP_MULTIHEAD_ATTENTION,
@@ -254,7 +254,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
                                        bool _add_bias_kv,
                                        bool _add_zero_attn,
                                        bool allocate_weights,
-                                       const char *name)
+                                       char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
          OP_MULTIHEAD_ATTENTION,
@@ -349,7 +349,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
                          allocate_weights,
                          other.name) {}
 
-void MultiHeadAttention::init(const FFModel &ff) {
+void MultiHeadAttention::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -407,12 +407,12 @@ void MultiHeadAttention::init(const FFModel &ff) {
   regions[4](O): output
 */
 OpMeta *
-MultiHeadAttention::init_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+MultiHeadAttention::init_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
-  const MultiHeadAttention *attn = (MultiHeadAttention *)task->args;
-  FFHandler handle = *((const FFHandler *)task->local_args);
+  MultiHeadAttention const *attn = (MultiHeadAttention *)task->args;
+  FFHandler handle = *((FFHandler const *)task->local_args);
   TensorAccessorR<float, 4> acc_query(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorR<float, 4> acc_key(
@@ -453,7 +453,7 @@ MultiHeadAttention::init_task(const Task *task,
   return m;
 }
 
-void MultiHeadAttention::forward(const FFModel &ff) {
+void MultiHeadAttention::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -508,14 +508,14 @@ void MultiHeadAttention::forward(const FFModel &ff) {
   regions[4](O): output
 */
 void MultiHeadAttention::forward_task(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 5);
   assert(task->regions.size() == regions.size());
   // const MultiHeadAttention* attn = (MultiHeadAttention*) task->args;
-  const MultiHeadAttentionMeta *m =
+  MultiHeadAttentionMeta const *m =
       *((MultiHeadAttentionMeta **)task->local_args);
   TensorAccessorR<float, 4> acc_query(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -540,7 +540,7 @@ void MultiHeadAttention::forward_task(
                                              acc_output.ptr);
 }
 
-void MultiHeadAttention::backward(const FFModel &ff) {
+void MultiHeadAttention::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -630,14 +630,14 @@ void MultiHeadAttention::backward(const FFModel &ff) {
   regions[8](I/O) (optional): value_grad
 */
 void MultiHeadAttention::backward_task(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   assert(regions.size() >= 7);
   assert(task->regions.size() == regions.size());
   // MultiHeadAttention* attn = (MultiHeadAttention*) task->args;
-  const MultiHeadAttentionMeta *m =
+  MultiHeadAttentionMeta const *m =
       *((MultiHeadAttentionMeta **)task->local_args);
   TensorAccessorR<float, 4> acc_query(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -725,7 +725,7 @@ bool MultiHeadAttention::get_int_parameter(PMParameter para, int *value) const {
 }
 
 bool MultiHeadAttention::measure_operator_cost(
-    Simulator *sim, const MachineView &mv, CostMetrics &cost_metrics) const {
+    Simulator *sim, MachineView const &mv, CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_query, sub_key, sub_value;
   if (!inputs[0]->get_sub_tensor(mv, sub_query))
     return false;
@@ -756,13 +756,13 @@ bool MultiHeadAttention::measure_operator_cost(
 
   // allocate tensors in simulator
   sim->free_all();
-  const float *query_ptr =
-      (const float *)sim->allocate(sub_query.get_volume(), DT_FLOAT);
-  const float *key_ptr =
-      (const float *)sim->allocate(sub_key.get_volume(), DT_FLOAT);
-  const float *value_ptr =
-      (const float *)sim->allocate(sub_value.get_volume(), DT_FLOAT);
-  const float *weight_ptr = (const float *)sim->allocate(num_weights, DT_FLOAT);
+  float const *query_ptr =
+      (float const *)sim->allocate(sub_query.get_volume(), DT_FLOAT);
+  float const *key_ptr =
+      (float const *)sim->allocate(sub_key.get_volume(), DT_FLOAT);
+  float const *value_ptr =
+      (float const *)sim->allocate(sub_value.get_volume(), DT_FLOAT);
+  float const *weight_ptr = (float const *)sim->allocate(num_weights, DT_FLOAT);
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
 
@@ -844,7 +844,7 @@ bool MultiHeadAttention::measure_operator_cost(
 
 using PCG::Node;
 
-Node FFModel::get_or_create_multihead_attn_node(const LayerID &layer_guid,
+Node FFModel::get_or_create_multihead_attn_node(LayerID const &layer_guid,
                                                 const ParallelTensor query,
                                                 const ParallelTensor key,
                                                 const ParallelTensor value,
@@ -868,7 +868,7 @@ Node FFModel::get_or_create_multihead_attn_node(const LayerID &layer_guid,
   hash_combine(hash, std::hash<int>()((int)bias));
   hash_combine(hash, std::hash<int>()((int)add_bias_kv));
   hash_combine(hash, std::hash<int>()((int)add_zero_attn));
-  const auto &it = cached_multihead_attn_ops.find(hash);
+  auto const &it = cached_multihead_attn_ops.find(hash);
   MultiHeadAttention *attn = nullptr;
   if (it != cached_multihead_attn_ops.end()) {
     attn = it->second;

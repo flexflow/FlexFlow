@@ -18,7 +18,7 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-Tensor FFModel::flat(const Tensor input, const char *name) {
+Tensor FFModel::flat(const Tensor input, char const *name) {
   assert(input->num_dims == 4);
   Layer *flat = new Layer(
       this, OP_FLAT, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, input);
@@ -40,8 +40,8 @@ Tensor FFModel::flat(const Tensor input, const char *name) {
 
 Op *Flat::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   return new Flat(model, inputs[0], layer->name);
 }
 
@@ -101,7 +101,7 @@ Node FFModel::get_or_create_flat_node(const ParallelTensor input) {
 
   Flat *flat;
 
-  const auto &it = this->cached_flat_ops.find(hash);
+  auto const &it = this->cached_flat_ops.find(hash);
   if (it != cached_flat_ops.end()) {
     flat = it->second;
   } else {
@@ -122,7 +122,7 @@ void Flat::construct_output_mappings(
        {Input::CHANNEL, MappingOperation::PARTITION, Output::CHANNEL}});
 }
 
-Flat::Flat(FFModel &model, const ParallelTensor _input, const char *name)
+Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
     : Op(model,
          OP_FLAT,
          name,
@@ -144,7 +144,7 @@ Flat::Flat(FFModel &model, const ParallelTensor _input, const char *name)
   assert(check_output_input_weight_parallel_dims());
 }
 
-void Flat::init(const FFModel &ff) {
+void Flat::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -176,16 +176,16 @@ void Flat::init(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Flat::init_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
+OpMeta *Flat::init_task(Task const *task,
+                        std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {
-  FFHandler handler = *((const FFHandler *)task->local_args);
+  FFHandler handler = *((FFHandler const *)task->local_args);
   FlatMeta *m = new FlatMeta(handler);
   return m;
 }
 
-void Flat::forward(const FFModel &ff) {
+void Flat::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -217,8 +217,8 @@ void Flat::forward(const FFModel &ff) {
   regions[0](I): input
   regions[1](O): output
 */
-void Flat::forward_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
+void Flat::forward_task(Task const *task,
+                        std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {
   assert(regions.size() == 2);
@@ -238,7 +238,7 @@ void Flat::forward_task(const Task *task,
   // checkCUDA(cudaDeviceSynchronize());
 }
 
-void Flat::backward(const FFModel &ff) {
+void Flat::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -270,8 +270,8 @@ void Flat::backward(const FFModel &ff) {
   regions[0](I/O) : input_grad
   regions[1](I) : output_grad
 */
-void Flat::backward_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+void Flat::backward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
   assert(regions.size() == 2);
@@ -290,7 +290,7 @@ void Flat::backward_task(const Task *task,
       acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
 }
 
-Domain Flat::get_input_tensor_shape(const ParallelConfig &pc,
+Domain Flat::get_input_tensor_shape(ParallelConfig const &pc,
                                     int input_idx,
                                     int part_idx) const {
   assert(input_idx < numInputs);
@@ -314,7 +314,7 @@ Domain Flat::get_input_tensor_shape(const ParallelConfig &pc,
 void Flat::serialize(Legion::Serializer &sez) const { return; }
 
 bool Flat::measure_operator_cost(Simulator *sim,
-                                 const MachineView &mv,
+                                 MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {

@@ -20,9 +20,9 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-Optimizer::Optimizer(const FFModel *_model) : model(_model) {}
+Optimizer::Optimizer(FFModel const *_model) : model(_model) {}
 
-ParallelTensor create_replica_parameter(const FFModel *model,
+ParallelTensor create_replica_parameter(FFModel const *model,
                                         const ParallelTensor p) {
   Context ctx = model->config.lg_ctx;
   Runtime *runtime = model->config.lg_hlr;
@@ -42,7 +42,7 @@ ParallelTensor create_replica_parameter(const FFModel *model,
   return v;
 }
 
-SGDOptimizer::SGDOptimizer(const FFModel *_model,
+SGDOptimizer::SGDOptimizer(FFModel const *_model,
                            double _lr,
                            double _momentum,
                            bool _nesterov,
@@ -192,11 +192,11 @@ void SGDOptimizer::update(const ParallelTensor p) {
   }
 }
 
-void SGDOptimizer::ps_update_task(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+void SGDOptimizer::ps_update_task(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime) {
-  const SGDOptimizer *op = (SGDOptimizer *)task->args;
+  SGDOptimizer const *op = (SGDOptimizer *)task->args;
   if (op->momentum > 0.0f) {
     assert(regions.size() == 3);
     assert(task->regions.size() == 3);
@@ -206,7 +206,7 @@ void SGDOptimizer::ps_update_task(const Task *task,
   }
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  const float *w_grad_ptr = NULL;
+  float const *w_grad_ptr = NULL;
   float *w_ptr = NULL, *v_ptr = NULL;
   size_t size = 0, num_replicas = 0;
   switch (domain.get_dim()) {
@@ -253,12 +253,12 @@ void SGDOptimizer::ps_update_task(const Task *task,
 }
 
 #ifdef FF_USE_NCCL
-void SGDOptimizer::nccl_update_task(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+void SGDOptimizer::nccl_update_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
-  const SGDOptimizer *op = (SGDOptimizer *)task->args;
-  const OpMeta *meta = *((OpMeta **)task->local_args);
+  SGDOptimizer const *op = (SGDOptimizer *)task->args;
+  OpMeta const *meta = *((OpMeta **)task->local_args);
   // FFHandler handler = *((FFHandler*) task->local_args);
   if (op->momentum > 0.0f) {
     assert(regions.size() == 3);
@@ -269,7 +269,7 @@ void SGDOptimizer::nccl_update_task(const Task *task,
   }
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  const float *w_grad_ptr = NULL;
+  float const *w_grad_ptr = NULL;
   float *w_ptr = NULL, *v_ptr = NULL;
   size_t size = 0;
   switch (domain.get_dim()) {
@@ -315,7 +315,7 @@ void SGDOptimizer::nccl_update_task(const Task *task,
 //                        Adam Optimizer
 // ------------------------------------------------------------------
 
-AdamOptimizer::AdamOptimizer(const FFModel *_model,
+AdamOptimizer::AdamOptimizer(FFModel const *_model,
                              double _alpha,
                              double _beta1,
                              double _beta2,
@@ -487,16 +487,16 @@ void AdamOptimizer::update(const ParallelTensor p) {
   }
 }
 
-void AdamOptimizer::ps_update_task(const Task *task,
-                                   const std::vector<PhysicalRegion> &regions,
+void AdamOptimizer::ps_update_task(Task const *task,
+                                   std::vector<PhysicalRegion> const &regions,
                                    Context ctx,
                                    Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  const AdamOptimizer *op = (AdamOptimizer *)task->args;
+  AdamOptimizer const *op = (AdamOptimizer *)task->args;
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  const float *w_grad_ptr = NULL;
+  float const *w_grad_ptr = NULL;
   float *w_ptr = NULL, *v_ptr = NULL, *m_ptr = NULL;
   size_t size = 0, num_replicas = 0;
   switch (domain.get_dim()) {
@@ -543,18 +543,18 @@ void AdamOptimizer::ps_update_task(const Task *task,
 }
 
 #ifdef FF_USE_NCCL
-void AdamOptimizer::nccl_update_task(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
+void AdamOptimizer::nccl_update_task(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  const AdamOptimizer *op = (AdamOptimizer *)task->args;
-  const OpMeta *meta = *((OpMeta **)task->local_args);
+  AdamOptimizer const *op = (AdamOptimizer *)task->args;
+  OpMeta const *meta = *((OpMeta **)task->local_args);
   // FFHandler handler = *((FFHandler*) task->local_args);
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  const float *w_grad_ptr = NULL;
+  float const *w_grad_ptr = NULL;
   float *w_ptr = NULL, *v_ptr = NULL, *m_ptr = NULL;
   size_t size = 0;
   switch (domain.get_dim()) {

@@ -10,21 +10,21 @@ public:
   NoOp(FFModel &model,
        OperatorType type,
        const ParallelTensor output,
-       const char *name = NULL);
+       char const *name = NULL);
   NoOp(FFModel &model,
        OperatorType type,
        size_t input_tensor_guid,
        const ParallelTensor output,
-       const char *name = NULL);
-  void init(const FFModel &) override;
-  void forward(const FFModel &) override;
-  void backward(const FFModel &) override;
-  void print_layer(const FFModel &model) override { assert(0); }
+       char const *name = NULL);
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
+  void print_layer(FFModel const &model) override { assert(0); }
   bool measure_operator_cost(Simulator *sim,
-                             const MachineView &pc,
+                             MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  static OpMeta *init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
 

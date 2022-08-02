@@ -29,8 +29,8 @@ static std::uniform_real_distribution<float> unif(0, 1);
 
 // for summing connections...
 template <typename T>
-static std::vector<T> operator+(const std::vector<T> &a,
-                                const std::vector<T> &b) {
+static std::vector<T> operator+(std::vector<T> const &a,
+                                std::vector<T> const &b) {
   assert(a.size() == b.size());
 
   std::vector<T> result;
@@ -45,8 +45,8 @@ static std::vector<T> operator+(const std::vector<T> &a,
 }
 
 WeightedShortestPathRoutingStrategy::WeightedShortestPathRoutingStrategy(
-    const ConnectionMatrix &c,
-    const std::map<size_t, CommDevice *> &devmap,
+    ConnectionMatrix const &c,
+    std::map<size_t, CommDevice *> const &devmap,
     int total_devs)
     : conn(c), devmap(devmap), total_devs(total_devs) {}
 
@@ -258,8 +258,8 @@ WeightedShortestPathRoutingStrategy::hop_count(int src_node) {
 }
 
 ShortestPathNetworkRoutingStrategy::ShortestPathNetworkRoutingStrategy(
-    const ConnectionMatrix &c,
-    const std::map<size_t, CommDevice *> &devmap,
+    ConnectionMatrix const &c,
+    std::map<size_t, CommDevice *> const &devmap,
     int total_devs)
     : conn(c), devmap(devmap), total_devs(total_devs) {}
 
@@ -553,7 +553,7 @@ int FlatDegConstraintNetworkTopologyGenerator::get_id(int i, int j) const {
 }
 
 int FlatDegConstraintNetworkTopologyGenerator::get_if_in_use(
-    int node, const ConnectionMatrix &conn) const {
+    int node, ConnectionMatrix const &conn) const {
   int result = 0;
   for (int i = 0; i < num_nodes; i++) {
     result += conn[get_id(node, i)];

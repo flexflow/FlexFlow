@@ -35,8 +35,8 @@ void set_global_config(GlobalConfig &global,
                        int workers_per_node,
                        int num_nodes);
 
-void top_level_task(const Task *task,
-                    const std::vector<PhysicalRegion> &regions,
+void top_level_task(Task const *task,
+                    std::vector<PhysicalRegion> const &regions,
                     Context ctx,
                     Runtime *runtime) {
   int bs_per_worker = 64;
@@ -51,7 +51,7 @@ void top_level_task(const Task *task,
   int batch_size = bs_per_worker * num_parts;
   int num_iterations = 10;
   {
-    const InputArgs &command_args = HighLevelRuntime::get_input_args();
+    InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
     parse_input_args(argv,

@@ -33,7 +33,7 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-Tensor FFModel::cast(const Tensor input, DataType dtype, const char *name) {
+Tensor FFModel::cast(const Tensor input, DataType dtype, char const *name) {
   Layer *cast = new Layer(
       this, OP_CAST, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, input);
   int numdims = input->num_dims;
@@ -49,8 +49,8 @@ Tensor FFModel::cast(const Tensor input, DataType dtype, const char *name) {
 
 Op *Cast::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("dtype", value);
   DataType dtype = (DataType)value;
@@ -74,7 +74,7 @@ Node FFModel::get_or_create_cast_node(const ParallelTensor input,
   hash_combine(hash, dtype);
 
   Cast *cast;
-  const auto &it = this->cached_cast_ops.find(hash);
+  auto const &it = this->cached_cast_ops.find(hash);
   if (it != cached_cast_ops.end()) {
     cast = it->second;
   } else {
@@ -86,9 +86,9 @@ Node FFModel::get_or_create_cast_node(const ParallelTensor input,
 }
 
 Cast::Cast(FFModel &model,
-           const ParallelTensor &input,
+           ParallelTensor const &input,
            DataType _dtype,
-           const char *name)
+           char const *name)
     : Op(model,
          OP_CAST,
          name,
@@ -106,7 +106,7 @@ Cast::Cast(FFModel &model,
       model.create_parallel_tensor_legion_ordering(numdim, dims, _dtype, this);
 }
 
-void Cast::init(const FFModel &ff) {
+void Cast::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -138,19 +138,19 @@ void Cast::init(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Cast::init_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
+OpMeta *Cast::init_task(Task const *task,
+                        std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {
   Cast *cast = (Cast *)task->args;
-  FFHandler handler = *((const FFHandler *)task->local_args);
+  FFHandler handler = *((FFHandler const *)task->local_args);
   CastMeta *m = new CastMeta(handler);
   m->input_data_type = cast->inputs[0]->data_type;
   m->output_data_type = cast->outputs[0]->data_type;
   return m;
 }
 
-void Cast::forward(const FFModel &ff) {
+void Cast::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -179,11 +179,11 @@ void Cast::forward(const FFModel &ff) {
 }
 
 template <typename IDT>
-void Cast::forward_task_with_1_type(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+void Cast::forward_task_with_1_type(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
-  const CastMeta *m = *((CastMeta **)task->local_args);
+  CastMeta const *m = *((CastMeta **)task->local_args);
   if (m->output_data_type == DT_FLOAT) {
     Cast::forward_task_with_2_type<IDT, float>(task, regions, ctx, runtime);
   } else if (m->output_data_type == DT_DOUBLE) {
@@ -196,8 +196,8 @@ void Cast::forward_task_with_1_type(const Task *task,
 }
 
 template <typename IDT, typename ODT>
-void Cast::forward_task_with_2_type(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+void Cast::forward_task_with_2_type(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
   assert(regions.size() == 2);
@@ -214,11 +214,11 @@ void Cast::forward_task_with_2_type(const Task *task,
       input_ptr, output_ptr, output_domain.get_volume());
 }
 
-void Cast::forward_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
+void Cast::forward_task(Task const *task,
+                        std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {
-  const CastMeta *m = *((CastMeta **)task->local_args);
+  CastMeta const *m = *((CastMeta **)task->local_args);
   if (m->input_data_type == DT_FLOAT) {
     Cast::forward_task_with_1_type<float>(task, regions, ctx, runtime);
   } else if (m->input_data_type == DT_DOUBLE) {
@@ -230,7 +230,7 @@ void Cast::forward_task(const Task *task,
   }
 }
 
-void Cast::backward(const FFModel &ff) {
+void Cast::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -259,11 +259,11 @@ void Cast::backward(const FFModel &ff) {
 }
 
 template <typename IDT>
-void Cast::backward_task_with_1_type(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
+void Cast::backward_task_with_1_type(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
-  const CastMeta *m = *((CastMeta **)task->local_args);
+  CastMeta const *m = *((CastMeta **)task->local_args);
   if (m->input_data_type == DT_FLOAT) {
     Cast::backward_task_with_2_type<IDT, float>(task, regions, ctx, runtime);
   } else if (m->input_data_type == DT_DOUBLE) {
@@ -276,8 +276,8 @@ void Cast::backward_task_with_1_type(const Task *task,
 }
 
 template <typename IDT, typename ODT>
-void Cast::backward_task_with_2_type(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
+void Cast::backward_task_with_2_type(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
   assert(regions.size() == 2);
@@ -294,11 +294,11 @@ void Cast::backward_task_with_2_type(const Task *task,
       input_ptr, output_ptr, output_domain.get_volume());
 }
 
-void Cast::backward_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+void Cast::backward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
-  const CastMeta *m = *((CastMeta **)task->local_args);
+  CastMeta const *m = *((CastMeta **)task->local_args);
   if (m->output_data_type == DT_FLOAT) {
     Cast::backward_task_with_1_type<float>(task, regions, ctx, runtime);
   } else if (m->output_data_type == DT_DOUBLE) {
@@ -311,7 +311,7 @@ void Cast::backward_task(const Task *task,
 }
 
 bool Cast::measure_operator_cost(Simulator *sim,
-                                 const MachineView &mv,
+                                 MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
   // Assume cast has no cost
   cost_metrics.forward_time = 0.0f;

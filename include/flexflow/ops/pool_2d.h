@@ -52,27 +52,27 @@ public:
          int paddingW,
          PoolType type,
          ActiMode activation,
-         const char *name);
+         char const *name);
   Pool2D(FFModel &model, Pool2D const &other, ParallelTensor const input);
   Pool2D(FFModel &model,
-         const Params &params,
+         Params const &params,
          const Input input,
-         const char *name = nullptr);
-  void init(const FFModel &) override;
-  void forward(const FFModel &) override;
-  void backward(const FFModel &) override;
-  void update(const FFModel &);
-  void print_layer(const FFModel &model) override { assert(0); }
+         char const *name = nullptr);
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
+  void update(FFModel const &);
+  void print_layer(FFModel const &model) override { assert(0); }
   static Op *
   create_operator_from_layer(FFModel &model,
-                             const Layer *layer,
-                             const std::vector<ParallelTensor> &inputs);
+                             Layer const *layer,
+                             std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void init_kernel(const Pool2D *pool,
+  static void init_kernel(Pool2D const *pool,
                           Pool2DMeta *m,
                           int input_w,
                           int input_h,
@@ -84,34 +84,34 @@ public:
                           int output_n,
                           int pad_h,
                           int pad_w);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  static void forward_kernel(const Pool2DMeta *m,
-                             const float *input_ptr,
+  static void forward_kernel(Pool2DMeta const *m,
+                             float const *input_ptr,
                              float *output_ptr,
                              ffStream_t stream);
-  static void forward_kernel_wrapper(const Pool2DMeta *m,
-                                     const float *input_ptr,
+  static void forward_kernel_wrapper(Pool2DMeta const *m,
+                                     float const *input_ptr,
                                      float *output_ptr);
-  static void backward_kernel(const Pool2DMeta *m,
-                              const float *input_ptr,
+  static void backward_kernel(Pool2DMeta const *m,
+                              float const *input_ptr,
                               float *input_grad_ptr,
-                              const float *output_ptr,
-                              const float *output_grad_ptr,
+                              float const *output_ptr,
+                              float const *output_grad_ptr,
                               ffStream_t stream);
-  static void backward_kernel_wrapper(const Pool2DMeta *m,
-                                      const float *input_ptr,
+  static void backward_kernel_wrapper(Pool2DMeta const *m,
+                                      float const *input_ptr,
                                       float *input_grad_ptr,
-                                      const float *output_ptr,
-                                      const float *output_grad_ptr);
+                                      float const *output_ptr,
+                                      float const *output_grad_ptr);
   bool measure_operator_cost(Simulator *sim,
-                             const MachineView &pc,
+                             MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
   void serialize(Legion::Serializer &) const override;

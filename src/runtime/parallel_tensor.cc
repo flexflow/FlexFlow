@@ -19,7 +19,7 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-TensorBase::TensorBase(const TensorBase &rhs) {
+TensorBase::TensorBase(TensorBase const &rhs) {
   tensor_guid = rhs.tensor_guid;
   num_dims = rhs.num_dims;
   for (int i = 0; i < num_dims; i++)
@@ -41,8 +41,8 @@ size_t TensorBase::get_volume() const {
 }
 
 template <typename T>
-bool TensorBase::set_tensor(const FFModel *ff,
-                            const std::vector<int> &dim_sizes,
+bool TensorBase::set_tensor(FFModel const *ff,
+                            std::vector<int> const &dim_sizes,
                             const T *data) {
   if (num_dims != (int)dim_sizes.size())
     return false;
@@ -57,7 +57,7 @@ bool TensorBase::set_tensor(const FFModel *ff,
 }
 
 template <typename T>
-bool TensorBase::get_tensor(const FFModel *ff, T *data, bool get_gradients) {
+bool TensorBase::get_tensor(FFModel const *ff, T *data, bool get_gradients) {
   ParallelTensor ptensor = nullptr;
   ff->get_parallel_tensor_from_tensor(this, ptensor);
   ptensor->get_tensor<T>(ff, data, get_gradients);
@@ -91,7 +91,7 @@ bool ParallelTensorShape::is_valid() const {
   return true;
 }
 
-bool ParallelTensorShape::operator==(const ParallelTensorShape &other) const {
+bool ParallelTensorShape::operator==(ParallelTensorShape const &other) const {
   if (this->num_dims != other.num_dims) {
     return false;
   }
@@ -113,7 +113,7 @@ bool ParallelTensorShape::operator==(const ParallelTensorShape &other) const {
   return true;
 }
 
-bool ParallelTensorShape::operator!=(const ParallelTensorShape &other) const {
+bool ParallelTensorShape::operator!=(ParallelTensorShape const &other) const {
   return !(*this == other);
 }
 
@@ -172,7 +172,7 @@ bool ParallelTensorBase::update_parallel_ids(int numdim, ParallelDim *dims) {
   return true;
 }
 
-ParallelTensorBase::ParallelTensorBase(const ParallelTensorBase &rhs) {
+ParallelTensorBase::ParallelTensorBase(ParallelTensorBase const &rhs) {
   parallel_tensor_guid = rhs.parallel_tensor_guid;
   num_dims = rhs.num_dims;
   for (int i = 0; i < num_dims; i++)
@@ -264,7 +264,7 @@ void ParallelTensorBase::detach_raw_ptr(FFConfig &config) {
 
 template <typename T>
 bool ParallelTensorBase::get_input_sub_tensor_via_mappings(
-    const ParallelConfig &pc, ParallelTensorBase &tensor) const {
+    ParallelConfig const &pc, ParallelTensorBase &tensor) const {
   if (pc.nDims != num_dims) {
     printf("Could not get input subtensor because the number of dimensions do "
            "not match: %d != %d\n",
@@ -284,7 +284,7 @@ bool ParallelTensorBase::get_input_sub_tensor_via_mappings(
   return true;
 }
 
-bool ParallelTensorBase::get_sub_tensor(const MachineView &mv,
+bool ParallelTensorBase::get_sub_tensor(MachineView const &mv,
                                         ParallelTensorBase &sub_tensor) const {
   sub_tensor.num_dims = this->num_dims;
   for (int i = 0; i < sub_tensor.num_dims; i++) {
@@ -300,7 +300,7 @@ bool ParallelTensorBase::get_sub_tensor(const MachineView &mv,
   return true;
 }
 
-bool ParallelTensorBase::get_input_sub_tensor(const ParallelConfig &pc,
+bool ParallelTensorBase::get_input_sub_tensor(ParallelConfig const &pc,
                                               ParallelTensorBase &tensor,
                                               OperatorType type) {
   // TODO: consider reduction dim for conv2d and linear
@@ -392,7 +392,7 @@ bool ParallelTensorBase::get_input_sub_tensor(const ParallelConfig &pc,
   return true;
 }
 
-bool ParallelTensorBase::get_output_sub_tensor(const ParallelConfig &pc,
+bool ParallelTensorBase::get_output_sub_tensor(ParallelConfig const &pc,
                                                ParallelTensorBase &tensor,
                                                OperatorType type) {
   if (pc.nDims != num_dims) {
@@ -491,7 +491,7 @@ bool ParallelTensorBase::check_valid() const {
   return true;
 }
 
-void TensorBase::print(const std::string &name) const {
+void TensorBase::print(std::string const &name) const {
   printf("%s: sizes[", name.c_str());
 
   for (int i = 0; i < num_dims; i++) {
@@ -500,7 +500,7 @@ void TensorBase::print(const std::string &name) const {
   printf("]\n");
 }
 
-void ParallelTensorBase::print(const std::string &name) const {
+void ParallelTensorBase::print(std::string const &name) const {
   printf("%s: sizes[", name.c_str());
 
   for (int i = 0; i < num_dims; i++) {
@@ -584,7 +584,7 @@ size_t hash<FlexFlow::ParallelTensorShape>::operator()(
 
 namespace FlexFlow {
 
-bool ParallelTensorBase::is_valid_machine_view(const MachineView &view) const {
+bool ParallelTensorBase::is_valid_machine_view(MachineView const &view) const {
   int is_dim = 0;
   for (int i = 0; i < num_dims; i++)
     if (dims[i].parallel_idx != -1) {
@@ -605,8 +605,8 @@ bool ParallelTensorBase::is_valid_machine_view(const MachineView &view) const {
 }
 
 template <typename T>
-bool ParallelTensorBase::set_tensor(const FFModel *ff,
-                                    const std::vector<int> &dim_sizes,
+bool ParallelTensorBase::set_tensor(FFModel const *ff,
+                                    std::vector<int> const &dim_sizes,
                                     const T *data) {
   Context ctx = ff->config.lg_ctx;
   Runtime *runtime = ff->config.lg_hlr;
@@ -653,7 +653,7 @@ bool ParallelTensorBase::set_tensor(const FFModel *ff,
 }
 
 template <typename T>
-bool ParallelTensorBase::get_tensor(const FFModel *ff,
+bool ParallelTensorBase::get_tensor(FFModel const *ff,
                                     T *data,
                                     bool get_gradients) {
   Context ctx = ff->config.lg_ctx;
@@ -708,49 +708,49 @@ bool ParallelTensorBase::get_tensor(const FFModel *ff,
 template float *ParallelTensorBase::get_raw_ptr<float>(FFConfig &config);
 template int32_t *ParallelTensorBase::get_raw_ptr<int32_t>(FFConfig &config);
 
-template bool TensorBase::set_tensor<float>(const FFModel *ff,
-                                            const std::vector<int> &dims,
-                                            const float *data);
-template bool TensorBase::get_tensor<float>(const FFModel *ff,
+template bool TensorBase::set_tensor<float>(FFModel const *ff,
+                                            std::vector<int> const &dims,
+                                            float const *data);
+template bool TensorBase::get_tensor<float>(FFModel const *ff,
                                             float *data,
                                             bool get_gradients);
-template bool TensorBase::set_tensor<double>(const FFModel *ff,
-                                             const std::vector<int> &dims,
-                                             const double *data);
-template bool TensorBase::get_tensor<double>(const FFModel *ff,
+template bool TensorBase::set_tensor<double>(FFModel const *ff,
+                                             std::vector<int> const &dims,
+                                             double const *data);
+template bool TensorBase::get_tensor<double>(FFModel const *ff,
                                              double *data,
                                              bool get_gradients);
-template bool TensorBase::set_tensor<int32_t>(const FFModel *ff,
-                                              const std::vector<int> &dims,
-                                              const int32_t *data);
-template bool TensorBase::get_tensor<int32_t>(const FFModel *ff,
+template bool TensorBase::set_tensor<int32_t>(FFModel const *ff,
+                                              std::vector<int> const &dims,
+                                              int32_t const *data);
+template bool TensorBase::get_tensor<int32_t>(FFModel const *ff,
                                               int32_t *data,
                                               bool get_gradients);
-template bool TensorBase::set_tensor<int64_t>(const FFModel *ff,
-                                              const std::vector<int> &dims,
-                                              const int64_t *data);
-template bool TensorBase::get_tensor<int64_t>(const FFModel *ff,
+template bool TensorBase::set_tensor<int64_t>(FFModel const *ff,
+                                              std::vector<int> const &dims,
+                                              int64_t const *data);
+template bool TensorBase::get_tensor<int64_t>(FFModel const *ff,
                                               int64_t *data,
                                               bool get_gradients);
 
 template bool ParallelTensorBase::set_tensor<float>(
-    const FFModel *ff, const std::vector<int> &dims, const float *data);
-template bool ParallelTensorBase::get_tensor<float>(const FFModel *ff,
+    FFModel const *ff, std::vector<int> const &dims, float const *data);
+template bool ParallelTensorBase::get_tensor<float>(FFModel const *ff,
                                                     float *data,
                                                     bool get_gradients);
 template bool ParallelTensorBase::set_tensor<double>(
-    const FFModel *ff, const std::vector<int> &dims, const double *data);
-template bool ParallelTensorBase::get_tensor<double>(const FFModel *ff,
+    FFModel const *ff, std::vector<int> const &dims, double const *data);
+template bool ParallelTensorBase::get_tensor<double>(FFModel const *ff,
                                                      double *data,
                                                      bool get_gradients);
 template bool ParallelTensorBase::set_tensor<int32_t>(
-    const FFModel *ff, const std::vector<int> &dims, const int32_t *data);
-template bool ParallelTensorBase::get_tensor<int32_t>(const FFModel *ff,
+    FFModel const *ff, std::vector<int> const &dims, int32_t const *data);
+template bool ParallelTensorBase::get_tensor<int32_t>(FFModel const *ff,
                                                       int32_t *data,
                                                       bool get_gradients);
 template bool ParallelTensorBase::set_tensor<int64_t>(
-    const FFModel *ff, const std::vector<int> &dims, const int64_t *data);
-template bool ParallelTensorBase::get_tensor<int64_t>(const FFModel *ff,
+    FFModel const *ff, std::vector<int> const &dims, int64_t const *data);
+template bool ParallelTensorBase::get_tensor<int64_t>(FFModel const *ff,
                                                       int64_t *data,
                                                       bool get_gradients);
 

@@ -40,7 +40,7 @@ using Legion::TaskLauncher;
 ParallelTensor FFModel::replicate(const ParallelTensor input,
                                   int replicate_legion_dim,
                                   int replicate_degree,
-                                  const char *name) {
+                                  char const *name) {
   assert(false);
 #ifdef DEADCODE
   Replicate *repl =
@@ -54,7 +54,7 @@ Replicate::Replicate(FFModel &model,
                      const ParallelTensor _input,
                      int _replicate_legion_dim,
                      int _replicate_degree,
-                     const char *name)
+                     char const *name)
     : ParallelOp(model, OP_REPLICATE, name, _input),
       replicate_dim(_replicate_legion_dim),
       replicate_degree(_replicate_degree) {
@@ -90,7 +90,7 @@ void Replicate::create_input_partition(FFModel &ff) {
                                output_grad_lp);
 }
 
-void Replicate::init(const FFModel &ff) {
+void Replicate::init(FFModel const &ff) {
   // Do nothing
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -117,7 +117,7 @@ void Replicate::init(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Replicate::forward(const FFModel &ff) {
+void Replicate::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -143,7 +143,7 @@ void Replicate::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Replicate::backward(const FFModel &ff) {
+void Replicate::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -173,7 +173,7 @@ void Replicate::backward(const FFModel &ff) {
 }
 
 bool Replicate::measure_operator_cost(Simulator *sim,
-                                      const MachineView &pc,
+                                      MachineView const &pc,
                                       CostMetrics &cost_metrics) const {
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
@@ -227,7 +227,7 @@ Node FFModel::get_or_create_replicate_node(const ParallelTensor input,
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(replicate_dim);
   hash = hash * 31 + std::hash<int>()(replicate_degree);
-  const auto &it = cached_replicate_ops.find(hash);
+  auto const &it = cached_replicate_ops.find(hash);
   Replicate *replicate = NULL;
   if (it != cached_replicate_ops.end()) {
     replicate = it->second;
@@ -242,8 +242,8 @@ Node FFModel::get_or_create_replicate_node(const ParallelTensor input,
   return ret;
 }
 
-void Replicate::forward_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+void Replicate::forward_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
   assert(regions.size() == 2);
@@ -258,7 +258,7 @@ void Replicate::forward_task(const Task *task,
     assert(output_domain.hi()[i] == input_domain.hi()[i]);
   }
   assert(input_domain.get_volume() == output_domain.get_volume());
-  const float *input_ptr = helperGetTensorPointerRO<float>(
+  float const *input_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float *output_ptr = helperGetTensorPointerRW<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
@@ -266,8 +266,8 @@ void Replicate::forward_task(const Task *task,
   forward_kernel<float>(input_ptr, output_ptr, input_domain.get_volume());
 }
 
-void Replicate::backward_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void Replicate::backward_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
   assert(regions.size() == 2);
@@ -283,7 +283,7 @@ void Replicate::backward_task(const Task *task,
   }
   size_t num_elements = input_grad_domain.get_volume();
   size_t num_replicas = output_grad_domain.get_volume() / num_elements;
-  const float *output_grad_ptr = helperGetTensorPointerRO<float>(
+  float const *output_grad_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float *input_grad_ptr = helperGetTensorPointerRW<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);

@@ -62,15 +62,15 @@ void Replicate::backward_kernel(const T *output_grad_ptr,
                      num_replicas);
 }
 
-template void Replicate::forward_kernel<float>(const float *input_ptr,
+template void Replicate::forward_kernel<float>(float const *input_ptr,
                                                float *output_ptr,
                                                size_t num_elements);
 template __global__ void
-replicate_backward_kernel<float>(const float *input_ptr,
+replicate_backward_kernel<float>(float const *input_ptr,
                                  float *output_ptr,
                                  size_t num_elements,
                                  size_t num_replicas);
-template void Replicate::backward_kernel<float>(const float *output_grad_ptr,
+template void Replicate::backward_kernel<float>(float const *output_grad_ptr,
                                                 float *input_grad_ptr,
                                                 size_t num_elements,
                                                 size_t num_replicas);

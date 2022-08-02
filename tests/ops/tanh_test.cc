@@ -43,8 +43,8 @@ TanhTestMeta get_test_meta(const std::string file_path) {
   return TanhTestMeta(i_dim, o_dim, i_shape, o_shape);
 }
 
-void top_level_task(const Task *task,
-                    const std::vector<PhysicalRegion> &regions,
+void top_level_task(Task const *task,
+                    std::vector<PhysicalRegion> const &regions,
                     Context ctx,
                     Runtime *runtime) {
   // std::cout<< "test framework launched" << std::endl;
@@ -55,7 +55,7 @@ void top_level_task(const Task *task,
   Tensor dense_input;
   if (test_meta.i_dim == 3) {
 #define input_dim 3
-    const int i_dims[input_dim] = {
+    int const i_dims[input_dim] = {
         test_meta.i_shape[0], test_meta.i_shape[1], test_meta.i_shape[2]};
     dense_input = ff.create_tensor<input_dim>(i_dims, "", DT_FLOAT);
     Tensor ret = ff.tanh<input_dim>("", dense_input, i_dims);
@@ -76,7 +76,7 @@ void top_level_task(const Task *task,
 #undef input_dim
   } else if (test_meta.i_dim == 2) {
 #define input_dim 2
-    const int i_dims[input_dim] = {
+    int const i_dims[input_dim] = {
         test_meta.i_shape[0],
         test_meta.i_shape[1],
     };
@@ -99,7 +99,7 @@ void top_level_task(const Task *task,
 #undef input_dim
   } else if (test_meta.i_dim == 1) {
 #define input_dim 1
-    const int i_dims[input_dim] = {test_meta.i_shape[0]};
+    int const i_dims[input_dim] = {test_meta.i_shape[0]};
     dense_input = ff.create_tensor<input_dim>(i_dims, "", DT_FLOAT);
     Tensor ret = ff.tanh<input_dim>("", dense_input, i_dims);
     auto input1_file_path = "test_input1.txt";

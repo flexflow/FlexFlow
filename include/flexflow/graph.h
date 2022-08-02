@@ -29,16 +29,16 @@ namespace FlexFlow::PCG {
 
 struct Edge {
   Edge(void);
-  Edge(const Node &_srcOp, const Node &_dstOp, int _srcIdx, int _dstIdx);
-  bool operator==(const Edge &rhs) const;
+  Edge(Node const &_srcOp, Node const &_dstOp, int _srcIdx, int _dstIdx);
+  bool operator==(Edge const &rhs) const;
   Node srcOp, dstOp;
   int srcIdx, dstIdx;
 
-  void replace_node(const Node &currentOp, const Node &replaceWith);
+  void replace_node(Node const &currentOp, Node const &replaceWith);
 };
 
 struct EdgeCompare {
-  bool operator()(const Edge &a, const Edge &b) const {
+  bool operator()(Edge const &a, Edge const &b) const {
     if (!(a.srcOp == b.srcOp))
       return a.srcOp < b.srcOp;
     if (!(a.dstOp == b.dstOp))
@@ -54,7 +54,7 @@ struct EdgeCompare {
 
 namespace std {
 template <> struct hash<FlexFlow::PCG::Edge> {
-  size_t operator()(const FlexFlow::PCG::Edge &e) const {
+  size_t operator()(FlexFlow::PCG::Edge const &e) const {
     size_t res = 17;
     res = res * 31 + hash<size_t>()((size_t)e.srcOp.guid);
     res = res * 31 + hash<size_t>()((size_t)e.dstOp.guid);
@@ -65,14 +65,14 @@ template <> struct hash<FlexFlow::PCG::Edge> {
 };
 
 template <> struct hash<FlexFlow::PCG::Node> {
-  size_t operator()(const FlexFlow::PCG::Node &n) const { return n.guid; }
+  size_t operator()(FlexFlow::PCG::Node const &n) const { return n.guid; }
 };
 }; // namespace std
 
 namespace FlexFlow::PCG {
 
 struct NodeCompare {
-  bool operator()(const Node &a, const Node &b) const {
+  bool operator()(Node const &a, Node const &b) const {
     if (a.guid != b.guid)
       return a.guid < b.guid;
     return a.ptr < b.ptr;
@@ -109,12 +109,12 @@ template <typename T> T sequence_cost(T const &first, T const &second);
 
 template <typename T> T parallel_cost(T const &first, T const &second);
 
-size_t dp_state_hash(const Graph *graph,
-                     const Node &sink_node,
-                     const MachineView &sink_view,
-                     const Node &source_node,
-                     const MachineView &source_view,
-                     const MachineResource &resource);
+size_t dp_state_hash(Graph const *graph,
+                     Node const &sink_node,
+                     MachineView const &sink_view,
+                     Node const &source_node,
+                     MachineView const &source_view,
+                     MachineResource const &resource);
 
 enum class SplitType { SEQUENTIAL, VERTICAL, HORIZONTAL };
 
@@ -135,10 +135,10 @@ public:
   SearchHelper(FFModel *model);
 
   template <typename T>
-  T graph_cost(const Graph *graph,
-               const NodeAssignment &source,
-               const NodeAssignment &sink,
-               const MachineResource &resources,
+  T graph_cost(Graph const *graph,
+               NodeAssignment const &source,
+               NodeAssignment const &sink,
+               MachineResource const &resources,
                bool include_sink_compute_time) const;
   template <typename T>
   T find_optimal_sequence_graph_time(Graph const *g,
@@ -161,10 +161,10 @@ public:
    * MachineView>& optimal_views) const; */
   std::vector<MachineView>
   get_valid_machine_views(Node const &node,
-                          const MachineResource &resource,
+                          MachineResource const &resource,
                           bool log = false) const;
   std::vector<MachineView> get_valid_machine_views(
-      const Op *op, const MachineResource &resource, bool log = false) const;
+      Op const *op, MachineResource const &resource, bool log = false) const;
 
   template <typename T>
   std::pair<bool, T> try_get_cost_from_cache(size_t hash) const;
@@ -230,18 +230,18 @@ struct SimplificationSettings {
 class Graph {
 public:
   Graph(FFModel *model);
-  void add_edge(const Node &srcOp, const Node &dstOp, int srcIdx, int dstIdx);
-  void add_node(const Node &);
-  void add_edge(const Edge &e);
-  void remove_node(const Node &, bool purge_edges = false);
-  void remove_edge(const Edge &e, bool remove_node_if_unused = true);
+  void add_edge(Node const &srcOp, Node const &dstOp, int srcIdx, int dstIdx);
+  void add_node(Node const &);
+  void add_edge(Edge const &e);
+  void remove_node(Node const &, bool purge_edges = false);
+  void remove_edge(Edge const &e, bool remove_node_if_unused = true);
   bool
-  has_edge(const Node &srcOp, const Node &dstOp, int srcIdx, int dstIdx) const;
-  bool has_edge(const Edge &e) const;
+  has_edge(Node const &srcOp, Node const &dstOp, int srcIdx, int dstIdx) const;
+  bool has_edge(Edge const &e) const;
   void replace_subgraph(std::unordered_set<Node> const &currentNodes,
-                        const Graph &replaceWith);
+                        Graph const &replaceWith);
   Graph subgraph(std::unordered_set<Node> const &nodes) const;
-  void contract_out_node(const Node &);
+  void contract_out_node(Node const &);
   float optimal_cost() const;
   std::unordered_map<Node, MachineView> optimal_views() const;
   void remove_input_nodes();
@@ -262,12 +262,12 @@ public:
   bool has_loop(void);
   bool map_operators_to_layers(std::vector<Op *> &layers) const;
   static GraphOptimalViewSerialized
-  graph_optimize_task(const Legion::Task *task,
-                      const std::vector<Legion::PhysicalRegion> &regions,
+  graph_optimize_task(Legion::Task const *task,
+                      std::vector<Legion::PhysicalRegion> const &regions,
                       Legion::Context ctx,
                       Legion::Runtime *runtime);
-  Node find_bottleneck_node(const Node &sink_node,
-                            const Node &source_node) const;
+  Node find_bottleneck_node(Node const &sink_node,
+                            Node const &source_node) const;
   void print_strategy_computation_graph(
       std::unordered_map<Node, MachineView> const &strategy) const;
   void export_strategy_computation_graph(
@@ -307,7 +307,7 @@ private:
   void remove_inverse_parallel_ops();
   void
   replace_subgraph_with_nonempty(std::unordered_set<Node> const &currentNodes,
-                                 const Graph &replaceWith);
+                                 Graph const &replaceWith);
 };
 
 struct GraphOptimizeResult {

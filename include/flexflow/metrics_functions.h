@@ -27,9 +27,9 @@ class Metrics;
 class PerfMetrics {
 public:
   PerfMetrics(void);
-  void update(const PerfMetrics &one);
+  void update(PerfMetrics const &one);
   void apply_scale(float scale_factor);
-  void print(const Metrics *m);
+  void print(Metrics const *m);
 
 public:
   int train_all, train_correct; // measure_accuracy
@@ -43,27 +43,27 @@ public:
 
 class Metrics {
 public:
-  Metrics(LossType _loss_type, const std::vector<MetricsType> &metrics);
+  Metrics(LossType _loss_type, std::vector<MetricsType> const &metrics);
   static PerfMetrics
-  compute_task(const Legion::Task *task,
-               const std::vector<Legion::PhysicalRegion> &regions,
+  compute_task(Legion::Task const *task,
+               std::vector<Legion::PhysicalRegion> const &regions,
                Legion::Context ctx,
                Legion::Runtime *runtime);
   template <int NDIM>
   static PerfMetrics
-  compute_task_with_dim(const Legion::Task *task,
-                        const std::vector<Legion::PhysicalRegion> &regions,
+  compute_task_with_dim(Legion::Task const *task,
+                        std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,
                         Legion::Runtime *runtime);
-  static void update_metrics_sparse_label_kernel_wrapper(const float *logit_ptr,
-                                                         const int *label_ptr,
-                                                         const Metrics *me,
+  static void update_metrics_sparse_label_kernel_wrapper(float const *logit_ptr,
+                                                         int const *label_ptr,
+                                                         Metrics const *me,
                                                          int num_samples,
                                                          int num_classes,
                                                          PerfMetrics &perf_zc);
-  static void update_metrics_label_kernel_wrapper(const float *logit_ptr,
-                                                  const float *label_ptr,
-                                                  const Metrics *me,
+  static void update_metrics_label_kernel_wrapper(float const *logit_ptr,
+                                                  float const *label_ptr,
+                                                  Metrics const *me,
                                                   int num_samples,
                                                   int num_classes,
                                                   PerfMetrics &perf_zc);

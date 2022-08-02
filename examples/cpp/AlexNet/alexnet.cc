@@ -35,14 +35,14 @@ void parse_input_args(char **argv, int argc, AlexNetConfig &config) {
   }
 }
 
-void FlexFlow::top_level_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void FlexFlow::top_level_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
   FFConfig ffConfig;
   AlexNetConfig alexnetConfig;
   {
-    const InputArgs &command_args = HighLevelRuntime::get_input_args();
+    InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
     parse_input_args(argv, argc, alexnetConfig);
@@ -55,7 +55,7 @@ void FlexFlow::top_level_task(const Task *task,
 
   Tensor input;
   {
-    const int dims[] = {ffConfig.batchSize, 3, 229, 229};
+    int const dims[] = {ffConfig.batchSize, 3, 229, 229};
     input = ff.create_tensor<4>(dims, DT_FLOAT);
   }
   // Tensor label;
@@ -131,7 +131,7 @@ void FlexFlow::top_level_task(const Task *task,
          data_loader.num_samples * ffConfig.epochs / run_time);
 }
 
-size_t get_file_size(const std::string &filename) {
+size_t get_file_size(std::string const &filename) {
   streampos begin, end;
   ifstream file(filename.c_str(), ios::binary);
   begin = file.tellg();
@@ -143,7 +143,7 @@ size_t get_file_size(const std::string &filename) {
 }
 
 DataLoader::DataLoader(FFModel &ff,
-                       const AlexNetConfig *alexnet,
+                       AlexNetConfig const *alexnet,
                        Tensor input,
                        Tensor label) {
   Context ctx = ff.config.lg_ctx;
@@ -162,7 +162,7 @@ DataLoader::DataLoader(FFModel &ff,
   // Create full input
   {
     batch_input = input;
-    const int dims[] = {
+    int const dims[] = {
         num_samples, input->dims[2], input->dims[1], input->dims[0]};
     full_input = ff.create_tensor<4>(dims, DT_FLOAT);
     // ff.map_tensor(full_input, NULL);
@@ -170,7 +170,7 @@ DataLoader::DataLoader(FFModel &ff,
   // Create full label
   {
     batch_label = label;
-    const int dims[] = {num_samples, label->dims[0]};
+    int const dims[] = {num_samples, label->dims[0]};
     full_label = ff.create_tensor<2>(dims, DT_INT32);
     // ff.map_tensor(full_label, NULL);
   }
@@ -226,11 +226,11 @@ void nearest_neigh(unsigned char *image,
   }
 }
 
-void DataLoader::load_entire_dataset(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
+void DataLoader::load_entire_dataset(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
-  const AlexNetConfig *alexnet = (AlexNetConfig *)task->args;
+  AlexNetConfig const *alexnet = (AlexNetConfig *)task->args;
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
   const FlexFlow::AccessorWO<float, 4> acc_input(regions[0], FID_DATA);

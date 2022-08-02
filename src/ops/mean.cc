@@ -33,9 +33,9 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 Tensor FFModel::mean(const Tensor input,
-                     const std::vector<int> &dims,
+                     std::vector<int> const &dims,
                      bool keepdims,
-                     const char *name) {
+                     char const *name) {
   assert(false);
 #ifdef DEADCODE
   Mean *mean = new Mean(*this, input, dims, keepdims, name);
@@ -46,9 +46,9 @@ Tensor FFModel::mean(const Tensor input,
 
 Mean::Mean(FFModel &model,
            const ParallelTensor input,
-           const std::vector<int> &reduce_dims,
+           std::vector<int> const &reduce_dims,
            bool keepdims,
-           const char *name)
+           char const *name)
     : Op(model,
          OP_REDUCE_MEAN,
          name,
@@ -61,7 +61,7 @@ Mean::Mean(FFModel &model,
   int num_dim = 0;
   for (int i = 0; i < inputs[0]->num_dims; i++) {
     bool reduce_this_dim = false;
-    for (const auto &dim : reduce_dims)
+    for (auto const &dim : reduce_dims)
       if (inputs[0]->num_dims - 1 - dim == i)
         reduce_this_dim = true;
     if (!reduce_this_dim) {
@@ -77,33 +77,33 @@ Mean::Mean(FFModel &model,
       num_dim, dims, input->data_type, this);
 }
 
-void Mean::init(const FFModel &ff) {}
+void Mean::init(FFModel const &ff) {}
 
-OpMeta *Mean::init_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
+OpMeta *Mean::init_task(Task const *task,
+                        std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {
-  FFHandler handler = *((const FFHandler *)task->local_args);
+  FFHandler handler = *((FFHandler const *)task->local_args);
   OpMeta *m = new OpMeta(handler);
   return m;
 }
 
-void Mean::forward(const FFModel &ff) {}
+void Mean::forward(FFModel const &ff) {}
 
-void Mean::forward_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
+void Mean::forward_task(Task const *task,
+                        std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {}
 
-void Mean::backward(const FFModel &ff) {}
+void Mean::backward(FFModel const &ff) {}
 
-void Mean::backward_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+void Mean::backward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {}
 
 bool Mean::measure_operator_cost(Simulator *sim,
-                                 const MachineView &mv,
+                                 MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
   return false;
 }

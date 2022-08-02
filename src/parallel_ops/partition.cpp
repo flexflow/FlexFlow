@@ -50,10 +50,10 @@ void Repartition::backward_kernel(const T *output_grad_ptr,
 
 RepartitionMeta::RepartitionMeta(FFHandler handler) : OpMeta(handler) {}
 
-template void Repartition::forward_kernel<float>(const float *input_ptr,
+template void Repartition::forward_kernel<float>(float const *input_ptr,
                                                  float *output_ptr,
                                                  size_t num_elements);
-template void Repartition::backward_kernel<float>(const float *output_grad_ptr,
+template void Repartition::backward_kernel<float>(float const *output_grad_ptr,
                                                   float *input_grad_ptr,
                                                   size_t num_elements);
 

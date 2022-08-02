@@ -45,11 +45,11 @@ void Linear::init_kernel(LinearMeta *m, int batch_size, int channel) {
 }
 
 /*static*/
-void Linear::forward_kernel(const LinearMeta *m,
-                            const void *input_ptr,
+void Linear::forward_kernel(LinearMeta const *m,
+                            void const *input_ptr,
                             void *output_ptr,
-                            const void *weight_ptr,
-                            const void *bias_ptr,
+                            void const *weight_ptr,
+                            void const *bias_ptr,
                             int in_dim,
                             int out_dim,
                             int batch_size,
@@ -137,11 +137,11 @@ void Linear::forward_kernel(const LinearMeta *m,
 }
 
 /*static*/
-void Linear::forward_kernel_wrapper(const LinearMeta *m,
-                                    const void *input_ptr,
+void Linear::forward_kernel_wrapper(LinearMeta const *m,
+                                    void const *input_ptr,
                                     void *output_ptr,
-                                    const void *weight_ptr,
-                                    const void *bias_ptr,
+                                    void const *weight_ptr,
+                                    void const *bias_ptr,
                                     int in_dim,
                                     int out_dim,
                                     int batch_size) {
@@ -182,12 +182,12 @@ void Linear::forward_kernel_wrapper(const LinearMeta *m,
 }
 
 /*static*/
-void Linear::backward_kernel(const LinearMeta *m,
-                             const void *input_ptr,
+void Linear::backward_kernel(LinearMeta const *m,
+                             void const *input_ptr,
                              void *input_grad_ptr,
-                             const void *output_ptr,
+                             void const *output_ptr,
                              void *output_grad_ptr,
-                             const void *kernel_ptr,
+                             void const *kernel_ptr,
                              void *kernel_grad_ptr,
                              void *bias_grad_ptr,
                              int in_dim,
@@ -289,12 +289,12 @@ void Linear::backward_kernel(const LinearMeta *m,
 }
 
 /*static*/
-void Linear::backward_kernel_wrapper(const LinearMeta *m,
-                                     const void *input_ptr,
+void Linear::backward_kernel_wrapper(LinearMeta const *m,
+                                     void const *input_ptr,
                                      void *input_grad_ptr,
-                                     const void *output_ptr,
+                                     void const *output_ptr,
                                      void *output_grad_ptr,
-                                     const void *kernel_ptr,
+                                     void const *kernel_ptr,
                                      void *kernel_grad_ptr,
                                      void *bias_grad_ptr,
                                      int in_dim,
@@ -365,7 +365,7 @@ LinearMeta::LinearMeta(FFHandler handler, int batch_size) : OpMeta(handler) {
                       dram_one_ptr,
                       sizeof(float) * batch_size,
                       hipMemcpyHostToDevice));
-  one_ptr = (const float *)fb_one_ptr;
+  one_ptr = (float const *)fb_one_ptr;
   // Allocate descriptors
   checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));

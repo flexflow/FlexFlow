@@ -13,10 +13,10 @@ namespace FlexFlow {
 struct ConcatParams {
   int axis;
 
-  bool is_valid(const std::vector<ParallelTensorShape> &) const;
+  bool is_valid(std::vector<ParallelTensorShape> const &) const;
 };
 
-bool operator==(const ConcatParams &, const ConcatParams &);
+bool operator==(ConcatParams const &, ConcatParams const &);
 
 class ConcatMeta : public OpMeta {
 public:
@@ -32,65 +32,65 @@ public:
 
   Concat(FFModel &model,
          int n,
-         const ParallelTensor *inputs,
+         ParallelTensor const *inputs,
          int axis,
-         const char *name);
+         char const *name);
   Concat(FFModel &model,
-         const ConcatParams &params,
-         const std::vector<ParallelTensor> &inputs,
-         const char *name = nullptr);
-  void init(const FFModel &) override;
-  void forward(const FFModel &) override;
-  void backward(const FFModel &) override;
+         ConcatParams const &params,
+         std::vector<ParallelTensor> const &inputs,
+         char const *name = nullptr);
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
   bool get_int_parameter(PMParameter, int *) const override;
-  void print_layer(const FFModel &model) override { assert(0); }
+  void print_layer(FFModel const &model) override { assert(0); }
   static Op *
   create_operator_from_layer(FFModel &model,
-                             const Layer *layer,
-                             const std::vector<ParallelTensor> &inputs);
-  static OpMeta *init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+                             Layer const *layer,
+                             std::vector<ParallelTensor> const &inputs);
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
   void init_meta(ConcatMeta *meta) const;
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   static void forward_kernel(float *output,
                              float const *const *inputs,
                              int num_inputs,
                              int axis,
-                             const Legion::Domain &out_domain,
-                             const Legion::Domain *in_domain,
+                             Legion::Domain const &out_domain,
+                             Legion::Domain const *in_domain,
                              ffStream_t stream);
-  static void forward_kernel_wrapper(const ConcatMeta *m,
+  static void forward_kernel_wrapper(ConcatMeta const *m,
                                      float *output,
                                      float const *const *inputs,
                                      int num_inputs,
                                      int axis,
-                                     const Legion::Domain &out_domain,
-                                     const Legion::Domain *in_domain);
-  static void backward_kernel(const float *output_grad,
+                                     Legion::Domain const &out_domain,
+                                     Legion::Domain const *in_domain);
+  static void backward_kernel(float const *output_grad,
                               float **input_grads,
                               int num_inputs,
                               int axis,
-                              const Legion::Domain &out_grad_domain,
-                              const Legion::Domain *in_grad_domain,
+                              Legion::Domain const &out_grad_domain,
+                              Legion::Domain const *in_grad_domain,
                               ffStream_t stream);
-  static void backward_kernel_wrapper(const ConcatMeta *m,
-                                      const float *output_grad,
+  static void backward_kernel_wrapper(ConcatMeta const *m,
+                                      float const *output_grad,
                                       float **input_grads,
                                       int num_inputs,
                                       int axis,
-                                      const Legion::Domain &out_grad_domain,
-                                      const Legion::Domain *in_grad_domain);
+                                      Legion::Domain const &out_grad_domain,
+                                      Legion::Domain const *in_grad_domain);
   bool measure_operator_cost(Simulator *sim,
-                             const MachineView &pc,
+                             MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
   Params get_params() const;
@@ -103,7 +103,7 @@ public:
 
 namespace std {
 template <> struct hash<FlexFlow::ConcatParams> {
-  size_t operator()(const FlexFlow::ConcatParams &) const;
+  size_t operator()(FlexFlow::ConcatParams const &) const;
 };
 }; // namespace std
 

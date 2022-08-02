@@ -19,8 +19,8 @@
 using namespace Legion;
 using namespace FlexFlow;
 
-void ImgDataLoader::load_label(const Task *task,
-                               const std::vector<PhysicalRegion> &regions,
+void ImgDataLoader::load_label(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
                                Context ctx,
                                Runtime *runtime) {
   assert(regions.size() == 2);
@@ -39,7 +39,7 @@ void ImgDataLoader::load_label(const Task *task,
   assert(batch_size == meta->num_samples);
   for (int i = 1; i < batch_size; i++)
     assert(meta->idxs[i] == meta->idxs[0] + i);
-  const int *input_zc = acc_full_label.ptr + meta->idxs[0];
+  int const *input_zc = acc_full_label.ptr + meta->idxs[0];
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   copy_kernel<<<GET_BLOCKS(acc_batch_label.rect.volume()),
@@ -50,8 +50,8 @@ void ImgDataLoader::load_label(const Task *task,
   checkCUDA(cudaDeviceSynchronize());
 }
 
-void ImgDataLoader4D::load_input(const Task *task,
-                                 const std::vector<PhysicalRegion> &regions,
+void ImgDataLoader4D::load_input(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  Runtime *runtime) {
   assert(regions.size() == 2);
@@ -76,7 +76,7 @@ void ImgDataLoader4D::load_input(const Task *task,
   for (int i = 1; i < batch_size; i++)
     assert(meta->idxs[i] == meta->idxs[0] + i);
   coord_t start_idx = meta->idxs[0];
-  const float *input_zc =
+  float const *input_zc =
       acc_full_input.ptr + start_idx * channels * height * width;
   // printf("load input %d %d %d %d\n", meta->idxs[0], channels, height, width);
   cudaStream_t stream;
@@ -89,8 +89,8 @@ void ImgDataLoader4D::load_input(const Task *task,
   checkCUDA(cudaDeviceSynchronize());
 }
 
-void ImgDataLoader2D::load_input(const Task *task,
-                                 const std::vector<PhysicalRegion> &regions,
+void ImgDataLoader2D::load_input(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  Runtime *runtime) {
   assert(regions.size() == 2);
@@ -112,7 +112,7 @@ void ImgDataLoader2D::load_input(const Task *task,
   for (int i = 1; i < batch_size; i++)
     assert(meta->idxs[i] == meta->idxs[0] + i);
   coord_t start_idx = meta->idxs[0];
-  const float *input_zc = acc_full_input.ptr + start_idx * width;
+  float const *input_zc = acc_full_input.ptr + start_idx * width;
   // printf("load input %d %d %d %d\n", meta->idxs[0], channels, height, width);
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -125,8 +125,8 @@ void ImgDataLoader2D::load_input(const Task *task,
 }
 
 template <typename DT>
-void SingleDataLoader::load_input(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+void SingleDataLoader::load_input(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime) {
   assert(regions.size() == 2);
@@ -175,8 +175,8 @@ void SingleDataLoader::load_input(const Task *task,
 #ifdef DEADCODE
 template <typename DT, int NDIM>
 void SingleDataLoader::load_input_with_dim(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 2);
@@ -221,17 +221,17 @@ void SingleDataLoader::load_input_with_dim(
 #endif
 
 template void
-SingleDataLoader::load_input<float>(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+SingleDataLoader::load_input<float>(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime);
 template void SingleDataLoader::load_input<int32_t>(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime);
 template void SingleDataLoader::load_input<int64_t>(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime);

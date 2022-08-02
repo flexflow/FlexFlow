@@ -29,19 +29,19 @@ struct MoeConfig {
 class DataLoader {
 public:
   DataLoader(FFModel &ff,
-             const MoeConfig &alexnet,
+             MoeConfig const &alexnet,
              Tensor _input,
              Tensor _label);
-  static void load_input(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+  static void load_input(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime);
-  static void load_label(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+  static void load_label(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime);
-  static void load_entire_dataset(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+  static void load_entire_dataset(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime);
   void next_batch(FFModel &);

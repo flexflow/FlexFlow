@@ -62,11 +62,11 @@
        i += blockDim.x * gridDim.x)
 
 // Use 1024 threads per block, which requires cuda sm_2x or above
-const int CUDA_NUM_THREADS = 1024;
-const int BLOCK_SIZE_LIMIT = 32768;
+int const CUDA_NUM_THREADS = 1024;
+int const BLOCK_SIZE_LIMIT = 32768;
 
 // CUDA: number of blocks for threads.
-inline int GET_BLOCKS(const int N) {
+inline int GET_BLOCKS(int const N) {
   int ret = (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
   return (ret > BLOCK_SIZE_LIMIT) ? BLOCK_SIZE_LIMIT : ret;
 }
@@ -93,13 +93,13 @@ __global__ void sigmoid_backward_kernel(T *grad_ptr, const T *input, size_t n);
 
 __host__ void relu_backward_kernel(DataType data_type,
                                    void *output_grad_ptr,
-                                   const void *output_ptr,
+                                   void const *output_ptr,
                                    size_t output_size,
                                    hipStream_t stream);
 
 __host__ void sigmoid_backward_kernel(DataType data_type,
                                       void *output_grad_ptr,
-                                      const void *output_ptr,
+                                      void const *output_ptr,
                                       size_t output_size,
                                       hipStream_t stream);
 
@@ -112,24 +112,24 @@ gelu_forward_kernel(size_t size, float B, float C, float *input);
 
 // Use by concat and split
 __global__ void add_with_stride(float *output,
-                                const float *input,
+                                float const *input,
                                 int num_blocks,
                                 int output_blk_size,
                                 int input_blk_size);
 __global__ void copy_with_stride(float *output,
-                                 const float *input,
+                                 float const *input,
                                  int num_blocks,
                                  int output_blk_size,
                                  int input_blk_size);
 
 __host__ void updateGAS(float *para_ptr,
-                        const float *grad_ptr,
+                        float const *grad_ptr,
                         size_t replica_size,
                         int num_replica,
                         float learning_rate);
 
 template <typename T>
-void print_tensor(const T *ptr, size_t num_elements, const char *prefix);
+void print_tensor(const T *ptr, size_t num_elements, char const *prefix);
 
 miopenStatus_t
 cudnnSetTensorDescriptorFromDomain(miopenTensorDescriptor_t tensor,

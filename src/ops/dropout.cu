@@ -74,9 +74,9 @@ void Dropout::backward_kernel_wrapper(DropoutMeta *m,
 }
 
 DropoutMeta::DropoutMeta(FFHandler handler,
-                         const Dropout *dropout,
+                         Dropout const *dropout,
                          Memory gpu_mem,
-                         const Domain &output_domain)
+                         Domain const &output_domain)
     : OpMeta(handler) {
   profiling = dropout->profiling;
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));

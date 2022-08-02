@@ -24,7 +24,7 @@ constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 constexpr int kColwiseReduceTileSize = 32;
 
-LayerNormMeta::LayerNormMeta(FFHandler handle, const LayerNorm *ln)
+LayerNormMeta::LayerNormMeta(FFHandler handle, LayerNorm const *ln)
     : OpMeta(handle) {
   elementwise_affine = ln->elementwise_affine;
   effective_batch_size = ln->effective_batch_size;
@@ -61,8 +61,8 @@ template <typename T> __inline__ __device__ T WarpReduceSum(T val) {
 }
 
 template <typename T> __inline__ __device__ T BlockReduceSum(T val, T *shared) {
-  const int lid = threadIdx.x % C10_WARP_SIZE;
-  const int wid = threadIdx.x / C10_WARP_SIZE;
+  int const lid = threadIdx.x % C10_WARP_SIZE;
+  int const wid = threadIdx.x / C10_WARP_SIZE;
   val = WarpReduceSum(val);
   __syncthreads();
   if (lid == 0) {
@@ -124,7 +124,7 @@ __global__ void LayerNormForwardCUDAKernel(int64_t N,
 
 /*static*/
 template <typename T>
-void LayerNorm::forward_kernel(const LayerNormMeta *m,
+void LayerNorm::forward_kernel(LayerNormMeta const *m,
                                const T *in_ptr,
                                T *out_ptr,
                                T *gamma_ptr,
@@ -156,7 +156,7 @@ void LayerNorm::forward_kernel(const LayerNormMeta *m,
 
 /*static*/
 template <typename T>
-void LayerNorm::forward_kernel_wrapper(const LayerNormMeta *m,
+void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
                                        const T *in_ptr,
                                        T *out_ptr,
                                        T *gamma_ptr,
@@ -346,7 +346,7 @@ __global__ void GammaBetaBackwardCUDAKernel(int64_t M,
 
 /*static*/
 template <typename T>
-void LayerNorm::backward_kernel(const LayerNormMeta *m,
+void LayerNorm::backward_kernel(LayerNormMeta const *m,
                                 const T *output_grad_ptr,
                                 const T *input_ptr,
                                 T *input_grad_ptr,
@@ -422,7 +422,7 @@ void LayerNorm::backward_kernel(const LayerNormMeta *m,
 
 /*static*/
 template <typename T>
-void LayerNorm::backward_kernel_wrapper(const LayerNormMeta *m,
+void LayerNorm::backward_kernel_wrapper(LayerNormMeta const *m,
                                         const T *output_grad_ptr,
                                         const T *input_ptr,
                                         T *input_grad_ptr,
@@ -441,17 +441,17 @@ void LayerNorm::backward_kernel_wrapper(const LayerNormMeta *m,
                                     stream);
 }
 
-template void LayerNorm::forward_kernel_wrapper<float>(const LayerNormMeta *m,
-                                                       const float *in_ptr,
+template void LayerNorm::forward_kernel_wrapper<float>(LayerNormMeta const *m,
+                                                       float const *in_ptr,
                                                        float *out_ptr,
                                                        float *gamma_ptr,
                                                        float *beta_ptr);
 template void
-LayerNorm::backward_kernel_wrapper<float>(const LayerNormMeta *m,
-                                          const float *output_grad_ptr,
-                                          const float *input_ptr,
+LayerNorm::backward_kernel_wrapper<float>(LayerNormMeta const *m,
+                                          float const *output_grad_ptr,
+                                          float const *input_ptr,
                                           float *input_grad_ptr,
-                                          const float *gamma_ptr,
+                                          float const *gamma_ptr,
                                           float *gamma_grad_ptr,
                                           float *beta_grad_ptr);
 

@@ -11,13 +11,13 @@ struct ArgsConfig {
 
 void initialize_tensor_from_file(const std::string file_path,
                                  Tensor label,
-                                 const FFModel &ff,
+                                 FFModel const &ff,
                                  std::string data_type,
                                  int num_dim);
 
 void initialize_tensor_gradient_from_file(const std::string file_path,
                                           Tensor label,
-                                          const FFModel &ff,
+                                          FFModel const &ff,
                                           std::string data_type,
                                           int num_dim) {
   Context ctx = ff.config.lg_ctx;
@@ -76,7 +76,7 @@ void initialize_tensor_gradient_from_file(const std::string file_path,
 
 void initialize_tensor_from_file(const std::string file_path,
                                  Tensor label,
-                                 const FFModel &ff,
+                                 FFModel const &ff,
                                  std::string data_type,
                                  int num_dim) {
   Context ctx = ff.config.lg_ctx;
@@ -119,17 +119,17 @@ void initialize_tensor_from_file(const std::string file_path,
 
 template <int DIM>
 void initialize_tensor_from_file_task(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
-  const ArgsConfig args_config = *((const ArgsConfig *)task->args);
-  std::string file_path((const char *)args_config.dataset_path);
-  std::string data_type((const char *)args_config.data_type);
+  const ArgsConfig args_config = *((ArgsConfig const *)task->args);
+  std::string file_path((char const *)args_config.dataset_path);
+  std::string data_type((char const *)args_config.data_type);
   Rect<DIM> rect_label_tensor = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   if (data_type == "int") {
-    const AccessorWO<int, DIM> acc_label_tensor(regions[0], FID_DATA);
+    AccessorWO<int, DIM> const acc_label_tensor(regions[0], FID_DATA);
     int *tensor_ptr = acc_label_tensor.ptr(rect_label_tensor.lo);
     std::fstream myfile(file_path, std::ios_base::in);
     int a;
@@ -140,7 +140,7 @@ void initialize_tensor_from_file_task(
     }
     myfile.close();
   } else if (data_type == "float") {
-    const AccessorWO<float, DIM> acc_label_tensor(regions[0], FID_DATA);
+    AccessorWO<float, DIM> const acc_label_tensor(regions[0], FID_DATA);
     float *tensor_ptr = acc_label_tensor.ptr(rect_label_tensor.lo);
     std::fstream myfile(file_path, std::ios_base::in);
     float a;
@@ -192,19 +192,19 @@ void dump_region_to_file(FFModel &ff,
 }
 
 template <int DIM>
-void dump_tensor_task(const Task *task,
-                      const std::vector<PhysicalRegion> &regions,
+void dump_tensor_task(Task const *task,
+                      std::vector<PhysicalRegion> const &regions,
                       Context ctx,
                       Runtime *runtime) {
   assert(task->regions.size() == 1);
   assert(regions.size() == 1);
-  const ArgsConfig args_config = *((const ArgsConfig *)task->args);
-  std::string file_path((const char *)args_config.dataset_path);
-  const AccessorRO<float, DIM> acc_tensor(regions[0], FID_DATA);
+  const ArgsConfig args_config = *((ArgsConfig const *)task->args);
+  std::string file_path((char const *)args_config.dataset_path);
+  AccessorRO<float, DIM> const acc_tensor(regions[0], FID_DATA);
   Rect<DIM> rect_fb = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_tensor.accessor.is_dense_arbitrary(rect_fb));
-  const float *tensor_ptr = acc_tensor.ptr(rect_fb.lo);
+  float const *tensor_ptr = acc_tensor.ptr(rect_fb.lo);
   std::ofstream myfile;
   myfile.open(file_path);
   for (size_t i = 0; i < rect_fb.volume(); ++i) {
@@ -215,39 +215,39 @@ void dump_tensor_task(const Task *task,
   myfile.close();
 }
 
-template void dump_tensor_task<1>(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+template void dump_tensor_task<1>(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime);
-template void dump_tensor_task<2>(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+template void dump_tensor_task<2>(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime);
-template void dump_tensor_task<3>(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+template void dump_tensor_task<3>(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime);
-template void dump_tensor_task<4>(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+template void dump_tensor_task<4>(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime);
 template void
-initialize_tensor_from_file_task<1>(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+initialize_tensor_from_file_task<1>(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime);
 template void
-initialize_tensor_from_file_task<2>(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+initialize_tensor_from_file_task<2>(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime);
 template void
-initialize_tensor_from_file_task<3>(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+initialize_tensor_from_file_task<3>(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime);
 template void
-initialize_tensor_from_file_task<4>(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+initialize_tensor_from_file_task<4>(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime);

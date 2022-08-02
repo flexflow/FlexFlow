@@ -32,7 +32,7 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-Tensor FFModel::reverse(const Tensor input, int axis, const char *name) {
+Tensor FFModel::reverse(const Tensor input, int axis, char const *name) {
   assert(false);
 #ifdef DEADCODE
   Reverse *reverse = new Reverse(*this, input, axis, name);
@@ -44,7 +44,7 @@ Tensor FFModel::reverse(const Tensor input, int axis, const char *name) {
 Reverse::Reverse(FFModel &model,
                  const ParallelTensor input,
                  int _axis,
-                 const char *name)
+                 char const *name)
     : Op(model,
          OP_REVERSE,
          name,
@@ -110,7 +110,7 @@ void Reverse::create_input_partition_with_dim(FFModel &model) {
 }
 #endif
 
-void Reverse::init(const FFModel &ff) {
+void Reverse::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -139,14 +139,14 @@ void Reverse::init(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-OpMeta *Reverse::init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+OpMeta *Reverse::init_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   return NULL;
 }
 
-void Reverse::forward(const FFModel &ff) {
+void Reverse::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -173,19 +173,19 @@ void Reverse::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Reverse::forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+void Reverse::forward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const Reverse *reverse = (const Reverse *)task->args;
+  Reverse const *reverse = (Reverse const *)task->args;
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
   assert(out_domain == in_domain);
-  const float *in_ptr = helperGetTensorPointerRO<float>(
+  float const *in_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float *out_ptr = helperGetTensorPointerWO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
@@ -209,7 +209,7 @@ void Reverse::forward_task(const Task *task,
                                   output_size);
 }
 
-void Reverse::backward(const FFModel &ff) {
+void Reverse::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -238,19 +238,19 @@ void Reverse::backward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Reverse::backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+void Reverse::backward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const Reverse *reverse = (const Reverse *)task->args;
+  Reverse const *reverse = (Reverse const *)task->args;
   Domain out_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain in_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
   assert(out_grad_domain == in_grad_domain);
-  const float *out_grad_ptr = helperGetTensorPointerRO<float>(
+  float const *out_grad_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float *in_grad_ptr = helperGetTensorPointerRW<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
@@ -275,7 +275,7 @@ void Reverse::backward_task(const Task *task,
 }
 
 bool Reverse::measure_operator_cost(Simulator *sim,
-                                    const MachineView &mv,
+                                    MachineView const &mv,
                                     CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {

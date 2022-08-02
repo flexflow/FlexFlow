@@ -154,13 +154,13 @@ Linear::Linear(RnnConfig config,
   regions[1](I): w
   regions[2](O): y
  */
-OpMeta *Linear::init_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+OpMeta *Linear::init_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const LinearInitParams *linear = (LinearInitParams *)task->args;
+  LinearInitParams const *linear = (LinearInitParams *)task->args;
   Rect<3> rect_x = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<1> rect_w = runtime->get_index_space_domain(
@@ -191,7 +191,7 @@ OpMeta *Linear::init_task(const Task *task,
   return m;
 }
 
-void Linear::init(const RnnModel &model) {
+void Linear::init(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
   Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
@@ -239,18 +239,18 @@ void Linear::init(const RnnModel &model) {
   regions[1] (I): w
   regions[2] (O): y
  */
-void Linear::forward_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+void Linear::forward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
 #ifndef DISABLE_COMPUTATION
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   float alpha = 1.0f, beta = 0.0f;
-  const LinearMeta *m = *((LinearMeta **)task->args);
-  const AccessorRO<float, 3> acc_x(regions[0], FID_DATA);
-  const AccessorRO<float, 1> acc_w(regions[1], FID_DATA);
-  const AccessorWO<float, 3> acc_y(regions[2], FID_DATA);
+  LinearMeta const *m = *((LinearMeta **)task->args);
+  AccessorRO<float, 3> const acc_x(regions[0], FID_DATA);
+  AccessorRO<float, 1> const acc_w(regions[1], FID_DATA);
+  AccessorWO<float, 3> const acc_y(regions[2], FID_DATA);
   Rect<3> rect_x = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<1> rect_w = runtime->get_index_space_domain(
@@ -263,9 +263,9 @@ void Linear::forward_task(const Task *task,
   int input_size = rect_x.hi[0] - rect_x.lo[0] + 1;
   int output_size = rect_y.hi[0] - rect_y.lo[0] + 1;
   int batch_size = (rect_x.hi[1] - rect_x.lo[1] + 1) * LSTM_PER_NODE_LENGTH;
-  const float *x_ptr = acc_x.ptr(rect_x.lo);
-  const float *w_ptr = acc_w.ptr(rect_w.lo);
-  const float *bias_ptr = w_ptr + input_size;
+  float const *x_ptr = acc_x.ptr(rect_x.lo);
+  float const *w_ptr = acc_w.ptr(rect_w.lo);
+  float const *bias_ptr = w_ptr + input_size;
   float *y_ptr = acc_y.ptr(rect_y.lo);
   cudaEvent_t t_start, t_end;
   if (m->profiling_runtime) {
@@ -319,7 +319,7 @@ void Linear::forward_task(const Task *task,
 #endif
 }
 
-void Linear::forward(const RnnModel &model) {
+void Linear::forward(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
   Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
@@ -365,21 +365,21 @@ void Linear::forward(const RnnModel &model) {
   regions[4](I/O): w_grad
   regions[5](I): y_grad
 */
-void Linear::backward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+void Linear::backward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
 #ifndef DISABLE_COMPUTATION
   assert(regions.size() == 6);
   assert(task->regions.size() == 6);
   float alpha = 1.0f, beta = 0.0f;
-  const LinearMeta *m = *((LinearMeta **)task->args);
-  const AccessorRO<float, 3> acc_x(regions[0], FID_DATA);
-  const AccessorRO<float, 1> acc_w(regions[1], FID_DATA);
-  const AccessorRO<float, 3> acc_y(regions[2], FID_DATA);
-  const AccessorWO<float, 3> acc_replica_grad(regions[3], FID_DATA);
-  const AccessorRW<float, 1> acc_w_grad(regions[4], FID_DATA);
-  const AccessorRO<float, 3> acc_y_grad(regions[5], FID_DATA);
+  LinearMeta const *m = *((LinearMeta **)task->args);
+  AccessorRO<float, 3> const acc_x(regions[0], FID_DATA);
+  AccessorRO<float, 1> const acc_w(regions[1], FID_DATA);
+  AccessorRO<float, 3> const acc_y(regions[2], FID_DATA);
+  AccessorWO<float, 3> const acc_replica_grad(regions[3], FID_DATA);
+  AccessorRW<float, 1> const acc_w_grad(regions[4], FID_DATA);
+  AccessorRO<float, 3> const acc_y_grad(regions[5], FID_DATA);
 
   Rect<3> rect_x = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -402,15 +402,15 @@ void Linear::backward_task(const Task *task,
   int input_size = rect_x.hi[0] - rect_x.lo[0] + 1;
   int output_size = rect_y.hi[0] - rect_y.lo[0] + 1;
   int batch_size = (rect_x.hi[1] - rect_x.lo[1] + 1) * LSTM_PER_NODE_LENGTH;
-  const float *x_ptr = acc_x.ptr(rect_x.lo);
-  const float *w_ptr = acc_w.ptr(rect_w.lo);
-  const float *y_ptr = acc_y.ptr(rect_y.lo);
+  float const *x_ptr = acc_x.ptr(rect_x.lo);
+  float const *w_ptr = acc_w.ptr(rect_w.lo);
+  float const *y_ptr = acc_y.ptr(rect_y.lo);
   float *replica_grad_ptr = acc_replica_grad.ptr(rect_replica_grad.lo);
   // Note that w_grad might be bigger than w
   assert(rect_w_grad.contains(rect_w));
   float *w_grad_ptr = acc_w_grad.ptr(rect_w_grad.lo);
   float *bias_grad_ptr = w_grad_ptr + input_size;
-  const float *y_grad_ptr = acc_y_grad.ptr(rect_y_grad.lo);
+  float const *y_grad_ptr = acc_y_grad.ptr(rect_y_grad.lo);
   cudaEvent_t t_start, t_end;
   if (m->profiling_runtime) {
     cudaEventCreate(&t_start);
@@ -483,14 +483,14 @@ void Linear::backward_task(const Task *task,
   regions[0](O): input
   regions[1..num_par_c](I): replicas
 */
-void Linear::backward2_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+void Linear::backward2_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
 #ifndef DISABLE_COMPUTATION
   float alpha = 1.0f;
-  const LinearMeta *m = *((LinearMeta **)task->args);
-  const AccessorWO<float, 3> acc_input(regions[0], FID_DATA);
+  LinearMeta const *m = *((LinearMeta **)task->args);
+  AccessorWO<float, 3> const acc_input(regions[0], FID_DATA);
   Rect<3> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
@@ -499,12 +499,12 @@ void Linear::backward2_task(const Task *task,
   checkCUDA(cudaStreamCreate(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   for (int i = 1; i < task->regions.size(); i++) {
-    const AccessorRO<float, 3> acc_replica(regions[i], FID_DATA);
+    AccessorRO<float, 3> const acc_replica(regions[i], FID_DATA);
     Rect<3> rect_replica = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
     assert(rect_replica.volume() == rect_input.volume());
     assert(acc_replica.accessor.is_dense_arbitrary(rect_replica));
-    const float *replica_ptr = acc_replica.ptr(rect_replica.lo);
+    float const *replica_ptr = acc_replica.ptr(rect_replica.lo);
     if (i == 1)
       checkCUDA(cublasScopy(
           m->handle.blas, rect_input.volume(), replica_ptr, 1, input_ptr, 1));
@@ -520,7 +520,7 @@ void Linear::backward2_task(const Task *task,
 #endif
 }
 
-void Linear::backward(const RnnModel &model) {
+void Linear::backward(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
   Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
@@ -608,9 +608,9 @@ void Linear::backward(const RnnModel &model) {
   }
 }
 
-void Linear::update_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+void Linear::update_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {}
 
-void Linear::update(const RnnModel &model) {}
+void Linear::update(RnnModel const &model) {}

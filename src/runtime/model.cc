@@ -70,7 +70,7 @@ LegionRuntime::Logger::Category log_measure("measure");
 
 Op::Op(FFModel &model,
        OperatorType op_type,
-       const char *name,
+       char const *name,
        int numInputs,
        int numWeights,
        bool allocate_weights,
@@ -92,7 +92,7 @@ Op::Op(FFModel &model,
 
 Op::Op(FFModel &model,
        OperatorType _op_type,
-       const char *_name,
+       char const *_name,
        int _numInputs,
        int _numWeights,
        int _numOutputs,
@@ -137,11 +137,11 @@ Op::Op(FFModel &model,
 
 Op::Op(FFModel &model,
        OperatorType _op_type,
-       const char *_name,
+       char const *_name,
        int _numInputs,
        int _numWeights,
        int _numOutputs,
-       const ParallelTensor *_inputs)
+       ParallelTensor const *_inputs)
     : op_type(_op_type), op_guid(model.op_global_guid++), numInputs(_numInputs),
       numWeights(_numWeights), numOutputs(_numOutputs),
       profiling(model.config.profiling) {
@@ -219,7 +219,7 @@ Op *Op::materialize(FFModel &ff,
   assert(false && "This op does not support materialization");
 }
 
-void Op::zero_grad(const FFModel &ff) {
+void Op::zero_grad(FFModel const &ff) {
   // Do nothing for input and weight
   if (op_type == OP_INPUT || op_type == OP_WEIGHT)
     return;
@@ -275,7 +275,7 @@ void Op::zero_grad(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-ParallelConfig Op::get_data_parallel_config(const FFModel &ff) const {
+ParallelConfig Op::get_data_parallel_config(FFModel const &ff) const {
   return get_basic_data_parallel_config(
       ff.config.workersPerNode * ff.config.numNodes, this->get_dimension());
 }
@@ -291,7 +291,7 @@ ParallelConfig get_basic_data_parallel_config(int num_parts, int dims) {
   return pc;
 }
 
-ParallelConfig Op::get_random_parallel_config(const FFModel &ff) const {
+ParallelConfig Op::get_random_parallel_config(FFModel const &ff) const {
   std::vector<int> candidates;
   int batch_size = outputs[0]->dims[outputs[0]->num_dims - 1].size;
   for (int i = 1; i <= ff.config.workersPerNode; i++)
@@ -356,8 +356,8 @@ bool Op::is_adoptable_parallel_config(FFModel const &ff,
   return false;
 }
 
-bool Op::is_valid_parallel_config(const FFModel &ff,
-                                  const ParallelConfig &pc) const {
+bool Op::is_valid_parallel_config(FFModel const &ff,
+                                  ParallelConfig const &pc) const {
   // By default only data parallelism is allowed
   // Check dim match
   if (pc.nDims != this->get_dimension())
@@ -368,7 +368,7 @@ bool Op::is_valid_parallel_config(const FFModel &ff,
   return true;
 }
 
-Domain Op::get_output_tensor_shape(const ParallelConfig &pc,
+Domain Op::get_output_tensor_shape(ParallelConfig const &pc,
                                    int output_idx,
                                    int part_idx) const {
   assert(output_idx < numOutputs);
@@ -388,7 +388,7 @@ Domain Op::get_output_tensor_shape(const ParallelConfig &pc,
   return d;
 }
 
-Domain Op::get_input_tensor_shape(const ParallelConfig &pc,
+Domain Op::get_input_tensor_shape(ParallelConfig const &pc,
                                   int input_idx,
                                   int part_idx) const {
   assert(input_idx < numInputs);
@@ -427,7 +427,7 @@ Domain Op::get_input_tensor_shape(const ParallelConfig &pc,
   return d;
 }
 
-Domain Op::get_weight_tensor_shape(const ParallelConfig &pc,
+Domain Op::get_weight_tensor_shape(ParallelConfig const &pc,
                                    int weight_idx,
                                    int part_idx) const {
   // Default data parallel weight replication
@@ -444,18 +444,18 @@ Domain Op::get_weight_tensor_shape(const ParallelConfig &pc,
 }
 
 void Op::solve_parallel_dim_mappings(
-    const std::vector<ParallelDim const *> &inputs,
-    const std::vector<ParallelDim *> &weights,
-    const std::vector<ParallelDim *> &outputs) const {
+    std::vector<ParallelDim const *> const &inputs,
+    std::vector<ParallelDim *> const &weights,
+    std::vector<ParallelDim *> const &outputs) const {
   FlexFlow::solve_parallel_dim_mappings(
       *this->parallel_dims_mapping, inputs, weights, outputs);
 }
 
 void solve_parallel_dim_mappings(
-    const std::vector<ParallelDimMappingRecord> &mapping,
-    const std::vector<ParallelDim const *> &inputs,
-    const std::vector<ParallelDim *> &weights,
-    const std::vector<ParallelDim *> &outputs) {
+    std::vector<ParallelDimMappingRecord> const &mapping,
+    std::vector<ParallelDim const *> const &inputs,
+    std::vector<ParallelDim *> const &weights,
+    std::vector<ParallelDim *> const &outputs) {
   for (ParallelDimMappingRecord const &record : mapping) {
     ParallelDim const &input_dim = inputs[record.input_idx][record.input_dim];
 
@@ -493,7 +493,7 @@ void solve_parallel_dim_mappings(
 }
 
 std::unordered_map<int, int>
-output_to_input_mapping(const std::vector<ParallelDimMappingRecord> &mapping) {
+output_to_input_mapping(std::vector<ParallelDimMappingRecord> const &mapping) {
   std::unordered_map<int, int> dim_mapping;
   for (ParallelDimMappingRecord const &record : mapping) {
     if (record.get_type() == MappingRecordType::INPUT_OUTPUT) {
@@ -505,7 +505,7 @@ output_to_input_mapping(const std::vector<ParallelDimMappingRecord> &mapping) {
 }
 
 std::unordered_map<int, int>
-input_to_output_mapping(const std::vector<ParallelDimMappingRecord> &mapping) {
+input_to_output_mapping(std::vector<ParallelDimMappingRecord> const &mapping) {
   std::unordered_map<int, int> dim_mapping;
   for (ParallelDimMappingRecord const &record : mapping) {
     if (record.get_type() == MappingRecordType::INPUT_OUTPUT) {
@@ -518,8 +518,8 @@ input_to_output_mapping(const std::vector<ParallelDimMappingRecord> &mapping) {
 
 #ifdef FF_USE_NCCL
 ncclUniqueId
-Op::get_nccl_unique_id_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+Op::get_nccl_unique_id_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
   ncclUniqueId ncclId;
@@ -527,13 +527,13 @@ Op::get_nccl_unique_id_task(const Task *task,
   return ncclId;
 }
 
-ncclComm_t Op::init_nccl_comms_task(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+ncclComm_t Op::init_nccl_comms_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
   // Must be an index space launch
   assert(task->is_index_space);
-  ncclUniqueId ncclId = *((const ncclUniqueId *)task->args);
+  ncclUniqueId ncclId = *((ncclUniqueId const *)task->args);
   int allRanks = task->index_domain.get_volume();
   assert(task->index_domain.contains(task->index_point));
   int myRank = 0;
@@ -864,7 +864,7 @@ bool Op::check_output_input_weight_same_machine_view() const {
   return true;
 }
 
-void Op::set_argumentmap_for_init(const FFModel &ff, ArgumentMap &argmap) {
+void Op::set_argumentmap_for_init(FFModel const &ff, ArgumentMap &argmap) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, this->parallel_is);
@@ -907,7 +907,7 @@ void Op::set_argumentmap_for_init(const FFModel &ff, ArgumentMap &argmap) {
   }
 }
 
-void Op::set_opmeta_from_futuremap(const FFModel &ff, const FutureMap &fm) {
+void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
@@ -928,7 +928,7 @@ void Op::set_opmeta_from_futuremap(const FFModel &ff, const FutureMap &fm) {
   }
 }
 
-void Op::set_argumentmap_for_forward(const FFModel &ff, ArgumentMap &argmap) {
+void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
@@ -950,7 +950,7 @@ void Op::set_argumentmap_for_forward(const FFModel &ff, ArgumentMap &argmap) {
   }
 }
 
-void Op::set_argumentmap_for_backward(const FFModel &ff, ArgumentMap &argmap) {
+void Op::set_argumentmap_for_backward(FFModel const &ff, ArgumentMap &argmap) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
@@ -1126,8 +1126,8 @@ FFModel::FFModel(FFConfig &_config)
 }
 
 #ifdef FF_USE_NCCL
-ncclComm_t *FFModel::find_nccl_comms(const MachineView &view) const {
-  const auto &it = view_hash_to_nccl_comms.find(view.hash());
+ncclComm_t *FFModel::find_nccl_comms(MachineView const &view) const {
+  auto const &it = view_hash_to_nccl_comms.find(view.hash());
   if (it == view_hash_to_nccl_comms.end()) {
     assert(config.computationMode == COMP_MODE_INFERENCE);
     return NULL;
@@ -1139,7 +1139,7 @@ ncclComm_t *FFModel::find_nccl_comms(const MachineView &view) const {
 
 template <int NDIM>
 Tensor
-FFModel::create_constant(const int dims[], float value, DataType data_type) {
+FFModel::create_constant(int const dims[], float value, DataType data_type) {
   // FIXME: currently create gradients for constants since the current auto grad
   // algorithm computes gradients for all operators
   Tensor tensor = create_tensor<NDIM>(
@@ -1179,9 +1179,9 @@ PCG::Node FFModel::new_node(Op *op) {
 }
 
 Tensor FFModel::create_tensor(int numdim,
-                              const int dims[],
+                              int const dims[],
                               DataType data_type,
-                              const Layer *layer,
+                              Layer const *layer,
                               int idx,
                               bool create_grad) {
   switch (numdim) {
@@ -1198,7 +1198,7 @@ Tensor FFModel::create_tensor(int numdim,
 ParallelTensor FFModel::create_parallel_tensor(int numdim,
                                                const ParallelDim dims[],
                                                DataType data_type,
-                                               const Op *op,
+                                               Op const *op,
                                                int idx,
                                                bool create_grad,
                                                size_t input_tensor_guid) {
@@ -1215,9 +1215,9 @@ ParallelTensor FFModel::create_parallel_tensor(int numdim,
 }
 
 Tensor FFModel::create_tensor_legion_ordering(int numdim,
-                                              const int dims[],
+                                              int const dims[],
                                               DataType data_type,
-                                              const Layer *layer,
+                                              Layer const *layer,
                                               int idx,
                                               bool create_grad) {
   int c_dims[MAX_TENSOR_DIM];
@@ -1230,7 +1230,7 @@ ParallelTensor
 FFModel::create_parallel_tensor_legion_ordering(int numdim,
                                                 const ParallelDim dims[],
                                                 DataType data_type,
-                                                const Op *op,
+                                                Op const *op,
                                                 int idx,
                                                 bool create_grad,
                                                 size_t input_tensor_guid) {
@@ -1242,9 +1242,9 @@ FFModel::create_parallel_tensor_legion_ordering(int numdim,
 }
 
 template <int NDIM>
-Tensor FFModel::create_tensor(const int dims[],
+Tensor FFModel::create_tensor(int const dims[],
                               DataType data_type,
-                              const Layer *owner_layer,
+                              Layer const *owner_layer,
                               int owner_idx,
                               bool create_grad) {
   Tensor tensor = new TensorBase();
@@ -1278,7 +1278,7 @@ Tensor FFModel::create_tensor(const int dims[],
 template <int NDIM>
 ParallelTensor FFModel::create_parallel_tensor(const ParallelDim dims[],
                                                DataType data_type,
-                                               const Op *owner_op,
+                                               Op const *owner_op,
                                                int owner_idx,
                                                bool create_grad,
                                                size_t input_tensor_guid) {
@@ -1304,9 +1304,9 @@ ParallelTensor FFModel::create_parallel_tensor(const ParallelDim dims[],
 }
 
 Parameter FFModel::create_weight_legion_ordering(int numdim,
-                                                 const int dims[],
+                                                 int const dims[],
                                                  DataType data_type,
-                                                 const Layer *layer,
+                                                 Layer const *layer,
                                                  bool create_grad,
                                                  Initializer *initializer,
                                                  ParameterSyncType sync_type) {
@@ -1318,9 +1318,9 @@ Parameter FFModel::create_weight_legion_ordering(int numdim,
 }
 
 Parameter FFModel::create_weight(int numdim,
-                                 const int dims[],
+                                 int const dims[],
                                  DataType data_type,
-                                 const Layer *owner_layer,
+                                 Layer const *owner_layer,
                                  bool create_grad,
                                  Initializer *initializer,
                                  ParameterSyncType sync_type) {
@@ -1357,7 +1357,7 @@ Parameter FFModel::create_weight(int numdim,
 template <int NDIM>
 ParallelParameter FFModel::create_parallel_weight(const ParallelDim dims[],
                                                   DataType data_type,
-                                                  const Op *owner_op,
+                                                  Op const *owner_op,
                                                   bool create_grad,
                                                   Initializer *initializer,
                                                   ParameterSyncType sync_type) {
@@ -1387,7 +1387,7 @@ ParallelParameter FFModel::create_parallel_weight(const ParallelDim dims[],
 ParallelParameter FFModel::create_parallel_weight(int numdim,
                                                   const ParallelDim dims[],
                                                   DataType data_type,
-                                                  const Op *owner_op,
+                                                  Op const *owner_op,
                                                   bool create_grad,
                                                   Initializer *initializer,
                                                   ParameterSyncType sync_type) {
@@ -1407,7 +1407,7 @@ ParallelParameter
 FFModel::create_parallel_weight_legion_ordering(int numdim,
                                                 const ParallelDim dims[],
                                                 DataType data_type,
-                                                const Op *owner_op,
+                                                Op const *owner_op,
                                                 bool create_grad,
                                                 Initializer *initializer,
                                                 ParameterSyncType sync_type) {
@@ -1418,7 +1418,7 @@ FFModel::create_parallel_weight_legion_ordering(int numdim,
       numdim, c_dims, data_type, owner_op, create_grad, initializer, sync_type);
 }
 
-void FFModel::map_tensor(ParallelTensor tensor, const Op *op) {
+void FFModel::map_tensor(ParallelTensor tensor, Op const *op) {
   switch (tensor->num_dims) {
 #define DIMFUNC(NDIM)                                                          \
   case NDIM: {                                                                 \
@@ -1437,7 +1437,7 @@ void FFModel::map_tensor(ParallelTensor tensor, const Op *op) {
 // Map tensor using parallelization strategies described in parallel_op
 template <int NDIM>
 void FFModel::map_tensor_with_dim(ParallelTensor tensor,
-                                  const Op *parallel_op) {
+                                  Op const *parallel_op) {
   tensor->parallel_is = get_or_create_task_is(tensor);
   assert(tensor->owner_op != NULL);
   Context ctx = config.lg_ctx;
@@ -1460,7 +1460,7 @@ void FFModel::map_tensor_with_dim(ParallelTensor tensor,
 
 template <int NDIM, int TDIM>
 void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
-                                   const Op *parallel_op) {
+                                   Op const *parallel_op) {
   // Step 0: check we are the owner or the owner is NULL
   // in which case set the owner to us
   if (tensor->owner_op == NULL) {
@@ -1540,7 +1540,7 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
   }
 }
 
-void FFModel::map_weight(ParallelTensor weight, const Op *op) {
+void FFModel::map_weight(ParallelTensor weight, Op const *op) {
   switch (weight->num_dims) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
@@ -1558,7 +1558,7 @@ void FFModel::map_weight(ParallelTensor weight, const Op *op) {
 
 template <int NDIM>
 void FFModel::map_weight_with_dim(ParallelTensor weight,
-                                  const Op *parallel_op) {
+                                  Op const *parallel_op) {
   // Step 0: check we are the owner or the owner is NULL
   // in which case set the owner to us
   if (weight->owner_op == NULL) {
@@ -1611,7 +1611,7 @@ bool FFModel::get_parallel_tensor_from_tensor(
   }
   if (tensor->owner_layer != nullptr) {
     Op *mapped_op = nullptr;
-    for (const auto &op : operators) {
+    for (auto const &op : operators) {
       if (op->layer_guid == tensor->owner_layer->layer_guid) {
         assert(mapped_op == nullptr);
         mapped_op = op;
@@ -1628,8 +1628,8 @@ bool FFModel::get_parallel_tensor_from_tensor(
 
 void FFModel::create_disjoint_partition(int num_dims,
                                         const ParallelDim dims[],
-                                        const IndexSpace &part_is,
-                                        const LogicalRegion &region,
+                                        IndexSpace const &part_is,
+                                        LogicalRegion const &region,
                                         LogicalPartition &part) {
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
@@ -1651,8 +1651,8 @@ void FFModel::create_disjoint_partition(int num_dims,
 template <int NDIM, int TDIM>
 void FFModel::create_disjoint_partition_with_dim2(
     const ParallelDim dims[],
-    const IndexSpaceT<TDIM> &part_is,
-    const LogicalRegion &region,
+    IndexSpaceT<TDIM> const &part_is,
+    LogicalRegion const &region,
     LogicalPartition &part) {
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
@@ -1682,8 +1682,8 @@ void FFModel::create_disjoint_partition_with_dim2(
 void FFModel::create_aliased_partition(int num_dims,
                                        const ParallelDim dims[],
                                        int aliased_dim,
-                                       const IndexSpace &part_is,
-                                       const LogicalRegion &region,
+                                       IndexSpace const &part_is,
+                                       LogicalRegion const &region,
                                        LogicalPartition &part) {
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
@@ -1706,8 +1706,8 @@ template <int NDIM, int TDIM>
 void FFModel::create_aliased_partition_with_dim2(
     const ParallelDim dims[],
     int aliased_dim,
-    const IndexSpaceT<TDIM> &part_is,
-    const LogicalRegion &region,
+    IndexSpaceT<TDIM> const &part_is,
+    LogicalRegion const &region,
     LogicalPartition &part) {
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
@@ -1738,7 +1738,7 @@ void FFModel::create_aliased_partition_with_dim2(
 
 template <int NDIM>
 void FFModel::create_disjoint_partition(const ParallelTensor tensor,
-                                        const IndexSpaceT<NDIM> &part_is,
+                                        IndexSpaceT<NDIM> const &part_is,
                                         LogicalPartition &part_fwd,
                                         LogicalPartition &part_bwd) {
   Context ctx = config.lg_ctx;
@@ -1783,7 +1783,7 @@ void FFModel::create_disjoint_partition(const ParallelTensor tensor,
 template <int NDIM, int TDIM>
 void FFModel::create_data_parallel_partition_with_diff_dims(
     const ParallelTensor tensor,
-    const IndexSpaceT<TDIM> &part_is,
+    IndexSpaceT<TDIM> const &part_is,
     LogicalPartition &part_fwd,
     LogicalPartition &part_bwd) {
   assert(tensor->num_dims == NDIM);
@@ -1832,7 +1832,7 @@ void FFModel::create_data_parallel_partition_with_diff_dims(
 // 2. partition is 2D (sample, channel_out)
 
 template <int NDIM, int TDIM>
-void FFModel::map_linear_weight(ParallelTensor weight, const Op *op) {
+void FFModel::map_linear_weight(ParallelTensor weight, Op const *op) {
   assert(op->op_type == OP_LINEAR);
   std::string pcname = op->name;
   Context ctx = config.lg_ctx;
@@ -1947,7 +1947,7 @@ void FFModel::map_linear_weight(ParallelTensor weight, const Op *op) {
 }
 
 template <int NDIM>
-void FFModel::map_conv_weight(ParallelTensor weight, const Op *op) {
+void FFModel::map_conv_weight(ParallelTensor weight, Op const *op) {
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
   Rect<4> part_rect = runtime->get_index_space_domain(ctx, op->parallel_is);
@@ -2055,8 +2055,8 @@ void FFModel::map_conv_weight(ParallelTensor weight, const Op *op) {
 }
 
 template <int NDIM, int TDIM>
-ParallelTensor FFModel::create_linear_replica(const int dims[],
-                                              const IndexSpaceT<TDIM> &task_is,
+ParallelTensor FFModel::create_linear_replica(int const dims[],
+                                              IndexSpaceT<TDIM> const &task_is,
                                               DataType data_type) {
   // No need to create replica for INFERENCE
   assert(config.computationMode == COMP_MODE_TRAINING);
@@ -2115,13 +2115,13 @@ ParallelTensor FFModel::create_linear_replica(const int dims[],
   return replica;
 }
 
-IndexSpace FFModel::get_task_is(const MachineView &view) const {
-  const auto &iter = all_task_is.find(view);
+IndexSpace FFModel::get_task_is(MachineView const &view) const {
+  auto const &iter = all_task_is.find(view);
   assert(iter != all_task_is.end());
   return iter->second;
 }
 
-IndexSpace FFModel::get_task_is(const ParallelConfig &pc) const {
+IndexSpace FFModel::get_task_is(ParallelConfig const &pc) const {
   MachineView view;
   view.ndims = pc.nDims;
   for (int i = 0; i < view.ndims; i++)
@@ -2144,7 +2144,7 @@ IndexSpace FFModel::get_or_create_task_is(const ParallelTensor tensor) {
   return get_or_create_task_is(view);
 }
 
-IndexSpace FFModel::get_or_create_task_is(const ParallelConfig &pc) {
+IndexSpace FFModel::get_or_create_task_is(ParallelConfig const &pc) {
   MachineView view;
   view.ndims = pc.nDims;
   for (int i = 0; i < view.ndims; i++)
@@ -2152,7 +2152,7 @@ IndexSpace FFModel::get_or_create_task_is(const ParallelConfig &pc) {
   return get_or_create_task_is(view);
 }
 
-IndexSpace FFModel::get_or_create_task_is(const MachineView &view) {
+IndexSpace FFModel::get_or_create_task_is(MachineView const &view) {
   if (all_task_is.find(view) != all_task_is.end())
     return all_task_is[view];
   IndexSpace task_is;
@@ -2184,7 +2184,7 @@ IndexSpace FFModel::get_or_create_task_is(const MachineView &view) {
   return task_is;
 }
 
-IndexSpace FFModel::get_or_create_task_is(const Domain &domain) {
+IndexSpace FFModel::get_or_create_task_is(Domain const &domain) {
   MachineView view;
   view.ndims = domain.get_dim();
   for (int i = 0; i < view.ndims; i++) {
@@ -2211,12 +2211,12 @@ IndexSpace FFModel::get_task_is(int ndims, const std::string& pcname) const
 }
 */
 
-IndexSpace FFModel::get_task_is(const Domain &domain) const {
+IndexSpace FFModel::get_task_is(Domain const &domain) const {
   MachineView view;
   view.ndims = domain.get_dim();
   for (int i = 0; i < view.ndims; i++)
     view.dim[i] = domain.hi()[i] - domain.lo()[i] + 1;
-  const auto &iter = all_task_is.find(view);
+  auto const &iter = all_task_is.find(view);
   assert(iter != all_task_is.end());
   return iter->second;
 }
@@ -2302,13 +2302,13 @@ Op *FFModel::get_final_operator() const {
 
 void FFModel::compile(Optimizer *_optimizer,
                       LossType loss_type,
-                      const std::vector<MetricsType> &metrics,
+                      std::vector<MetricsType> const &metrics,
                       CompMode comp_mode) {
   optimizer = _optimizer;
   compile(loss_type, metrics, comp_mode);
 }
 
-bool FFModel::apply_fusion(const std::vector<Op *> &operators,
+bool FFModel::apply_fusion(std::vector<Op *> const &operators,
                            std::vector<Op *> &new_operators) {
   // Context ctx = config.lg_ctx;
   // Runtime* runtime = config.lg_hlr;
@@ -2390,7 +2390,7 @@ bool FFModel::apply_fusion(const std::vector<Op *> &operators,
 }
 
 Op *FFModel::create_operator_from_layer(
-    Layer *layer, const std::vector<ParallelTensor> &inputs) {
+    Layer *layer, std::vector<ParallelTensor> const &inputs) {
   switch (layer->op_type) {
   case OP_INPUT: {
     // Input op cannot have an input
@@ -2515,7 +2515,7 @@ Op *FFModel::create_operator_from_layer(
 
 void FFModel::create_operators_from_layers() {
   std::map<const Tensor, ParallelTensor> tensors_to_parallel_tensors;
-  for (const auto &l : layers) {
+  for (auto const &l : layers) {
     std::vector<ParallelTensor> inputs;
     for (int i = 0; i < l->numInputs; i++) {
       // create new input tensors
@@ -2532,7 +2532,7 @@ void FFModel::create_operators_from_layers() {
 }
 
 void FFModel::compile(LossType loss_type,
-                      const std::vector<MetricsType> &metrics,
+                      std::vector<MetricsType> const &metrics,
                       CompMode comp_mode) {
   if (metrics_input == -1)
     metrics_input = operators.size() - 1;
@@ -2567,12 +2567,12 @@ void FFModel::compile(LossType loss_type,
     operators.clear();
     convert_graph_to_operators(best_graph, optimal_views);
     delete best_graph;
-    for (const auto &layer : layers) {
+    for (auto const &layer : layers) {
       // map inputs to parallel tensor
       if (layer->op_type == OP_INPUT) {
         Tensor tensor = layer->outputs[0];
         ParallelTensor parallel_tensor = nullptr;
-        for (const auto &op : operators) {
+        for (auto const &op : operators) {
           if (op->op_type == OP_INPUT) {
             NoOp *noop = (NoOp *)op;
             if (noop->input_tensor_guid == tensor->tensor_guid) {
@@ -2588,7 +2588,7 @@ void FFModel::compile(LossType loss_type,
         assert(layer->weights[i] != nullptr);
         Tensor weight = layer->weights[i];
         ParallelTensor parallel_weight = nullptr;
-        for (const auto &op : operators) {
+        for (auto const &op : operators) {
           if (op->layer_guid == layer->layer_guid) {
             assert(op->op_type == layer->op_type);
             assert(op->numWeights == layer->numWeights);
@@ -2975,8 +2975,8 @@ void FFModel::propagate(std::map<Op *, ParallelConfig> const &current,
 }
 #endif
 
-void FFModel::rewrite(const std::map<const Op *, ParallelConfig> &current,
-                      std::map<const Op *, ParallelConfig> &next,
+void FFModel::rewrite(std::map<Op const *, ParallelConfig> const &current,
+                      std::map<Op const *, ParallelConfig> &next,
                       bool use_propagation) const {
   next = current;
   float propagate_chance;
@@ -2999,13 +2999,13 @@ void FFModel::rewrite(const std::map<const Op *, ParallelConfig> &current,
   }
 }
 
-void FFModel::mcmc_optimize(std::map<const Op *, ParallelConfig> &best,
+void FFModel::mcmc_optimize(std::map<Op const *, ParallelConfig> &best,
                             size_t budget,
                             float alpha,
                             CompMode comp_mode,
                             bool use_propagation) const {
   // Start from data parallel
-  std::map<const Op *, ParallelConfig> current, next;
+  std::map<Op const *, ParallelConfig> current, next;
   float best_runtime = simulator->simulate_runtime(this, best, comp_mode);
   current = best;
   float current_runtime = best_runtime;
@@ -3047,7 +3047,7 @@ void FFModel::mcmc_optimize(std::map<const Op *, ParallelConfig> &best,
   printf("=========== Best Discovered Strategy ==========\n");
   simulator->simulate_runtime(
       this, best, comp_mode, this->config.export_strategy_task_graph_file);
-  std::map<const Op *, ParallelConfig>::const_iterator it;
+  std::map<Op const *, ParallelConfig>::const_iterator it;
   for (it = best.begin(); it != best.end(); it++) {
     printf("[%s] num_dims(%d) dims[", it->first->name, it->second.nDims);
     for (int i = 0; i < it->second.nDims; i++)
@@ -3095,8 +3095,8 @@ FFModel::get_bwd_edge_map() const {
 };
 
 PerfMetrics
-FFModel::update_metrics_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+FFModel::update_metrics_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
   Metrics *m = (Metrics *)task->args;
@@ -3120,31 +3120,31 @@ FFModel::update_metrics_task(const Task *task,
 }
 
 // TODO: Move to an appropriate place
-template <> std::tuple<> get_input_shape(const std::tuple<> &) {
+template <> std::tuple<> get_input_shape(std::tuple<> const &) {
   return std::tuple<>();
 }
 
-template <> ParallelTensorShape get_input_shape(const ParallelTensor &input) {
+template <> ParallelTensorShape get_input_shape(ParallelTensor const &input) {
   return input->get_shape();
 }
 
 template <>
 std::pair<ParallelTensorShape, ParallelTensorShape>
-get_input_shape(const std::pair<ParallelTensor, ParallelTensor> &inputs) {
+get_input_shape(std::pair<ParallelTensor, ParallelTensor> const &inputs) {
   return std::make_pair(inputs.first->get_shape(), inputs.second->get_shape());
 }
 
 template <>
 std::vector<ParallelTensorShape>
-get_input_shape(const std::vector<ParallelTensor> &inputs) {
+get_input_shape(std::vector<ParallelTensor> const &inputs) {
   std::vector<ParallelTensorShape> shapes;
-  for (const auto &input : inputs) {
+  for (auto const &input : inputs) {
     shapes.push_back(input->get_shape());
   }
   return shapes;
 }
 
-void Op::prefetch(const FFModel &ff) {
+void Op::prefetch(FFModel const &ff) {
   // TODO: perform prefetch for performance imporvement
 }
 
@@ -3283,7 +3283,7 @@ FFConfig::FFConfig() {
 
   // Parse input arguments
   {
-    const InputArgs &command_args = HighLevelRuntime::get_input_args();
+    InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
     parse_args(argv, argc);
@@ -4447,34 +4447,34 @@ void register_flexflow_internal_tasks() {
 
 // template instantiations
 #define DIMFUNC(DIM)                                                           \
-  template Tensor FFModel::create_tensor<DIM>(const int dims[],                \
+  template Tensor FFModel::create_tensor<DIM>(int const dims[],                \
                                               DataType data_type,              \
-                                              const Layer *owner_op,           \
+                                              Layer const *owner_op,           \
                                               int owner_idx,                   \
                                               bool create_grad);               \
   template ParallelTensor FFModel::create_parallel_tensor<DIM>(                \
       const ParallelDim dims[],                                                \
       DataType data_type,                                                      \
-      const Op *owner_op,                                                      \
+      Op const *owner_op,                                                      \
       int owner_idx,                                                           \
       bool create_grad,                                                        \
       size_t input_tensor_guid);                                               \
   template ParallelParameter FFModel::create_parallel_weight<DIM>(             \
       const ParallelDim dims[],                                                \
       DataType data_type,                                                      \
-      const Op *owner_op,                                                      \
+      Op const *owner_op,                                                      \
       bool create_grad,                                                        \
       Initializer *initializer,                                                \
       ParameterSyncType sync_type);                                            \
   template void FFModel::map_tensor_with_dim<DIM>(ParallelTensor tensor,       \
-                                                  const Op *parallel_op);      \
+                                                  Op const *parallel_op);      \
   template void FFModel::map_weight_with_dim<DIM>(ParallelTensor weight,       \
-                                                  const Op *parallel_op);      \
+                                                  Op const *parallel_op);      \
   template Tensor FFModel::create_constant<DIM>(                               \
-      const int *dims, float value, DataType data_type);                       \
+      int const *dims, float value, DataType data_type);                       \
   template void FFModel::create_disjoint_partition<DIM>(                       \
       const ParallelTensor tensor,                                             \
-      const IndexSpaceT<DIM> &part_is,                                         \
+      IndexSpaceT<DIM> const &part_is,                                         \
       LogicalPartition &part_fwd,                                              \
       LogicalPartition &part_bwd);
 LEGION_FOREACH_N(DIMFUNC)
@@ -4482,41 +4482,41 @@ LEGION_FOREACH_N(DIMFUNC)
 
 #define DIMFUNC(D1, D2)                                                        \
   template void FFModel::map_tensor_with_dim2<D1, D2>(ParallelTensor tensor,   \
-                                                      const Op *parallel_op);  \
+                                                      Op const *parallel_op);  \
   template void FFModel::create_disjoint_partition_with_dim2<D1, D2>(          \
       const ParallelDim dims[],                                                \
-      const IndexSpaceT<D2> &part_is,                                          \
-      const LogicalRegion &region,                                             \
+      IndexSpaceT<D2> const &part_is,                                          \
+      LogicalRegion const &region,                                             \
       LogicalPartition &part);                                                 \
   template void FFModel::create_aliased_partition_with_dim2<D1, D2>(           \
       const ParallelDim dims[],                                                \
       int aliased_dim,                                                         \
-      const IndexSpaceT<D2> &part_is,                                          \
-      const LogicalRegion &region,                                             \
+      IndexSpaceT<D2> const &part_is,                                          \
+      LogicalRegion const &region,                                             \
       LogicalPartition &part);                                                 \
   template void                                                                \
   FFModel::create_data_parallel_partition_with_diff_dims<D1, D2>(              \
       const ParallelTensor tensor,                                             \
-      const IndexSpaceT<D2> &part_is,                                          \
+      IndexSpaceT<D2> const &part_is,                                          \
       LogicalPartition &part_fwd,                                              \
       LogicalPartition &part_bwd);
 LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
 
 template void FFModel::map_conv_weight<4>(ParallelTensor weight,
-                                          const Op *parallel_op);
+                                          Op const *parallel_op);
 template void FFModel::map_conv_weight<1>(ParallelTensor weight,
-                                          const Op *parallel_op);
+                                          Op const *parallel_op);
 
 #define DIMFUNC(D1, D2)                                                        \
   template void FFModel::map_linear_weight<D1, D2>(ParallelTensor p,           \
-                                                   const Op *op);
+                                                   Op const *op);
 LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
 
 #define DIMFUNC(D1, D2)                                                        \
   template ParallelTensor FFModel::create_linear_replica<D1>(                  \
-      const int *dims, const IndexSpaceT<D2> &part_is, DataType data_type);
+      int const *dims, IndexSpaceT<D2> const &part_is, DataType data_type);
 LEGION_FOREACH_NN(DIMFUNC)
 #undef DIMFUNC
 

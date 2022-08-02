@@ -31,8 +31,8 @@ Tensor resnext_block(FFModel &ff,
   return t;
 }
 
-void FlexFlow::top_level_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void FlexFlow::top_level_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
   FFConfig ffConfig;
@@ -50,7 +50,7 @@ void FlexFlow::top_level_task(const Task *task,
 
   Tensor input;
   {
-    const int dims[] = {ffConfig.batchSize, 3, 224, 224};
+    int const dims[] = {ffConfig.batchSize, 3, 224, 224};
     input = ff.create_tensor<4>(dims, DT_FLOAT);
   }
 

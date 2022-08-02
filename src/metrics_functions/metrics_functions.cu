@@ -18,10 +18,10 @@
 
 namespace FlexFlow {
 
-const float LOG_MIN_VALUE = 0.00000001f;
+float const LOG_MIN_VALUE = 0.00000001f;
 
-__global__ void update_metrics_sparse_label_kernel(const float *logits,
-                                                   const int *labels,
+__global__ void update_metrics_sparse_label_kernel(float const *logits,
+                                                   int const *labels,
                                                    PerfMetrics *perf,
                                                    const Metrics metrics,
                                                    int num_samples,
@@ -66,8 +66,8 @@ __global__ void update_metrics_sparse_label_kernel(const float *logits,
   }
 }
 
-__global__ void update_metrics_label_kernel(const float *logits,
-                                            const float *labels,
+__global__ void update_metrics_label_kernel(float const *logits,
+                                            float const *labels,
                                             PerfMetrics *perf,
                                             const Metrics metrics,
                                             int num_samples,
@@ -129,9 +129,9 @@ __global__ void update_metrics_label_kernel(const float *logits,
 }
 
 void Metrics::update_metrics_sparse_label_kernel_wrapper(
-    const float *logit_ptr,
-    const int *label_ptr,
-    const Metrics *me,
+    float const *logit_ptr,
+    int const *label_ptr,
+    Metrics const *me,
     int num_effective_samples,
     int num_classes,
     PerfMetrics &perf_zc) {
@@ -153,9 +153,9 @@ void Metrics::update_metrics_sparse_label_kernel_wrapper(
   checkCUDA(cudaFree(perf));
 }
 
-void Metrics::update_metrics_label_kernel_wrapper(const float *logit_ptr,
-                                                  const float *label_ptr,
-                                                  const Metrics *me,
+void Metrics::update_metrics_label_kernel_wrapper(float const *logit_ptr,
+                                                  float const *label_ptr,
+                                                  Metrics const *me,
                                                   int num_samples,
                                                   int num_classes,
                                                   PerfMetrics &perf_zc) {

@@ -103,15 +103,15 @@ SoftmaxDP::SoftmaxDP(RnnConfig config,
   regions[0](I): x
   regions[1](O): y
 */
-OpMeta *SoftmaxDP::init_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+OpMeta *SoftmaxDP::init_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const SoftmaxDPInitParams *softmaxDP = (SoftmaxDPInitParams *)task->args;
-  const AccessorRO<float, 3> acc_x(regions[0], FID_DATA);
-  const AccessorWO<float, 3> acc_y(regions[1], FID_DATA);
+  SoftmaxDPInitParams const *softmaxDP = (SoftmaxDPInitParams *)task->args;
+  AccessorRO<float, 3> const acc_x(regions[0], FID_DATA);
+  AccessorWO<float, 3> const acc_y(regions[1], FID_DATA);
   Rect<3> rect_x = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<3> rect_y = runtime->get_index_space_domain(
@@ -137,7 +137,7 @@ OpMeta *SoftmaxDP::init_task(const Task *task,
   return m;
 }
 
-void SoftmaxDP::init(const RnnModel &model) {
+void SoftmaxDP::init(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
   Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
@@ -174,24 +174,24 @@ void SoftmaxDP::init(const RnnModel &model) {
   regions[0](I): x
   regions[1](O): y
 */
-void SoftmaxDP::forward_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+void SoftmaxDP::forward_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
 #ifndef DISABLE_COMPUTATION
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   float alpha = 1.0f, beta = 0.0f;
-  const SoftmaxDPMeta *m = *((SoftmaxDPMeta **)task->args);
-  const AccessorRO<float, 3> acc_x(regions[0], FID_DATA);
-  const AccessorWO<float, 3> acc_y(regions[1], FID_DATA);
+  SoftmaxDPMeta const *m = *((SoftmaxDPMeta **)task->args);
+  AccessorRO<float, 3> const acc_x(regions[0], FID_DATA);
+  AccessorWO<float, 3> const acc_y(regions[1], FID_DATA);
   Rect<3> rect_x = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<3> rect_y = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
   assert(acc_x.accessor.is_dense_arbitrary(rect_x));
   assert(acc_y.accessor.is_dense_arbitrary(rect_y));
-  const float *x_ptr = acc_x.ptr(rect_x.lo);
+  float const *x_ptr = acc_x.ptr(rect_x.lo);
   float *y_ptr = acc_y.ptr(rect_y.lo);
 
   cudaEvent_t t_start, t_end;
@@ -227,7 +227,7 @@ void SoftmaxDP::forward_task(const Task *task,
 #endif
 }
 
-void SoftmaxDP::forward(const RnnModel &model) {
+void SoftmaxDP::forward(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
   Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
@@ -257,7 +257,7 @@ void SoftmaxDP::forward(const RnnModel &model) {
 }
 
 __global__ void SoftmaxLossBackprop(float *input,
-                                    const int *label,
+                                    int const *label,
                                     int vocab_size,
                                     int batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size) {
@@ -271,17 +271,17 @@ __global__ void SoftmaxLossBackprop(float *input,
   regions[1](I): y
   regions[2](I): labels
 */
-void SoftmaxDP::backward_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void SoftmaxDP::backward_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
 #ifndef DISABLE_COMPUTATION
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const SoftmaxDPMeta *m = *((SoftmaxDPMeta **)task->args);
-  const AccessorWO<float, 3> acc_x_grad(regions[0], FID_DATA);
-  const AccessorRO<float, 3> acc_y(regions[1], FID_DATA);
-  const AccessorRO<int, 2> acc_label(regions[2], FID_DATA);
+  SoftmaxDPMeta const *m = *((SoftmaxDPMeta **)task->args);
+  AccessorWO<float, 3> const acc_x_grad(regions[0], FID_DATA);
+  AccessorRO<float, 3> const acc_y(regions[1], FID_DATA);
+  AccessorRO<int, 2> const acc_label(regions[2], FID_DATA);
   Rect<3> rect_x_grad = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<3> rect_y = runtime->get_index_space_domain(
@@ -292,8 +292,8 @@ void SoftmaxDP::backward_task(const Task *task,
   assert(acc_y.accessor.is_dense_arbitrary(rect_y));
   assert(acc_label.accessor.is_dense_arbitrary(rect_label));
   float *x_grad_ptr = acc_x_grad.ptr(rect_x_grad.lo);
-  const float *y_ptr = acc_y.ptr(rect_y.lo);
-  const int *label_ptr = acc_label.ptr(rect_label.lo);
+  float const *y_ptr = acc_y.ptr(rect_y.lo);
+  int const *label_ptr = acc_label.ptr(rect_label.lo);
   assert(rect_x_grad == rect_y);
   assert(rect_y.hi[1] - rect_y.lo[1] == rect_label.hi[0] - rect_label.lo[0]);
   assert(rect_y.hi[2] - rect_y.lo[2] == rect_label.hi[1] - rect_label.lo[1]);
@@ -350,7 +350,7 @@ void SoftmaxDP::backward_task(const Task *task,
 #endif
 }
 
-void SoftmaxDP::backward(const RnnModel &model) {
+void SoftmaxDP::backward(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
   Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
@@ -387,4 +387,4 @@ void SoftmaxDP::backward(const RnnModel &model) {
   }
 }
 
-void SoftmaxDP::update(const RnnModel &model) {}
+void SoftmaxDP::update(RnnModel const &model) {}

@@ -15,10 +15,10 @@ struct ElementUnaryParams {
   bool inplace;
   float scalar;
 
-  bool is_valid(const ParallelTensorShape &) const;
+  bool is_valid(ParallelTensorShape const &) const;
 };
 
-bool operator==(const ElementUnaryParams &, const ElementUnaryParams &);
+bool operator==(ElementUnaryParams const &, ElementUnaryParams const &);
 
 class ElementUnaryMeta : public OpMeta {
 public:
@@ -45,64 +45,64 @@ public:
                OperatorType type,
                const ParallelTensor x,
                bool inplace,
-               const char *name,
+               char const *name,
                float scalar);
   ElementUnary(FFModel &model,
-               const Params &params,
+               Params const &params,
                const Input x,
-               const char *name = nullptr);
-  void init(const FFModel &) override;
-  void forward(const FFModel &) override;
-  void backward(const FFModel &) override;
-  void print_layer(const FFModel &model) override { assert(0); }
+               char const *name = nullptr);
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
+  void print_layer(FFModel const &model) override { assert(0); }
   bool can_inplace_output() override;
   bool has_inplace_output() override;
   void do_inplace_output() override;
   static Op *
   create_operator_from_layer(FFModel &model,
-                             const Layer *layer,
-                             const std::vector<ParallelTensor> &inputs);
+                             Layer const *layer,
+                             std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   template <typename T>
   static void
-  forward_task_with_type(const Legion::Task *task,
-                         const std::vector<Legion::PhysicalRegion> &regions,
+  forward_task_with_type(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
                          Legion::Runtime *runtime);
   template <typename T>
   static void
-  backward_task_with_type(const Legion::Task *task,
-                          const std::vector<Legion::PhysicalRegion> &regions,
+  backward_task_with_type(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
                           Legion::Context ctx,
                           Legion::Runtime *runtime);
   static void init_kernel(ElementUnaryMeta *m,
-                          const Legion::Domain &input_domain,
-                          const Legion::Domain &output_domain);
+                          Legion::Domain const &input_domain,
+                          Legion::Domain const &output_domain);
   template <typename T>
-  static void forward_kernel(const ElementUnaryMeta *m,
+  static void forward_kernel(ElementUnaryMeta const *m,
                              const T *in_ptr,
                              T *out_ptr,
                              size_t num_elements,
                              ffStream_t stream);
   template <typename T>
-  static void forward_kernel_wrapper(const ElementUnaryMeta *m,
+  static void forward_kernel_wrapper(ElementUnaryMeta const *m,
                                      const T *in_ptr,
                                      T *out_ptr,
                                      size_t num_elements);
   template <typename T>
-  static void backward_kernel(const ElementUnaryMeta *m,
+  static void backward_kernel(ElementUnaryMeta const *m,
                               const T *in_ptr,
                               T *in_grad_ptr,
                               const T *out_ptr,
@@ -110,14 +110,14 @@ public:
                               size_t num_elements,
                               ffStream_t stream);
   template <typename T>
-  static void backward_kernel_wrapper(const ElementUnaryMeta *m,
+  static void backward_kernel_wrapper(ElementUnaryMeta const *m,
                                       const T *in_ptr,
                                       T *in_grad_ptr,
                                       const T *out_ptr,
                                       const T *out_grad_ptr,
                                       size_t num_elements);
   bool measure_operator_cost(Simulator *sim,
-                             const MachineView &pc,
+                             MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
   static bool use_cudnn(OperatorType type);
 
@@ -143,7 +143,7 @@ public:
 
 namespace std {
 template <> struct hash<FlexFlow::ElementUnaryParams> {
-  size_t operator()(const FlexFlow::ElementUnaryParams &) const;
+  size_t operator()(FlexFlow::ElementUnaryParams const &) const;
 };
 } // namespace std
 

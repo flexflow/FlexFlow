@@ -41,7 +41,7 @@ using Legion::TaskLauncher;
 NoOp::NoOp(FFModel &model,
            OperatorType _type,
            const ParallelTensor _output,
-           const char *_name)
+           char const *_name)
     : Op(model, _type, _name, 0 /*inputs*/, 0 /*weights*/, 1 /*outputs*/),
       input_tensor_guid(0) {
   // NOOP takes one input and has one output
@@ -59,7 +59,7 @@ NoOp::NoOp(FFModel &model,
            OperatorType _type,
            size_t _input_tensor_guid,
            const ParallelTensor _output,
-           const char *_name)
+           char const *_name)
     : Op(model, _type, _name, 0 /*inputs*/, 0 /*weights*/, 1 /*outputs*/),
       input_tensor_guid(_input_tensor_guid) {
   // NOOP takes one input and has one output
@@ -73,16 +73,16 @@ NoOp::NoOp(FFModel &model,
   outputs[0]->owner_idx = 0;
 }
 
-OpMeta *NoOp::init_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
+OpMeta *NoOp::init_task(Task const *task,
+                        std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {
-  FFHandler handle = *((const FFHandler *)task->local_args);
+  FFHandler handle = *((FFHandler const *)task->local_args);
   OpMeta *m = new OpMeta(handle);
   return m;
 }
 
-void NoOp::init(const FFModel &ff) {
+void NoOp::init(FFModel const &ff) {
   parallel_is = outputs[0]->parallel_is;
   // For OP_INPUT, initialize tensor to zero
   if (op_type == OP_INPUT) {
@@ -135,12 +135,12 @@ void NoOp::init(const FFModel &ff) {
   }
 }
 
-void NoOp::forward(const FFModel &ff) {}
+void NoOp::forward(FFModel const &ff) {}
 
-void NoOp::backward(const FFModel &ff) {}
+void NoOp::backward(FFModel const &ff) {}
 
 bool NoOp::measure_operator_cost(Simulator *sim,
-                                 const MachineView &mv,
+                                 MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
@@ -162,7 +162,7 @@ using PCG::Node;
 Node FFModel::get_or_create_noop_node(const ParallelTensor input) {
   size_t hash = input->get_owner_independent_hash();
   NoOp *noop = NULL;
-  const auto &it = cached_noop_ops.find(hash);
+  auto const &it = cached_noop_ops.find(hash);
   if (it != cached_noop_ops.end()) {
     noop = it->second;
   } else {
@@ -176,10 +176,10 @@ Node FFModel::get_or_create_noop_node(const ParallelTensor input) {
 }
 
 Node FFModel::get_or_create_input_node(
-    const ParallelTensorShape &output_shape) {
+    ParallelTensorShape const &output_shape) {
   size_t hash = std::hash<ParallelTensorShape>{}(output_shape);
   NoOp *input = NULL;
-  const auto &it = cached_input_ops.find(hash);
+  auto const &it = cached_input_ops.find(hash);
   if (it != cached_input_ops.end()) {
     input = it->second;
   } else {

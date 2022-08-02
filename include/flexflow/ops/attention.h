@@ -10,7 +10,7 @@ class MultiHeadAttentionMeta;
 class MultiHeadAttention : public Op {
 public:
   MultiHeadAttention(FFModel &model,
-                     const LayerID &layer_guid,
+                     LayerID const &layer_guid,
                      const ParallelTensor _query,
                      const ParallelTensor _key,
                      const ParallelTensor _value,
@@ -23,7 +23,7 @@ public:
                      bool _add_bias_kv,
                      bool _add_zero_attn,
                      bool allocate_weights,
-                     const char *name);
+                     char const *name);
   MultiHeadAttention(FFModel &model,
                      const ParallelTensor _query,
                      const ParallelTensor _key,
@@ -38,7 +38,7 @@ public:
                      bool _add_bias_kv,
                      bool _add_zero_attn,
                      bool allocate_weights,
-                     const char *name);
+                     char const *name);
   MultiHeadAttention(FFModel &model,
                      MultiHeadAttention const &other,
                      const ParallelTensor query,
@@ -47,64 +47,64 @@ public:
                      bool allocate_weights);
   static Op *
   create_operator_from_layer(FFModel &model,
-                             const Layer *layer,
-                             const std::vector<ParallelTensor> &inputs);
-  void init(const FFModel &) override;
-  void forward(const FFModel &) override;
-  void backward(const FFModel &) override;
-  void print_layer(const FFModel &model) override { assert(0); }
+                             Layer const *layer,
+                             std::vector<ParallelTensor> const &inputs);
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
+  void print_layer(FFModel const &model) override { assert(0); }
   bool get_int_parameter(PMParameter, int *) const override;
   size_t get_params_hash() const override;
 
-  static OpMeta *init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator *sim,
-                             const MachineView &mv,
+                             MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
-  static void forward_kernel(const MultiHeadAttentionMeta *m,
-                             const float *query_ptr,
-                             const float *key_ptr,
-                             const float *value_ptr,
-                             const float *weight_ptr,
+  static void forward_kernel(MultiHeadAttentionMeta const *m,
+                             float const *query_ptr,
+                             float const *key_ptr,
+                             float const *value_ptr,
+                             float const *weight_ptr,
                              float *output_ptr,
                              ffStream_t stream);
-  static void forward_kernel_wrapper(const MultiHeadAttentionMeta *m,
-                                     const float *query_ptr,
-                                     const float *key_ptr,
-                                     const float *value_ptr,
-                                     const float *weight_ptr,
+  static void forward_kernel_wrapper(MultiHeadAttentionMeta const *m,
+                                     float const *query_ptr,
+                                     float const *key_ptr,
+                                     float const *value_ptr,
+                                     float const *weight_ptr,
                                      float *output_ptr);
-  static void backward_kernel(const MultiHeadAttentionMeta *m,
-                              const float *query_ptr,
+  static void backward_kernel(MultiHeadAttentionMeta const *m,
+                              float const *query_ptr,
                               float *query_grad_ptr,
-                              const float *key_ptr,
+                              float const *key_ptr,
                               float *key_grad_ptr,
-                              const float *value_ptr,
+                              float const *value_ptr,
                               float *value_grad_ptr,
-                              const float *weight_ptr,
+                              float const *weight_ptr,
                               float *weight_grad_ptr,
-                              const float *output_grad_ptr,
+                              float const *output_grad_ptr,
                               ffStream_t stream);
-  static void backward_kernel_wrapper(const MultiHeadAttentionMeta *m,
-                                      const float *query_ptr,
+  static void backward_kernel_wrapper(MultiHeadAttentionMeta const *m,
+                                      float const *query_ptr,
                                       float *query_grad_ptr,
-                                      const float *key_ptr,
+                                      float const *key_ptr,
                                       float *key_grad_ptr,
-                                      const float *value_ptr,
+                                      float const *value_ptr,
                                       float *value_grad_ptr,
-                                      const float *weight_ptr,
+                                      float const *weight_ptr,
                                       float *weight_grad_ptr,
-                                      const float *output_grad_ptr);
+                                      float const *output_grad_ptr);
 
 public:
   int num_heads;
@@ -118,7 +118,7 @@ public:
 class MultiHeadAttentionMeta : public OpMeta {
 public:
   MultiHeadAttentionMeta(FFHandler handler,
-                         const MultiHeadAttention *attn,
+                         MultiHeadAttention const *attn,
                          Legion::Memory gpu_mem,
                          int num_samples,
                          int num_heads);

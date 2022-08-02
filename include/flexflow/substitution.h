@@ -65,7 +65,7 @@ struct TensorX {
   static const TensorX NO_TX;
   TensorX(void) : op(NULL), idx(0) {}
   TensorX(OpX *_op, int _idx) : op(_op), idx(_idx) {}
-  tl::optional<ParallelTensor> to_tensor(const GraphXfer *xfer) const;
+  tl::optional<ParallelTensor> to_tensor(GraphXfer const *xfer) const;
   OpX *op;
   int idx;
 
@@ -74,7 +74,7 @@ struct TensorX {
 };
 
 struct TensorXCompare {
-  bool operator()(const TensorX &a, const TensorX &b) const {
+  bool operator()(TensorX const &a, TensorX const &b) const {
     if (a.op != b.op)
       return a.op < b.op;
     return a.idx < b.idx;
@@ -86,14 +86,14 @@ public:
   OpX(OperatorType type,
       int numInputs,
       int numOutputs,
-      const TensorX &input1 = TensorX::NO_TX,
-      const TensorX &input2 = TensorX::NO_TX,
-      const TensorX &input3 = TensorX::NO_TX,
-      const TensorX &input4 = TensorX::NO_TX);
+      TensorX const &input1 = TensorX::NO_TX,
+      TensorX const &input2 = TensorX::NO_TX,
+      TensorX const &input3 = TensorX::NO_TX,
+      TensorX const &input4 = TensorX::NO_TX);
   OpX(OperatorType type,
       int num_inputs,
       int num_outputs,
-      const TensorX *inputs);
+      TensorX const *inputs);
   bool add_pm_constraint(Compare, PMParameter para, int value);
   bool add_input_constraint(Compare, TNParameter, DIMParameter, int);
   bool add_input_constraint(
@@ -103,7 +103,7 @@ public:
 public:
   OperatorType type;
   Node mapOp;
-  const OpX *matchOpX;
+  OpX const *matchOpX;
   std::vector<TensorX> inputs, weights, outputs;
   std::vector<PMConstraint> pmConstraints;
   std::vector<TNConstraint> tnConstraints;
@@ -157,47 +157,47 @@ class GraphXfer {
 public:
   GraphXfer(FFModel *_model);
   TensorX new_tensor(void);
-  bool can_match(OpX *srcOp, const Node &op, Graph const *graph);
-  void match(OpX *srcOp, const Node &op, Graph const *graph);
-  void unmatch(OpX *srcOp, const Node &op, Graph const *graph);
+  bool can_match(OpX *srcOp, Node const &op, Graph const *graph);
+  void match(OpX *srcOp, Node const &op, Graph const *graph);
+  void unmatch(OpX *srcOp, Node const &op, Graph const *graph);
   // Compute Ops
   template <typename T>
-  OpX *create_opx(const TensorX &input, const OpX *matchOpX);
+  OpX *create_opx(TensorX const &input, OpX const *matchOpX);
 
-  OpX *create_noop(const TensorX &input);
-  OpX *create_concat(const TensorX *inputs,
+  OpX *create_noop(TensorX const &input);
+  OpX *create_concat(TensorX const *inputs,
                      int num_inputs,
-                     const OpX *match_opx,
+                     OpX const *match_opx,
                      int concat_dim);
-  OpX *create_element_binary(const TensorX &input1,
-                             const TensorX &input2,
+  OpX *create_element_binary(TensorX const &input1,
+                             TensorX const &input2,
                              OperatorType op_type);
-  OpX *create_element_unary(const TensorX &input, OperatorType op_type);
-  OpX *create_relu(const TensorX &input);
-  OpX *create_linear(const TensorX &input,
-                     const OpX *match_opx,
+  OpX *create_element_unary(TensorX const &input, OperatorType op_type);
+  OpX *create_relu(TensorX const &input);
+  OpX *create_linear(TensorX const &input,
+                     OpX const *match_opx,
                      int num_dims,
                      ActiMode acti_mode,
                      bool use_bias);
-  OpX *create_conv2d(const TensorX &input, const OpX *match_opx);
-  OpX *create_pool2d(const TensorX &input, const OpX *match_opx);
-  OpX *create_attention(const TensorX &query,
-                        const TensorX &key,
-                        const TensorX &value,
-                        const OpX *match_opx,
+  OpX *create_conv2d(TensorX const &input, OpX const *match_opx);
+  OpX *create_pool2d(TensorX const &input, OpX const *match_opx);
+  OpX *create_attention(TensorX const &query,
+                        TensorX const &key,
+                        TensorX const &value,
+                        OpX const *match_opx,
                         int num_heads);
-  OpX *create_softmax(const TensorX &input, int softmax_dim);
+  OpX *create_softmax(TensorX const &input, int softmax_dim);
   // Parallel Ops
   OpX *
-  create_repartition(const TensorX &input, int repartition_dim, int num_parts);
-  OpX *create_replicate(const TensorX &input, int replicate_dim, int num_parts);
-  OpX *create_reduction(const TensorX &input, int reduction_dim, int num_parts);
-  OpX *create_combine(const TensorX &input, int combine_dim, int num_parts);
-  bool map_output(const TensorX &src, const TensorX &dst);
+  create_repartition(TensorX const &input, int repartition_dim, int num_parts);
+  OpX *create_replicate(TensorX const &input, int replicate_dim, int num_parts);
+  OpX *create_reduction(TensorX const &input, int reduction_dim, int num_parts);
+  OpX *create_combine(TensorX const &input, int combine_dim, int num_parts);
+  bool map_output(TensorX const &src, TensorX const &dst);
 
   Graph *create_new_graph(Graph const *graph,
                           SimplificationSettings const &settings);
-  bool create_new_operator(const OpX *opx, Node &op);
+  bool create_new_operator(OpX const *opx, Node &op);
 
   std::string get_name() const;
 

@@ -25,8 +25,8 @@ using Legion::Domain;
 
 /*static*/
 void ElementUnary::init_kernel(ElementUnaryMeta *m,
-                               const Domain &input_domain,
-                               const Domain &output_domain) {
+                               Domain const &input_domain,
+                               Domain const &output_domain) {
   miopenActivationMode_t mode;
   switch (m->op_type) {
   case OP_SIGMOID:
@@ -100,7 +100,7 @@ __global__ void elewise_unary_forward_kernel(
 
 /*static*/
 template <typename T>
-void ElementUnary::forward_kernel(const ElementUnaryMeta *m,
+void ElementUnary::forward_kernel(ElementUnaryMeta const *m,
                                   const T *input_ptr,
                                   T *output_ptr,
                                   size_t num_elements,
@@ -133,7 +133,7 @@ void ElementUnary::forward_kernel(const ElementUnaryMeta *m,
 
 /*static*/
 template <typename T>
-void ElementUnary::forward_kernel_wrapper(const ElementUnaryMeta *m,
+void ElementUnary::forward_kernel_wrapper(ElementUnaryMeta const *m,
                                           const T *input_ptr,
                                           T *output_ptr,
                                           size_t num_elements) {
@@ -202,7 +202,7 @@ __global__ void elewise_unary_backward_kernel(coord_t volume,
 
 /*static*/
 template <typename T>
-void ElementUnary::backward_kernel(const ElementUnaryMeta *m,
+void ElementUnary::backward_kernel(ElementUnaryMeta const *m,
                                    const T *input_ptr,
                                    T *input_grad_ptr,
                                    const T *output_ptr,
@@ -244,7 +244,7 @@ void ElementUnary::backward_kernel(const ElementUnaryMeta *m,
 
 /*static*/
 template <typename T>
-void ElementUnary::backward_kernel_wrapper(const ElementUnaryMeta *m,
+void ElementUnary::backward_kernel_wrapper(ElementUnaryMeta const *m,
                                            const T *input_ptr,
                                            T *input_grad_ptr,
                                            const T *output_ptr,
@@ -268,53 +268,53 @@ ElementUnaryMeta::ElementUnaryMeta(FFHandler handler) : OpMeta(handler) {
 }
 
 template void
-ElementUnary::forward_kernel_wrapper<float>(const ElementUnaryMeta *m,
-                                            const float *input_ptr,
+ElementUnary::forward_kernel_wrapper<float>(ElementUnaryMeta const *m,
+                                            float const *input_ptr,
                                             float *output_ptr,
                                             size_t num_elements);
 template void
-ElementUnary::forward_kernel_wrapper<double>(const ElementUnaryMeta *m,
-                                             const double *input_ptr,
+ElementUnary::forward_kernel_wrapper<double>(ElementUnaryMeta const *m,
+                                             double const *input_ptr,
                                              double *output_ptr,
                                              size_t num_elements);
 template void
-ElementUnary::forward_kernel_wrapper<int32_t>(const ElementUnaryMeta *m,
-                                              const int32_t *input_ptr,
+ElementUnary::forward_kernel_wrapper<int32_t>(ElementUnaryMeta const *m,
+                                              int32_t const *input_ptr,
                                               int32_t *output_ptr,
                                               size_t num_elements);
 template void
-ElementUnary::forward_kernel_wrapper<int64_t>(const ElementUnaryMeta *m,
-                                              const int64_t *input_ptr,
+ElementUnary::forward_kernel_wrapper<int64_t>(ElementUnaryMeta const *m,
+                                              int64_t const *input_ptr,
                                               int64_t *output_ptr,
                                               size_t num_elements);
 
 template void
-ElementUnary::backward_kernel_wrapper<float>(const ElementUnaryMeta *m,
-                                             const float *input_ptr,
+ElementUnary::backward_kernel_wrapper<float>(ElementUnaryMeta const *m,
+                                             float const *input_ptr,
                                              float *input_grad_ptr,
-                                             const float *output_ptr,
-                                             const float *output_grad_ptr,
+                                             float const *output_ptr,
+                                             float const *output_grad_ptr,
                                              size_t num_elements);
 template void
-ElementUnary::backward_kernel_wrapper<double>(const ElementUnaryMeta *m,
-                                              const double *input_ptr,
+ElementUnary::backward_kernel_wrapper<double>(ElementUnaryMeta const *m,
+                                              double const *input_ptr,
                                               double *input_grad_ptr,
-                                              const double *output_ptr,
-                                              const double *output_grad_ptr,
+                                              double const *output_ptr,
+                                              double const *output_grad_ptr,
                                               size_t num_elements);
 template void
-ElementUnary::backward_kernel_wrapper<int32_t>(const ElementUnaryMeta *m,
-                                               const int32_t *input_ptr,
+ElementUnary::backward_kernel_wrapper<int32_t>(ElementUnaryMeta const *m,
+                                               int32_t const *input_ptr,
                                                int32_t *input_grad_ptr,
-                                               const int32_t *output_ptr,
-                                               const int32_t *output_grad_ptr,
+                                               int32_t const *output_ptr,
+                                               int32_t const *output_grad_ptr,
                                                size_t num_elements);
 template void
-ElementUnary::backward_kernel_wrapper<int64_t>(const ElementUnaryMeta *m,
-                                               const int64_t *input_ptr,
+ElementUnary::backward_kernel_wrapper<int64_t>(ElementUnaryMeta const *m,
+                                               int64_t const *input_ptr,
                                                int64_t *input_grad_ptr,
-                                               const int64_t *output_ptr,
-                                               const int64_t *output_grad_ptr,
+                                               int64_t const *output_ptr,
+                                               int64_t const *output_grad_ptr,
                                                size_t num_elements);
 
 }; // namespace FlexFlow

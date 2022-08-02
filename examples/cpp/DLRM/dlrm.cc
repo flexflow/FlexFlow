@@ -42,7 +42,7 @@ DLRMConfig::DLRMConfig(void)
 }
 
 Tensor create_mlp(FFModel *model,
-                  const Tensor &input,
+                  Tensor const &input,
                   std::vector<int> ln,
                   int sigmoid_layer) {
   Tensor t = input;
@@ -65,7 +65,7 @@ Tensor create_mlp(FFModel *model,
 }
 
 Tensor create_emb(FFModel *model,
-                  const Tensor &input,
+                  Tensor const &input,
                   int input_dim,
                   int output_dim,
                   int idx) {
@@ -80,8 +80,8 @@ Tensor create_emb(FFModel *model,
 }
 
 Tensor interact_features(FFModel *model,
-                         const Tensor &x,
-                         const std::vector<Tensor> &ly,
+                         Tensor const &x,
+                         std::vector<Tensor> const &ly,
                          std::string interaction) {
   // Currently only support cat
   // TODO: implement dot attention
@@ -97,7 +97,7 @@ Tensor interact_features(FFModel *model,
   }
 }
 
-void print_vector(const std::string &name, const std::vector<int> &vector) {
+void print_vector(std::string const &name, std::vector<int> const &vector) {
   std::ostringstream out;
   for (size_t i = 0; i < vector.size() - 1; i++)
     out << vector[i] << " ";
@@ -106,15 +106,15 @@ void print_vector(const std::string &name, const std::vector<int> &vector) {
   log_app.print("%s: %s", name.c_str(), out.str().c_str());
 }
 
-void FlexFlow::top_level_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void FlexFlow::top_level_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
   FFConfig ffConfig;
   // Parse input arguments
   DLRMConfig dlrmConfig;
   {
-    const InputArgs &command_args = HighLevelRuntime::get_input_args();
+    InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
     parse_input_args(argv, argc, dlrmConfig);
@@ -132,13 +132,13 @@ void FlexFlow::top_level_task(const Task *task,
 
   std::vector<Tensor> sparse_inputs;
   for (size_t i = 0; i < dlrmConfig.embedding_size.size(); i++) {
-    const int dims[] = {ffConfig.batchSize, dlrmConfig.embedding_bag_size};
+    int const dims[] = {ffConfig.batchSize, dlrmConfig.embedding_bag_size};
     Tensor input = ff.create_tensor<2>(dims, DT_INT64);
     sparse_inputs.push_back(input);
   }
   Tensor dense_input;
   {
-    const int dims[] = {ffConfig.batchSize, dlrmConfig.mlp_bot[0]};
+    int const dims[] = {ffConfig.batchSize, dlrmConfig.mlp_bot[0]};
     dense_input = ff.create_tensor<2>(dims, DT_FLOAT);
   }
   // Tensor label;
@@ -298,8 +298,8 @@ void parse_input_args(char **argv, int argc, DLRMConfig &config) {
 }
 
 DataLoader::DataLoader(FFModel &ff,
-                       const DLRMConfig &dlrm,
-                       const std::vector<Tensor> &_sparse_inputs,
+                       DLRMConfig const &dlrm,
+                       std::vector<Tensor> const &_sparse_inputs,
                        Tensor _dense_input,
                        Tensor _label) {
   Context ctx = ff.config.lg_ctx;
@@ -368,21 +368,21 @@ DataLoader::DataLoader(FFModel &ff,
     batch_sparse_inputs.push_back(_sparse_inputs[i]);
   }
   {
-    const int dims[] = {num_samples,
+    int const dims[] = {num_samples,
                         (int)_sparse_inputs.size() * dlrm.embedding_bag_size};
     full_sparse_input = ff.create_tensor<2>(dims, DT_INT64);
     // ff.map_tensor(full_sparse_input, full_sparse_input->owner_op);
   }
   {
     batch_dense_input = _dense_input;
-    const int dims[] = {num_samples, dlrm.mlp_bot[0]};
+    int const dims[] = {num_samples, dlrm.mlp_bot[0]};
     full_dense_input = ff.create_tensor<2>(dims, DT_FLOAT);
     // ff.map_tensor(full_dense_input,
     // full_dense_input->parallel_tensor->owner_op);
   }
   {
     batch_label = _label;
-    const int dims[] = {num_samples, 1};
+    int const dims[] = {num_samples, 1};
     full_label = ff.create_tensor<2>(dims, DT_FLOAT);
     // ff.map_tensor(full_label, full_label->parallel_tensor->owner_op);
   }
@@ -428,17 +428,17 @@ DataLoader::DataLoader(FFModel &ff,
   runtime->execute_task(ctx, launcher);
 }
 
-void DataLoader::load_entire_dataset(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
+void DataLoader::load_entire_dataset(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   // Note that these instances are in ZCM, can only use
   // TensorAccessorW with readOutput flag
-  const AccessorWO<int64_t, 2> acc_sparse_input(regions[0], FID_DATA);
-  const AccessorWO<float, 2> acc_dense_input(regions[1], FID_DATA);
-  const AccessorWO<float, 2> acc_label_input(regions[2], FID_DATA);
+  AccessorWO<int64_t, 2> const acc_sparse_input(regions[0], FID_DATA);
+  AccessorWO<float, 2> const acc_dense_input(regions[1], FID_DATA);
+  AccessorWO<float, 2> const acc_label_input(regions[2], FID_DATA);
   Rect<2> rect_sparse_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<2> rect_dense_input = runtime->get_index_space_domain(
@@ -457,9 +457,9 @@ void DataLoader::load_entire_dataset(const Task *task,
   int num_dense_dims = rect_dense_input.hi[0] - rect_dense_input.lo[0] + 1;
   assert(num_samples == rect_label_input.hi[1] - rect_label_input.lo[1] + 1);
   assert(rect_label_input.hi[0] == rect_label_input.lo[0]);
-  const ArgsConfig dlrm = *((const ArgsConfig *)task->args);
-  const int emb_size = dlrm.embedding_size;
-  std::string file_name((const char *)dlrm.dataset_path);
+  const ArgsConfig dlrm = *((ArgsConfig const *)task->args);
+  int const emb_size = dlrm.embedding_size;
+  std::string file_name((char const *)dlrm.dataset_path);
   if (file_name.length() == 0) {
     log_app.print("Start generating random input samples");
     for (size_t i = 0; i < rect_sparse_input.volume(); i++)
@@ -691,8 +691,8 @@ void DataLoader::shuffle() {}
 void DataLoader::reset() { next_index = 0; }
 
 void DataLoader::load_sparse_input_cpu(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   std::cout << "load_sparse_input_cpu" << std::endl;

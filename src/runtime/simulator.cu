@@ -50,7 +50,7 @@ using Legion::TaskLauncher;
 typedef Realm::Point<1, coord_t> Point1;
 typedef Realm::Rect<1, coord_t> Rect1;
 
-Simulator::Simulator(const FFModel *model,
+Simulator::Simulator(FFModel const *model,
                      FFHandler _handler,
                      Memory _memory,
                      MachineModel *machine)
@@ -115,8 +115,8 @@ Simulator::~Simulator(void) {
 }
 
 __host__ void
-Simulator::strategy_search_task(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
+Simulator::strategy_search_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime) {
   // This method should no longer be used

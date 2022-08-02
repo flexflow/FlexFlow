@@ -34,11 +34,11 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-ReshapeParams::ReshapeParams(const std::vector<int> &_shape) : shape(_shape) {}
+ReshapeParams::ReshapeParams(std::vector<int> const &_shape) : shape(_shape) {}
 
 Tensor FFModel::reshape(const Tensor input,
-                        const std::vector<int> &shape,
-                        const char *name) {
+                        std::vector<int> const &shape,
+                        char const *name) {
   Layer *reshape = new Layer(this,
                              OP_RESHAPE,
                              name,
@@ -60,8 +60,8 @@ Tensor FFModel::reshape(const Tensor input,
 
 Op *Reshape::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   std::vector<int> shape;
   layer->get_int_vector_property("shape", shape);
   return new Reshape(model, inputs[0], shape, layer->name);
@@ -69,8 +69,8 @@ Op *Reshape::create_operator_from_layer(
 
 Reshape::Reshape(FFModel &model,
                  const ParallelTensor input,
-                 const std::vector<int> &_shape,
-                 const char *name)
+                 std::vector<int> const &_shape,
+                 char const *name)
     : Op(model,
          OP_RESHAPE,
          name,
@@ -113,7 +113,7 @@ Reshape::Reshape(FFModel &model,
   assert(outputs[0]->get_volume() == inputs[0]->get_volume());
 }
 
-void Reshape::init(const FFModel &ff) {
+void Reshape::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -145,18 +145,18 @@ void Reshape::init(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Reshape::init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+OpMeta *Reshape::init_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
-  const Reshape *reshape = (Reshape *)task->args;
-  FFHandler handle = *((const FFHandler *)task->local_args);
+  Reshape const *reshape = (Reshape *)task->args;
+  FFHandler handle = *((FFHandler const *)task->local_args);
   ReshapeMeta *m = new ReshapeMeta(handle);
   m->data_type = reshape->outputs[0]->data_type;
   return m;
 }
 
-void Reshape::forward(const FFModel &ff) {
+void Reshape::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -184,14 +184,14 @@ void Reshape::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Reshape::forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+void Reshape::forward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const Reshape* reshape = (const Reshape*) task->args;
-  const ReshapeMeta *m = *((ReshapeMeta **)task->local_args);
+  ReshapeMeta const *m = *((ReshapeMeta **)task->local_args);
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain out_domain = runtime->get_index_space_domain(
@@ -199,28 +199,28 @@ void Reshape::forward_task(const Task *task,
   assert(in_domain.get_volume() == out_domain.get_volume());
 
   if (m->data_type == DT_FLOAT) {
-    const float *in_ptr = helperGetTensorPointerRO<float>(
+    float const *in_ptr = helperGetTensorPointerRO<float>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     float *out_ptr = helperGetTensorPointerWO<float>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     Reshape::forward_kernel_wrapper<float>(
         in_ptr, out_ptr, in_domain.get_volume());
   } else if (m->data_type == DT_DOUBLE) {
-    const double *in_ptr = helperGetTensorPointerRO<double>(
+    double const *in_ptr = helperGetTensorPointerRO<double>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     double *out_ptr = helperGetTensorPointerWO<double>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     Reshape::forward_kernel_wrapper<double>(
         in_ptr, out_ptr, in_domain.get_volume());
   } else if (m->data_type == DT_INT32) {
-    const int32_t *in_ptr = helperGetTensorPointerRO<int32_t>(
+    int32_t const *in_ptr = helperGetTensorPointerRO<int32_t>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int32_t *out_ptr = helperGetTensorPointerWO<int32_t>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     Reshape::forward_kernel_wrapper<int32_t>(
         in_ptr, out_ptr, in_domain.get_volume());
   } else if (m->data_type == DT_INT64) {
-    const int64_t *in_ptr = helperGetTensorPointerRO<int64_t>(
+    int64_t const *in_ptr = helperGetTensorPointerRO<int64_t>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int64_t *out_ptr = helperGetTensorPointerWO<int64_t>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
@@ -231,7 +231,7 @@ void Reshape::forward_task(const Task *task,
   }
 }
 
-void Reshape::backward(const FFModel &ff) {
+void Reshape::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -269,14 +269,14 @@ ReshapeParams Reshape::get_params() const {
   return params;
 }
 
-void Reshape::backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+void Reshape::backward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const Reshape* reshape = (const Reshape*) task->args;
-  const ReshapeMeta *m = *((ReshapeMeta **)task->local_args);
+  ReshapeMeta const *m = *((ReshapeMeta **)task->local_args);
   Domain out_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain in_grad_domain = runtime->get_index_space_domain(
@@ -284,28 +284,28 @@ void Reshape::backward_task(const Task *task,
   assert(in_grad_domain.get_volume() == out_grad_domain.get_volume());
 
   if (m->data_type == DT_FLOAT) {
-    const float *out_grad_ptr = helperGetTensorPointerRO<float>(
+    float const *out_grad_ptr = helperGetTensorPointerRO<float>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     float *in_grad_ptr = helperGetTensorPointerRW<float>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     Reshape::backward_kernel_wrapper<float>(
         in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume());
   } else if (m->data_type == DT_DOUBLE) {
-    const double *out_grad_ptr = helperGetTensorPointerRO<double>(
+    double const *out_grad_ptr = helperGetTensorPointerRO<double>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     double *in_grad_ptr = helperGetTensorPointerRW<double>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     Reshape::backward_kernel_wrapper<double>(
         in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume());
   } else if (m->data_type == DT_INT32) {
-    const int32_t *out_grad_ptr = helperGetTensorPointerRO<int32_t>(
+    int32_t const *out_grad_ptr = helperGetTensorPointerRO<int32_t>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int32_t *in_grad_ptr = helperGetTensorPointerRW<int32_t>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     Reshape::backward_kernel_wrapper<int32_t>(
         in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume());
   } else if (m->data_type == DT_INT64) {
-    const int64_t *out_grad_ptr = helperGetTensorPointerRO<int64_t>(
+    int64_t const *out_grad_ptr = helperGetTensorPointerRO<int64_t>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int64_t *in_grad_ptr = helperGetTensorPointerRW<int64_t>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
@@ -317,7 +317,7 @@ void Reshape::backward_task(const Task *task,
 }
 
 bool Reshape::measure_operator_cost(Simulator *sim,
-                                    const MachineView &mv,
+                                    MachineView const &mv,
                                     CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
@@ -415,11 +415,11 @@ Op *Reshape::materialize(FFModel &ff,
 }
 
 Node FFModel::get_or_create_reshape_node(const ParallelTensor input,
-                                         const ReshapeParams &params) {
+                                         ReshapeParams const &params) {
   size_t hash = params.get_hash(input);
   Reshape *reshape = nullptr;
 
-  const auto &it = this->cached_reshape_ops.find(hash);
+  auto const &it = this->cached_reshape_ops.find(hash);
   if (it != cached_reshape_ops.end()) {
     reshape = it->second;
   } else {
@@ -431,7 +431,7 @@ Node FFModel::get_or_create_reshape_node(const ParallelTensor input,
 }
 
 Node FFModel::get_or_create_reshape_node(const ParallelTensor input,
-                                         const std::vector<int> &shape) {
+                                         std::vector<int> const &shape) {
   ReshapeParams params(shape);
   return this->get_or_create_reshape_node(input, params);
 }

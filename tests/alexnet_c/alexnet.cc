@@ -27,8 +27,8 @@ public:
              flexflow_tensor_t input,
              flexflow_tensor_t label);
   DataLoader(FFModel &ff, Tensor input, Tensor label);
-  static void load_input(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+  static void load_input(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime);
 
@@ -36,8 +36,8 @@ public:
   int num_samples;
 };
 
-void top_level_task(const Task *task,
-                    const std::vector<PhysicalRegion> &regions,
+void top_level_task(Task const *task,
+                    std::vector<PhysicalRegion> const &regions,
                     Context ctx,
                     Runtime *runtime) {
   flexflow_config_t ffconfig;
@@ -55,13 +55,13 @@ void top_level_task(const Task *task,
   // Tensor input;
   flexflow_tensor_t input;
   {
-    const int dims[] = {flexflow_config_get_batch_size(ffconfig), 3, 229, 229};
+    int const dims[] = {flexflow_config_get_batch_size(ffconfig), 3, 229, 229};
     // input = ff->create_tensor<4>(dims, "", DT_FLOAT);
     input = flexflow_tensor_4d_create(ffmodel, dims, "", DT_FLOAT, true);
   }
   flexflow_tensor_t label;
   {
-    const int dims[] = {flexflow_config_get_batch_size(ffconfig), 1};
+    int const dims[] = {flexflow_config_get_batch_size(ffconfig), 1};
     label = flexflow_tensor_2d_create(ffmodel, dims, "", DT_INT32, true);
   }
   // Add layers
@@ -254,8 +254,8 @@ DataLoader::DataLoader(FFModel &ff, Tensor input, Tensor label) {
   }
 }
 
-void DataLoader::load_input(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+void DataLoader::load_input(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
   printf("CheckPoint#1\n");

@@ -24,11 +24,11 @@ using Legion::coord_t;
 using Legion::Memory;
 
 /*static*/
-void MultiHeadAttention::forward_kernel(const MultiHeadAttentionMeta *m,
-                                        const float *query_ptr,
-                                        const float *key_ptr,
-                                        const float *value_ptr,
-                                        const float *weight_ptr,
+void MultiHeadAttention::forward_kernel(MultiHeadAttentionMeta const *m,
+                                        float const *query_ptr,
+                                        float const *key_ptr,
+                                        float const *value_ptr,
+                                        float const *weight_ptr,
                                         float *output_ptr,
                                         hipStream_t stream) {
 #if 0
@@ -45,11 +45,11 @@ void MultiHeadAttention::forward_kernel(const MultiHeadAttentionMeta *m,
 }
 
 /*static*/
-void MultiHeadAttention::forward_kernel_wrapper(const MultiHeadAttentionMeta *m,
-                                                const float *query_ptr,
-                                                const float *key_ptr,
-                                                const float *value_ptr,
-                                                const float *weight_ptr,
+void MultiHeadAttention::forward_kernel_wrapper(MultiHeadAttentionMeta const *m,
+                                                float const *query_ptr,
+                                                float const *key_ptr,
+                                                float const *value_ptr,
+                                                float const *weight_ptr,
                                                 float *output_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -77,16 +77,16 @@ void MultiHeadAttention::forward_kernel_wrapper(const MultiHeadAttentionMeta *m,
 }
 
 /*static*/
-void MultiHeadAttention::backward_kernel(const MultiHeadAttentionMeta *m,
-                                         const float *query_ptr,
+void MultiHeadAttention::backward_kernel(MultiHeadAttentionMeta const *m,
+                                         float const *query_ptr,
                                          float *query_grad_ptr,
-                                         const float *key_ptr,
+                                         float const *key_ptr,
                                          float *key_grad_ptr,
-                                         const float *value_ptr,
+                                         float const *value_ptr,
                                          float *value_grad_ptr,
-                                         const float *weight_ptr,
+                                         float const *weight_ptr,
                                          float *weight_grad_ptr,
-                                         const float *output_grad_ptr,
+                                         float const *output_grad_ptr,
                                          hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -109,16 +109,16 @@ void MultiHeadAttention::backward_kernel(const MultiHeadAttentionMeta *m,
 
 /*static*/
 void MultiHeadAttention::backward_kernel_wrapper(
-    const MultiHeadAttentionMeta *m,
-    const float *query_ptr,
+    MultiHeadAttentionMeta const *m,
+    float const *query_ptr,
     float *query_grad_ptr,
-    const float *key_ptr,
+    float const *key_ptr,
     float *key_grad_ptr,
-    const float *value_ptr,
+    float const *value_ptr,
     float *value_grad_ptr,
-    const float *weight_ptr,
+    float const *weight_ptr,
     float *weight_grad_ptr,
-    const float *output_grad_ptr) {
+    float const *output_grad_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -152,7 +152,7 @@ void MultiHeadAttention::backward_kernel_wrapper(
 }
 
 MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
-                                               const MultiHeadAttention *attn,
+                                               MultiHeadAttention const *attn,
                                                Memory gpu_mem,
                                                int num_samples,
                                                int num_heads)

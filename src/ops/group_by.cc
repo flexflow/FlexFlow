@@ -39,7 +39,7 @@ void FFModel::group_by(const Tensor input,
                        Tensor *outputs,
                        int n,
                        float alpha,
-                       const char *name) {
+                       char const *name) {
   assert(false);
 #ifdef DEADCODE
   Group_by *group_by = new Group_by(*this, input, assign, n, alpha, name);
@@ -54,7 +54,7 @@ Group_by::Group_by(FFModel &model,
                    const ParallelTensor _assign,
                    int _n,
                    float _alpha,
-                   const char *name)
+                   char const *name)
     : Op(model,
          OP_GROUP_BY,
          name,
@@ -82,7 +82,7 @@ Group_by::Group_by(FFModel &model,
   numWeights = 0;
 }
 
-void Group_by::init(const FFModel &ff) {
+void Group_by::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -123,8 +123,8 @@ void Group_by::init(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-OpMeta *Group_by::init_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+OpMeta *Group_by::init_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
   Group_by *gb = (Group_by *)task->args;
@@ -134,7 +134,7 @@ OpMeta *Group_by::init_task(const Task *task,
   return m;
 }
 
-void Group_by::forward(const FFModel &ff) {
+void Group_by::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -175,23 +175,23 @@ void Group_by::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Group_by::forward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+void Group_by::forward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
   // Get n, alpha
-  const Group_by *gb = (Group_by *)task->args;
+  Group_by const *gb = (Group_by *)task->args;
   int n = gb->n;
   float alpha = gb->alpha;
 
   assert((int)regions.size() == n + 2);
   assert((int)task->regions.size() == n + 2);
 
-  const GroupByMeta *m = *((GroupByMeta **)task->local_args);
+  GroupByMeta const *m = *((GroupByMeta **)task->local_args);
 
   // get input and assign regions
-  const AccessorRO<float, 2> acc_input(regions[0], FID_DATA);
-  const AccessorRO<int, 2> acc_assign(regions[1], FID_DATA);
+  AccessorRO<float, 2> const acc_input(regions[0], FID_DATA);
+  AccessorRO<int, 2> const acc_assign(regions[1], FID_DATA);
 
   Rect<2> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -231,7 +231,7 @@ void Group_by::forward_task(const Task *task,
                                    data_dim);
 }
 
-void Group_by::backward(const FFModel &ff) {
+void Group_by::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -273,13 +273,13 @@ void Group_by::backward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Group_by::backward_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+void Group_by::backward_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
   // Get n, alpha
-  const GroupByMeta *m = *((GroupByMeta **)task->local_args);
-  const Group_by *gb = (Group_by *)task->args;
+  GroupByMeta const *m = *((GroupByMeta **)task->local_args);
+  Group_by const *gb = (Group_by *)task->args;
   int n = gb->n;
   float alpha = gb->alpha;
 
@@ -287,8 +287,8 @@ void Group_by::backward_task(const Task *task,
   assert((int)task->regions.size() == n + 2);
 
   // get input and assign regions
-  const AccessorWO<float, 2> acc_input_grad(regions[0], FID_DATA);
-  const AccessorRO<int, 2> acc_assign(regions[1], FID_DATA);
+  AccessorWO<float, 2> const acc_input_grad(regions[0], FID_DATA);
+  AccessorRO<int, 2> const acc_assign(regions[1], FID_DATA);
 
   Rect<2> rect_input_grad = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -329,7 +329,7 @@ void Group_by::backward_task(const Task *task,
 }
 
 bool Group_by::measure_operator_cost(Simulator *sim,
-                                     const MachineView &mv,
+                                     MachineView const &mv,
                                      CostMetrics &cost_metrics) const {
   // TODO: implement
   cost_metrics.forward_time = 0.0f;

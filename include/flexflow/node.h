@@ -12,7 +12,7 @@ namespace PCG {
 struct Node {
   Node(void);
   Node(size_t _guid, Op *_ptr) : guid(_guid), ptr(_ptr) {}
-  inline bool operator==(const Node &b) const {
+  inline bool operator==(Node const &b) const {
     if (guid != b.guid)
       return false;
     if (ptr != b.ptr)
@@ -21,7 +21,7 @@ struct Node {
       return false;
     return true;
   }
-  inline bool operator!=(const Node &b) const {
+  inline bool operator!=(Node const &b) const {
     if (guid != b.guid)
       return true;
     if (ptr != b.ptr)
@@ -30,7 +30,7 @@ struct Node {
       return false;
     return false;
   }
-  inline bool operator<(const Node &b) const {
+  inline bool operator<(Node const &b) const {
     if (guid != b.guid)
       return guid < b.guid;
     if (ptr != b.ptr)
@@ -39,13 +39,13 @@ struct Node {
       return false;
     return false;
   }
-  Node &operator=(const Node &n) {
+  Node &operator=(Node const &n) {
     guid = n.guid;
     ptr = n.ptr;
     original_guid = n.original_guid;
     return *this;
   }
-  std::string op_to_string(const Op *ptr) const;
+  std::string op_to_string(Op const *ptr) const;
   std::string to_string(void) const {
     if (ptr != NULL) {
       return op_to_string(ptr) + "_" + std::to_string(guid);
@@ -55,7 +55,7 @@ struct Node {
   }
   static const Node INVALID_NODE;
   size_t guid;
-  const Op *ptr;
+  Op const *ptr;
 
   tl::optional<size_t> original_guid = tl::nullopt;
 };

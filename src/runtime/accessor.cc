@@ -11,7 +11,7 @@ TensorAccessorR<DT, dim>::TensorAccessorR(PhysicalRegion region,
                                           FieldID fid,
                                           Context ctx,
                                           Runtime *runtime) {
-  const AccessorRO<DT, dim> acc(region, fid);
+  AccessorRO<DT, dim> const acc(region, fid);
   rect = runtime->get_index_space_domain(ctx, req.region.get_index_space());
   assert(acc.accessor.is_dense_arbitrary(rect));
   ptr = acc.ptr(rect);
@@ -64,11 +64,11 @@ TensorAccessorW<DT, dim>::TensorAccessorW(PhysicalRegion region,
                                           bool readOutput) {
   rect = runtime->get_index_space_domain(ctx, req.region.get_index_space());
   if (readOutput) {
-    const AccessorRW<DT, dim> acc(region, fid);
+    AccessorRW<DT, dim> const acc(region, fid);
     assert(acc.accessor.is_dense_arbitrary(rect));
     ptr = acc.ptr(rect);
   } else {
-    const AccessorWO<DT, dim> acc(region, fid);
+    AccessorWO<DT, dim> const acc(region, fid);
     assert(acc.accessor.is_dense_arbitrary(rect));
     ptr = acc.ptr(rect);
     // FIXME: currently we zero init the region if not read output
@@ -204,7 +204,7 @@ DT *helperGetTensorPointerWO(PhysicalRegion region,
 LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
 
-template const float *helperGetTensorPointerRO(PhysicalRegion region,
+template float const *helperGetTensorPointerRO(PhysicalRegion region,
                                                RegionRequirement req,
                                                FieldID fid,
                                                Context ctx,
@@ -220,7 +220,7 @@ template float *helperGetTensorPointerWO(PhysicalRegion region,
                                          Context ctx,
                                          Runtime *runtime);
 
-template const double *helperGetTensorPointerRO(PhysicalRegion region,
+template double const *helperGetTensorPointerRO(PhysicalRegion region,
                                                 RegionRequirement req,
                                                 FieldID fid,
                                                 Context ctx,
@@ -236,7 +236,7 @@ template double *helperGetTensorPointerWO(PhysicalRegion region,
                                           Context ctx,
                                           Runtime *runtime);
 
-template const int32_t *helperGetTensorPointerRO(PhysicalRegion region,
+template int32_t const *helperGetTensorPointerRO(PhysicalRegion region,
                                                  RegionRequirement req,
                                                  FieldID fid,
                                                  Context ctx,
@@ -252,7 +252,7 @@ template int32_t *helperGetTensorPointerWO(PhysicalRegion region,
                                            Context ctx,
                                            Runtime *runtime);
 
-template const int64_t *helperGetTensorPointerRO(PhysicalRegion region,
+template int64_t const *helperGetTensorPointerRO(PhysicalRegion region,
                                                  RegionRequirement req,
                                                  FieldID fid,
                                                  Context ctx,

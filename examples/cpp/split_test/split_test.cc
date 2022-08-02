@@ -5,8 +5,8 @@ using namespace FlexFlow;
 
 LegionRuntime::Logger::Category log_app("split_test");
 
-void FlexFlow::top_level_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void FlexFlow::top_level_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
   int layer_dims[4] = {256, 128, 64, 32};
@@ -20,7 +20,7 @@ void FlexFlow::top_level_task(const Task *task,
 
   Tensor input;
   {
-    const int dims[] = {1, ffConfig.batchSize, layer_dims[0]};
+    int const dims[] = {1, ffConfig.batchSize, layer_dims[0]};
     input = ff.create_tensor<3>(dims, DT_FLOAT);
     log_app.print("input size: %d %d %d", dims[0], dims[1], dims[2]);
   }

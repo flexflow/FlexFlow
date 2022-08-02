@@ -9,51 +9,51 @@ class LayerNormMeta;
 class LayerNorm : public Op {
 public:
   LayerNorm(FFModel &model,
-            const LayerID &_layer_guid,
+            LayerID const &_layer_guid,
             const ParallelTensor _input,
-            const std::vector<int> &axes,
+            std::vector<int> const &axes,
             bool _elementwise_affine,
             float _eps,
             bool allocate_weights,
-            const char *name);
-  void init(const FFModel &);
-  void forward(const FFModel &);
-  void backward(const FFModel &);
-  void print_layer(const FFModel &model) { assert(0); }
+            char const *name);
+  void init(FFModel const &);
+  void forward(FFModel const &);
+  void backward(FFModel const &);
+  void print_layer(FFModel const &model) { assert(0); }
   static Op *
   create_operator_from_layer(FFModel &model,
-                             const Layer *layer,
-                             const std::vector<ParallelTensor> &inputs);
-  static OpMeta *init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+                             Layer const *layer,
+                             std::vector<ParallelTensor> const &inputs);
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator *sim,
-                             const MachineView &pc,
+                             MachineView const &pc,
                              CostMetrics &cost_metrics) const;
   template <typename T>
-  static void forward_kernel(const LayerNormMeta *m,
+  static void forward_kernel(LayerNormMeta const *m,
                              const T *input_ptr,
                              T *output_ptr,
                              T *gamma_ptr,
                              T *beta_ptr,
                              ffStream_t stream);
   template <typename T>
-  static void forward_kernel_wrapper(const LayerNormMeta *m,
+  static void forward_kernel_wrapper(LayerNormMeta const *m,
                                      const T *input_ptr,
                                      T *output_ptr,
                                      T *gamma_ptr,
                                      T *beta_ptr);
   template <typename T>
-  static void backward_kernel(const LayerNormMeta *m,
+  static void backward_kernel(LayerNormMeta const *m,
                               const T *output_grad_ptr,
                               const T *input_ptr,
                               T *input_grad_ptr,
@@ -62,7 +62,7 @@ public:
                               T *beta_grad_ptr,
                               ffStream_t stream);
   template <typename T>
-  static void backward_kernel_wrapper(const LayerNormMeta *m,
+  static void backward_kernel_wrapper(LayerNormMeta const *m,
                                       const T *output_grad_ptr,
                                       const T *input_ptr,
                                       T *input_grad_ptr,
@@ -78,7 +78,7 @@ public:
 
 class LayerNormMeta : public OpMeta {
 public:
-  LayerNormMeta(FFHandler handle, const LayerNorm *ln);
+  LayerNormMeta(FFHandler handle, LayerNorm const *ln);
 
 public:
   bool elementwise_affine;

@@ -40,7 +40,7 @@ using Legion::TaskLauncher;
 FusedParallelOp::FusedParallelOp(
     FFModel &model,
     const ParallelTensor _input,
-    const std::vector<ParallelOpInfo> &_parallel_ops)
+    std::vector<ParallelOpInfo> const &_parallel_ops)
     : ParallelOp(model, OP_FUSED_PARALLEL, NULL, _input), num_parallel_ops(0) {
   set_parallel_ops(_parallel_ops);
   assert(check_no_redundant_parallel_ops());
@@ -83,7 +83,7 @@ FusedParallelOp::FusedParallelOp(
 }
 
 void FusedParallelOp::set_parallel_ops(
-    const std::vector<ParallelOpInfo> &_parallel_ops) {
+    std::vector<ParallelOpInfo> const &_parallel_ops) {
   for (size_t i = 0; i < _parallel_ops.size(); i++)
     parallel_ops[num_parallel_ops++] = _parallel_ops[i];
 }
@@ -114,7 +114,7 @@ bool FusedParallelOp::check_no_redundant_parallel_ops(void) const {
   return true;
 }
 
-void FusedParallelOp::init(const FFModel &ff) {
+void FusedParallelOp::init(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -155,7 +155,7 @@ void FusedParallelOp::create_input_partition(FFModel &ff) {
                                output_grad_lp);
 }
 
-void FusedParallelOp::forward(const FFModel &ff) {
+void FusedParallelOp::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -181,7 +181,7 @@ void FusedParallelOp::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void FusedParallelOp::backward(const FFModel &ff) {
+void FusedParallelOp::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -212,7 +212,7 @@ void FusedParallelOp::backward(const FFModel &ff) {
 }
 
 bool FusedParallelOp::measure_operator_cost(Simulator *sim,
-                                            const MachineView &pc,
+                                            MachineView const &pc,
                                             CostMetrics &cost_metrics) const {
   cost_metrics.forward_time = 0.1f;
   cost_metrics.backward_time = 0.1f;
@@ -242,7 +242,7 @@ size_t FusedParallelOp::get_params_hash() const {
 using PCG::Node;
 Node FFModel::get_or_create_fused_parallel_node(
     const ParallelTensor input,
-    const std::vector<ParallelOpInfo> &parallel_ops) {
+    std::vector<ParallelOpInfo> const &parallel_ops) {
   // Try to combine _parallel_ops's dimensions
   if (parallel_ops.size() == 0) {
     return get_or_create_noop_node(input);
@@ -255,7 +255,7 @@ Node FFModel::get_or_create_fused_parallel_node(
     hash = hash * 31 + std::hash<int>()(parallel_ops[i].parallel_dim);
     hash = hash * 31 + std::hash<int>()(parallel_ops[i].parallel_degree);
   }
-  const auto &it = cached_fused_parallel_ops.find(hash);
+  auto const &it = cached_fused_parallel_ops.find(hash);
   FusedParallelOp *fused = NULL;
   if (it != cached_fused_parallel_ops.end()) {
     fused = it->second;
@@ -270,13 +270,13 @@ Node FFModel::get_or_create_fused_parallel_node(
   return ret;
 }
 
-void FusedParallelOp::forward_task(const Task *task,
-                                   const std::vector<PhysicalRegion> &regions,
+void FusedParallelOp::forward_task(Task const *task,
+                                   std::vector<PhysicalRegion> const &regions,
                                    Context ctx,
                                    Runtime *runtime) {}
 
-void FusedParallelOp::backward_task(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+void FusedParallelOp::backward_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {}
 

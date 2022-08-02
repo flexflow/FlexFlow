@@ -90,7 +90,7 @@ BatchMatmul::BatchMatmul(FFModel &model,
   //}
 }
 
-void BatchMatmul::init(const FFModel &ff) {
+void BatchMatmul::init(FFModel const &ff) {
   int dim = outputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM)                                                           \
@@ -105,7 +105,7 @@ void BatchMatmul::init(const FFModel &ff) {
   }
 }
 
-template <int NDIM> void BatchMatmul::init_with_dim(const FFModel &ff) {
+template <int NDIM> void BatchMatmul::init_with_dim(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -139,12 +139,12 @@ template <int NDIM> void BatchMatmul::init_with_dim(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *BatchMatmul::init_task(const Task *task,
-                               const std::vector<PhysicalRegion> &regions,
+OpMeta *BatchMatmul::init_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
                                Context ctx,
                                Runtime *runtime) {
-  const BatchMatmul *bmm = (BatchMatmul *)task->args;
-  FFHandler handle = *((const FFHandler *)task->local_args);
+  BatchMatmul const *bmm = (BatchMatmul *)task->args;
+  FFHandler handle = *((FFHandler const *)task->local_args);
   BatchMatmulMeta *m = new BatchMatmulMeta(handle);
   m->profiling = bmm->profiling;
   m->a_seq_length_dim = bmm->a_seq_length_dim;
@@ -152,7 +152,7 @@ OpMeta *BatchMatmul::init_task(const Task *task,
   return m;
 }
 
-void BatchMatmul::forward(const FFModel &ff) {
+void BatchMatmul::forward(FFModel const &ff) {
   int dim = outputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM)                                                           \
@@ -167,7 +167,7 @@ void BatchMatmul::forward(const FFModel &ff) {
   }
 }
 
-template <int NDIM> void BatchMatmul::forward_with_dim(const FFModel &ff) {
+template <int NDIM> void BatchMatmul::forward_with_dim(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -205,15 +205,15 @@ template <int NDIM> void BatchMatmul::forward_with_dim(const FFModel &ff) {
   (optional) regions[3](I): C
   output = A * B + C
 */
-void BatchMatmul::forward_task(const Task *task,
-                               const std::vector<PhysicalRegion> &regions,
+void BatchMatmul::forward_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
                                Context ctx,
                                Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   // const BatchMatmul* bmm = (const BatchMatmul*) task->args;
-  const FFIterationConfig *iter_config = (const FFIterationConfig *)task->args;
-  const BatchMatmulMeta *meta = *((BatchMatmulMeta **)task->local_args);
+  FFIterationConfig const *iter_config = (FFIterationConfig const *)task->args;
+  BatchMatmulMeta const *meta = *((BatchMatmulMeta **)task->local_args);
   Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain a_domain = runtime->get_index_space_domain(
@@ -237,11 +237,11 @@ void BatchMatmul::forward_task(const Task *task,
   }
   float *out_ptr = helperGetTensorPointerWO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  const float *a_ptr = helperGetTensorPointerRO<float>(
+  float const *a_ptr = helperGetTensorPointerRO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  const float *b_ptr = helperGetTensorPointerRO<float>(
+  float const *b_ptr = helperGetTensorPointerRO<float>(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  const float *c_ptr = NULL;
+  float const *c_ptr = NULL;
   if (regions.size() == 4) {
     Domain c_domain = runtime->get_index_space_domain(
         ctx, task->regions[3].region.get_index_space());
@@ -264,7 +264,7 @@ void BatchMatmul::forward_task(const Task *task,
                                       iter_config->seq_length);
 }
 
-void BatchMatmul::backward(const FFModel &ff) {
+void BatchMatmul::backward(FFModel const &ff) {
   int dim = outputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM)                                                           \
@@ -288,7 +288,7 @@ void BatchMatmul::backward(const FFModel &ff) {
   regions[5](I/O): B_grad
   regions[6](I/O): C_grad
 */
-template <int NDIM> void BatchMatmul::backward_with_dim(const FFModel &ff) {
+template <int NDIM> void BatchMatmul::backward_with_dim(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -357,16 +357,16 @@ template <int NDIM> void BatchMatmul::backward_with_dim(const FFModel &ff) {
   regions[6](I/O): C_grad
 */
 __host__ void
-BatchMatmul::backward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+BatchMatmul::backward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   // Currently assume C is NULL
   assert(regions.size() == 6);
   assert(task->regions.size() == 6);
   // BatchMatmul* bmm = (BatchMatmul*) task->args;
-  const FFIterationConfig *iter_config = (const FFIterationConfig *)task->args;
-  const BatchMatmulMeta *meta = *((BatchMatmulMeta **)task->local_args);
+  FFIterationConfig const *iter_config = (FFIterationConfig const *)task->args;
+  BatchMatmulMeta const *meta = *((BatchMatmulMeta **)task->local_args);
   // output domains
   Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -402,15 +402,15 @@ BatchMatmul::backward_task(const Task *task,
     batch *= dim_size;
   }
   // get pointers
-  const float *out_ptr = helperGetTensorPointerRO<float>(
+  float const *out_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  const float *out_grad_ptr = helperGetTensorPointerRO<float>(
+  float const *out_grad_ptr = helperGetTensorPointerRO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  const float *a_ptr = helperGetTensorPointerRO<float>(
+  float const *a_ptr = helperGetTensorPointerRO<float>(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
   float *a_grad_ptr = helperGetTensorPointerRW<float>(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  const float *b_ptr = helperGetTensorPointerRO<float>(
+  float const *b_ptr = helperGetTensorPointerRO<float>(
       regions[4], task->regions[4], FID_DATA, ctx, runtime);
   float *b_grad_ptr = helperGetTensorPointerRW<float>(
       regions[5], task->regions[5], FID_DATA, ctx, runtime);
@@ -436,10 +436,10 @@ BatchMatmul::backward_task(const Task *task,
                                        batch);
 }
 
-void BatchMatmul::print_layer(const FFModel &ff) { return; }
+void BatchMatmul::print_layer(FFModel const &ff) { return; }
 
 bool BatchMatmul::measure_operator_cost(Simulator *sim,
-                                        const MachineView &pc,
+                                        MachineView const &pc,
                                         CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input0, sub_input1;
   if (!outputs[0]->get_sub_tensor(pc, sub_output)) {

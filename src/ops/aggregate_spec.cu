@@ -20,12 +20,12 @@ namespace FlexFlow {
 
 __global__ void
 aggspec_forward_kernel(float **exp_preds,
-                       const int *exp_assign,
+                       int const *exp_assign,
                        float *output,
                        int n,           // num experts
-                       const int k,     // num chosen experts
+                       int const k,     // num chosen experts
                        int exp_samples, // max samples per expert
-                       const int batch_size,
+                       int const batch_size,
                        int out_dim) {
   __shared__ float
       *chosen_exp_preds[AGGREGATE_SPEC_MAX_K * AGGREGATE_SPEC_MAX_BATCH_SIZE];
@@ -61,11 +61,11 @@ aggspec_forward_kernel(float **exp_preds,
   }
 }
 
-__device__ void aggspec_backward_kernel_gate(const float *output_grad,
+__device__ void aggspec_backward_kernel_gate(float const *output_grad,
                                              float *full_gate_grads,
-                                             const int *expert_assign,
-                                             const bool *cache_corr,
-                                             const float *gate_pred,
+                                             int const *expert_assign,
+                                             bool const *cache_corr,
+                                             float const *gate_pred,
                                              int *expert_bal,
                                              float lambda_bal,
                                              int batch_size,
@@ -123,8 +123,8 @@ __device__ void aggspec_backward_kernel_gate(const float *output_grad,
   }
 }
 
-__device__ void aggspec_backward_kernel_exp(const float *output_grad,
-                                            const float *gate_preds,
+__device__ void aggspec_backward_kernel_exp(float const *output_grad,
+                                            float const *gate_preds,
                                             float **exp_grads,
                                             int batch_size,
                                             int k,
@@ -140,11 +140,11 @@ __device__ void aggspec_backward_kernel_exp(const float *output_grad,
 
 __global__ void
 aggspec_backward_kernel(float **exp_grads,
-                        const int *exp_assign,
-                        const int *true_exp_assign,
-                        const float *gating_net_preds,
+                        int const *exp_assign,
+                        int const *true_exp_assign,
+                        float const *gating_net_preds,
                         float *full_gating_grads,
-                        const float *output_grads,
+                        float const *output_grads,
                         int n,           // num experts
                         int k,           // num chosen experts
                         int exp_samples, // max samples per expert
@@ -205,14 +205,14 @@ aggspec_backward_kernel(float **exp_grads,
 }
 
 /*static*/
-void AggregateSpec::forward_kernel_wrapper(const AggregateSpecMeta *m,
+void AggregateSpec::forward_kernel_wrapper(AggregateSpecMeta const *m,
                                            float **exp_preds,
-                                           const int *acc_gate_assign_ptr,
+                                           int const *acc_gate_assign_ptr,
                                            float *acc_output_ptr,
                                            int n,
-                                           const int k,
+                                           int const k,
                                            int rows,
-                                           const int batch_size,
+                                           int const batch_size,
                                            int out_dim) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -240,18 +240,18 @@ void AggregateSpec::forward_kernel_wrapper(const AggregateSpecMeta *m,
 }
 
 /*static*/
-void AggregateSpec::backward_kernel_wrapper(const AggregateSpecMeta *m,
+void AggregateSpec::backward_kernel_wrapper(AggregateSpecMeta const *m,
                                             float **exp_grads,
-                                            const int *acc_gate_assign_ptr,
-                                            const int *acc_true_gate_assign_ptr,
-                                            const float *acc_gate_pred_ptr,
+                                            int const *acc_gate_assign_ptr,
+                                            int const *acc_true_gate_assign_ptr,
+                                            float const *acc_gate_pred_ptr,
                                             float *acc_full_gate_grad_ptr,
-                                            const float *acc_output_grad_ptr,
+                                            float const *acc_output_grad_ptr,
                                             int n,
-                                            const int k,
+                                            int const k,
                                             int rows,
                                             float lambda_bal,
-                                            const int batch_size,
+                                            int const batch_size,
                                             int out_dim) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));

@@ -27,7 +27,7 @@ __global__ void sgd_update(size_t count,
                            float weight_decay,
                            float momentum,
                            bool nesterov,
-                           const float *WGrad,
+                           float const *WGrad,
                            float *V,
                            float *W) {
   // Refernce https://pytorch.org/docs/stable/_modules/torch/optim/sgd.html#SGD
@@ -44,8 +44,8 @@ __global__ void sgd_update(size_t count,
   }
 }
 
-__host__ void SGDOptimizer::ps_update_task_gpu(const SGDOptimizer *op,
-                                               const float *w_grad_ptr,
+__host__ void SGDOptimizer::ps_update_task_gpu(SGDOptimizer const *op,
+                                               float const *w_grad_ptr,
                                                size_t size,
                                                int num_replicas,
                                                float *w_ptr,
@@ -54,7 +54,7 @@ __host__ void SGDOptimizer::ps_update_task_gpu(const SGDOptimizer *op,
   checkCUDA(get_legion_stream(&stream));
   // Step 1: Gather gradients in the first replica
   for (int i = 1; i < num_replicas; i++) {
-    const float *src = w_grad_ptr + i * size;
+    float const *src = w_grad_ptr + i * size;
     apply_add_with_scale<float>
         <<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
             (float *)w_grad_ptr, src, size, 1.0f);
@@ -74,9 +74,9 @@ __host__ void SGDOptimizer::ps_update_task_gpu(const SGDOptimizer *op,
 }
 
 #ifdef FF_USE_NCCL
-__host__ void SGDOptimizer::nccl_update_task_gpu(const SGDOptimizer *op,
-                                                 const OpMeta *meta,
-                                                 const float *w_grad_ptr,
+__host__ void SGDOptimizer::nccl_update_task_gpu(SGDOptimizer const *op,
+                                                 OpMeta const *meta,
+                                                 float const *w_grad_ptr,
                                                  size_t size,
                                                  float *w_ptr,
                                                  float *v_ptr) {
@@ -111,7 +111,7 @@ __host__ void SGDOptimizer::nccl_update_task_gpu(const SGDOptimizer *op,
 //                        Adam Optimizer
 // ==================================================================
 __global__ void
-add_kernel(int count, float scale, const float *src, float *dst) {
+add_kernel(int count, float scale, float const *src, float *dst) {
   CUDA_KERNEL_LOOP(i, count) { dst[i] += src[i] * scale; }
 }
 
@@ -125,7 +125,7 @@ __global__ void adam_update(int count,
                             float beta2,
                             float weight_decay,
                             float epsilon,
-                            const float *WGrad,
+                            float const *WGrad,
                             float *M,
                             float *V,
                             float *W) {
@@ -143,8 +143,8 @@ __global__ void adam_update(int count,
   }
 }
 
-__host__ void AdamOptimizer::ps_update_task_gpu(const AdamOptimizer *op,
-                                                const float *w_grad_ptr,
+__host__ void AdamOptimizer::ps_update_task_gpu(AdamOptimizer const *op,
+                                                float const *w_grad_ptr,
                                                 size_t size,
                                                 int num_replicas,
                                                 float *w_ptr,
@@ -154,7 +154,7 @@ __host__ void AdamOptimizer::ps_update_task_gpu(const AdamOptimizer *op,
   checkCUDA(get_legion_stream(&stream));
   // Step 1: Gather gradients in the first replica
   for (int i = 1; i < num_replicas; i++) {
-    const float *src = w_grad_ptr + i * size;
+    float const *src = w_grad_ptr + i * size;
     add_kernel<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
         size, 1.0f, src, (float *)w_grad_ptr);
   }
@@ -177,9 +177,9 @@ __host__ void AdamOptimizer::ps_update_task_gpu(const AdamOptimizer *op,
 }
 
 #ifdef FF_USE_NCCL
-__host__ void AdamOptimizer::nccl_update_task_gpu(const AdamOptimizer *op,
-                                                  const OpMeta *meta,
-                                                  const float *w_grad_ptr,
+__host__ void AdamOptimizer::nccl_update_task_gpu(AdamOptimizer const *op,
+                                                  OpMeta const *meta,
+                                                  float const *w_grad_ptr,
                                                   size_t size,
                                                   float *w_ptr,
                                                   float *v_ptr,

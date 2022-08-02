@@ -36,7 +36,7 @@ struct ParallelDim {
   static constexpr int UNKNOWN_DEGREE = -1;
   static constexpr int UNKNOWN_INDEX = -2;
 
-  bool operator==(const ParallelDim &rhs) const {
+  bool operator==(ParallelDim const &rhs) const {
     if (size != rhs.size)
       return false;
     if (degree != rhs.degree)
@@ -46,7 +46,7 @@ struct ParallelDim {
     return true;
   }
 
-  bool operator!=(const ParallelDim &rhs) const {
+  bool operator!=(ParallelDim const &rhs) const {
     if (size != rhs.size)
       return true;
     if (degree != rhs.degree)
@@ -87,8 +87,8 @@ struct ParallelTensorShape {
   ParallelDim dims[MAX_TENSOR_DIM]; ///< Details of each dimension
   DataType data_type;               ///< Data type
 
-  bool operator==(const ParallelTensorShape &other) const;
-  bool operator!=(const ParallelTensorShape &other) const;
+  bool operator==(ParallelTensorShape const &other) const;
+  bool operator!=(ParallelTensorShape const &other) const;
 
   RecordFormatter as_dot() const;
 
@@ -125,7 +125,7 @@ class FFConfig;
 struct ParallelTensorBase {
   static constexpr ParallelTensorBase *NO_TENSOR = nullptr;
   ParallelTensorBase(void) = default;
-  ParallelTensorBase(const ParallelTensorBase &rhs);
+  ParallelTensorBase(ParallelTensorBase const &rhs);
   // Tensor& operator=(const Tensor& rhs);
   // bool operator==(const Tensor& rhs) const;
   void inline_map(FFConfig &config);
@@ -133,12 +133,12 @@ struct ParallelTensorBase {
   template <typename T> T *get_raw_ptr(FFConfig &config);
   void attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major);
   void detach_raw_ptr(FFConfig &config);
-  bool get_input_sub_tensor(const ParallelConfig &pc,
+  bool get_input_sub_tensor(ParallelConfig const &pc,
                             ParallelTensorBase &tensor,
                             OperatorType type);
-  bool get_sub_tensor(const MachineView &mv,
+  bool get_sub_tensor(MachineView const &mv,
                       ParallelTensorBase &subtensor) const;
-  bool get_output_sub_tensor(const ParallelConfig &pc,
+  bool get_output_sub_tensor(ParallelConfig const &pc,
                              ParallelTensorBase &tensor,
                              OperatorType type);
   size_t get_owner_independent_hash() const;
@@ -148,19 +148,19 @@ struct ParallelTensorBase {
   int get_num_replicas() const;
   Legion::Domain get_domain() const;
   bool check_valid() const;
-  bool is_valid_machine_view(const MachineView &view) const;
-  void print(const std::string &name) const;
+  bool is_valid_machine_view(MachineView const &view) const;
+  void print(std::string const &name) const;
   static bool update_parallel_ids(int numdim, ParallelDim *dims);
   template <typename T>
   bool
-  set_tensor(const FFModel *model, const std::vector<int> &dims, const T *data);
+  set_tensor(FFModel const *model, std::vector<int> const &dims, const T *data);
   template <typename T>
-  bool get_tensor(const FFModel *model, T *data, bool get_parameters);
+  bool get_tensor(FFModel const *model, T *data, bool get_parameters);
   ParallelTensorShape get_shape() const;
 
 private:
   template <typename T>
-  bool get_input_sub_tensor_via_mappings(const ParallelConfig &pc,
+  bool get_input_sub_tensor_via_mappings(ParallelConfig const &pc,
                                          ParallelTensorBase &tensor) const;
 
 public:
@@ -172,7 +172,7 @@ public:
   ParameterSyncType sync_type = ParameterSyncType::NONE;
   Initializer *initializer = nullptr;
   // Describes the ownership of this tensor
-  const Op *owner_op = nullptr;
+  Op const *owner_op = nullptr;
   int owner_idx = 0;
   bool create_gradients = false;
 

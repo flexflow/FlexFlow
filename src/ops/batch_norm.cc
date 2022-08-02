@@ -30,7 +30,7 @@ using Legion::Runtime;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-Tensor FFModel::batch_norm(const Tensor input, bool relu, const char *name) {
+Tensor FFModel::batch_norm(const Tensor input, bool relu, char const *name) {
   assert(input->num_dims == 4); /*NCHW*/
   Layer *bm = new Layer(this,
                         OP_BATCHNORM,
@@ -56,7 +56,7 @@ BatchNorm::BatchNorm(FFModel &model,
                      const ParallelTensor _scale,
                      const ParallelTensor _bias,
                      bool _relu,
-                     const char *name)
+                     char const *name)
     : Op(model,
          OP_BATCHNORM,
          name,
@@ -77,7 +77,7 @@ BatchNorm::BatchNorm(FFModel &model,
   return;
 }
 
-void BatchNorm::init(const FFModel &ff) {
+void BatchNorm::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -121,7 +121,7 @@ void BatchNorm::init(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-void BatchNorm::forward(const FFModel &ff) {
+void BatchNorm::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -162,7 +162,7 @@ void BatchNorm::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void BatchNorm::backward(const FFModel &ff) {
+void BatchNorm::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -228,7 +228,7 @@ void BatchNorm::backward(const FFModel &ff) {
 }
 
 bool BatchNorm::measure_operator_cost(Simulator *sim,
-                                      const MachineView &mv,
+                                      MachineView const &mv,
                                       CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {

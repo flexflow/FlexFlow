@@ -37,10 +37,10 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 Tensor FFModel::layer_norm(const Tensor input,
-                           const std::vector<int> &axes,
+                           std::vector<int> const &axes,
                            bool elementwise_affine,
                            float eps,
-                           const char *name) {
+                           char const *name) {
   // axes must be the last axes.size() dimensions
   for (int i = 0; i < axes.size(); i++) {
     bool found = false;
@@ -94,8 +94,8 @@ Tensor FFModel::layer_norm(const Tensor input,
 
 Op *LayerNorm::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("elementwise_affine", value);
   bool elementwise_affine = (bool)value;
@@ -114,13 +114,13 @@ Op *LayerNorm::create_operator_from_layer(
 }
 
 LayerNorm::LayerNorm(FFModel &model,
-                     const LayerID &_layer_guid,
+                     LayerID const &_layer_guid,
                      const ParallelTensor _input,
-                     const std::vector<int> &axes,
+                     std::vector<int> const &axes,
                      bool _elementwise_affine,
                      float _eps,
                      bool allocate_weights,
-                     const char *name)
+                     char const *name)
     : Op(model,
          OP_LAYERNORM,
          name,
@@ -166,7 +166,7 @@ void LayerNorm::create_weights(FFModel &model) {
   // Create scale and bias
   Initializer *scale_initializer = new ConstantInitializer(1.0f);
   Initializer *bias_initializer = new ConstantInitializer(0.0f);
-  const int dims[1] = {weights[0].adim[0]};
+  int const dims[1] = {weights[0].adim[0]};
   switch (outputs[0].numDim) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
@@ -226,7 +226,7 @@ void LayerNorm::create_output_and_partition(FFModel &model) {
 }
 #endif
 
-void LayerNorm::init(const FFModel &ff) {
+void LayerNorm::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -258,17 +258,17 @@ void LayerNorm::init(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *LayerNorm::init_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+OpMeta *LayerNorm::init_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
   LayerNorm *ln = (LayerNorm *)task->args;
-  FFHandler handle = *((const FFHandler *)task->local_args);
+  FFHandler handle = *((FFHandler const *)task->local_args);
   LayerNormMeta *meta = new LayerNormMeta(handle, ln);
   return meta;
 }
 
-void LayerNorm::forward(const FFModel &ff) {
+void LayerNorm::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -316,13 +316,13 @@ void LayerNorm::forward(const FFModel &ff) {
   regions[2](I/O): gamma
   regions[3](I/O): beta
 */
-void LayerNorm::forward_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+void LayerNorm::forward_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
-  const LayerNormMeta *m = *((LayerNormMeta **)task->local_args);
+  LayerNormMeta const *m = *((LayerNormMeta **)task->local_args);
   assert(task->regions.size() == regions.size());
-  const float *in_ptr = NULL;
+  float const *in_ptr = NULL;
   float *out_ptr = NULL, *gamma_ptr = NULL, *beta_ptr = NULL;
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -355,7 +355,7 @@ void LayerNorm::forward_task(const Task *task,
       m, in_ptr, out_ptr, gamma_ptr, beta_ptr);
 }
 
-void LayerNorm::backward(const FFModel &ff) {
+void LayerNorm::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -423,13 +423,13 @@ void LayerNorm::backward(const FFModel &ff) {
   regions[4](I/O): gamma_grad
   regions[5](I/O): beta_grad
    */
-void LayerNorm::backward_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void LayerNorm::backward_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
-  const LayerNormMeta *m = *((LayerNormMeta **)task->local_args);
+  LayerNormMeta const *m = *((LayerNormMeta **)task->local_args);
   assert(task->regions.size() == regions.size());
-  const float *in_ptr = NULL, *out_grad_ptr = NULL, *gamma_ptr = NULL;
+  float const *in_ptr = NULL, *out_grad_ptr = NULL, *gamma_ptr = NULL;
   float *in_grad_ptr = NULL, *gamma_grad_ptr = NULL, *beta_grad_ptr = NULL;
   Domain out_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -477,7 +477,7 @@ void LayerNorm::backward_task(const Task *task,
 }
 
 bool LayerNorm::measure_operator_cost(Simulator *sim,
-                                      const MachineView &mv,
+                                      MachineView const &mv,
                                       CostMetrics &cost_metrics) const {
   return false;
 }

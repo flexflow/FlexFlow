@@ -44,8 +44,8 @@ void Concat::forward_kernel(float *output,
                             float const *const *inputs,
                             int num_inputs,
                             int axis,
-                            const Domain &out_domain,
-                            const Domain *in_domain,
+                            Domain const &out_domain,
+                            Domain const *in_domain,
                             cudaStream_t stream) {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
@@ -83,13 +83,13 @@ void Concat::forward_kernel(float *output,
 }
 
 /*static*/
-void Concat::forward_kernel_wrapper(const ConcatMeta *m,
+void Concat::forward_kernel_wrapper(ConcatMeta const *m,
                                     float *output,
                                     float const *const *inputs,
                                     int num_inputs,
                                     int axis,
-                                    const Domain &out_domain,
-                                    const Domain *in_domain) {
+                                    Domain const &out_domain,
+                                    Domain const *in_domain) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -118,12 +118,12 @@ void Concat::forward_kernel_wrapper(const ConcatMeta *m,
 }
 
 /*static*/
-void Concat::backward_kernel(const float *output_grad,
+void Concat::backward_kernel(float const *output_grad,
                              float **input_grads,
                              int num_inputs,
                              int axis,
-                             const Domain &out_grad_domain,
-                             const Domain *in_grad_domain,
+                             Domain const &out_grad_domain,
+                             Domain const *in_grad_domain,
                              cudaStream_t stream) {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
@@ -167,13 +167,13 @@ void Concat::backward_kernel(const float *output_grad,
 }
 
 /*static*/
-void Concat::backward_kernel_wrapper(const ConcatMeta *m,
-                                     const float *output_grad,
+void Concat::backward_kernel_wrapper(ConcatMeta const *m,
+                                     float const *output_grad,
                                      float **input_grads,
                                      int num_inputs,
                                      int axis,
-                                     const Domain &out_grad_domain,
-                                     const Domain *in_grad_domain) {
+                                     Domain const &out_grad_domain,
+                                     Domain const *in_grad_domain) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 

@@ -22,8 +22,8 @@ namespace FlexFlow {
 using Legion::Domain;
 
 SoftmaxMeta::SoftmaxMeta(FFHandler handler,
-                         const Softmax *softmax,
-                         const Domain &input_domain)
+                         Softmax const *softmax,
+                         Domain const &input_domain)
     : OpMeta(handler) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
@@ -93,7 +93,7 @@ void Softmax::backward_kernel(float *input_grad_ptr,
 }
 
 /* static */
-void Softmax::backward_kernel_wrapper(const SoftmaxMeta *m,
+void Softmax::backward_kernel_wrapper(SoftmaxMeta const *m,
                                       float *input_grad_ptr,
                                       float const *output_grad_ptr,
                                       size_t num_elements) {

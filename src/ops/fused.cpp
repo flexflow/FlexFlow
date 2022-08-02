@@ -43,17 +43,17 @@ using Legion::Rect;
 using Legion::Runtime;
 using Legion::Task;
 
-OpMeta *FusedOp::init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+OpMeta *FusedOp::init_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
-  const FusedOp *fused = (FusedOp *)task->args;
-  const FusedOpMeta *metas = (FusedOpMeta *)task->local_args;
+  FusedOp const *fused = (FusedOp *)task->args;
+  FusedOpMeta const *metas = (FusedOpMeta *)task->local_args;
   FusedOpMeta *local_meta = new FusedOpMeta();
   memcpy(local_meta, metas, sizeof(FusedOpMeta));
   local_meta->fused_op = (FusedOp *)malloc(sizeof(FusedOp));
   memcpy(static_cast<void *>(local_meta->fused_op),
-         static_cast<const void *>(fused),
+         static_cast<void const *>(fused),
          sizeof(FusedOp));
   return ((OpMeta *)local_meta);
 }
@@ -63,13 +63,13 @@ OpMeta *FusedOp::init_task(const Task *task,
   regions[...](I): weights
   regions[...](I): outputs
 */
-__host__ void FusedOp::forward_task(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+__host__ void FusedOp::forward_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
   // const FusedOp* fused = (FusedOp*) task->args;
-  const FusedOpMeta *metas = *((FusedOpMeta **)task->local_args);
-  const FusedOp *fused = metas->fused_op;
+  FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
+  FusedOp const *fused = metas->fused_op;
   assert(metas->numOperators == fused->numOperators);
   assert(regions.size() == task->regions.size());
   assert((int)regions.size() ==
@@ -77,8 +77,8 @@ __host__ void FusedOp::forward_task(const Task *task,
   Domain input_domain[MAX_NUM_INPUTS];
   Domain weight_domain[MAX_NUM_WEIGHTS];
   Domain output_domain[MAX_NUM_OUTPUTS];
-  const float *input_ptr[MAX_NUM_INPUTS];
-  const float *weight_ptr[MAX_NUM_WEIGHTS];
+  float const *input_ptr[MAX_NUM_INPUTS];
+  float const *weight_ptr[MAX_NUM_WEIGHTS];
   float *output_ptr[MAX_NUM_OUTPUTS];
   assert(fused->numInputs <= MAX_NUM_INPUTS);
   for (int i = 0; i < fused->numInputs; i++) {
@@ -124,8 +124,8 @@ __host__ void FusedOp::forward_task(const Task *task,
     Domain my_id[MAX_NUM_INPUTS];
     Domain my_wd[MAX_NUM_WEIGHTS];
     Domain my_od[MAX_NUM_OUTPUTS];
-    const float *my_ip[MAX_NUM_INPUTS];
-    const float *my_wp[MAX_NUM_WEIGHTS];
+    float const *my_ip[MAX_NUM_INPUTS];
+    float const *my_wp[MAX_NUM_WEIGHTS];
     float *my_op[MAX_NUM_OUTPUTS];
     for (int i = 0; i < fused->op_num_inputs[op]; i++) {
       int my_off = fused->op_input_idx[i + ioff];
@@ -335,13 +335,13 @@ __host__ void FusedOp::forward_task(const Task *task,
   regions[...](I/O): output_grad
 */
 
-__host__ void FusedOp::backward_task(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
+__host__ void FusedOp::backward_task(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
   // const FusedOp* fused = (FusedOp*) task->args;
-  const FusedOpMeta *metas = *((FusedOpMeta **)task->local_args);
-  const FusedOp *fused = metas->fused_op;
+  FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
+  FusedOp const *fused = metas->fused_op;
 
   assert(metas->numOperators == fused->numOperators);
   assert(regions.size() == task->regions.size());
@@ -352,11 +352,11 @@ __host__ void FusedOp::backward_task(const Task *task,
   Domain input_domain[MAX_NUM_INPUTS], input_grad_domain[MAX_NUM_INPUTS];
   Domain weight_domain[MAX_NUM_WEIGHTS], weight_grad_domain[MAX_NUM_WEIGHTS];
   Domain output_domain[MAX_NUM_OUTPUTS], output_grad_domain[MAX_NUM_OUTPUTS];
-  const float *input_ptr[MAX_NUM_INPUTS];
+  float const *input_ptr[MAX_NUM_INPUTS];
   float *input_grad_ptr[MAX_NUM_INPUTS];
-  const float *weight_ptr[MAX_NUM_WEIGHTS];
+  float const *weight_ptr[MAX_NUM_WEIGHTS];
   float *weight_grad_ptr[MAX_NUM_WEIGHTS];
-  const float *output_ptr[MAX_NUM_OUTPUTS];
+  float const *output_ptr[MAX_NUM_OUTPUTS];
   float *output_grad_ptr[MAX_NUM_OUTPUTS];
   int roff = 0;
   assert(fused->numInputs <= MAX_NUM_INPUTS);
@@ -425,9 +425,9 @@ __host__ void FusedOp::backward_task(const Task *task,
   Domain my_id[MAX_NUM_INPUTS], my_grad_id[MAX_NUM_INPUTS];
   Domain my_wd[MAX_NUM_WEIGHTS], my_grad_wd[MAX_NUM_WEIGHTS];
   Domain my_od[MAX_NUM_OUTPUTS], my_grad_od[MAX_NUM_OUTPUTS];
-  const float *my_ip[MAX_NUM_INPUTS];
-  const float *my_wp[MAX_NUM_WEIGHTS];
-  const float *my_op[MAX_NUM_OUTPUTS];
+  float const *my_ip[MAX_NUM_INPUTS];
+  float const *my_wp[MAX_NUM_WEIGHTS];
+  float const *my_op[MAX_NUM_OUTPUTS];
   float *my_grad_ip[MAX_NUM_INPUTS];
   float *my_grad_wp[MAX_NUM_WEIGHTS];
   float *my_grad_op[MAX_NUM_OUTPUTS];

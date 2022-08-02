@@ -34,8 +34,8 @@ LinearTestMeta get_test_meta(const std::string file_path) {
                         dense_projection_i_dim);
 }
 
-void top_level_task(const Task *task,
-                    const std::vector<PhysicalRegion> &regions,
+void top_level_task(Task const *task,
+                    std::vector<PhysicalRegion> const &regions,
                     Context ctx,
                     Runtime *runtime) {
   std::cout << "test framework launched" << std::endl;
@@ -48,7 +48,7 @@ void top_level_task(const Task *task,
   Initializer *bias_initializer = new ZeroInitializer();
   Tensor weights;
   {
-    const int dims[2] = {test_meta.dense_projection_o_dim,
+    int const dims[2] = {test_meta.dense_projection_o_dim,
                          test_meta.dense_projection_i_dim};
     weights = ff.create_linear_weight<2>(
         dims, (IndexSpaceT<2>)task_is, DT_FLOAT, kernel_initializer);
@@ -57,7 +57,7 @@ void top_level_task(const Task *task,
   }
   Tensor bias;
   {
-    const int dims[1] = {test_meta.dense_projection_o_dim};
+    int const dims[1] = {test_meta.dense_projection_o_dim};
     bias = ff.create_linear_weight<1>(
         dims, (IndexSpaceT<2>)task_is, DT_FLOAT, bias_initializer);
     auto bias_file_path = "test_bias1.txt";
@@ -69,7 +69,7 @@ void top_level_task(const Task *task,
   // create dense projection
   Tensor dense_projection;
   {
-    const int dims[2] = {test_meta.batch_size,
+    int const dims[2] = {test_meta.batch_size,
                          test_meta.dense_projection_i_dim};
     dense_projection = ff.create_tensor<2>(dims, "", DT_FLOAT);
     // dense_projection = ff.create_linear_weight<2>(dims,

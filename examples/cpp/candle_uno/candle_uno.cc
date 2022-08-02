@@ -45,8 +45,8 @@ CandleConfig::CandleConfig(void) {
 }
 
 Tensor build_feature_model(FFModel *model,
-                           const Tensor &input,
-                           const std::vector<int> &dense_layers) {
+                           Tensor const &input,
+                           std::vector<int> const &dense_layers) {
   Tensor t = input;
   for (size_t i = 0; i < dense_layers.size(); i++) {
     t = model->dense(t, dense_layers[i], AC_MODE_RELU, false /*bias*/);
@@ -54,7 +54,7 @@ Tensor build_feature_model(FFModel *model,
   return t;
 }
 
-void print_vector(const std::string &name, const std::vector<int> &vector) {
+void print_vector(std::string const &name, std::vector<int> const &vector) {
   std::ostringstream out;
   for (size_t i = 0; i < vector.size() - 1; i++)
     out << vector[i] << " ";
@@ -63,14 +63,14 @@ void print_vector(const std::string &name, const std::vector<int> &vector) {
   log_app.print("%s: %s", name.c_str(), out.str().c_str());
 }
 
-void FlexFlow::top_level_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void FlexFlow::top_level_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
   FFConfig ff_config;
   CandleConfig candle_config;
   {
-    const InputArgs &command_args = HighLevelRuntime::get_input_args();
+    InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
     parse_input_args(argv, argc, candle_config);
@@ -104,7 +104,7 @@ void FlexFlow::top_level_task(const Task *task,
        it++) {
     assert(feature_shapes.find(it->second) != feature_shapes.end());
     int shape = feature_shapes[it->second];
-    const int dims[] = {ff_config.batchSize, shape};
+    int const dims[] = {ff_config.batchSize, shape};
     Tensor input = ff.create_tensor<2>(dims, DT_FLOAT);
     all_inputs.push_back(input);
     if (input_models.find(it->second) != input_models.end()) {
@@ -202,7 +202,7 @@ void parse_input_args(char **argv, int argc, CandleConfig &config) {
   }
 }
 
-size_t get_file_size(const std::string &filename) {
+size_t get_file_size(std::string const &filename) {
   streampos begin, end;
   ifstream file(filename.c_str(), ios::binary);
   begin = file.tellg();
@@ -215,8 +215,8 @@ size_t get_file_size(const std::string &filename) {
 }
 
 DataLoader::DataLoader(FFModel &ff,
-                       const CandleConfig &candle,
-                       const std::vector<Tensor> &_inputs,
+                       CandleConfig const &candle,
+                       std::vector<Tensor> const &_inputs,
                        Tensor _label) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -248,18 +248,18 @@ DataLoader::DataLoader(FFModel &ff,
   return;
   for (size_t i = 0; i < _inputs.size(); i++) {
     batch_inputs.push_back(_inputs[i]);
-    const int dims[] = {num_samples, _inputs[i]->dims[0]};
+    int const dims[] = {num_samples, _inputs[i]->dims[0]};
     Tensor full_input = ff.create_tensor<2>(dims, DT_FLOAT);
     full_inputs.push_back(full_input);
   }
   {
     batch_label = _label;
-    const int dims[] = {num_samples, 1};
+    int const dims[] = {num_samples, 1};
     full_label = ff.create_tensor<2>(dims, DT_FLOAT);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
-  const CandleConfig *ptr = &candle;
+  CandleConfig const *ptr = &candle;
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
                         TaskArgument(&ptr, sizeof(CandleConfig *)));
   // regions[0]: full_label
@@ -283,14 +283,14 @@ DataLoader::DataLoader(FFModel &ff,
   runtime->execute_task(ctx, launcher);
 }
 
-void DataLoader::load_entire_dataset(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
+void DataLoader::load_entire_dataset(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
   CandleConfig *candle = *((CandleConfig **)task->args);
   assert(regions.size() == candle->input_features.size() + 1);
   assert(task->regions.size() == regions.size());
-  const AccessorWO<float, 2> acc_label(regions[0], FID_DATA);
+  AccessorWO<float, 2> const acc_label(regions[0], FID_DATA);
   Rect<2> rect_label = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_label.accessor.is_dense_arbitrary(rect_label));
@@ -313,7 +313,7 @@ void DataLoader::load_entire_dataset(const Task *task,
        it != candle->input_features.end();
        it++, idx++) {
     printf("idx = %d\n", idx);
-    const AccessorWO<float, 2> acc_input(regions[idx + 1], FID_DATA);
+    AccessorWO<float, 2> const acc_input(regions[idx + 1], FID_DATA);
     Rect<2> rect_input = runtime->get_index_space_domain(
         ctx, task->regions[idx + 1].region.get_index_space());
     assert(acc_input.accessor.is_dense_arbitrary(rect_input));

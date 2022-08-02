@@ -21,13 +21,13 @@ private:
                   ParallelDim output_dims[MAX_TENSOR_DIM]) const;
 };
 
-bool operator==(const Pool2DParams &, const Pool2DParams &);
+bool operator==(Pool2DParams const &, Pool2DParams const &);
 
 } // namespace FlexFlow
 
 namespace std {
 template <> struct hash<FlexFlow::Pool2DParams> {
-  size_t operator()(const FlexFlow::Pool2DParams &) const;
+  size_t operator()(FlexFlow::Pool2DParams const &) const;
 };
 } // namespace std
 

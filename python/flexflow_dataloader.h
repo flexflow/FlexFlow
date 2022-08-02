@@ -35,8 +35,8 @@ struct DLRMConfig {
 class ImgDataLoader {
 public:
   ImgDataLoader();
-  static void load_label(const Legion::Task *task,
-                         const std::vector<Legion::PhysicalRegion> &regions,
+  static void load_label(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
                          Legion::Runtime *runtime);
   void reset(void);
@@ -56,27 +56,27 @@ public:
                   FlexFlow::ParallelTensor full_label_,
                   int num_samples_);
   ImgDataLoader4D(FlexFlow::FFModel &ff,
-                  const NetConfig &alexnet,
+                  NetConfig const &alexnet,
                   FlexFlow::ParallelTensor input,
                   FlexFlow::ParallelTensor label);
-  static void load_input(const Legion::Task *task,
-                         const std::vector<Legion::PhysicalRegion> &regions,
+  static void load_input(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
                          Legion::Runtime *runtime);
   static void
-  load_entire_dataset(const Legion::Task *task,
-                      const std::vector<Legion::PhysicalRegion> &regions,
+  load_entire_dataset(Legion::Task const *task,
+                      std::vector<Legion::PhysicalRegion> const &regions,
                       Legion::Context ctx,
                       Legion::Runtime *runtime);
   static void load_entire_dataset_from_numpy(
-      const Legion::Task *task,
-      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
   void next_batch(FlexFlow::FFModel &);
 
 private:
-  size_t get_file_size(const std::string &filename);
+  size_t get_file_size(std::string const &filename);
 };
 
 class ImgDataLoader2D : public ImgDataLoader {
@@ -87,13 +87,13 @@ public:
                   FlexFlow::ParallelTensor full_input_,
                   FlexFlow::ParallelTensor full_label_,
                   int num_samples_);
-  static void load_input(const Legion::Task *task,
-                         const std::vector<Legion::PhysicalRegion> &regions,
+  static void load_input(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
                          Legion::Runtime *runtime);
   static void load_entire_dataset_from_numpy(
-      const Legion::Task *task,
-      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
   void next_batch(FlexFlow::FFModel &);
@@ -122,8 +122,8 @@ public:
   static void register_gpu_tasks(void);
 
   template <typename DT>
-  static void load_input(const Legion::Task *task,
-                         const std::vector<Legion::PhysicalRegion> &regions,
+  static void load_input(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
                          Legion::Runtime *runtime);
   // template<typename DT, int NDIM>
@@ -134,26 +134,26 @@ public:
   //     Legion::Runtime* runtime);
   template <typename DT>
   static void load_entire_dataset_from_numpy(
-      const Legion::Task *task,
-      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
   template <typename DT, int NDIM>
   static void load_entire_dataset_from_numpy_with_dim(
-      const Legion::Task *task,
-      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
   template <typename DT>
   static void index_load_entire_dataset_from_numpy(
-      const Legion::Task *task,
-      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
   template <typename DT, int NDIM>
   static void index_load_entire_dataset_from_numpy_with_dim(
-      const Legion::Task *task,
-      const std::vector<Legion::PhysicalRegion> &regions,
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
 

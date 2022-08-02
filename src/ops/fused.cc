@@ -246,7 +246,7 @@ void FusedOp::map_output_tensors(FFModel &model) {
 }
 #endif
 
-void FusedOp::init(const FFModel &ff) {
+void FusedOp::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -304,7 +304,7 @@ void FusedOp::init(const FFModel &ff) {
   }
 }
 
-void FusedOp::forward(const FFModel &ff) {
+void FusedOp::forward(FFModel const &ff) {
   // Set iter_config
   iter_config = ff.iter_config;
   ArgumentMap argmap;
@@ -353,7 +353,7 @@ void FusedOp::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void FusedOp::backward(const FFModel &ff) {
+void FusedOp::backward(FFModel const &ff) {
   // Set iter_config
   iter_config = ff.iter_config;
   ArgumentMap argmap;
@@ -421,7 +421,7 @@ void FusedOp::backward(const FFModel &ff) {
 }
 
 bool FusedOp::measure_operator_cost(Simulator *sim,
-                                    const MachineView &mv,
+                                    MachineView const &mv,
                                     CostMetrics &cost_metrics) const {
   // The search should happen before fusion
   assert(false);

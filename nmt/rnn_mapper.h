@@ -28,14 +28,14 @@ public:
   RnnMapper(MapperRuntime *rt,
             Machine machine,
             Processor local,
-            const char *mapper_name,
+            char const *mapper_name,
             std::vector<Processor> *gpus,
             std::map<Processor, Memory> *proc_fbmems,
             std::vector<Processor> *cpus);
 
 public:
   virtual void select_task_options(const MapperContext ctx,
-                                   const Task &task,
+                                   Task const &task,
                                    TaskOptions &output);
   // virtual void slice_task(const MapperContext ctx,
   //                       const Task& task,
@@ -59,5 +59,5 @@ protected:
 
 void update_mappers(Machine machine,
                     Runtime *rt,
-                    const std::set<Processor> &local_procs);
+                    std::set<Processor> const &local_procs);
 #endif

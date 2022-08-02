@@ -6,7 +6,7 @@ namespace FlexFlow {
 
 Layer::Layer(FFModel *model,
              OperatorType _type,
-             const char *_name,
+             char const *_name,
              int _numInputs,
              int _numWeights,
              int _numOutputs,
@@ -42,11 +42,11 @@ Layer::Layer(FFModel *model,
 
 Layer::Layer(FFModel *model,
              OperatorType _type,
-             const char *_name,
+             char const *_name,
              int _numInputs,
              int _numWeights,
              int _numOutputs,
-             const Tensor *_tensors)
+             Tensor const *_tensors)
     : op_type(_type), data_type(DT_FLOAT),
       layer_guid(model->layer_global_guid++), numInputs(_numInputs),
       numWeights(_numWeights), numOutputs(_numOutputs) {
@@ -68,25 +68,25 @@ Layer::Layer(FFModel *model,
   }
 }
 
-void Layer::add_int_property(const std::string &key, long long value) {
+void Layer::add_int_property(std::string const &key, long long value) {
   int_properties[key] = value;
 }
 
-void Layer::add_float_property(const std::string &key, float value) {
+void Layer::add_float_property(std::string const &key, float value) {
   float_properties[key] = value;
 }
 
-void Layer::add_int_vector_property(const std::string &key,
-                                    const std::vector<int> &value) {
+void Layer::add_int_vector_property(std::string const &key,
+                                    std::vector<int> const &value) {
   int_vector_properties[key] = value;
 }
 
-void Layer::add_initializer(const std::string &key, Initializer *initializer) {
+void Layer::add_initializer(std::string const &key, Initializer *initializer) {
   initializers[key] = initializer;
 }
 
-bool Layer::get_int_property(const std::string &key, long long &value) const {
-  const auto &it = int_properties.find(key);
+bool Layer::get_int_property(std::string const &key, long long &value) const {
+  auto const &it = int_properties.find(key);
   if (it == int_properties.end()) {
     assert(false);
     return false;
@@ -96,8 +96,8 @@ bool Layer::get_int_property(const std::string &key, long long &value) const {
   }
 }
 
-bool Layer::get_float_property(const std::string &key, float &value) const {
-  const auto &it = float_properties.find(key);
+bool Layer::get_float_property(std::string const &key, float &value) const {
+  auto const &it = float_properties.find(key);
   if (it == float_properties.end()) {
     assert(false);
     return false;
@@ -107,9 +107,9 @@ bool Layer::get_float_property(const std::string &key, float &value) const {
   }
 }
 
-bool Layer::get_int_vector_property(const std::string &key,
+bool Layer::get_int_vector_property(std::string const &key,
                                     std::vector<int> &value) const {
-  const auto &it = int_vector_properties.find(key);
+  auto const &it = int_vector_properties.find(key);
   if (it == int_vector_properties.end()) {
     assert(false);
     return false;
@@ -119,9 +119,9 @@ bool Layer::get_int_vector_property(const std::string &key,
   }
 }
 
-bool Layer::get_initializer(const std::string &key,
+bool Layer::get_initializer(std::string const &key,
                             Initializer *&initializer) const {
-  const auto &it = initializers.find(key);
+  auto const &it = initializers.find(key);
   if (it == initializers.end()) {
     assert(false);
     return false;
