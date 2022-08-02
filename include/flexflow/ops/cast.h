@@ -25,7 +25,7 @@ namespace FlexFlow {
 struct CastParams {
   DataType dtype;
   bool is_valid(const ParallelTensorShape &) const;
-}
+};
 bool operator==(const CastParams &, const CastParams &);
 
 class CastMeta : public OpMeta {
