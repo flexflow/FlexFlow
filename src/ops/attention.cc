@@ -37,6 +37,14 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
+bool MultiHeadAttentionParams::is_valid(const std::vector<ParallelTensorShape> & input) const {
+  bool is_valid = true;
+  for (auto pt_shape: input) {
+    is_valid &= pt_shape.is_valid();
+  }
+  return is_valid;
+}
+
 Tensor FFModel::multihead_attention(const Tensor query,
                                     const Tensor key,
                                     const Tensor value,
