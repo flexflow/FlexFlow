@@ -36,7 +36,7 @@ using Legion::TaskLauncher;
 // (resp. vector along the last dimension). Thus,
 // values.shape = indices.shape = input.shape[:-1] + [k]
 void FFModel::top_k(
-    const Tensor input, Tensor *outputs, int k, bool sorted, const char *name) {
+    const Tensor input, Tensor *outputs, int k, bool sorted, char const *name) {
   assert(false);
 #ifdef DEADCODE
   TopK *topk = new TopK(*this, input, k, sorted, name);
@@ -51,7 +51,7 @@ TopK::TopK(FFModel &model,
            const ParallelTensor _input,
            int _k,
            bool _sorted,
-           const char *name)
+           char const *name)
     : Op(model,
          OP_TOPK,
          name,
@@ -73,7 +73,7 @@ TopK::TopK(FFModel &model,
       numdim, dims, DT_INT32, this, 1 /*owner_idx*/);
 }
 
-void TopK::init(const FFModel &ff) {
+void TopK::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -111,8 +111,8 @@ void TopK::init(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *TopK::init_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
+OpMeta *TopK::init_task(Task const *task,
+                        std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {
   TopK *topk = (TopK *)task->args;
@@ -123,7 +123,7 @@ OpMeta *TopK::init_task(const Task *task,
   return m;
 }
 
-void TopK::forward(const FFModel &ff) {
+void TopK::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -157,14 +157,14 @@ void TopK::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void TopK::forward_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
+void TopK::forward_task(Task const *task,
+                        std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   // const TopK* topk = (const TopK*) task->args;
-  const TopKMeta *m = *((TopKMeta **)task->local_args);
+  TopKMeta const *m = *((TopKMeta **)task->local_args);
   Domain in1_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain out1_domain = runtime->get_index_space_domain(
@@ -181,7 +181,7 @@ void TopK::forward_task(const Task *task,
     assert(in1_domain.lo()[i] == out1_domain.lo()[i]);
     assert(in1_domain.hi()[i] == out1_domain.hi()[i]);
   }
-  const float *in_ptr = helperGetTensorPointerRO<float>(
+  float const *in_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float *value_ptr = helperGetTensorPointerWO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
@@ -197,7 +197,7 @@ void TopK::forward_task(const Task *task,
       m, in_ptr, value_ptr, index_ptr, batch_size, length, k, m->sorted);
 }
 
-void TopK::backward(const FFModel &ff) {
+void TopK::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -239,12 +239,12 @@ void TopK::backward(const FFModel &ff) {
   regions[1](I): out2
   regions[2](I/0): in_grad
 */
-void TopK::backward_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+void TopK::backward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
   // const TopK* topk = (const TopK*) task->args;
-  const TopKMeta *m = *((TopKMeta **)task->local_args);
+  TopKMeta const *m = *((TopKMeta **)task->local_args);
   assert(regions.size() == 3);
   Domain out1_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -257,9 +257,9 @@ void TopK::backward_task(const Task *task,
     assert(in_domain.lo()[i] == out1_domain.lo()[i]);
     assert(in_domain.hi()[i] == out1_domain.hi()[i]);
   }
-  const float *value_grad_ptr = helperGetTensorPointerRO<float>(
+  float const *value_grad_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  const int *indices_ptr = helperGetTensorPointerRO<int>(
+  int const *indices_ptr = helperGetTensorPointerRO<int>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   float *in_grad_ptr = helperGetTensorPointerRW<float>(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
@@ -272,7 +272,7 @@ void TopK::backward_task(const Task *task,
 }
 
 bool TopK::measure_operator_cost(Simulator *sim,
-                                 const MachineView &mv,
+                                 MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
   // To be implemented
   assert(false);

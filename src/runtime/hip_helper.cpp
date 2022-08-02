@@ -53,7 +53,7 @@ __global__ void reluBackward(DT *grad_ptr, const DT *output, size_t n) {
 
 __host__ void relu_backward_kernel(DataType data_type,
                                    void *output_grad_ptr,
-                                   const void *output_ptr,
+                                   void const *output_ptr,
                                    size_t output_size,
                                    hipStream_t stream) {
   if (data_type == DT_FLOAT) {
@@ -63,7 +63,7 @@ __host__ void relu_backward_kernel(DataType data_type,
                        0,
                        stream,
                        (float *)output_grad_ptr,
-                       (const float *)output_ptr,
+                       (float const *)output_ptr,
                        output_size);
   } else if (data_type == DT_DOUBLE) {
     hipLaunchKernelGGL(HIP_KERNEL_NAME(reluBackward<double>),
@@ -72,7 +72,7 @@ __host__ void relu_backward_kernel(DataType data_type,
                        0,
                        stream,
                        (double *)output_grad_ptr,
-                       (const double *)output_ptr,
+                       (double const *)output_ptr,
                        output_size);
   } else {
     assert(false && "Unsupported data type in Linear backward");
@@ -90,7 +90,7 @@ sigmoid_backward_function(DT *grad_ptr, const DT *output, size_t n) {
 
 __host__ void sigmoid_backward_kernel(DataType data_type,
                                       void *output_grad_ptr,
-                                      const void *output_ptr,
+                                      void const *output_ptr,
                                       size_t output_size,
                                       hipStream_t stream) {
   if (data_type == DT_FLOAT) {
@@ -100,7 +100,7 @@ __host__ void sigmoid_backward_kernel(DataType data_type,
                        0,
                        stream,
                        (float *)output_grad_ptr,
-                       (const float *)output_ptr,
+                       (float const *)output_ptr,
                        output_size);
   } else if (data_type == DT_DOUBLE) {
     hipLaunchKernelGGL(HIP_KERNEL_NAME(sigmoid_backward_function<double>),
@@ -109,7 +109,7 @@ __host__ void sigmoid_backward_kernel(DataType data_type,
                        0,
                        stream,
                        (double *)output_grad_ptr,
-                       (const double *)output_ptr,
+                       (double const *)output_ptr,
                        output_size);
   } else {
     assert(false && "Unsupported data type in Linear backward");
@@ -118,16 +118,16 @@ __host__ void sigmoid_backward_kernel(DataType data_type,
 }
 
 __global__ void
-gelu_forward_kernel(size_t size, const float B, const float C, float *input) {
+gelu_forward_kernel(size_t size, float const B, float const C, float *input) {
   CUDA_KERNEL_LOOP(i, size) {
-    const float in = input[i];
-    const float cdf = 0.5f + 0.5f * tanh(in * (C * in * in + B));
+    float const in = input[i];
+    float const cdf = 0.5f + 0.5f * tanh(in * (C * in * in + B));
     input[i] = in * cdf;
   }
 }
 
 __global__ void
-apply_add(float *data_ptr, const float *replica_ptr, size_t size) {
+apply_add(float *data_ptr, float const *replica_ptr, size_t size) {
   CUDA_KERNEL_LOOP(i, size) { data_ptr[i] += replica_ptr[i]; }
 }
 
@@ -143,7 +143,7 @@ __global__ void add_kernel(T *data_ptr, const T *grad_ptr, size_t size) {
 }
 
 __global__ void add_with_stride(float *output,
-                                const float *input,
+                                float const *input,
                                 int num_blocks,
                                 int output_blk_size,
                                 int input_blk_size) {
@@ -158,7 +158,7 @@ __global__ void add_with_stride(float *output,
 }
 
 __global__ void copy_with_stride(float *output,
-                                 const float *input,
+                                 float const *input,
                                  int num_blocks,
                                  int output_blk_size,
                                  int input_blk_size) {
@@ -173,7 +173,7 @@ __global__ void copy_with_stride(float *output,
 }
 
 __host__ void updateGAS(float *para_ptr,
-                        const float *grad_ptr,
+                        float const *grad_ptr,
                         size_t replica_size,
                         int num_replica,
                         float learning_rate) {
@@ -181,7 +181,7 @@ __host__ void updateGAS(float *para_ptr,
   checkCUDA(get_legion_stream(&stream));
   // Step 1: gater gradients to the first replica
   for (int i = 1; i < num_replica; i++) {
-    const float *replica = grad_ptr + i * replica_size;
+    float const *replica = grad_ptr + i * replica_size;
     hipLaunchKernelGGL(apply_add,
                        GET_BLOCKS(replica_size),
                        CUDA_NUM_THREADS,
@@ -206,7 +206,7 @@ __host__ void updateGAS(float *para_ptr,
 
 #ifdef DEADCODE
 template <unsigned DIM, typename T>
-__host__ void print_tensor(const T *ptr, Rect<DIM> rect, const char *prefix) {
+__host__ void print_tensor(const T *ptr, Rect<DIM> rect, char const *prefix) {
   // device synchronize to make sure the data are ready
   // checkCUDA(hipDeviceSynchronize());
   T *host_ptr;
@@ -230,7 +230,7 @@ __host__ void print_tensor(const T *ptr, Rect<DIM> rect, const char *prefix) {
 
 template <typename T>
 __host__ void
-print_tensor(const T *ptr, size_t num_elements, const char *prefix) {
+print_tensor(const T *ptr, size_t num_elements, char const *prefix) {
   // device synchronize to make sure the data are ready
   // checkCUDA(hipDeviceSynchronize());
   T *host_ptr;
@@ -339,37 +339,37 @@ template __global__ void
 assign_kernel<int64_t>(int64_t *ptr, coord_t size, int64_t value);
 
 template __global__ void
-add_kernel<float>(float *dst, const float *src, size_t size);
+add_kernel<float>(float *dst, float const *src, size_t size);
 template __global__ void
-add_kernel<double>(double *dst, const double *src, size_t size);
+add_kernel<double>(double *dst, double const *src, size_t size);
 
 template __global__ void
-copy_kernel<float>(float *dst, const float *src, coord_t size);
+copy_kernel<float>(float *dst, float const *src, coord_t size);
 template __global__ void
-copy_kernel<int32_t>(int32_t *dst, const int32_t *src, coord_t size);
+copy_kernel<int32_t>(int32_t *dst, int32_t const *src, coord_t size);
 template __global__ void
-copy_kernel<int64_t>(int64_t *dst, const int64_t *src, coord_t size);
+copy_kernel<int64_t>(int64_t *dst, int64_t const *src, coord_t size);
 
 template __global__ void apply_add_with_scale<float>(float *data_ptr,
-                                                     const float *grad_ptr,
+                                                     float const *grad_ptr,
                                                      size_t size,
                                                      float scale);
 template __global__ void apply_add_with_scale<double>(double *data_ptr,
-                                                      const double *grad_ptr,
+                                                      double const *grad_ptr,
                                                       size_t size,
                                                       double scale);
 template __global__ void apply_add_with_scale<int32_t>(int32_t *data_ptr,
-                                                       const int32_t *grad_ptr,
+                                                       int32_t const *grad_ptr,
                                                        size_t size,
                                                        int32_t scale);
 template __global__ void apply_add_with_scale<int64_t>(int64_t *data_ptr,
-                                                       const int64_t *grad_ptr,
+                                                       int64_t const *grad_ptr,
                                                        size_t size,
                                                        int64_t scale);
 
 template __host__ void
-print_tensor<float>(const float *ptr, size_t rect, const char *prefix);
+print_tensor<float>(float const *ptr, size_t rect, char const *prefix);
 template __host__ void
-print_tensor<int32_t>(const int32_t *ptr, size_t rect, const char *prefix);
+print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
 template __host__ void
-print_tensor<int64_t>(const int64_t *ptr, size_t rect, const char *prefix);
+print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);

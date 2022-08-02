@@ -53,7 +53,7 @@ struct GenericTensorAccessorR {
   DataType data_type;
   Legion::Domain domain;
   Legion::Memory memory;
-  const void *ptr;
+  void const *ptr;
 };
 
 struct GenericTensorAccessorW {

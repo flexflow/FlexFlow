@@ -19,8 +19,8 @@ TransposeTestMeta get_test_meta(const std::string file_path) {
   return TransposeTestMeta(m, k, d);
 }
 
-void top_level_task(const Task *task,
-                    const std::vector<PhysicalRegion> &regions,
+void top_level_task(Task const *task,
+                    std::vector<PhysicalRegion> const &regions,
                     Context ctx,
                     Runtime *runtime) {
   // std::cout<< "test framework launched" << std::endl;
@@ -31,7 +31,7 @@ void top_level_task(const Task *task,
   // create input tensor
   Tensor dense_input;
   {
-    const int dims[3] = {
+    int const dims[3] = {
         test_meta.d, test_meta.m, test_meta.k}; // target shape (d,m,k)
     dense_input = ff.create_tensor<3>(dims, "transpose", DT_FLOAT);
   }

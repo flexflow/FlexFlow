@@ -16,8 +16,8 @@
 #include "candle_uno.h"
 #include "flexflow/utils/cuda_helper.h"
 
-void DataLoader::load_input(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+void DataLoader::load_input(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
   assert(regions.size() == 2);
@@ -39,7 +39,7 @@ void DataLoader::load_input(const Task *task,
   assert(batch_size == meta->num_samples);
   for (int i = 1; i < batch_size; i++)
     assert(meta->idxs[i] == meta->idxs[0] + i);
-  const float *input_zc = acc_full_input.ptr + meta->idxs[0] * num_feats;
+  float const *input_zc = acc_full_input.ptr + meta->idxs[0] * num_feats;
   copy_kernel<<<GET_BLOCKS(acc_batch_input.rect.volume()), CUDA_NUM_THREADS>>>(
       acc_batch_input.ptr, input_zc, acc_batch_input.rect.volume());
   checkCUDA(cudaDeviceSynchronize());

@@ -109,7 +109,7 @@ public:
   // bool load_strategy_file(std::string filename);
   // bool save_strategy_file(std::string filename);
   void parse_args(char **argv, int argc);
-  static Legion::MappingTagID get_hash_id(const std::string &pcname);
+  static Legion::MappingTagID get_hash_id(std::string const &pcname);
   // bool find_parallel_config(int ndims,
   //                           const std::string& pcname,
   //                           ParallelConfig& config) const;

@@ -21,23 +21,23 @@
 #define NOT_USE_SIMULATE_OPT
 //#define VERBOSE
 
-const int SRC_LENGTH = 5;
-const int DST_LENGTH = 5;
-const int LSTM_PER_NODE_LENGTH = 8;
-const int NUM_LAYERS = 2;
-const int VOCAB_SIZE = 32000;
-const int LOCAL_BATCH_SIZE = 64;
-const int EMBEDDING_SIZE = 1024;
-const int HIDDEN_SIZE = 1024;
-const int NUM_NODES = 2;
-const int WORKERS_PER_NODE = 4;
-const int NUM_WORKERS =
+int const SRC_LENGTH = 5;
+int const DST_LENGTH = 5;
+int const LSTM_PER_NODE_LENGTH = 8;
+int const NUM_LAYERS = 2;
+int const VOCAB_SIZE = 32000;
+int const LOCAL_BATCH_SIZE = 64;
+int const EMBEDDING_SIZE = 1024;
+int const HIDDEN_SIZE = 1024;
+int const NUM_NODES = 2;
+int const WORKERS_PER_NODE = 4;
+int const NUM_WORKERS =
     NUM_NODES * WORKERS_PER_NODE; // NUM_WORKERS <= MAX_NUM_WORKERS
-const int NUM_PARTITIONS =
+int const NUM_PARTITIONS =
     NUM_NODES * WORKERS_PER_NODE; // NUM_PARTITIONS <= MAX_NUM_PARTS
-const int BATCH_SIZE = NUM_PARTITIONS * LOCAL_BATCH_SIZE;
-const float INTRA_NODE_BANDWIDTH = 4 * 1024 * 1024;
-const float CROSS_NODE_BANDWIDTH = 1 * 1024 * 1024;
+int const BATCH_SIZE = NUM_PARTITIONS * LOCAL_BATCH_SIZE;
+float const INTRA_NODE_BANDWIDTH = 4 * 1024 * 1024;
+float const CROSS_NODE_BANDWIDTH = 1 * 1024 * 1024;
 
 using namespace std;
 
@@ -108,7 +108,7 @@ public:
 
   virtual float compute(OpConfig c) = 0;
 
-  virtual float update(const std::vector<OpConfig> &vec) = 0;
+  virtual float update(std::vector<OpConfig> const &vec) = 0;
 
   virtual Rect
   get_tensor_shape(OpConfig c, int idx, Tensor t, bool is_input) = 0;
@@ -195,7 +195,7 @@ public:
     bestCompTime += bestV;
   }
   float compute(OpConfig c);
-  float update(const std::vector<OpConfig> &vec);
+  float update(std::vector<OpConfig> const &vec);
   Rect get_tensor_shape(OpConfig c, int idx, Tensor t, bool is_input);
   OpConfig get_random_config();
 
@@ -217,7 +217,7 @@ float Conv2D::compute(OpConfig c) {
   return computeTime[idx];
 };
 
-float Conv2D::update(const std::vector<OpConfig> &vec) {
+float Conv2D::update(std::vector<OpConfig> const &vec) {
   int used[NUM_WORKERS];
   assert(vec.size() == 1);
   OpConfig config = vec[0];
@@ -335,7 +335,7 @@ public:
     bestCompTime += bestV;
   }
   float compute(OpConfig c);
-  float update(const std::vector<OpConfig> &vec);
+  float update(std::vector<OpConfig> const &vec);
   Rect get_tensor_shape(OpConfig c, int idx, Tensor t, bool is_input);
   OpConfig get_random_config();
 
@@ -357,7 +357,7 @@ float Pool2D::compute(OpConfig c) {
   return computeTime[idx];
 }
 
-float Pool2D::update(const std::vector<OpConfig> &vec) { return 0; }
+float Pool2D::update(std::vector<OpConfig> const &vec) { return 0; }
 
 Rect Pool2D::get_tensor_shape(OpConfig config,
                               int idx,
@@ -412,7 +412,7 @@ public:
       config_x[nConfigs++] = i;
   }
   float compute(OpConfig c);
-  float update(const std::vector<OpConfig> &vec);
+  float update(std::vector<OpConfig> const &vec);
   Rect get_tensor_shape(OpConfig c, int idx, Tensor t, bool is_input);
   OpConfig get_random_config();
 
@@ -422,7 +422,7 @@ private:
 
 float Concat::compute(OpConfig c) { return 0.02 / c.nParts; }
 
-float Concat::update(const std::vector<OpConfig> &vec) { return 0; }
+float Concat::update(std::vector<OpConfig> const &vec) { return 0; }
 
 Rect Concat::get_tensor_shape(OpConfig config,
                               int idx,
@@ -470,7 +470,7 @@ public:
       config_x[nConfigs++] = i;
   }
   float compute(OpConfig c);
-  float update(const std::vector<OpConfig> &vec);
+  float update(std::vector<OpConfig> const &vec);
   Rect get_tensor_shape(OpConfig c, int idx, Tensor t, bool is_input);
   OpConfig get_random_config();
 
@@ -481,7 +481,7 @@ private:
 
 float Flat::compute(OpConfig c) { return 0; }
 
-float Flat::update(const std::vector<OpConfig> &vec) { return 0; }
+float Flat::update(std::vector<OpConfig> const &vec) { return 0; }
 
 Rect Flat::get_tensor_shape(OpConfig config, int idx, Tensor t, bool is_input) {
   assert(config.nDims == 1);
@@ -573,7 +573,7 @@ public:
            bestV);
   }
   float compute(OpConfig c);
-  float update(const std::vector<OpConfig> &vec);
+  float update(std::vector<OpConfig> const &vec);
   Rect get_tensor_shape(OpConfig c, int idx, Tensor t, bool is_input);
   // float xfer(Tensor t, OpConfig config, OpConfig preConfig);
   OpConfig get_random_config();
@@ -595,7 +595,7 @@ float LSTM::compute(OpConfig c) {
   return computeTime[idx];
 };
 
-float LSTM::update(const std::vector<OpConfig> &vec) {
+float LSTM::update(std::vector<OpConfig> const &vec) {
   int used[NUM_WORKERS];
   float xfer = hiddenSize * inputSize * 8 * sizeof(float);
   for (int i = 0; i < NUM_WORKERS; i++)
@@ -705,7 +705,7 @@ public:
   }
 
   float compute(OpConfig c);
-  float update(const std::vector<OpConfig> &c);
+  float update(std::vector<OpConfig> const &c);
   Rect get_tensor_shape(OpConfig c, int idx, Tensor t, bool is_input);
   // float xfer(Tensor t, OpConfig config, OpConfig preConfig);
   OpConfig get_random_config();
@@ -728,7 +728,7 @@ float Softmax::compute(OpConfig c) {
   return computeTime[idx];
 };
 
-float Softmax::update(const std::vector<OpConfig> &vec) {
+float Softmax::update(std::vector<OpConfig> const &vec) {
   int used[NUM_WORKERS][NUM_PARTITIONS];
   for (int i = 0; i < NUM_WORKERS; i++)
     for (int j = 0; j < NUM_PARTITIONS; j++)
@@ -840,7 +840,7 @@ public:
   }
 
   float compute(OpConfig c);
-  float update(const std::vector<OpConfig> &c);
+  float update(std::vector<OpConfig> const &c);
   Rect get_tensor_shape(OpConfig c, int idx, Tensor t, bool is_input);
   // float xfer(Tensor t, OpConfig config, OpConfig, preConfig, int idx);
   OpConfig get_random_config();
@@ -852,7 +852,7 @@ private:
 
 float Embed::compute(OpConfig c) { return 0.04f / c.nParts + 0.01; }
 
-float Embed::update(const std::vector<OpConfig> &vec) {
+float Embed::update(std::vector<OpConfig> const &vec) {
   int used[NUM_WORKERS];
   float xfer = vocabSize * outputSize * sizeof(float);
   for (int i = 0; i < NUM_WORKERS; i++)
@@ -996,7 +996,7 @@ public:
 typedef Task *TaskPtr;
 
 struct TaskCompare {
-  bool operator()(const TaskPtr &lhs, const TaskPtr &rhs) const {
+  bool operator()(TaskPtr const &lhs, TaskPtr const &rhs) const {
     // printf("lhs(%d %.2lf) rhs(%d %.2lf)\n", lhs->guid, lhs->readyTime,
     // rhs->guid, rhs->readyTime);
     if (lhs->readyTime != rhs->readyTime)
@@ -1030,7 +1030,7 @@ inline float bandwidth(int gpu1, int gpu2) {
 
 Task *tasks[MAX_NUM_OPS][NUM_PARTITIONS];
 Task *commTasks[MAX_NUM_OPS * NUM_PARTITIONS * NUM_PARTITIONS];
-float simulate_time(const std::map<Op *, OpConfig> &global,
+float simulate_time(std::map<Op *, OpConfig> const &global,
                     bool print = false) {
   // We need to reset task_global_guid
   task_global_guid = 0;
@@ -1197,7 +1197,7 @@ void generate_init_config(std::map<Op *, OpConfig> &global) {
   }
 }
 
-Op *rewrite(const std::map<Op *, OpConfig> &current,
+Op *rewrite(std::map<Op *, OpConfig> const &current,
             std::map<Op *, OpConfig> &next) {
   next = current;
   int opId = std::rand() % op_global_guid;
@@ -1598,7 +1598,7 @@ void build_nmt_model() {
   assert(idx == op_global_guid);
 }
 
-void print_global_config(const std::map<Op *, OpConfig> &global) {
+void print_global_config(std::map<Op *, OpConfig> const &global) {
   for (int i = 0; i < op_global_guid; i++) {
     OpConfig c = global.find(guidToOp[i])->second;
     printf("op[%d] %s:	dim(", i, guidToOp[i]->name.c_str());

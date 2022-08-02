@@ -19,7 +19,7 @@
 RnnMapper::RnnMapper(MapperRuntime *rt,
                      Machine machine,
                      Processor local,
-                     const char *mapper_name,
+                     char const *mapper_name,
                      std::vector<Processor> *_gpus,
                      std::map<Processor, Memory> *_proc_fbmems,
                      std::vector<Processor> *_cpus)
@@ -27,7 +27,7 @@ RnnMapper::RnnMapper(MapperRuntime *rt,
       proc_fbmems(*_proc_fbmems), cpus(*_cpus) {}
 
 void RnnMapper::select_task_options(const MapperContext ctx,
-                                    const Task &task,
+                                    Task const &task,
                                     TaskOptions &output) {
   if ((task.tag & ASSIGN_TO_GPU_MASK) == ASSIGN_TO_GPU_MASK) {
     output.inline_task = false;
@@ -42,8 +42,8 @@ void RnnMapper::select_task_options(const MapperContext ctx,
 
 #ifdef DEADCODE
 void RnnMapper::map_task(const MapperContext ctx,
-                         const Task &task,
-                         const MapTaskInput &input,
+                         Task const &task,
+                         MapTaskInput const &input,
                          MapTaskOutput &output) {
   printf("Task(%s %zx):", task.get_task_name(), task.tag);
   for (size_t i = 0; i < input.valid_instances.size(); i++) {
@@ -58,8 +58,8 @@ void RnnMapper::map_task(const MapperContext ctx,
 }
 
 void RnnMapper::select_task_sources(const MapperContext ctx,
-                                    const Task &task,
-                                    const SelectTaskSrcInput &input,
+                                    Task const &task,
+                                    SelectTaskSrcInput const &input,
                                     SelectTaskSrcOutput &output) {
   printf("Slct(%s %zx)[%d]:",
          task.get_task_name(),
@@ -75,7 +75,7 @@ void RnnMapper::select_task_sources(const MapperContext ctx,
 
 void update_mappers(Machine machine,
                     Runtime *runtime,
-                    const std::set<Processor> &local_procs) {
+                    std::set<Processor> const &local_procs) {
   std::vector<Processor> *gpus = new std::vector<Processor>();
   std::map<Processor, Memory> *proc_fbmems = new std::map<Processor, Memory>();
   std::vector<Processor> *cpus = new std::vector<Processor>();

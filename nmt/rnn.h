@@ -73,13 +73,13 @@ public:
         ParallelConfig pc,
         SharedVariable _params);
   RnnOp(int num, Tensor *inputs);
-  virtual void init(const RnnModel &) = 0;
+  virtual void init(RnnModel const &) = 0;
 
-  virtual void forward(const RnnModel &) = 0;
+  virtual void forward(RnnModel const &) = 0;
 
-  virtual void backward(const RnnModel &) = 0;
+  virtual void backward(RnnModel const &) = 0;
 
-  virtual void update(const RnnModel &) = 0;
+  virtual void update(RnnModel const &) = 0;
 
 public:
   Tensor outputs[MAX_NUM_OUTPUTS];
@@ -120,38 +120,38 @@ public:
 
   void update_shared_variable(SharedVariable params);
 
-  static void word_init_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+  static void word_init_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              HighLevelRuntime *runtime);
 
-  static void zero_1d_init_task(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
+  static void zero_1d_init_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 HighLevelRuntime *runtime);
 
-  static void zero_2d_init_task(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
+  static void zero_2d_init_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 HighLevelRuntime *runtime);
 
-  static void zero_3d_init_task(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
+  static void zero_3d_init_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 HighLevelRuntime *runtime);
 
-  static void dummy_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+  static void dummy_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          HighLevelRuntime *runtime);
 
-  static void params_init_task(const Task *task,
-                               const std::vector<PhysicalRegion> &regions,
+  static void params_init_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
                                Context ctx,
                                HighLevelRuntime *runtime);
 
-  static void params_update_task(const Task *task,
-                                 const std::vector<PhysicalRegion> &regions,
+  static void params_update_task(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  HighLevelRuntime *runtime);
 
@@ -198,31 +198,31 @@ public:
        ParallelConfig pc,
        SharedVariable params);
 
-  void init(const RnnModel &);
+  void init(RnnModel const &);
 
-  void forward(const RnnModel &);
+  void forward(RnnModel const &);
 
-  void backward(const RnnModel &);
+  void backward(RnnModel const &);
 
-  void update(const RnnModel &);
+  void update(RnnModel const &);
 
-  static OpMeta *init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+  static OpMeta *init_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime);
 
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+  static void forward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime);
 
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+  static void backward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             HighLevelRuntime *runtime);
 
-  static void update_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+  static void update_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           HighLevelRuntime *runtime);
 
@@ -253,36 +253,36 @@ public:
          SharedVariable params,
          IndexSpaceT<1> input_part_is);
 
-  void init(const RnnModel &);
+  void init(RnnModel const &);
 
-  void forward(const RnnModel &);
+  void forward(RnnModel const &);
 
-  void backward(const RnnModel &);
+  void backward(RnnModel const &);
 
-  void update(const RnnModel &);
+  void update(RnnModel const &);
 
-  static OpMeta *init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+  static OpMeta *init_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime);
 
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+  static void forward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime);
 
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+  static void backward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             HighLevelRuntime *runtime);
 
-  static void backward2_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+  static void backward2_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              HighLevelRuntime *runtime);
 
-  static void update_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+  static void update_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           HighLevelRuntime *runtime);
 
@@ -313,31 +313,31 @@ public:
         ParallelConfig pc,
         SharedVariable params);
 
-  void init(const RnnModel &);
+  void init(RnnModel const &);
 
-  void forward(const RnnModel &);
+  void forward(RnnModel const &);
 
-  void backward(const RnnModel &);
+  void backward(RnnModel const &);
 
-  void update(const RnnModel &);
+  void update(RnnModel const &);
 
-  static OpMeta *init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+  static OpMeta *init_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime);
 
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+  static void forward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime);
 
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+  static void backward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             HighLevelRuntime *runtime);
 
-  static void update_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+  static void update_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           HighLevelRuntime *runtime);
 
@@ -393,26 +393,26 @@ class SoftmaxDP : public RnnOp {
 public:
   SoftmaxDP(RnnConfig config, Tensor logit, Tensor label, ParallelConfig pc);
 
-  void init(const RnnModel &);
+  void init(RnnModel const &);
 
-  void forward(const RnnModel &);
+  void forward(RnnModel const &);
 
-  void backward(const RnnModel &);
+  void backward(RnnModel const &);
 
-  void update(const RnnModel &);
+  void update(RnnModel const &);
 
-  static OpMeta *init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+  static OpMeta *init_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime);
 
-  static void forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+  static void forward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime);
 
-  static void backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+  static void backward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             HighLevelRuntime *runtime);
 

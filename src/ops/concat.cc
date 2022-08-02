@@ -37,11 +37,11 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
 
-bool operator==(const ConcatParams &lhs, const ConcatParams &rhs) {
+bool operator==(ConcatParams const &lhs, ConcatParams const &rhs) {
   return lhs.axis == rhs.axis;
 }
 
-bool ConcatParams::is_valid(const std::vector<ParallelTensorShape> &) const {
+bool ConcatParams::is_valid(std::vector<ParallelTensorShape> const &) const {
   // TODO: more check on the input shape
   return true;
 }
@@ -53,7 +53,7 @@ ConcatParams Concat::get_params() const {
 }
 
 Tensor
-FFModel::concat(int n, const Tensor *tensors, int axis, const char *name) {
+FFModel::concat(int n, Tensor const *tensors, int axis, char const *name) {
   Layer *concat = new Layer(this,
                             OP_CONCAT,
                             name,
@@ -93,8 +93,8 @@ FFModel::concat(int n, const Tensor *tensors, int axis, const char *name) {
 
 Op *Concat::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("legion_axis", value);
   int legion_axis = value;
@@ -104,9 +104,9 @@ Op *Concat::create_operator_from_layer(
 
 Concat::Concat(FFModel &model,
                int _n,
-               const ParallelTensor *_tensors,
+               ParallelTensor const *_tensors,
                int _legion_axis,
-               const char *name)
+               char const *name)
     : Op(model,
          OP_CONCAT,
          name,
@@ -141,16 +141,16 @@ Concat::Concat(FFModel &model,
 }
 
 Concat::Concat(FFModel &model,
-               const ConcatParams &params,
-               const std::vector<ParallelTensor> &inputs,
-               const char *name)
+               ConcatParams const &params,
+               std::vector<ParallelTensor> const &inputs,
+               char const *name)
     : Concat(model, inputs.size(), inputs.data(), params.axis, name) {}
 
 void Concat::init_meta(ConcatMeta *m) const {
   m->legion_axis = this->legion_axis;
 }
 
-void Concat::init(const FFModel &ff) {
+void Concat::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -192,12 +192,12 @@ void Concat::init(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Concat::init_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+OpMeta *Concat::init_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
   Concat *cc = (Concat *)task->args;
-  FFHandler handler = *((const FFHandler *)task->local_args);
+  FFHandler handler = *((FFHandler const *)task->local_args);
   ConcatMeta *m = new ConcatMeta(handler);
   // Note that our internal axis index ordering is opposite to other frameworks
   cc->init_meta(m);
@@ -206,7 +206,7 @@ OpMeta *Concat::init_task(const Task *task,
   return m;
 }
 
-void Concat::forward(const FFModel &ff) {
+void Concat::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -240,12 +240,12 @@ void Concat::forward(const FFModel &ff) {
   regions[0](O): output
   regions[1..numInputs](I): inputs
 */
-void Concat::forward_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+void Concat::forward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
-  const Concat *cc = (Concat *)task->args;
-  const ConcatMeta *m = *((ConcatMeta **)task->local_args);
+  Concat const *cc = (Concat *)task->args;
+  ConcatMeta const *m = *((ConcatMeta **)task->local_args);
   // Note that our internal axis index ordering is opposite to other frameworks
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
@@ -258,7 +258,7 @@ void Concat::forward_task(const Task *task,
         ctx, task->regions[i + 1].region.get_index_space());
   float *output = helperGetTensorPointerWO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  const float *inputs[MAX_NUM_INPUTS];
+  float const *inputs[MAX_NUM_INPUTS];
   for (int i = 0; i < cc->numInputs; i++)
     inputs[i] = helperGetTensorPointerRO<float>(
         regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
@@ -267,7 +267,7 @@ void Concat::forward_task(const Task *task,
       m, output, inputs, cc->numInputs, cc->legion_axis, out_domain, in_domain);
 }
 
-void Concat::backward(const FFModel &ff) {
+void Concat::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -305,12 +305,12 @@ void Concat::backward(const FFModel &ff) {
   regions[0](I): output_grad
   regions[1..numInputs](I/O): input_grad
 */
-void Concat::backward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+void Concat::backward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
-  const Concat *cc = (Concat *)task->args;
-  const ConcatMeta *m = *((ConcatMeta **)task->local_args);
+  Concat const *cc = (Concat *)task->args;
+  ConcatMeta const *m = *((ConcatMeta **)task->local_args);
   // Note that our internal axis index ordering is opposite to other frameworks
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
@@ -322,7 +322,7 @@ void Concat::backward_task(const Task *task,
   for (int i = 0; i < cc->numInputs; i++)
     in_grad_domains[i] = runtime->get_index_space_domain(
         ctx, task->regions[i + 1].region.get_index_space());
-  const float *output_grad = helperGetTensorPointerRO<float>(
+  float const *output_grad = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float *input_grads[MAX_NUM_INPUTS];
   for (int i = 0; i < cc->numInputs; i++)
@@ -349,7 +349,7 @@ bool Concat::get_int_parameter(PMParameter para, int *value) const {
 }
 
 bool Concat::measure_operator_cost(Simulator *sim,
-                                   const MachineView &mv,
+                                   MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
   assert(numInputs <= MAX_NUM_INPUTS);
   ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_output;
@@ -443,7 +443,7 @@ bool Concat::measure_operator_cost(Simulator *sim,
 }
 
 Node FFModel::get_or_create_concat_node(int num_inputs,
-                                        const ParallelTensor *inputs,
+                                        ParallelTensor const *inputs,
                                         int legion_axis) {
   std::vector<ParallelTensor> _inputs;
   for (int i = 0; i < num_inputs; ++i) {
@@ -460,7 +460,7 @@ Node FFModel::get_or_create_concat_node(int num_inputs,
 
 namespace std {
 size_t hash<FlexFlow::ConcatParams>::operator()(
-    const FlexFlow::ConcatParams &params) const {
+    FlexFlow::ConcatParams const &params) const {
   return hash<int>{}(params.axis);
 }
 }; // namespace std

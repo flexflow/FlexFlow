@@ -26,8 +26,8 @@
 namespace FlexFlow {
 
 __global__ void
-gb_forward_kernel(const float *input,
-                  const int *exp_assign,
+gb_forward_kernel(float const *input,
+                  int const *exp_assign,
                   float **outputs,
                   int n,       // num experts
                   int k,       // chosen experts
@@ -66,7 +66,7 @@ gb_forward_kernel(const float *input,
 
 __global__ void
 gb_backward_kernel(float *input_grad,
-                   const int *exp_assign,
+                   int const *exp_assign,
                    float **output_grads,
                    int n,       // num experts
                    int k,       // chosen experts
@@ -106,9 +106,9 @@ gb_backward_kernel(float *input_grad,
 
 /*static*/
 void Group_by::forward_kernel_wrapper(
-    const GroupByMeta *m,
-    const float *input,
-    const int *exp_assign,
+    GroupByMeta const *m,
+    float const *input,
+    int const *exp_assign,
     float **outputs,
     int n,       // num experts
     int k,       // chosen experts
@@ -139,9 +139,9 @@ void Group_by::forward_kernel_wrapper(
 }
 
 void Group_by::backward_kernel_wrapper(
-    const GroupByMeta *m,
+    GroupByMeta const *m,
     float *input_grad,
-    const int *exp_assign,
+    int const *exp_assign,
     float **output_grads,
     int n,       // num experts
     int k,       // chosen experts

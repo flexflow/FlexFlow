@@ -20,8 +20,8 @@
 using namespace Legion;
 using namespace FlexFlow;
 
-void FlexFlow::top_level_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void FlexFlow::top_level_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
   FFConfig ffConfig;
@@ -36,13 +36,13 @@ void FlexFlow::top_level_task(const Task *task,
       8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192};
   Tensor input1, input2;
   {
-    const int dims[] = {ffConfig.batchSize, 1024};
+    int const dims[] = {ffConfig.batchSize, 1024};
     input1 = ff.create_tensor<2>(dims, DT_FLOAT);
     input2 = ff.create_tensor<2>(dims, DT_FLOAT);
   }
   Tensor t1 = input1, t2 = input2;
   for (size_t i = 0; i < hidden_dims.size(); i++) {
-    const int dims[] = {hidden_dims[i], t1->dims[0]};
+    int const dims[] = {hidden_dims[i], t1->dims[0]};
     ActiMode acti_mode =
         (i + 1 == hidden_dims.size()) ? AC_MODE_NONE : AC_MODE_RELU;
     t1 = ff.dense(t1, hidden_dims[i], acti_mode, false);

@@ -32,7 +32,7 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-Metrics::Metrics(LossType _loss_type, const std::vector<MetricsType> &metrics)
+Metrics::Metrics(LossType _loss_type, std::vector<MetricsType> const &metrics)
     : loss_type(_loss_type), measure_accuracy(false),
       measure_categorical_crossentropy(false),
       measure_sparse_categorical_crossentropy(false),
@@ -107,8 +107,8 @@ void Metrics::compute(FFModel *model,
   model->current_metrics = runtime->execute_task(ctx, metrics_task);
 }
 
-PerfMetrics Metrics::compute_task(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+PerfMetrics Metrics::compute_task(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime) {
   Domain domain = runtime->get_index_space_domain(
@@ -128,13 +128,13 @@ PerfMetrics Metrics::compute_task(const Task *task,
 
 template <int NDIM>
 PerfMetrics
-Metrics::compute_task_with_dim(const Task *task,
-                               const std::vector<PhysicalRegion> &regions,
+Metrics::compute_task_with_dim(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
                                Context ctx,
                                Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const Metrics *me = (Metrics *)task->args;
+  Metrics const *me = (Metrics *)task->args;
   PerfMetrics perf_zc;
 
   if (me->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
@@ -187,7 +187,7 @@ PerfMetrics::PerfMetrics(void)
   start_time = Realm::Clock::current_time_in_microseconds();
 }
 
-void PerfMetrics::update(const PerfMetrics &one) {
+void PerfMetrics::update(PerfMetrics const &one) {
   train_all += one.train_all;
   train_correct += one.train_correct;
   cce_loss += one.cce_loss;
@@ -205,7 +205,7 @@ void PerfMetrics::apply_scale(float scale) {
   mae_loss *= scale;
 }
 
-void PerfMetrics::print(const Metrics *m) {
+void PerfMetrics::print(Metrics const *m) {
   std::string output = "[Metrics]";
   if (train_all == 0) {
     double current_time = Realm::Clock::current_time_in_microseconds();

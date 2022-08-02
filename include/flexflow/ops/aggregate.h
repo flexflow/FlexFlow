@@ -20,52 +20,52 @@ public:
 class Aggregate : public Op {
 public:
   Aggregate(FFModel &model,
-            const ParallelTensor *inputs,
+            ParallelTensor const *inputs,
             int _n,
             float _lambda_bal,
-            const char *name);
-  void init(const FFModel &) override;
-  void forward(const FFModel &) override;
-  void backward(const FFModel &) override;
-  void print_layer(const FFModel &model) override { assert(0); }
-  static OpMeta *init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+            char const *name);
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
+  void print_layer(FFModel const &model) override { assert(0); }
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void forward_kernel_wrapper(const AggregateMeta *m,
+  static void forward_kernel_wrapper(AggregateMeta const *m,
                                      float **exp_preds,
-                                     const int *acc_gate_assign_ptr,
-                                     const float *acc_gate_pred_ptr,
+                                     int const *acc_gate_assign_ptr,
+                                     float const *acc_gate_pred_ptr,
                                      float *acc_output_ptr,
                                      int n,
-                                     const int k,
+                                     int const k,
                                      int rows,
-                                     const int batch_size,
+                                     int const batch_size,
                                      int out_dim);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  static void backward_kernel_wrapper(const AggregateMeta *m,
+  static void backward_kernel_wrapper(AggregateMeta const *m,
                                       float **exp_preds,
                                       float **exp_grads,
-                                      const int *acc_gate_assign_ptr,
-                                      const int *acc_true_gate_assign_ptr,
-                                      const float *acc_gate_pred_ptr,
+                                      int const *acc_gate_assign_ptr,
+                                      int const *acc_true_gate_assign_ptr,
+                                      float const *acc_gate_pred_ptr,
                                       float *full_acc_gate_grad_ptr,
-                                      const float *acc_output_grad_ptr,
+                                      float const *acc_output_grad_ptr,
                                       int n,
-                                      const int k,
+                                      int const k,
                                       int rows,
                                       float lambda_bal,
-                                      const int batch_size,
+                                      int const batch_size,
                                       int out_dim);
   bool measure_operator_cost(Simulator *sim,
-                             const MachineView &mv,
+                             MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
 
 public:

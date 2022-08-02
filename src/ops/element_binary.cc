@@ -70,8 +70,8 @@ Tensor FFModel::binary(OperatorType op,
 
 Op *ElementBinary::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("inplace_a", value);
   bool inplace_a = (bool)value;
@@ -108,13 +108,13 @@ Tensor FFModel::divide(const Tensor in1,
 }
 
 bool ElementBinaryParams::is_valid(
-    const std::pair<ParallelTensorShape, ParallelTensorShape> &) const {
+    std::pair<ParallelTensorShape, ParallelTensorShape> const &) const {
   // TODO: more check on the input shape
   return true;
 }
 
-bool operator==(const ElementBinaryParams &lhs,
-                const ElementBinaryParams &rhs) {
+bool operator==(ElementBinaryParams const &lhs,
+                ElementBinaryParams const &rhs) {
   return lhs.type == rhs.type;
 }
 
@@ -123,7 +123,7 @@ ElementBinary::ElementBinary(FFModel &model,
                              const ParallelTensor in1,
                              const ParallelTensor in2,
                              bool _inplace_a,
-                             const char *name)
+                             char const *name)
     : Op(model,
          _op_type,
          name,
@@ -163,9 +163,9 @@ ElementBinary::ElementBinary(FFModel &model,
 
 ElementBinary::ElementBinary(
     FFModel &model,
-    const ElementBinaryParams &params,
-    const std::pair<ParallelTensor, ParallelTensor> &inputs,
-    const char *name,
+    ElementBinaryParams const &params,
+    std::pair<ParallelTensor, ParallelTensor> const &inputs,
+    char const *name,
     bool inplace_a)
     : ElementBinary(
           model, params.type, inputs.first, inputs.second, inplace_a, name) {}
@@ -188,7 +188,7 @@ bool ElementBinary::has_inplace_output(void) { return inplace_a; }
 
 void ElementBinary::do_inplace_output(void) { inplace_a = true; }
 
-void ElementBinary::init(const FFModel &ff) {
+void ElementBinary::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -245,8 +245,8 @@ void ElementBinary::init(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *ElementBinary::init_task(const Task *task,
-                                 const std::vector<PhysicalRegion> &regions,
+OpMeta *ElementBinary::init_task(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  Runtime *runtime) {
   ElementBinary *eb = (ElementBinary *)task->args;
@@ -294,7 +294,7 @@ OpMeta *ElementBinary::init_task(const Task *task,
   return m;
 }
 
-void ElementBinary::forward(const FFModel &ff) {
+void ElementBinary::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -364,12 +364,12 @@ void ElementBinary::forward(const FFModel &ff) {
   regions[2](O): output
 */
 __host__ void
-ElementBinary::forward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+ElementBinary::forward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
   // const ElementBinary* ele = (const ElementBinary*) task->args;
-  const ElementBinaryMeta *m = *((ElementBinaryMeta **)task->local_args);
+  ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
   Domain in1_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   if (!m->has_same_operands) {
@@ -380,7 +380,7 @@ ElementBinary::forward_task(const Task *task,
       assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD);
     }
   }
-  const float *in1_ptr = NULL, *in2_ptr = NULL;
+  float const *in1_ptr = NULL, *in2_ptr = NULL;
   float *out_ptr = NULL;
   if (m->inplace_a) {
     if (m->has_same_operands) {
@@ -429,7 +429,7 @@ ElementBinary::forward_task(const Task *task,
   ElementBinary::forward_kernel_wrapper(m, in1_ptr, in2_ptr, out_ptr);
 }
 
-void ElementBinary::backward(const FFModel &ff) {
+void ElementBinary::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -530,13 +530,13 @@ void ElementBinary::backward(const FFModel &ff) {
   regions[3](I): in1 (Missing if in0 = in1)
   regions[4](I/O): in1_grad (Missing if in0=in1)
 */
-void ElementBinary::backward_task(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+void ElementBinary::backward_task(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime) {
   // const ElementBinary* ele = (const ElementBinary*) task->args;
-  const ElementBinaryMeta *m = *((ElementBinaryMeta **)task->local_args);
-  const float *in0_ptr = NULL, *in1_ptr = NULL, *out_grad_ptr = NULL;
+  ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
+  float const *in0_ptr = NULL, *in1_ptr = NULL, *out_grad_ptr = NULL;
   float *in0_grad_ptr = NULL, *in1_grad_ptr = NULL;
   Domain out_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -616,7 +616,7 @@ void ElementBinary::backward_task(const Task *task,
 }
 
 bool ElementBinary::measure_operator_cost(Simulator *sim,
-                                          const MachineView &mv,
+                                          MachineView const &mv,
                                           CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input1, sub_input2;
   if (!outputs[0]->get_sub_tensor(mv, sub_output))
@@ -723,7 +723,7 @@ Node FFModel::get_or_create_element_binary_node(const ParallelTensor input1,
 
 namespace std {
 size_t hash<FlexFlow::ElementBinaryParams>::operator()(
-    const FlexFlow::ElementBinaryParams &params) const {
+    FlexFlow::ElementBinaryParams const &params) const {
   size_t key = 0;
   hash_combine(key, params.type);
   return key;

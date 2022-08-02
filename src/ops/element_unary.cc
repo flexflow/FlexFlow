@@ -24,7 +24,7 @@ using Legion::TaskLauncher;
 Tensor FFModel::unary(OperatorType op,
                       const Tensor x,
                       bool inplace,
-                      const char *name,
+                      char const *name,
                       float scalar) {
   Layer *ele =
       new Layer(this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
@@ -42,8 +42,8 @@ Tensor FFModel::unary(OperatorType op,
 
 Op *ElementUnary::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("inplace", value);
   bool inplace = (bool)value;
@@ -74,81 +74,81 @@ Node FFModel::get_or_create_element_unary_node(const ParallelTensor input,
   return get_or_create_node<ElementUnary>(input, params);
 }
 
-Tensor FFModel::exp(const Tensor x, const char *name) {
+Tensor FFModel::exp(const Tensor x, char const *name) {
   return this->unary(OP_EXP, x, false /*inplace*/, name);
 }
 
 Tensor FFModel::scalar_multiply(const Tensor x,
-                                const float scalar,
+                                float const scalar,
                                 bool inplace,
-                                const char *name) {
+                                char const *name) {
   return this->unary(OP_SCALAR_MULTIPLY, x, inplace, name, scalar);
 }
 
 Tensor FFModel::scalar_add(const Tensor x,
-                           const float scalar,
+                           float const scalar,
                            bool inplace,
-                           const char *name) {
+                           char const *name) {
   return this->unary(OP_SCALAR_ADD, x, inplace, name, scalar);
 }
 
 Tensor FFModel::scalar_sub(const Tensor x,
-                           const float scalar,
+                           float const scalar,
                            bool inplace,
-                           const char *name) {
+                           char const *name) {
   return this->unary(OP_SCALAR_SUB, x, inplace, name, scalar);
 }
 
 Tensor FFModel::scalar_truediv(const Tensor x,
-                               const float scalar,
+                               float const scalar,
                                bool inplace,
-                               const char *name) {
+                               char const *name) {
   return this->unary(OP_SCALAR_TRUE_DIV, x, inplace, name, scalar);
 }
 
-Tensor FFModel::relu(const Tensor x, bool inplace, const char *name) {
+Tensor FFModel::relu(const Tensor x, bool inplace, char const *name) {
   return this->unary(OP_RELU, x, inplace, name);
 }
 
-Tensor FFModel::sigmoid(const Tensor x, const char *name) {
+Tensor FFModel::sigmoid(const Tensor x, char const *name) {
   return this->unary(OP_SIGMOID, x, false /*inplace*/, name);
 }
 
-Tensor FFModel::tanh(const Tensor x, const char *name) {
+Tensor FFModel::tanh(const Tensor x, char const *name) {
   return this->unary(OP_TANH, x, false /*inplace*/, name);
 }
 
-Tensor FFModel::identity(const Tensor x, const char *name) {
+Tensor FFModel::identity(const Tensor x, char const *name) {
   return this->unary(OP_IDENTITY, x, false /*inplace*/, name);
 }
 
-Tensor FFModel::gelu(const Tensor x, const char *name) {
+Tensor FFModel::gelu(const Tensor x, char const *name) {
   return this->unary(OP_GELU, x, false /*inplace*/, name);
 }
 
-Tensor FFModel::elu(const Tensor x, bool inplace, const char *name) {
+Tensor FFModel::elu(const Tensor x, bool inplace, char const *name) {
   // Currently assume inplace is false
   assert(!inplace);
   return this->unary(OP_ELU, x, inplace, name);
 }
 
-Tensor FFModel::rsqrt(const Tensor x, bool inplace, const char *name) {
+Tensor FFModel::rsqrt(const Tensor x, bool inplace, char const *name) {
   return this->unary(OP_RSQRT, x, inplace, name);
 }
 
 Tensor FFModel::pow(const Tensor x,
-                    const float exponent,
+                    float const exponent,
                     bool inplace,
-                    const char *name) {
+                    char const *name) {
   return this->unary(OP_POW, x, inplace, name, exponent);
 }
 
-bool ElementUnaryParams::is_valid(const ParallelTensorShape &input) const {
+bool ElementUnaryParams::is_valid(ParallelTensorShape const &input) const {
   // TODO: more check on the input shape
   return input.is_valid();
 }
 
-bool operator==(const ElementUnaryParams &lhs, const ElementUnaryParams &rhs) {
+bool operator==(ElementUnaryParams const &lhs, ElementUnaryParams const &rhs) {
   return lhs.op_type == rhs.op_type && lhs.scalar == rhs.scalar &&
          lhs.inplace == rhs.inplace;
 }
@@ -157,7 +157,7 @@ ElementUnary::ElementUnary(FFModel &model,
                            OperatorType _op_type,
                            const ParallelTensor x,
                            bool _inplace,
-                           const char *name,
+                           char const *name,
                            float _scalar)
     : Op(model, _op_type, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x),
       inplace(_inplace), scalar(_scalar) {
@@ -172,9 +172,9 @@ ElementUnary::ElementUnary(FFModel &model,
 }
 
 ElementUnary::ElementUnary(FFModel &model,
-                           const ElementUnaryParams &params,
+                           ElementUnaryParams const &params,
                            const ParallelTensor input,
-                           const char *name)
+                           char const *name)
     : ElementUnary(
           model, params.op_type, input, params.inplace, name, params.scalar) {}
 
@@ -196,7 +196,7 @@ bool ElementUnary::use_cudnn(OperatorType type) {
   return false;
 }
 
-void ElementUnary::init(const FFModel &ff) {
+void ElementUnary::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -231,8 +231,8 @@ void ElementUnary::init(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *ElementUnary::init_task(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
+OpMeta *ElementUnary::init_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime) {
   ElementUnary *eu = (ElementUnary *)task->args;
@@ -261,7 +261,7 @@ OpMeta *ElementUnary::init_task(const Task *task,
   return m;
 }
 
-void ElementUnary::forward(const FFModel &ff) {
+void ElementUnary::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -300,11 +300,11 @@ void ElementUnary::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void ElementUnary::forward_task(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
+void ElementUnary::forward_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime) {
-  const ElementUnaryMeta *m = *((ElementUnaryMeta **)task->local_args);
+  ElementUnaryMeta const *m = *((ElementUnaryMeta **)task->local_args);
   if (m->data_type == DT_FLOAT) {
     forward_task_with_type<float>(task, regions, ctx, runtime);
   } else if (m->data_type == DT_DOUBLE) {
@@ -324,12 +324,12 @@ void ElementUnary::forward_task(const Task *task,
 */
 template <typename DT>
 void ElementUnary::forward_task_with_type(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   // const ElementUnary* ele = (const ElementUnary*) task->args;
-  const ElementUnaryMeta *m = *((ElementUnaryMeta **)task->local_args);
+  ElementUnaryMeta const *m = *((ElementUnaryMeta **)task->local_args);
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   const DT *input_ptr = NULL;
@@ -356,7 +356,7 @@ void ElementUnary::forward_task_with_type(
       m, input_ptr, output_ptr, input_domain.get_volume());
 }
 
-void ElementUnary::backward(const FFModel &ff) {
+void ElementUnary::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -419,11 +419,11 @@ void ElementUnary::backward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void ElementUnary::backward_task(const Task *task,
-                                 const std::vector<PhysicalRegion> &regions,
+void ElementUnary::backward_task(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  Runtime *runtime) {
-  const ElementUnaryMeta *m = *((ElementUnaryMeta **)task->local_args);
+  ElementUnaryMeta const *m = *((ElementUnaryMeta **)task->local_args);
   if (m->data_type == DT_FLOAT) {
     backward_task_with_type<float>(task, regions, ctx, runtime);
   } else if (m->data_type == DT_DOUBLE) {
@@ -445,12 +445,12 @@ void ElementUnary::backward_task(const Task *task,
 */
 template <typename DT>
 void ElementUnary::backward_task_with_type(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   // const ElementUnary* ele = (const ElementUnary*) task->args;
-  const ElementUnaryMeta *m = *((ElementUnaryMeta **)task->local_args);
+  ElementUnaryMeta const *m = *((ElementUnaryMeta **)task->local_args);
   const DT *input_ptr = NULL, *output_ptr = NULL, *output_grad_ptr = NULL;
   DT *input_grad_ptr = NULL;
   Domain input_domain = runtime->get_index_space_domain(
@@ -506,7 +506,7 @@ void ElementUnary::serialize(Legion::Serializer &sez) const {
 }
 
 bool ElementUnary::measure_operator_cost(Simulator *sim,
-                                         const MachineView &mv,
+                                         MachineView const &mv,
                                          CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
   if (!outputs[0]->get_sub_tensor(mv, sub_output))
@@ -620,7 +620,7 @@ Op *ElementUnary::materialize(FFModel &ff,
 
 namespace std {
 size_t hash<FlexFlow::ElementUnaryParams>::operator()(
-    const FlexFlow::ElementUnaryParams &params) const {
+    FlexFlow::ElementUnaryParams const &params) const {
   size_t key = 0;
   hash_combine(key, params.op_type);
   hash_combine(key, params.scalar);

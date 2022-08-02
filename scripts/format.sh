@@ -58,7 +58,7 @@ download_clang_tool() {
   fi
 }
 
-CLANG_FORMAT_VERSION="13"
+CLANG_FORMAT_VERSION="14"
 CLANG_FORMAT_PATH="$TOOLS_PATH/clang-format-$CLANG_FORMAT_VERSION"
 
 if [[ ! -e $CLANG_FORMAT_PATH ]]; then

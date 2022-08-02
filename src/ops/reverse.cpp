@@ -21,7 +21,7 @@ namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
 
-__global__ void reverse_forward_kernel(const float *in_ptr,
+__global__ void reverse_forward_kernel(float const *in_ptr,
                                        float *out_ptr,
                                        coord_t num_out_blks,
                                        coord_t reverse_dim_size,

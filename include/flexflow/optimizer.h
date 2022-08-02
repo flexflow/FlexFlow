@@ -26,16 +26,16 @@ class OpMeta;
 
 class Optimizer {
 public:
-  Optimizer(const FFModel *_model);
+  Optimizer(FFModel const *_model);
   virtual void init(void) = 0;
   virtual void next(void) = 0;
   virtual void update(const ParallelTensor p) = 0;
-  const FFModel *model;
+  FFModel const *model;
 };
 
 class SGDOptimizer : public Optimizer {
 public:
-  SGDOptimizer(const FFModel *_model,
+  SGDOptimizer(FFModel const *_model,
                double lr = 0.01f,
                double momentum = 0.0f,
                bool nesterov = false,
@@ -44,25 +44,25 @@ public:
   void next(void);
   void update(const ParallelTensor p);
   void set_weight_decay(double _weight_decay);
-  static void ps_update_task(const Legion::Task *task,
-                             const std::vector<Legion::PhysicalRegion> &regions,
+  static void ps_update_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
                              Legion::Runtime *runtime);
-  static void ps_update_task_gpu(const SGDOptimizer *op,
-                                 const float *w_grad_ptr,
+  static void ps_update_task_gpu(SGDOptimizer const *op,
+                                 float const *w_grad_ptr,
                                  size_t size,
                                  int num_replicas,
                                  float *w_ptr,
                                  float *v_ptr);
 #ifdef FF_USE_NCCL
   static void
-  nccl_update_task(const Legion::Task *task,
-                   const std::vector<Legion::PhysicalRegion> &regions,
+  nccl_update_task(Legion::Task const *task,
+                   std::vector<Legion::PhysicalRegion> const &regions,
                    Legion::Context ctx,
                    Legion::Runtime *runtime);
-  static void nccl_update_task_gpu(const SGDOptimizer *op,
-                                   const OpMeta *meta,
-                                   const float *w_grad_ptr,
+  static void nccl_update_task_gpu(SGDOptimizer const *op,
+                                   OpMeta const *meta,
+                                   float const *w_grad_ptr,
                                    size_t size,
                                    float *w_ptr,
                                    float *v_ptr);
@@ -76,7 +76,7 @@ public:
 
 class AdamOptimizer : public Optimizer {
 public:
-  AdamOptimizer(const FFModel *_model,
+  AdamOptimizer(FFModel const *_model,
                 double _alpha = 0.001f,
                 double _beta1 = 0.9f,
                 double _beta2 = 0.999f,
@@ -86,12 +86,12 @@ public:
   void next(void);
   void update(const ParallelTensor p);
   void set_weight_decay(double _weight_decay);
-  static void ps_update_task(const Legion::Task *task,
-                             const std::vector<Legion::PhysicalRegion> &regions,
+  static void ps_update_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
                              Legion::Runtime *runtime);
-  static void ps_update_task_gpu(const AdamOptimizer *op,
-                                 const float *w_grad_ptr,
+  static void ps_update_task_gpu(AdamOptimizer const *op,
+                                 float const *w_grad_ptr,
                                  size_t size,
                                  int num_replicas,
                                  float *w_ptr,
@@ -99,13 +99,13 @@ public:
                                  float *m_ptr);
 #ifdef FF_USE_NCCL
   static void
-  nccl_update_task(const Legion::Task *task,
-                   const std::vector<Legion::PhysicalRegion> &regions,
+  nccl_update_task(Legion::Task const *task,
+                   std::vector<Legion::PhysicalRegion> const &regions,
                    Legion::Context ctx,
                    Legion::Runtime *runtime);
-  static void nccl_update_task_gpu(const AdamOptimizer *op,
-                                   const OpMeta *meta,
-                                   const float *w_grad_ptr,
+  static void nccl_update_task_gpu(AdamOptimizer const *op,
+                                   OpMeta const *meta,
+                                   float const *w_grad_ptr,
                                    size_t size,
                                    float *w_ptr,
                                    float *v_ptr,

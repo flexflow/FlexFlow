@@ -40,7 +40,7 @@ using Legion::TaskLauncher;
 ParallelTensor FFModel::reduction(const ParallelTensor input,
                                   int reduction_legion_dim,
                                   int reduction_degree,
-                                  const char *name) {
+                                  char const *name) {
   assert(false);
 #ifdef DEADCODE
   Reduction *reduce =
@@ -54,7 +54,7 @@ Reduction::Reduction(FFModel &model,
                      const ParallelTensor _input,
                      int _reduction_legion_dim,
                      int _reduction_degree,
-                     const char *name)
+                     char const *name)
     : ParallelOp(model, OP_REDUCTION, name, _input),
       reduction_dim(_reduction_legion_dim),
       reduction_degree(_reduction_degree) {
@@ -90,9 +90,9 @@ void Reduction::create_input_partition(FFModel &ff) {
                               output_grad_lp);
 }
 
-void Reduction::init(const FFModel &ff) { forward(ff); }
+void Reduction::init(FFModel const &ff) { forward(ff); }
 
-void Reduction::forward(const FFModel &ff) {
+void Reduction::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -118,7 +118,7 @@ void Reduction::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Reduction::backward(const FFModel &ff) {
+void Reduction::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -148,7 +148,7 @@ void Reduction::backward(const FFModel &ff) {
 }
 
 bool Reduction::measure_operator_cost(Simulator *sim,
-                                      const MachineView &pc,
+                                      MachineView const &pc,
                                       CostMetrics &cost_metrics) const {
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
@@ -193,7 +193,7 @@ Node FFModel::get_or_create_reduction_node(const ParallelTensor input,
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(reduction_dim);
   hash = hash * 31 + std::hash<int>()(reduction_degree);
-  const auto &it = cached_reduction_ops.find(hash);
+  auto const &it = cached_reduction_ops.find(hash);
   Reduction *reduction = NULL;
   if (it != cached_reduction_ops.end()) {
     reduction = it->second;
@@ -209,8 +209,8 @@ Node FFModel::get_or_create_reduction_node(const ParallelTensor input,
 }
 
 /*static*/
-void Reduction::forward_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+void Reduction::forward_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
   assert(regions.size() == 2);
@@ -226,7 +226,7 @@ void Reduction::forward_task(const Task *task,
   }
   size_t num_elements = output_domain.get_volume();
   size_t num_replicas = input_domain.get_volume() / num_elements;
-  const float *input_ptr = helperGetTensorPointerRO<float>(
+  float const *input_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float *output_ptr = helperGetTensorPointerRW<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
@@ -234,8 +234,8 @@ void Reduction::forward_task(const Task *task,
   forward_kernel<float>(input_ptr, output_ptr, num_elements, num_replicas);
 }
 
-void Reduction::backward_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void Reduction::backward_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
   assert(regions.size() == 2);
@@ -245,7 +245,7 @@ void Reduction::backward_task(const Task *task,
   Domain input_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
   assert(input_grad_domain.get_volume() == output_grad_domain.get_volume());
-  const float *output_grad_ptr = helperGetTensorPointerRO<float>(
+  float const *output_grad_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float *input_grad_ptr = helperGetTensorPointerWO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);

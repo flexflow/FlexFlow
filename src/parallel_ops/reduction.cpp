@@ -63,15 +63,15 @@ void Reduction::backward_kernel(const T *output_grad_ptr,
                            stream));
 }
 
-template __global__ void reduction_forward_kernel<float>(const float *input_ptr,
+template __global__ void reduction_forward_kernel<float>(float const *input_ptr,
                                                          float *output_ptr,
                                                          size_t num_elements,
                                                          size_t num_replicas);
-template void Reduction::forward_kernel<float>(const float *input_ptr,
+template void Reduction::forward_kernel<float>(float const *input_ptr,
                                                float *output_ptr,
                                                size_t num_elements,
                                                size_t num_replicas);
-template void Reduction::backward_kernel<float>(const float *output_grad_ptr,
+template void Reduction::backward_kernel<float>(float const *output_grad_ptr,
                                                 float *input_grad_ptr,
                                                 size_t num_elements);
 

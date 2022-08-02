@@ -44,8 +44,8 @@ FlatTestMeta get_test_meta(const std::string file_path) {
   return FlatTestMeta(i_dim, o_dim, i_shape, o_shape);
 }
 
-void top_level_task(const Task *task,
-                    const std::vector<PhysicalRegion> &regions,
+void top_level_task(Task const *task,
+                    std::vector<PhysicalRegion> const &regions,
                     Context ctx,
                     Runtime *runtime) {
   // std::cout<< "test framework launched" << std::endl;
@@ -55,7 +55,7 @@ void top_level_task(const Task *task,
   FFModel ff(ffConfig);
   Tensor dense_input;
 #define input_dim 3
-  const int i_dims[input_dim] = {
+  int const i_dims[input_dim] = {
       test_meta.i_shape[0], test_meta.i_shape[1], test_meta.i_shape[2]
       // test_meta.i_shape[3]
   };

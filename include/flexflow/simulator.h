@@ -154,8 +154,8 @@ public:
                     NetworkRoutingStrategy *routing);
   /* pick one of the weighted ECMP path */
   Route expand_to_physical() const;
-  const EcmpRoutes &get_all_routes();
-  void set_physical_paths(const EcmpRoutes &rs);
+  EcmpRoutes const &get_all_routes();
+  void set_physical_paths(EcmpRoutes const &rs);
   void reset();
 
 public:
@@ -343,8 +343,8 @@ private:
 class WeightedShortestPathRoutingStrategy : public NetworkRoutingStrategy {
 public:
   WeightedShortestPathRoutingStrategy(
-      const ConnectionMatrix &c,
-      const std::map<size_t, CommDevice *> &devmap,
+      ConnectionMatrix const &c,
+      std::map<size_t, CommDevice *> const &devmap,
       int total_devs);
   virtual EcmpRoutes get_routes(int src_node, int dst_node);
   virtual std::vector<EcmpRoutes> get_routes_from_src(int src_node);
@@ -353,16 +353,16 @@ public:
   void clear();
 
 public:
-  const ConnectionMatrix &conn;
-  const std::map<size_t, CommDevice *> &devmap;
+  ConnectionMatrix const &conn;
+  std::map<size_t, CommDevice *> const &devmap;
   int total_devs;
 };
 
 class ShortestPathNetworkRoutingStrategy : public NetworkRoutingStrategy {
 public:
   ShortestPathNetworkRoutingStrategy(
-      const ConnectionMatrix &c,
-      const std::map<size_t, CommDevice *> &devmap,
+      ConnectionMatrix const &c,
+      std::map<size_t, CommDevice *> const &devmap,
       int total_devs);
   virtual EcmpRoutes get_routes(int src_node, int dst_node);
   virtual std::vector<EcmpRoutes> get_routes_from_src(int src_node);
@@ -371,8 +371,8 @@ public:
   void clear();
 
 public:
-  const ConnectionMatrix &conn;
-  const std::map<size_t, CommDevice *> &devmap;
+  ConnectionMatrix const &conn;
+  std::map<size_t, CommDevice *> const &devmap;
   int total_devs;
 };
 
@@ -384,7 +384,7 @@ class NetworkTopologyGenerator {
 public:
   virtual ConnectionMatrix generate_topology() const = 0;
   static void
-  print_conn_matrix(const ConnectionMatrix &conn, int nnode, int nswitch) {
+  print_conn_matrix(ConnectionMatrix const &conn, int nnode, int nswitch) {
     int nnwdevs = nnode + nswitch;
     for (int i = 0; i < nnwdevs; i++) {
       if (i == nnode)
@@ -411,7 +411,7 @@ public:
 
 public:
   inline int get_id(int i, int j) const;
-  inline int get_if_in_use(int node, const ConnectionMatrix &conn) const;
+  inline int get_if_in_use(int node, ConnectionMatrix const &conn) const;
   int num_nodes;
   int degree;
 };
@@ -481,7 +481,7 @@ public:
                         int num_gpus_per_node,
                         int num_switches,
                         float network_latency,
-                        const std::vector<int> &topology,
+                        std::vector<int> const &topology,
                         size_t capacity,
                         float link_bandwidth);
   ~NetworkedMachineModel();
@@ -505,12 +505,12 @@ public:
   /* return only the nominal device. For recording tg. */
   CommDevice *get_nominal_path(MemDevice *src_mem, MemDevice *tar_mem) const;
   /* stores the network topology as a json */
-  void save_topology_json(const std::string &fname) const;
+  void save_topology_json(std::string const &fname) const;
   void update_route();
 
-  void set_topology(const std::vector<int> &topology);
-  const ConnectionMatrix &get_conn_matrix();
-  const std::map<size_t, NominalCommDevice *> &get_nomm_comm_devs();
+  void set_topology(std::vector<int> const &topology);
+  ConnectionMatrix const &get_conn_matrix();
+  std::map<size_t, NominalCommDevice *> const &get_nomm_comm_devs();
 
   void set_pcie(bool state);
   void set_pipeline(bool state);
@@ -616,13 +616,13 @@ public:
   SimTask *new_nominal_comm_task(std::string const &name,
                                  CommDevice *comm_device,
                                  size_t message_size);
-  SimTask *new_forward_task(const Op *op, int idx);
-  SimTask *new_allreduce_task(const Op *op,
-                              const std::vector<int> &node_ids,
+  SimTask *new_forward_task(Op const *op, int idx);
+  SimTask *new_allreduce_task(Op const *op,
+                              std::vector<int> const &node_ids,
                               size_t message_size);
-  SimTask *new_backward_task(const Op *op, int idx);
-  SimTask *get_forward_task(const Op *op, int idx);
-  SimTask *get_backward_task(const Op *op, int idx);
+  SimTask *new_backward_task(Op const *op, int idx);
+  SimTask *get_forward_task(Op const *op, int idx);
+  SimTask *get_backward_task(Op const *op, int idx);
 
   SimTask *new_task();
 
@@ -640,7 +640,7 @@ using ProfilingRecordKey = std::tuple<OperatorParameters, MachineView>;
 class Simulator {
 public:
   static constexpr float MAXIMUM_TASK_RUN_TIME = 1e7;
-  Simulator(const FFModel *model,
+  Simulator(FFModel const *model,
             FFHandler handler,
             Legion::Memory memory,
             MachineModel *machine);
@@ -651,32 +651,32 @@ public:
                                        SimTask *dst_task,
                                        size_t message_size,
                                        bool force_zero_cost = false);
-  CostMetrics measure_operator_cost(const Op *op, const ParallelConfig &config);
-  CostMetrics measure_operator_cost(const Op *op, const MachineView &view);
-  float estimate_xfer_cost(const Op *op,
+  CostMetrics measure_operator_cost(Op const *op, ParallelConfig const &config);
+  CostMetrics measure_operator_cost(Op const *op, MachineView const &view);
+  float estimate_xfer_cost(Op const *op,
                            int input_idx,
-                           const MachineView &source_view,
-                           const MachineView &sink_view);
+                           MachineView const &source_view,
+                           MachineView const &sink_view);
   float
   default_estimate_sync_cost(const ParallelDim tensor_dims[MAX_TENSOR_DIM],
                              int tensor_ndims,
-                             const MachineView &view);
+                             MachineView const &view);
   float default_estimate_sync_cost(ParallelTensorShape const &tensor_shape,
-                                   const MachineView &view,
+                                   MachineView const &view,
                                    int num_replicate_dims);
   float default_estimate_sync_cost(const ParallelTensor tensor,
-                                   const MachineView &view,
+                                   MachineView const &view,
                                    int num_replicate_dims);
-  float simulate_runtime(const FFModel *model,
-                         const std::map<const Op *, ParallelConfig> &global,
+  float simulate_runtime(FFModel const *model,
+                         std::map<Op const *, ParallelConfig> const &global,
                          CompMode comp_mode);
-  float simulate_runtime(const FFModel *model,
-                         const std::map<const Op *, ParallelConfig> &global,
+  float simulate_runtime(FFModel const *model,
+                         std::map<Op const *, ParallelConfig> const &global,
                          CompMode comp_mode,
                          std::string const &export_file_name);
   static void
-  strategy_search_task(const Legion::Task *task,
-                       const std::vector<Legion::PhysicalRegion> &regions,
+  strategy_search_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
                        Legion::Context ctx,
                        Legion::Runtime *runtime);
 
@@ -720,10 +720,10 @@ private:
   float
   estimate_repartition_xfer_cost(int repartition_dim,
                                  int repartition_degree,
-                                 const ParallelTensorShape &input_tensor_shape,
-                                 const ParallelTensorShape &output_tensor_shape,
-                                 const MachineView &source_view,
-                                 const MachineView &target_view) const;
+                                 ParallelTensorShape const &input_tensor_shape,
+                                 ParallelTensorShape const &output_tensor_shape,
+                                 MachineView const &source_view,
+                                 MachineView const &target_view) const;
 };
 
 /**
@@ -733,7 +733,7 @@ private:
  */
 class LogicalTaskgraphBasedSimulator : public Simulator {
 public:
-  LogicalTaskgraphBasedSimulator(const FFModel *model,
+  LogicalTaskgraphBasedSimulator(FFModel const *model,
                                  FFHandler handler,
                                  Legion::Memory memory,
                                  MachineModel *machine);
@@ -741,12 +741,12 @@ public:
   SimTask *new_comm_task_unrecorded();
   SimTask *new_update_task_unrecorded();
   virtual float
-  simulate_runtime(const FFModel *model,
-                   const std::map<const Op *, ParallelConfig> &global,
+  simulate_runtime(FFModel const *model,
+                   std::map<Op const *, ParallelConfig> const &global,
                    CompMode comp_mode);
   virtual float
-  simulate_runtime(const FFModel *model,
-                   const std::map<const Op *, ParallelConfig> &global,
+  simulate_runtime(FFModel const *model,
+                   std::map<Op const *, ParallelConfig> const &global,
                    CompMode comp_mode,
                    std::string const &export_file_name);
   virtual float route_transfer(SimTask *transfer_task,
@@ -765,8 +765,8 @@ public:
                                        SimTask *dst_task,
                                        size_t message_size);
   static void
-  simulation_task(const Legion::Task *task,
-                  const std::vector<Legion::PhysicalRegion> &regions,
+  simulation_task(Legion::Task const *task,
+                  std::vector<Legion::PhysicalRegion> const &regions,
                   Legion::Context ctx,
                   Legion::Runtime *runtime);
   bool segment_transfer;

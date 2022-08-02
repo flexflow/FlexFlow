@@ -58,7 +58,7 @@ size_t MachineView::hash() const {
   return ret;
 }
 
-int MachineView::get_device_id(const DomainPoint &p) const {
+int MachineView::get_device_id(DomainPoint const &p) const {
   assert(p.get_dim() == ndims);
   assert(this->get_domain().contains(p));
   int idx = this->start_device_id;
@@ -67,7 +67,7 @@ int MachineView::get_device_id(const DomainPoint &p) const {
   return idx;
 }
 
-bool MachineView::operator==(const MachineView &rhs) const {
+bool MachineView::operator==(MachineView const &rhs) const {
   if (device_type != rhs.device_type)
     return false;
   if (ndims != rhs.ndims)
@@ -83,7 +83,7 @@ bool MachineView::operator==(const MachineView &rhs) const {
   return true;
 }
 
-bool MachineView::operator!=(const MachineView &rhs) const {
+bool MachineView::operator!=(MachineView const &rhs) const {
   return !(*this == rhs);
 }
 

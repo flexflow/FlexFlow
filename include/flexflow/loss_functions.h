@@ -26,17 +26,17 @@ class FFModel;
 
 class Loss {
 public:
-  Loss(const std::string &loss, bool _repl_labels = false);
+  Loss(std::string const &loss, bool _repl_labels = false);
   Loss(LossType _loss_type, bool _repl_labels = false);
 
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   template <int NDIM>
   static void
-  backward_task_with_dim(const Legion::Task *task,
-                         const std::vector<Legion::PhysicalRegion> &regions,
+  backward_task_with_dim(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
                          Legion::Runtime *runtime);
   void backward(FFModel *model,
@@ -48,8 +48,8 @@ public:
                          const ParallelTensor label);
   static void sparse_categorical_crossentropy_loss_backward_kernel_wrapper(
       float *logit_grad_ptr,
-      const float *logit_ptr,
-      const int *label_ptr,
+      float const *logit_ptr,
+      int const *label_ptr,
       size_t logit_volume,
       size_t logit_grad_volume,
       int num_samples,
@@ -58,15 +58,15 @@ public:
       float scale_factor);
   static void categorical_crossentropy_loss_backward_kernel_wrapper(
       float *logit_grad_ptr,
-      const float *logit_ptr,
-      const float *label_ptr,
+      float const *logit_ptr,
+      float const *label_ptr,
       size_t logit_volume,
       size_t logit_grad_volume,
       float scale_factor);
   static void
   mean_squared_error_avg_loss_backward_kernel_wrapper(float *logit_grad_ptr,
-                                                      const float *logit_ptr,
-                                                      const float *label_ptr,
+                                                      float const *logit_ptr,
+                                                      float const *label_ptr,
                                                       size_t logit_volume,
                                                       size_t logit_grad_volume,
                                                       float scale_factor);

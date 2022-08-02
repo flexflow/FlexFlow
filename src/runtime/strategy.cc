@@ -23,7 +23,7 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-MappingTagID FFConfig::get_hash_id(const std::string &pcname) {
+MappingTagID FFConfig::get_hash_id(std::string const &pcname) {
   return std::hash<std::string>{}(pcname);
 }
 
@@ -98,7 +98,7 @@ bool FFConfig::find_parallel_config(int ndims,
 */
 
 bool load_strategies_from_file(
-    const std::string &filename,
+    std::string const &filename,
     std::map<MappingTagID, ParallelConfig> &strategies) {
   std::fstream input(filename, std::ios::in);
   if (!input) {
@@ -154,8 +154,8 @@ bool load_strategies_from_file(
 }
 
 bool save_strategies_to_file(
-    const std::string &filename,
-    const std::map<std::string, ParallelConfig> &strategies) {
+    std::string const &filename,
+    std::map<std::string, ParallelConfig> const &strategies) {
   std::fstream output(filename, std::ios::out | std::ios::trunc);
   if (!output) {
     std::cerr << "Failed to open strategy file for writing!" << std::endl;

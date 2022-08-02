@@ -36,9 +36,9 @@ using PCG::Node;
 
 void FFModel::split(const Tensor input,
                     Tensor *outputs,
-                    const std::vector<int> &splits,
+                    std::vector<int> const &splits,
                     int axis,
-                    const char *name) {
+                    char const *name) {
   Layer *split = new Layer(this,
                            OP_SPLIT,
                            name,
@@ -68,8 +68,8 @@ void FFModel::split(const Tensor input,
 
 Op *Split::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("legion_axis", value);
   int legion_axis = value;
@@ -92,9 +92,9 @@ size_t Split::get_params_hash() const {
 
 Split::Split(FFModel &model,
              const ParallelTensor input,
-             const std::vector<int> &splits,
+             std::vector<int> const &splits,
              int _legion_axis,
-             const char *name)
+             char const *name)
     : Op(model,
          OP_SPLIT,
          name,
@@ -125,7 +125,7 @@ Split::Split(FFModel &model,
   assert(split_size == input->dims[legion_axis].size);
 }
 
-void Split::init(const FFModel &ff) {
+void Split::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -156,14 +156,14 @@ void Split::init(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-OpMeta *Split::init_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+OpMeta *Split::init_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
   return NULL;
 }
 
-void Split::forward(const FFModel &ff) {
+void Split::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -194,7 +194,7 @@ void Split::forward(const FFModel &ff) {
 
 void calc_block_size(coord_t &num_blks,
                      coord_t &blk_size,
-                     const Domain &domain,
+                     Domain const &domain,
                      int axis) {
   num_blks = 1;
   blk_size = 1;
@@ -206,18 +206,18 @@ void calc_block_size(coord_t &num_blks,
   }
 }
 
-void Split::forward_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+void Split::forward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
-  const Split *split = (Split *)task->args;
+  Split const *split = (Split *)task->args;
   assert(regions.size() == split->numOutputs + 1);
   assert(task->regions.size() == split->numOutputs + 1);
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   float *out_ptr[MAX_NUM_OUTPUTS];
   size_t total_volume = 0;
-  const float *in_ptr = helperGetTensorPointerRO<float>(
+  float const *in_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   coord_t num_blks, in_blk_size, out_blk_size[MAX_NUM_OUTPUTS];
   calc_block_size(num_blks, in_blk_size, in_domain, split->legion_axis);
@@ -243,7 +243,7 @@ void Split::forward_task(const Task *task,
       out_ptr, in_ptr, out_blk_size, in_blk_size, num_blks, split->numOutputs);
 }
 
-void Split::backward(const FFModel &ff) {
+void Split::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -272,16 +272,16 @@ void Split::backward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Split::backward_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+void Split::backward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
-  const Split *split = (Split *)task->args;
+  Split const *split = (Split *)task->args;
   assert(regions.size() == split->numOutputs + 1);
   assert(task->regions.size() == split->numOutputs + 1);
   Domain in_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  const float *out_grad_ptr[MAX_NUM_OUTPUTS];
+  float const *out_grad_ptr[MAX_NUM_OUTPUTS];
   size_t total_volume = 0;
   float *in_grad_ptr = helperGetTensorPointerRW<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -314,7 +314,7 @@ void Split::backward_task(const Task *task,
 }
 
 bool Split::measure_operator_cost(Simulator *sim,
-                                  const MachineView &mv,
+                                  MachineView const &mv,
                                   CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output[MAX_NUM_OUTPUTS], sub_input;
   for (int i = 0; i < numOutputs; i++)
@@ -371,14 +371,14 @@ bool Split::measure_operator_cost(Simulator *sim,
 }
 
 Node FFModel::get_or_create_split_node(const ParallelTensor input,
-                                       const std::vector<int> &splits,
+                                       std::vector<int> const &splits,
                                        int legion_axis) {
   size_t hash = input->get_owner_independent_hash();
   hash = hash * 31 + std::hash<int>()(legion_axis);
   hash = hash * 31 + std::hash<int>()((int)splits.size());
   for (size_t i = 0; i < splits.size(); i++)
     hash = hash * 31 + splits[i];
-  const auto &it = cached_split_ops.find(hash);
+  auto const &it = cached_split_ops.find(hash);
   Split *split = nullptr;
   if (it != cached_split_ops.end()) {
     split = it->second;

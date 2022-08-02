@@ -41,15 +41,15 @@ size_t workSpaceSize;
 
 float conv2DForwardTime(cudnnHandle_t handle,
                         const cudnnTensorDescriptor_t xDesc,
-                        const void *x,
+                        void const *x,
                         const cudnnFilterDescriptor_t wDesc,
-                        const void *w,
+                        void const *w,
                         const cudnnConvolutionDescriptor_t convDesc,
                         void *workSpace,
                         size_t workSpaceSize,
                         const cudnnTensorDescriptor_t yDesc,
                         void *y) {
-  const int reqAlgCnt = 8;
+  int const reqAlgCnt = 8;
   int cnt = 0;
   float alpha = 1.0f, beta = 0.0f;
   cudnnConvolutionFwdAlgoPerf_t perfResults[reqAlgCnt];
@@ -100,15 +100,15 @@ float conv2DForwardTime(cudnnHandle_t handle,
 
 float conv2DBackwardFilterTime(cudnnHandle_t handle,
                                const cudnnTensorDescriptor_t xDesc,
-                               const void *x,
+                               void const *x,
                                const cudnnTensorDescriptor_t dyDesc,
-                               const void *dy,
+                               void const *dy,
                                const cudnnConvolutionDescriptor_t convDesc,
                                void *workSpace,
                                size_t workSpaceSize,
                                const cudnnFilterDescriptor_t dwDesc,
                                void *dw) {
-  const int reqAlgCnt = 8;
+  int const reqAlgCnt = 8;
   int cnt = 0;
   float alpha = 1.0f, beta = 0.0f;
   cudnnConvolutionBwdFilterAlgoPerf_t perfResults[reqAlgCnt];
@@ -159,15 +159,15 @@ float conv2DBackwardFilterTime(cudnnHandle_t handle,
 
 float conv2DBackwardDataTime(cudnnHandle_t handle,
                              const cudnnFilterDescriptor_t wDesc,
-                             const void *w,
+                             void const *w,
                              const cudnnTensorDescriptor_t dyDesc,
-                             const void *dy,
+                             void const *dy,
                              const cudnnConvolutionDescriptor_t convDesc,
                              void *workSpace,
                              size_t workSpaceSize,
                              const cudnnTensorDescriptor_t dxDesc,
                              void *dx) {
-  const int reqAlgCnt = 8;
+  int const reqAlgCnt = 8;
   int cnt = 0;
   float alpha = 1.0f, beta = 0.0f;
   cudnnConvolutionBwdDataAlgoPerf_t perfResults[reqAlgCnt];
@@ -219,7 +219,7 @@ float conv2DBackwardDataTime(cudnnHandle_t handle,
 float pool2DForwardTime(cudnnHandle_t handle,
                         const cudnnPoolingDescriptor_t poolDesc,
                         const cudnnTensorDescriptor_t xDesc,
-                        const void *x,
+                        void const *x,
                         const cudnnTensorDescriptor_t yDesc,
                         void *y) {
   float alpha = 1.0f, beta = 0.0f;
@@ -243,13 +243,13 @@ float pool2DForwardTime(cudnnHandle_t handle,
 float pool2DBackwardTime(cudnnHandle_t handle,
                          const cudnnPoolingDescriptor_t poolDesc,
                          const cudnnTensorDescriptor_t xDesc,
-                         const void *x,
+                         void const *x,
                          const cudnnTensorDescriptor_t yDesc,
-                         const void *y,
+                         void const *y,
                          const cudnnTensorDescriptor_t dxDesc,
                          void *dx,
                          const cudnnTensorDescriptor_t dyDesc,
-                         const void *dy) {
+                         void const *dy) {
   float alpha = 1.0f, beta = 0.0f;
   cudaEvent_t t_start, t_end;
   cudaEventCreate(&t_start);

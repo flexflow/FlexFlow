@@ -73,8 +73,8 @@ Tensor FFModel::pool2d(const Tensor input,
 
 Op *Pool2D::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("kernel_h", value);
   int kernelH = value;
@@ -133,7 +133,7 @@ bool Pool2DParams::is_valid(ParallelTensorShape const &input) const {
 }
 
 using PCG::Node;
-bool operator==(const Pool2DParams &lhs, const Pool2DParams &rhs) {
+bool operator==(Pool2DParams const &lhs, Pool2DParams const &rhs) {
   return lhs.kernel_h == rhs.kernel_h && lhs.kernel_w == rhs.kernel_w &&
          lhs.stride_h == rhs.stride_h && lhs.stride_w == rhs.stride_w &&
          lhs.padding_h == rhs.padding_h && lhs.padding_w == rhs.padding_w &&
@@ -243,7 +243,7 @@ Pool2D::Pool2D(FFModel &model,
                int _padding_w,
                PoolType _type,
                ActiMode _activation,
-               const char *name)
+               char const *name)
     : Op(model,
          OP_POOL2D,
          name,
@@ -268,9 +268,9 @@ Pool2D::Pool2D(FFModel &model,
 }
 
 Pool2D::Pool2D(FFModel &model,
-               const Pool2DParams &params,
+               Pool2DParams const &params,
                const ParallelTensor input,
-               const char *name)
+               char const *name)
     : Pool2D(model,
              input,
              params.kernel_h,
@@ -283,7 +283,7 @@ Pool2D::Pool2D(FFModel &model,
              params.activation,
              name) {}
 
-void Pool2D::init(const FFModel &ff) {
+void Pool2D::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -319,14 +319,14 @@ void Pool2D::init(const FFModel &ff) {
   regions[0]: input
   regions[1]: output
 */
-OpMeta *Pool2D::init_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+OpMeta *Pool2D::init_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const Pool2D *pool = (Pool2D *)task->args;
-  FFHandler handle = *((const FFHandler *)task->local_args);
+  Pool2D const *pool = (Pool2D *)task->args;
+  FFHandler handle = *((FFHandler const *)task->local_args);
   Pool2DMeta *m = new Pool2DMeta(handle);
   m->profiling = pool->profiling;
   std::strcpy(m->op_name, pool->name);
@@ -383,7 +383,7 @@ OpMeta *Pool2D::init_task(const Task *task,
   return m;
 }
 
-void Pool2D::forward(const FFModel &ff) {
+void Pool2D::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -416,14 +416,14 @@ void Pool2D::forward(const FFModel &ff) {
   regions[0](I): input
   regions[1](O): output
 */
-void Pool2D::forward_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+void Pool2D::forward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // const Pool2D* pool = (Pool2D*) task->args;
-  const Pool2DMeta *m = *((Pool2DMeta **)task->local_args);
+  Pool2DMeta const *m = *((Pool2DMeta **)task->local_args);
   TensorAccessorR<float, Pool2DInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, Pool2DOutput::NUMDIM> acc_output(regions[1],
@@ -436,7 +436,7 @@ void Pool2D::forward_task(const Task *task,
   Pool2D::forward_kernel_wrapper(m, acc_input.ptr, acc_output.ptr);
 }
 
-void Pool2D::backward(const FFModel &ff) {
+void Pool2D::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -487,14 +487,14 @@ void Pool2D::backward(const FFModel &ff) {
   regions[2](I): output
   regions[3](I): output_grad
 */
-void Pool2D::backward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+void Pool2D::backward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   // const Pool2D* pool = (Pool2D*) task->args;
-  const Pool2DMeta *m = *((Pool2DMeta **)task->local_args);
+  Pool2DMeta const *m = *((Pool2DMeta **)task->local_args);
   TensorAccessorR<float, Pool2DInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, Pool2DInput::NUMDIM> acc_input_grad(
@@ -528,7 +528,7 @@ void Pool2D::serialize(Legion::Serializer &sez) const {
 }
 
 bool Pool2D::measure_operator_cost(Simulator *sim,
-                                   const MachineView &mv,
+                                   MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
   if (!outputs[0]->get_sub_tensor(mv, sub_output))
@@ -663,7 +663,7 @@ Node Pool2D::deserialize(FFModel &ff,
 
 namespace std {
 size_t hash<FlexFlow::Pool2DParams>::operator()(
-    const FlexFlow::Pool2DParams &params) const {
+    FlexFlow::Pool2DParams const &params) const {
   size_t key = 0;
   hash_combine(key, params.kernel_h);
   hash_combine(key, params.kernel_w);

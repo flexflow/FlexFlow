@@ -40,8 +40,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
-void UniformInitializer::init_task(const Task *task,
-                                   const std::vector<PhysicalRegion> &regions,
+void UniformInitializer::init_task(Task const *task,
+                                   std::vector<PhysicalRegion> const &regions,
                                    Context ctx,
                                    Runtime *runtime) {
 
@@ -95,8 +95,8 @@ void UniformInitializer::init_task(const Task *task,
 }
 
 template <int NDIM>
-void init_task_inner(const Task *task,
-                     const std::vector<PhysicalRegion> &regions,
+void init_task_inner(Task const *task,
+                     std::vector<PhysicalRegion> const &regions,
                      Context ctx,
                      Runtime *runtime,
                      Domain const &domain,
@@ -122,13 +122,13 @@ void init_task_inner(const Task *task,
   scale = sqrt(6.0 / (fan_in + fan_out));
 }
 
-void GlorotUniform::init_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void GlorotUniform::init_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
-  const GlorotUniform *gu = (const GlorotUniform *)task->args;
+  GlorotUniform const *gu = (GlorotUniform const *)task->args;
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   float *w = helperGetTensorPointerWO<float>(
@@ -151,8 +151,8 @@ void GlorotUniform::init_task(const Task *task,
   curandDestroyGenerator(gen);
 }
 
-void NormInitializer::init_task(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
+void NormInitializer::init_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime) {
   assert(regions.size() == 1);
@@ -212,8 +212,8 @@ void NormInitializer::init_task(const Task *task,
   curandDestroyGenerator(gen);
 }
 
-void ZeroInitializer::init_task(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
+void ZeroInitializer::init_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime) {
   ZeroInitMeta *meta = (ZeroInitMeta *)task->args;
@@ -249,8 +249,8 @@ void ZeroInitializer::init_task(const Task *task,
   checkCUDA(cudaDeviceSynchronize());
 }
 
-void ConstantInitializer::init_task(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+void ConstantInitializer::init_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
   ConstantInitializer *initializer = (ConstantInitializer *)task->args;

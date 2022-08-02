@@ -59,7 +59,7 @@ bool ParallelConfig::is_data_parallel() const {
   return true;
 }
 
-bool MachineResource::is_valid_machine_view(const MachineView &view) const {
+bool MachineResource::is_valid_machine_view(MachineView const &view) const {
   if (view.device_type == MachineView::GPU) {
     // Currently assume start_gpu_id == view.start_device_id
     assert(view.start_device_id == start_gpu_id);
@@ -182,12 +182,12 @@ Route NominalCommDevice::expand_to_physical() const {
   return ret;
 }
 
-void NominalCommDevice::set_physical_paths(const EcmpRoutes &rs) {
+void NominalCommDevice::set_physical_paths(EcmpRoutes const &rs) {
   routes = rs;
   dirty = false;
 }
 
-const EcmpRoutes &NominalCommDevice::get_all_routes() {
+EcmpRoutes const &NominalCommDevice::get_all_routes() {
   if (dirty) {
     if (routing_strategy == nullptr)
       assert("don't know how to route!" && false);
@@ -284,7 +284,7 @@ SimTask *TaskManager::new_comm_task(std::string const &name,
   return task;
 }
 
-SimTask *TaskManager::new_forward_task(const Op *op, int idx) {
+SimTask *TaskManager::new_forward_task(Op const *op, int idx) {
   SimTask *task = new_task();
   task->type = SimTask::TASK_FORWARD;
   size_t hash = 17 * 31 + (size_t)(op);
@@ -294,7 +294,7 @@ SimTask *TaskManager::new_forward_task(const Op *op, int idx) {
   return task;
 }
 
-SimTask *TaskManager::new_backward_task(const Op *op, int idx) {
+SimTask *TaskManager::new_backward_task(Op const *op, int idx) {
   SimTask *task = new_task();
   task->type = SimTask::TASK_BACKWARD;
   size_t hash = 17 * 31 + (size_t)(op);
@@ -304,14 +304,14 @@ SimTask *TaskManager::new_backward_task(const Op *op, int idx) {
   return task;
 }
 
-SimTask *TaskManager::get_forward_task(const Op *op, int idx) {
+SimTask *TaskManager::get_forward_task(Op const *op, int idx) {
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
   assert(hash_to_forward_task.find(hash) != hash_to_forward_task.end());
   return hash_to_forward_task[hash];
 }
 
-SimTask *TaskManager::get_backward_task(const Op *op, int idx) {
+SimTask *TaskManager::get_backward_task(Op const *op, int idx) {
   size_t hash = 17 * 31 + (size_t)(op);
   hash = hash * 31 + std::hash<int>()(idx);
   assert(hash_to_backward_task.find(hash) != hash_to_backward_task.end());
@@ -455,8 +455,8 @@ void Simulator::add_task_dependencies_with_xfer(SimTask *src_task,
   std::abort();
 }
 
-CostMetrics Simulator::measure_operator_cost(const Op *op,
-                                             const ParallelConfig &config) {
+CostMetrics Simulator::measure_operator_cost(Op const *op,
+                                             ParallelConfig const &config) {
   assert(false);
 #ifdef DEADCODE
   size_t hash = 17 * 31 + op->get_untyped_params_hash();
@@ -502,7 +502,7 @@ ParallelConfig Op::view_to_pc(MachineView const &view) const {
   return config;
 }
 
-tl::optional<OperatorParameters> get_op_parameters(const Op *op) {
+tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
   switch (op->op_type) {
   case OP_LINEAR:
     return ((Linear *)op)->get_params();
@@ -534,8 +534,8 @@ tl::optional<OperatorParameters> get_op_parameters(const Op *op) {
   }
 }
 
-CostMetrics Simulator::measure_operator_cost(const Op *op,
-                                             const MachineView &mv) {
+CostMetrics Simulator::measure_operator_cost(Op const *op,
+                                             MachineView const &mv) {
   tl::optional<OperatorParameters> retrieved_params = get_op_parameters(op);
   if (retrieved_params.has_value()) {
     OperatorParameters params = retrieved_params.value();
@@ -578,10 +578,10 @@ CostMetrics Simulator::measure_operator_cost(const Op *op,
 float Simulator::estimate_repartition_xfer_cost(
     int repartition_dim,
     int repartition_degree,
-    const ParallelTensorShape &input_tensor_shape,
-    const ParallelTensorShape &output_tensor_shape,
-    const MachineView &source_view,
-    const MachineView &sink_view) const {
+    ParallelTensorShape const &input_tensor_shape,
+    ParallelTensorShape const &output_tensor_shape,
+    MachineView const &source_view,
+    MachineView const &sink_view) const {
   assert(source_view != sink_view);
 
   auto tensor_dim_to_mv_dim_mapping =
@@ -618,10 +618,10 @@ float Simulator::estimate_repartition_xfer_cost(
 
 // estimate the data transfer costs from some op with view source_view to Op op
 // with view sink_view
-float Simulator::estimate_xfer_cost(const Op *op,
+float Simulator::estimate_xfer_cost(Op const *op,
                                     int input_idx,
-                                    const MachineView &source_view,
-                                    const MachineView &sink_view) {
+                                    MachineView const &source_view,
+                                    MachineView const &sink_view) {
   // assert(tensor->is_valid_machine_view(source_view));
   // assert(tensor->is_valid_machine_view(sink_view));
   const ParallelTensor input_tensor = op->inputs[input_idx];
@@ -678,7 +678,7 @@ float Simulator::estimate_xfer_cost(const Op *op,
                                                   source_view);
     }
     case OP_FUSED_PARALLEL: {
-      const FusedParallelOp *fused = (const FusedParallelOp *)op;
+      FusedParallelOp const *fused = (FusedParallelOp const *)op;
       const ParallelTensor input_tensor = op->inputs[0];
       const ParallelTensor output_tensor = op->outputs[0];
       ParallelTensorShape input_shape = input_tensor->get_shape();
@@ -754,7 +754,7 @@ float Simulator::estimate_xfer_cost(const Op *op,
 }
 
 bool Op::estimate_sync_cost(Simulator *sim,
-                            const MachineView &view,
+                            MachineView const &view,
                             CostMetrics &cost_metrics) const {
   // By default we assume an operator does not have sync cost
   // Implement a derived method for operators with parameters
@@ -764,7 +764,7 @@ bool Op::estimate_sync_cost(Simulator *sim,
 float Simulator::default_estimate_sync_cost(
     const ParallelDim tensor_dims[MAX_TENSOR_DIM],
     int tensor_ndims,
-    const MachineView &view) {
+    MachineView const &view) {
   ParallelTensorShape tensor_shape(tensor_ndims, tensor_dims, DT_FLOAT);
 
   return this->default_estimate_sync_cost(
@@ -772,7 +772,7 @@ float Simulator::default_estimate_sync_cost(
 }
 
 float Simulator::default_estimate_sync_cost(const ParallelTensor tensor,
-                                            const MachineView &view,
+                                            MachineView const &view,
                                             int num_replica_dims) {
   return this->default_estimate_sync_cost(
       tensor->get_shape(), view, num_replica_dims);
@@ -780,7 +780,7 @@ float Simulator::default_estimate_sync_cost(const ParallelTensor tensor,
 
 float Simulator::default_estimate_sync_cost(
     ParallelTensorShape const &tensor_shape,
-    const MachineView &view,
+    MachineView const &view,
     int num_replicate_dims) {
   // Currently only support 1 replicate_dim
   int num_replicas = tensor_shape.get_num_replicas();
@@ -809,15 +809,15 @@ float Simulator::default_estimate_sync_cost(
 }
 
 float Simulator::simulate_runtime(
-    const FFModel *model,
-    const std::map<const Op *, ParallelConfig> &global,
+    FFModel const *model,
+    std::map<Op const *, ParallelConfig> const &global,
     CompMode comp_mode) {
   return this->simulate_runtime(model, global, comp_mode, "");
 }
 
 float Simulator::simulate_runtime(
-    const FFModel *model,
-    const std::map<const Op *, ParallelConfig> &global,
+    FFModel const *model,
+    std::map<Op const *, ParallelConfig> const &global,
     CompMode comp_mode,
     std::string const &export_file_name) {
   // printf("%s\n", machine->to_string().c_str());
@@ -847,7 +847,7 @@ float Simulator::simulate_runtime(
     ParallelConfig config = global.find(op)->second;
     for (int j = 0; j < op->numInputs; j++) {
       ParallelTensor t = op->inputs[j];
-      const Op *pre_op = t->owner_op;
+      Op const *pre_op = t->owner_op;
       if (pre_op == NULL)
         continue;
       ParallelConfig pre_config = global.find(pre_op)->second;
@@ -1239,8 +1239,8 @@ float Simulator::simulate_runtime(
 }
 
 float LogicalTaskgraphBasedSimulator::simulate_runtime(
-    const FFModel *model,
-    const std::map<const Op *, ParallelConfig> &global,
+    FFModel const *model,
+    std::map<Op const *, ParallelConfig> const &global,
     CompMode comp_mode,
     std::string const &export_file_name) {
 #ifdef WRITE_NETWORK_TRANSFER
@@ -1320,7 +1320,7 @@ float LogicalTaskgraphBasedSimulator::simulate_runtime(
     ParallelConfig config = global.find(op)->second;
     for (int j = 0; j < op->numInputs; j++) {
       ParallelTensor t = op->inputs[j];
-      const Op *pre_op = t->owner_op;
+      Op const *pre_op = t->owner_op;
       if (pre_op == NULL)
         continue;
       ParallelConfig pre_config = global.find(pre_op)->second;
@@ -1466,8 +1466,8 @@ float LogicalTaskgraphBasedSimulator::simulate_runtime(
 }
 
 float LogicalTaskgraphBasedSimulator::simulate_runtime(
-    const FFModel *model,
-    const std::map<const Op *, ParallelConfig> &global,
+    FFModel const *model,
+    std::map<Op const *, ParallelConfig> const &global,
     CompMode comp_mode) {
   return this->simulate_runtime(model, global, comp_mode, "");
 }
@@ -1832,8 +1832,8 @@ void LogicalTaskgraphBasedSimulator::add_task_dependencies_with_xfer(
   final_tasks.back()->add_next_task(dst_task);
 }
 
-SimTask *TaskManager::new_allreduce_task(const Op *op,
-                                         const std::vector<int> &node_ids,
+SimTask *TaskManager::new_allreduce_task(Op const *op,
+                                         std::vector<int> const &node_ids,
                                          size_t message_size) {
   SimTask *task = new_task();
   task->type = SimTask::TASK_ALLREDUCE;

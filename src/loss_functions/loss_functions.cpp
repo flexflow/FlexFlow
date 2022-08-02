@@ -23,10 +23,10 @@ using namespace Legion;
 
 __global__ void
 sparse_categorical_crossentropy_loss_backward(float *logit_grad,
-                                              const int *label,
+                                              int const *label,
                                               coord_t num_samples,
                                               coord_t num_classes,
-                                              const int k) {
+                                              int const k) {
   CUDA_KERNEL_LOOP(i, num_samples) {
     int label_idx = label[i / k];
     logit_grad[i * num_classes + label_idx] -= 1.0f;
@@ -34,23 +34,23 @@ sparse_categorical_crossentropy_loss_backward(float *logit_grad,
 }
 
 __global__ void categorical_crossentropy_loss_backward(float *logit_grad,
-                                                       const float *logit,
-                                                       const float *label,
+                                                       float const *logit,
+                                                       float const *label,
                                                        coord_t num_elements) {
   CUDA_KERNEL_LOOP(i, num_elements) { logit_grad[i] = logit[i] - label[i]; }
 }
 
 __global__ void mean_squared_error_avg_loss_backward(float *logit_grad,
-                                                     const float *logit,
-                                                     const float *label,
+                                                     float const *logit,
+                                                     float const *label,
                                                      coord_t num_elements) {
   CUDA_KERNEL_LOOP(i, num_elements) { logit_grad[i] = logit[i] - label[i]; }
 }
 
 void Loss::sparse_categorical_crossentropy_loss_backward_kernel_wrapper(
     float *logit_grad_ptr,
-    const float *logit_ptr,
-    const int *label_ptr,
+    float const *logit_ptr,
+    int const *label_ptr,
     size_t logit_volume,
     size_t logit_grad_volume,
     int num_samples,
@@ -87,8 +87,8 @@ void Loss::sparse_categorical_crossentropy_loss_backward_kernel_wrapper(
 
 void Loss::categorical_crossentropy_loss_backward_kernel_wrapper(
     float *logit_grad_ptr,
-    const float *logit_ptr,
-    const float *label_ptr,
+    float const *logit_ptr,
+    float const *label_ptr,
     size_t logit_volume,
     size_t logit_grad_volume,
     float scale_factor) {
@@ -117,8 +117,8 @@ void Loss::categorical_crossentropy_loss_backward_kernel_wrapper(
 
 void Loss::mean_squared_error_avg_loss_backward_kernel_wrapper(
     float *logit_grad_ptr,
-    const float *logit_ptr,
-    const float *label_ptr,
+    float const *logit_ptr,
+    float const *label_ptr,
     size_t logit_volume,
     size_t logit_grad_volume,
     float scale_factor) {

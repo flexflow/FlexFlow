@@ -29,7 +29,7 @@ using Legion::Task;
 template <typename TI>
 __global__ void embed_forward_no_aggr(const TI *input,
                                       float *output,
-                                      const float *embed,
+                                      float const *embed,
                                       int out_dim,
                                       int batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
@@ -44,7 +44,7 @@ __global__ void embed_forward_no_aggr(const TI *input,
 template <typename TI>
 __global__ void embed_forward_with_aggr(const TI *input,
                                         float *output,
-                                        const float *embed,
+                                        float const *embed,
                                         int out_dim,
                                         int in_dim,
                                         int batch_size,
@@ -67,7 +67,7 @@ __global__ void embed_forward_with_aggr(const TI *input,
 
 template <typename TI>
 __global__ void embed_backward_no_aggr(const TI *input,
-                                       const float *output,
+                                       float const *output,
                                        float *embed,
                                        int out_dim,
                                        int batch_size) {
@@ -81,7 +81,7 @@ __global__ void embed_backward_no_aggr(const TI *input,
 
 template <typename TI>
 __global__ void embed_backward_with_aggr(const TI *input,
-                                         const float *output,
+                                         float const *output,
                                          float *embed,
                                          int out_dim,
                                          int in_dim,
@@ -133,7 +133,7 @@ void Embedding::forward_kernel(const TI *input_ptr,
 
 /*static*/
 template <typename TI>
-void Embedding::forward_kernel_wrapper(const EmbeddingMeta *m,
+void Embedding::forward_kernel_wrapper(EmbeddingMeta const *m,
                                        const TI *input_ptr,
                                        float *output_ptr,
                                        float const *weight_ptr,
@@ -194,7 +194,7 @@ void Embedding::backward_kernel(const TI *input_ptr,
 
 /*static*/
 template <typename TI>
-void Embedding::backward_kernel_wrapper(const EmbeddingMeta *m,
+void Embedding::backward_kernel_wrapper(EmbeddingMeta const *m,
                                         const TI *input_ptr,
                                         float const *output_ptr,
                                         float *weight_grad_ptr,
@@ -240,8 +240,8 @@ void Embedding::rand_generate_int64_wrapper(int64_t *ptr,
 }
 
 template void
-Embedding::forward_kernel_wrapper<int32_t>(const EmbeddingMeta *m,
-                                           const int32_t *input_ptr,
+Embedding::forward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
+                                           int32_t const *input_ptr,
                                            float *output_ptr,
                                            float const *weight_ptr,
                                            int in_dim,
@@ -250,8 +250,8 @@ Embedding::forward_kernel_wrapper<int32_t>(const EmbeddingMeta *m,
                                            AggrMode aggr,
                                            int outputSize);
 template void
-Embedding::forward_kernel_wrapper<int64_t>(const EmbeddingMeta *m,
-                                           const int64_t *input_ptr,
+Embedding::forward_kernel_wrapper<int64_t>(EmbeddingMeta const *m,
+                                           int64_t const *input_ptr,
                                            float *output_ptr,
                                            float const *weight_ptr,
                                            int in_dim,
@@ -261,8 +261,8 @@ Embedding::forward_kernel_wrapper<int64_t>(const EmbeddingMeta *m,
                                            int outputSize);
 
 template void
-Embedding::backward_kernel_wrapper<int32_t>(const EmbeddingMeta *m,
-                                            const int32_t *input_ptr,
+Embedding::backward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
+                                            int32_t const *input_ptr,
                                             float const *output_ptr,
                                             float *weight_grad_ptr,
                                             int in_dim,
@@ -271,8 +271,8 @@ Embedding::backward_kernel_wrapper<int32_t>(const EmbeddingMeta *m,
                                             AggrMode aggr,
                                             int outputSize);
 template void
-Embedding::backward_kernel_wrapper<int64_t>(const EmbeddingMeta *m,
-                                            const int64_t *input_ptr,
+Embedding::backward_kernel_wrapper<int64_t>(EmbeddingMeta const *m,
+                                            int64_t const *input_ptr,
                                             float const *output_ptr,
                                             float *weight_grad_ptr,
                                             int in_dim,

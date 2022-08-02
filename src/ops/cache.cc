@@ -37,8 +37,8 @@ using Legion::TaskLauncher;
 // Moving average over batches: 1 if batch is perfectly cached, 0 else.
 template <typename T>
 float default_score(float *cached_score,
-                    const void *input,
-                    const void *cached,
+                    void const *input,
+                    void const *cached,
                     int vol) {
   float gamma = 0.99f;
   *cached_score *= gamma;
@@ -55,10 +55,10 @@ float default_score(float *cached_score,
 }
 
 Tensor FFModel::cache(
-    const Tensor &input,
+    Tensor const &input,
     int num_batches,
-    std::function<float(float *, const void *, const void *, int)> score_f,
-    const char *name) {
+    std::function<float(float *, void const *, void const *, int)> score_f,
+    char const *name) {
   assert(false);
 #ifdef DEADCODE
   if (!score_f) {
@@ -82,10 +82,10 @@ Tensor FFModel::cache(
 
 Cache::Cache(
     FFModel &model,
-    const ParallelTensor &_input,
+    ParallelTensor const &_input,
     int _num_batches,
-    std::function<float(float *, const void *, const void *, int)> &_score_f,
-    const char *name)
+    std::function<float(float *, void const *, void const *, int)> &_score_f,
+    char const *name)
     : Op(model,
          OP_CACHE,
          name,
@@ -123,7 +123,7 @@ template <typename T> void cache_init(Cache *cache, size_t vol) {
   cache->batch_cmp = malloc(vol * sizeof(T));
 }
 
-void Cache::init(const FFModel &ff) {
+void Cache::init(FFModel const &ff) {
   size_t vol = inputs[0]->get_volume();
   switch (inputs[0]->data_type) {
   case DT_FLOAT:
@@ -154,19 +154,19 @@ void Cache::init(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Cache::init_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+OpMeta *Cache::init_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
   Cache *c = (Cache *)task->args;
-  FFHandler handle = *((const FFHandler *)task->local_args);
+  FFHandler handle = *((FFHandler const *)task->local_args);
   CacheMeta *m = new CacheMeta(handle);
   m->cache_score = 0.0f;
   m->profiling = c->profiling;
   return m;
 }
 
-void Cache::forward(const FFModel &ff) {
+void Cache::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -226,8 +226,8 @@ void Cache::forward(const FFModel &ff) {
   batch_ctr = (batch_ctr + 1) % num_batches;
 }
 
-void Cache::forward_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+void Cache::forward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
   Cache *c = ((Arg *)(task->args))->cache;
@@ -247,14 +247,14 @@ void Cache::forward_task(const Task *task,
   }
 }
 
-void Cache::backward(const FFModel &ff) {
+void Cache::backward(FFModel const &ff) {
   // Do nothing
 }
 
 void Cache::use_cached(bool c) { load_cached = c; }
 
-float Cache::update_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+float Cache::update_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
   Cache *c = ((Arg *)(task->args))->cache;
@@ -270,7 +270,7 @@ float Cache::update_task(const Task *task,
 }
 
 bool Cache::measure_operator_cost(Simulator *sim,
-                                  const MachineView &mv,
+                                  MachineView const &mv,
                                   CostMetrics &cost_metrics) const {
   // TODO: implement
   cost_metrics.forward_time = 0.0f;

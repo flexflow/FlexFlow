@@ -11,20 +11,20 @@ public:
             const ParallelTensor input,
             int replicate_legion_dim,
             int replicate_degree,
-            const char *name = NULL);
+            char const *name = NULL);
   void create_input_partition(FFModel &model) override;
-  void init(const FFModel &) override;
-  void forward(const FFModel &) override;
-  void backward(const FFModel &) override;
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
   bool get_int_parameter(PMParameter, int *) const override;
   bool append_parallel_op_info(
       std::vector<ParallelOpInfo> &parallel_ops) const override;
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   template <typename T>
@@ -36,7 +36,7 @@ public:
                               size_t num_elements,
                               size_t num_replicas);
   bool measure_operator_cost(Simulator *sim,
-                             const MachineView &pc,
+                             MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
   size_t get_params_hash() const override;

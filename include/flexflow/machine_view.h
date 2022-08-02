@@ -15,9 +15,9 @@ struct MachineView {
   static const MachineView NO_VIEW;
   MachineView();
 
-  int get_device_id(const Legion::DomainPoint &p) const;
-  bool operator==(const MachineView &rhs) const;
-  bool operator!=(const MachineView &rhs) const;
+  int get_device_id(Legion::DomainPoint const &p) const;
+  bool operator==(MachineView const &rhs) const;
+  bool operator!=(MachineView const &rhs) const;
 
   Legion::Domain get_domain() const;
 
@@ -35,7 +35,7 @@ struct MachineView {
 };
 
 struct MachineViewDimCompare {
-  bool operator()(const MachineView &a, const MachineView &b) const {
+  bool operator()(MachineView const &a, MachineView const &b) const {
     if (a.ndims != b.ndims)
       return a.ndims < b.ndims;
     for (int i = 0; i < a.ndims; i++)
@@ -48,7 +48,7 @@ struct MachineViewDimCompare {
 struct MachineResource {
   MachineResource(FFConfig const &);
 
-  bool is_valid_machine_view(const MachineView &view) const;
+  bool is_valid_machine_view(MachineView const &view) const;
   size_t hash() const;
   int num_nodes;
   int all_cpus_per_node, available_cpus_per_node;
@@ -61,7 +61,7 @@ struct ParallelConfig {
     GPU = 0,
     CPU = 1,
   };
-  bool operator==(const ParallelConfig &rhs) const {
+  bool operator==(ParallelConfig const &rhs) const {
     if (nDims != rhs.nDims)
       return false;
     if (device_type != rhs.device_type)

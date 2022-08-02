@@ -34,19 +34,19 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 Tensor FFModel::aggregate_spec(
-    const Tensor
+    Tensor const
         *inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
     int n,
     float lambda_bal,
-    const char *name) {
+    char const *name) {
   assert(false);
 }
 
 AggregateSpec::AggregateSpec(FFModel &model,
-                             const ParallelTensor *_inputs,
+                             ParallelTensor const *_inputs,
                              int _n,
                              float _lambda_bal,
-                             const char *name)
+                             char const *name)
     : Op(model,
          OP_AGG_SPEC,
          name,
@@ -98,7 +98,7 @@ AggregateSpec::AggregateSpec(FFModel &model,
   numWeights = 0;
 }
 
-void AggregateSpec::init(const FFModel &ff) {
+void AggregateSpec::init(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -117,8 +117,8 @@ void AggregateSpec::init(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *AggregateSpec::init_task(const Task *task,
-                                 const std::vector<PhysicalRegion> &regions,
+OpMeta *AggregateSpec::init_task(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  Runtime *runtime) {
   AggregateSpec *agg = (AggregateSpec *)task->args;
@@ -128,7 +128,7 @@ OpMeta *AggregateSpec::init_task(const Task *task,
   return m;
 }
 
-void AggregateSpec::forward(const FFModel &ff) {
+void AggregateSpec::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -175,8 +175,8 @@ void AggregateSpec::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void AggregateSpec::forward_task(const Task *task,
-                                 const std::vector<PhysicalRegion> &regions,
+void AggregateSpec::forward_task(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  Runtime *runtime) {
   int n = ((AggregateSpec *)task->args)->n;
@@ -184,12 +184,12 @@ void AggregateSpec::forward_task(const Task *task,
   assert((int)regions.size() == n + 3);
   assert((int)task->regions.size() == n + 3);
 
-  const AggregateSpecMeta *m = *((AggregateSpecMeta **)task->local_args);
+  AggregateSpecMeta const *m = *((AggregateSpecMeta **)task->local_args);
 
   // get gate_pred, gate_assign, output
-  const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
-  const AccessorRO<int, 2> acc_gate_assign(regions[1], FID_DATA);
-  const AccessorWO<float, 2> acc_output(regions[n + 2], FID_DATA);
+  AccessorRO<float, 2> const acc_gate_pred(regions[0], FID_DATA);
+  AccessorRO<int, 2> const acc_gate_assign(regions[1], FID_DATA);
+  AccessorWO<float, 2> const acc_output(regions[n + 2], FID_DATA);
 
   Rect<2> rect_gate_pred = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -236,7 +236,7 @@ void AggregateSpec::forward_task(const Task *task,
                                         out_dim);
 }
 
-void AggregateSpec::backward(const FFModel &ff) {
+void AggregateSpec::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -305,11 +305,11 @@ void AggregateSpec::backward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void AggregateSpec::backward_task(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+void AggregateSpec::backward_task(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime) {
-  const AggregateSpecMeta *m = *((AggregateSpecMeta **)task->local_args);
+  AggregateSpecMeta const *m = *((AggregateSpecMeta **)task->local_args);
   int n = ((AggregateSpec *)task->args)->n;
   float lambda_bal = ((AggregateSpec *)task->args)->lambda_bal;
 
@@ -317,11 +317,11 @@ void AggregateSpec::backward_task(const Task *task,
   assert((int)task->regions.size() == n + 5);
 
   // get gate_pred, gate_assin, full_gate_grad, output_grad
-  const AccessorRO<float, 2> acc_gate_pred(regions[0], FID_DATA);
-  const AccessorRO<int, 2> acc_gate_assign(regions[1], FID_DATA);
-  const AccessorRO<int, 2> acc_true_gate_assign(regions[2], FID_DATA);
-  const AccessorWO<float, 2> acc_full_gate_grad(regions[3], FID_DATA);
-  const AccessorRO<float, 2> acc_output_grad(regions[n + 4], FID_DATA);
+  AccessorRO<float, 2> const acc_gate_pred(regions[0], FID_DATA);
+  AccessorRO<int, 2> const acc_gate_assign(regions[1], FID_DATA);
+  AccessorRO<int, 2> const acc_true_gate_assign(regions[2], FID_DATA);
+  AccessorWO<float, 2> const acc_full_gate_grad(regions[3], FID_DATA);
+  AccessorRO<float, 2> const acc_output_grad(regions[n + 4], FID_DATA);
 
   Rect<2> rect_gate_pred = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -381,7 +381,7 @@ void AggregateSpec::backward_task(const Task *task,
 }
 
 bool AggregateSpec::measure_operator_cost(Simulator *sim,
-                                          const MachineView &mv,
+                                          MachineView const &mv,
                                           CostMetrics &cost_metrics) const {
   // TODO: implement
   cost_metrics.forward_time = 0.0f;

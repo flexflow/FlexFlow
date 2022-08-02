@@ -20,7 +20,7 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_app("Transformer");
 
 Tensor create_emb(FFModel *model,
-                  const Tensor &input,
+                  Tensor const &input,
                   int input_dim,
                   int output_dim,
                   int idx) {
@@ -31,7 +31,7 @@ Tensor create_emb(FFModel *model,
 }
 
 Tensor create_attention_encoder(FFModel *model,
-                                const Tensor &input,
+                                Tensor const &input,
                                 int hidden_dim,
                                 int num_heads,
                                 int kdim,
@@ -45,8 +45,8 @@ Tensor create_attention_encoder(FFModel *model,
 }
 
 void create_attention_encoder_decoder(FFModel *model,
-                                      const Tensor &input1,
-                                      const Tensor &input2,
+                                      Tensor const &input1,
+                                      Tensor const &input2,
                                       Tensor &output1,
                                       Tensor &output2,
                                       int hidden_dim,
@@ -109,14 +109,14 @@ void parse_input_args(char **argv, int argc, TransformerConfig &config) {
   }
 }
 
-void FlexFlow::top_level_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void FlexFlow::top_level_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
   FFConfig ffConfig;
   TransformerConfig tfConfig;
   {
-    const InputArgs &command_args = HighLevelRuntime::get_input_args();
+    InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
     parse_input_args(argv, argc, tfConfig);
@@ -133,7 +133,7 @@ void FlexFlow::top_level_task(const Task *task,
   FFModel ff(ffConfig);
   Tensor input;
   {
-    const int dims[] = {
+    int const dims[] = {
         ffConfig.batchSize, tfConfig.sequence_length, tfConfig.hidden_size};
     input = ff.create_tensor<3>(dims, DT_FLOAT);
   }
@@ -211,9 +211,9 @@ void FlexFlow::top_level_task(const Task *task,
 }
 
 DataLoader::DataLoader(FFModel &ff,
-                       const TransformerConfig &tf,
-                       const Tensor &_input,
-                       const Tensor &_label) {
+                       TransformerConfig const &tf,
+                       Tensor const &_input,
+                       Tensor const &_label) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   num_samples = 0;
@@ -224,12 +224,12 @@ DataLoader::DataLoader(FFModel &ff,
   return;
   {
     batch_input = _input;
-    const int dims[] = {num_samples, tf.sequence_length, tf.hidden_size};
+    int const dims[] = {num_samples, tf.sequence_length, tf.hidden_size};
     full_input = ff.create_tensor<3>(dims, DT_FLOAT);
   }
   {
     batch_label = _label;
-    const int dims[] = {num_samples, tf.sequence_length, 1};
+    int const dims[] = {num_samples, tf.sequence_length, 1};
     full_label = ff.create_tensor<3>(dims, DT_FLOAT);
   }
   // Load entire dataset
@@ -254,16 +254,16 @@ DataLoader::DataLoader(FFModel &ff,
   runtime->execute_task(ctx, launcher);
 }
 
-void DataLoader::load_entire_dataset(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
+void DataLoader::load_entire_dataset(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // Note that these instances are in ZCM, can only use
   // TensorAccessorW with readOutput flag
-  const AccessorWO<float, 3> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 3> acc_label(regions[1], FID_DATA);
+  AccessorWO<float, 3> const acc_input(regions[0], FID_DATA);
+  AccessorWO<float, 3> const acc_label(regions[1], FID_DATA);
   Rect<3> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<3> rect_label = runtime->get_index_space_domain(

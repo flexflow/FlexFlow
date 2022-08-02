@@ -26,7 +26,7 @@ using Legion::TaskLauncher;
 Tensor FFModel::dropout(const Tensor input,
                         float rate,
                         unsigned long long seed,
-                        const char *name) {
+                        char const *name) {
   Layer *dropout = new Layer(this,
                              OP_DROPOUT,
                              name,
@@ -57,8 +57,8 @@ Tensor FFModel::dropout(const Tensor input,
 
 Op *Dropout::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("seed", value);
   int seed = value;
@@ -89,7 +89,7 @@ size_t Dropout::get_params_hash() const {
 
 using PCG::Node;
 Node FFModel::get_or_create_dropout_node(const ParallelTensor input,
-                                         const DropoutParams &params) {
+                                         DropoutParams const &params) {
   // Don't check is_valid since all inputs should be valid for dropout
   // if (!params.is_valid(input)) {
   //  return Node::INVALID_NODE;
@@ -98,7 +98,7 @@ Node FFModel::get_or_create_dropout_node(const ParallelTensor input,
   size_t hash = params.get_hash(input);
 
   Dropout *dropout = nullptr;
-  const auto &it = this->cached_dropout_ops.find(hash);
+  auto const &it = this->cached_dropout_ops.find(hash);
   if (it != this->cached_dropout_ops.end()) {
     dropout = it->second;
   } else {
@@ -113,7 +113,7 @@ Dropout::Dropout(FFModel &model,
                  const ParallelTensor _input,
                  float _rate,
                  unsigned long long _seed,
-                 const char *name)
+                 char const *name)
     : Op(model,
          OP_DROPOUT,
          name,
@@ -179,7 +179,7 @@ template <int NDIM> void Dropout::map_output_tensors_with_dim(FFModel &model) {
 }
 #endif
 
-void Dropout::init(const FFModel &ff) {
+void Dropout::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -211,8 +211,8 @@ void Dropout::init(const FFModel &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Dropout::init_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+OpMeta *Dropout::init_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   assert(regions.size() == 2);
@@ -232,7 +232,7 @@ OpMeta *Dropout::init_task(const Task *task,
   return m;
 }
 
-void Dropout::forward(const FFModel &ff) {
+void Dropout::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -260,8 +260,8 @@ void Dropout::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Dropout::forward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+void Dropout::forward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   // float alpha = 1.0f, beta = 0.0f;
@@ -269,7 +269,7 @@ void Dropout::forward_task(const Task *task,
   assert(task->regions.size() == 2);
   // const Dropout* dropout = (const Dropout*) task->args;
   DropoutMeta *m = *((DropoutMeta **)task->local_args);
-  const float *input_ptr = helperGetTensorPointerRO<float>(
+  float const *input_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float *output_ptr = helperGetTensorPointerWO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
@@ -277,7 +277,7 @@ void Dropout::forward_task(const Task *task,
   forward_kernel_wrapper(m, input_ptr, output_ptr);
 }
 
-void Dropout::backward(const FFModel &ff) {
+void Dropout::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -309,8 +309,8 @@ void Dropout::backward(const FFModel &ff) {
   regions[0](I/O): input_grad
   regions[1](I): output_grad
 */
-void Dropout::backward_task(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+void Dropout::backward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
   // float alpha = 1.0f, beta = 0.0f;
@@ -320,7 +320,7 @@ void Dropout::backward_task(const Task *task,
   DropoutMeta *m = *((DropoutMeta **)task->local_args);
   float *input_grad_ptr = helperGetTensorPointerRW<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  const float *output_grad_ptr = helperGetTensorPointerRO<float>(
+  float const *output_grad_ptr = helperGetTensorPointerRO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   backward_kernel_wrapper(m, output_grad_ptr, input_grad_ptr);
@@ -347,7 +347,7 @@ Node Dropout::deserialize(FFModel &ff,
 }
 
 bool Dropout::measure_operator_cost(Simulator *sim,
-                                    const MachineView &mv,
+                                    MachineView const &mv,
                                     CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {

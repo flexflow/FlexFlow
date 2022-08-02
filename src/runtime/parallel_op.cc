@@ -4,7 +4,7 @@ namespace FlexFlow {
 
 ParallelOp::ParallelOp(FFModel &model,
                        OperatorType op_type,
-                       const char *name,
+                       char const *name,
                        const ParallelTensor input)
     : Op(model,
          op_type,

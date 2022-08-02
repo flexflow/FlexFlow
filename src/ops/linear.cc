@@ -31,10 +31,10 @@ Tensor FFModel::dense(const Tensor input,
                       ActiMode activation,
                       bool use_bias,
                       DataType data_type,
-                      const Layer *shared_op,
+                      Layer const *shared_op,
                       Initializer *kernel_initializer,
                       Initializer *bias_initializer,
-                      const char *name) {
+                      char const *name) {
   Layer *li = new Layer(this,
                         OP_LINEAR,
                         name,
@@ -82,8 +82,8 @@ Tensor FFModel::dense(const Tensor input,
 
 Op *Linear::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("use_bias", value);
   bool use_bias = (bool)value;
@@ -123,7 +123,7 @@ Linear::Linear(FFModel &model,
 Linear::Linear(FFModel &model,
                LinearParams const &params,
                ParallelTensor const input,
-               const char *name,
+               char const *name,
                bool allocate_weights)
     : Linear(model,
              params.layer_guid,
@@ -136,14 +136,14 @@ Linear::Linear(FFModel &model,
              name) {}
 
 Linear::Linear(FFModel &model,
-               const LayerID &_layer_guid,
+               LayerID const &_layer_guid,
                const ParallelTensor _input,
                int out_dim,
                ActiMode _activation,
                bool _use_bias,
                DataType _data_type,
                bool allocate_weights,
-               const char *name)
+               char const *name)
     : Op(model,
          OP_LINEAR,
          name,
@@ -201,7 +201,7 @@ Linear::Linear(FFModel &model,
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
 
-void Linear::init(const FFModel &ff) {
+void Linear::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   // assert(check_output_input_weight_same_machine_view());
   parallel_is = outputs[0]->parallel_is;
@@ -254,8 +254,8 @@ void Linear::init(const FFModel &ff) {
   regions[1](I): kernel
   regions[2](I): bias
 */
-OpMeta *Linear::init_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+OpMeta *Linear::init_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
   Domain out_domain = runtime->get_index_space_domain(
@@ -273,14 +273,14 @@ OpMeta *Linear::init_task(const Task *task,
 }
 
 template <int NDIM>
-OpMeta *Linear::init_task_with_dim(const Task *task,
-                                   const std::vector<PhysicalRegion> &regions,
+OpMeta *Linear::init_task_with_dim(Task const *task,
+                                   std::vector<PhysicalRegion> const &regions,
                                    Context ctx,
                                    Runtime *runtime) {
   assert(regions.size() == task->regions.size());
   assert(regions.size() == 2 || regions.size() == 3);
-  const Linear *linear = (Linear *)task->args;
-  FFHandler handle = *((const FFHandler *)task->local_args);
+  Linear const *linear = (Linear *)task->args;
+  FFHandler handle = *((FFHandler const *)task->local_args);
   // TensorAccessorR<float, 2> acc_input(
   //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, NDIM> acc_output(regions[0],
@@ -320,7 +320,7 @@ OpMeta *Linear::init_task_with_dim(const Task *task,
   return m;
 }
 
-void Linear::forward(const FFModel &ff) {
+void Linear::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -362,8 +362,8 @@ void Linear::forward(const FFModel &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Linear::forward_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+void Linear::forward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
   Domain in_domain = runtime->get_index_space_domain(
@@ -386,12 +386,12 @@ void Linear::forward_task(const Task *task,
   regions[3](I): bias
 */
 template <int NDIM>
-void Linear::forward_task_with_dim(const Task *task,
-                                   const std::vector<PhysicalRegion> &regions,
+void Linear::forward_task_with_dim(Task const *task,
+                                   std::vector<PhysicalRegion> const &regions,
                                    Context ctx,
                                    Runtime *runtime) {
   // Linear* linear = (Linear*) task->args;
-  const LinearMeta *m = *((LinearMeta **)task->local_args);
+  LinearMeta const *m = *((LinearMeta **)task->local_args);
   assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
   assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));
 
@@ -411,7 +411,7 @@ void Linear::forward_task_with_dim(const Task *task,
   assert(acc_output.rect.volume() == static_cast<size_t>(out_dim * batch_size));
   assert(acc_input.rect.volume() == static_cast<size_t>(in_dim * batch_size));
   assert(acc_kernel.rect.volume() == static_cast<size_t>(in_dim * out_dim));
-  const float *acc_bias_ptr = NULL;
+  float const *acc_bias_ptr = NULL;
   if (m->use_bias) {
     TensorAccessorR<float, 3> acc_bias(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
@@ -429,7 +429,7 @@ void Linear::forward_task_with_dim(const Task *task,
                                  batch_size);
 }
 
-void Linear::backward(const FFModel &ff) {
+void Linear::backward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   {
@@ -505,8 +505,8 @@ void Linear::backward(const FFModel &ff) {
   assert(replica == NULL);
 }
 
-void Linear::backward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+void Linear::backward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   Domain in_domain = runtime->get_index_space_domain(
@@ -532,12 +532,12 @@ void Linear::backward_task(const Task *task,
   regions[6](I/O): bias_grad
 */
 template <int NDIM>
-void Linear::backward_task_with_dim(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+void Linear::backward_task_with_dim(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
   // Linear* linear = (Linear*) task->args;
-  const LinearMeta *m = *((LinearMeta **)task->local_args);
+  LinearMeta const *m = *((LinearMeta **)task->local_args);
   assert(regions.size() == (5 + static_cast<size_t>(m->trainableInputs[0]) +
                             static_cast<size_t>(m->use_bias)));
   assert(task->regions.size() ==
@@ -624,7 +624,7 @@ void Linear::backward_task_with_dim(const Task *task,
                                   batch_size);
 }
 
-void Linear::print_layer(const FFModel &ff) {
+void Linear::print_layer(FFModel const &ff) {
   printf("linear layer\n");
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -648,8 +648,8 @@ void Linear::print_layer(const FFModel &ff) {
   TensorAccessorW<float, 1> acc_bias(
       bias_region, bias_req, FID_DATA, ctx, runtime, true);
 
-  const float *kernel_ptr = acc_kernel.ptr;
-  const float *bias_ptr = acc_bias.ptr;
+  float const *kernel_ptr = acc_kernel.ptr;
+  float const *bias_ptr = acc_bias.ptr;
 
   size_t kernel_size = acc_kernel.rect.volume();
   int kernel_dim1 = acc_kernel.rect.hi[0] - acc_kernel.rect.lo[0] + 1;
@@ -677,7 +677,7 @@ void Linear::print_layer(const FFModel &ff) {
 }
 
 bool Linear::estimate_sync_cost(Simulator *sim,
-                                const MachineView &view,
+                                MachineView const &view,
                                 CostMetrics &cost_metrics) const {
   // Estimate the cost of sync weights
   ParallelTensorShape tensor_shape;
@@ -699,7 +699,7 @@ bool Linear::estimate_sync_cost(Simulator *sim,
   return true;
 }
 
-ParallelConfig Linear::get_random_parallel_config(const FFModel &ff) const {
+ParallelConfig Linear::get_random_parallel_config(FFModel const &ff) const {
   if (!ff.config.enable_parameter_parallel)
     return Op::get_random_parallel_config(ff);
   std::vector<int> batch_candidates;
@@ -742,8 +742,8 @@ bool Linear::get_int_parameter(PMParameter para, int *value) const {
   }
 }
 
-bool Linear::is_valid_parallel_config(const FFModel &ff,
-                                      const ParallelConfig &pc) const {
+bool Linear::is_valid_parallel_config(FFModel const &ff,
+                                      ParallelConfig const &pc) const {
   if (!ff.config.enable_parameter_parallel)
     return Op::is_valid_parallel_config(ff, pc);
   // Support data and parameter parallel
@@ -771,7 +771,7 @@ bool Linear::use_activation(ActiMode mode) {
 }
 
 bool Linear::measure_operator_cost(Simulator *sim,
-                                   const MachineView &mv,
+                                   MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
   if (!outputs[0]->get_sub_tensor(mv, sub_output))
@@ -881,7 +881,7 @@ bool Linear::measure_operator_cost(Simulator *sim,
 
 using PCG::Node;
 
-Node FFModel::get_or_create_linear_node(const LayerID &layer_guid,
+Node FFModel::get_or_create_linear_node(LayerID const &layer_guid,
                                         const ParallelTensor input,
                                         int out_dim,
                                         ActiMode activation,

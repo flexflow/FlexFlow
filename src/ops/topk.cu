@@ -74,8 +74,8 @@ template <HeapType heapType,
           typename T>
 struct IndexedHeap {
   typedef typename Data<T>::Entry Entry;
-  const Data<T> data;
-  __device__ IndexedHeap(const Data<T> &d) : data(d) {}
+  Data<T> const data;
+  __device__ IndexedHeap(Data<T> const &d) : data(d) {}
 
   __device__ bool is_above(int left, int right) {
     T left_value = data.get_value(left);
@@ -94,7 +94,7 @@ struct IndexedHeap {
     }
   }
 
-  __device__ void assign(int i, const Entry &entry) { data[i] = entry; }
+  __device__ void assign(int i, Entry const &entry) { data[i] = entry; }
 
   __device__ void push_up(int i) {
     int child = i;
@@ -120,8 +120,8 @@ struct IndexedHeap {
   // MAX-HEAPIFY in Cormen
   __device__ void push_down(int node, int k) {
     while (true) {
-      const int left = 2 * node + 1;
-      const int right = left + 1;
+      int const left = 2 * node + 1;
+      int const right = left + 1;
       int smallest = node;
       if (left < k && is_above(left, smallest)) {
         smallest = left;
@@ -161,12 +161,12 @@ struct IndexedHeap {
     }
   }
 
-  __device__ void replace_root(const Entry &entry, int k) {
+  __device__ void replace_root(Entry const &entry, int k) {
     data[0] = entry;
     push_root_down(k);
   }
 
-  __device__ const Entry &root() { return data[0]; }
+  __device__ Entry const &root() { return data[0]; }
 };
 
 template <HeapType heapType,
@@ -245,7 +245,7 @@ __device__ void mergeShards(int num_shards,
   // of the sorted blocks.
   // If k > num_shards, we can initialize a min-heap with the top element from
   // each sorted block.
-  const int heap_size = k < num_shards ? k : num_shards;
+  int const heap_size = k < num_shards ? k : num_shards;
 
   // Min-heap part.
   {
@@ -261,8 +261,8 @@ __device__ void mergeShards(int num_shards,
 
     // Now perform top k with the remaining shards (if num_shards > heap_size).
     for (int shard = heap_size; shard < num_shards; shard++) {
-      const auto entry = entries[shard];
-      const auto root = min_heap.root();
+      auto const entry = entries[shard];
+      auto const root = min_heap.root();
       if (entry.value < root.value) {
         continue;
       }
@@ -287,9 +287,9 @@ __device__ void mergeShards(int num_shards,
 
     // Now extract the minimum k-1 times.
     // k is treated specially.
-    const int last_k = k - 1;
+    int const last_k = k - 1;
     for (int rank = 0; rank < last_k; rank++) {
-      const Entry<T> &max_element = max_heap.root();
+      Entry<T> const &max_element = max_heap.root();
       top_k_values[rank] = max_element.value;
       int shard_index = max_element.index;
       top_k_indices[rank] = entries[shard_index].index;
@@ -301,7 +301,7 @@ __device__ void mergeShards(int num_shards,
     }
 
     // rank == last_k.
-    const Entry<T> &max_element = max_heap.root();
+    Entry<T> const &max_element = max_heap.root();
     top_k_values[last_k] = max_element.value;
     int shard_index = max_element.index;
     top_k_indices[last_k] = entries[shard_index].index;
@@ -317,16 +317,16 @@ __global__ void topk_forward_kernel(const T *__restrict__ input,
                                     T *__restrict__ output,
                                     int *__restrict__ indices) {
   __shared__ char shared_memory[48 << 10];
-  const int batch_index = blockIdx.x;
+  int const batch_index = blockIdx.x;
   const T *batch_input = input + batch_index * length;
-  const int thread_index = threadIdx.x;
-  const int thread_count = blockDim.x;
+  int const thread_index = threadIdx.x;
+  int const thread_count = blockDim.x;
   Entry<T> *shared_entries = (Entry<T> *)shared_memory;
   heapTopK<T, StridedData>(
       batch_input, length, k, shared_entries, true, thread_index, thread_count);
   __syncthreads();
   if (thread_index == 0) {
-    const int offset = batch_index * k;
+    int const offset = batch_index * k;
     auto batch_output = output + offset;
     auto batch_indices = indices + offset;
     Entry<T> *top_k_heap = shared_entries + thread_count * k;
@@ -340,8 +340,8 @@ __global__ void topk_forward_kernel(const T *__restrict__ input,
 }
 
 /*static*/
-void TopK::forward_kernel(const TopKMeta *m,
-                          const float *input_ptr,
+void TopK::forward_kernel(TopKMeta const *m,
+                          float const *input_ptr,
                           float *output_ptr,
                           int *indices_ptr,
                           size_t batch_size,
@@ -354,7 +354,7 @@ void TopK::forward_kernel(const TopKMeta *m,
   int num_shards = 0;
   {
     constexpr auto shared_memory_size = 48 << 10;
-    const auto heap_size = k * sizeof(Entry<float>);
+    auto const heap_size = k * sizeof(Entry<float>);
     // shared_memory_size = (num_shards + 1) * heap_size <=>
     num_shards = shared_memory_size / heap_size - 1;
     assert(num_shards > 0);
@@ -377,8 +377,8 @@ void TopK::forward_kernel(const TopKMeta *m,
 }
 
 /*static*/
-void TopK::forward_kernel_wrapper(const TopKMeta *m,
-                                  const float *input_ptr,
+void TopK::forward_kernel_wrapper(TopKMeta const *m,
+                                  float const *input_ptr,
                                   float *output_ptr,
                                   int *indices_ptr,
                                   size_t batch_size,
@@ -417,7 +417,7 @@ void TopK::forward_kernel_wrapper(const TopKMeta *m,
 
 template <typename T>
 __global__ void topk_backward_kernel(const T *__restrict__ value_grad_ptr,
-                                     const int *__restrict__ indices_ptr,
+                                     int const *__restrict__ indices_ptr,
                                      T *__restrict__ in_grad_ptr,
                                      size_t batch_size,
                                      int length,
@@ -431,9 +431,9 @@ __global__ void topk_backward_kernel(const T *__restrict__ value_grad_ptr,
 }
 
 /*static*/
-void TopK::backward_kernel(const TopKMeta *m,
-                           const float *value_grad_ptr,
-                           const int *indices_ptr,
+void TopK::backward_kernel(TopKMeta const *m,
+                           float const *value_grad_ptr,
+                           int const *indices_ptr,
                            float *in_grad_ptr,
                            size_t batch_size,
                            int length,
@@ -447,9 +447,9 @@ void TopK::backward_kernel(const TopKMeta *m,
 }
 
 /*static*/
-void TopK::backward_kernel_wrapper(const TopKMeta *m,
-                                   const float *value_grad_ptr,
-                                   const int *indices_ptr,
+void TopK::backward_kernel_wrapper(TopKMeta const *m,
+                                   float const *value_grad_ptr,
+                                   int const *indices_ptr,
                                    float *in_grad_ptr,
                                    size_t batch_size,
                                    int length,

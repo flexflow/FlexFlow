@@ -82,13 +82,13 @@ void Op::inner_measure_operator_cost(Simulator *sim,
 }
 
 FFHandler
-UtilityTasks::init_cuda_task(const Task *task,
-                             const std::vector<PhysicalRegion> &regions,
+UtilityTasks::init_cuda_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
   assert(regions.size() == 0);
   assert(task->local_arglen == sizeof(FFInitInfo));
-  const FFInitInfo *info = (FFInitInfo *)task->local_args;
+  FFInitInfo const *info = (FFInitInfo *)task->local_args;
   // assert(task->arglen == sizeof(size_t));
   // size_t workSpaceSize = *(const size_t*) task->args;
   printf("workSpaceSize (%zu MB)\n", info->workSpaceSize / 1024 / 1024);
@@ -140,8 +140,8 @@ UtilityTasks::init_cuda_task(const Task *task,
   return handle;
 }
 
-void UtilityTasks::dummy_task(const Task *task,
-                              const std::vector<PhysicalRegion> &regions,
+void UtilityTasks::dummy_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {}
 
@@ -177,15 +177,15 @@ void nearest_neighbor(unsigned char *image,
   regions[0]: image (unsigned char)
   regions[1]: label (int)
 */
-void UtilityTasks::load_images_task(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+void UtilityTasks::load_images_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
 #ifdef USE_DATA_LOADER
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const AccessorWO<unsigned char, 3> acc_image(regions[0], FID_DATA);
-  const AccessorWO<int, 1> acc_label(regions[1], FID_DATA);
+  AccessorWO<unsigned char, 3> const acc_image(regions[0], FID_DATA);
+  AccessorWO<int, 1> const acc_label(regions[1], FID_DATA);
   Rect<3> rect_image;
   Rect<1> rect_label;
   unsigned char *buffer = (unsigned char *)malloc(3000 * 3000 * 3);
@@ -197,7 +197,7 @@ void UtilityTasks::load_images_task(const Task *task,
   assert(acc_label.accessor.is_dense_arbitrary(rect_label));
   unsigned char *image_ptr = acc_image.ptr(rect_image.lo);
   int *label_ptr = acc_label.ptr(rect_label.lo);
-  const DataLoadMeta *meta = (DataLoadMeta *)task->local_args;
+  DataLoadMeta const *meta = (DataLoadMeta *)task->local_args;
   int height = rect_image.hi[0] - rect_image.lo[0] + 1;
   int width = rect_image.hi[1] - rect_image.lo[1] + 1;
   int numImages = (rect_image.hi[2] - rect_image.lo[2] + 1) / 3;
@@ -255,11 +255,11 @@ void UtilityTasks::load_images_task(const Task *task,
 }
 
 __global__ void apply_normalize(float *tensor_ptr,
-                                const unsigned char *rgb_ptr,
+                                unsigned char const *rgb_ptr,
                                 size_t size,
                                 size_t hxw) {
-  const float mean[3] = {0.485, 0.456, 0.406};
-  const float var[3] = {0.229, 0.224, 0.225};
+  float const mean[3] = {0.485, 0.456, 0.406};
+  float const var[3] = {0.229, 0.224, 0.225};
 
   CUDA_KERNEL_LOOP(i, size) {
     // decide the color of the current position by assuming NCHW layout
@@ -273,14 +273,14 @@ __global__ void apply_normalize(float *tensor_ptr,
   regions[1](I): input_rgb
 */
 __host__ void
-UtilityTasks::normalize_images_task(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+UtilityTasks::normalize_images_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const AccessorWO<float, 3> acc_tensor(regions[0], FID_DATA);
-  const AccessorRO<unsigned char, 3> acc_rgb(regions[1], FID_DATA);
+  AccessorWO<float, 3> const acc_tensor(regions[0], FID_DATA);
+  AccessorRO<unsigned char, 3> const acc_rgb(regions[1], FID_DATA);
   Rect<3> rect_tensor, rect_rgb;
   rect_tensor = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -292,7 +292,7 @@ UtilityTasks::normalize_images_task(const Task *task,
   size_t w = rect_tensor.hi[0] - rect_tensor.lo[0] + 1;
   size_t h = rect_tensor.hi[1] - rect_tensor.lo[1] + 1;
   float *tensor_ptr = acc_tensor.ptr(rect_tensor.lo);
-  const unsigned char *rgb_ptr = acc_rgb.ptr(rect_rgb.lo);
+  unsigned char const *rgb_ptr = acc_rgb.ptr(rect_rgb.lo);
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   apply_normalize<<<GET_BLOCKS(rect_tensor.volume()),
@@ -315,12 +315,12 @@ __global__ void init_label_kernel(int *ptr, coord_t size) {
   }
 }
 
-void UtilityTasks::init_images_task(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+void UtilityTasks::init_images_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
-  const int BLKSIZE = 512;
-  const AccessorWO<float, 3> acc_image(regions[0], FID_DATA);
+  int const BLKSIZE = 512;
+  AccessorWO<float, 3> const acc_image(regions[0], FID_DATA);
   Rect<3> rect_image;
   rect_image = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -333,12 +333,12 @@ void UtilityTasks::init_images_task(const Task *task,
                                                         rect_image.volume());
 }
 
-void UtilityTasks::init_labels_task(const Task *task,
-                                    const std::vector<PhysicalRegion> &regions,
+void UtilityTasks::init_labels_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
                                     Context ctx,
                                     Runtime *runtime) {
-  const int BLKSIZE = 512;
-  const AccessorWO<int, 1> acc_label(regions[0], FID_DATA);
+  int const BLKSIZE = 512;
+  AccessorWO<int, 1> const acc_label(regions[0], FID_DATA);
   Rect<1> rect_label;
   rect_label = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());

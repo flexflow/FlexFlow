@@ -23,8 +23,8 @@ LegionRuntime::Logger::Category log_app("AlexNet");
 class DataLoader {
 public:
   DataLoader(FFModel &ff, Tensor input, Tensor label);
-  static void load_input(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+  static void load_input(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime);
 
@@ -32,8 +32,8 @@ public:
   int num_samples;
 };
 
-void top_level_task(const Task *task,
-                    const std::vector<PhysicalRegion> &regions,
+void top_level_task(Task const *task,
+                    std::vector<PhysicalRegion> const &regions,
                     Context ctx,
                     Runtime *runtime) {
   FFConfig ffConfig;
@@ -45,12 +45,12 @@ void top_level_task(const Task *task,
 
   Tensor input;
   {
-    const int dims[] = {ffConfig.batchSize, 3, 229, 229};
+    int const dims[] = {ffConfig.batchSize, 3, 229, 229};
     input = ff.create_tensor<4>(dims, "", DT_FLOAT);
   }
   Tensor label;
   {
-    const int dims[] = {ffConfig.batchSize, 1};
+    int const dims[] = {ffConfig.batchSize, 1};
     label = ff.create_tensor<2>(dims, "", DT_INT32);
   }
 
@@ -209,8 +209,8 @@ DataLoader::DataLoader(FFModel &ff, Tensor input, Tensor label) {
   }
 }
 
-void DataLoader::load_input(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+void DataLoader::load_input(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
   printf("CheckPoint#1\n");

@@ -24,9 +24,9 @@ using Legion::Domain;
 
 /*static*/
 void ElementBinary::init_kernel(ElementBinaryMeta *m,
-                                const Domain &input1_domain,
-                                const Domain &input2_domain,
-                                const Domain &output_domain) {
+                                Domain const &input1_domain,
+                                Domain const &input2_domain,
+                                Domain const &output_domain) {
   miopenTensorOp_t mode;
   switch (m->op_type) {
   case OP_EW_ADD:
@@ -55,11 +55,11 @@ void ElementBinary::init_kernel(ElementBinaryMeta *m,
 }
 
 __global__ void elewise_binary_forward_kernel(coord_t volume,
-                                              const float alpha,
-                                              const float beta,
+                                              float const alpha,
+                                              float const beta,
                                               OperatorType type,
-                                              const float *in1,
-                                              const float *in2,
+                                              float const *in1,
+                                              float const *in2,
                                               float *out) {
   switch (type) {
   case OP_EW_ADD: {
@@ -92,9 +92,9 @@ __global__ void elewise_binary_forward_kernel(coord_t volume,
 }
 
 /*static*/
-void ElementBinary::forward_kernel(const ElementBinaryMeta *m,
-                                   const float *in1_ptr,
-                                   const float *in2_ptr,
+void ElementBinary::forward_kernel(ElementBinaryMeta const *m,
+                                   float const *in1_ptr,
+                                   float const *in2_ptr,
                                    float *out_ptr,
                                    hipStream_t stream) {
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
@@ -154,9 +154,9 @@ void ElementBinary::forward_kernel(const ElementBinaryMeta *m,
 }
 
 /*static*/
-void ElementBinary::forward_kernel_wrapper(const ElementBinaryMeta *m,
-                                           const float *in1_ptr,
-                                           const float *in2_ptr,
+void ElementBinary::forward_kernel_wrapper(ElementBinaryMeta const *m,
+                                           float const *in1_ptr,
+                                           float const *in2_ptr,
                                            float *out_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -200,12 +200,12 @@ void ElementBinary::forward_kernel_wrapper(const ElementBinaryMeta *m,
 }
 
 __global__ void elewise_binary_backward_kernel(coord_t volume,
-                                               const float alpha,
-                                               const float beta,
+                                               float const alpha,
+                                               float const beta,
                                                OperatorType type,
-                                               const float *out_grad,
-                                               const float *in1,
-                                               const float *in2,
+                                               float const *out_grad,
+                                               float const *in1,
+                                               float const *in2,
                                                float *in1_grad,
                                                float *in2_grad) {
   CUDA_KERNEL_LOOP(i, volume) {
@@ -238,10 +238,10 @@ __global__ void elewise_binary_backward_kernel(coord_t volume,
 }
 
 /*static*/
-void ElementBinary::backward_kernel(const ElementBinaryMeta *m,
-                                    const float *out_grad_ptr,
-                                    const float *in1_ptr,
-                                    const float *in2_ptr,
+void ElementBinary::backward_kernel(ElementBinaryMeta const *m,
+                                    float const *out_grad_ptr,
+                                    float const *in1_ptr,
+                                    float const *in2_ptr,
                                     float *in1_grad_ptr,
                                     float *in2_grad_ptr,
                                     hipStream_t stream) {
@@ -342,10 +342,10 @@ void ElementBinary::backward_kernel(const ElementBinaryMeta *m,
 }
 
 /*static*/
-void ElementBinary::backward_kernel_wrapper(const ElementBinaryMeta *m,
-                                            const float *out_grad_ptr,
-                                            const float *in1_ptr,
-                                            const float *in2_ptr,
+void ElementBinary::backward_kernel_wrapper(ElementBinaryMeta const *m,
+                                            float const *out_grad_ptr,
+                                            float const *in1_ptr,
+                                            float const *in2_ptr,
                                             float *in1_grad_ptr,
                                             float *in2_grad_ptr) {
   hipStream_t stream;

@@ -35,7 +35,7 @@ Tensor FFModel::conv2d(const Tensor input,
                        ActiMode activation,
                        int groups,
                        bool use_bias,
-                       const Layer *shared_op,
+                       Layer const *shared_op,
                        Initializer *kernel_initializer,
                        Initializer *bias_initializer,
                        char const *name) {
@@ -96,8 +96,8 @@ Tensor FFModel::conv2d(const Tensor input,
 
 Op *Conv2D::create_operator_from_layer(
     FFModel &model,
-    const Layer *layer,
-    const std::vector<ParallelTensor> &inputs) {
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("out_channels", value);
   int out_channels = value;
@@ -187,7 +187,7 @@ bool operator==(Conv2DParams const &lhs, Conv2DParams const &rhs) {
          lhs.activation == rhs.activation && lhs.use_bias == rhs.use_bias;
 }
 
-Node FFModel::get_or_create_conv2d_node(const LayerID &layer_guid,
+Node FFModel::get_or_create_conv2d_node(LayerID const &layer_guid,
                                         const ParallelTensor input,
                                         int outChannels,
                                         int kernelH,
@@ -397,7 +397,7 @@ Conv2D::Conv2D(FFModel &model,
 Conv2D::Conv2D(FFModel &model,
                Conv2DParams const &params,
                ParallelTensor const input,
-               const char *name,
+               char const *name,
                bool allocate_weights)
     : Conv2D(model,
              params.layer_guid,
@@ -441,7 +441,7 @@ bool Conv2DParams::is_valid(ParallelTensorShape const &input) const {
 }
 
 Conv2D::Conv2D(FFModel &model,
-               const LayerID &_layer_guid,
+               LayerID const &_layer_guid,
                const ParallelTensor input,
                int outChannels,
                int kernelH,
@@ -454,7 +454,7 @@ Conv2D::Conv2D(FFModel &model,
                int groups,
                bool use_bias,
                bool allocate_weights,
-               const char *name)
+               char const *name)
     : Op(model,
          OP_CONV2D,
          name,
@@ -520,7 +520,7 @@ Conv2D::Conv2D(FFModel &model,
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
 
-void Conv2D::init(const FFModel &ff) {
+void Conv2D::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -580,14 +580,14 @@ void Conv2D::init(const FFModel &ff) {
   regions[4](O): filter_grad
   regions[5](O): input_grad
 */
-OpMeta *Conv2D::init_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+OpMeta *Conv2D::init_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  const Conv2D *conv = (Conv2D *)task->args;
-  FFHandler handle = *((const FFHandler *)task->local_args);
+  Conv2D const *conv = (Conv2D *)task->args;
+  FFHandler handle = *((FFHandler const *)task->local_args);
   TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, Conv2DOutput::NUMDIM> acc_output(regions[1],
@@ -669,7 +669,7 @@ OpMeta *Conv2D::init_task(const Task *task,
   return m;
 }
 
-void Conv2D::forward(const FFModel &ff) {
+void Conv2D::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -717,12 +717,12 @@ void Conv2D::forward(const FFModel &ff) {
   regions[2](I): filter
   regions[3](I): bias
 */
-void Conv2D::forward_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+void Conv2D::forward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
   // Conv2D* conv = (Conv2D*) task->args;
-  const Conv2DMeta *m = *((Conv2DMeta **)task->local_args);
+  Conv2DMeta const *m = *((Conv2DMeta **)task->local_args);
   assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
   assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));
   TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
@@ -735,7 +735,7 @@ void Conv2D::forward_task(const Task *task,
                                                           false /*readOutput*/);
   TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  const float *acc_bias_ptr = NULL;
+  float const *acc_bias_ptr = NULL;
   if (m->use_bias) {
     TensorAccessorR<float, Conv2DBias::NUMDIM> acc_bias(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
@@ -746,7 +746,7 @@ void Conv2D::forward_task(const Task *task,
       m, acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_bias_ptr);
 }
 
-void Conv2D::backward(const FFModel &ff) {
+void Conv2D::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -825,12 +825,12 @@ void Conv2D::backward(const FFModel &ff) {
   region(I/O): filter_grad
   region(I/O): bias_grad (if use_bias)
 */
-void Conv2D::backward_task(const Task *task,
-                           const std::vector<PhysicalRegion> &regions,
+void Conv2D::backward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   // Conv2D* conv = (Conv2D*) task->args;
-  const Conv2DMeta *m = *((Conv2DMeta **)task->local_args);
+  Conv2DMeta const *m = *((Conv2DMeta **)task->local_args);
   assert(regions.size() == (5 + static_cast<size_t>(m->trainableInputs[0]) +
                             static_cast<size_t>(m->use_bias)));
   assert(task->regions.size() ==
@@ -898,7 +898,7 @@ void Conv2D::backward_task(const Task *task,
                                   acc_bias_grad_ptr);
 }
 
-void Conv2D::print_layer(const FFModel &ff) {
+void Conv2D::print_layer(FFModel const &ff) {
   printf("conv2d layer\n");
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -947,9 +947,9 @@ void Conv2D::print_layer(const FFModel &ff) {
       bias_region, bias_req, FID_DATA, ctx, runtime, true);
   // const AccessorRW<float, 1> acc_bias_grad(bias_grad_region, FID_DATA);
 
-  const float *kernel_ptr = acc_kernel.ptr;
+  float const *kernel_ptr = acc_kernel.ptr;
   // float *kernel_grad_ptr = acc_kernel_grad.ptr;
-  const float *bias_ptr = acc_bias.ptr;
+  float const *bias_ptr = acc_bias.ptr;
   // float *bias_grad_ptr = acc_bias_grad.ptr;
 
   size_t kernel_size = acc_kernel.rect.volume();
@@ -1003,7 +1003,7 @@ void Conv2D::print_layer(const FFModel &ff) {
 }
 
 bool Conv2D::estimate_sync_cost(Simulator *sim,
-                                const MachineView &view,
+                                MachineView const &view,
                                 CostMetrics &cost_metrics) const {
   ParallelDim kernel_dims[MAX_TENSOR_DIM], bias_dims[MAX_TENSOR_DIM];
   int kernel_ndims, bias_ndims;

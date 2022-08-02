@@ -27,17 +27,17 @@ struct TransformerConfig {
 class DataLoader {
 public:
   DataLoader(FFModel &ff,
-             const TransformerConfig &tf,
-             const Tensor &_input,
-             const Tensor &_label);
+             TransformerConfig const &tf,
+             Tensor const &_input,
+             Tensor const &_label);
   void next_batch(FFModel &ff);
   void reset();
-  static void load_entire_dataset(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+  static void load_entire_dataset(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime);
-  static void load_input(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+  static void load_input(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime);
 

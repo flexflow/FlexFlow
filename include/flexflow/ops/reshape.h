@@ -12,7 +12,7 @@ public:
 };
 
 struct ReshapeParams {
-  ReshapeParams(const std::vector<int> &_shape);
+  ReshapeParams(std::vector<int> const &_shape);
   size_t get_hash(const ParallelTensor input) const;
   std::vector<int> shape;
 };
@@ -21,27 +21,27 @@ class Reshape : public Op {
 public:
   Reshape(FFModel &model,
           const ParallelTensor input,
-          const std::vector<int> &shape,
-          const char *name);
-  void init(const FFModel &) override;
-  void forward(const FFModel &) override;
-  void backward(const FFModel &) override;
-  void print_layer(const FFModel &model) override { assert(0); }
+          std::vector<int> const &shape,
+          char const *name);
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
+  void print_layer(FFModel const &model) override { assert(0); }
   static Op *
   create_operator_from_layer(FFModel &model,
-                             const Layer *layer,
-                             const std::vector<ParallelTensor> &inputs);
+                             Layer const *layer,
+                             std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   template <typename T>
@@ -63,7 +63,7 @@ public:
                                       const T *output_grad_ptr,
                                       size_t num_elements);
   bool measure_operator_cost(Simulator *sim,
-                             const MachineView &pc,
+                             MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
   size_t get_params_hash() const override;
   void serialize(Legion::Serializer &s) const override;

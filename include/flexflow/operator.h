@@ -136,7 +136,7 @@ protected:
 public:
   Op(FFModel &model,
      OperatorType type,
-     const char *_name,
+     char const *_name,
      int numInputs,
      int numWeights,
      bool allocate_weights,
@@ -147,7 +147,7 @@ public:
      const ParallelTensor input4 = NULL);
   Op(FFModel &model,
      OperatorType type,
-     const char *_name,
+     char const *_name,
      int numInputs,
      int numWeights,
      int numOutputs,
@@ -158,7 +158,7 @@ public:
   Op(int guid,
      bool profiling,
      OperatorType type,
-     const char *name,
+     char const *name,
      int numInputs,
      int numWeights,
      int numOutputs,
@@ -168,46 +168,46 @@ public:
      const ParallelTensor input4 = NULL);
   Op(FFModel &model,
      OperatorType type,
-     const char *_name,
+     char const *_name,
      int numInputs,
      int numWeights,
      int numOutputs,
-     const ParallelTensor *tensors);
+     ParallelTensor const *tensors);
   // graph substitution related methods
   virtual bool get_int_parameter(PMParameter, int *) const;
   virtual bool get_tensor_parameter(TNParameter, DIMParameter, int *) const;
   virtual bool get_input_parameter(TNParameter, DIMParameter, int *) const;
   virtual bool get_weight_parameter(TNParameter, DIMParameter, int *) const;
   // Pure virtual functions that must be implemented
-  virtual void init(const FFModel &) = 0;
-  virtual void forward(const FFModel &) = 0;
-  virtual void backward(const FFModel &) = 0;
-  virtual void print_layer(const FFModel &model) = 0;
+  virtual void init(FFModel const &) = 0;
+  virtual void forward(FFModel const &) = 0;
+  virtual void backward(FFModel const &) = 0;
+  virtual void print_layer(FFModel const &model) = 0;
   virtual bool measure_operator_cost(Simulator *sim,
-                                     const MachineView &mv,
+                                     MachineView const &mv,
                                      CostMetrics &cost_metrics) const = 0;
   virtual bool estimate_sync_cost(Simulator *sim,
-                                  const MachineView &pc,
+                                  MachineView const &pc,
                                   CostMetrics &cost_metrics) const;
   // Other virtual functions that can be optionally overwritten
-  virtual ParallelConfig get_random_parallel_config(const FFModel &ff) const;
-  virtual ParallelConfig get_data_parallel_config(const FFModel &ff) const;
-  virtual Legion::Domain get_input_tensor_shape(const ParallelConfig &pc,
+  virtual ParallelConfig get_random_parallel_config(FFModel const &ff) const;
+  virtual ParallelConfig get_data_parallel_config(FFModel const &ff) const;
+  virtual Legion::Domain get_input_tensor_shape(ParallelConfig const &pc,
                                                 int input_idx,
                                                 int part_idx) const;
-  virtual Legion::Domain get_output_tensor_shape(const ParallelConfig &pc,
+  virtual Legion::Domain get_output_tensor_shape(ParallelConfig const &pc,
                                                  int output_idx,
                                                  int part_idx) const;
-  virtual Legion::Domain get_weight_tensor_shape(const ParallelConfig &pc,
+  virtual Legion::Domain get_weight_tensor_shape(ParallelConfig const &pc,
                                                  int weight_idx,
                                                  int part_idx) const;
-  virtual bool is_valid_parallel_config(const FFModel &ff,
-                                        const ParallelConfig &pc) const;
+  virtual bool is_valid_parallel_config(FFModel const &ff,
+                                        ParallelConfig const &pc) const;
   virtual bool is_adoptable_parallel_config(FFModel const &ff,
                                             ParallelConfig const &pc) const;
   // Helper functions
-  void prefetch(const FFModel &);
-  void zero_grad(const FFModel &);
+  void prefetch(FFModel const &);
+  void zero_grad(FFModel const &);
   ParallelTensor get_parameter(int index);
   virtual bool can_inplace_output();
   virtual bool has_inplace_output();
@@ -224,28 +224,28 @@ public:
   int get_dimension() const;
 #ifdef FF_USE_NCCL
   static ncclUniqueId
-  get_nccl_unique_id_task(const Legion::Task *task,
-                          const std::vector<Legion::PhysicalRegion> &regions,
+  get_nccl_unique_id_task(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
                           Legion::Context ctx,
                           Legion::Runtime *runtime);
   static ncclComm_t
-  init_nccl_comms_task(const Legion::Task *task,
-                       const std::vector<Legion::PhysicalRegion> &regions,
+  init_nccl_comms_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
                        Legion::Context ctx,
                        Legion::Runtime *runtime);
 #endif
 protected:
-  void set_argumentmap_for_init(const FFModel &ff, Legion::ArgumentMap &argmap);
-  void set_argumentmap_for_forward(const FFModel &ff,
+  void set_argumentmap_for_init(FFModel const &ff, Legion::ArgumentMap &argmap);
+  void set_argumentmap_for_forward(FFModel const &ff,
                                    Legion::ArgumentMap &argmap);
-  void set_argumentmap_for_backward(const FFModel &ff,
+  void set_argumentmap_for_backward(FFModel const &ff,
                                     Legion::ArgumentMap &argmap);
-  void set_opmeta_from_futuremap(const FFModel &ff,
-                                 const Legion::FutureMap &fm);
+  void set_opmeta_from_futuremap(FFModel const &ff,
+                                 Legion::FutureMap const &fm);
   void
-  solve_parallel_dim_mappings(const std::vector<ParallelDim const *> &inputs,
-                              const std::vector<ParallelDim *> &weights,
-                              const std::vector<ParallelDim *> &outputs) const;
+  solve_parallel_dim_mappings(std::vector<ParallelDim const *> const &inputs,
+                              std::vector<ParallelDim *> const &weights,
+                              std::vector<ParallelDim *> const &outputs) const;
 
 public:
   OperatorType op_type;

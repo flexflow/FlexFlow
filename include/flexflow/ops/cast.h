@@ -26,51 +26,51 @@ public:
 class Cast : public Op {
 public:
   Cast(FFModel &model,
-       const ParallelTensor &input,
+       ParallelTensor const &input,
        DataType dtype,
-       const char *name);
-  void init(const FFModel &);
-  void forward(const FFModel &);
-  void backward(const FFModel &);
-  void print_layer(const FFModel &model) { assert(0); }
+       char const *name);
+  void init(FFModel const &);
+  void forward(FFModel const &);
+  void backward(FFModel const &);
+  void print_layer(FFModel const &model) { assert(0); }
   static Op *
   create_operator_from_layer(FFModel &model,
-                             const Layer *layer,
-                             const std::vector<ParallelTensor> &inputs);
-  static OpMeta *init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+                             Layer const *layer,
+                             std::vector<ParallelTensor> const &inputs);
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
   template <typename IDT>
   static void
-  forward_task_with_1_type(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  forward_task_with_1_type(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
   template <typename IDT, typename ODT>
   static void
-  forward_task_with_2_type(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  forward_task_with_2_type(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   template <typename IDT>
   static void
-  backward_task_with_1_type(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  backward_task_with_1_type(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   template <typename IDT, typename ODT>
   static void
-  backward_task_with_2_type(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  backward_task_with_2_type(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   template <typename IDT, typename ODT>
@@ -90,7 +90,7 @@ public:
   static void
   backward_kernel_wrapper(const IDT *src_ptr, ODT *dst_ptr, size_t volume);
   bool measure_operator_cost(Simulator *sim,
-                             const MachineView &pc,
+                             MachineView const &pc,
                              CostMetrics &cost_metrics) const;
 };
 

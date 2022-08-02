@@ -26,15 +26,15 @@ class ParallelOp : public Op {
 public:
   ParallelOp(FFModel &model,
              OperatorType type,
-             const char *_name,
+             char const *_name,
              const ParallelTensor input);
-  virtual void init(const FFModel &) = 0;
-  virtual void forward(const FFModel &) = 0;
-  virtual void backward(const FFModel &) = 0;
+  virtual void init(FFModel const &) = 0;
+  virtual void forward(FFModel const &) = 0;
+  virtual void backward(FFModel const &) = 0;
   virtual void create_input_partition(FFModel &model) = 0;
-  void print_layer(const FFModel &model){};
+  void print_layer(FFModel const &model){};
   virtual bool measure_operator_cost(Simulator *sim,
-                                     const MachineView &pc,
+                                     MachineView const &pc,
                                      CostMetrics &cost_metrics) const = 0;
   virtual bool
   append_parallel_op_info(std::vector<ParallelOpInfo> &parallel_ops) const = 0;

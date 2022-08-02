@@ -151,13 +151,13 @@ class Op {
 public:
   Op(Tensor input);
   Op(int num, Tensor *inputs);
-  virtual void init(const CnnModel &) = 0;
+  virtual void init(CnnModel const &) = 0;
 
-  virtual void forward(const CnnModel &) = 0;
+  virtual void forward(CnnModel const &) = 0;
 
-  virtual void backward(const CnnModel &) = 0;
+  virtual void backward(CnnModel const &) = 0;
 
-  virtual void update(const CnnModel &) = 0;
+  virtual void update(CnnModel const &) = 0;
 
 public:
   Tensor output;
@@ -169,8 +169,8 @@ public:
   // std::vector<LogicalRegion> inputs, grads;
 };
 
-DnnHandle init_cudnn(const Task *task,
-                     const std::vector<PhysicalRegion> &regions,
+DnnHandle init_cudnn(Task const *task,
+                     std::vector<PhysicalRegion> const &regions,
                      Context ctx,
                      Runtime *runtime);
 

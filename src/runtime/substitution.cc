@@ -124,12 +124,12 @@ TNConstraint::TNConstraint(
     Compare c, TNParameter p1, DIMParameter d1, TNParameter p2, DIMParameter d2)
     : singlePara(false), comp(c), para1(p1), para2(p2), dim1(d1), dim2(d2) {}
 
-tl::optional<ParallelTensor> TensorX::to_tensor(const GraphXfer *xfer) const {
+tl::optional<ParallelTensor> TensorX::to_tensor(GraphXfer const *xfer) const {
   if (op != NULL) {
     assert(op->mapOp.ptr != NULL);
     return op->mapOp.ptr->outputs[idx];
   } else {
-    const auto &it = xfer->mappedInputs.find(idx);
+    auto const &it = xfer->mappedInputs.find(idx);
     if (it == xfer->mappedInputs.end()) {
       return tl::nullopt;
     }
@@ -143,10 +143,10 @@ tl::optional<ParallelTensor> TensorX::to_tensor(const GraphXfer *xfer) const {
 OpX::OpX(const OperatorType _type,
          int num_inputs,
          int num_outputs,
-         const TensorX &input0,
-         const TensorX &input1,
-         const TensorX &input2,
-         const TensorX &input3)
+         TensorX const &input0,
+         TensorX const &input1,
+         TensorX const &input2,
+         TensorX const &input3)
     : type(_type), mapOp(Node::INVALID_NODE), matchOpX(NULL) {
   TensorX all_inputs[MAX_NUM_INPUTS];
   all_inputs[0] = input0;
@@ -165,7 +165,7 @@ OpX::OpX(const OperatorType _type,
 OpX::OpX(const OperatorType _type,
          int num_inputs,
          int num_outputs,
-         const TensorX *input_array)
+         TensorX const *input_array)
     : type(_type), mapOp(Node::INVALID_NODE), matchOpX(NULL) {
   for (int i = 0; i < num_inputs; i++) {
     inputs.push_back(input_array[i]);
@@ -220,12 +220,12 @@ TensorX GraphXfer::new_tensor(void) {
   return t;
 }
 
-bool GraphXfer::map_output(const TensorX &src, const TensorX &dst) {
+bool GraphXfer::map_output(TensorX const &src, TensorX const &dst) {
   mappedOutputs[src] = dst;
   return true;
 }
 
-bool GraphXfer::can_match(OpX *srcOp, const Node &op, Graph const *graph) {
+bool GraphXfer::can_match(OpX *srcOp, Node const &op, Graph const *graph) {
   if (srcOp->type != op.ptr->op_type)
     return false;
   // check num input tensors
@@ -295,8 +295,8 @@ bool GraphXfer::can_match(OpX *srcOp, const Node &op, Graph const *graph) {
           if (!(graph->has_edge(mappedOp, op, mappedIdx, i)))
             return false;
         } else {
-          const auto &list = graph->inEdges.find(op)->second;
-          for (const auto &e : list) {
+          auto const &list = graph->inEdges.find(op)->second;
+          for (auto const &e : list) {
             if (e.dstIdx == (int)i) {
               newMapInputs.insert(
                   std::make_pair(in.idx, std::make_pair(e.srcOp, e.srcIdx)));
@@ -369,13 +369,13 @@ bool GraphXfer::can_match(OpX *srcOp, const Node &op, Graph const *graph) {
   return true;
 }
 
-void GraphXfer::match(OpX *srcOp, const Node &op, Graph const *graph) {
+void GraphXfer::match(OpX *srcOp, Node const &op, Graph const *graph) {
   for (size_t i = 0; i < srcOp->inputs.size(); i++) {
     TensorX in = srcOp->inputs[i];
     if (in.op == NULL) {
       // Update mappedInputs
-      const auto &list = graph->inEdges.find(op)->second;
-      for (const auto &e : list) {
+      auto const &list = graph->inEdges.find(op)->second;
+      for (auto const &e : list) {
         if (e.dstIdx == (int)i) {
           mappedInputs.insert(
               std::make_pair(in.idx, std::make_pair(e.srcOp, e.srcIdx)));
@@ -388,7 +388,7 @@ void GraphXfer::match(OpX *srcOp, const Node &op, Graph const *graph) {
   mappedOps[op] = srcOp;
 }
 
-void GraphXfer::unmatch(OpX *srcOp, const Node &op, Graph const *graph) {
+void GraphXfer::unmatch(OpX *srcOp, Node const &op, Graph const *graph) {
   for (size_t i = 0; i < srcOp->inputs.size(); i++) {
     log_xfer_matches.spew() << "umatch iteration " << i;
     TensorX in = srcOp->inputs[i];
@@ -501,9 +501,9 @@ void GraphXfer::find_matches(int depth,
     }
     log_xfer_matches.spew() << "Checking external edges";
     // Check that output tensors with external edges are mapped
-    for (const auto &opIt : mappedOps) {
-      const auto &list = graph->outEdges.at(opIt.first);
-      for (const auto &e : list) {
+    for (auto const &opIt : mappedOps) {
+      auto const &list = graph->outEdges.at(opIt.first);
+      for (auto const &e : list) {
         if (mappedOps.find(e.dstOp) == mappedOps.end()) {
           // dstOp is external, (srcOp, srcIdx) must be in mappedOutputs
           TensorX srcTen;
@@ -543,7 +543,7 @@ void GraphXfer::find_matches(int depth,
     matches.push_back(match_record);
   } else {
     OpX *srcOp = srcOps[depth];
-    for (const auto &it : graph->inEdges) {
+    for (auto const &it : graph->inEdges) {
       log_xfer_matches.spew() << "Exploring node " << it.first.to_string();
       // printf("can_match(%d)\n", can_match(srcOp, it->first, graph));
       if (can_match(srcOp, it.first, graph) &&
@@ -584,9 +584,9 @@ void GraphXfer::run(
     if (!pass)
       return;
     // Check that output tensors with external edges are mapped
-    for (const auto &opIt : mappedOps) {
-      const auto &list = graph->outEdges[opIt.first];
-      for (const auto &e : list) {
+    for (auto const &opIt : mappedOps) {
+      auto const &list = graph->outEdges[opIt.first];
+      for (auto const &e : list) {
         if (mappedOps.find(e.dstOp) == mappedOps.end()) {
           // dstOp is external, (srcOp, srcIdx) must be in mappedOutputs
           TensorX srcTen;
@@ -626,7 +626,7 @@ void GraphXfer::run(
     }
   } else {
     OpX *srcOp = srcOps[depth];
-    for (const auto &it : graph->inEdges) {
+    for (auto const &it : graph->inEdges) {
       // printf("can_match(%d)\n", can_match(srcOp, it->first, graph));
       if (can_match(srcOp, it.first, graph) &&
           (mappedOps.find(it.first) == mappedOps.end())) {
@@ -751,11 +751,11 @@ Graph *GraphXfer::create_new_graph(
   // Step 1: map dst ops
   std::vector<OpX *>::const_iterator dstIt;
   // Step 2: add edges to the graph
-  for (const auto &opIt : graph->inEdges)
+  for (auto const &opIt : graph->inEdges)
     if (mappedOps.find(opIt.first) == mappedOps.end()) {
       // Unmapped ops
-      const auto &list = opIt.second;
-      for (const auto &it : list)
+      auto const &list = opIt.second;
+      for (auto const &it : list)
         if (mappedOps.find(it.srcOp) != mappedOps.end()) {
           // mapped src -> unmapped dst
           TensorX srcTen;
@@ -778,7 +778,7 @@ Graph *GraphXfer::create_new_graph(
         std::multimap<int, std::pair<Node, int>>::const_iterator it =
             mappedInputs.find(dstOp->inputs[i].idx);
         assert(it != mappedInputs.end());
-        const std::pair<Node, int> &srcEdge = it->second;
+        std::pair<Node, int> const &srcEdge = it->second;
         newGraph->add_edge(srcEdge.first, dstOp->mapOp, srcEdge.second, i);
       } else {
         // mapped src -> mapped dst
@@ -792,7 +792,7 @@ Graph *GraphXfer::create_new_graph(
   return newGraph;
 }
 
-bool GraphXfer::create_new_operator(const OpX *opx, Node &op) {
+bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
   ParallelTensor inputs[MAX_NUM_INPUTS];
   for (size_t i = 0; i < opx->inputs.size(); i++) {
     tl::optional<ParallelTensor> mapped = opx->inputs[i].to_tensor(this);
@@ -1005,14 +1005,14 @@ bool GraphXfer::create_new_operator(const OpX *opx, Node &op) {
   return true;
 }
 
-OpX *GraphXfer::create_noop(const TensorX &input) {
+OpX *GraphXfer::create_noop(TensorX const &input) {
   OpX *noop = new OpX(OP_NOOP, 1, 1, input);
   return noop;
 }
 
-OpX *GraphXfer::create_concat(const TensorX *inputs,
+OpX *GraphXfer::create_concat(TensorX const *inputs,
                               int num_inputs,
-                              const OpX *_matchOpX,
+                              OpX const *_matchOpX,
                               int concat_dim) {
   OpX *concat = new OpX(OP_CONCAT, num_inputs, 1 /*outputs*/, inputs);
   concat->matchOpX = _matchOpX;
@@ -1020,25 +1020,25 @@ OpX *GraphXfer::create_concat(const TensorX *inputs,
   return concat;
 }
 
-OpX *GraphXfer::create_element_unary(const TensorX &input,
+OpX *GraphXfer::create_element_unary(TensorX const &input,
                                      OperatorType op_type) {
   OpX *eu = new OpX(op_type, 1 /*numInputs*/, 1, input);
   return eu;
 }
 
-OpX *GraphXfer::create_relu(const TensorX &input) {
+OpX *GraphXfer::create_relu(TensorX const &input) {
   return this->create_element_unary(input, OP_RELU);
 }
 
-OpX *GraphXfer::create_element_binary(const TensorX &input1,
-                                      const TensorX &input2,
+OpX *GraphXfer::create_element_binary(TensorX const &input1,
+                                      TensorX const &input2,
                                       OperatorType op_type) {
   OpX *eb = new OpX(op_type, 2 /*numInputs*/, 1, input1, input2);
   return eb;
 }
 
-OpX *GraphXfer::create_linear(const TensorX &input,
-                              const OpX *_matchOpX,
+OpX *GraphXfer::create_linear(TensorX const &input,
+                              OpX const *_matchOpX,
                               int num_dims,
                               ActiMode acti_mode,
                               bool use_bias) {
@@ -1051,22 +1051,22 @@ OpX *GraphXfer::create_linear(const TensorX &input,
   return li;
 }
 
-OpX *GraphXfer::create_conv2d(const TensorX &input, const OpX *matchOpX) {
+OpX *GraphXfer::create_conv2d(TensorX const &input, OpX const *matchOpX) {
   OpX *conv = new OpX(OP_CONV2D, 1, 1, input);
   conv->matchOpX = matchOpX;
   return conv;
 }
 
-OpX *GraphXfer::create_pool2d(const TensorX &input, const OpX *matchOpX) {
+OpX *GraphXfer::create_pool2d(TensorX const &input, OpX const *matchOpX) {
   OpX *pool = new OpX(OP_POOL2D, 1, 1, input);
   pool->matchOpX = matchOpX;
   return pool;
 }
 
-OpX *GraphXfer::create_attention(const TensorX &query,
-                                 const TensorX &key,
-                                 const TensorX &value,
-                                 const OpX *_matchOpX,
+OpX *GraphXfer::create_attention(TensorX const &query,
+                                 TensorX const &key,
+                                 TensorX const &value,
+                                 OpX const *_matchOpX,
                                  int num_heads) {
   OpX *attn = new OpX(OP_MULTIHEAD_ATTENTION, 3, 1, query, key, value);
   attn->matchOpX = _matchOpX;
@@ -1077,13 +1077,13 @@ OpX *GraphXfer::create_attention(const TensorX &query,
   return attn;
 }
 
-OpX *GraphXfer::create_softmax(const TensorX &input, int softmax_dim) {
+OpX *GraphXfer::create_softmax(TensorX const &input, int softmax_dim) {
   OpX *softmax = new OpX(OP_SOFTMAX, 1, 1, input);
   softmax->add_pm_constraint(COMPARE_EQ, PM_SOFTMAX_DIM, softmax_dim);
   return softmax;
 }
 
-OpX *GraphXfer::create_repartition(const TensorX &input,
+OpX *GraphXfer::create_repartition(TensorX const &input,
                                    int repartition_dim,
                                    int num_parts) {
   OpX *part = new OpX(OP_REPARTITION, 1, 1, input);
@@ -1092,7 +1092,7 @@ OpX *GraphXfer::create_repartition(const TensorX &input,
   return part;
 }
 
-OpX *GraphXfer::create_replicate(const TensorX &input,
+OpX *GraphXfer::create_replicate(TensorX const &input,
                                  int replicate_dim,
                                  int num_parts) {
   OpX *replicate = new OpX(OP_REPLICATE, 1, 1, input);
@@ -1101,7 +1101,7 @@ OpX *GraphXfer::create_replicate(const TensorX &input,
   return replicate;
 }
 
-OpX *GraphXfer::create_reduction(const TensorX &input,
+OpX *GraphXfer::create_reduction(TensorX const &input,
                                  int reduction_dim,
                                  int num_parts) {
   OpX *reduction = new OpX(OP_REDUCTION, 1, 1, input);
@@ -1110,7 +1110,7 @@ OpX *GraphXfer::create_reduction(const TensorX &input,
   return reduction;
 }
 
-OpX *GraphXfer::create_combine(const TensorX &input,
+OpX *GraphXfer::create_combine(TensorX const &input,
                                int combine_dim,
                                int num_parts) {
   OpX *part = new OpX(OP_COMBINE, 1, 1, input);
@@ -1498,26 +1498,26 @@ void create_xfer(GraphXfer &xfer, sl::Rule const &r, int parallel_degree) {
   }
 }
 
-bool check_opxes_have_same_type_and_constraints(const OpX &src_opx,
-                                                const OpX &dst_opx) {
+bool check_opxes_have_same_type_and_constraints(OpX const &src_opx,
+                                                OpX const &dst_opx) {
   if (src_opx.type != dst_opx.type)
     return false;
   if (src_opx.pmConstraints.size() != dst_opx.pmConstraints.size())
     return false;
   if (src_opx.tnConstraints.size() != dst_opx.tnConstraints.size())
     return false;
-  for (const auto &c1 : src_opx.pmConstraints) {
+  for (auto const &c1 : src_opx.pmConstraints) {
     bool found_same = false;
-    for (const auto &c2 : dst_opx.pmConstraints) {
+    for (auto const &c2 : dst_opx.pmConstraints) {
       if (c1.comp == c2.comp && c1.para == c2.para && c1.value == c2.value)
         found_same = true;
     }
     if (!found_same)
       return false;
   }
-  for (const auto &c1 : src_opx.tnConstraints) {
+  for (auto const &c1 : src_opx.tnConstraints) {
     bool found_same = false;
-    for (const auto &c2 : dst_opx.tnConstraints) {
+    for (auto const &c2 : dst_opx.tnConstraints) {
       if (c1.singlePara && c2.singlePara) {
         if (c1.comp == c2.comp && c1.para1 == c2.para1 && c1.dim1 == c2.dim1 &&
             c1.value == c2.value)
@@ -1548,7 +1548,7 @@ std::vector<GraphXfer *> create_xfers(FFModel *model,
     }
     // Pruning redundant xfer
     bool found_same_xfer = false;
-    for (const auto &old_xfer : xfers) {
+    for (auto const &old_xfer : xfers) {
       bool same = true;
       if (old_xfer->srcOps.size() != xfer->srcOps.size()) {
         same = false;
@@ -1621,7 +1621,7 @@ void GraphSearchHelper::generate_all_pcg_xfers() {
     log_xfers.debug() << oss.str();
   }
 
-  for (const auto &it : single_node_parallel_degrees) {
+  for (auto const &it : single_node_parallel_degrees) {
     all_pcg_xfers.push_back(create_replicate_linear_combine(
         this->model, 3, it, AC_MODE_RELU, false));
     all_pcg_xfers.push_back(create_replicate_linear_combine(
@@ -1633,7 +1633,7 @@ void GraphSearchHelper::generate_all_pcg_xfers() {
           create_replicate_attention_reduce(this->model, 16 /*num_heads*/, it));
     }
   }
-  for (const auto &it : all_parallel_degrees) {
+  for (auto const &it : all_parallel_degrees) {
     all_pcg_xfers.push_back(
         create_partition_attention_combine(this->model, 16 /*num_heads*/, it));
   }
@@ -1659,12 +1659,12 @@ void GraphSearchHelper::generate_all_pcg_xfers() {
       all_pcg_xfers.push_back(
           create_linear_relu_merge(this->model, num_dims, false));
     }
-    for (const int degree : all_parallel_degrees) {
+    for (int const degree : all_parallel_degrees) {
       create_mapping_xfers<Conv2D>(this->model, degree, all_pcg_xfers);
       create_mapping_xfers<Pool2D>(this->model, degree, all_pcg_xfers);
       create_mapping_xfers<Flat>(this->model, degree, all_pcg_xfers);
     }
-    for (const auto &it : all_parallel_degrees) {
+    for (auto const &it : all_parallel_degrees) {
       // rewrites for the inception model
       for (int i = 3; i <= 6; i++) {
         all_pcg_xfers.push_back(create_combine_inception(
@@ -1714,7 +1714,7 @@ void GraphSearchHelper::generate_all_pcg_xfers() {
         for (size_t i = 0; i < this->model->operators.size(); i++)
           if (this->model->operators[i]->op_type == OP_CONCAT)
             concat_num_inputs.insert(this->model->operators[i]->numInputs);
-        for (const auto &it2 : concat_num_inputs) {
+        for (auto const &it2 : concat_num_inputs) {
           all_pcg_xfers.push_back(
               create_partition_concat_combine(this->model,
                                               it2 /*num_inputs*/,
@@ -1735,14 +1735,14 @@ void GraphSearchHelper::generate_all_pcg_xfers() {
 
 Graph *GraphSearchHelper::construct_graph() {
   Graph *graph = new Graph(this->model);
-  std::unordered_map<const FlexFlow::Op *, Node> op_to_node_map;
-  for (const FlexFlow::Op *dstOp : this->model->operators) {
+  std::unordered_map<FlexFlow::Op const *, Node> op_to_node_map;
+  for (FlexFlow::Op const *dstOp : this->model->operators) {
     Node dstNode;
     dstNode.ptr = dstOp;
     dstNode.guid = this->model->node_global_guid++;
     op_to_node_map[dstOp] = dstNode;
     for (int j = 0; j < dstOp->numInputs; j++) {
-      const FlexFlow::Op *srcOp = dstOp->inputs[j]->owner_op;
+      FlexFlow::Op const *srcOp = dstOp->inputs[j]->owner_op;
       assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
       Node srcNode = op_to_node_map[srcOp];
       graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
@@ -2006,7 +2006,7 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(
   Graph *best_graph = new Graph(*graph);
   float best_cost = best_graph->optimal_cost();
   int counter = 0;
-  const float alpha = this->model->config.search_alpha;
+  float const alpha = this->model->config.search_alpha;
 
   int budget = model->config.search_budget;
   if (budget == 0) {
@@ -2425,19 +2425,19 @@ GraphSearchHelper::possible_split_output_tensor_shapes(
 void GraphSearchHelper::subgraph_optimize(Graph *subgraph) {}
 
 template <>
-OpX *GraphXfer::create_opx<Conv2D>(const TensorX &input, const OpX *matchOpX) {
+OpX *GraphXfer::create_opx<Conv2D>(TensorX const &input, OpX const *matchOpX) {
   return this->create_conv2d(input, matchOpX);
 }
 
 template <>
-OpX *GraphXfer::create_opx<Pool2D>(const TensorX &input, const OpX *matchOpX) {
+OpX *GraphXfer::create_opx<Pool2D>(TensorX const &input, OpX const *matchOpX) {
   OpX *pool = new OpX(OP_POOL2D, 1, 1, input);
   pool->matchOpX = matchOpX;
   return pool;
 }
 
 template <>
-OpX *GraphXfer::create_opx<Flat>(const TensorX &input, const OpX *matchOpX) {
+OpX *GraphXfer::create_opx<Flat>(TensorX const &input, OpX const *matchOpX) {
   OpX *flat = new OpX(OP_FLAT, 1, 1, input);
   flat->matchOpX = matchOpX;
   return flat;
@@ -2982,15 +2982,15 @@ void FFModel::graph_optimize(
 }
 
 bool FFModel::convert_graph_to_operators(
-    const Graph *graph,
-    const std::unordered_map<Node, MachineView> &optimal_views) {
+    Graph const *graph,
+    std::unordered_map<Node, MachineView> const &optimal_views) {
   // Clear operators
   operators.clear();
   std::unordered_map<Node, int> todos;
   std::unordered_map<Node, Op *> node_to_op;
   std::vector<Node> queue;
-  for (const auto &it : graph->inEdges) {
-    const auto &inList = it.second;
+  for (auto const &it : graph->inEdges) {
+    auto const &inList = it.second;
     if (inList.size() == 0) {
       queue.push_back(it.first);
     } else {
@@ -3001,10 +3001,10 @@ bool FFModel::convert_graph_to_operators(
   while (index < queue.size()) {
     Node node = queue[index++];
     assert(node.ptr != NULL);
-    const auto &inList = graph->inEdges.find(node)->second;
+    auto const &inList = graph->inEdges.find(node)->second;
     ParallelTensor inputs[MAX_NUM_INPUTS];
     int num_inputs = 0;
-    for (const auto &e : inList) {
+    for (auto const &e : inList) {
       inputs[e.dstIdx] = node_to_op[e.srcOp]->outputs[e.srcIdx];
       assert(e.dstIdx < (int)inList.size());
       num_inputs++;
@@ -3135,8 +3135,8 @@ bool FFModel::convert_graph_to_operators(
     node_to_op[node] = new_op;
     operators.push_back(new_op);
     // Decrease the todos
-    const auto &outList = graph->outEdges.find(node)->second;
-    for (const auto &it : outList) {
+    auto const &outList = graph->outEdges.find(node)->second;
+    for (auto const &it : outList) {
       todos[it.dstOp] -= 1;
       if (todos[it.dstOp] == 0) {
         queue.push_back(it.dstOp);

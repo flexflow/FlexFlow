@@ -94,13 +94,13 @@ Embed::Embed(RnnConfig config,
   regions[1] (I): w
   regions[2] (O): y
  */
-OpMeta *Embed::init_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+OpMeta *Embed::init_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const EmbedInitParams *embed = (EmbedInitParams *)task->args;
+  EmbedInitParams const *embed = (EmbedInitParams *)task->args;
   Rect<2> rect_x = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<1> rect_w = runtime->get_index_space_domain(
@@ -119,7 +119,7 @@ OpMeta *Embed::init_task(const Task *task,
   return m;
 }
 
-void Embed::init(const RnnModel &model) {
+void Embed::init(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
   Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
@@ -159,8 +159,8 @@ void Embed::init(const RnnModel &model) {
   }
 }
 
-__global__ void embedForward(const int *x_ptr,
-                             const float *embed,
+__global__ void embedForward(int const *x_ptr,
+                             float const *embed,
                              float *y_ptr,
                              coord_t numElements,
                              int shift,
@@ -173,9 +173,9 @@ __global__ void embedForward(const int *x_ptr,
   }
 }
 
-__global__ void embedBackward(const int *x_ptr,
+__global__ void embedBackward(int const *x_ptr,
                               float *embed,
-                              const float *y_ptr,
+                              float const *y_ptr,
                               coord_t numElements,
                               int shift,
                               int outputSize) {
@@ -192,17 +192,17 @@ __global__ void embedBackward(const int *x_ptr,
   regions[1](I): w
   regions[2](O): y
 */
-void Embed::forward_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+void Embed::forward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {
 #ifndef DISABLE_COMPUTATION
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const EmbedMeta *m = *((EmbedMeta **)task->args);
-  const AccessorRO<int, 2> acc_x(regions[0], FID_DATA);
-  const AccessorRO<float, 1> acc_w(regions[1], FID_DATA);
-  const AccessorWO<float, 3> acc_y(regions[2], FID_DATA);
+  EmbedMeta const *m = *((EmbedMeta **)task->args);
+  AccessorRO<int, 2> const acc_x(regions[0], FID_DATA);
+  AccessorRO<float, 1> const acc_w(regions[1], FID_DATA);
+  AccessorWO<float, 3> const acc_y(regions[2], FID_DATA);
   Rect<2> rect_x = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<1> rect_w = runtime->get_index_space_domain(
@@ -214,8 +214,8 @@ void Embed::forward_task(const Task *task,
   assert(acc_y.accessor.is_dense_arbitrary(rect_y));
   int batch_size = rect_y.hi[1] - rect_y.lo[1] + 1;
   int output_size = rect_y.hi[0] - rect_y.lo[0] + 1;
-  const int *x_ptr = acc_x.ptr(rect_x.lo);
-  const float *w_ptr = acc_w.ptr(rect_w.lo);
+  int const *x_ptr = acc_x.ptr(rect_x.lo);
+  float const *w_ptr = acc_w.ptr(rect_w.lo);
   float *y_ptr = acc_y.ptr(rect_y.lo);
   cudaEvent_t t_start, t_end;
   if (m->profiling_runtime) {
@@ -244,7 +244,7 @@ void Embed::forward_task(const Task *task,
 #endif
 }
 
-void Embed::forward(const RnnModel &model) {
+void Embed::forward(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
   Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
@@ -282,17 +282,17 @@ void Embed::forward(const RnnModel &model) {
   regions[1](I/O): w_grad
   regions[2](I): y_grad
 */
-void Embed::backward_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
+void Embed::backward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
 #ifndef DISABLE_COMPUTATION
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const EmbedMeta *m = *((EmbedMeta **)task->args);
-  const AccessorRO<int, 2> acc_x(regions[0], FID_DATA);
-  const AccessorRW<float, 1> acc_w(regions[1], FID_DATA);
-  const AccessorRO<float, 3> acc_y(regions[2], FID_DATA);
+  EmbedMeta const *m = *((EmbedMeta **)task->args);
+  AccessorRO<int, 2> const acc_x(regions[0], FID_DATA);
+  AccessorRW<float, 1> const acc_w(regions[1], FID_DATA);
+  AccessorRO<float, 3> const acc_y(regions[2], FID_DATA);
   Rect<2> rect_x = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<1> rect_w = runtime->get_index_space_domain(
@@ -304,9 +304,9 @@ void Embed::backward_task(const Task *task,
   assert(acc_y.accessor.is_dense_arbitrary(rect_y));
   int batch_size = rect_y.hi[1] - rect_y.lo[1] + 1;
   int output_size = rect_y.hi[0] - rect_y.lo[0] + 1;
-  const int *x_ptr = acc_x.ptr(rect_x.lo);
+  int const *x_ptr = acc_x.ptr(rect_x.lo);
   float *w_ptr = acc_w.ptr(rect_w.lo);
-  const float *y_ptr = acc_y.ptr(rect_y.lo);
+  float const *y_ptr = acc_y.ptr(rect_y.lo);
   cudaEvent_t t_start, t_end;
   if (m->profiling_runtime) {
     cudaEventCreate(&t_start);
@@ -334,7 +334,7 @@ void Embed::backward_task(const Task *task,
 #endif
 }
 
-void Embed::backward(const RnnModel &model) {
+void Embed::backward(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
   Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
@@ -370,4 +370,4 @@ void Embed::backward(const RnnModel &model) {
   }
 }
 
-void Embed::update(const RnnModel &model) {}
+void Embed::update(RnnModel const &model) {}

@@ -28,10 +28,10 @@ using namespace FlexFlow;
 //   PYTHON_TOP_LEVEL_TASK_ID = 11111,
 // };
 
-VariantID preregister_python_task_variant(const TaskVariantRegistrar &registrar,
-                                          const char *module_name,
-                                          const char *function_name,
-                                          const void *userdata = NULL,
+VariantID preregister_python_task_variant(TaskVariantRegistrar const &registrar,
+                                          char const *module_name,
+                                          char const *function_name,
+                                          void const *userdata = NULL,
                                           size_t userlen = 0) {
   CodeDescriptor code_desc(
       Realm::Type::from_cpp_type<Processor::TaskFuncPtr>());

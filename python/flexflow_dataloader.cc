@@ -86,7 +86,7 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel &ff,
 }
 
 ImgDataLoader4D::ImgDataLoader4D(FFModel &ff,
-                                 const NetConfig &alexnet,
+                                 NetConfig const &alexnet,
                                  ParallelTensor input,
                                  ParallelTensor label) {
   Context ctx = ff.config.lg_ctx;
@@ -124,7 +124,7 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel &ff,
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
-  const NetConfig *ptr = &alexnet;
+  NetConfig const *ptr = &alexnet;
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
                         TaskArgument(&ptr, sizeof(NetConfig *)));
   // regions[0]: full_input
@@ -147,16 +147,16 @@ ImgDataLoader4D::ImgDataLoader4D(FFModel &ff,
 }
 
 void ImgDataLoader4D::load_entire_dataset_from_numpy(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == regions.size());
-  const AccessorWO<float, 4> acc_input(regions[0], FID_DATA);
-  const AccessorWO<int, 2> acc_label(regions[1], FID_DATA);
-  const AccessorRO<float, 4> acc_input_(regions[2], FID_DATA);
-  const AccessorRO<int, 2> acc_label_(regions[3], FID_DATA);
+  AccessorWO<float, 4> const acc_input(regions[0], FID_DATA);
+  AccessorWO<int, 2> const acc_label(regions[1], FID_DATA);
+  AccessorRO<float, 4> const acc_input_(regions[2], FID_DATA);
+  AccessorRO<int, 2> const acc_label_(regions[3], FID_DATA);
   Rect<4> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
@@ -170,8 +170,8 @@ void ImgDataLoader4D::load_entire_dataset_from_numpy(
   assert(acc_label_.accessor.is_dense_arbitrary(rect_label_));
   float *input_ptr = acc_input.ptr(rect_input.lo);
   int *label_ptr = acc_label.ptr(rect_label.lo);
-  const float *input_ptr_ = acc_input_.ptr(rect_input_.lo);
-  const int *label_ptr_ = acc_label_.ptr(rect_label_.lo);
+  float const *input_ptr_ = acc_input_.ptr(rect_input_.lo);
+  int const *label_ptr_ = acc_label_.ptr(rect_label_.lo);
   printf("Check ptr input %p %lu %lu, label %p %lu %lu\n",
          input_ptr_,
          (uintptr_t)input_ptr_,
@@ -219,15 +219,15 @@ void nearest_neigh(unsigned char *image,
 }
 
 void ImgDataLoader4D::load_entire_dataset(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
-  const NetConfig *alexnet = *((NetConfig **)task->args);
+  NetConfig const *alexnet = *((NetConfig **)task->args);
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
-  const AccessorWO<float, 4> acc_input(regions[0], FID_DATA);
-  const AccessorWO<int, 2> acc_label(regions[1], FID_DATA);
+  AccessorWO<float, 4> const acc_input(regions[0], FID_DATA);
+  AccessorWO<int, 2> const acc_label(regions[1], FID_DATA);
   Rect<4> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
@@ -375,7 +375,7 @@ void ImgDataLoader4D::next_batch(FFModel &ff) {
   next_index += ff.config.batchSize;
 }
 
-size_t ImgDataLoader4D::get_file_size(const std::string &filename) {
+size_t ImgDataLoader4D::get_file_size(std::string const &filename) {
   std::streampos begin, end;
   std::ifstream file(filename.c_str(), std::ios::binary);
   begin = file.tellg();
@@ -445,16 +445,16 @@ ImgDataLoader2D::ImgDataLoader2D(FFModel &ff,
 }
 
 void ImgDataLoader2D::load_entire_dataset_from_numpy(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == regions.size());
-  const AccessorWO<float, 2> acc_input(regions[0], FID_DATA);
-  const AccessorWO<int, 2> acc_label(regions[1], FID_DATA);
-  const AccessorRO<float, 2> acc_input_(regions[2], FID_DATA);
-  const AccessorRO<int, 2> acc_label_(regions[3], FID_DATA);
+  AccessorWO<float, 2> const acc_input(regions[0], FID_DATA);
+  AccessorWO<int, 2> const acc_label(regions[1], FID_DATA);
+  AccessorRO<float, 2> const acc_input_(regions[2], FID_DATA);
+  AccessorRO<int, 2> const acc_label_(regions[3], FID_DATA);
   Rect<2> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
@@ -468,8 +468,8 @@ void ImgDataLoader2D::load_entire_dataset_from_numpy(
   assert(acc_label_.accessor.is_dense_arbitrary(rect_label_));
   float *input_ptr = acc_input.ptr(rect_input.lo);
   int *label_ptr = acc_label.ptr(rect_label.lo);
-  const float *input_ptr_ = acc_input_.ptr(rect_input_.lo);
-  const int *label_ptr_ = acc_label_.ptr(rect_label_.lo);
+  float const *input_ptr_ = acc_input_.ptr(rect_input_.lo);
+  int const *label_ptr_ = acc_label_.ptr(rect_label_.lo);
   printf("Check ptr input %p %lu %lu, label %p %lu %lu\n",
          input_ptr_,
          (uintptr_t)input_ptr_,
@@ -866,8 +866,8 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel &ff, int task_id) {
 // Task body
 template <typename DT>
 void SingleDataLoader::load_entire_dataset_from_numpy(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 2);
@@ -888,14 +888,14 @@ void SingleDataLoader::load_entire_dataset_from_numpy(
 
 template <typename DT, int NDIM>
 void SingleDataLoader::load_entire_dataset_from_numpy_with_dim(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
-  const AccessorWO<DT, NDIM> acc_input(regions[0], FID_DATA);
-  const AccessorRO<DT, NDIM> acc_input_(regions[1], FID_DATA);
+  AccessorWO<DT, NDIM> const acc_input(regions[0], FID_DATA);
+  AccessorRO<DT, NDIM> const acc_input_(regions[1], FID_DATA);
   Rect<NDIM> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
@@ -924,8 +924,8 @@ void SingleDataLoader::load_entire_dataset_from_numpy_with_dim(
 // Task body
 template <typename DT>
 void SingleDataLoader::index_load_entire_dataset_from_numpy(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 1);
@@ -946,8 +946,8 @@ void SingleDataLoader::index_load_entire_dataset_from_numpy(
 
 template <typename DT, int NDIM>
 void SingleDataLoader::index_load_entire_dataset_from_numpy_with_dim(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
   assert(regions.size() == 1);
@@ -957,7 +957,7 @@ void SingleDataLoader::index_load_entire_dataset_from_numpy_with_dim(
 #else
   IndexLoadArg *meta = (IndexLoadArg *)task->args;
 #endif
-  const AccessorWO<DT, NDIM> acc_input(regions[0], FID_DATA);
+  AccessorWO<DT, NDIM> const acc_input(regions[0], FID_DATA);
   Rect<NDIM> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
@@ -1087,32 +1087,32 @@ template void SingleDataLoader::index_loader_xd_launcher<2>(
 template void SingleDataLoader::index_loader_xd_launcher<4>(
     FFModel &ff, int task_id, void *full_input_ptr, size_t size_per_sample);
 template void SingleDataLoader::load_entire_dataset_from_numpy<float>(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime);
 template void SingleDataLoader::load_entire_dataset_from_numpy<int32_t>(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime);
 template void SingleDataLoader::load_entire_dataset_from_numpy<int64_t>(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime);
 template void SingleDataLoader::index_load_entire_dataset_from_numpy<float>(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime);
 template void SingleDataLoader::index_load_entire_dataset_from_numpy<int32_t>(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime);
 template void SingleDataLoader::index_load_entire_dataset_from_numpy<int64_t>(
-    const Task *task,
-    const std::vector<PhysicalRegion> &regions,
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime);

@@ -22,7 +22,7 @@ public:
   miopenTensorDescriptor_t outputTensor;
   miopenActivationDescriptor_t actiDesc;
 #endif
-  const float *one_ptr;
+  float const *one_ptr;
   ActiMode activation;
   bool use_bias;
   DataType input_type, weight_type, output_type;
@@ -96,14 +96,14 @@ public:
   using Input = ParallelTensor;
 
   Linear(FFModel &model,
-         const LayerID &layer_guid,
+         LayerID const &layer_guid,
          const ParallelTensor input,
          int out_dim,
          ActiMode activation,
          bool _use_bias,
          DataType _data_type,
          bool allocate_weights,
-         const char *name);
+         char const *name);
   Linear(FFModel &model,
          Linear const &other,
          ParallelTensor const input,
@@ -111,80 +111,80 @@ public:
   Linear(FFModel &model,
          LinearParams const &params,
          ParallelTensor input,
-         const char *name = nullptr,
+         char const *name = nullptr,
          bool allocate_weights = false);
 
-  void init(const FFModel &) override;
-  void forward(const FFModel &) override;
-  void backward(const FFModel &) override;
-  void print_layer(const FFModel &model) override;
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
+  void print_layer(FFModel const &model) override;
   bool get_int_parameter(PMParameter, int *) const override;
   static Op *
   create_operator_from_layer(FFModel &model,
-                             const Layer *layer,
-                             const std::vector<ParallelTensor> &inputs);
-  static OpMeta *init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+                             Layer const *layer,
+                             std::vector<ParallelTensor> const &inputs);
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
   static void init_kernel(LinearMeta *m, int batch_size, int channel);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  static void forward_kernel(const LinearMeta *m,
-                             const void *input_ptr,
+  static void forward_kernel(LinearMeta const *m,
+                             void const *input_ptr,
                              void *output_ptr,
-                             const void *filter_ptr,
-                             const void *bias_ptr,
+                             void const *filter_ptr,
+                             void const *bias_ptr,
                              int in_dim,
                              int out_dim,
                              int batch_size,
                              ffStream_t stream);
-  static void forward_kernel_wrapper(const LinearMeta *m,
-                                     const void *input_ptr,
+  static void forward_kernel_wrapper(LinearMeta const *m,
+                                     void const *input_ptr,
                                      void *output_ptr,
-                                     const void *filter_ptr,
-                                     const void *bias_ptr,
+                                     void const *filter_ptr,
+                                     void const *bias_ptr,
                                      int in_dim,
                                      int out_dim,
                                      int batch_size);
-  static void backward_kernel(const LinearMeta *m,
-                              const void *input_ptr,
+  static void backward_kernel(LinearMeta const *m,
+                              void const *input_ptr,
                               void *input_grad_ptr,
-                              const void *output_ptr,
+                              void const *output_ptr,
                               void *output_grad_ptr,
-                              const void *kernel_ptr,
+                              void const *kernel_ptr,
                               void *kernel_grad_ptr,
                               void *bias_ptr,
                               int in_dim,
                               int out_dim,
                               int batch_size,
                               ffStream_t stream);
-  static void backward_kernel_wrapper(const LinearMeta *m,
-                                      const void *input_ptr,
+  static void backward_kernel_wrapper(LinearMeta const *m,
+                                      void const *input_ptr,
                                       void *input_grad_ptr,
-                                      const void *output_ptr,
+                                      void const *output_ptr,
                                       void *output_grad_ptr,
-                                      const void *kernel_ptr,
+                                      void const *kernel_ptr,
                                       void *kernel_grad_ptr,
                                       void *bias_ptr,
                                       int in_dim,
                                       int out_dim,
                                       int batch_size);
   bool measure_operator_cost(Simulator *sim,
-                             const MachineView &pc,
+                             MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
   bool estimate_sync_cost(Simulator *sim,
-                          const MachineView &pc,
+                          MachineView const &pc,
                           CostMetrics &cost_metrics) const override;
-  ParallelConfig get_random_parallel_config(const FFModel &ff) const override;
-  bool is_valid_parallel_config(const FFModel &ff,
-                                const ParallelConfig &pc) const override;
+  ParallelConfig get_random_parallel_config(FFModel const &ff) const override;
+  bool is_valid_parallel_config(FFModel const &ff,
+                                ParallelConfig const &pc) const override;
 
   void serialize(Legion::Serializer &) const override;
   static PCG::Node deserialize(FFModel &ff,
@@ -203,24 +203,24 @@ private:
          ActiMode activation,
          bool use_bias,
          bool allocate_weights,
-         const char *name);
+         char const *name);
 
   template <int NDIM>
   static OpMeta *
-  init_task_with_dim(const Legion::Task *task,
-                     const std::vector<Legion::PhysicalRegion> &regions,
+  init_task_with_dim(Legion::Task const *task,
+                     std::vector<Legion::PhysicalRegion> const &regions,
                      Legion::Context ctx,
                      Legion::Runtime *runtime);
   template <int NDIM>
   static void
-  forward_task_with_dim(const Legion::Task *task,
-                        const std::vector<Legion::PhysicalRegion> &regions,
+  forward_task_with_dim(Legion::Task const *task,
+                        std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,
                         Legion::Runtime *runtime);
   template <int NDIM>
   static void
-  backward_task_with_dim(const Legion::Task *task,
-                         const std::vector<Legion::PhysicalRegion> &regions,
+  backward_task_with_dim(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
                          Legion::Runtime *runtime);
   static bool use_activation(ActiMode mode);

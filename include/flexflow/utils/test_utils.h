@@ -12,26 +12,26 @@ struct ArgsConfig;
 
 void initialize_tensor_from_file(const std::string file_path,
                                  Tensor label,
-                                 const FFModel &ff,
+                                 FFModel const &ff,
                                  std::string data_type = "float",
                                  int num_dim = 3);
 
 void initialize_tensor_gradient_from_file(const std::string file_path,
                                           Tensor label,
-                                          const FFModel &ff,
+                                          FFModel const &ff,
                                           std::string data_type,
                                           int num_dim);
 
 void initialize_tensor_from_file(const std::string file_path,
                                  Tensor label,
-                                 const FFModel &ff,
+                                 FFModel const &ff,
                                  std::string data_type,
                                  int num_dim);
 
 template <int DIM>
 void initialize_tensor_from_file_task(
-    const Legion::Task *task,
-    const std::vector<Legion::PhysicalRegion> &regions,
+    Legion::Task const *task,
+    std::vector<Legion::PhysicalRegion> const &regions,
     Legion::Context ctx,
     Legion::Runtime *runtime);
 
@@ -41,8 +41,8 @@ void dump_region_to_file(FFModel &ff,
                          int dims = 4);
 
 template <int DIM>
-void dump_tensor_task(const Legion::Task *task,
-                      const std::vector<Legion::PhysicalRegion> &regions,
+void dump_tensor_task(Legion::Task const *task,
+                      std::vector<Legion::PhysicalRegion> const &regions,
                       Legion::Context ctx,
                       Legion::Runtime *runtime);
 

@@ -11,7 +11,7 @@ class Layer {
 public:
   Layer(FFModel *model,
         OperatorType type,
-        const char *name,
+        char const *name,
         int numInputs,
         int numWeights,
         int numOutputs,
@@ -21,21 +21,21 @@ public:
         const Tensor input4 = NULL);
   Layer(FFModel *model,
         OperatorType type,
-        const char *name,
+        char const *name,
         int numInputs,
         int numWeights,
         int numOutputs,
-        const Tensor *tensors = NULL);
-  void add_int_property(const std::string &key, long long value);
-  void add_float_property(const std::string &key, float value);
-  void add_int_vector_property(const std::string &key,
-                               const std::vector<int> &value);
-  void add_initializer(const std::string &key, Initializer *initializer);
-  bool get_int_property(const std::string &key, long long &value) const;
-  bool get_float_property(const std::string &key, float &value) const;
-  bool get_int_vector_property(const std::string &key,
+        Tensor const *tensors = NULL);
+  void add_int_property(std::string const &key, long long value);
+  void add_float_property(std::string const &key, float value);
+  void add_int_vector_property(std::string const &key,
+                               std::vector<int> const &value);
+  void add_initializer(std::string const &key, Initializer *initializer);
+  bool get_int_property(std::string const &key, long long &value) const;
+  bool get_float_property(std::string const &key, float &value) const;
+  bool get_int_vector_property(std::string const &key,
                                std::vector<int> &value) const;
-  bool get_initializer(const std::string &key, Initializer *&initializer) const;
+  bool get_initializer(std::string const &key, Initializer *&initializer) const;
   Tensor get_parameter(int index);
   void print();
 

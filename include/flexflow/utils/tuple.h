@@ -39,12 +39,12 @@ T &&get(std::tuple<Types...> &&t) noexcept {
 }
 
 template <typename T, typename... Types>
-const T &get(const std::tuple<Types...> &t) noexcept {
+const T &get(std::tuple<Types...> const &t) noexcept {
   return std::get<TupleUtils::index_of<T, Types...>::value>(t);
 }
 
 template <typename T, typename... Types>
-const T &&get(const std::tuple<Types...> &&t) noexcept {
+const T &&get(std::tuple<Types...> const &&t) noexcept {
   return move(std::get<TupleUtils::index_of<T, Types...>::value>(t));
 }
 

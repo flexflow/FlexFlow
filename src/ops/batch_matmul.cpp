@@ -25,11 +25,11 @@ B: (batch, k, m)
 O: (batch, n, m)
 O = A * B
 */
-void BatchMatmul::forward_kernel(const BatchMatmulMeta *meta,
+void BatchMatmul::forward_kernel(BatchMatmulMeta const *meta,
                                  float *o_ptr,
-                                 const float *a_ptr,
-                                 const float *b_ptr,
-                                 const float *c_ptr,
+                                 float const *a_ptr,
+                                 float const *b_ptr,
+                                 float const *c_ptr,
                                  int m,
                                  int n,
                                  int k,
@@ -96,11 +96,11 @@ void BatchMatmul::forward_kernel(const BatchMatmulMeta *meta,
 }
 
 /*static*/
-void BatchMatmul::forward_kernel_wrapper(const BatchMatmulMeta *meta,
+void BatchMatmul::forward_kernel_wrapper(BatchMatmulMeta const *meta,
                                          float *o_ptr,
-                                         const float *a_ptr,
-                                         const float *b_ptr,
-                                         const float *c_ptr,
+                                         float const *a_ptr,
+                                         float const *b_ptr,
+                                         float const *c_ptr,
                                          int m,
                                          int n,
                                          int k,
@@ -148,12 +148,12 @@ O, OGrad: (batch, n, m)
 AGrad = OGrad * B^T
 BGrad = A^T * OGrad
 */
-void BatchMatmul::backward_kernel(const BatchMatmulMeta *meta,
-                                  const float *o_ptr,
-                                  const float *o_grad_ptr,
-                                  const float *a_ptr,
+void BatchMatmul::backward_kernel(BatchMatmulMeta const *meta,
+                                  float const *o_ptr,
+                                  float const *o_grad_ptr,
+                                  float const *a_ptr,
                                   float *a_grad_ptr,
-                                  const float *b_ptr,
+                                  float const *b_ptr,
                                   float *b_grad_ptr,
                                   float *c_grad_ptr,
                                   int m,
@@ -208,12 +208,12 @@ void BatchMatmul::backward_kernel(const BatchMatmulMeta *meta,
 }
 
 /*static*/
-void BatchMatmul::backward_kernel_wrapper(const BatchMatmulMeta *meta,
-                                          const float *o_ptr,
-                                          const float *o_grad_ptr,
-                                          const float *a_ptr,
+void BatchMatmul::backward_kernel_wrapper(BatchMatmulMeta const *meta,
+                                          float const *o_ptr,
+                                          float const *o_grad_ptr,
+                                          float const *a_ptr,
                                           float *a_grad_ptr,
-                                          const float *b_ptr,
+                                          float const *b_ptr,
                                           float *b_grad_ptr,
                                           float *c_grad_ptr,
                                           int m,

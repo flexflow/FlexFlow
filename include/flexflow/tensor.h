@@ -28,7 +28,7 @@ class ParallelTensorBase;
 
 struct TensorBase {
   TensorBase(void) = default;
-  TensorBase(const TensorBase &rhs);
+  TensorBase(TensorBase const &rhs);
   // void inline_map(FFConfig &config);
   // void inline_unmap(FFConfig &config);
   // template<typename T>
@@ -47,13 +47,13 @@ struct TensorBase {
   Legion::Domain get_domain() const;
   // bool check_valid() const;
   // bool is_valid_machine_view(const MachineView& view) const;
-  void print(const std::string &name) const;
+  void print(std::string const &name) const;
   // static bool update_parallel_ids(int numdim, ParallelDim* dims);
   template <typename T>
   bool
-  set_tensor(const FFModel *model, const std::vector<int> &dims, const T *data);
+  set_tensor(FFModel const *model, std::vector<int> const &dims, const T *data);
   template <typename T>
-  bool get_tensor(const FFModel *model, T *data, bool get_gradients);
+  bool get_tensor(FFModel const *model, T *data, bool get_gradients);
   // TensorShape get_shape() const;
 private:
   // template <typename T>
@@ -69,7 +69,7 @@ public:
   Initializer *initializer = nullptr;
   ParallelTensorBase *parallel_tensor = nullptr;
   // Describes the ownership of this tensor
-  const Layer *owner_layer = nullptr;
+  Layer const *owner_layer = nullptr;
   int owner_idx = 0;
   bool create_gradients = false;
 };
