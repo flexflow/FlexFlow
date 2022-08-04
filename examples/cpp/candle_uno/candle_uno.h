@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 4196
 
 using namespace Legion;
+using namespace FlexFlow;
 using namespace std;
 
 struct CandleConfig {
@@ -29,19 +30,21 @@ struct CandleConfig {
 
 class DataLoader {
 public:
-  DataLoader(FFModel& ff, const CandleConfig& candle,
-             const std::vector<Tensor>& _all_inputs,
+  DataLoader(FFModel &ff,
+             CandleConfig const &candle,
+             std::vector<Tensor> const &_all_inputs,
              Tensor _label);
-  static void load_input(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+  static void load_input(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
-                         Runtime* runtime);
-  static void load_entire_dataset(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+                         Runtime *runtime);
+  static void load_entire_dataset(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
-                                  Runtime* runtime);
-  void next_batch(FFModel&);
+                                  Runtime *runtime);
+  void next_batch(FFModel &);
   void reset(void);
+
 public:
   int num_samples, next_index;
   std::vector<Tensor> full_inputs, batch_inputs;
@@ -52,4 +55,3 @@ struct SampleIdxs {
   int num_samples;
   int idxs[MAX_NUM_SAMPLES];
 };
-

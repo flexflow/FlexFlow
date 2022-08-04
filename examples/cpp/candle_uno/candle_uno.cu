@@ -14,29 +14,32 @@
  */
 
 #include "candle_uno.h"
-#include "cuda_helper.h"
+#include "flexflow/utils/cuda_helper.h"
 
-void DataLoader::load_input(const Task *task,
-                            const std::vector<PhysicalRegion> &regions,
+void DataLoader::load_input(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
                             Context ctx,
-                            Runtime* runtime)
-{
+                            Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  SampleIdxs* meta = (SampleIdxs*) task->local_args;
+  SampleIdxs *meta = (SampleIdxs *)task->local_args;
   TensorAccessorR<float, 2> acc_full_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_batch_input(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime, false/*readOutput*/);
+  TensorAccessorW<float, 2> acc_batch_input(regions[1],
+                                            task->regions[1],
+                                            FID_DATA,
+                                            ctx,
+                                            runtime,
+                                            false /*readOutput*/);
   int batch_size = acc_batch_input.rect.hi[1] - acc_batch_input.rect.lo[1] + 1;
   int num_feats = acc_batch_input.rect.hi[0] - acc_batch_input.rect.lo[0] + 1;
   assert(acc_batch_input.rect.hi[0] == acc_full_input.rect.hi[0]);
   assert(acc_batch_input.rect.lo[0] == acc_full_input.rect.lo[0]);
-  //FIXME: currently assume continous indices
+  // FIXME: currently assume continous indices
   assert(batch_size == meta->num_samples);
   for (int i = 1; i < batch_size; i++)
     assert(meta->idxs[i] == meta->idxs[0] + i);
-  const float* input_zc = acc_full_input.ptr + meta->idxs[0] * num_feats;
+  float const *input_zc = acc_full_input.ptr + meta->idxs[0] * num_feats;
   copy_kernel<<<GET_BLOCKS(acc_batch_input.rect.volume()), CUDA_NUM_THREADS>>>(
       acc_batch_input.ptr, input_zc, acc_batch_input.rect.volume());
   checkCUDA(cudaDeviceSynchronize());

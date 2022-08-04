@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 65536
 
 using namespace Legion;
+using namespace FlexFlow;
 
 struct TransformerConfig {
   TransformerConfig(void);
@@ -25,21 +26,24 @@ struct TransformerConfig {
 
 class DataLoader {
 public:
-  DataLoader(FFModel& ff, const TransformerConfig& tf,
-             const Tensor& _input,
-             const Tensor& _label);
-  void next_batch(FFModel& ff);
+  DataLoader(FFModel &ff,
+             TransformerConfig const &tf,
+             Tensor const &_input,
+             Tensor const &_label);
+  void next_batch(FFModel &ff);
   void reset();
-  static void load_entire_dataset(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+  static void load_entire_dataset(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
-                                  Runtime* runtime);
-  static void load_input(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+                                  Runtime *runtime);
+  static void load_input(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
-                         Runtime* runtime);
+                         Runtime *runtime);
+
 public:
   int num_samples, next_index;
+
 private:
   Tensor full_input, batch_input, full_label, batch_label;
 };
@@ -48,4 +52,3 @@ struct SampleIdxs {
   int num_samples;
   int idxs[MAX_NUM_SAMPLES];
 };
-

@@ -13,63 +13,25 @@
  * limitations under the License.
  */
 
-#include "model.h"
-#include "cuda_helper.h"
+#include "flexflow/model.h"
+#include "flexflow/utils/cuda_helper.h"
 
-const float LOG_MIN_VALUE = 0.00000001f;
+namespace FlexFlow {
 
-Metrics::Metrics(LossType _loss_type, const std::vector<MetricsType>& metrics)
-: measure_accuracy(false),
-  measure_categorical_crossentropy(false),
-  measure_sparse_categorical_crossentropy(false),
-  measure_mean_squared_error(false),
-  measure_root_mean_squared_error(false),
-  measure_mean_absolute_error(false),
-  loss_type(_loss_type)
-{
-  for (size_t i = 0; i < metrics.size(); i++) {
-    switch (metrics[i]) {
-      case  METRICS_ACCURACY:
-        measure_accuracy = true;
-        continue;
-      case METRICS_CATEGORICAL_CROSSENTROPY:
-        measure_categorical_crossentropy = true;
-        continue;
-      case METRICS_SPARSE_CATEGORICAL_CROSSENTROPY:
-        measure_sparse_categorical_crossentropy = true;
-        continue;
-      case METRICS_MEAN_SQUARED_ERROR:
-        measure_mean_squared_error = true;
-        continue;
-      case METRICS_ROOT_MEAN_SQUARED_ERROR:
-        measure_root_mean_squared_error = true;
-        continue;
-      case METRICS_MEAN_ABSOLUTE_ERROR:
-        measure_mean_absolute_error = true;
-        continue;
-      default:
-        fprintf(stderr, "Unrecogonized metrics type\n");
-        assert(false);
-    }
-  }
-}
+float const LOG_MIN_VALUE = 0.00000001f;
 
-__global__
-void update_metrics_sparse_label_kernel(
-    const float* logits,
-    const int* labels,
-    PerfMetrics* perf,
-    const Metrics metrics,
-    int num_samples,
-    int num_classes)
-{
-  CUDA_KERNEL_LOOP(b, num_samples)
-  {
+__global__ void update_metrics_sparse_label_kernel(float const *logits,
+                                                   int const *labels,
+                                                   PerfMetrics *perf,
+                                                   const Metrics metrics,
+                                                   int num_samples,
+                                                   int num_classes) {
+  CUDA_KERNEL_LOOP(b, num_samples) {
     if (metrics.measure_accuracy) {
       float max_val = -1.0f;
       int my_label = -1;
       for (int i = 0; i < num_classes; i++) {
-        float my_logit = logits[b*num_classes+i];
+        float my_logit = logits[b * num_classes + i];
         if (my_logit > max_val) {
           max_val = my_logit;
           my_label = i;
@@ -81,16 +43,15 @@ void update_metrics_sparse_label_kernel(
         atomicAdd(&(perf->train_correct), 1);
     }
     if (metrics.measure_sparse_categorical_crossentropy) {
-      float my_logit = max(logits[b*num_classes+labels[b]], LOG_MIN_VALUE);
+      float my_logit = max(logits[b * num_classes + labels[b]], LOG_MIN_VALUE);
       atomicAdd(&(perf->sparse_cce_loss), -log(my_logit));
     }
-    if (metrics.measure_mean_squared_error
-    || metrics.measure_root_mean_squared_error
-    || metrics.measure_mean_absolute_error)
-    {
+    if (metrics.measure_mean_squared_error ||
+        metrics.measure_root_mean_squared_error ||
+        metrics.measure_mean_absolute_error) {
       float mse = 0.0f, mae = 0.0f;
       for (int i = 0; i < num_classes; i++) {
-        float my_logit = logits[b*num_classes+i];
+        float my_logit = logits[b * num_classes + i];
         float my_label = (labels[b] == i) ? 1.0f : 0.0f;
         mse += (my_logit - my_label) * (my_logit - my_label);
         mae += abs(my_logit - my_label);
@@ -105,17 +66,13 @@ void update_metrics_sparse_label_kernel(
   }
 }
 
-__global__
-void update_metrics_label_kernel(
-    const float* logits,
-    const float* labels,
-    PerfMetrics* perf,
-    const Metrics metrics,
-    int num_samples,
-    int num_classes)
-{
-  CUDA_KERNEL_LOOP(b, num_samples)
-  {
+__global__ void update_metrics_label_kernel(float const *logits,
+                                            float const *labels,
+                                            PerfMetrics *perf,
+                                            const Metrics metrics,
+                                            int num_samples,
+                                            int num_classes) {
+  CUDA_KERNEL_LOOP(b, num_samples) {
     atomicAdd(&(perf->train_all), 1);
     if (metrics.measure_accuracy) {
       if (num_classes == 1) {
@@ -127,11 +84,11 @@ void update_metrics_label_kernel(
         float max_val = 0.0f;
         int my_label = -1, true_label = -1;
         for (int i = 0; i < num_classes; i++) {
-          if (my_label == -1 || logits[b*num_classes+i] > max_val) {
-            max_val = logits[b*num_classes+i];
+          if (my_label == -1 || logits[b * num_classes + i] > max_val) {
+            max_val = logits[b * num_classes + i];
             my_label = i;
           }
-          if (labels[b*num_classes+i] > 0.9f) {
+          if (labels[b * num_classes + i] > 0.9f) {
             assert(true_label == -1);
             true_label = i;
           }
@@ -145,20 +102,19 @@ void update_metrics_label_kernel(
     if (metrics.measure_categorical_crossentropy) {
       float cce = 0.0f;
       for (int i = 0; i < num_classes; i++) {
-        if (labels[b*num_classes+i] > 0.0f) {
-          float my_logit = max(logits[b*num_classes+i], LOG_MIN_VALUE);
-          cce += labels[b*num_classes+i] * -log(my_logit);
+        if (labels[b * num_classes + i] > 0.0f) {
+          float my_logit = max(logits[b * num_classes + i], LOG_MIN_VALUE);
+          cce += labels[b * num_classes + i] * -log(my_logit);
         }
       }
       atomicAdd(&(perf->cce_loss), cce);
     }
-    if (metrics.measure_mean_squared_error
-    || metrics.measure_root_mean_squared_error
-    || metrics.measure_mean_absolute_error)
-    {
+    if (metrics.measure_mean_squared_error ||
+        metrics.measure_root_mean_squared_error ||
+        metrics.measure_mean_absolute_error) {
       float mse = 0.0f, mae = 0.0f;
       for (int i = 0; i < num_classes; i++) {
-        float diff = logits[b*num_classes+i] - labels[b*num_classes+i];
+        float diff = logits[b * num_classes + i] - labels[b * num_classes + i];
         mse += diff * diff;
         mae += abs(diff);
       }
@@ -172,140 +128,50 @@ void update_metrics_label_kernel(
   }
 }
 
-__host__
-PerfMetrics Metrics::compute_task(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
-                                  Context ctx, Runtime *runtime)
-{
-  Domain domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-      return compute_task_with_dim<DIM>(task, regions, ctx, runtime);
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
-  PerfMetrics invalid;
-  return invalid;
-}
-
-template<int NDIM>
-__host__
-PerfMetrics Metrics::compute_task_with_dim(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
-                                  Context ctx, Runtime *runtime)
-{
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  const Metrics* me = (Metrics*) task->args;
-  PerfMetrics* perf;
-  PerfMetrics perf_zc;
+void Metrics::update_metrics_sparse_label_kernel_wrapper(
+    float const *logit_ptr,
+    int const *label_ptr,
+    Metrics const *me,
+    int num_effective_samples,
+    int num_classes,
+    PerfMetrics &perf_zc) {
+  PerfMetrics *perf;
   checkCUDA(cudaMalloc(&perf, sizeof(PerfMetrics)));
-  checkCUDA(cudaMemcpy(perf, &perf_zc, sizeof(PerfMetrics), cudaMemcpyHostToDevice));
+  checkCUDA(
+      cudaMemcpy(perf, &perf_zc, sizeof(PerfMetrics), cudaMemcpyHostToDevice));
 
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  if (me->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
-    TensorAccessorR<float, NDIM> acc_logit(
-        regions[0], task->regions[0], FID_DATA, ctx, runtime);
-    TensorAccessorR<int, NDIM> acc_label(
-        regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    int num_effective_samples = acc_label.rect.volume();
-    int num_classes = acc_logit.rect.hi[0] - acc_logit.rect.lo[0] + 1;
-    assert(num_effective_samples * num_classes == acc_logit.rect.volume());
-    for (int i = 1; i < NDIM; i++) {
-      assert(acc_label.rect.hi[i] == acc_logit.rect.hi[i]);
-      assert(acc_label.rect.lo[i] == acc_logit.rect.lo[i]);
-    }
-    assert(acc_label.rect.lo[0] == acc_label.rect.hi[0]);
-    // Cannot measure categorical_crossentropy w/ sparse labels
-    // Use measure_sparse_categorical_crossentropy instead
-    assert(!me->measure_categorical_crossentropy);
-    update_metrics_sparse_label_kernel<<<GET_BLOCKS(num_effective_samples), CUDA_NUM_THREADS, 0, stream>>>(
-        acc_logit.ptr, acc_label.ptr, perf, *me, num_effective_samples, num_classes);
-  } else {
-    TensorAccessorR<float, NDIM> acc_logit(
-        regions[0], task->regions[0], FID_DATA, ctx, runtime);
-    TensorAccessorR<float, NDIM> acc_label(
-        regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    // other loss require label and logit have identical shape
-    assert(acc_logit.rect == acc_label.rect);
-    int num_samples = acc_logit.rect.hi[NDIM-1] - acc_logit.rect.lo[NDIM-1] + 1;
-    int num_classes = acc_logit.rect.volume() / num_samples;
-    // Use CUDA_NUM_THREADS may result in out of resources so we set #threads=256
-    update_metrics_label_kernel<<<GET_BLOCKS(num_samples), 256, 0, stream>>>(
-      acc_logit.ptr, acc_label.ptr, perf, *me, num_samples, num_classes);
-  }
+  update_metrics_sparse_label_kernel<<<GET_BLOCKS(num_effective_samples),
+                                       CUDA_NUM_THREADS,
+                                       0,
+                                       stream>>>(
+      logit_ptr, label_ptr, perf, *me, num_effective_samples, num_classes);
   checkCUDA(cudaStreamSynchronize(stream));
-  checkCUDA(cudaMemcpy(&perf_zc, perf, sizeof(PerfMetrics), cudaMemcpyDeviceToHost));
+  checkCUDA(
+      cudaMemcpy(&perf_zc, perf, sizeof(PerfMetrics), cudaMemcpyDeviceToHost));
   checkCUDA(cudaFree(perf));
-  return perf_zc;
 }
 
-void Metrics::compute(FFModel* model,
-                      const Tensor* logit,
-                      const Tensor* label)
-{
-  assert(logit->numDim == label->numDim);
-  int dim = logit->numDim;
-  switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      compute_with_dim<DIM>(model, logit, label); \
-      break; \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-    {
-      assert(false);
-    }
-  }
+void Metrics::update_metrics_label_kernel_wrapper(float const *logit_ptr,
+                                                  float const *label_ptr,
+                                                  Metrics const *me,
+                                                  int num_samples,
+                                                  int num_classes,
+                                                  PerfMetrics &perf_zc) {
+  PerfMetrics *perf;
+  checkCUDA(cudaMalloc(&perf, sizeof(PerfMetrics)));
+  checkCUDA(
+      cudaMemcpy(perf, &perf_zc, sizeof(PerfMetrics), cudaMemcpyHostToDevice));
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  update_metrics_label_kernel<<<GET_BLOCKS(num_samples), 256, 0, stream>>>(
+      logit_ptr, label_ptr, perf, *me, num_samples, num_classes);
+  checkCUDA(cudaStreamSynchronize(stream));
+  checkCUDA(
+      cudaMemcpy(&perf_zc, perf, sizeof(PerfMetrics), cudaMemcpyDeviceToHost));
+  checkCUDA(cudaFree(perf));
 }
 
-template<int NDIM>
-void Metrics::compute_with_dim(FFModel* model,
-                               const Tensor* logit,
-                               const Tensor* label)
-{
-  // Use the same parallel strategy as the owner of logit
-  std::string pcname = logit->owner_op->name;
-  IndexSpaceT<NDIM> task_is = IndexSpaceT<NDIM>(
-      model->get_or_create_task_is(NDIM, pcname));
-  Context ctx = model->config.lg_ctx;
-  Runtime* runtime = model->config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  Rect<NDIM> logit_rect = runtime->get_index_partition_color_space(
-      ctx, logit->part.get_index_partition());
-  Rect<NDIM> label_rect = runtime->get_index_partition_color_space(
-      ctx, label->part.get_index_partition());
-  if((logit_rect != part_rect) || (label_rect != part_rect)) {
-    fprintf(stderr, "Encounter inconsistency in parallelizing loss computation\n");
-    assert(false);
-  }
-  ArgumentMap argmap;
-  IndexLauncher launcher(METRICS_COMP_TASK_ID, task_is,
-                         TaskArgument(this, sizeof(Metrics)), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(pcname));
-  launcher.add_region_requirement(
-      RegionRequirement(logit->part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, logit->region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(label->part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, label->region));
-  launcher.add_field(1, FID_DATA);
-  FutureMap new_metrics = runtime->execute_index_space(ctx, launcher);
-  // Update metrics
-  TaskLauncher metrics_task(UPDATE_METRICS_TASK_ID, TaskArgument(this, sizeof(Metrics)));
-  metrics_task.add_future(model->current_metrics);
-  for (PointInRectIterator<NDIM> it(part_rect); it(); it++) {
-    metrics_task.add_future(new_metrics[*it]);
-  }
-  model->current_metrics = runtime->execute_task(ctx, metrics_task);
-}
+}; // namespace FlexFlow

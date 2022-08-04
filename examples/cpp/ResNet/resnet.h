@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 4196
 
 using namespace Legion;
@@ -28,30 +28,32 @@ struct ResNetConfig {
 
 class DataLoader {
 public:
-  DataLoader(FFModel& ff, const ResNetConfig& resnet,
-             Tensor _input, Tensor _label);
-  static void load_input(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+  DataLoader(FlexFlow::FFModel &ff,
+             ResNetConfig const &resnet,
+             FlexFlow::Tensor _input,
+             FlexFlow::Tensor _label);
+  static void load_input(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
-                         Runtime* runtime);
-  static void load_label(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+                         Runtime *runtime);
+  static void load_label(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
-                         Runtime* runtime);
-  static void load_entire_dataset(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+                         Runtime *runtime);
+  static void load_entire_dataset(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
-                                  Runtime* runtime);
-  void next_batch(FFModel&);
+                                  Runtime *runtime);
+  void next_batch(FlexFlow::FFModel &);
   void reset(void);
+
 public:
   int num_samples, next_index;
-  Tensor full_input, batch_input;
-  Tensor full_label, batch_label;
+  FlexFlow::Tensor full_input, batch_input;
+  FlexFlow::Tensor full_label, batch_label;
 };
 
 struct SampleIdxs {
   int num_samples;
   int idxs[MAX_NUM_SAMPLES];
 };
-

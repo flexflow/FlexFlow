@@ -1,4 +1,5 @@
 # Compiled files
+/.tools/
 /python/flexflow_python
 /python/flexflow/core/legion_cffi.py
 *.pb.cc
@@ -79,6 +80,9 @@ instance/
 # Sphinx documentation
 docs/_build/
 
+# Doxygen documentation
+docs/doxygen/output/html/
+
 # PyBuilder
 .pybuilder/
 target/
@@ -147,3 +151,6 @@ cython_debug/
 
 # Saved PyTorch tensors
 *.pt
+
+# IDE
+.vscode/*

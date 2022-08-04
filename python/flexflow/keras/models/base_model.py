@@ -326,6 +326,32 @@ class BaseModel(object):
     else:
       assert 0, "unknown optimizer"
 
+  def __create_single_data_loader(self, batch_tensor, full_array):
+    array_shape = full_array.shape
+    num_dim = len(array_shape)
+    print("dataloader type:", full_array.dtype)
+    if (full_array.dtype == "float32"):
+      datatype = ff.DataType.DT_FLOAT
+    elif (full_array.dtype == "int32"):
+      datatype = ff.DataType.DT_INT32
+    else:
+      assert 0, "unsupported datatype"
+
+    if (num_dim == 2):
+      full_tensor = Tensor(self._ffmodel, batch_shape=[self._num_samples, array_shape[1]], name="", dtype=datatype)
+      self._ffmodel.map_tensor(full_tensor.ffhandle)
+    elif (num_dim == 4):
+      full_tensor = Tensor(self._ffmodel, batch_shape=[self._num_samples, array_shape[1], array_shape[2], array_shape[3]], name="", dtype=datatype)
+      self._ffmodel.map_tensor(full_tensor.ffhandle)
+    else:
+      assert 0, "unsupported dims"
+
+    full_tensor.ffhandle.attach_numpy_array(self._ffconfig, full_array)
+    dataloader = ff.SingleDataLoader(self._ffmodel, batch_tensor.ffhandle, full_tensor.ffhandle, self._num_samples, datatype)
+    full_tensor.ffhandle.detach_numpy_array(self._ffconfig)
+
+    return full_tensor, dataloader
+
   def _create_data_loaders(self, x_trains, y_train):
     # Todo: check all num_samples, should be the same
     input_shape = x_trains[0].shape
@@ -456,7 +482,7 @@ class BaseModel(object):
       elif isinstance(layer, Flatten) == True:
         out_t = self._ffmodel.flat(layer.input_tensors[0].ffhandle)
       elif isinstance(layer, Dense) == True:
-        out_t = self._ffmodel.dense(layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation, layer.use_bias, None, layer.kernel_initializer.ffhandle, layer.bias_initializer.ffhandle)
+        out_t = self._ffmodel.dense(layer.input_tensors[0].ffhandle, layer.out_channels, layer.activation, layer.use_bias, ff.DataType.DT_FLOAT, None, layer.kernel_initializer.ffhandle, layer.bias_initializer.ffhandle)
       elif isinstance(layer, Add) == True:
         out_t = self._ffmodel.add(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       elif isinstance(layer, Subtract) == True:

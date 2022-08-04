@@ -19,53 +19,72 @@ using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("Transformer");
 
-Tensor create_emb(FFModel* model, const Tensor& input,
-                  int input_dim, int output_dim, int idx)
-{
+Tensor create_emb(FFModel *model,
+                  Tensor const &input,
+                  int input_dim,
+                  int output_dim,
+                  int idx) {
   float range = sqrt(1.0f / input_dim);
-  Initializer* embed_init = new UniformInitializer(std::rand(), -range, range);
-  return model->embedding(input, input_dim, output_dim, AGGR_MODE_SUM, NULL, embed_init);
+  Initializer *embed_init = new UniformInitializer(std::rand(), -range, range);
+  return model->embedding(
+      input, input_dim, output_dim, AGGR_MODE_SUM, NULL, embed_init);
 }
 
-Tensor create_attention_encoder(FFModel* model, const Tensor& input,
-                        int hidden_dim, int num_heads,
-                        int kdim, int vdim)
-{
-  Tensor t = model->add(model->multihead_attention(input, input, input,
-      hidden_dim, num_heads, kdim, vdim), input);
-  return model->dense(model->dense(t, hidden_dim, AC_MODE_RELU), hidden_dim);
+Tensor create_attention_encoder(FFModel *model,
+                                Tensor const &input,
+                                int hidden_dim,
+                                int num_heads,
+                                int kdim,
+                                int vdim) {
+  Tensor t = model->multihead_attention(
+      input, input, input, hidden_dim, num_heads, kdim, vdim);
+  return model->dense(model->dense(t, hidden_dim, AC_MODE_RELU, false /*bias*/),
+                      hidden_dim,
+                      AC_MODE_NONE,
+                      false /*bias*/);
 }
 
-void create_attention_encoder_decoder(
-    FFModel* model, const Tensor& input1, const Tensor& input2,
-    Tensor& output1, Tensor& output2,
-    int hidden_dim, int num_heads,
-    int kdim, int vdim)
-{
-  Tensor t1 = model->add(model->multihead_attention(input1, input1, input1,
-      hidden_dim, num_heads, kdim, vdim), input1);
-  t1 = model->dense(model->dense(t1, hidden_dim, AC_MODE_RELU), hidden_dim);
-  Tensor t2 = model->add(model->multihead_attention(input2, input2, input2,
-      hidden_dim, num_heads, kdim, vdim), input2);
-  t2 = model->add(model->multihead_attention(t2, t1, t1,
-      hidden_dim, num_heads, kdim, vdim), t2);
-  t2 = model->dense(model->dense(t2, hidden_dim, AC_MODE_RELU), hidden_dim);
+void create_attention_encoder_decoder(FFModel *model,
+                                      Tensor const &input1,
+                                      Tensor const &input2,
+                                      Tensor &output1,
+                                      Tensor &output2,
+                                      int hidden_dim,
+                                      int num_heads,
+                                      int kdim,
+                                      int vdim) {
+  Tensor t1 =
+      model->add(model->multihead_attention(
+                     input1, input1, input1, hidden_dim, num_heads, kdim, vdim),
+                 input1);
+  t1 = model->dense(model->dense(t1, hidden_dim, AC_MODE_RELU, false /*bias*/),
+                    hidden_dim,
+                    AC_MODE_NONE,
+                    false /*bias*/);
+  Tensor t2 =
+      model->add(model->multihead_attention(
+                     input2, input2, input2, hidden_dim, num_heads, kdim, vdim),
+                 input2);
+  t2 = model->add(
+      model->multihead_attention(t2, t1, t1, hidden_dim, num_heads, kdim, vdim),
+      t2);
+  t2 = model->dense(model->dense(t2, hidden_dim, AC_MODE_RELU, false /*bias*/),
+                    hidden_dim,
+                    AC_MODE_NONE,
+                    false /*bias*/);
   output1 = t1;
   output2 = t2;
 }
 
-
-TransformerConfig::TransformerConfig(void)
-{
-  hidden_size = 512;
-  embedding_size = 512;
+TransformerConfig::TransformerConfig(void) {
+  hidden_size = 1024;
+  embedding_size = 1024;
   num_heads = 16;
   num_layers = 12;
-  sequence_length = 128;
+  sequence_length = 512;
 }
 
-void parse_input_args(char **argv, int argc, TransformerConfig& config)
-{
+void parse_input_args(char **argv, int argc, TransformerConfig &config) {
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--num-layers")) {
       config.num_layers = atoi(argv[++i]);
@@ -90,19 +109,21 @@ void parse_input_args(char **argv, int argc, TransformerConfig& config)
   }
 }
 
-void top_level_task(const Task* task,
-                    const std::vector<PhysicalRegion>& regions,
-                    Context ctx, Runtime* runtime)
-{
+void FlexFlow::top_level_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
   FFConfig ffConfig;
   TransformerConfig tfConfig;
   {
-    const InputArgs &command_args = HighLevelRuntime::get_input_args();
+    InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
     parse_input_args(argv, argc, tfConfig);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-        ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
+                  ffConfig.batchSize,
+                  ffConfig.workersPerNode,
+                  ffConfig.numNodes);
     log_app.print("Hidden Size(%d)", tfConfig.hidden_size);
     log_app.print("Embedding Vocab Size(%d)", tfConfig.embedding_size);
     log_app.print("Number of Heads(%d)", tfConfig.num_heads);
@@ -112,34 +133,41 @@ void top_level_task(const Task* task,
   FFModel ff(ffConfig);
   Tensor input;
   {
-    const int dims[] = {ffConfig.batchSize, tfConfig.sequence_length, tfConfig.hidden_size};
+    int const dims[] = {
+        ffConfig.batchSize, tfConfig.sequence_length, tfConfig.hidden_size};
     input = ff.create_tensor<3>(dims, DT_FLOAT);
   }
-  //Tensor t = create_emb(&ff, input, tfConfig.embedding_size, tfConfig.hidden_size);
-  Tensor input1 = input, input2 = input;
-  Tensor t1, t2;
+  // Tensor t = create_emb(&ff, input, tfConfig.embedding_size,
+  // tfConfig.hidden_size); Tensor input1 = input, input2 = input; Tensor t1,
+  // t2;
+  Tensor t = input;
   for (int i = 0; i < tfConfig.num_layers; i++) {
-    //t = create_attention_encoder(&ff, t, tfConfig.hidden_size, tfConfig.num_heads, tfConfig.hidden_size, tfConfig.hidden_size);
-    create_attention_encoder_decoder(&ff, input1, input2, t1, t2,
-        tfConfig.hidden_size, tfConfig.num_heads,
-        tfConfig.hidden_size / tfConfig.num_heads,
-        tfConfig.hidden_size / tfConfig.num_heads);
-    input1 = t1;
-    input2 = t2;
+    t = create_attention_encoder(&ff,
+                                 t,
+                                 tfConfig.hidden_size,
+                                 tfConfig.num_heads,
+                                 tfConfig.hidden_size / tfConfig.num_heads,
+                                 tfConfig.hidden_size / tfConfig.num_heads);
+    // create_attention_encoder_decoder(&ff, input1, input2, t1, t2,
+    //     tfConfig.hidden_size, tfConfig.num_heads,
+    //     tfConfig.hidden_size / tfConfig.num_heads,
+    //     tfConfig.hidden_size / tfConfig.num_heads);
+    // input1 = t1;
+    // input2 = t2;
   }
-  t2 = ff.dense(t2, 1);
-  Optimizer* optimizer = new SGDOptimizer(&ff, 0.01f);
+  t = ff.dense(t, 1, AC_MODE_NONE, false /*bias*/);
+  Optimizer *optimizer = new SGDOptimizer(&ff, 0.01f);
   std::vector<MetricsType> metrics;
-  //metrics.push_back(METRICS_ACCURACY);
-  metrics.push_back(METRICS_MEAN_SQUARED_ERROR);
+  // metrics.push_back(METRICS_ACCURACY);
+  // metrics.push_back(METRICS_MEAN_SQUARED_ERROR);
   ff.compile(optimizer, LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics);
   // Data Loader
   DataLoader loader(ff, tfConfig, input, ff.label_tensor);
   loader.next_batch(ff);
   loader.reset();
-  ff.init_layers();
+  ff.init_operators();
 
-  //Start timer
+  // Start timer
   {
     runtime->issue_execution_fence(ctx);
     TimingLauncher timer(MEASURE_MICRO_SECONDS);
@@ -148,7 +176,8 @@ void top_level_task(const Task* task,
   }
   log_app.print("Warmup finished...Start timer...");
   log_app.print("Num. epochs = %d", ffConfig.epochs);
-  log_app.print("Num. iterations/epoch = %d", loader.num_samples / ffConfig.batchSize);
+  log_app.print("Num. iterations/epoch = %d",
+                loader.num_samples / ffConfig.batchSize);
   printf("parameters.size() = %lu\n", ff.parameters.size());
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
@@ -159,12 +188,12 @@ void top_level_task(const Task* task,
       // Only load data once for random input
       if (iter == 0 && epoch == 0)
         loader.next_batch(ff);
-      runtime->begin_trace(ctx, 111/*trace_id*/);
+      runtime->begin_trace(ctx, 111 /*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      runtime->end_trace(ctx, 111/*trace_id*/);
+      runtime->end_trace(ctx, 111 /*trace_id*/);
     }
   }
   // End timer
@@ -176,71 +205,74 @@ void top_level_task(const Task* task,
   }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
+         run_time,
          loader.num_samples * ffConfig.epochs / run_time);
-
 }
 
-DataLoader::DataLoader(FFModel& ff,
-                       const TransformerConfig& tf,
-                       const Tensor& _input,
-                       const Tensor& _label)
-{
+DataLoader::DataLoader(FFModel &ff,
+                       TransformerConfig const &tf,
+                       Tensor const &_input,
+                       Tensor const &_label) {
   Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Runtime *runtime = ff.config.lg_hlr;
   num_samples = 0;
   log_app.print("Use random dataset...");
-  num_samples = ff.config.batchSize * ff.config.workersPerNode * ff.config.numNodes;
+  num_samples =
+      ff.config.batchSize * ff.config.workersPerNode * ff.config.numNodes;
   log_app.print("Number of random samples = %d\n", num_samples);
+  return;
   {
     batch_input = _input;
-    const int dims[] = {num_samples, tf.sequence_length, tf.hidden_size};
+    int const dims[] = {num_samples, tf.sequence_length, tf.hidden_size};
     full_input = ff.create_tensor<3>(dims, DT_FLOAT);
   }
   {
     batch_label = _label;
-    const int dims[] = {num_samples, tf.sequence_length, 1};
+    int const dims[] = {num_samples, tf.sequence_length, 1};
     full_label = ff.create_tensor<3>(dims, DT_FLOAT);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
-  TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
-      TaskArgument(NULL, 0));
+  TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1, TaskArgument(NULL, 0));
   // regions[0]: full_sparse_input
   launcher.add_region_requirement(
-      RegionRequirement(full_input.region,
-                        WRITE_ONLY, EXCLUSIVE, full_input.region,
+      RegionRequirement(full_input->parallel_tensor->region,
+                        WRITE_ONLY,
+                        EXCLUSIVE,
+                        full_input->parallel_tensor->region,
                         MAP_TO_FB_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_label
   launcher.add_region_requirement(
-      RegionRequirement(full_label.region,
-                        WRITE_ONLY, EXCLUSIVE, full_label.region,
+      RegionRequirement(full_label->parallel_tensor->region,
+                        WRITE_ONLY,
+                        EXCLUSIVE,
+                        full_label->parallel_tensor->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
   runtime->execute_task(ctx, launcher);
 }
 
-void DataLoader::load_entire_dataset(const Task *task,
-                                     const std::vector<PhysicalRegion> &regions,
+void DataLoader::load_entire_dataset(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
-                                     Runtime* runtime)
-{
+                                     Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   // Note that these instances are in ZCM, can only use
   // TensorAccessorW with readOutput flag
-  const AccessorWO<float, 3> acc_input(regions[0], FID_DATA);
-  const AccessorWO<float, 3> acc_label(regions[1], FID_DATA);
+  AccessorWO<float, 3> const acc_input(regions[0], FID_DATA);
+  AccessorWO<float, 3> const acc_label(regions[1], FID_DATA);
   Rect<3> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<3> rect_label = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
   assert(acc_label.accessor.is_dense_arbitrary(rect_label));
-  float* input_ptr = acc_input.ptr(rect_input.lo);
-  float* label_ptr = acc_label.ptr(rect_label.lo);
-  //assert(rect_input == rect_label);
+  float *input_ptr = acc_input.ptr(rect_input.lo);
+  float *label_ptr = acc_label.ptr(rect_label.lo);
+  // assert(rect_input == rect_label);
 
   for (size_t i = 0; i < rect_input.volume(); i++)
     input_ptr[i] = ((float)std::rand()) / RAND_MAX;
@@ -248,69 +280,91 @@ void DataLoader::load_entire_dataset(const Task *task,
     label_ptr[i] = std::rand() % 2;
 }
 
-void DataLoader::next_batch(FFModel& ff)
-{
+void DataLoader::next_batch(FFModel &ff) {
+  return;
   Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Runtime *runtime = ff.config.lg_hlr;
   // Load Input
   {
-    std::string pc_name = "";
-    IndexSpaceT<3> task_is = IndexSpaceT<3>(ff.get_or_create_task_is(3, pc_name));
-    Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain = runtime->get_index_space_domain(
+        ctx, batch_input->parallel_tensor->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<3> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[2] - rect.lo[2] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[2] - rect.lo[2] + 1);
+      assert(ff.config.batchSize % batch_input->parallel_tensor->dims[2].size ==
+             0);
+      meta.num_samples =
+          ff.config.batchSize / batch_input->parallel_tensor->dims[2].size;
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(pc_name)));
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2,
+                           batch_input->parallel_tensor->parallel_is,
+                           TaskArgument(NULL, 0),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false /*must*/,
+                           0 /*mapper_id*/,
+                           batch_input->parallel_tensor->machine_view.hash());
     // Full dataset in ZCM
     launcher.add_region_requirement(
-        RegionRequirement(full_input.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_input.region,
+        RegionRequirement(full_input->parallel_tensor->region,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          full_input->parallel_tensor->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_input.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_input.region));
+        RegionRequirement(batch_input->parallel_tensor->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_input->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
   // Load Labels
   {
-    std::string pc_name = "";
-    IndexSpaceT<3> task_is = IndexSpaceT<3>(ff.get_or_create_task_is(3, pc_name));
-    Rect<3> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain = runtime->get_index_space_domain(
+        ctx, batch_label->parallel_tensor->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<3> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[2] - rect.lo[2] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[2] - rect.lo[2] + 1);
+      assert(ff.config.batchSize % batch_label->parallel_tensor->dims[2].size ==
+             0);
+      meta.num_samples =
+          ff.config.batchSize / batch_label->parallel_tensor->dims[2].size;
       for (int i = 0; i < meta.num_samples; i++)
         meta.idxs[i] = idx++;
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2, task_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                         FFConfig::get_hash_id(std::string(pc_name)));
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2,
+                           batch_label->parallel_tensor->parallel_is,
+                           TaskArgument(NULL, 0),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false /*must*/,
+                           0 /*mapper_id*/,
+                           batch_label->parallel_tensor->machine_view.hash());
     // Full dataset in ZCM
     launcher.add_region_requirement(
-        RegionRequirement(full_label.region, 0/*projection id*/,
-                          READ_ONLY, EXCLUSIVE, full_label.region,
+        RegionRequirement(full_label->parallel_tensor->region,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          full_label->parallel_tensor->region,
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_label.part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, batch_label.region));
+        RegionRequirement(batch_label->parallel_tensor->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_label->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -318,13 +372,11 @@ void DataLoader::next_batch(FFModel& ff)
   next_index += ff.config.batchSize;
 }
 
-void DataLoader::reset()
-{
+void DataLoader::reset() {
   next_index = 0;
 }
 
-void register_custom_tasks()
-{
+void FlexFlow::register_custom_tasks() {
   // Load entire dataset
   {
     TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_1, "Load Entire Dataset");
@@ -342,4 +394,3 @@ void register_custom_tasks()
         registrar, "Load Inputs Task");
   }
 }
-

@@ -32,3 +32,4 @@ else()
 	add_subdirectory(deps/legion)
 	set(LEGION_LIBRARY Legion)
 endif()
+

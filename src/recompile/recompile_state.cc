@@ -13,17 +13,16 @@
  * limitations under the License.
  */
 
-#include "model.h"
-#include "recompile.h"
+#include "flexflow/model.h"
+#include "flexflow/recompile.h"
 #include "legion.h"
 
-using namespace Legion;
+namespace FlexFlow {
 
-RecompileState::RecompileState(std::function<bool(FFModel*)> _trigger_func,
-                              std::function<void(FFModel*)> _alter_func,
-                              FFModel* _ff)
-: trigger_func(_trigger_func), alter_func(_alter_func), ff(_ff)
-{
+RecompileState::RecompileState(std::function<bool(FFModel *)> _trigger_func,
+                               std::function<void(FFModel *)> _alter_func,
+                               FFModel *_ff)
+    : trigger_func(_trigger_func), alter_func(_alter_func), ff(_ff) {
   recompilations = 0;
 }
 
@@ -32,7 +31,9 @@ bool RecompileState::trigger() {
 }
 
 void RecompileState::alter() {
-  if(recompilations == 0)
+  if (recompilations == 0)
     alter_func(ff);
   recompilations++;
 }
+
+}; // namespace FlexFlow

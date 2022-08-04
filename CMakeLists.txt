@@ -1,13 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
 project(FlexFlow)
 
-include(ExternalProject) 
+include(ExternalProject)
 
 # Set policy CMP0074 to eliminate cmake warnings
 cmake_policy(SET CMP0074 NEW)
 cmake_policy(SET CMP0077 NEW)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -UNDEBUG")
 
 # Set a default build type if none was specified
 set(default_build_type "Debug")
@@ -31,13 +32,17 @@ option(FF_BUILD_FROM_PYPI "Build from pypi" OFF)
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 
 # option for using Python
-option(FF_USE_PYTHON "Enable Python" ON)  
+option(FF_USE_PYTHON "Enable Python" ON)
 
 # option for using Python
 option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)
 set(FF_GASNET_CONDUITS aries udp mpi ibv ucx)
-set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select Gasnet conduit ${FF_GASNET_CONDUITS}")
-set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})  
+set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select GASNet conduit ${FF_GASNET_CONDUITS}")
+set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})
+
+set(FF_GPU_BACKENDS cuda hip_cuda hip_rocm intel)
+set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")
+set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
 
 # option for cuda arch
 set(FF_CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
@@ -68,7 +73,7 @@ list(APPEND CC_FLAGS
 
 list(APPEND NVCC_FLAGS
   -std=c++11)
-	
+
 add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
 link_libraries(${LD_FLAGS})
@@ -78,7 +83,7 @@ include(zlib)
 
 # CUDA
 include(cuda)
- 
+
 # CUDNN
 include(cudnn)
 
@@ -94,6 +99,15 @@ endif()
 # Legion
 include(legion)
 
+# json
+include(json)
+
+# variant
+include(variant)
+
+# optional
+include(optional)
+
 if(FF_USE_PYTHON)
   list(APPEND FF_CC_FLAGS
     -DBINDINGS_AUGMENT_PYTHONPATH)
@@ -101,8 +115,26 @@ if(FF_USE_PYTHON)
     -DBINDINGS_AUGMENT_PYTHONPATH)
 endif()
 
+if (FF_GPU_BACKEND STREQUAL "cuda")
+  list(APPEND FF_CC_FLAGS
+    -DFF_USE_CUDA)
+  list(APPEND FF_NVCC_FLAGS
+    -DFF_USE_CUDA)
+elseif (FF_GPU_BACKEND STREQUAL "hip_cuda")
+  list(APPEND FF_CC_FLAGS
+    -DFF_USE_HIP_CUDA)
+  list(APPEND FF_HIPCC_FLAGS
+    -DFF_USE_HIP_CUDA)
+elseif (FF_GPU_BACKEND STREQUAL "hip_rocm")
+  list(APPEND FF_CC_FLAGS
+    -DFF_USE_HIP_ROCM)
+  list(APPEND FF_HIPCC_FLAGS
+    -DFF_USE_HIP_ROCM)
+else()
+endif()
+
 # Start build FlexFlow
-if (CMAKE_BUILD_TYPE EQUAL "Debug")
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
   list(APPEND FF_CC_FLAGS
     -DFF_DEBUG)
   list(APPEND FF_NVCC_FLAGS
@@ -119,11 +151,11 @@ if(FF_USE_AVX2)
     -DFF_USE_AVX2
     -mavx2)
 endif()
-  
+
 list(APPEND FF_NVCC_FLAGS
   -Wno-deprecated-gpu-targets
   -DMAX_TENSOR_DIM=${FF_MAX_DIM})
-  
+
 list(APPEND FF_LD_FLAGS
   -lrt
   -ldl
@@ -131,28 +163,34 @@ list(APPEND FF_LD_FLAGS
 
 # Set FF FLAGS
 add_compile_options(${FF_CC_FLAGS})
-set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${FF_NVCC_FLAGS})
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${FF_NVCC_FLAGS} -UNDEBUG)
 link_libraries(${FF_LD_FLAGS})
 
 list(APPEND FLEXFLOW_INCLUDE_DIRS
   ${FLEXFLOW_ROOT}/include
   ${FLEXFLOW_ROOT})
 
-file(GLOB_RECURSE FLEXFLOW_HDR 
-  LIST_DIRECTORIES False 
+file(GLOB_RECURSE FLEXFLOW_HDR
+  LIST_DIRECTORIES False
   ${FLEXFLOW_ROOT}/include/*.h)
 
-file(GLOB_RECURSE FLEXFLOW_SRC 
-  LIST_DIRECTORIES False 
+file(GLOB_RECURSE FLEXFLOW_SRC
+  LIST_DIRECTORIES False
   ${FLEXFLOW_ROOT}/src/*.cc)
 list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc")
 
-file(GLOB_RECURSE FLEXFLOW_GPU_SRC 
-  LIST_DIRECTORIES False 
+file(GLOB_RECURSE FLEXFLOW_GPU_SRC
+  LIST_DIRECTORIES False
   ${FLEXFLOW_ROOT}/src/*.cu)
 
 set(FLEXFLOW_CPP_DRV_SRC
-  ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)  
+  ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)
+
+add_library(substitution_loader SHARED
+  ${FLEXFLOW_ROOT}/src/runtime/substitution_loader.cc)
+target_include_directories(substitution_loader PRIVATE ${FLEXFLOW_INCLUDE_DIRS})
+target_link_libraries(substitution_loader nlohmann_json::nlohmann_json)
+
 
 #message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
 
@@ -164,7 +202,7 @@ else()
 endif()
 
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-target_link_libraries(flexflow ${LEGION_LIBRARY})
+target_link_libraries(flexflow ${LEGION_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
 
 if(FF_USE_NCCL)
   add_dependencies(flexflow ${NCCL_NAME})
@@ -172,19 +210,34 @@ endif()
 
 # build binary
 option(FF_BUILD_RESNET "build resnet example" OFF)
+option(FF_BUILD_RESNEXT "build resnext example" OFF)
 option(FF_BUILD_ALEXNET "build alexnet example" OFF)
 option(FF_BUILD_DLRM "build DLRM example" OFF)
+option(FF_BUILD_XDL "build XDL example" OFF)
 option(FF_BUILD_INCEPTION "build inception example" OFF)
 option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
 option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
+option(FF_BUILD_MLP_UNIFY "build mlp unify example" OFF)
+option(FF_BUILD_SPLIT_TEST "build split test example" OFF)
+option(FF_BUILD_SPLIT_TEST_2 "build split test 2 example" OFF)
 option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
 option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
+option(FF_BUILD_SUBSTITUTION_TOOL "build substitution conversion tool" OFF)
+option(FF_BUILD_VISUALIZATION_TOOL "build substitution visualization tool" OFF)
 
-if(FF_BUILD_TESTS)
+if(FF_BUILD_UNIT_TESTS)
   set(BUILD_GMOCK OFF)
   add_subdirectory(deps/googletest)
   enable_testing()
   add_subdirectory(tests/unit)
+endif()
+
+if(FF_BUILD_SUBSTITUTION_TOOL)
+  add_subdirectory(src/tools/protobuf_to_json)
+endif()
+
+if(FF_BUILD_VISUALIZATION_TOOL)
+  add_subdirectory(src/tools/substitutions_to_dot)
 endif()
 
 # Python
@@ -197,8 +250,24 @@ if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/ResNet)
 endif()
 
+if(FF_BUILD_RESNEXT OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/resnext50)
+endif()
+
 if(FF_BUILD_ALEXNET OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/AlexNet)
+endif()
+
+if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/MLP_Unify)
+endif()
+
+if(FF_BUILD_SPLIT_TEST OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/split_test)
+endif()
+
+if(FF_BUILD_SPLIT_TEST_2 OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/split_test_2)
 endif()
 
 if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)
@@ -206,7 +275,7 @@ if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)
 endif()
 
 #TODO: Once functional add to BUILD_ALL_EXAMPLES
-if(FF_BUILD_CANDLE_UNO)
+if(FF_BUILD_CANDLE_UNO OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/candle_uno)
 endif()
 
@@ -218,6 +287,10 @@ if(FF_BUILD_DLRM OR FF_BUILD_ALL_EXAMPLES)
 
   #add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc)
   #target_include_directories(generate_dlrm_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
+endif()
+
+if(FF_BUILD_XDL OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/XDL)
 endif()
 
 if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_EXAMPLES)

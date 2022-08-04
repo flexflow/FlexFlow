@@ -15,10 +15,10 @@
 
 # Flags for directing the runtime makefile what to include
 DEBUG           ?= 0		# Include debugging symbols
-MAX_DIM         ?= 4		# Maximum number of dimensions
+MAX_DIM         ?= 5		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
-USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
+USE_GASNET      ?= 1		# Include GASNet support (requires GASNet)
 USE_HDF         ?= 1		# Include HDF5 support (requires HDF5)
 ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 

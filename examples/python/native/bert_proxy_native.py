@@ -91,8 +91,9 @@ def top_level_task():
     dims_input = [batch_size, seq_length, hidden_size]
     input_tensor = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
     np_input_tensor = np.zeros(dims_input, dtype=np.float32)
-    input_tensor.attach_numpy_array(ffconfig, np_input_tensor)
-    input_tensor.detach_numpy_array(ffconfig)
+    input_tensor.set_tensor(ffmodel, np_input_tensor)
+    #input_tensor.attach_numpy_array(ffconfig, np_input_tensor)
+    #input_tensor.detach_numpy_array(ffconfig)
 
     # build the model
     t = input_tensor

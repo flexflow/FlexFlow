@@ -5,7 +5,7 @@ ulimit -l unlimited
 fs=12000
 zs=12000
 b=1
-g=4
+g=1
 budget=50000
 
 #<7.5B

@@ -13,14 +13,17 @@
  * limitations under the License.
  */
 
-#include "model.h"
-#include "mapper.h"
 #include "dirent.h"
+#include "flexflow/mapper.h"
+#include "flexflow/model.h"
+
+using namespace Legion;
+using namespace FlexFlow;
+
 // ========================================================
 // Task and mapper registrations
 // ========================================================
-int main(int argc, char** argv)
-{
+int main(int argc, char **argv) {
   // This needs to be set, otherwise NCCL will try to use group kernel launches,
   // which are not compatible with the Realm CUDA hijack.
   setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
@@ -40,6 +43,6 @@ int main(int argc, char** argv)
 
   FFMapper::register_sharding_functor(argc, argv);
 
-  Runtime::add_registration_callback(update_mappers);
+  Runtime::add_registration_callback(FFMapper::update_mappers);
   return Runtime::start(argc, argv);
 }

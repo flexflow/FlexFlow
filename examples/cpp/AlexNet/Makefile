@@ -14,7 +14,7 @@
 #
 
 # Flags for directing the runtime makefile what to include
-DEBUG           ?= 0		# Include debugging symbols
+DEBUG           ?= 1		# Include debugging symbols
 MAX_DIM         ?= 4		# Maximum number of dimensions
 OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
 USE_CUDA        ?= 1		# Include CUDA support (requires CUDA)
@@ -25,7 +25,7 @@ ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 # Put the binary file name here
 OUTFILE		?= alexnet
 # List all the application source files here
-GEN_SRC		= alexnet.cc
+GEN_SRC		= alexnet_new.cc
 GEN_GPU_SRC	= alexnet.cu
 
 ifndef FF_HOME
