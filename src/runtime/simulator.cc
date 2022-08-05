@@ -545,6 +545,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
     return ((Reshape *)op)->get_params();
   case OP_SOFTMAX:
     return ((Softmax *)op)->get_params();
+  case OP_REPARTITION:
+    return ((Repartition *)op)->get_params();
   default:
     return tl::nullopt;
   }
