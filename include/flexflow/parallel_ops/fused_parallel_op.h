@@ -1,15 +1,32 @@
 #ifndef _FLEXFLOW_FUSED_PARALLEL_OP_H
 #define _FLEXFLOW_FUSED_PARALLEL_OP_H
 
-#include "parallel_op.h"
+#include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/node.h"
+#include "flexflow/device.h"
+#include "flexflow/layer.h"
 
 namespace FlexFlow {
 
+struct FusedParallelOpParams {
+  std::vector<ParallelOpInfo> parallel_ops
+  bool is_valid(const ParallelTensorShape &) const;
+};
+bool operator==(const FusedParallelOpParams &, const FusedParallelOpParams &);
+
+
 class FusedParallelOp : public ParallelOp {
 public:
+  using Params = FusedParallelOpParams;
+  using Input = ParallelTensor;
   FusedParallelOp(FFModel &model,
                   const ParallelTensor input,
                   std::vector<ParallelOpInfo> const &parallel_ops);
+  FusedParallelOp(FFModel &model,
+                  Params const &params,
+                  const Input input);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -37,7 +54,7 @@ public:
   void set_parallel_ops(std::vector<ParallelOpInfo> const &_parallel_ops);
   bool check_no_redundant_parallel_ops(void) const;
 
-  size_t get_params_hash() const override;
+  Params get_params() const;
 
 public:
   int num_parallel_ops;
@@ -45,5 +62,12 @@ public:
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+  template <>
+  struct hash<FlexFlow::FusedParallelOpParams> {
+    size_t operator()(const FlexFlow::FusedParallelOpParams&) const;
+  }
+} // namespace std
 
 #endif // _FLEXFLOW_FUSED_PARALLEL_OP_H

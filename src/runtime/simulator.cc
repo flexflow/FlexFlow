@@ -547,6 +547,14 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
     return ((Softmax *)op)->get_params();
   case OP_REPARTITION:
     return ((Repartition *)op)->get_params();
+  case OP_REPLICATE:
+    return ((Replicate *)op)->get_params();
+  case OP_REDUCTION:
+    return ((Reduction *)op)->get_params();
+  case OP_COMBINE:
+    return ((Combine *)op)->get_params();
+  case OP_FUSED_PARALLEL:
+    return ((FusedParallelOp *)op)->get_params();
   default:
     return tl::nullopt;
   }

@@ -15,6 +15,7 @@
 
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/utils/hash_utils.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -36,6 +37,21 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+/* Params */
+bool operator==(const FusedParallelOpParams & lhs, const FusedParallelOpParams & rhs) {
+  return lhs.parallel_ops == rhs.parallel_ops;
+}
+
+bool FusedParallelOpParams::is_valid(const ParallelTensorShape & input) const {
+  return input.is_valid();
+}
+
+FusedParallelOpParams FusedParallelOp::get_params() const {
+  FusedParallelOpParams params;
+  params.parallel_ops = this->parallel_ops;
+  return params;
+}
 
 FusedParallelOp::FusedParallelOp(
     FFModel &model,
@@ -81,6 +97,11 @@ FusedParallelOp::FusedParallelOp(
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, inputs[0]->data_type, this);
 }
+
+FusedParallelOp::FusedParallelOp(FFModel &model,
+                                 FusedParallelOpParams const &params,
+                                 const ParallelTensor input)
+    : FusedParallelOp(model, input, params.parallel_ops) {}
 
 void FusedParallelOp::set_parallel_ops(
     std::vector<ParallelOpInfo> const &_parallel_ops) {
@@ -227,47 +248,13 @@ bool FusedParallelOp::append_parallel_op_info(
   return true;
 }
 
-size_t FusedParallelOp::get_params_hash() const {
-  size_t hash = this->inputs[0]->get_owner_independent_hash();
-  hash_combine(hash, this->num_parallel_ops);
-  for (ParallelOpInfo const &p : this->parallel_ops) {
-    hash_combine(hash, p.op_type);
-    hash_combine(hash, p.parallel_dim);
-    hash_combine(hash, p.parallel_degree);
-  }
-
-  return hash;
-}
-
 using PCG::Node;
 Node FFModel::get_or_create_fused_parallel_node(
     const ParallelTensor input,
     std::vector<ParallelOpInfo> const &parallel_ops) {
-  // Try to combine _parallel_ops's dimensions
-  if (parallel_ops.size() == 0) {
-    return get_or_create_noop_node(input);
-  } else if (parallel_ops.size() == 1) {
-    return this->get_or_create_parallel_op_node(input, parallel_ops[0]);
-  }
-  size_t hash = input->get_owner_independent_hash();
-  for (size_t i = 0; i < parallel_ops.size(); i++) {
-    hash = hash * 31 + std::hash<int>()(parallel_ops[i].op_type);
-    hash = hash * 31 + std::hash<int>()(parallel_ops[i].parallel_dim);
-    hash = hash * 31 + std::hash<int>()(parallel_ops[i].parallel_degree);
-  }
-  auto const &it = cached_fused_parallel_ops.find(hash);
-  FusedParallelOp *fused = NULL;
-  if (it != cached_fused_parallel_ops.end()) {
-    fused = it->second;
-  } else {
-    fused = new FusedParallelOp(*this, input, parallel_ops);
-    cached_fused_parallel_ops[hash] = fused;
-  }
-
-  Node ret;
-  ret.ptr = fused;
-  ret.guid = node_global_guid++;
-  return ret;
+  FusedParallelOpParams params;
+  params.parallel_ops = parallel_ops;
+  return get_or_create_node<FusedParallelOp>(input, params);
 }
 
 void FusedParallelOp::forward_task(Task const *task,
@@ -281,3 +268,16 @@ void FusedParallelOp::backward_task(Task const *task,
                                     Runtime *runtime) {}
 
 }; // namespace FlexFlow
+
+namespace std {
+  size_t hash<FlexFlow::FusedParallelOpParams>::operator()(const FlexFlow::FusedParallelOpParams& params) const {
+    size_t key = 0;
+    hash_combine(key, params.parallel_ops.size());
+    for (ParallelOpInfo const &p : params.parallel_ops) {
+      hash_combine(key, p.op_type);
+      hash_combine(key, p.parallel_dim);
+      hash_combine(key, p.parallel_degree);
+    }
+    return key;
+  }
+}; // namespace std
