@@ -1,9 +1,21 @@
 #ifndef _FLEXFLOW_PARTITION_H
 #define _FLEXFLOW_PARTITION_H
 
-#include "parallel_op.h"
+#include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/node.h"
+#include "flexflow/device.h"
+#include "flexflow/layer.h"
 
 namespace FlexFlow {
+
+struct RepartitionParams {
+  int repartition_legion_dim;
+  int repartition_degree;
+  bool is_valid(const ParallelTensorShape &) const;
+};
+bool operator==(const RepartitionParams &, const RepartitionParams &);
 
 class RepartitionMeta : public OpMeta {
 public:
@@ -13,11 +25,18 @@ public:
 
 class Repartition : public ParallelOp {
 public:
+  using Params = RepartitionParams;
+  using Input = ParallelTensor;
+
   Repartition(FFModel &model,
               const ParallelTensor input,
               int repartition_legion_dim,
               int repartition_degree,
               char const *name = NULL);
+  Repartition(FFModel &model,
+              Params const &params,
+              const Input input,
+              char const *name = nullptr);
   void create_input_partition(FFModel &model) override;
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -60,13 +79,20 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
-  size_t get_params_hash() const override;
   tl::optional<RecordFormatter> as_dot() const override;
-
+  
+  Params get_params() const;
 public:
   int repartition_dim, repartition_degree;
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+  template <>
+  struct hash<FlexFlow::RepartitionParams> {
+    size_t operator()(const FlexFlow::RepartitionParams&) const;
+  }
+} // namespace std
 
 #endif // _FLEXFLOW_PARTITION_H
