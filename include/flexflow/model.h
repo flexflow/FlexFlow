@@ -928,17 +928,21 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, SplitParams>,
                          Split *>,
       std::unordered_map<std::pair<ParallelTensorShape, SoftmaxParams>,
-                         Softmax *>
+                         Softmax *>,
       std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
                          Repartition *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ReplicateParams>,
+                         Replicate *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ReductionParams>,
+                         Reduction *>,
+      std::unordered_map<std::pair<ParallelTensorShape, CombineParams>,
+                         Combine *>,
+      std::unordered_map<std::pair<ParallelTensorShape, FusedParallelOpParams>,
+                         FusedParallelOp *>>
       >
       cached_ops;
   std::unordered_map<size_t, NoOp *> cached_noop_ops;
   std::unordered_map<size_t, NoOp *> cached_input_ops;
-  std::unordered_map<size_t, Replicate *> cached_replicate_ops;
-  std::unordered_map<size_t, Reduction *> cached_reduction_ops;
-  std::unordered_map<size_t, Combine *> cached_combine_ops;
-  std::unordered_map<size_t, FusedParallelOp *> cached_fused_parallel_ops;
   std::vector<MachineView> all_valid_views;
 #ifdef FF_USE_NCCL
   std::unordered_map<size_t, ncclComm_t *> view_hash_to_nccl_comms;

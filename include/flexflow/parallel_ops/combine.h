@@ -1,9 +1,21 @@
 #ifndef _FLEXFLOW_COMBINE_H
 #define _FLEXFLOW_COMBINE_H
 
-#include "parallel_op.h"
+#include "flexflow/fftype.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/node.h"
+#include "flexflow/device.h"
+#include "flexflow/layer.h"
 
 namespace FlexFlow {
+
+struct CombineParams {
+  int combine_legion_dim;
+  int combine_degree;
+  bool is_valid(const ParallelTensorShape &) const;
+};
+bool operator==(const CombineParams &, const CombineParams &);
 
 class CombineMeta : public OpMeta {
 public:
@@ -13,11 +25,18 @@ public:
 
 class Combine : public ParallelOp {
 public:
+  using Params = RepartitionParams;
+  using Input = ParallelTensor;
+  
   Combine(FFModel &model,
           const ParallelTensor input,
           int combine_legion_dim,
           int combine_degree,
           char const *name = NULL);
+  Combine(FFModel &model,
+          Params const &params,
+          const Input input,
+          char const *name = nullptr);
   void create_input_partition(FFModel &model) override;
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -60,7 +79,7 @@ public:
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
 
-  size_t get_params_hash() const override;
+  Params get_params() const;
   tl::optional<RecordFormatter> as_dot() const override;
 
 public:
@@ -68,5 +87,12 @@ public:
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+  template <>
+  struct hash<FlexFlow::CombineParams> {
+    size_t operator()(const FlexFlow::CombineParams&) const;
+  }
+} // namespace std
 
 #endif // _FLEXFLOW_COMBINE_H
