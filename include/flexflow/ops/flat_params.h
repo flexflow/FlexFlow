@@ -11,6 +11,7 @@ struct FlatParams {
   void solve_dims(ParallelTensorShape const &input,
                   ParallelDim output_dims[MAX_TENSOR_DIM],
                   int *output_ndims) const;
+
 private:
   int output_size(ParallelTensorShape const &input,
                   ParallelDim output_dims[MAX_TENSOR_DIM]) const;

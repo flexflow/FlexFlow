@@ -51,8 +51,8 @@ int FlatParams::output_size(ParallelTensorShape const &input,
   output_dims[FlatOutput::REPLICA].is_replica_dim = true;
   output_dims[FlatOutput::SAMPLE].size = input.dims[FlatInput::SAMPLE].size;
   output_dims[FlatOutput::CHANNEL].size =
-      (input.dims[FlatInput::CHANNEL].size * input.dims[FlatInput::HEIGHT].size *
-       input.dims[FlatInput::WIDTH].size);
+      (input.dims[FlatInput::CHANNEL].size *
+       input.dims[FlatInput::HEIGHT].size * input.dims[FlatInput::WIDTH].size);
 
   return FlatOutput::NUMDIM;
 }
@@ -219,11 +219,11 @@ void Flat::forward_task(Task const *task,
   TensorAccessorR<float, FlatInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorW<float, FlatOutput::NUMDIM> acc_output(regions[1],
-                                                    task->regions[1],
-                                                    FID_DATA,
-                                                    ctx,
-                                                    runtime,
-                                                    false /*readOutput*/);
+                                                        task->regions[1],
+                                                        FID_DATA,
+                                                        ctx,
+                                                        runtime,
+                                                        false /*readOutput*/);
   assert(acc_input.rect.volume() == acc_output.rect.volume());
 
   Flat::forward_kernel_wrapper(
@@ -270,11 +270,11 @@ void Flat::backward_task(Task const *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   TensorAccessorW<float, FlatInput::NUMDIM> acc_input_grad(regions[0],
-                                                       task->regions[0],
-                                                       FID_DATA,
-                                                       ctx,
-                                                       runtime,
-                                                       true /*readOutput*/);
+                                                           task->regions[0],
+                                                           FID_DATA,
+                                                           ctx,
+                                                           runtime,
+                                                           true /*readOutput*/);
   TensorAccessorR<float, FlatOutput::NUMDIM> acc_output_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());

@@ -46,8 +46,10 @@ bool operator==(RepartitionParams const &lhs, RepartitionParams const &rhs) {
 
 bool RepartitionParams::is_valid(ParallelTensorShape const &input) const {
   bool valid = input.is_valid();
-  valid &= (input.dims[this->repartition_legion_dim].size % 
-            (this->repartition_degree * input.dims[this->repartition_legion_dim].degree) == 0);
+  valid &= (input.dims[this->repartition_legion_dim].size %
+                (this->repartition_degree *
+                 input.dims[this->repartition_legion_dim].degree) ==
+            0);
   return valid;
 }
 

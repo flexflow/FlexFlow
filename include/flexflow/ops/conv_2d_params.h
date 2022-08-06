@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_CONV_2D_PARAMS_H
 #define _FLEXFLOW_CONV_2D_PARAMS_H
 
-#include "flexflow/fftype.h"
 #include "flexflow/ffconst.h"
+#include "flexflow/fftype.h"
 #include "flexflow/parallel_tensor.h"
 
 namespace FlexFlow {

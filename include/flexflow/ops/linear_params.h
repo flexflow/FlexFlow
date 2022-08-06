@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LINEAR_PARAMS_H
 #define _FLEXFLOW_LINEAR_PARAMS_H
 
-#include "flexflow/fftype.h"
 #include "flexflow/ffconst.h"
+#include "flexflow/fftype.h"
 #include "flexflow/parallel_tensor.h"
 
 namespace FlexFlow {
