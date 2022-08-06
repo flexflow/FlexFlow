@@ -8,15 +8,9 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
+#include "flexflow/parallel_ops/combine_params.h"
 
 namespace FlexFlow {
-
-struct CombineParams {
-  int combine_legion_dim;
-  int combine_degree;
-  bool is_valid(ParallelTensorShape const &) const;
-};
-bool operator==(CombineParams const &, CombineParams const &);
 
 class CombineMeta : public OpMeta {
 public:
@@ -26,7 +20,7 @@ public:
 
 class Combine : public ParallelOp {
 public:
-  using Params = RepartitionParams;
+  using Params = CombineParams;
   using Input = ParallelTensor;
 
   Combine(FFModel &model,
@@ -88,12 +82,5 @@ public:
 };
 
 }; // namespace FlexFlow
-
-namespace std {
-template <>
-struct hash<FlexFlow::CombineParams> {
-  size_t operator()(FlexFlow::CombineParams const &) const;
-}
-} // namespace std
 
 #endif // _FLEXFLOW_COMBINE_H

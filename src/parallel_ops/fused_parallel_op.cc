@@ -253,6 +253,12 @@ using PCG::Node;
 Node FFModel::get_or_create_fused_parallel_node(
     const ParallelTensor input,
     std::vector<ParallelOpInfo> const &parallel_ops) {
+  // Try to combine _parallel_ops's dimensions
+  if (parallel_ops.size() == 0) {
+    return get_or_create_noop_node(input);
+  } else if (parallel_ops.size() == 1) {
+    return this->get_or_create_parallel_op_node(input, parallel_ops[0]);
+  }
   FusedParallelOpParams params;
   params.parallel_ops = parallel_ops;
   return get_or_create_node<FusedParallelOp>(input, params);
