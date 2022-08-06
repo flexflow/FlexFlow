@@ -8,15 +8,9 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
+#include "flexflow/parallel_ops/replicate_params.h"
 
 namespace FlexFlow {
-
-struct ReplicateParams {
-  int replicate_legion_dim;
-  int replicate_degree;
-  bool is_valid(ParallelTensorShape const &) const;
-};
-bool operator==(ReplicateParams const &, ReplicateParams const &);
 
 class Replicate : public ParallelOp {
 public:
@@ -66,12 +60,5 @@ public:
 };
 
 }; // namespace FlexFlow
-
-namespace std {
-template <>
-struct hash<FlexFlow::ReplicateParams> {
-  size_t operator()(FlexFlow::ReplicateParams const &) const;
-}
-} // namespace std
 
 #endif // _FLEXFLOW_REPLICATE_H

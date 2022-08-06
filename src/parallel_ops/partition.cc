@@ -45,7 +45,10 @@ bool operator==(RepartitionParams const &lhs, RepartitionParams const &rhs) {
 }
 
 bool RepartitionParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+  bool valid = input.is_valid();
+  valid &= (input.dims[this->repartition_legion_dim].size % 
+            (this->repartition_degree * input.dims[this->repartition_legion_dim].degree) == 0);
+  return valid;
 }
 
 RepartitionParams Repartition::get_params() const {
@@ -248,6 +251,11 @@ using PCG::Node;
 Node FFModel::get_or_create_repartition_node(const ParallelTensor input,
                                              int repartition_dim,
                                              int repartition_degree) {
+  int degree = input->get_total_num_parts() * repartition_degree;
+  if (degree > config.workersPerNode * config.numNodes &&
+      (degree > config.cpusPerNode * config.numNodes))
+    return Node::INVALID_NODE;
+
   RepartitionParams params;
   params.repartition_legion_dim = repartition_dim;
   params.repartition_degree = repartition_degree;

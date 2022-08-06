@@ -8,14 +8,9 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
+#include "flexflow/parallel_ops/fused_parallel_op_params.h"
 
 namespace FlexFlow {
-
-struct FusedParallelOpParams {
-  std::vector<ParallelOpInfo> parallel_ops bool
-      is_valid(ParallelTensorShape const &) const;
-};
-bool operator==(FusedParallelOpParams const &, FusedParallelOpParams const &);
 
 class FusedParallelOp : public ParallelOp {
 public:
@@ -60,12 +55,5 @@ public:
 };
 
 }; // namespace FlexFlow
-
-namespace std {
-template <>
-struct hash<FlexFlow::FusedParallelOpParams> {
-  size_t operator()(FlexFlow::FusedParallelOpParams const &) const;
-}
-} // namespace std
 
 #endif // _FLEXFLOW_FUSED_PARALLEL_OP_H

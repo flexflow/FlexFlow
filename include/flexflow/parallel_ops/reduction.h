@@ -8,15 +8,9 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
+#include "flexflow/parallel_ops/reduction_params.h"
 
 namespace FlexFlow {
-
-struct ReductionParams {
-  int reduction_legion_dim;
-  int reduction_degree;
-  bool is_valid(ParallelTensorShape const &) const;
-};
-bool operator==(ReductionParams const &, ReductionParams const &);
 
 class Reduction : public ParallelOp {
 public:
@@ -67,12 +61,5 @@ public:
 };
 
 }; // namespace FlexFlow
-
-namespace std {
-template <>
-struct hash<FlexFlow::ReductionParams> {
-  size_t operator()(FlexFlow::ReductionParams const &) const;
-}
-} // namespace std
 
 #endif // _FLEXFLOW_REDUCTION_H
