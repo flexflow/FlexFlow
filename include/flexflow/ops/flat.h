@@ -11,12 +11,12 @@
 
 namespace FlexFlow {
 
-namespace Input {
+namespace FlatInput {
 constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
               REPLICA = 4;
 }
 
-namespace Output {
+namespace FlatOutput {
 constexpr int NUMDIM = 3, CHANNEL = 0, SAMPLE = 1, REPLICA = 2;
 }
 
