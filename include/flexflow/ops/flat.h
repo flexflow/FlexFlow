@@ -1,12 +1,13 @@
 #ifndef _FLEXFLOW_FLAT_H
 #define _FLEXFLOW_FLAT_H
 
+#include "flexflow/device.h"
 #include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/node.h"
-#include "flexflow/device.h"
-#include "flexflow/layer.h"
+#include "flexflow/ops/flat_params.h"
 
 namespace FlexFlow {
 
@@ -19,12 +20,6 @@ namespace Output {
 constexpr int NUMDIM = 3, CHANNEL = 0, SAMPLE = 1, REPLICA = 2;
 }
 
-struct FlatParams {
-  bool is_valid(const ParallelTensorShape &) const;
-};
-
-bool operator==(const FlatParams &, const FlatParams &);
-
 class FlatMeta : public OpMeta {
 public:
   FlatMeta(FFHandler handle) : OpMeta(handle){};
@@ -36,7 +31,10 @@ public:
   using Input = ParallelTensor;
 
   Flat(FFModel &model, const ParallelTensor input, char const *name);
-  Flat(FFModel &model, const Params& params, const Input input, const char *name=nullptr);
+  Flat(FFModel &model,
+       Params const &params,
+       const Input input,
+       char const *name = nullptr);
 
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -97,12 +95,5 @@ public:
 };
 
 }; // namespace FlexFlow
-
-namespace std {
-  template <>
-  struct hash<FlexFlow::FlatParams> {
-    size_t operator()(const FlexFlow::FlatParams&) const;
-  }
-} // namespace std
 
 #endif // _FLEXFLOW_FLAT_H

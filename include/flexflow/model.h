@@ -897,25 +897,23 @@ public:
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
   std::tuple<
-      std::unordered_map<std::pair<ParallelTensorShape, CastParams>,
-                         Cast *>
-      std::unordered_map<
-          std::pair<std::vector<ParallelTensorShape>, ConcatParams>,
-          Concat *>,
+      std::unordered_map<std::pair<ParallelTensorShape, CastParams>, Cast *>
+          std::unordered_map<
+              std::pair<std::vector<ParallelTensorShape>, ConcatParams>,
+              Concat *>,
       std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>,
                          Conv2D *>,
       std::unordered_map<std::pair<ParallelTensorShape, DropoutParams>,
                          Dropout *>
-      std::unordered_map<
-          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
-                    ElementBinaryParams>,
-          ElementBinary *>,
+          std::unordered_map<
+              std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                        ElementBinaryParams>,
+              ElementBinary *>,
       std::unordered_map<std::pair<ParallelTensorShape, ElementUnaryParams>,
                          ElementUnary *>,
       std::unordered_map<std::pair<ParallelTensorShape, EmbeddingParams>,
                          Embedding *>,
-      std::unordered_map<std::pair<ParallelTensorShape, FlatParams>,
-                         Flat *>,
+      std::unordered_map<std::pair<ParallelTensorShape, FlatParams>, Flat *>,
       std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
                          Linear *>,
       std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>,
@@ -925,8 +923,7 @@ public:
           MultiHeadAttention *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,
                          Reshape *>,
-      std::unordered_map<std::pair<ParallelTensorShape, SplitParams>,
-                         Split *>,
+      std::unordered_map<std::pair<ParallelTensorShape, SplitParams>, Split *>,
       std::unordered_map<std::pair<ParallelTensorShape, SoftmaxParams>,
                          Softmax *>,
       std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
@@ -938,9 +935,7 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, CombineParams>,
                          Combine *>,
       std::unordered_map<std::pair<ParallelTensorShape, FusedParallelOpParams>,
-                         FusedParallelOp *>>
-      >
-      cached_ops;
+                         FusedParallelOp *>> > cached_ops;
   std::unordered_map<size_t, NoOp *> cached_noop_ops;
   std::unordered_map<size_t, NoOp *> cached_input_ops;
   std::vector<MachineView> all_valid_views;

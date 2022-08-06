@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/parallel_ops/replicate.h"
-#include "flexflow/utils/hash_utils.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -39,12 +39,12 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 /* Params */
-bool operator==(const ReplicateParams & lhs, const ReplicateParams & rhs) {
+bool operator==(ReplicateParams const &lhs, ReplicateParams const &rhs) {
   return lhs.replicate_legion_dim == rhs.replicate_legion_dim &&
          lhs.replicate_degree == rhs.replicate_degree;
 }
 
-bool ReplicateParams::is_valid(const ParallelTensorShape & input) const {
+bool ReplicateParams::is_valid(ParallelTensorShape const &input) const {
   return input.is_valid();
 }
 
@@ -94,9 +94,9 @@ Replicate::Replicate(FFModel &model,
                      ReplicateParams const &params,
                      const ParallelTensorInput input,
                      char const *name)
-    : Replicate(model, 
-                input, 
-                params.replicate_legion_dim, 
+    : Replicate(model,
+                input,
+                params.replicate_legion_dim,
                 params.replicate_degree,
                 name) {}
 
@@ -294,10 +294,11 @@ void Replicate::backward_task(Task const *task,
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::ReplicateParams>::operator()(const FlexFlow::ReplicateParams& params) const {
-    size_t key = 0;
-    hash_combine(key, params.replicate_legion_dim);
-    hash_combine(key, params.replicate_degree);
-    return key;
-  }
+size_t hash<FlexFlow::ReplicateParams>::operator()(
+    FlexFlow::ReplicateParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.replicate_legion_dim);
+  hash_combine(key, params.replicate_degree);
+  return key;
+}
 }; // namespace std

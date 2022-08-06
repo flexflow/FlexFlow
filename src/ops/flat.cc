@@ -74,11 +74,11 @@ void solve_dims(const ParallelTensor input,
   solve_parallel_dim_mappings(mapping, {input->dims}, {}, output_dim_sets);
 }
 
-bool FlatParams::is_valid(const ParallelTensorShape & input) {
+bool FlatParams::is_valid(ParallelTensorShape const &input) {
   return input.is_valid();
 }
 
-bool operator==(const FlatParams &, const FlatParams &) {
+bool operator==(FlatParams const &, FlatParams const &) {
   // flat doesn't have params to compare
   return true;
 }
@@ -121,11 +121,11 @@ Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
   assert(check_output_input_weight_parallel_dims());
 }
 
-Flat::Flat(FFModel &model, 
-           const FlatParams& params, 
-           const ParallelTensor input, 
-           const char *name)
-  : Flat(model, input, name) {}
+Flat::Flat(FFModel &model,
+           FlatParams const &params,
+           const ParallelTensor input,
+           char const *name)
+    : Flat(model, input, name) {}
 
 void Flat::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -382,8 +382,9 @@ Op *Flat::materialize(FFModel &ff,
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::FlatParams>::operator()(const FlexFlow::FlatParams& params) const {
-    size_t key = 0;
-    return hash<int>{}(key);
-  }
-};
+size_t hash<FlexFlow::FlatParams>::operator()(
+    FlexFlow::FlatParams const &params) const {
+  size_t key = 0;
+  return hash<int>{}(key);
+}
+}; // namespace std

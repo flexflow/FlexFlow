@@ -144,7 +144,6 @@ Tensor FFModel::pow(const Tensor x,
 }
 
 bool ElementUnaryParams::is_valid(ParallelTensorShape const &input) const {
-  // TODO: more check on the input shape
   return input.is_valid();
 }
 

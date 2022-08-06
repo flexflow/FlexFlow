@@ -7,16 +7,9 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
+#include "flexflow/ops/concat_params.h"
 
 namespace FlexFlow {
-
-struct ConcatParams {
-  int axis;
-
-  bool is_valid(std::vector<ParallelTensorShape> const &) const;
-};
-
-bool operator==(ConcatParams const &, ConcatParams const &);
 
 class ConcatMeta : public OpMeta {
 public:
@@ -102,12 +95,5 @@ public:
 };
 
 }; // namespace FlexFlow
-
-namespace std {
-template <>
-struct hash<FlexFlow::ConcatParams> {
-  size_t operator()(FlexFlow::ConcatParams const &) const;
-};
-}; // namespace std
 
 #endif // _FLEXFLOW_CONCAT_H

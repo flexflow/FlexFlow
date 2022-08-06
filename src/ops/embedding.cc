@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/ops/embedding.h"
-#include "flexflow/utils/hash_utils.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
 
@@ -95,16 +95,14 @@ EmbeddingParams Embedding::get_params() const {
   return params;
 }
 
-bool EmbeddingParams::is_valid(const ParallelTensorShape & input) const {
-  // TODO: more check on the input shape?
+bool EmbeddingParams::is_valid(ParallelTensorShape const &input) const {
   return input.is_valid();
 }
 
-bool operator==(const EmbeddingParams& lhs, const EmbeddingParams& rhs) {
-  return lhs.num_entries == rhs.num_entries && 
-         lhs.out_channels == rhs.out_channels &&
-         lhs.aggr = rhs.aggr &&
-         lhs.layer_guid == rhs.layer_guid;
+bool operator==(EmbeddingParams const &lhs, EmbeddingParams const &rhs) {
+  return lhs.num_entries == rhs.num_entries &&
+             lhs.out_channels == rhs.out_channels &&
+             lhs.aggr = rhs.aggr && lhs.layer_guid == rhs.layer_guid;
 }
 
 Op *Embedding::create_operator_from_layer(
@@ -254,8 +252,7 @@ Embedding::Embedding(FFModel &model,
 Embedding::Embedding(FFModel &model,
                      EmbeddingParams &params,
                      const ParallelTensor input,
-                     bool allocate_weights = false
-                     char const *name = nullptr);
+                     bool allocate_weights = false char const *name = nullptr);
     : Embedding(model,
                 params.layer_guid,
                 input,
@@ -266,21 +263,21 @@ Embedding::Embedding(FFModel &model,
                 name) {}
 
 Embedding::Embedding(FFModel &model,
-                     LayerID const &_layer_guid,
-                     const ParallelTensor _input,
-                     int _num_entries,
-                     int _out_channels,
-                     AggrMode _aggr,
-                     bool allocate_weights,
-                     char const *name)
+                      LayerID const &_layer_guid,
+                      const ParallelTensor _input,
+                      int _num_entries,
+                      int _out_channels,
+                      AggrMode _aggr,
+                      bool allocate_weights,
+                      char const *name)
     : Op(model,
-         OP_EMBEDDING,
-         name,
-         1 /*inputs*/,
-         1 /*weights*/,
-         allocate_weights,
-         1 /*outputs*/,
-         _input),
+          OP_EMBEDDING,
+          name,
+          1 /*inputs*/,
+          1 /*weights*/,
+          allocate_weights,
+          1 /*outputs*/,
+          _input),
       num_entries(_num_entries), out_channels(_out_channels), aggr(_aggr) {
   layer_guid = _layer_guid;
   std::vector<ParallelDim *> weight_dim_sets;
@@ -302,16 +299,17 @@ Embedding::Embedding(FFModel &model,
       {_input->dims}, weight_dim_sets, {output_dims});
 
   if (allocate_weights) {
-    Initializer *weight_initializer = new GlorotUniform(std::rand() /*seed*/);
+    Initializer *weight_initializer =
+        new GlorotUniform(std::rand() /*seed*/);
 
     weights[0] =
         model.create_parallel_weight_legion_ordering(weight_ndim,
-                                                     weight_dims,
-                                                     DT_FLOAT,
-                                                     nullptr /*owner_op*/,
-                                                     true /*create_grad*/,
-                                                     weight_initializer,
-                                                     CHOSEN_SYNC_TYPE);
+                                                      weight_dims,
+                                                      DT_FLOAT,
+                                                      nullptr /*owner_op*/,
+                                                      true /*create_grad*/,
+                                                      weight_initializer,
+                                                      CHOSEN_SYNC_TYPE);
   }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -328,13 +326,13 @@ void Embedding::init(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
   IndexLauncher launcher(EMBED_INIT_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(Embedding)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
+                          parallel_is,
+                          TaskArgument(this, sizeof(Embedding)),
+                          argmap,
+                          Predicate::TRUE_PRED,
+                          false /*must*/,
+                          0 /*mapper_id*/,
+                          outputs[0]->machine_view.hash());
   // regions[0]: input
   // launcher.add_region_requirement(
   //  RegionRequirement(input_lps[0], 0/*projection*/,
@@ -355,11 +353,12 @@ void Embedding::init(FFModel const &ff) {
                                                     weights[0]->region));
   launcher.add_field(1, FID_DATA);
   // regions[3]: input_grad
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part_grad,
+                        0 /*projection*/,
+                        WRITE_ONLY,
+                        EXCLUSIVE,
+                        inputs[0]->region_grad));
   launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -367,9 +366,9 @@ void Embedding::init(FFModel const &ff) {
 }
 
 OpMeta *Embedding::init_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
   Embedding const *embed = (Embedding *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   EmbeddingMeta *m = new EmbeddingMeta(handle);
@@ -385,13 +384,13 @@ void Embedding::forward(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(EMBED_FWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
+                          parallel_is,
+                          TaskArgument(NULL, 0),
+                          argmap,
+                          Predicate::TRUE_PRED,
+                          false /*must*/,
+                          0 /*mapper_id*/,
+                          outputs[0]->machine_view.hash());
   // regions[0]: input
   launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
                                                     0 /*projection*/,
@@ -423,9 +422,9 @@ void Embedding::forward(FFModel const &ff) {
   regions[2](I): kernel
 */
 void Embedding::forward_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
   EmbeddingMeta const *m = *((EmbeddingMeta **)task->local_args);
   if (m->input_data_type == DT_INT32) {
     forward_task_with_type<int32_t>(task, regions, ctx, runtime);
@@ -460,7 +459,7 @@ void Embedding::forward_task_with_type(
       assert(input_domain.lo()[i] == output_domain.lo()[i + 1]);
     }
     assert(kernel_domain.hi()[0] - kernel_domain.lo()[0] ==
-           output_domain.hi()[0] - output_domain.lo()[0]);
+            output_domain.hi()[0] - output_domain.lo()[0]);
   } else {
     // assert(kernel_domain.get_dim() == 2);
     assert(input_domain.get_dim() == output_domain.get_dim());
@@ -469,7 +468,7 @@ void Embedding::forward_task_with_type(
       assert(input_domain.lo()[i] == output_domain.lo()[i]);
     }
     assert(kernel_domain.hi()[0] - kernel_domain.lo()[0] ==
-           output_domain.hi()[0] - output_domain.lo()[0]);
+            output_domain.hi()[0] - output_domain.lo()[0]);
   }
   const TI *input_ptr = helperGetTensorPointerRO<TI>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -508,13 +507,13 @@ void Embedding::backward(FFModel const &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
   IndexLauncher launcher(EMBED_BWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
+                          parallel_is,
+                          TaskArgument(NULL, 0),
+                          argmap,
+                          Predicate::TRUE_PRED,
+                          false /*must*/,
+                          0 /*mapper_id*/,
+                          outputs[0]->machine_view.hash());
   // regions[0]: input
   launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
                                                     0 /*projection*/,
@@ -523,18 +522,20 @@ void Embedding::backward(FFModel const &ff) {
                                                     inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // regions[1]: output_grad
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-                                                    0 /*projection*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->part_grad,
+                        0 /*projection*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        outputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[2]: weight_grad
-  launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
-                                                    0 /*projection*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part_grad,
+                        0 /*projection*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        weights[0]->region_grad));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -577,7 +578,7 @@ void Embedding::backward_task_with_type(
       assert(input_domain.lo()[i] == output_grad_domain.lo()[i + 1]);
     }
     assert(kernel_grad_domain.hi()[0] - kernel_grad_domain.lo()[0] ==
-           output_grad_domain.hi()[0] - output_grad_domain.lo()[0]);
+            output_grad_domain.hi()[0] - output_grad_domain.lo()[0]);
   } else {
     // assert(kernel_grad_domain.get_dim() == 2);
     assert(input_domain.get_dim() == output_grad_domain.get_dim());
@@ -586,7 +587,7 @@ void Embedding::backward_task_with_type(
       assert(input_domain.lo()[i] == output_grad_domain.lo()[i]);
     }
     assert(kernel_grad_domain.hi()[0] - kernel_grad_domain.lo()[0] ==
-           output_grad_domain.hi()[0] - output_grad_domain.lo()[0]);
+            output_grad_domain.hi()[0] - output_grad_domain.lo()[0]);
   }
   const TI *input_ptr = helperGetTensorPointerRO<TI>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -607,17 +608,17 @@ void Embedding::backward_task_with_type(
     effective_batch_size = output_grad_domain.get_volume() / out_dim;
     assert(effective_batch_size * in_dim == input_domain.get_volume());
   }
-
   Embedding::backward_kernel_wrapper<TI>(m,
-                                         input_ptr,
-                                         output_grad_ptr,
-                                         kernel_grad_ptr,
-                                         in_dim,
-                                         out_dim,
-                                         effective_batch_size,
-                                         m->aggr,
-                                         output_grad_domain.get_volume());
+                                          input_ptr,
+                                          output_grad_ptr,
+                                          kernel_grad_ptr,
+                                          in_dim,
+                                          out_dim,
+                                          effective_batch_size,
+                                          m->aggr,
+                                          output_grad_domain.get_volume());
 }
+      
 
 bool Embedding::measure_operator_cost(Simulator *sim,
                                       MachineView const &mv,
@@ -713,14 +714,14 @@ bool Embedding::measure_operator_cost(Simulator *sim,
 
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf("[Measure Embedding] name(%s) forward_time(%.4lf) "
-           "backward_time(%.4lf)\n",
-           name,
-           cost_metrics.forward_time,
-           cost_metrics.backward_time);
+            "backward_time(%.4lf)\n",
+            name,
+            cost_metrics.forward_time,
+            cost_metrics.backward_time);
   } else {
     printf("[Measure Embedding] name(%s) forward_time(%.4lf)\n",
-           name,
-           cost_metrics.forward_time);
+            name,
+            cost_metrics.forward_time);
   }
 
   return true;
@@ -728,10 +729,10 @@ bool Embedding::measure_operator_cost(Simulator *sim,
 
 using PCG::Node;
 Node FFModel::get_or_create_embedding_node(LayerID const &layer_guid,
-                                           const ParallelTensor input,
-                                           int num_entries,
-                                           int out_channels,
-                                           AggrMode aggr) {
+                                            const ParallelTensor input,
+                                            int num_entries,
+                                            int out_channels,
+                                            AggrMode aggr) {
   EmbeddingParams params;
   params.layer_guid = layer_guid;
   params.num_entries = num_entries;
@@ -740,306 +741,307 @@ Node FFModel::get_or_create_embedding_node(LayerID const &layer_guid,
   return get_or_create_node<Embedding>(input, params);
 }
 
-void EmbeddingLookup_int64_t_float_float__avx2_fma(int const block_size,
-                                                   int const output_size,
-                                                   int const index_size,
-                                                   int const data_size,
-                                                   float const *input,
-                                                   int64_t const *indices,
-                                                   int const *lengths,
-                                                   float const *weight,
-                                                   bool normalize_by_lengths,
-                                                   float *out) {
+void
+    EmbeddingLookup_int64_t_float_float__avx2_fma(int const block_size,
+                                                  int const output_size,
+                                                  int const index_size,
+                                                  int const data_size,
+                                                  float const *input,
+                                                  int64_t const *indices,
+                                                  int const *lengths,
+                                                  float const *weight,
+                                                  bool normalize_by_lengths,
+                                                  float *out) {
 #ifdef FF_USE_AVX2
-  const int64_t prefdist_T0 = 16;
-  if (block_size == 128) {
-    // unrolling 16 times
-    int64_t dataInd = 0;
-    for (int64_t rangeIndex = 0; rangeIndex < output_size; ++rangeIndex) {
-      float *op = &out[rangeIndex * block_size];
-      __m256 vop0 = _mm256_setzero_ps();
-      __m256 vop8 = _mm256_setzero_ps();
-      __m256 vop16 = _mm256_setzero_ps();
-      __m256 vop24 = _mm256_setzero_ps();
-      __m256 vop32 = _mm256_setzero_ps();
-      __m256 vop40 = _mm256_setzero_ps();
-      __m256 vop48 = _mm256_setzero_ps();
-      __m256 vop56 = _mm256_setzero_ps();
-      __m256 vop64 = _mm256_setzero_ps();
-      __m256 vop72 = _mm256_setzero_ps();
-      __m256 vop80 = _mm256_setzero_ps();
-      __m256 vop88 = _mm256_setzero_ps();
-      __m256 vop96 = _mm256_setzero_ps();
-      __m256 vop104 = _mm256_setzero_ps();
-      __m256 vop112 = _mm256_setzero_ps();
-      __m256 vop120 = _mm256_setzero_ps();
-      for (int64_t start = dataInd; dataInd < start + lengths[rangeIndex];
-           ++dataInd) {
-        const int64_t idx = indices[dataInd];
-        float wgt = 1.f;
-        if (weight) {
-          wgt = weight[dataInd];
+      const int64_t prefdist_T0 = 16;
+      if (block_size == 128) {
+        // unrolling 16 times
+        int64_t dataInd = 0;
+        for (int64_t rangeIndex = 0; rangeIndex < output_size; ++rangeIndex) {
+          float *op = &out[rangeIndex * block_size];
+          __m256 vop0 = _mm256_setzero_ps();
+          __m256 vop8 = _mm256_setzero_ps();
+          __m256 vop16 = _mm256_setzero_ps();
+          __m256 vop24 = _mm256_setzero_ps();
+          __m256 vop32 = _mm256_setzero_ps();
+          __m256 vop40 = _mm256_setzero_ps();
+          __m256 vop48 = _mm256_setzero_ps();
+          __m256 vop56 = _mm256_setzero_ps();
+          __m256 vop64 = _mm256_setzero_ps();
+          __m256 vop72 = _mm256_setzero_ps();
+          __m256 vop80 = _mm256_setzero_ps();
+          __m256 vop88 = _mm256_setzero_ps();
+          __m256 vop96 = _mm256_setzero_ps();
+          __m256 vop104 = _mm256_setzero_ps();
+          __m256 vop112 = _mm256_setzero_ps();
+          __m256 vop120 = _mm256_setzero_ps();
+          for (int64_t start = dataInd; dataInd < start + lengths[rangeIndex];
+               ++dataInd) {
+            const int64_t idx = indices[dataInd];
+            float wgt = 1.f;
+            if (weight) {
+              wgt = weight[dataInd];
+            }
+            __m256 vwgt = _mm256_set1_ps(wgt);
+            float const *ip = &input[idx * block_size];
+            const int64_t next_T0 = (dataInd < index_size - prefdist_T0)
+                                        ? (dataInd + prefdist_T0)
+                                        : dataInd;
+            const int64_t idx_pref_T0 = indices[next_T0];
+            assert(idx >= 0 && idx_pref_T0 >= 0 && idx < data_size &&
+                   idx_pref_T0 < data_size);
+            float const *ip_next_T0 = &input[idx_pref_T0 * block_size];
+            vop0 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (0)), vop0);
+            _mm_prefetch((&ip_next_T0[0]), _MM_HINT_T0);
+            vop8 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (8)), vop8);
+            _mm_prefetch((&ip_next_T0[8]), _MM_HINT_T0);
+            vop16 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (16)), vop16);
+            _mm_prefetch((&ip_next_T0[16]), _MM_HINT_T0);
+            vop24 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (24)), vop24);
+            _mm_prefetch((&ip_next_T0[24]), _MM_HINT_T0);
+            vop32 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (32)), vop32);
+            _mm_prefetch((&ip_next_T0[32]), _MM_HINT_T0);
+            vop40 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (40)), vop40);
+            _mm_prefetch((&ip_next_T0[40]), _MM_HINT_T0);
+            vop48 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (48)), vop48);
+            _mm_prefetch((&ip_next_T0[48]), _MM_HINT_T0);
+            vop56 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (56)), vop56);
+            _mm_prefetch((&ip_next_T0[56]), _MM_HINT_T0);
+            vop64 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (64)), vop64);
+            _mm_prefetch((&ip_next_T0[64]), _MM_HINT_T0);
+            vop72 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (72)), vop72);
+            _mm_prefetch((&ip_next_T0[72]), _MM_HINT_T0);
+            vop80 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (80)), vop80);
+            _mm_prefetch((&ip_next_T0[80]), _MM_HINT_T0);
+            vop88 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (88)), vop88);
+            _mm_prefetch((&ip_next_T0[88]), _MM_HINT_T0);
+            vop96 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (96)), vop96);
+            _mm_prefetch((&ip_next_T0[96]), _MM_HINT_T0);
+            vop104 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (104)), vop104);
+            _mm_prefetch((&ip_next_T0[104]), _MM_HINT_T0);
+            vop112 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (112)), vop112);
+            _mm_prefetch((&ip_next_T0[112]), _MM_HINT_T0);
+            vop120 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (120)), vop120);
+            _mm_prefetch((&ip_next_T0[120]), _MM_HINT_T0);
+          }
+          if (normalize_by_lengths == false) {
+            _mm256_storeu_ps(&op[0], vop0);
+            _mm256_storeu_ps(&op[8], vop8);
+            _mm256_storeu_ps(&op[16], vop16);
+            _mm256_storeu_ps(&op[24], vop24);
+            _mm256_storeu_ps(&op[32], vop32);
+            _mm256_storeu_ps(&op[40], vop40);
+            _mm256_storeu_ps(&op[48], vop48);
+            _mm256_storeu_ps(&op[56], vop56);
+            _mm256_storeu_ps(&op[64], vop64);
+            _mm256_storeu_ps(&op[72], vop72);
+            _mm256_storeu_ps(&op[80], vop80);
+            _mm256_storeu_ps(&op[88], vop88);
+            _mm256_storeu_ps(&op[96], vop96);
+            _mm256_storeu_ps(&op[104], vop104);
+            _mm256_storeu_ps(&op[112], vop112);
+            _mm256_storeu_ps(&op[120], vop120);
+          } else if (lengths[rangeIndex]) {
+            __m256 vlen_inv = _mm256_set1_ps(1.0f / lengths[rangeIndex]);
+            _mm256_storeu_ps(&op[0], _mm256_mul_ps(vop0, vlen_inv));
+            _mm256_storeu_ps(&op[8], _mm256_mul_ps(vop8, vlen_inv));
+            _mm256_storeu_ps(&op[16], _mm256_mul_ps(vop16, vlen_inv));
+            _mm256_storeu_ps(&op[24], _mm256_mul_ps(vop24, vlen_inv));
+            _mm256_storeu_ps(&op[32], _mm256_mul_ps(vop32, vlen_inv));
+            _mm256_storeu_ps(&op[40], _mm256_mul_ps(vop40, vlen_inv));
+            _mm256_storeu_ps(&op[48], _mm256_mul_ps(vop48, vlen_inv));
+            _mm256_storeu_ps(&op[56], _mm256_mul_ps(vop56, vlen_inv));
+            _mm256_storeu_ps(&op[64], _mm256_mul_ps(vop64, vlen_inv));
+            _mm256_storeu_ps(&op[72], _mm256_mul_ps(vop72, vlen_inv));
+            _mm256_storeu_ps(&op[80], _mm256_mul_ps(vop80, vlen_inv));
+            _mm256_storeu_ps(&op[88], _mm256_mul_ps(vop88, vlen_inv));
+            _mm256_storeu_ps(&op[96], _mm256_mul_ps(vop96, vlen_inv));
+            _mm256_storeu_ps(&op[104], _mm256_mul_ps(vop104, vlen_inv));
+            _mm256_storeu_ps(&op[112], _mm256_mul_ps(vop112, vlen_inv));
+            _mm256_storeu_ps(&op[120], _mm256_mul_ps(vop120, vlen_inv));
+          }
         }
-        __m256 vwgt = _mm256_set1_ps(wgt);
-        float const *ip = &input[idx * block_size];
-        const int64_t next_T0 = (dataInd < index_size - prefdist_T0)
-                                    ? (dataInd + prefdist_T0)
-                                    : dataInd;
-        const int64_t idx_pref_T0 = indices[next_T0];
-        assert(idx >= 0 && idx_pref_T0 >= 0 && idx < data_size &&
-               idx_pref_T0 < data_size);
-        float const *ip_next_T0 = &input[idx_pref_T0 * block_size];
-        vop0 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (0)), vop0);
-        _mm_prefetch((&ip_next_T0[0]), _MM_HINT_T0);
-        vop8 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (8)), vop8);
-        _mm_prefetch((&ip_next_T0[8]), _MM_HINT_T0);
-        vop16 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (16)), vop16);
-        _mm_prefetch((&ip_next_T0[16]), _MM_HINT_T0);
-        vop24 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (24)), vop24);
-        _mm_prefetch((&ip_next_T0[24]), _MM_HINT_T0);
-        vop32 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (32)), vop32);
-        _mm_prefetch((&ip_next_T0[32]), _MM_HINT_T0);
-        vop40 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (40)), vop40);
-        _mm_prefetch((&ip_next_T0[40]), _MM_HINT_T0);
-        vop48 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (48)), vop48);
-        _mm_prefetch((&ip_next_T0[48]), _MM_HINT_T0);
-        vop56 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (56)), vop56);
-        _mm_prefetch((&ip_next_T0[56]), _MM_HINT_T0);
-        vop64 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (64)), vop64);
-        _mm_prefetch((&ip_next_T0[64]), _MM_HINT_T0);
-        vop72 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (72)), vop72);
-        _mm_prefetch((&ip_next_T0[72]), _MM_HINT_T0);
-        vop80 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (80)), vop80);
-        _mm_prefetch((&ip_next_T0[80]), _MM_HINT_T0);
-        vop88 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (88)), vop88);
-        _mm_prefetch((&ip_next_T0[88]), _MM_HINT_T0);
-        vop96 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (96)), vop96);
-        _mm_prefetch((&ip_next_T0[96]), _MM_HINT_T0);
-        vop104 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (104)), vop104);
-        _mm_prefetch((&ip_next_T0[104]), _MM_HINT_T0);
-        vop112 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (112)), vop112);
-        _mm_prefetch((&ip_next_T0[112]), _MM_HINT_T0);
-        vop120 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (120)), vop120);
-        _mm_prefetch((&ip_next_T0[120]), _MM_HINT_T0);
-      }
-      if (normalize_by_lengths == false) {
-        _mm256_storeu_ps(&op[0], vop0);
-        _mm256_storeu_ps(&op[8], vop8);
-        _mm256_storeu_ps(&op[16], vop16);
-        _mm256_storeu_ps(&op[24], vop24);
-        _mm256_storeu_ps(&op[32], vop32);
-        _mm256_storeu_ps(&op[40], vop40);
-        _mm256_storeu_ps(&op[48], vop48);
-        _mm256_storeu_ps(&op[56], vop56);
-        _mm256_storeu_ps(&op[64], vop64);
-        _mm256_storeu_ps(&op[72], vop72);
-        _mm256_storeu_ps(&op[80], vop80);
-        _mm256_storeu_ps(&op[88], vop88);
-        _mm256_storeu_ps(&op[96], vop96);
-        _mm256_storeu_ps(&op[104], vop104);
-        _mm256_storeu_ps(&op[112], vop112);
-        _mm256_storeu_ps(&op[120], vop120);
-      } else if (lengths[rangeIndex]) {
-        __m256 vlen_inv = _mm256_set1_ps(1.0f / lengths[rangeIndex]);
-        _mm256_storeu_ps(&op[0], _mm256_mul_ps(vop0, vlen_inv));
-        _mm256_storeu_ps(&op[8], _mm256_mul_ps(vop8, vlen_inv));
-        _mm256_storeu_ps(&op[16], _mm256_mul_ps(vop16, vlen_inv));
-        _mm256_storeu_ps(&op[24], _mm256_mul_ps(vop24, vlen_inv));
-        _mm256_storeu_ps(&op[32], _mm256_mul_ps(vop32, vlen_inv));
-        _mm256_storeu_ps(&op[40], _mm256_mul_ps(vop40, vlen_inv));
-        _mm256_storeu_ps(&op[48], _mm256_mul_ps(vop48, vlen_inv));
-        _mm256_storeu_ps(&op[56], _mm256_mul_ps(vop56, vlen_inv));
-        _mm256_storeu_ps(&op[64], _mm256_mul_ps(vop64, vlen_inv));
-        _mm256_storeu_ps(&op[72], _mm256_mul_ps(vop72, vlen_inv));
-        _mm256_storeu_ps(&op[80], _mm256_mul_ps(vop80, vlen_inv));
-        _mm256_storeu_ps(&op[88], _mm256_mul_ps(vop88, vlen_inv));
-        _mm256_storeu_ps(&op[96], _mm256_mul_ps(vop96, vlen_inv));
-        _mm256_storeu_ps(&op[104], _mm256_mul_ps(vop104, vlen_inv));
-        _mm256_storeu_ps(&op[112], _mm256_mul_ps(vop112, vlen_inv));
-        _mm256_storeu_ps(&op[120], _mm256_mul_ps(vop120, vlen_inv));
-      }
-    }
-  } else if (block_size == 64) {
-    // unrolling 8 times
-    int64_t dataInd = 0;
-    for (int64_t rangeIndex = 0; rangeIndex < output_size; ++rangeIndex) {
-      float *op = &out[rangeIndex * block_size];
-      __m256 vop0 = _mm256_setzero_ps();
-      __m256 vop8 = _mm256_setzero_ps();
-      __m256 vop16 = _mm256_setzero_ps();
-      __m256 vop24 = _mm256_setzero_ps();
-      __m256 vop32 = _mm256_setzero_ps();
-      __m256 vop40 = _mm256_setzero_ps();
-      __m256 vop48 = _mm256_setzero_ps();
-      __m256 vop56 = _mm256_setzero_ps();
-      for (int64_t start = dataInd; dataInd < start + lengths[rangeIndex];
-           ++dataInd) {
-        const int64_t idx = indices[dataInd];
-        float wgt = 1.f;
-        if (weight) {
-          wgt = weight[dataInd];
+      } else if (block_size == 64) {
+        // unrolling 8 times
+        int64_t dataInd = 0;
+        for (int64_t rangeIndex = 0; rangeIndex < output_size; ++rangeIndex) {
+          float *op = &out[rangeIndex * block_size];
+          __m256 vop0 = _mm256_setzero_ps();
+          __m256 vop8 = _mm256_setzero_ps();
+          __m256 vop16 = _mm256_setzero_ps();
+          __m256 vop24 = _mm256_setzero_ps();
+          __m256 vop32 = _mm256_setzero_ps();
+          __m256 vop40 = _mm256_setzero_ps();
+          __m256 vop48 = _mm256_setzero_ps();
+          __m256 vop56 = _mm256_setzero_ps();
+          for (int64_t start = dataInd; dataInd < start + lengths[rangeIndex];
+               ++dataInd) {
+            const int64_t idx = indices[dataInd];
+            float wgt = 1.f;
+            if (weight) {
+              wgt = weight[dataInd];
+            }
+            __m256 vwgt = _mm256_set1_ps(wgt);
+            float const *ip = &input[idx * block_size];
+            const int64_t next_T0 = (dataInd < index_size - prefdist_T0)
+                                        ? (dataInd + prefdist_T0)
+                                        : dataInd;
+            const int64_t idx_pref_T0 = indices[next_T0];
+            assert(idx >= 0 && idx_pref_T0 >= 0 && idx < data_size &&
+                   idx_pref_T0 < data_size);
+            float const *ip_next_T0 = &input[idx_pref_T0 * block_size];
+            vop0 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (0)), vop0);
+            _mm_prefetch((&ip_next_T0[0]), _MM_HINT_T0);
+            vop8 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (8)), vop8);
+            _mm_prefetch((&ip_next_T0[8]), _MM_HINT_T0);
+            vop16 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (16)), vop16);
+            _mm_prefetch((&ip_next_T0[16]), _MM_HINT_T0);
+            vop24 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (24)), vop24);
+            _mm_prefetch((&ip_next_T0[24]), _MM_HINT_T0);
+            vop32 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (32)), vop32);
+            _mm_prefetch((&ip_next_T0[32]), _MM_HINT_T0);
+            vop40 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (40)), vop40);
+            _mm_prefetch((&ip_next_T0[40]), _MM_HINT_T0);
+            vop48 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (48)), vop48);
+            _mm_prefetch((&ip_next_T0[48]), _MM_HINT_T0);
+            vop56 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (56)), vop56);
+            _mm_prefetch((&ip_next_T0[56]), _MM_HINT_T0);
+          }
+          if (normalize_by_lengths == false) {
+            _mm256_storeu_ps(&op[0], vop0);
+            _mm256_storeu_ps(&op[8], vop8);
+            _mm256_storeu_ps(&op[16], vop16);
+            _mm256_storeu_ps(&op[24], vop24);
+            _mm256_storeu_ps(&op[32], vop32);
+            _mm256_storeu_ps(&op[40], vop40);
+            _mm256_storeu_ps(&op[48], vop48);
+            _mm256_storeu_ps(&op[56], vop56);
+          } else if (lengths[rangeIndex]) {
+            __m256 vlen_inv = _mm256_set1_ps(1.0f / lengths[rangeIndex]);
+            _mm256_storeu_ps(&op[0], _mm256_mul_ps(vop0, vlen_inv));
+            _mm256_storeu_ps(&op[8], _mm256_mul_ps(vop8, vlen_inv));
+            _mm256_storeu_ps(&op[16], _mm256_mul_ps(vop16, vlen_inv));
+            _mm256_storeu_ps(&op[24], _mm256_mul_ps(vop24, vlen_inv));
+            _mm256_storeu_ps(&op[32], _mm256_mul_ps(vop32, vlen_inv));
+            _mm256_storeu_ps(&op[40], _mm256_mul_ps(vop40, vlen_inv));
+            _mm256_storeu_ps(&op[48], _mm256_mul_ps(vop48, vlen_inv));
+            _mm256_storeu_ps(&op[56], _mm256_mul_ps(vop56, vlen_inv));
+          }
         }
-        __m256 vwgt = _mm256_set1_ps(wgt);
-        float const *ip = &input[idx * block_size];
-        const int64_t next_T0 = (dataInd < index_size - prefdist_T0)
-                                    ? (dataInd + prefdist_T0)
-                                    : dataInd;
-        const int64_t idx_pref_T0 = indices[next_T0];
-        assert(idx >= 0 && idx_pref_T0 >= 0 && idx < data_size &&
-               idx_pref_T0 < data_size);
-        float const *ip_next_T0 = &input[idx_pref_T0 * block_size];
-        vop0 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (0)), vop0);
-        _mm_prefetch((&ip_next_T0[0]), _MM_HINT_T0);
-        vop8 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (8)), vop8);
-        _mm_prefetch((&ip_next_T0[8]), _MM_HINT_T0);
-        vop16 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (16)), vop16);
-        _mm_prefetch((&ip_next_T0[16]), _MM_HINT_T0);
-        vop24 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (24)), vop24);
-        _mm_prefetch((&ip_next_T0[24]), _MM_HINT_T0);
-        vop32 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (32)), vop32);
-        _mm_prefetch((&ip_next_T0[32]), _MM_HINT_T0);
-        vop40 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (40)), vop40);
-        _mm_prefetch((&ip_next_T0[40]), _MM_HINT_T0);
-        vop48 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (48)), vop48);
-        _mm_prefetch((&ip_next_T0[48]), _MM_HINT_T0);
-        vop56 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (56)), vop56);
-        _mm_prefetch((&ip_next_T0[56]), _MM_HINT_T0);
-      }
-      if (normalize_by_lengths == false) {
-        _mm256_storeu_ps(&op[0], vop0);
-        _mm256_storeu_ps(&op[8], vop8);
-        _mm256_storeu_ps(&op[16], vop16);
-        _mm256_storeu_ps(&op[24], vop24);
-        _mm256_storeu_ps(&op[32], vop32);
-        _mm256_storeu_ps(&op[40], vop40);
-        _mm256_storeu_ps(&op[48], vop48);
-        _mm256_storeu_ps(&op[56], vop56);
-      } else if (lengths[rangeIndex]) {
-        __m256 vlen_inv = _mm256_set1_ps(1.0f / lengths[rangeIndex]);
-        _mm256_storeu_ps(&op[0], _mm256_mul_ps(vop0, vlen_inv));
-        _mm256_storeu_ps(&op[8], _mm256_mul_ps(vop8, vlen_inv));
-        _mm256_storeu_ps(&op[16], _mm256_mul_ps(vop16, vlen_inv));
-        _mm256_storeu_ps(&op[24], _mm256_mul_ps(vop24, vlen_inv));
-        _mm256_storeu_ps(&op[32], _mm256_mul_ps(vop32, vlen_inv));
-        _mm256_storeu_ps(&op[40], _mm256_mul_ps(vop40, vlen_inv));
-        _mm256_storeu_ps(&op[48], _mm256_mul_ps(vop48, vlen_inv));
-        _mm256_storeu_ps(&op[56], _mm256_mul_ps(vop56, vlen_inv));
-      }
-    }
-  } else if (block_size == 32) {
-    // unrolling 4 times
-    int64_t dataInd = 0;
-    for (int64_t rangeIndex = 0; rangeIndex < output_size; ++rangeIndex) {
-      float *op = &out[rangeIndex * block_size];
-      __m256 vop0 = _mm256_setzero_ps();
-      __m256 vop8 = _mm256_setzero_ps();
-      __m256 vop16 = _mm256_setzero_ps();
-      __m256 vop24 = _mm256_setzero_ps();
-      for (int64_t start = dataInd; dataInd < start + lengths[rangeIndex];
-           ++dataInd) {
-        const int64_t idx = indices[dataInd];
-        float wgt = 1.f;
-        if (weight) {
-          wgt = weight[dataInd];
+      } else if (block_size == 32) {
+        // unrolling 4 times
+        int64_t dataInd = 0;
+        for (int64_t rangeIndex = 0; rangeIndex < output_size; ++rangeIndex) {
+          float *op = &out[rangeIndex * block_size];
+          __m256 vop0 = _mm256_setzero_ps();
+          __m256 vop8 = _mm256_setzero_ps();
+          __m256 vop16 = _mm256_setzero_ps();
+          __m256 vop24 = _mm256_setzero_ps();
+          for (int64_t start = dataInd; dataInd < start + lengths[rangeIndex];
+               ++dataInd) {
+            const int64_t idx = indices[dataInd];
+            float wgt = 1.f;
+            if (weight) {
+              wgt = weight[dataInd];
+            }
+            __m256 vwgt = _mm256_set1_ps(wgt);
+            float const *ip = &input[idx * block_size];
+            const int64_t next_T0 = (dataInd < index_size - prefdist_T0)
+                                        ? (dataInd + prefdist_T0)
+                                        : dataInd;
+            const int64_t idx_pref_T0 = indices[next_T0];
+            assert(idx >= 0 && idx_pref_T0 >= 0 && idx < data_size &&
+                   idx_pref_T0 < data_size);
+            float const *ip_next_T0 = &input[idx_pref_T0 * block_size];
+            vop0 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (0)), vop0);
+            _mm_prefetch((&ip_next_T0[0]), _MM_HINT_T0);
+            vop8 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (8)), vop8);
+            _mm_prefetch((&ip_next_T0[8]), _MM_HINT_T0);
+            vop16 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (16)), vop16);
+            _mm_prefetch((&ip_next_T0[16]), _MM_HINT_T0);
+            vop24 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (24)), vop24);
+            _mm_prefetch((&ip_next_T0[24]), _MM_HINT_T0);
+          }
+          if (normalize_by_lengths == false) {
+            _mm256_storeu_ps(&op[0], vop0);
+            _mm256_storeu_ps(&op[8], vop8);
+            _mm256_storeu_ps(&op[16], vop16);
+            _mm256_storeu_ps(&op[24], vop24);
+          } else if (lengths[rangeIndex]) {
+            __m256 vlen_inv = _mm256_set1_ps(1.0f / lengths[rangeIndex]);
+            _mm256_storeu_ps(&op[0], _mm256_mul_ps(vop0, vlen_inv));
+            _mm256_storeu_ps(&op[8], _mm256_mul_ps(vop8, vlen_inv));
+            _mm256_storeu_ps(&op[16], _mm256_mul_ps(vop16, vlen_inv));
+            _mm256_storeu_ps(&op[24], _mm256_mul_ps(vop24, vlen_inv));
+          }
         }
-        __m256 vwgt = _mm256_set1_ps(wgt);
-        float const *ip = &input[idx * block_size];
-        const int64_t next_T0 = (dataInd < index_size - prefdist_T0)
-                                    ? (dataInd + prefdist_T0)
-                                    : dataInd;
-        const int64_t idx_pref_T0 = indices[next_T0];
-        assert(idx >= 0 && idx_pref_T0 >= 0 && idx < data_size &&
-               idx_pref_T0 < data_size);
-        float const *ip_next_T0 = &input[idx_pref_T0 * block_size];
-        vop0 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (0)), vop0);
-        _mm_prefetch((&ip_next_T0[0]), _MM_HINT_T0);
-        vop8 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (8)), vop8);
-        _mm_prefetch((&ip_next_T0[8]), _MM_HINT_T0);
-        vop16 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (16)), vop16);
-        _mm_prefetch((&ip_next_T0[16]), _MM_HINT_T0);
-        vop24 = _mm256_fmadd_ps(vwgt, _mm256_loadu_ps(ip + (24)), vop24);
-        _mm_prefetch((&ip_next_T0[24]), _MM_HINT_T0);
-      }
-      if (normalize_by_lengths == false) {
-        _mm256_storeu_ps(&op[0], vop0);
-        _mm256_storeu_ps(&op[8], vop8);
-        _mm256_storeu_ps(&op[16], vop16);
-        _mm256_storeu_ps(&op[24], vop24);
-      } else if (lengths[rangeIndex]) {
-        __m256 vlen_inv = _mm256_set1_ps(1.0f / lengths[rangeIndex]);
-        _mm256_storeu_ps(&op[0], _mm256_mul_ps(vop0, vlen_inv));
-        _mm256_storeu_ps(&op[8], _mm256_mul_ps(vop8, vlen_inv));
-        _mm256_storeu_ps(&op[16], _mm256_mul_ps(vop16, vlen_inv));
-        _mm256_storeu_ps(&op[24], _mm256_mul_ps(vop24, vlen_inv));
-      }
-    }
-  } else {
-    // generic code
-    int64_t dataInd = 0;
-    for (int64_t rangeIndex = 0; rangeIndex < output_size; ++rangeIndex) {
-      float *op = &out[rangeIndex * block_size];
-      int j = 0;
-      for (; j + 8 <= block_size; j += 8) {
-        _mm256_storeu_ps(op + j, _mm256_setzero_ps());
-      }
-      for (; j < block_size; j++) {
-        op[j] = 0.0f;
-      }
-      for (int64_t start = dataInd; dataInd < start + lengths[rangeIndex];
-           ++dataInd) {
-        const int64_t idx = indices[dataInd];
-        float wgt = 1.f;
-        if (weight) {
-          wgt = weight[dataInd];
-        }
-        __m256 vwgt = _mm256_set1_ps(wgt);
-        float const *ip = &input[idx * block_size];
-        const int64_t next_T0 = (dataInd < index_size - prefdist_T0)
-                                    ? (dataInd + prefdist_T0)
-                                    : dataInd;
-        const int64_t idx_pref_T0 = indices[next_T0];
-        assert(idx >= 0 && idx_pref_T0 >= 0 && idx < data_size &&
-               idx_pref_T0 < data_size);
-        float const *ip_next_T0 = &input[idx_pref_T0 * block_size];
-        j = 0;
-        for (; j + 8 <= block_size; j += 8) {
-          _mm256_storeu_ps(&op[j],
-                           _mm256_fmadd_ps(vwgt,
-                                           _mm256_loadu_ps(&ip[j]),
-                                           _mm256_loadu_ps(&op[j])));
-          _mm_prefetch((&ip_next_T0[j]), _MM_HINT_T0);
-        }
-        for (; j < block_size; j++) {
-          op[j] += wgt * ip[j];
+      } else {
+        // generic code
+        int64_t dataInd = 0;
+        for (int64_t rangeIndex = 0; rangeIndex < output_size; ++rangeIndex) {
+          float *op = &out[rangeIndex * block_size];
+          int j = 0;
+          for (; j + 8 <= block_size; j += 8) {
+            _mm256_storeu_ps(op + j, _mm256_setzero_ps());
+          }
+          for (; j < block_size; j++) {
+            op[j] = 0.0f;
+          }
+          for (int64_t start = dataInd; dataInd < start + lengths[rangeIndex];
+               ++dataInd) {
+            const int64_t idx = indices[dataInd];
+            float wgt = 1.f;
+            if (weight) {
+              wgt = weight[dataInd];
+            }
+            __m256 vwgt = _mm256_set1_ps(wgt);
+            float const *ip = &input[idx * block_size];
+            const int64_t next_T0 = (dataInd < index_size - prefdist_T0)
+                                        ? (dataInd + prefdist_T0)
+                                        : dataInd;
+            const int64_t idx_pref_T0 = indices[next_T0];
+            assert(idx >= 0 && idx_pref_T0 >= 0 && idx < data_size &&
+                   idx_pref_T0 < data_size);
+            float const *ip_next_T0 = &input[idx_pref_T0 * block_size];
+            j = 0;
+            for (; j + 8 <= block_size; j += 8) {
+              _mm256_storeu_ps(&op[j],
+                               _mm256_fmadd_ps(vwgt,
+                                               _mm256_loadu_ps(&ip[j]),
+                                               _mm256_loadu_ps(&op[j])));
+              _mm_prefetch((&ip_next_T0[j]), _MM_HINT_T0);
+            }
+            for (; j < block_size; j++) {
+              op[j] += wgt * ip[j];
+            }
+          }
+          if (normalize_by_lengths && lengths[rangeIndex]) {
+            float len_inv = 1.0f / lengths[rangeIndex];
+            __m256 vlen_inv = _mm256_set1_ps(len_inv);
+            j = 0;
+            for (; j + 8 <= block_size; j += 8) {
+              _mm256_storeu_ps(
+                  &op[j], _mm256_mul_ps(_mm256_loadu_ps(&op[j]), vlen_inv));
+            }
+            for (; j < block_size; j++) {
+              op[j] = len_inv * op[j];
+            }
+          }
         }
       }
-      if (normalize_by_lengths && lengths[rangeIndex]) {
-        float len_inv = 1.0f / lengths[rangeIndex];
-        __m256 vlen_inv = _mm256_set1_ps(len_inv);
-        j = 0;
-        for (; j + 8 <= block_size; j += 8) {
-          _mm256_storeu_ps(&op[j],
-                           _mm256_mul_ps(_mm256_loadu_ps(&op[j]), vlen_inv));
-        }
-        for (; j < block_size; j++) {
-          op[j] = len_inv * op[j];
-        }
-      }
-    }
-  }
 #else
-  assert(0);
+      assert(0);
 #endif
 }
 
 void embed_forward(int64_t const *input,
-                   int const *lengths,
-                   float *output,
-                   float const *embed,
-                   int block_size,
-                   int output_size,
-                   int index_size,
-                   int data_size) {
+                    int const *lengths,
+                    float *output,
+                    float const *embed,
+                    int block_size,
+                    int output_size,
+                    int index_size,
+                    int data_size) {
   EmbeddingLookup_int64_t_float_float__avx2_fma(block_size,
                                                 output_size,
                                                 index_size,
@@ -1080,19 +1082,19 @@ void embed_backward(int64_t const *input,
                     int index_size,
                     int data_size) {
   embed_backward_generic(input,
-                         lengths,
-                         output,
-                         embed,
-                         block_size,
-                         output_size,
-                         index_size,
-                         data_size);
+                          lengths,
+                          output,
+                          embed,
+                          block_size,
+                          output_size,
+                          index_size,
+                          data_size);
 }
 
 void Embedding::forward_task_cpu(Task const *task,
-                                 std::vector<PhysicalRegion> const &regions,
-                                 Context ctx,
-                                 Runtime *runtime) {
+                                  std::vector<PhysicalRegion> const &regions,
+                                  Context ctx,
+                                  Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   // const Embedding* embed = (Embedding*) task->args;
@@ -1132,7 +1134,8 @@ void Embedding::forward_task_cpu(Task const *task,
                 data_size);
 }
 
-void Embedding::backward_task_cpu(Task const *task,
+void
+    Embedding::backward_task_cpu(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime) {
@@ -1164,24 +1167,25 @@ void Embedding::backward_task_cpu(Task const *task,
   int data_size = 1000000; // FIXME
   std::vector<int> lengths(output_size, 1);
   embed_backward(acc_input.ptr(rect_input),
-                 lengths.data(),
-                 acc_output.ptr(rect_output),
-                 acc_weight.ptr(rect_weight),
-                 block_size,
-                 output_size,
-                 index_size,
-                 data_size);
+                  lengths.data(),
+                  acc_output.ptr(rect_output),
+                  acc_weight.ptr(rect_weight),
+                  block_size,
+                  output_size,
+                  index_size,
+                  data_size);
 }
 
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::EmbeddingParams>::operator()(const FlexFlow::EmbeddingParams& params) const {
-    size_t key = 0;
-    hash_combine(key, params.num_entries);
-    hash_combine(key, params.out_channels);
-    hash_combine(key, params.layer_guid);
-    hash_combine(key, params.aggr);
-    return key;
-  }
-};
+size_t hash<FlexFlow::EmbeddingParams>::operator()(
+    FlexFlow::EmbeddingParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.num_entries);
+  hash_combine(key, params.out_channels);
+  hash_combine(key, params.layer_guid);
+  hash_combine(key, params.aggr);
+  return key;
+}
+}; // namespace std

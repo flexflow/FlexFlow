@@ -14,9 +14,9 @@
  */
 
 #include "flexflow/ops/reshape.h"
+#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
-#include "flexflow/model.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -36,11 +36,11 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 /* Params */
-bool operator==(const ReshapeParams & lhs, const ReshapeParams & rhs) {
+bool operator==(ReshapeParams const &lhs, ReshapeParams const &rhs) {
   return lhs.shape == rhs.shape;
 }
 
-bool ReshapeParams::is_valid(const ParallelTensorShape & input) const {
+bool ReshapeParams::is_valid(ParallelTensorShape const &input) const {
   return input.is_valid();
 }
 
@@ -131,7 +131,7 @@ Reshape::Reshape(FFModel &model,
 Reshape::Reshape(FFModel &model,
                  ReshapeParams const &params,
                  const ParallelTensor input,
-                 const char *name)
+                 char const *name)
     : Reshape(model, input, params.shape, name) {}
 
 void Reshape::init(FFModel const &ff) {
@@ -441,12 +441,13 @@ Node FFModel::get_or_create_reshape_node(const ParallelTensor input,
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::ReshapeParams>::operator()(const FlexFlow::ReshapeParams& params) const {
-    size_t key = 0;
-    hash_combine(key, params.shape.size());
-    for (int n: params.shape) {
-      hash_combine(key, n);
-    }
-    return key;
+size_t hash<FlexFlow::ReshapeParams>::operator()(
+    FlexFlow::ReshapeParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.shape.size());
+  for (int n : params.shape) {
+    hash_combine(key, n);
   }
-};
+  return key;
+}
+}; // namespace std

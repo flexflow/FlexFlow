@@ -1,28 +1,28 @@
 #ifndef _FLEXFLOW_REPLICATE_H
 #define _FLEXFLOW_REPLICATE_H
 
+#include "parallel_op.h"
+#include "flexflow/device.h"
 #include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/node.h"
-#include "flexflow/device.h"
-#include "flexflow/layer.h"
 
 namespace FlexFlow {
 
 struct ReplicateParams {
   int replicate_legion_dim;
   int replicate_degree;
-  bool is_valid(const ParallelTensorShape &) const;
+  bool is_valid(ParallelTensorShape const &) const;
 };
-bool operator==(const ReplicateParams &, const ReplicateParams &);
-
+bool operator==(ReplicateParams const &, ReplicateParams const &);
 
 class Replicate : public ParallelOp {
 public:
   using Params = ReplicateParams;
   using Input = ParallelTensor;
-  
+
   Replicate(FFModel &model,
             const ParallelTensor input,
             int replicate_legion_dim,
@@ -68,10 +68,10 @@ public:
 }; // namespace FlexFlow
 
 namespace std {
-  template <>
-  struct hash<FlexFlow::ReplicateParams> {
-    size_t operator()(const FlexFlow::ReplicateParams&) const;
-  }
+template <>
+struct hash<FlexFlow::ReplicateParams> {
+  size_t operator()(FlexFlow::ReplicateParams const &) const;
+}
 } // namespace std
 
 #endif // _FLEXFLOW_REPLICATE_H

@@ -1,21 +1,22 @@
 #ifndef _FLEXFLOW_REDUCTION_H
 #define _FLEXFLOW_REDUCTION_H
 
+#include "parallel_op.h"
+#include "flexflow/device.h"
 #include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/node.h"
-#include "flexflow/device.h"
-#include "flexflow/layer.h"
 
 namespace FlexFlow {
 
 struct ReductionParams {
   int reduction_legion_dim;
   int reduction_degree;
-  bool is_valid(const ParallelTensorShape &) const;
+  bool is_valid(ParallelTensorShape const &) const;
 };
-bool operator==(const ReductionParams &, const ReductionParams &);
+bool operator==(ReductionParams const &, ReductionParams const &);
 
 class Reduction : public ParallelOp {
 public:
@@ -68,10 +69,10 @@ public:
 }; // namespace FlexFlow
 
 namespace std {
-  template <>
-  struct hash<FlexFlow::ReductionParams> {
-    size_t operator()(const FlexFlow::ReductionParams&) const;
-  }
+template <>
+struct hash<FlexFlow::ReductionParams> {
+  size_t operator()(FlexFlow::ReductionParams const &) const;
+}
 } // namespace std
 
 #endif // _FLEXFLOW_REDUCTION_H

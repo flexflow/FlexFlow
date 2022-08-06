@@ -1,12 +1,13 @@
 #ifndef _FLEXFLOW_RESHAPE_H
 #define _FLEXFLOW_RESHAPE_H
 
+#include "flexflow/device.h"
 #include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/node.h"
-#include "flexflow/device.h"
-#include "flexflow/layer.h"
+#include "flexflow/ops/reshape_params.h"
 
 namespace FlexFlow {
 
@@ -15,12 +16,6 @@ public:
   ReshapeMeta(FFHandler handler);
   DataType data_type;
 };
-
-struct ReshapeParams {
-  std::vector<int> shape;
-  bool is_valid(const ParallelTensorShape &) const;
-};
-bool operator==(const ReshapeParams &, const ReshapeParams &);
 
 class Reshape : public Op {
 public:
@@ -33,7 +28,7 @@ public:
   Reshape(FFModel &model,
           Params const &params,
           const Input input,
-          const char *name = nullptr);
+          char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -94,12 +89,5 @@ public:
 };
 
 }; // namespace FlexFlow
-
-namespace std {
-  template <>
-  struct hash<FlexFlow::ReshapeParams> {
-    size_t operator()(const FlexFlow::ReshapeParams&) const;
-  }
-} // namespace std
 
 #endif

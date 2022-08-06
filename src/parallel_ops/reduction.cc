@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/parallel_ops/reduction.h"
-#include "flexflow/utils/hash_utils.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -39,12 +39,12 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 /* Params */
-bool operator==(const ReductionParams & lhs, const ReductionParams & rhs) {
+bool operator==(ReductionParams const &lhs, ReductionParams const &rhs) {
   return lhs.reduction_legion_dim == rhs.reduction_legion_dim &&
          lhs.reduction_degree == rhs.reduction_degree;
 }
 
-bool ReductionParams::is_valid(const ParallelTensorShape & input) const {
+bool ReductionParams::is_valid(ParallelTensorShape const &input) const {
   return input.is_valid();
 }
 
@@ -94,9 +94,9 @@ Reduction::Reduction(FFModel &model,
                      ReductionParams const &params,
                      const ParallelTensorInput input,
                      char const *name)
-    : Reduction(model, 
-                input, 
-                params.reduction_legion_dim, 
+    : Reduction(model,
+                input,
+                params.reduction_legion_dim,
                 params.reduction_degree,
                 name) {}
 
@@ -267,10 +267,11 @@ void Reduction::backward_task(Task const *task,
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::ReductionParams>::operator()(const FlexFlow::ReductionParams& params) const {
-    size_t key = 0;
-    hash_combine(key, params.reduction_legion_dim);
-    hash_combine(key, params.reduction_degree);
-    return key;
-  }
+size_t hash<FlexFlow::ReductionParams>::operator()(
+    FlexFlow::ReductionParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.reduction_legion_dim);
+  hash_combine(key, params.reduction_degree);
+  return key;
+}
 }; // namespace std
