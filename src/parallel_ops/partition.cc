@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/parallel_ops/partition.h"
-#include "flexflow/utils/hash_utils.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -39,12 +39,12 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 /* Params */
-bool operator==(const RepartitionParams & lhs, const RepartitionParams & rhs) {
+bool operator==(RepartitionParams const &lhs, RepartitionParams const &rhs) {
   return lhs.repartition_legion_dim == rhs.repartition_legion_dim &&
          lhs.repartition_degree == rhs.repartition_degree;
 }
 
-bool RepartitionParams::is_valid(const ParallelTensorShape & input) const {
+bool RepartitionParams::is_valid(ParallelTensorShape const &input) const {
   return input.is_valid();
 }
 
@@ -93,9 +93,9 @@ Repartition::Repartition(FFModel &model,
                          RepartitionParams const &params,
                          const ParallelTensorInput input,
                          char const *name)
-    : Repartition(model, 
-                  input, 
-                  params.repartition_legion_dim, 
+    : Repartition(model,
+                  input,
+                  params.repartition_legion_dim,
                   params.repartition_degree,
                   name) {}
 
@@ -354,10 +354,11 @@ void Repartition::backward_task_with_type(
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::RepartitionParams>::operator()(const FlexFlow::RepartitionParams& params) const {
-    size_t key = 0;
-    hash_combine(key, params.repartition_legion_dim);
-    hash_combine(key, params.repartition_degree);
-    return key;
-  }
+size_t hash<FlexFlow::RepartitionParams>::operator()(
+    FlexFlow::RepartitionParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.repartition_legion_dim);
+  hash_combine(key, params.repartition_degree);
+  return key;
+}
 }; // namespace std

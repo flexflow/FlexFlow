@@ -1,24 +1,15 @@
 #ifndef _FLEXFLOW_ATTENTION_H
 #define _FLEXFLOW_ATTENTION_H
 
+#include "flexflow/device.h"
 #include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/node.h"
-#include "flexflow/device.h"
-#include "flexflow/layer.h"
+#include "flexflow/ops/attention_params.h"
 
 namespace FlexFlow {
-
-struct MultiHeadAttentionParams {
-  LayerID layer_guid;
-  int embed_dim, num_heads, kdim, vdim;
-  float dropout,
-  bool bias, add_bias_kv, add_zero_attn;
-
-  bool is_valid(const std::vector<ParallelTensorShape> &) const;
-}
-bool operator==(const MultiHeadAttentionParams &, const MultiHeadAttentionParams &);
 
 class MultiHeadAttentionMeta;
 
@@ -64,10 +55,10 @@ public:
                      const ParallelTensor value,
                      bool allocate_weights);
   MultiHeadAttention(FFModel &model,
-                     const Params &params,
-                     const Input &inputs,
+                     Params const &params,
+                     Input const &inputs,
                      bool allocate_weights = false,
-                     const char *name = nullptr);
+                     char const *name = nullptr);
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
@@ -129,7 +120,7 @@ public:
                                       float const *weight_ptr,
                                       float *weight_grad_ptr,
                                       float const *output_grad_ptr);
-  
+
   Params get_params() const;
 
 public:
@@ -162,11 +153,5 @@ public:
 };
 
 }; // namespace FlexFlow
-
-namespace std {
-  template <> struct hash<FlexFlow::MultiHeadAttentionParams> {
-    size_t operator()(const FlexFlow::MultiHeadAttentionParams &) const;
-  };
-}; // namespace std
 
 #endif // _FLEXFLOW_ATTENTION_H

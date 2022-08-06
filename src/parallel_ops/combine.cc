@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/parallel_ops/combine.h"
-#include "flexflow/utils/hash_utils.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -39,12 +39,12 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 /* Params */
-bool operator==(const CombineParams & lhs, const CombineParams & rhs) {
+bool operator==(CombineParams const &lhs, CombineParams const &rhs) {
   return lhs.combine_legion_dim == rhs.combine_legion_dim &&
          lhs.combine_degree == rhs.combine_degree;
 }
 
-bool CombineParams::is_valid(const ParallelTensorShape & input) const {
+bool CombineParams::is_valid(ParallelTensorShape const &input) const {
   return input.is_valid();
 }
 
@@ -59,9 +59,9 @@ Combine::Combine(FFModel &model,
                  CombineParams const &params,
                  const ParallelTensorInput input,
                  char const *name)
-    : Combine(model, 
-              input, 
-              params.combine_legion_dim, 
+    : Combine(model,
+              input,
+              params.combine_legion_dim,
               params.combine_degree,
               name) {}
 
@@ -354,10 +354,11 @@ void Combine::backward_task_with_type(
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::CombineParams>::operator()(const FlexFlow::CombineParams& params) const {
-    size_t key = 0;
-    hash_combine(key, params.combine_legion_dim);
-    hash_combine(key, params.combine_degree);
-    return key;
-  }
+size_t hash<FlexFlow::CombineParams>::operator()(
+    FlexFlow::CombineParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.combine_legion_dim);
+  hash_combine(key, params.combine_degree);
+  return key;
+}
 }; // namespace std

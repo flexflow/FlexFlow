@@ -1,12 +1,13 @@
 #ifndef _FLEXFLOW_EMBEDDING_H
 #define _FLEXFLOW_EMBEDDING_H
 
+#include "flexflow/device.h"
 #include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/node.h"
-#include "flexflow/device.h"
-#include "flexflow/layer.h"
+#include "flexflow/ops/embedding_params.h"
 
 namespace FlexFlow {
 
@@ -28,15 +29,6 @@ public:
   AggrMode aggr;
 };
 
-struct EmbeddingParams {
-  int num_entries, out_channels;
-  LayerID layer_guid;
-  AggrMode aggr;
-
-  bool is_valid(const ParallelTensorShape &) const;
-};
-bool operator==(const EmbeddingParams&, const EmbeddingParams&);
-
 class Embedding : public Op {
 public:
   using Params = EmbeddingParams;
@@ -57,7 +49,7 @@ public:
   Embedding(FFModel &model,
             Params &params,
             const Input input,
-            bool allocate_weights = false
+            bool allocate_weights = false,
             char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -174,12 +166,5 @@ public:
 };
 
 }; // namespace FlexFlow
-
-namespace std {
-  template <>
-  struct hash<FlexFlow::EmbeddingParams> {
-    size_t operator()(const FlexFlow::EmbeddingParams&) const;
-  };
-}; // namespace std
 
 #endif // _FLEXFLOW_EMBEDDING_H

@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/ops/softmax.h"
-#include "flexflow/utils/hash_utils.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -35,11 +35,11 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 /* Params */
-bool operator==(const SoftmaxParams & lhs, const SoftmaxParams & rhs) {
+bool operator==(SoftmaxParams const &lhs, SoftmaxParams const &rhs) {
   return lhs.dim == rhs.dim;
 }
 
-bool SoftmaxParams::is_valid(const ParallelTensorShape & input) const {
+bool SoftmaxParams::is_valid(ParallelTensorShape const &input) const {
   return input.is_valid();
 }
 
@@ -409,9 +409,10 @@ Node FFModel::get_or_create_softmax_node(const ParallelTensor input,
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::SoftmaxParams>::operator()(const FlexFlow::SoftmaxParams& params) const {
-    size_t key = 0;
-    hash_combine(key, params.dim);
-    return key;
-  }
-};
+size_t hash<FlexFlow::SoftmaxParams>::operator()(
+    FlexFlow::SoftmaxParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.dim);
+  return key;
+}
+}; // namespace std

@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/ops/attention.h"
-#include "flexflow/utils/hash_utils.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
 
@@ -37,9 +37,10 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-bool MultiHeadAttentionParams::is_valid(const std::vector<ParallelTensorShape> & input) const {
+bool MultiHeadAttentionParams::is_valid(
+    std::vector<ParallelTensorShape> const &input) const {
   bool is_valid = true;
-  for (auto pt_shape: input) {
+  for (auto pt_shape : input) {
     is_valid &= pt_shape.is_valid();
   }
   return is_valid;
@@ -341,11 +342,12 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
                          allocate_weights,
                          other.name) {}
 
-MultiHeadAttention::MultiHeadAttention(FFModel &model,
-                                       const MultiHeadAttentionParams &params,
-                                       const std::vector<ParallelTensor> &inputs,
-                                       bool allocate_weights,
-                                       const char *name)
+MultiHeadAttention::MultiHeadAttention(
+    FFModel &model,
+    MultiHeadAttentionParams const &params,
+    std::vector<ParallelTensor> const &inputs,
+    bool allocate_weights,
+    char const *name)
     : MultiHeadAttention(model,
                          params.layer_guid,
                          inputs[0],
@@ -857,15 +859,12 @@ bool MultiHeadAttention::measure_operator_cost(
 
 using PCG::Node;
 
-bool operator==(const MultiHeadAttentionParams & lhs, const MultiHeadAttentionParams & rhs) {
-  return lhs.layer_guid == rhs.layer_guid &&
-         lhs.embed_dim == rhs.embed_dim &&
-         lhs.num_heads == rhs.num_heads &&
-         lhs.kdim == rhs.kdim &&
-         lhs.vdim == rhs.vdim &&
-         lhs.dropout == rhs.dropout &&
-         lhs.bias == rhs.bias &&
-         lhs.add_bias_kv == rhs.add_bias_kv &&
+bool operator==(MultiHeadAttentionParams const &lhs,
+                MultiHeadAttentionParams const &rhs) {
+  return lhs.layer_guid == rhs.layer_guid && lhs.embed_dim == rhs.embed_dim &&
+         lhs.num_heads == rhs.num_heads && lhs.kdim == rhs.kdim &&
+         lhs.vdim == rhs.vdim && lhs.dropout == rhs.dropout &&
+         lhs.bias == rhs.bias && lhs.add_bias_kv == rhs.add_bias_kv &&
          lhs.add_zero_attn == rhs.add_zero_attn;
 }
 
@@ -917,18 +916,18 @@ Node FFModel::get_or_create_multihead_attn_node(LayerID const &layer_guid,
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::MultiHeadAttentionParams>::operator()(
-    const FlexFlow::MultiHeadAttentionParams& params) const {
-      size_t key = 0;
-      hash_combine(key, params.layer_guid);
-      hash_combine(key, params.embed_dim);
-      hash_combine(key, params.num_heads);
-      hash_combine(key, params.kdim);
-      hash_combine(key, params.vdim);
-      hash_combine(key, params.dropout);
-      hash_combine(key, params.bias);
-      hash_combine(key, params.add_bias_kv);
-      hash_combine(key, params.add_zero_attn);
-      return key;
-  }
-};
+size_t hash<FlexFlow::MultiHeadAttentionParams>::operator()(
+    FlexFlow::MultiHeadAttentionParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.layer_guid);
+  hash_combine(key, params.embed_dim);
+  hash_combine(key, params.num_heads);
+  hash_combine(key, params.kdim);
+  hash_combine(key, params.vdim);
+  hash_combine(key, params.dropout);
+  hash_combine(key, params.bias);
+  hash_combine(key, params.add_bias_kv);
+  hash_combine(key, params.add_zero_attn);
+  return key;
+}
+}; // namespace std

@@ -1,7 +1,7 @@
 #include "flexflow/ops/dropout.h"
+#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
-#include "flexflow/model.h"
 
 namespace FlexFlow {
 
@@ -76,12 +76,12 @@ DropoutParams Dropout::get_params() const {
   return params;
 }
 
-bool DropoutParams::is_valid(const ParallelTensorShape &) const {
+bool DropoutParams::is_valid(ParallelTensorShape const &) const {
   // dropout is always valid
   return true;
 }
 
-bool operator==(const DropoutParams & lhs, const DropoutParams & rhs) {
+bool operator==(DropoutParams const &lhs, DropoutParams const &rhs) {
   return lhs.rate == rhs.rate && lhs.seed == rhs.seed;
 }
 
@@ -90,7 +90,6 @@ Node FFModel::get_or_create_dropout_node(const ParallelTensor input,
                                          DropoutParams const &params) {
   return get_or_create_node<Dropout>(input, params);
 }
-
 
 Dropout::Dropout(FFModel &model,
                  const ParallelTensor _input,
@@ -119,10 +118,10 @@ Dropout::Dropout(FFModel &model,
                  const ParallelTensor input)
     : Dropout(model, input, other.rate, other.seed, other.name) {}
 
-Dropout::Dropout(FFModel &model, 
-                 const DropoutParams &params, 
-                 const ParallelTensor input, 
-                 const char* name)
+Dropout::Dropout(FFModel &model,
+                 DropoutParams const &params,
+                 const ParallelTensor input,
+                 char const *name)
     : Dropout(model, input, params.rate, params.seed, name) {}
 
 #ifdef DEADCODE
@@ -393,10 +392,11 @@ bool Dropout::measure_operator_cost(Simulator *sim,
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::DropoutParams>::operator()(const FlexFlow::DropoutParams& params) const {
-    size_t key = 0;
-    hash_combine(key, params.rate);
-    hash_combine(key, params.seed);
-    return key;
-  }
-};
+size_t hash<FlexFlow::DropoutParams>::operator()(
+    FlexFlow::DropoutParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.rate);
+  hash_combine(key, params.seed);
+  return key;
+}
+}; // namespace std

@@ -108,9 +108,8 @@ Tensor FFModel::divide(const Tensor in1,
 }
 
 bool ElementBinaryParams::is_valid(
-    std::pair<ParallelTensorShape, ParallelTensorShape> const &) const {
-  // TODO: more check on the input shape
-  return true;
+    std::pair<ParallelTensorShape, ParallelTensorShape> const & input) const {
+  return input.first.is_valid() && input.second.is_valid();
 }
 
 bool operator==(ElementBinaryParams const &lhs,

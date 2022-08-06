@@ -1,21 +1,22 @@
 #ifndef _FLEXFLOW_COMBINE_H
 #define _FLEXFLOW_COMBINE_H
 
+#include "parallel_op.h"
+#include "flexflow/device.h"
 #include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/node.h"
-#include "flexflow/device.h"
-#include "flexflow/layer.h"
 
 namespace FlexFlow {
 
 struct CombineParams {
   int combine_legion_dim;
   int combine_degree;
-  bool is_valid(const ParallelTensorShape &) const;
+  bool is_valid(ParallelTensorShape const &) const;
 };
-bool operator==(const CombineParams &, const CombineParams &);
+bool operator==(CombineParams const &, CombineParams const &);
 
 class CombineMeta : public OpMeta {
 public:
@@ -27,7 +28,7 @@ class Combine : public ParallelOp {
 public:
   using Params = RepartitionParams;
   using Input = ParallelTensor;
-  
+
   Combine(FFModel &model,
           const ParallelTensor input,
           int combine_legion_dim,
@@ -89,10 +90,10 @@ public:
 }; // namespace FlexFlow
 
 namespace std {
-  template <>
-  struct hash<FlexFlow::CombineParams> {
-    size_t operator()(const FlexFlow::CombineParams&) const;
-  }
+template <>
+struct hash<FlexFlow::CombineParams> {
+  size_t operator()(FlexFlow::CombineParams const &) const;
+}
 } // namespace std
 
 #endif // _FLEXFLOW_COMBINE_H

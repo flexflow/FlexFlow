@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/parallel_ops/fused_parallel_op.h"
-#include "flexflow/utils/hash_utils.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -39,11 +39,12 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 /* Params */
-bool operator==(const FusedParallelOpParams & lhs, const FusedParallelOpParams & rhs) {
+bool operator==(FusedParallelOpParams const &lhs,
+                FusedParallelOpParams const &rhs) {
   return lhs.parallel_ops == rhs.parallel_ops;
 }
 
-bool FusedParallelOpParams::is_valid(const ParallelTensorShape & input) const {
+bool FusedParallelOpParams::is_valid(ParallelTensorShape const &input) const {
   return input.is_valid();
 }
 
@@ -270,14 +271,15 @@ void FusedParallelOp::backward_task(Task const *task,
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::FusedParallelOpParams>::operator()(const FlexFlow::FusedParallelOpParams& params) const {
-    size_t key = 0;
-    hash_combine(key, params.parallel_ops.size());
-    for (ParallelOpInfo const &p : params.parallel_ops) {
-      hash_combine(key, p.op_type);
-      hash_combine(key, p.parallel_dim);
-      hash_combine(key, p.parallel_degree);
-    }
-    return key;
+size_t hash<FlexFlow::FusedParallelOpParams>::operator()(
+    FlexFlow::FusedParallelOpParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.parallel_ops.size());
+  for (ParallelOpInfo const &p : params.parallel_ops) {
+    hash_combine(key, p.op_type);
+    hash_combine(key, p.parallel_dim);
+    hash_combine(key, p.parallel_degree);
   }
+  return key;
+}
 }; // namespace std

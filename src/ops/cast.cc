@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/ops/cast.h"
-#include "flexflow/utils/hash_utils.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -78,12 +78,14 @@ Node FFModel::get_or_create_cast_node(const ParallelTensor input,
   return get_or_create_node<Cast>(input, params);
 }
 
-bool CastParams::is_valid(const ParallelTensorShape & input) const {
+bool CastParams::is_valid(ParallelTensorShape const &input) const {
   // TODO: more check on the input shape
-  return input.is_valid();
+  bool valid = input.is_valid();
+  valid &= (input.dims[input.num_dims - 1].degree == 1);
+  return valid;
 }
 
-bool operator==(const CastParams& lhs, const CastParams& rhs) {
+bool operator==(CastParams const &lhs, CastParams const &rhs) {
   return lhs.dtype == rhs.dtype;
 }
 
@@ -112,7 +114,7 @@ Cast::Cast(FFModel &model,
            CastParams const &params,
            ParallelTensor const &input,
            char const *name)
-  : Cast(model, input, params.dtype, name) {}
+    : Cast(model, input, params.dtype, name) {}
 
 void Cast::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -330,9 +332,10 @@ bool Cast::measure_operator_cost(Simulator *sim,
 }; // namespace FlexFlow
 
 namespace std {
-  size_t hash<FlexFlow::CastParams>::operator()(const FlexFlow::CastParams& params) const {
-    size_t key = 0;
-    hash_combine(key, params.dtype);
-    return key;
-  }
-};
+size_t hash<FlexFlow::CastParams>::operator()(
+    FlexFlow::CastParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.dtype);
+  return key;
+}
+}; // namespace std
