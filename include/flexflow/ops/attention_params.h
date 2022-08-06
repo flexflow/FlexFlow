@@ -15,7 +15,7 @@ struct MultiHeadAttentionParams {
 };
 
 bool operator==(MultiHeadAttentionParams const &,
-                  MultiHeadAttentionParams const &);
+                MultiHeadAttentionParams const &);
 
 } // namespace FlexFlow
 
@@ -27,4 +27,3 @@ struct hash<FlexFlow::MultiHeadAttentionParams> {
 } // namespace std
 
 #endif // _FLEXFLOW_ATTENTION_PARAMS_H
-

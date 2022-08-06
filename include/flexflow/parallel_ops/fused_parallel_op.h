@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_FUSED_PARALLEL_OP_H
 #define _FLEXFLOW_FUSED_PARALLEL_OP_H
 
-#include "parallel_op.h"
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/layer.h"
@@ -9,6 +8,7 @@
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/parallel_ops/fused_parallel_op_params.h"
+#include "parallel_op.h"
 
 namespace FlexFlow {
 

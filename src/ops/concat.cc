@@ -41,9 +41,10 @@ bool operator==(ConcatParams const &lhs, ConcatParams const &rhs) {
   return lhs.axis == rhs.axis;
 }
 
-bool ConcatParams::is_valid(std::vector<ParallelTensorShape> const & input) const {
+bool ConcatParams::is_valid(
+    std::vector<ParallelTensorShape> const &input) const {
   bool valid = true;
-  for (auto p: input) {
+  for (auto p : input) {
     valid &= p.is_valid();
   }
   return valid;
