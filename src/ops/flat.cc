@@ -46,20 +46,20 @@ Op *Flat::create_operator_from_layer(
   return new Flat(model, inputs[0], layer->name);
 }
 
-int output_size(const ParallelTensor input,
-                ParallelDim output_dims[MAX_TENSOR_DIM]) {
-  output_dims[Output::REPLICA].is_replica_dim = true;
-  output_dims[Output::SAMPLE].size = input->dims[Input::SAMPLE].size;
-  output_dims[Output::CHANNEL].size =
-      (input->dims[Input::CHANNEL].size * input->dims[Input::HEIGHT].size *
-       input->dims[Input::WIDTH].size);
+int FlatParams::output_size(ParallelTensorShape const &input,
+                            ParallelDim output_dims[MAX_TENSOR_DIM]) {
+  output_dims[FlatOutput::REPLICA].is_replica_dim = true;
+  output_dims[FlatOutput::SAMPLE].size = input.dims[FlatInput::SAMPLE].size;
+  output_dims[FlatOutput::CHANNEL].size =
+      (input.dims[FlatInput::CHANNEL].size * input.dims[FlatInput::HEIGHT].size *
+       input.dims[FlatInput::WIDTH].size);
 
-  return Output::NUMDIM;
+  return FlatOutput::NUMDIM;
 }
 
-void solve_dims(const ParallelTensor input,
-                ParallelDim output_dims[MAX_TENSOR_DIM],
-                int *output_ndims) {
+void FlatParams::solve_dims(ParallelTensorShape const &input,
+                            ParallelDim output_dims[MAX_TENSOR_DIM],
+                            int *output_ndims) {
   assert((output_dims == nullptr) == (output_ndims == nullptr));
 
   std::vector<ParallelDimMappingRecord> mapping;
@@ -67,15 +67,24 @@ void solve_dims(const ParallelTensor input,
 
   std::vector<ParallelDim *> output_dim_sets;
   if (output_dims != nullptr) {
-    *output_ndims = output_size(input, output_dims);
+    *output_ndims = this->output_size(input, output_dims);
     output_dim_sets.push_back(output_dims);
   }
 
-  solve_parallel_dim_mappings(mapping, {input->dims}, {}, output_dim_sets);
+  solve_parallel_dim_mappings(mapping, {input.dims}, {}, output_dim_sets);
 }
 
 bool FlatParams::is_valid(ParallelTensorShape const &input) {
-  return input.is_valid();
+  ParallelTensorShape output_shape;
+
+  this->solve_dims(input, output_shape.dims, &output_shape.num_dims);
+
+  bool is_valid = true;
+  is_valid &= input.is_valid();
+  is_valid &= output_shape.is_valid();
+  is_valid &= (input.dims[FlatInput::WIDTH].degree == 1);
+
+  return is_valid;
 }
 
 bool operator==(FlatParams const &, FlatParams const &) {
@@ -94,9 +103,9 @@ void Flat::construct_output_mappings(
     std::vector<ParallelDimMappingRecord> &mappings) {
   Op::construct_output_parallel_dims(
       mappings,
-      {{Input::REPLICA, MappingOperation::PARTITION, Output::REPLICA},
-       {Input::SAMPLE, MappingOperation::PARTITION, Output::SAMPLE},
-       {Input::CHANNEL, MappingOperation::PARTITION, Output::CHANNEL}});
+      {{FlatInput::REPLICA, MappingOperation::PARTITION, FlatOutput::REPLICA},
+       {FlatInput::SAMPLE, MappingOperation::PARTITION, FlatOutput::SAMPLE},
+       {FlatInput::CHANNEL, MappingOperation::PARTITION, FlatOutput::CHANNEL}});
 }
 
 Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
@@ -107,13 +116,14 @@ Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
          0 /*weights*/,
          1 /*outputs*/,
          _input) {
-  assert(_input->num_dims == Input::NUMDIM);
+  assert(_input->num_dims == FlatInput::NUMDIM);
 
   Flat::construct_output_mappings(*this->parallel_dims_mapping);
 
   ParallelDim output_dims[MAX_TENSOR_DIM];
   int output_ndims;
-  solve_dims(this->inputs[0], output_dims, &output_ndims);
+  this->get_params().solve_dims(
+      this->inputs[0]->get_shape(), output_dims, &output_ndims);
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       output_ndims, output_dims, _input->data_type, this);
@@ -206,9 +216,9 @@ void Flat::forward_task(Task const *task,
                         Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  TensorAccessorR<float, Input::NUMDIM> acc_input(
+  TensorAccessorR<float, FlatInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Output::NUMDIM> acc_output(regions[1],
+  TensorAccessorW<float, FlatOutput::NUMDIM> acc_output(regions[1],
                                                     task->regions[1],
                                                     FID_DATA,
                                                     ctx,
@@ -259,13 +269,13 @@ void Flat::backward_task(Task const *task,
                          Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  TensorAccessorW<float, Input::NUMDIM> acc_input_grad(regions[0],
+  TensorAccessorW<float, FlatInput::NUMDIM> acc_input_grad(regions[0],
                                                        task->regions[0],
                                                        FID_DATA,
                                                        ctx,
                                                        runtime,
                                                        true /*readOutput*/);
-  TensorAccessorR<float, Output::NUMDIM> acc_output_grad(
+  TensorAccessorR<float, FlatOutput::NUMDIM> acc_output_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());
 
