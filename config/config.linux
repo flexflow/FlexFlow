@@ -32,7 +32,7 @@ CUDA_DIR=/usr/local/cuda-11
 FF_USE_PYTHON=OFF
 
 # enable NCCL
-FF_USE_NCCL=OFF
+FF_USE_NCCL=ON
 
 # enable GASNet
 FF_USE_GASNET=OFF

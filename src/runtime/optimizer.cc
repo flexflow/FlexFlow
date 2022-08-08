@@ -415,6 +415,7 @@ void AdamOptimizer::update(const ParallelTensor p)
   } else if (p->sync_type == ParameterSyncType::NCCL) {
     assert(p->parallel_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
+    //printf("meta(%p)\n", p->owner_op->meta[0]);
     Domain domain = runtime->get_index_space_domain(ctx, p->parallel_is);
     switch (domain.get_dim()) {
 #define DIMFUNC(DIM) \

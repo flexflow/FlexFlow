@@ -170,12 +170,14 @@ void AdamOptimizer::nccl_update_task_gpu(const AdamOptimizer* op,
                                          float *w_ptr, float *v_ptr, float *m_ptr)
 {
   // Use NCCL to sync gradients
+  //printf("in adam update task\n");
+  //printf("comm(%p), weight(%p) Before ncclAllReduce...\n",meta,  w_grad_ptr);
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkNCCL(ncclAllReduce(w_grad_ptr, (float*)w_grad_ptr, size, ncclFloat,
       ncclSum, meta->handle.ncclComm, stream));
   //fprintf(stderr, "alpha = %.8lf alpha_t = %.8lf decay = %.8lf\n",
-  //        op->alpha, op->alpha_t, op->weight_decay);
+    //      op->alpha, op->alpha_t, op->weight_decay);
   // Step 2: Adam update
   adam_update<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
       size, op->alpha_t, op->beta1, op->beta2,

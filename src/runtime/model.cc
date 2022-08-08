@@ -1634,7 +1634,7 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
         trans[i][0] = 0;
       }
       trans[NDIM-2][0] = ext.hi[NDIM-2] - ext.lo[NDIM-2] + 1;
-      IndexPartition ub_ip = runtime->create_partition_by_restriction(ctx, is, ub_is, trans, ext);
+      IndexPartition ub_ip = runtime->create_partition_by_restriction(ctx, is, ub_is, trans, ext, LEGION_DISJOINT_KIND);
       LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
       //second-level partition: intra-stage parallelism
       IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
@@ -2553,10 +2553,14 @@ void FFModel::reset_metrics()
 
 void FFModel::init_operators()
 {
-  for (size_t i = 0; i < operators.size(); i++)
+  for (size_t i = 0; i < operators.size(); i++){
     for (size_t j = 0; j < operators[i]->nFnB; j++){
       operators[i]->pipeinit(*this);
     }
+    if(operators[i]->op_type==OP_WEIGHT){
+      operators[i]->pipeinit(*this);
+    }
+  }
 }
 
 void FFModel::forward(int seq_length)
