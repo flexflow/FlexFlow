@@ -1671,59 +1671,6 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
     }
   }
   
-  
-
-  // shicao for pipeline, Step 2: create multiple partitions
-  // if (parallel_op != NULL) {
-  //   IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
-  //   //Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
-  //   /*
-  //   ubatch dim: change extent to obtain #pipe_buf_size partitions
-  //   | task_is | task_is | ... | task_is |
-  //   */
-  //   int ubSize = tensor->dim[i].size/tensor->pipe_buf_size;
-  //   for(int k = 0; k < tensor->pipe_buf_size; k++){
-  //     Point<NDIM> high;
-  //     for (int i = 0; i < NDIM; i++){
-  //       if(i==0){
-  //         high[i] = ubSize - 1;
-  //       }
-  //       else{
-  //         high[i] = tensor->dims[i].size - 1;
-  //       }
-        
-  //     }
-  //     Rect<NDIM> rectt(Point<NDIM>::ZEROES(), high);
-  //     Transform<NDIM, TDIM> transform;
-  //     Point<NDIM> ext_hi;
-  //     Point<NDIM> ext_lo;
-  //     for (int i = 0; i < NDIM; i++) {
-  //       int nparts = tensor->dims[i].degree;
-  //       ext_hi[i] = (rectt.hi[i] - rectt.lo[i] + nparts) / nparts - 1;
-  //       ext_lo[i] = 0;
-  //     }
-  //     ext_hi[0] += ubSize * k;
-  //     ext_lo[0] = ubSize * k;
-
-  //     Rect<NDIM> extent(ext_lo, ext_hi);
-  //     for (int i = 0; i < NDIM; i++)
-  //       for (int j = 0; j < TDIM; j++)
-  //         if (tensor->dims[i].parallel_idx == j)
-  //           transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
-  //         else
-  //           transform[i][j] = 0;
-  //     IndexPartition ip = runtime->create_partition_by_restriction(
-  //         ctx, is, part_is, transform, extent);
-  //     assert(runtime->is_index_partition_disjoint(ctx, ip));
-  //     // assert(runtime->is_index_partition_complete(ctx, ip)); shicao: is this one important?? dependency/privileges checked on point level? coherence granularity?
-  //     tensor->pipepart[k] = runtime->get_logical_partition(ctx, tensor->region, ip);
-  //     if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
-  //       tensor->pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
-  //     }
-
-  //   }
-    
-  // }
   // Step 3: initialize the tensor
   if (tensor->initializer != NULL) {
     tensor->initializer->init(this, tensor);
@@ -1753,7 +1700,7 @@ void FFModel::map_input_tensors(ParallelTensor tensor, const Op* op)
 template<int NDIM>
 void FFModel::map_input_tensor_with_dim(ParallelTensor tensor, const Op* parallel_op)
 {
-  tensor->parallel_is = get_or_create_task_is(tensor);
+  // tensor->parallel_is = get_or_create_task_is(tensor);
   assert(tensor->owner_op != NULL);
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -1803,8 +1750,9 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
   trans[NDIM-2][0] = ext.hi[NDIM-2] - ext.lo[NDIM-2] + 1;
   IndexPartition ub_ip = runtime->create_partition_by_restriction(ctx, is, ub_is, trans, ext);
   LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
-  //second-level partition: intra-stage parallelism
-  IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
+  //second-level partition: intra-stage parallelism, for input tensor, we need to use the task_is of the op
+  //temp, need to be fixed, need a better abstraction when later support branch-level parallelism
+  IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(parallel_op->outputs[0]);
   assert(parallel_op != NULL);
   int k = 0;
   for (PointInRectIterator<1> it(ubdim_rect); it(); it++, k++) {
@@ -3036,7 +2984,7 @@ void FFModel::compile(LossType loss_type,
     }
     for (int i = 0; i< op->numInputs; i++) {
       //shicao for pipeline parallelism, map boarder input tensors
-      if (op->inputs[i]->pipe_num_part_in == op->inputs[i]->pipe_num_part_out){
+      if (op->inputs[i]->owner_op->stage_guid == op->stage_guid){
         for (int j = 0; j < op->inputs[i]->pipe_num_part_in; j++){
           op->inputs[i]->in_pipepart[j] = op->inputs[i]->out_pipepart[j];
           op->inputs[i]->in_pipepart_grad[j] = op->inputs[i]->out_pipepart_grad[j];
