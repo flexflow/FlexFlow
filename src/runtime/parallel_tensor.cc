@@ -467,17 +467,25 @@ bool ParallelTensorBase::check_valid() const
   for (int i = 0; i < MAX_TENSOR_DIM; i++)
     used[i] = false;
   for (int i = 0; i < num_dims; i++) {
-    if (dims[i].size < 0) 
+    if (dims[i].size < 0){
+      printf("size %d, degree %d\n", dims[i].size, dims[i].degree); 
       return false;
-    if (dims[i].size % dims[i].degree != 0)
+    }
+    if (dims[i].size % dims[i].degree != 0){
+      printf("size %d, degree %d\n", dims[i].size, dims[i].degree);
       return false;
-    if (dims[i].parallel_idx > MAX_TENSOR_DIM)
+    }
+    if (dims[i].parallel_idx > MAX_TENSOR_DIM){
+      printf("size %d, degree %d\n", dims[i].size, dims[i].degree);
       return false;
+    }
     assert (dims[i].parallel_idx >= -1);
     assert (dims[i].degree >= 1);
     if (dims[i].parallel_idx >= 0) {
-      if (used[dims[i].parallel_idx])
+      if (used[dims[i].parallel_idx]){
+	printf("here\n");
         return false;
+      }
       used[dims[i].parallel_idx] = true;
     }
   }
@@ -485,7 +493,7 @@ bool ParallelTensorBase::check_valid() const
   int idx = 0;
   while (used[idx]) idx++;
   for (int i = idx; i < MAX_TENSOR_DIM; i++)
-    if (used[i]) return false;
+    if (used[i]) {printf("here %d\n",i); return false;}
   return true;
 }
 

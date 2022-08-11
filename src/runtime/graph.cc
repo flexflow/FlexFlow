@@ -1587,7 +1587,7 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
         sinfo.bufSize = 20;
 	      //sinfo.ubatchSize = 2;
         sinfo.ubatchSize = 20;
-	      sinfo.device_num = 1;
+	      sinfo.device_num = 2;
         sinfo.nFnB = 1;
         data_parallel_view.dim[0] = sinfo.device_num;
         data_parallel_view.start_device_id = 2;

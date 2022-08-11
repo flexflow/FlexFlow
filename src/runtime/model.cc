@@ -2978,8 +2978,8 @@ void FFModel::compile(LossType loss_type,
     for (int i = 0; i < op->numOutputs; i++) {
       // Output tensor
       // scale sample dim
-      int ndims = op->outputs[i]->num_dims;
-      op->outputs[i]->dims[ndims-2].size *= op->outputs[i]->pipe_buf_size;
+      //int ndims = op->outputs[i]->num_dims;
+      //op->outputs[i]->dims[ndims-2].size *= op->outputs[i]->pipe_buf_size;
       map_tensor(op->outputs[i], op);
     }
     for (int i = 0; i< op->numInputs; i++) {
