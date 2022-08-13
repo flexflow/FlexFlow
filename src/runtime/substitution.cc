@@ -572,11 +572,11 @@ void GraphXfer::find_matches(int depth,
   }
 }
 
+template <typename GraphComp>
 void GraphXfer::run(
     int depth,
     Graph *graph,
-    std::priority_queue<Graph *, std::vector<Graph *>, GraphCompare>
-        &candidates,
+    std::priority_queue<Graph *, std::vector<Graph *>, GraphComp> &candidates,
     std::unordered_set<size_t> &hashmap,
     float threshold,
     int maxNumOps,
