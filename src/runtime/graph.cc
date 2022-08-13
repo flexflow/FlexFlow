@@ -1649,22 +1649,19 @@ T SearchHelper::graph_cost(Graph const *graph,
     int output_replicas = 0;
     int weight_replicas = 0;
     auto op = sink.node.ptr;
-    this->logger->spew()
-        << "  ParallelTensor shape|num_replicas of inputs:";
+    this->logger->spew() << "  ParallelTensor shape|num_replicas of inputs:";
     for (int i = 0; i < op->numInputs; i++) {
       auto shape = op->inputs[i]->get_shape();
       this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
       input_replicas += shape.get_num_replicas();
     }
-    this->logger->spew()
-        << "  ParallelTensor shape|num_replicas of outputs:";
+    this->logger->spew() << "  ParallelTensor shape|num_replicas of outputs:";
     for (int i = 0; i < op->numOutputs; i++) {
       auto shape = op->outputs[i]->get_shape();
       this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
       output_replicas += shape.get_num_replicas();
     }
-    this->logger->spew()
-        << "  ParallelTensor shape|num_replicas of weights:";
+    this->logger->spew() << "  ParallelTensor shape|num_replicas of weights:";
     for (int i = 0; i < op->numWeights; i++) {
       auto shape = op->weights[i]->get_shape();
       this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
