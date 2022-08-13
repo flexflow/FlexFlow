@@ -130,9 +130,9 @@ public:
 class GraphCompareWithMemory {
   float run_time_cost_factor;
 
- public:
+public:
   GraphCompareWithMemory(float factor) : run_time_cost_factor{factor} {}
-  bool operator()(Graph* lhs, Graph* rhs) {
+  bool operator()(Graph *lhs, Graph *rhs) {
     return lhs->optimal_cost_with_memory(run_time_cost_factor) >
            rhs->optimal_cost_with_memory(run_time_cost_factor);
   }
@@ -247,13 +247,14 @@ public:
   GraphSearchHelper(FFModel *model);
   void graph_optimize(size_t budget,
                       bool only_data_parallel,
-                      std::unique_ptr<Graph>& best_graph,
-                      std::unordered_map<Node, MachineView>& optimal_views);
+                      std::unique_ptr<Graph> &best_graph,
+                      std::unordered_map<Node, MachineView> &optimal_views);
   // Experimental. To be merged with graph_optimize eventually.
-  void graph_optimize_with_memory(size_t budget, 
-                      bool only_data_parallel,
-                      std::unique_ptr<Graph>& best_graph,
-                      std::unordered_map<Node, MachineView>& optimal_views);
+  void graph_optimize_with_memory(
+      size_t budget,
+      bool only_data_parallel,
+      std::unique_ptr<Graph> &best_graph,
+      std::unordered_map<Node, MachineView> &optimal_views);
   void graph_optimize_no_split(
       size_t budget,
       bool only_data_parallel,
@@ -262,40 +263,44 @@ public:
 
 private:
   template <typename T>
-  T generic_sequence_optimize(Graph const *graph,
-                              Node const &sink_node,
-                              tl::optional<ParallelTensorShape> const &output_shape,
-                              tl::optional<ParallelTensorShape> const &input_shape);
+  T generic_sequence_optimize(
+      Graph const *graph,
+      Node const &sink_node,
+      tl::optional<ParallelTensorShape> const &output_shape,
+      tl::optional<ParallelTensorShape> const &input_shape);
 
   // Experimental. To be merged with generic_sequence_optimize eventually.
   template <typename T>
   T generic_sequence_optimize_with_memory(
-      Graph const* graph, Node const& sink_node,
-      tl::optional<ParallelTensorShape> const& output_shape,
-      tl::optional<ParallelTensorShape> const& input_shape);
+      Graph const *graph,
+      Node const &sink_node,
+      tl::optional<ParallelTensorShape> const &output_shape,
+      tl::optional<ParallelTensorShape> const &input_shape);
 
-  float sequence_optimize(Graph const *graph, 
-                          Node const &sink_node, 
-                          tl::optional<ParallelTensorShape> const &output_shape, 
+  float sequence_optimize(Graph const *graph,
+                          Node const &sink_node,
+                          tl::optional<ParallelTensorShape> const &output_shape,
                           tl::optional<ParallelTensorShape> const &input_shape);
 
   template <typename T>
-  T execute_sequence_split(std::unique_ptr<Graph> const &pre_graph,
-                           std::unique_ptr<Graph> const &post_graph,
-                           tl::optional<ParallelTensorShape> const &output_shape,
-                           tl::optional<ParallelTensorShape> const &input_shape,
-                           Node const &sink_node,
-                           Node const &bottleneck, 
-                           ParallelTensorShape const &bottleneck_output_shape);
+  T execute_sequence_split(
+      std::unique_ptr<Graph> const &pre_graph,
+      std::unique_ptr<Graph> const &post_graph,
+      tl::optional<ParallelTensorShape> const &output_shape,
+      tl::optional<ParallelTensorShape> const &input_shape,
+      Node const &sink_node,
+      Node const &bottleneck,
+      ParallelTensorShape const &bottleneck_output_shape);
   // Experimental. To be merged with execute_sequence_split().
   template <typename T>
-  T execute_sequence_split_with_memory(std::unique_ptr<Graph> const &pre_graph,
-                           std::unique_ptr<Graph> const &post_graph,
-                           tl::optional<ParallelTensorShape> const &output_shape,
-                           tl::optional<ParallelTensorShape> const &input_shape,
-                           Node const &sink_node,
-                           Node const &bottleneck, 
-                           ParallelTensorShape const &bottleneck_output_shape);
+  T execute_sequence_split_with_memory(
+      std::unique_ptr<Graph> const &pre_graph,
+      std::unique_ptr<Graph> const &post_graph,
+      tl::optional<ParallelTensorShape> const &output_shape,
+      tl::optional<ParallelTensorShape> const &input_shape,
+      Node const &sink_node,
+      Node const &bottleneck,
+      ParallelTensorShape const &bottleneck_output_shape);
 
   void generate_all_pcg_xfers();
   void load_graph_substitutions(std::vector<GraphXfer *> &xfers) const;
@@ -310,12 +315,16 @@ private:
       possible_split_output_tensor_shapes(Node const &) const;
 
   // Experimental. To be merged with base_optimize().
-  std::unique_ptr<Graph> base_optimize_with_memory(Graph const *, SimplificationSettings const &simplification_settings);
+  std::unique_ptr<Graph> base_optimize_with_memory(
+      Graph const *, SimplificationSettings const &simplification_settings);
 
-  std::vector<ParallelTensorShape> possible_split_output_tensor_shapes(Node const &) const;
-  
-  void find_rewrite_matches(Graph const *graph, std::vector<GraphXferMatch>& matches) const;
-  tl::optional<Node> find_split_node(Graph const *graph, int base_optimize_threshold) const;
+  std::vector<ParallelTensorShape>
+      possible_split_output_tensor_shapes(Node const &) const;
+
+  void find_rewrite_matches(Graph const *graph,
+                            std::vector<GraphXferMatch> &matches) const;
+  tl::optional<Node> find_split_node(Graph const *graph,
+                                     int base_optimize_threshold) const;
 
   template <typename T>
   tl::optional<T> try_get_cost_from_cache(size_t hash) const;
