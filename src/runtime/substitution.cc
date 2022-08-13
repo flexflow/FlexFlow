@@ -1879,7 +1879,7 @@ void GraphSearchHelper::graph_optimize_with_memory(
   this->logger->debug() << "Total cache size: "
                         << this->cached_optimized_graphs.size();
   std::cout << "Optimal run time cost: " << optimal.cost
-            << ", memory usage: " << optimal.mem_cost << std::endl;
+            << ", Memory usage: " << optimal.mem_cost << std::endl;
 
   // Further simplify the "optimal" graph/schedule to have a more efficient
   // graph and more accurate cost.

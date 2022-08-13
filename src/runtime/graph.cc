@@ -1573,7 +1573,8 @@ T SearchHelper::graph_cost(Graph const *graph,
                            MachineResource const &resources,
                            bool include_sink_compute_time) const {
   TAG_ENTER(this->logger);
-  this->logger->debug() << "sink(" << sink.node.guid << ") "
+  this->logger->debug() << "SearchHelper::graph_cost: sink(" << sink.node.guid
+                        << ") "
                         << "sink.view(" << sink.view.ndims << " "
                         << sink.view.start_device_id << " " << sink.view.dim[0]
                         << ") "
@@ -1641,7 +1642,43 @@ T SearchHelper::graph_cost(Graph const *graph,
   if (include_sink_compute_time) {
     CostMetrics metrics =
         this->model->simulator->measure_operator_cost(sink.node.ptr, sink.view);
-    this->logger->debug() << "Sink node cost: "
+
+    // Adjust operator memory usage
+    this->logger->spew() << "Analyzing sink op memory cost:";
+    int input_replicas = 0;
+    int output_replicas = 0;
+    int weight_replicas = 0;
+    auto op = sink.node.ptr;
+    this->logger->spew()
+        << "  ParallelTensor shape|num_replicas of inputs:";
+    for (int i = 0; i < op->numInputs; i++) {
+      auto shape = op->inputs[i]->get_shape();
+      this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
+      input_replicas += shape.get_num_replicas();
+    }
+    this->logger->spew()
+        << "  ParallelTensor shape|num_replicas of outputs:";
+    for (int i = 0; i < op->numOutputs; i++) {
+      auto shape = op->outputs[i]->get_shape();
+      this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
+      output_replicas += shape.get_num_replicas();
+    }
+    this->logger->spew()
+        << "  ParallelTensor shape|num_replicas of weights:";
+    for (int i = 0; i < op->numWeights; i++) {
+      auto shape = op->weights[i]->get_shape();
+      this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
+      weight_replicas += shape.get_num_replicas();
+    }
+    this->logger->spew()
+        << "  Total number of replicas of inputs|outputs|weights: "
+        << input_replicas << "|" << output_replicas << "|" << weight_replicas;
+
+    // TODO: this should be updated based on the real meaning of sim->offset
+    metrics.memory_requirement *= input_replicas;
+
+    this->logger->debug() << "Sink node cost [" << sink.node.to_string()
+                          << "]: "
                           << "forward(" << metrics.forward_time << ") "
                           << "backward(" << metrics.backward_time << ") "
                           << "sync(" << metrics.sync_time << ") "
@@ -1730,7 +1767,9 @@ T Graph::generic_optimal_cost() const {
   // }
 
   Node sink_node = reduced_graph.find_sink_node();
-  this->search->logger->info() << "Found sink node: " << sink_node.to_string();
+  this->search->logger->info()
+      << "Graph::generic_optimal_cost: Found sink node: "
+      << sink_node.to_string();
 
   MachineResource resource(model->config);
 
