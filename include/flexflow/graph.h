@@ -17,10 +17,10 @@
 #define _FLEXFLOW_GRAPH_H_
 #include "flexflow/basic_graph.h"
 #include "flexflow/graph_structures.h"
+#include "flexflow/memory_optimization.h"
 #include "flexflow/model.h"
 #include "flexflow/utils/dot/dot_file.h"
 #include "flexflow/utils/recursive_logger.h"
-#include "flexflow/memory_optimization.h"
 #include "legion/legion_utilities.h"
 #include <unordered_set>
 

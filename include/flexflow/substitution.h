@@ -311,9 +311,6 @@ private:
       base_optimize(Graph const *,
                     SimplificationSettings const &simplification_settings);
 
-  std::vector<ParallelTensorShape>
-      possible_split_output_tensor_shapes(Node const &) const;
-
   // Experimental. To be merged with base_optimize().
   std::unique_ptr<Graph> base_optimize_with_memory(
       Graph const *, SimplificationSettings const &simplification_settings);
