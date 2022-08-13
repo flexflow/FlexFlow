@@ -87,7 +87,7 @@ enum OperatorType {
   OP_CACHE,
   OP_AGGREGATE,
   OP_AGG_SPEC,
-  //OP_ELEMENTWISE,
+  // OP_ELEMENTWISE,
   OP_RESHAPE,
   OP_REVERSE,
   OP_TRANSPOSE,
@@ -101,44 +101,44 @@ enum OperatorType {
   OP_CONSTANT_ICONV,
   OP_CONSTANT_ONE,
   OP_CONSTANT_POOL,
-  OP_SQUEEZE, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Squeeze
-  OP_UNSQUEEZE, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Unsqueeze
-  OP_EW_SUB, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sub
-  OP_EW_DIV, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Div
-  OP_EW_EQUAL, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Equal
-  OP_EW_GREATER, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Greater
-  OP_EW_LESS, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Less
-  OP_EW_MAX, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Max
-  OP_EW_MIN, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Min
-  OP_REDUCE_ARGMAX, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#ArgMax
-  OP_REDUCE_ARGMIN, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#ArgMin
-  OP_REDUCE_MAX, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceMax
-  OP_REDUCE_MEAN, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceMean
-  OP_REDUCE_MIN, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceMin
-  OP_REDUCE_PROD, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceProd
-  OP_REDUCE_SUM, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceSum
-  OP_PAD, //https://github.com/dmlc/tvm/blob/master/topi/python/topi/nn/pad.py
-  OP_SHAPE, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Shape
-  OP_SIZE, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Size
-  OP_TOPK, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#TopK
-  OP_WHERE, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Where
-  OP_CEIL, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Ceil
-  OP_CAST, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Cast
-  OP_EXP, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Exp
-  OP_ROUND, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Round
-  OP_LOG, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Log
-  OP_LOGICAL_NOT, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Not
-  OP_SQRT, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sqrt
+  OP_SQUEEZE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Squeeze
+  OP_UNSQUEEZE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Unsqueeze
+  OP_EW_SUB,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sub
+  OP_EW_DIV,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Div
+  OP_EW_EQUAL, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Equal
+  OP_EW_GREATER, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Greater
+  OP_EW_LESS, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Less
+  OP_EW_MAX,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Max
+  OP_EW_MIN,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Min
+  OP_REDUCE_ARGMAX, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ArgMax
+  OP_REDUCE_ARGMIN, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ArgMin
+  OP_REDUCE_MAX, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceMax
+  OP_REDUCE_MEAN, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceMean
+  OP_REDUCE_MIN, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceMin
+  OP_REDUCE_PROD, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceProd
+  OP_REDUCE_SUM, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#ReduceSum
+  OP_PAD, // https://github.com/dmlc/tvm/blob/master/topi/python/topi/nn/pad.py
+  OP_SHAPE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Shape
+  OP_SIZE,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Size
+  OP_TOPK,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#TopK
+  OP_WHERE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Where
+  OP_CEIL,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Ceil
+  OP_CAST,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Cast
+  OP_EXP,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Exp
+  OP_ROUND, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Round
+  OP_LOG,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Log
+  OP_LOGICAL_NOT, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Not
+  OP_SQRT, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sqrt
   OP_LEAKYRELU,
-  OP_SLICE, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Slice
-  OP_RESIZE, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#Resize
-  OP_PRELU, //https://github.com/onnx/onnx/blob/master/docs/Operators.md#PRelu
+  OP_SLICE,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Slice
+  OP_RESIZE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Resize
+  OP_PRELU,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#PRelu
   OP_GELU,
   OP_MULTIHEAD_ATTENTION,
   OP_FUSED, // Fused operator type for internal fusion optimizations
-  OP_RSQRT, //https://pytorch.org/docs/stable/generated/torch.rsqrt.html
-  OP_POW, //https://pytorch.org/docs/stable/generated/torch.pow.html
-  OP_MEAN, //https://pytorch.org/docs/stable/generated/torch.mean.html
+  OP_RSQRT, // https://pytorch.org/docs/stable/generated/torch.rsqrt.html
+  OP_POW,   // https://pytorch.org/docs/stable/generated/torch.pow.html
+  OP_MEAN,  // https://pytorch.org/docs/stable/generated/torch.mean.html
   OP_LAYERNORM,
   // Parallel Ops
   OP_REPARTITION,
@@ -151,35 +151,35 @@ enum OperatorType {
 };
 
 enum PMParameter {
-  PM_OP_TYPE,   	// AnyOp
-  PM_NUM_INPUTS,	// AnyOp
-  PM_NUM_OUTPUTS,	// AnyOp
-  PM_GROUP,             // Conv2D
-  PM_KERNEL_H,		// Conv2D, Pool2D
-  PM_KERNEL_W,		// Conv2D, Pool2D
-  PM_STRIDE_H,		// Conv2D, Pool2D
-  PM_STRIDE_W,		// Conv2D, Pool2D
-  PM_PADDING_H,		// Conv2D, Pool2D
-  PM_PADDING_W,		// Conv2D, Pool2D
-  PM_ACTI,		// Conv2D, Pool2D
-  PM_NUMDIM,		// Concat, Transpose
-  PM_AXIS,		// Concat, Split
-  PM_PERM,		// Transpose
-  PM_OUTSHUFFLE,	// Transpose
-  PM_MERGE_GCONV_COUNT, // MergeGConv
-  PM_AXES,		// Squeeze, Unsqueeze, Reduce*
-  PM_KEEP_DIMS,         // Reduce*
-  PM_EPSILON,   // BatchNorm
-  PM_REPARTITION_DIM,   // Repartition
-  PM_REPARTITION_DEGREE,// Repartition
-  PM_REPLICATE_DIM,     // Replicate
-  PM_REPLICATE_DEGREE,  // Replicate
-  PM_COMBINE_DIM,       // Combine
-  PM_COMBINE_DEGREE,    // Combine
-  PM_REDUCTION_DIM,     // Reduction
-  PM_REDUCTION_DEGREE,  // Reduction
-  PM_SOFTMAX_DIM,       // Softmax
-  PM_NUM_HEADS,         // MultiHeadAttention
+  PM_OP_TYPE,            // AnyOp
+  PM_NUM_INPUTS,         // AnyOp
+  PM_NUM_OUTPUTS,        // AnyOp
+  PM_GROUP,              // Conv2D
+  PM_KERNEL_H,           // Conv2D, Pool2D
+  PM_KERNEL_W,           // Conv2D, Pool2D
+  PM_STRIDE_H,           // Conv2D, Pool2D
+  PM_STRIDE_W,           // Conv2D, Pool2D
+  PM_PADDING_H,          // Conv2D, Pool2D
+  PM_PADDING_W,          // Conv2D, Pool2D
+  PM_ACTI,               // Conv2D, Pool2D
+  PM_NUMDIM,             // Concat, Transpose
+  PM_AXIS,               // Concat, Split
+  PM_PERM,               // Transpose
+  PM_OUTSHUFFLE,         // Transpose
+  PM_MERGE_GCONV_COUNT,  // MergeGConv
+  PM_AXES,               // Squeeze, Unsqueeze, Reduce*
+  PM_KEEP_DIMS,          // Reduce*
+  PM_EPSILON,            // BatchNorm
+  PM_REPARTITION_DIM,    // Repartition
+  PM_REPARTITION_DEGREE, // Repartition
+  PM_REPLICATE_DIM,      // Replicate
+  PM_REPLICATE_DEGREE,   // Replicate
+  PM_COMBINE_DIM,        // Combine
+  PM_COMBINE_DEGREE,     // Combine
+  PM_REDUCTION_DIM,      // Reduction
+  PM_REDUCTION_DEGREE,   // Reduction
+  PM_SOFTMAX_DIM,        // Softmax
+  PM_NUM_HEADS,          // MultiHeadAttention
   PM_INVALID,
   PM_PARALLEL_DIM,
   PM_PARALLEL_DEGREE,

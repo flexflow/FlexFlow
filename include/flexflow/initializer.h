@@ -23,88 +23,89 @@ namespace FlexFlow {
 
 class FFModel;
 
-class Initializer
-{
+class Initializer {
 public:
   Initializer(void);
   virtual ~Initializer(void);
-  virtual void init(const FFModel* ff, const ParallelTensor p) = 0;
+  virtual void init(FFModel const *ff, const ParallelTensor p) = 0;
 };
 
-class GlorotUniform : public Initializer
-{
+class GlorotUniform : public Initializer {
 public:
   GlorotUniform(int _seed);
   ~GlorotUniform(void);
-  void init(const FFModel* ff, const ParallelTensor p);
-  static void init_task(const Legion::Task *task,
-                        const std::vector<Legion::PhysicalRegion> &regions,
-                        Legion::Context ctx, Legion::Runtime *runtime);
+  void init(FFModel const *ff, const ParallelTensor p);
+  static void init_task(Legion::Task const *task,
+                        std::vector<Legion::PhysicalRegion> const &regions,
+                        Legion::Context ctx,
+                        Legion::Runtime *runtime);
   int seed;
   float scale;
 };
 
 struct ZeroInitMeta {
-  static const int MAX_NUM_REGIONS = 64;
+  static int const MAX_NUM_REGIONS = 64;
   int num_regions;
   DataType data_types[MAX_NUM_REGIONS];
 };
 
-
-class ZeroInitializer : public Initializer
-{
+class ZeroInitializer : public Initializer {
 public:
   ZeroInitializer(void);
   ~ZeroInitializer(void);
-  void init(const FFModel* ff, const ParallelTensor p);
-  static void init_task(const Legion::Task *task,
-                        const std::vector<Legion::PhysicalRegion> &regions,
-                        Legion::Context ctx, Legion::Runtime *runtime);
-  static void init_task_cpu(const Legion::Task *task,
-                        const std::vector<Legion::PhysicalRegion> &regions,
-                        Legion::Context ctx, Legion::Runtime *runtime);
+  void init(FFModel const *ff, const ParallelTensor p);
+  static void init_task(Legion::Task const *task,
+                        std::vector<Legion::PhysicalRegion> const &regions,
+                        Legion::Context ctx,
+                        Legion::Runtime *runtime);
+  static void init_task_cpu(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
 };
 
-class UniformInitializer : public Initializer
-{
+class UniformInitializer : public Initializer {
 public:
   UniformInitializer(int _seed, float _min, float _max);
   ~UniformInitializer(void);
-  void init(const FFModel* ff, const ParallelTensor p);
-  static void init_task(const Legion::Task *task,
-                        const std::vector<Legion::PhysicalRegion>& regions,
-                        Legion::Context ctx, Legion::Runtime *runtime);
+  void init(FFModel const *ff, const ParallelTensor p);
+  static void init_task(Legion::Task const *task,
+                        std::vector<Legion::PhysicalRegion> const &regions,
+                        Legion::Context ctx,
+                        Legion::Runtime *runtime);
   int seed;
   float min_val, max_val;
 };
 
-class NormInitializer : public Initializer
-{
+class NormInitializer : public Initializer {
 public:
   NormInitializer(int _seed, float _mean, float _stddev);
   ~NormInitializer(void);
-  void init(const FFModel* ff, const ParallelTensor p);
-  static void init_task(const Legion::Task *task,
-                        const std::vector<Legion::PhysicalRegion> &regions,
-                        Legion::Context ctx, Legion::Runtime *runtime);
+  void init(FFModel const *ff, const ParallelTensor p);
+  static void init_task(Legion::Task const *task,
+                        std::vector<Legion::PhysicalRegion> const &regions,
+                        Legion::Context ctx,
+                        Legion::Runtime *runtime);
   int seed;
   float mean, stddev;
 };
 
-class ConstantInitializer : public Initializer
-{
+class ConstantInitializer : public Initializer {
 public:
   ConstantInitializer(float _value);
   ConstantInitializer(int64_t _value);
   ConstantInitializer(int _value);
   ~ConstantInitializer(void);
-  void init(const FFModel* ff, const ParallelTensor p);
-  static void init_task(const Legion::Task *task,
-                        const std::vector<Legion::PhysicalRegion> &regions,
-                        Legion::Context ctx, Legion::Runtime* runtime);
-  static void init_task_cpu(const Legion::Task *task,
-                        const std::vector<Legion::PhysicalRegion> &regions,
-                        Legion::Context ctx, Legion::Runtime *runtime);
+  void init(FFModel const *ff, const ParallelTensor p);
+  static void init_task(Legion::Task const *task,
+                        std::vector<Legion::PhysicalRegion> const &regions,
+                        Legion::Context ctx,
+                        Legion::Runtime *runtime);
+  static void init_task_cpu(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
+
 public:
   DataType data_type;
   float float_value;

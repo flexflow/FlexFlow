@@ -50,12 +50,12 @@ enum class MemorySearchAlgo {
  * for now.
  */
 class MemoryOptimConfig {
- public:
-  MemoryUsageType mem_usage_type;    ///< How to represent memory cost
-  MemorySearchAlgo mem_search_algo;  ///< How to search for the optimal schedule
-  float run_time_cost_factor;        ///< The weight factor of run time cost in the
-                                     ///< overall cost function; used in
-                                     ///< MULTI_OBJECTIVE algorithm
+public:
+  MemoryUsageType mem_usage_type;   ///< How to represent memory cost
+  MemorySearchAlgo mem_search_algo; ///< How to search for the optimal schedule
+  float run_time_cost_factor; ///< The weight factor of run time cost in the
+                              ///< overall cost function; used in
+                              ///< MULTI_OBJECTIVE algorithm
 
   MemoryOptimConfig()
       : mem_usage_type{MemoryUsageType::GLOBAL},
@@ -73,9 +73,9 @@ namespace PCG {
  * @brief Class to hold memory usage information of a (sub-)PCG.
  */
 class MemoryUsage {
- public:
-  MemoryUsageType usage_type;  ///< What "num" means
-  float num;                   ///< The numerical number of memory usage
+public:
+  MemoryUsageType usage_type; ///< What "num" means
+  float num;                  ///< The numerical number of memory usage
 
   // May need this in the future, but not for now.
   // std::vector<float> nums;     ///< Detailed number of usage for all devices
@@ -84,7 +84,8 @@ class MemoryUsage {
   /// Public APIs
   ///
   MemoryUsage() : usage_type{MemoryUsageType::GLOBAL}, num{0.0} {}
-  MemoryUsage(MemoryUsageType _usage_type, float _num) : usage_type{_usage_type}, num{_num} {}
+  MemoryUsage(MemoryUsageType _usage_type, float _num)
+      : usage_type{_usage_type}, num{_num} {}
 
   std::string to_string() const {
     std::string type_name;
@@ -100,10 +101,11 @@ class MemoryUsage {
         assert(false);
         break;
     }
-    return "(MemoryUsageType:" + type_name + ", Usage:" + std::to_string(num) + ")";
+    return "(MemoryUsageType:" + type_name + ", Usage:" + std::to_string(num) +
+           ")";
   }
 
-  MemoryUsage& operator+=(const MemoryUsage& rhs) {
+  MemoryUsage &operator+=(MemoryUsage const &rhs) {
     assert(usage_type == rhs.usage_type);
 
     // Handle the merge of memory usage differently here.
@@ -127,12 +129,12 @@ class MemoryUsage {
    * @brief Combine the memory usage of two PCGs flexibly based on
    * MemoryUsageType.
    */
-  friend MemoryUsage operator+(MemoryUsage lhs, const MemoryUsage& rhs) {
+  friend MemoryUsage operator+(MemoryUsage lhs, MemoryUsage const &rhs) {
     lhs += rhs;
     return lhs;
   }
 
-  friend std::ostream& operator<<(std::ostream& s, const MemoryUsage& usage) {
+  friend std::ostream &operator<<(std::ostream &s, MemoryUsage const &usage) {
     s << usage.to_string();
     return s;
   }
@@ -142,9 +144,9 @@ class MemoryUsage {
  * @brief The choice of memory optimizations applied to a Graph.
  */
 class MemOptDecision {
- public:
- private:
+public:
+private:
 };
 
-}  // namespace PCG
-}  // namespace FlexFlow
+} // namespace PCG
+} // namespace FlexFlow

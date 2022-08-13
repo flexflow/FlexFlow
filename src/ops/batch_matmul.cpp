@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include <hip/hip_runtime.h>
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/utils/hip_helper.h"
+#include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
@@ -25,81 +25,110 @@ B: (batch, k, m)
 O: (batch, n, m)
 O = A * B
 */
-void BatchMatmul::forward_kernel(const BatchMatmulMeta* meta,
-                                 float* o_ptr,
-                                 const float* a_ptr,
-                                 const float* b_ptr,
-                                 const float* c_ptr,
-                                 int m, int n, int k,
+void BatchMatmul::forward_kernel(BatchMatmulMeta const *meta,
+                                 float *o_ptr,
+                                 float const *a_ptr,
+                                 float const *b_ptr,
+                                 float const *c_ptr,
+                                 int m,
+                                 int n,
+                                 int k,
                                  int batch,
                                  hipStream_t stream,
                                  int a_seq_length_dim,
                                  int b_seq_length_dim,
-                                 int seq_length)
-{
+                                 int seq_length) {
   checkCUDA(hipblasSetStream(meta->handle.blas, stream));
   checkCUDNN(miopenSetStream(meta->handle.dnn, stream));
 
-  //int a_stride = n * k;
-  //int b_stride = m * k;
-  //int o_stride = n * m;
-  int lda = k; int ldb = m; int ldo = m;
-  long long int strideA = (long long int)n*k;
-  long long int strideB = (long long int)k*m;
-  long long int strideO = (long long int)n*m;
-  if ((a_seq_length_dim==0)&&(seq_length>=0)) {
+  // int a_stride = n * k;
+  // int b_stride = m * k;
+  // int o_stride = n * m;
+  int lda = k;
+  int ldb = m;
+  int ldo = m;
+  long long int strideA = (long long int)n * k;
+  long long int strideB = (long long int)k * m;
+  long long int strideO = (long long int)n * m;
+  if ((a_seq_length_dim == 0) && (seq_length >= 0)) {
     assert(seq_length <= k);
     k = seq_length;
     assert(b_seq_length_dim == 1);
-  } else if ((a_seq_length_dim==1)&&(seq_length>=0)) {
+  } else if ((a_seq_length_dim == 1) && (seq_length >= 0)) {
     assert(seq_length <= n);
     n = seq_length;
   } else {
     // currently only support a_seq_length_dim = 0 or 1
-    assert((a_seq_length_dim<0)||(seq_length<0));
+    assert((a_seq_length_dim < 0) || (seq_length < 0));
   }
-  if ((b_seq_length_dim==0)&&(seq_length>=0)) {
+  if ((b_seq_length_dim == 0) && (seq_length >= 0)) {
     assert(seq_length <= m);
     m = seq_length;
-  } else if ((b_seq_length_dim==1)&&(seq_length>=0)) {
+  } else if ((b_seq_length_dim == 1) && (seq_length >= 0)) {
     assert(a_seq_length_dim == 0);
     assert(k == seq_length);
   } else {
     // currently only support a_seq_length_dim = 0 or 1
-    assert((b_seq_length_dim<0)||(seq_length<0));
+    assert((b_seq_length_dim < 0) || (seq_length < 0));
   }
 
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDA(hipblasSgemmStridedBatched(meta->handle.blas, HIPBLAS_OP_N, HIPBLAS_OP_N,
-      m, n, k, &alpha, b_ptr, ldb, strideB, a_ptr, lda, strideA,
-      &beta, o_ptr, ldo, strideO, batch));
+  checkCUDA(hipblasSgemmStridedBatched(meta->handle.blas,
+                                       HIPBLAS_OP_N,
+                                       HIPBLAS_OP_N,
+                                       m,
+                                       n,
+                                       k,
+                                       &alpha,
+                                       b_ptr,
+                                       ldb,
+                                       strideB,
+                                       a_ptr,
+                                       lda,
+                                       strideA,
+                                       &beta,
+                                       o_ptr,
+                                       ldo,
+                                       strideO,
+                                       batch));
   // current assume c is null
   assert(c_ptr == NULL);
 }
 
 /*static*/
-void BatchMatmul::forward_kernel_wrapper(const BatchMatmulMeta* meta,
-                                         float* o_ptr,
-                                         const float* a_ptr,
-                                         const float* b_ptr,
-                                         const float* c_ptr,
-                                         int m, int n, int k,
+void BatchMatmul::forward_kernel_wrapper(BatchMatmulMeta const *meta,
+                                         float *o_ptr,
+                                         float const *a_ptr,
+                                         float const *b_ptr,
+                                         float const *c_ptr,
+                                         int m,
+                                         int n,
+                                         int k,
                                          int batch,
                                          int a_seq_length_dim,
                                          int b_seq_length_dim,
-                                         int seq_length)
-{
+                                         int seq_length) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  
+
   hipEvent_t t_start, t_end;
   if (meta->profiling) {
     hipEventCreate(&t_start);
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  BatchMatmul::forward_kernel(meta, o_ptr, a_ptr, b_ptr, c_ptr,
-                              m, n, k, batch, stream, a_seq_length_dim, b_seq_length_dim,
+  BatchMatmul::forward_kernel(meta,
+                              o_ptr,
+                              a_ptr,
+                              b_ptr,
+                              c_ptr,
+                              m,
+                              n,
+                              k,
+                              batch,
+                              stream,
+                              a_seq_length_dim,
+                              b_seq_length_dim,
                               seq_length);
   if (meta->profiling) {
     hipEventRecord(t_end, stream);
@@ -119,17 +148,19 @@ O, OGrad: (batch, n, m)
 AGrad = OGrad * B^T
 BGrad = A^T * OGrad
 */
-void BatchMatmul::backward_kernel(const BatchMatmulMeta* meta,
-                                  const float* o_ptr,
-                                  const float* o_grad_ptr,
-                                  const float* a_ptr,
-                                  float* a_grad_ptr,
-                                  const float* b_ptr,
-                                  float* b_grad_ptr,
-                                  float* c_grad_ptr,
-                                  int m, int n, int k, int batch,
-                                  hipStream_t stream)
-{
+void BatchMatmul::backward_kernel(BatchMatmulMeta const *meta,
+                                  float const *o_ptr,
+                                  float const *o_grad_ptr,
+                                  float const *a_ptr,
+                                  float *a_grad_ptr,
+                                  float const *b_ptr,
+                                  float *b_grad_ptr,
+                                  float *c_grad_ptr,
+                                  int m,
+                                  int n,
+                                  int k,
+                                  int batch,
+                                  hipStream_t stream) {
   checkCUDA(hipblasSetStream(meta->handle.blas, stream));
   checkCUDNN(miopenSetStream(meta->handle.dnn, stream));
 
@@ -137,27 +168,58 @@ void BatchMatmul::backward_kernel(const BatchMatmulMeta* meta,
   int b_stride = m * k;
   int o_stride = n * m;
   float alpha = 1.0f;
-  checkCUDA(hipblasSgemmStridedBatched(meta->handle.blas, HIPBLAS_OP_T, HIPBLAS_OP_N,
-      k, n, m, &alpha, b_ptr, m, b_stride, o_grad_ptr, m, o_stride,
-      &alpha, a_grad_ptr, k, a_stride, batch));
-  checkCUDA(hipblasSgemmStridedBatched(meta->handle.blas, HIPBLAS_OP_N, HIPBLAS_OP_T,
-      m, k, n, &alpha, o_grad_ptr, m, o_stride, a_ptr, k, a_stride,
-      &alpha, b_grad_ptr, m, b_stride, batch));
-  assert (c_grad_ptr == NULL);
+  checkCUDA(hipblasSgemmStridedBatched(meta->handle.blas,
+                                       HIPBLAS_OP_T,
+                                       HIPBLAS_OP_N,
+                                       k,
+                                       n,
+                                       m,
+                                       &alpha,
+                                       b_ptr,
+                                       m,
+                                       b_stride,
+                                       o_grad_ptr,
+                                       m,
+                                       o_stride,
+                                       &alpha,
+                                       a_grad_ptr,
+                                       k,
+                                       a_stride,
+                                       batch));
+  checkCUDA(hipblasSgemmStridedBatched(meta->handle.blas,
+                                       HIPBLAS_OP_N,
+                                       HIPBLAS_OP_T,
+                                       m,
+                                       k,
+                                       n,
+                                       &alpha,
+                                       o_grad_ptr,
+                                       m,
+                                       o_stride,
+                                       a_ptr,
+                                       k,
+                                       a_stride,
+                                       &alpha,
+                                       b_grad_ptr,
+                                       m,
+                                       b_stride,
+                                       batch));
+  assert(c_grad_ptr == NULL);
 }
 
-
 /*static*/
-void BatchMatmul::backward_kernel_wrapper(const BatchMatmulMeta* meta,
-                                          const float* o_ptr,
-                                          const float* o_grad_ptr,
-                                          const float* a_ptr,
-                                          float* a_grad_ptr,
-                                          const float* b_ptr,
-                                          float* b_grad_ptr,
-                                          float* c_grad_ptr,
-                                          int m, int n, int k, int batch)
-{
+void BatchMatmul::backward_kernel_wrapper(BatchMatmulMeta const *meta,
+                                          float const *o_ptr,
+                                          float const *o_grad_ptr,
+                                          float const *a_ptr,
+                                          float *a_grad_ptr,
+                                          float const *b_ptr,
+                                          float *b_grad_ptr,
+                                          float *c_grad_ptr,
+                                          int m,
+                                          int n,
+                                          int k,
+                                          int batch) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -167,8 +229,19 @@ void BatchMatmul::backward_kernel_wrapper(const BatchMatmulMeta* meta,
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  BatchMatmul::backward_kernel(meta, o_ptr, o_grad_ptr, a_ptr, a_grad_ptr,
-                               b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch, stream);
+  BatchMatmul::backward_kernel(meta,
+                               o_ptr,
+                               o_grad_ptr,
+                               a_ptr,
+                               a_grad_ptr,
+                               b_ptr,
+                               b_grad_ptr,
+                               c_grad_ptr,
+                               m,
+                               n,
+                               k,
+                               batch,
+                               stream);
   if (meta->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
@@ -180,8 +253,6 @@ void BatchMatmul::backward_kernel_wrapper(const BatchMatmulMeta* meta,
   }
 }
 
-BatchMatmulMeta::BatchMatmulMeta(FFHandler handler)
-: OpMeta(handler)
-{}
+BatchMatmulMeta::BatchMatmulMeta(FFHandler handler) : OpMeta(handler) {}
 
 }; // namespace FlexFlow

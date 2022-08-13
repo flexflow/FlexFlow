@@ -8,6 +8,7 @@ namespace FlexFlow {
 class OpMeta {
 public:
   OpMeta(FFHandler _handle);
+
 public:
   FFHandler handle;
   bool profiling; // Measure the run time of the task

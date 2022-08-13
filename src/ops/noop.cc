@@ -18,33 +18,32 @@
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
 using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
-using Legion::Predicate;
+using Legion::Context;
 using Legion::coord_t;
-using Legion::Memory;
-using Legion::Machine;
+using Legion::Domain;
+using Legion::FutureMap;
+using Legion::IndexLauncher;
 using Legion::InlineLauncher;
-using Legion::LogicalRegion;
 using Legion::LogicalPartition;
+using Legion::LogicalRegion;
+using Legion::Machine;
+using Legion::Memory;
+using Legion::PhysicalRegion;
+using Legion::Predicate;
+using Legion::Rect;
+using Legion::RegionRequirement;
+using Legion::Runtime;
+using Legion::Task;
+using Legion::TaskArgument;
+using Legion::TaskLauncher;
 
-NoOp::NoOp(FFModel& model,
+NoOp::NoOp(FFModel &model,
            OperatorType _type,
            const ParallelTensor _output,
-           const char* _name)
-: Op(model, _type, _name, 0/*inputs*/, 0/*weights*/, 1/*outputs*/),
-  input_tensor_guid(0)
-{
+           char const *_name)
+    : Op(model, _type, _name, 0 /*inputs*/, 0 /*weights*/, 1 /*outputs*/),
+      input_tensor_guid(0) {
   // NOOP takes one input and has one output
   // both of them are _output
   if (op_type == OP_NOOP) {
@@ -56,14 +55,13 @@ NoOp::NoOp(FFModel& model,
   outputs[0]->owner_idx = 0;
 }
 
-NoOp::NoOp(FFModel& model,
+NoOp::NoOp(FFModel &model,
            OperatorType _type,
            size_t _input_tensor_guid,
            const ParallelTensor _output,
-           const char* _name)
-: Op(model, _type, _name, 0/*inputs*/, 0/*weights*/, 1/*outputs*/),
-  input_tensor_guid(_input_tensor_guid)
-{
+           char const *_name)
+    : Op(model, _type, _name, 0 /*inputs*/, 0 /*weights*/, 1 /*outputs*/),
+      input_tensor_guid(_input_tensor_guid) {
   // NOOP takes one input and has one output
   // both of them are _output
   if (op_type == OP_NOOP) {
@@ -75,24 +73,23 @@ NoOp::NoOp(FFModel& model,
   outputs[0]->owner_idx = 0;
 }
 
-OpMeta* NoOp::init_task(const Task *task,
-                        const std::vector<PhysicalRegion> &regions,
-                        Context ctx, Runtime* runtime)
-{
-  FFHandler handle = *((const FFHandler*) task->local_args);
-  OpMeta* m = new OpMeta(handle);
+OpMeta *NoOp::init_task(Task const *task,
+                        std::vector<PhysicalRegion> const &regions,
+                        Context ctx,
+                        Runtime *runtime) {
+  FFHandler handle = *((FFHandler const *)task->local_args);
+  OpMeta *m = new OpMeta(handle);
   return m;
 }
 
-void NoOp::init(const FFModel& ff)
-{
+void NoOp::init(FFModel const &ff) {
   parallel_is = outputs[0]->parallel_is;
   // For OP_INPUT, initialize tensor to zero
   if (op_type == OP_INPUT) {
     assert(outputs[0]->region != LogicalRegion::NO_REGION);
     if (outputs[0]->part == LogicalPartition::NO_PART)
       return;
-    ConstantInitializer* initializer = NULL;
+    ConstantInitializer *initializer = NULL;
     if (outputs[0]->data_type == DT_FLOAT) {
       initializer = new ConstantInitializer(0.0f);
     } else if (outputs[0]->data_type == DT_INT64) {
@@ -100,26 +97,37 @@ void NoOp::init(const FFModel& ff)
     } else if (outputs[0]->data_type == DT_INT32) {
       initializer = new ConstantInitializer((int)0);
     }
-    Runtime* runtime = ff.config.lg_hlr;
+    Runtime *runtime = ff.config.lg_hlr;
     Context ctx = ff.config.lg_ctx;
     ArgumentMap argmap;
-    IndexLauncher launcher(CONSTANT_INIT_TASK_ID, parallel_is,
-                           TaskArgument(initializer, sizeof(ConstantInitializer)), argmap,
-                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-                           outputs[0]->machine_view.hash());
-    launcher.add_region_requirement(
-        RegionRequirement(outputs[0]->part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+    IndexLauncher launcher(
+        CONSTANT_INIT_TASK_ID,
+        parallel_is,
+        TaskArgument(initializer, sizeof(ConstantInitializer)),
+        argmap,
+        Predicate::TRUE_PRED,
+        false /*must*/,
+        0 /*mapper_id*/,
+        outputs[0]->machine_view.hash());
+    launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      outputs[0]->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   } else if (op_type == OP_WEIGHT) {
     ArgumentMap argmap;
     Context ctx = ff.config.lg_ctx;
-    Runtime* runtime = ff.config.lg_hlr;
+    Runtime *runtime = ff.config.lg_hlr;
     set_argumentmap_for_init(ff, argmap);
-    IndexLauncher launcher(NOOP_INIT_TASK_ID, parallel_is,
-                           TaskArgument(NULL, 0), argmap,
-                           Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+    IndexLauncher launcher(NOOP_INIT_TASK_ID,
+                           parallel_is,
+                           TaskArgument(NULL, 0),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false /*must*/,
+                           0 /*mapper_id*/,
                            outputs[0]->machine_view.hash());
     FutureMap fm = runtime->execute_index_space(ctx, launcher);
     fm.wait_all_results();
@@ -127,16 +135,13 @@ void NoOp::init(const FFModel& ff)
   }
 }
 
-void NoOp::forward(const FFModel& ff)
-{}
+void NoOp::forward(FFModel const &ff) {}
 
-void NoOp::backward(const FFModel& ff)
-{}
+void NoOp::backward(FFModel const &ff) {}
 
-bool NoOp::measure_operator_cost(
-    Simulator* sim,
-    const MachineView& mv,
-    CostMetrics& cost_metrics) const {
+bool NoOp::measure_operator_cost(Simulator *sim,
+                                 MachineView const &mv,
+                                 CostMetrics &cost_metrics) const {
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
   cost_metrics.memory_requirement = 0;
@@ -154,11 +159,10 @@ size_t NoOp::get_params_hash() const {
 }
 
 using PCG::Node;
-Node FFModel::get_or_create_noop_node(const ParallelTensor input)
-{
+Node FFModel::get_or_create_noop_node(const ParallelTensor input) {
   size_t hash = input->get_owner_independent_hash();
-  NoOp* noop = NULL;
-  const auto& it = cached_noop_ops.find(hash);
+  NoOp *noop = NULL;
+  auto const &it = cached_noop_ops.find(hash);
   if (it != cached_noop_ops.end()) {
     noop = it->second;
   } else {
@@ -166,16 +170,16 @@ Node FFModel::get_or_create_noop_node(const ParallelTensor input)
     cached_noop_ops[hash] = noop;
   }
   Node ret;
-  ret.guid = node_global_guid ++;
+  ret.guid = node_global_guid++;
   ret.ptr = noop;
   return ret;
 }
 
-Node FFModel::get_or_create_input_node(const ParallelTensorShape& output_shape)
-{
-  size_t hash = std::hash<ParallelTensorShape>{}(output_shape); 
-  NoOp* input = NULL;
-  const auto& it = cached_input_ops.find(hash);
+Node FFModel::get_or_create_input_node(
+    ParallelTensorShape const &output_shape) {
+  size_t hash = std::hash<ParallelTensorShape>{}(output_shape);
+  NoOp *input = NULL;
+  auto const &it = cached_input_ops.find(hash);
   if (it != cached_input_ops.end()) {
     input = it->second;
   } else {
@@ -194,16 +198,16 @@ Node FFModel::get_or_create_input_node(const ParallelTensorShape& output_shape)
         tensor->dims[i].parallel_idx = -1;
       }
     }
-    assert (tensor->check_valid());
+    assert(tensor->check_valid());
     input = new NoOp(*this, OP_INPUT, tensor, NULL);
   }
 
   return this->new_node(input);
 }
 
-tl::optional<RecordFormatter> NoOp::as_dot() const { 
+tl::optional<RecordFormatter> NoOp::as_dot() const {
   RecordFormatter rf;
-  { 
+  {
     std::ostringstream oss;
     oss << "shape(" << this->outputs[0]->get_shape() << ")";
     rf << oss.str();

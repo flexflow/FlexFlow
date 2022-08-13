@@ -20,21 +20,21 @@ namespace FlexFlow {
 
 // declare Legion names
 using Legion::Context;
+using Legion::PhysicalRegion;
 using Legion::Runtime;
 using Legion::Task;
-using Legion::PhysicalRegion;
 
 template <typename T>
-void Cache::cache_forward(const Task *task,
-                          const std::vector<PhysicalRegion>& regions,
-                          Context ctx, Runtime* runtime)
-{
-  Cache* c = ((Arg*)(task->args))->cache;
-  const CacheMeta* m = *((CacheMeta**)task->local_args);
-  int batch_ctr = ((Arg*)(task->args))->batch_ctr;
-  T** batch_ptrs = (T**)c->batch_ptrs;
-  T* output_ptr = helperGetTensorPointerWO<T>(regions[0], task->regions[0],
-    FID_DATA, ctx, runtime);
+void Cache::cache_forward(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx,
+                          Runtime *runtime) {
+  Cache *c = ((Arg *)(task->args))->cache;
+  CacheMeta const *m = *((CacheMeta **)task->local_args);
+  int batch_ctr = ((Arg *)(task->args))->batch_ctr;
+  T **batch_ptrs = (T **)c->batch_ptrs;
+  T *output_ptr = helperGetTensorPointerWO<T>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
 
   // TODO: Check why cublas/cudnn stream is needed here
   cudaStream_t stream;
@@ -42,37 +42,60 @@ void Cache::cache_forward(const Task *task,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
-  cudaMemcpy(output_ptr, batch_ptrs[batch_ctr], c->inputs[0]->get_volume()*sizeof(T), cudaMemcpyHostToDevice);
+  cudaMemcpy(output_ptr,
+             batch_ptrs[batch_ctr],
+             c->inputs[0]->get_volume() * sizeof(T),
+             cudaMemcpyHostToDevice);
 }
 
-
 template <typename T>
-float Cache::cache_update(const Task *task,
-                          const std::vector<PhysicalRegion>& regions,
-                          Context ctx, Runtime* runtime)
-{
-  Cache* c = ((Arg*)(task->args))->cache;
-  int batch_ctr = ((Arg*)(task->args))->batch_ctr;
-  CacheMeta* m = *((CacheMeta**)task->local_args);
+float Cache::cache_update(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx,
+                          Runtime *runtime) {
+  Cache *c = ((Arg *)(task->args))->cache;
+  int batch_ctr = ((Arg *)(task->args))->batch_ctr;
+  CacheMeta *m = *((CacheMeta **)task->local_args);
 
-  const T* input_ptr = helperGetTensorPointerRW<T>(regions[0], task->regions[0],
-    FID_DATA, ctx, runtime);
-  T* host_input = (T*) c->batch_cmp;
-  cudaMemcpy(host_input, input_ptr, c->inputs[0]->get_volume()*sizeof(T), cudaMemcpyDeviceToHost);
-  float cache_score = c->score_f(&m->cache_score, host_input,
-    c->batch_ptrs[batch_ctr], c->inputs[0]->get_volume());
-  memcpy(c->batch_ptrs[batch_ctr], host_input, c->inputs[0]->get_volume()*sizeof(T));
+  const T *input_ptr = helperGetTensorPointerRW<T>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  T *host_input = (T *)c->batch_cmp;
+  cudaMemcpy(host_input,
+             input_ptr,
+             c->inputs[0]->get_volume() * sizeof(T),
+             cudaMemcpyDeviceToHost);
+  float cache_score = c->score_f(&m->cache_score,
+                                 host_input,
+                                 c->batch_ptrs[batch_ctr],
+                                 c->inputs[0]->get_volume());
+  memcpy(c->batch_ptrs[batch_ctr],
+         host_input,
+         c->inputs[0]->get_volume() * sizeof(T));
   return cache_score;
 }
 
-CacheMeta::CacheMeta(FFHandler handler)
-: OpMeta(handler)
-{}
+CacheMeta::CacheMeta(FFHandler handler) : OpMeta(handler) {}
 
-template void Cache::cache_forward<float>(const Task *task, const std::vector<PhysicalRegion>& regions, Context ctx, Runtime* runtime);
-template void Cache::cache_forward<int32_t>(const Task *task, const std::vector<PhysicalRegion>& regions, Context ctx, Runtime* runtime);
+template void
+    Cache::cache_forward<float>(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
+                                Context ctx,
+                                Runtime *runtime);
+template void
+    Cache::cache_forward<int32_t>(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
+                                  Context ctx,
+                                  Runtime *runtime);
 
-template float Cache::cache_update<float>(const Task *task, const std::vector<PhysicalRegion>& regions, Context ctx, Runtime* runtime);
-template float Cache::cache_update<int32_t>(const Task *task, const std::vector<PhysicalRegion>& regions, Context ctx, Runtime* runtime);
+template float
+    Cache::cache_update<float>(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime);
+template float
+    Cache::cache_update<int32_t>(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
+                                 Context ctx,
+                                 Runtime *runtime);
 
 }; // namespace FlexFlow

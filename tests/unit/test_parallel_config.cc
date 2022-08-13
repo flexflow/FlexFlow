@@ -1,6 +1,6 @@
-#include "gtest/gtest.h"
 #include "flexflow/config.h"
 #include "flexflow/model.h"
+#include "gtest/gtest.h"
 
 using namespace FlexFlow;
 

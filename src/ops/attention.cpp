@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include <hip/hip_runtime.h>
 #include "flexflow/ops/attention.h"
 #include "flexflow/utils/hip_helper.h"
+#include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
@@ -24,14 +24,13 @@ using Legion::coord_t;
 using Legion::Memory;
 
 /*static*/
-void MultiHeadAttention::forward_kernel(const MultiHeadAttentionMeta* m,
-                                        const float* query_ptr,
-                                        const float* key_ptr,
-                                        const float* value_ptr,
-                                        const float* weight_ptr,
-                                        float* output_ptr,
-                                        hipStream_t stream)
-{
+void MultiHeadAttention::forward_kernel(MultiHeadAttentionMeta const *m,
+                                        float const *query_ptr,
+                                        float const *key_ptr,
+                                        float const *value_ptr,
+                                        float const *weight_ptr,
+                                        float *output_ptr,
+                                        hipStream_t stream) {
 #if 0
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -46,25 +45,23 @@ void MultiHeadAttention::forward_kernel(const MultiHeadAttentionMeta* m,
 }
 
 /*static*/
-void MultiHeadAttention::forward_kernel_wrapper(const MultiHeadAttentionMeta* m,
-                                                const float* query_ptr,
-                                                const float* key_ptr,
-                                                const float* value_ptr,
-                                                const float* weight_ptr,
-                                                float* output_ptr)
-{  
+void MultiHeadAttention::forward_kernel_wrapper(MultiHeadAttentionMeta const *m,
+                                                float const *query_ptr,
+                                                float const *key_ptr,
+                                                float const *value_ptr,
+                                                float const *weight_ptr,
+                                                float *output_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-      
+
   hipEvent_t t_start, t_end;
   if (m->profiling) {
     hipEventCreate(&t_start);
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  MultiHeadAttention::forward_kernel(m,
-                                     query_ptr, key_ptr, value_ptr,
-                                     weight_ptr, output_ptr, stream);
+  MultiHeadAttention::forward_kernel(
+      m, query_ptr, key_ptr, value_ptr, weight_ptr, output_ptr, stream);
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
@@ -73,24 +70,24 @@ void MultiHeadAttention::forward_kernel_wrapper(const MultiHeadAttentionMeta* m,
     hipEventDestroy(t_start);
     hipEventDestroy(t_end);
     printf("MultiHeadAttention forward time = %.2fms\n", elapsed);
-    //print_tensor<3, float>(acc_query.ptr, acc_query.rect, "[Attention:forward:query]");
-    //print_tensor<3, float>(acc_output.ptr, acc_output.rect, "[Attention:forward:output]");
+    // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
+    // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
+    // acc_output.rect, "[Attention:forward:output]");
   }
 }
 
 /*static*/
-void MultiHeadAttention::backward_kernel(const MultiHeadAttentionMeta* m,
-                                         const float* query_ptr,
-                                         float* query_grad_ptr,
-                                         const float* key_ptr,
-                                         float* key_grad_ptr,
-                                         const float* value_ptr,
-                                         float* value_grad_ptr,
-                                         const float* weight_ptr,
-                                         float* weight_grad_ptr,
-                                         const float* output_grad_ptr,
-                                         hipStream_t stream)
-{
+void MultiHeadAttention::backward_kernel(MultiHeadAttentionMeta const *m,
+                                         float const *query_ptr,
+                                         float *query_grad_ptr,
+                                         float const *key_ptr,
+                                         float *key_grad_ptr,
+                                         float const *value_ptr,
+                                         float *value_grad_ptr,
+                                         float const *weight_ptr,
+                                         float *weight_grad_ptr,
+                                         float const *output_grad_ptr,
+                                         hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
 #if 0
@@ -111,20 +108,20 @@ void MultiHeadAttention::backward_kernel(const MultiHeadAttentionMeta* m,
 }
 
 /*static*/
-void MultiHeadAttention::backward_kernel_wrapper(const MultiHeadAttentionMeta* m,
-                                                 const float* query_ptr,
-                                                 float* query_grad_ptr,
-                                                 const float* key_ptr,
-                                                 float* key_grad_ptr,
-                                                 const float* value_ptr,
-                                                 float* value_grad_ptr,
-                                                 const float* weight_ptr,
-                                                 float* weight_grad_ptr,
-                                                 const float* output_grad_ptr)
-{
+void MultiHeadAttention::backward_kernel_wrapper(
+    MultiHeadAttentionMeta const *m,
+    float const *query_ptr,
+    float *query_grad_ptr,
+    float const *key_ptr,
+    float *key_grad_ptr,
+    float const *value_ptr,
+    float *value_grad_ptr,
+    float const *weight_ptr,
+    float *weight_grad_ptr,
+    float const *output_grad_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  
+
   hipEvent_t t_start, t_end;
   if (m->profiling) {
     hipEventCreate(&t_start);
@@ -133,10 +130,16 @@ void MultiHeadAttention::backward_kernel_wrapper(const MultiHeadAttentionMeta* m
   }
 
   MultiHeadAttention::backward_kernel(m,
-                                      query_ptr, query_grad_ptr,
-                                      key_ptr, key_grad_ptr, value_ptr, value_grad_ptr,
-                                      weight_ptr, weight_grad_ptr,
-                                      output_grad_ptr, stream);
+                                      query_ptr,
+                                      query_grad_ptr,
+                                      key_ptr,
+                                      key_grad_ptr,
+                                      value_ptr,
+                                      value_grad_ptr,
+                                      weight_ptr,
+                                      weight_grad_ptr,
+                                      output_grad_ptr,
+                                      stream);
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
@@ -149,12 +152,11 @@ void MultiHeadAttention::backward_kernel_wrapper(const MultiHeadAttentionMeta* m
 }
 
 MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
-                                               const MultiHeadAttention* attn,
+                                               MultiHeadAttention const *attn,
                                                Memory gpu_mem,
                                                int num_samples,
                                                int num_heads)
-: OpMeta(handler)
-{
+    : OpMeta(handler) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(miopenSetStream(handler.dnn, stream));
@@ -272,8 +274,7 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
 #endif
 }
 
-MultiHeadAttentionMeta::~MultiHeadAttentionMeta(void)
-{
+MultiHeadAttentionMeta::~MultiHeadAttentionMeta(void) {
 #if 0
   reserveInst.destroy();
   free(loWinIdx);

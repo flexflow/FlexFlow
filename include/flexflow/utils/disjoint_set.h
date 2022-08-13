@@ -1,8 +1,10 @@
 #ifndef _FLEXFLOW_DISJOINT_SET_H
 #define _FLEXFLOW_DISJOINT_SET_H
 
-#include <unordered_map>
+#include <cassert>
+#include <map>
 #include <set>
+#include <unordered_map>
 
 template <typename T>
 class m_disjoint_set {
@@ -25,6 +27,7 @@ public:
       return this->find(parent);
     }
   }
+
 private:
   void add_node_if_missing(T const *t) {
     if (mapping.find(t) == mapping.end()) {
@@ -53,10 +56,11 @@ public:
     }
     return mapping;
   }
+
 private:
   T const *get_node(T const &t) {
     auto it = this->nodes.find(t);
-    assert (it != this->nodes.end());
+    assert(it != this->nodes.end());
     return &*it;
   }
 

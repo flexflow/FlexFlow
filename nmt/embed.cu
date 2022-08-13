@@ -13,42 +13,48 @@
  * limitations under the License.
  */
 
+#include "../cnn_helper.h"
 #include "rnn.h"
 #include "rnn_mapper.h"
-#include "../cnn_helper.h"
 
 struct EmbedInitParams {
   DnnHandle handle;
   int batchSize, outputSize, vocabSize;
 };
 
-Tensor RnnModel::add_embed_node(Tensor x, int vocab_size, int output_size,
-                                ParallelConfig pc, SharedVariable params)
-{
+Tensor RnnModel::add_embed_node(Tensor x,
+                                int vocab_size,
+                                int output_size,
+                                ParallelConfig pc,
+                                SharedVariable params) {
   assert(x.numDim == 2);
   assert(x.adim[1] == LSTM_PER_NODE_LENGTH);
   assert(x.pdim[1] == LSTM_PER_NODE_LENGTH);
-  Embed* node = new Embed(config, x, vocab_size, output_size, pc, params);
+  Embed *node = new Embed(config, x, vocab_size, output_size, pc, params);
   layers.push_back(node);
   return node->outputs[0];
 }
 
-Embed::Embed(RnnConfig config, Tensor x, int _vocab_size, int _output_size,
-             ParallelConfig pc, SharedVariable _params)
-: RnnOp(x, pc, _params), batchSize(x.adim[0]), vocabSize(_vocab_size),
-  outputSize(_output_size)
-{
+Embed::Embed(RnnConfig config,
+             Tensor x,
+             int _vocab_size,
+             int _output_size,
+             ParallelConfig pc,
+             SharedVariable _params)
+    : RnnOp(x, pc, _params), batchSize(x.adim[0]), vocabSize(_vocab_size),
+      outputSize(_output_size) {
   Context ctx = config.lg_ctx;
-  HighLevelRuntime* runtime = config.lg_hlr;
+  HighLevelRuntime *runtime = config.lg_hlr;
   assert(pc.nDims == 1);
   {
-    Rect<1> rect(Point<1>(0), Point<1>(pc.dim[0]-1));
+    Rect<1> rect(Point<1>(0), Point<1>(pc.dim[0] - 1));
     part_rect = rect;
   }
   IndexSpaceT<1> part_is = runtime->create_index_space(ctx, part_rect);
   FieldSpace fs = config.field_space;
-  Rect<3, coord_t> y_rect(Point<3>(0, 0, 0),
-                          Point<3>(outputSize-1, batchSize-1, LSTM_PER_NODE_LENGTH-1));
+  Rect<3, coord_t> y_rect(
+      Point<3>(0, 0, 0),
+      Point<3>(outputSize - 1, batchSize - 1, LSTM_PER_NODE_LENGTH - 1));
   IndexSpaceT<3> y_is = runtime->create_index_space(ctx, y_rect);
   LogicalRegion y_lr = runtime->create_logical_region(ctx, y_is, fs);
   LogicalRegion y_grad_lr = runtime->create_logical_region(ctx, y_is, fs);
@@ -56,16 +62,20 @@ Embed::Embed(RnnConfig config, Tensor x, int _vocab_size, int _output_size,
   assert(batchSize % num_par_n == 0);
   int extent_n = batchSize / num_par_n;
   int extent_c = outputSize;
-  Rect<3, coord_t> extent(Point<3>(0, 0, 0),
-                          Point<3>(extent_c-1, extent_n-1, LSTM_PER_NODE_LENGTH-1));
+  Rect<3, coord_t> extent(
+      Point<3>(0, 0, 0),
+      Point<3>(extent_c - 1, extent_n - 1, LSTM_PER_NODE_LENGTH - 1));
   Transform<3, 1, coord_t> trans;
-  trans[0][0] = 0; trans[1][0] = extent_n; trans[2][0] = 0;
-  IndexPartition y_ip =
-    runtime->create_partition_by_restriction(ctx, y_is, part_is, trans, extent);
+  trans[0][0] = 0;
+  trans[1][0] = extent_n;
+  trans[2][0] = 0;
+  IndexPartition y_ip = runtime->create_partition_by_restriction(
+      ctx, y_is, part_is, trans, extent);
   assert(runtime->is_index_partition_disjoint(ctx, y_ip));
   assert(runtime->is_index_partition_complete(ctx, y_ip));
   LogicalPartition y_lp = runtime->get_logical_partition(ctx, y_lr, y_ip);
-  LogicalPartition y_grad_lp = runtime->get_logical_partition(ctx, y_grad_lr, y_ip);
+  LogicalPartition y_grad_lp =
+      runtime->get_logical_partition(ctx, y_grad_lr, y_ip);
   outputs[0].region = y_lr;
   outputs[0].region_grad = y_grad_lr;
   outputs[0].partition = y_lp;
@@ -84,34 +94,34 @@ Embed::Embed(RnnConfig config, Tensor x, int _vocab_size, int _output_size,
   regions[1] (I): w
   regions[2] (O): y
  */
- OpMeta* Embed::init_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
-                          Context ctx, Runtime *runtime)
-{
+OpMeta *Embed::init_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const EmbedInitParams* embed = (EmbedInitParams*) task->args;
-  Rect<2> rect_x =
-    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  Rect<1> rect_w =
-    runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
-  Rect<3> rect_y =
-    runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
+  EmbedInitParams const *embed = (EmbedInitParams *)task->args;
+  Rect<2> rect_x = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  Rect<1> rect_w = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  Rect<3> rect_y = runtime->get_index_space_domain(
+      ctx, task->regions[2].region.get_index_space());
   assert(rect_x.hi[0] - rect_x.lo[0] + 1 == embed->batchSize);
   assert(rect_x.hi[1] - rect_x.lo[1] + 1 == LSTM_PER_NODE_LENGTH);
-  assert(rect_w.hi[0] - rect_w.lo[0] + 1 == embed->vocabSize * embed->outputSize);
+  assert(rect_w.hi[0] - rect_w.lo[0] + 1 ==
+         embed->vocabSize * embed->outputSize);
   assert(rect_y.hi[0] - rect_y.lo[0] + 1 == embed->outputSize);
   assert(rect_y.hi[1] - rect_y.lo[1] + 1 == embed->batchSize);
   assert(rect_y.hi[2] - rect_y.lo[2] + 1 == LSTM_PER_NODE_LENGTH);
-  EmbedMeta* m = new EmbedMeta(embed->handle);
+  EmbedMeta *m = new EmbedMeta(embed->handle);
   m->profiling_runtime = false;
   return m;
 }
 
-void Embed::init(const RnnModel& model)
-{
+void Embed::init(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
+  Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
   for (PointInRectIterator<1> it(part_rect); it(); it++, idx++) {
     EmbedInitParams initParams;
@@ -123,12 +133,13 @@ void Embed::init(const RnnModel& model)
     assert(inputs[0].pdim[0] == outputs[0].pdim[1]);
     TaskLauncher launcher(EMBED_INIT_TASK_ID,
                           TaskArgument(&initParams, sizeof(initParams)),
-                          Predicate::TRUE_PRED, 0/*MapperID*/,
+                          Predicate::TRUE_PRED,
+                          0 /*MapperID*/,
                           RnnMapper::assign_to_gpu(paraConfig.gpu[idx]));
     DomainPoint dp(*it);
     {
       LogicalRegion x =
-        runtime->get_logical_subregion_by_color(inputs[0].partition, dp);
+          runtime->get_logical_subregion_by_color(inputs[0].partition, dp);
       launcher.add_region_requirement(
           RegionRequirement(x, READ_ONLY, EXCLUSIVE, inputs[0].region));
       launcher.add_field(0, FID_DATA);
@@ -138,25 +149,23 @@ void Embed::init(const RnnModel& model)
     launcher.add_field(1, FID_DATA);
     {
       LogicalRegion y =
-        runtime->get_logical_subregion_by_color(outputs[0].partition, dp);
+          runtime->get_logical_subregion_by_color(outputs[0].partition, dp);
       launcher.add_region_requirement(
           RegionRequirement(y, WRITE_ONLY, EXCLUSIVE, outputs[0].region));
       launcher.add_field(2, FID_DATA);
     }
     Future f = runtime->execute_task(ctx, launcher);
-    meta[idx] = f.get_result<OpMeta*>();
+    meta[idx] = f.get_result<OpMeta *>();
   }
 }
 
-__global__
-void embedForward(const int* x_ptr,
-                  const float* embed,
-                  float* y_ptr,
-                  coord_t numElements,
-                  int shift, int outputSize)
-{
-  CUDA_KERNEL_LOOP(i, numElements)
-  {
+__global__ void embedForward(int const *x_ptr,
+                             float const *embed,
+                             float *y_ptr,
+                             coord_t numElements,
+                             int shift,
+                             int outputSize) {
+  CUDA_KERNEL_LOOP(i, numElements) {
     int idx = i >> shift;
     int off = i & (outputSize - 1);
     int wordIdx = x_ptr[idx];
@@ -164,15 +173,13 @@ void embedForward(const int* x_ptr,
   }
 }
 
-__global__
-void embedBackward(const int* x_ptr,
-                   float* embed,
-                   const float* y_ptr,
-                   coord_t numElements,
-                   int shift, int outputSize)
-{
-  CUDA_KERNEL_LOOP(i, numElements)
-  {
+__global__ void embedBackward(int const *x_ptr,
+                              float *embed,
+                              float const *y_ptr,
+                              coord_t numElements,
+                              int shift,
+                              int outputSize) {
+  CUDA_KERNEL_LOOP(i, numElements) {
     int idx = i >> shift;
     int off = i & (outputSize - 1);
     int wordIdx = x_ptr[idx];
@@ -185,30 +192,30 @@ void embedBackward(const int* x_ptr,
   regions[1](I): w
   regions[2](O): y
 */
-void Embed::forward_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
-                         Context ctx, Runtime *runtime)
-{
+void Embed::forward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
 #ifndef DISABLE_COMPUTATION
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const EmbedMeta* m = *((EmbedMeta**) task->args);
-  const AccessorRO<int, 2> acc_x(regions[0], FID_DATA);
-  const AccessorRO<float, 1> acc_w(regions[1], FID_DATA);
-  const AccessorWO<float, 3> acc_y(regions[2], FID_DATA);
-  Rect<2> rect_x =
-    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  Rect<1> rect_w =
-    runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
-  Rect<3> rect_y =
-    runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
+  EmbedMeta const *m = *((EmbedMeta **)task->args);
+  AccessorRO<int, 2> const acc_x(regions[0], FID_DATA);
+  AccessorRO<float, 1> const acc_w(regions[1], FID_DATA);
+  AccessorWO<float, 3> const acc_y(regions[2], FID_DATA);
+  Rect<2> rect_x = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  Rect<1> rect_w = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  Rect<3> rect_y = runtime->get_index_space_domain(
+      ctx, task->regions[2].region.get_index_space());
   assert(acc_x.accessor.is_dense_arbitrary(rect_x));
   assert(acc_w.accessor.is_dense_arbitrary(rect_w));
   assert(acc_y.accessor.is_dense_arbitrary(rect_y));
   int batch_size = rect_y.hi[1] - rect_y.lo[1] + 1;
   int output_size = rect_y.hi[0] - rect_y.lo[0] + 1;
-  const int *x_ptr = acc_x.ptr(rect_x.lo);
-  const float *w_ptr = acc_w.ptr(rect_w.lo);
+  int const *x_ptr = acc_x.ptr(rect_x.lo);
+  float const *w_ptr = acc_w.ptr(rect_w.lo);
   float *y_ptr = acc_y.ptr(rect_y.lo);
   cudaEvent_t t_start, t_end;
   if (m->profiling_runtime) {
@@ -216,7 +223,8 @@ void Embed::forward_task(const Task *task,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
-  int shift = 0; int size = 1;
+  int shift = 0;
+  int size = 1;
   while (size < output_size) {
     size = size * 2;
     shift = shift + 1;
@@ -236,20 +244,21 @@ void Embed::forward_task(const Task *task,
 #endif
 }
 
-void Embed::forward(const RnnModel &model)
-{
+void Embed::forward(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
+  Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
   for (PointInRectIterator<1> it(part_rect); it(); it++, idx++) {
-    OpMeta* mp = meta[idx];
-    TaskLauncher launcher(EMBED_FWD_TASK_ID, TaskArgument(&mp, sizeof(OpMeta*)),
-                          Predicate::TRUE_PRED, 0/*MapperID*/,
+    OpMeta *mp = meta[idx];
+    TaskLauncher launcher(EMBED_FWD_TASK_ID,
+                          TaskArgument(&mp, sizeof(OpMeta *)),
+                          Predicate::TRUE_PRED,
+                          0 /*MapperID*/,
                           RnnMapper::assign_to_gpu(paraConfig.gpu[idx]));
     DomainPoint dp(*it);
     {
       LogicalRegion x =
-        runtime->get_logical_subregion_by_color(inputs[0].partition, dp);
+          runtime->get_logical_subregion_by_color(inputs[0].partition, dp);
       launcher.add_region_requirement(
           RegionRequirement(x, READ_ONLY, EXCLUSIVE, inputs[0].region));
       launcher.add_field(0, FID_DATA);
@@ -259,7 +268,7 @@ void Embed::forward(const RnnModel &model)
     launcher.add_field(1, FID_DATA);
     {
       LogicalRegion y =
-        runtime->get_logical_subregion_by_color(outputs[0].partition, dp);
+          runtime->get_logical_subregion_by_color(outputs[0].partition, dp);
       launcher.add_region_requirement(
           RegionRequirement(y, WRITE_ONLY, EXCLUSIVE, outputs[0].region));
       launcher.add_field(2, FID_DATA);
@@ -273,38 +282,39 @@ void Embed::forward(const RnnModel &model)
   regions[1](I/O): w_grad
   regions[2](I): y_grad
 */
-void Embed::backward_task(const Task *task,
-                          const std::vector<PhysicalRegion> &regions,
-                          Context ctx, Runtime *runtime)
-{
+void Embed::backward_task(Task const *task,
+                          std::vector<PhysicalRegion> const &regions,
+                          Context ctx,
+                          Runtime *runtime) {
 #ifndef DISABLE_COMPUTATION
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const EmbedMeta* m = *((EmbedMeta**) task->args);
-  const AccessorRO<int, 2> acc_x(regions[0], FID_DATA);
-  const AccessorRW<float, 1> acc_w(regions[1], FID_DATA);
-  const AccessorRO<float, 3> acc_y(regions[2], FID_DATA);
-  Rect<2> rect_x =
-    runtime->get_index_space_domain(ctx, task->regions[0].region.get_index_space());
-  Rect<1> rect_w =
-    runtime->get_index_space_domain(ctx, task->regions[1].region.get_index_space());
-  Rect<3> rect_y =
-    runtime->get_index_space_domain(ctx, task->regions[2].region.get_index_space());
+  EmbedMeta const *m = *((EmbedMeta **)task->args);
+  AccessorRO<int, 2> const acc_x(regions[0], FID_DATA);
+  AccessorRW<float, 1> const acc_w(regions[1], FID_DATA);
+  AccessorRO<float, 3> const acc_y(regions[2], FID_DATA);
+  Rect<2> rect_x = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  Rect<1> rect_w = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  Rect<3> rect_y = runtime->get_index_space_domain(
+      ctx, task->regions[2].region.get_index_space());
   assert(acc_x.accessor.is_dense_arbitrary(rect_x));
   assert(acc_w.accessor.is_dense_arbitrary(rect_w));
   assert(acc_y.accessor.is_dense_arbitrary(rect_y));
   int batch_size = rect_y.hi[1] - rect_y.lo[1] + 1;
   int output_size = rect_y.hi[0] - rect_y.lo[0] + 1;
-  const int *x_ptr = acc_x.ptr(rect_x.lo);
+  int const *x_ptr = acc_x.ptr(rect_x.lo);
   float *w_ptr = acc_w.ptr(rect_w.lo);
-  const float *y_ptr = acc_y.ptr(rect_y.lo);
+  float const *y_ptr = acc_y.ptr(rect_y.lo);
   cudaEvent_t t_start, t_end;
   if (m->profiling_runtime) {
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start);
   }
-  int shift = 0; int size = 1;
+  int shift = 0;
+  int size = 1;
   while (size < output_size) {
     size = size * 2;
     shift = shift + 1;
@@ -324,39 +334,40 @@ void Embed::backward_task(const Task *task,
 #endif
 }
 
-void Embed::backward(const RnnModel &model)
-{
+void Embed::backward(RnnModel const &model) {
   Context ctx = model.config.lg_ctx;
-  Runtime* runtime = model.config.lg_hlr;
+  Runtime *runtime = model.config.lg_hlr;
   int idx = 0;
   for (PointInRectIterator<1> it(part_rect); it(); it++, idx++) {
-    OpMeta* mp = meta[idx];
-    TaskLauncher launcher(EMBED_BWD_TASK_ID, TaskArgument(&mp, sizeof(OpMeta*)),
-                          Predicate::TRUE_PRED, 0/*MapperID*/,
+    OpMeta *mp = meta[idx];
+    TaskLauncher launcher(EMBED_BWD_TASK_ID,
+                          TaskArgument(&mp, sizeof(OpMeta *)),
+                          Predicate::TRUE_PRED,
+                          0 /*MapperID*/,
                           RnnMapper::assign_to_gpu(paraConfig.gpu[idx]));
     DomainPoint dp(*it);
     {
       LogicalRegion x =
-        runtime->get_logical_subregion_by_color(inputs[0].partition, dp);
+          runtime->get_logical_subregion_by_color(inputs[0].partition, dp);
       launcher.add_region_requirement(
           RegionRequirement(x, READ_ONLY, EXCLUSIVE, inputs[0].region));
       launcher.add_field(0, FID_DATA);
     }
     launcher.add_region_requirement(
         RegionRequirement(params.gradients[paraConfig.gpu[idx]],
-                          READ_WRITE, EXCLUSIVE,
+                          READ_WRITE,
+                          EXCLUSIVE,
                           params.gradients[paraConfig.gpu[idx]]));
     launcher.add_field(1, FID_DATA);
     {
-      LogicalRegion y_grad =
-        runtime->get_logical_subregion_by_color(outputs[0].partition_grad, dp);
-      launcher.add_region_requirement(
-          RegionRequirement(y_grad, READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
+      LogicalRegion y_grad = runtime->get_logical_subregion_by_color(
+          outputs[0].partition_grad, dp);
+      launcher.add_region_requirement(RegionRequirement(
+          y_grad, READ_ONLY, EXCLUSIVE, outputs[0].region_grad));
       launcher.add_field(2, FID_DATA);
     }
     runtime->execute_task(ctx, launcher);
   }
 }
 
-void Embed::update(const RnnModel &model)
-{}
+void Embed::update(RnnModel const &model) {}

@@ -13,17 +13,14 @@
  * limitations under the License.
  */
 
-#include <hip/hip_runtime.h>
 #include "flexflow/ops/linear.h"
 #include "flexflow/utils/hip_helper.h"
+#include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
 /*static*/
-void Linear::init_kernel(LinearMeta *m,
-                         int batch_size,
-                         int channel)
-{
+void Linear::init_kernel(LinearMeta *m, int batch_size, int channel) {
   if (use_activation(m->activation)) {
     miopenActivationMode_t mode;
     switch (m->activation) {
@@ -37,62 +34,101 @@ void Linear::init_kernel(LinearMeta *m,
         // Unsupported activation mode
         assert(false);
     }
-    checkCUDNN(miopenSetActivationDescriptor(m->actiDesc, mode,
-                                            0.0, 0.0, 0.0));
+    checkCUDNN(miopenSetActivationDescriptor(m->actiDesc, mode, 0.0, 0.0, 0.0));
     checkCUDNN(miopenSet4dTensorDescriptor(m->outputTensor,
-                                          ff_to_cudnn_datatype(m->output_type),
-                                          batch_size, channel, 1, 1));
+                                           ff_to_cudnn_datatype(m->output_type),
+                                           batch_size,
+                                           channel,
+                                           1,
+                                           1));
   }
 }
 
 /*static*/
-void Linear::forward_kernel(const LinearMeta* m,
-                            const void* input_ptr,
-                            void* output_ptr,
-                            const void* weight_ptr,
-                            const void* bias_ptr,
-                            int in_dim, int out_dim, int batch_size,
-                            hipStream_t stream)
-{
+void Linear::forward_kernel(LinearMeta const *m,
+                            void const *input_ptr,
+                            void *output_ptr,
+                            void const *weight_ptr,
+                            void const *bias_ptr,
+                            int in_dim,
+                            int out_dim,
+                            int batch_size,
+                            hipStream_t stream) {
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
   hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type);
   hipblasDatatype_t weight_type = ff_to_cuda_datatype(m->weight_type);
   hipblasDatatype_t output_type = ff_to_cuda_datatype(m->output_type);
-#if CUDA_VERSION >= 11000 
+#if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
 #else
   hipblasDatatype_t compute_type = HIPBLAS_R_32F;
 #endif
-  checkCUDA(hipblasGemmEx(m->handle.blas, HIPBLAS_OP_T, HIPBLAS_OP_N,
-                         out_dim, batch_size, in_dim,
-                         &alpha, weight_ptr, weight_type, in_dim,
-                         input_ptr, input_type, in_dim, &beta,
-                         output_ptr, output_type, out_dim,
-                         compute_type,
-                         HIPBLAS_GEMM_DEFAULT));
-  // use_bias = True 
-  if (bias_ptr != NULL) { 
-    checkCUDA(hipblasGemmEx(m->handle.blas, HIPBLAS_OP_T, HIPBLAS_OP_N,
-                           out_dim, batch_size, 1,
-                           &alpha, bias_ptr, weight_type, 1,
-                           m->one_ptr, HIPBLAS_R_32F, 1, &alpha,
-                           output_ptr, output_type, out_dim,
-                           compute_type,
-                           HIPBLAS_GEMM_DEFAULT));
+  checkCUDA(hipblasGemmEx(m->handle.blas,
+                          HIPBLAS_OP_T,
+                          HIPBLAS_OP_N,
+                          out_dim,
+                          batch_size,
+                          in_dim,
+                          &alpha,
+                          weight_ptr,
+                          weight_type,
+                          in_dim,
+                          input_ptr,
+                          input_type,
+                          in_dim,
+                          &beta,
+                          output_ptr,
+                          output_type,
+                          out_dim,
+                          compute_type,
+                          HIPBLAS_GEMM_DEFAULT));
+  // use_bias = True
+  if (bias_ptr != NULL) {
+    checkCUDA(hipblasGemmEx(m->handle.blas,
+                            HIPBLAS_OP_T,
+                            HIPBLAS_OP_N,
+                            out_dim,
+                            batch_size,
+                            1,
+                            &alpha,
+                            bias_ptr,
+                            weight_type,
+                            1,
+                            m->one_ptr,
+                            HIPBLAS_R_32F,
+                            1,
+                            &alpha,
+                            output_ptr,
+                            output_type,
+                            out_dim,
+                            compute_type,
+                            HIPBLAS_GEMM_DEFAULT));
   }
   if (use_activation(m->activation)) {
-    checkCUDNN(miopenActivationForward(m->handle.dnn, m->actiDesc,
-        &alpha, m->outputTensor, output_ptr,
-        &beta, m->outputTensor, output_ptr));
+    checkCUDNN(miopenActivationForward(m->handle.dnn,
+                                       m->actiDesc,
+                                       &alpha,
+                                       m->outputTensor,
+                                       output_ptr,
+                                       &beta,
+                                       m->outputTensor,
+                                       output_ptr));
   } else if (m->activation == AC_MODE_GELU) {
-    size_t elements = (size_t)out_dim * (size_t) batch_size;
+    size_t elements = (size_t)out_dim * (size_t)batch_size;
     constexpr float B = 0.7978845608028654f;   // sqrt(2.0/M_PI)
     constexpr float C = 0.035677408136300125f; // 0.044715 * sqrt(2.0/M_PI)
-    hipLaunchKernelGGL(gelu_forward_kernel, GET_BLOCKS(elements), CUDA_NUM_THREADS, 0, 0, 
-        elements, B, C, (float*)output_ptr);
+    hipLaunchKernelGGL(gelu_forward_kernel,
+                       GET_BLOCKS(elements),
+                       CUDA_NUM_THREADS,
+                       0,
+                       0,
+                       elements,
+                       B,
+                       C,
+                       (float *)output_ptr);
   } else if (m->activation == AC_MODE_NONE) {
     // Do nothing
   } else {
@@ -101,13 +137,14 @@ void Linear::forward_kernel(const LinearMeta* m,
 }
 
 /*static*/
-void Linear::forward_kernel_wrapper(const LinearMeta* m,
-                                    const void* input_ptr,
-                                    void* output_ptr,
-                                    const void* weight_ptr,
-                                    const void* bias_ptr,
-                                    int in_dim, int out_dim, int batch_size)
-{
+void Linear::forward_kernel_wrapper(LinearMeta const *m,
+                                    void const *input_ptr,
+                                    void *output_ptr,
+                                    void const *weight_ptr,
+                                    void const *bias_ptr,
+                                    int in_dim,
+                                    int out_dim,
+                                    int batch_size) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -117,8 +154,15 @@ void Linear::forward_kernel_wrapper(const LinearMeta* m,
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  Linear::forward_kernel(m, input_ptr, output_ptr,
-                         weight_ptr, bias_ptr, in_dim, out_dim, batch_size, stream);
+  Linear::forward_kernel(m,
+                         input_ptr,
+                         output_ptr,
+                         weight_ptr,
+                         bias_ptr,
+                         in_dim,
+                         out_dim,
+                         batch_size,
+                         stream);
 
   if (m->profiling) {
     hipEventRecord(t_end, stream);
@@ -128,25 +172,28 @@ void Linear::forward_kernel_wrapper(const LinearMeta* m,
     hipEventDestroy(t_start);
     hipEventDestroy(t_end);
     printf("%s [Linear] forward time = %.2lfms\n", m->op_name, elapsed);
-    //print_tensor<float>(acc_input.ptr, acc_input.rect.volume(), "[Linear:forward:input]");
-    //print_tensor<float>(acc_kernel.ptr, acc_kernel.rect.volume(), "[Linear:forward:kernel]");
-    //print_tensor<float>(acc_bias.ptr, acc_bias.rect.volume(), "[Linear:forward:bias]");
-    //print_tensor<float>(acc_output.ptr, acc_output.rect.volume(), "[Linear:forward:output]");
+    // print_tensor<float>(acc_input.ptr, acc_input.rect.volume(),
+    // "[Linear:forward:input]"); print_tensor<float>(acc_kernel.ptr,
+    // acc_kernel.rect.volume(), "[Linear:forward:kernel]");
+    // print_tensor<float>(acc_bias.ptr, acc_bias.rect.volume(),
+    // "[Linear:forward:bias]"); print_tensor<float>(acc_output.ptr,
+    // acc_output.rect.volume(), "[Linear:forward:output]");
   }
 }
 
 /*static*/
-void Linear::backward_kernel(const LinearMeta* m,
-                             const void* input_ptr,
-                             void* input_grad_ptr,
-                             const void* output_ptr,
-                             void* output_grad_ptr,
-                             const void* kernel_ptr,
-                             void* kernel_grad_ptr,
-                             void* bias_grad_ptr,
-                             int in_dim, int out_dim, int batch_size,
-                             hipStream_t stream)
-{
+void Linear::backward_kernel(LinearMeta const *m,
+                             void const *input_ptr,
+                             void *input_grad_ptr,
+                             void const *output_ptr,
+                             void *output_grad_ptr,
+                             void const *kernel_ptr,
+                             void *kernel_grad_ptr,
+                             void *bias_grad_ptr,
+                             int in_dim,
+                             int out_dim,
+                             int batch_size,
+                             hipStream_t stream) {
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -154,7 +201,7 @@ void Linear::backward_kernel(const LinearMeta* m,
   hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type);
   hipblasDatatype_t weight_type = ff_to_cuda_datatype(m->weight_type);
   hipblasDatatype_t output_type = ff_to_cuda_datatype(m->output_type);
-#if CUDA_VERSION >= 11000 
+#if CUDA_VERSION >= 11000
   // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
 #else
@@ -162,55 +209,97 @@ void Linear::backward_kernel(const LinearMeta* m,
 #endif
   int output_size = out_dim * batch_size;
   if (m->activation == AC_MODE_RELU) {
-    relu_backward_kernel(m->output_type, output_grad_ptr, output_ptr, output_size, stream);
+    relu_backward_kernel(
+        m->output_type, output_grad_ptr, output_ptr, output_size, stream);
   } else if (m->activation == AC_MODE_SIGMOID) {
-    sigmoid_backward_kernel(m->output_type, output_grad_ptr, output_ptr, output_size, stream);
+    sigmoid_backward_kernel(
+        m->output_type, output_grad_ptr, output_ptr, output_size, stream);
   } else {
     // TODO: only support relu and sigmoid for now
     assert(m->activation == AC_MODE_NONE);
   }
   // Compute weight gradiant
   // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
-  checkCUDA(hipblasGemmEx(m->handle.blas, HIPBLAS_OP_N, HIPBLAS_OP_T,
-                         in_dim, out_dim, batch_size,
-                         &alpha, input_ptr, input_type, in_dim,
-                         output_grad_ptr, output_type, out_dim,
-                         &alpha, kernel_grad_ptr, weight_type, in_dim,
-                         compute_type, HIPBLAS_GEMM_DEFAULT));
+  checkCUDA(hipblasGemmEx(m->handle.blas,
+                          HIPBLAS_OP_N,
+                          HIPBLAS_OP_T,
+                          in_dim,
+                          out_dim,
+                          batch_size,
+                          &alpha,
+                          input_ptr,
+                          input_type,
+                          in_dim,
+                          output_grad_ptr,
+                          output_type,
+                          out_dim,
+                          &alpha,
+                          kernel_grad_ptr,
+                          weight_type,
+                          in_dim,
+                          compute_type,
+                          HIPBLAS_GEMM_DEFAULT));
   // Compute bias gradiant
   // NOTE: we use alpha=1 for bias_grad to accumulate gradients
   // use_bias = True
   if (bias_grad_ptr != NULL) {
-    checkCUDA(hipblasGemmEx(m->handle.blas, HIPBLAS_OP_N, HIPBLAS_OP_T,
-                           1, out_dim, batch_size,
-                           &alpha, m->one_ptr, HIPBLAS_R_32F, 1,
-                           output_grad_ptr, output_type, out_dim,
-                           &alpha, bias_grad_ptr, weight_type, 1,
-                           compute_type, HIPBLAS_GEMM_DEFAULT));
+    checkCUDA(hipblasGemmEx(m->handle.blas,
+                            HIPBLAS_OP_N,
+                            HIPBLAS_OP_T,
+                            1,
+                            out_dim,
+                            batch_size,
+                            &alpha,
+                            m->one_ptr,
+                            HIPBLAS_R_32F,
+                            1,
+                            output_grad_ptr,
+                            output_type,
+                            out_dim,
+                            &alpha,
+                            bias_grad_ptr,
+                            weight_type,
+                            1,
+                            compute_type,
+                            HIPBLAS_GEMM_DEFAULT));
   }
   // Compute data gradiant
   // NOTE: we use alpha=1 for input_grad to accumulate gradients
   if (input_grad_ptr != NULL) {
-    checkCUDA(hipblasGemmEx(m->handle.blas, HIPBLAS_OP_N, HIPBLAS_OP_N,
-                           in_dim, batch_size, out_dim,
-                           &alpha, kernel_ptr, weight_type, in_dim,
-                           output_grad_ptr, output_type, out_dim,
-                           &alpha, input_grad_ptr, input_type, in_dim,
-                           compute_type, HIPBLAS_GEMM_DEFAULT));
+    checkCUDA(hipblasGemmEx(m->handle.blas,
+                            HIPBLAS_OP_N,
+                            HIPBLAS_OP_N,
+                            in_dim,
+                            batch_size,
+                            out_dim,
+                            &alpha,
+                            kernel_ptr,
+                            weight_type,
+                            in_dim,
+                            output_grad_ptr,
+                            output_type,
+                            out_dim,
+                            &alpha,
+                            input_grad_ptr,
+                            input_type,
+                            in_dim,
+                            compute_type,
+                            HIPBLAS_GEMM_DEFAULT));
   }
 }
 
 /*static*/
-void Linear::backward_kernel_wrapper(const LinearMeta* m,
-                                     const void* input_ptr,
-                                     void* input_grad_ptr,
-                                     const void* output_ptr,
-                                     void* output_grad_ptr,
-                                     const void* kernel_ptr,
-                                     void* kernel_grad_ptr,
-                                     void* bias_grad_ptr,
-                                     int in_dim, int out_dim, int batch_size)
-{
+void Linear::backward_kernel_wrapper(LinearMeta const *m,
+                                     void const *input_ptr,
+                                     void *input_grad_ptr,
+                                     void const *output_ptr,
+                                     void *output_grad_ptr,
+                                     void const *kernel_ptr,
+                                     void *kernel_grad_ptr,
+                                     void *bias_grad_ptr,
+                                     int in_dim,
+                                     int out_dim,
+                                     int batch_size) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -220,10 +309,18 @@ void Linear::backward_kernel_wrapper(const LinearMeta* m,
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  Linear::backward_kernel(m, input_ptr, input_grad_ptr,
-                          output_ptr, output_grad_ptr,
-                          kernel_ptr, kernel_grad_ptr,
-                          bias_grad_ptr, in_dim, out_dim, batch_size, stream);
+  Linear::backward_kernel(m,
+                          input_ptr,
+                          input_grad_ptr,
+                          output_ptr,
+                          output_grad_ptr,
+                          kernel_ptr,
+                          kernel_grad_ptr,
+                          bias_grad_ptr,
+                          in_dim,
+                          out_dim,
+                          batch_size,
+                          stream);
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
@@ -232,10 +329,13 @@ void Linear::backward_kernel_wrapper(const LinearMeta* m,
     hipEventDestroy(t_start);
     hipEventDestroy(t_end);
     printf("%s Linear backward time = %.2lfms\n", m->op_name, elapsed);
-    //print_tensor<float>(acc_output_grad.ptr, acc_output_grad.rect.volume(), "[Linear:backward:output_grad]");
-    //print_tensor<float>(acc_kernel_grad.ptr, acc_kernel_grad.rect.volume(), "[Linear:backward:kernel_grad]");
-    //print_tensor<1, float>(acc_bias_grad.ptr, acc_bias_grad.rect, "[Linear:backward:bias_grad]");
-    //print_tensor<float>(input_grad, acc_input.rect.volume(), "[Linear:backward:input_grad]");
+    // print_tensor<float>(acc_output_grad.ptr, acc_output_grad.rect.volume(),
+    // "[Linear:backward:output_grad]");
+    // print_tensor<float>(acc_kernel_grad.ptr, acc_kernel_grad.rect.volume(),
+    // "[Linear:backward:kernel_grad]"); print_tensor<1,
+    // float>(acc_bias_grad.ptr, acc_bias_grad.rect,
+    // "[Linear:backward:bias_grad]"); print_tensor<float>(input_grad,
+    // acc_input.rect.volume(), "[Linear:backward:input_grad]");
   }
 }
 
@@ -254,19 +354,18 @@ Parameter* Linear::get_parameter(int index)
 }
 */
 
-
-LinearMeta::LinearMeta(FFHandler handler, int batch_size)
-: OpMeta(handler)
-{
+LinearMeta::LinearMeta(FFHandler handler, int batch_size) : OpMeta(handler) {
   // Allocate an all-one's vector
-  float* dram_one_ptr = (float *) malloc(sizeof(float) * batch_size);
+  float *dram_one_ptr = (float *)malloc(sizeof(float) * batch_size);
   for (int i = 0; i < batch_size; i++)
     dram_one_ptr[i] = 1.0f;
-  float* fb_one_ptr;
+  float *fb_one_ptr;
   checkCUDA(hipMalloc(&fb_one_ptr, sizeof(float) * batch_size));
-  checkCUDA(hipMemcpy(fb_one_ptr, dram_one_ptr,
-                       sizeof(float) * batch_size, hipMemcpyHostToDevice));
-  one_ptr = (const float*) fb_one_ptr;
+  checkCUDA(hipMemcpy(fb_one_ptr,
+                      dram_one_ptr,
+                      sizeof(float) * batch_size,
+                      hipMemcpyHostToDevice));
+  one_ptr = (float const *)fb_one_ptr;
   // Allocate descriptors
   checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));

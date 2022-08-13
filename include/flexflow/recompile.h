@@ -23,20 +23,21 @@ namespace FlexFlow {
 
 class FFModel;
 
-class RecompileState
-{
+class RecompileState {
 public:
-  RecompileState(std::function<bool(FFModel*)> _trigger_func,
-                std::function<void(FFModel*)> _alter_func,
-                FFModel* _ff);
+  RecompileState(std::function<bool(FFModel *)> _trigger_func,
+                 std::function<void(FFModel *)> _alter_func,
+                 FFModel *_ff);
   bool trigger();
   void alter();
+
 public:
   int recompilations;
+
 private:
-  std::function<bool(FFModel*)> trigger_func;
-  std::function<void(FFModel*)> alter_func;
-  FFModel* ff;
+  std::function<bool(FFModel *)> trigger_func;
+  std::function<void(FFModel *)> alter_func;
+  FFModel *ff;
 };
 
 }; // namespace FlexFlow
