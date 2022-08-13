@@ -11,7 +11,7 @@ set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -UNDEBUG")
 
 # Export Clang Compilation Database
-# set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Set a default build type if none was specified
 set(default_build_type "Debug")
@@ -108,6 +108,9 @@ include(json)
 # variant
 include(variant)
 
+# optional
+include(optional)
+
 if(FF_USE_PYTHON)
   list(APPEND FF_CC_FLAGS
     -DBINDINGS_AUGMENT_PYTHONPATH)
@@ -191,6 +194,7 @@ add_library(substitution_loader SHARED
 target_include_directories(substitution_loader PRIVATE ${FLEXFLOW_INCLUDE_DIRS})
 target_link_libraries(substitution_loader nlohmann_json::nlohmann_json)
 
+
 #message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
 
 # compile flexflow lib
@@ -201,7 +205,7 @@ else()
 endif()
 
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-target_link_libraries(flexflow ${LEGION_LIBRARY} nlohmann_json::nlohmann_json mpark_variant)
+target_link_libraries(flexflow ${LEGION_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
 
 if(FF_USE_NCCL)
   add_dependencies(flexflow ${NCCL_NAME})

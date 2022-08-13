@@ -2,20 +2,19 @@
 FlexFlow can be built from source code using the following instructions.
 
 # 1. Download the source code
-* Clone the FlexFlow source code from the github.
+Clone the FlexFlow source code from the github.
 ```
 git clone --recursive https://github.com/flexflow/FlexFlow.git
 ```
 
-## FlexFlow Python dependencies
-* The FlexFlow Python support requires several additional Python libraries, please check [this](https://github.com/flexflow/FlexFlow/blob/master/requirements.txt) for details. 
-We recommend to use `pip` or `conda` to install the dependencies. 
+# 2. Install FlexFlow Python dependencies
+The FlexFlow Python support requires several additional Python libraries, please check [this](https://github.com/flexflow/FlexFlow/blob/master/requirements.txt) for details. 
 
-Note: all Python dependencies will be automatically installed if install the FlexFlow Python Interface using the PyPi repository (see the Installation below).
+**It is recommended to create your own `conda` environment and then install the Python dependencies, to avoid any version mismatching with your system pre-installed libraries.** 
 
-# 2. Build the FlexFlow
+# 3. Build the FlexFlow
 
-It is prefer to use the CMake building system as it will automatically build all dependencies inlcuding NCCL and Legion. 
+It is prefer to use the CMake building system as it will automatically build all C++ dependencies inlcuding NCCL and Legion. 
 
 ### Build the FlexFlow (including C++ and Python)
 
@@ -40,18 +39,22 @@ cd build
 make
 ```
 
-# 3. Test the FlexFlow
+# 4. Test the FlexFlow
 ## 1. Set the `FF_HOME` environment variable before running the FlexFlow. You can add the following line in ~/.bashrc.
 ```
 export FF_HOME=/path/to/FlexFlow
 ```
 
 ## 2. Run FlexFlow Python examples
-The C++ examples are in the [examples/python](https://github.com/flexflow/FlexFlow/tree/master/examples/python). 
-For example, the AlexNet can be run as:
+The Python examples are in the [examples/python](https://github.com/flexflow/FlexFlow/tree/master/examples/python). 
+The native, Keras integration and PyTorch integration examples are listed in `native`, `keras` and `pytorch` respectively.
+
+**It is recommended to run the `mnist_mlp` test under `native` using the following cmd to check if the FlexFlow has been installed correctly.**
+
+**Please use our python interpreter `flexflow_python` instead of the native one**
 ```
 cd python
-./flexflow_python examples/python/native/alexnet.py -ll:py 1 -ll:gpu 1 -ll:fsize <size of gpu buffer> -ll:zsize <size of zero buffer>
+./flexflow_python examples/python/native/mnist_mlp.py -ll:py 1 -ll:gpu 1 -ll:fsize <size of gpu buffer> -ll:zsize <size of zero buffer>
 ``` 
 The script of running all the Python examples is `python/test.sh`
 
@@ -65,7 +68,7 @@ For example, the AlexNet can be run as:
 
 Size of buffers is in MBs, e.g. for an 8GB gpu `-ll:fsize 8000`
 
-# 4. Install the FlexFlow
+# 5. Install the FlexFlow
 
 ## 1. Install the FlexFlow binary, header file and library if using CMake. 
 ```

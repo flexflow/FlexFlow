@@ -5,24 +5,26 @@ using namespace FlexFlow;
 
 LegionRuntime::Logger::Category log_app("split_test");
 
-void FlexFlow::top_level_task(const Task* task, 
-                    const std::vector<PhysicalRegion> &regions,
-                    Context ctx, Runtime *runtime) 
-{
-  int layer_dims[4] = { 256, 128, 64, 32 };
+void FlexFlow::top_level_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
+  int layer_dims[4] = {256, 128, 64, 32};
 
   FFConfig ffConfig;
   log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-      ffConfig.batchSize, ffConfig.workersPerNode, ffConfig.numNodes);
+                ffConfig.batchSize,
+                ffConfig.workersPerNode,
+                ffConfig.numNodes);
   FFModel ff(ffConfig);
 
   Tensor input;
-  { 
-    const int dims[] = {1, ffConfig.batchSize, layer_dims[0] };
+  {
+    int const dims[] = {1, ffConfig.batchSize, layer_dims[0]};
     input = ff.create_tensor<3>(dims, DT_FLOAT);
     log_app.print("input size: %d %d %d", dims[0], dims[1], dims[2]);
   }
-  
+
   Tensor t, t1, t2;
 
   t = input;
@@ -38,7 +40,7 @@ void FlexFlow::top_level_task(const Task* task,
   t = ff.relu(t);
   t = ff.softmax(t);
 
-  Optimizer* optimizer = new SGDOptimizer(&ff, 0.001f);
+  Optimizer *optimizer = new SGDOptimizer(&ff, 0.001f);
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
@@ -56,12 +58,12 @@ void FlexFlow::top_level_task(const Task* task,
     int iterations = 128; // data_loader.num_samples / ffConfig.batchSize;
 
     for (int iter = 0; iter < iterations; iter++) {
-      runtime->begin_trace(ctx, 111/*trace_id*/);
+      runtime->begin_trace(ctx, 111 /*trace_id*/);
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      runtime->end_trace(ctx, 111/*trace_id*/);
+      runtime->end_trace(ctx, 111 /*trace_id*/);
     }
   }
   // End timer
@@ -73,10 +75,9 @@ void FlexFlow::top_level_task(const Task* task,
   }
   double ts_end = Realm::Clock::current_time_in_microseconds();
   double run_time = 1e-6 * (ts_end - ts_start);
-  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n", run_time,
+  printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f samples/s\n",
+         run_time,
          128 * ffConfig.batchSize * ffConfig.epochs / run_time);
 }
 
-void FlexFlow::register_custom_tasks()
-{
-}
+void FlexFlow::register_custom_tasks() {}

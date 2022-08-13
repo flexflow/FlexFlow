@@ -19,30 +19,29 @@
 namespace FlexFlow {
 
 // declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::coord_t;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
 using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
+using Legion::Context;
+using Legion::coord_t;
+using Legion::Domain;
+using Legion::FutureMap;
+using Legion::IndexLauncher;
+using Legion::PhysicalRegion;
 using Legion::Predicate;
+using Legion::Rect;
+using Legion::RegionRequirement;
+using Legion::Runtime;
+using Legion::Task;
+using Legion::TaskArgument;
+using Legion::TaskLauncher;
 using PCG::Node;
 
 Tensor FFModel::batch_matmul(const Tensor A,
                              const Tensor B,
                              int a_seq_length_dim,
-                             int b_seq_length_dim)
-{
+                             int b_seq_length_dim) {
 #ifdef DEADCODE
-  BatchMatmul* bmm = new BatchMatmul(*this, A, B,
-      a_seq_length_dim, b_seq_length_dim);
+  BatchMatmul *bmm =
+      new BatchMatmul(*this, A, B, a_seq_length_dim, b_seq_length_dim);
   layers.push_back(bmm);
   return bmm->outputs[0];
 #endif
@@ -50,19 +49,29 @@ Tensor FFModel::batch_matmul(const Tensor A,
 }
 
 // return A*B
-BatchMatmul::BatchMatmul(FFModel& model,
+BatchMatmul::BatchMatmul(FFModel &model,
                          const ParallelTensor A,
                          const ParallelTensor B,
                          int _a_seq_length_dim,
                          int _b_seq_length_dim)
-: Op(model, OP_BATCHMATMUL, "BatchMatmul_", 2/*inputs*/, 0/*weights*/, 1/*outputs*/, A, B),
-  a_seq_length_dim(A->num_dims-1-_a_seq_length_dim),
-  b_seq_length_dim(B->num_dims-1-_b_seq_length_dim)
-{
-  assert((a_seq_length_dim <= 1) && "FlexFlow currently only supports seq_length_dim of 0 or 1 (in Fortran ordering).");
-  assert((b_seq_length_dim <= 1) && "FlexFlow currently only supports seq_length_dim of 0 or 1 (in Fortran ordering).");
+    : Op(model,
+         OP_BATCHMATMUL,
+         "BatchMatmul_",
+         2 /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/,
+         A,
+         B),
+      a_seq_length_dim(A->num_dims - 1 - _a_seq_length_dim),
+      b_seq_length_dim(B->num_dims - 1 - _b_seq_length_dim) {
+  assert((a_seq_length_dim <= 1) &&
+         "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
+         "Fortran ordering).");
+  assert((b_seq_length_dim <= 1) &&
+         "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
+         "Fortran ordering).");
   assert(A->num_dims == B->num_dims);
-  for (int i = A->num_dims-1; i >= 2; i--)
+  for (int i = A->num_dims - 1; i >= 2; i--)
     assert(A->dims[i] == B->dims[i]);
   assert(A->dims[0] == B->dims[1]);
   ParallelDim dims[MAX_TENSOR_DIM];
@@ -70,9 +79,10 @@ BatchMatmul::BatchMatmul(FFModel& model,
     dims[i] = A->dims[i];
   dims[0] = B->dims[0];
   numOutputs = 1;
-  outputs[0] = model.create_parallel_tensor_legion_ordering(A->num_dims, dims, DT_FLOAT, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(
+      A->num_dims, dims, DT_FLOAT, this);
   // C is not none
-  //if (C != Tensor::NO_TENSOR) {
+  // if (C != Tensor::NO_TENSOR) {
   //  numInputs = 3;
   //  assert(C.num_dims == outputs[0].num_dims);
   //  for (int i = 0; i < C.num_dims; i++)
@@ -80,16 +90,14 @@ BatchMatmul::BatchMatmul(FFModel& model,
   //}
 }
 
-void BatchMatmul::init(const FFModel& ff)
-{
+void BatchMatmul::init(FFModel const &ff) {
   int dim = outputs[0]->num_dims;
   switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      init_with_dim<DIM>(ff); \
-      break; \
-    }
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    init_with_dim<DIM>(ff);                                                    \
+    break;                                                                     \
+  }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -97,57 +105,62 @@ void BatchMatmul::init(const FFModel& ff)
   }
 }
 
-template<int NDIM>
-void BatchMatmul::init_with_dim(const FFModel& ff)
-{
+template <int NDIM>
+void BatchMatmul::init_with_dim(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(BATCHMATMUL_INIT_TASK_ID, parallel_is,
-                         TaskArgument(this, sizeof(BatchMatmul)), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+  IndexLauncher launcher(BATCHMATMUL_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(BatchMatmul)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0]->part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[i]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i]->region));
-    launcher.add_field(i+1, FID_DATA);
+    launcher.add_region_requirement(RegionRequirement(inputs[i]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      inputs[i]->region));
+    launcher.add_field(i + 1, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta* BatchMatmul::init_task(const Task* task,
-                               const std::vector<PhysicalRegion>& regions,
-                               Context ctx, Runtime* runtime)
-{
-  const BatchMatmul* bmm = (BatchMatmul*) task->args;
-  FFHandler handle = *((const FFHandler*) task->local_args);
-  BatchMatmulMeta* m = new BatchMatmulMeta(handle);
+OpMeta *BatchMatmul::init_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
+  BatchMatmul const *bmm = (BatchMatmul *)task->args;
+  FFHandler handle = *((FFHandler const *)task->local_args);
+  BatchMatmulMeta *m = new BatchMatmulMeta(handle);
   m->profiling = bmm->profiling;
   m->a_seq_length_dim = bmm->a_seq_length_dim;
   m->b_seq_length_dim = bmm->b_seq_length_dim;
   return m;
 }
 
-void BatchMatmul::forward(const FFModel& ff)
-{
+void BatchMatmul::forward(FFModel const &ff) {
   int dim = outputs[0]->num_dims;
   switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      forward_with_dim<DIM>(ff); \
-      break; \
-    }
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    forward_with_dim<DIM>(ff);                                                 \
+    break;                                                                     \
+  }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -155,26 +168,34 @@ void BatchMatmul::forward(const FFModel& ff)
   }
 }
 
-template<int NDIM>
-void BatchMatmul::forward_with_dim(const FFModel& ff)
-{
+template <int NDIM>
+void BatchMatmul::forward_with_dim(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(BATCHMATMUL_FWD_TASK_ID, parallel_is,
-      TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)), argmap,
-      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+  IndexLauncher launcher(
+      BATCHMATMUL_FWD_TASK_ID,
+      parallel_is,
+      TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)),
+      argmap,
+      Predicate::TRUE_PRED,
+      false /*must*/,
+      0 /*mapper_id*/,
       outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0]->part, 0/*projection id*/,
-      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
   launcher.add_field(0, FID_DATA);
   for (int i = 0; i < numInputs; i++) {
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[i]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[i]->region));
-    launcher.add_field(i+1, FID_DATA);
+    launcher.add_region_requirement(RegionRequirement(inputs[i]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      inputs[i]->region));
+    launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
 }
@@ -186,21 +207,21 @@ void BatchMatmul::forward_with_dim(const FFModel& ff)
   (optional) regions[3](I): C
   output = A * B + C
 */
-void BatchMatmul::forward_task(const Task* task,
-                               const std::vector<PhysicalRegion>& regions,
-                               Context ctx, Runtime* runtime)
-{
+void BatchMatmul::forward_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  //const BatchMatmul* bmm = (const BatchMatmul*) task->args;
-  const FFIterationConfig* iter_config = (const FFIterationConfig*) task->args;
-  const BatchMatmulMeta* meta = *((BatchMatmulMeta**) task->local_args);
+  // const BatchMatmul* bmm = (const BatchMatmul*) task->args;
+  FFIterationConfig const *iter_config = (FFIterationConfig const *)task->args;
+  BatchMatmulMeta const *meta = *((BatchMatmulMeta **)task->local_args);
   Domain out_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
+      ctx, task->regions[0].region.get_index_space());
   Domain a_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1].region.get_index_space());
+      ctx, task->regions[1].region.get_index_space());
   Domain b_domain = runtime->get_index_space_domain(
-    ctx, task->regions[2].region.get_index_space());
+      ctx, task->regions[2].region.get_index_space());
   int m = b_domain.hi()[0] - b_domain.lo()[0] + 1;
   assert(m == out_domain.hi()[0] - out_domain.lo()[0] + 1);
   int n = a_domain.hi()[1] - a_domain.lo()[1] + 1;
@@ -216,36 +237,43 @@ void BatchMatmul::forward_task(const Task* task,
     assert(dim_size == out_domain.hi()[i] - out_domain.lo()[i] + 1);
     batch *= dim_size;
   }
-  float* out_ptr = helperGetTensorPointerWO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  const float* a_ptr = helperGetTensorPointerRO<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  const float* b_ptr = helperGetTensorPointerRO<float>(
-    regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  const float* c_ptr = NULL;
+  float *out_ptr = helperGetTensorPointerWO<float>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  float const *a_ptr = helperGetTensorPointerRO<float>(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  float const *b_ptr = helperGetTensorPointerRO<float>(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  float const *c_ptr = NULL;
   if (regions.size() == 4) {
     Domain c_domain = runtime->get_index_space_domain(
-      ctx, task->regions[3].region.get_index_space());
+        ctx, task->regions[3].region.get_index_space());
     assert(c_domain == a_domain);
     c_ptr = helperGetTensorPointerRO<float>(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
+        regions[3], task->regions[3], FID_DATA, ctx, runtime);
   }
-  
-  BatchMatmul::forward_kernel_wrapper(meta, out_ptr, a_ptr, b_ptr, c_ptr,
-                                      m, n, k, batch, meta->a_seq_length_dim, meta->b_seq_length_dim,
+
+  BatchMatmul::forward_kernel_wrapper(meta,
+                                      out_ptr,
+                                      a_ptr,
+                                      b_ptr,
+                                      c_ptr,
+                                      m,
+                                      n,
+                                      k,
+                                      batch,
+                                      meta->a_seq_length_dim,
+                                      meta->b_seq_length_dim,
                                       iter_config->seq_length);
 }
 
-void BatchMatmul::backward(const FFModel& ff)
-{
+void BatchMatmul::backward(FFModel const &ff) {
   int dim = outputs[0]->num_dims;
   switch (dim) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-    { \
-      backward_with_dim<DIM>(ff); \
-      break; \
-    }
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    backward_with_dim<DIM>(ff);                                                \
+    break;                                                                     \
+  }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -262,46 +290,62 @@ void BatchMatmul::backward(const FFModel& ff)
   regions[5](I/O): B_grad
   regions[6](I/O): C_grad
 */
-template<int NDIM>
-void BatchMatmul::backward_with_dim(const FFModel& ff)
-{
+template <int NDIM>
+void BatchMatmul::backward_with_dim(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(BATCHMATMUL_BWD_TASK_ID, parallel_is,
-      TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)), argmap,
-      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+  IndexLauncher launcher(
+      BATCHMATMUL_BWD_TASK_ID,
+      parallel_is,
+      TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)),
+      argmap,
+      Predicate::TRUE_PRED,
+      false /*must*/,
+      0 /*mapper_id*/,
       outputs[0]->machine_view.hash());
   // regions[0](I): output
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0]->part, 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, outputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // regions[1](I): output_grad
-  launcher.add_region_requirement(
-    RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[2](I): A
-  launcher.add_region_requirement(
-    RegionRequirement(inputs[0]->part, 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[0]->region));
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
   launcher.add_field(2, FID_DATA);
   // regions[3](I/O): A_grad
-  launcher.add_region_requirement(
-    RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region_grad));
   launcher.add_field(3, FID_DATA);
   // regions[4](I): B
-  launcher.add_region_requirement(
-    RegionRequirement(inputs[1]->part, 0/*projection id*/,
-      READ_ONLY, EXCLUSIVE, inputs[1]->region));
+  launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[1]->region));
   launcher.add_field(4, FID_DATA);
   // regions[5](I/O): B_grad
-  launcher.add_region_requirement(
-    RegionRequirement(inputs[1]->part_grad, 0/*projection id*/,
-      READ_WRITE, EXCLUSIVE, inputs[1]->region_grad));
+  launcher.add_region_requirement(RegionRequirement(inputs[1]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[1]->region_grad));
   launcher.add_field(5, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
@@ -315,34 +359,34 @@ void BatchMatmul::backward_with_dim(const FFModel& ff)
   regions[5](I/O): B_grad
   regions[6](I/O): C_grad
 */
-__host__
-void BatchMatmul::backward_task(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
-                                Context ctx, Runtime *runtime)
-{
+__host__ void
+    BatchMatmul::backward_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
   // Currently assume C is NULL
   assert(regions.size() == 6);
   assert(task->regions.size() == 6);
-  //BatchMatmul* bmm = (BatchMatmul*) task->args;
-  const FFIterationConfig* iter_config = (const FFIterationConfig*) task->args;
-  const BatchMatmulMeta* meta = *((BatchMatmulMeta**) task->local_args);
+  // BatchMatmul* bmm = (BatchMatmul*) task->args;
+  FFIterationConfig const *iter_config = (FFIterationConfig const *)task->args;
+  BatchMatmulMeta const *meta = *((BatchMatmulMeta **)task->local_args);
   // output domains
   Domain out_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
+      ctx, task->regions[0].region.get_index_space());
   Domain out_grad_domain = runtime->get_index_space_domain(
-    ctx, task->regions[1].region.get_index_space());
+      ctx, task->regions[1].region.get_index_space());
   assert(out_domain == out_grad_domain);
   // A domains
   Domain a_domain = runtime->get_index_space_domain(
-    ctx, task->regions[2].region.get_index_space());
+      ctx, task->regions[2].region.get_index_space());
   Domain a_grad_domain = runtime->get_index_space_domain(
-    ctx, task->regions[3].region.get_index_space());
+      ctx, task->regions[3].region.get_index_space());
   assert(a_domain == a_grad_domain);
   // B domains
   Domain b_domain = runtime->get_index_space_domain(
-    ctx, task->regions[4].region.get_index_space());
+      ctx, task->regions[4].region.get_index_space());
   Domain b_grad_domain = runtime->get_index_space_domain(
-    ctx, task->regions[4].region.get_index_space());
+      ctx, task->regions[4].region.get_index_space());
   assert(b_domain == b_grad_domain);
   // check dins
   int m = b_domain.hi()[0] - b_domain.lo()[0] + 1;
@@ -361,47 +405,55 @@ void BatchMatmul::backward_task(const Task *task,
     batch *= dim_size;
   }
   // get pointers
-  const float* out_ptr = helperGetTensorPointerRO<float>(
-    regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  const float* out_grad_ptr = helperGetTensorPointerRO<float>(
-    regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  const float* a_ptr = helperGetTensorPointerRO<float>(
-    regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  float* a_grad_ptr = helperGetTensorPointerRW<float>(
-    regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  const float* b_ptr = helperGetTensorPointerRO<float>(
-    regions[4], task->regions[4], FID_DATA, ctx, runtime);
-  float* b_grad_ptr = helperGetTensorPointerRW<float>(
-    regions[5], task->regions[5], FID_DATA, ctx, runtime);
+  float const *out_ptr = helperGetTensorPointerRO<float>(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  float const *out_grad_ptr = helperGetTensorPointerRO<float>(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  float const *a_ptr = helperGetTensorPointerRO<float>(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  float *a_grad_ptr = helperGetTensorPointerRW<float>(
+      regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  float const *b_ptr = helperGetTensorPointerRO<float>(
+      regions[4], task->regions[4], FID_DATA, ctx, runtime);
+  float *b_grad_ptr = helperGetTensorPointerRW<float>(
+      regions[5], task->regions[5], FID_DATA, ctx, runtime);
 
-  float* c_grad_ptr = NULL;
+  float *c_grad_ptr = NULL;
 
   // TODO: add support for meta->a_seq_length_dim >= 0
   // or meta->b_seq_length_dim >= 0
-  assert((meta->a_seq_length_dim<0)||(iter_config->seq_length==0));
-  assert((meta->b_seq_length_dim<0)||(iter_config->seq_length==0));
+  assert((meta->a_seq_length_dim < 0) || (iter_config->seq_length == 0));
+  assert((meta->b_seq_length_dim < 0) || (iter_config->seq_length == 0));
 
-  BatchMatmul::backward_kernel_wrapper(meta, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr,
-                                       b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch);
+  BatchMatmul::backward_kernel_wrapper(meta,
+                                       out_ptr,
+                                       out_grad_ptr,
+                                       a_ptr,
+                                       a_grad_ptr,
+                                       b_ptr,
+                                       b_grad_ptr,
+                                       c_grad_ptr,
+                                       m,
+                                       n,
+                                       k,
+                                       batch);
 }
 
-void BatchMatmul::print_layer(const FFModel& ff)
-{
+void BatchMatmul::print_layer(FFModel const &ff) {
   return;
 }
 
-bool BatchMatmul::measure_operator_cost(
-    Simulator* sim,
-    const MachineView& pc,
-    CostMetrics& cost_metrics) const {
+bool BatchMatmul::measure_operator_cost(Simulator *sim,
+                                        MachineView const &pc,
+                                        CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input0, sub_input1;
-  if (! outputs[0]->get_sub_tensor(pc, sub_output)) {
+  if (!outputs[0]->get_sub_tensor(pc, sub_output)) {
     return false;
   }
-  if (! inputs[0]->get_sub_tensor(pc, sub_input0)) {
+  if (!inputs[0]->get_sub_tensor(pc, sub_input0)) {
     return false;
   }
-  if (! inputs[1]->get_sub_tensor(pc, sub_input1)) {
+  if (!inputs[1]->get_sub_tensor(pc, sub_input1)) {
     return false;
   }
 
@@ -412,12 +464,12 @@ bool BatchMatmul::measure_operator_cost(
   int output_c = sub_output.dims[0].size;
   int output_r = sub_output.dims[1].size;
 
-  assert (input0_c == input1_r);
-  assert (input0_r == output_r);
-  assert (input1_c == output_c);
+  assert(input0_c == input1_r);
+  assert(input0_r == output_r);
+  assert(input1_c == output_c);
 
-  assert (sub_input0.dims[2] == sub_input1.dims[2]);
-  assert (sub_input1.dims[2] == sub_output.dims[2]);
+  assert(sub_input0.dims[2] == sub_input1.dims[2]);
+  assert(sub_input1.dims[2] == sub_output.dims[2]);
   int batch = 1;
   assert(sub_input0.num_dims == sub_input1.num_dims);
   for (int i = 2; i < sub_input0.num_dims; i++) {
@@ -431,12 +483,12 @@ bool BatchMatmul::measure_operator_cost(
   // allocate tensors in simulator
   sim->free_all();
   float *a_ptr = (float *)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
-  assert (a_ptr != NULL);
+  assert(a_ptr != NULL);
   float *b_ptr = (float *)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
-  assert (b_ptr != NULL);
+  assert(b_ptr != NULL);
   float *c_ptr = NULL;
   float *out_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert (out_ptr != NULL);
+  assert(out_ptr != NULL);
 
   int m = input1_c;
   int n = input0_r;
@@ -450,34 +502,62 @@ bool BatchMatmul::measure_operator_cost(
   };
 
   if (sim->computationMode == COMP_MODE_TRAINING) {
-    float *a_grad_ptr = (float *)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
-    float *b_grad_ptr = (float *)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
+    float *a_grad_ptr =
+        (float *)sim->allocate(sub_input0.get_volume(), DT_FLOAT);
+    float *b_grad_ptr =
+        (float *)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
     float *c_grad_ptr = NULL;
-    float *out_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-    assert (out_grad_ptr != NULL);
+    float *out_grad_ptr =
+        (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert(out_grad_ptr != NULL);
 
     backward = [&] {
-      backward_kernel_wrapper(meta, out_ptr, out_grad_ptr, a_ptr, a_grad_ptr, b_ptr, b_grad_ptr, c_grad_ptr, m, n, k, batch);
+      backward_kernel_wrapper(meta,
+                              out_ptr,
+                              out_grad_ptr,
+                              a_ptr,
+                              a_grad_ptr,
+                              b_ptr,
+                              b_grad_ptr,
+                              c_grad_ptr,
+                              m,
+                              n,
+                              k,
+                              batch);
     };
   }
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   if (sim->computationMode == COMP_MODE_TRAINING) {
-    printf("[Measure BatchMatmul] name(%s) adim(%d %d %d) bdim(%d %d %d) odim(%d %d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
-        name,
-        batch, input0_r, input0_c,
-        batch, input1_r, input1_c,
-        batch, output_r, output_c,
-        cost_metrics.forward_time,
-        cost_metrics.backward_time);
+    printf("[Measure BatchMatmul] name(%s) adim(%d %d %d) bdim(%d %d %d) "
+           "odim(%d %d %d) forward_time(%.4lf) backward_time(%.4lf)\n",
+           name,
+           batch,
+           input0_r,
+           input0_c,
+           batch,
+           input1_r,
+           input1_c,
+           batch,
+           output_r,
+           output_c,
+           cost_metrics.forward_time,
+           cost_metrics.backward_time);
   } else {
-    printf("[Measure BatchMatmul] name(%s) adim(%d %d %d) bdim(%d %d %d) odim(%d %d %d) forward_time(%.4lf)\n",
-        name,
-        batch, input0_r, input0_c,
-        batch, input1_r, input1_c,
-        batch, output_r, output_c,
-        cost_metrics.forward_time);
+    printf("[Measure BatchMatmul] name(%s) adim(%d %d %d) bdim(%d %d %d) "
+           "odim(%d %d %d) forward_time(%.4lf)\n",
+           name,
+           batch,
+           input0_r,
+           input0_c,
+           batch,
+           input1_r,
+           input1_c,
+           batch,
+           output_r,
+           output_c,
+           cost_metrics.forward_time);
   }
 
   return true;

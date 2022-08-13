@@ -19,31 +19,28 @@
 namespace FlexFlow {
 
 // declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::PhysicalRegion;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
 using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
+using Legion::Context;
+using Legion::Domain;
+using Legion::FutureMap;
+using Legion::IndexLauncher;
+using Legion::PhysicalRegion;
 using Legion::Predicate;
-  
-Metrics::Metrics(LossType _loss_type, const std::vector<MetricsType>& metrics)
-: loss_type(_loss_type),
-  measure_accuracy(false),
-  measure_categorical_crossentropy(false),
-  measure_sparse_categorical_crossentropy(false),
-  measure_mean_squared_error(false),
-  measure_root_mean_squared_error(false),
-  measure_mean_absolute_error(false)
-{
+using Legion::RegionRequirement;
+using Legion::Runtime;
+using Legion::Task;
+using Legion::TaskArgument;
+using Legion::TaskLauncher;
+
+Metrics::Metrics(LossType _loss_type, std::vector<MetricsType> const &metrics)
+    : loss_type(_loss_type), measure_accuracy(false),
+      measure_categorical_crossentropy(false),
+      measure_sparse_categorical_crossentropy(false),
+      measure_mean_squared_error(false), measure_root_mean_squared_error(false),
+      measure_mean_absolute_error(false) {
   for (size_t i = 0; i < metrics.size(); i++) {
     switch (metrics[i]) {
-      case  METRICS_ACCURACY:
+      case METRICS_ACCURACY:
         measure_accuracy = true;
         continue;
       case METRICS_CATEGORICAL_CROSSENTROPY:
@@ -68,38 +65,41 @@ Metrics::Metrics(LossType _loss_type, const std::vector<MetricsType>& metrics)
   }
 }
 
-void Metrics::compute(FFModel* model,
+void Metrics::compute(FFModel *model,
                       const ParallelTensor logit,
-                      const ParallelTensor label)
-{
+                      const ParallelTensor label) {
   // Use the same parallel strategy as the owner of logit
   Context ctx = model->config.lg_ctx;
-  Runtime* runtime = model->config.lg_hlr;
+  Runtime *runtime = model->config.lg_hlr;
   Domain part_domain = runtime->get_index_space_domain(ctx, logit->parallel_is);
   Domain logit_domain = runtime->get_index_partition_color_space(
       ctx, logit->part.get_index_partition());
   Domain label_domain = runtime->get_index_partition_color_space(
       ctx, label->part.get_index_partition());
-  if((logit_domain != part_domain) || (label_domain != part_domain)) {
-    fprintf(stderr, "Encounter inconsistency in parallelizing loss computation\n");
+  if ((logit_domain != part_domain) || (label_domain != part_domain)) {
+    fprintf(stderr,
+            "Encounter inconsistency in parallelizing loss computation\n");
     assert(false);
   }
   ArgumentMap argmap;
-  IndexLauncher launcher(METRICS_COMP_TASK_ID, logit->parallel_is,
-                         TaskArgument(this, sizeof(Metrics)), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+  IndexLauncher launcher(METRICS_COMP_TASK_ID,
+                         logit->parallel_is,
+                         TaskArgument(this, sizeof(Metrics)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          logit->machine_view.hash());
-  launcher.add_region_requirement(
-      RegionRequirement(logit->part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, logit->region));
+  launcher.add_region_requirement(RegionRequirement(
+      logit->part, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, logit->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(label->part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, label->region));
+  launcher.add_region_requirement(RegionRequirement(
+      label->part, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, label->region));
   launcher.add_field(1, FID_DATA);
   FutureMap new_metrics = runtime->execute_index_space(ctx, launcher);
   // Update metrics
-  TaskLauncher metrics_task(UPDATE_METRICS_TASK_ID, TaskArgument(this, sizeof(Metrics)));
+  TaskLauncher metrics_task(UPDATE_METRICS_TASK_ID,
+                            TaskArgument(this, sizeof(Metrics)));
   metrics_task.add_future(model->current_metrics);
   for (Domain::DomainPointIterator it(part_domain); it; it++) {
     metrics_task.add_future(new_metrics[*it]);
@@ -107,16 +107,16 @@ void Metrics::compute(FFModel* model,
   model->current_metrics = runtime->execute_task(ctx, metrics_task);
 }
 
-PerfMetrics Metrics::compute_task(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
-                                  Context ctx, Runtime *runtime)
-{
+PerfMetrics Metrics::compute_task(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
+                                  Context ctx,
+                                  Runtime *runtime) {
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-      return compute_task_with_dim<DIM>(task, regions, ctx, runtime);
+#define DIMFUNC(DIM)                                                           \
+  case DIM:                                                                    \
+    return compute_task_with_dim<DIM>(task, regions, ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -126,14 +126,15 @@ PerfMetrics Metrics::compute_task(const Task *task,
   return invalid;
 }
 
-template<int NDIM>
-PerfMetrics Metrics::compute_task_with_dim(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
-                                  Context ctx, Runtime *runtime)
-{
+template <int NDIM>
+PerfMetrics
+    Metrics::compute_task_with_dim(Task const *task,
+                                   std::vector<PhysicalRegion> const &regions,
+                                   Context ctx,
+                                   Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  const Metrics* me = (Metrics*) task->args;
+  Metrics const *me = (Metrics *)task->args;
   PerfMetrics perf_zc;
 
   if (me->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
@@ -142,7 +143,7 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
     TensorAccessorR<int, NDIM> acc_label(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     // assume that the leading dim is replica dim
-    assert(acc_logit.rect.hi[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
+    assert(acc_logit.rect.hi[NDIM - 1] == acc_logit.rect.lo[NDIM - 1]);
     int num_effective_samples = acc_label.rect.volume();
     int num_classes = acc_logit.rect.hi[0] - acc_logit.rect.lo[0] + 1;
     assert(num_effective_samples * num_classes == acc_logit.rect.volume());
@@ -168,29 +169,25 @@ PerfMetrics Metrics::compute_task_with_dim(const Task *task,
     // other loss require label and logit have identical shape
     assert(acc_logit.rect == acc_label.rect);
     // assume that the leading dim is replica dim
-    assert(acc_logit.rect.hi[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
-    int num_samples = acc_logit.rect.hi[NDIM-2] - acc_logit.rect.lo[NDIM-2] + 1;
+    assert(acc_logit.rect.hi[NDIM - 1] == acc_logit.rect.lo[NDIM - 1]);
+    int num_samples =
+        acc_logit.rect.hi[NDIM - 2] - acc_logit.rect.lo[NDIM - 2] + 1;
     int num_classes = acc_logit.rect.volume() / num_samples;
-    // Use CUDA_NUM_THREADS may result in out of resources so we set #threads=256
-    Metrics::update_metrics_label_kernel_wrapper(acc_logit.ptr,
-                                                 acc_label.ptr,
-                                                 me,
-                                                 num_samples,
-                                                 num_classes,
-                                                 perf_zc);
+    // Use CUDA_NUM_THREADS may result in out of resources so we set
+    // #threads=256
+    Metrics::update_metrics_label_kernel_wrapper(
+        acc_logit.ptr, acc_label.ptr, me, num_samples, num_classes, perf_zc);
   }
   return perf_zc;
 }
 
 PerfMetrics::PerfMetrics(void)
-: train_all(0), train_correct(0), cce_loss(0.0f), sparse_cce_loss(0.0f),
-  mse_loss(0.0f), rmse_loss(0.0f), mae_loss(0.0f)
-{
+    : train_all(0), train_correct(0), cce_loss(0.0f), sparse_cce_loss(0.0f),
+      mse_loss(0.0f), rmse_loss(0.0f), mae_loss(0.0f) {
   start_time = Realm::Clock::current_time_in_microseconds();
 }
 
-void PerfMetrics::update(const PerfMetrics& one)
-{
+void PerfMetrics::update(PerfMetrics const &one) {
   train_all += one.train_all;
   train_correct += one.train_correct;
   cce_loss += one.cce_loss;
@@ -200,8 +197,7 @@ void PerfMetrics::update(const PerfMetrics& one)
   mae_loss += one.mae_loss;
 }
 
-void PerfMetrics::apply_scale(float scale)
-{
+void PerfMetrics::apply_scale(float scale) {
   cce_loss *= scale;
   sparse_cce_loss *= scale;
   mse_loss *= scale;
@@ -209,37 +205,43 @@ void PerfMetrics::apply_scale(float scale)
   mae_loss *= scale;
 }
 
-void PerfMetrics::print(const Metrics* m)
-{
+void PerfMetrics::print(Metrics const *m) {
   std::string output = "[Metrics]";
   if (train_all == 0) {
     double current_time = Realm::Clock::current_time_in_microseconds();
     assert(current_time > start_time);
-    double throughput = (double)train_all / ((current_time - start_time) * 1e-6);
-    output = output + " throughput: " + std::to_string(throughput) + "samples/s";
+    double throughput =
+        (double)train_all / ((current_time - start_time) * 1e-6);
+    output =
+        output + " throughput: " + std::to_string(throughput) + "samples/s";
   }
   if (m->measure_accuracy) {
     float accuracy = train_correct * 100.0f / train_all;
-    output = output + " accuracy: " + std::to_string(accuracy) + "% ("
-           + std::to_string(train_correct) + " / "
-           + std::to_string(train_all) + ")";
+    output = output + " accuracy: " + std::to_string(accuracy) + "% (" +
+             std::to_string(train_correct) + " / " + std::to_string(train_all) +
+             ")";
   }
   if (m->measure_categorical_crossentropy) {
     float avg_cce_loss = cce_loss / train_all;
-    output = output + " categorical_crossentropy: " + std::to_string(avg_cce_loss);
+    output =
+        output + " categorical_crossentropy: " + std::to_string(avg_cce_loss);
   }
   if (m->measure_sparse_categorical_crossentropy) {
     float avg_cce_loss = sparse_cce_loss / train_all;
-    output = output + " sparse_categorical_crossentropy: " + std::to_string(avg_cce_loss);
+    output = output + " sparse_categorical_crossentropy: " +
+             std::to_string(avg_cce_loss);
   }
   if (m->measure_mean_squared_error) {
-    output = output + " mean_squared_error: " + std::to_string(mse_loss / train_all);
+    output =
+        output + " mean_squared_error: " + std::to_string(mse_loss / train_all);
   }
   if (m->measure_root_mean_squared_error) {
-    output = output + " root_mean_squared_error: " + std::to_string(rmse_loss / train_all);
+    output = output + " root_mean_squared_error: " +
+             std::to_string(rmse_loss / train_all);
   }
   if (m->measure_mean_absolute_error) {
-    output = output + " mean_absolute_error: " + std::to_string(mae_loss / train_all);
+    output = output +
+             " mean_absolute_error: " + std::to_string(mae_loss / train_all);
   }
   fprintf(stderr, "%s\n", output.c_str());
 }

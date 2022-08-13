@@ -1,12 +1,12 @@
 #include "flexflow/utils/dot/record_formatter.h"
 
-RecordFormatter& operator<<(RecordFormatter& r, std::string const& tok) {
+RecordFormatter &operator<<(RecordFormatter &r, std::string const &tok) {
   r.pieces.push_back(tok);
 
   return r;
 }
 
-RecordFormatter& operator<<(RecordFormatter& r, int tok) {
+RecordFormatter &operator<<(RecordFormatter &r, int tok) {
   std::ostringstream oss;
   oss << tok;
 
@@ -15,8 +15,7 @@ RecordFormatter& operator<<(RecordFormatter& r, int tok) {
   return r;
 }
 
-RecordFormatter& operator<<(RecordFormatter& r,
-                                   RecordFormatter const& sub_r) {
+RecordFormatter &operator<<(RecordFormatter &r, RecordFormatter const &sub_r) {
   std::ostringstream oss;
   oss << sub_r;
   r << oss.str();
@@ -24,14 +23,13 @@ RecordFormatter& operator<<(RecordFormatter& r,
   return r;
 }
 
-RecordFormatter& operator<<(RecordFormatter& r,
-                                   std::ostringstream& oss) {
+RecordFormatter &operator<<(RecordFormatter &r, std::ostringstream &oss) {
   r << oss.str();
 
   return r;
 }
 
-std::ostream& operator<<(std::ostream& s, RecordFormatter const& r) {
+std::ostream &operator<<(std::ostream &s, RecordFormatter const &r) {
   s << "{ ";
   for (size_t i = 0; i < r.pieces.size(); i++) {
     s << r.pieces[i];
