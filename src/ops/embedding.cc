@@ -623,9 +623,14 @@ bool Embedding::measure_operator_cost(Simulator *sim,
   bool out_of_memory = false;
   int64_t *input_ptr =
       (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
+  cost_metrics.inputs_memory = static_cast<size_t>(sim->offset);
+
   out_of_memory = out_of_memory || (input_ptr == NULL);
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   out_of_memory = out_of_memory || (output_ptr == NULL);
+  cost_metrics.outputs_memory =
+      (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+
   float *weight_ptr =
       (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
   out_of_memory = out_of_memory || (weight_ptr == NULL);
@@ -681,6 +686,8 @@ bool Embedding::measure_operator_cost(Simulator *sim,
                               sub_output.get_volume());
     };
   }
+  cost_metrics.weights_memory =
+      (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 

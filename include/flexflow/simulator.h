@@ -50,11 +50,22 @@ class FFModel;
 
 struct CostMetrics {
   CostMetrics()
-      : forward_time(0.0f), backward_time(0.0f), sync_time(0.0f),
-        memory_requirement(0) {}
+      : forward_time{}, backward_time{}, sync_time{}, inputs_memory{},
+        outputs_memory{}, weights_memory{} {}
+
+  inline size_t total_memory() const {
+    return inputs_memory + outputs_memory + weights_memory;
+  }
+
+  // Data Members
   float forward_time, backward_time;
   float sync_time;
-  size_t memory_requirement;
+  ///< Bytes of memory usage of different parts
+  // Assume:
+  // 1. all memory allocations use Simulator::allocate
+  // 2. we call Simulator::free_all before measuring an operator
+  // Therefore, the memory usage of an operator is (size_t)sim->offset
+  size_t inputs_memory, outputs_memory, weights_memory;
 };
 
 class Device {

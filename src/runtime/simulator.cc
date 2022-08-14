@@ -1219,7 +1219,7 @@ float Simulator::simulate_runtime(
     Op *op = model->operators[l];
     ParallelConfig config = global.find(op)->second;
     CostMetrics cost_metrics = measure_operator_cost(op, config);
-    size_t memory_requirement = cost_metrics.memory_requirement;
+    size_t memory_requirement = cost_metrics.total_memory();
     for (int j = 0; j < config.num_parts(); j++) {
       gpu_mem_usage[config.device_ids[j]] += memory_requirement;
     }

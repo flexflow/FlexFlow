@@ -327,6 +327,7 @@ bool Split::measure_operator_cost(Simulator *sim,
   float *output_ptr[MAX_NUM_OUTPUTS];
   size_t total_volume = 0;
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  cost_metrics.inputs_memory = static_cast<size_t>(sim->offset);
   coord_t num_blks, in_blk_size, out_blk_size[MAX_NUM_OUTPUTS];
   calc_block_size(num_blks, in_blk_size, in_domain, legion_axis);
   for (int i = 0; i < numOutputs; i++) {
@@ -344,6 +345,8 @@ bool Split::measure_operator_cost(Simulator *sim,
     total_volume += out_domain.get_volume();
   }
   assert(total_volume == in_domain.get_volume());
+  cost_metrics.outputs_memory =
+      (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
 
   std::function<void()> forward, backward;
   forward = [&] {

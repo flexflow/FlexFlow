@@ -557,20 +557,20 @@ bool Conv2D::measure_operator_cost(Simulator *sim,
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert(input_ptr != NULL);
+  cost_metrics.inputs_memory = static_cast<size_t>(sim->offset);
+
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
+  cost_metrics.outputs_memory =
+      (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+
   float *weight_ptr = (float *)sim->allocate(
       (size_t)output_c * input_c * kernel_h * kernel_w / groups, DT_FLOAT);
   assert(weight_ptr != NULL);
   float *bias_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
   assert(bias_ptr != NULL);
-
-  // compute memory usage
-  // Assume:
-  //   1. all memory allocations use Simulator::allocate
-  //   2. we call Simulator::free_all before measure an operator
-  // Therefore, the memory usage of an operator is sim->offset
-  cost_metrics.memory_requirement = (size_t)sim->offset;
+  cost_metrics.weights_memory =
+      (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
 
   // select forward algorithm
   {

@@ -16,8 +16,6 @@
 #include "flexflow/model.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
-//#include "realm/runtime_impl.h"
-//#include "realm/hip/hip_module.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -38,6 +36,7 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
 void Op::inner_measure_operator_cost(Simulator *sim,
                                      std::function<void()> const &forward,
                                      std::function<void()> const &backward,
@@ -74,13 +73,6 @@ void Op::inner_measure_operator_cost(Simulator *sim,
   } else {
     cost_metrics.backward_time = 0.0f;
   }
-
-  // compute memory usage
-  // Assume:
-  //   1. all memory allocations use Simulator::allocate
-  //   2. we call Simulator::free_all before measure an operator
-  // Therefore, the memory usage of an operator is sim->offset
-  cost_metrics.memory_requirement = (size_t)sim->offset;
 }
 
 FFHandler

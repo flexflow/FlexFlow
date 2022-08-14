@@ -248,8 +248,13 @@ bool BatchNorm::measure_operator_cost(Simulator *sim,
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert(input_ptr != NULL);
+  cost_metrics.inputs_memory = static_cast<size_t>(sim->offset);
+
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
+  cost_metrics.outputs_memory =
+      (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+
   float *bias_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
   assert(bias_ptr != NULL);
   float *scale_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
@@ -283,6 +288,8 @@ bool BatchNorm::measure_operator_cost(Simulator *sim,
                       sub_output.get_volume());
     };
   }
+  cost_metrics.weights_memory =
+      (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
