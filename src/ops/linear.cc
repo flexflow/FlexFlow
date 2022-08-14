@@ -834,11 +834,20 @@ bool Linear::measure_operator_cost(Simulator *sim,
       input_grad_ptr =
           sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
     }
+    cost_metrics.inputs_memory +=
+        (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+
     void *output_grad_ptr =
         sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
+    cost_metrics.outputs_memory +=
+        (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+
     void *kernel_grad_ptr =
         sim->allocate((size_t)output_c * input_c, this->data_type);
     void *bias_grad_ptr = sim->allocate(output_c, this->data_type);
+    cost_metrics.weights_memory +=
+        (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+
     out_of_memory = (input_grad_ptr == NULL) || (output_grad_ptr == NULL) ||
                     (kernel_grad_ptr == NULL) || (bias_grad_ptr == NULL);
     if (out_of_memory) {

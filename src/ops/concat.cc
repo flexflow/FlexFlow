@@ -377,7 +377,7 @@ bool Concat::measure_operator_cost(Simulator *sim,
   cost_metrics.inputs_memory = static_cast<size_t>(sim->offset);
 
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  cost_metrics.outputs_memory =
+  auto output_mem =
       (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
 
   out_of_memory = out_of_memory || (output_ptr == NULL);
@@ -411,6 +411,8 @@ bool Concat::measure_operator_cost(Simulator *sim,
           (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
       out_of_memory = out_of_memory || (input_grad_ptrs[i] == NULL);
     }
+    cost_metrics.inputs_memory =
+        (static_cast<size_t>(sim->offset) - output_mem);
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     out_of_memory = out_of_memory || (output_grad_ptr == NULL);
@@ -419,9 +421,6 @@ bool Concat::measure_operator_cost(Simulator *sim,
       cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
       return true;
     }
-    cost_metrics.weights_memory =
-        (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
-
     backward = [&] {
       backward_kernel_wrapper(m,
                               output_grad_ptr,
@@ -432,6 +431,8 @@ bool Concat::measure_operator_cost(Simulator *sim,
                               in_domains);
     };
   }
+  cost_metrics.outputs_memory =
+      (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 

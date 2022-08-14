@@ -274,11 +274,15 @@ bool Transpose::measure_operator_cost(Simulator *sim,
     float *input_grad_ptr =
         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
     assert(input_grad_ptr != NULL);
+    cost_metrics.inputs_memory +=
+        (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert(output_grad_ptr != NULL);
-    cost_metrics.weights_memory =
+    cost_metrics.outputs_memory +=
         (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+
     backward = [&] {
       backward_kernel_wrapper(m,
                               input_grad_ptr,

@@ -259,6 +259,8 @@ bool BatchNorm::measure_operator_cost(Simulator *sim,
   assert(bias_ptr != NULL);
   float *scale_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
   assert(scale_ptr != NULL);
+  cost_metrics.weights_memory =
+      (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
 
   std::function<void()> forward, backward;
   forward = [&] {
@@ -268,13 +270,21 @@ bool BatchNorm::measure_operator_cost(Simulator *sim,
     float *input_grad_ptr =
         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
     assert(input_grad_ptr != NULL);
+    cost_metrics.inputs_memory +=
+        (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert(output_grad_ptr != NULL);
+    cost_metrics.outputs_memory +=
+        (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+
     float *scale_grad_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
     assert(scale_grad_ptr != NULL);
     float *bias_grad_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
     assert(bias_grad_ptr != NULL);
+    cost_metrics.weights_memory +=
+        (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
 
     backward = [&] {
       backward_kernel(m,
@@ -288,8 +298,6 @@ bool BatchNorm::measure_operator_cost(Simulator *sim,
                       sub_output.get_volume());
     };
   }
-  cost_metrics.weights_memory =
-      (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
