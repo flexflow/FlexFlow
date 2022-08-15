@@ -375,7 +375,7 @@ void Linear::pipeforward(const FFModel& ff)
                          Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->in_pipepart[fwd_input_idx], 0/*projection id*/,
+      RegionRequirement(in_pipepart[0][fwd_input_idx], 0/*projection id*/,
                         READ_ONLY, EXCLUSIVE, inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
@@ -396,7 +396,7 @@ void Linear::pipeforward(const FFModel& ff)
                           READ_ONLY, EXCLUSIVE, weights[1]->region));
     launcher.add_field(3, FID_DATA);
   }
-  fwd_input_idx = (fwd_input_idx + 1) % inputs[0]->pipe_num_part_in;
+  fwd_input_idx = (fwd_input_idx + 1) % (inputs[0]->pipe_buf_size/ubSize);
   fwd_output_idx = (fwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
   runtime->execute_index_space(ctx, launcher);
 }
@@ -530,14 +530,14 @@ void Linear::pipebackward(const FFModel& ff)
     int rid = 0;
     // regions[0](I): input
     launcher.add_region_requirement(
-        RegionRequirement(inputs[0]->in_pipepart[bwd_input_idx], 0/*projection id*/,
+        RegionRequirement(in_pipepart[0][bwd_input_idx], 0/*projection id*/,
                           READ_ONLY, EXCLUSIVE, inputs[0]->region));
     launcher.add_field(rid++, FID_DATA);
     // regions[1](I/O): replica_grad
     assert(replica == NULL);
     if (trainableInputs[0]) {
       launcher.add_region_requirement(
-          RegionRequirement(inputs[0]->in_pipepart_grad[bwd_input_idx], 0/*projection id*/,
+          RegionRequirement(in_pipepart_grad[0][bwd_input_idx], 0/*projection id*/,
                             READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
       launcher.add_field(rid++, FID_DATA);
     }
@@ -568,7 +568,7 @@ void Linear::pipebackward(const FFModel& ff)
                             READ_WRITE, EXCLUSIVE, weights[1]->region_grad));
       launcher.add_field(rid++, FID_DATA);
     }
-    bwd_input_idx = (bwd_input_idx + 1) % inputs[0]->pipe_num_part_in;
+    bwd_input_idx = (bwd_input_idx + 1) % (inputs[0]->pipe_buf_size/ubSize);
     bwd_output_idx = (bwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
     runtime->execute_index_space(ctx, launcher);
   }

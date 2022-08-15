@@ -101,6 +101,7 @@ public:
   int bwd_output_idx = 0;
   int fwd_input_idx[MAX_NUM_INPUTS];
   int bwd_input_idx[MAX_NUM_INPUTS];
+  int init_output_idx = 0;
 };
 
 }; // namespace FlexFlow

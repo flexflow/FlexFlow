@@ -587,7 +587,7 @@ public:
 
 
   void map_tensor(ParallelTensor tensor, const Op* parallel_op);
-  void map_input_tensors(ParallelTensor tensor, const Op* parallel_op);
+  void map_input_tensors(ParallelTensor tensor, const Op* parallel_op, int idx);
   void map_weight(ParallelTensor tensor, const Op* parallel_op);
   bool get_parallel_tensor_from_tensor(const Tensor tensor,
                                        ParallelTensor& parallel_tensor) const;
@@ -935,9 +935,9 @@ private:
   template<int NDIM, int TDIM>
   void map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op);
   template<int NDIM>
-  void map_input_tensor_with_dim(ParallelTensor tensor, const Op* parallel_op);
+  void map_input_tensor_with_dim(ParallelTensor tensor, const Op* parallel_op, int idx);
   template<int NDIM, int TDIM>
-  void map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op);
+  void map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op, int idx);
   template<int NDIM>
   void map_weight_with_dim(ParallelTensor weight, const Op* parallel_op);
 

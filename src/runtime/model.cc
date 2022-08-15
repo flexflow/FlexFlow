@@ -1678,13 +1678,13 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
 }
 
 
-void FFModel::map_input_tensors(ParallelTensor tensor, const Op* op)
+void FFModel::map_input_tensors(ParallelTensor tensor, const Op* op, int idx)
 {
   switch (tensor->num_dims) {
 #define DIMFUNC(NDIM) \
     case NDIM: \
     { \
-      map_input_tensor_with_dim<NDIM>(tensor, op); \
+      map_input_tensor_with_dim<NDIM>(tensor, op, idx); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -1698,7 +1698,7 @@ void FFModel::map_input_tensors(ParallelTensor tensor, const Op* op)
 }
 
 template<int NDIM>
-void FFModel::map_input_tensor_with_dim(ParallelTensor tensor, const Op* parallel_op)
+void FFModel::map_input_tensor_with_dim(ParallelTensor tensor, const Op* parallel_op, int idx)
 {
   // tensor->parallel_is = get_or_create_task_is(tensor);
   assert(tensor->owner_op != NULL);
@@ -1709,7 +1709,7 @@ void FFModel::map_input_tensor_with_dim(ParallelTensor tensor, const Op* paralle
 #define DIMFUNC(TDIM) \
     case TDIM: \
     { \
-      map_input_tensor_with_dim2<NDIM, TDIM>(tensor, parallel_op); \
+      map_input_tensor_with_dim2<NDIM, TDIM>(tensor, parallel_op, idx); \
       break; \
     }
     LEGION_FOREACH_N(DIMFUNC)
@@ -1722,7 +1722,7 @@ void FFModel::map_input_tensor_with_dim(ParallelTensor tensor, const Op* paralle
 }
 
 template<int NDIM, int TDIM>
-void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
+void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op, int idx)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -1732,8 +1732,9 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
   log_model.print("DEBUG: map_input_tensor(%d, %d) for op(%s, %zu)",tensor->num_dims,tensor->dims[NDIM-2].size, optype_to_string(parallel_op->op_type).data(), parallel_op->op_guid);
   IndexSpaceT<NDIM> is = (IndexSpaceT<NDIM>) tensor->region.get_index_space();
   Rect<NDIM> rect = runtime->get_index_space_domain(ctx, is);
-
-  Rect<1> ubdim_rect(0, tensor->pipe_num_part_in-1);
+  
+  int np = tensor->pipe_buf_size / op->ubSize;
+  Rect<1> ubdim_rect(0, np-1);
   IndexSpaceT<1> ub_is = runtime->create_index_space(ctx, ubdim_rect);
 
   Transform<NDIM, 1> trans;
@@ -1741,7 +1742,6 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
   for (int i = 0; i < NDIM; i++) {
     ex_hi[i] = rect.hi[i] - rect.lo[i];
   }
-  int np = tensor->pipe_num_part_in;
   ex_hi[NDIM-2] = (rect.hi[NDIM-2] - rect.lo[NDIM-2] + np) / np - 1;
   Rect<NDIM> ext(Point<NDIM>::ZEROES(), ex_hi);
   for (int i = 0; i < NDIM; i++){
@@ -1752,7 +1752,7 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
   LogicalPartition ub_lp = runtime->get_logical_partition(ctx, tensor->region, ub_ip);
   //second-level partition: intra-stage parallelism, for input tensor, we need to use the task_is of the op
   //temp, need to be fixed, need a better abstraction when later support branch-level parallelism
-  IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(parallel_op->outputs[0]);
+  IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>) get_or_create_task_is(tensor);
   assert(parallel_op != NULL);
   int k = 0;
   for (PointInRectIterator<1> it(ubdim_rect); it(); it++, k++) {
@@ -1779,13 +1779,13 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parall
           ctx, sub_is, part_is, transform, extent);
       assert(runtime->is_index_partition_disjoint(ctx, ip));
       assert(runtime->is_index_partition_complete(ctx, ip));
-      tensor->in_pipepart[k] = runtime->get_logical_partition(ctx, tensor->region, ip);
+      parallel_op->in_pipepart[idx][k] = runtime->get_logical_partition(ctx, tensor->region, ip);
       if (tensor->create_gradients && config.computationMode == COMP_MODE_TRAINING) {
-        tensor->in_pipepart_grad[k] = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
+        parallel_op->in_pipepart_grad[idx][k] = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
       }
   }
   
-  log_model.print("DEBUG: finish map_input_tensor for op(%s, %zu)",optype_to_string(parallel_op->op_type).data(), parallel_op->op_guid);
+  log_model.print("DEBUG: finish map_input_tensor for op(%s, %zu)->input[%d]",optype_to_string(parallel_op->op_type).data(), parallel_op->op_guid, idx);
 }
 
 
@@ -2984,14 +2984,15 @@ void FFModel::compile(LossType loss_type,
     }
     for (int i = 0; i< op->numInputs; i++) {
       //shicao for pipeline parallelism, map boarder input tensors
+      //TODO: avoid creating redundant input_part
       if (op->inputs[i]->owner_op->stage_guid == op->stage_guid){
-        for (int j = 0; j < op->inputs[i]->pipe_num_part_in; j++){
-          op->inputs[i]->in_pipepart[j] = op->inputs[i]->out_pipepart[j];
-          op->inputs[i]->in_pipepart_grad[j] = op->inputs[i]->out_pipepart_grad[j];
+        for (int j = 0; j < op->inputs[i]->pipe_buf_size/op->ubSize; j++){
+          op->in_pipepart[i][j] = op->inputs[i]->out_pipepart[j];
+          op->in_pipepart_grad[i][j] = op->inputs[i]->out_pipepart_grad[j];
         }
       }
       else {
-        map_input_tensors(op->inputs[i], op);
+        map_input_tensors(op->inputs[i], op, i);
       }
     }
 
@@ -4791,7 +4792,7 @@ void register_flexflow_internal_tasks()
   template ParallelParameter FFModel::create_parallel_weight<DIM>(const ParallelDim dims[], DataType data_type, const Op* owner_op, bool create_grad,\
     Initializer* initializer, ParameterSyncType sync_type);\
   template void FFModel::map_tensor_with_dim<DIM>(ParallelTensor tensor, const Op* parallel_op); \
-  template void FFModel::map_input_tensor_with_dim<DIM>(ParallelTensor tensor, const Op* parallel_op); \
+  template void FFModel::map_input_tensor_with_dim<DIM>(ParallelTensor tensor, const Op* parallel_op, int idx); \
   template void FFModel::map_weight_with_dim<DIM>(ParallelTensor weight, const Op* parallel_op); \
   template Tensor FFModel::create_constant<DIM>(const int* dims, float value, DataType data_type); \
   template void FFModel::create_disjoint_partition<DIM>(const ParallelTensor tensor, const IndexSpaceT<DIM>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
@@ -4800,7 +4801,7 @@ void register_flexflow_internal_tasks()
 
 #define DIMFUNC(D1,D2) \
   template void FFModel::map_tensor_with_dim2<D1,D2>(ParallelTensor tensor, const Op* parallel_op); \
-  template void FFModel::map_input_tensor_with_dim2<D1,D2>(ParallelTensor tensor, const Op* parallel_op); \
+  template void FFModel::map_input_tensor_with_dim2<D1,D2>(ParallelTensor tensor, const Op* parallel_op, int idx); \
   template void FFModel::create_disjoint_partition_with_dim2<D1,D2>(const ParallelDim dims[], const IndexSpaceT<D2>& part_is, const LogicalRegion& region, LogicalPartition& part); \
   template void FFModel::create_aliased_partition_with_dim2<D1,D2>(const ParallelDim dims[], int aliased_dim, const IndexSpaceT<D2>& part_is, const LogicalRegion& region, LogicalPartition& part); \
   template void FFModel::create_data_parallel_partition_with_diff_dims<D1, D2>(const ParallelTensor tensor, const IndexSpaceT<D2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);

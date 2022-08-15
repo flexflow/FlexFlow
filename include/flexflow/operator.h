@@ -231,6 +231,10 @@ public:
   int nFnB;
   int zero_grad_idx[MAX_NUM_OUTPUTS];
   bool profiling;
+
+  //shicao branch
+  Legion::LogicalPartition in_pipepart[MAX_NUM_INPUTS][MAX_PIPE_PART];
+  Legion::LogicalPartition in_pipepart_grad[MAX_NUM_INPUTS][MAX_PIPE_PART];
 #ifdef FF_USE_NCCL
   ncclUniqueId ncclId;
 #endif

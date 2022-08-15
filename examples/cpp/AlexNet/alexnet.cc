@@ -187,7 +187,7 @@ DataLoader::DataLoader(FFModel& ff,
     log_app.print("Start loading dataset from %s", alexnet->dataset_path);
     size_t filesize = get_file_size(alexnet->dataset_path);
     assert(filesize % 3073 == 0);
-    num_samples = filesize / 3073;
+    num_samples = filesize / 3073 / 100;
   }
   // Create full input
   {
@@ -430,10 +430,10 @@ void DataLoader::next_input_ubatch(FFModel& ff)
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_input->parallel_tensor->in_pipepart[input_idx], 0/*projection id*/,
+        RegionRequirement(batch_input->parallel_tensor->out_pipepart[input_idx], 0/*projection id*/,
                           WRITE_ONLY, EXCLUSIVE, batch_input->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
-    input_idx = (input_idx + 1) % batch_input->parallel_tensor->pipe_num_part_in;
+    input_idx = (input_idx + 1) % batch_input->parallel_tensor->pipe_num_part_out;
     runtime->execute_index_space(ctx, launcher);
   }
   next_input_index += ubSize;
