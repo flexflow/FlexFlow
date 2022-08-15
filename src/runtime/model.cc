@@ -1733,7 +1733,7 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, Op* parallel_op,
   IndexSpaceT<NDIM> is = (IndexSpaceT<NDIM>) tensor->region.get_index_space();
   Rect<NDIM> rect = runtime->get_index_space_domain(ctx, is);
   
-  int np = tensor->pipe_buf_size / op->ubSize;
+  int np = tensor->pipe_buf_size / parallel_op->ubSize;
   Rect<1> ubdim_rect(0, np-1);
   IndexSpaceT<1> ub_is = runtime->create_index_space(ctx, ubdim_rect);
 
