@@ -1678,7 +1678,7 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op)
 }
 
 
-void FFModel::map_input_tensors(ParallelTensor tensor, const Op* op, int idx)
+void FFModel::map_input_tensors(ParallelTensor tensor, Op* op, int idx)
 {
   switch (tensor->num_dims) {
 #define DIMFUNC(NDIM) \
@@ -1698,7 +1698,7 @@ void FFModel::map_input_tensors(ParallelTensor tensor, const Op* op, int idx)
 }
 
 template<int NDIM>
-void FFModel::map_input_tensor_with_dim(ParallelTensor tensor, const Op* parallel_op, int idx)
+void FFModel::map_input_tensor_with_dim(ParallelTensor tensor, Op* parallel_op, int idx)
 {
   // tensor->parallel_is = get_or_create_task_is(tensor);
   assert(tensor->owner_op != NULL);
@@ -1722,7 +1722,7 @@ void FFModel::map_input_tensor_with_dim(ParallelTensor tensor, const Op* paralle
 }
 
 template<int NDIM, int TDIM>
-void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, const Op* parallel_op, int idx)
+void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor, Op* parallel_op, int idx)
 {
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
@@ -4792,7 +4792,7 @@ void register_flexflow_internal_tasks()
   template ParallelParameter FFModel::create_parallel_weight<DIM>(const ParallelDim dims[], DataType data_type, const Op* owner_op, bool create_grad,\
     Initializer* initializer, ParameterSyncType sync_type);\
   template void FFModel::map_tensor_with_dim<DIM>(ParallelTensor tensor, const Op* parallel_op); \
-  template void FFModel::map_input_tensor_with_dim<DIM>(ParallelTensor tensor, const Op* parallel_op, int idx); \
+  template void FFModel::map_input_tensor_with_dim<DIM>(ParallelTensor tensor, Op* parallel_op, int idx); \
   template void FFModel::map_weight_with_dim<DIM>(ParallelTensor weight, const Op* parallel_op); \
   template Tensor FFModel::create_constant<DIM>(const int* dims, float value, DataType data_type); \
   template void FFModel::create_disjoint_partition<DIM>(const ParallelTensor tensor, const IndexSpaceT<DIM>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
@@ -4801,7 +4801,7 @@ void register_flexflow_internal_tasks()
 
 #define DIMFUNC(D1,D2) \
   template void FFModel::map_tensor_with_dim2<D1,D2>(ParallelTensor tensor, const Op* parallel_op); \
-  template void FFModel::map_input_tensor_with_dim2<D1,D2>(ParallelTensor tensor, const Op* parallel_op, int idx); \
+  template void FFModel::map_input_tensor_with_dim2<D1,D2>(ParallelTensor tensor, Op* parallel_op, int idx); \
   template void FFModel::create_disjoint_partition_with_dim2<D1,D2>(const ParallelDim dims[], const IndexSpaceT<D2>& part_is, const LogicalRegion& region, LogicalPartition& part); \
   template void FFModel::create_aliased_partition_with_dim2<D1,D2>(const ParallelDim dims[], int aliased_dim, const IndexSpaceT<D2>& part_is, const LogicalRegion& region, LogicalPartition& part); \
   template void FFModel::create_data_parallel_partition_with_diff_dims<D1, D2>(const ParallelTensor tensor, const IndexSpaceT<D2>& part_is, LogicalPartition& part_fwd, LogicalPartition& part_bwd);
