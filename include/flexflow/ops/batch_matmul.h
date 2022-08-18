@@ -17,7 +17,13 @@ public:
               const ParallelTensor A,
               const ParallelTensor B,
               int a_seq_length_dim,
-              int b_seq_length_dim);
+              int b_seq_length_dim,
+              char const *name);
+  static Op *
+      create_operator_from_layer(FFModel &model,
+                                 Layer const *layer,
+                                 std::vector<ParallelTensor> const &inputs);
+
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;

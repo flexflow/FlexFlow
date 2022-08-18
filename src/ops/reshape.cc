@@ -48,7 +48,8 @@ Tensor FFModel::reshape(const Tensor input,
                              input);
   int dims[MAX_TENSOR_DIM];
   int numdim = shape.size();
-  for (int i = 1; i < numdim; i++) {
+  for (int i = 0; i < numdim; i++) {
+    assert(shape[i] > 0);
     dims[i] = shape[i];
   }
   reshape->outputs[0] = create_tensor(

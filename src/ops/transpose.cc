@@ -52,7 +52,7 @@ Tensor FFModel::transpose(const Tensor input,
   for (int i = 0; i < numdim; i++)
     dims[i] = input->dims[perm[i]];
   transpose->outputs[0] = create_tensor_legion_ordering(
-      numdim, dims, input->data_type, transpose, 0, true/*create_grad*/);
+      numdim, dims, input->data_type, transpose, 0, true /*create_grad*/);
   transpose->add_int_vector_property("perm", _perm);
   layers.push_back(transpose);
   return transpose->outputs[0];
