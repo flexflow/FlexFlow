@@ -276,6 +276,14 @@ Embedding::Embedding(FFModel& model,
   assert (check_output_input_weight_parallel_dims(allocate_weights));
 }
 
+void Embedding::reset_idx(const FFModel& ff)
+{
+  fwd_input_idx = 0;
+  fwd_output_idx = 0;
+  bwd_input_idx = 0;
+  bwd_output_idx = 0;
+}
+
 void Embedding::init(const FFModel& ff)
 {
   assert(check_output_input_weight_same_parallel_is());
@@ -308,6 +316,44 @@ void Embedding::init(const FFModel& ff)
     RegionRequirement(inputs[0]->part_grad, 0/*projection*/,
       WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
   launcher.add_field(2, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
+}
+
+void Embedding::pipeinit(const FFModel& ff)
+{
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  set_argumentmap_for_init(ff, argmap);
+  IndexLauncher launcher(EMBED_INIT_TASK_ID, parallel_is,
+                         TaskArgument(this, sizeof(Embedding)), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  // regions[0]: input
+  //launcher.add_region_requirement(
+  //  RegionRequirement(input_lps[0], 0/*projection*/,
+  //    READ_ONLY, EXCLUSIVE, inputs[0]->region));
+  //launcher.add_field(0, FID_DATA);
+  // regions[1]: output
+  launcher.add_region_requirement(
+    RegionRequirement(outputs[0]->out_pipepart[init_output_idx], 0/*projection*/,
+      WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  // regions[2]: weight
+  launcher.add_region_requirement(
+    RegionRequirement(weights[0]->part, 0/*projection*/,
+      READ_ONLY, EXCLUSIVE, weights[0]->region));
+  launcher.add_field(1, FID_DATA);
+  // regions[3]: input_grad
+  launcher.add_region_requirement(
+    RegionRequirement(in_pipepart_grad[0][0], 0/*projection*/,
+      WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
+  launcher.add_field(2, FID_DATA);
+  init_output_idx = (init_output_idx + 1) % outputs[0]->pipe_num_part_out;
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
@@ -352,6 +398,37 @@ void Embedding::forward(const FFModel& ff)
       RegionRequirement(weights[0]->part, 0/*projection*/,
                         READ_ONLY, EXCLUSIVE, weights[0]->region));
   launcher.add_field(2, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void Embedding::pipeforward(const FFModel& ff)
+{
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  set_argumentmap_for_forward(ff, argmap);
+  IndexLauncher launcher(EMBED_FWD_TASK_ID, parallel_is,
+                         TaskArgument(NULL, 0), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  // regions[0]: input
+  launcher.add_region_requirement(
+      RegionRequirement(in_pipepart[0][fwd_input_idx], 0/*projection*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  // regions[1]: output
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->out_pipepart[fwd_output_idx], 0/*projection*/,
+                        WRITE_ONLY, EXCLUSIVE, outputs[0]->region,
+                        MAP_TO_ZC_MEMORY));
+  launcher.add_field(1, FID_DATA);
+  // regions[2]: weight
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part, 0/*projection*/,
+                        READ_ONLY, EXCLUSIVE, weights[0]->region));
+  launcher.add_field(2, FID_DATA);
+  fwd_input_idx = (fwd_input_idx + 1) % (inputs[0]->pipe_buf_size/ubSize);
+  fwd_output_idx = (fwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -451,6 +528,34 @@ void Embedding::backward(const FFModel& ff)
   // regions[1]: output_grad
   launcher.add_region_requirement(
       RegionRequirement(outputs[0]->part_grad, 0/*projection*/,
+                        READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
+  launcher.add_field(1, FID_DATA);
+  // regions[2]: weight_grad
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part_grad, 0/*projection*/,
+                        READ_WRITE, EXCLUSIVE, weights[0]->region_grad));
+  launcher.add_field(2, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void Embedding::pipebackward(const FFModel& ff)
+{
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime* runtime = ff.config.lg_hlr;
+  set_argumentmap_for_backward(ff, argmap);
+  IndexLauncher launcher(EMBED_BWD_TASK_ID, parallel_is,
+                         TaskArgument(NULL, 0), argmap,
+                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  // regions[0]: input
+  launcher.add_region_requirement(
+      RegionRequirement(in_pipepart[0][bwd_input_idx], 0/*projection*/,
+                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  // regions[1]: output_grad
+  launcher.add_region_requirement(
+      RegionRequirement(outputs[0]->out_pipepart_grad[bwd_output_idx], 0/*projection*/,
                         READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
   // regions[2]: weight_grad

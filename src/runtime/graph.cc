@@ -1551,21 +1551,43 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
   //TODO the below should be output of the optimizer, now some dummy code a random 3-stage partition
   
   if (model->config.only_data_parallel) {
-    StageInfo sinfo;
-    sinfo.sid = 0;
-    sinfo.ubatchSize = 10;
-    //sinfo.bufSize = 4;
-    sinfo.bufSize = 40;
-    //sinfo.nFnB = 2;
-    sinfo.nFnB = 2;
-    sinfo.device_num = 1;
-    MachineView data_parallel_view;
-    data_parallel_view.device_type = MachineView::GPU;
-    data_parallel_view.ndims = 1;
-    // data_parallel_view.dim[0] = model->config.numNodes * model->config.workersPerNode;
-    data_parallel_view.dim[0] = sinfo.device_num;
-    data_parallel_view.stride[0] = 1;
-    data_parallel_view.start_device_id = 0;
+    StageInfo sinfo[4];
+    sinfo[0].sid = 0;
+    sinfo[0].ubatchSize = 8;
+    sinfo[0].bufSize = 56;
+    sinfo[0].nFnB = 2;
+    sinfo[0].device_num = 1;
+
+    sinfo[1].sid = 1;
+    sinfo[1].ubatchSize = 16;
+    sinfo[1].bufSize = 48;
+    sinfo[1].nFnB = 1;
+    sinfo[1].device_num = 1;
+
+    sinfo[2].sid = 2;
+    sinfo[2].ubatchSize = 16;
+    sinfo[2].bufSize = 32;
+    sinfo[2].nFnB = 1;
+    sinfo[2].device_num = 1;
+
+    sinfo[3].sid = 3;
+    sinfo[3].ubatchSize = 16;
+    sinfo[3].bufSize = 16;
+    sinfo[3].nFnB = 1;
+    sinfo[3].device_num = 1;
+
+
+
+    MachineView data_parallel_view[4];
+    for(int i=0; i<4; i++){
+      data_parallel_view[i].device_type = MachineView::GPU;
+      data_parallel_view[i].ndims = 1;
+      // data_parallel_view.dim[0] = model->config.numNodes * model->config.workersPerNode;
+      data_parallel_view[i].dim[0] = 1;
+      data_parallel_view[i].stride[0] = 1;
+      data_parallel_view[i].start_device_id = i;
+    }
+    
     int op_per_stage = model->operators.size() / 2;
     //int op_per_stage = 100;
     int num = 0;
@@ -1578,20 +1600,9 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
       dstNode.guid = model->node_global_guid++;
       op_to_node_map[dstOp] = dstNode;
 
-      printf("Node type(%s)", dstNode.to_string().c_str());
-      optimal_views[dstNode] = data_parallel_view;
-      optimal_partition[dstNode] = sinfo;
-      if(num == op_per_stage) {
-        sinfo.sid = 1;
-        //sinfo.bufSize = 2;
-        sinfo.bufSize = 20;
-	      //sinfo.ubatchSize = 2;
-        sinfo.ubatchSize = 20;
-	      sinfo.device_num = 1;
-        sinfo.nFnB = 1;
-        data_parallel_view.dim[0] = sinfo.device_num;
-        data_parallel_view.start_device_id = 1;
-      }
+      printf("Node type(%s), id: %d, stage: %d", dstNode.to_string().c_str(), num, config.partition.find(num));
+      optimal_views[dstNode] = data_parallel_view[config.partition.find(num)];
+      optimal_partition[dstNode] = sinfo[config.partition.find(num)];
       num++;
 
       for (int j = 0; j < dstOp->numInputs; j++) {

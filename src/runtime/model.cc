@@ -2713,8 +2713,8 @@ Op* FFModel::create_operator_from_layer(Layer* layer,
       ParallelDim dims[MAX_TENSOR_DIM];
       for (int j = 0; j < num_dims; j++) {
         dims[j].size = tensor->dims[j];
-	dims[j].degree = 1;
-	dims[j].parallel_idx = -1;
+        dims[j].degree = 1;
+        dims[j].parallel_idx = -1;
         dims[j].is_replica_dim = false;
       }
       dims[num_dims].size = 1;
@@ -2858,9 +2858,11 @@ void FFModel::compile(LossType loss_type,
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   config.computationMode = comp_mode;
-  //if (config.import_strategy_file.length() > 0) {
+  load_partition_from_file(const std::string& filename,
+                               std::map<int, int>& config.partition);
+  // if (config.import_strategy_file.length() > 0) {
   //  load_strategies_from_file(config.import_strategy_file, config.strategies);
-  //}
+  // }
   // Construct operators from layers
   if (config.only_data_parallel) {
     fprintf(stderr, "Note: only_data_parallel is specified, FlexFlow compiles a data-parallel PCG.\n");

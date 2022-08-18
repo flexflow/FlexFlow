@@ -103,6 +103,27 @@ bool load_strategies_from_file(const std::string& filename,
 {
   std::fstream input(filename, std::ios::in);
   if (!input) {
+    std::cerr << "Failed to open partition file for reading" << std::endl;
+    return false;
+  }
+
+  int ops_size = 0;
+  input >> ops_size; 
+  for (int i = 0; i < ops_size; i++) {
+    int sid;
+    input >> sid;
+    printf("%d, %d\n", i, sid);
+    strategies[i] = sid;
+  }
+  input.close();
+  return true;
+}
+
+bool load_strategies_from_file(const std::string& filename,
+                               std::map<MappingTagID, ParallelConfig>& strategies)
+{
+  std::fstream input(filename, std::ios::in);
+  if (!input) {
     std::cerr << "Failed to open strategy file for reading" << std::endl;
     return false;
   }

@@ -83,6 +83,9 @@ struct FFInitInfo {
   //int myRank, allRanks;
 };
 
+bool load_partition_from_file(const std::string& filename,
+        std::map<int, int>& partition);
+
 //bool load_strategies_from_file(const std::string& filename,
 //         std::map<Legion::MappingTagID, ParallelConfig>& strategies);
 
@@ -145,6 +148,7 @@ public:
   tl::optional<std::string> substitution_json_path = tl::nullopt;
   // We use MappingTagID as the key since we will pass the tag to the mapper
   //std::map<Legion::MappingTagID, ParallelConfig> strategies;
+  std::map<int, int> partition;
   int machine_model_version;
   std::string machine_model_file;
   int simulator_segment_size;

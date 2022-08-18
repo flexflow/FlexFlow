@@ -49,10 +49,10 @@ public:
   void init(const FFModel&) override;
   void forward(const FFModel&) override;
   void backward(const FFModel&) override;
-  void reset_idx(const FFModel&) override {assert(0);}
-  void pipeinit(const FFModel&)  override {assert(0);}
-  void pipeforward(const FFModel&)  override {assert(0);}
-  void pipebackward(const FFModel&)  override {assert(0);}
+  void reset_idx(const FFModel&) override;
+  void pipeinit(const FFModel&)  override;
+  void pipeforward(const FFModel&)  override;
+  void pipebackward(const FFModel&)  override;
   //void update(const FFModel&);
   void print_layer(const FFModel& model) override {assert(0);}
   //Parameter* get_parameter(int index);
@@ -150,6 +150,11 @@ private:
 public:
   int num_entries, out_channels;
   AggrMode aggr;
+  int fwd_input_idx = 0;
+  int fwd_output_idx = 0;
+  int bwd_input_idx = 0;
+  int bwd_output_idx = 0;
+  int init_output_idx = 0;
 };
 
 }; // namespace FlexFlow

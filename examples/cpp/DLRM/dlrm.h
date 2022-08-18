@@ -44,8 +44,12 @@ public:
              Tensor _dense_input, Tensor _label);
 
   void next_batch(FFModel& ff);
+  void next_label_ubatch(FlexFlow::FFModel&);
+  void next_sparse_input_ubatch(FlexFlow::FFModel&, int idx);
+  void next_dense_input_ubatch(FlexFlow::FFModel&);
   void shuffle();
   void reset();
+  void reset_idx(void);
   static void load_entire_dataset(const Task *task,
                                   const std::vector<PhysicalRegion> &regions,
                                   Context ctx,
@@ -67,8 +71,11 @@ public:
                          Context ctx,
                          Runtime* runtime);
 public:
-  int num_samples, next_index;
-private:
+  int num_samples, next_index, next_label_index, next_dense_input_index;
+  int next_sparse_input_index[MAX_NUM_EMB];
+  int sparse_input_idx[MAX_NUM_EMB];
+  int dense_input_idx = 0;
+  int label_idx = 0;
   std::vector<Tensor> batch_sparse_inputs;
   Tensor full_sparse_input, full_dense_input, batch_dense_input, full_label, batch_label;
 };
