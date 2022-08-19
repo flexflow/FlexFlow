@@ -48,10 +48,10 @@ Tensor FFModel::batch_matmul(const Tensor A,
                          1 /*outputs*/,
                          A,
                          B);
-  assert((A->num_dims - 1 - a_seq_length_dim <= 1) &&
+  assert((a_seq_length_dim <= 1) &&
          "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
          "Fortran ordering).");
-  assert((B->num_dims - 1 - b_seq_length_dim <= 1) &&
+  assert((b_seq_length_dim <= 1) &&
          "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
          "Fortran ordering).");
   assert(A->num_dims == B->num_dims);
@@ -105,10 +105,10 @@ BatchMatmul::BatchMatmul(FFModel &model,
          B),
       a_seq_length_dim(A->num_dims - 1 - _a_seq_length_dim),
       b_seq_length_dim(B->num_dims - 1 - _b_seq_length_dim) {
-  assert((a_seq_length_dim <= 1) &&
+  assert((_a_seq_length_dim <= 1) &&
          "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
          "Fortran ordering).");
-  assert((b_seq_length_dim <= 1) &&
+  assert((_b_seq_length_dim <= 1) &&
          "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
          "Fortran ordering).");
   assert(A->num_dims == B->num_dims);
