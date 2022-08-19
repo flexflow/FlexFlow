@@ -2858,8 +2858,8 @@ void FFModel::compile(LossType loss_type,
   Context ctx = config.lg_ctx;
   Runtime* runtime = config.lg_hlr;
   config.computationMode = comp_mode;
-  load_partition_from_file(const std::string& filename,
-                               std::map<int, int>& config.partition);
+  load_partition_from_file(config.import_strategy_file,
+                               config.partition);
   // if (config.import_strategy_file.length() > 0) {
   //  load_strategies_from_file(config.import_strategy_file, config.strategies);
   // }
@@ -2980,8 +2980,8 @@ void FFModel::compile(LossType loss_type,
     for (int i = 0; i < op->numOutputs; i++) {
       // Output tensor
       // scale sample dim
-      //int ndims = op->outputs[i]->num_dims;
-      //op->outputs[i]->dims[ndims-2].size *= op->outputs[i]->pipe_buf_size;
+      int ndims = op->outputs[i]->num_dims;
+      op->outputs[i]->dims[ndims-2].size *= op->outputs[i]->pipe_buf_size;
       map_tensor(op->outputs[i], op);
     }
     for (int i = 0; i< op->numInputs; i++) {

@@ -42,6 +42,7 @@ void DataLoader::load_sparse_input(const Task *task,
   for (int i = 0; i < batch_size; i++) {
     int full_offset = meta->idxs[i] * num_sparse_inputs * in_dim + my_input_idx * in_dim;
     int batch_offset = i * in_dim;
+    //printf("meta->idxs[]:%d, full_offset:%d, in_dim:%d, volume:%d\n", meta->idxs[i], full_offset, in_dim, (int)acc_full_input.rect.volume());
     assert(full_offset + in_dim <= (int)acc_full_input.rect.volume());
     for (int j = 0; j < in_dim; j++) {
       input_zc[batch_offset+j] = acc_full_input.ptr[full_offset+j];

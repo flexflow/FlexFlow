@@ -190,8 +190,19 @@ void FlexFlow::top_level_task(const Task* task,
       for (int iter_inner =0; iter_inner < ff.iter_perbatch; iter_inner++){
         if (dlrmConfig.dataset_path.length() == 0) {
           // Only load data once for random input
-          if (iter == 0 && epoch == 0)
-            data_loader.next_batch(ff);
+          for (size_t i = 0; i < data_loader.batch_sparse_inputs.size(); i++) {
+            for (int k=0; k < data_loader.batch_sparse_inputs[i]->parallel_tensor->owner_op->nFnB; k++){
+              data_loader.next_sparse_input_ubatch(ff, i);
+            }
+          }
+
+          for (int k=0; k < data_loader.batch_dense_input->parallel_tensor->owner_op->nFnB; k++){
+              data_loader.next_dense_input_ubatch(ff);
+          }
+
+          for (int i=0; i < ff.get_final_operator()->nFnB; i++){
+            data_loader.next_label_ubatch(ff);
+          }
         } else {
           //shicao pipeline
           for (size_t i = 0; i < data_loader.batch_sparse_inputs.size(); i++) {
@@ -379,7 +390,7 @@ DataLoader::DataLoader(FFModel& ff,
     pdims[0].degree = 1;
     pdims[1].degree = 1;
     full_sparse_input = ff.create_tensor<2>(dims, DT_INT64);
-    full_dense_input->parallel_tensor = ff.create_parallel_tensor<2>(pdims, DT_INT64);
+    full_sparse_input->parallel_tensor = ff.create_parallel_tensor<2>(pdims, DT_INT64);
     log_app.print("Created full sparse input parallel tensor...");
     ff.map_tensor(full_sparse_input->parallel_tensor, NULL);
     //ff.map_tensor(full_sparse_input, full_sparse_input->owner_op);
@@ -450,6 +461,13 @@ DataLoader::DataLoader(FFModel& ff,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(2, FID_DATA);
   runtime->execute_task(ctx, launcher);
+  reset();
+  for (size_t i = 0; i < batch_sparse_inputs.size(); i++) {
+      for (int k=0; k < batch_sparse_inputs[i]->parallel_tensor->owner_op->nFnB; k++){
+          next_sparse_input_ubatch(ff, i);
+      }
+  }
+  next_dense_input_ubatch(ff);
 }
 
 void DataLoader::load_entire_dataset(const Task *task,
@@ -662,7 +680,7 @@ void DataLoader::next_sparse_input_ubatch(FFModel& ff, int idx)
   int hash = batch_sparse_inputs.size() * MAX_NUM_EMB + idx;
   Domain domain = runtime->get_index_space_domain(ctx, batch_sparse_inputs[idx]->parallel_tensor->parallel_is);
   ArgumentMap argmap;
-  int idx = next_sparse_input_index[idx];
+  int bidx = next_sparse_input_index[idx];
   int ubSize = batch_sparse_inputs[idx]->parallel_tensor->owner_op->ubSize;
   for (Domain::DomainPointIterator it(domain); it; it++) {
     SampleIdxs meta;
@@ -671,7 +689,7 @@ void DataLoader::next_sparse_input_ubatch(FFModel& ff, int idx)
     // Assert that we have enough slots to save the indices
     assert(meta.num_samples <= MAX_NUM_SAMPLES);
     for (int i = 0; i < meta.num_samples; i++)
-      meta.idxs[i] = idx++;
+      meta.idxs[i] = bidx++;
     argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
   }
   IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1, batch_sparse_inputs[idx]->parallel_tensor->parallel_is,
@@ -724,10 +742,10 @@ void DataLoader::next_dense_input_ubatch(FFModel& ff)
                           MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(
-        RegionRequirement(batch_dense_input->parallel_tensor->outpipepart[dense_input_idx], 0/*projection id*/,
+        RegionRequirement(batch_dense_input->parallel_tensor->out_pipepart[dense_input_idx], 0/*projection id*/,
                           WRITE_ONLY, EXCLUSIVE, batch_dense_input->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
-    dense_input_idx = (dense_input_idx + 1) % batch_input->parallel_tensor->pipe_num_part_out;
+    dense_input_idx = (dense_input_idx + 1) % batch_dense_input->parallel_tensor->pipe_num_part_out;
     runtime->execute_index_space(ctx, launcher);
     dense_input_idx += ubSize;
   }
@@ -781,7 +799,7 @@ void DataLoader::reset()
   next_dense_input_index = 0;
   dense_input_idx = 0;
   label_idx = 0;
-  for(size_t i=0; i< batch_sparse_inputs.size(), i++){
+  for(size_t i=0; i< batch_sparse_inputs.size(); i++){
     next_sparse_input_index[i] = 0;
     sparse_input_idx[i] = 0;
   }
@@ -791,7 +809,7 @@ void DataLoader::reset_idx()
 {
   dense_input_idx = 0;
   label_idx = 0;
-  for(size_t i=0; i< batch_sparse_inputs.size(), i++){
+  for(size_t i=0; i< batch_sparse_inputs.size(); i++){
     sparse_input_idx[i] = 0;
   }
 }

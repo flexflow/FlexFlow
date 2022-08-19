@@ -1554,7 +1554,7 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
     StageInfo sinfo[4];
     sinfo[0].sid = 0;
     sinfo[0].ubatchSize = 8;
-    sinfo[0].bufSize = 56;
+    sinfo[0].bufSize = 64;
     sinfo[0].nFnB = 2;
     sinfo[0].device_num = 1;
 
@@ -1600,9 +1600,9 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
       dstNode.guid = model->node_global_guid++;
       op_to_node_map[dstOp] = dstNode;
 
-      printf("Node type(%s), id: %d, stage: %d", dstNode.to_string().c_str(), num, config.partition.find(num));
-      optimal_views[dstNode] = data_parallel_view[config.partition.find(num)];
-      optimal_partition[dstNode] = sinfo[config.partition.find(num)];
+      printf("Node type(%s), id: %d, stage: %d", dstNode.to_string().c_str(), num, model->config.partition[num]);
+      optimal_views[dstNode] = data_parallel_view[model->config.partition[num]];
+      optimal_partition[dstNode] = sinfo[model->config.partition[num]];
       num++;
 
       for (int j = 0; j < dstOp->numInputs; j++) {

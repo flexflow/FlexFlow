@@ -3039,7 +3039,7 @@ bool FFModel::convert_graph_to_operators(const Graph* graph,
       //pipe info
       new_op->outputs[i]->pipe_buf_size = sinfo.bufSize;
       new_op->outputs[i]->pipe_num_part_out = sinfo.bufSize / sinfo.ubatchSize;
-      new_op->outputs[i]->dims[ndims-2].size = new_op->outputs[i]->pipe_buf_size;
+      //new_op->outputs[i]->dims[ndims-2].size = new_op->outputs[i]->pipe_buf_size;
       printf("size %d op(%s), %d\n", new_op->outputs[i]->dims[ndims-2].size, optype_to_string(new_op->op_type).data(), ndims);
     }
     // for (int i = 0; i < new_op->numInputs; i++) {

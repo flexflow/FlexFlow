@@ -98,8 +98,8 @@ bool FFConfig::find_parallel_config(int ndims,
 }
 */
 
-bool load_strategies_from_file(const std::string& filename,
-                               std::map<MappingTagID, ParallelConfig>& strategies)
+bool load_partition_from_file(const std::string& filename,
+                               std::unordered_map<int, int>& partition)
 {
   std::fstream input(filename, std::ios::in);
   if (!input) {
@@ -113,7 +113,7 @@ bool load_strategies_from_file(const std::string& filename,
     int sid;
     input >> sid;
     printf("%d, %d\n", i, sid);
-    strategies[i] = sid;
+    partition[i] = sid;
   }
   input.close();
   return true;
