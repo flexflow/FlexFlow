@@ -231,6 +231,7 @@ void ZeroInitializer::init_task(const Task* task,
       assert(false && "Unsupported data type in Zero Initializer");
     }
   }
+  //printf("zero init\n");
   checkCUDA(cudaDeviceSynchronize());
 }
 

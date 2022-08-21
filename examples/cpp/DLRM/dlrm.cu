@@ -21,6 +21,7 @@ void DataLoader::load_sparse_input(const Task *task,
                                    Context ctx,
                                    Runtime* runtime)
 {
+  //printf("load sparse input---\n");
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   int hash = *((int*) task->args);
@@ -53,6 +54,7 @@ void DataLoader::load_sparse_input(const Task *task,
                        cudaMemcpyHostToDevice));
   checkCUDA(cudaFreeHost(input_zc));
   checkCUDA(cudaDeviceSynchronize());
+  //printf("load sparse input\n");
   //print_tensor<2, int>(acc_batch_input.ptr, acc_batch_input.rect, "[DataLoader:load_sparse]");
 }
 
@@ -61,6 +63,7 @@ void DataLoader::load_dense_input(const Task *task,
                                   Context ctx,
                                   Runtime* runtime)
 {
+  //printf("load dense input---\n");
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs* meta = (SampleIdxs*) task->local_args;
@@ -86,6 +89,7 @@ void DataLoader::load_dense_input(const Task *task,
                        sizeof(float) * acc_batch_input.rect.volume(),
                        cudaMemcpyHostToDevice));
   checkCUDA(cudaFreeHost(input_zc));
+  //printf("load dense input\n");
 }
 
 void DataLoader::load_label(const Task *task,
@@ -103,6 +107,7 @@ void DataLoader::load_label(const Task *task,
       false/*readOutput*/);
   int batch_size = acc_batch_label.rect.hi[1] - acc_batch_label.rect.lo[1] + 1;
   int num_label = acc_batch_label.rect.hi[0] - acc_batch_label.rect.lo[0] + 1;
+  //printf("num label: %d\n", num_label);
   assert(num_label == 1); // Kaggle dataset a has single label
   assert(acc_batch_label.rect.hi[0] == acc_full_label.rect.hi[0]);
   assert(acc_batch_label.rect.lo[0] == acc_full_label.rect.lo[0]);

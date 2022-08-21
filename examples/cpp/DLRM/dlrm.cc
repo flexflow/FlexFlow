@@ -148,7 +148,7 @@ void FlexFlow::top_level_task(const Task* task,
   Optimizer* optimizer = new SGDOptimizer(&ff, 0.01f);
   std::vector<MetricsType> metrics;
   //metrics.push_back(METRICS_ACCURACY);
-  //metrics.push_back(METRICS_MEAN_SQUARED_ERROR);
+  metrics.push_back(METRICS_MEAN_SQUARED_ERROR);
   ff.compile(optimizer, LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics);
   // Data Loader
   DataLoader data_loader(ff, dlrmConfig, sparse_inputs, dense_input, ff.label_tensor);
@@ -191,6 +191,7 @@ void FlexFlow::top_level_task(const Task* task,
         if (dlrmConfig.dataset_path.length() == 0) {
           // Only load data once for random input
           for (size_t i = 0; i < data_loader.batch_sparse_inputs.size(); i++) {
+            printf("load sparse input [%ld]\n", i);
             for (int k=0; k < data_loader.batch_sparse_inputs[i]->parallel_tensor->owner_op->nFnB; k++){
               data_loader.next_sparse_input_ubatch(ff, i);
             }
@@ -230,6 +231,7 @@ void FlexFlow::top_level_task(const Task* task,
       ff.update();
       log_app.print("DEBUG:zero weight gradients");
       ff.zero_weight_gradients();
+      log_app.print("DEBUG:finish zero weight gradients");
       runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
@@ -467,7 +469,9 @@ DataLoader::DataLoader(FFModel& ff,
           next_sparse_input_ubatch(ff, i);
       }
   }
-  next_dense_input_ubatch(ff);
+  for (int k=0; k < batch_dense_input->parallel_tensor->owner_op->nFnB; k++){
+      next_dense_input_ubatch(ff);
+  }
 }
 
 void DataLoader::load_entire_dataset(const Task *task,
@@ -746,8 +750,8 @@ void DataLoader::next_dense_input_ubatch(FFModel& ff)
                           WRITE_ONLY, EXCLUSIVE, batch_dense_input->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
     dense_input_idx = (dense_input_idx + 1) % batch_dense_input->parallel_tensor->pipe_num_part_out;
+    next_dense_input_index += ubSize;
     runtime->execute_index_space(ctx, launcher);
-    dense_input_idx += ubSize;
   }
 }
 
@@ -785,6 +789,7 @@ void DataLoader::next_label_ubatch(FFModel& ff)
                           WRITE_ONLY, EXCLUSIVE, batch_label->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
     label_idx = (label_idx + 1) % batch_label->parallel_tensor->pipe_num_part_out;
+    next_label_index += ubSize;
     runtime->execute_index_space(ctx, launcher);
   }
 }

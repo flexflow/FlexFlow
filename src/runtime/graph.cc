@@ -1553,9 +1553,9 @@ GraphOptimalViewSerialized Graph::graph_optimize_task(const Task *task,
   if (model->config.only_data_parallel) {
     StageInfo sinfo[4];
     sinfo[0].sid = 0;
-    sinfo[0].ubatchSize = 8;
+    sinfo[0].ubatchSize = 16;
     sinfo[0].bufSize = 64;
-    sinfo[0].nFnB = 2;
+    sinfo[0].nFnB = 1;
     sinfo[0].device_num = 1;
 
     sinfo[1].sid = 1;

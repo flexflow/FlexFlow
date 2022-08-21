@@ -3389,8 +3389,9 @@ void FFModel::zero_weight_gradients(void)
 {
   for (int l = operators.size() - 1; l >= 0; l--){
     if (operators[l]->numWeights > 0){
-      log_model.print("Zero weight gradients for op(%s)", optype_to_string(operators[l]->op_type).data());
+      //log_model.print("Zero weight gradients for op(%s)", optype_to_string(operators[l]->op_type).data());
       operators[l]->zero_weight_grad(*this);
+      log_model.print("Finish Zero weight gradients for op(%s)", optype_to_string(operators[l]->op_type).data());
     }
   }
 }
