@@ -57,7 +57,7 @@ struct CostMetrics {
     return inputs_memory + outputs_memory + weights_memory;
   }
 
-  // Data Members
+public:
   float forward_time, backward_time;
   float sync_time;
   ///< Bytes of memory usage of different parts
