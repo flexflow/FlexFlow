@@ -623,18 +623,16 @@ bool Embedding::measure_operator_cost(Simulator *sim,
   bool out_of_memory = false;
   int64_t *input_ptr =
       (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
-  cost_metrics.inputs_memory = static_cast<size_t>(sim->offset);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   out_of_memory = out_of_memory || (input_ptr == NULL);
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   out_of_memory = out_of_memory || (output_ptr == NULL);
-  cost_metrics.outputs_memory =
-      (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   float *weight_ptr =
       (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
-  cost_metrics.weights_memory =
-      (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+  cost_metrics.weights_memory += cost_metrics.total_mem_diff_from(sim->offset);
   out_of_memory = out_of_memory || (weight_ptr == NULL);
   if (out_of_memory) {
     cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
@@ -665,19 +663,18 @@ bool Embedding::measure_operator_cost(Simulator *sim,
     float *weight_grad_ptr =
         (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
     cost_metrics.weights_memory +=
-        (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+        cost_metrics.total_mem_diff_from(sim->offset);
     out_of_memory = out_of_memory || (weight_grad_ptr == NULL);
 
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     cost_metrics.outputs_memory +=
-        (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+        cost_metrics.total_mem_diff_from(sim->offset);
     out_of_memory = out_of_memory || (output_grad_ptr == NULL);
 
     int64_t *input_grad_ptr =
         (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
-    cost_metrics.inputs_memory +=
-        (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
     out_of_memory = out_of_memory || (input_grad_ptr == NULL);
 
     if (out_of_memory) {

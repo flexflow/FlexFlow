@@ -557,20 +557,18 @@ bool Conv2D::measure_operator_cost(Simulator *sim,
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert(input_ptr != NULL);
-  cost_metrics.inputs_memory = static_cast<size_t>(sim->offset);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
-  cost_metrics.outputs_memory =
-      (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   float *weight_ptr = (float *)sim->allocate(
       (size_t)output_c * input_c * kernel_h * kernel_w / groups, DT_FLOAT);
   assert(weight_ptr != NULL);
   float *bias_ptr = (float *)sim->allocate(output_c, DT_FLOAT);
   assert(bias_ptr != NULL);
-  cost_metrics.weights_memory =
-      (static_cast<size_t>(sim->offset) - cost_metrics.total_memory());
+  cost_metrics.weights_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   // select forward algorithm
   {
