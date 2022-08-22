@@ -33,14 +33,38 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 Tensor FFModel::transpose(const Tensor input,
-                          std::vector<int> const &perm,
+                          std::vector<int> const &_perm,
                           char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  Transpose *transpose = new Transpose(*this, input, perm, name);
+  Layer *transpose = new Layer(this,
+                               OP_TRANSPOSE,
+                               name,
+                               1 /*inputs*/,
+                               0 /*weights*/,
+                               1 /*outputs*/,
+                               input);
+  assert(_perm.size() == input->num_dims);
+  // Use Legion indexing to store perm
+  int perm[MAX_TENSOR_DIM];
+  for (int i = 0; i < input->num_dims; i++)
+    perm[i] = input->num_dims - 1 - _perm[input->num_dims - 1 - i];
+  int dims[MAX_TENSOR_DIM];
+  int numdim = input->num_dims;
+  for (int i = 0; i < numdim; i++)
+    dims[i] = input->dims[perm[i]];
+  transpose->outputs[0] = create_tensor_legion_ordering(
+      numdim, dims, input->data_type, transpose, 0, true /*create_grad*/);
+  transpose->add_int_vector_property("perm", _perm);
   layers.push_back(transpose);
   return transpose->outputs[0];
-#endif
+}
+
+Op *Transpose::create_operator_from_layer(
+    FFModel &model,
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
+  std::vector<int> perm;
+  layer->get_int_vector_property("perm", perm);
+  return new Transpose(model, inputs[0], perm, layer->name);
 }
 
 Transpose::Transpose(FFModel &model,

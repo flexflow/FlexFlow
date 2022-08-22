@@ -448,7 +448,8 @@ public:
   Tensor batch_matmul(const Tensor A,
                       const Tensor B,
                       int a_seq_length_dim = -1,
-                      int b_seq_length_dim = -1);
+                      int b_seq_length_dim = -1,
+                      char const *name = nullptr);
   // Add a dense layer
   Tensor dense(const Tensor input,
                int outDim,
