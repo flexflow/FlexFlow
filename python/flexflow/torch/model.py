@@ -1077,14 +1077,14 @@ class FunctionNode(Node):
             np1 = np.ascontiguousarray(np1)
             dtype = Node.numpy_to_ff_dtype(np1.dtype)
             x = ffmodel.create_tensor(bc_shape, dtype, True)
-            x.set_tensor(ffmodel, np1, ParameterSyncType.PS)
+            x.set_tensor(ffmodel, np1)
         if list(shape2) != bc_shape:
             np2 = tensor2.get_tensor(ffmodel, ParameterSyncType.PS)
             np2 = np.broadcast_to(np2, bc_shape)
             np2 = np.ascontiguousarray(np2)
             dtype = Node.numpy_to_ff_dtype(np2.dtype)
             y = ffmodel.create_tensor(bc_shape, dtype, True)
-            y.set_tensor(ffmodel, np2, ParameterSyncType.PS)
+            y.set_tensor(ffmodel, np2)
         return x, y
 
 
@@ -2265,7 +2265,7 @@ class AttributeNode(Node):
             torch_tensor.shape, ff_dtype, requires_grad,
         )
         ff_tensor.set_tensor(
-            ffmodel, np_tensor, ParameterSyncType.PS,
+            ffmodel, np_tensor
         )
         return ff_tensor
 
