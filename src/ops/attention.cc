@@ -762,9 +762,14 @@ bool MultiHeadAttention::measure_operator_cost(
       (float const *)sim->allocate(sub_key.get_volume(), DT_FLOAT);
   float const *value_ptr =
       (float const *)sim->allocate(sub_value.get_volume(), DT_FLOAT);
-  float const *weight_ptr = (float const *)sim->allocate(num_weights, DT_FLOAT);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  float const *weight_ptr = (float const *)sim->allocate(num_weights, DT_FLOAT);
+  cost_metrics.weights_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   assert(m->profiling == false);
 
@@ -780,10 +785,17 @@ bool MultiHeadAttention::measure_operator_cost(
         (float *)sim->allocate(sub_key.get_volume(), DT_FLOAT);
     float *value_grad_ptr =
         (float *)sim->allocate(sub_value.get_volume(), DT_FLOAT);
+    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
     float *weight_grad_ptr = (float *)sim->allocate(num_weights, DT_FLOAT);
+    cost_metrics.weights_memory +=
+        cost_metrics.total_mem_diff_from(sim->offset);
+
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert(output_grad_ptr != NULL);
+    cost_metrics.outputs_memory +=
+        cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&] {
       backward_kernel_wrapper(m,

@@ -38,14 +38,54 @@ using PCG::Node;
 Tensor FFModel::batch_matmul(const Tensor A,
                              const Tensor B,
                              int a_seq_length_dim,
-                             int b_seq_length_dim) {
-#ifdef DEADCODE
-  BatchMatmul *bmm =
-      new BatchMatmul(*this, A, B, a_seq_length_dim, b_seq_length_dim);
+                             int b_seq_length_dim,
+                             char const *name) {
+  Layer *bmm = new Layer(this,
+                         OP_BATCHMATMUL,
+                         name,
+                         2 /*inputs*/,
+                         0 /*weights*/,
+                         1 /*outputs*/,
+                         A,
+                         B);
+  assert((a_seq_length_dim <= 1) &&
+         "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
+         "Fortran ordering).");
+  assert((b_seq_length_dim <= 1) &&
+         "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
+         "Fortran ordering).");
+  assert(A->num_dims == B->num_dims);
+  for (int i = A->num_dims - 1; i >= 2; i--)
+    assert(A->dims[i] == B->dims[i]);
+  assert(A->dims[0] == B->dims[1]);
+  int dims[MAX_TENSOR_DIM];
+  int numdim = A->num_dims;
+  for (int i = 0; i < numdim; i++)
+    dims[i] = A->dims[i];
+  dims[0] = B->dims[0];
+  bmm->outputs[0] = create_tensor_legion_ordering(
+      numdim, dims, A->data_type, bmm, 0, true /*create_grad*/);
+  bmm->add_int_property("a_seq_length_dim", a_seq_length_dim);
+  bmm->add_int_property("b_seq_length_dim", b_seq_length_dim);
   layers.push_back(bmm);
   return bmm->outputs[0];
-#endif
-  return nullptr;
+}
+
+Op *BatchMatmul::create_operator_from_layer(
+    FFModel &model,
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
+  long long value;
+  layer->get_int_property("a_seq_length_dim", value);
+  int a_seq_length_dim = value;
+  layer->get_int_property("b_seq_length_dim", value);
+  int b_seq_length_dim = value;
+  return new BatchMatmul(model,
+                         inputs[0],
+                         inputs[1],
+                         a_seq_length_dim,
+                         b_seq_length_dim,
+                         layer->name);
 }
 
 // return A*B
@@ -53,10 +93,11 @@ BatchMatmul::BatchMatmul(FFModel &model,
                          const ParallelTensor A,
                          const ParallelTensor B,
                          int _a_seq_length_dim,
-                         int _b_seq_length_dim)
+                         int _b_seq_length_dim,
+                         char const *name)
     : Op(model,
          OP_BATCHMATMUL,
-         "BatchMatmul_",
+         name,
          2 /*inputs*/,
          0 /*weights*/,
          1 /*outputs*/,
@@ -64,10 +105,10 @@ BatchMatmul::BatchMatmul(FFModel &model,
          B),
       a_seq_length_dim(A->num_dims - 1 - _a_seq_length_dim),
       b_seq_length_dim(B->num_dims - 1 - _b_seq_length_dim) {
-  assert((a_seq_length_dim <= 1) &&
+  assert((_a_seq_length_dim <= 1) &&
          "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
          "Fortran ordering).");
-  assert((b_seq_length_dim <= 1) &&
+  assert((_b_seq_length_dim <= 1) &&
          "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
          "Fortran ordering).");
   assert(A->num_dims == B->num_dims);
@@ -487,8 +528,11 @@ bool BatchMatmul::measure_operator_cost(Simulator *sim,
   float *b_ptr = (float *)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
   assert(b_ptr != NULL);
   float *c_ptr = NULL;
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
   float *out_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(out_ptr != NULL);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   int m = input1_c;
   int n = input0_r;
@@ -507,9 +551,13 @@ bool BatchMatmul::measure_operator_cost(Simulator *sim,
     float *b_grad_ptr =
         (float *)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
     float *c_grad_ptr = NULL;
+    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
     float *out_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert(out_grad_ptr != NULL);
+    cost_metrics.outputs_memory +=
+        cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&] {
       backward_kernel_wrapper(meta,

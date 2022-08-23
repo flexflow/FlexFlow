@@ -609,7 +609,8 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
            "A"_a,
            "B"_a,
            "a_seq_length_dim"_a = -1,
-           "b_seq_length_dim"_a = -1)
+           "b_seq_length_dim"_a = -1,
+           "name"_a = nullptr)
       .def("dense",
            &FFModel::dense,
            "input"_a,
