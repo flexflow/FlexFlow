@@ -68,7 +68,7 @@ struct CostMetrics {
    * @param sim_offset Simulator->offset
    * @return size_t The incremental memory usage difference
    */
-  inline size_t total_mem_diff_from(off_t sim_offset) {
+  inline size_t total_mem_diff_from(off_t sim_offset) const {
     return static_cast<size_t>(sim_offset) - total_memory();
   }
 
