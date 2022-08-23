@@ -288,8 +288,11 @@ bool Reverse::measure_operator_cost(Simulator *sim,
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert(input_ptr != NULL);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < sub_output.num_dims; i++) {
@@ -315,9 +318,14 @@ bool Reverse::measure_operator_cost(Simulator *sim,
     float *input_grad_ptr =
         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
     assert(input_grad_ptr != NULL);
+    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert(output_grad_ptr != NULL);
+    cost_metrics.outputs_memory +=
+        cost_metrics.total_mem_diff_from(sim->offset);
+
     backward = [&] {
       backward_kernel_wrapper(output_grad_ptr,
                               input_grad_ptr,
