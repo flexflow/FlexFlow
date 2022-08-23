@@ -55,9 +55,7 @@ struct CostMetrics {
   /**
    * @brief Return the sum of the memory usage recorded in this CostMetrics.
    */
-  inline size_t total_memory() const {
-    return inputs_memory + outputs_memory + weights_memory;
-  }
+  size_t total_memory() const;
 
   /**
    * @brief Get the incremental difference between the total memory in
@@ -68,9 +66,7 @@ struct CostMetrics {
    * @param sim_offset Simulator->offset
    * @return size_t The incremental memory usage difference
    */
-  inline size_t total_mem_diff_from(off_t sim_offset) const {
-    return static_cast<size_t>(sim_offset) - total_memory();
-  }
+  size_t total_mem_diff_from(off_t sim_offset) const;
 
 public:
   float forward_time, backward_time;

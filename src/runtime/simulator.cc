@@ -39,6 +39,14 @@ LegionRuntime::Logger::Category log_xfer_est("xfer_est");
 // template class std::map<const Op*, ParallelConfig>; // for debugging in gdb
 // template class std::map<const Op*, MachineView>; // for debugging in gdb
 
+size_t CostMetrics::total_memory() const {
+  return inputs_memory + outputs_memory + weights_memory;
+}
+
+size_t CostMetrics::total_mem_diff_from(off_t sim_offset) const {
+  return static_cast<size_t>(sim_offset) - total_memory();
+}
+
 int ParallelConfig::num_parts() const {
   int nparts = 1;
   for (int i = 0; i < nDims; i++)
