@@ -1552,11 +1552,11 @@ void SearchHelper::add_sink_node_costs<GraphCostResultWithMemory>(
     NodeAssignment const &sink,
     CostMetrics metrics,
     GraphCostResultWithMemory *result) const {
-  auto mem_value = (float)((float)metrics.memory_requirement / 1e6);
+  float op_total_mem_mb = ((float)(metrics.op_total_mem / 1e4)) / 1e2;
   this->add_operator_cost_with_memory(
       sink,
       metrics.forward_time + metrics.backward_time + metrics.sync_time,
-      MemoryUsage{MemoryUsageType::GLOBAL, mem_value},
+      MemoryUsage{MemoryUsageType::GLOBAL, op_total_mem_mb},
       result);
 }
 
@@ -1573,8 +1573,8 @@ T SearchHelper::graph_cost(Graph const *graph,
                            MachineResource const &resources,
                            bool include_sink_compute_time) const {
   TAG_ENTER(this->logger);
-  this->logger->debug() << "SearchHelper::graph_cost: sink(" << sink.node.guid
-                        << ") "
+  this->logger->debug() << "PCG::SearchHelper::graph_cost: sink("
+                        << sink.node.guid << ") "
                         << "sink.view(" << sink.view.ndims << " "
                         << sink.view.start_device_id << " " << sink.view.dim[0]
                         << ") "
@@ -1608,7 +1608,8 @@ T SearchHelper::graph_cost(Graph const *graph,
       // When there are no more than 2 nodes in the graph
       result = this->estimate_xfer_cost<T>(graph, source, sink);
       this->logger->debug()
-          << "Estimated xfer cost is " << this->get_cost(result);
+          << "[PCG::SearchHelper::graph_cost] Estimated xfer cost is "
+          << this->get_cost(result);
     } else {
       Node bn_node = graph->find_bottleneck_node(sink.node, source.node);
       if (bn_node != Node::INVALID_NODE) {
@@ -1639,47 +1640,62 @@ T SearchHelper::graph_cost(Graph const *graph,
 
   check_matches_graph<T>(graph, result, sink.node);
 
+  // This is where we really add the costs of an operator
   if (include_sink_compute_time) {
+    // Sink node costs
     CostMetrics metrics =
         this->model->simulator->measure_operator_cost(sink.node.ptr, sink.view);
 
     // Adjust operator memory usage
-    this->logger->spew() << "Analyzing sink op memory cost:";
+    this->logger->spew()
+        << "[PCG::SearchHelper::graph_cost] Analyzing sink op memory cost ["
+        << sink.node.to_string() << "]:";
     int input_replicas = 0;
     int output_replicas = 0;
     int weight_replicas = 0;
     auto op = sink.node.ptr;
-    this->logger->spew() << "  ParallelTensor shape|num_replicas of inputs:";
+    this->logger->spew() << "  input ParallelTensor shape|num_replicas:";
     for (int i = 0; i < op->numInputs; i++) {
       auto shape = op->inputs[i]->get_shape();
       this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
       input_replicas += shape.get_num_replicas();
     }
-    this->logger->spew() << "  ParallelTensor shape|num_replicas of outputs:";
+    this->logger->spew() << "  output ParallelTensor shape|num_replicas:";
     for (int i = 0; i < op->numOutputs; i++) {
       auto shape = op->outputs[i]->get_shape();
       this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
       output_replicas += shape.get_num_replicas();
     }
-    this->logger->spew() << "  ParallelTensor shape|num_replicas of weights:";
+    this->logger->spew() << "  weight ParallelTensor shape|num_replicas:";
     for (int i = 0; i < op->numWeights; i++) {
       auto shape = op->weights[i]->get_shape();
       this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
       weight_replicas += shape.get_num_replicas();
     }
+    // TODO: need to better define this
+    input_replicas = std::max(weight_replicas, 1);
+    output_replicas = std::max(weight_replicas, 1);
+    weight_replicas = std::max(weight_replicas, 1);
     this->logger->spew()
         << "  Total number of replicas of inputs|outputs|weights: "
         << input_replicas << "|" << output_replicas << "|" << weight_replicas;
 
-    // TODO: this should be updated based on the real meaning of sim->offset
-    metrics.memory_requirement *= input_replicas;
-
-    this->logger->debug() << "Sink node cost [" << sink.node.to_string()
-                          << "]: "
+    // Real memory usage of this Op* considering parallelization over devices
+    this->logger->spew() << "  cost_metrics input|output|weight memory: "
+                         << metrics.inputs_memory << "|"
+                         << metrics.outputs_memory << "|"
+                         << metrics.weights_memory;
+    metrics.op_total_mem = input_replicas * metrics.inputs_memory +
+                           output_replicas * metrics.outputs_memory +
+                           weight_replicas * metrics.weights_memory;
+    this->logger->spew() << "  op_total_mem: " << metrics.op_total_mem;
+    float op_total_mem_mb = (float)((metrics.op_total_mem) / 1e4) / 1e2;
+    this->logger->debug() << "[PCG::SearchHelper::graph_cost] Sink node cost ["
+                          << sink.node.to_string() << "]: "
                           << "forward(" << metrics.forward_time << ") "
                           << "backward(" << metrics.backward_time << ") "
                           << "sync(" << metrics.sync_time << ") "
-                          << "memory(" << metrics.memory_requirement << ")";
+                          << "memory(" << op_total_mem_mb << " MB)";
     this->add_sink_node_costs<T>(sink, metrics, &result);
   }
 
@@ -1703,10 +1719,13 @@ float Graph::optimal_cost_with_memory(float const run_time_cost_factor) const {
   auto optimal = this->generic_optimal_cost<GraphCostResultWithMemory>();
   float run_time_cost = optimal.cost;
   float mem_cost = optimal.mem_cost.num;
+  // This is where we combine two costs to get the multi-objective cost
   auto combined_cost = (run_time_cost_factor * run_time_cost +
                         (1 - run_time_cost_factor) * mem_cost);
   std::string output_str =
-      "Multi-objective cost: run time cost: " + std::to_string(run_time_cost) +
+      "Multi-objective cost in Graph::optimal_cost_with_memory:"
+      "run time cost: " +
+      std::to_string(run_time_cost) +
       ", mem cost: " + std::to_string(mem_cost) +
       ", combined cost: " + std::to_string(combined_cost) +
       " (with run time cost factor: " + std::to_string(run_time_cost_factor) +
@@ -1746,9 +1765,8 @@ Graph Graph::reduced() const {
  * two versions is almost identical. By using a few template specializations we
  * can avoid duplicating all this code.
  *
- * @tparam T the result type (can be either float or GraphCostResult)
- * @return T the cost of the graph (along with any additional data in the return
- * type)
+ * @tparam T Result type (float, GraphCostResult, or GraphCostResultWithMemory)
+ * @return T Cost of the graph (along with any additional data)
  */
 template <typename T>
 T Graph::generic_optimal_cost() const {

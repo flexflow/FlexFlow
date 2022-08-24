@@ -2228,7 +2228,8 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(
 
   // Actual exploration
   for (int iter = 0; iter < budget || budget == -1; iter++) {
-    log_xfers.spew() << "Considering " << candidates.size() << " candidates";
+    log_xfers.spew() << "Considering " << candidates.size()
+                     << " candidates in base_optimize_with_memory";
     if (candidates.empty()) {
       break;
     }
@@ -2245,6 +2246,7 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(
                    mem_config.run_time_cost_factor) > best_cost * alpha) {
       continue;
     }
+
     log_xfers.info(
         "[%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)",
         counter,
@@ -2252,7 +2254,8 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(
         best_cost,
         candidates.size());
 
-    log_xfers.debug() << "Considering " << xfers.size() << " possible xfers";
+    log_xfers.debug() << "Considering " << xfers.size()
+                      << " possible xfers in base_optimize_with_memory";
     for (size_t i = 0; i < xfers.size(); i++) {
       int num_matches_found = 0, num_matches_rejected = 0;
       log_xfers.debug() << "Considering xfer: " << xfers[i]->get_name();
@@ -2274,9 +2277,9 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(
     }
   }
 
-  this->logger->debug() << "Optimized cost: "
-                        << best_graph->optimal_cost_with_memory(
-                               mem_config.run_time_cost_factor);
+  this->logger->debug()
+      << "Optimized cost at the end of base_optimize_with_memory: "
+      << best_graph->optimal_cost_with_memory(mem_config.run_time_cost_factor);
 
   return std::unique_ptr<Graph>(best_graph);
 }
