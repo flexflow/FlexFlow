@@ -48,13 +48,35 @@ class TransposeMeta;
 class Op;
 class FFModel;
 
+/**
+ * @brief Costs of an operator.
+ */
 struct CostMetrics {
-  CostMetrics()
-      : forward_time(0.0f), backward_time(0.0f), sync_time(0.0f),
-        memory_requirement(0) {}
+  /**
+   * @brief Return the sum of the memory usage recorded in this CostMetrics.
+   */
+  size_t total_memory() const;
+
+  /**
+   * @brief Get the incremental difference between the total memory in
+   * CostMetrics and sim->offset.
+   * @details This is to easily compute the difference between sim->offset and
+   * sum of all memory usage recorded in this CostMetrics.
+   *
+   * @param sim_offset Simulator->offset
+   * @return size_t The incremental memory usage difference
+   */
+  size_t total_mem_diff_from(off_t sim_offset) const;
+
+public:
   float forward_time, backward_time;
   float sync_time;
-  size_t memory_requirement;
+  ///< Bytes of memory usage of different parts
+  // Assume:
+  // 1. all memory allocations use Simulator::allocate
+  // 2. we call Simulator::free_all before measuring an operator
+  // Therefore, the current memory usage of an operator is (size_t)sim->offset
+  size_t inputs_memory, outputs_memory, weights_memory;
 };
 
 class Device {

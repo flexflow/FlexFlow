@@ -794,11 +794,16 @@ bool Linear::measure_operator_cost(Simulator *sim,
   // allocate tensors in simulator
   sim->free_all();
   void *input_ptr = sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
   void *output_ptr =
       sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
   void *kernel_ptr = sim->allocate((size_t)output_c * input_c, this->data_type);
   void *bias_ptr = sim->allocate(output_c, this->data_type);
   assert(bias_ptr != NULL);
+  cost_metrics.weights_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   bool out_of_memory = (input_ptr == NULL) || (output_ptr == NULL) ||
                        (kernel_ptr == NULL) || (bias_ptr == NULL);
@@ -827,11 +832,19 @@ bool Linear::measure_operator_cost(Simulator *sim,
       input_grad_ptr =
           sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
     }
+    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
     void *output_grad_ptr =
         sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
+    cost_metrics.outputs_memory +=
+        cost_metrics.total_mem_diff_from(sim->offset);
+
     void *kernel_grad_ptr =
         sim->allocate((size_t)output_c * input_c, this->data_type);
     void *bias_grad_ptr = sim->allocate(output_c, this->data_type);
+    cost_metrics.weights_memory +=
+        cost_metrics.total_mem_diff_from(sim->offset);
+
     out_of_memory = (input_grad_ptr == NULL) || (output_grad_ptr == NULL) ||
                     (kernel_grad_ptr == NULL) || (bias_grad_ptr == NULL);
     if (out_of_memory) {

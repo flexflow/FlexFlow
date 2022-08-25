@@ -528,8 +528,11 @@ bool BatchMatmul::measure_operator_cost(Simulator *sim,
   float *b_ptr = (float *)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
   assert(b_ptr != NULL);
   float *c_ptr = NULL;
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
   float *out_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(out_ptr != NULL);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   int m = input1_c;
   int n = input0_r;
@@ -548,9 +551,13 @@ bool BatchMatmul::measure_operator_cost(Simulator *sim,
     float *b_grad_ptr =
         (float *)sim->allocate(sub_input1.get_volume(), DT_FLOAT);
     float *c_grad_ptr = NULL;
+    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
     float *out_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert(out_grad_ptr != NULL);
+    cost_metrics.outputs_memory +=
+        cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&] {
       backward_kernel_wrapper(meta,
