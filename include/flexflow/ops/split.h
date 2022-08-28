@@ -7,6 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
+#include "flexflow/ops/split_params.h"
 
 namespace FlexFlow {
 
@@ -80,6 +81,7 @@ public:
 
 public:
   int legion_axis;
+  std::vector<int> splits;
 };
 
 }; // namespace FlexFlow

@@ -16,7 +16,7 @@ namespace std {
 template <>
 struct hash<FlexFlow::ReplicateParams> {
   size_t operator()(FlexFlow::ReplicateParams const &) const;
-}
+};
 } // namespace std
 
 #endif // _FLEXFLOW_REPLICATE_PARAMS_H

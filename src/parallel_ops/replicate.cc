@@ -50,7 +50,7 @@ bool ReplicateParams::is_valid(ParallelTensorShape const &input) const {
 
 ReplicateParams Replicate::get_params() const {
   ReplicateParams params;
-  params.replicate_legion_dim = this->replicate_legion_dim;
+  params.replicate_legion_dim = this->replicate_dim;
   params.replicate_degree = this->replicate_degree;
   return params;
 }
@@ -92,7 +92,7 @@ Replicate::Replicate(FFModel &model,
 
 Replicate::Replicate(FFModel &model,
                      ReplicateParams const &params,
-                     const ParallelTensorInput input,
+                     const ParallelTensor input,
                      char const *name)
     : Replicate(model,
                 input,

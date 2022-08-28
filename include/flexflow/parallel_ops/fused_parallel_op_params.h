@@ -1,5 +1,7 @@
 #ifndef _FLEXFLOW_FUSED_PARALLEL_OP_PARAMS_H
-#define _FLEXFLOW_COMBINE_PARAMS_OP_PARAMS_H
+#define _FLEXFLOW_FUSED_PARALLEL_OP_PARAMS_H
+
+#include "parallel_op.h"
 
 namespace FlexFlow {
 
@@ -15,7 +17,7 @@ namespace std {
 template <>
 struct hash<FlexFlow::FusedParallelOpParams> {
   size_t operator()(FlexFlow::FusedParallelOpParams const &) const;
-}
+};
 } // namespace std
 
-#endif // _FLEXFLOW_COMBINE_PARAMS_H
+#endif // _FLEXFLOW_FUSED_PARALLEL_OP_PARAMS_H

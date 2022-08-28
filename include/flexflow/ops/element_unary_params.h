@@ -9,7 +9,7 @@ namespace FlexFlow {
 struct ElementUnaryParams {
   OperatorType op_type;
   bool inplace;
-  float scalar;
+  float scalar = 0.0;
 
   bool is_valid(ParallelTensorShape const &) const;
 };

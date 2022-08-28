@@ -58,15 +58,9 @@ Op *Cast::create_operator_from_layer(
   return new Cast(model, inputs[0], dtype, layer->name);
 }
 
-// size_t Cast::get_params_hash() const {
-//   size_t hash = this->inputs[0]->get_owner_independent_hash();
-//   hash_combine(hash, this->outputs[0].data_type);
-//   return hash;
-// }
-
 CastParams Cast::get_params() const {
   CastParams params;
-  params.dtype = this->dtype;
+  params.dtype = this->data_type;
   return params;
 }
 
@@ -79,7 +73,6 @@ Node FFModel::get_or_create_cast_node(const ParallelTensor input,
 }
 
 bool CastParams::is_valid(ParallelTensorShape const &input) const {
-  // TODO: more check on the input shape
   bool valid = input.is_valid();
   valid &= (input.dims[input.num_dims - 1].degree == 1);
   return valid;

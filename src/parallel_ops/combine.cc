@@ -53,14 +53,14 @@ bool CombineParams::is_valid(ParallelTensorShape const &input) const {
 
 CombineParams Combine::get_params() const {
   CombineParams params;
-  params.combine_legion_dim = this->combine_legion_dim;
+  params.combine_legion_dim = this->combine_dim;
   params.combine_degree = this->combine_degree;
   return params;
 }
 
 Combine::Combine(FFModel &model,
                  CombineParams const &params,
-                 const ParallelTensorInput input,
+                 const ParallelTensor input,
                  char const *name)
     : Combine(model,
               input,

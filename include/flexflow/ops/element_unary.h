@@ -40,7 +40,7 @@ public:
                float scalar);
   ElementUnary(FFModel &model,
                Params const &params,
-               const Input x,
+               Input const x,
                char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
