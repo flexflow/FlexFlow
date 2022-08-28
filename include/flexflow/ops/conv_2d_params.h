@@ -22,7 +22,6 @@ struct Conv2DParams {
                   int *kernel_ndims,
                   ParallelDim bias_dims[MAX_TENSOR_DIM],
                   int *bias_ndims) const;
-  // size_t get_hash(const ParallelTensor input) const;
 
   friend bool operator==(Conv2DParams const &lhs, Conv2DParams const &rhs);
 

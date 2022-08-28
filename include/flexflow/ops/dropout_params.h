@@ -17,8 +17,8 @@ bool operator==(DropoutParams const &, DropoutParams const &);
 
 namespace std {
 template <>
-struct hash<FlexFlow::DroputParams> {
-  size_t operator()(FlexFlow::DroputParams const &) const;
+struct hash<FlexFlow::DropoutParams> {
+  size_t operator()(FlexFlow::DropoutParams const &) const;
 };
 } // namespace std
 

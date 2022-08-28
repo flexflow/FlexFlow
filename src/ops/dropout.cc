@@ -67,7 +67,6 @@ DropoutParams Dropout::get_params() const {
   DropoutParams params;
   params.rate = this->rate;
   params.seed = this->seed;
-
   return params;
 }
 

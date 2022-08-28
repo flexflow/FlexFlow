@@ -55,7 +55,7 @@ bool RepartitionParams::is_valid(ParallelTensorShape const &input) const {
 
 RepartitionParams Repartition::get_params() const {
   RepartitionParams params;
-  params.repartition_legion_dim = this->repartition_legion_dim;
+  params.repartition_legion_dim = this->repartition_dim;
   params.repartition_degree = this->repartition_degree;
   return params;
 }
@@ -96,7 +96,7 @@ Repartition::Repartition(FFModel &model,
 
 Repartition::Repartition(FFModel &model,
                          RepartitionParams const &params,
-                         const ParallelTensorInput input,
+                         const ParallelTensor input,
                          char const *name)
     : Repartition(model,
                   input,

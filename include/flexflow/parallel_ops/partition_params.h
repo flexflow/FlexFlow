@@ -16,7 +16,7 @@ namespace std {
 template <>
 struct hash<FlexFlow::RepartitionParams> {
   size_t operator()(FlexFlow::RepartitionParams const &) const;
-}
+};
 } // namespace std
 
 #endif // _FLEXFLOW_PARTITION_PARAMS_H

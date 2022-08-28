@@ -44,12 +44,6 @@ bool ReshapeParams::is_valid(ParallelTensorShape const &input) const {
   return input.is_valid();
 }
 
-ReshapeParams Reshape::get_params() const {
-  ReshapeParams params;
-  params.shape = this->shape;
-  return params;
-}
-
 Tensor FFModel::reshape(const Tensor input,
                         std::vector<int> const &shape,
                         char const *name) {
@@ -286,7 +280,8 @@ ReshapeParams Reshape::get_params() const {
   std::vector<int> shape_vec;
   for (size_t i = 0; i < shape_length; i++)
     shape_vec.push_back(shape_array[i]);
-  ReshapeParams params(shape_vec);
+  ReshapeParams params;
+  params.shape = shape_vec;
   return params;
 }
 

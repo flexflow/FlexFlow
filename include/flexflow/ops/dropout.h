@@ -25,7 +25,7 @@ public:
   Dropout(FFModel &model, Dropout const &other, const ParallelTensor input);
   Dropout(FFModel &model,
           Params const &params,
-          const Input input,
+          Input const input,
           char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;

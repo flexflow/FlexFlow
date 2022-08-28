@@ -50,7 +50,7 @@ bool ReductionParams::is_valid(ParallelTensorShape const &input) const {
 
 ReductionParams Reduction::get_params() const {
   ReductionParams params;
-  params.reduction_legion_dim = this->reduction_legion_dim;
+  params.reduction_legion_dim = this->reduction_dim;
   params.reduction_degree = this->reduction_degree;
   return params;
 }
@@ -92,7 +92,7 @@ Reduction::Reduction(FFModel &model,
 
 Reduction::Reduction(FFModel &model,
                      ReductionParams const &params,
-                     const ParallelTensorInput input,
+                     const ParallelTensor input,
                      char const *name)
     : Reduction(model,
                 input,

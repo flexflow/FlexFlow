@@ -16,7 +16,7 @@ namespace std {
 template <>
 struct hash<FlexFlow::CombineParams> {
   size_t operator()(FlexFlow::CombineParams const &) const;
-}
+};
 } // namespace std
 
 #endif // _FLEXFLOW_COMBINE_PARAMS_H

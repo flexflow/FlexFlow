@@ -16,7 +16,7 @@ class MultiHeadAttentionMeta;
 class MultiHeadAttention : public Op {
 public:
   using Params = MultiHeadAttentionParams;
-  using Input = std::vector<ParallelTensor>;
+  using Input = std::tuple<ParallelTensor, ParallelTensor, ParallelTensor>;
 
   MultiHeadAttention(FFModel &model,
                      LayerID const &layer_guid,
@@ -130,6 +130,7 @@ public:
   bool add_bias_kv, add_zero_attn;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
+  int embed_dim, kdim, vdim;
 };
 
 class MultiHeadAttentionMeta : public OpMeta {

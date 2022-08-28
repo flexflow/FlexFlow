@@ -16,7 +16,7 @@ namespace std {
 template <>
 struct hash<FlexFlow::ReductionParams> {
   size_t operator()(FlexFlow::ReductionParams const &) const;
-}
+};
 } // namespace std
 
 #endif // _FLEXFLOW_REDUCTION_PARAMS_H

@@ -38,11 +38,13 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 bool MultiHeadAttentionParams::is_valid(
-    std::vector<ParallelTensorShape> const &input) const {
+    std::tuple<ParallelTensorShape,
+               ParallelTensorShape,
+               ParallelTensorShape> const &input) const {
   bool is_valid = true;
-  for (auto pt_shape : input) {
-    is_valid &= pt_shape.is_valid();
-  }
+  is_valid &= std::get<0>(input).is_valid();
+  is_valid &= std::get<1>(input).is_valid();
+  is_valid &= std::get<2>(input).is_valid();
   return is_valid;
 }
 
@@ -345,14 +347,14 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
 MultiHeadAttention::MultiHeadAttention(
     FFModel &model,
     MultiHeadAttentionParams const &params,
-    std::vector<ParallelTensor> const &inputs,
+    std::tuple<ParallelTensor, ParallelTensor, ParallelTensor> const &inputs,
     bool allocate_weights,
     char const *name)
     : MultiHeadAttention(model,
                          params.layer_guid,
-                         inputs[0],
-                         inputs[1],
-                         inputs[2],
+                         std::get<0>(inputs),
+                         std::get<1>(inputs),
+                         std::get<2>(inputs),
                          params.embed_dim,
                          params.num_heads,
                          params.kdim,
@@ -906,10 +908,7 @@ Node FFModel::get_or_create_multihead_attn_node(LayerID const &layer_guid,
                                                 bool bias,
                                                 bool add_bias_kv,
                                                 bool add_zero_attn) {
-  std::vector<ParallelTensor> _inputs;
-  _inputs.push_back(query);
-  _inputs.push_back(key);
-  _inputs.push_back(value);
+  auto _inputs = std::make_tuple(query, key, value);
 
   MultiHeadAttentionParams params;
   params.layer_guid = layer_guid;

@@ -43,9 +43,9 @@ bool SoftmaxParams::is_valid(ParallelTensorShape const &input) const {
   return input.is_valid();
 }
 
-SoftmaxParams Reshape::get_params() const {
+SoftmaxParams Softmax::get_params() const {
   SoftmaxParams params;
-  params.shape = this->dim;
+  params.dim = this->dim;
   return params;
 }
 
