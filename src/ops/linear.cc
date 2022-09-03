@@ -927,8 +927,14 @@ Node Linear::deserialize(FFModel &ff,
   dez.deserialize(activation);
   dez.deserialize(use_bias);
   dez.deserialize(data_type);
-  return ff.get_or_create_linear_node(
-      layer_guid, inputs[0], out_channels, activation, use_bias);
+  
+  LinearParams params;
+  params.activation = activation;
+  params.out_channels = out_channels;
+  params.use_bias = use_bias;
+  params.data_type = data_type;
+  params.layer_guid = layer_guid;
+  return ff.get_or_create_node<Linear>(inputs[0], params);
 }
 
 LinearParams Linear::get_params() const {

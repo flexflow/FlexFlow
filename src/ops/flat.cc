@@ -371,7 +371,8 @@ Node Flat::deserialize(FFModel &ff,
                        ParallelTensor inputs[],
                        int num_inputs) {
   assert(num_inputs == 1);
-  return ff.get_or_create_flat_node(inputs[0]);
+  FlatParams params;
+  return ff.get_or_create_node(inputs[0], params);
 }
 
 Op *Flat::materialize(FFModel &ff,

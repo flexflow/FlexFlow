@@ -648,15 +648,17 @@ Node Pool2D::deserialize(FFModel &ff,
   dez.deserialize(pool_type);
   dez.deserialize(activation);
 
-  return ff.get_or_create_pool2d_node(inputs[0],
-                                      kernel_h,
-                                      kernel_w,
-                                      stride_h,
-                                      stride_w,
-                                      padding_h,
-                                      padding_w,
-                                      pool_type,
-                                      activation);
+  Pool2DParams params;
+  params.kernel_h = kernel_h;
+  params.kernel_w = kernel_w;
+  params.stride_h = stride_h;
+  params.stride_w = stride_w;
+  params.padding_h = padding_h;
+  params.padding_w = padding_w;
+  params.pool_type = pool_type;
+  params.activation = activation;
+
+  return ff.get_or_create_node<Pool2D>(inputs[0], params);
 }
 
 }; // namespace FlexFlow
