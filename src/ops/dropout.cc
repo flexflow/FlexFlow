@@ -326,7 +326,7 @@ Node Dropout::deserialize(FFModel &ff,
   DropoutParams params;
   params.rate = rate;
   params.seed = seed;
-  return ff.get_or_create_dropout_node(inputs[0], params);
+  return ff.get_or_create_node<Dropout>(inputs[0], params);
 }
 
 bool Dropout::measure_operator_cost(Simulator *sim,

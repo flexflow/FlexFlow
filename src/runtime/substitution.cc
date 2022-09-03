@@ -865,8 +865,6 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
         int split_size = input_size / num_outputs;
         std::vector<int> split_sizes(num_outputs, split_size);
         assert(split_sizes.size() == num_outputs);
-        // Split *split = (Split *)opx->matchOpX->mapOp.ptr;
-        // SplitParams params = split->get_params();
         SplitParams params;
         params.legion_axis = axis;
         params.splits = split_sizes;
@@ -878,16 +876,12 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     case OP_EW_SUB:
     case OP_EW_MUL: {
       auto input_pair = std::make_pair(inputs[0], inputs[1]);
-      // ElementBinary *element_binary = (ElementBinary *)opx->matchOpX->mapOp.ptr;
-      // ElementBinaryParams params = element_binary->get_params();
       ElementBinaryParams params;
       params.type = opx->type;
       op = model->get_or_create_node<ElementBinary>(input_pair, params);
       break;
     }
     case OP_RELU: {
-      // ElementUnary *element_unary = (ElementUnary *)opx->matchOpX->mapOp.ptr;
-      // ElementUnaryParams params = element_unary->get_params();
       ElementUnaryParams params;
       params.op_type = opx->type;
       params.inplace = false;
@@ -938,8 +932,6 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     case OP_SOFTMAX: {
       int softmax_dim;
       assert(opx->get_pm_constraint(PM_SOFTMAX_DIM, softmax_dim));
-      // Softmax *softmax = (Softmax *)opx->matchOpX->mapOp.ptr;
-      // SoftmaxParams params = softmax->get_params();
       SoftmaxParams params;
       params.dim = softmax_dim;
       op = model->get_or_create_node<Softmax>(inputs[0], params);

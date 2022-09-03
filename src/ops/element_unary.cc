@@ -617,8 +617,11 @@ Node ElementUnary::deserialize(FFModel &ff,
     dez.deserialize(scalar);
   }
 
-  return ff.get_or_create_element_unary_node(
-      inputs[0], op_type, inplace, scalar);
+  ElementUnaryParams params;
+  params.op_type = op_type;
+  params.inplace = inplace;
+  params.scalar = scalar;
+  return ff.get_or_create_node<ElementUnary>(inputs[0], params);
 }
 
 Op *ElementUnary::materialize(FFModel &ff,
