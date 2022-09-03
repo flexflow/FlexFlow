@@ -703,7 +703,8 @@ void Graph::reshape_output_tensor(ParallelTensorShape const &desired_shape) {
       RepartitionParams params;
       params.repartition_legion_dim = i;
       params.repartition_degree = partition_factor;
-      Node partition_node = model->get_or_create_node<Repartition>(output_tensor, params);
+      Node partition_node =
+          model->get_or_create_node<Repartition>(output_tensor, params);
       this->add_edge(output_node, partition_node, 0, 0);
 
       output_node = partition_node;
@@ -718,7 +719,8 @@ void Graph::reshape_output_tensor(ParallelTensorShape const &desired_shape) {
       CombineParams params;
       params.combine_legion_dim = i;
       params.combine_degree = combine_factor;
-      Node combine_node = model->get_or_create_node<Combine>(output_tensor, params);
+      Node combine_node =
+          model->get_or_create_node<Combine>(output_tensor, params);
       this->add_edge(output_node, combine_node, 0, 0);
 
       output_node = combine_node;
@@ -845,7 +847,7 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     case OP_CONCAT: {
       int axis;
       assert(opx->get_pm_constraint(PM_AXIS, axis));
-      
+
       std::vector<ParallelTensor> _inputs;
       for (int i = 0; i < num_inputs; ++i) {
         _inputs.push_back(inputs[i]);

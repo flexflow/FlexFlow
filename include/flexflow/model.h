@@ -680,7 +680,6 @@ public:
 
   PCG::Node get_or_create_noop_node(const ParallelTensor input);
   PCG::Node get_or_create_input_node(ParallelTensorShape const &);
-  PCG::Node get_or_create_cast_node(const ParallelTensor input, DataType dtype);
   PCG::Node get_or_create_fused_parallel_node(
       const ParallelTensor input,
       std::vector<ParallelOpInfo> const &parallel_ops);
