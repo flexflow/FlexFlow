@@ -712,20 +712,6 @@ bool Embedding::measure_operator_cost(Simulator *sim,
   return true;
 }
 
-using PCG::Node;
-Node FFModel::get_or_create_embedding_node(LayerID const &layer_guid,
-                                           const ParallelTensor input,
-                                           int num_entries,
-                                           int out_channels,
-                                           AggrMode aggr) {
-  EmbeddingParams params;
-  params.layer_guid = layer_guid;
-  params.num_entries = num_entries;
-  params.out_channels = out_channels;
-  params.aggr = aggr;
-  return get_or_create_node<Embedding>(input, params);
-}
-
 void EmbeddingLookup_int64_t_float_float__avx2_fma(int const block_size,
                                                    int const output_size,
                                                    int const index_size,

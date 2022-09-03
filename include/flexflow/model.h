@@ -681,86 +681,9 @@ public:
   PCG::Node get_or_create_noop_node(const ParallelTensor input);
   PCG::Node get_or_create_input_node(ParallelTensorShape const &);
   PCG::Node get_or_create_cast_node(const ParallelTensor input, DataType dtype);
-  PCG::Node get_or_create_concat_node(int num_inputs,
-                                      ParallelTensor const *inputs,
-                                      int legion_axis);
-  PCG::Node get_or_create_element_binary_node(const ParallelTensor input1,
-                                              const ParallelTensor input2,
-                                              OperatorType type);
-  PCG::Node get_or_create_embedding_node(LayerID const &layer_guid,
-                                         const ParallelTensor input,
-                                         int num_entries,
-                                         int out_channels,
-                                         AggrMode aggr);
-  PCG::Node get_or_create_linear_node(LayerID const &layer_guid,
-                                      const ParallelTensor input,
-                                      int out_dim,
-                                      ActiMode activation,
-                                      bool use_bias);
-  PCG::Node get_or_create_multihead_attn_node(LayerID const &layer_guid,
-                                              const ParallelTensor query,
-                                              const ParallelTensor key,
-                                              const ParallelTensor value,
-                                              int embed_dim,
-                                              int num_heads,
-                                              int kdim,
-                                              int vdim,
-                                              float dropout,
-                                              bool bias,
-                                              bool add_bias_kv,
-                                              bool add_zero_attn);
-  PCG::Node get_or_create_reshape_node(const ParallelTensor input,
-                                       ReshapeParams const &shape);
-  PCG::Node get_or_create_reshape_node(const ParallelTensor input,
-                                       std::vector<int> const &shape);
-  PCG::Node get_or_create_softmax_node(const ParallelTensor input,
-                                       int softmax_dim);
-  PCG::Node get_or_create_split_node(const ParallelTensor input,
-                                     std::vector<int> const &splits,
-                                     int legion_axis);
-  PCG::Node get_or_create_repartition_node(const ParallelTensor input,
-                                           int repartition_dim,
-                                           int repartition_degree);
-  PCG::Node get_or_create_replicate_node(const ParallelTensor input,
-                                         int replicate_dim,
-                                         int replicate_degree);
-  PCG::Node get_or_create_reduction_node(const ParallelTensor input,
-                                         int reduction_dim,
-                                         int reduction_degree);
-  PCG::Node get_or_create_combine_node(const ParallelTensor input,
-                                       int combine_dim,
-                                       int combine_degree);
   PCG::Node get_or_create_fused_parallel_node(
       const ParallelTensor input,
       std::vector<ParallelOpInfo> const &parallel_ops);
-  PCG::Node get_or_create_conv2d_node(LayerID const &layer_guid,
-                                      const ParallelTensor input,
-                                      int out_channels,
-                                      int kernel_h,
-                                      int kernel_w,
-                                      int stride_h,
-                                      int stride_w,
-                                      int padding_h,
-                                      int padding_w,
-                                      ActiMode activation,
-                                      int groups,
-                                      bool use_bias);
-  PCG::Node get_or_create_dropout_node(const ParallelTensor input,
-                                       DropoutParams const &params);
-  PCG::Node get_or_create_pool2d_node(const ParallelTensor input,
-                                      int kernelH,
-                                      int kernelW,
-                                      int strideH,
-                                      int strideW,
-                                      int paddingH,
-                                      int paddingW,
-                                      PoolType type,
-                                      ActiMode activation);
-  PCG::Node get_or_create_flat_node(const ParallelTensor input);
-  PCG::Node get_or_create_element_unary_node(const ParallelTensor input,
-                                             OperatorType type,
-                                             bool inplace,
-                                             float scalar);
   PCG::Node get_or_create_parallel_op_node(const ParallelTensor input,
                                            ParallelOpInfo const &);
   // ========================================

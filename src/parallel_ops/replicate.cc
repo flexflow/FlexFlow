@@ -231,26 +231,6 @@ bool Replicate::append_parallel_op_info(
   return true;
 }
 
-using PCG::Node;
-Node FFModel::get_or_create_replicate_node(const ParallelTensor input,
-                                           int replicate_dim,
-                                           int replicate_degree) {
-  // replica degree cannot be larger than workersPerNode
-  if (input->dims[replicate_dim].degree * replicate_degree >
-      config.workersPerNode)
-    return Node::INVALID_NODE;
-  // check that degree is not larger than total available devices
-  int degree = input->get_total_num_parts() * replicate_degree;
-  if (degree > config.workersPerNode * config.numNodes &&
-      (degree > config.cpusPerNode * config.numNodes))
-    return Node::INVALID_NODE;
-
-  ReplicateParams params;
-  params.replicate_legion_dim = replicate_dim;
-  params.replicate_degree = replicate_degree;
-  return get_or_create_node<Replicate>(input, params);
-}
-
 void Replicate::forward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,

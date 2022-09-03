@@ -92,12 +92,6 @@ bool operator==(FlatParams const &, FlatParams const &) {
   return true;
 }
 
-using PCG::Node;
-Node FFModel::get_or_create_flat_node(const ParallelTensor input) {
-  FlatParams params;
-  return get_or_create_node<Flat>(input, params);
-}
-
 /*static*/
 void Flat::construct_output_mappings(
     std::vector<ParallelDimMappingRecord> &mappings) {

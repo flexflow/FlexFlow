@@ -208,16 +208,6 @@ bool Reduction::append_parallel_op_info(
   return true;
 }
 
-using PCG::Node;
-Node FFModel::get_or_create_reduction_node(const ParallelTensor input,
-                                           int reduction_dim,
-                                           int reduction_degree) {
-  ReductionParams params;
-  params.reduction_legion_dim = reduction_dim;
-  params.reduction_degree = reduction_degree;
-  return get_or_create_node<Reduction>(input, params);
-}
-
 /*static*/
 void Reduction::forward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,

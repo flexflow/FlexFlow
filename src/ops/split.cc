@@ -382,15 +382,6 @@ bool Split::measure_operator_cost(Simulator *sim,
   return true;
 }
 
-Node FFModel::get_or_create_split_node(const ParallelTensor input,
-                                       std::vector<int> const &splits,
-                                       int legion_axis) {
-  SplitParams params;
-  params.splits = splits;
-  params.legion_axis = legion_axis;
-  return get_or_create_node<Split>(input, params);
-}
-
 }; // namespace FlexFlow
 
 namespace std {

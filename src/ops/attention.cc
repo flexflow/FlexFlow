@@ -884,34 +884,6 @@ MultiHeadAttentionParams MultiHeadAttention::get_params() const {
   return params;
 }
 
-Node FFModel::get_or_create_multihead_attn_node(LayerID const &layer_guid,
-                                                const ParallelTensor query,
-                                                const ParallelTensor key,
-                                                const ParallelTensor value,
-                                                int embed_dim,
-                                                int num_heads,
-                                                int kdim,
-                                                int vdim,
-                                                float dropout,
-                                                bool bias,
-                                                bool add_bias_kv,
-                                                bool add_zero_attn) {
-  auto _inputs = std::make_tuple(query, key, value);
-
-  MultiHeadAttentionParams params;
-  params.layer_guid = layer_guid;
-  params.embed_dim = embed_dim;
-  params.num_heads = num_heads;
-  params.kdim = kdim;
-  params.vdim = vdim;
-  params.dropout = dropout;
-  params.bias = bias;
-  params.add_bias_kv = add_bias_kv;
-  params.add_zero_attn = add_zero_attn;
-
-  return get_or_create_node<MultiHeadAttention>(_inputs, params);
-}
-
 }; // namespace FlexFlow
 
 namespace std {

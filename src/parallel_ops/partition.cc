@@ -249,21 +249,6 @@ bool Repartition::append_parallel_op_info(
   return true;
 }
 
-using PCG::Node;
-Node FFModel::get_or_create_repartition_node(const ParallelTensor input,
-                                             int repartition_dim,
-                                             int repartition_degree) {
-  int degree = input->get_total_num_parts() * repartition_degree;
-  if (degree > config.workersPerNode * config.numNodes &&
-      (degree > config.cpusPerNode * config.numNodes))
-    return Node::INVALID_NODE;
-
-  RepartitionParams params;
-  params.repartition_legion_dim = repartition_dim;
-  params.repartition_degree = repartition_degree;
-  return get_or_create_node<Repartition>(input, params);
-}
-
 tl::optional<RecordFormatter> Repartition::as_dot() const {
   RecordFormatter rf;
   {
