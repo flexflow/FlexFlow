@@ -728,31 +728,16 @@ bool Embedding::measure_operator_cost(Simulator *sim,
   return true;
 }
 
-using PCG::Node;
-Node FFModel::get_or_create_embedding_node(LayerID const &layer_guid,
-                                            const ParallelTensor input,
-                                            int num_entries,
-                                            int out_channels,
-                                            AggrMode aggr) {
-  EmbeddingParams params;
-  params.layer_guid = layer_guid;
-  params.num_entries = num_entries;
-  params.out_channels = out_channels;
-  params.aggr = aggr;
-  return get_or_create_node<Embedding>(input, params);
-}
-
-void
-    EmbeddingLookup_int64_t_float_float__avx2_fma(int const block_size,
-                                                  int const output_size,
-                                                  int const index_size,
-                                                  int const data_size,
-                                                  float const *input,
-                                                  int64_t const *indices,
-                                                  int const *lengths,
-                                                  float const *weight,
-                                                  bool normalize_by_lengths,
-                                                  float *out) {
+void EmbeddingLookup_int64_t_float_float__avx2_fma(int const block_size,
+                                                   int const output_size,
+                                                   int const index_size,
+                                                   int const data_size,
+                                                   float const *input,
+                                                   int64_t const *indices,
+                                                   int const *lengths,
+                                                   float const *weight,
+                                                   bool normalize_by_lengths,
+                                                   float *out) {
 #ifdef FF_USE_AVX2
       const int64_t prefdist_T0 = 16;
       if (block_size == 128) {
@@ -953,15 +938,6 @@ void
 }
 
 void embed_forward(int64_t const *input,
-<<<<<<< HEAD
-                    int const *lengths,
-                    float *output,
-                    float const *embed,
-                    int block_size,
-                    int output_size,
-                    int index_size,
-                    int data_size) {
-=======
                    int const *lengths,
                    float *output,
                    float const *embed,
@@ -969,7 +945,6 @@ void embed_forward(int64_t const *input,
                    int output_size,
                    int index_size,
                    int data_size) {
->>>>>>> Fix param fields
   EmbeddingLookup_int64_t_float_float__avx2_fma(block_size,
                                                 output_size,
                                                 index_size,
@@ -1010,21 +985,6 @@ void embed_backward(int64_t const *input,
                     int index_size,
                     int data_size) {
   embed_backward_generic(input,
-<<<<<<< HEAD
-                          lengths,
-                          output,
-                          embed,
-                          block_size,
-                          output_size,
-                          index_size,
-                          data_size);
-}
-
-void Embedding::forward_task_cpu(Task const *task,
-                                  std::vector<PhysicalRegion> const &regions,
-                                  Context ctx,
-                                  Runtime *runtime) {
-=======
                          lengths,
                          output,
                          embed,
@@ -1038,7 +998,6 @@ void Embedding::forward_task_cpu(Task const *task,
                                  std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  Runtime *runtime) {
->>>>>>> Fix param fields
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
   // const Embedding* embed = (Embedding*) task->args;
@@ -1078,12 +1037,7 @@ void Embedding::forward_task_cpu(Task const *task,
                 data_size);
 }
 
-<<<<<<< HEAD
-void
-    Embedding::backward_task_cpu(Task const *task,
-=======
 void Embedding::backward_task_cpu(Task const *task,
->>>>>>> Fix param fields
                                   std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime) {
@@ -1115,15 +1069,6 @@ void Embedding::backward_task_cpu(Task const *task,
   int data_size = 1000000; // FIXME
   std::vector<int> lengths(output_size, 1);
   embed_backward(acc_input.ptr(rect_input),
-<<<<<<< HEAD
-                  lengths.data(),
-                  acc_output.ptr(rect_output),
-                  acc_weight.ptr(rect_weight),
-                  block_size,
-                  output_size,
-                  index_size,
-                  data_size);
-=======
                  lengths.data(),
                  acc_output.ptr(rect_output),
                  acc_weight.ptr(rect_weight),
@@ -1131,7 +1076,6 @@ void Embedding::backward_task_cpu(Task const *task,
                  output_size,
                  index_size,
                  data_size);
->>>>>>> Fix param fields
 }
 
 }; // namespace FlexFlow

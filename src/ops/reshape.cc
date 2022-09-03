@@ -428,13 +428,6 @@ Op *Reshape::materialize(FFModel &ff,
   return new Reshape(ff, inputs[0], shape, this->name);
 }
 
-Node FFModel::get_or_create_reshape_node(const ParallelTensor input,
-                                         std::vector<int> const &shape) {
-  ReshapeParams params;
-  params.shape = shape;
-  return get_or_create_node<Reshape>(input, params);
-}
-
 }; // namespace FlexFlow
 
 namespace std {

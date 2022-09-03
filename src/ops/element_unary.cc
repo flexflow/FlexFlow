@@ -61,19 +61,6 @@ ElementUnaryParams ElementUnary::get_params() const {
   return params;
 }
 
-using PCG::Node;
-Node FFModel::get_or_create_element_unary_node(const ParallelTensor input,
-                                               OperatorType op,
-                                               bool inplace,
-                                               float scalar) {
-  ElementUnaryParams params;
-  params.op_type = op;
-  params.inplace = inplace;
-  params.scalar = scalar;
-
-  return get_or_create_node<ElementUnary>(input, params);
-}
-
 Tensor FFModel::exp(const Tensor x, char const *name) {
   return this->unary(OP_EXP, x, false /*inplace*/, name);
 }

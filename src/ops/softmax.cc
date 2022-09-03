@@ -405,14 +405,6 @@ bool Softmax::measure_operator_cost(Simulator *sim,
   return true;
 }
 
-using PCG::Node;
-Node FFModel::get_or_create_softmax_node(const ParallelTensor input,
-                                         int softmax_dim) {
-  SoftmaxParams params;
-  params.dim = softmax_dim;
-  return get_or_create_node<Softmax>(input, params);
-}
-
 }; // namespace FlexFlow
 
 namespace std {

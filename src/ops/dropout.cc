@@ -79,12 +79,6 @@ bool operator==(DropoutParams const &lhs, DropoutParams const &rhs) {
   return lhs.rate == rhs.rate && lhs.seed == rhs.seed;
 }
 
-using PCG::Node;
-Node FFModel::get_or_create_dropout_node(const ParallelTensor input,
-                                         DropoutParams const &params) {
-  return get_or_create_node<Dropout>(input, params);
-}
-
 Dropout::Dropout(FFModel &model,
                  const ParallelTensor _input,
                  float _rate,

@@ -248,16 +248,6 @@ bool Combine::append_parallel_op_info(
   return true;
 }
 
-using PCG::Node;
-Node FFModel::get_or_create_combine_node(const ParallelTensor input,
-                                         int combine_dim,
-                                         int combine_degree) {
-  CombineParams params;
-  params.combine_legion_dim = combine_dim;
-  params.combine_degree = combine_degree;
-  return get_or_create_node<Combine>(input, params);
-}
-
 tl::optional<RecordFormatter> Combine::as_dot() const {
   RecordFormatter rf;
   {

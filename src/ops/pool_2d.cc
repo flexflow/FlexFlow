@@ -140,28 +140,6 @@ bool operator==(Pool2DParams const &lhs, Pool2DParams const &rhs) {
          lhs.pool_type == rhs.pool_type && lhs.activation == rhs.activation;
 }
 
-Node FFModel::get_or_create_pool2d_node(const ParallelTensor input,
-                                        int kernelH,
-                                        int kernelW,
-                                        int strideH,
-                                        int strideW,
-                                        int paddingH,
-                                        int paddingW,
-                                        PoolType type,
-                                        ActiMode activation) {
-  Pool2DParams params;
-  params.kernel_h = kernelH;
-  params.kernel_w = kernelW;
-  params.stride_h = strideH;
-  params.stride_w = strideW;
-  params.padding_h = paddingH;
-  params.padding_w = paddingW;
-  params.pool_type = type;
-  params.activation = activation;
-
-  return this->get_or_create_node<Pool2D>(input, params);
-}
-
 int Pool2DParams::output_size(ParallelTensorShape const &input,
                               ParallelDim output_dims[MAX_TENSOR_DIM]) const {
   int input_w = input.dims[Pool2DInput::WIDTH].size;

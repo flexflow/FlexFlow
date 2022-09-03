@@ -62,17 +62,25 @@ Node FFModel::get_or_create_parallel_op_node(
 
   switch (op_type) {
     case OP_COMBINE:
-      return this->get_or_create_combine_node(
-          input, parallel_dim, parallel_degree);
+      CombineParams combine_params;
+      combine_params.combine_legion_dim = parallel_dim;
+      combine_params.combine_degree = parallel_degree;
+      return this->get_or_create_node<Combine>(input, combine_params);
     case OP_REPARTITION:
-      return this->get_or_create_repartition_node(
-          input, parallel_dim, parallel_degree);
+      RepartitionParams partition_params;
+      partition_params.repartition_legion_dim = parallel_dim;
+      partition_params.repartition_degree = parallel_degree;
+      return this->get_or_create_node<Repartition>(input, partition_params);
     case OP_REPLICATE:
-      return this->get_or_create_replicate_node(
-          input, parallel_dim, parallel_degree);
+      ReplicateParams replicate_params;
+      replicate_params.replicate_legion_dim = parallel_dim;
+      replicate_params.replicate_degree = parallel_degree;
+      return this->get_or_create_node<Replicate>(input, replicate_params);
     case OP_REDUCTION:
-      return this->get_or_create_reduction_node(
-          input, parallel_dim, parallel_degree);
+      ReductionParams reduction_params;
+      reduction_params.reduction_legion_dim = parallel_dim;
+      reduction_params.reduction_degree = parallel_degree;
+      return this->get_or_create_node<Reduction>(input, reduction_params);
     default:
       assert(false && "Unsupported parallel op");
   }

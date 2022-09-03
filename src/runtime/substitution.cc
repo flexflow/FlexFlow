@@ -700,8 +700,10 @@ void Graph::reshape_output_tensor(ParallelTensorShape const &desired_shape) {
       assert(desired_degree % current_degree == 0);
       int partition_factor = desired_degree / current_degree;
 
-      Node partition_node = model->get_or_create_repartition_node(
-          output_tensor, i, partition_factor);
+      RepartitionParams params;
+      params.repartition_legion_dim = i;
+      params.repartition_degree = partition_factor;
+      Node partition_node = model->get_or_create_node<Repartition>(output_tensor, params);
       this->add_edge(output_node, partition_node, 0, 0);
 
       output_node = partition_node;
@@ -713,8 +715,10 @@ void Graph::reshape_output_tensor(ParallelTensorShape const &desired_shape) {
       assert(current_degree % desired_degree == 0);
       int combine_factor = current_degree / desired_degree;
 
-      Node combine_node =
-          model->get_or_create_combine_node(output_tensor, i, combine_factor);
+      CombineParams params;
+      params.combine_legion_dim = i;
+      params.combine_degree = combine_factor;
+      Node combine_node = model->get_or_create_node<Combine>(output_tensor, params);
       this->add_edge(output_node, combine_node, 0, 0);
 
       output_node = combine_node;
@@ -941,20 +945,39 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
       int repartition_dim, repartition_degree;
       assert(opx->get_pm_constraint(PM_REPARTITION_DIM, repartition_dim));
       assert(opx->get_pm_constraint(PM_REPARTITION_DEGREE, repartition_degree));
-      RepartitionParams params;
-      params.repartition_legion_dim = repartition_dim;
-      params.repartition_degree = repartition_degree;
-      op = model->get_or_create_node<Repartition>(inputs[0], params);
+
+      int degree = inputs[0]->get_total_num_parts() * repartition_degree;
+      if (degree > model->config.workersPerNode * model->config.numNodes &&
+          (degree > model->config.cpusPerNode * model->config.numNodes)) {
+        op = Node::INVALID_NODE;
+      } else {
+        RepartitionParams params;
+        params.repartition_legion_dim = repartition_dim;
+        params.repartition_degree = repartition_degree;
+        op = model->get_or_create_node<Repartition>(inputs[0], params);
+      }
       break;
     }
     case OP_REPLICATE: {
       int replicate_dim, replicate_degree;
       assert(opx->get_pm_constraint(PM_REPLICATE_DIM, replicate_dim));
       assert(opx->get_pm_constraint(PM_REPLICATE_DEGREE, replicate_degree));
-      ReplicateParams params;
-      params.replicate_legion_dim = replicate_dim;
-      params.replicate_degree = replicate_degree;
-      op = model->get_or_create_node<Replicate>(inputs[0], params);
+
+      if (inputs[0]->dims[replicate_dim].degree * replicate_degree >
+          model->config.workersPerNode) {
+        op = Node::INVALID_NODE;
+      } else {
+        int degree = inputs[0]->get_total_num_parts() * replicate_degree;
+        if (degree > model->config.workersPerNode * model->config.numNodes &&
+            (degree > model->config.cpusPerNode * model->config.numNodes)) {
+          op = Node::INVALID_NODE;
+        } else {
+          ReplicateParams params;
+          params.replicate_legion_dim = replicate_dim;
+          params.replicate_degree = replicate_degree;
+          op = model->get_or_create_node<Replicate>(inputs[0], params);
+        }
+      }
       break;
     }
     case OP_REDUCTION: {

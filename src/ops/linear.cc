@@ -892,23 +892,6 @@ bool Linear::measure_operator_cost(Simulator *sim,
   return true;
 }
 
-using PCG::Node;
-
-Node FFModel::get_or_create_linear_node(LayerID const &layer_guid,
-                                        const ParallelTensor input,
-                                        int out_dim,
-                                        ActiMode activation,
-                                        bool use_bias) {
-  LinearParams params;
-  params.layer_guid = layer_guid;
-  params.out_channels = out_dim;
-  params.activation = activation;
-  params.use_bias = use_bias;
-  params.data_type = DT_FLOAT; // TODO: currently assume data type is float
-
-  return this->get_or_create_node<Linear>(input, params);
-}
-
 bool operator==(LinearParams const &lhs, LinearParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid &&
          lhs.out_channels == rhs.out_channels && lhs.use_bias == rhs.use_bias &&
@@ -924,6 +907,7 @@ void Linear::serialize(Legion::Serializer &sez) const {
 }
 
 /* static */
+using PCG::Node;
 Node Linear::deserialize(FFModel &ff,
                          Legion::Deserializer &dez,
                          ParallelTensor inputs[],
@@ -940,7 +924,7 @@ Node Linear::deserialize(FFModel &ff,
   dez.deserialize(activation);
   dez.deserialize(use_bias);
   dez.deserialize(data_type);
-  
+
   LinearParams params;
   params.activation = activation;
   params.out_channels = out_channels;
