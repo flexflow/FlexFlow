@@ -2051,8 +2051,7 @@ void FFModel::deserialize_graph_optimal_view(
         CombineParams params;
         params.combine_legion_dim = combine_dim;
         params.combine_degree = combine_degree;
-        node =
-            get_or_create_node<Combine>(inputs[0], params);
+        node = get_or_create_node<Combine>(inputs[0], params);
         break;
       }
       case OP_REPARTITION: {

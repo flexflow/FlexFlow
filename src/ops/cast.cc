@@ -64,14 +64,6 @@ CastParams Cast::get_params() const {
   return params;
 }
 
-using PCG::Node;
-Node FFModel::get_or_create_cast_node(const ParallelTensor input,
-                                      DataType dtype) {
-  CastParams params;
-  params.dtype = dtype;
-  return get_or_create_node<Cast>(input, params);
-}
-
 bool CastParams::is_valid(ParallelTensorShape const &input) const {
   bool valid = input.is_valid();
   valid &= (input.dims[input.num_dims - 1].degree == 1);
