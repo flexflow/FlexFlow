@@ -841,7 +841,16 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     case OP_CONCAT: {
       int axis;
       assert(opx->get_pm_constraint(PM_AXIS, axis));
-      op = model->get_or_create_concat_node(opx->inputs.size(), inputs, axis);
+      
+      std::vector<ParallelTensor> _inputs;
+      for (int i = 0; i < num_inputs; ++i) {
+        _inputs.push_back(inputs[i]);
+      }
+      // Concat *concat = (Concat *)opx->matchOpX->mapOp.ptr;
+      // ConcatParams params = concat->get_params();
+      ConcatParams params;
+      params.axis = axis;
+      op = model->get_or_create_node<Concat>(_inputs, params);
       break;
     }
     case OP_SPLIT: {
@@ -852,30 +861,38 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
 
       if (input_size % num_outputs != 0) {
         op = Node::INVALID_NODE;
-        // std::ostringstream oss;
-        // oss << "Cannot create Split node. Failed check input_size %
-        // num_outputs
-        // == 0 ("
-        //     << input_size << " % " << num_outputs << " == 0)";
-        // throw std::runtime_error(oss.str());
       } else {
         int split_size = input_size / num_outputs;
         std::vector<int> split_sizes(num_outputs, split_size);
         assert(split_sizes.size() == num_outputs);
-        op = model->get_or_create_split_node(inputs[0], split_sizes, axis);
+        // Split *split = (Split *)opx->matchOpX->mapOp.ptr;
+        // SplitParams params = split->get_params();
+        SplitParams params;
+        params.legion_axis = axis;
+        params.splits = split_sizes;
+        op = model->get_or_create_node<Split>(inputs[0], params);
       }
       break;
     }
     case OP_EW_ADD:
     case OP_EW_SUB:
     case OP_EW_MUL: {
-      op = model->get_or_create_element_binary_node(
-          inputs[0], inputs[1], opx->type);
+      auto input_pair = std::make_pair(inputs[0], inputs[1]);
+      // ElementBinary *element_binary = (ElementBinary *)opx->matchOpX->mapOp.ptr;
+      // ElementBinaryParams params = element_binary->get_params();
+      ElementBinaryParams params;
+      params.type = opx->type;
+      op = model->get_or_create_node<ElementBinary>(input_pair, params);
       break;
     }
     case OP_RELU: {
-      op = model->get_or_create_element_unary_node(
-          inputs[0], opx->type, false, 0.0f);
+      // ElementUnary *element_unary = (ElementUnary *)opx->matchOpX->mapOp.ptr;
+      // ElementUnaryParams params = element_unary->get_params();
+      ElementUnaryParams params;
+      params.op_type = opx->type;
+      params.inplace = false;
+      params.scalar = 0.0f;
+      op = model->get_or_create_node<ElementUnary>(inputs[0], params);
       break;
     }
     case OP_CONV2D: {
@@ -891,7 +908,9 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
       break;
     }
     case OP_FLAT: {
-      op = model->get_or_create_flat_node(inputs[0]);
+      Flat *flat = (Flat *)opx->matchOpX->mapOp.ptr;
+      FlatParams params = flat->get_params();
+      op = model->get_or_create_node<Flat>(inputs[0], params);
       break;
     }
     case OP_LINEAR: {
@@ -901,11 +920,8 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
       Linear *linear = (Linear *)opx->matchOpX->mapOp.ptr;
       // assert(opx->get_pm_constraint(PM_OUTPUT_CHANNELS, output_channels));
       assert(opx->get_pm_constraint(PM_ACTI, activation));
-      op = model->get_or_create_linear_node(linear->layer_guid,
-                                            inputs[0],
-                                            linear->out_channels,
-                                            (ActiMode)activation,
-                                            linear->use_bias);
+      LinearParams params = linear->get_params();
+      op = model->get_or_create_node<Linear>(inputs[0], params);
       break;
     }
     case OP_MULTIHEAD_ATTENTION: {
@@ -914,56 +930,59 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
       assert(opx->matchOpX->mapOp.ptr != NULL);
       MultiHeadAttention *attn = (MultiHeadAttention *)opx->matchOpX->mapOp.ptr;
       assert(opx->get_pm_constraint(PM_NUM_HEADS, num_heads));
-      op = model->get_or_create_multihead_attn_node(attn->layer_guid,
-                                                    inputs[0],
-                                                    inputs[1],
-                                                    inputs[2],
-                                                    attn->oProjSize,
-                                                    num_heads,
-                                                    attn->qProjSize,
-                                                    attn->vProjSize,
-                                                    attn->dropout,
-                                                    attn->bias,
-                                                    attn->add_bias_kv,
-                                                    attn->add_zero_attn);
+      auto _inputs = std::make_tuple(inputs[0], inputs[1], inputs[2]);
+      MultiHeadAttentionParams params = attn->get_params();
+      op = model->get_or_create_node<MultiHeadAttention>(_inputs, params);
       break;
     }
     case OP_SOFTMAX: {
       int softmax_dim;
       assert(opx->get_pm_constraint(PM_SOFTMAX_DIM, softmax_dim));
-      op = model->get_or_create_softmax_node(inputs[0], softmax_dim);
+      // Softmax *softmax = (Softmax *)opx->matchOpX->mapOp.ptr;
+      // SoftmaxParams params = softmax->get_params();
+      SoftmaxParams params;
+      params.dim = softmax_dim;
+      op = model->get_or_create_node<Softmax>(inputs[0], params);
       break;
     }
     case OP_REPARTITION: {
       int repartition_dim, repartition_degree;
       assert(opx->get_pm_constraint(PM_REPARTITION_DIM, repartition_dim));
       assert(opx->get_pm_constraint(PM_REPARTITION_DEGREE, repartition_degree));
-      op = model->get_or_create_repartition_node(
-          inputs[0], repartition_dim, repartition_degree);
+      RepartitionParams params;
+      params.repartition_legion_dim = repartition_dim;
+      params.repartition_degree = repartition_degree;
+      op = model->get_or_create_node<Repartition>(inputs[0], params);
       break;
     }
     case OP_REPLICATE: {
       int replicate_dim, replicate_degree;
       assert(opx->get_pm_constraint(PM_REPLICATE_DIM, replicate_dim));
       assert(opx->get_pm_constraint(PM_REPLICATE_DEGREE, replicate_degree));
-      op = model->get_or_create_replicate_node(
-          inputs[0], replicate_dim, replicate_degree);
+      ReplicateParams params;
+      params.replicate_legion_dim = replicate_dim;
+      params.replicate_degree = replicate_degree;
+      op = model->get_or_create_node<Replicate>(inputs[0], params);
       break;
     }
     case OP_REDUCTION: {
       int reduction_dim, reduction_degree;
       assert(opx->get_pm_constraint(PM_REDUCTION_DIM, reduction_dim));
       assert(opx->get_pm_constraint(PM_REDUCTION_DEGREE, reduction_degree));
-      op = model->get_or_create_reduction_node(
-          inputs[0], reduction_dim, reduction_degree);
+      ReductionParams params;
+      params.reduction_legion_dim = reduction_dim;
+      params.reduction_degree = reduction_degree;
+      op = model->get_or_create_node<Reduction>(inputs[0], params);
       break;
     }
     case OP_COMBINE: {
       int combine_dim, combine_degree;
       assert(opx->get_pm_constraint(PM_COMBINE_DIM, combine_dim));
       assert(opx->get_pm_constraint(PM_COMBINE_DEGREE, combine_degree));
-      op = model->get_or_create_combine_node(
-          inputs[0], combine_dim, combine_degree);
+      CombineParams params;
+      params.combine_legion_dim = combine_dim;
+      params.combine_degree = combine_degree;
+      op = model->get_or_create_node<Reduction>(inputs[0], params);
       break;
     }
     default: {
