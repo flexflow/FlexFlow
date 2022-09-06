@@ -48,7 +48,7 @@ public:
             bool allocate_weights);
   Embedding(FFModel &model,
             Params &params,
-            const Input input,
+            Input const input,
             bool allocate_weights = false,
             char const *name = nullptr);
   void init(FFModel const &) override;
