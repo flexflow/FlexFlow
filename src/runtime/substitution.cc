@@ -700,8 +700,8 @@ void Graph::reshape_output_tensor(ParallelTensorShape const &desired_shape) {
       assert(desired_degree % current_degree == 0);
       int partition_factor = desired_degree / current_degree;
 
-      Node partition_node =
-          model->get_or_create_node<Repartition>(output_tensor, {i/*legion_dim*/, partition_factor});
+      Node partition_node = model->get_or_create_node<Repartition>(
+          output_tensor, {i /*legion_dim*/, partition_factor});
       this->add_edge(output_node, partition_node, 0, 0);
 
       output_node = partition_node;
@@ -713,8 +713,8 @@ void Graph::reshape_output_tensor(ParallelTensorShape const &desired_shape) {
       assert(current_degree % desired_degree == 0);
       int combine_factor = current_degree / desired_degree;
 
-      Node combine_node =
-          model->get_or_create_node<Combine>(output_tensor, {i/*legion_dim*/, combine_factor});
+      Node combine_node = model->get_or_create_node<Combine>(
+          output_tensor, {i /*legion_dim*/, combine_factor});
       this->add_edge(output_node, combine_node, 0, 0);
 
       output_node = combine_node;
@@ -841,7 +841,7 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     case OP_CONCAT: {
       int axis;
       assert(opx->get_pm_constraint(PM_AXIS, axis));
-      std::vector<ParallelTensor> _inputs (std::begin(inputs), std::end(inputs));
+      std::vector<ParallelTensor> _inputs(std::begin(inputs), std::end(inputs));
       op = model->get_or_create_node<Concat>(_inputs, {axis});
       break;
     }
@@ -864,7 +864,8 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     case OP_EW_ADD:
     case OP_EW_SUB:
     case OP_EW_MUL: {
-      op = model->get_or_create_node<ElementBinary>({inputs[0], inputs[1]}, {opx->type});
+      op = model->get_or_create_node<ElementBinary>({inputs[0], inputs[1]},
+                                                    {opx->type});
       break;
     }
     case OP_RELU: {
@@ -910,7 +911,8 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
       MultiHeadAttention *attn = (MultiHeadAttention *)opx->matchOpX->mapOp.ptr;
       assert(opx->get_pm_constraint(PM_NUM_HEADS, num_heads));
       MultiHeadAttentionParams params = attn->get_params();
-      op = model->get_or_create_node<MultiHeadAttention>({inputs[0], inputs[1], inputs[2]}, params);
+      op = model->get_or_create_node<MultiHeadAttention>(
+          {inputs[0], inputs[1], inputs[2]}, params);
       break;
     }
     case OP_SOFTMAX: {
@@ -929,7 +931,8 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
           (degree > model->config.cpusPerNode * model->config.numNodes)) {
         op = Node::INVALID_NODE;
       } else {
-        op = model->get_or_create_node<Repartition>(inputs[0], {repartition_dim, repartition_degree});
+        op = model->get_or_create_node<Repartition>(
+            inputs[0], {repartition_dim, repartition_degree});
       }
       break;
     }
@@ -947,7 +950,8 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
             (degree > model->config.cpusPerNode * model->config.numNodes)) {
           op = Node::INVALID_NODE;
         } else {
-          op = model->get_or_create_node<Replicate>(inputs[0], {replicate_dim, replicate_degree});
+          op = model->get_or_create_node<Replicate>(
+              inputs[0], {replicate_dim, replicate_degree});
         }
       }
       break;
@@ -956,14 +960,16 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
       int reduction_dim, reduction_degree;
       assert(opx->get_pm_constraint(PM_REDUCTION_DIM, reduction_dim));
       assert(opx->get_pm_constraint(PM_REDUCTION_DEGREE, reduction_degree));
-      op = model->get_or_create_node<Reduction>(inputs[0], {reduction_dim, reduction_degree});
+      op = model->get_or_create_node<Reduction>(
+          inputs[0], {reduction_dim, reduction_degree});
       break;
     }
     case OP_COMBINE: {
       int combine_dim, combine_degree;
       assert(opx->get_pm_constraint(PM_COMBINE_DIM, combine_dim));
       assert(opx->get_pm_constraint(PM_COMBINE_DEGREE, combine_degree));
-      op = model->get_or_create_node<Combine>(inputs[0], {combine_dim, combine_degree});
+      op = model->get_or_create_node<Combine>(inputs[0],
+                                              {combine_dim, combine_degree});
       break;
     }
     default: {

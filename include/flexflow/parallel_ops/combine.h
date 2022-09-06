@@ -30,7 +30,7 @@ public:
           char const *name = NULL);
   Combine(FFModel &model,
           Params const &params,
-          const Input input,
+          Input const input,
           char const *name = nullptr);
   void create_input_partition(FFModel &model) override;
   void init(FFModel const &) override;
