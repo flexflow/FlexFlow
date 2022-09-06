@@ -60,7 +60,7 @@ CombineParams Combine::get_params() const {
 
 Combine::Combine(FFModel &model,
                  CombineParams const &params,
-                 const ParallelTensor input,
+                 ParallelTensor const input,
                  char const *name)
     : Combine(model,
               input,

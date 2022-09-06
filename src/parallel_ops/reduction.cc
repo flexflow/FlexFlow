@@ -92,7 +92,7 @@ Reduction::Reduction(FFModel &model,
 
 Reduction::Reduction(FFModel &model,
                      ReductionParams const &params,
-                     const ParallelTensor input,
+                     ParallelTensor const input,
                      char const *name)
     : Reduction(model,
                 input,

@@ -23,6 +23,7 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+using PCG::Node;
 
 Tensor FFModel::dropout(const Tensor input,
                         float rate,

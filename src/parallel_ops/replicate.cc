@@ -92,7 +92,7 @@ Replicate::Replicate(FFModel &model,
 
 Replicate::Replicate(FFModel &model,
                      ReplicateParams const &params,
-                     const ParallelTensor input,
+                     ParallelTensor const input,
                      char const *name)
     : Replicate(model,
                 input,

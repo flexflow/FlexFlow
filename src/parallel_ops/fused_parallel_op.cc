@@ -50,11 +50,7 @@ bool FusedParallelOpParams::is_valid(ParallelTensorShape const &input) const {
 
 FusedParallelOpParams FusedParallelOp::get_params() const {
   FusedParallelOpParams params;
-  std::vector<ParallelOpInfo> vec;
-  for (ParallelOpInfo op : this->parallel_ops) {
-    vec.push_back(op);
-  }
-  params.parallel_ops = vec;
+  params.parallel_ops = this->parallel_ops;
   return params;
 }
 
@@ -285,7 +281,7 @@ size_t hash<FlexFlow::FusedParallelOpParams>::operator()(
     FlexFlow::FusedParallelOpParams const &params) const {
   size_t key = 0;
   hash_combine(key, params.parallel_ops.size());
-  for (auto const &p : params.parallel_ops) {
+  for (ParallelOpInfo const &p : params.parallel_ops) {
     hash_combine(key, p.op_type);
     hash_combine(key, p.parallel_dim);
     hash_combine(key, p.parallel_degree);

@@ -405,9 +405,7 @@ Node Reshape::deserialize(FFModel &ff,
     dez.deserialize(value);
     shape.push_back(value);
   }
-  ReshapeParams params;
-  params.shape = shape;
-  return ff.get_or_create_node<Reshape>(inputs[0], params);
+  return ff.get_or_create_node<Reshape>(inputs[0], {shape});
 }
 
 Op *Reshape::materialize(FFModel &ff,
