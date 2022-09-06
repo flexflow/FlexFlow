@@ -130,7 +130,6 @@ public:
   bool add_bias_kv, add_zero_attn;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
-  int embed_dim, kdim, vdim;
 };
 
 class MultiHeadAttentionMeta : public OpMeta {

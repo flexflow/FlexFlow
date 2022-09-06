@@ -885,10 +885,10 @@ bool operator==(MultiHeadAttentionParams const &lhs,
 MultiHeadAttentionParams MultiHeadAttention::get_params() const {
   MultiHeadAttentionParams params;
   params.layer_guid = this->layer_guid;
-  params.embed_dim = this->embed_dim;
+  params.embed_dim = this->oProjSize;
   params.num_heads = this->num_heads;
-  params.kdim = this->kdim;
-  params.vdim = this->vdim;
+  params.kdim = this->kProjSize;
+  params.vdim = this->vProjSize;
   params.dropout = this->dropout;
   params.bias = this->bias;
   params.add_bias_kv = this->add_bias_kv;

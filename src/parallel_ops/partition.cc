@@ -96,7 +96,7 @@ Repartition::Repartition(FFModel &model,
 
 Repartition::Repartition(FFModel &model,
                          RepartitionParams const &params,
-                         const ParallelTensor input,
+                         ParallelTensor const input,
                          char const *name)
     : Repartition(model,
                   input,
