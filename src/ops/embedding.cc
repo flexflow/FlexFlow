@@ -14,7 +14,6 @@
  */
 
 #include "flexflow/ops/embedding.h"
-#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -91,18 +90,21 @@ EmbeddingParams Embedding::get_params() const {
   params.num_entries = this->num_entries;
   params.out_channels = this->out_channels;
   params.aggr = this->aggr;
-  params.layer_guid = this->layer_guid;
+
   return params;
 }
 
-bool EmbeddingParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+size_t EmbeddingParams::get_hash(const ParallelTensor input) const {
+  size_t hash = input->get_owner_independent_hash();
+  hash_combine(hash, this->num_entries);
+  hash_combine(hash, this->out_channels);
+  hash_combine(hash, this->aggr);
+
+  return hash;
 }
 
-bool operator==(EmbeddingParams const &lhs, EmbeddingParams const &rhs) {
-  return lhs.num_entries == rhs.num_entries &&
-         lhs.out_channels == rhs.out_channels && lhs.aggr == rhs.aggr &&
-         lhs.layer_guid == rhs.layer_guid;
+size_t Embedding::get_params_hash() const {
+  return this->get_params().get_hash(this->inputs[0]);
 }
 
 Op *Embedding::create_operator_from_layer(
@@ -248,20 +250,6 @@ Embedding::Embedding(FFModel &model,
                 other.aggr,
                 allocate_weights,
                 other.name) {}
-
-Embedding::Embedding(FFModel &model,
-                     EmbeddingParams &params,
-                     const ParallelTensor input,
-                     bool allocate_weights = false,
-                     char const *name = nullptr)
-    : Embedding(model,
-                params.layer_guid,
-                input,
-                params.num_entries,
-                params.out_channels,
-                params.aggr,
-                allocate_weights,
-                name) {}
 
 Embedding::Embedding(FFModel &model,
                      LayerID const &_layer_guid,
@@ -652,8 +640,7 @@ bool Embedding::measure_operator_cost(Simulator *sim,
   int effective_batch_size = sub_output.get_volume() / out_dim;
   assert(effective_batch_size * in_dim == sub_input.get_volume());
 
-  // Randomly initialize the intput tensor to avoid out of index range
-  // issues
+  // Randomly initialize the intput tensor to avoid out of index range issues
   rand_generate_int64_wrapper(input_ptr, sub_input.get_volume(), num_entries);
   std::function<void()> forward, backward;
   forward = [&] {
@@ -710,6 +697,38 @@ bool Embedding::measure_operator_cost(Simulator *sim,
   }
 
   return true;
+}
+
+using PCG::Node;
+Node FFModel::get_or_create_embedding_node(LayerID const &layer_guid,
+                                           const ParallelTensor input,
+                                           int num_entries,
+                                           int out_channels,
+                                           AggrMode aggr) {
+  size_t hash = input->get_owner_independent_hash();
+  hash_combine(hash, layer_guid.id);
+  hash_combine(hash, std::hash<int>()(num_entries));
+  hash_combine(hash, std::hash<int>()(out_channels));
+  hash_combine(hash, std::hash<int>()(aggr));
+  auto const &it = cached_embedding_ops.find(hash);
+  Embedding *embed = NULL;
+  if (it != cached_embedding_ops.end()) {
+    embed = it->second;
+  } else {
+    embed = new Embedding(*this,
+                          layer_guid,
+                          input,
+                          num_entries,
+                          out_channels,
+                          aggr,
+                          false /*allocate_weights*/,
+                          NULL);
+    cached_embedding_ops[hash] = embed;
+  }
+  Node ret;
+  ret.guid = node_global_guid++;
+  ret.ptr = embed;
+  return ret;
 }
 
 void EmbeddingLookup_int64_t_float_float__avx2_fma(int const block_size,
@@ -1146,15 +1165,3 @@ void Embedding::backward_task_cpu(Task const *task,
 }
 
 }; // namespace FlexFlow
-
-namespace std {
-size_t hash<FlexFlow::EmbeddingParams>::operator()(
-    FlexFlow::EmbeddingParams const &params) const {
-  size_t key = 0;
-  hash_combine(key, params.num_entries);
-  hash_combine(key, params.out_channels);
-  hash_combine(key, params.layer_guid);
-  hash_combine(key, params.aggr);
-  return key;
-}
-}; // namespace std
