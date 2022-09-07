@@ -91,6 +91,8 @@ EmbeddingParams Embedding::get_params() const {
   params.num_entries = this->num_entries;
   params.out_channels = this->out_channels;
   params.aggr = this->aggr;
+  // TODO: get rid of layer_guid
+  // https://github.com/flexflow/FlexFlow/issues/304
   params.layer_guid = this->layer_guid;
   return params;
 }

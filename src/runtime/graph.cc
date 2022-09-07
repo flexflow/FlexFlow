@@ -1911,9 +1911,8 @@ void FFModel::deserialize_graph_optimal_view(
       case OP_CONCAT: {
         int legion_axis;
         dez.deserialize(legion_axis);
-        std::vector<ParallelTensor> _inputs(std::begin(inputs),
-                                            std::end(inputs));
-        node = get_or_create_node<Concat>(_inputs, {legion_axis});
+        node = get_or_create_node<Concat>(
+            {std::begin(inputs), std::end(inputs)}, {legion_axis});
         break;
       }
       case OP_SPLIT: {
