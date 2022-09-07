@@ -841,8 +841,8 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     case OP_CONCAT: {
       int axis;
       assert(opx->get_pm_constraint(PM_AXIS, axis));
-      std::vector<ParallelTensor> _inputs(std::begin(inputs), std::end(inputs));
-      op = model->get_or_create_node<Concat>(_inputs, {axis});
+      op = model->get_or_create_node<Concat>(
+          {std::begin(inputs), std::end(inputs)}, {axis});
       break;
     }
     case OP_SPLIT: {
