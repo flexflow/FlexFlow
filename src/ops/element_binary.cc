@@ -21,8 +21,7 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-bool broadcastable(const Tensor t1,
-                   const Tensor t2) {
+bool broadcastable(const Tensor t1, const Tensor t2) {
   int dim = std::min(t1->num_dims, t2->num_dims);
   for (int i = 0; i < dim; i++) {
     if ((t1->dims[i] != t2->dims[i]) && (t1->dims[i] > 1) && (t2->dims[i] > 1))
