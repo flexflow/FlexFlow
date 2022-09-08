@@ -2517,7 +2517,7 @@ void FFModel::forward(int seq_length)
   for (size_t i = 0; i < operators.size(); i++){
     // operators[i]->forward(*this);
     for (size_t j = 0; j < operators[i]->nFnB; j++){
-      log_model.print("Launching %zu pipeforward for op(%s)",j, optype_to_string(operators[i]->op_type).data());
+      //log_model.print("Launching %zu pipeforward for op(%s)",j, optype_to_string(operators[i]->op_type).data());
       operators[i]->pipeforward(*this);
     }
   }
@@ -2528,7 +2528,7 @@ void FFModel::forward(int seq_length)
 void FFModel::reset_pipe_idx()
 {
   for (size_t i = 0; i < operators.size(); i++){
-      log_model.print("Reset_idx for op(%s)", optype_to_string(operators[i]->op_type).data());
+      //log_model.print("Reset_idx for op(%s)", optype_to_string(operators[i]->op_type).data());
       operators[i]->reset_idx(*this);
       operators[i]->reset_zeroig_idx(*this);
   }
@@ -2545,7 +2545,7 @@ void FFModel::compute_metrics()
 {
   Op* final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
-  log_model.print("Compute Metrics...");
+  //log_model.print("Compute Metrics...");
   for (size_t i = 0; i < final_operator->nFnB; i++){
     metrics_op->compute(this, final_operator->outputs[0], parallel_label_tensor);
   }
@@ -2565,9 +2565,9 @@ void FFModel::backward(int seq_length)
   // Compute the gradients of the final operator wrt loss
   Op* final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
-  log_model.print("loss op backward...");
+  //log_model.print("loss op backward...");
   for (size_t i = 0; i < final_operator->nFnB; i++){
-    log_model.print("Launching %zu Loss op backward",i);
+    //log_model.print("Launching %zu Loss op backward",i);
     loss_op->backward(this, final_operator->outputs[0], parallel_label_tensor);
   }
   // Perform backpropagation
@@ -2588,7 +2588,7 @@ void FFModel::backward(int seq_length)
     //  continue;
     // operators[l]->backward(*this);
     for (size_t j = 0; j < operators[l]->nFnB; j++){
-      log_model.print("Launching %zu pipebackward for op(%s)",j, optype_to_string(operators[l]->op_type).data());
+      //log_model.print("Launching %zu pipebackward for op(%s)",j, optype_to_string(operators[l]->op_type).data());
       operators[l]->pipebackward(*this);
     }
   }
@@ -2598,7 +2598,7 @@ void FFModel::update()
 {
   optimizer->next();
   for (size_t i = 0; i < parameters.size(); i++) {
-    log_model.print("Updating param %zu", i);
+    //log_model.print("Updating param %zu", i);
     optimizer->update(parameters[i]);
   }
 }
@@ -3391,7 +3391,7 @@ void FFModel::zero_weight_gradients(void)
     if (operators[l]->numWeights > 0){
       //log_model.print("Zero weight gradients for op(%s)", optype_to_string(operators[l]->op_type).data());
       operators[l]->zero_weight_grad(*this);
-      log_model.print("Finish Zero weight gradients for op(%s)", optype_to_string(operators[l]->op_type).data());
+      //log_model.print("Finish Zero weight gradients for op(%s)", optype_to_string(operators[l]->op_type).data());
     }
   }
 }
@@ -3400,7 +3400,7 @@ void FFModel::zero_input_gradients(void)
 {
   for (int l = operators.size() - 1; l >= 0; l--){
     for (size_t j = 0; j < operators[l]->nFnB; j++){
-      log_model.print("Zero %zu input gradients of for op(%s)", j, optype_to_string(operators[l]->op_type).data());
+      //log_model.print("Zero %zu input gradients of for op(%s)", j, optype_to_string(operators[l]->op_type).data());
       operators[l]->zero_input_grad(*this);
     }
   }

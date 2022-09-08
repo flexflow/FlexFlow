@@ -166,6 +166,36 @@ void FlexFlow::top_level_task(const Task* task,
   //   ff.backward();
   //   ff.update();
   // }
+  for (int iter = 0; iter < 1; iter++) {
+    data_loader.reset();
+    ff.reset_metrics();
+    ff.reset_pipe_idx();
+    data_loader.reset_idx();
+    for (int iter_inner =0; iter_inner < ff.iter_perbatch; iter_inner++){
+      if (dlrmConfig.dataset_path.length() == 0) {
+        // Only load data once for random input
+        for (size_t i = 0; i < data_loader.batch_sparse_inputs.size(); i++) {
+          printf("load sparse input [%ld]\n", i);
+          for (int k=0; k < data_loader.batch_sparse_inputs[i]->parallel_tensor->owner_op->nFnB; k++){
+            data_loader.next_sparse_input_ubatch(ff, i);
+          }
+        }
+
+        for (int k=0; k < data_loader.batch_dense_input->parallel_tensor->owner_op->nFnB; k++){
+            data_loader.next_dense_input_ubatch(ff);
+        }
+
+        for (int i=0; i < ff.get_final_operator()->nFnB; i++){
+          data_loader.next_label_ubatch(ff);
+        }
+      }
+      ff.forward();
+      ff.zero_input_gradients();
+      ff.backward();
+    }
+    ff.update();
+    ff.zero_weight_gradients();
+  }
 
   //Start timer
   {
@@ -180,15 +210,15 @@ void FlexFlow::top_level_task(const Task* task,
   printf("parameters.size() = %lu\n", ff.parameters.size());
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
-    data_loader.reset();
+   // data_loader.reset();
     ff.reset_metrics();
     int iterations = data_loader.num_samples / ffConfig.batchSize;
     for (int iter = 0; iter < iterations; iter++) {
       ff.reset_pipe_idx();
-      data_loader.reset_idx();
+      //data_loader.reset_idx();
       runtime->begin_trace(ctx, 111/*trace_id*/);
       for (int iter_inner =0; iter_inner < ff.iter_perbatch; iter_inner++){
-        if (dlrmConfig.dataset_path.length() == 0) {
+        if (dlrmConfig.dataset_path.length() == 2) {
           // Only load data once for random input
           for (size_t i = 0; i < data_loader.batch_sparse_inputs.size(); i++) {
             printf("load sparse input [%ld]\n", i);
@@ -204,7 +234,7 @@ void FlexFlow::top_level_task(const Task* task,
           for (int i=0; i < ff.get_final_operator()->nFnB; i++){
             data_loader.next_label_ubatch(ff);
           }
-        } else {
+        } else if (dlrmConfig.dataset_path.length() != 0) {
           //shicao pipeline
           for (size_t i = 0; i < data_loader.batch_sparse_inputs.size(); i++) {
             for (int k=0; k < data_loader.batch_sparse_inputs[i]->parallel_tensor->owner_op->nFnB; k++){
@@ -220,18 +250,18 @@ void FlexFlow::top_level_task(const Task* task,
             data_loader.next_label_ubatch(ff);
           }
         }
-        log_app.print("DEBUG: forward...");
+        //log_app.print("DEBUG: forward...");
         ff.forward();
-        log_app.print("DEBUG: zero input gradients...");
+        //log_app.print("DEBUG: zero input gradients...");
         ff.zero_input_gradients();
-	      log_app.print("DEBUG: backward...");
+	      //log_app.print("DEBUG: backward...");
         ff.backward();
       }
-      log_app.print("DEBUG:update weight");
+      //log_app.print("DEBUG:update weight");
       ff.update();
-      log_app.print("DEBUG:zero weight gradients");
+      //log_app.print("DEBUG:zero weight gradients");
       ff.zero_weight_gradients();
-      log_app.print("DEBUG:finish zero weight gradients");
+      //log_app.print("DEBUG:finish zero weight gradients");
       runtime->end_trace(ctx, 111/*trace_id*/);
     }
   }
