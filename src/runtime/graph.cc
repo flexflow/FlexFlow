@@ -1650,44 +1650,56 @@ T SearchHelper::graph_cost(Graph const *graph,
     this->logger->spew()
         << "[PCG::SearchHelper::graph_cost] Analyzing sink op memory cost ["
         << sink.node.to_string() << "]:";
-    int input_replicas = 0;
-    int output_replicas = 0;
-    int weight_replicas = 0;
+
+    int input_num_parts = 0;
+    int output_num_parts = 0;
+    int weight_num_parts = 0;
     auto op = sink.node.ptr;
     this->logger->spew() << "  input ParallelTensor shape|num_replicas:";
     for (int i = 0; i < op->numInputs; i++) {
       auto shape = op->inputs[i]->get_shape();
       this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
-      input_replicas += shape.get_num_replicas();
+      if (input_num_parts == 0) {
+        input_num_parts = op->inputs[i]->get_total_num_parts();
+      }
     }
     this->logger->spew() << "  output ParallelTensor shape|num_replicas:";
     for (int i = 0; i < op->numOutputs; i++) {
       auto shape = op->outputs[i]->get_shape();
       this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
-      output_replicas += shape.get_num_replicas();
+      if (output_num_parts == 0) {
+        output_num_parts = op->outputs[i]->get_total_num_parts();
+      }
     }
     this->logger->spew() << "  weight ParallelTensor shape|num_replicas:";
     for (int i = 0; i < op->numWeights; i++) {
       auto shape = op->weights[i]->get_shape();
       this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
-      weight_replicas += shape.get_num_replicas();
+      if (weight_num_parts == 0) {
+        weight_num_parts = op->weights[i]->get_total_num_parts();
+      }
     }
-    // TODO: need to better define this
-    input_replicas = std::max(weight_replicas, 1);
-    output_replicas = std::max(weight_replicas, 1);
-    weight_replicas = std::max(weight_replicas, 1);
+    input_num_parts = std::max(input_num_parts, 1);
+    output_num_parts = std::max(output_num_parts, 1);
+    weight_num_parts = std::max(weight_num_parts, 1);
+    if (input_num_parts > weight_num_parts) {
+      weight_num_parts = input_num_parts;
+    }
     this->logger->spew()
-        << "  Total number of replicas of inputs|outputs|weights: "
-        << input_replicas << "|" << output_replicas << "|" << weight_replicas;
+        << "  Total number of parts of inputs|outputs|weights: "
+        << input_num_parts << "|" << output_num_parts << "|"
+        << weight_num_parts;
 
     // Real memory usage of this Op* considering parallelization over devices
     this->logger->spew() << "  cost_metrics input|output|weight memory: "
                          << metrics.inputs_memory << "|"
                          << metrics.outputs_memory << "|"
                          << metrics.weights_memory;
-    metrics.op_total_mem = input_replicas * metrics.inputs_memory +
-                           output_replicas * metrics.outputs_memory +
-                           weight_replicas * metrics.weights_memory;
+
+    metrics.op_total_mem = input_num_parts * metrics.inputs_memory +
+                           output_num_parts * metrics.outputs_memory +
+                           weight_num_parts * metrics.weights_memory;
+
     this->logger->spew() << "  op_total_mem: " << metrics.op_total_mem;
     float op_total_mem_mb = (float)((metrics.op_total_mem) / 1e4) / 1e2;
     this->logger->debug() << "[PCG::SearchHelper::graph_cost] Sink node cost ["
