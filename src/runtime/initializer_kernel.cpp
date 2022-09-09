@@ -13,94 +13,106 @@
  * limitations under the License.
  */
 
-#include <hip/hip_runtime.h>
-#include "flexflow/initializer.h"
 #include "flexflow/accessor.h"
+#include "flexflow/initializer.h"
 #include "flexflow/model.h"
 #include "flexflow/utils/hip_helper.h"
+#include <ctime>
+#include <hip/hip_runtime.h>
 #include <hiprand.h>
 #include <random>
-#include <ctime>
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
 using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
-using Legion::Predicate;
+using Legion::Context;
 using Legion::coord_t;
-using Legion::Memory;
-using Legion::Machine;
+using Legion::Domain;
+using Legion::FutureMap;
+using Legion::IndexLauncher;
 using Legion::InlineLauncher;
-void UniformInitializer::init_task(const Task* task,
-                                   const std::vector<PhysicalRegion>& regions,
-                                   Context ctx, Runtime* runtime)
-{
+using Legion::Machine;
+using Legion::Memory;
+using Legion::PhysicalRegion;
+using Legion::Predicate;
+using Legion::Rect;
+using Legion::RegionRequirement;
+using Legion::Runtime;
+using Legion::Task;
+using Legion::TaskArgument;
+using Legion::TaskLauncher;
+void UniformInitializer::init_task(Task const *task,
+                                   std::vector<PhysicalRegion> const &regions,
+                                   Context ctx,
+                                   Runtime *runtime) {
 
   assert(regions.size() == task->regions.size());
-  UniformInitializer* initializer = (UniformInitializer*) task->args;
+  UniformInitializer *initializer = (UniformInitializer *)task->args;
   hiprandGenerator_t gen;
   hiprandCreateGenerator(&gen, HIPRAND_RNG_PSEUDO_DEFAULT);
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   hiprandSetStream(gen, stream);
-  //fprintf(stderr, "seed = %d\n", initializer->seed);
+  // fprintf(stderr, "seed = %d\n", initializer->seed);
 
   for (size_t i = 0; i < regions.size(); i++) {
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
-    float* w;
+    float *w;
     switch (domain.get_dim()) {
-      case 0:
-      {
+      case 0: {
         // Do not support 0-dim parameters
         assert(false);
         break;
       }
-#define DIMFUNC(DIM) \
-      case DIM: \
-      { \
-        TensorAccessorW<float, DIM> accW( \
-            regions[i], task->regions[i], FID_DATA, ctx, runtime, false/*readOutput*/); \
-        w = accW.ptr; \
-        break; \
-      }
-      LEGION_FOREACH_N(DIMFUNC)
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    TensorAccessorW<float, DIM> accW(regions[i],                               \
+                                     task->regions[i],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     false /*readOutput*/);                    \
+    w = accW.ptr;                                                              \
+    break;                                                                     \
+  }
+        LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
-      default:
-      {
-         assert(false);
-         break;
+      default: {
+        assert(false);
+        break;
       }
     }
     hiprandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
     checkCUDA(hiprandGenerateUniform(gen, w, domain.get_volume()));
-    hipLaunchKernelGGL(scale_kernel, GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream,
-        w, domain.get_volume(), initializer->min_val, initializer->max_val);
+    hipLaunchKernelGGL(scale_kernel,
+                       GET_BLOCKS(domain.get_volume()),
+                       CUDA_NUM_THREADS,
+                       0,
+                       stream,
+                       w,
+                       domain.get_volume(),
+                       initializer->min_val,
+                       initializer->max_val);
   }
   checkCUDA(hipDeviceSynchronize());
   hiprandDestroyGenerator(gen);
 }
 
 template <int NDIM>
-void init_task_inner(const Task *task, 
-                     const std::vector<PhysicalRegion>& regions, 
-                     Context ctx, 
-                     Runtime* runtime, 
-                     Domain const &domain, 
-                     float *& w, float& scale) 
-{
-  TensorAccessorW<float, NDIM> accW(regions[0], task->regions[0],
-      FID_DATA, ctx, runtime, false/*readOutput*/);
+void init_task_inner(Task const *task,
+                     std::vector<PhysicalRegion> const &regions,
+                     Context ctx,
+                     Runtime *runtime,
+                     Domain const &domain,
+                     float *&w,
+                     float &scale) {
+  TensorAccessorW<float, NDIM> accW(regions[0],
+                                    task->regions[0],
+                                    FID_DATA,
+                                    ctx,
+                                    runtime,
+                                    false /*readOutput*/);
   w = accW.ptr;
   // reference: tensorflow code for computing fan_in/fan_out
   // https://github.com/tensorflow/tensorflow/blob/r2.0/tensorflow/python/ops/init_ops.py#L1415-L1439
@@ -115,16 +127,16 @@ void init_task_inner(const Task *task,
   scale = sqrt(6.0 / (fan_in + fan_out));
 }
 
-void GlorotUniform::init_task(const Task* task,
-                              const std::vector<PhysicalRegion>& regions,
-                              Context ctx, Runtime* runtime)
-{
+void GlorotUniform::init_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
-  const GlorotUniform* gu = (const GlorotUniform*) task->args;
+  GlorotUniform const *gu = (GlorotUniform const *)task->args;
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  float* w = helperGetTensorPointerWO<float>(
+  float *w = helperGetTensorPointerWO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   hiprandGenerator_t gen;
   hiprandCreateGenerator(&gen, HIPRAND_RNG_PSEUDO_DEFAULT);
@@ -132,36 +144,45 @@ void GlorotUniform::init_task(const Task* task,
   checkCUDA(get_legion_stream(&stream));
   checkCURAND(hiprandSetStream(gen, stream));
 
-  GlorotUniform* initializer = (GlorotUniform*) task->args;
+  GlorotUniform *initializer = (GlorotUniform *)task->args;
   hiprandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
   fprintf(stderr, "seed = %d scale = %.4lf\n", initializer->seed, gu->scale);
   checkCUDA(hiprandGenerateUniform(gen, w, domain.get_volume()));
-  hipLaunchKernelGGL(scale_kernel, GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream,
-      w, domain.get_volume(), -gu->scale, gu->scale);
+  hipLaunchKernelGGL(scale_kernel,
+                     GET_BLOCKS(domain.get_volume()),
+                     CUDA_NUM_THREADS,
+                     0,
+                     stream,
+                     w,
+                     domain.get_volume(),
+                     -gu->scale,
+                     gu->scale);
   checkCUDA(hipDeviceSynchronize());
   hiprandDestroyGenerator(gen);
 }
 
-
-void NormInitializer::init_task(const Task* task,
-                                const std::vector<PhysicalRegion>& regions,
-                                Context ctx, Runtime* runtime)
-{
+void NormInitializer::init_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
+                                Context ctx,
+                                Runtime *runtime) {
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  float* w;
+  float *w;
   switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-      case DIM: \
-      { \
-        TensorAccessorW<float, DIM> accW( \
-            regions[0], task->regions[0], FID_DATA, ctx, runtime, false/*readOutput*/); \
-        w = accW.ptr; \
-        break; \
-      }
-      LEGION_FOREACH_N(DIMFUNC)
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    TensorAccessorW<float, DIM> accW(regions[0],                               \
+                                     task->regions[0],                         \
+                                     FID_DATA,                                 \
+                                     ctx,                                      \
+                                     runtime,                                  \
+                                     false /*readOutput*/);                    \
+    w = accW.ptr;                                                              \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
       assert(false);
@@ -173,37 +194,37 @@ void NormInitializer::init_task(const Task* task,
   checkCUDA(get_legion_stream(&stream));
   checkCURAND(hiprandSetStream(gen, stream));
 
-  NormInitializer* initializer = (NormInitializer*) task->args;
-  //fprintf(stderr, "seed = %d\n", initializer->seed);
+  NormInitializer *initializer = (NormInitializer *)task->args;
+  // fprintf(stderr, "seed = %d\n", initializer->seed);
   hiprandSetPseudoRandomGeneratorSeed(gen, initializer->seed);
-  //fprintf(stderr, "domain.volume() = %zu mean(%.4lf) var(%.4lf)\n",
-  //    domain.get_volume(), initializer->mean, initializer->stddev);
-  // FIXME: it seems hiprand has an internal bug with volume < 4
-  // double check this later
+  // fprintf(stderr, "domain.volume() = %zu mean(%.4lf) var(%.4lf)\n",
+  //     domain.get_volume(), initializer->mean, initializer->stddev);
+  //  FIXME: it seems hiprand has an internal bug with volume < 4
+  //  double check this later
   if (domain.get_volume() < 4) {
     std::default_random_engine generator;
-    std::normal_distribution<float> distribution(
-        initializer->mean, initializer->stddev);
-    float* w_dram = (float*) malloc(domain.get_volume() * sizeof(float));
+    std::normal_distribution<float> distribution(initializer->mean,
+                                                 initializer->stddev);
+    float *w_dram = (float *)malloc(domain.get_volume() * sizeof(float));
     for (size_t i = 0; i < domain.get_volume(); i++)
       w_dram[i] = distribution(generator);
-    checkCUDA(hipMemcpy(w, w_dram, sizeof(float) * domain.get_volume(),
-                         hipMemcpyHostToDevice));
+    checkCUDA(hipMemcpy(
+        w, w_dram, sizeof(float) * domain.get_volume(), hipMemcpyHostToDevice));
     checkCUDA(hipDeviceSynchronize());
     free(w_dram);
   } else {
-    checkCURAND(hiprandGenerateNormal(gen, w, domain.get_volume(),
-        initializer->mean, initializer->stddev));
+    checkCURAND(hiprandGenerateNormal(
+        gen, w, domain.get_volume(), initializer->mean, initializer->stddev));
     checkCUDA(hipDeviceSynchronize());
   }
   hiprandDestroyGenerator(gen);
 }
 
-void ZeroInitializer::init_task(const Task* task,
-                                const std::vector<PhysicalRegion>& regions,
-                                Context ctx, Runtime* runtime)
-{
-  ZeroInitMeta* meta = (ZeroInitMeta*) task->args;
+void ZeroInitializer::init_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
+                                Context ctx,
+                                Runtime *runtime) {
+  ZeroInitMeta *meta = (ZeroInitMeta *)task->args;
   assert(meta->num_regions == regions.size());
   assert(regions.size() == task->regions.size());
   hipStream_t stream;
@@ -212,20 +233,38 @@ void ZeroInitializer::init_task(const Task* task,
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
     if (meta->data_types[i] == DT_FLOAT) {
-      float* w = helperGetTensorPointerWO<float>(
+      float *w = helperGetTensorPointerWO<float>(
           regions[i], task->regions[i], FID_DATA, ctx, runtime);
-      hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<float>), GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream,
-          w, domain.get_volume(), 0.0f);
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<float>),
+                         GET_BLOCKS(domain.get_volume()),
+                         CUDA_NUM_THREADS,
+                         0,
+                         stream,
+                         w,
+                         domain.get_volume(),
+                         0.0f);
     } else if (meta->data_types[i] == DT_INT32) {
-      int32_t* w = helperGetTensorPointerWO<int32_t>(
+      int32_t *w = helperGetTensorPointerWO<int32_t>(
           regions[i], task->regions[i], FID_DATA, ctx, runtime);
-      hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<int32_t>), GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream,
-          w, domain.get_volume(), 0);
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<int32_t>),
+                         GET_BLOCKS(domain.get_volume()),
+                         CUDA_NUM_THREADS,
+                         0,
+                         stream,
+                         w,
+                         domain.get_volume(),
+                         0);
     } else if (meta->data_types[i] == DT_INT64) {
-      int64_t* w = helperGetTensorPointerWO<int64_t>(
+      int64_t *w = helperGetTensorPointerWO<int64_t>(
           regions[i], task->regions[i], FID_DATA, ctx, runtime);
-      hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<int64_t>), GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream,
-          w, domain.get_volume(), 0);
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<int64_t>),
+                         GET_BLOCKS(domain.get_volume()),
+                         CUDA_NUM_THREADS,
+                         0,
+                         stream,
+                         w,
+                         domain.get_volume(),
+                         0);
     } else {
       assert(false && "Unsupported data type in Zero Initializer");
     }
@@ -233,11 +272,11 @@ void ZeroInitializer::init_task(const Task* task,
   checkCUDA(hipDeviceSynchronize());
 }
 
-void ConstantInitializer::init_task(const Task* task,
-                                    const std::vector<PhysicalRegion>& regions,
-                                    Context ctx, Runtime* runtime)
-{
-  ConstantInitializer* initializer = (ConstantInitializer*) task->args;
+void ConstantInitializer::init_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
+  ConstantInitializer *initializer = (ConstantInitializer *)task->args;
   assert(regions.size() == task->regions.size());
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -245,32 +284,46 @@ void ConstantInitializer::init_task(const Task* task,
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
     switch (initializer->data_type) {
-      case DT_FLOAT:
-      {
-        float* w = helperGetTensorPointerWO<float>(
+      case DT_FLOAT: {
+        float *w = helperGetTensorPointerWO<float>(
             regions[i], task->regions[i], FID_DATA, ctx, runtime);
-        hipLaunchKernelGGL(assign_kernel, GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream,
-            w, domain.get_volume(), initializer->float_value);
+        hipLaunchKernelGGL(assign_kernel,
+                           GET_BLOCKS(domain.get_volume()),
+                           CUDA_NUM_THREADS,
+                           0,
+                           stream,
+                           w,
+                           domain.get_volume(),
+                           initializer->float_value);
         break;
       }
-      case DT_INT64:
-      {
-        int64_t* w = helperGetTensorPointerWO<int64_t>(
+      case DT_INT64: {
+        int64_t *w = helperGetTensorPointerWO<int64_t>(
             regions[i], task->regions[i], FID_DATA, ctx, runtime);
-        hipLaunchKernelGGL(assign_kernel, GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream, 
-            w, domain.get_volume(), initializer->int64_value);
+        hipLaunchKernelGGL(assign_kernel,
+                           GET_BLOCKS(domain.get_volume()),
+                           CUDA_NUM_THREADS,
+                           0,
+                           stream,
+                           w,
+                           domain.get_volume(),
+                           initializer->int64_value);
         break;
       }
-      case DT_INT32:
-      {
-        int* w = helperGetTensorPointerWO<int>(
+      case DT_INT32: {
+        int *w = helperGetTensorPointerWO<int>(
             regions[i], task->regions[i], FID_DATA, ctx, runtime);
-        hipLaunchKernelGGL(assign_kernel, GET_BLOCKS(domain.get_volume()), CUDA_NUM_THREADS, 0, stream,
-            w, domain.get_volume(), initializer->int32_value);
+        hipLaunchKernelGGL(assign_kernel,
+                           GET_BLOCKS(domain.get_volume()),
+                           CUDA_NUM_THREADS,
+                           0,
+                           stream,
+                           w,
+                           domain.get_volume(),
+                           initializer->int32_value);
         break;
       }
-      default:
-      {
+      default: {
         assert(false && "Unsupported Initialzier Type");
       }
     }

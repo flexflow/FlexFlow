@@ -16,51 +16,56 @@
 #ifndef _FLEXFLOW_OPTIMIZER_H_
 #define _FLEXFLOW_OPTIMIZER_H_
 
-#include "legion.h"
 #include "flexflow/parallel_tensor.h"
+#include "legion.h"
 
 namespace FlexFlow {
 
 class FFModel;
 class OpMeta;
 
-class Optimizer
-{
+class Optimizer {
 public:
-  Optimizer(const FFModel* _model);
+  Optimizer(FFModel const *_model);
   virtual void init(void) = 0;
   virtual void next(void) = 0;
   virtual void update(const ParallelTensor p) = 0;
-  const FFModel* model;
+  FFModel const *model;
 };
 
-class SGDOptimizer : public Optimizer
-{
+class SGDOptimizer : public Optimizer {
 public:
-  SGDOptimizer(const FFModel* _model,
-               double lr = 0.01f, double momentum = 0.0f,
-               bool nesterov = false, double weight_decay = 0.0f);
+  SGDOptimizer(FFModel const *_model,
+               double lr = 0.01f,
+               double momentum = 0.0f,
+               bool nesterov = false,
+               double weight_decay = 0.0f);
   void init(void);
   void next(void);
   void update(const ParallelTensor p);
   void set_weight_decay(double _weight_decay);
-  static void ps_update_task(const Legion::Task* task,
-                          const std::vector<Legion::PhysicalRegion>& regions,
-                          Legion::Context ctx, Legion::Runtime* runtime);
-  static void ps_update_task_gpu(const SGDOptimizer* op,
-                          const float *w_grad_ptr,
-                          size_t size, 
-                          int num_replicas,
-                          float *w_ptr, float *v_ptr);
+  static void ps_update_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
+  static void ps_update_task_gpu(SGDOptimizer const *op,
+                                 float const *w_grad_ptr,
+                                 size_t size,
+                                 int num_replicas,
+                                 float *w_ptr,
+                                 float *v_ptr);
 #ifdef FF_USE_NCCL
-  static void nccl_update_task(const Legion::Task* task,
-                          const std::vector<Legion::PhysicalRegion>& regions,
-                          Legion::Context ctx, Legion::Runtime* runtime);
-  static void nccl_update_task_gpu(const SGDOptimizer* op,
-                          const OpMeta* meta,
-                          const float *w_grad_ptr,
-                          size_t size,
-                          float *w_ptr, float *v_ptr);
+  static void
+      nccl_update_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx,
+                       Legion::Runtime *runtime);
+  static void nccl_update_task_gpu(SGDOptimizer const *op,
+                                   OpMeta const *meta,
+                                   float const *w_grad_ptr,
+                                   size_t size,
+                                   float *w_ptr,
+                                   float *v_ptr);
 #endif
   double lr, momentum;
   bool nesterov;
@@ -69,34 +74,42 @@ public:
   std::map<Legion::LogicalRegion, ParallelTensor> v_values;
 };
 
-class AdamOptimizer : public Optimizer
-{
+class AdamOptimizer : public Optimizer {
 public:
-  AdamOptimizer(const FFModel* _model, 
-                double _alpha = 0.001f, double _beta1 = 0.9f,
-                double _beta2 = 0.999f, double _weight_decay = 0.0f,
+  AdamOptimizer(FFModel const *_model,
+                double _alpha = 0.001f,
+                double _beta1 = 0.9f,
+                double _beta2 = 0.999f,
+                double _weight_decay = 0.0f,
                 double _epsilon = 1e-8);
   void init(void);
   void next(void);
   void update(const ParallelTensor p);
   void set_weight_decay(double _weight_decay);
-  static void ps_update_task(const Legion::Task* task,
-                          const std::vector<Legion::PhysicalRegion>& regions,
-                          Legion::Context ctx, Legion::Runtime* runtime);
-  static void ps_update_task_gpu(const AdamOptimizer* op,
-                          const float *w_grad_ptr,
-                          size_t size, 
-                          int num_replicas,
-                          float *w_ptr, float *v_ptr, float *m_ptr);
+  static void ps_update_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
+  static void ps_update_task_gpu(AdamOptimizer const *op,
+                                 float const *w_grad_ptr,
+                                 size_t size,
+                                 int num_replicas,
+                                 float *w_ptr,
+                                 float *v_ptr,
+                                 float *m_ptr);
 #ifdef FF_USE_NCCL
-  static void nccl_update_task(const Legion::Task* task,
-                          const std::vector<Legion::PhysicalRegion>& regions,
-                          Legion::Context ctx, Legion::Runtime* runtime);
-  static void nccl_update_task_gpu(const AdamOptimizer* op,
-                          const OpMeta* meta,
-                          const float *w_grad_ptr,
-                          size_t size, 
-                          float *w_ptr, float *v_ptr, float *m_ptr);
+  static void
+      nccl_update_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx,
+                       Legion::Runtime *runtime);
+  static void nccl_update_task_gpu(AdamOptimizer const *op,
+                                   OpMeta const *meta,
+                                   float const *w_grad_ptr,
+                                   size_t size,
+                                   float *w_ptr,
+                                   float *v_ptr,
+                                   float *m_ptr);
 #endif
   double alpha, beta1, beta2, weight_decay, epsilon;
   double alpha_t, beta1_t, beta2_t;

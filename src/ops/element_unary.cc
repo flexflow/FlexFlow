@@ -1,198 +1,196 @@
 #include "flexflow/ops/element_unary.h"
-#include "legion/legion_utilities.h"
+#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
+#include "legion/legion_utilities.h"
 
 namespace FlexFlow {
-  
+
 // declare Legion names
-using Legion::Context;
-using Legion::Runtime;
-using Legion::Domain;
-using Legion::Task;
-using Legion::Rect;
-using Legion::PhysicalRegion;
-using Legion::coord_t;
-using Legion::TaskLauncher;
-using Legion::IndexLauncher;
-using Legion::FutureMap;
 using Legion::ArgumentMap;
-using Legion::TaskArgument;
-using Legion::RegionRequirement;
+using Legion::Context;
+using Legion::coord_t;
+using Legion::Domain;
+using Legion::FutureMap;
+using Legion::IndexLauncher;
+using Legion::PhysicalRegion;
 using Legion::Predicate;
+using Legion::Rect;
+using Legion::RegionRequirement;
+using Legion::Runtime;
+using Legion::Task;
+using Legion::TaskArgument;
+using Legion::TaskLauncher;
 
 Tensor FFModel::unary(OperatorType op,
                       const Tensor x,
                       bool inplace,
-                      const char *name,
-                      float scalar)
-{
-  Layer *ele = new Layer(this, op, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, x);
+                      char const *name,
+                      float scalar) {
+  Layer *ele =
+      new Layer(this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
   int numdims = x->num_dims;
   int dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdims; i++)
     dims[i] = x->dims[i];
-  ele->outputs[0] = create_tensor_legion_ordering(numdims, dims, DT_FLOAT,
-                                                  ele, 0, true/*create_grad*/);
+  ele->outputs[0] = create_tensor_legion_ordering(
+      numdims, dims, DT_FLOAT, ele, 0, true /*create_grad*/);
   ele->add_int_property("inplace", inplace);
   ele->add_float_property("scalar", scalar);
   layers.push_back(ele);
   return ele->outputs[0];
 }
 
-Op* ElementUnary::create_operator_from_layer(
-    FFModel& model,
-    const Layer* layer,
-    const std::vector<ParallelTensor>& inputs) {
+Op *ElementUnary::create_operator_from_layer(
+    FFModel &model,
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
   long long value;
   layer->get_int_property("inplace", value);
-  bool inplace = (bool) value;
+  bool inplace = (bool)value;
   float scalar;
   layer->get_float_property("scalar", scalar);
-  return new ElementUnary(model, layer->op_type, inputs[0], inplace,
-      layer->name, scalar);
+  return new ElementUnary(
+      model, layer->op_type, inputs[0], inplace, layer->name, scalar);
 }
 
-size_t ElementUnary::get_params_hash() const {
-  size_t hash = this->inputs[0]->get_owner_independent_hash();
-  hash_combine(hash, this->op_type);
-  hash_combine(hash, this->inplace);
-  if (this->op_type == OP_SCALAR_MULTIPLY) {
-    hash_combine(hash, this->scalar);
-  }
-  return hash;
+ElementUnaryParams ElementUnary::get_params() const {
+  ElementUnaryParams params;
+  params.op_type = this->op_type;
+  params.inplace = this->inplace;
+  params.scalar = this->scalar;
+  return params;
 }
 
 using PCG::Node;
 Node FFModel::get_or_create_element_unary_node(const ParallelTensor input,
                                                OperatorType op,
                                                bool inplace,
-                                               float scalar)
-{
-  if (input->dims[input->num_dims-1].degree != 1) {
-    return Node::INVALID_NODE;
-  }
+                                               float scalar) {
+  ElementUnaryParams params;
+  params.op_type = op;
+  params.inplace = inplace;
+  params.scalar = scalar;
 
-  size_t hash = input->get_owner_independent_hash();
-  hash_combine(hash, op);
-  hash_combine(hash, inplace);
-  if (op == OP_SCALAR_MULTIPLY) {
-    hash_combine(hash, scalar);
-  }
-
-  ElementUnary *unary;
-  const auto &it = this->cached_element_unary_ops.find(hash);
-  if (it != cached_element_unary_ops.end()) { 
-    unary = it->second;
-  } else {
-    unary = new ElementUnary(*this, op, input, inplace, NULL, scalar);
-    cached_element_unary_ops[hash] = unary;
-  }
-
-  return this->new_node(unary);
+  return get_or_create_node<ElementUnary>(input, params);
 }
 
-Tensor FFModel::exp(const Tensor x,
-                    const char *name)
-{
-  return this->unary(OP_EXP, x, false/*inplace*/, name);
+Tensor FFModel::exp(const Tensor x, char const *name) {
+  return this->unary(OP_EXP, x, false /*inplace*/, name);
 }
 
-Tensor FFModel::scalar_multiply(const Tensor x, const float scalar, bool inplace, const char *name)
-{
+Tensor FFModel::scalar_multiply(const Tensor x,
+                                float const scalar,
+                                bool inplace,
+                                char const *name) {
   return this->unary(OP_SCALAR_MULTIPLY, x, inplace, name, scalar);
 }
 
-Tensor FFModel::scalar_add(const Tensor x,const float scalar ,bool inplace, const char *name)
-{
+Tensor FFModel::scalar_add(const Tensor x,
+                           float const scalar,
+                           bool inplace,
+                           char const *name) {
   return this->unary(OP_SCALAR_ADD, x, inplace, name, scalar);
 }
 
-Tensor FFModel::scalar_sub(const Tensor x,const float scalar ,bool inplace, const char *name)
-{
+Tensor FFModel::scalar_sub(const Tensor x,
+                           float const scalar,
+                           bool inplace,
+                           char const *name) {
   return this->unary(OP_SCALAR_SUB, x, inplace, name, scalar);
 }
 
-Tensor FFModel::scalar_truediv(const Tensor x,const float scalar ,bool inplace, const char *name)
-{
+Tensor FFModel::scalar_truediv(const Tensor x,
+                               float const scalar,
+                               bool inplace,
+                               char const *name) {
   return this->unary(OP_SCALAR_TRUE_DIV, x, inplace, name, scalar);
 }
 
-Tensor FFModel::relu(const Tensor x, bool inplace, const char *name)
-{
+Tensor FFModel::relu(const Tensor x, bool inplace, char const *name) {
   return this->unary(OP_RELU, x, inplace, name);
 }
 
-Tensor FFModel::sigmoid(const Tensor x, const char *name)
-{
-  return this->unary(OP_SIGMOID, x, false/*inplace*/, name);
+Tensor FFModel::sigmoid(const Tensor x, char const *name) {
+  return this->unary(OP_SIGMOID, x, false /*inplace*/, name);
 }
 
-Tensor FFModel::tanh(const Tensor x, const char *name)
-{
-  return this->unary(OP_TANH, x, false/*inplace*/, name);
+Tensor FFModel::tanh(const Tensor x, char const *name) {
+  return this->unary(OP_TANH, x, false /*inplace*/, name);
 }
 
-Tensor FFModel::identity(const Tensor x, const char *name)
-{
-  return this->unary(OP_IDENTITY, x, false/*inplace*/, name);
+Tensor FFModel::identity(const Tensor x, char const *name) {
+  return this->unary(OP_IDENTITY, x, false /*inplace*/, name);
 }
 
-Tensor FFModel::gelu(const Tensor x, const char *name)
-{
-  return this->unary(OP_GELU, x, false/*inplace*/, name);
+Tensor FFModel::gelu(const Tensor x, char const *name) {
+  return this->unary(OP_GELU, x, false /*inplace*/, name);
 }
 
-Tensor FFModel::elu(const Tensor x, bool inplace, const char *name)
-{
+Tensor FFModel::elu(const Tensor x, bool inplace, char const *name) {
   // Currently assume inplace is false
   assert(!inplace);
   return this->unary(OP_ELU, x, inplace, name);
 }
 
-Tensor FFModel::rsqrt(const Tensor x, bool inplace, const char *name)
-{
+Tensor FFModel::rsqrt(const Tensor x, bool inplace, char const *name) {
   return this->unary(OP_RSQRT, x, inplace, name);
 }
 
-Tensor FFModel::pow(const Tensor x, const float exponent, bool inplace, const char *name)
-{
+Tensor FFModel::pow(const Tensor x,
+                    float const exponent,
+                    bool inplace,
+                    char const *name) {
   return this->unary(OP_POW, x, inplace, name, exponent);
 }
 
-ElementUnary::ElementUnary(FFModel& model,
+bool ElementUnaryParams::is_valid(ParallelTensorShape const &input) const {
+  // TODO: more check on the input shape
+  return input.is_valid();
+}
+
+bool operator==(ElementUnaryParams const &lhs, ElementUnaryParams const &rhs) {
+  return lhs.op_type == rhs.op_type && lhs.scalar == rhs.scalar &&
+         lhs.inplace == rhs.inplace;
+}
+
+ElementUnary::ElementUnary(FFModel &model,
                            OperatorType _op_type,
                            const ParallelTensor x,
                            bool _inplace,
-                           const char* name,
+                           char const *name,
                            float _scalar)
-: Op(model, _op_type, name, 1/*inputs*/, 0/*weights*/, 1/*outputs*/, x), inplace(_inplace), scalar(_scalar)
-{
+    : Op(model, _op_type, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x),
+      inplace(_inplace), scalar(_scalar) {
   numOutputs = 1;
   int numdim = x->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
     dims[i] = x->dims[i];
   }
-  outputs[0] = model.create_parallel_tensor_legion_ordering(numdim, dims, x->data_type, this);
+  outputs[0] = model.create_parallel_tensor_legion_ordering(
+      numdim, dims, x->data_type, this);
 }
 
-bool ElementUnary::can_inplace_output(void)
-{
+ElementUnary::ElementUnary(FFModel &model,
+                           ElementUnaryParams const &params,
+                           const ParallelTensor input,
+                           char const *name)
+    : ElementUnary(
+          model, params.op_type, input, params.inplace, name, params.scalar) {}
+
+bool ElementUnary::can_inplace_output(void) {
   return true;
 }
 
-bool ElementUnary::has_inplace_output(void)
-{
+bool ElementUnary::has_inplace_output(void) {
   return inplace;
 }
 
-void ElementUnary::do_inplace_output(void)
-{
+void ElementUnary::do_inplace_output(void) {
   inplace = true;
 }
 
-bool ElementUnary::use_cudnn(OperatorType type)
-{
+bool ElementUnary::use_cudnn(OperatorType type) {
   if (type == OP_RELU)
     return true;
   if (type == OP_SIGMOID)
@@ -204,27 +202,34 @@ bool ElementUnary::use_cudnn(OperatorType type)
   return false;
 }
 
-void ElementUnary::init(const FFModel& ff)
-{
+void ElementUnary::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher init_launcher(ELEMENTUNARY_INIT_TASK_ID, parallel_is,
-                              TaskArgument(this, sizeof(ElementUnary)), argmap,
-                              Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+  IndexLauncher init_launcher(ELEMENTUNARY_INIT_TASK_ID,
+                              parallel_is,
+                              TaskArgument(this, sizeof(ElementUnary)),
+                              argmap,
+                              Predicate::TRUE_PRED,
+                              false /*must*/,
+                              0 /*mapper_id*/,
                               outputs[0]->machine_view.hash());
-  init_launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, inputs[0]->region));
+  init_launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                         0 /*projection id*/,
+                                                         READ_ONLY,
+                                                         EXCLUSIVE,
+                                                         inputs[0]->region));
   init_launcher.add_field(0, FID_DATA);
-  assert (!inplace);
+  assert(!inplace);
   if (!inplace) {
-    init_launcher.add_region_requirement(
-        RegionRequirement(outputs[0]->part, 0/*projection id*/,
-                          WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+    init_launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                           0 /*projection id*/,
+                                                           WRITE_ONLY,
+                                                           EXCLUSIVE,
+                                                           outputs[0]->region));
     init_launcher.add_field(1, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
@@ -232,13 +237,13 @@ void ElementUnary::init(const FFModel& ff)
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta* ElementUnary::init_task(const Task *task,
-                                const std::vector<PhysicalRegion> &regions,
-                                Context ctx, Runtime *runtime)
-{
-  ElementUnary* eu = (ElementUnary*) task->args;
-  FFHandler handle = *((FFHandler*) task->local_args);
-  ElementUnaryMeta* m = new ElementUnaryMeta(handle);
+OpMeta *ElementUnary::init_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
+                                Context ctx,
+                                Runtime *runtime) {
+  ElementUnary *eu = (ElementUnary *)task->args;
+  FFHandler handle = *((FFHandler *)task->local_args);
+  ElementUnaryMeta *m = new ElementUnaryMeta(handle);
   m->op_type = eu->op_type;
   m->data_type = eu->outputs[0]->data_type;
   // Current assume input and output have the same data type
@@ -254,8 +259,7 @@ OpMeta* ElementUnary::init_task(const Task *task,
     assert(task->regions.size() == 2);
   }
 
-  if (use_cudnn(m->op_type))
-  {
+  if (use_cudnn(m->op_type)) {
     Domain input_domain = runtime->get_index_space_domain(
         ctx, task->regions[0].region.get_index_space());
     ElementUnary::init_kernel(m, input_domain, input_domain);
@@ -263,41 +267,50 @@ OpMeta* ElementUnary::init_task(const Task *task,
   return m;
 }
 
-void ElementUnary::forward(const FFModel& ff)
-{
+void ElementUnary::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(ELEMENTUNARY_FWD_TASK_ID, parallel_is,
-                         TaskArgument(NULL, 0), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+  IndexLauncher launcher(ELEMENTUNARY_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   if (inplace) {
     assert(outputs[0]->part == inputs[0]->part);
     assert(outputs[0]->region == inputs[0]->region);
-    launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, outputs[0]->region));
+    launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      outputs[0]->region));
     launcher.add_field(0, FID_DATA);
   } else {
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[0]->region));
+    launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      inputs[0]->region));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0/*projection id*/,
-         WRITE_ONLY, EXCLUSIVE, outputs[0]->region));
+    launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      outputs[0]->region));
     launcher.add_field(1, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
 }
 
-void ElementUnary::forward_task(const Task* task,
-                                const std::vector<PhysicalRegion> &regions,
-                                Context ctx, Runtime* runtime)
-{
-  const ElementUnaryMeta* m = *((ElementUnaryMeta**) task->local_args);
+void ElementUnary::forward_task(Task const *task,
+                                std::vector<PhysicalRegion> const &regions,
+                                Context ctx,
+                                Runtime *runtime) {
+  ElementUnaryMeta const *m = *((ElementUnaryMeta **)task->local_args);
   if (m->data_type == DT_FLOAT) {
     forward_task_with_type<float>(task, regions, ctx, runtime);
   } else if (m->data_type == DT_DOUBLE) {
@@ -315,91 +328,108 @@ void ElementUnary::forward_task(const Task* task,
   regions[0](I): input
   regions[1](O): output
 */
-template<typename DT>
-void ElementUnary::forward_task_with_type(const Task* task,
-                                          const std::vector<PhysicalRegion> &regions,
-                                          Context ctx, Runtime* runtime)
-{
-  //const ElementUnary* ele = (const ElementUnary*) task->args;
-  const ElementUnaryMeta* m = *((ElementUnaryMeta**) task->local_args);
+template <typename DT>
+void ElementUnary::forward_task_with_type(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  // const ElementUnary* ele = (const ElementUnary*) task->args;
+  ElementUnaryMeta const *m = *((ElementUnaryMeta **)task->local_args);
   Domain input_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
-  const DT* input_ptr = NULL;
-  DT* output_ptr = NULL;
+      ctx, task->regions[0].region.get_index_space());
+  const DT *input_ptr = NULL;
+  DT *output_ptr = NULL;
   if (m->inplace) {
     assert(regions.size() == 1);
     assert(task->regions.size() == 1);
     output_ptr = helperGetTensorPointerRW<DT>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);
     input_ptr = output_ptr;
   } else {
     assert(regions.size() == 2);
     assert(task->regions.size() == 2);
     Domain output_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
+        ctx, task->regions[1].region.get_index_space());
     assert(output_domain == input_domain);
     input_ptr = helperGetTensorPointerRO<DT>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);
     output_ptr = helperGetTensorPointerWO<DT>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+        regions[1], task->regions[1], FID_DATA, ctx, runtime);
   }
 
-  ElementUnary::forward_kernel_wrapper<DT>(m, input_ptr, output_ptr, input_domain.get_volume());
+  ElementUnary::forward_kernel_wrapper<DT>(
+      m, input_ptr, output_ptr, input_domain.get_volume());
 }
 
-void ElementUnary::backward(const FFModel& ff)
-{
+void ElementUnary::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
-  Runtime* runtime = ff.config.lg_hlr;
+  Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(ELEMENTUNARY_BWD_TASK_ID, parallel_is,
-      TaskArgument(NULL, 0), argmap,
-      Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
-      outputs[0]->machine_view.hash());
+  IndexLauncher launcher(ELEMENTUNARY_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
   if (inplace) {
     assert(inputs[0]->part == outputs[0]->part);
     assert(inputs[0]->part_grad == outputs[0]->part_grad);
     // regions[2](I): output_grad
-    launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, outputs[0]->region));
+    launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      outputs[0]->region));
     launcher.add_field(0, FID_DATA);
     // regions[3](I): output_grad
-    launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, outputs[0]->region_grad));
+    launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      outputs[0]->region_grad));
     launcher.add_field(1, FID_DATA);
   } else {
     // regions[0](I): input
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, inputs[0]->region));
+    launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      inputs[0]->region));
     launcher.add_field(0, FID_DATA);
     // regions[1](I/O): input_grad
-    launcher.add_region_requirement(
-      RegionRequirement(inputs[0]->part_grad, 0/*projection id*/,
-        READ_WRITE, EXCLUSIVE, inputs[0]->region_grad));
+    launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      inputs[0]->region_grad));
     launcher.add_field(1, FID_DATA);
     // regions[2](I): output_grad
-    launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, outputs[0]->region));
+    launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      outputs[0]->region));
     launcher.add_field(2, FID_DATA);
     // regions[3](I): output_grad
-    launcher.add_region_requirement(
-      RegionRequirement(outputs[0]->part_grad, 0/*projection id*/,
-        READ_ONLY, EXCLUSIVE, outputs[0]->region_grad));
+    launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      outputs[0]->region_grad));
     launcher.add_field(3, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
 }
 
-void ElementUnary::backward_task(const Task* task,
-                                 const std::vector<PhysicalRegion> &regions,
-                                 Context ctx, Runtime* runtime)
-{
-  const ElementUnaryMeta* m = *((ElementUnaryMeta**) task->local_args);
+void ElementUnary::backward_task(Task const *task,
+                                 std::vector<PhysicalRegion> const &regions,
+                                 Context ctx,
+                                 Runtime *runtime) {
+  ElementUnaryMeta const *m = *((ElementUnaryMeta **)task->local_args);
   if (m->data_type == DT_FLOAT) {
     backward_task_with_type<float>(task, regions, ctx, runtime);
   } else if (m->data_type == DT_DOUBLE) {
@@ -419,55 +449,61 @@ void ElementUnary::backward_task(const Task* task,
   regions[2](I): output
   regions[3](I): output_grad
 */
-template<typename DT>
-void ElementUnary::backward_task_with_type(const Task* task,
-                                           const std::vector<PhysicalRegion> &regions,
-                                           Context ctx, Runtime* runtime)
-{
-  //const ElementUnary* ele = (const ElementUnary*) task->args;
-  const ElementUnaryMeta* m = *((ElementUnaryMeta**) task->local_args);
-  const DT* input_ptr = NULL, *output_ptr = NULL, *output_grad_ptr = NULL;
-  DT* input_grad_ptr = NULL;
+template <typename DT>
+void ElementUnary::backward_task_with_type(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  // const ElementUnary* ele = (const ElementUnary*) task->args;
+  ElementUnaryMeta const *m = *((ElementUnaryMeta **)task->local_args);
+  const DT *input_ptr = NULL, *output_ptr = NULL, *output_grad_ptr = NULL;
+  DT *input_grad_ptr = NULL;
   Domain input_domain = runtime->get_index_space_domain(
-    ctx, task->regions[0].region.get_index_space());
+      ctx, task->regions[0].region.get_index_space());
   if (m->inplace) {
     assert(regions.size() == 2);
     assert(task->regions.size() == 2);
     Domain input_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
+        ctx, task->regions[1].region.get_index_space());
     assert(input_grad_domain == input_domain);
     input_ptr = helperGetTensorPointerRO<DT>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);
     input_grad_ptr = helperGetTensorPointerRW<DT>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+        regions[1], task->regions[1], FID_DATA, ctx, runtime);
     output_ptr = input_ptr;
     output_grad_ptr = input_grad_ptr;
   } else {
     assert(regions.size() == 4);
     assert(task->regions.size() == 4);
     Domain input_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
+        ctx, task->regions[1].region.get_index_space());
     Domain output_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
+        ctx, task->regions[2].region.get_index_space());
     Domain output_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[3].region.get_index_space());
+        ctx, task->regions[3].region.get_index_space());
     assert(output_grad_domain == input_domain);
     assert(output_grad_domain == output_domain);
     assert(output_grad_domain == input_grad_domain);
     input_ptr = helperGetTensorPointerRO<DT>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+        regions[0], task->regions[0], FID_DATA, ctx, runtime);
     input_grad_ptr = helperGetTensorPointerRW<DT>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+        regions[1], task->regions[1], FID_DATA, ctx, runtime);
     output_ptr = helperGetTensorPointerRO<DT>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+        regions[2], task->regions[2], FID_DATA, ctx, runtime);
     output_grad_ptr = helperGetTensorPointerRO<DT>(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
+        regions[3], task->regions[3], FID_DATA, ctx, runtime);
   }
 
-  ElementUnary::backward_kernel_wrapper<DT>(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr, input_domain.get_volume());
+  ElementUnary::backward_kernel_wrapper<DT>(m,
+                                            input_ptr,
+                                            input_grad_ptr,
+                                            output_ptr,
+                                            output_grad_ptr,
+                                            input_domain.get_volume());
 }
 
-void ElementUnary::serialize(Legion::Serializer& sez) const {
+void ElementUnary::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->op_type);
   sez.serialize(this->inplace);
   if (this->op_type == OP_SCALAR_MULTIPLY) {
@@ -475,42 +511,44 @@ void ElementUnary::serialize(Legion::Serializer& sez) const {
   }
 }
 
-bool ElementUnary::measure_operator_cost(
-    Simulator* sim,
-    const MachineView& mv,
-    CostMetrics& cost_metrics) const {
+bool ElementUnary::measure_operator_cost(Simulator *sim,
+                                         MachineView const &mv,
+                                         CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
   if (!outputs[0]->get_sub_tensor(mv, sub_output))
     return false;
   if (!inputs[0]->get_sub_tensor(mv, sub_input))
     return false;
-  ElementUnaryMeta* m = sim->ele_unary_meta;
+  ElementUnaryMeta *m = sim->ele_unary_meta;
   m->op_type = op_type;
-  if (use_cudnn(m->op_type))
-  {
+  if (use_cudnn(m->op_type)) {
     Domain input_domain, output_domain;
     input_domain.dim = sub_input.num_dims;
     for (int i = 0; i < sub_input.num_dims; i++) {
       input_domain.rect_data[i] = 0;
-      input_domain.rect_data[i+input_domain.dim] = sub_input.dims[i].size-1;
+      input_domain.rect_data[i + input_domain.dim] = sub_input.dims[i].size - 1;
     }
     output_domain.dim = sub_output.num_dims;
     for (int i = 0; i < sub_output.num_dims; i++) {
       output_domain.rect_data[i] = 0;
-      output_domain.rect_data[i+input_domain.dim] = sub_output.dims[i].size-1;
+      output_domain.rect_data[i + input_domain.dim] =
+          sub_output.dims[i].size - 1;
     }
     init_kernel(m, input_domain, output_domain);
   }
   sim->free_all();
-  float* input_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert(input_ptr != NULL);
-  float* output_ptr = NULL;
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  float *output_ptr = NULL;
   if (inplace) {
     output_ptr = input_ptr;
   } else {
-    output_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   }
   assert(output_ptr != NULL);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   assert(m->profiling == false);
 
@@ -519,40 +557,58 @@ bool ElementUnary::measure_operator_cost(
     forward_kernel_wrapper(m, input_ptr, output_ptr, sub_output.get_volume());
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
-    float* input_grad_ptr = (float*)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    float *input_grad_ptr =
+        (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
     assert(input_grad_ptr != NULL);
-    float* output_grad_ptr = NULL;
+    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+    float *output_grad_ptr = NULL;
     if (inplace) {
       output_grad_ptr = input_grad_ptr;
     } else {
-      output_grad_ptr = (float*)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+      output_grad_ptr =
+          (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     }
     assert(output_grad_ptr != NULL);
+    cost_metrics.outputs_memory +=
+        cost_metrics.total_mem_diff_from(sim->offset);
+
     backward = [&] {
-      backward_kernel_wrapper(m, input_ptr, input_grad_ptr, output_ptr, output_grad_ptr,
-          sub_output.get_volume());
+      backward_kernel_wrapper(m,
+                              input_ptr,
+                              input_grad_ptr,
+                              output_ptr,
+                              output_grad_ptr,
+                              sub_output.get_volume());
     };
   }
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
 
   if (sim->computationMode == COMP_MODE_TRAINING) {
-    log_measure.debug("[Measure Elewise Unary] name(%s) num_elements(%zu) forward_time(%.4lf) backward_time(%.4lf)\n",
-        name, sub_output.get_volume(),
-        cost_metrics.forward_time,
-        cost_metrics.backward_time);
+    log_measure.debug("[Measure Elewise Unary] name(%s) num_elements(%zu) "
+                      "forward_time(%.4lf) backward_time(%.4lf)\n",
+                      name,
+                      sub_output.get_volume(),
+                      cost_metrics.forward_time,
+                      cost_metrics.backward_time);
   } else {
-    log_measure.debug("[Measure Elewise Unary] name(%s) num_elements(%zu) forward_time(%.4lf)\n",
-        name, sub_output.get_volume(),
-        cost_metrics.forward_time);
+    log_measure.debug("[Measure Elewise Unary] name(%s) num_elements(%zu) "
+                      "forward_time(%.4lf)\n",
+                      name,
+                      sub_output.get_volume(),
+                      cost_metrics.forward_time);
   }
   return true;
 }
 
 using PCG::Node;
 /*static*/
-Node ElementUnary::deserialize(FFModel& ff, Legion::Deserializer& dez, ParallelTensor inputs[], int num_inputs) {
-  assert (num_inputs == 1);
+Node ElementUnary::deserialize(FFModel &ff,
+                               Legion::Deserializer &dez,
+                               ParallelTensor inputs[],
+                               int num_inputs) {
+  assert(num_inputs == 1);
   OperatorType op_type;
   float scalar;
   bool inplace;
@@ -562,12 +618,27 @@ Node ElementUnary::deserialize(FFModel& ff, Legion::Deserializer& dez, ParallelT
     dez.deserialize(scalar);
   }
 
-  return ff.get_or_create_element_unary_node(inputs[0], op_type, inplace, scalar);
+  return ff.get_or_create_element_unary_node(
+      inputs[0], op_type, inplace, scalar);
 }
 
-Op *ElementUnary::materialize(FFModel& ff, ParallelTensor inputs[], int num_inputs) const {
-  assert (num_inputs == 1);
-  return new ElementUnary(ff, this->op_type, inputs[0], this->inplace, this->name, this->scalar);
+Op *ElementUnary::materialize(FFModel &ff,
+                              ParallelTensor inputs[],
+                              int num_inputs) const {
+  assert(num_inputs == 1);
+  return new ElementUnary(
+      ff, this->op_type, inputs[0], this->inplace, this->name, this->scalar);
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::ElementUnaryParams>::operator()(
+    FlexFlow::ElementUnaryParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.op_type);
+  hash_combine(key, params.scalar);
+  hash_combine(key, params.inplace);
+  return key;
+}
+}; // namespace std

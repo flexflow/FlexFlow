@@ -13,20 +13,19 @@
  * limitations under the License.
  */
 
-#include <hip/hip_runtime.h>
 #include "flexflow/ops/softmax.h"
-#include "flexflow/utils/hip_helper.h"
 #include "flexflow/utils/hash_utils.h"
+#include "flexflow/utils/hip_helper.h"
+#include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 // declare Legion names
 using Legion::Domain;
 
 SoftmaxMeta::SoftmaxMeta(FFHandler handler,
-                         const Softmax* softmax,
-                         const Domain& input_domain)
-: OpMeta(handler)
-{
+                         Softmax const *softmax,
+                         Domain const &input_domain)
+    : OpMeta(handler) {
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
   dim = softmax->dim;
@@ -38,14 +37,17 @@ SoftmaxMeta::SoftmaxMeta(FFHandler handler,
 void Softmax::forward_kernel(SoftmaxMeta const *m,
                              float const *input_ptr,
                              float *output_ptr,
-                             hipStream_t stream)
-{
+                             hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(miopenSoftmaxForward_V2(m->handle.dnn,
-                                     &alpha, m->inputTensor, input_ptr,
-                                     &beta, m->inputTensor, output_ptr,
+                                     &alpha,
+                                     m->inputTensor,
+                                     input_ptr,
+                                     &beta,
+                                     m->inputTensor,
+                                     output_ptr,
                                      MIOPEN_SOFTMAX_ACCURATE,
                                      MIOPEN_SOFTMAX_MODE_CHANNEL));
 }
@@ -53,8 +55,7 @@ void Softmax::forward_kernel(SoftmaxMeta const *m,
 /* static */
 void Softmax::forward_kernel_wrapper(SoftmaxMeta const *m,
                                      float const *input_ptr,
-                                     float *output_ptr)
-{
+                                     float *output_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -68,13 +69,15 @@ void Softmax::forward_kernel_wrapper(SoftmaxMeta const *m,
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
-    // print_tensor<float>(acc_input.ptr, acc_input.rect.volume(), "[Softmax:forward:input]");
-    // print_tensor<float>(acc_output.ptr, acc_output.rect.volume(), "[Softmax:forward:output]");
+    // print_tensor<float>(acc_input.ptr, acc_input.rect.volume(),
+    // "[Softmax:forward:input]"); print_tensor<float>(acc_output.ptr,
+    // acc_output.rect.volume(), "[Softmax:forward:output]");
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
     hipEventDestroy(t_start);
     hipEventDestroy(t_end);
-    log_measure.debug("%s [Softmax] forward time = %.2fms\n", m->op_name, elapsed);
+    log_measure.debug(
+        "%s [Softmax] forward time = %.2fms\n", m->op_name, elapsed);
   }
 }
 
@@ -82,19 +85,19 @@ void Softmax::forward_kernel_wrapper(SoftmaxMeta const *m,
 void Softmax::backward_kernel(float *input_grad_ptr,
                               float const *output_grad_ptr,
                               size_t num_elements,
-                              hipStream_t stream)
-{
-  checkCUDA(hipMemcpyAsync(input_grad_ptr, output_grad_ptr,
-                            num_elements * sizeof(float),
-                            hipMemcpyDeviceToDevice, stream));
+                              hipStream_t stream) {
+  checkCUDA(hipMemcpyAsync(input_grad_ptr,
+                           output_grad_ptr,
+                           num_elements * sizeof(float),
+                           hipMemcpyDeviceToDevice,
+                           stream));
 }
 
 /* static */
-void Softmax::backward_kernel_wrapper(const SoftmaxMeta *m,
+void Softmax::backward_kernel_wrapper(SoftmaxMeta const *m,
                                       float *input_grad_ptr,
                                       float const *output_grad_ptr,
-                                      size_t num_elements)
-{
+                                      size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -104,12 +107,15 @@ void Softmax::backward_kernel_wrapper(const SoftmaxMeta *m,
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  Softmax::backward_kernel(input_grad_ptr, output_grad_ptr, num_elements, stream);
+  Softmax::backward_kernel(
+      input_grad_ptr, output_grad_ptr, num_elements, stream);
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
-    // print_tensor<float>(acc_output_grad.ptr, acc_output_grad.rect.volume(), "[Softmax:backward:output_grad]");
-    // print_tensor<float>(acc_input_grad.ptr, acc_input_grad.rect.volume(), "[Softmax:backward:input_grad]");
+    // print_tensor<float>(acc_output_grad.ptr, acc_output_grad.rect.volume(),
+    // "[Softmax:backward:output_grad]");
+    // print_tensor<float>(acc_input_grad.ptr, acc_input_grad.rect.volume(),
+    // "[Softmax:backward:input_grad]");
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
     hipEventDestroy(t_start);

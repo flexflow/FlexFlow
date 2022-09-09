@@ -22,10 +22,9 @@ namespace FlexFlow {
 using Legion::Domain;
 
 SoftmaxMeta::SoftmaxMeta(FFHandler handler,
-                         const Softmax* softmax,
-                         const Domain& input_domain)
-: OpMeta(handler)
-{
+                         Softmax const *softmax,
+                         Domain const &input_domain)
+    : OpMeta(handler) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
   dim = softmax->dim;
@@ -37,23 +36,25 @@ SoftmaxMeta::SoftmaxMeta(FFHandler handler,
 void Softmax::forward_kernel(SoftmaxMeta const *m,
                              float const *input_ptr,
                              float *output_ptr,
-                             cudaStream_t stream)
-{
+                             cudaStream_t stream) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
                                  CUDNN_SOFTMAX_ACCURATE,
                                  CUDNN_SOFTMAX_MODE_CHANNEL,
-                                 &alpha, m->inputTensor, input_ptr,
-                                 &beta, m->inputTensor, output_ptr));
+                                 &alpha,
+                                 m->inputTensor,
+                                 input_ptr,
+                                 &beta,
+                                 m->inputTensor,
+                                 output_ptr));
 }
 
 /* static */
 void Softmax::forward_kernel_wrapper(SoftmaxMeta const *m,
                                      float const *input_ptr,
-                                     float *output_ptr)
-{
+                                     float *output_ptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -73,7 +74,8 @@ void Softmax::forward_kernel_wrapper(SoftmaxMeta const *m,
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    log_measure.debug("%s [Softmax] forward time = %.2fms\n", m->op_name, elapsed);
+    log_measure.debug(
+        "%s [Softmax] forward time = %.2fms\n", m->op_name, elapsed);
   }
 }
 
@@ -81,19 +83,19 @@ void Softmax::forward_kernel_wrapper(SoftmaxMeta const *m,
 void Softmax::backward_kernel(float *input_grad_ptr,
                               float const *output_grad_ptr,
                               size_t num_elements,
-                              cudaStream_t stream)
-{
-  checkCUDA(cudaMemcpyAsync(input_grad_ptr, output_grad_ptr,
+                              cudaStream_t stream) {
+  checkCUDA(cudaMemcpyAsync(input_grad_ptr,
+                            output_grad_ptr,
                             num_elements * sizeof(float),
-                            cudaMemcpyDeviceToDevice, stream));
+                            cudaMemcpyDeviceToDevice,
+                            stream));
 }
 
 /* static */
-void Softmax::backward_kernel_wrapper(const SoftmaxMeta *m,
+void Softmax::backward_kernel_wrapper(SoftmaxMeta const *m,
                                       float *input_grad_ptr,
                                       float const *output_grad_ptr,
-                                      size_t num_elements)
-{
+                                      size_t num_elements) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -103,7 +105,8 @@ void Softmax::backward_kernel_wrapper(const SoftmaxMeta *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  Softmax::backward_kernel(input_grad_ptr, output_grad_ptr, num_elements, stream);
+  Softmax::backward_kernel(
+      input_grad_ptr, output_grad_ptr, num_elements, stream);
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));

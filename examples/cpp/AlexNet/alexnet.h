@@ -18,9 +18,9 @@
 
 using namespace Legion;
 using namespace std;
+using FlexFlow::FID_DATA;
 using FlexFlow::TensorAccessorR;
 using FlexFlow::TensorAccessorW;
-using FlexFlow::FID_DATA;
 
 struct AlexNetConfig {
   AlexNetConfig(void) {
@@ -32,26 +32,29 @@ struct AlexNetConfig {
 
 class DataLoader {
 public:
-  DataLoader(FlexFlow::FFModel& ff, const AlexNetConfig* alexnet,
-             FlexFlow::Tensor _input, FlexFlow::Tensor _label);
-  static void load_input(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+  DataLoader(FlexFlow::FFModel &ff,
+             AlexNetConfig const *alexnet,
+             FlexFlow::ParallelTensor _input,
+             FlexFlow::ParallelTensor _label);
+  static void load_input(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
-                         Runtime* runtime);
-  static void load_label(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
+                         Runtime *runtime);
+  static void load_label(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
                          Context ctx,
-                         Runtime* runtime);
-  static void load_entire_dataset(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
+                         Runtime *runtime);
+  static void load_entire_dataset(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
-                                  Runtime* runtime);
-  //                                
-  void next_batch(FlexFlow::FFModel&);
-  void next_label_ubatch(FlexFlow::FFModel&);
-  void next_input_ubatch(FlexFlow::FFModel&);
+                                  Runtime *runtime);
+  //
+  void next_batch(FlexFlow::FFModel &);
+  void next_label_ubatch(FlexFlow::FFModel &);
+  void next_input_ubatch(FlexFlow::FFModel &);
   void reset(void);
   void reset_idx(void);
+
 public:
   int num_samples, next_index, next_input_index, next_label_index;
   FlexFlow::Tensor full_input, batch_input;
@@ -64,4 +67,3 @@ struct SampleIdxs {
   int num_samples;
   int idxs[MAX_NUM_SAMPLES];
 };
-

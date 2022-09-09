@@ -23,8 +23,7 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-MappingTagID FFConfig::get_hash_id(const std::string& pcname)
-{
+MappingTagID FFConfig::get_hash_id(std::string const &pcname) {
   return std::hash<std::string>{}(pcname);
 }
 
@@ -98,9 +97,8 @@ bool FFConfig::find_parallel_config(int ndims,
 }
 */
 
-bool load_partition_from_file(const std::string& filename,
-                               std::unordered_map<int, int>& partition)
-{
+bool load_partition_from_file(std::string const &filename,
+                              std::unordered_map<int, int> &partition) {
   std::fstream input(filename, std::ios::in);
   if (!input) {
     std::cerr << "Failed to open partition file for reading" << std::endl;
@@ -108,7 +106,7 @@ bool load_partition_from_file(const std::string& filename,
   }
 
   int ops_size = 0;
-  input >> ops_size; 
+  input >> ops_size;
   for (int i = 0; i < ops_size; i++) {
     int sid;
     input >> sid;
@@ -119,9 +117,9 @@ bool load_partition_from_file(const std::string& filename,
   return true;
 }
 
-bool load_strategies_from_file(const std::string& filename,
-                               std::map<MappingTagID, ParallelConfig>& strategies)
-{
+bool load_strategies_from_file(
+    std::string const &filename,
+    std::map<MappingTagID, ParallelConfig> &strategies) {
   std::fstream input(filename, std::ios::in);
   if (!input) {
     std::cerr << "Failed to open strategy file for reading" << std::endl;
@@ -129,15 +127,16 @@ bool load_strategies_from_file(const std::string& filename,
   }
 
   int ops_size = 0;
-  input >> ops_size; 
+  input >> ops_size;
   for (int i = 0; i < ops_size; i++) {
     ParallelConfig config;
     char op_name[MAX_OPNAME];
     int device_type_;
     input >> op_name;
     input >> device_type_;
-    //printf("%s, %d\n", op_name, device_type_);
-    ParallelConfig::DeviceType device_type = static_cast<ParallelConfig::DeviceType>(device_type_);
+    // printf("%s, %d\n", op_name, device_type_);
+    ParallelConfig::DeviceType device_type =
+        static_cast<ParallelConfig::DeviceType>(device_type_);
     switch (device_type) {
       case ParallelConfig::GPU:
       case ParallelConfig::CPU:
@@ -148,23 +147,23 @@ bool load_strategies_from_file(const std::string& filename,
         assert(false);
     }
     input >> config.nDims;
-    //printf("ndims %d\n", config.nDims);
+    // printf("ndims %d\n", config.nDims);
     int n = 1;
     for (int j = 0; j < config.nDims; j++) {
       input >> config.dim[j];
       n = n * config.dim[j];
-      //printf("%d\t", config.dim[j]);
+      // printf("%d\t", config.dim[j]);
     }
-    //printf("\n");
+    // printf("\n");
     int device_ids_size = 0;
     input >> device_ids_size;
-    //printf("device size %d\n", device_ids_size);
+    // printf("device size %d\n", device_ids_size);
     assert(n == device_ids_size || device_ids_size == 0);
     for (int j = 0; j < device_ids_size; j++) {
       input >> config.device_ids[j];
-      //printf("%d\t", config.device_ids[j]);
+      // printf("%d\t", config.device_ids[j]);
     }
-    //printf("\n");
+    // printf("\n");
     MappingTagID hash = FFConfig::get_hash_id(op_name);
     assert(strategies.find(hash) == strategies.end());
     strategies[hash] = config;
@@ -174,16 +173,16 @@ bool load_strategies_from_file(const std::string& filename,
   return true;
 }
 
-bool save_strategies_to_file(const std::string& filename,
-                             const std::map<std::string, ParallelConfig>& strategies)
-{
+bool save_strategies_to_file(
+    std::string const &filename,
+    std::map<std::string, ParallelConfig> const &strategies) {
   std::fstream output(filename, std::ios::out | std::ios::trunc);
   if (!output) {
     std::cerr << "Failed to open strategy file for writing!" << std::endl;
     return false;
   }
-  
-  output << strategies.size() << std::endl;   
+
+  output << strategies.size() << std::endl;
   std::map<std::string, ParallelConfig>::const_iterator it;
   for (it = strategies.begin(); it != strategies.end(); it++) {
     output << it->first << std::endl;
@@ -210,7 +209,7 @@ bool save_strategies_to_file(const std::string& filename,
     }
     output << std::endl;
   }
-  
+
   output.close();
   return true;
 }

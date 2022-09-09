@@ -24,31 +24,30 @@
 
 namespace FlexFlow {
 
-__global__
-void gb_forward_kernel(const float* input,
-                       const int* exp_assign,
-                       float** outputs,
-                       int n, // num experts
-                       int k, // chosen experts
-                       float alpha, // factor additional memory assigned
-                       int batch_size,
-                       int data_dim)
-{
-  __shared__ float* chosen_exp_preds[MAX_K*MAX_BATCH_SIZE];
+__global__ void
+    gb_forward_kernel(float const *input,
+                      int const *exp_assign,
+                      float **outputs,
+                      int n,       // num experts
+                      int k,       // chosen experts
+                      float alpha, // factor additional memory assigned
+                      int batch_size,
+                      int data_dim) {
+  __shared__ float *chosen_exp_preds[MAX_K * MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread per block
-  if(threadIdx.x == 0) {
-    int exp_tensor_rows = ceil(alpha*k/n*batch_size);
+  if (threadIdx.x == 0) {
+    int exp_tensor_rows = ceil(alpha * k / n * batch_size);
     int expert_idx[MAX_N] = {0};
-    for(int i = 0; i < k*batch_size; i++) {
+    for (int i = 0; i < k * batch_size; i++) {
       // Get pointer to chosen expert predictions
       int expert = exp_assign[i];
-      if(expert_idx[expert] >= exp_tensor_rows) {
+      if (expert_idx[expert] >= exp_tensor_rows) {
         // dropped sample
         chosen_exp_preds[i] = 0;
         continue;
       }
-      chosen_exp_preds[i] = outputs[expert] + expert_idx[expert]*data_dim;
+      chosen_exp_preds[i] = outputs[expert] + expert_idx[expert] * data_dim;
       expert_idx[expert]++;
     }
   }
@@ -56,41 +55,39 @@ void gb_forward_kernel(const float* input,
   __syncthreads();
 
   // compute output
-  CUDA_KERNEL_LOOP(i, k*batch_size*data_dim)
-  {
-    if(chosen_exp_preds[i/data_dim] != 0) {
-      float a = input[(i/(k*data_dim))*data_dim + i%data_dim];
-      chosen_exp_preds[i/data_dim][i%data_dim] = a;
+  CUDA_KERNEL_LOOP(i, k * batch_size * data_dim) {
+    if (chosen_exp_preds[i / data_dim] != 0) {
+      float a = input[(i / (k * data_dim)) * data_dim + i % data_dim];
+      chosen_exp_preds[i / data_dim][i % data_dim] = a;
     }
   }
 }
 
-
-__global__
-void gb_backward_kernel(float* input_grad,
-                       const int* exp_assign,
-                       float** output_grads,
-                       int n, // num experts
-                       int k, // chosen experts
+__global__ void
+    gb_backward_kernel(float *input_grad,
+                       int const *exp_assign,
+                       float **output_grads,
+                       int n,       // num experts
+                       int k,       // chosen experts
                        float alpha, // factor additional memory assigned
                        int batch_size,
-                       int data_dim)
-{
-  __shared__ float* chosen_exp_grads[MAX_K*MAX_BATCH_SIZE];
+                       int data_dim) {
+  __shared__ float *chosen_exp_grads[MAX_K * MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread
-  if(blockIdx.x * blockDim.x + threadIdx.x == 0) {
-    int exp_tensor_rows = ceil(alpha*k/n*batch_size);
+  if (blockIdx.x * blockDim.x + threadIdx.x == 0) {
+    int exp_tensor_rows = ceil(alpha * k / n * batch_size);
     int expert_idx[MAX_N] = {0};
-    for(int i = 0; i < k*batch_size; i++) {
+    for (int i = 0; i < k * batch_size; i++) {
       // Get pointer to chosen expert predictions
       int expert = exp_assign[i];
-      if(expert_idx[expert] >= exp_tensor_rows) {
+      if (expert_idx[expert] >= exp_tensor_rows) {
         // dropped sample
         chosen_exp_grads[i] = 0;
         continue;
       }
-      chosen_exp_grads[i] = output_grads[expert] + expert_idx[expert]*data_dim;
+      chosen_exp_grads[i] =
+          output_grads[expert] + expert_idx[expert] * data_dim;
       expert_idx[expert]++;
     }
   }
@@ -98,67 +95,77 @@ void gb_backward_kernel(float* input_grad,
   __syncthreads();
 
   // compute output
-  CUDA_KERNEL_LOOP(i, k*batch_size*data_dim)
-  {
-    if(chosen_exp_grads[i/data_dim] != 0) {
-      input_grad[(i/(k*data_dim))*data_dim + i%data_dim] = chosen_exp_grads[i/data_dim][i%data_dim];
+  CUDA_KERNEL_LOOP(i, k * batch_size * data_dim) {
+    if (chosen_exp_grads[i / data_dim] != 0) {
+      input_grad[(i / (k * data_dim)) * data_dim + i % data_dim] =
+          chosen_exp_grads[i / data_dim][i % data_dim];
     }
   }
 }
 
 /*static*/
-void Group_by::forward_kernel_wrapper(const GroupByMeta *m,
-                                      const float* input,
-                                      const int* exp_assign,
-                                      float** outputs,
-                                      int n, // num experts
-                                      int k, // chosen experts
-                                      float alpha, // factor additional memory assigned
-                                      int batch_size,
-                                      int data_dim)
-{
+void Group_by::forward_kernel_wrapper(
+    GroupByMeta const *m,
+    float const *input,
+    int const *exp_assign,
+    float **outputs,
+    int n,       // num experts
+    int k,       // chosen experts
+    float alpha, // factor additional memory assigned
+    int batch_size,
+    int data_dim) {
   // TODO: why cublas/cudnn stream is needed here?
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
   // call forward kernel
-  cudaMemcpy(m->dev_region_ptrs, outputs, n*sizeof(float*), cudaMemcpyHostToDevice);
+  cudaMemcpy(
+      m->dev_region_ptrs, outputs, n * sizeof(float *), cudaMemcpyHostToDevice);
 
-  gb_forward_kernel<<<GET_BLOCKS(batch_size*k*data_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim)), 0, stream>>>(
-    input, exp_assign, m->dev_region_ptrs, n, k,
-    alpha, batch_size, data_dim);
+  gb_forward_kernel<<<GET_BLOCKS(batch_size * k * data_dim),
+                      min(CUDA_NUM_THREADS, (int)(batch_size * k * data_dim)),
+                      0,
+                      stream>>>(
+      input, exp_assign, m->dev_region_ptrs, n, k, alpha, batch_size, data_dim);
 }
 
-
-void Group_by::backward_kernel_wrapper(const GroupByMeta *m,
-                                       float* input_grad,
-                                       const int* exp_assign,
-                                       float** output_grads,
-                                       int n, // num experts
-                                       int k, // chosen experts
-                                       float alpha, // factor additional memory assigned
-                                       int batch_size,
-                                       int data_dim)
-{
+void Group_by::backward_kernel_wrapper(
+    GroupByMeta const *m,
+    float *input_grad,
+    int const *exp_assign,
+    float **output_grads,
+    int n,       // num experts
+    int k,       // chosen experts
+    float alpha, // factor additional memory assigned
+    int batch_size,
+    int data_dim) {
   // TODO: why cublas/cudnn stream is needed here
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
   // call forward kernel
-  cudaMemcpy(m->dev_region_ptrs, output_grads, n*sizeof(float*), cudaMemcpyHostToDevice);
+  cudaMemcpy(m->dev_region_ptrs,
+             output_grads,
+             n * sizeof(float *),
+             cudaMemcpyHostToDevice);
 
-  gb_backward_kernel<<<GET_BLOCKS(batch_size*k*data_dim), min(CUDA_NUM_THREADS,(int)(batch_size*k*data_dim)), 0, stream>>>(
-    input_grad, exp_assign, m->dev_region_ptrs,
-    n, k, alpha, batch_size, data_dim);
+  gb_backward_kernel<<<GET_BLOCKS(batch_size * k * data_dim),
+                       min(CUDA_NUM_THREADS, (int)(batch_size * k * data_dim)),
+                       0,
+                       stream>>>(input_grad,
+                                 exp_assign,
+                                 m->dev_region_ptrs,
+                                 n,
+                                 k,
+                                 alpha,
+                                 batch_size,
+                                 data_dim);
 }
 
-GroupByMeta::GroupByMeta(FFHandler handler, int n)
-: OpMeta(handler)
-{
-  checkCUDA(cudaMalloc(&dev_region_ptrs, n*sizeof(float*)));
+GroupByMeta::GroupByMeta(FFHandler handler, int n) : OpMeta(handler) {
+  checkCUDA(cudaMalloc(&dev_region_ptrs, n * sizeof(float *)));
 }
-GroupByMeta::~GroupByMeta(void)
-{
+GroupByMeta::~GroupByMeta(void) {
   checkCUDA(cudaFree(&dev_region_ptrs));
 }
 

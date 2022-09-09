@@ -13,7 +13,7 @@ bool LayerID::is_valid_id() const {
   return (id >= LAYER_GUID_FIRST_VALID && id <= LAYER_GUID_LAST_VALID);
 }
 
-bool operator==(LayerID const& lhs, LayerID const& rhs) {
+bool operator==(LayerID const &lhs, LayerID const &rhs) {
   return lhs.id == rhs.id;
 }
 

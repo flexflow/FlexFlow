@@ -1077,14 +1077,14 @@ class FunctionNode(Node):
             np1 = np.ascontiguousarray(np1)
             dtype = Node.numpy_to_ff_dtype(np1.dtype)
             x = ffmodel.create_tensor(bc_shape, dtype, True)
-            x.set_tensor(ffmodel, np1, ParameterSyncType.PS)
+            x.set_tensor(ffmodel, np1)
         if list(shape2) != bc_shape:
             np2 = tensor2.get_tensor(ffmodel, ParameterSyncType.PS)
             np2 = np.broadcast_to(np2, bc_shape)
             np2 = np.ascontiguousarray(np2)
             dtype = Node.numpy_to_ff_dtype(np2.dtype)
             y = ffmodel.create_tensor(bc_shape, dtype, True)
-            y.set_tensor(ffmodel, np2, ParameterSyncType.PS)
+            y.set_tensor(ffmodel, np2)
         return x, y
 
 
@@ -2265,7 +2265,7 @@ class AttributeNode(Node):
             torch_tensor.shape, ff_dtype, requires_grad,
         )
         ff_tensor.set_tensor(
-            ffmodel, np_tensor, ParameterSyncType.PS,
+            ffmodel, np_tensor
         )
         return ff_tensor
 
@@ -2375,9 +2375,6 @@ class PyTorchModel():
         # decouple the two implementations
 
     def _trace_model(self):
-        assert not torch.cuda.is_available(), \
-            "FlexFlow cannot work with CUDA version of PyTorch; " \
-            "please install the CPU version."
         if self.is_hf_model:
             from transformers.utils.fx import \
                 symbolic_trace as hf_symbolic_trace
@@ -2463,6 +2460,9 @@ class PyTorchModel():
         Returns:
             output_tensors (List[Tensor]): Output tensors of the model.
         """
+        assert not torch.cuda.is_available(), \
+            "FlexFlow cannot work with CUDA version of PyTorch; " \
+            "please install the CPU version."
         graph = self._trace_model()
         output_tensors = []
         node_to_output = OrderedDict()
@@ -2551,3 +2551,7 @@ class PyTorchModel():
         with open(filename, "w") as f:
             for line in s:
                 f.write(line + "\n")
+
+
+# Make the static method `file_to_ff()` available without importing `torch`
+file_to_ff = PyTorchModel.file_to_ff

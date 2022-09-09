@@ -19,8 +19,7 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-Loss::Loss(const std::string& loss, bool _repl_labels)
-{
+Loss::Loss(std::string const &loss, bool _repl_labels) {
   repl_labels = _repl_labels;
   if (loss == "categorical_crossentropy")
     loss_type = LOSS_CATEGORICAL_CROSSENTROPY;
@@ -34,14 +33,12 @@ Loss::Loss(const std::string& loss, bool _repl_labels)
 }
 
 Loss::Loss(LossType _loss_type, bool _repl_labels)
-: loss_type(_loss_type), repl_labels(_repl_labels)
-{}
+    : loss_type(_loss_type), repl_labels(_repl_labels) {}
 
-void Loss::backward(FFModel* model,
+void Loss::backward(FFModel *model,
                     const ParallelTensor logit,
-                    const ParallelTensor label)
-{
-  int last_non_replica_dim = logit->num_dims-1;
+                    const ParallelTensor label) {
+  int last_non_replica_dim = logit->num_dims - 1;
   while (logit->dims[last_non_replica_dim].is_replica_dim)
     last_non_replica_dim -= 1;
   // Compute scale factor for loss backpropagation
@@ -51,51 +48,65 @@ void Loss::backward(FFModel* model,
   } else {
     scale_factor = 1.0f / model->config.batchSize;
   }
-  //scale_factor = 1.0f;
-  // Use the same parallel strategy as the owner of logit
+  // scale_factor = 1.0f;
+  //  Use the same parallel strategy as the owner of logit
   std::string pcname = logit->owner_op->name;
   Context ctx = model->config.lg_ctx;
-  Runtime* runtime = model->config.lg_hlr;
+  Runtime *runtime = model->config.lg_hlr;
   Domain part_domain = runtime->get_index_space_domain(ctx, logit->parallel_is);
   Domain logit_domain = runtime->get_index_partition_color_space(
       ctx, logit->out_pipepart[loss_bwd_idx].get_index_partition());
   Domain label_domain = runtime->get_index_partition_color_space(
       ctx, label->out_pipepart[loss_bwd_idx].get_index_partition());
-  if((logit_domain != part_domain) || (label_domain != part_domain)) {
-    fprintf(stderr, "Encounter inconsistency in parallelizing loss computation");
+  if ((logit_domain != part_domain) || (label_domain != part_domain)) {
+    fprintf(stderr,
+            "Encounter inconsistency in parallelizing loss computation");
     assert(false);
   }
   ArgumentMap argmap;
-  IndexLauncher launcher(LOSS_BWD_TASK_ID, logit->parallel_is,
-                         TaskArgument(this, sizeof(Loss)), argmap,
-                         Predicate::TRUE_PRED, false/*must*/, 0/*mapper_id*/,
+  IndexLauncher launcher(LOSS_BWD_TASK_ID,
+                         logit->parallel_is,
+                         TaskArgument(this, sizeof(Loss)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
                          logit->machine_view.hash());
   launcher.add_region_requirement(
-      RegionRequirement(logit->out_pipepart_grad[loss_bwd_idx], 0/*projection id*/,
-                        READ_WRITE, EXCLUSIVE, logit->region_grad));
+      RegionRequirement(logit->out_pipepart_grad[loss_bwd_idx],
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        logit->region_grad));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(logit->out_pipepart[loss_bwd_idx], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, logit->region));
+      RegionRequirement(logit->out_pipepart[loss_bwd_idx],
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        logit->region));
   launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(
-      RegionRequirement(label->out_pipepart[loss_bwd_idx], 0/*projection id*/,
-                        READ_ONLY, EXCLUSIVE, label->region));
+      RegionRequirement(label->out_pipepart[loss_bwd_idx],
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        label->region));
   launcher.add_field(2, FID_DATA);
   loss_bwd_idx = (loss_bwd_idx + 1) % logit->pipe_num_part_out;
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Loss::backward_task(const Task *task,
-                         const std::vector<PhysicalRegion> &regions,
-                         Context ctx, Runtime *runtime)
-{
+void Loss::backward_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   switch (domain.get_dim()) {
-#define DIMFUNC(DIM) \
-    case DIM: \
-      return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
+#define DIMFUNC(DIM)                                                           \
+  case DIM:                                                                    \
+    return backward_task_with_dim<DIM>(task, regions, ctx, runtime);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -103,55 +114,65 @@ void Loss::backward_task(const Task *task,
   }
 }
 
-template<int NDIM>
-void Loss::backward_task_with_dim(const Task *task,
-                                  const std::vector<PhysicalRegion> &regions,
-                                  Context ctx, Runtime *runtime)
-{
+template <int NDIM>
+void Loss::backward_task_with_dim(Task const *task,
+                                  std::vector<PhysicalRegion> const &regions,
+                                  Context ctx,
+                                  Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
-  const Loss* loss = (Loss*) task->args;
+  Loss const *loss = (Loss *)task->args;
 
   if (loss->loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
-    //sparse_categorical_crossentropy has label of dim: (batch_size, 1)
-    TensorAccessorW<float, NDIM> acc_logit_grad(
-        regions[0], task->regions[0], FID_DATA, ctx, runtime,
-        true/*readOutput*/);
+    // sparse_categorical_crossentropy has label of dim: (batch_size, 1)
+    TensorAccessorW<float, NDIM> acc_logit_grad(regions[0],
+                                                task->regions[0],
+                                                FID_DATA,
+                                                ctx,
+                                                runtime,
+                                                true /*readOutput*/);
     TensorAccessorR<float, NDIM> acc_logit(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     TensorAccessorR<int, NDIM> acc_label(
         regions[2], task->regions[2], FID_DATA, ctx, runtime);
     // assertion the outter-most dim is replica dim and replica degree is 1
-    assert(acc_logit.rect.hi[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
-    int num_samples = acc_logit.rect.hi[NDIM-2] - acc_logit.rect.lo[NDIM-2] + 1;
+    assert(acc_logit.rect.hi[NDIM - 1] == acc_logit.rect.lo[NDIM - 1]);
+    int num_samples =
+        acc_logit.rect.hi[NDIM - 2] - acc_logit.rect.lo[NDIM - 2] + 1;
     int num_classes = acc_logit.rect.volume() / num_samples;
     assert(acc_logit_grad.rect == acc_logit.rect);
     int k = 1;
-    if(loss->repl_labels) {
-      k = (acc_logit.rect.hi[NDIM-1]-acc_logit.rect.lo[NDIM-1]+1) /
-        (acc_label.rect.hi[NDIM-1]-acc_label.rect.lo[NDIM-1]+1);
+    if (loss->repl_labels) {
+      k = (acc_logit.rect.hi[NDIM - 1] - acc_logit.rect.lo[NDIM - 1] + 1) /
+          (acc_label.rect.hi[NDIM - 1] - acc_label.rect.lo[NDIM - 1] + 1);
     }
-    for (int i = 1; i < NDIM-1; i++) {
+    for (int i = 1; i < NDIM - 1; i++) {
       assert(acc_label.rect.hi[i] == acc_logit.rect.hi[i]);
       assert(acc_label.rect.lo[i] == acc_logit.rect.lo[i]);
     }
-    assert(k*(acc_label.rect.hi[NDIM-1]-acc_label.rect.lo[NDIM-1]+1)
-      == acc_logit.rect.hi[NDIM-1]-acc_logit.rect.lo[NDIM-1]+1);
+    assert(
+        k * (acc_label.rect.hi[NDIM - 1] - acc_label.rect.lo[NDIM - 1] + 1) ==
+        acc_logit.rect.hi[NDIM - 1] - acc_logit.rect.lo[NDIM - 1] + 1);
     assert(acc_label.rect.lo[0] == acc_label.rect.hi[0]);
-    Loss::sparse_categorical_crossentropy_loss_backward_kernel_wrapper(acc_logit_grad.ptr, 
-                                                                       acc_logit.ptr, 
-                                                                       acc_label.ptr, 
-                                                                       acc_logit.rect.volume(),
-                                                                       acc_logit_grad.rect.volume(),
-                                                                       num_samples,
-                                                                       num_classes,
-                                                                       k, 
-                                                                       loss->scale_factor);
+    Loss::sparse_categorical_crossentropy_loss_backward_kernel_wrapper(
+        acc_logit_grad.ptr,
+        acc_logit.ptr,
+        acc_label.ptr,
+        acc_logit.rect.volume(),
+        acc_logit_grad.rect.volume(),
+        num_samples,
+        num_classes,
+        k,
+        loss->scale_factor);
   } else {
-    if(loss->repl_labels) assert(false && "Loss not yet supported for aggr_spec.");
-    TensorAccessorW<float, NDIM> acc_logit_grad(
-        regions[0], task->regions[0], FID_DATA, ctx, runtime,
-        true/*readOutput*/);
+    if (loss->repl_labels)
+      assert(false && "Loss not yet supported for aggr_spec.");
+    TensorAccessorW<float, NDIM> acc_logit_grad(regions[0],
+                                                task->regions[0],
+                                                FID_DATA,
+                                                ctx,
+                                                runtime,
+                                                true /*readOutput*/);
     TensorAccessorR<float, NDIM> acc_logit(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
     TensorAccessorR<float, NDIM> acc_label(
@@ -160,25 +181,30 @@ void Loss::backward_task_with_dim(const Task *task,
     assert(acc_logit.rect == acc_label.rect);
     assert(acc_logit_grad.rect == acc_logit.rect);
     // assertion the outter-most dim is replica dim and replica degree is 1
-    assert(acc_logit.rect.hi[NDIM-1] == acc_logit.rect.lo[NDIM-1]);
-    int num_samples = acc_label.rect.hi[NDIM-2] - acc_label.rect.lo[NDIM-2] + 1;
+    assert(acc_logit.rect.hi[NDIM - 1] == acc_logit.rect.lo[NDIM - 1]);
+    int num_samples =
+        acc_label.rect.hi[NDIM - 2] - acc_label.rect.lo[NDIM - 2] + 1;
     int num_channels = acc_logit.rect.volume() / num_samples;
     if (loss->loss_type == LOSS_CATEGORICAL_CROSSENTROPY) {
-      Loss::categorical_crossentropy_loss_backward_kernel_wrapper(acc_logit_grad.ptr, 
-                                                                  acc_logit.ptr, 
-                                                                  acc_label.ptr, 
-                                                                  acc_logit.rect.volume(),
-                                                                  acc_logit_grad.rect.volume(),
-                                                                  loss->scale_factor);
+      Loss::categorical_crossentropy_loss_backward_kernel_wrapper(
+          acc_logit_grad.ptr,
+          acc_logit.ptr,
+          acc_label.ptr,
+          acc_logit.rect.volume(),
+          acc_logit_grad.rect.volume(),
+          loss->scale_factor);
     } else if (loss->loss_type == LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE) {
-      Loss::mean_squared_error_avg_loss_backward_kernel_wrapper(acc_logit_grad.ptr, 
-                                                                acc_logit.ptr, 
-                                                                acc_label.ptr, 
-                                                                acc_logit.rect.volume(),
-                                                                acc_logit_grad.rect.volume(),
-                                                                loss->scale_factor);
+      Loss::mean_squared_error_avg_loss_backward_kernel_wrapper(
+          acc_logit_grad.ptr,
+          acc_logit.ptr,
+          acc_label.ptr,
+          acc_logit.rect.volume(),
+          acc_logit_grad.rect.volume(),
+          loss->scale_factor);
     } else {
-      fprintf(stderr, "Unsupported loss --- report this error to the FlexFlow developers\n");
+      fprintf(stderr,
+              "Unsupported loss --- report this error to the FlexFlow "
+              "developers\n");
       assert(false);
     }
   }

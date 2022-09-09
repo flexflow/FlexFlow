@@ -3,8 +3,7 @@
 namespace FlexFlow {
 
 RecursiveLogger::RecursiveLogger(std::string const &category_name)
-  : logger(category_name)
-{ }
+    : logger(category_name) {}
 
 Realm::LoggerMessage RecursiveLogger::info() {
   Realm::LoggerMessage msg = this->logger.info();
@@ -35,21 +34,21 @@ void RecursiveLogger::enter() {
   this->depth++;
 }
 
-void RecursiveLogger::leave() { 
+void RecursiveLogger::leave() {
   this->depth--;
-  assert (this->depth >= 0);
+  assert(this->depth >= 0);
 }
 
 std::unique_ptr<DepthTag> RecursiveLogger::enter_tag() {
   return std::unique_ptr<DepthTag>(new DepthTag(*this));
 }
 
-DepthTag::DepthTag(RecursiveLogger &_logger) : logger(_logger) { 
+DepthTag::DepthTag(RecursiveLogger &_logger) : logger(_logger) {
   this->logger.enter();
 }
 
 DepthTag::~DepthTag() {
-  this->logger.leave(); 
+  this->logger.leave();
 }
 
 }; // namespace FlexFlow

@@ -1,14 +1,29 @@
 #ifndef _ELEMENT_UNARY_H
 #define _ELEMENT_UNARY_H
 
-#include "flexflow/model.h"
+#include "flexflow/device.h"
+#include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
 
 namespace FlexFlow {
+
+struct ElementUnaryParams {
+  OperatorType op_type;
+  bool inplace;
+  float scalar;
+
+  bool is_valid(ParallelTensorShape const &) const;
+};
+
+bool operator==(ElementUnaryParams const &, ElementUnaryParams const &);
 
 class ElementUnaryMeta : public OpMeta {
 public:
   ElementUnaryMeta(FFHandler handle);
-#if defined (FF_USE_CUDA) || defined (FF_USE_HIP_CUDA)
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;
 #else
@@ -23,89 +38,124 @@ public:
 
 class ElementUnary : public Op {
 public:
-  ElementUnary(FFModel& model,
+  using Params = ElementUnaryParams;
+  using Input = ParallelTensor;
+
+  ElementUnary(FFModel &model,
                OperatorType type,
                const ParallelTensor x,
                bool inplace,
-               const char* name,
-	             float scalar);
-  void init(const FFModel&) override;
-  void forward(const FFModel&) override;
-  void backward(const FFModel&) override;
-  void reset_idx(const FFModel&) override {assert(0);}
-  void pipeinit(const FFModel&)  override {assert(0);}
-  void pipeforward(const FFModel&)  override {assert(0);}
-  void pipebackward(const FFModel&)  override {assert(0);}
-  void print_layer(const FFModel& model) override {assert(0);}
+               char const *name,
+               float scalar);
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
+  void reset_idx(FFModel const &) override {
+    assert(0);
+  }
+  void pipeinit(FFModel const &) override {
+    assert(0);
+  }
+  void pipeforward(FFModel const &) override {
+    assert(0);
+  }
+  void pipebackward(FFModel const &) override {
+    assert(0);
+  }
+  void print_layer(FFModel const &model) override {
+    assert(0);
+  }
   bool can_inplace_output() override;
   bool has_inplace_output() override;
   void do_inplace_output() override;
-  static Op* create_operator_from_layer(FFModel& model,
-                                        const Layer* layer,
-                                        const std::vector<ParallelTensor>& inputs);
+  static Op *
+      create_operator_from_layer(FFModel &model,
+                                 Layer const *layer,
+                                 std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta* init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
-                            Legion::Context ctx, Legion::Runtime *runtime);
-  template<typename T>
-  static void forward_task_with_type(const Legion::Task *task,
-                                     const std::vector<Legion::PhysicalRegion> &regions,
-                                     Legion::Context ctx, Legion::Runtime *runtime);
-  template<typename T>
-  static void backward_task_with_type(const Legion::Task *task,
-                                      const std::vector<Legion::PhysicalRegion> &regions,
-                                      Legion::Context ctx, Legion::Runtime *runtime);
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
+                           Legion::Context ctx,
+                           Legion::Runtime *runtime);
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
+                           Legion::Context ctx,
+                           Legion::Runtime *runtime);
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
+  template <typename T>
+  static void
+      forward_task_with_type(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
+  template <typename T>
+  static void backward_task_with_type(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
   static void init_kernel(ElementUnaryMeta *m,
-                          const Legion::Domain& input_domain,
-                          const Legion::Domain& output_domain);
-  template<typename T>
-  static void forward_kernel(const ElementUnaryMeta* m,
-                             const T* in_ptr,
-                             T* out_ptr,
+                          Legion::Domain const &input_domain,
+                          Legion::Domain const &output_domain);
+  template <typename T>
+  static void forward_kernel(ElementUnaryMeta const *m,
+                             const T *in_ptr,
+                             T *out_ptr,
                              size_t num_elements,
                              ffStream_t stream);
-  template<typename T>
-  static void forward_kernel_wrapper(const ElementUnaryMeta* m,
-                                     const T* in_ptr,
-                                     T* out_ptr,
+  template <typename T>
+  static void forward_kernel_wrapper(ElementUnaryMeta const *m,
+                                     const T *in_ptr,
+                                     T *out_ptr,
                                      size_t num_elements);
-  template<typename T>
-  static void backward_kernel(const ElementUnaryMeta* m,
-                              const T* in_ptr,
-                              T* in_grad_ptr,
-                              const T* out_ptr,
-                              const T* out_grad_ptr,
+  template <typename T>
+  static void backward_kernel(ElementUnaryMeta const *m,
+                              const T *in_ptr,
+                              T *in_grad_ptr,
+                              const T *out_ptr,
+                              const T *out_grad_ptr,
                               size_t num_elements,
                               ffStream_t stream);
-  template<typename T>
-  static void backward_kernel_wrapper(const ElementUnaryMeta* m,
-                                      const T* in_ptr,
-                                      T* in_grad_ptr,
-                                      const T* out_ptr,
-                                      const T* out_grad_ptr,
+  template <typename T>
+  static void backward_kernel_wrapper(ElementUnaryMeta const *m,
+                                      const T *in_ptr,
+                                      T *in_grad_ptr,
+                                      const T *out_ptr,
+                                      const T *out_grad_ptr,
                                       size_t num_elements);
-  bool measure_operator_cost(Simulator* sim,
-                             const MachineView& pc,
-                             CostMetrics& cost_metrics) const override;
+  bool measure_operator_cost(Simulator *sim,
+                             MachineView const &pc,
+                             CostMetrics &cost_metrics) const override;
   static bool use_cudnn(OperatorType type);
 
-  void serialize(Legion::Serializer&) const override;
-  static PCG::Node deserialize(FFModel& ff, Legion::Deserializer& d, ParallelTensor inputs[], int num_inputs);
-  Op *materialize(FFModel& ff, ParallelTensor inputs[], int num_inputs) const override;
+  void serialize(Legion::Serializer &) const override;
+  static PCG::Node deserialize(FFModel &ff,
+                               Legion::Deserializer &d,
+                               ParallelTensor inputs[],
+                               int num_inputs);
+  Op *materialize(FFModel &ff,
+                  ParallelTensor inputs[],
+                  int num_inputs) const override;
 
-  size_t get_params_hash() const override;
+  Params get_params() const;
+
 private:
   bool inplace;
+
 public:
   float scalar;
 };
 
 }; // namespace FlexFlow
+
+namespace std {
+template <>
+struct hash<FlexFlow::ElementUnaryParams> {
+  size_t operator()(FlexFlow::ElementUnaryParams const &) const;
+};
+} // namespace std
 
 #endif // _ELEMENT_UNARY_H

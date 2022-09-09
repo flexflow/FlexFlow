@@ -20,25 +20,20 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-Initializer::Initializer(void)
-{}
+Initializer::Initializer(void) {}
 
-Initializer::~Initializer(void)
-{}
+Initializer::~Initializer(void) {}
 
-GlorotUniform::GlorotUniform(int _seed)
-: Initializer(), seed(_seed) {}
+GlorotUniform::GlorotUniform(int _seed) : Initializer(), seed(_seed) {}
 
-GlorotUniform::~GlorotUniform(void)
-{}
+GlorotUniform::~GlorotUniform(void) {}
 
-void GlorotUniform::init(const FFModel* ff,
-                         const ParallelTensor p)
-{
+void GlorotUniform::init(FFModel const *ff, const ParallelTensor p) {
   Context ctx = ff->config.lg_ctx;
-  Runtime* runtime = ff->config.lg_hlr;
+  Runtime *runtime = ff->config.lg_hlr;
   int dim = p->num_dims - 1;
-  while (p->dims[dim].is_replica_dim) dim--;
+  while (p->dims[dim].is_replica_dim)
+    dim--;
   assert(dim >= 1);
   // reference: tensorflow code for computing fan_in/fan_out
   // https://github.com/tensorflow/tensorflow/blob/r2.0/tensorflow/python/ops/init_ops.py#L1415-L1439
@@ -65,17 +60,20 @@ void GlorotUniform::init(const FFModel* ff,
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
-    //assert(p->owner_op != NULL);
+    // assert(p->owner_op != NULL);
     assert(p->parallel_is != IndexSpace::NO_SPACE);
     assert(p->num_dims >= 2);
     ArgumentMap argmap;
-    IndexLauncher launcher(GLOROT_INIT_TASK_ID, p->parallel_is,
-        TaskArgument(this, sizeof(GlorotUniform)), argmap,
-        Predicate::TRUE_PRED, false, 0,
-        p->machine_view.hash());
-    launcher.add_region_requirement(
-        RegionRequirement(p->part, 0/*projection id*/,
-            WRITE_ONLY, EXCLUSIVE, p->region));
+    IndexLauncher launcher(GLOROT_INIT_TASK_ID,
+                           p->parallel_is,
+                           TaskArgument(this, sizeof(GlorotUniform)),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false,
+                           0,
+                           p->machine_view.hash());
+    launcher.add_region_requirement(RegionRequirement(
+        p->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   } else {
@@ -83,42 +81,41 @@ void GlorotUniform::init(const FFModel* ff,
   }
 }
 
-ZeroInitializer::ZeroInitializer(void)
-: Initializer() 
-{}
+ZeroInitializer::ZeroInitializer(void) : Initializer() {}
 
-ZeroInitializer::~ZeroInitializer(void)
-{}
+ZeroInitializer::~ZeroInitializer(void) {}
 
-void ZeroInitializer::init(const FFModel* ff,
-                           const ParallelTensor p)
-{
+void ZeroInitializer::init(FFModel const *ff, const ParallelTensor p) {
   Context ctx = ff->config.lg_ctx;
-  Runtime* runtime = ff->config.lg_hlr;
+  Runtime *runtime = ff->config.lg_hlr;
   if (p->sync_type == ParameterSyncType::PS) {
     ZeroInitMeta meta;
     meta.num_regions = 1;
     meta.data_types[0] = p->data_type;
-    TaskLauncher launcher(ZERO_INIT_TASK_ID, TaskArgument(&meta, sizeof(ZeroInitMeta)));
+    TaskLauncher launcher(ZERO_INIT_TASK_ID,
+                          TaskArgument(&meta, sizeof(ZeroInitMeta)));
     // regions[0]: p->region
     launcher.add_region_requirement(
         RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
-    //assert(p->owner_op != NULL);
+    // assert(p->owner_op != NULL);
     assert(p->parallel_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
     ZeroInitMeta meta;
     meta.num_regions = 1;
     meta.data_types[0] = p->data_type;
-    IndexLauncher launcher(ZERO_INIT_TASK_ID, p->parallel_is,
-       TaskArgument(&meta, sizeof(ZeroInitMeta)), argmap,
-       Predicate::TRUE_PRED, false, 0,
-       p->machine_view.hash());
-    launcher.add_region_requirement(
-        RegionRequirement(p->part, 0/*projection id*/,
-            WRITE_ONLY, EXCLUSIVE, p->region));
+    IndexLauncher launcher(ZERO_INIT_TASK_ID,
+                           p->parallel_is,
+                           TaskArgument(&meta, sizeof(ZeroInitMeta)),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false,
+                           0,
+                           p->machine_view.hash());
+    launcher.add_region_requirement(RegionRequirement(
+        p->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   } else {
@@ -126,51 +123,46 @@ void ZeroInitializer::init(const FFModel* ff,
   }
 }
 
-void ZeroInitializer::init_task_cpu(const Task* task,
-                                    const std::vector<PhysicalRegion>& regions,
-                                    Context ctx, Runtime* runtime)
-{
+void ZeroInitializer::init_task_cpu(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   assert(regions.size() == task->regions.size());
   for (size_t i = 0; i < regions.size(); i++) {
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
-    float* w;
+    float *w;
     switch (domain.get_dim()) {
-      case 0:
-      {
+      case 0: {
         // Do not support 0-dim parameters for now
         assert(false);
         break;
       }
-      case 1:
-      {
-        const AccessorWO<float, 1> accW(regions[i], FID_DATA);
+      case 1: {
+        AccessorWO<float, 1> const accW(regions[i], FID_DATA);
         Rect<1> rect = runtime->get_index_space_domain(
             ctx, task->regions[i].region.get_index_space());
         assert(accW.accessor.is_dense_arbitrary(rect));
         w = accW.ptr(rect);
         break;
       }
-      case 2:
-      {
-        const AccessorWO<float, 2> accW(regions[i], FID_DATA);
+      case 2: {
+        AccessorWO<float, 2> const accW(regions[i], FID_DATA);
         Rect<2> rect = runtime->get_index_space_domain(
             ctx, task->regions[i].region.get_index_space());
         assert(accW.accessor.is_dense_arbitrary(rect));
         w = accW.ptr(rect);
         break;
       }
-      case 3:
-      {
-        const AccessorWO<float, 3> accW(regions[i], FID_DATA);
+      case 3: {
+        AccessorWO<float, 3> const accW(regions[i], FID_DATA);
         Rect<3> rect = runtime->get_index_space_domain(
             ctx, task->regions[i].region.get_index_space());
         assert(accW.accessor.is_dense_arbitrary(rect));
         w = accW.ptr(rect);
         break;
       }
-      default:
-      {
+      default: {
         assert(false);
         break;
       }
@@ -182,16 +174,13 @@ void ZeroInitializer::init_task_cpu(const Task* task,
 }
 
 UniformInitializer::UniformInitializer(int _seed, float _min, float _max)
-: Initializer(), seed(_seed), min_val(_min), max_val(_max) {}
+    : Initializer(), seed(_seed), min_val(_min), max_val(_max) {}
 
-UniformInitializer::~UniformInitializer(void)
-{}
+UniformInitializer::~UniformInitializer(void) {}
 
-void UniformInitializer::init(const FFModel* ff,
-                              const ParallelTensor p)
-{
+void UniformInitializer::init(FFModel const *ff, const ParallelTensor p) {
   Context ctx = ff->config.lg_ctx;
-  Runtime* runtime = ff->config.lg_hlr;
+  Runtime *runtime = ff->config.lg_hlr;
   if (p->sync_type == ParameterSyncType::PS) {
     TaskLauncher launcher(UNIFORM_INIT_TASK_ID,
                           TaskArgument(this, sizeof(UniformInitializer)));
@@ -201,16 +190,19 @@ void UniformInitializer::init(const FFModel* ff,
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
-    //assert(p->owner_op != NULL);
+    // assert(p->owner_op != NULL);
     assert(p->parallel_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
-    IndexLauncher launcher(UNIFORM_INIT_TASK_ID, p->parallel_is,
-        TaskArgument(this, sizeof(UniformInitializer)), argmap,
-        Predicate::TRUE_PRED, false, 0,
-        p->machine_view.hash());
-    launcher.add_region_requirement(
-        RegionRequirement(p->part, 0/*projection id*/,
-            WRITE_ONLY, EXCLUSIVE, p->region));
+    IndexLauncher launcher(UNIFORM_INIT_TASK_ID,
+                           p->parallel_is,
+                           TaskArgument(this, sizeof(UniformInitializer)),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false,
+                           0,
+                           p->machine_view.hash());
+    launcher.add_region_requirement(RegionRequirement(
+        p->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   } else {
@@ -219,16 +211,13 @@ void UniformInitializer::init(const FFModel* ff,
 }
 
 NormInitializer::NormInitializer(int _seed, float _mean, float _stddev)
-: seed(_seed), mean(_mean), stddev(_stddev) {}
+    : seed(_seed), mean(_mean), stddev(_stddev) {}
 
-NormInitializer::~NormInitializer(void)
-{}
+NormInitializer::~NormInitializer(void) {}
 
-void NormInitializer::init(const FFModel* ff,
-                           const ParallelTensor p)
-{
+void NormInitializer::init(FFModel const *ff, const ParallelTensor p) {
   Context ctx = ff->config.lg_ctx;
-  Runtime* runtime = ff->config.lg_hlr;
+  Runtime *runtime = ff->config.lg_hlr;
   if (p->sync_type == ParameterSyncType::PS) {
     TaskLauncher launcher(NORMAL_INIT_TASK_ID,
                           TaskArgument(this, sizeof(NormInitializer)));
@@ -238,16 +227,19 @@ void NormInitializer::init(const FFModel* ff,
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
-    //assert(p->owner_op != NULL);
+    // assert(p->owner_op != NULL);
     assert(p->parallel_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
-    IndexLauncher launcher(NORMAL_INIT_TASK_ID, p->parallel_is,
-        TaskArgument(this, sizeof(NormInitializer)), argmap,
-        Predicate::TRUE_PRED, false, 0,
-        p->machine_view.hash());
-    launcher.add_region_requirement(
-        RegionRequirement(p->part, 0/*projection id*/,
-            WRITE_ONLY, EXCLUSIVE, p->region));
+    IndexLauncher launcher(NORMAL_INIT_TASK_ID,
+                           p->parallel_is,
+                           TaskArgument(this, sizeof(NormInitializer)),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false,
+                           0,
+                           p->machine_view.hash());
+    launcher.add_region_requirement(RegionRequirement(
+        p->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   } else {
@@ -255,28 +247,21 @@ void NormInitializer::init(const FFModel* ff,
   }
 }
 
-
 // ConstantInitializer
 ConstantInitializer::ConstantInitializer(float _value)
-: Initializer(), data_type(DT_FLOAT), float_value(_value)
-{}
+    : Initializer(), data_type(DT_FLOAT), float_value(_value) {}
 
 ConstantInitializer::ConstantInitializer(int64_t _value)
-: Initializer(), data_type(DT_INT64), int64_value(_value)
-{}
+    : Initializer(), data_type(DT_INT64), int64_value(_value) {}
 
 ConstantInitializer::ConstantInitializer(int _value)
-: Initializer(), data_type(DT_INT32), int32_value(_value)
-{}
+    : Initializer(), data_type(DT_INT32), int32_value(_value) {}
 
-ConstantInitializer::~ConstantInitializer(void)
-{}
+ConstantInitializer::~ConstantInitializer(void) {}
 
-void ConstantInitializer::init(const FFModel* ff,
-                               const ParallelTensor p)
-{
+void ConstantInitializer::init(FFModel const *ff, const ParallelTensor p) {
   Context ctx = ff->config.lg_ctx;
-  Runtime* runtime = ff->config.lg_hlr;
+  Runtime *runtime = ff->config.lg_hlr;
   if (p->sync_type == ParameterSyncType::PS) {
     TaskLauncher launcher(CONSTANT_INIT_TASK_ID,
                           TaskArgument(this, sizeof(ConstantInitializer)));
@@ -285,17 +270,20 @@ void ConstantInitializer::init(const FFModel* ff,
         RegionRequirement(p->region, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_task(ctx, launcher);
-  } else if(p->sync_type == ParameterSyncType::NCCL) {
-    //assert(p->owner_op != NULL);
+  } else if (p->sync_type == ParameterSyncType::NCCL) {
+    // assert(p->owner_op != NULL);
     assert(p->parallel_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
-    IndexLauncher launcher(CONSTANT_INIT_TASK_ID, p->parallel_is,
-        TaskArgument(this, sizeof(ConstantInitializer)), argmap,
-        Predicate::TRUE_PRED, false, 0,
-        p->machine_view.hash());
-    launcher.add_region_requirement(
-        RegionRequirement(p->part, 0/*projection id*/,
-            WRITE_ONLY, EXCLUSIVE, p->region));
+    IndexLauncher launcher(CONSTANT_INIT_TASK_ID,
+                           p->parallel_is,
+                           TaskArgument(this, sizeof(ConstantInitializer)),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false,
+                           0,
+                           p->machine_view.hash());
+    launcher.add_region_requirement(RegionRequirement(
+        p->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   } else {
@@ -303,54 +291,50 @@ void ConstantInitializer::init(const FFModel* ff,
   }
 }
 
-void ConstantInitializer::init_task_cpu(const Task* task,
-                                        const std::vector<PhysicalRegion>& regions,
-                                        Context ctx, Runtime* runtime)
-{
-  ConstantInitializer* initializer = (ConstantInitializer*) task->args;
+void ConstantInitializer::init_task_cpu(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  ConstantInitializer *initializer = (ConstantInitializer *)task->args;
   assert(regions.size() == task->regions.size());
   for (size_t i = 0; i < regions.size(); i++) {
     // Currently only support Float
     assert(initializer->data_type == DT_FLOAT);
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
-    float* w;
+    float *w;
     switch (domain.get_dim()) {
-      case 0:
-      {
+      case 0: {
         // Do not support 0-dim parameters for now
         assert(false);
         break;
       }
-      case 1:
-      {
-        const AccessorWO<float, 1> accW(regions[i], FID_DATA);
+      case 1: {
+        AccessorWO<float, 1> const accW(regions[i], FID_DATA);
         Rect<1> rect = runtime->get_index_space_domain(
             ctx, task->regions[i].region.get_index_space());
         assert(accW.accessor.is_dense_arbitrary(rect));
         w = accW.ptr(rect);
         break;
       }
-      case 2:
-      {
-        const AccessorWO<float, 2> accW(regions[i], FID_DATA);
+      case 2: {
+        AccessorWO<float, 2> const accW(regions[i], FID_DATA);
         Rect<2> rect = runtime->get_index_space_domain(
             ctx, task->regions[i].region.get_index_space());
         assert(accW.accessor.is_dense_arbitrary(rect));
         w = accW.ptr(rect);
         break;
       }
-      case 3:
-      {
-        const AccessorWO<float, 3> accW(regions[i], FID_DATA);
+      case 3: {
+        AccessorWO<float, 3> const accW(regions[i], FID_DATA);
         Rect<3> rect = runtime->get_index_space_domain(
             ctx, task->regions[i].region.get_index_space());
         assert(accW.accessor.is_dense_arbitrary(rect));
         w = accW.ptr(rect);
         break;
       }
-      default:
-      {
+      default: {
         assert(false);
         break;
       }
@@ -362,4 +346,3 @@ void ConstantInitializer::init_task_cpu(const Task* task,
 }
 
 }; // namespace FlexFlow
-

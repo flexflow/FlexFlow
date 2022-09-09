@@ -6,33 +6,45 @@ namespace FlexFlow {
 
 class Mean : public Op {
 public:
-  Mean(FFModel& model,
+  Mean(FFModel &model,
        const ParallelTensor input,
-       const std::vector<int>& dims,
+       std::vector<int> const &dims,
        bool keepdims,
-       const char* name);
-  void init(const FFModel&);
-  void forward(const FFModel&);
-  void backward(const FFModel&);
-  void reset_idx(const FFModel&) override {assert(0);}
-  void pipeinit(const FFModel&)  override {assert(0);}
-  void pipeforward(const FFModel&)  override {assert(0);}
-  void pipebackward(const FFModel&)  override {assert(0);}
-  void print_layer(const FFModel& model) {assert(0);}
+       char const *name);
+  void init(FFModel const &);
+  void forward(FFModel const &);
+  void backward(FFModel const &);
+  void reset_idx(FFModel const &) override {
+    assert(0);
+  }
+  void pipeinit(FFModel const &) override {
+    assert(0);
+  }
+  void pipeforward(FFModel const &) override {
+    assert(0);
+  }
+  void pipebackward(FFModel const &) override {
+    assert(0);
+  }
+  void print_layer(FFModel const &model) {
+    assert(0);
+  }
 
-  static OpMeta* init_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void forward_task(const Legion::Task *task,
-                           const std::vector<Legion::PhysicalRegion> &regions,
-                           Legion::Context ctx, Legion::Runtime *runtime);
-  static void backward_task(const Legion::Task *task,
-                            const std::vector<Legion::PhysicalRegion> &regions,
-                            Legion::Context ctx, Legion::Runtime *runtime);
-  bool measure_operator_cost(Simulator* sim,
-                             const MachineView& pc,
-                             CostMetrics& cost_metrics) const;
+  static OpMeta *init_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
+                           Legion::Context ctx,
+                           Legion::Runtime *runtime);
+  static void forward_task(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
+                           Legion::Context ctx,
+                           Legion::Runtime *runtime);
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
+  bool measure_operator_cost(Simulator *sim,
+                             MachineView const &pc,
+                             CostMetrics &cost_metrics) const;
 };
 
 }; // namespace FlexFlow
-
