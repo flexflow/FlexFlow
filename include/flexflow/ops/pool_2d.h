@@ -54,6 +54,10 @@ public:
          ActiMode activation,
          char const *name);
   Pool2D(FFModel &model, Pool2D const &other, ParallelTensor const input);
+  Pool2D(FFModel &model,
+         Params const &params,
+         const Input input,
+         char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
