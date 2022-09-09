@@ -47,6 +47,10 @@ public:
                bool inplace,
                char const *name,
                float scalar);
+  ElementUnary(FFModel &model,
+               Params const &params,
+               const Input x,
+               char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
