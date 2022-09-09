@@ -92,6 +92,7 @@ __host__ void SGDOptimizer::nccl_update_task_gpu(SGDOptimizer const *op,
                           meta->handle.ncclComm,
                           stream));
   // fprintf(stderr, "weight(%p) After ncclAllReduce...\n", w_grad_ptr);
+  // print_tensor<float>((float*)w_grad_ptr, 16, "[After ncclAllReduce]");
 
   // Step 2: SGD update
   sgd_update<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
