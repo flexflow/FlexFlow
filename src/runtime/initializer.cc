@@ -45,7 +45,9 @@ void GlorotUniform::init(FFModel const *ff, const ParallelTensor p) {
   coord_t fan_in = c_in * receptive_field_size;
   coord_t fan_out = c_out * receptive_field_size;
   scale = sqrt(6.0f / (fan_in + fan_out));
-  printf("weights init scale %f for op (%s)\n", scale, optype_to_string(p->owner_op->op_type).data());
+  printf("weights init scale %f for op (%s)\n",
+         scale,
+         optype_to_string(p->owner_op->op_type).data());
   printf("weight_region_id(%d, %d, %d)\n",
          p->region.get_index_space().get_id(),
          p->region.get_field_space().get_id(),
