@@ -15,7 +15,7 @@
 
 #include "flexflow/ops/embedding.h"
 #include "flexflow/utils/hash_utils.h"
-#include "model.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
 

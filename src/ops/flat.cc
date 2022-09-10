@@ -47,7 +47,7 @@ Op *Flat::create_operator_from_layer(
 }
 
 int FlatParams::output_size(ParallelTensorShape const &input,
-                            ParallelDim output_dims[MAX_TENSOR_DIM]) {
+                            ParallelDim output_dims[MAX_TENSOR_DIM]) const {
   output_dims[FlatOutput::REPLICA].is_replica_dim = true;
   output_dims[FlatOutput::SAMPLE].size = input.dims[FlatInput::SAMPLE].size;
   output_dims[FlatOutput::CHANNEL].size =

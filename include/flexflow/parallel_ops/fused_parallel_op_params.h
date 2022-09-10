@@ -1,11 +1,9 @@
 #ifndef _FLEXFLOW_FUSED_PARALLEL_OP_PARAMS_H
 #define _FLEXFLOW_FUSED_PARALLEL_OP_PARAMS_H
 
-#include "parallel_op.h"
+#include "parallel_op_info.h"
 
 namespace FlexFlow {
-
-class ParallelOpInfo;
 
 struct FusedParallelOpParams {
   std::vector<ParallelOpInfo> parallel_ops;
