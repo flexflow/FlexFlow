@@ -12,6 +12,7 @@ struct ParallelOpInfo {
   int parallel_dim;
   int parallel_degree;
 };
+bool operator==(ParallelOpInfo const &, ParallelOpInfo const &);
 
 } // namespace FlexFlow
 

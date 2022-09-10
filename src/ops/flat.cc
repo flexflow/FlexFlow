@@ -59,7 +59,7 @@ int FlatParams::output_size(ParallelTensorShape const &input,
 
 void FlatParams::solve_dims(ParallelTensorShape const &input,
                             ParallelDim output_dims[MAX_TENSOR_DIM],
-                            int *output_ndims) {
+                            int *output_ndims) const {
   assert((output_dims == nullptr) == (output_ndims == nullptr));
 
   std::vector<ParallelDimMappingRecord> mapping;
@@ -74,7 +74,7 @@ void FlatParams::solve_dims(ParallelTensorShape const &input,
   solve_parallel_dim_mappings(mapping, {input.dims}, {}, output_dim_sets);
 }
 
-bool FlatParams::is_valid(ParallelTensorShape const &input) {
+bool FlatParams::is_valid(ParallelTensorShape const &input) const {
   ParallelTensorShape output_shape;
 
   this->solve_dims(input, output_shape.dims, &output_shape.num_dims);
