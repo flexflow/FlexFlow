@@ -5,6 +5,8 @@
 
 namespace FlexFlow {
 
+class ParallelOpInfo;
+
 struct FusedParallelOpParams {
   std::vector<ParallelOpInfo> parallel_ops;
   bool is_valid(ParallelTensorShape const &) const;
