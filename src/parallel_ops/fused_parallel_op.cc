@@ -39,6 +39,12 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 /* Params */
+bool operator==(ParallelOpInfo const &lhs, ParallelOpInfo const &rhs) {
+  return lhs.op_type == rhs.op_type 
+         && lhs.parallel_degree == rhs.parallel_degree
+         && lhs.parallel_dim == rhs.parallel_dim;
+}
+
 bool operator==(FusedParallelOpParams const &lhs,
                 FusedParallelOpParams const &rhs) {
   return lhs.parallel_ops == rhs.parallel_ops;
@@ -283,7 +289,7 @@ size_t hash<FlexFlow::FusedParallelOpParams>::operator()(
     FlexFlow::FusedParallelOpParams const &params) const {
   size_t key = 0;
   hash_combine(key, params.parallel_ops.size());
-  for (ParallelOpInfo const &p : params.parallel_ops) {
+  for (FlexFlow::ParallelOpInfo const &p : params.parallel_ops) {
     hash_combine(key, p.op_type);
     hash_combine(key, p.parallel_dim);
     hash_combine(key, p.parallel_degree);

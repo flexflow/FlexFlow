@@ -722,17 +722,6 @@ ElementBinaryParams ElementBinary::get_params() const {
   return params;
 }
 
-using PCG::Node;
-Node FFModel::get_or_create_element_binary_node(const ParallelTensor input1,
-                                                const ParallelTensor input2,
-                                                OperatorType op_type) {
-  auto inputs = std::make_pair(input1, input2);
-  ElementBinaryParams params;
-  params.type = op_type;
-
-  return get_or_create_node<ElementBinary>(inputs, params);
-}
-
 }; // namespace FlexFlow
 
 namespace std {
