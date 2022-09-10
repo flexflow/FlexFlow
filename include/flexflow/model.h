@@ -36,6 +36,7 @@
 #include <functional>
 #include <unistd.h>
 #include <utility>
+#include <memory>
 
 #include "ffconst.h"
 #include "fftype.h"
@@ -246,29 +247,43 @@ class NoOp;
 ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
 
 class Cast;
+class CastParams;
 class Concat;
+class ConcatParams;
 class Conv2D;
 class Conv2DParams;
 class Dropout;
 class DropoutParams;
 class ElementBinary;
+class ElementBinaryParams;
 class ElementUnary;
+class ElementUnaryParams;
 class Embedding;
+class EmbeddingParams;
 class Flat;
+class FlatParams;
 class Linear;
 class LinearParams;
 class MultiHeadAttention;
+class MultiHeadAttentionParams;
 class Pool2D;
 class Pool2DParams;
 class Reshape;
 class ReshapeParams;
 class Softmax;
+class SoftmaxParams;
 class Split;
+class SplitParams;
 class Combine;
+class CombineParams;
 class Repartition;
+class RepartitionParams;
 class Reduction;
+class ReductionParams;
 class Replicate;
+class ReplicateParams;
 class FusedParallelOp;
+class FusedParallelOpParams;
 class ParallelOpInfo;
 
 // TODO: Move to an appropriate place

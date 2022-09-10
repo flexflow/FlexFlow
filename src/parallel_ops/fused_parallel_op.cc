@@ -50,7 +50,8 @@ bool FusedParallelOpParams::is_valid(ParallelTensorShape const &input) const {
 
 FusedParallelOpParams FusedParallelOp::get_params() const {
   FusedParallelOpParams params;
-  params.parallel_ops = this->parallel_ops;
+  std::vector<ParallelOpInfo> ops (std::begin(this->parallel_ops), std::end(this->parallel_ops));
+  params.parallel_ops = ops;
   return params;
 }
 
@@ -277,6 +278,7 @@ void FusedParallelOp::backward_task(Task const *task,
 }; // namespace FlexFlow
 
 namespace std {
+
 size_t hash<FlexFlow::FusedParallelOpParams>::operator()(
     FlexFlow::FusedParallelOpParams const &params) const {
   size_t key = 0;
