@@ -4,8 +4,8 @@ echo " Defaults for Linux machine"
 
 # set the CC and CXX, usually it is not needed as cmake can detect it
 # set CC and CXX to mpicc and mpic++ when enable gasnet
-#CC=mpicc
-#CXX=mpic++
+CC=mpicc
+CXX=mpic++
 
 # add flags if needed
 # CC_FLAGS=${CC_FLAGS+="-DLEGION_SPY"}
@@ -35,10 +35,10 @@ FF_USE_PYTHON=OFF
 FF_USE_NCCL=ON
 
 # enable GASNet
-FF_USE_GASNET=OFF
+FF_USE_GASNET=ON
 
 # select GASNET conduit
-FF_GASNET_CONDUIT=udp
+FF_GASNET_CONDUIT=ibv
 
 # build C++ examples
 FF_BUILD_ALL_EXAMPLES=OFF
