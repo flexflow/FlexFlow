@@ -101,8 +101,6 @@ int main(int argc, char **argv) {
 
   register_c_custom_tasks();
 
-  FFMapper::register_sharding_functor(argc, argv);
-
   Runtime::add_registration_callback(FFMapper::update_mappers);
   return Runtime::start(argc, argv);
 }

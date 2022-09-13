@@ -164,16 +164,13 @@ FFMapper::FFMapper(MapperRuntime *rt,
   }
 }
 
-void FFMapper::register_sharding_functor(int argc, char **argv) {
+void FFMapper::register_sharding_functor(Machine machine,
+                                         int argc,
+                                         char **argv) {
   // std::string strategyFile = "";
   int gpus_per_node = 0, cpus_per_node = 1;
-  int num_nodes = Realm::Machine::get_machine().get_address_space_count();
+  int num_nodes = machine.get_address_space_count();
   for (int i = 1; i < argc; i++) {
-    // if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i],
-    // "--import-strategy"))) {
-    //   strategyFile = std::string(argv[++i]);
-    //   continue;
-    // }
     if (!strcmp(argv[i], "-ll:gpu")) {
       gpus_per_node = atoi(argv[++i]);
       continue;
@@ -183,9 +180,6 @@ void FFMapper::register_sharding_functor(int argc, char **argv) {
       continue;
     }
   }
-  // if (strategyFile != "") {
-  //   load_strategies_from_file(strategyFile, all_strategies);
-  // }
   {
     MachineView view;
     view.device_type = MachineView::GPU;
@@ -1512,6 +1506,9 @@ void FFMapper::update_mappers(Machine machine,
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
+
+  FFMapper::register_sharding_functor(machine, argc, argv);
+
   bool enable_control_replication = true;
   bool log_instance_creation = false;
   for (int i = 1; i < argc; i++) {
