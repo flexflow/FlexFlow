@@ -942,11 +942,6 @@ flexflow_op_t flexflow_model_get_last_layer(flexflow_model_t handle_) {
 flexflow_tensor_t flexflow_model_get_parameter_by_id(flexflow_model_t handle_,
                                                      int layer_id) {
   assert(false);
-#ifdef DEADCODE
-  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  Tensor tensor = handle->parameters[layer_id];
-  return FFCObjectWrapper::wrap(tensor);
-#endif
 }
 
 flexflow_perf_metrics_t
@@ -1027,12 +1022,6 @@ void flexflow_tensor_map(flexflow_model_t model_,
                          flexflow_tensor_t tensor_,
                          flexflow_op_t op_) {
   assert(false);
-#ifdef DEADCODE
-  FFModel *model = FFCObjectWrapper::unwrap(model_);
-  Tensor tensor = FFCObjectWrapper::unwrap(tensor_);
-  Layer *op = FFCObjectWrapper::unwrap(op_);
-  model->map_tensor(tensor, op);
-#endif
 }
 
 flexflow_tensor_t flexflow_constant_create(flexflow_model_t model_,
@@ -1207,10 +1196,6 @@ void flexflow_tensor_detach_raw_ptr(flexflow_tensor_t handle_,
 
 bool flexflow_tensor_is_mapped(flexflow_tensor_t handle_) {
   assert(false && "Deprecated API");
-#ifdef DEADCODE
-  Tensor handle = FFCObjectWrapper::unwrap(handle_);
-  return handle->physical_region.is_mapped();
-#endif
 }
 
 bool flexflow_tensor_set_tensor_float(flexflow_tensor_t handle_,
@@ -1836,20 +1821,10 @@ flexflow_tensor_t flexflow_op_get_output_by_id(flexflow_op_t handle_, int id) {
 
 void flexflow_op_init(flexflow_op_t handle_, flexflow_model_t model_) {
   assert(false && "Deprecated API");
-#ifdef DEADCODE
-  Layer *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);
-  handle->init(*model);
-#endif
 }
 
 void flexflow_op_forward(flexflow_op_t handle_, flexflow_model_t model_) {
   assert(false && "Deprecated API");
-#ifdef DEADCODE
-  Layer *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *model = FFCObjectWrapper::unwrap(model_);
-  handle->forward(*model);
-#endif
 }
 
 // -----------------------------------------------------------------------

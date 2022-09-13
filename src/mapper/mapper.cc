@@ -166,7 +166,8 @@ FFMapper::FFMapper(MapperRuntime *rt,
 
 void FFMapper::register_sharding_functor(int argc, char **argv) {
   // std::string strategyFile = "";
-  int gpus_per_node = 0, cpus_per_node = 1, num_nodes = 1;
+  int gpus_per_node = 0, cpus_per_node = 1;
+  int num_nodes = Realm::Machine::get_machine().get_address_space_count();
   for (int i = 1; i < argc; i++) {
     // if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i],
     // "--import-strategy"))) {
@@ -179,10 +180,6 @@ void FFMapper::register_sharding_functor(int argc, char **argv) {
     }
     if (!strcmp(argv[i], "-ll:cpu")) {
       cpus_per_node = atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--nodes")) {
-      num_nodes = atoi(argv[++i]);
       continue;
     }
   }
@@ -1515,7 +1512,7 @@ void FFMapper::update_mappers(Machine machine,
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
-  bool enable_control_replication = false;
+  bool enable_control_replication = true;
   bool log_instance_creation = false;
   for (int i = 1; i < argc; i++) {
     // if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i],
@@ -1523,8 +1520,8 @@ void FFMapper::update_mappers(Machine machine,
     //   strategyFile = std::string(argv[++i]);
     //   continue;
     // }
-    if (!strcmp(argv[i], "--control-replication")) {
-      enable_control_replication = true;
+    if (!strcmp(argv[i], "--disable-control-replication")) {
+      enable_control_replication = false;
       continue;
     }
     if (!strcmp(argv[i], "--log-instance-creation")) {

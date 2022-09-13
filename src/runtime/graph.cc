@@ -1603,7 +1603,7 @@ GraphOptimalViewSerialized
       // model->config.workersPerNode;
       data_parallel_view[i].dim[0] = 1;
       data_parallel_view[i].stride[0] = 1;
-      data_parallel_view[i].start_device_id = (i % 2) + (i / 2) * 4;
+      data_parallel_view[i].start_device_id = i;
     }
 
     int op_per_stage = model->operators.size() / 2;
