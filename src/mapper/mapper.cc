@@ -164,7 +164,8 @@ FFMapper::FFMapper(MapperRuntime *rt,
   }
 }
 
-void FFMapper::register_sharding_functor(Machine machine,
+void FFMapper::register_sharding_functor(Runtime* runtime,
+                                         Machine machine,
                                          int argc,
                                          char **argv) {
   // std::string strategyFile = "";
@@ -189,8 +190,8 @@ void FFMapper::register_sharding_functor(Machine machine,
     view.start_device_id = 0;
     FFShardingFunctor *functor =
         new FFShardingFunctor(gpus_per_node, cpus_per_node, num_nodes, view);
-    Runtime::preregister_sharding_functor(FFConfig::DataParallelism_GPU,
-                                          functor);
+    runtime->register_sharding_functor(FFConfig::DataParallelism_GPU,
+                                       functor);
   }
   {
     MachineView view;
@@ -200,8 +201,8 @@ void FFMapper::register_sharding_functor(Machine machine,
     view.stride[0] = 1;
     FFShardingFunctor *functor =
         new FFShardingFunctor(gpus_per_node, cpus_per_node, num_nodes, view);
-    Runtime::preregister_sharding_functor(FFConfig::DataParallelism_CPU,
-                                          functor);
+    runtime->register_sharding_functor(FFConfig::DataParallelism_CPU,
+                                       functor);
   }
   assert(gpus_per_node > 0);
   assert(cpus_per_node > 0);
@@ -216,7 +217,7 @@ void FFMapper::register_sharding_functor(Machine machine,
         view.start_device_id = i;
         FFShardingFunctor *functor = new FFShardingFunctor(
             gpus_per_node, cpus_per_node, num_nodes, view);
-        Runtime::preregister_sharding_functor(view.hash(), functor);
+        runtime->register_sharding_functor(view.hash(), functor);
       }
     } else {
       // Registering views with different start_device_id;
@@ -224,7 +225,7 @@ void FFMapper::register_sharding_functor(Machine machine,
         view.start_device_id = i;
         FFShardingFunctor *functor = new FFShardingFunctor(
             gpus_per_node, cpus_per_node, num_nodes, view);
-        Runtime::preregister_sharding_functor(view.hash(), functor);
+        runtime->register_sharding_functor(view.hash(), functor);
       }
     }
   }
@@ -1507,7 +1508,7 @@ void FFMapper::update_mappers(Machine machine,
   char **argv = command_args.argv;
   int argc = command_args.argc;
 
-  FFMapper::register_sharding_functor(machine, argc, argv);
+  FFMapper::register_sharding_functor(runtime, machine, argc, argv);
 
   bool enable_control_replication = true;
   bool log_instance_creation = false;
