@@ -316,8 +316,11 @@ bool Flat::measure_operator_cost(Simulator *sim,
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert(input_ptr != NULL);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
   size_t num_elements = sub_output.get_volume();
 
   std::function<void()> forward, backward;
@@ -327,8 +330,13 @@ bool Flat::measure_operator_cost(Simulator *sim,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr =
         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    cost_metrics.outputs_memory +=
+        cost_metrics.total_mem_diff_from(sim->offset);
+
     assert(output_grad_ptr != NULL);
     assert(input_grad_ptr != NULL);
     backward = [&] {

@@ -34,8 +34,8 @@ class DataLoader {
 public:
   DataLoader(FlexFlow::FFModel &ff,
              AlexNetConfig const *alexnet,
-             FlexFlow::Tensor _input,
-             FlexFlow::Tensor _label);
+             FlexFlow::ParallelTensor _input,
+             FlexFlow::ParallelTensor _label);
   static void load_input(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
                          Context ctx,
@@ -53,8 +53,8 @@ public:
 
 public:
   int num_samples, next_index;
-  FlexFlow::Tensor full_input, batch_input;
-  FlexFlow::Tensor full_label, batch_label;
+  FlexFlow::ParallelTensor full_input, batch_input;
+  FlexFlow::ParallelTensor full_label, batch_label;
 };
 
 struct SampleIdxs {

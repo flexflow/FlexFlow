@@ -1624,10 +1624,10 @@ bool FFModel::get_parallel_tensor_from_tensor(
     Op *mapped_op = nullptr;
     if (tensor->owner_layer->op_type == OP_INPUT) {
       // We use tensor_guid to match input operators
-      NoOp *noop = (NoOp *)tensor->owner_layer;
+      size_t tensor_guid = tensor->owner_layer->outputs[0]->tensor_guid;
       for (auto const &op : operators) {
         if (op->op_type == OP_INPUT) {
-          if (noop->input_tensor_guid == ((NoOp *)op)->input_tensor_guid) {
+          if (tensor_guid == ((NoOp *)op)->input_tensor_guid) {
             assert(mapped_op == nullptr);
             mapped_op = op;
           }

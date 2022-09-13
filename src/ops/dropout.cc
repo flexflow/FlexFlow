@@ -29,6 +29,10 @@ Tensor FFModel::dropout(const Tensor input,
                         float rate,
                         unsigned long long seed,
                         char const *name) {
+  // seed = 0 is preserved as None, so we use a random seed
+  if (seed == 0) {
+    seed = std::rand();
+  }
   Layer *dropout = new Layer(this,
                              OP_DROPOUT,
                              name,
@@ -46,15 +50,6 @@ Tensor FFModel::dropout(const Tensor input,
   dropout->add_int_property("seed", seed);
   layers.push_back(dropout);
   return dropout->outputs[0];
-#ifdef DEADCODE
-  // see = 0 is preserved as None, so we use a random seed
-  if (seed == 0) {
-    seed = std::rand();
-  }
-  Dropout *dropout = new Dropout(*this, input, rate, seed, name);
-  layers.push_back(dropout);
-  return dropout->outputs[0];
-#endif
 }
 
 Op *Dropout::create_operator_from_layer(
@@ -346,8 +341,11 @@ bool Dropout::measure_operator_cost(Simulator *sim,
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert(input_ptr != NULL);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   assert(m->profiling == false);
 
@@ -357,9 +355,14 @@ bool Dropout::measure_operator_cost(Simulator *sim,
     float *input_grad_ptr =
         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
     assert(input_grad_ptr != NULL);
+    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     assert(output_grad_ptr != NULL);
+    cost_metrics.outputs_memory +=
+        cost_metrics.total_mem_diff_from(sim->offset);
+
     backward = [&] {
       backward_kernel_wrapper(m, output_grad_ptr, input_grad_ptr);
     };

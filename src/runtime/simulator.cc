@@ -39,6 +39,14 @@ LegionRuntime::Logger::Category log_xfer_est("xfer_est");
 // template class std::map<const Op*, ParallelConfig>; // for debugging in gdb
 // template class std::map<const Op*, MachineView>; // for debugging in gdb
 
+size_t CostMetrics::total_memory() const {
+  return inputs_memory + outputs_memory + weights_memory;
+}
+
+size_t CostMetrics::total_mem_diff_from(off_t sim_offset) const {
+  return static_cast<size_t>(sim_offset) - total_memory();
+}
+
 int ParallelConfig::num_parts() const {
   int nparts = 1;
   for (int i = 0; i < nDims; i++)
@@ -1243,7 +1251,7 @@ float Simulator::simulate_runtime(
     Op *op = model->operators[l];
     ParallelConfig config = global.find(op)->second;
     CostMetrics cost_metrics = measure_operator_cost(op, config);
-    size_t memory_requirement = cost_metrics.memory_requirement;
+    size_t memory_requirement = cost_metrics.total_memory();
     for (int j = 0; j < config.num_parts(); j++) {
       gpu_mem_usage[config.device_ids[j]] += memory_requirement;
     }

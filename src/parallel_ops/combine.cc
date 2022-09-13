@@ -108,7 +108,7 @@ OpMeta *Combine::init_task(Task const *task,
                            Context ctx,
                            Runtime *runtime) {
   Combine *rep = (Combine *)task->args;
-  FFHandler handle = *((FFHandler *)task->local_args);
+  // FFHandler handle = *((FFHandler *)task->local_args);
   // CombineMeta* m = new CombineMeta(handle);
   // m->data_type = rep->outputs[0]->data_type;
   return nullptr;

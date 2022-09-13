@@ -649,6 +649,8 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
   assert(input1_ptr != NULL);
   float *input2_ptr = (float *)sim->allocate(sub_input2.get_volume(), DT_FLOAT);
   assert(input2_ptr != NULL);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
   float *output_ptr = NULL;
   if (inplace_a) {
     output_ptr = input1_ptr;
@@ -656,6 +658,7 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
     output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   }
   assert(output_ptr != NULL);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   assert(m->profiling == false);
 
@@ -670,6 +673,8 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
     float *input2_grad_ptr =
         (float *)sim->allocate(sub_input2.get_volume(), DT_FLOAT);
     assert(input2_grad_ptr != NULL);
+    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
     float *output_grad_ptr = NULL;
     if (inplace_a) {
       output_grad_ptr = input1_grad_ptr;
@@ -678,6 +683,9 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
           (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     }
     assert(output_grad_ptr != NULL);
+    cost_metrics.outputs_memory +=
+        cost_metrics.total_mem_diff_from(sim->offset);
+
     backward = [&] {
       backward_kernel_wrapper(m,
                               output_grad_ptr,

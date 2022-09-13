@@ -552,13 +552,6 @@ bool Conv2D::measure_operator_cost(Simulator *sim,
   float* bias_ptr = (float*)sim->allocate(output_c, DT_FLOAT);
   assert(bias_ptr != NULL);
 
-  // compute memory usage
-  // Assume:
-  //   1. all memory allocations use Simulator::allocate
-  //   2. we call Simulator::free_all before measure an operator
-  // Therefore, the memory usage of an operator is sim->offset
-  cost_metrics.memory_requirement = (size_t)sim->offset;
-
   // select forward algorithm
   {
     const int reqAlgCnt = 8;
