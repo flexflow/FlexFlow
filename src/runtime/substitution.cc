@@ -18,6 +18,7 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/graph.h"
 #include "flexflow/graph_structures.h"
+#include "flexflow/operator.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/conv_2d.h"
@@ -1132,11 +1133,6 @@ OpX *GraphXfer::create_combine(TensorX const &input,
   return part;
 }
 
-/* std::vector<Device> MachineView::get_devices() const { */
-/*   std::vector<Device> devices; */
-
-/* } */
-
 void Graph::print_strategy_computation_graph(
     std::unordered_map<Node, MachineView> const &strategy) const {
   DotFile<Node> dot(std::cout);
@@ -1165,6 +1161,8 @@ void Graph::export_strategy_computation_graph(
       RecordFormatter rf, meta_row, machine_view_row;
       MachineView mv = strategy.at(node);
       std::ostringstream oss;
+
+      // Fetch the meta information
       switch (node.ptr->op_type) {
         case OP_REPARTITION: {
           Repartition *rp = (Repartition *)node.ptr;
@@ -1200,11 +1198,12 @@ void Graph::export_strategy_computation_graph(
           }
         }
       }
+
+      // Fetch machine view information
       for (int device_id : mv.device_ids()) {
         machine_view_row << std::to_string(device_id);
       }
-      rf << node.to_string() << std::to_string(node.guid) << meta_row
-         << machine_view_row;
+      rf << node.to_string() << meta_row << machine_view_row;
       dot.add_record_node(node, rf);
     }
 
@@ -1600,7 +1599,7 @@ std::vector<GraphXfer *> create_xfers(FFModel *model,
 
 // Experimental: change this mem_config to control run time cost factor
 GraphSearchHelper::GraphSearchHelper(FFModel *model)
-    : model(model), config(model->config), mem_config(0.9) {
+    : model(model), config(model->config), mem_config(1.0) {
   this->logger = std::unique_ptr<RecursiveLogger>(new RecursiveLogger("gs"));
   generate_all_pcg_xfers();
 }
@@ -1864,13 +1863,6 @@ void GraphSearchHelper::graph_optimize_with_memory(
   }
 
   Node sink_node = graph->find_sink_node();
-
-  // Main step to find the optimal graph.
-  // GraphOptimizeResult optimal =
-  //     this->generic_sequence_optimize<GraphOptimizeResult>(
-  //         graph, sink_node, tl::nullopt /*output_shape*/,
-  //         tl::nullopt /*input_shape*/);
-
   GraphOptimizeResultWithMemory optimal =
       this->generic_sequence_optimize_with_memory<
           GraphOptimizeResultWithMemory>(
@@ -1883,11 +1875,21 @@ void GraphSearchHelper::graph_optimize_with_memory(
 
   // Further simplify the "optimal" graph/schedule to have a more efficient
   // graph and more accurate cost.
+  best_graph = std::unique_ptr<Graph>(new Graph(optimal.graph.value()));
   SimplificationSettings settings;
-  settings.fuse_parallel_ops = true;
+  // TODO: temp disable parallel_op fusion to observe the strategy in dot graph.
+  settings.fuse_parallel_ops = false;
   settings.remove_noops = true;
   settings.remove_trailing_parallel_ops = true;
   settings.simplify_parallel_ops = true;
+  best_graph->simplify(settings);
+
+  std::cout << "Dot graph without parallel op fusion:" << std::endl;
+  best_graph->print_strategy_computation_graph(optimal.views);
+  std::cout << std::endl;
+
+  // Simplify to consider parallel op fusion
+  settings.fuse_parallel_ops = true;
   best_graph = std::unique_ptr<Graph>(new Graph(optimal.graph.value()));
   best_graph->simplify(settings);
 
@@ -1904,7 +1906,10 @@ void GraphSearchHelper::graph_optimize_with_memory(
       real_optimal_views[kv.first] = kv.second;
     }
   }
+  std::cout << "Dot graph with parallel op fusion:" << std::endl;
   best_graph->print_strategy_computation_graph(optimal.views);
+  std::cout << std::endl;
+
   optimal_views = real_optimal_views;
 }
 
