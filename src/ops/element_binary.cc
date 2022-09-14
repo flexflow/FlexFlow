@@ -718,7 +718,7 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
 
 ElementBinaryParams ElementBinary::get_params() const {
   ElementBinaryParams params;
-  params.type = op_type;
+  params.type = this->op_type;
   return params;
 }
 

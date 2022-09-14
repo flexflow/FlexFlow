@@ -36,7 +36,6 @@
 #include <functional>
 #include <unistd.h>
 #include <utility>
-#include <memory>
 
 #include "ffconst.h"
 #include "fftype.h"
@@ -313,6 +312,11 @@ typename ToShape<Input>::type get_input_shape(Input const &input) = delete;
 
 template <>
 std::tuple<> get_input_shape(std::tuple<> const &);
+
+template <>
+std::tuple<ParallelTensorShape, ParallelTensorShape, ParallelTensorShape>
+    get_input_shape(
+        std::tuple<ParallelTensor, ParallelTensor, ParallelTensor> const &);
 
 template <>
 ParallelTensorShape get_input_shape(ParallelTensor const &input);
@@ -855,10 +859,11 @@ public:
                          Linear *>,
       std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>,
                          Pool2D *>,
-      std::unordered_map<
-          std::pair<std::tuple<ParallelTensor, ParallelTensor, ParallelTensor>,
-                    MultiHeadAttentionParams>,
-          MultiHeadAttention *>,
+      std::unordered_map<std::pair<std::tuple<ParallelTensorShape,
+                                              ParallelTensorShape,
+                                              ParallelTensorShape>,
+                                   MultiHeadAttentionParams>,
+                         MultiHeadAttention *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,
                          Reshape *>,
       std::unordered_map<std::pair<ParallelTensorShape, SplitParams>, Split *>,
