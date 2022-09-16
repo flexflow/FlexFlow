@@ -46,6 +46,8 @@ using OperatorParameters = mp::variant<Conv2DParams,
                                        CombineParams,
                                        FusedParallelOpParams>;
 
+tl::optional<OperatorParameters> get_op_parameters(Op const *op);
+
 }; // namespace FlexFlow
 
 #endif // _OPERATOR_PARAMS_H

@@ -1,4 +1,8 @@
 #include "flexflow/parallel_ops/parallel_op.h"
+#include "flexflow/parallel_ops/combine.h"
+#include "flexflow/parallel_ops/partition.h"
+#include "flexflow/parallel_ops/reduction.h"
+#include "flexflow/parallel_ops/replicate.h"
 
 namespace FlexFlow {
 
