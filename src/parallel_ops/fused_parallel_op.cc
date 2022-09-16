@@ -40,9 +40,9 @@ using Legion::TaskLauncher;
 
 /* Params */
 bool operator==(ParallelOpInfo const &lhs, ParallelOpInfo const &rhs) {
-  return lhs.op_type == rhs.op_type 
-         && lhs.parallel_degree == rhs.parallel_degree
-         && lhs.parallel_dim == rhs.parallel_dim;
+  return lhs.op_type == rhs.op_type &&
+         lhs.parallel_degree == rhs.parallel_degree &&
+         lhs.parallel_dim == rhs.parallel_dim;
 }
 
 bool operator==(FusedParallelOpParams const &lhs,
@@ -56,7 +56,8 @@ bool FusedParallelOpParams::is_valid(ParallelTensorShape const &input) const {
 
 FusedParallelOpParams FusedParallelOp::get_params() const {
   FusedParallelOpParams params;
-  std::vector<ParallelOpInfo> ops (std::begin(this->parallel_ops), std::end(this->parallel_ops));
+  std::vector<ParallelOpInfo> ops(std::begin(this->parallel_ops),
+                                  std::end(this->parallel_ops));
   params.parallel_ops = ops;
   return params;
 }

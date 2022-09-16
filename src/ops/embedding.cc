@@ -241,7 +241,7 @@ bool operator==(EmbeddingParams const &lhs, EmbeddingParams const &rhs) {
 }
 
 Embedding::Embedding(FFModel &model,
-                     EmbeddingParams &params,
+                     EmbeddingParams const &params,
                      ParallelTensor const input,
                      bool allocate_weights,
                      char const *name)

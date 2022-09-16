@@ -47,7 +47,7 @@ public:
             const ParallelTensor input,
             bool allocate_weights);
   Embedding(FFModel &model,
-            Params &params,
+            Params const &params,
             Input const input,
             bool allocate_weights = false,
             char const *name = nullptr);
