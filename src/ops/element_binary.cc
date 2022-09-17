@@ -21,6 +21,15 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
+bool broadcastable(const Tensor t1, const Tensor t2) {
+  int dim = std::min(t1->num_dims, t2->num_dims);
+  for (int i = 0; i < dim; i++) {
+    if ((t1->dims[i] != t2->dims[i]) && (t1->dims[i] > 1) && (t2->dims[i] > 1))
+      return false;
+  }
+  return true;
+}
+
 Tensor FFModel::binary(OperatorType op,
                        const Tensor in1,
                        const Tensor in2,
@@ -28,10 +37,7 @@ Tensor FFModel::binary(OperatorType op,
                        char const *name) {
   Layer *ele = nullptr;
   DataType dtype;
-  assert(in1->num_dims == in2->num_dims);
-  for (int i = 0; i < in1->num_dims; i++) {
-    assert(in1->dims[i] == in2->dims[i]);
-  }
+  assert(broadcastable(in1, in2));
   if (in1->data_type < in2->data_type) {
     dtype = in2->data_type;
     std::string str(name);

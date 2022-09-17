@@ -41,8 +41,6 @@ void begin_flexflow_task(std::vector<std::string> args) {
 
   register_c_custom_tasks();
 
-  FFMapper::register_sharding_functor(argc, argv);
-
   Runtime::add_registration_callback(FFMapper::update_mappers);
 
   // Start the runtime in background mode
