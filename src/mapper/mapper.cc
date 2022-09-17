@@ -164,7 +164,7 @@ FFMapper::FFMapper(MapperRuntime *rt,
   }
 }
 
-void FFMapper::register_sharding_functor(Runtime* runtime,
+void FFMapper::register_sharding_functor(Runtime *runtime,
                                          Machine machine,
                                          int argc,
                                          char **argv) {
@@ -190,8 +190,7 @@ void FFMapper::register_sharding_functor(Runtime* runtime,
     view.start_device_id = 0;
     FFShardingFunctor *functor =
         new FFShardingFunctor(gpus_per_node, cpus_per_node, num_nodes, view);
-    runtime->register_sharding_functor(FFConfig::DataParallelism_GPU,
-                                       functor);
+    runtime->register_sharding_functor(FFConfig::DataParallelism_GPU, functor);
   }
   {
     MachineView view;
@@ -201,8 +200,7 @@ void FFMapper::register_sharding_functor(Runtime* runtime,
     view.stride[0] = 1;
     FFShardingFunctor *functor =
         new FFShardingFunctor(gpus_per_node, cpus_per_node, num_nodes, view);
-    runtime->register_sharding_functor(FFConfig::DataParallelism_CPU,
-                                       functor);
+    runtime->register_sharding_functor(FFConfig::DataParallelism_CPU, functor);
   }
   assert(gpus_per_node > 0);
   assert(cpus_per_node > 0);
