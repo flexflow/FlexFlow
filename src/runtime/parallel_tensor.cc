@@ -234,6 +234,10 @@ T *ParallelTensorBase::get_raw_ptr(FFConfig &config) {
     TensorAccessorW<T, 4> acc(
         physical_region, region_req, FID_DATA, ctx, runtime, true);
     raw_ptr = (T *)acc.ptr;
+  } else if (num_dims == 5) {
+    TensorAccessorW<T, 5> acc(
+        physical_region, region_req, FID_DATA, ctx, runtime, true);
+    raw_ptr = (T *)acc.ptr;
   } else {
     printf("wrong num_dims %d", num_dims);
     assert(0);
@@ -681,7 +685,7 @@ bool ParallelTensorBase::get_tensor(FFModel const *ff,
   // TODO: check data type matches
   size_t volume = 1;
   for (int i = 0; i < num_dims; i++) {
-    volume = volume * dims[i].size;
+    volume = volume * dims[i].size / dims[i].degree;
   }
   RegionRequirement req(
       weight_lr, READ_ONLY, EXCLUSIVE, get_gradients ? region_grad : region);

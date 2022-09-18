@@ -51,7 +51,7 @@ def top_level_task():
         image = x_train[i, :, :, :]
         image = image.transpose(1, 2, 0)
         pil_image = Image.fromarray(image)
-        pil_image = pil_image.resize((229, 229), Image.NEAREST)
+        pil_image = pil_image.resize((229, 229), Image.Resampling.NEAREST)
         image = np.array(pil_image, dtype=np.float32)
         image = image.transpose(2, 0, 1)
         full_input_np[i, :, :, :] = image
