@@ -786,7 +786,7 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel &ff, int task_id) {
 #if 1
   {
     Domain domain =
-        runtime->get_index_space_domain(ctx, full_input->parallel_is);
+        runtime->get_index_space_domain(ctx, batch_input->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
     for (Domain::DomainPointIterator it(domain); it; it++) {
@@ -799,13 +799,13 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel &ff, int task_id) {
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(task_id,
-                           full_input->parallel_is,
+                           batch_input->parallel_is,
                            TaskArgument(NULL, 0),
                            argmap,
                            Predicate::TRUE_PRED,
                            false /*must*/,
                            0 /*mapper_id*/,
-                           full_input->machine_view.hash());
+                           batch_input->machine_view.hash());
     launcher.add_region_requirement(RegionRequirement(full_input->region,
                                                       0 /*projection id*/,
                                                       READ_ONLY,

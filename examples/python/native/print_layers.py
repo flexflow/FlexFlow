@@ -29,13 +29,13 @@ def top_level_task():
 
   # ffmodel.init_layers()
 
-  label.inline_map(ffconfig)
-  label_array = label.get_array(ffconfig)
+  label.inline_map(ffmodel, ffconfig)
+  label_array = label.get_array(ffmodel, ffconfig)
   label_array *= 0
   label_array += 1
   print(label_array.shape)
   print(label_array)
-  label.inline_unmap(ffconfig)
+  label.inline_unmap(ffmodel, ffconfig)
 
   #weight of conv2d
   # t3 = ffmodel.get_tensor_by_id(0)
@@ -91,20 +91,20 @@ def top_level_task():
   dense1 = ffmodel.get_layer_by_id(1)
 
   dbias_tensor = dense1.get_bias_tensor()
-  dbias_tensor.inline_map(ffconfig)
-  dbias = dbias_tensor.get_array(ffconfig)
+  dbias_tensor.inline_map(ffmodel, ffconfig)
+  dbias = dbias_tensor.get_array(ffmodel, ffconfig)
   dbias *= 0.0
   dbias += 2.1
   print(dbias.shape)
   print(dbias)
-  dbias_tensor.inline_unmap(ffconfig)
+  dbias_tensor.inline_unmap(ffmodel, ffconfig)
 
   np_array = dbias_tensor.get_weights(ffmodel)
   print(np_array)
 
   dweight_tensor = dense1.get_weight_tensor()
-  dweight_tensor.inline_map(ffconfig)
-  dweight = dweight_tensor.get_array(ffconfig)
+  dweight_tensor.inline_map(ffmodel, ffconfig)
+  dweight = dweight_tensor.get_array(ffmodel, ffconfig)
   #dweight *= 0.0
   #dweight += 2.2
   ct = 0.0
@@ -115,7 +115,7 @@ def top_level_task():
   # print(dweight.shape)
   # print(dweight.strides)
   # print(dweight)
-  dweight_tensor.inline_unmap(ffconfig)
+  dweight_tensor.inline_unmap(ffmodel, ffconfig)
 
   # ffmodel.print_layers(0)
 

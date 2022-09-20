@@ -399,11 +399,11 @@ class BaseModel(object):
           for callback in callbacks:
             callback.on_batch_begin(iter)
 
+        self._ffconfig.begin_trace(self.__tracing_id)
         for dataloader in self._input_dataloaders:
           dataloader.next_batch(self._ffmodel)
         self._label_dataloader.next_batch(self._ffmodel)
 
-        self._ffconfig.begin_trace(self.__tracing_id)
         self._ffmodel.forward()
         # for layer in self._layers:
         #   layer.ffhandle.forward(self._ffmodel)

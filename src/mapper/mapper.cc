@@ -164,15 +164,14 @@ FFMapper::FFMapper(MapperRuntime *rt,
   }
 }
 
-void FFMapper::register_sharding_functor(int argc, char **argv) {
+void FFMapper::register_sharding_functor(Runtime *runtime,
+                                         Machine machine,
+                                         int argc,
+                                         char **argv) {
   // std::string strategyFile = "";
-  int gpus_per_node = 0, cpus_per_node = 1, num_nodes = 1;
+  int gpus_per_node = 0, cpus_per_node = 1;
+  int num_nodes = machine.get_address_space_count();
   for (int i = 1; i < argc; i++) {
-    // if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i],
-    // "--import-strategy"))) {
-    //   strategyFile = std::string(argv[++i]);
-    //   continue;
-    // }
     if (!strcmp(argv[i], "-ll:gpu")) {
       gpus_per_node = atoi(argv[++i]);
       continue;
@@ -181,14 +180,7 @@ void FFMapper::register_sharding_functor(int argc, char **argv) {
       cpus_per_node = atoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "--nodes")) {
-      num_nodes = atoi(argv[++i]);
-      continue;
-    }
   }
-  // if (strategyFile != "") {
-  //   load_strategies_from_file(strategyFile, all_strategies);
-  // }
   {
     MachineView view;
     view.device_type = MachineView::GPU;
@@ -198,8 +190,7 @@ void FFMapper::register_sharding_functor(int argc, char **argv) {
     view.start_device_id = 0;
     FFShardingFunctor *functor =
         new FFShardingFunctor(gpus_per_node, cpus_per_node, num_nodes, view);
-    Runtime::preregister_sharding_functor(FFConfig::DataParallelism_GPU,
-                                          functor);
+    runtime->register_sharding_functor(FFConfig::DataParallelism_GPU, functor);
   }
   {
     MachineView view;
@@ -209,8 +200,7 @@ void FFMapper::register_sharding_functor(int argc, char **argv) {
     view.stride[0] = 1;
     FFShardingFunctor *functor =
         new FFShardingFunctor(gpus_per_node, cpus_per_node, num_nodes, view);
-    Runtime::preregister_sharding_functor(FFConfig::DataParallelism_CPU,
-                                          functor);
+    runtime->register_sharding_functor(FFConfig::DataParallelism_CPU, functor);
   }
   assert(gpus_per_node > 0);
   assert(cpus_per_node > 0);
@@ -225,7 +215,7 @@ void FFMapper::register_sharding_functor(int argc, char **argv) {
         view.start_device_id = i;
         FFShardingFunctor *functor = new FFShardingFunctor(
             gpus_per_node, cpus_per_node, num_nodes, view);
-        Runtime::preregister_sharding_functor(view.hash(), functor);
+        runtime->register_sharding_functor(view.hash(), functor);
       }
     } else {
       // Registering views with different start_device_id;
@@ -233,7 +223,7 @@ void FFMapper::register_sharding_functor(int argc, char **argv) {
         view.start_device_id = i;
         FFShardingFunctor *functor = new FFShardingFunctor(
             gpus_per_node, cpus_per_node, num_nodes, view);
-        Runtime::preregister_sharding_functor(view.hash(), functor);
+        runtime->register_sharding_functor(view.hash(), functor);
       }
     }
   }
@@ -1515,7 +1505,10 @@ void FFMapper::update_mappers(Machine machine,
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
   int argc = command_args.argc;
-  bool enable_control_replication = false;
+
+  FFMapper::register_sharding_functor(runtime, machine, argc, argv);
+
+  bool enable_control_replication = true;
   bool log_instance_creation = false;
   for (int i = 1; i < argc; i++) {
     // if ((!strcmp(argv[i], "--import")) || (!strcmp(argv[i],
@@ -1523,8 +1516,8 @@ void FFMapper::update_mappers(Machine machine,
     //   strategyFile = std::string(argv[++i]);
     //   continue;
     // }
-    if (!strcmp(argv[i], "--control-replication")) {
-      enable_control_replication = true;
+    if (!strcmp(argv[i], "--disable-control-replication")) {
+      enable_control_replication = false;
       continue;
     }
     if (!strcmp(argv[i], "--log-instance-creation")) {

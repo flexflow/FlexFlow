@@ -548,14 +548,14 @@ class Tensor(object):
     self.mapped = True
     assert self.num_dims > 0, "check dims"
 
-  def inline_unmap(self, ffconfig):
+  def inline_unmap(self, ffmodel, ffconfig):
     assert self.mapped == True, "Tensor is not inline mapped."
-    ffc.flexflow_tensor_inline_unmap(self.handle, ffconfig.handle);
+    ffc.flexflow_tensor_inline_unmap(self.handle, ffmodel.handle, ffconfig.handle);
     self.mapped = False
 
-  def get_array(self, ffconfig):
+  def get_array(self, ffmodel, ffconfig):
     assert self.mapped == True, "Tensor is not mapped."
-    raw_ptr = self.__get_raw_ptr(ffconfig, self.data_type)
+    raw_ptr = self.__get_raw_ptr(ffmodel, ffconfig, self.data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     fflogger.debug("raw_ptr: %s, %d" %( str(raw_ptr), raw_ptr_int))
     strides = None
@@ -568,9 +568,9 @@ class Tensor(object):
     # print("stride", array.__array_interface__['strides'])
     return array
 
-  def get_flat_array(self, ffconfig):
+  def get_flat_array(self, ffmodel, ffconfig):
     assert self.mapped == True, "Tensor is not mapped."
-    raw_ptr = self.__get_raw_ptr(ffconfig, self.data_type)
+    raw_ptr = self.__get_raw_ptr(ffmodel, ffconfig, self.data_type)
     raw_ptr_int = int(ffi.cast("uintptr_t", raw_ptr))
     fflogger.debug("raw_ptr: %s, %d" %( str(raw_ptr), raw_ptr_int))
     strides = None
@@ -672,12 +672,12 @@ class Tensor(object):
     assert ret_val == True
     return np_array
 
-  def __get_raw_ptr(self, ffconfig, data_type):
+  def __get_raw_ptr(self, ffmodel, ffconfig, data_type):
     assert data_type == self.data_type, "Tensor check data type"
     if (data_type == DataType.DT_FLOAT):
-      return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, ffconfig.handle)
+      return ffc.flexflow_tensor_get_raw_ptr_float(self.handle, ffmodel.handle, ffconfig.handle)
     elif (data_type == DataType.DT_INT32):
-      return ffc.flexflow_tensor_get_raw_ptr_int32(self.handle, ffconfig.handle)
+      return ffc.flexflow_tensor_get_raw_ptr_int32(self.handle, ffmodel.handle, ffconfig.handle)
     else:
       assert 0, "unknown data type"
 
@@ -1864,9 +1864,9 @@ class FFModel(object):
       self.reset_metrics()
       iterations = num_samples / batch_size
       for iter in range(0, int(iterations)):
+        self._ffconfig.begin_trace(self._tracing_id)
         for d in dataloaders:
           d.next_batch(self)
-        self._ffconfig.begin_trace(self._tracing_id)
         self.forward()
         self.zero_gradients()
         self.backward()
