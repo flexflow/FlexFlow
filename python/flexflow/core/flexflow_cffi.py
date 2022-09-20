@@ -784,7 +784,7 @@ class Parameter(Tensor):
 class FFModel(object):
   """
   """
-  __slots__ = ['handle', '_handle', '_layers', '_nb_layers', '_ffconfig', '_tracing_id', 'initializers']
+  __slots__ = ['handle', '_handle', '_layers', '_nb_layers', '_ffconfig', '_tracing_id', 'initializers', 'attr_tensors']
   def __init__(self, ffconfig):
     """Constructor of FFModel.
            
@@ -802,6 +802,7 @@ class FFModel(object):
     self._tracing_id = ff_tracing_id
     ff_tracing_id += 1
     self.initializers = {}
+    self.attr_tensors = {}
 
   def get_layers(self):
     return self._layers
@@ -1824,6 +1825,8 @@ class FFModel(object):
       comp_mode = CompMode.TRAINING
     c_comp_mode = enum_to_int(CompMode, comp_mode)
     ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics), c_comp_mode)
+    for (ff_tensor, np_tensor) in self.attr_tensors:
+      ff_tensor.set_tensor(self, np_tensor)
     print("Compiled ffmodel!")
 
   def fit(self, x=None, y=None, batch_size=None, epochs=1):
