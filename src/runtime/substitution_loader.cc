@@ -1,6 +1,7 @@
 #include "flexflow/substitution_loader.h"
 #include <cassert>
 #include <functional>
+#include <sstream>
 
 using json = nlohmann::json;
 
