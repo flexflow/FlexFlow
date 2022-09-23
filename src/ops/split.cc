@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/split.h"
+#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -33,6 +34,21 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
+
+bool operator==(SplitParams const &lhs, SplitParams const &rhs) {
+  return lhs.splits == rhs.splits && lhs.legion_axis == rhs.legion_axis;
+}
+
+bool SplitParams::is_valid(ParallelTensorShape const &input) const {
+  return input.is_valid();
+}
+
+SplitParams Split::get_params() const {
+  SplitParams params;
+  params.splits = this->splits;
+  params.legion_axis = this->legion_axis;
+  return params;
+}
 
 void FFModel::split(const Tensor input,
                     Tensor *outputs,
@@ -80,16 +96,6 @@ Op *Split::create_operator_from_layer(
   return new Split(model, inputs[0], splits, legion_axis, layer->name);
 }
 
-size_t Split::get_params_hash() const {
-  size_t hash = 0;
-  for (int i = 0; i < this->numInputs; i++) {
-    hash_combine(hash, this->inputs[i]->get_owner_independent_hash());
-  }
-  hash_combine(hash, this->legion_axis);
-
-  return hash;
-}
-
 Split::Split(FFModel &model,
              const ParallelTensor input,
              std::vector<int> const &splits,
@@ -102,7 +108,7 @@ Split::Split(FFModel &model,
          0 /*weights*/,
          splits.size() /*outputs*/,
          input),
-      legion_axis(_legion_axis) {
+      legion_axis(_legion_axis), splits(splits) {
   numOutputs = splits.size();
   // Note that we use the Legion dim ordering
   assert(legion_axis >= 0);
@@ -124,6 +130,12 @@ Split::Split(FFModel &model,
   // Check split sizes
   assert(split_size == input->dims[legion_axis].size);
 }
+
+Split::Split(FFModel &model,
+             SplitParams const &params,
+             const ParallelTensor input,
+             char const *name)
+    : Split(model, input, params.splits, params.legion_axis, name) {}
 
 void Split::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -372,26 +384,17 @@ bool Split::measure_operator_cost(Simulator *sim,
   return true;
 }
 
-Node FFModel::get_or_create_split_node(const ParallelTensor input,
-                                       std::vector<int> const &splits,
-                                       int legion_axis) {
-  size_t hash = input->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(legion_axis);
-  hash = hash * 31 + std::hash<int>()((int)splits.size());
-  for (size_t i = 0; i < splits.size(); i++)
-    hash = hash * 31 + splits[i];
-  auto const &it = cached_split_ops.find(hash);
-  Split *split = nullptr;
-  if (it != cached_split_ops.end()) {
-    split = it->second;
-  } else {
-    split = new Split(*this, input, splits, legion_axis, NULL);
-    cached_split_ops[hash] = split;
-  }
-  Node ret;
-  ret.guid = node_global_guid++;
-  ret.ptr = split;
-  return ret;
-}
-
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::SplitParams>::operator()(
+    FlexFlow::SplitParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.splits.size());
+  for (int n : params.splits) {
+    hash_combine(key, n);
+  }
+  hash_combine(key, params.legion_axis);
+  return key;
+}
+}; // namespace std

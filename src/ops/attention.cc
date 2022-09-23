@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/attention.h"
+#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -35,6 +36,17 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+bool MultiHeadAttentionParams::is_valid(
+    std::tuple<ParallelTensorShape,
+               ParallelTensorShape,
+               ParallelTensorShape> const &input) const {
+  bool is_valid = true;
+  is_valid &= std::get<0>(input).is_valid();
+  is_valid &= std::get<1>(input).is_valid();
+  is_valid &= std::get<2>(input).is_valid();
+  return is_valid;
+}
 
 Tensor FFModel::multihead_attention(const Tensor query,
                                     const Tensor key,
@@ -134,23 +146,6 @@ Op *MultiHeadAttention::create_operator_from_layer(
                                 add_zero_attn,
                                 false /*allocate_weights*/,
                                 layer->name);
-}
-
-size_t MultiHeadAttention::get_params_hash() const {
-  size_t hash0 = inputs[0]->get_owner_independent_hash();
-  size_t hash1 = inputs[1]->get_owner_independent_hash();
-  size_t hash2 = inputs[2]->get_owner_independent_hash();
-  hash_combine(hash0, hash1);
-  hash_combine(hash0, hash2);
-  hash_combine(hash0, this->num_heads);
-  hash_combine(hash0, this->bias);
-  hash_combine(hash0, this->add_bias_kv);
-  hash_combine(hash0, this->add_zero_attn);
-  hash_combine(hash0, this->qProjSize);
-  hash_combine(hash0, this->kProjSize);
-  hash_combine(hash0, this->vProjSize);
-  hash_combine(hash0, this->oProjSize);
-  return hash0;
 }
 
 MultiHeadAttention::MultiHeadAttention(FFModel &model,
@@ -348,6 +343,28 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
                          other.add_zero_attn,
                          allocate_weights,
                          other.name) {}
+
+MultiHeadAttention::MultiHeadAttention(
+    FFModel &model,
+    MultiHeadAttentionParams const &params,
+    std::tuple<ParallelTensor, ParallelTensor, ParallelTensor> const &inputs,
+    bool allocate_weights,
+    char const *name)
+    : MultiHeadAttention(model,
+                         params.layer_guid,
+                         std::get<0>(inputs),
+                         std::get<1>(inputs),
+                         std::get<2>(inputs),
+                         params.embed_dim,
+                         params.num_heads,
+                         params.kdim,
+                         params.vdim,
+                         params.dropout,
+                         params.bias,
+                         params.add_bias_kv,
+                         params.add_zero_attn,
+                         allocate_weights,
+                         name) {}
 
 void MultiHeadAttention::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -856,56 +873,44 @@ bool MultiHeadAttention::measure_operator_cost(
 
 using PCG::Node;
 
-Node FFModel::get_or_create_multihead_attn_node(LayerID const &layer_guid,
-                                                const ParallelTensor query,
-                                                const ParallelTensor key,
-                                                const ParallelTensor value,
-                                                int embed_dim,
-                                                int num_heads,
-                                                int kdim,
-                                                int vdim,
-                                                float dropout,
-                                                bool bias,
-                                                bool add_bias_kv,
-                                                bool add_zero_attn) {
-  size_t hash = 0;
-  hash_combine(hash, layer_guid.id);
-  hash_combine(hash, query->get_owner_independent_hash());
-  hash_combine(hash, key->get_owner_independent_hash());
-  hash_combine(hash, value->get_owner_independent_hash());
-  hash_combine(hash, std::hash<int>()(embed_dim));
-  hash_combine(hash, std::hash<int>()(num_heads));
-  hash_combine(hash, std::hash<int>()(kdim));
-  hash_combine(hash, std::hash<int>()(vdim));
-  hash_combine(hash, std::hash<int>()((int)bias));
-  hash_combine(hash, std::hash<int>()((int)add_bias_kv));
-  hash_combine(hash, std::hash<int>()((int)add_zero_attn));
-  auto const &it = cached_multihead_attn_ops.find(hash);
-  MultiHeadAttention *attn = nullptr;
-  if (it != cached_multihead_attn_ops.end()) {
-    attn = it->second;
-  } else {
-    attn = new MultiHeadAttention(*this,
-                                  layer_guid,
-                                  query,
-                                  key,
-                                  value,
-                                  embed_dim,
-                                  num_heads,
-                                  kdim,
-                                  vdim,
-                                  dropout,
-                                  bias,
-                                  add_bias_kv,
-                                  add_zero_attn,
-                                  false /*create_weights*/,
-                                  nullptr);
-    cached_multihead_attn_ops[hash] = attn;
-  }
-  Node ret;
-  ret.guid = node_global_guid++;
-  ret.ptr = attn;
-  return ret;
+bool operator==(MultiHeadAttentionParams const &lhs,
+                MultiHeadAttentionParams const &rhs) {
+  return lhs.layer_guid == rhs.layer_guid && lhs.embed_dim == rhs.embed_dim &&
+         lhs.num_heads == rhs.num_heads && lhs.kdim == rhs.kdim &&
+         lhs.vdim == rhs.vdim && lhs.dropout == rhs.dropout &&
+         lhs.bias == rhs.bias && lhs.add_bias_kv == rhs.add_bias_kv &&
+         lhs.add_zero_attn == rhs.add_zero_attn;
+}
+
+MultiHeadAttentionParams MultiHeadAttention::get_params() const {
+  MultiHeadAttentionParams params;
+  params.layer_guid = this->layer_guid;
+  params.embed_dim = this->oProjSize;
+  params.num_heads = this->num_heads;
+  params.kdim = this->kProjSize;
+  params.vdim = this->vProjSize;
+  params.dropout = this->dropout;
+  params.bias = this->bias;
+  params.add_bias_kv = this->add_bias_kv;
+  params.add_zero_attn = this->add_zero_attn;
+  return params;
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::MultiHeadAttentionParams>::operator()(
+    FlexFlow::MultiHeadAttentionParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.layer_guid.id);
+  hash_combine(key, params.embed_dim);
+  hash_combine(key, params.num_heads);
+  hash_combine(key, params.kdim);
+  hash_combine(key, params.vdim);
+  hash_combine(key, params.dropout);
+  hash_combine(key, params.bias);
+  hash_combine(key, params.add_bias_kv);
+  hash_combine(key, params.add_zero_attn);
+  return key;
+}
+}; // namespace std

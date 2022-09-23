@@ -7,18 +7,9 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
+#include "flexflow/ops/element_unary_params.h"
 
 namespace FlexFlow {
-
-struct ElementUnaryParams {
-  OperatorType op_type;
-  bool inplace;
-  float scalar;
-
-  bool is_valid(ParallelTensorShape const &) const;
-};
-
-bool operator==(ElementUnaryParams const &, ElementUnaryParams const &);
 
 class ElementUnaryMeta : public OpMeta {
 public:
@@ -49,7 +40,7 @@ public:
                float scalar);
   ElementUnary(FFModel &model,
                Params const &params,
-               const Input x,
+               Input const x,
                char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -142,12 +133,5 @@ public:
 };
 
 }; // namespace FlexFlow
-
-namespace std {
-template <>
-struct hash<FlexFlow::ElementUnaryParams> {
-  size_t operator()(FlexFlow::ElementUnaryParams const &) const;
-};
-} // namespace std
 
 #endif // _ELEMENT_UNARY_H

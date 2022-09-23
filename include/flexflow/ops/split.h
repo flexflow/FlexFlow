@@ -1,17 +1,29 @@
 #ifndef _FLEXFLOW_SPLIT_H
 #define _FLEXFLOW_SPLIT_H
 
-#include "flexflow/model.h"
+#include "flexflow/device.h"
+#include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/ops/split_params.h"
 
 namespace FlexFlow {
 
 class Split : public Op {
 public:
+  using Params = SplitParams;
+  using Input = ParallelTensor;
   Split(FFModel &model,
         const ParallelTensor input,
         std::vector<int> const &split,
         int legion_axis,
         char const *name);
+  Split(FFModel &model,
+        Params const &params,
+        const Input input,
+        char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -65,10 +77,11 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
-  size_t get_params_hash() const override;
+  Params get_params() const;
 
 public:
   int legion_axis;
+  std::vector<int> splits;
 };
 
 }; // namespace FlexFlow
