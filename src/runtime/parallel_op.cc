@@ -1,4 +1,8 @@
 #include "flexflow/parallel_ops/parallel_op.h"
+#include "flexflow/parallel_ops/combine.h"
+#include "flexflow/parallel_ops/partition.h"
+#include "flexflow/parallel_ops/reduction.h"
+#include "flexflow/parallel_ops/replicate.h"
 
 namespace FlexFlow {
 
@@ -62,17 +66,17 @@ Node FFModel::get_or_create_parallel_op_node(
 
   switch (op_type) {
     case OP_COMBINE:
-      return this->get_or_create_combine_node(
-          input, parallel_dim, parallel_degree);
+      return this->get_or_create_node<Combine>(input,
+                                               {parallel_dim, parallel_degree});
     case OP_REPARTITION:
-      return this->get_or_create_repartition_node(
-          input, parallel_dim, parallel_degree);
+      return this->get_or_create_node<Repartition>(
+          input, {parallel_dim, parallel_degree});
     case OP_REPLICATE:
-      return this->get_or_create_replicate_node(
-          input, parallel_dim, parallel_degree);
+      return this->get_or_create_node<Replicate>(
+          input, {parallel_dim, parallel_degree});
     case OP_REDUCTION:
-      return this->get_or_create_reduction_node(
-          input, parallel_dim, parallel_degree);
+      return this->get_or_create_node<Reduction>(
+          input, {parallel_dim, parallel_degree});
     default:
       assert(false && "Unsupported parallel op");
   }

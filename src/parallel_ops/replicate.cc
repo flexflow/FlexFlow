@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/parallel_ops/replicate.h"
+#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -36,6 +37,23 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+/* Params */
+bool operator==(ReplicateParams const &lhs, ReplicateParams const &rhs) {
+  return lhs.replicate_legion_dim == rhs.replicate_legion_dim &&
+         lhs.replicate_degree == rhs.replicate_degree;
+}
+
+bool ReplicateParams::is_valid(ParallelTensorShape const &input) const {
+  return input.is_valid();
+}
+
+ReplicateParams Replicate::get_params() const {
+  ReplicateParams params;
+  params.replicate_legion_dim = this->replicate_dim;
+  params.replicate_degree = this->replicate_degree;
+  return params;
+}
 
 ParallelTensor FFModel::replicate(const ParallelTensor input,
                                   int replicate_legion_dim,
@@ -71,6 +89,16 @@ Replicate::Replicate(FFModel &model,
   // inputs[0]->print("Replicate::input");
   // outputs[0]->print("Replicate::output");
 }
+
+Replicate::Replicate(FFModel &model,
+                     ReplicateParams const &params,
+                     ParallelTensor const input,
+                     char const *name)
+    : Replicate(model,
+                input,
+                params.replicate_legion_dim,
+                params.replicate_degree,
+                name) {}
 
 void Replicate::create_input_partition(FFModel &ff) {
   assert(outputs[0]->part != LogicalPartition::NO_PART);
@@ -203,45 +231,6 @@ bool Replicate::append_parallel_op_info(
   return true;
 }
 
-size_t Replicate::get_params_hash() const {
-  size_t hash = this->inputs[0]->get_owner_independent_hash();
-  hash_combine(hash, this->replicate_dim);
-  hash_combine(hash, this->replicate_degree);
-
-  return hash;
-}
-
-using PCG::Node;
-Node FFModel::get_or_create_replicate_node(const ParallelTensor input,
-                                           int replicate_dim,
-                                           int replicate_degree) {
-  // replica degree cannot be larger than workersPerNode
-  if (input->dims[replicate_dim].degree * replicate_degree >
-      config.workersPerNode)
-    return Node::INVALID_NODE;
-  // check that degree is not larger than total available devices
-  int degree = input->get_total_num_parts() * replicate_degree;
-  if (degree > config.workersPerNode * config.numNodes &&
-      (degree > config.cpusPerNode * config.numNodes))
-    return Node::INVALID_NODE;
-  size_t hash = input->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(replicate_dim);
-  hash = hash * 31 + std::hash<int>()(replicate_degree);
-  auto const &it = cached_replicate_ops.find(hash);
-  Replicate *replicate = NULL;
-  if (it != cached_replicate_ops.end()) {
-    replicate = it->second;
-  } else {
-    replicate =
-        new Replicate(*this, input, replicate_dim, replicate_degree, NULL);
-    cached_replicate_ops[hash] = replicate;
-  }
-  Node ret;
-  ret.ptr = replicate;
-  ret.guid = node_global_guid++;
-  return ret;
-}
-
 void Replicate::forward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
@@ -293,3 +282,13 @@ void Replicate::backward_task(Task const *task,
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::ReplicateParams>::operator()(
+    FlexFlow::ReplicateParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.replicate_legion_dim);
+  hash_combine(key, params.replicate_degree);
+  return key;
+}
+}; // namespace std

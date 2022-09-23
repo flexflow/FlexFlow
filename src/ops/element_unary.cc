@@ -61,19 +61,6 @@ ElementUnaryParams ElementUnary::get_params() const {
   return params;
 }
 
-using PCG::Node;
-Node FFModel::get_or_create_element_unary_node(const ParallelTensor input,
-                                               OperatorType op,
-                                               bool inplace,
-                                               float scalar) {
-  ElementUnaryParams params;
-  params.op_type = op;
-  params.inplace = inplace;
-  params.scalar = scalar;
-
-  return get_or_create_node<ElementUnary>(input, params);
-}
-
 Tensor FFModel::exp(const Tensor x, char const *name) {
   return this->unary(OP_EXP, x, false /*inplace*/, name);
 }
@@ -144,7 +131,6 @@ Tensor FFModel::pow(const Tensor x,
 }
 
 bool ElementUnaryParams::is_valid(ParallelTensorShape const &input) const {
-  // TODO: more check on the input shape
   return input.is_valid();
 }
 
@@ -618,8 +604,11 @@ Node ElementUnary::deserialize(FFModel &ff,
     dez.deserialize(scalar);
   }
 
-  return ff.get_or_create_element_unary_node(
-      inputs[0], op_type, inplace, scalar);
+  ElementUnaryParams params;
+  params.op_type = op_type;
+  params.inplace = inplace;
+  params.scalar = scalar;
+  return ff.get_or_create_node<ElementUnary>(inputs[0], params);
 }
 
 Op *ElementUnary::materialize(FFModel &ff,

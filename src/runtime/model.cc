@@ -3168,6 +3168,16 @@ std::tuple<> get_input_shape(std::tuple<> const &) {
 }
 
 template <>
+std::tuple<ParallelTensorShape, ParallelTensorShape, ParallelTensorShape>
+    get_input_shape(
+        std::tuple<ParallelTensor, ParallelTensor, ParallelTensor> const
+            &inputs) {
+  return std::make_tuple(std::get<0>(inputs)->get_shape(),
+                         std::get<1>(inputs)->get_shape(),
+                         std::get<2>(inputs)->get_shape());
+}
+
+template <>
 ParallelTensorShape get_input_shape(ParallelTensor const &input) {
   return input->get_shape();
 }

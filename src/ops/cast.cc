@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/cast.h"
+#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -57,32 +58,20 @@ Op *Cast::create_operator_from_layer(
   return new Cast(model, inputs[0], dtype, layer->name);
 }
 
-// size_t Cast::get_params_hash() const {
-//   size_t hash = this->inputs[0]->get_owner_independent_hash();
-//   hash_combine(hash, this->outputs[0].data_type);
-//   return hash;
-// }
+CastParams Cast::get_params() const {
+  CastParams params;
+  params.dtype = this->data_type;
+  return params;
+}
 
-using PCG::Node;
-Node FFModel::get_or_create_cast_node(const ParallelTensor input,
-                                      DataType dtype) {
-  if (input->dims[input->num_dims - 1].degree != 1) {
-    return Node::INVALID_NODE;
-  }
+bool CastParams::is_valid(ParallelTensorShape const &input) const {
+  bool valid = input.is_valid();
+  valid &= (input.dims[input.num_dims - 1].degree == 1);
+  return valid;
+}
 
-  size_t hash = input->get_owner_independent_hash();
-  hash_combine(hash, dtype);
-
-  Cast *cast;
-  auto const &it = this->cached_cast_ops.find(hash);
-  if (it != cached_cast_ops.end()) {
-    cast = it->second;
-  } else {
-    cast = new Cast(*this, input, dtype, NULL);
-    cached_cast_ops[hash] = cast;
-  }
-
-  return this->new_node(cast);
+bool operator==(CastParams const &lhs, CastParams const &rhs) {
+  return lhs.dtype == rhs.dtype;
 }
 
 Cast::Cast(FFModel &model,
@@ -105,6 +94,12 @@ Cast::Cast(FFModel &model,
   outputs[0] =
       model.create_parallel_tensor_legion_ordering(numdim, dims, _dtype, this);
 }
+
+Cast::Cast(FFModel &model,
+           CastParams const &params,
+           ParallelTensor const &input,
+           char const *name)
+    : Cast(model, input, params.dtype, name) {}
 
 void Cast::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -323,3 +318,12 @@ bool Cast::measure_operator_cost(Simulator *sim,
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::CastParams>::operator()(
+    FlexFlow::CastParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.dtype);
+  return key;
+}
+}; // namespace std

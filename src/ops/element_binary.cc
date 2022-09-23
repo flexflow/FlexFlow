@@ -116,9 +116,11 @@ Tensor FFModel::divide(const Tensor in1,
 }
 
 bool ElementBinaryParams::is_valid(
-    std::pair<ParallelTensorShape, ParallelTensorShape> const &) const {
-  // TODO: more check on the input shape
-  return true;
+    std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
+  bool is_valid = true;
+  is_valid &= (input.first.is_valid() & input.second.is_valid());
+  is_valid &= (input.first == input.second);
+  return is_valid;
 }
 
 bool operator==(ElementBinaryParams const &lhs,
@@ -724,19 +726,8 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
 
 ElementBinaryParams ElementBinary::get_params() const {
   ElementBinaryParams params;
-  params.type = op_type;
+  params.type = this->op_type;
   return params;
-}
-
-using PCG::Node;
-Node FFModel::get_or_create_element_binary_node(const ParallelTensor input1,
-                                                const ParallelTensor input2,
-                                                OperatorType op_type) {
-  auto inputs = std::make_pair(input1, input2);
-  ElementBinaryParams params;
-  params.type = op_type;
-
-  return get_or_create_node<ElementBinary>(inputs, params);
 }
 
 }; // namespace FlexFlow

@@ -18,6 +18,7 @@
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/conv_2d.h"
 #include "flexflow/ops/dropout.h"
+#include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
@@ -1911,7 +1912,8 @@ void FFModel::deserialize_graph_optimal_view(
       case OP_CONCAT: {
         int legion_axis;
         dez.deserialize(legion_axis);
-        node = get_or_create_concat_node(num_inputs, inputs, legion_axis);
+        node = get_or_create_node<Concat>(
+            {std::begin(inputs), std::end(inputs)}, {legion_axis});
         break;
       }
       case OP_SPLIT: {
@@ -1925,7 +1927,7 @@ void FFModel::deserialize_graph_optimal_view(
           dez.deserialize(dim_size);
           splits.push_back(dim_size);
         }
-        node = get_or_create_split_node(inputs[0], splits, legion_axis);
+        node = get_or_create_node<Split>(inputs[0], {splits, legion_axis});
         break;
       }
       case OP_EMBEDDING: {
@@ -1938,8 +1940,13 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(num_entries);
         dez.deserialize(out_channels);
         dez.deserialize(aggr);
-        node = get_or_create_embedding_node(
-            layer_guid, inputs[0], num_entries, out_channels, aggr);
+
+        EmbeddingParams params;
+        params.aggr = aggr;
+        params.num_entries = num_entries;
+        params.out_channels = out_channels;
+        params.layer_guid = layer_guid;
+        node = get_or_create_node<Embedding>(inputs[0], params);
         break;
       }
       case OP_EW_ADD:
@@ -1948,7 +1955,8 @@ void FFModel::deserialize_graph_optimal_view(
         assert(num_inputs == 2);
         OperatorType op_type;
         dez.deserialize(op_type);
-        node = get_or_create_element_binary_node(inputs[0], inputs[1], op_type);
+        node = get_or_create_node<ElementBinary>({inputs[0], inputs[1]},
+                                                 {op_type});
         break;
       }
       case OP_CONV2D: {
@@ -2002,25 +2010,26 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(bias);
         dez.deserialize(add_bias_kv);
         dez.deserialize(add_zero_attn);
-        node = get_or_create_multihead_attn_node(layer_guid,
-                                                 inputs[0],
-                                                 inputs[1],
-                                                 inputs[2],
-                                                 embed_dim,
-                                                 num_heads,
-                                                 k_dim,
-                                                 v_dim,
-                                                 dropout,
-                                                 bias,
-                                                 add_bias_kv,
-                                                 add_zero_attn);
+
+        MultiHeadAttentionParams params;
+        params.embed_dim = embed_dim;
+        params.num_heads = num_heads;
+        params.kdim = k_dim;
+        params.vdim = v_dim;
+        params.dropout = dropout;
+        params.bias = bias;
+        params.add_bias_kv = add_bias_kv;
+        params.add_zero_attn = add_zero_attn;
+        params.layer_guid = layer_guid;
+        node = get_or_create_node<MultiHeadAttention>(
+            {inputs[0], inputs[1], inputs[2]}, params);
         break;
       }
       case OP_SOFTMAX: {
         assert(num_inputs == 1);
         int softmax_dim;
         dez.deserialize(softmax_dim);
-        node = get_or_create_softmax_node(inputs[0], softmax_dim);
+        node = get_or_create_node<Softmax>(inputs[0], {softmax_dim});
         break;
       }
       case OP_COMBINE: {
@@ -2028,8 +2037,8 @@ void FFModel::deserialize_graph_optimal_view(
         int combine_dim, combine_degree;
         dez.deserialize(combine_dim);
         dez.deserialize(combine_degree);
-        node =
-            get_or_create_combine_node(inputs[0], combine_dim, combine_degree);
+        node = get_or_create_node<Combine>(inputs[0],
+                                           {combine_dim, combine_degree});
         break;
       }
       case OP_REPARTITION: {
@@ -2037,8 +2046,8 @@ void FFModel::deserialize_graph_optimal_view(
         int repartition_dim, repartition_degree;
         dez.deserialize(repartition_dim);
         dez.deserialize(repartition_degree);
-        node = get_or_create_repartition_node(
-            inputs[0], repartition_dim, repartition_degree);
+        node = get_or_create_node<Repartition>(
+            inputs[0], {repartition_dim, repartition_degree});
         break;
       }
       case OP_REPLICATE: {
@@ -2046,8 +2055,8 @@ void FFModel::deserialize_graph_optimal_view(
         int replicate_dim, replicate_degree;
         dez.deserialize(replicate_dim);
         dez.deserialize(replicate_degree);
-        node = get_or_create_replicate_node(
-            inputs[0], replicate_dim, replicate_degree);
+        node = get_or_create_node<Replicate>(inputs[0],
+                                             {replicate_dim, replicate_degree});
         break;
       }
       case OP_REDUCTION: {
@@ -2055,8 +2064,8 @@ void FFModel::deserialize_graph_optimal_view(
         int reduction_dim, reduction_degree;
         dez.deserialize(reduction_dim);
         dez.deserialize(reduction_degree);
-        node = get_or_create_reduction_node(
-            inputs[0], reduction_dim, reduction_degree);
+        node = get_or_create_node<Reduction>(inputs[0],
+                                             {reduction_dim, reduction_degree});
         break;
       }
       case OP_FUSED_PARALLEL: {
@@ -2069,7 +2078,7 @@ void FFModel::deserialize_graph_optimal_view(
           dez.deserialize(info);
           parallel_ops.push_back(info);
         }
-        node = get_or_create_fused_parallel_node(inputs[0], parallel_ops);
+        node = get_or_create_node<FusedParallelOp>(inputs[0], {parallel_ops});
         break;
       }
       default: {

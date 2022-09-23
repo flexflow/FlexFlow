@@ -1,4 +1,5 @@
 #include "flexflow/ops/flat.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
 
@@ -45,20 +46,20 @@ Op *Flat::create_operator_from_layer(
   return new Flat(model, inputs[0], layer->name);
 }
 
-int output_size(const ParallelTensor input,
-                ParallelDim output_dims[MAX_TENSOR_DIM]) {
-  output_dims[Output::REPLICA].is_replica_dim = true;
-  output_dims[Output::SAMPLE].size = input->dims[Input::SAMPLE].size;
-  output_dims[Output::CHANNEL].size =
-      (input->dims[Input::CHANNEL].size * input->dims[Input::HEIGHT].size *
-       input->dims[Input::WIDTH].size);
+int FlatParams::output_size(ParallelTensorShape const &input,
+                            ParallelDim output_dims[MAX_TENSOR_DIM]) const {
+  output_dims[FlatOutput::REPLICA].is_replica_dim = true;
+  output_dims[FlatOutput::SAMPLE].size = input.dims[FlatInput::SAMPLE].size;
+  output_dims[FlatOutput::CHANNEL].size =
+      (input.dims[FlatInput::CHANNEL].size *
+       input.dims[FlatInput::HEIGHT].size * input.dims[FlatInput::WIDTH].size);
 
-  return Output::NUMDIM;
+  return FlatOutput::NUMDIM;
 }
 
-void solve_dims(const ParallelTensor input,
-                ParallelDim output_dims[MAX_TENSOR_DIM],
-                int *output_ndims) {
+void FlatParams::solve_dims(ParallelTensorShape const &input,
+                            ParallelDim output_dims[MAX_TENSOR_DIM],
+                            int *output_ndims) const {
   assert((output_dims == nullptr) == (output_ndims == nullptr));
 
   std::vector<ParallelDimMappingRecord> mapping;
@@ -66,50 +67,29 @@ void solve_dims(const ParallelTensor input,
 
   std::vector<ParallelDim *> output_dim_sets;
   if (output_dims != nullptr) {
-    *output_ndims = output_size(input, output_dims);
+    *output_ndims = this->output_size(input, output_dims);
     output_dim_sets.push_back(output_dims);
   }
 
-  solve_parallel_dim_mappings(mapping, {input->dims}, {}, output_dim_sets);
+  solve_parallel_dim_mappings(mapping, {input.dims}, {}, output_dim_sets);
 }
 
-bool is_valid(const ParallelTensor input) {
+bool FlatParams::is_valid(ParallelTensorShape const &input) const {
   ParallelTensorShape output_shape;
 
-  solve_dims(input, output_shape.dims, &output_shape.num_dims);
+  this->solve_dims(input, output_shape.dims, &output_shape.num_dims);
 
   bool is_valid = true;
-  is_valid &= input->check_valid();
+  is_valid &= input.is_valid();
   is_valid &= output_shape.is_valid();
-  is_valid &= (input->dims[Input::WIDTH].degree == 1);
-  is_valid &= (input->dims[Input::WIDTH].degree == 1);
+  is_valid &= (input.dims[FlatInput::WIDTH].degree == 1);
 
   return is_valid;
 }
 
-size_t Flat::get_params_hash() const {
-  return this->inputs[0]->get_owner_independent_hash();
-}
-
-using PCG::Node;
-Node FFModel::get_or_create_flat_node(const ParallelTensor input) {
-  if (!is_valid(input)) {
-    return Node::INVALID_NODE;
-  }
-
-  size_t hash = input->get_owner_independent_hash();
-
-  Flat *flat;
-
-  auto const &it = this->cached_flat_ops.find(hash);
-  if (it != cached_flat_ops.end()) {
-    flat = it->second;
-  } else {
-    flat = new Flat(*this, input, NULL);
-    cached_flat_ops[hash] = flat;
-  }
-
-  return this->new_node(flat);
+bool operator==(FlatParams const &, FlatParams const &) {
+  // flat doesn't have params to compare
+  return true;
 }
 
 /*static*/
@@ -117,9 +97,9 @@ void Flat::construct_output_mappings(
     std::vector<ParallelDimMappingRecord> &mappings) {
   Op::construct_output_parallel_dims(
       mappings,
-      {{Input::REPLICA, MappingOperation::PARTITION, Output::REPLICA},
-       {Input::SAMPLE, MappingOperation::PARTITION, Output::SAMPLE},
-       {Input::CHANNEL, MappingOperation::PARTITION, Output::CHANNEL}});
+      {{FlatInput::REPLICA, MappingOperation::PARTITION, FlatOutput::REPLICA},
+       {FlatInput::SAMPLE, MappingOperation::PARTITION, FlatOutput::SAMPLE},
+       {FlatInput::CHANNEL, MappingOperation::PARTITION, FlatOutput::CHANNEL}});
 }
 
 Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
@@ -130,19 +110,26 @@ Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
          0 /*weights*/,
          1 /*outputs*/,
          _input) {
-  assert(_input->num_dims == Input::NUMDIM);
+  assert(_input->num_dims == FlatInput::NUMDIM);
 
   Flat::construct_output_mappings(*this->parallel_dims_mapping);
 
   ParallelDim output_dims[MAX_TENSOR_DIM];
   int output_ndims;
-  solve_dims(this->inputs[0], output_dims, &output_ndims);
+  this->get_params().solve_dims(
+      this->inputs[0]->get_shape(), output_dims, &output_ndims);
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       output_ndims, output_dims, _input->data_type, this);
 
   assert(check_output_input_weight_parallel_dims());
 }
+
+Flat::Flat(FFModel &model,
+           FlatParams const &params,
+           const ParallelTensor input,
+           char const *name)
+    : Flat(model, input, name) {}
 
 void Flat::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -223,14 +210,14 @@ void Flat::forward_task(Task const *task,
                         Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  TensorAccessorR<float, Input::NUMDIM> acc_input(
+  TensorAccessorR<float, FlatInput::NUMDIM> acc_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Output::NUMDIM> acc_output(regions[1],
-                                                    task->regions[1],
-                                                    FID_DATA,
-                                                    ctx,
-                                                    runtime,
-                                                    false /*readOutput*/);
+  TensorAccessorW<float, FlatOutput::NUMDIM> acc_output(regions[1],
+                                                        task->regions[1],
+                                                        FID_DATA,
+                                                        ctx,
+                                                        runtime,
+                                                        false /*readOutput*/);
   assert(acc_input.rect.volume() == acc_output.rect.volume());
 
   Flat::forward_kernel_wrapper(
@@ -276,13 +263,13 @@ void Flat::backward_task(Task const *task,
                          Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  TensorAccessorW<float, Input::NUMDIM> acc_input_grad(regions[0],
-                                                       task->regions[0],
-                                                       FID_DATA,
-                                                       ctx,
-                                                       runtime,
-                                                       true /*readOutput*/);
-  TensorAccessorR<float, Output::NUMDIM> acc_output_grad(
+  TensorAccessorW<float, FlatInput::NUMDIM> acc_input_grad(regions[0],
+                                                           task->regions[0],
+                                                           FID_DATA,
+                                                           ctx,
+                                                           runtime,
+                                                           true /*readOutput*/);
+  TensorAccessorR<float, FlatOutput::NUMDIM> acc_output_grad(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());
 
@@ -374,6 +361,11 @@ bool Flat::measure_operator_cost(Simulator *sim,
   return true;
 }
 
+FlatParams Flat::get_params() const {
+  FlatParams params;
+  return params;
+}
+
 using PCG::Node;
 /*static*/
 Node Flat::deserialize(FFModel &ff,
@@ -381,7 +373,7 @@ Node Flat::deserialize(FFModel &ff,
                        ParallelTensor inputs[],
                        int num_inputs) {
   assert(num_inputs == 1);
-  return ff.get_or_create_flat_node(inputs[0]);
+  return ff.get_or_create_node<Flat>(inputs[0], {});
 }
 
 Op *Flat::materialize(FFModel &ff,
@@ -392,3 +384,11 @@ Op *Flat::materialize(FFModel &ff,
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::FlatParams>::operator()(
+    FlexFlow::FlatParams const &params) const {
+  size_t key = 0;
+  return hash<int>{}(key);
+}
+}; // namespace std

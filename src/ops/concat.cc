@@ -41,9 +41,13 @@ bool operator==(ConcatParams const &lhs, ConcatParams const &rhs) {
   return lhs.axis == rhs.axis;
 }
 
-bool ConcatParams::is_valid(std::vector<ParallelTensorShape> const &) const {
-  // TODO: more check on the input shape
-  return true;
+bool ConcatParams::is_valid(
+    std::vector<ParallelTensorShape> const &input) const {
+  bool valid = true;
+  for (auto p : input) {
+    valid &= p.is_valid();
+  }
+  return valid;
 }
 
 ConcatParams Concat::get_params() const {
@@ -448,20 +452,6 @@ bool Concat::measure_operator_cost(Simulator *sim,
   }
 
   return true;
-}
-
-Node FFModel::get_or_create_concat_node(int num_inputs,
-                                        ParallelTensor const *inputs,
-                                        int legion_axis) {
-  std::vector<ParallelTensor> _inputs;
-  for (int i = 0; i < num_inputs; ++i) {
-    _inputs.push_back(inputs[i]);
-  }
-
-  ConcatParams params;
-  params.axis = legion_axis;
-
-  return this->get_or_create_node<Concat>(_inputs, params);
 }
 
 }; // namespace FlexFlow

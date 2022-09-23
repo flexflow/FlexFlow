@@ -1,26 +1,32 @@
 #ifndef _FLEXFLOW_DROPOUT_H
 #define _FLEXFLOW_DROPOUT_H
 
-#include "flexflow/model.h"
+#include "flexflow/device.h"
+#include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/ops/dropout_params.h"
 
 namespace FlexFlow {
 
 class DropoutMeta;
 
-struct DropoutParams {
-  float rate;
-  unsigned long long seed;
-  size_t get_hash(const ParallelTensor input) const;
-};
-
 class Dropout : public Op {
 public:
+  using Params = DropoutParams;
+  using Input = ParallelTensor;
   Dropout(FFModel &model,
           const ParallelTensor input,
           float rate,
           unsigned long long seed,
           char const *name);
   Dropout(FFModel &model, Dropout const &other, const ParallelTensor input);
+  Dropout(FFModel &model,
+          Params const &params,
+          Input const input,
+          char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -68,9 +74,7 @@ public:
                                ParallelTensor inputs[],
                                int num_inputs);
 
-  size_t get_params_hash() const override;
-
-  DropoutParams get_params() const;
+  Params get_params() const;
 
 public:
   float rate;
