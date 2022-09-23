@@ -806,9 +806,9 @@ int Op::get_output_to_weight_dim_mapping(const ParallelTensor output,
 }
 
 bool Op::check_output_input_weight_parallel_dims(bool allocate_weights) const {
-  if (!allocate_weights) {
-    assert(this->numWeights == 0);
-  }
+  //if (!allocate_weights) {
+  //  assert(this->numWeights == 0);
+  //}
 
   for (ParallelDimMappingRecord const &record : *parallel_dims_mapping) {
     assert(record.input_idx < this->numInputs);
@@ -2461,6 +2461,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_BATCHMATMUL: {
+      Op *op = BatchMatmul::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_CONCAT: {
       Op *op = Concat::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -2494,6 +2499,7 @@ Op *FFModel::create_operator_from_layer(
     case OP_SCALAR_ADD:
     case OP_SCALAR_SUB:
     case OP_SCALAR_TRUE_DIV:
+    case OP_POW:
     case OP_RELU:
     case OP_SIGMOID:
     case OP_TANH:
@@ -2506,6 +2512,11 @@ Op *FFModel::create_operator_from_layer(
     }
     case OP_FLAT: {
       Op *op = Flat::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_LAYERNORM: {
+      Op *op = LayerNorm::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -2531,6 +2542,11 @@ Op *FFModel::create_operator_from_layer(
     }
     case OP_SPLIT: {
       Op *op = Split::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_TRANSPOSE: {
+      Op *op = Transpose::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }

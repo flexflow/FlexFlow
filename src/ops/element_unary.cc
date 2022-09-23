@@ -168,7 +168,7 @@ ElementUnary::ElementUnary(FFModel &model,
     dims[i] = x->dims[i];
   }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      numdim, dims, x->data_type, this);
+      numdim, dims, DT_FLOAT, this);
 }
 
 ElementUnary::ElementUnary(FFModel &model,

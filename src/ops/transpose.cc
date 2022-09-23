@@ -78,16 +78,22 @@ Transpose::Transpose(FFModel &model,
          0 /*weights*/,
          1 /*outputs*/,
          input) {
-  assert(_perm.size() == input->num_dims);
+  int num_dims = input->num_dims;
+  // Assume only the leading dims are replica_dims
+  while (num_dims > 0 && input->dims[num_dims-1].is_replica_dim)
+    num_dims -= 1;
+  assert(_perm.size() == num_dims);
   // Use Legion indexing to store perm
-  for (int i = 0; i < input->num_dims; i++)
-    perm[i] = input->num_dims - 1 - _perm[input->num_dims - 1 - i];
+  for (int i = 0; i < num_dims; i++)
+    perm[i] = num_dims - 1 - _perm[num_dims - 1 - i];
   ParallelDim dims[MAX_TENSOR_DIM];
-  int numdim = input->num_dims;
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < num_dims; i++)
     dims[i] = input->dims[perm[i]];
+  // The replica dims remain the same
+  for (int i = num_dims; i < input->num_dims; i++)
+    dims[i] = input->dims[i];
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      numdim, dims, input->data_type, this);
+      input->num_dims, dims, input->data_type, this);
 }
 
 void Transpose::init(FFModel const &ff) {

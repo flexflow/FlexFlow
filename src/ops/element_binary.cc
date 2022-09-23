@@ -67,6 +67,8 @@ Tensor FFModel::binary(OperatorType op,
     ele = new Layer(
         this, op, name, 2 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, in1, in2);
   }
+  // Assert type match after broadcast
+  assert(ele->inputs[0]->data_type == ele->inputs[1]->data_type);
   ele->outputs[0] = create_tensor_legion_ordering(
       in1->num_dims, in1->dims, dtype, ele, 0, true /*create_grad*/);
   ele->add_int_property("inplace_a", inplace_a);
