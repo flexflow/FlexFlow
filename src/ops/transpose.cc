@@ -62,7 +62,7 @@ Tensor FFModel::transpose(const Tensor input,
                                input);
   assert(_perm.size() == input->num_dims);
   // Use Legion indexing to store perm
-  std::vector<int>perm;
+  std::vector<int> perm;
   for (int i = 0; i < input->num_dims; i++)
     perm.push_back(input->num_dims - 1 - _perm[input->num_dims - 1 - i]);
   // Assume a single leading replica dim
@@ -106,7 +106,7 @@ Transpose::Transpose(FFModel &model,
          input) {
   int num_dims = input->num_dims;
   // Assume only the leading dims are replica_dims
-  //while (num_dims > 0 && input->dims[num_dims-1].is_replica_dim)
+  // while (num_dims > 0 && input->dims[num_dims-1].is_replica_dim)
   //  num_dims -= 1;
   assert(_perm.size() == num_dims);
   for (int i = 0; i < num_dims; i++)
@@ -371,9 +371,9 @@ void Transpose::serialize(Legion::Serializer &sez) const {
 
 using PCG::Node;
 Node Transpose::deserialize(FFModel &ff,
-                          Legion::Deserializer &dez,
-                          ParallelTensor inputs[],
-                          int num_inputs) {
+                            Legion::Deserializer &dez,
+                            ParallelTensor inputs[],
+                            int num_inputs) {
   assert(num_inputs == 1);
   size_t perm_size;
   std::vector<int> perm;

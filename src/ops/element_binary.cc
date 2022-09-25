@@ -121,7 +121,7 @@ bool ElementBinaryParams::is_valid(
   is_valid &= (input.first.is_valid() & input.second.is_valid());
   if (!is_valid)
     return false;
-  //is_valid &= (input.first == input.second);
+  // is_valid &= (input.first == input.second);
   ParallelTensorShape A = input.first;
   ParallelTensorShape B = input.second;
   int numdim = std::min(A.num_dims, B.num_dims);
@@ -191,7 +191,7 @@ ElementBinary::ElementBinary(
     : ElementBinary(
           model, params.type, inputs.first, inputs.second, inplace_a, name) {}
 
-void ElementBinary::map_output_tensors(FFModel& ff) {
+void ElementBinary::map_output_tensors(FFModel &ff) {
   if (has_inplace_output()) {
     assert(numOutputs == 1);
     assert(outputs[0]->get_volume() == inputs[0]->get_volume());

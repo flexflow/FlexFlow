@@ -193,7 +193,7 @@ void Op::do_inplace_output() {
   assert(false);
 }
 
-void Op::map_output_tensors(FFModel& ff) {
+void Op::map_output_tensors(FFModel &ff) {
   for (int i = 0; i < numOutputs; i++)
     ff.map_tensor(outputs[i], this);
 }
@@ -812,9 +812,9 @@ int Op::get_output_to_weight_dim_mapping(const ParallelTensor output,
 }
 
 bool Op::check_output_input_weight_parallel_dims(bool allocate_weights) const {
-  //if (!allocate_weights) {
-  //  assert(this->numWeights == 0);
-  //}
+  // if (!allocate_weights) {
+  //   assert(this->numWeights == 0);
+  // }
 
   for (ParallelDimMappingRecord const &record : *parallel_dims_mapping) {
     assert(record.input_idx < this->numInputs);
@@ -2706,10 +2706,10 @@ void FFModel::compile(LossType loss_type,
       parameters.push_back(op->weights[i]);
     }
     op->map_output_tensors(*this);
-    //for (int i = 0; i < op->numOutputs; i++) {
-    //  // Output tensor
-    //  map_tensor(op->outputs[i], op);
-    //}
+    // for (int i = 0; i < op->numOutputs; i++) {
+    //   // Output tensor
+    //   map_tensor(op->outputs[i], op);
+    // }
     if (op->is_parallel_op())
       ((ParallelOp *)op)->create_input_partition(*this);
     // op->map_output_tensors(*this);

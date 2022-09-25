@@ -36,7 +36,8 @@ using Legion::TaskLauncher;
 using PCG::Node;
 
 bool operator==(BatchMatmulParams const &lhs, BatchMatmulParams const &rhs) {
-  return lhs.a_seq_length_dim == rhs.a_seq_length_dim && lhs.a_seq_length_dim == rhs.a_seq_length_dim;
+  return lhs.a_seq_length_dim == rhs.a_seq_length_dim &&
+         lhs.a_seq_length_dim == rhs.a_seq_length_dim;
 }
 
 bool BatchMatmulParams::is_valid(
@@ -115,11 +116,17 @@ Op *BatchMatmul::create_operator_from_layer(
                          layer->name);
 }
 
-BatchMatmul::BatchMatmul(FFModel &model,
-                         BatchMatmulParams const &params,
-                         std::pair<ParallelTensor, ParallelTensor> const &inputs,
-                         char const *name)
-    : BatchMatmul(model, inputs.first, inputs.second, params.a_seq_length_dim, params.b_seq_length_dim, name) {}
+BatchMatmul::BatchMatmul(
+    FFModel &model,
+    BatchMatmulParams const &params,
+    std::pair<ParallelTensor, ParallelTensor> const &inputs,
+    char const *name)
+    : BatchMatmul(model,
+                  inputs.first,
+                  inputs.second,
+                  params.a_seq_length_dim,
+                  params.b_seq_length_dim,
+                  name) {}
 
 // return A*B
 BatchMatmul::BatchMatmul(FFModel &model,

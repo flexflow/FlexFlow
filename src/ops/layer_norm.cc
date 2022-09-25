@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/ops/layer_norm.h"
-#include "flexflow/utils/hash_utils.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {
@@ -40,7 +40,8 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 bool operator==(LayerNormParams const &lhs, LayerNormParams const &rhs) {
-  return lhs.layer_guid == rhs.layer_guid && lhs.axes == rhs.axes && lhs.elementwise_affine == rhs.elementwise_affine;
+  return lhs.layer_guid == rhs.layer_guid && lhs.axes == rhs.axes &&
+         lhs.elementwise_affine == rhs.elementwise_affine;
 }
 
 bool LayerNormParams::is_valid(ParallelTensorShape const &input) const {
@@ -149,7 +150,6 @@ LayerNorm::LayerNorm(FFModel &model,
                 allocate_weights,
                 name) {}
 
-
 LayerNorm::LayerNorm(FFModel &model,
                      LayerID const &_layer_guid,
                      const ParallelTensor _input,
@@ -165,8 +165,7 @@ LayerNorm::LayerNorm(FFModel &model,
          _elementwise_affine ? 2 : 0 /*weights*/,
          1 /*outputs*/,
          _input),
-      elementwise_affine(_elementwise_affine), eps(_eps),
-      axes(_axes) {
+      elementwise_affine(_elementwise_affine), eps(_eps), axes(_axes) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -564,7 +563,8 @@ Op *LayerNorm::materialize(FFModel &ff,
                            ParallelTensor inputs[],
                            int num_inputs) const {
   LayerNormParams params = get_params();
-  return new LayerNorm(ff, params, inputs[0], this->name, true/*allocate_weights*/);
+  return new LayerNorm(
+      ff, params, inputs[0], this->name, true /*allocate_weights*/);
 }
 
 }; // namespace FlexFlow
