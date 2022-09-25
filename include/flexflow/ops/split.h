@@ -19,7 +19,7 @@ public:
         const ParallelTensor input,
         std::vector<int> const &split,
         int legion_axis,
-        char const *name);
+        char const *name = nullptr);
   Split(FFModel &model,
         Params const &params,
         const Input input,

@@ -155,6 +155,9 @@ ElementUnary::ElementUnary(FFModel &model,
   }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, DT_FLOAT, this);
+  // Disable inplace if shape mismatch
+  if (outputs[0]->get_shape() != inputs[0]->get_shape())
+    inplace = false;
 }
 
 ElementUnary::ElementUnary(FFModel &model,
@@ -164,8 +167,22 @@ ElementUnary::ElementUnary(FFModel &model,
     : ElementUnary(
           model, params.op_type, input, params.inplace, name, params.scalar) {}
 
+void ElementUnary::map_output_tensors(FFModel &ff) {
+  if (has_inplace_output()) {
+    assert(numOutputs == 1);
+    assert(outputs[0]->get_volume() == inputs[0]->get_volume());
+    outputs[0]->parallel_is = inputs[0]->parallel_is;
+    outputs[0]->region = inputs[0]->region;
+    outputs[0]->part = inputs[0]->part;
+    outputs[0]->region_grad = inputs[0]->region_grad;
+    outputs[0]->part_grad = inputs[0]->part_grad;
+  } else {
+    Op::map_output_tensors(ff);
+  }
+}
+
 bool ElementUnary::can_inplace_output(void) {
-  return true;
+  return outputs[0]->get_shape() == inputs[0]->get_shape();
 }
 
 bool ElementUnary::has_inplace_output(void) {
@@ -203,20 +220,26 @@ void ElementUnary::init(FFModel const &ff) {
                               false /*must*/,
                               0 /*mapper_id*/,
                               outputs[0]->machine_view.hash());
-  init_launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                         0 /*projection id*/,
-                                                         READ_ONLY,
-                                                         EXCLUSIVE,
-                                                         inputs[0]->region));
-  init_launcher.add_field(0, FID_DATA);
-  assert(!inplace);
   if (!inplace) {
+    init_launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                           0 /*projection id*/,
+                                                           READ_ONLY,
+                                                           EXCLUSIVE,
+                                                           inputs[0]->region));
+    init_launcher.add_field(0, FID_DATA);
     init_launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
                                                            0 /*projection id*/,
                                                            WRITE_ONLY,
                                                            EXCLUSIVE,
                                                            outputs[0]->region));
     init_launcher.add_field(1, FID_DATA);
+  } else {
+    init_launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                           0 /*projection id*/,
+                                                           READ_WRITE,
+                                                           EXCLUSIVE,
+                                                           inputs[0]->region));
+    init_launcher.add_field(0, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
@@ -232,8 +255,8 @@ OpMeta *ElementUnary::init_task(Task const *task,
   ElementUnaryMeta *m = new ElementUnaryMeta(handle);
   m->op_type = eu->op_type;
   m->data_type = eu->outputs[0]->data_type;
-  // Current assume input and output have the same data type
-  assert(eu->outputs[0]->data_type == eu->inputs[0]->data_type);
+  // Current assume output is always float
+  assert(eu->outputs[0]->data_type == DT_FLOAT);
   m->profiling = eu->profiling;
   m->inplace = eu->inplace;
   m->scalar = eu->scalar;

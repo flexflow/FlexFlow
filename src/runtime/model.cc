@@ -193,6 +193,11 @@ void Op::do_inplace_output() {
   assert(false);
 }
 
+void Op::map_output_tensors(FFModel& ff) {
+  for (int i = 0; i < numOutputs; i++)
+    ff.map_tensor(outputs[i], this);
+}
+
 tl::optional<RecordFormatter> Op::as_dot() const {
   if (this->numOutputs != 1) {
     return tl::nullopt;
@@ -235,6 +240,7 @@ void Op::zero_grad(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   ArgumentMap argmap;
   ZeroInitMeta meta;
+  meta.op_ptr = this;
   meta.num_regions = numWeights + numOutputs;
   assert(meta.num_regions <= ZeroInitMeta::MAX_NUM_REGIONS);
   IndexSpace parallel_is = IndexSpace::NO_SPACE;
@@ -2608,6 +2614,7 @@ void FFModel::compile(LossType loss_type,
     deserialize_graph_optimal_view(dez, best_graph, optimal_views);
     operators.clear();
     convert_graph_to_operators(best_graph, optimal_views);
+    best_graph->print_dot();
     delete best_graph;
     for (auto const &layer : layers) {
       // map inputs to parallel tensor
@@ -2698,10 +2705,11 @@ void FFModel::compile(LossType loss_type,
       assert(op->weights[i]->region != LogicalRegion::NO_REGION);
       parameters.push_back(op->weights[i]);
     }
-    for (int i = 0; i < op->numOutputs; i++) {
-      // Output tensor
-      map_tensor(op->outputs[i], op);
-    }
+    op->map_output_tensors(*this);
+    //for (int i = 0; i < op->numOutputs; i++) {
+    //  // Output tensor
+    //  map_tensor(op->outputs[i], op);
+    //}
     if (op->is_parallel_op())
       ((ParallelOp *)op)->create_input_partition(*this);
     // op->map_output_tensors(*this);
@@ -3603,6 +3611,8 @@ std::string optype_to_string(OperatorType op_type) {
       return "Exp";
     case OP_ROUND:
       return "Round";
+    case OP_LAYERNORM:
+      return "LayerNorm";
     case OP_LOG:
       return "Log";
     case OP_LOGICAL_NOT:

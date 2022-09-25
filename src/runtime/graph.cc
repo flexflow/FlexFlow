@@ -15,6 +15,7 @@
 #include "flexflow/graph.h"
 #include "flexflow/dominators.h"
 #include "flexflow/ops/attention.h"
+#include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/conv_2d.h"
 #include "flexflow/ops/dropout.h"
@@ -22,12 +23,14 @@
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
+#include "flexflow/ops/transpose.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -1909,6 +1912,10 @@ void FFModel::deserialize_graph_optimal_view(
         node = get_or_create_noop_node(inputs[0]);
         break;
       }
+      case OP_BATCHMATMUL: {
+        node = BatchMatmul::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
       case OP_CONCAT: {
         int legion_axis;
         dez.deserialize(legion_axis);
@@ -1967,23 +1974,14 @@ void FFModel::deserialize_graph_optimal_view(
         node = Dropout::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
-      case OP_POOL2D: {
-        node = Pool2D::deserialize(*this, dez, inputs, num_inputs);
-        break;
-      }
-      case OP_RESHAPE: {
-        node = Reshape::deserialize(*this, dez, inputs, num_inputs);
-        break;
-      }
-      case OP_LINEAR: {
-        node = Linear::deserialize(*this, dez, inputs, num_inputs);
-        break;
-      }
       case OP_EXP:
       case OP_SCALAR_MULTIPLY:
+      case OP_SCALAR_ADD:
+      case OP_SCALAR_SUB:
       case OP_RELU:
       case OP_SIGMOID:
       case OP_TANH:
+      case OP_POW:
       case OP_IDENTITY:
       case OP_GELU:
       case OP_ELU: {
@@ -1992,6 +1990,14 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_FLAT: {
         node = Flat::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_LAYERNORM: {
+        node = LayerNorm::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_LINEAR: {
+        node = Linear::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_MULTIHEAD_ATTENTION: {
@@ -2025,11 +2031,23 @@ void FFModel::deserialize_graph_optimal_view(
             {inputs[0], inputs[1], inputs[2]}, params);
         break;
       }
+      case OP_POOL2D: {
+        node = Pool2D::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_RESHAPE: {
+        node = Reshape::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
       case OP_SOFTMAX: {
         assert(num_inputs == 1);
         int softmax_dim;
         dez.deserialize(softmax_dim);
         node = get_or_create_node<Softmax>(inputs[0], {softmax_dim});
+        break;
+      }
+      case OP_TRANSPOSE: {
+        node = Transpose::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_COMBINE: {
@@ -2095,6 +2113,7 @@ void FFModel::deserialize_graph_optimal_view(
       dez.deserialize(safecode);
       assert(safecode == 12345678);
     }
+    assert(node.ptr != nullptr);
     guid_to_nodes[guid] = node;
     for (size_t i = 0; i < num_inputs; i++) {
       inedges[i].dstOp = node;

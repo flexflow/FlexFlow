@@ -245,6 +245,7 @@ class NoOp;
 
 ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
 
+class BatchMatmul;
 class Cast;
 class Concat;
 class Conv2D;
@@ -253,12 +254,14 @@ class ElementBinary;
 class ElementUnary;
 class Embedding;
 class Flat;
+class LayerNorm;
 class Linear;
 class MultiHeadAttention;
 class Pool2D;
 class Reshape;
 class Softmax;
 class Split;
+class Transpose;
 class Combine;
 class Repartition;
 class Reduction;
@@ -819,6 +822,10 @@ public:
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
   std::tuple<
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    BatchMatmulParams>,
+          BatchMatmul *>,
       std::unordered_map<std::pair<ParallelTensorShape, CastParams>, Cast *>,
       std::unordered_map<
           std::pair<std::vector<ParallelTensorShape>, ConcatParams>,
@@ -836,6 +843,7 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, EmbeddingParams>,
                          Embedding *>,
       std::unordered_map<std::pair<ParallelTensorShape, FlatParams>, Flat *>,
+      std::unordered_map<std::pair<ParallelTensorShape, LayerNormParams>, LayerNorm *>,
       std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
                          Linear *>,
       std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>,
@@ -850,6 +858,7 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, SplitParams>, Split *>,
       std::unordered_map<std::pair<ParallelTensorShape, SoftmaxParams>,
                          Softmax *>,
+      std::unordered_map<std::pair<ParallelTensorShape, TransposeParams>, Transpose *>,
       std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
                          Repartition *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReplicateParams>,
@@ -869,7 +878,6 @@ public:
 #endif
 private:
   bool debug;
-  // ParallelTensor label_tensor_with_final_part;//FIXME: to be removed
   std::map<MachineView, Legion::IndexSpace, MachineViewDimCompare> all_task_is;
 
   template <int NDIM>
