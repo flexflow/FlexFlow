@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.1-devel-ubuntu18.04
+FROM nvidia/cuda:11.1.1-devel-ubuntu18.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binutils git zlib1g-dev && \
     rm -rf /var/lib/apt/lists/*
@@ -18,19 +18,16 @@ RUN wget -c https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.s
     /opt/conda/bin/conda clean -ya
 
 RUN /opt/conda/bin/conda install cmake make pillow
-RUN /opt/conda/bin/conda install -c conda-forge protobuf=3.9 numpy keras-preprocessing
+RUN /opt/conda/bin/conda install -c conda-forge numpy keras-preprocessing pybind11
 
 ENV PATH /opt/conda/bin:$PATH
 ENV CUDNN_DIR /usr/local/cuda
 ENV CUDA_DIR /usr/local/cuda
-ENV PROTOBUF_DIR /opt/conda/pkgs/libprotobuf-3.9.2-h8b12597_0
-ENV LD_LIBRARY_PATH $PROTOBUF_DIR/lib:$LD_LIBRARY_PATH
 
 RUN cd /usr && \
     git clone --recursive https://github.com/flexflow/FlexFlow.git
 
 ENV FF_HOME /usr/FlexFlow
-ENV LG_RT_DIR /usr/FlexFlow/legion/runtime
 
 RUN cd /usr/FlexFlow/python && \
     make -j4
