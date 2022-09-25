@@ -8,7 +8,6 @@ namespace FlexFlow {
 
 struct CastParams {
   DataType dtype;
-  bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(CastParams const &, CastParams const &);
 

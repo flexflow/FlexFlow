@@ -156,27 +156,6 @@ Conv2DParams Conv2D::get_params() const {
   return params;
 }
 
-// size_t Conv2DParams::get_hash(const ParallelTensor input) const {
-//   size_t hash = input->get_owner_independent_hash();
-//   hash_combine(hash, this->layer_guid.id);
-//   hash_combine(hash, this->out_channels);
-//   hash_combine(hash, this->kernel_h);
-//   hash_combine(hash, this->kernel_w);
-//   hash_combine(hash, this->stride_h);
-//   hash_combine(hash, this->stride_w);
-//   hash_combine(hash, this->padding_h);
-//   hash_combine(hash, this->padding_w);
-//   hash_combine(hash, this->activation);
-//   hash_combine(hash, this->groups);
-//   hash_combine(hash, this->use_bias);
-
-//   return hash;
-// }
-
-// size_t Conv2D::get_params_hash() const {
-//   return this->get_params().get_hash(this->inputs[0]);
-// }
-
 using PCG::Node;
 
 bool operator==(Conv2DParams const &lhs, Conv2DParams const &rhs) {
@@ -387,30 +366,30 @@ Conv2D::Conv2D(FFModel &model,
              allocate_weights,
              name) {}
 
-bool Conv2DParams::is_valid(ParallelTensorShape const &input) const {
-  ParallelTensorShape output_shape, kernel_shape, bias_shape;
-  this->solve_dims(input,
-                   output_shape.dims,
-                   &output_shape.num_dims,
-                   kernel_shape.dims,
-                   &kernel_shape.num_dims,
-                   bias_shape.dims,
-                   &bias_shape.num_dims);
-  bool is_valid = true;
-  is_valid &= input.is_valid();
-  is_valid &= output_shape.is_valid();
-  is_valid &= kernel_shape.is_valid();
-  if (use_bias) {
-    is_valid &= bias_shape.is_valid();
-  }
+// bool Conv2DParams::is_valid(ParallelTensorShape const &input) const {
+//   ParallelTensorShape output_shape, kernel_shape, bias_shape;
+//   this->solve_dims(input,
+//                    output_shape.dims,
+//                    &output_shape.num_dims,
+//                    kernel_shape.dims,
+//                    &kernel_shape.num_dims,
+//                    bias_shape.dims,
+//                    &bias_shape.num_dims);
+//   bool is_valid = true;
+//   is_valid &= input.is_valid();
+//   is_valid &= output_shape.is_valid();
+//   is_valid &= kernel_shape.is_valid();
+//   if (use_bias) {
+//     is_valid &= bias_shape.is_valid();
+//   }
 
-  // TODO FIXME: Currently disable parallelizing the height and width dimension
-  if (input.dims[0].degree > 1 || input.dims[1].degree > 1) {
-    return false;
-  }
+//   // TODO FIXME: Currently disable parallelizing the height and width dimension
+//   if (input.dims[0].degree > 1 || input.dims[1].degree > 1) {
+//     return false;
+//   }
 
-  return is_valid;
-}
+//   return is_valid;
+// }
 
 Conv2D::Conv2D(FFModel &model,
                LayerID const &_layer_guid,
@@ -447,25 +426,45 @@ Conv2D::Conv2D(FFModel &model,
   assert(this->stride_h > 0);
   assert(this->stride_w > 0);
 
-  ParallelDim output_dims[MAX_TENSOR_DIM], kernel_dims[MAX_TENSOR_DIM],
-      bias_dims[MAX_TENSOR_DIM];
-  int output_ndims, kernel_ndims, bias_ndims;
+  ParallelTensorShape output_shape, kernel_shape, bias_shape;
+  //ParallelDim output_dims[MAX_TENSOR_DIM], kernel_dims[MAX_TENSOR_DIM],
+  //    bias_dims[MAX_TENSOR_DIM];
+  //int output_ndims, kernel_ndims, bias_ndims;
 
   this->construct_mappings(*this->parallel_dims_mapping, this->use_bias);
+  // this->get_params().solve_dims(this->inputs[0]->get_shape(),
+  //                               output_dims,
+  //                               &output_ndims,
+  //                               kernel_dims,
+  //                               &kernel_ndims,
+  //                               bias_dims,
+  //                               &bias_ndims);
   this->get_params().solve_dims(this->inputs[0]->get_shape(),
-                                output_dims,
-                                &output_ndims,
-                                kernel_dims,
-                                &kernel_ndims,
-                                bias_dims,
-                                &bias_ndims);
+                                output_shape.dims,
+                                &output_shape.num_dims,
+                                kernel_shape.dims,
+                                &kernel_shape.num_dims,
+                                bias_shape.dims,
+                                &bias_shape.num_dims);
+  
+
+  // assert input is valid
+  assert (input->check_valid());
+  assert (output_shape.is_valid());
+  assert (kernel_shape.is_valid());
+  if (this->get_params().use_bias) {
+    assert (bias_shape.is_valid());
+  }
+
+  // TODO FIXME: Currently disable parallelizing the height and width dimension
+  assert (!(input->dims[0].degree > 1 || input->dims[1].degree > 1));
 
   if (allocate_weights) {
     Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
 
     weights[Conv2DKernel::INDEX] =
-        model.create_parallel_weight_legion_ordering(kernel_ndims,
-                                                     kernel_dims,
+        model.create_parallel_weight_legion_ordering(kernel_shape.num_dims,
+                                                     kernel_shape.dims,
                                                      DT_FLOAT,
                                                      NULL /*owner_op*/,
                                                      true /*create_grad*/,
@@ -476,8 +475,8 @@ Conv2D::Conv2D(FFModel &model,
       Initializer *bias_initializer = new ZeroInitializer();
 
       weights[Conv2DBias::INDEX] =
-          model.create_parallel_weight_legion_ordering(bias_ndims,
-                                                       bias_dims,
+          model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
+                                                       bias_shape.dims,
                                                        DT_FLOAT,
                                                        NULL /*owner_op*/,
                                                        true /*create_grad*/,
@@ -487,7 +486,7 @@ Conv2D::Conv2D(FFModel &model,
   }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      output_ndims, output_dims, DT_FLOAT, this);
+      output_shape.num_dims, output_shape.dims, DT_FLOAT, this);
 
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 }

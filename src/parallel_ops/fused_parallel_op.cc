@@ -50,10 +50,6 @@ bool operator==(FusedParallelOpParams const &lhs,
   return lhs.parallel_ops == rhs.parallel_ops;
 }
 
-bool FusedParallelOpParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
 FusedParallelOpParams FusedParallelOp::get_params() const {
   FusedParallelOpParams params;
   std::vector<ParallelOpInfo> ops(std::begin(this->parallel_ops),
@@ -69,6 +65,7 @@ FusedParallelOp::FusedParallelOp(
     : ParallelOp(model, OP_FUSED_PARALLEL, NULL, _input), num_parallel_ops(0) {
   set_parallel_ops(_parallel_ops);
   assert(check_no_redundant_parallel_ops());
+  assert(_input->check_valid());
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++)

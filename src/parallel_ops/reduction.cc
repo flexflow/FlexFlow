@@ -44,10 +44,6 @@ bool operator==(ReductionParams const &lhs, ReductionParams const &rhs) {
          lhs.reduction_degree == rhs.reduction_degree;
 }
 
-bool ReductionParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
 ReductionParams Reduction::get_params() const {
   ReductionParams params;
   params.reduction_legion_dim = this->reduction_dim;
@@ -76,6 +72,7 @@ Reduction::Reduction(FFModel &model,
     : ParallelOp(model, OP_REDUCTION, name, _input),
       reduction_dim(_reduction_legion_dim),
       reduction_degree(_reduction_degree) {
+  assert(_input->check_valid());
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {

@@ -17,7 +17,6 @@ public:
   DataType data_type;
   ActiMode activation;
 
-  bool is_valid(ParallelTensorShape const &input_shape) const;
   void solve_dims(const ParallelTensor input,
                   ParallelDim output_dims[MAX_TENSOR_DIM],
                   int *output_ndims,

@@ -40,10 +40,6 @@ bool operator==(ReshapeParams const &lhs, ReshapeParams const &rhs) {
   return lhs.shape == rhs.shape;
 }
 
-bool ReshapeParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
 Tensor FFModel::reshape(const Tensor input,
                         std::vector<int> const &shape,
                         char const *name) {
@@ -87,6 +83,7 @@ Reshape::Reshape(FFModel &model,
          0 /*weights*/,
          1 /*outputs*/,
          input) {
+  assert(input->check_valid());
   shape_length = _shape.size();
   assert(shape_length <= MAX_TENSOR_DIM);
   for (int i = 0; i < shape_length; i++)

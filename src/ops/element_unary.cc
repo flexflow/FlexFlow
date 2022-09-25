@@ -142,10 +142,6 @@ Tensor FFModel::pow(const Tensor x,
   return this->unary(OP_POW, x, inplace, name, exponent);
 }
 
-bool ElementUnaryParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
 bool operator==(ElementUnaryParams const &lhs, ElementUnaryParams const &rhs) {
   return lhs.op_type == rhs.op_type && lhs.scalar == rhs.scalar &&
          lhs.inplace == rhs.inplace;
@@ -159,6 +155,9 @@ ElementUnary::ElementUnary(FFModel &model,
                            float _scalar)
     : Op(model, _op_type, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x),
       inplace(_inplace), scalar(_scalar) {
+  // assert input valid
+  assert (x->check_valid());
+
   numOutputs = 1;
   int numdim = x->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];

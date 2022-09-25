@@ -6,7 +6,6 @@ namespace FlexFlow {
 struct RepartitionParams {
   int repartition_legion_dim;
   int repartition_degree;
-  bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(RepartitionParams const &, RepartitionParams const &);
 

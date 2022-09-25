@@ -37,17 +37,6 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-bool MultiHeadAttentionParams::is_valid(
-    std::tuple<ParallelTensorShape,
-               ParallelTensorShape,
-               ParallelTensorShape> const &input) const {
-  bool is_valid = true;
-  is_valid &= std::get<0>(input).is_valid();
-  is_valid &= std::get<1>(input).is_valid();
-  is_valid &= std::get<2>(input).is_valid();
-  return is_valid;
-}
-
 Tensor FFModel::multihead_attention(const Tensor query,
                                     const Tensor key,
                                     const Tensor value,
@@ -184,6 +173,11 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
   // overwrite layer_guid
   layer_guid = _layer_guid;
 
+  // assert input shape is valid
+  assert (_query->check_valid());
+  assert (_key->check_valid());
+  assert (_value->check_valid());
+  
   // assert key and value have the same sequence length
   assert(_key->dims[1] == _value->dims[1]);
   numOutputs = 1;
@@ -269,6 +263,12 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
       qoSeqLength(_query->dims[1].size), kvSeqLength(_key->dims[1].size)
 // bias_initializer(_bias_initializer)
 {
+  // assert shape is valid
+  assert (_query->check_valid());
+  assert (_key->check_valid());
+  assert (_value->check_valid());
+  assert (_weight->check_valid());
+
   // assert key and value have the same sequence length
   assert(_key->dims[1] == _value->dims[1]);
   numOutputs = 1;

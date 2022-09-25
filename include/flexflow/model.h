@@ -658,10 +658,6 @@ public:
 
     auto input_shapes = get_input_shape<typename T::Input>(input);
 
-    if (!params.is_valid(input_shapes)) {
-      return PCG::Node::INVALID_NODE;
-    }
-
     T *op = nullptr;
 
     std::pair<typename ToShape<typename T::Input>::type, Params> key{

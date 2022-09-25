@@ -8,9 +8,6 @@ namespace FlexFlow {
 
 struct ElementBinaryParams {
   OperatorType type;
-
-  bool is_valid(
-      std::pair<ParallelTensorShape, ParallelTensorShape> const &) const;
 };
 
 bool operator==(ElementBinaryParams const &, ElementBinaryParams const &);

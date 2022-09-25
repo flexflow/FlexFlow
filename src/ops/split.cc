@@ -39,10 +39,6 @@ bool operator==(SplitParams const &lhs, SplitParams const &rhs) {
   return lhs.splits == rhs.splits && lhs.legion_axis == rhs.legion_axis;
 }
 
-bool SplitParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
 SplitParams Split::get_params() const {
   SplitParams params;
   params.splits = this->splits;
@@ -109,6 +105,7 @@ Split::Split(FFModel &model,
          splits.size() /*outputs*/,
          input),
       legion_axis(_legion_axis), splits(splits) {
+  assert(input->check_valid());
   numOutputs = splits.size();
   // Note that we use the Legion dim ordering
   assert(legion_axis >= 0);

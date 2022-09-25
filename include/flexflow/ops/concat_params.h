@@ -7,8 +7,6 @@ namespace FlexFlow {
 
 struct ConcatParams {
   int axis;
-
-  bool is_valid(std::vector<ParallelTensorShape> const &) const;
 };
 
 bool operator==(ConcatParams const &, ConcatParams const &);

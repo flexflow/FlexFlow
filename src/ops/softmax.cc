@@ -39,10 +39,6 @@ bool operator==(SoftmaxParams const &lhs, SoftmaxParams const &rhs) {
   return lhs.dim == rhs.dim;
 }
 
-bool SoftmaxParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
 SoftmaxParams Softmax::get_params() const {
   SoftmaxParams params;
   params.dim = this->dim;
@@ -100,6 +96,7 @@ Softmax::Softmax(FFModel &model,
          1 /*outputs*/,
          _input),
       dim(_dim) {
+  assert(_input->check_valid());
   // Currently assume we always perform softmax along the inner most dim
   assert(dim == 0);
   ParallelDim dims[MAX_TENSOR_DIM];

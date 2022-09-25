@@ -11,8 +11,6 @@ struct EmbeddingParams {
   int num_entries, out_channels;
   LayerID layer_guid;
   AggrMode aggr;
-
-  bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(EmbeddingParams const &, EmbeddingParams const &);
 

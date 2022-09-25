@@ -229,11 +229,6 @@ void Embedding::register_mappings() {
 }
 
 /* Params */
-
-bool EmbeddingParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
 bool operator==(EmbeddingParams const &lhs, EmbeddingParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid &&
          lhs.out_channels == rhs.out_channels &&
@@ -284,6 +279,8 @@ Embedding::Embedding(FFModel &model,
          1 /*outputs*/,
          _input),
       num_entries(_num_entries), out_channels(_out_channels), aggr(_aggr) {
+  // assert input is valid
+  assert (_input->check_valid());
   layer_guid = _layer_guid;
   std::vector<ParallelDim *> weight_dim_sets;
 

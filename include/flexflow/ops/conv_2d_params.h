@@ -14,7 +14,6 @@ struct Conv2DParams {
   ActiMode activation;
   bool use_bias;
 
-  bool is_valid(ParallelTensorShape const &input) const;
   void solve_dims(ParallelTensorShape const &input,
                   ParallelDim output_dims[MAX_TENSOR_DIM],
                   int *output_ndims,

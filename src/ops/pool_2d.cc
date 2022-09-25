@@ -119,19 +119,6 @@ Pool2DParams Pool2D::get_params() const {
   return params;
 }
 
-bool Pool2DParams::is_valid(ParallelTensorShape const &input) const {
-  ParallelTensorShape output_shape;
-
-  this->solve_dims(input, output_shape.dims, &output_shape.num_dims);
-
-  bool is_valid = true;
-  is_valid &= input.is_valid();
-  is_valid &= output_shape.is_valid();
-  is_valid &= (input.dims[Pool2DInput::REPLICA].degree == 1);
-
-  return is_valid;
-}
-
 using PCG::Node;
 bool operator==(Pool2DParams const &lhs, Pool2DParams const &rhs) {
   return lhs.kernel_h == rhs.kernel_h && lhs.kernel_w == rhs.kernel_w &&
@@ -233,16 +220,20 @@ Pool2D::Pool2D(FFModel &model,
       stride_w(_stride_w), padding_h(_padding_h), padding_w(_padding_w),
       pool_type(_type), activation(_activation) {
   assert(_input->num_dims == Pool2DInput::NUMDIM);
+  assert(_input->check_valid());
 
   Pool2D::construct_output_mappings(*this->parallel_dims_mapping);
 
-  ParallelDim output_dims[MAX_TENSOR_DIM];
-  int output_ndims;
+  ParallelTensorShape output_shape;
+  
   this->get_params().solve_dims(
-      this->inputs[0]->get_shape(), output_dims, &output_ndims);
+      this->inputs[0]->get_shape(), output_shape.dims, &output_shape.num_dims);
+
+  assert (output_shape.is_valid());
+  assert (_input->dims[Pool2DInput::REPLICA].degree == 1);
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      output_ndims, output_dims, DT_FLOAT, this);
+      output_shape.num_dims, output_shape.dims, DT_FLOAT, this);
 }
 
 Pool2D::Pool2D(FFModel &model,

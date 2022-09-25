@@ -41,15 +41,6 @@ bool operator==(ConcatParams const &lhs, ConcatParams const &rhs) {
   return lhs.axis == rhs.axis;
 }
 
-bool ConcatParams::is_valid(
-    std::vector<ParallelTensorShape> const &input) const {
-  bool valid = true;
-  for (auto p : input) {
-    valid &= p.is_valid();
-  }
-  return valid;
-}
-
 ConcatParams Concat::get_params() const {
   ConcatParams params;
   params.axis = legion_axis;
@@ -119,6 +110,12 @@ Concat::Concat(FFModel &model,
          1 /*outputs*/,
          _tensors),
       legion_axis(_legion_axis) {
+  
+  // assert is valid
+  for (ParallelTensor input: inputs) {
+    assert (input->check_valid());
+  }
+
   printf("legion_axis = %d\n", legion_axis);
   // TODO: swich to use the Legion dim ordering
   int num_dim = inputs[0]->num_dims;

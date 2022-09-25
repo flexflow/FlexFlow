@@ -65,12 +65,6 @@ CastParams Cast::get_params() const {
   return params;
 }
 
-bool CastParams::is_valid(ParallelTensorShape const &input) const {
-  bool valid = input.is_valid();
-  valid &= (input.dims[input.num_dims - 1].degree == 1);
-  return valid;
-}
-
 bool operator==(CastParams const &lhs, CastParams const &rhs) {
   return lhs.dtype == rhs.dtype;
 }
@@ -86,6 +80,11 @@ Cast::Cast(FFModel &model,
          0 /*weights*/,
          1 /*outputs*/,
          input) {
+  
+  // assert is valid
+  assert (input->check_valid());
+  assert (input->dims[input->num_dims - 1].degree == 1);
+
   numOutputs = 1;
   numWeights = 0;
   int numdim = input->num_dims;

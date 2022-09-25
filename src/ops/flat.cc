@@ -74,19 +74,6 @@ void FlatParams::solve_dims(ParallelTensorShape const &input,
   solve_parallel_dim_mappings(mapping, {input.dims}, {}, output_dim_sets);
 }
 
-bool FlatParams::is_valid(ParallelTensorShape const &input) const {
-  ParallelTensorShape output_shape;
-
-  this->solve_dims(input, output_shape.dims, &output_shape.num_dims);
-
-  bool is_valid = true;
-  is_valid &= input.is_valid();
-  is_valid &= output_shape.is_valid();
-  is_valid &= (input.dims[FlatInput::WIDTH].degree == 1);
-
-  return is_valid;
-}
-
 bool operator==(FlatParams const &, FlatParams const &) {
   // flat doesn't have params to compare
   return true;
@@ -111,16 +98,18 @@ Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
          1 /*outputs*/,
          _input) {
   assert(_input->num_dims == FlatInput::NUMDIM);
+  assert (_input->check_valid());
 
   Flat::construct_output_mappings(*this->parallel_dims_mapping);
 
-  ParallelDim output_dims[MAX_TENSOR_DIM];
-  int output_ndims;
+  ParallelTensorShape output_shape;
   this->get_params().solve_dims(
-      this->inputs[0]->get_shape(), output_dims, &output_ndims);
+      this->inputs[0]->get_shape(), output_shape.dims, &output_shape.num_dims);
+  assert (output_shape.is_valid());
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      output_ndims, output_dims, _input->data_type, this);
+      output_shape.num_dims, output_shape.dims, _input->data_type, this);
+  assert (_input->dims[FlatInput::WIDTH].degree == 1);
 
   assert(check_output_input_weight_parallel_dims());
 }

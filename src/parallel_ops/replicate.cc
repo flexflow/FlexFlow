@@ -44,10 +44,6 @@ bool operator==(ReplicateParams const &lhs, ReplicateParams const &rhs) {
          lhs.replicate_degree == rhs.replicate_degree;
 }
 
-bool ReplicateParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
 ReplicateParams Replicate::get_params() const {
   ReplicateParams params;
   params.replicate_legion_dim = this->replicate_dim;
@@ -76,6 +72,7 @@ Replicate::Replicate(FFModel &model,
     : ParallelOp(model, OP_REPLICATE, name, _input),
       replicate_dim(_replicate_legion_dim),
       replicate_degree(_replicate_degree) {
+  assert(_input->check_valid());
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {

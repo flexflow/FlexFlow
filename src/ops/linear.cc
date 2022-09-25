@@ -168,6 +168,13 @@ Linear::Linear(FFModel &model,
   params.construct_mappings(*this->parallel_dims_mapping, input_shape);
   params.solve_dims(input_shape, output_shape, kernel_shape, bias_shape);
 
+  assert (input_shape.is_valid());
+  assert (output_shape.is_valid());
+  assert (kernel_shape.is_valid());
+  if (params.use_bias) {
+    assert (bias_shape.is_valid());
+  }
+
   if (allocate_weights) {
     Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
 
@@ -943,25 +950,6 @@ LinearParams Linear::get_params() const {
   params.activation = this->activation;
 
   return params;
-}
-
-bool LinearParams::is_valid(ParallelTensorShape const &input_shape) const {
-  ParallelTensorShape output_shape, kernel_shape, bias_shape;
-  this->solve_dims(input_shape,
-                   output_shape.dims,
-                   &output_shape.num_dims,
-                   kernel_shape.dims,
-                   &kernel_shape.num_dims,
-                   bias_shape.dims,
-                   &bias_shape.num_dims);
-  bool is_valid = true;
-  is_valid &= input_shape.is_valid();
-  is_valid &= output_shape.is_valid();
-  is_valid &= kernel_shape.is_valid();
-  if (use_bias) {
-    is_valid &= bias_shape.is_valid();
-  }
-  return is_valid;
 }
 
 void LinearParams::solve_dims(const ParallelTensor input,

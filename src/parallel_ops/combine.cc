@@ -44,13 +44,6 @@ bool operator==(CombineParams const &lhs, CombineParams const &rhs) {
          lhs.combine_degree == rhs.combine_degree;
 }
 
-bool CombineParams::is_valid(ParallelTensorShape const &input) const {
-  bool valid = input.is_valid();
-  valid &=
-      (input.dims[this->combine_legion_dim].degree % this->combine_degree == 0);
-  return valid;
-}
-
 CombineParams Combine::get_params() const {
   CombineParams params;
   params.combine_legion_dim = this->combine_dim;
@@ -88,6 +81,8 @@ Combine::Combine(FFModel &model,
                  char const *name)
     : ParallelOp(model, OP_COMBINE, name, _input),
       combine_dim(_combine_legion_dim), combine_degree(_combine_degree) {
+
+  assert(_input->check_valid());
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
