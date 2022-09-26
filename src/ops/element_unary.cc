@@ -33,10 +33,12 @@ Tensor FFModel::unary(OperatorType op,
     dtype = DT_FLOAT;
     std::string str(name);
     Tensor new_x = cast(x, dtype, (str + "input_pre_cast").c_str());
-    ele = new Layer(this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, new_x);
+    ele = new Layer(
+        this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, new_x);
   } else {
     dtype = x->data_type;
-    ele = new Layer(this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
+    ele = new Layer(
+        this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
   }
   int numdims = x->num_dims;
   int dims[MAX_TENSOR_DIM];
@@ -555,7 +557,8 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
     init_kernel(m, input_domain, output_domain);
   }
   sim->free_all();
-  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
+  float *input_ptr =
+      (float *)sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
   assert(input_ptr != NULL);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
@@ -563,7 +566,8 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
   if (inplace) {
     output_ptr = input_ptr;
   } else {
-    output_ptr = (float *)sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
+    output_ptr =
+        (float *)sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
   }
   assert(output_ptr != NULL);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
@@ -584,8 +588,8 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
     if (inplace) {
       output_grad_ptr = input_grad_ptr;
     } else {
-      output_grad_ptr =
-          (float *)sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
+      output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(),
+                                               outputs[0]->data_type);
     }
     assert(output_grad_ptr != NULL);
     cost_metrics.outputs_memory +=

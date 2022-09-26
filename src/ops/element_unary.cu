@@ -151,8 +151,8 @@ void ElementUnary::forward_kernel_wrapper(ElementUnaryMeta const *m,
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("[%s] forward time (CF) = %.2fms\n", m->op_name, elapsed);
-    //print_tensor<T>(input_ptr, 32, "[EWU:forward:input]");
-    //print_tensor<T>(output_ptr, 32, "[EWU:forward:output]");
+    // print_tensor<T>(input_ptr, 32, "[EWU:forward:input]");
+    // print_tensor<T>(output_ptr, 32, "[EWU:forward:output]");
   }
 }
 
