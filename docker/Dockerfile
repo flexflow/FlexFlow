@@ -24,12 +24,19 @@ ENV PATH /opt/conda/bin:$PATH
 ENV CUDNN_DIR /usr/local/cuda
 ENV CUDA_DIR /usr/local/cuda
 
+# Clone the repo
 RUN cd /usr && \
     git clone --recursive https://github.com/flexflow/FlexFlow.git
-
 ENV FF_HOME /usr/FlexFlow
+# overwrite configs file with those (potentially) modified by the user
+COPY config/config.linux /usr/FlexFlow/config
 
-RUN cd /usr/FlexFlow/python && \
-    make -j4
+# Build using CMAKE
+RUN cd /usr/FlexFlow && mkdir build && cd build && ../config/config.linux && make -j
+
+# Install C++
+RUN cd /usr/Flexflow/build && make install
+# Install Python
+ENV PYTHONPATH=/usr/Flexflow/python:$PYTHONPATH
 
 WORKDIR /usr/FlexFlow
