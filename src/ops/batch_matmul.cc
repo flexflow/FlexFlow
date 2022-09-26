@@ -533,8 +533,8 @@ __host__ void
 
   // TODO: add support for meta->a_seq_length_dim >= 0
   // or meta->b_seq_length_dim >= 0
-  assert((meta->a_seq_length_dim < 0) || (iter_config->seq_length == 0));
-  assert((meta->b_seq_length_dim < 0) || (iter_config->seq_length == 0));
+  assert((meta->a_seq_length_dim >= a_domain.get_dim()) || (iter_config->seq_length == 0));
+  assert((meta->b_seq_length_dim >= b_domain.get_dim()) || (iter_config->seq_length == 0));
 
   BatchMatmul::backward_kernel_wrapper(meta,
                                        out_ptr,

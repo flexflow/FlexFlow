@@ -26,14 +26,24 @@ Tensor FFModel::unary(OperatorType op,
                       bool inplace,
                       char const *name,
                       float scalar) {
-  Layer *ele =
-      new Layer(this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
+  Layer *ele = nullptr;
+  DataType dtype;
+  // FIXME: currently cast input to float if it has a lower type
+  if (x->data_type < DT_FLOAT) {
+    dtype = DT_FLOAT;
+    std::string str(name);
+    Tensor new_x = cast(x, dtype, (str + "input_pre_cast").c_str());
+    ele = new Layer(this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, new_x);
+  } else {
+    dtype = x->data_type;
+    ele = new Layer(this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
+  }
   int numdims = x->num_dims;
   int dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdims; i++)
     dims[i] = x->dims[i];
   ele->outputs[0] = create_tensor_legion_ordering(
-      numdims, dims, DT_FLOAT, ele, 0, true /*create_grad*/);
+      numdims, dims, dtype, ele, 0, true /*create_grad*/);
   ele->add_int_property("inplace", inplace);
   ele->add_float_property("scalar", scalar);
   layers.push_back(ele);
@@ -154,7 +164,7 @@ ElementUnary::ElementUnary(FFModel &model,
     dims[i] = x->dims[i];
   }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      numdim, dims, DT_FLOAT, this);
+      numdim, dims, inputs[0]->data_type, this);
   // Disable inplace if shape mismatch
   if (outputs[0]->get_shape() != inputs[0]->get_shape())
     inplace = false;
@@ -255,11 +265,12 @@ OpMeta *ElementUnary::init_task(Task const *task,
   ElementUnaryMeta *m = new ElementUnaryMeta(handle);
   m->op_type = eu->op_type;
   m->data_type = eu->outputs[0]->data_type;
-  // Current assume output is always float
-  assert(eu->outputs[0]->data_type == DT_FLOAT);
+  // Input and output should have the same data type
+  assert(eu->outputs[0]->data_type == eu->inputs[0]->data_type);
   m->profiling = eu->profiling;
   m->inplace = eu->inplace;
   m->scalar = eu->scalar;
+  std::strcpy(m->op_name, eu->name);
   if (m->inplace) {
     assert(regions.size() == 1);
     assert(task->regions.size() == 1);
@@ -515,9 +526,7 @@ void ElementUnary::backward_task_with_type(
 void ElementUnary::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->op_type);
   sez.serialize(this->inplace);
-  if (this->op_type == OP_SCALAR_MULTIPLY) {
-    sez.serialize(scalar);
-  }
+  sez.serialize(scalar);
 }
 
 bool ElementUnary::measure_operator_cost(Simulator *sim,
@@ -546,7 +555,7 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
     init_kernel(m, input_domain, output_domain);
   }
   sim->free_all();
-  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
   assert(input_ptr != NULL);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
@@ -554,7 +563,7 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
   if (inplace) {
     output_ptr = input_ptr;
   } else {
-    output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    output_ptr = (float *)sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
   }
   assert(output_ptr != NULL);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
@@ -567,7 +576,7 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr =
-        (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+        (float *)sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
     assert(input_grad_ptr != NULL);
     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
@@ -576,7 +585,7 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
       output_grad_ptr = input_grad_ptr;
     } else {
       output_grad_ptr =
-          (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+          (float *)sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
     }
     assert(output_grad_ptr != NULL);
     cost_metrics.outputs_memory +=
@@ -623,9 +632,7 @@ Node ElementUnary::deserialize(FFModel &ff,
   bool inplace;
   dez.deserialize(op_type);
   dez.deserialize(inplace);
-  if (op_type == OP_SCALAR_MULTIPLY) {
-    dez.deserialize(scalar);
-  }
+  dez.deserialize(scalar);
 
   ElementUnaryParams params;
   params.op_type = op_type;

@@ -301,6 +301,7 @@ OpMeta *ElementBinary::init_task(Task const *task,
   m->has_same_operands = eb->has_same_operands;
   m->broadcast_input1 = eb->broadcast_input1;
   m->broadcast_input2 = eb->broadcast_input2;
+  std::strcpy(m->op_name, eb->name);
   Domain input1_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain input2_domain, output_domain;
@@ -448,7 +449,7 @@ __host__ void
       assert(task->regions.size() == 2);
       Domain out_domain = runtime->get_index_space_domain(
           ctx, task->regions[1].region.get_index_space());
-      assert(out_domain == in1_domain);
+      //assert(out_domain == in1_domain);
       in1_ptr = helperGetTensorPointerRO<float>(
           regions[0], task->regions[0], FID_DATA, ctx, runtime);
       in2_ptr = in1_ptr;
@@ -459,7 +460,7 @@ __host__ void
       assert(task->regions.size() == 3);
       Domain out_domain = runtime->get_index_space_domain(
           ctx, task->regions[2].region.get_index_space());
-      assert(out_domain == in1_domain);
+      //assert(out_domain == in1_domain);
       in1_ptr = helperGetTensorPointerRO<float>(
           regions[0], task->regions[0], FID_DATA, ctx, runtime);
       in2_ptr = helperGetTensorPointerRO<float>(

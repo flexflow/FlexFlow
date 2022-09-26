@@ -16,6 +16,7 @@
 #include "flexflow/dominators.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
+#include "flexflow/ops/cast.h"
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/conv_2d.h"
 #include "flexflow/ops/dropout.h"
@@ -1914,6 +1915,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_BATCHMATMUL: {
         node = BatchMatmul::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_CAST: {
+        node = Cast::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_CONCAT: {

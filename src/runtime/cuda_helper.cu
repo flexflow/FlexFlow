@@ -384,6 +384,8 @@ template __global__ void apply_add_with_scale<int64_t>(int64_t *data_ptr,
 template __host__ void
     print_tensor<float>(float const *ptr, size_t rect, char const *prefix);
 template __host__ void
+    print_tensor<double>(double const *ptr, size_t rect, char const *prefix);
+template __host__ void
     print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
 template __host__ void
     print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);

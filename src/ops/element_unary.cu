@@ -134,8 +134,26 @@ void ElementUnary::forward_kernel_wrapper(ElementUnaryMeta const *m,
                                           size_t num_elements) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
   ElementUnary::forward_kernel<T>(
       m, input_ptr, output_ptr, num_elements, stream);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[%s] forward time (CF) = %.2fms\n", m->op_name, elapsed);
+    //print_tensor<T>(input_ptr, 32, "[EWU:forward:input]");
+    //print_tensor<T>(output_ptr, 32, "[EWU:forward:output]");
+  }
 }
 
 template <typename T>

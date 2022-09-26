@@ -16,6 +16,7 @@
 #include "flexflow/ops/cast.h"
 #include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
+#include "legion/legion_utilities.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -60,7 +61,7 @@ Op *Cast::create_operator_from_layer(
 
 CastParams Cast::get_params() const {
   CastParams params;
-  params.dtype = this->data_type;
+  params.dtype = this->outputs[0]->data_type;
   return params;
 }
 
@@ -315,6 +316,29 @@ bool Cast::measure_operator_cost(Simulator *sim,
   cost_metrics.outputs_memory = 0;
   cost_metrics.weights_memory = 0;
   return true;
+}
+
+void Cast::serialize(Legion::Serializer &sez) const {
+  sez.serialize(this->outputs[0]->data_type);
+}
+
+using PCG::Node;
+
+Node Cast::deserialize(FFModel &ff,
+                       Legion::Deserializer &dez,
+                       ParallelTensor inputs[],
+                       int num_inputs) {
+  assert(num_inputs == 1);
+  DataType dtype;
+  dez.deserialize(dtype);
+  return ff.get_or_create_node<Cast>(inputs[0], {dtype});
+}
+
+Op *Cast::materialize(FFModel &ff,
+                      ParallelTensor inputs[],
+                      int num_inputs) const {
+  assert(num_inputs == 1);
+  return new Cast(ff, inputs[0], this->outputs[0]->data_type, this->name);
 }
 
 }; // namespace FlexFlow
