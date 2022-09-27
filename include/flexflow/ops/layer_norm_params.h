@@ -22,4 +22,3 @@ struct hash<FlexFlow::LayerNormParams> {
   size_t operator()(FlexFlow::LayerNormParams const &) const;
 };
 } // namespace std
-

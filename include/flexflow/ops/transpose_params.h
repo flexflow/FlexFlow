@@ -19,4 +19,3 @@ struct hash<FlexFlow::TransposeParams> {
   size_t operator()(FlexFlow::TransposeParams const &) const;
 };
 } // namespace std
-
