@@ -1,12 +1,12 @@
 # FlexFlow Docker
 
-This folder contains a Docker container that you can use to quickly run FlexFlow with no manual installation required. To use it, follow the steps below
+This folder contains a Docker container that you can use to quickly run FlexFlow with no manual installation required. To use it, follow the steps below.
 
 ## Prerequisites
 You will need a machine with a NVIDIA GPU, with drivers installed. You will also need to have Docker and the [Nvidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html#getting-started) installed on the host machine.
 
 ## Build and run instructions
-1. Apply any desired configurations by editing the [config.linux file](../config/config.linux) in the `FlexFlow/configs` folder. Leave the file unchanged if you want to run with the default options
+1. Apply any desired configurations by editing the [config.linux](../config/config.linux) file in the `FlexFlow/configs` folder. Leave the file unchanged if you want to run with the default options
 2. Build the Docker image with the following command (run from this folder):
 ```bash
 cp ../config/configs.linux config.linux && docker build -t flexflow .
