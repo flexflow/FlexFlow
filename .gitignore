@@ -156,3 +156,6 @@ cython_debug/
 
 # IDE
 .vscode/*
+
+# Docker container 
+docker/config.linux

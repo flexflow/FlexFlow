@@ -18,7 +18,7 @@ RUN wget -c https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.s
     /opt/conda/bin/conda clean -ya
 
 RUN /opt/conda/bin/conda install cmake make pillow
-RUN /opt/conda/bin/conda install -c conda-forge numpy keras-preprocessing pybind11
+RUN /opt/conda/bin/conda install -c conda-forge numpy keras-preprocessing pybind11 cmake-build-extension
 
 ENV PATH /opt/conda/bin:$PATH
 ENV CUDNN_DIR /usr/local/cuda
@@ -29,14 +29,10 @@ RUN cd /usr && \
     git clone --recursive https://github.com/flexflow/FlexFlow.git
 ENV FF_HOME /usr/FlexFlow
 # overwrite configs file with those (potentially) modified by the user
-COPY config/config.linux /usr/FlexFlow/config
+COPY config.linux /usr/FlexFlow/config
 
-# Build using CMAKE
-RUN cd /usr/FlexFlow && mkdir build && cd build && ../config/config.linux && make -j
-
-# Install C++
-RUN cd /usr/Flexflow/build && make install
-# Install Python
-ENV PYTHONPATH=/usr/Flexflow/python:$PYTHONPATH
+COPY entrypoint.sh /usr/entrypoint.sh
+RUN chmod +x /usr/entrypoint.sh
+ENTRYPOINT ["/usr/entrypoint.sh"]
 
 WORKDIR /usr/FlexFlow
