@@ -9,6 +9,7 @@ if [ ! -f "/usr/$FIRST_BOOT_COMPLETE" ]; then
     make install
     echo "Installation of FlexFlow successfully completed!"
     touch "/usr/$FIRST_BOOT_COMPLETE"
+    cd /usr/FlexFlow
 fi
 
 # Now open Bash, the default entrypoint after the first boot
