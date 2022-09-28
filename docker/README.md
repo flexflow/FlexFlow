@@ -9,7 +9,7 @@ You will need a machine with a NVIDIA GPU, with drivers installed. You will also
 1. Apply any desired configurations by editing the [config.linux](../config/config.linux) file in the `FlexFlow/configs` folder. Leave the file unchanged if you want to run with the default options
 2. Build the Docker image with the following command (run from this folder):
 ```bash
-cp ../config/configs.linux config.linux && docker build -t flexflow .
+cp ../config/config.linux config.linux && docker build -t flexflow .
 ```
 3. Run the Docker container with the following command. FlexFlow will be fully built and installed at the first boot.
 ```bash
