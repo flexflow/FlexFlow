@@ -17,7 +17,7 @@
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/concat.h"
-#include "flexflow/ops/conv_2d.h"
+#include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
@@ -169,7 +169,7 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(my_wd[0].get_dim() == 4);
         assert(my_od[0].get_dim() == 4);
         Conv2DMeta *m = (Conv2DMeta *)metas->meta[op];
-        Conv2D::forward_kernel(
+        Kernels::Conv2D::Internal::forward_kernel(
             m, my_ip[0], my_op[0], my_wp[0], my_wp[1], stream);
         break;
       }
@@ -502,7 +502,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(my_wd[0].get_dim() == 4);
         assert(my_od[0].get_dim() == 4);
         Conv2DMeta *m = (Conv2DMeta *)metas->meta[op];
-        Conv2D::backward_kernel(m,
+        Kernels::Conv2D::Internal::backward_kernel(m,
                                 my_ip[0],
                                 my_grad_ip[0],
                                 my_op[0],
