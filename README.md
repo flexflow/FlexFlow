@@ -3,7 +3,7 @@
 FlexFlow is a deep learning framework that accelerates distributed DNN training by automatically searching for efficient parallelization strategies. FlexFlow provides a drop-in replacement for TensorFlow Keras and PyTorch. Running existing Keras and PyTorch programs in FlexFlow only requires [a few lines of changes to the program](https://flexflow.ai/keras).
 
 ## Install FlexFlow
-To install FlexFlow from source code, please read the [instructions](INSTALL.md). If you would like to quickly try FlexFlow, we also provide a [Dockerfile](docker/README.md) with all dependencies pre-installed. You can also use `conda` to install the FlexFlow Python package (coming soon).
+To install FlexFlow from source code, please read the [instructions](INSTALL.md). If you would like to quickly try FlexFlow, we also provide a [Dockerfile](./docker) with all dependencies pre-installed. You can also use `conda` to install the FlexFlow Python package (coming soon).
 
 ## TensorFlow Keras Support
 Users can use FlexFlow to accelerate the training procedure of existing TensorFlow Keras models by just changing the following import header lines.
