@@ -100,8 +100,10 @@ void Transpose::backward_kernel(TransposeMeta const *m,
       info.in_strides[i] = 1;
       info.out_strides[i] = 1;
     } else {
-      int in_dim_size = (out_grad_domain.hi()[i - 1] - out_grad_domain.lo()[i - 1] + 1);
-      int out_dim_size = (in_grad_domain.hi()[i - 1] - in_grad_domain.lo()[i - 1] + 1);
+      int in_dim_size =
+          (out_grad_domain.hi()[i - 1] - out_grad_domain.lo()[i - 1] + 1);
+      int out_dim_size =
+          (in_grad_domain.hi()[i - 1] - in_grad_domain.lo()[i - 1] + 1);
       info.in_strides[i] = info.in_strides[i - 1] * in_dim_size;
       info.out_strides[i] = info.out_strides[i - 1] * out_dim_size;
     }
