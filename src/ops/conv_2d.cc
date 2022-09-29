@@ -1,10 +1,10 @@
 #include "flexflow/ops/conv_2d.h"
 #include "flexflow/layer.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 #include "mpark/variant.hpp"
-#include "flexflow/ops/kernels/conv_2d_kernels.h"
 
 namespace FlexFlow {
 
@@ -26,7 +26,6 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Conv2D;
-
 
 Tensor FFModel::conv2d(const Tensor input,
                        int outChannels,
@@ -625,26 +624,26 @@ OpMeta *Conv2D::init_task(Task const *task,
   if (pad_w != conv->padding_w)
     printf("Warning: changing conv_padding_w to satisfy output_w size\n");
 
-  init_kernel( m,
-                      input_w,
-                      input_h,
-                      input_c,
-                      input_n,
-                      output_w,
-                      output_h,
-                      output_c,
-                      output_n,
-                      conv->kernel_h,
-                      conv->kernel_w,
-                      conv->groups,
-                      conv->stride_h,
-                      conv->stride_w,
-                      pad_h,
-                      pad_w,
-                      acc_input.ptr,
-                      acc_output.ptr,
-                      acc_kernel.ptr,
-                      acc_kernel_grad.ptr);
+  init_kernel(m,
+              input_w,
+              input_h,
+              input_c,
+              input_n,
+              output_w,
+              output_h,
+              output_c,
+              output_n,
+              conv->kernel_h,
+              conv->kernel_w,
+              conv->groups,
+              conv->stride_h,
+              conv->stride_w,
+              pad_h,
+              pad_w,
+              acc_input.ptr,
+              acc_output.ptr,
+              acc_kernel.ptr,
+              acc_kernel_grad.ptr);
 
   return m;
 }
@@ -869,13 +868,13 @@ void Conv2D::backward_task(Task const *task,
   assert(rid == regions.size());
 
   backward_kernel_wrapper(m,
-                                  acc_input.ptr,
-                                  acc_input_grad_ptr,
-                                  acc_output.ptr,
-                                  acc_output_grad.ptr,
-                                  acc_kernel.ptr,
-                                  acc_kernel_grad.ptr,
-                                  acc_bias_grad_ptr);
+                          acc_input.ptr,
+                          acc_input_grad_ptr,
+                          acc_output.ptr,
+                          acc_output_grad.ptr,
+                          acc_kernel.ptr,
+                          acc_kernel_grad.ptr,
+                          acc_bias_grad_ptr);
 }
 
 void Conv2D::print_layer(FFModel const &ff) {
@@ -1106,7 +1105,6 @@ bool Conv2D::measure_operator_cost(Simulator *sim,
   m->relu = activation == AC_MODE_RELU;
   // require input_c is divisible by groups
 
-
   // allocate tensors in simulator
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -1125,27 +1123,28 @@ bool Conv2D::measure_operator_cost(Simulator *sim,
   cost_metrics.weights_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   init_kernel(m,
-                       input_w,
-                       input_h,
-                       input_c,
-                       input_n,
-                       output_w,
-                       output_h,
-                       output_c,
-                       output_n,
-                       kernel_h,
-                       kernel_w,
-                       groups,
-                       stride_h,
-                       stride_w,
-                       pad_h,
-                       pad_w,
-                       input_ptr,
-                       output_ptr,
-                       weight_ptr,
-                       weight_ptr, // note we reuse weight_ptr for kernel_grad_ptr here to avoid allocating another tensor
-                       &cost_metrics.forward_time,
-                       &cost_metrics.backward_time); 
+              input_w,
+              input_h,
+              input_c,
+              input_n,
+              output_w,
+              output_h,
+              output_c,
+              output_n,
+              kernel_h,
+              kernel_w,
+              groups,
+              stride_h,
+              stride_w,
+              pad_h,
+              pad_w,
+              input_ptr,
+              output_ptr,
+              weight_ptr,
+              weight_ptr, // note we reuse weight_ptr for kernel_grad_ptr here
+                          // to avoid allocating another tensor
+              &cost_metrics.forward_time,
+              &cost_metrics.backward_time);
 
   log_measure.debug("[Measure Conv2D] name(%s) input(%d %d %d %d) weight(%d %d "
                     "%d %d) output(%d %d %d %d) stride(%d %d) padding(%d %d) "

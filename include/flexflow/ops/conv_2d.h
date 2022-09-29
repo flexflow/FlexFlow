@@ -46,7 +46,6 @@ enum {
 };
 } // namespace Conv2DBias
 
-
 class Conv2D : public Op {
 public:
   using Params = Conv2DParams;

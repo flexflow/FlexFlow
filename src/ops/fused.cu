@@ -17,12 +17,12 @@
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/concat.h"
-#include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
+#include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reshape.h"
@@ -503,14 +503,14 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(my_od[0].get_dim() == 4);
         Conv2DMeta *m = (Conv2DMeta *)metas->meta[op];
         Kernels::Conv2D::Internal::backward_kernel(m,
-                                my_ip[0],
-                                my_grad_ip[0],
-                                my_op[0],
-                                my_grad_op[0],
-                                my_wp[0],
-                                my_grad_wp[0],
-                                my_grad_wp[1],
-                                stream);
+                                                   my_ip[0],
+                                                   my_grad_ip[0],
+                                                   my_op[0],
+                                                   my_grad_op[0],
+                                                   my_wp[0],
+                                                   my_grad_wp[0],
+                                                   my_grad_wp[1],
+                                                   stream);
         break;
       }
       case OP_BATCHNORM: {

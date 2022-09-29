@@ -43,51 +43,51 @@ void init_kernel(Conv2DMeta *m,
                  int output_h,
                  int output_c,
                  int output_n,
-                 int kernel_h, 
+                 int kernel_h,
                  int kernel_w,
-                 int groups, 
-                 int stride_h, 
-                 int stride_w, 
+                 int groups,
+                 int stride_h,
+                 int stride_w,
                  int pad_h,
                  int pad_w,
                  float const *input_ptr,
                  float *output_ptr,
                  float const *kernel_ptr,
-                 float *kernel_grad_ptr, 
+                 float *kernel_grad_ptr,
                  float *forward_time = nullptr,
                  float *backward_time = nullptr);
 
 void forward_kernel_wrapper(Conv2DMeta const *m,
-                                    float const *input_ptr,
-                                    float *output_ptr,
-                                    float const *filter_ptr,
-                                    float const *bias_ptr);
-void backward_kernel_wrapper(Conv2DMeta const *m,
-                                     float const *input_ptr,
-                                     float *input_grad_ptr,
-                                     float const *output_ptr,
-                                     float *output_grad_ptr,
-                                     float const *kernel_ptr,
-                                     float *kernel_grad_ptr,
-                                     float *bias_grad_ptr);
-
-namespace Internal {
-
-void forward_kernel(Conv2DMeta const *m,
                             float const *input_ptr,
                             float *output_ptr,
                             float const *filter_ptr,
-                            float const *bias_ptr,
-                            cudaStream_t stream);
-void backward_kernel(Conv2DMeta const *m,
+                            float const *bias_ptr);
+void backward_kernel_wrapper(Conv2DMeta const *m,
                              float const *input_ptr,
                              float *input_grad_ptr,
                              float const *output_ptr,
                              float *output_grad_ptr,
                              float const *kernel_ptr,
                              float *kernel_grad_ptr,
-                             float *bias_grad_ptr,
-                             cudaStream_t stream);
+                             float *bias_grad_ptr);
+
+namespace Internal {
+
+void forward_kernel(Conv2DMeta const *m,
+                    float const *input_ptr,
+                    float *output_ptr,
+                    float const *filter_ptr,
+                    float const *bias_ptr,
+                    cudaStream_t stream);
+void backward_kernel(Conv2DMeta const *m,
+                     float const *input_ptr,
+                     float *input_grad_ptr,
+                     float const *output_ptr,
+                     float *output_grad_ptr,
+                     float const *kernel_ptr,
+                     float *kernel_grad_ptr,
+                     float *bias_grad_ptr,
+                     cudaStream_t stream);
 
 cudnnConvolutionFwdAlgo_t selectConvolutionForwardAlgorithm(
     cudnnHandle_t handle,
@@ -125,12 +125,12 @@ cudnnConvolutionBwdFilterAlgo_t selectConvolutionBackwardFilterAlgorithm(
     void *workSpace,
     size_t workSpaceSize,
     const cudnnFilterDescriptor_t dwDesc,
-    void *dw, 
+    void *dw,
     float *time);
 
-}  // namespace Internal
-}  // namespace Conv2D
-}  // namespace Kernels
-}  // namespace FlexFlow
+} // namespace Internal
+} // namespace Conv2D
+} // namespace Kernels
+} // namespace FlexFlow
 
 #endif // _FLEXFLOW_OPS_KERNELS_CONV_2D_KERNELS_H
