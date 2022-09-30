@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/attention_params.h"
+#include "flexflow/ops/params/attention_params.h"
 
 namespace FlexFlow {
 
@@ -16,7 +16,6 @@ class MultiHeadAttentionMeta;
 class MultiHeadAttention : public Op {
 public:
   using Params = MultiHeadAttentionParams;
-  using Input = std::tuple<ParallelTensor, ParallelTensor, ParallelTensor>;
 
   MultiHeadAttention(FFModel &model,
                      LayerID const &layer_guid,
@@ -56,7 +55,7 @@ public:
                      bool allocate_weights);
   MultiHeadAttention(FFModel &model,
                      Params const &params,
-                     Input const &inputs,
+                     std::vector<ParallelTensor> const &inputs,
                      bool allocate_weights = false,
                      char const *name = nullptr);
   static Op *

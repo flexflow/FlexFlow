@@ -173,6 +173,13 @@ public:
      int numWeights,
      int numOutputs,
      ParallelTensor const *tensors);
+  Op(FFModel &model,
+     OperatorType type,
+     char const *name,
+     int numWeights,
+     int numOutputs,
+     std::vector<ParallelTensor> const &inputs);
+
   // graph substitution related methods
   virtual bool get_int_parameter(PMParameter, int *) const;
   virtual bool get_tensor_parameter(TNParameter, DIMParameter, int *) const;
@@ -221,6 +228,8 @@ public:
   virtual size_t get_params_hash() const;
 
   virtual tl::optional<RecordFormatter> as_dot() const;
+
+  std::vector<ParallelTensor> get_inputs() const;
 
   int get_dimension() const;
 #ifdef FF_USE_NCCL

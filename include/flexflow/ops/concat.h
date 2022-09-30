@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/concat_params.h"
+#include "flexflow/ops/params/concat_params.h"
 
 namespace FlexFlow {
 
@@ -21,7 +21,6 @@ public:
 class Concat : public Op {
 public:
   using Params = ConcatParams;
-  using Input = std::vector<ParallelTensor>;
 
   Concat(FFModel &model,
          int n,

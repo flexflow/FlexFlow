@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/element_unary_params.h"
+#include "flexflow/ops/params/element_unary_params.h"
 
 namespace FlexFlow {
 
@@ -31,7 +31,6 @@ public:
 class ElementUnary : public Op {
 public:
   using Params = ElementUnaryParams;
-  using Input = ParallelTensor;
 
   ElementUnary(FFModel &model,
                OperatorType type,
@@ -41,7 +40,7 @@ public:
                float scalar);
   ElementUnary(FFModel &model,
                Params const &params,
-               Input const x,
+               std::vector<ParallelTensor> const &inputs,
                char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -119,8 +118,7 @@ public:
   void serialize(Legion::Serializer &) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+                               std::vector<ParallelTensor> const &inputs);
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;

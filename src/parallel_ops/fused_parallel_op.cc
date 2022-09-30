@@ -50,8 +50,8 @@ bool operator==(FusedParallelOpParams const &lhs,
   return lhs.parallel_ops == rhs.parallel_ops;
 }
 
-bool FusedParallelOpParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+bool FusedParallelOpParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return inputs[0].is_valid();
 }
 
 FusedParallelOpParams FusedParallelOp::get_params() const {
@@ -109,8 +109,8 @@ FusedParallelOp::FusedParallelOp(
 
 FusedParallelOp::FusedParallelOp(FFModel &model,
                                  FusedParallelOpParams const &params,
-                                 const ParallelTensor input)
-    : FusedParallelOp(model, input, params.parallel_ops) {}
+                                 std::vector<ParallelTensor> const &input)
+    : FusedParallelOp(model, input[0], params.parallel_ops) {}
 
 void FusedParallelOp::set_parallel_ops(
     std::vector<ParallelOpInfo> const &_parallel_ops) {
@@ -255,21 +255,6 @@ bool FusedParallelOp::append_parallel_op_info(
     _parallel_ops.push_back(parallel_ops[i]);
   }
   return true;
-}
-
-using PCG::Node;
-Node FFModel::get_or_create_fused_parallel_node(
-    const ParallelTensor input,
-    std::vector<ParallelOpInfo> const &parallel_ops) {
-  // Try to combine _parallel_ops's dimensions
-  if (parallel_ops.size() == 0) {
-    return get_or_create_noop_node(input);
-  } else if (parallel_ops.size() == 1) {
-    return this->get_or_create_parallel_op_node(input, parallel_ops[0]);
-  }
-  FusedParallelOpParams params;
-  params.parallel_ops = parallel_ops;
-  return get_or_create_node<FusedParallelOp>(input, params);
 }
 
 void FusedParallelOp::forward_task(Task const *task,

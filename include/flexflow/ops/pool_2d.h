@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/pool_2d_params.h"
+#include "flexflow/ops/params/pool_2d_params.h"
 
 namespace FlexFlow {
 
@@ -40,7 +40,6 @@ public:
 class Pool2D : public Op {
 public:
   using Params = Pool2DParams;
-  using Input = ParallelTensor;
 
   Pool2D(FFModel &model,
          const ParallelTensor input,
@@ -56,7 +55,7 @@ public:
   Pool2D(FFModel &model, Pool2D const &other, ParallelTensor const input);
   Pool2D(FFModel &model,
          Params const &params,
-         const Input input,
+         std::vector<ParallelTensor> const &input,
          char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -119,8 +118,7 @@ public:
   void serialize(Legion::Serializer &) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+                               std::vector<ParallelTensor> const &inputs);
 
   static void
       construct_output_mappings(std::vector<ParallelDimMappingRecord> &);

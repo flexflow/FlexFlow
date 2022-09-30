@@ -122,12 +122,12 @@ Linear::Linear(FFModel &model,
 
 Linear::Linear(FFModel &model,
                LinearParams const &params,
-               ParallelTensor const input,
+               std::vector<ParallelTensor> const &input,
                char const *name,
                bool allocate_weights)
     : Linear(model,
              params.layer_guid,
-             input,
+             input[0],
              params.out_channels,
              params.activation,
              params.use_bias,
@@ -910,9 +910,8 @@ void Linear::serialize(Legion::Serializer &sez) const {
 using PCG::Node;
 Node Linear::deserialize(FFModel &ff,
                          Legion::Deserializer &dez,
-                         ParallelTensor inputs[],
-                         int num_inputs) {
-  assert(num_inputs == 1);
+                         std::vector<ParallelTensor> const &inputs) {
+  assert(inputs.size() == 1);
   int out_channels;
   ActiMode activation;
   bool use_bias;
@@ -931,7 +930,7 @@ Node Linear::deserialize(FFModel &ff,
   params.use_bias = use_bias;
   params.data_type = data_type;
   params.layer_guid = layer_guid;
-  return ff.get_or_create_node<Linear>(inputs[0], params);
+  return ff.get_or_create_node<Linear>(inputs, params);
 }
 
 LinearParams Linear::get_params() const {
@@ -945,9 +944,9 @@ LinearParams Linear::get_params() const {
   return params;
 }
 
-bool LinearParams::is_valid(ParallelTensorShape const &input_shape) const {
+bool LinearParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
   ParallelTensorShape output_shape, kernel_shape, bias_shape;
-  this->solve_dims(input_shape,
+  this->solve_dims(inputs[0],
                    output_shape.dims,
                    &output_shape.num_dims,
                    kernel_shape.dims,
@@ -955,7 +954,7 @@ bool LinearParams::is_valid(ParallelTensorShape const &input_shape) const {
                    bias_shape.dims,
                    &bias_shape.num_dims);
   bool is_valid = true;
-  is_valid &= input_shape.is_valid();
+  is_valid &= inputs[0].is_valid();
   is_valid &= output_shape.is_valid();
   is_valid &= kernel_shape.is_valid();
   if (use_bias) {

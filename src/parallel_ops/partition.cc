@@ -44,11 +44,11 @@ bool operator==(RepartitionParams const &lhs, RepartitionParams const &rhs) {
          lhs.repartition_degree == rhs.repartition_degree;
 }
 
-bool RepartitionParams::is_valid(ParallelTensorShape const &input) const {
-  bool valid = input.is_valid();
-  valid &= (input.dims[this->repartition_legion_dim].size %
+bool RepartitionParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  bool valid = inputs[0].is_valid();
+  valid &= (inputs[0].dims[this->repartition_legion_dim].size %
                 (this->repartition_degree *
-                 input.dims[this->repartition_legion_dim].degree) ==
+                 inputs[0].dims[this->repartition_legion_dim].degree) ==
             0);
   return valid;
 }
@@ -96,10 +96,10 @@ Repartition::Repartition(FFModel &model,
 
 Repartition::Repartition(FFModel &model,
                          RepartitionParams const &params,
-                         ParallelTensor const input,
+                         std::vector<ParallelTensor> const &input,
                          char const *name)
     : Repartition(model,
-                  input,
+                  input[0],
                   params.repartition_legion_dim,
                   params.repartition_degree,
                   name) {}

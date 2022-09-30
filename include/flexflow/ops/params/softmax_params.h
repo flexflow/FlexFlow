@@ -7,7 +7,7 @@ namespace FlexFlow {
 
 struct SoftmaxParams {
   int dim;
-  bool is_valid(ParallelTensorShape const &) const;
+  bool is_valid(std::vector<ParallelTensorShape> const &) const;
 };
 bool operator==(SoftmaxParams const &, SoftmaxParams const &);
 

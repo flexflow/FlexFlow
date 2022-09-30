@@ -1,12 +1,20 @@
 #ifndef _FLEXFLOW_NOOP_H
 #define _FLEXFLOW_NOOP_H
 
-#include "flexflow/model.h"
+#include "flexflow/device.h"
+#include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/ops/params/noop_params.h"
 
 namespace FlexFlow {
 
 class NoOp : public Op {
 public:
+  using Params = NoOpParams;
+
   NoOp(FFModel &model,
        OperatorType type,
        const ParallelTensor output,
@@ -16,6 +24,11 @@ public:
        size_t input_tensor_guid,
        const ParallelTensor output,
        char const *name = NULL);
+  NoOp(FFModel &model,
+       Params const &params,
+       std::vector<ParallelTensor> const &inputs,
+       char const *name = nullptr);
+      
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -30,9 +43,9 @@ public:
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
 
-  size_t get_params_hash() const override;
   tl::optional<RecordFormatter> as_dot() const override;
 
+  Params get_params() const;
 public:
   size_t input_tensor_guid;
 };

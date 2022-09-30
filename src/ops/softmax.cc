@@ -39,8 +39,8 @@ bool operator==(SoftmaxParams const &lhs, SoftmaxParams const &rhs) {
   return lhs.dim == rhs.dim;
 }
 
-bool SoftmaxParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+bool SoftmaxParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return inputs[0].is_valid();
 }
 
 SoftmaxParams Softmax::get_params() const {
@@ -111,9 +111,9 @@ Softmax::Softmax(FFModel &model,
 
 Softmax::Softmax(FFModel &model,
                  SoftmaxParams const &params,
-                 const ParallelTensor input,
+                 std::vector<ParallelTensor> const &input,
                  char const *name)
-    : Softmax(model, input, params.dim, name) {}
+    : Softmax(model, input[0], params.dim, name) {}
 
 void Softmax::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());

@@ -37,8 +37,8 @@ bool operator==(TransposeParams const &lhs, TransposeParams const &rhs) {
   return lhs.perm == rhs.perm;
 }
 
-bool TransposeParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+bool TransposeParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return inputs[0].is_valid();
 }
 
 TransposeParams Transpose::get_params() const {
@@ -89,9 +89,9 @@ Op *Transpose::create_operator_from_layer(
 
 Transpose::Transpose(FFModel &model,
                      TransposeParams const &params,
-                     const ParallelTensor input,
+                     std::vector<ParallelTensor> const &input,
                      char const *name)
-    : Transpose(model, input, params.perm, name) {}
+    : Transpose(model, input[0], params.perm, name) {}
 
 Transpose::Transpose(FFModel &model,
                      const ParallelTensor input,
@@ -372,9 +372,8 @@ void Transpose::serialize(Legion::Serializer &sez) const {
 using PCG::Node;
 Node Transpose::deserialize(FFModel &ff,
                             Legion::Deserializer &dez,
-                            ParallelTensor inputs[],
-                            int num_inputs) {
-  assert(num_inputs == 1);
+                            std::vector<ParallelTensor> const &inputs) {
+  assert(inputs.size() == 1);
   size_t perm_size;
   std::vector<int> perm;
   dez.deserialize(perm_size);
@@ -383,14 +382,14 @@ Node Transpose::deserialize(FFModel &ff,
     dez.deserialize(dim_idx);
     perm.push_back(dim_idx);
   }
-  return ff.get_or_create_node<Transpose>(inputs[0], {perm});
+  return ff.get_or_create_node<Transpose>(inputs, {perm});
 }
 
 Op *Transpose::materialize(FFModel &ff,
                            ParallelTensor inputs[],
                            int num_inputs) const {
   TransposeParams params = get_params();
-  return new Transpose(ff, params, inputs[0], this->name);
+  return new Transpose(ff, params, {inputs, inputs + num_inputs}, this->name);
 }
 
 }; // namespace FlexFlow

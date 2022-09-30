@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/parallel_ops/partition_params.h"
+#include "flexflow/parallel_ops/params/partition_params.h"
 #include "parallel_op.h"
 
 namespace FlexFlow {
@@ -30,7 +30,7 @@ public:
               char const *name = NULL);
   Repartition(FFModel &model,
               Params const &params,
-              Input const input,
+              std::vector<ParallelTensor> const &input,
               char const *name = nullptr);
   void create_input_partition(FFModel &model) override;
   void init(FFModel const &) override;

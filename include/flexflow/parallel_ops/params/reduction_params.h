@@ -6,7 +6,7 @@ namespace FlexFlow {
 struct ReductionParams {
   int reduction_legion_dim;
   int reduction_degree;
-  bool is_valid(ParallelTensorShape const &) const;
+  bool is_valid(std::vector<ParallelTensorShape> const &) const;
 };
 bool operator==(ReductionParams const &, ReductionParams const &);
 

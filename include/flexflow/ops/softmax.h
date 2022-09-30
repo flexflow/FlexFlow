@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/softmax_params.h"
+#include "flexflow/ops/params/softmax_params.h"
 
 namespace FlexFlow {
 
@@ -31,14 +31,13 @@ public:
 class Softmax : public Op {
 public:
   using Params = SoftmaxParams;
-  using Input = ParallelTensor;
   Softmax(FFModel &model,
           const ParallelTensor logit,
           int dim,
           char const *name);
   Softmax(FFModel &model,
           Params const &params,
-          const Input input,
+          std::vector<ParallelTensor> const &input,
           char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;

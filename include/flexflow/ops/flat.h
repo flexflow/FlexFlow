@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/flat_params.h"
+#include "flexflow/ops/params/flat_params.h"
 
 namespace FlexFlow {
 
@@ -28,12 +28,11 @@ public:
 class Flat : public Op {
 public:
   using Params = FlatParams;
-  using Input = ParallelTensor;
 
   Flat(FFModel &model, const ParallelTensor input, char const *name);
   Flat(FFModel &model,
        Params const &params,
-       const Input input,
+       std::vector<ParallelTensor> const &input,
        char const *name = nullptr);
 
   void init(FFModel const &) override;
@@ -83,8 +82,7 @@ public:
   void serialize(Legion::Serializer &) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+                               std::vector<ParallelTensor> const &);
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;

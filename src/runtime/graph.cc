@@ -675,8 +675,10 @@ void Graph::replace_subgraph(std::unordered_set<Node> const &currentNodes,
     Graph subgraph = this->subgraph(currentNodes);
     assert(!subgraph.empty());
     Node source_node = subgraph.find_source_node();
+    NoOpParams params;
+    params.op_type = OP_NOOP;
     Node noop =
-        this->model->get_or_create_noop_node(source_node.ptr->inputs[0]);
+        this->model->get_or_create_node<NoOp>(source_node.ptr->get_inputs(), params);
     this->replace_subgraph_with_nonempty(currentNodes,
                                          Graph::singleton(this->model, noop));
     this->contract_out_node(noop);
@@ -845,8 +847,8 @@ void Graph::simplify(SimplificationSettings const &settings) {
             std::vector<ParallelOpInfo> parallel_ops;
             ((ParallelOp *)n1.ptr)->append_parallel_op_info(parallel_ops);
             ((ParallelOp *)n2.ptr)->append_parallel_op_info(parallel_ops);
-            Node new_node = model->get_or_create_fused_parallel_node(
-                n1.ptr->inputs[0], parallel_ops);
+            Node new_node = model->get_or_create_node<FusedParallelOp>(
+                                                                       {n1.ptr->inputs[0]}, {parallel_ops});
             auto const &inList = this->inEdges.find(n1)->second;
             assert(inList.size() == 1);
             Edge e1 = *inList.begin();
@@ -1741,22 +1743,6 @@ GraphOptimalViewSerialized
     sez.serialize(it.first.guid);
     sez.serialize(it.second);
   }
-#ifdef DEADCODE
-  // Third, serialize input mappings
-  sez.serialize((size_t)23456789);
-  size_t num_inputs = 0;
-  for (size_t i = 0; i < model->layers.size(); i++)
-    if (model->layers[i]->op_type == OP_INPUT)
-      num_inputs++;
-  sez.serialize(num_inputs);
-  for (size_t i = 0; i < model->layers.size(); i++) {
-    if (model->layers[i]->op_type == OP_INPUT) {
-      Tensor tensor = model->layers[i]->outputs[i];
-      sez.serialize(tensor->tensor_guid);
-      sez.serialize(tensor->parallel_tensor->parallel_tensor_guid);
-    }
-  }
-#endif
   assert(sez.get_used_bytes() < GraphOptimalViewSerialized::buffer_size);
   GraphOptimalViewSerialized ret;
   ret.total_bytes = sez.get_used_bytes();
@@ -1856,9 +1842,9 @@ void FFModel::deserialize_graph_optimal_view(
   // best_graph = new Graph(this);
   for (size_t node_idx = 0; node_idx < num_nodes; node_idx++) {
     Edge inedges[MAX_NUM_INPUTS];
-    ParallelTensor inputs[MAX_NUM_INPUTS];
     size_t num_inputs;
     dez.deserialize(num_inputs);
+    std::vector<ParallelTensor> inputs{num_inputs};
     for (size_t j = 0; j < num_inputs; j++) {
       size_t src_guid;
       int src_idx, dst_idx;
@@ -1909,24 +1895,23 @@ void FFModel::deserialize_graph_optimal_view(
         break;
       }
       case OP_NOOP: {
-        assert(num_inputs == 1);
-        node = get_or_create_noop_node(inputs[0]);
+        NoOpParams params;
+        params.op_type = OP_NOOP;
+        node = get_or_create_node<NoOp>(inputs, params);
         break;
       }
       case OP_BATCHMATMUL: {
-        node = BatchMatmul::deserialize(*this, dez, inputs, num_inputs);
+        node = BatchMatmul::deserialize(*this, dez, inputs);
         break;
       }
       case OP_CAST: {
-        node = Cast::deserialize(*this, dez, inputs, num_inputs);
+        node = Cast::deserialize(*this, dez, inputs);
         break;
       }
       case OP_CONCAT: {
         int legion_axis;
         dez.deserialize(legion_axis);
-        node = get_or_create_node<Concat>(
-            {std::begin(inputs), std::begin(inputs) + num_inputs},
-            {legion_axis});
+        node = get_or_create_node<Concat>(inputs, {legion_axis});
         break;
       }
       case OP_SPLIT: {
@@ -1940,11 +1925,10 @@ void FFModel::deserialize_graph_optimal_view(
           dez.deserialize(dim_size);
           splits.push_back(dim_size);
         }
-        node = get_or_create_node<Split>(inputs[0], {splits, legion_axis});
+        node = get_or_create_node<Split>(inputs, {splits, legion_axis});
         break;
       }
       case OP_EMBEDDING: {
-        assert(num_inputs == 1);
         AggrMode aggr;
         int num_entries, out_channels;
         size_t id;
@@ -1959,25 +1943,23 @@ void FFModel::deserialize_graph_optimal_view(
         params.num_entries = num_entries;
         params.out_channels = out_channels;
         params.layer_guid = layer_guid;
-        node = get_or_create_node<Embedding>(inputs[0], params);
+        node = get_or_create_node<Embedding>(inputs, params);
         break;
       }
       case OP_EW_ADD:
       case OP_EW_SUB:
       case OP_EW_MUL: {
-        assert(num_inputs == 2);
         OperatorType op_type;
         dez.deserialize(op_type);
-        node = get_or_create_node<ElementBinary>({inputs[0], inputs[1]},
-                                                 {op_type});
+        node = get_or_create_node<ElementBinary>(inputs, {op_type});
         break;
       }
       case OP_CONV2D: {
-        node = Conv2D::deserialize(*this, dez, inputs, num_inputs);
+        node = Conv2D::deserialize(*this, dez, inputs);
         break;
       }
       case OP_DROPOUT: {
-        node = Dropout::deserialize(*this, dez, inputs, num_inputs);
+        node = Dropout::deserialize(*this, dez, inputs);
         break;
       }
       case OP_EXP:
@@ -1991,23 +1973,22 @@ void FFModel::deserialize_graph_optimal_view(
       case OP_IDENTITY:
       case OP_GELU:
       case OP_ELU: {
-        node = ElementUnary::deserialize(*this, dez, inputs, num_inputs);
+        node = ElementUnary::deserialize(*this, dez, inputs);
         break;
       }
       case OP_FLAT: {
-        node = Flat::deserialize(*this, dez, inputs, num_inputs);
+        node = Flat::deserialize(*this, dez, inputs);
         break;
       }
       case OP_LAYERNORM: {
-        node = LayerNorm::deserialize(*this, dez, inputs, num_inputs);
+        node = LayerNorm::deserialize(*this, dez, inputs);
         break;
       }
       case OP_LINEAR: {
-        node = Linear::deserialize(*this, dez, inputs, num_inputs);
+        node = Linear::deserialize(*this, dez, inputs);
         break;
       }
       case OP_MULTIHEAD_ATTENTION: {
-        assert(num_inputs == 3);
         int embed_dim, num_heads, k_dim, v_dim;
         float dropout;
         bool bias, add_bias_kv, add_zero_attn;
@@ -2034,66 +2015,60 @@ void FFModel::deserialize_graph_optimal_view(
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
         node = get_or_create_node<MultiHeadAttention>(
-            {inputs[0], inputs[1], inputs[2]}, params);
+            inputs, params);
         break;
       }
       case OP_POOL2D: {
-        node = Pool2D::deserialize(*this, dez, inputs, num_inputs);
+        node = Pool2D::deserialize(*this, dez, inputs);
         break;
       }
       case OP_RESHAPE: {
-        node = Reshape::deserialize(*this, dez, inputs, num_inputs);
+        node = Reshape::deserialize(*this, dez, inputs);
         break;
       }
       case OP_SOFTMAX: {
-        assert(num_inputs == 1);
         int softmax_dim;
         dez.deserialize(softmax_dim);
-        node = get_or_create_node<Softmax>(inputs[0], {softmax_dim});
+        node = get_or_create_node<Softmax>(inputs, {softmax_dim});
         break;
       }
       case OP_TRANSPOSE: {
-        node = Transpose::deserialize(*this, dez, inputs, num_inputs);
+        node = Transpose::deserialize(*this, dez, inputs);
         break;
       }
       case OP_COMBINE: {
-        assert(num_inputs == 1);
         int combine_dim, combine_degree;
         dez.deserialize(combine_dim);
         dez.deserialize(combine_degree);
-        node = get_or_create_node<Combine>(inputs[0],
+        node = get_or_create_node<Combine>(inputs,
                                            {combine_dim, combine_degree});
         break;
       }
       case OP_REPARTITION: {
-        assert(num_inputs == 1);
         int repartition_dim, repartition_degree;
         dez.deserialize(repartition_dim);
         dez.deserialize(repartition_degree);
         node = get_or_create_node<Repartition>(
-            inputs[0], {repartition_dim, repartition_degree});
+            inputs, {repartition_dim, repartition_degree});
         break;
       }
       case OP_REPLICATE: {
-        assert(num_inputs == 1);
         int replicate_dim, replicate_degree;
         dez.deserialize(replicate_dim);
         dez.deserialize(replicate_degree);
-        node = get_or_create_node<Replicate>(inputs[0],
+        node = get_or_create_node<Replicate>(inputs,
                                              {replicate_dim, replicate_degree});
         break;
       }
       case OP_REDUCTION: {
-        assert(num_inputs == 1);
         int reduction_dim, reduction_degree;
         dez.deserialize(reduction_dim);
         dez.deserialize(reduction_degree);
-        node = get_or_create_node<Reduction>(inputs[0],
+        node = get_or_create_node<Reduction>(inputs,
                                              {reduction_dim, reduction_degree});
         break;
       }
       case OP_FUSED_PARALLEL: {
-        assert(num_inputs == 1);
         std::vector<ParallelOpInfo> parallel_ops;
         int num_parallel_ops;
         dez.deserialize(num_parallel_ops);
@@ -2102,7 +2077,7 @@ void FFModel::deserialize_graph_optimal_view(
           dez.deserialize(info);
           parallel_ops.push_back(info);
         }
-        node = get_or_create_node<FusedParallelOp>(inputs[0], {parallel_ops});
+        node = get_or_create_node<FusedParallelOp>(inputs, {parallel_ops});
         break;
       }
       default: {
@@ -2140,20 +2115,6 @@ void FFModel::deserialize_graph_optimal_view(
     dez.deserialize(view);
     optimal_views[guid_to_nodes[guid]] = view;
   }
-#ifdef DEADCODE
-  // Third, deserialize input mappings
-  size_t num_inputs, safecode;
-  dez.deserialize(safecode);
-  assert(safecode == 23456789);
-  dez.deserialize(num_inputs);
-  for (size_t i = 0; i < num_inputs; i++) {
-    size_t tensor_id, parallel_tensor_id;
-    dez.deserialize(tensor_id);
-    dez.deserialize(parallel_tensor_id);
-    input_tensorid_to_ptensorid_mapping.push_back(
-        std::make_pair(tensor_id, parallel_tensor_id));
-  }
-#endif
   assert(dez.get_remaining_bytes() == 0);
   printf("Deserialized Views...\n");
   for (auto const &it : optimal_views) {

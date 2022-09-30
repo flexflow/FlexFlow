@@ -41,17 +41,17 @@ bool operator==(BatchMatmulParams const &lhs, BatchMatmulParams const &rhs) {
 }
 
 bool BatchMatmulParams::is_valid(
-    std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
-  if (!input.first.is_valid())
+    std::vector<ParallelTensorShape> const &inputs) const {
+  if (!inputs[0].is_valid())
     return false;
-  if (!input.second.is_valid())
+  if (!inputs[1].is_valid())
     return false;
-  if (input.first.num_dims != input.second.num_dims)
+  if (inputs[0].num_dims != inputs[1].num_dims)
     return false;
-  for (int i = input.first.num_dims - 1; i >= 2; i--)
-    if (input.first.dims[i] != input.second.dims[i])
+  for (int i = inputs[0].num_dims - 1; i >= 2; i--)
+    if (inputs[0].dims[i] != inputs[1].dims[i])
       return false;
-  if (input.first.dims[0] != input.second.dims[1])
+  if (inputs[0].dims[0] != inputs[1].dims[1])
     return false;
   return true;
 }
@@ -119,11 +119,11 @@ Op *BatchMatmul::create_operator_from_layer(
 BatchMatmul::BatchMatmul(
     FFModel &model,
     BatchMatmulParams const &params,
-    std::pair<ParallelTensor, ParallelTensor> const &inputs,
+    std::vector<ParallelTensor> const &inputs,
     char const *name)
     : BatchMatmul(model,
-                  inputs.first,
-                  inputs.second,
+                  inputs[0],
+                  inputs[1],
                   params.a_seq_length_dim,
                   params.b_seq_length_dim,
                   name) {}
@@ -181,9 +181,8 @@ using PCG::Node;
 /*static*/
 Node BatchMatmul::deserialize(FFModel &ff,
                               Legion::Deserializer &dez,
-                              ParallelTensor inputs[],
-                              int num_inputs) {
-  assert(num_inputs == 2);
+                              std::vector<ParallelTensor> const &inputs) {
+  assert(inputs.size() == 2);
   int a_seq_length_dim, b_seq_length_dim;
   dez.deserialize(a_seq_length_dim);
   dez.deserialize(b_seq_length_dim);
@@ -191,7 +190,7 @@ Node BatchMatmul::deserialize(FFModel &ff,
   BatchMatmulParams params;
   params.a_seq_length_dim = a_seq_length_dim;
   params.b_seq_length_dim = b_seq_length_dim;
-  return ff.get_or_create_node<BatchMatmul>({inputs[0], inputs[1]}, params);
+  return ff.get_or_create_node<BatchMatmul>(inputs, params);
 }
 
 Op *BatchMatmul::materialize(FFModel &ff,

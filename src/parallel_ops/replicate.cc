@@ -44,8 +44,8 @@ bool operator==(ReplicateParams const &lhs, ReplicateParams const &rhs) {
          lhs.replicate_degree == rhs.replicate_degree;
 }
 
-bool ReplicateParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+bool ReplicateParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return inputs[0].is_valid();
 }
 
 ReplicateParams Replicate::get_params() const {
@@ -92,10 +92,10 @@ Replicate::Replicate(FFModel &model,
 
 Replicate::Replicate(FFModel &model,
                      ReplicateParams const &params,
-                     ParallelTensor const input,
+                     std::vector<ParallelTensor> const &input,
                      char const *name)
     : Replicate(model,
-                input,
+                input[0],
                 params.replicate_legion_dim,
                 params.replicate_degree,
                 name) {}

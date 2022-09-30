@@ -6,7 +6,7 @@ namespace FlexFlow {
 struct ReplicateParams {
   int replicate_legion_dim;
   int replicate_degree;
-  bool is_valid(ParallelTensorShape const &) const;
+  bool is_valid(std::vector<ParallelTensorShape> const &) const;
 };
 bool operator==(ReplicateParams const &, ReplicateParams const &);
 

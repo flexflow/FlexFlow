@@ -12,9 +12,7 @@ struct MultiHeadAttentionParams {
   float dropout;
   bool bias, add_bias_kv, add_zero_attn;
 
-  bool is_valid(std::tuple<ParallelTensorShape,
-                           ParallelTensorShape,
-                           ParallelTensorShape> const &) const;
+  bool is_valid(std::vector<ParallelTensorShape> const &) const;
 };
 
 bool operator==(MultiHeadAttentionParams const &,

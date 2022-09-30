@@ -44,8 +44,8 @@ bool operator==(ReductionParams const &lhs, ReductionParams const &rhs) {
          lhs.reduction_degree == rhs.reduction_degree;
 }
 
-bool ReductionParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+bool ReductionParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return inputs[0].is_valid();
 }
 
 ReductionParams Reduction::get_params() const {
@@ -92,10 +92,10 @@ Reduction::Reduction(FFModel &model,
 
 Reduction::Reduction(FFModel &model,
                      ReductionParams const &params,
-                     ParallelTensor const input,
+                     std::vector<ParallelTensor> const &input,
                      char const *name)
     : Reduction(model,
-                input,
+                input[0],
                 params.reduction_legion_dim,
                 params.reduction_degree,
                 name) {}

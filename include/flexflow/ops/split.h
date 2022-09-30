@@ -7,14 +7,13 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/split_params.h"
+#include "flexflow/ops/params/split_params.h"
 
 namespace FlexFlow {
 
 class Split : public Op {
 public:
   using Params = SplitParams;
-  using Input = ParallelTensor;
   Split(FFModel &model,
         const ParallelTensor input,
         std::vector<int> const &split,
@@ -22,7 +21,7 @@ public:
         char const *name = nullptr);
   Split(FFModel &model,
         Params const &params,
-        const Input input,
+        std::vector<ParallelTensor> const &input,
         char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;

@@ -9,10 +9,9 @@ class LayerNormMeta;
 class LayerNorm : public Op {
 public:
   using Params = LayerNormParams;
-  using Input = ParallelTensor;
   LayerNorm(FFModel &model,
             LayerNormParams const &params,
-            ParallelTensor input,
+            std::vector<ParallelTensor> const &input,
             char const *name = nullptr,
             bool allocate_weights = false);
   LayerNorm(FFModel &model,
@@ -36,8 +35,7 @@ public:
   void serialize(Legion::Serializer &) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+                               std::vector<ParallelTensor> const &inputs);
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;

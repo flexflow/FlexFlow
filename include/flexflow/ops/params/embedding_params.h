@@ -12,7 +12,7 @@ struct EmbeddingParams {
   LayerID layer_guid;
   AggrMode aggr;
 
-  bool is_valid(ParallelTensorShape const &) const;
+  bool is_valid(std::vector<ParallelTensorShape> const &) const;
 };
 bool operator==(EmbeddingParams const &, EmbeddingParams const &);
 

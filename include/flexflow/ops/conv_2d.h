@@ -6,7 +6,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/conv_2d_params.h"
+#include "flexflow/ops/params/conv_2d_params.h"
 
 namespace FlexFlow {
 
@@ -76,7 +76,6 @@ public:
 class Conv2D : public Op {
 public:
   using Params = Conv2DParams;
-  using Input = ParallelTensor;
 
   Conv2D(FFModel &model,
          LayerID const &layer_guid,
@@ -99,7 +98,7 @@ public:
          bool allocate_weights);
   Conv2D(FFModel &model,
          Params const &params,
-         Input const input,
+         std::vector<ParallelTensor> const &input,
          char const *name = nullptr,
          bool allocate_weights = false);
   void init(FFModel const &) override;
@@ -181,8 +180,7 @@ public:
   void serialize(Legion::Serializer &s) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+                               std::vector<ParallelTensor> const &inputs);
 
   static void
       construct_output_mappings(std::vector<ParallelDimMappingRecord> &);

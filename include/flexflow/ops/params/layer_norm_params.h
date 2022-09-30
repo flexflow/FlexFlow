@@ -9,7 +9,7 @@ struct LayerNormParams {
   std::vector<int> axes;
   bool elementwise_affine;
   float eps;
-  bool is_valid(ParallelTensorShape const &) const;
+  bool is_valid(std::vector<ParallelTensorShape> const &) const;
 };
 
 bool operator==(LayerNormParams const &, LayerNormParams const &);

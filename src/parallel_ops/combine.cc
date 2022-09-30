@@ -44,10 +44,10 @@ bool operator==(CombineParams const &lhs, CombineParams const &rhs) {
          lhs.combine_degree == rhs.combine_degree;
 }
 
-bool CombineParams::is_valid(ParallelTensorShape const &input) const {
-  bool valid = input.is_valid();
+bool CombineParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  bool valid = inputs[0].is_valid();
   valid &=
-      (input.dims[this->combine_legion_dim].degree % this->combine_degree == 0);
+      (inputs[0].dims[this->combine_legion_dim].degree % this->combine_degree == 0);
   return valid;
 }
 
@@ -60,10 +60,10 @@ CombineParams Combine::get_params() const {
 
 Combine::Combine(FFModel &model,
                  CombineParams const &params,
-                 ParallelTensor const input,
+                 std::vector<ParallelTensor> const &input,
                  char const *name)
     : Combine(model,
-              input,
+              input[0],
               params.combine_legion_dim,
               params.combine_degree,
               name) {}

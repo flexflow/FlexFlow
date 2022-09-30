@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/parallel_ops/reduction_params.h"
+#include "flexflow/parallel_ops/params/reduction_params.h"
 #include "parallel_op.h"
 
 namespace FlexFlow {
@@ -15,7 +15,6 @@ namespace FlexFlow {
 class Reduction : public ParallelOp {
 public:
   using Params = ReductionParams;
-  using Input = ParallelTensor;
 
   Reduction(FFModel &model,
             const ParallelTensor input,
@@ -24,7 +23,7 @@ public:
             char const *name = NULL);
   Reduction(FFModel &model,
             Params const &params,
-            Input const input,
+            std::vector<ParallelTensor> const &input,
             char const *name = nullptr);
   void create_input_partition(FFModel &model) override;
   void init(FFModel const &) override;

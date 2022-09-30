@@ -368,12 +368,12 @@ Conv2D::Conv2D(FFModel &model,
 
 Conv2D::Conv2D(FFModel &model,
                Conv2DParams const &params,
-               ParallelTensor const input,
+               std::vector<ParallelTensor> const &input,
                char const *name,
                bool allocate_weights)
     : Conv2D(model,
              params.layer_guid,
-             input,
+             input[0],
              params.out_channels,
              params.kernel_h,
              params.kernel_w,
@@ -387,9 +387,9 @@ Conv2D::Conv2D(FFModel &model,
              allocate_weights,
              name) {}
 
-bool Conv2DParams::is_valid(ParallelTensorShape const &input) const {
+bool Conv2DParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
   ParallelTensorShape output_shape, kernel_shape, bias_shape;
-  this->solve_dims(input,
+  this->solve_dims(inputs[0],
                    output_shape.dims,
                    &output_shape.num_dims,
                    kernel_shape.dims,
@@ -397,7 +397,7 @@ bool Conv2DParams::is_valid(ParallelTensorShape const &input) const {
                    bias_shape.dims,
                    &bias_shape.num_dims);
   bool is_valid = true;
-  is_valid &= input.is_valid();
+  is_valid &= inputs[0].is_valid();
   is_valid &= output_shape.is_valid();
   is_valid &= kernel_shape.is_valid();
   if (use_bias) {
@@ -405,7 +405,7 @@ bool Conv2DParams::is_valid(ParallelTensorShape const &input) const {
   }
 
   // TODO FIXME: Currently disable parallelizing the height and width dimension
-  if (input.dims[0].degree > 1 || input.dims[1].degree > 1) {
+  if (inputs[0].dims[0].degree > 1 || inputs[0].dims[1].degree > 1) {
     return false;
   }
 
@@ -1017,9 +1017,8 @@ using PCG::Node;
 /*static*/
 Node Conv2D::deserialize(FFModel &ff,
                          Legion::Deserializer &dez,
-                         ParallelTensor inputs[],
-                         int num_inputs) {
-  assert(num_inputs == 1);
+                         std::vector<ParallelTensor> const &inputs) {
+  assert(inputs.size() == 1);
 
   int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h,
       padding_w, groups;
@@ -1052,7 +1051,7 @@ Node Conv2D::deserialize(FFModel &ff,
   params.use_bias = use_bias;
   params.activation = activation;
 
-  return ff.get_or_create_node<Conv2D>(inputs[0], params);
+  return ff.get_or_create_node<Conv2D>(inputs, params);
 }
 
 tl::optional<RecordFormatter> Conv2D::as_dot() const {

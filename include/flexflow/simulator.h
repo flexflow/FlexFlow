@@ -675,7 +675,7 @@ public:
 
 size_t data_type_size(DataType);
 
-using ProfilingRecordKey = std::tuple<OperatorParameters, MachineView>;
+using ProfilingRecordKey = std::tuple<OperatorParameters, std::vector<ParallelTensorShape>, MachineView>;
 
 class Simulator {
 public:
@@ -736,7 +736,6 @@ public:
 #else
   hipEvent_t start_event, end_event;
 #endif
-  std::unordered_map<size_t, CostMetrics> hash_to_operator_cost;
   std::unordered_map<ProfilingRecordKey, CostMetrics>
       strict_hash_to_operator_cost;
 

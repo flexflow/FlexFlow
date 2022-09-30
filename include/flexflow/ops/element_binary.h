@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/element_binary_params.h"
+#include "flexflow/ops/params/element_binary_params.h"
 
 namespace FlexFlow {
 
@@ -32,7 +32,6 @@ public:
 class ElementBinary : public Op {
 public:
   using Params = ElementBinaryParams;
-  using Input = std::pair<ParallelTensor, ParallelTensor>;
 
   ElementBinary(FFModel &model,
                 OperatorType type,
@@ -42,7 +41,7 @@ public:
                 char const *name);
   ElementBinary(FFModel &model,
                 Params const &params,
-                Input const &inputs,
+                std::vector<ParallelTensor> const &inputs,
                 char const *name = nullptr,
                 bool inplace_a = false);
   void init(FFModel const &) override;

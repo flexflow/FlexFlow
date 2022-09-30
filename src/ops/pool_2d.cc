@@ -119,15 +119,15 @@ Pool2DParams Pool2D::get_params() const {
   return params;
 }
 
-bool Pool2DParams::is_valid(ParallelTensorShape const &input) const {
+bool Pool2DParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
   ParallelTensorShape output_shape;
 
-  this->solve_dims(input, output_shape.dims, &output_shape.num_dims);
+  this->solve_dims(inputs[0], output_shape.dims, &output_shape.num_dims);
 
   bool is_valid = true;
-  is_valid &= input.is_valid();
+  is_valid &= inputs[0].is_valid();
   is_valid &= output_shape.is_valid();
-  is_valid &= (input.dims[Pool2DInput::REPLICA].degree == 1);
+  is_valid &= (inputs[0].dims[Pool2DInput::REPLICA].degree == 1);
 
   return is_valid;
 }
@@ -247,10 +247,10 @@ Pool2D::Pool2D(FFModel &model,
 
 Pool2D::Pool2D(FFModel &model,
                Pool2DParams const &params,
-               const ParallelTensor input,
+               std::vector<ParallelTensor> const &input,
                char const *name)
     : Pool2D(model,
-             input,
+             input[0],
              params.kernel_h,
              params.kernel_w,
              params.stride_h,
@@ -617,9 +617,8 @@ using PCG::Node;
 /*static*/
 Node Pool2D::deserialize(FFModel &ff,
                          Legion::Deserializer &dez,
-                         ParallelTensor inputs[],
-                         int num_inputs) {
-  assert(num_inputs == 1);
+                         std::vector<ParallelTensor> const &inputs) {
+  assert(inputs.size() == 1);
 
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
@@ -644,7 +643,7 @@ Node Pool2D::deserialize(FFModel &ff,
   params.pool_type = pool_type;
   params.activation = activation;
 
-  return ff.get_or_create_node<Pool2D>(inputs[0], params);
+  return ff.get_or_create_node<Pool2D>(inputs, params);
 }
 
 }; // namespace FlexFlow

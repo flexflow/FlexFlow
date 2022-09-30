@@ -229,9 +229,8 @@ void Embedding::register_mappings() {
 }
 
 /* Params */
-
-bool EmbeddingParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+bool EmbeddingParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return inputs[0].is_valid();
 }
 
 bool operator==(EmbeddingParams const &lhs, EmbeddingParams const &rhs) {
@@ -242,12 +241,12 @@ bool operator==(EmbeddingParams const &lhs, EmbeddingParams const &rhs) {
 
 Embedding::Embedding(FFModel &model,
                      EmbeddingParams const &params,
-                     ParallelTensor const input,
+                     std::vector<ParallelTensor> const &input,
                      bool allocate_weights,
                      char const *name)
     : Embedding(model,
                 params.layer_guid,
-                input,
+                inputs[0],
                 params.num_entries,
                 params.out_channels,
                 params.aggr,

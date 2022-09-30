@@ -515,42 +515,23 @@ ParallelConfig Op::view_to_pc(MachineView const &view) const {
 CostMetrics Simulator::measure_operator_cost(Op const *op,
                                              MachineView const &mv) {
   tl::optional<OperatorParameters> retrieved_params = get_op_parameters(op);
-  if (retrieved_params.has_value()) {
-    OperatorParameters params = retrieved_params.value();
-    ProfilingRecordKey key{params, mv};
-    if (this->strict_hash_to_operator_cost.find(key) ==
-        this->strict_hash_to_operator_cost.end()) {
-      CostMetrics cost_metrics;
-      bool is_implemented = op->measure_operator_cost(this, mv, cost_metrics);
-      if (!is_implemented) {
-        handle_measure_operator_cost_unimplemented(op);
-      }
-      op->estimate_sync_cost(this, mv, cost_metrics);
-      this->strict_hash_to_operator_cost[key] = cost_metrics;
-    }
-    return this->strict_hash_to_operator_cost.at(key);
+  OperatorParameters params = retrieved_params.value();
+  std::vector<ParallelTensorShape> input_shapes;
+  for (ParallelTensor const &t : op->get_inputs()) {
+    input_shapes.push_back(t->get_shape());
   }
-
-  size_t hash = 17 * 31 + op->get_untyped_params_hash();
-  hash = hash * 31 + std::hash<int>()(mv.device_type);
-  hash = hash * 31 + std::hash<int>()(mv.ndims);
-  for (int i = 0; i < mv.ndims; i++)
-    hash = hash * 31 + std::hash<int>()(mv.dim[i]);
-  std::unordered_map<size_t, CostMetrics>::const_iterator iter =
-      hash_to_operator_cost.find(hash);
-
-  if (iter == hash_to_operator_cost.end()) {
+  ProfilingRecordKey key{params, input_shapes, mv};
+  if (this->strict_hash_to_operator_cost.find(key) ==
+      this->strict_hash_to_operator_cost.end()) {
     CostMetrics cost_metrics;
     bool is_implemented = op->measure_operator_cost(this, mv, cost_metrics);
     if (!is_implemented) {
       handle_measure_operator_cost_unimplemented(op);
     }
     op->estimate_sync_cost(this, mv, cost_metrics);
-    hash_to_operator_cost[hash] = cost_metrics;
-    return cost_metrics;
-  } else {
-    return iter->second;
+    this->strict_hash_to_operator_cost[key] = cost_metrics;
   }
+  return this->strict_hash_to_operator_cost.at(key);
 }
 
 float Simulator::estimate_repartition_xfer_cost(

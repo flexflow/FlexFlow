@@ -39,8 +39,8 @@ bool operator==(SplitParams const &lhs, SplitParams const &rhs) {
   return lhs.splits == rhs.splits && lhs.legion_axis == rhs.legion_axis;
 }
 
-bool SplitParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+bool SplitParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return inputs[0].is_valid();
 }
 
 SplitParams Split::get_params() const {
@@ -133,9 +133,9 @@ Split::Split(FFModel &model,
 
 Split::Split(FFModel &model,
              SplitParams const &params,
-             const ParallelTensor input,
+             std::vector<ParallelTensor> const &input,
              char const *name)
-    : Split(model, input, params.splits, params.legion_axis, name) {}
+    : Split(model, input[0], params.splits, params.legion_axis, name) {}
 
 void Split::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());

@@ -42,9 +42,9 @@ bool operator==(ConcatParams const &lhs, ConcatParams const &rhs) {
 }
 
 bool ConcatParams::is_valid(
-    std::vector<ParallelTensorShape> const &input) const {
+    std::vector<ParallelTensorShape> const &inputs) const {
   bool valid = true;
-  for (auto p : input) {
+  for (auto p : inputs) {
     valid &= p.is_valid();
   }
   return valid;

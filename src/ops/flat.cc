@@ -74,15 +74,15 @@ void FlatParams::solve_dims(ParallelTensorShape const &input,
   solve_parallel_dim_mappings(mapping, {input.dims}, {}, output_dim_sets);
 }
 
-bool FlatParams::is_valid(ParallelTensorShape const &input) const {
+bool FlatParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
   ParallelTensorShape output_shape;
 
-  this->solve_dims(input, output_shape.dims, &output_shape.num_dims);
+  this->solve_dims(inputs[0], output_shape.dims, &output_shape.num_dims);
 
   bool is_valid = true;
-  is_valid &= input.is_valid();
+  is_valid &= inputs[0].is_valid();
   is_valid &= output_shape.is_valid();
-  is_valid &= (input.dims[FlatInput::WIDTH].degree == 1);
+  is_valid &= (inputs[0].dims[FlatInput::WIDTH].degree == 1);
 
   return is_valid;
 }
@@ -127,9 +127,9 @@ Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
 
 Flat::Flat(FFModel &model,
            FlatParams const &params,
-           const ParallelTensor input,
+           std::vector<ParallelTensor> const &input,
            char const *name)
-    : Flat(model, input, name) {}
+    : Flat(model, input[0], name) {}
 
 void Flat::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -370,10 +370,9 @@ using PCG::Node;
 /*static*/
 Node Flat::deserialize(FFModel &ff,
                        Legion::Deserializer &dez,
-                       ParallelTensor inputs[],
-                       int num_inputs) {
-  assert(num_inputs == 1);
-  return ff.get_or_create_node<Flat>(inputs[0], {});
+                       std::vector<ParallelTensor> const &inputs) {
+  assert(inputs.size() == 1);
+  return ff.get_or_create_node<Flat>(inputs, {});
 }
 
 Op *Flat::materialize(FFModel &ff,

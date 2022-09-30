@@ -269,50 +269,6 @@ class Replicate;
 class FusedParallelOp;
 class ParallelOpInfo;
 
-// TODO: Move to an appropriate place
-/*
-  This is used to create a type that recursively replaces value type
-  ParallelTensor by ParallelTensorShape in T. E.g., ToShape<std::tuple<int,
-  ParallelTensor>>::type gives std::tuple<int, ParallelTensorShape>
-*/
-template <typename T>
-struct ToShape {
-  using type = T;
-};
-
-template <>
-struct ToShape<ParallelTensor> {
-  using type = ParallelTensorShape;
-};
-
-template <typename... Args, template <typename...> typename Container>
-struct ToShape<Container<Args...>> {
-  using type = Container<typename ToShape<Args>::type...>;
-};
-
-// TODO: Move to an appropriate place
-template <typename Input>
-typename ToShape<Input>::type get_input_shape(Input const &input) = delete;
-
-template <>
-std::tuple<> get_input_shape(std::tuple<> const &);
-
-template <>
-std::tuple<ParallelTensorShape, ParallelTensorShape, ParallelTensorShape>
-    get_input_shape(
-        std::tuple<ParallelTensor, ParallelTensor, ParallelTensor> const &);
-
-template <>
-ParallelTensorShape get_input_shape(ParallelTensor const &input);
-
-template <>
-std::pair<ParallelTensorShape, ParallelTensorShape>
-    get_input_shape(std::pair<ParallelTensor, ParallelTensor> const &inputs);
-
-template <>
-std::vector<ParallelTensorShape>
-    get_input_shape(std::vector<ParallelTensor> const &inputs);
-
 class FFModel {
 public:
   FFModel(FFConfig &config);
@@ -652,11 +608,14 @@ public:
   // Internal PCG::Node creation APIs
   // ========================================
   template <typename T>
-  PCG::Node get_or_create_node(const typename T::Input &input,
+  PCG::Node get_or_create_node(std::vector<ParallelTensor> const &input,
                                typename T::Params const &params) {
     using Params = typename T::Params;
 
-    auto input_shapes = get_input_shape<typename T::Input>(input);
+    std::vector<ParallelTensorShape> input_shapes;
+    for (ParallelTensor const &t : input) {
+      input_shapes.push_back(t->get_shape());
+    }
 
     if (!params.is_valid(input_shapes)) {
       return PCG::Node::INVALID_NODE;
@@ -664,28 +623,20 @@ public:
 
     T *op = nullptr;
 
-    std::pair<typename ToShape<typename T::Input>::type, Params> key{
-        input_shapes, params};
-    auto &cache = get<std::unordered_map<
-        std::pair<typename ToShape<typename T::Input>::type, Params>,
-        T *>>(this->cached_ops);
-    auto const &it = cache.find(key);
-    if (it != cache.end()) {
-      op = it->second;
+    std::pair<std::vector<ParallelTensorShape>, Params> key{input_shapes,
+                                                            params};
+    auto const &it = cached_ops.find(key);
+    if (it != cached_ops.end()) {
+      op = (T*)it->second;
     } else {
       op = new T(*this, params, input);
-      cache[key] = op;
+      cached_ops[key] = op;
     }
 
     assert(op->get_params() == params);
     return this->new_node(op);
   }
 
-  PCG::Node get_or_create_noop_node(const ParallelTensor input);
-  PCG::Node get_or_create_input_node(ParallelTensorShape const &);
-  PCG::Node get_or_create_fused_parallel_node(
-      const ParallelTensor input,
-      std::vector<ParallelOpInfo> const &parallel_ops);
   PCG::Node get_or_create_parallel_op_node(const ParallelTensor input,
                                            ParallelOpInfo const &);
   // ========================================
@@ -821,57 +772,7 @@ public:
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
-  std::tuple<
-      std::unordered_map<
-          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
-                    BatchMatmulParams>,
-          BatchMatmul *>,
-      std::unordered_map<std::pair<ParallelTensorShape, CastParams>, Cast *>,
-      std::unordered_map<
-          std::pair<std::vector<ParallelTensorShape>, ConcatParams>,
-          Concat *>,
-      std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>,
-                         Conv2D *>,
-      std::unordered_map<std::pair<ParallelTensorShape, DropoutParams>,
-                         Dropout *>,
-      std::unordered_map<
-          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
-                    ElementBinaryParams>,
-          ElementBinary *>,
-      std::unordered_map<std::pair<ParallelTensorShape, ElementUnaryParams>,
-                         ElementUnary *>,
-      std::unordered_map<std::pair<ParallelTensorShape, EmbeddingParams>,
-                         Embedding *>,
-      std::unordered_map<std::pair<ParallelTensorShape, FlatParams>, Flat *>,
-      std::unordered_map<std::pair<ParallelTensorShape, LayerNormParams>,
-                         LayerNorm *>,
-      std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
-                         Linear *>,
-      std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>,
-                         Pool2D *>,
-      std::unordered_map<std::pair<std::tuple<ParallelTensorShape,
-                                              ParallelTensorShape,
-                                              ParallelTensorShape>,
-                                   MultiHeadAttentionParams>,
-                         MultiHeadAttention *>,
-      std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,
-                         Reshape *>,
-      std::unordered_map<std::pair<ParallelTensorShape, SplitParams>, Split *>,
-      std::unordered_map<std::pair<ParallelTensorShape, SoftmaxParams>,
-                         Softmax *>,
-      std::unordered_map<std::pair<ParallelTensorShape, TransposeParams>,
-                         Transpose *>,
-      std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
-                         Repartition *>,
-      std::unordered_map<std::pair<ParallelTensorShape, ReplicateParams>,
-                         Replicate *>,
-      std::unordered_map<std::pair<ParallelTensorShape, ReductionParams>,
-                         Reduction *>,
-      std::unordered_map<std::pair<ParallelTensorShape, CombineParams>,
-                         Combine *>,
-      std::unordered_map<std::pair<ParallelTensorShape, FusedParallelOpParams>,
-                         FusedParallelOp *>>
-      cached_ops;
+  std::unordered_map<std::pair<std::vector<ParallelTensorShape>, OperatorParameters>, Op *> cached_ops;
   std::unordered_map<size_t, NoOp *> cached_noop_ops;
   std::unordered_map<size_t, NoOp *> cached_input_ops;
   std::vector<MachineView> all_valid_views;

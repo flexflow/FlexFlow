@@ -6,7 +6,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/linear_params.h"
+#include "flexflow/ops/params/linear_params.h"
 
 namespace FlexFlow {
 
@@ -33,11 +33,10 @@ public:
 class Linear : public Op {
 public:
   using Params = LinearParams;
-  using Input = ParallelTensor;
 
   Linear(FFModel &model,
          LayerID const &layer_guid,
-         const ParallelTensor input,
+         ParallelTensor const input,
          int out_dim,
          ActiMode activation,
          bool _use_bias,
@@ -50,7 +49,7 @@ public:
          bool allocate_weights);
   Linear(FFModel &model,
          LinearParams const &params,
-         ParallelTensor input,
+         std::vector<ParallelTensor> const &input,
          char const *name = nullptr,
          bool allocate_weights = false);
 
@@ -129,8 +128,7 @@ public:
   void serialize(Legion::Serializer &) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+                               std::vector<ParallelTensor> const &inputs);
 
   // size_t get_params_hash() const override;
   LinearParams get_params() const;

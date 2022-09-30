@@ -2,7 +2,7 @@
 #define _FLEXFLOW_TRANSPOSE_H_
 
 #include "flexflow/model.h"
-#include "flexflow/ops/transpose_params.h"
+#include "flexflow/ops/params/transpose_params.h"
 
 namespace FlexFlow {
 
@@ -16,10 +16,9 @@ public:
 class Transpose : public Op {
 public:
   using Params = TransposeParams;
-  using Input = ParallelTensor;
   Transpose(FFModel &model,
             Params const &params,
-            const Input input,
+            std::vector<ParallelTensor> const &input,
             char const *name = nullptr);
   Transpose(FFModel &model,
             const ParallelTensor input,
@@ -80,8 +79,7 @@ public:
   void serialize(Legion::Serializer &s) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+                               std::vector<ParallelTensor> const &inputs);
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;

@@ -142,8 +142,8 @@ Tensor FFModel::pow(const Tensor x,
   return this->unary(OP_POW, x, inplace, name, exponent);
 }
 
-bool ElementUnaryParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+bool ElementUnaryParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return inputs[0].is_valid();
 }
 
 bool operator==(ElementUnaryParams const &lhs, ElementUnaryParams const &rhs) {
@@ -174,10 +174,10 @@ ElementUnary::ElementUnary(FFModel &model,
 
 ElementUnary::ElementUnary(FFModel &model,
                            ElementUnaryParams const &params,
-                           const ParallelTensor input,
+                           std::vector<ParallelTensor> const &inputs,
                            char const *name)
     : ElementUnary(
-          model, params.op_type, input, params.inplace, name, params.scalar) {}
+          model, params.op_type, inputs[0], params.inplace, name, params.scalar) {}
 
 void ElementUnary::map_output_tensors(FFModel &ff) {
   if (has_inplace_output()) {
@@ -628,9 +628,8 @@ using PCG::Node;
 /*static*/
 Node ElementUnary::deserialize(FFModel &ff,
                                Legion::Deserializer &dez,
-                               ParallelTensor inputs[],
-                               int num_inputs) {
-  assert(num_inputs == 1);
+                               std::vector<ParallelTensor> const &inputs) {
+  assert(inputs.size() == 1);
   OperatorType op_type;
   float scalar;
   bool inplace;
@@ -642,7 +641,7 @@ Node ElementUnary::deserialize(FFModel &ff,
   params.op_type = op_type;
   params.inplace = inplace;
   params.scalar = scalar;
-  return ff.get_or_create_node<ElementUnary>(inputs[0], params);
+  return ff.get_or_create_node<ElementUnary>(inputs, params);
 }
 
 Op *ElementUnary::materialize(FFModel &ff,

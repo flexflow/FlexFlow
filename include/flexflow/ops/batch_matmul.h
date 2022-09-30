@@ -14,10 +14,9 @@ public:
 class BatchMatmul : public Op {
 public:
   using Params = BatchMatmulParams;
-  using Input = std::pair<ParallelTensor, ParallelTensor>;
   BatchMatmul(FFModel &model,
               BatchMatmulParams const &params,
-              Input const &inputs,
+              std::vector<ParallelTensor> const &inputs,
               char const *name = nullptr);
 
   BatchMatmul(FFModel &model,
@@ -38,8 +37,7 @@ public:
   void serialize(Legion::Serializer &) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+                               std::vector<ParallelTensor> const &inputs);
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;

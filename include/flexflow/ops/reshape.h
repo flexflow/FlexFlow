@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/reshape_params.h"
+#include "flexflow/ops/params/reshape_params.h"
 
 namespace FlexFlow {
 
@@ -20,14 +20,13 @@ public:
 class Reshape : public Op {
 public:
   using Params = ReshapeParams;
-  using Input = ParallelTensor;
   Reshape(FFModel &model,
           const ParallelTensor input,
           std::vector<int> const &shape,
           char const *name);
   Reshape(FFModel &model,
           Params const &params,
-          const Input input,
+          std::vector<ParallelTensor> const &input,
           char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -76,8 +75,7 @@ public:
   void serialize(Legion::Serializer &s) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+                               std::vector<ParallelTensor> const &inputs);
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;

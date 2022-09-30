@@ -65,9 +65,9 @@ CastParams Cast::get_params() const {
   return params;
 }
 
-bool CastParams::is_valid(ParallelTensorShape const &input) const {
-  bool valid = input.is_valid();
-  valid &= (input.dims[input.num_dims - 1].degree == 1);
+bool CastParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  bool valid = inputs[0].is_valid();
+  valid &= (inputs[0].dims[inputs[0].num_dims - 1].degree == 1);
   return valid;
 }
 
@@ -98,9 +98,9 @@ Cast::Cast(FFModel &model,
 
 Cast::Cast(FFModel &model,
            CastParams const &params,
-           ParallelTensor const &input,
+           std::vector<ParallelTensor> const &input,
            char const *name)
-    : Cast(model, input, params.dtype, name) {}
+    : Cast(model, input[0], params.dtype, name) {}
 
 void Cast::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -326,12 +326,11 @@ using PCG::Node;
 
 Node Cast::deserialize(FFModel &ff,
                        Legion::Deserializer &dez,
-                       ParallelTensor inputs[],
-                       int num_inputs) {
-  assert(num_inputs == 1);
+                       std::vector<ParallelTensor> const &inputs) {
+  assert(inputs.size() == 1);
   DataType dtype;
   dez.deserialize(dtype);
-  return ff.get_or_create_node<Cast>(inputs[0], {dtype});
+  return ff.get_or_create_node<Cast>(inputs, {dtype});
 }
 
 Op *Cast::materialize(FFModel &ff,

@@ -11,7 +11,7 @@ struct ElementUnaryParams {
   bool inplace;
   float scalar = 0.0;
 
-  bool is_valid(ParallelTensorShape const &) const;
+  bool is_valid(std::vector<ParallelTensorShape> const &) const;
 };
 
 bool operator==(ElementUnaryParams const &, ElementUnaryParams const &);

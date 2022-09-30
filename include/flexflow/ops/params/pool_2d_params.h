@@ -11,7 +11,7 @@ struct Pool2DParams {
   PoolType pool_type;
   ActiMode activation;
 
-  bool is_valid(ParallelTensorShape const &input) const;
+  bool is_valid(std::vector<ParallelTensorShape> const &input) const;
   void solve_dims(ParallelTensorShape const &input,
                   ParallelDim output_dims[MAX_TENSOR_DIM],
                   int *output_ndims) const;

@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/dropout_params.h"
+#include "flexflow/ops/params/dropout_params.h"
 
 namespace FlexFlow {
 
@@ -16,7 +16,6 @@ class DropoutMeta;
 class Dropout : public Op {
 public:
   using Params = DropoutParams;
-  using Input = ParallelTensor;
   Dropout(FFModel &model,
           const ParallelTensor input,
           float rate,
@@ -25,7 +24,7 @@ public:
   Dropout(FFModel &model, Dropout const &other, const ParallelTensor input);
   Dropout(FFModel &model,
           Params const &params,
-          Input const input,
+          std::vector<ParallelTensor> const &input,
           char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -71,8 +70,7 @@ public:
   void serialize(Legion::Serializer &s) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+                               std::vector<ParallelTensor> const &inputs);
 
   Params get_params() const;
 

@@ -116,14 +116,14 @@ Tensor FFModel::divide(const Tensor in1,
 }
 
 bool ElementBinaryParams::is_valid(
-    std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
+    std::vector<ParallelTensorShape> const &inputs) const {
   bool is_valid = true;
-  is_valid &= (input.first.is_valid() & input.second.is_valid());
+  is_valid &= (inputs[0].is_valid() & inputs[1].is_valid());
   if (!is_valid)
     return false;
   // is_valid &= (input.first == input.second);
-  ParallelTensorShape A = input.first;
-  ParallelTensorShape B = input.second;
+  ParallelTensorShape A = inputs[0];
+  ParallelTensorShape B = inputs[1];
   int numdim = std::min(A.num_dims, B.num_dims);
   for (int i = 0; i < numdim; i++) {
     if (A.dims[i].size > 1 && B.dims[i].size > 1) {
@@ -185,11 +185,11 @@ ElementBinary::ElementBinary(FFModel &model,
 ElementBinary::ElementBinary(
     FFModel &model,
     ElementBinaryParams const &params,
-    std::pair<ParallelTensor, ParallelTensor> const &inputs,
+    std::vector<ParallelTensor> const &inputs,
     char const *name,
     bool inplace_a)
     : ElementBinary(
-          model, params.type, inputs.first, inputs.second, inplace_a, name) {}
+          model, params.type, inputs[0], inputs[1], inplace_a, name) {}
 
 void ElementBinary::map_output_tensors(FFModel &ff) {
   if (has_inplace_output()) {

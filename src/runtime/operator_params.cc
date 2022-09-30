@@ -9,6 +9,7 @@
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/linear.h"
+#include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/softmax.h"
@@ -74,6 +75,9 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((FusedParallelOp *)op)->get_params();
     case OP_TRANSPOSE:
       return ((Transpose *)op)->get_params();
+    case OP_NOOP:
+    case OP_INPUT:
+      return ((NoOp *)op)->get_params();
     default:
       return tl::nullopt;
   }

@@ -38,13 +38,11 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 bool MultiHeadAttentionParams::is_valid(
-    std::tuple<ParallelTensorShape,
-               ParallelTensorShape,
-               ParallelTensorShape> const &input) const {
+std::vector<ParallelTensorShape> const &inputs) const {
   bool is_valid = true;
-  is_valid &= std::get<0>(input).is_valid();
-  is_valid &= std::get<1>(input).is_valid();
-  is_valid &= std::get<2>(input).is_valid();
+  is_valid &= inputs[0].is_valid();
+  is_valid &= inputs[1].is_valid();
+  is_valid &= inputs[2].is_valid();
   return is_valid;
 }
 
@@ -347,14 +345,14 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
 MultiHeadAttention::MultiHeadAttention(
     FFModel &model,
     MultiHeadAttentionParams const &params,
-    std::tuple<ParallelTensor, ParallelTensor, ParallelTensor> const &inputs,
+    std::vector<ParallelTensor> const &inputs,
     bool allocate_weights,
     char const *name)
     : MultiHeadAttention(model,
                          params.layer_guid,
-                         std::get<0>(inputs),
-                         std::get<1>(inputs),
-                         std::get<2>(inputs),
+                         inputs[0],
+                         inputs[1],
+                         inputs[2],
                          params.embed_dim,
                          params.num_heads,
                          params.kdim,

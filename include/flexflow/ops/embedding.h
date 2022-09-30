@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/embedding_params.h"
+#include "flexflow/ops/params/embedding_params.h"
 
 namespace FlexFlow {
 
@@ -32,7 +32,6 @@ public:
 class Embedding : public Op {
 public:
   using Params = EmbeddingParams;
-  using Input = ParallelTensor;
 
   Embedding(FFModel &model,
             LayerID const &_layer_guid,
@@ -48,7 +47,7 @@ public:
             bool allocate_weights);
   Embedding(FFModel &model,
             Params const &params,
-            Input const input,
+            std::vector<ParallelTensor> const &input,
             bool allocate_weights = false,
             char const *name = nullptr);
   void init(FFModel const &) override;

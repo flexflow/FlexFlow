@@ -44,8 +44,8 @@ bool operator==(LayerNormParams const &lhs, LayerNormParams const &rhs) {
          lhs.elementwise_affine == rhs.elementwise_affine;
 }
 
-bool LayerNormParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+bool LayerNormParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return inputs[0].is_valid();
 }
 
 LayerNormParams LayerNorm::get_params() const {
@@ -138,12 +138,12 @@ Op *LayerNorm::create_operator_from_layer(
 
 LayerNorm::LayerNorm(FFModel &model,
                      LayerNormParams const &params,
-                     ParallelTensor const input,
+                     std::vector<ParallelTensor> const &input,
                      char const *name,
                      bool allocate_weights)
     : LayerNorm(model,
                 params.layer_guid,
-                input,
+                input[0],
                 params.axes,
                 params.elementwise_affine,
                 params.eps,
@@ -532,9 +532,8 @@ using PCG::Node;
 /*static*/
 Node LayerNorm::deserialize(FFModel &ff,
                             Legion::Deserializer &dez,
-                            ParallelTensor inputs[],
-                            int num_inputs) {
-  assert(num_inputs == 1);
+                            std::vector<ParallelTensor> const &inputs) {
+  assert(inputs.size() == 1);
   size_t num_axes;
   std::vector<int> axes;
   bool elementwise_affine;
@@ -556,15 +555,16 @@ Node LayerNorm::deserialize(FFModel &ff,
   params.axes = axes;
   params.elementwise_affine = elementwise_affine;
   params.eps = eps;
-  return ff.get_or_create_node<LayerNorm>(inputs[0], params);
+  return ff.get_or_create_node<LayerNorm>(inputs, params);
 }
 
 Op *LayerNorm::materialize(FFModel &ff,
                            ParallelTensor inputs[],
                            int num_inputs) const {
+  assert (num_inputs == 1);
   LayerNormParams params = get_params();
   return new LayerNorm(
-      ff, params, inputs[0], this->name, true /*allocate_weights*/);
+      ff, params, {inputs[0]}, this->name, true /*allocate_weights*/);
 }
 
 }; // namespace FlexFlow

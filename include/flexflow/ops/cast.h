@@ -19,7 +19,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/ops/cast_params.h"
+#include "flexflow/ops/params/cast_params.h"
 
 namespace FlexFlow {
 
@@ -32,14 +32,13 @@ public:
 class Cast : public Op {
 public:
   using Params = CastParams;
-  using Input = ParallelTensor;
   Cast(FFModel &model,
        ParallelTensor const &input,
        DataType dtype,
        char const *name);
   Cast(FFModel &model,
        Params const &params,
-       Input const &input,
+       std::vector<ParallelTensor> const &input,
        char const *name = nullptr);
   void init(FFModel const &);
   void forward(FFModel const &);
@@ -110,8 +109,7 @@ public:
   void serialize(Legion::Serializer &s) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+                               std::vector<ParallelTensor> const &);
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;

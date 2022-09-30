@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/parallel_ops/fused_parallel_op_params.h"
+#include "flexflow/parallel_ops/params/fused_parallel_op_params.h"
 #include "parallel_op.h"
 
 namespace FlexFlow {
@@ -15,11 +15,10 @@ namespace FlexFlow {
 class FusedParallelOp : public ParallelOp {
 public:
   using Params = FusedParallelOpParams;
-  using Input = ParallelTensor;
   FusedParallelOp(FFModel &model,
                   const ParallelTensor input,
                   std::vector<ParallelOpInfo> const &parallel_ops);
-  FusedParallelOp(FFModel &model, Params const &params, const Input input);
+  FusedParallelOp(FFModel &model, Params const &params, std::vector<ParallelTensor> const &input);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;

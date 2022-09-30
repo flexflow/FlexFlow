@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
-#include "flexflow/parallel_ops/replicate_params.h"
+#include "flexflow/parallel_ops/params/replicate_params.h"
 #include "parallel_op.h"
 
 namespace FlexFlow {
@@ -15,7 +15,6 @@ namespace FlexFlow {
 class Replicate : public ParallelOp {
 public:
   using Params = ReplicateParams;
-  using Input = ParallelTensor;
 
   Replicate(FFModel &model,
             const ParallelTensor input,
@@ -24,7 +23,7 @@ public:
             char const *name = NULL);
   Replicate(FFModel &model,
             Params const &params,
-            Input const input,
+            std::vector<ParallelTensor> const &input,
             char const *name = nullptr);
   void create_input_partition(FFModel &model) override;
   void init(FFModel const &) override;

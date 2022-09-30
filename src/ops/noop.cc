@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/noop.h"
+#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -71,6 +72,42 @@ NoOp::NoOp(FFModel &model,
   outputs[0] = _output;
   outputs[0]->owner_op = this;
   outputs[0]->owner_idx = 0;
+}
+
+NoOp::NoOp(FFModel &model,
+           Params const &params,
+           std::vector<ParallelTensor> const &inputs,
+           char const *name) 
+  : Op(model, params.op_type, name, 0/*weights*/, 1/*outputs*/, inputs)
+{
+  if (params.op_type == OP_NOOP) {
+    assert (inputs.size() == 1);
+  } else {
+    assert (params.op_type == OP_INPUT);
+    assert (inputs.size() == 0);
+    auto input_metadata = params.input_metadata.value();
+    if (mp::holds_alternative<size_t>(input_metadata)) {
+      this->input_tensor_guid = mp::get<size_t>(input_metadata);
+    } else {
+      ParallelTensor tensor = new ParallelTensorBase();
+      tensor->parallel_tensor_guid = model.parallel_tensor_global_guid++;
+      tensor->data_type = DT_FLOAT; // TODO FIXME @lockshaw
+      ParallelTensorShape output_shape = mp::get<ParallelTensorShape>(input_metadata);
+      tensor->num_dims = output_shape.num_dims;
+      int parallel_idx = 0;
+      for (int i = 0; i < output_shape.num_dims; i++) {
+        tensor->dims[i].size = output_shape.dims[i].size;
+        tensor->dims[i].degree = output_shape.dims[i].degree;
+        if (tensor->dims[i].degree > 1) {
+          tensor->dims[i].parallel_idx = parallel_idx;
+          parallel_idx++;
+        } else {
+          tensor->dims[i].parallel_idx = -1;
+        }
+      }
+      assert(tensor->check_valid());
+    }
+  }
 }
 
 OpMeta *NoOp::init_task(Task const *task,
@@ -150,62 +187,37 @@ bool NoOp::measure_operator_cost(Simulator *sim,
   return true;
 }
 
-size_t NoOp::get_params_hash() const {
-  size_t hash = 0;
-  for (int i = 0; i < this->numInputs; i++) {
-    hash_combine(hash, this->inputs[i]);
-  }
-  hash_combine(hash, this->op_type);
+/* using PCG::Node; */
+/* Node FFModel::get_or_create_noop_node(const ParallelTensor input) { */
+/*   size_t hash = input->get_owner_independent_hash(); */
+/*   NoOp *noop = NULL; */
+/*   auto const &it = cached_noop_ops.find(hash); */
+/*   if (it != cached_noop_ops.end()) { */
+/*     noop = it->second; */
+/*   } else { */
+/*     noop = new NoOp(*this, OP_NOOP, input, NULL); */
+/*     cached_noop_ops[hash] = noop; */
+/*   } */
+/*   Node ret; */
+/*   ret.guid = node_global_guid++; */
+/*   ret.ptr = noop; */
+/*   return ret; */
+/* } */
 
-  return hash;
-}
+/* Node FFModel::get_or_create_input_node( */
+/*     ParallelTensorShape const &output_shape) { */
+/*   size_t hash = std::hash<ParallelTensorShape>{}(output_shape); */
+/*   NoOp *input = NULL; */
+/*   auto const &it = cached_input_ops.find(hash); */
+/*   if (it != cached_input_ops.end()) { */
+/*     input = it->second; */
+/*   } else { */
+/*     assert(tensor->check_valid()); */
+/*     input = new NoOp(*this, OP_INPUT, tensor, NULL); */
+/*   } */
 
-using PCG::Node;
-Node FFModel::get_or_create_noop_node(const ParallelTensor input) {
-  size_t hash = input->get_owner_independent_hash();
-  NoOp *noop = NULL;
-  auto const &it = cached_noop_ops.find(hash);
-  if (it != cached_noop_ops.end()) {
-    noop = it->second;
-  } else {
-    noop = new NoOp(*this, OP_NOOP, input, NULL);
-    cached_noop_ops[hash] = noop;
-  }
-  Node ret;
-  ret.guid = node_global_guid++;
-  ret.ptr = noop;
-  return ret;
-}
-
-Node FFModel::get_or_create_input_node(
-    ParallelTensorShape const &output_shape) {
-  size_t hash = std::hash<ParallelTensorShape>{}(output_shape);
-  NoOp *input = NULL;
-  auto const &it = cached_input_ops.find(hash);
-  if (it != cached_input_ops.end()) {
-    input = it->second;
-  } else {
-    ParallelTensor tensor = new ParallelTensorBase();
-    tensor->parallel_tensor_guid = parallel_tensor_global_guid++;
-    tensor->data_type = DT_FLOAT; // TODO FIXME @lockshaw
-    tensor->num_dims = output_shape.num_dims;
-    int parallel_idx = 0;
-    for (int i = 0; i < output_shape.num_dims; i++) {
-      tensor->dims[i].size = output_shape.dims[i].size;
-      tensor->dims[i].degree = output_shape.dims[i].degree;
-      if (tensor->dims[i].degree > 1) {
-        tensor->dims[i].parallel_idx = parallel_idx;
-        parallel_idx++;
-      } else {
-        tensor->dims[i].parallel_idx = -1;
-      }
-    }
-    assert(tensor->check_valid());
-    input = new NoOp(*this, OP_INPUT, tensor, NULL);
-  }
-
-  return this->new_node(input);
-}
+/*   return this->new_node(input); */
+/* } */
 
 tl::optional<RecordFormatter> NoOp::as_dot() const {
   RecordFormatter rf;
@@ -215,6 +227,16 @@ tl::optional<RecordFormatter> NoOp::as_dot() const {
     rf << oss.str();
   }
   return rf;
+}
+
+NoOpParams NoOp::get_params() const {
+  NoOpParams params;
+  params.op_type == this->op_type;
+  if (this->op_type == OP_INPUT) {
+    params.input_metadata = this->input_tensor_guid;
+  }
+
+  return params;
 }
 
 }; // namespace FlexFlow

@@ -40,8 +40,8 @@ bool operator==(ReshapeParams const &lhs, ReshapeParams const &rhs) {
   return lhs.shape == rhs.shape;
 }
 
-bool ReshapeParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+bool ReshapeParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return inputs[0].is_valid();
 }
 
 Tensor FFModel::reshape(const Tensor input,
@@ -124,9 +124,9 @@ Reshape::Reshape(FFModel &model,
 
 Reshape::Reshape(FFModel &model,
                  ReshapeParams const &params,
-                 const ParallelTensor input,
+                 std::vector<ParallelTensor> const &input,
                  char const *name)
-    : Reshape(model, input, params.shape, name) {}
+    : Reshape(model, input[0], params.shape, name) {}
 
 void Reshape::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -402,9 +402,8 @@ using PCG::Node;
 
 Node Reshape::deserialize(FFModel &ff,
                           Legion::Deserializer &dez,
-                          ParallelTensor inputs[],
-                          int num_inputs) {
-  assert(num_inputs == 1);
+                          std::vector<ParallelTensor> const &inputs) {
+  assert(inputs.size() == 1);
   size_t shape_length;
   std::vector<int> shape;
   dez.deserialize(shape_length);
@@ -413,7 +412,7 @@ Node Reshape::deserialize(FFModel &ff,
     dez.deserialize(value);
     shape.push_back(value);
   }
-  return ff.get_or_create_node<Reshape>(inputs[0], {shape});
+  return ff.get_or_create_node<Reshape>(inputs, {shape});
 }
 
 Op *Reshape::materialize(FFModel &ff,
