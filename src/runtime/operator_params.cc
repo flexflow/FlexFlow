@@ -12,6 +12,7 @@
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/softmax.h"
+#include "flexflow/ops/transpose.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -71,6 +72,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((Combine *)op)->get_params();
     case OP_FUSED_PARALLEL:
       return ((FusedParallelOp *)op)->get_params();
+    case OP_TRANSPOSE:
+      return ((Transpose *)op)->get_params();
     default:
       return tl::nullopt;
   }
