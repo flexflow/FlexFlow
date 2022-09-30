@@ -80,9 +80,9 @@ Cast::Cast(FFModel &model,
          0 /*weights*/,
          1 /*outputs*/,
          input) {
-  
+
   // assert is valid
-  assert (input->dims[input->num_dims - 1].degree == 1);
+  assert(input->dims[input->num_dims - 1].degree == 1);
 
   numOutputs = 1;
   numWeights = 0;

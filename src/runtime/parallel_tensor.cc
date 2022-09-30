@@ -70,11 +70,16 @@ bool ParallelTensorShape::is_valid() const {
 
   for (int i = 0; i < this->num_dims; i++) {
     ParallelDim const &dim = this->dims[i];
-    assert(dim.size > 0);
-    assert(dim.degree != ParallelDim::UNKNOWN_DEGREE);
-    assert(dim.degree >= 1);
-    assert(dim.parallel_idx != ParallelDim::UNKNOWN_INDEX);
-    assert(dim.parallel_idx < MAX_TENSOR_DIM);
+    if (dim.size <= 0)
+      return false;
+    if (dim.degree == ParallelDim::UNKNOWN_DEGREE)
+      return false;
+    if (dim.degree < 1)
+      return false;
+    if (dim.parallel_idx == ParallelDim::UNKNOWN_INDEX)
+      return false;
+    if (dim.parallel_idx >= MAX_TENSOR_DIM)
+      return false;
     used[dims[i].parallel_idx] = true;
     if (dim.size % dim.degree != 0) {
       return false;
@@ -85,7 +90,8 @@ bool ParallelTensorShape::is_valid() const {
     idx++;
   }
   for (int i = idx; i < MAX_TENSOR_DIM; i++) {
-    assert(!used[i]);
+    if (used[i])
+      return false;
   }
 
   return true;
@@ -479,15 +485,18 @@ bool ParallelTensorBase::check_valid() const {
       return false;
     if (dims[i].parallel_idx > MAX_TENSOR_DIM)
       return false;
-    assert(dims[i].parallel_idx >= -1);
-    assert(dims[i].degree >= 1);
+    if (dims[i].parallel_idx < -1)
+      return false;
+    if (dims[i].degree < 1)
+      return false;
     if (dims[i].parallel_idx >= 0) {
       if (used[dims[i].parallel_idx])
         return false;
       used[dims[i].parallel_idx] = true;
     }
   }
-  assert(this->data_type != DT_NONE);
+  if (this->data_type == DT_NONE)
+    return false;
   int idx = 0;
   while (used[idx])
     idx++;

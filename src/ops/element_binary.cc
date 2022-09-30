@@ -138,10 +138,10 @@ ElementBinary::ElementBinary(FFModel &model,
   // assert is valid
   ParallelTensorShape A = in1->get_shape();
   ParallelTensorShape B = in2->get_shape();
-  int numdim = std::min(A.num_dims, B.num_dims);
-  for (int i = 0; i < numdim; i++) {
+  int mindim = std::min(A.num_dims, B.num_dims);
+  for (int i = 0; i < mindim; i++) {
     if (A.dims[i].size > 1 && B.dims[i].size > 1) {
-      assert (A.dims[i] == B.dims[i]);
+      assert(A.dims[i] == B.dims[i]);
     }
   }
 

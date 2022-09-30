@@ -102,11 +102,11 @@ Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
 
   ParallelTensorShape output_shape;
   this->get_params().solve_dims(this->inputs[0]->get_shape(), output_shape);
-  assert (output_shape.is_valid());
+  assert(output_shape.is_valid());
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       output_shape.num_dims, output_shape.dims, _input->data_type, this);
-  assert (_input->dims[FlatInput::WIDTH].degree == 1);
+  assert(_input->dims[FlatInput::WIDTH].degree == 1);
 
   assert(check_output_input_weight_parallel_dims());
 }

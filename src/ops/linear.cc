@@ -168,10 +168,10 @@ Linear::Linear(FFModel &model,
   params.construct_mappings(*this->parallel_dims_mapping, input_shape);
   params.solve_dims(input_shape, output_shape, kernel_shape, bias_shape);
 
-  assert (output_shape.is_valid());
-  assert (kernel_shape.is_valid());
+  assert(output_shape.is_valid());
+  assert(kernel_shape.is_valid());
   if (params.use_bias) {
-    assert (bias_shape.is_valid());
+    assert(bias_shape.is_valid());
   }
 
   if (allocate_weights) {
@@ -961,15 +961,16 @@ void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
 
   std::vector<ParallelDimMappingRecord> mapping;
   this->construct_mappings(mapping, input_shape);
-  this->mark_replica_dims(input_shape, output_shape.dims, kernel_shape.dims, bias_shape.dims);
+  this->mark_replica_dims(
+      input_shape, output_shape.dims, kernel_shape.dims, bias_shape.dims);
 
-  solve_parallel_dim_mappings(
-      mapping, {input_shape.dims}, {kernel_shape.dims, bias_shape.dims}, {output_shape.dims});
+  solve_parallel_dim_mappings(mapping,
+                              {input_shape.dims},
+                              {kernel_shape.dims, bias_shape.dims},
+                              {output_shape.dims});
 
-  this->calculate_nonreplica_dim_sizes(input_shape,
-                                       output_shape,
-                                       kernel_shape,
-                                       bias_shape);
+  this->calculate_nonreplica_dim_sizes(
+      input_shape, output_shape, kernel_shape, bias_shape);
 }
 
 std::unordered_map<LinearParams::NamedDimensions, int>
@@ -1000,7 +1001,8 @@ void LinearParams::calculate_nonreplica_dim_sizes(
     for (int i = 1; i < input_shape.num_dims - 1; i++) {
       output_shape.dims[i].size = input_shape.dims[i].size;
     }
-    output_shape.dims[dimension_names.at(OUTPUT_CHANNEL)].size = this->out_channels;
+    output_shape.dims[dimension_names.at(OUTPUT_CHANNEL)].size =
+        this->out_channels;
     output_shape.num_dims = num_dims;
   }
   if (kernel_shape.dims != nullptr) {
@@ -1012,7 +1014,8 @@ void LinearParams::calculate_nonreplica_dim_sizes(
     kernel_shape.num_dims = num_dims;
   }
   if (bias_shape.dims != nullptr) {
-    bias_shape.dims[dimension_names.at(BIAS_CHANNEL_OUT)].size = this->out_channels;
+    bias_shape.dims[dimension_names.at(BIAS_CHANNEL_OUT)].size =
+        this->out_channels;
     bias_shape.num_dims = num_dims;
   }
 }

@@ -1925,7 +1925,8 @@ void FFModel::deserialize_graph_optimal_view(
         int legion_axis;
         dez.deserialize(legion_axis);
         node = get_or_create_node<Concat>(
-            {std::begin(inputs), std::begin(inputs) + num_inputs}, {legion_axis});
+            {std::begin(inputs), std::begin(inputs) + num_inputs},
+            {legion_axis});
         break;
       }
       case OP_SPLIT: {

@@ -225,8 +225,8 @@ Pool2D::Pool2D(FFModel &model,
   ParallelTensorShape output_shape;
   this->get_params().solve_dims(this->inputs[0]->get_shape(), output_shape);
 
-  assert (output_shape.is_valid());
-  assert (_input->dims[Pool2DInput::REPLICA].degree == 1);
+  assert(output_shape.is_valid());
+  assert(_input->dims[Pool2DInput::REPLICA].degree == 1);
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       output_shape.num_dims, output_shape.dims, DT_FLOAT, this);

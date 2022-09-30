@@ -231,7 +231,8 @@ void Conv2DParams::solve_dims(ParallelTensorShape const &input_shape,
   std::vector<ParallelDimMappingRecord> mapping;
   Conv2D::construct_mappings(mapping, this->use_bias);
 
-  this->mark_replica_dims(input_shape, output_shape.dims, kernel_shape.dims, bias_shape.dims);
+  this->mark_replica_dims(
+      input_shape, output_shape.dims, kernel_shape.dims, bias_shape.dims);
 
   std::vector<ParallelDim *> output_dim_sets;
   if (output_shape.dims != nullptr) {
@@ -400,21 +401,18 @@ Conv2D::Conv2D(FFModel &model,
 
   ParallelTensorShape output_shape, kernel_shape, bias_shape;
   this->construct_mappings(*this->parallel_dims_mapping, this->use_bias);
-  this->get_params().solve_dims(this->inputs[0]->get_shape(),
-                                output_shape,
-                                kernel_shape,
-                                bias_shape);
-  
+  this->get_params().solve_dims(
+      this->inputs[0]->get_shape(), output_shape, kernel_shape, bias_shape);
 
   // assert is valid
-  assert (output_shape.is_valid());
-  assert (kernel_shape.is_valid());
+  assert(output_shape.is_valid());
+  assert(kernel_shape.is_valid());
   if (this->get_params().use_bias) {
-    assert (bias_shape.is_valid());
+    assert(bias_shape.is_valid());
   }
 
   // TODO FIXME: Currently disable parallelizing the height and width dimension
-  assert (!(input->dims[0].degree > 1 || input->dims[1].degree > 1));
+  assert(!(input->dims[0].degree > 1 || input->dims[1].degree > 1));
 
   if (allocate_weights) {
     Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
@@ -935,17 +933,15 @@ bool Conv2D::estimate_sync_cost(Simulator *sim,
                                 CostMetrics &cost_metrics) const {
   ParallelTensorShape output_shape, kernel_shape, bias_shape;
 
-  this->get_params().solve_dims(this->inputs[0]->get_shape(),
-                                output_shape,
-                                kernel_shape,
-                                bias_shape);
+  this->get_params().solve_dims(
+      this->inputs[0]->get_shape(), output_shape, kernel_shape, bias_shape);
 
-  cost_metrics.sync_time =
-      sim->default_estimate_sync_cost(kernel_shape.dims, kernel_shape.num_dims, view);
+  cost_metrics.sync_time = sim->default_estimate_sync_cost(
+      kernel_shape.dims, kernel_shape.num_dims, view);
 
   if (this->use_bias) {
-    cost_metrics.sync_time +=
-        sim->default_estimate_sync_cost(bias_shape.dims, bias_shape.num_dims, view);
+    cost_metrics.sync_time += sim->default_estimate_sync_cost(
+        bias_shape.dims, bias_shape.num_dims, view);
   }
 
   return true;

@@ -172,7 +172,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
 {
   // overwrite layer_guid
   layer_guid = _layer_guid;
-  
+
   // assert key and value have the same sequence length
   assert(_key->dims[1] == _value->dims[1]);
   numOutputs = 1;

@@ -121,7 +121,7 @@ Op::Op(FFModel &model,
   std::strcpy(name, pcname.c_str());
   for (int i = 0; i < numInputs; i++) {
     assert(tensors[i] != NULL);
-    assert(tensors[i]->check_valid());
+    assert(tensors[i]->get_shape().is_valid());
     inputs[i] = tensors[i];
   }
   for (int i = 0; i < numInputs; i++) {
@@ -160,7 +160,7 @@ Op::Op(FFModel &model,
   for (int i = 0; i < numInputs + numWeights; i++) {
     if (i < numInputs) {
       // Activation
-      assert(_inputs[i]->check_valid());
+      assert(_inputs[i]->get_shape().is_valid());
       inputs[i] = _inputs[i];
     } else {
       // Weight
