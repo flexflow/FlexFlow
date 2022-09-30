@@ -119,7 +119,8 @@ Pool2DParams Pool2D::get_params() const {
   return params;
 }
 
-bool Pool2DParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool Pool2DParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   ParallelTensorShape output_shape;
 
   this->solve_dims(inputs[0], output_shape.dims, &output_shape.num_dims);

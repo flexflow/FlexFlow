@@ -39,7 +39,8 @@ bool operator==(SoftmaxParams const &lhs, SoftmaxParams const &rhs) {
   return lhs.dim == rhs.dim;
 }
 
-bool SoftmaxParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool SoftmaxParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   return inputs[0].is_valid();
 }
 

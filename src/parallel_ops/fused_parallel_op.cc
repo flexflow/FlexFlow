@@ -50,7 +50,8 @@ bool operator==(FusedParallelOpParams const &lhs,
   return lhs.parallel_ops == rhs.parallel_ops;
 }
 
-bool FusedParallelOpParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool FusedParallelOpParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   return inputs[0].is_valid();
 }
 

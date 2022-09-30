@@ -44,7 +44,8 @@ bool operator==(ReplicateParams const &lhs, ReplicateParams const &rhs) {
          lhs.replicate_degree == rhs.replicate_degree;
 }
 
-bool ReplicateParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool ReplicateParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   return inputs[0].is_valid();
 }
 

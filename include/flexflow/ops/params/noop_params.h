@@ -11,20 +11,21 @@ namespace FlexFlow {
 
 struct NoOpParams {
   OperatorType op_type;
-  tl::optional<mp::variant<ParallelTensorShape, size_t>> input_metadata = tl::nullopt;
+  tl::optional<mp::variant<ParallelTensorShape, size_t>> input_metadata =
+      tl::nullopt;
 
   bool is_valid(std::vector<ParallelTensorShape> const &inputs) const;
 };
 
 bool operator==(NoOpParams const &, NoOpParams const &);
 
-}  // namespace FlexFlow
+} // namespace FlexFlow
 
 namespace std {
-template<>
+template <>
 struct hash<FlexFlow::NoOpParams> {
   size_t operator()(FlexFlow::NoOpParams const &) const;
 };
-}  // namespace std
+} // namespace std
 
 #endif // _FLEXFLOW_OPS_PARAMS_NOOP_PARAMS_H

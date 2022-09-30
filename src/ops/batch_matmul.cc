@@ -116,11 +116,10 @@ Op *BatchMatmul::create_operator_from_layer(
                          layer->name);
 }
 
-BatchMatmul::BatchMatmul(
-    FFModel &model,
-    BatchMatmulParams const &params,
-    std::vector<ParallelTensor> const &inputs,
-    char const *name)
+BatchMatmul::BatchMatmul(FFModel &model,
+                         BatchMatmulParams const &params,
+                         std::vector<ParallelTensor> const &inputs,
+                         char const *name)
     : BatchMatmul(model,
                   inputs[0],
                   inputs[1],

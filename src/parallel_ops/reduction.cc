@@ -44,7 +44,8 @@ bool operator==(ReductionParams const &lhs, ReductionParams const &rhs) {
          lhs.reduction_degree == rhs.reduction_degree;
 }
 
-bool ReductionParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool ReductionParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   return inputs[0].is_valid();
 }
 

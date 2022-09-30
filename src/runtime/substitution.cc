@@ -702,7 +702,7 @@ void Graph::reshape_output_tensor(ParallelTensorShape const &desired_shape) {
       int partition_factor = desired_degree / current_degree;
 
       Node partition_node = model->get_or_create_node<Repartition>(
-                                                                   {output_tensor}, {i /*legion_dim*/, partition_factor});
+          {output_tensor}, {i /*legion_dim*/, partition_factor});
       this->add_edge(output_node, partition_node, 0, 0);
 
       output_node = partition_node;
@@ -715,7 +715,7 @@ void Graph::reshape_output_tensor(ParallelTensorShape const &desired_shape) {
       int combine_factor = current_degree / desired_degree;
 
       Node combine_node = model->get_or_create_node<Combine>(
-                                                             {output_tensor}, {i /*legion_dim*/, combine_factor});
+          {output_tensor}, {i /*legion_dim*/, combine_factor});
       this->add_edge(output_node, combine_node, 0, 0);
 
       output_node = combine_node;
@@ -867,8 +867,7 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     case OP_EW_ADD:
     case OP_EW_SUB:
     case OP_EW_MUL: {
-      op = model->get_or_create_node<ElementBinary>(inputs,
-                                                    {opx->type});
+      op = model->get_or_create_node<ElementBinary>(inputs, {opx->type});
       break;
     }
     case OP_RELU: {
@@ -914,8 +913,7 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
       MultiHeadAttention *attn = (MultiHeadAttention *)opx->matchOpX->mapOp.ptr;
       assert(opx->get_pm_constraint(PM_NUM_HEADS, num_heads));
       MultiHeadAttentionParams params = attn->get_params();
-      op = model->get_or_create_node<MultiHeadAttention>(
-          inputs, params);
+      op = model->get_or_create_node<MultiHeadAttention>(inputs, params);
       break;
     }
     case OP_SOFTMAX: {
@@ -2256,7 +2254,8 @@ T GraphSearchHelper::generic_sequence_optimize(
         Node noop_node = [&]() {
           NoOpParams noop_params;
           noop_params.op_type = OP_NOOP;
-          return this->model->get_or_create_node<NoOp>({input_node.ptr->outputs[0]}, noop_params);
+          return this->model->get_or_create_node<NoOp>(
+              {input_node.ptr->outputs[0]}, noop_params);
         }();
         Graph input_graph(this->model);
         Edge e(input_node, noop_node, 0, 0);
@@ -2281,7 +2280,8 @@ T GraphSearchHelper::generic_sequence_optimize(
         Node noop_node = [&]() {
           NoOpParams params;
           params.op_type = OP_NOOP;
-          return this->model->get_or_create_node<NoOp>({sink_node.ptr->outputs[0]}, params);
+          return this->model->get_or_create_node<NoOp>(
+              {sink_node.ptr->outputs[0]}, params);
         }();
         to_optimize.add_edge(sink_node, noop_node, 0, 0);
       } else {

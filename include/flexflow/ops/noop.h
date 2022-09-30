@@ -28,7 +28,7 @@ public:
        Params const &params,
        std::vector<ParallelTensor> const &inputs,
        char const *name = nullptr);
-      
+
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -46,6 +46,7 @@ public:
   tl::optional<RecordFormatter> as_dot() const override;
 
   Params get_params() const;
+
 public:
   size_t input_tensor_guid;
 };

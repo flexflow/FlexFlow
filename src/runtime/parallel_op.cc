@@ -70,13 +70,13 @@ Node FFModel::get_or_create_parallel_op_node(
                                                {parallel_dim, parallel_degree});
     case OP_REPARTITION:
       return this->get_or_create_node<Repartition>(
-                                                   {input}, {parallel_dim, parallel_degree});
+          {input}, {parallel_dim, parallel_degree});
     case OP_REPLICATE:
       return this->get_or_create_node<Replicate>(
-                                                 {input}, {parallel_dim, parallel_degree});
+          {input}, {parallel_dim, parallel_degree});
     case OP_REDUCTION:
       return this->get_or_create_node<Reduction>(
-                                                 {input}, {parallel_dim, parallel_degree});
+          {input}, {parallel_dim, parallel_degree});
     default:
       assert(false && "Unsupported parallel op");
   }

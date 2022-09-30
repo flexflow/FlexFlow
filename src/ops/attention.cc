@@ -38,7 +38,7 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 bool MultiHeadAttentionParams::is_valid(
-std::vector<ParallelTensorShape> const &inputs) const {
+    std::vector<ParallelTensorShape> const &inputs) const {
   bool is_valid = true;
   is_valid &= inputs[0].is_valid();
   is_valid &= inputs[1].is_valid();

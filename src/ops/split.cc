@@ -39,7 +39,8 @@ bool operator==(SplitParams const &lhs, SplitParams const &rhs) {
   return lhs.splits == rhs.splits && lhs.legion_axis == rhs.legion_axis;
 }
 
-bool SplitParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool SplitParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   return inputs[0].is_valid();
 }
 

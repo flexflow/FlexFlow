@@ -71,7 +71,8 @@ DropoutParams Dropout::get_params() const {
   return params;
 }
 
-bool DropoutParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool DropoutParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   // dropout is always valid
   return true;
 }
@@ -112,7 +113,6 @@ Dropout::Dropout(FFModel &model,
                  std::vector<ParallelTensor> const &input,
                  char const *name)
     : Dropout(model, input[0], params.rate, params.seed, name) {}
-
 
 void Dropout::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());

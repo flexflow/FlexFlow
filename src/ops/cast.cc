@@ -65,7 +65,8 @@ CastParams Cast::get_params() const {
   return params;
 }
 
-bool CastParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool CastParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   bool valid = inputs[0].is_valid();
   valid &= (inputs[0].dims[inputs[0].num_dims - 1].degree == 1);
   return valid;

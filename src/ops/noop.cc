@@ -77,14 +77,13 @@ NoOp::NoOp(FFModel &model,
 NoOp::NoOp(FFModel &model,
            Params const &params,
            std::vector<ParallelTensor> const &inputs,
-           char const *name) 
-  : Op(model, params.op_type, name, 0/*weights*/, 1/*outputs*/, inputs)
-{
+           char const *name)
+    : Op(model, params.op_type, name, 0 /*weights*/, 1 /*outputs*/, inputs) {
   if (params.op_type == OP_NOOP) {
-    assert (inputs.size() == 1);
+    assert(inputs.size() == 1);
   } else {
-    assert (params.op_type == OP_INPUT);
-    assert (inputs.size() == 0);
+    assert(params.op_type == OP_INPUT);
+    assert(inputs.size() == 0);
     auto input_metadata = params.input_metadata.value();
     if (mp::holds_alternative<size_t>(input_metadata)) {
       this->input_tensor_guid = mp::get<size_t>(input_metadata);
@@ -92,7 +91,8 @@ NoOp::NoOp(FFModel &model,
       ParallelTensor tensor = new ParallelTensorBase();
       tensor->parallel_tensor_guid = model.parallel_tensor_global_guid++;
       tensor->data_type = DT_FLOAT; // TODO FIXME @lockshaw
-      ParallelTensorShape output_shape = mp::get<ParallelTensorShape>(input_metadata);
+      ParallelTensorShape output_shape =
+          mp::get<ParallelTensorShape>(input_metadata);
       tensor->num_dims = output_shape.num_dims;
       int parallel_idx = 0;
       for (int i = 0; i < output_shape.num_dims; i++) {

@@ -7,4 +7,4 @@ OpMeta::OpMeta(FFHandler _handle) : handle(_handle), profiling(false) {
     trainableInputs[i] = true;
 }
 
-}  // namespace FlexFlow
+} // namespace FlexFlow

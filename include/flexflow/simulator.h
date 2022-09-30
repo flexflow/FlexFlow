@@ -675,7 +675,8 @@ public:
 
 size_t data_type_size(DataType);
 
-using ProfilingRecordKey = std::tuple<OperatorParameters, std::vector<ParallelTensorShape>, MachineView>;
+using ProfilingRecordKey = std::
+    tuple<OperatorParameters, std::vector<ParallelTensorShape>, MachineView>;
 
 class Simulator {
 public:

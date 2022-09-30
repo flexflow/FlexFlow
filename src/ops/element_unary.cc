@@ -142,7 +142,8 @@ Tensor FFModel::pow(const Tensor x,
   return this->unary(OP_POW, x, inplace, name, exponent);
 }
 
-bool ElementUnaryParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool ElementUnaryParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   return inputs[0].is_valid();
 }
 
@@ -176,8 +177,12 @@ ElementUnary::ElementUnary(FFModel &model,
                            ElementUnaryParams const &params,
                            std::vector<ParallelTensor> const &inputs,
                            char const *name)
-    : ElementUnary(
-          model, params.op_type, inputs[0], params.inplace, name, params.scalar) {}
+    : ElementUnary(model,
+                   params.op_type,
+                   inputs[0],
+                   params.inplace,
+                   name,
+                   params.scalar) {}
 
 void ElementUnary::map_output_tensors(FFModel &ff) {
   if (has_inplace_output()) {

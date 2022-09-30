@@ -44,10 +44,12 @@ bool operator==(CombineParams const &lhs, CombineParams const &rhs) {
          lhs.combine_degree == rhs.combine_degree;
 }
 
-bool CombineParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool CombineParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   bool valid = inputs[0].is_valid();
   valid &=
-      (inputs[0].dims[this->combine_legion_dim].degree % this->combine_degree == 0);
+      (inputs[0].dims[this->combine_legion_dim].degree % this->combine_degree ==
+       0);
   return valid;
 }
 

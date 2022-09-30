@@ -74,7 +74,8 @@ void FlatParams::solve_dims(ParallelTensorShape const &input,
   solve_parallel_dim_mappings(mapping, {input.dims}, {}, output_dim_sets);
 }
 
-bool FlatParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool FlatParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   ParallelTensorShape output_shape;
 
   this->solve_dims(inputs[0], output_shape.dims, &output_shape.num_dims);

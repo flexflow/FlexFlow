@@ -229,7 +229,8 @@ void Embedding::register_mappings() {
 }
 
 /* Params */
-bool EmbeddingParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool EmbeddingParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   return inputs[0].is_valid();
 }
 

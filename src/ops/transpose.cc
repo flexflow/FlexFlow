@@ -37,7 +37,8 @@ bool operator==(TransposeParams const &lhs, TransposeParams const &rhs) {
   return lhs.perm == rhs.perm;
 }
 
-bool TransposeParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool TransposeParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   return inputs[0].is_valid();
 }
 

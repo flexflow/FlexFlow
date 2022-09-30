@@ -182,14 +182,13 @@ ElementBinary::ElementBinary(FFModel &model,
   broadcast_input2 = (inputs[1]->get_volume() != outputs[0]->get_volume());
 }
 
-ElementBinary::ElementBinary(
-    FFModel &model,
-    ElementBinaryParams const &params,
-    std::vector<ParallelTensor> const &inputs,
-    char const *name,
-    bool inplace_a)
-    : ElementBinary(
-          model, params.type, inputs[0], inputs[1], inplace_a, name) {}
+ElementBinary::ElementBinary(FFModel &model,
+                             ElementBinaryParams const &params,
+                             std::vector<ParallelTensor> const &inputs,
+                             char const *name,
+                             bool inplace_a)
+    : ElementBinary(model, params.type, inputs[0], inputs[1], inplace_a, name) {
+}
 
 void ElementBinary::map_output_tensors(FFModel &ff) {
   if (has_inplace_output()) {

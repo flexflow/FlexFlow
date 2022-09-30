@@ -944,7 +944,8 @@ LinearParams Linear::get_params() const {
   return params;
 }
 
-bool LinearParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool LinearParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   ParallelTensorShape output_shape, kernel_shape, bias_shape;
   this->solve_dims(inputs[0],
                    output_shape.dims,

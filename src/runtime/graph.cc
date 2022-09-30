@@ -677,8 +677,8 @@ void Graph::replace_subgraph(std::unordered_set<Node> const &currentNodes,
     Node source_node = subgraph.find_source_node();
     NoOpParams params;
     params.op_type = OP_NOOP;
-    Node noop =
-        this->model->get_or_create_node<NoOp>(source_node.ptr->get_inputs(), params);
+    Node noop = this->model->get_or_create_node<NoOp>(
+        source_node.ptr->get_inputs(), params);
     this->replace_subgraph_with_nonempty(currentNodes,
                                          Graph::singleton(this->model, noop));
     this->contract_out_node(noop);
@@ -848,7 +848,7 @@ void Graph::simplify(SimplificationSettings const &settings) {
             ((ParallelOp *)n1.ptr)->append_parallel_op_info(parallel_ops);
             ((ParallelOp *)n2.ptr)->append_parallel_op_info(parallel_ops);
             Node new_node = model->get_or_create_node<FusedParallelOp>(
-                                                                       {n1.ptr->inputs[0]}, {parallel_ops});
+                {n1.ptr->inputs[0]}, {parallel_ops});
             auto const &inList = this->inEdges.find(n1)->second;
             assert(inList.size() == 1);
             Edge e1 = *inList.begin();
@@ -2014,8 +2014,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.add_bias_kv = add_bias_kv;
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
-        node = get_or_create_node<MultiHeadAttention>(
-            inputs, params);
+        node = get_or_create_node<MultiHeadAttention>(inputs, params);
         break;
       }
       case OP_POOL2D: {
@@ -2040,8 +2039,8 @@ void FFModel::deserialize_graph_optimal_view(
         int combine_dim, combine_degree;
         dez.deserialize(combine_dim);
         dez.deserialize(combine_degree);
-        node = get_or_create_node<Combine>(inputs,
-                                           {combine_dim, combine_degree});
+        node =
+            get_or_create_node<Combine>(inputs, {combine_dim, combine_degree});
         break;
       }
       case OP_REPARTITION: {

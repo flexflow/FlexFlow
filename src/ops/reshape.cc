@@ -40,7 +40,8 @@ bool operator==(ReshapeParams const &lhs, ReshapeParams const &rhs) {
   return lhs.shape == rhs.shape;
 }
 
-bool ReshapeParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool ReshapeParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   return inputs[0].is_valid();
 }
 

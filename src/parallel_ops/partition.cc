@@ -44,7 +44,8 @@ bool operator==(RepartitionParams const &lhs, RepartitionParams const &rhs) {
          lhs.repartition_degree == rhs.repartition_degree;
 }
 
-bool RepartitionParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool RepartitionParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   bool valid = inputs[0].is_valid();
   valid &= (inputs[0].dims[this->repartition_legion_dim].size %
                 (this->repartition_degree *

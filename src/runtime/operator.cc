@@ -1,7 +1,7 @@
 #include "flexflow/operator.h"
 #include "flexflow/ffconst_utils.h"
-#include "flexflow/simulator.h"
 #include "flexflow/model.h"
+#include "flexflow/simulator.h"
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "flexflow/utils/cuda_helper.h"
 #else
@@ -72,7 +72,7 @@ void Op::prefetch(FFModel const &ff) {
 }
 
 std::vector<ParallelTensor> Op::get_inputs() const {
-  return {this->inputs, this->inputs+this->numInputs};
+  return {this->inputs, this->inputs + this->numInputs};
 }
 
 /*static*/
@@ -528,8 +528,6 @@ bool Op::get_weight_parameter(TNParameter tnp,
   return true;
 }
 
-
-
 size_t Op::get_untyped_params_hash() const {
   size_t hash = this->get_params_hash();
   hash_combine(hash, this->op_type);
@@ -932,8 +930,14 @@ Op::Op(FFModel &model,
        char const *name,
        int numWeights,
        int numOutputs,
-       std::vector<ParallelTensor> const &inputs) 
-  : Op(model, type, name, inputs.size(), numWeights, numOutputs, inputs.data()) { }
+       std::vector<ParallelTensor> const &inputs)
+    : Op(model,
+         type,
+         name,
+         inputs.size(),
+         numWeights,
+         numOutputs,
+         inputs.data()) {}
 
 bool Op::is_parallel_op() const {
   return false;

@@ -387,7 +387,8 @@ Conv2D::Conv2D(FFModel &model,
              allocate_weights,
              name) {}
 
-bool Conv2DParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+bool Conv2DParams::is_valid(
+    std::vector<ParallelTensorShape> const &inputs) const {
   ParallelTensorShape output_shape, kernel_shape, bias_shape;
   this->solve_dims(inputs[0],
                    output_shape.dims,

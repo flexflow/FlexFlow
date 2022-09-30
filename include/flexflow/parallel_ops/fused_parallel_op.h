@@ -18,7 +18,9 @@ public:
   FusedParallelOp(FFModel &model,
                   const ParallelTensor input,
                   std::vector<ParallelOpInfo> const &parallel_ops);
-  FusedParallelOp(FFModel &model, Params const &params, std::vector<ParallelTensor> const &input);
+  FusedParallelOp(FFModel &model,
+                  Params const &params,
+                  std::vector<ParallelTensor> const &input);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;

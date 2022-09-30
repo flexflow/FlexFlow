@@ -627,7 +627,7 @@ public:
                                                             params};
     auto const &it = cached_ops.find(key);
     if (it != cached_ops.end()) {
-      op = (T*)it->second;
+      op = (T *)it->second;
     } else {
       op = new T(*this, params, input);
       cached_ops[key] = op;
@@ -772,7 +772,10 @@ public:
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
-  std::unordered_map<std::pair<std::vector<ParallelTensorShape>, OperatorParameters>, Op *> cached_ops;
+  std::unordered_map<
+      std::pair<std::vector<ParallelTensorShape>, OperatorParameters>,
+      Op *>
+      cached_ops;
   std::unordered_map<size_t, NoOp *> cached_noop_ops;
   std::unordered_map<size_t, NoOp *> cached_input_ops;
   std::vector<MachineView> all_valid_views;
