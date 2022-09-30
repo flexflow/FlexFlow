@@ -72,7 +72,6 @@ Replicate::Replicate(FFModel &model,
     : ParallelOp(model, OP_REPLICATE, name, _input),
       replicate_dim(_replicate_legion_dim),
       replicate_degree(_replicate_degree) {
-  assert(_input->check_valid());
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {

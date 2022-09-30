@@ -17,24 +17,10 @@ public:
   DataType data_type;
   ActiMode activation;
 
-  void solve_dims(const ParallelTensor input,
-                  ParallelDim output_dims[MAX_TENSOR_DIM],
-                  int *output_ndims,
-                  ParallelDim kernel_dims[MAX_TENSOR_DIM],
-                  int *kernel_ndims,
-                  ParallelDim bias_dims[MAX_TENSOR_DIM],
-                  int *bias_ndims) const;
   void solve_dims(ParallelTensorShape const &input_shape,
                   ParallelTensorShape &output_shape,
                   ParallelTensorShape &kernel_shape,
                   ParallelTensorShape &bias_shape) const;
-  void solve_dims(ParallelTensorShape const &input_shape,
-                  ParallelDim output_dims[MAX_TENSOR_DIM],
-                  int *output_ndims,
-                  ParallelDim kernel_dims[MAX_TENSOR_DIM],
-                  int *kernel_ndims,
-                  ParallelDim bias_dims[MAX_TENSOR_DIM],
-                  int *bias_ndims) const;
   void construct_mappings(std::vector<ParallelDimMappingRecord> &,
                           ParallelTensorShape const &) const;
 
@@ -61,12 +47,9 @@ private:
                          ParallelDim kernel_dims[MAX_TENSOR_DIM],
                          ParallelDim bias_dims[MAX_TENSOR_DIM]) const;
   void calculate_nonreplica_dim_sizes(ParallelTensorShape const &input_shape,
-                                      ParallelDim output_dims[MAX_TENSOR_DIM],
-                                      int *output_ndims,
-                                      ParallelDim kernel_dims[MAX_TENSOR_DIM],
-                                      int *kernel_ndims,
-                                      ParallelDim bias_dims[MAX_TENSOR_DIM],
-                                      int *bias_ndims) const;
+                                      ParallelTensorShape &output_shape,
+                                      ParallelTensorShape &kernel_shape,
+                                      ParallelTensorShape &bias_shape) const;
 };
 
 } // namespace FlexFlow

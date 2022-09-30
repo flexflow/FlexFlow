@@ -220,46 +220,43 @@ int Conv2DParams::bias_size(ParallelTensorShape const &input,
   return Conv2DBias::NUMDIM;
 };
 
-void Conv2DParams::solve_dims(ParallelTensorShape const &input,
-                              ParallelDim output_dims[MAX_TENSOR_DIM],
-                              int *output_ndims,
-                              ParallelDim kernel_dims[MAX_TENSOR_DIM],
-                              int *kernel_ndims,
-                              ParallelDim bias_dims[MAX_TENSOR_DIM],
-                              int *bias_ndims) const {
-  assert((output_dims == nullptr) == (output_ndims == nullptr));
-  assert((kernel_dims == nullptr) == (kernel_ndims == nullptr));
-  assert((bias_dims == nullptr) == (bias_ndims == nullptr));
+void Conv2DParams::solve_dims(ParallelTensorShape const &input_shape,
+                              ParallelTensorShape &output_shape,
+                              ParallelTensorShape &kernel_shape,
+                              ParallelTensorShape &bias_shape) const {
+  assert((output_shape.dims == nullptr) == (&output_shape.num_dims == nullptr));
+  assert((kernel_shape.dims == nullptr) == (&kernel_shape.num_dims == nullptr));
+  assert((bias_shape.dims == nullptr) == (&bias_shape.num_dims == nullptr));
 
   std::vector<ParallelDimMappingRecord> mapping;
   Conv2D::construct_mappings(mapping, this->use_bias);
 
-  this->mark_replica_dims(input, output_dims, kernel_dims, bias_dims);
+  this->mark_replica_dims(input_shape, output_shape.dims, kernel_shape.dims, bias_shape.dims);
 
   std::vector<ParallelDim *> output_dim_sets;
-  if (output_dims != nullptr) {
-    output_dim_sets.push_back(output_dims);
+  if (output_shape.dims != nullptr) {
+    output_dim_sets.push_back(output_shape.dims);
   }
 
   std::vector<ParallelDim *> weight_dim_sets;
-  if (kernel_dims != nullptr) {
-    weight_dim_sets.push_back(kernel_dims);
+  if (kernel_shape.dims != nullptr) {
+    weight_dim_sets.push_back(kernel_shape.dims);
   }
-  if (bias_dims != nullptr && this->use_bias) {
-    weight_dim_sets.push_back(bias_dims);
+  if (bias_shape.dims != nullptr && this->use_bias) {
+    weight_dim_sets.push_back(bias_shape.dims);
   }
 
   solve_parallel_dim_mappings(
-      mapping, {input.dims}, weight_dim_sets, output_dim_sets);
+      mapping, {input_shape.dims}, weight_dim_sets, output_dim_sets);
 
-  if (output_dims != nullptr) {
-    *output_ndims = this->output_size(input, output_dims);
+  if (output_shape.dims != nullptr) {
+    output_shape.num_dims = this->output_size(input_shape, output_shape.dims);
   }
-  if (kernel_dims != nullptr) {
-    *kernel_ndims = this->kernel_size(input, kernel_dims);
+  if (kernel_shape.dims != nullptr) {
+    kernel_shape.num_dims = this->kernel_size(input_shape, kernel_shape.dims);
   }
-  if (bias_dims != nullptr && this->use_bias) {
-    *bias_ndims = this->bias_size(input, bias_dims);
+  if (bias_shape.dims != nullptr && this->use_bias) {
+    bias_shape.num_dims = this->bias_size(input_shape, bias_shape.dims);
   }
 }
 
@@ -366,31 +363,6 @@ Conv2D::Conv2D(FFModel &model,
              allocate_weights,
              name) {}
 
-// bool Conv2DParams::is_valid(ParallelTensorShape const &input) const {
-//   ParallelTensorShape output_shape, kernel_shape, bias_shape;
-//   this->solve_dims(input,
-//                    output_shape.dims,
-//                    &output_shape.num_dims,
-//                    kernel_shape.dims,
-//                    &kernel_shape.num_dims,
-//                    bias_shape.dims,
-//                    &bias_shape.num_dims);
-//   bool is_valid = true;
-//   is_valid &= input.is_valid();
-//   is_valid &= output_shape.is_valid();
-//   is_valid &= kernel_shape.is_valid();
-//   if (use_bias) {
-//     is_valid &= bias_shape.is_valid();
-//   }
-
-//   // TODO FIXME: Currently disable parallelizing the height and width dimension
-//   if (input.dims[0].degree > 1 || input.dims[1].degree > 1) {
-//     return false;
-//   }
-
-//   return is_valid;
-// }
-
 Conv2D::Conv2D(FFModel &model,
                LayerID const &_layer_guid,
                const ParallelTensor input,
@@ -427,29 +399,14 @@ Conv2D::Conv2D(FFModel &model,
   assert(this->stride_w > 0);
 
   ParallelTensorShape output_shape, kernel_shape, bias_shape;
-  //ParallelDim output_dims[MAX_TENSOR_DIM], kernel_dims[MAX_TENSOR_DIM],
-  //    bias_dims[MAX_TENSOR_DIM];
-  //int output_ndims, kernel_ndims, bias_ndims;
-
   this->construct_mappings(*this->parallel_dims_mapping, this->use_bias);
-  // this->get_params().solve_dims(this->inputs[0]->get_shape(),
-  //                               output_dims,
-  //                               &output_ndims,
-  //                               kernel_dims,
-  //                               &kernel_ndims,
-  //                               bias_dims,
-  //                               &bias_ndims);
   this->get_params().solve_dims(this->inputs[0]->get_shape(),
-                                output_shape.dims,
-                                &output_shape.num_dims,
-                                kernel_shape.dims,
-                                &kernel_shape.num_dims,
-                                bias_shape.dims,
-                                &bias_shape.num_dims);
+                                output_shape,
+                                kernel_shape,
+                                bias_shape);
   
 
-  // assert input is valid
-  assert (input->check_valid());
+  // assert is valid
   assert (output_shape.is_valid());
   assert (kernel_shape.is_valid());
   if (this->get_params().use_bias) {
@@ -976,23 +933,19 @@ void Conv2D::print_layer(FFModel const &ff) {
 bool Conv2D::estimate_sync_cost(Simulator *sim,
                                 MachineView const &view,
                                 CostMetrics &cost_metrics) const {
-  ParallelDim kernel_dims[MAX_TENSOR_DIM], bias_dims[MAX_TENSOR_DIM];
-  int kernel_ndims, bias_ndims;
+  ParallelTensorShape output_shape, kernel_shape, bias_shape;
 
   this->get_params().solve_dims(this->inputs[0]->get_shape(),
-                                nullptr,
-                                nullptr,
-                                kernel_dims,
-                                &kernel_ndims,
-                                bias_dims,
-                                &bias_ndims);
+                                output_shape,
+                                kernel_shape,
+                                bias_shape);
 
   cost_metrics.sync_time =
-      sim->default_estimate_sync_cost(kernel_dims, kernel_ndims, view);
+      sim->default_estimate_sync_cost(kernel_shape.dims, kernel_shape.num_dims, view);
 
   if (this->use_bias) {
     cost_metrics.sync_time +=
-        sim->default_estimate_sync_cost(bias_dims, bias_ndims, view);
+        sim->default_estimate_sync_cost(bias_shape.dims, bias_shape.num_dims, view);
   }
 
   return true;

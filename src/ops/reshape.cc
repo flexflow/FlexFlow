@@ -83,7 +83,6 @@ Reshape::Reshape(FFModel &model,
          0 /*weights*/,
          1 /*outputs*/,
          input) {
-  assert(input->check_valid());
   shape_length = _shape.size();
   assert(shape_length <= MAX_TENSOR_DIM);
   for (int i = 0; i < shape_length; i++)

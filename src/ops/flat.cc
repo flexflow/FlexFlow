@@ -58,17 +58,16 @@ int FlatParams::output_size(ParallelTensorShape const &input,
 }
 
 void FlatParams::solve_dims(ParallelTensorShape const &input,
-                            ParallelDim output_dims[MAX_TENSOR_DIM],
-                            int *output_ndims) const {
-  assert((output_dims == nullptr) == (output_ndims == nullptr));
+                            ParallelTensorShape &output_shape) const {
+  assert((output_shape.dims == nullptr) == (&output_shape.num_dims == nullptr));
 
   std::vector<ParallelDimMappingRecord> mapping;
   Flat::construct_output_mappings(mapping);
 
   std::vector<ParallelDim *> output_dim_sets;
-  if (output_dims != nullptr) {
-    *output_ndims = this->output_size(input, output_dims);
-    output_dim_sets.push_back(output_dims);
+  if (output_shape.dims != nullptr) {
+    output_shape.num_dims = this->output_size(input, output_shape.dims);
+    output_dim_sets.push_back(output_shape.dims);
   }
 
   solve_parallel_dim_mappings(mapping, {input.dims}, {}, output_dim_sets);
@@ -98,13 +97,11 @@ Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
          1 /*outputs*/,
          _input) {
   assert(_input->num_dims == FlatInput::NUMDIM);
-  assert (_input->check_valid());
 
   Flat::construct_output_mappings(*this->parallel_dims_mapping);
 
   ParallelTensorShape output_shape;
-  this->get_params().solve_dims(
-      this->inputs[0]->get_shape(), output_shape.dims, &output_shape.num_dims);
+  this->get_params().solve_dims(this->inputs[0]->get_shape(), output_shape);
   assert (output_shape.is_valid());
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(

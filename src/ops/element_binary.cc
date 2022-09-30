@@ -135,10 +135,7 @@ ElementBinary::ElementBinary(FFModel &model,
          in1,
          in2),
       inplace_a(_inplace_a) {
-  // assert input is valid
-  assert (in1->check_valid());
-  assert (in2->check_valid());
-  assert (in1->get_shape() == in2->get_shape());
+  // assert is valid
   ParallelTensorShape A = in1->get_shape();
   ParallelTensorShape B = in2->get_shape();
   int numdim = std::min(A.num_dims, B.num_dims);

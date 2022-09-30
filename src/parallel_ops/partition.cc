@@ -81,7 +81,6 @@ Repartition::Repartition(FFModel &model,
   ParallelTensorBase::update_parallel_ids(numdim, dims);
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, inputs[0]->data_type, this);
-  assert (_input->check_valid());
   assert (dims[repartition_dim].size % (repartition_degree * dims[repartition_dim].degree) == 0);
   // inputs[0]->print("Repartition::input");
   // outputs[0]->print("Repartition::output");

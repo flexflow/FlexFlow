@@ -168,7 +168,6 @@ Linear::Linear(FFModel &model,
   params.construct_mappings(*this->parallel_dims_mapping, input_shape);
   params.solve_dims(input_shape, output_shape, kernel_shape, bias_shape);
 
-  assert (input_shape.is_valid());
   assert (output_shape.is_valid());
   assert (kernel_shape.is_valid());
   if (params.use_bias) {
@@ -952,60 +951,25 @@ LinearParams Linear::get_params() const {
   return params;
 }
 
-void LinearParams::solve_dims(const ParallelTensor input,
-                              ParallelDim output_dims[MAX_TENSOR_DIM],
-                              int *output_ndims,
-                              ParallelDim kernel_dims[MAX_TENSOR_DIM],
-                              int *kernel_ndims,
-                              ParallelDim bias_dims[MAX_TENSOR_DIM],
-                              int *bias_ndims) const {
-  this->solve_dims(input->get_shape(),
-                   output_dims,
-                   output_ndims,
-                   kernel_dims,
-                   kernel_ndims,
-                   bias_dims,
-                   bias_ndims);
-}
-
 void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
                               ParallelTensorShape &output_shape,
                               ParallelTensorShape &kernel_shape,
                               ParallelTensorShape &bias_shape) const {
-  this->solve_dims(input_shape,
-                   output_shape.dims,
-                   &output_shape.num_dims,
-                   kernel_shape.dims,
-                   &kernel_shape.num_dims,
-                   bias_shape.dims,
-                   &bias_shape.num_dims);
-}
-
-void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
-                              ParallelDim output_dims[MAX_TENSOR_DIM],
-                              int *output_ndims,
-                              ParallelDim kernel_dims[MAX_TENSOR_DIM],
-                              int *kernel_ndims,
-                              ParallelDim bias_dims[MAX_TENSOR_DIM],
-                              int *bias_ndims) const {
-  assert((output_dims == nullptr) == (output_ndims == nullptr));
-  assert((kernel_dims == nullptr) == (kernel_ndims == nullptr));
-  assert((bias_dims == nullptr) == (bias_ndims == nullptr));
+  assert((output_shape.dims == nullptr) == (&output_shape.num_dims == nullptr));
+  assert((kernel_shape.dims == nullptr) == (&kernel_shape.num_dims == nullptr));
+  assert((bias_shape.dims == nullptr) == (&bias_shape.num_dims == nullptr));
 
   std::vector<ParallelDimMappingRecord> mapping;
   this->construct_mappings(mapping, input_shape);
-  this->mark_replica_dims(input_shape, output_dims, kernel_dims, bias_dims);
+  this->mark_replica_dims(input_shape, output_shape.dims, kernel_shape.dims, bias_shape.dims);
 
   solve_parallel_dim_mappings(
-      mapping, {input_shape.dims}, {kernel_dims, bias_dims}, {output_dims});
+      mapping, {input_shape.dims}, {kernel_shape.dims, bias_shape.dims}, {output_shape.dims});
 
   this->calculate_nonreplica_dim_sizes(input_shape,
-                                       output_dims,
-                                       output_ndims,
-                                       kernel_dims,
-                                       kernel_ndims,
-                                       bias_dims,
-                                       bias_ndims);
+                                       output_shape,
+                                       kernel_shape,
+                                       bias_shape);
 }
 
 std::unordered_map<LinearParams::NamedDimensions, int>
@@ -1026,33 +990,30 @@ std::unordered_map<LinearParams::NamedDimensions, int>
 
 void LinearParams::calculate_nonreplica_dim_sizes(
     ParallelTensorShape const &input_shape,
-    ParallelDim output_dims[MAX_TENSOR_DIM],
-    int *output_ndims,
-    ParallelDim kernel_dims[MAX_TENSOR_DIM],
-    int *kernel_ndims,
-    ParallelDim bias_dims[MAX_TENSOR_DIM],
-    int *bias_ndims) const {
+    ParallelTensorShape &output_shape,
+    ParallelTensorShape &kernel_shape,
+    ParallelTensorShape &bias_shape) const {
   auto dimension_names = this->get_dimension_names(input_shape);
   int num_dims = input_shape.num_dims;
 
-  if (output_dims != nullptr) {
+  if (output_shape.dims != nullptr) {
     for (int i = 1; i < input_shape.num_dims - 1; i++) {
-      output_dims[i].size = input_shape.dims[i].size;
+      output_shape.dims[i].size = input_shape.dims[i].size;
     }
-    output_dims[dimension_names.at(OUTPUT_CHANNEL)].size = this->out_channels;
-    *output_ndims = num_dims;
+    output_shape.dims[dimension_names.at(OUTPUT_CHANNEL)].size = this->out_channels;
+    output_shape.num_dims = num_dims;
   }
-  if (kernel_dims != nullptr) {
-    kernel_dims[dimension_names.at(KERNEL_CHANNEL_IN)].size =
+  if (kernel_shape.dims != nullptr) {
+    kernel_shape.dims[dimension_names.at(KERNEL_CHANNEL_IN)].size =
         input_shape.dims[INPUT_CHANNEL].size /
         input_shape.dims[INPUT_CHANNEL].degree;
-    kernel_dims[dimension_names.at(KERNEL_CHANNEL_OUT)].size =
+    kernel_shape.dims[dimension_names.at(KERNEL_CHANNEL_OUT)].size =
         this->out_channels;
-    *kernel_ndims = num_dims;
+    kernel_shape.num_dims = num_dims;
   }
-  if (bias_dims != nullptr) {
-    bias_dims[dimension_names.at(BIAS_CHANNEL_OUT)].size = this->out_channels;
-    *bias_ndims = num_dims;
+  if (bias_shape.dims != nullptr) {
+    bias_shape.dims[dimension_names.at(BIAS_CHANNEL_OUT)].size = this->out_channels;
+    bias_shape.num_dims = num_dims;
   }
 }
 

@@ -279,8 +279,6 @@ Embedding::Embedding(FFModel &model,
          1 /*outputs*/,
          _input),
       num_entries(_num_entries), out_channels(_out_channels), aggr(_aggr) {
-  // assert input is valid
-  assert (_input->check_valid());
   layer_guid = _layer_guid;
   std::vector<ParallelDim *> weight_dim_sets;
 

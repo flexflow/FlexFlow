@@ -72,7 +72,6 @@ Reduction::Reduction(FFModel &model,
     : ParallelOp(model, OP_REDUCTION, name, _input),
       reduction_dim(_reduction_legion_dim),
       reduction_degree(_reduction_degree) {
-  assert(_input->check_valid());
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {

@@ -110,11 +110,6 @@ Concat::Concat(FFModel &model,
          1 /*outputs*/,
          _tensors),
       legion_axis(_legion_axis) {
-  
-  // assert is valid
-  for (ParallelTensor input: inputs) {
-    assert (input->check_valid());
-  }
 
   printf("legion_axis = %d\n", legion_axis);
   // TODO: swich to use the Legion dim ordering

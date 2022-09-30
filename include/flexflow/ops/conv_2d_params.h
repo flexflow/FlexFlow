@@ -14,13 +14,10 @@ struct Conv2DParams {
   ActiMode activation;
   bool use_bias;
 
-  void solve_dims(ParallelTensorShape const &input,
-                  ParallelDim output_dims[MAX_TENSOR_DIM],
-                  int *output_ndims,
-                  ParallelDim kernel_dims[MAX_TENSOR_DIM],
-                  int *kernel_ndims,
-                  ParallelDim bias_dims[MAX_TENSOR_DIM],
-                  int *bias_ndims) const;
+  void solve_dims(ParallelTensorShape const &input_shape,
+                  ParallelTensorShape &output_shape,
+                  ParallelTensorShape &kernel_shape,
+                  ParallelTensorShape &bias_shape) const;
 
   friend bool operator==(Conv2DParams const &lhs, Conv2DParams const &rhs);
 

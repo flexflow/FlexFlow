@@ -82,7 +82,6 @@ Combine::Combine(FFModel &model,
     : ParallelOp(model, OP_COMBINE, name, _input),
       combine_dim(_combine_legion_dim), combine_degree(_combine_degree) {
 
-  assert(_input->check_valid());
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {

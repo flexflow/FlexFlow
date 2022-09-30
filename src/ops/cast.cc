@@ -82,7 +82,6 @@ Cast::Cast(FFModel &model,
          input) {
   
   // assert is valid
-  assert (input->check_valid());
   assert (input->dims[input->num_dims - 1].degree == 1);
 
   numOutputs = 1;
