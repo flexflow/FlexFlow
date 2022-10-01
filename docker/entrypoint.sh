@@ -5,7 +5,7 @@ FIRST_BOOT_COMPLETE="first_boot_complete"
 
 if [ ! -f "/usr/$FIRST_BOOT_COMPLETE" ]; then
 	echo "Building and installing FlexFlow..."
-	cd /usr/FlexFlow && pip install .
+	cd /usr/FlexFlow && pip install . --verbose
     echo "Installation of FlexFlow completed successfully!"
     touch "/usr/$FIRST_BOOT_COMPLETE"
 fi
