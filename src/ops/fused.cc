@@ -56,6 +56,7 @@ FusedOp::FusedOp(FFModel &model, Op *op)
   numInputs = op->numInputs;
   for (int i = 0; i < numInputs; i++) {
     inputs[i] = op->inputs[i];
+    input_data_types[i] = op->inputs[i]->data_type;
     // input_lps[i] = op->input_lps[i];
     // input_grad_lps[i] = op->input_grad_lps[i];
   }
@@ -64,12 +65,14 @@ FusedOp::FusedOp(FFModel &model, Op *op)
     weights[i] = op->weights[i];
     weights[i]->owner_op = this;
     weights[i]->owner_idx = i;
+    weight_data_types[i] = op->weights[i]->data_type;
   }
   numOutputs = op->numOutputs;
   for (int i = 0; i < numOutputs; i++) {
     outputs[i] = op->outputs[i];
     outputs[i]->owner_op = this;
     outputs[i]->owner_idx = i;
+    output_data_types[i] = op->outputs[i]->data_type;
   }
   numOperators = 1;
   op_num_inputs[0] = numInputs;
@@ -104,6 +107,11 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
   // assert(model.config.find_parallel_config(my_domain.get_dim(), name,
   // my_config)); assert(model.config.find_parallel_config(op_domain.get_dim(),
   // op->name, op_config));
+  // Cannot fuse parallel operators since they have different paralel_is
+  // in forward and backward
+  assert(!op->is_parallel_op());
+  // Currently don't consider nested fusion
+  assert(op->op_type != OP_FUSED);
   MachineView my_view = outputs[0]->machine_view;
   MachineView op_view = op->outputs[0]->machine_view;
   if (my_view == op_view) {
@@ -132,7 +140,7 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
   // Set inputs
   for (int i = 0; i < op->numInputs; i++) {
     bool found = false;
-    for (int j = 0; j < input_offset; j++)
+    for (int j = 0; j < numInputs; j++)
       if (inputs[j]->region == op->inputs[i]->region) {
         // This input is one of my inputs
         assert(!found);
@@ -142,7 +150,7 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
         found = true;
         break;
       }
-    for (int j = 0; j < output_offset; j++)
+    for (int j = 0; j < numOutputs; j++)
       if ((outputs[j]->region == op->inputs[i]->region) && (!found)) {
         // This input is one of my outputs
         assert(!found);
@@ -156,6 +164,7 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
       // Do nothing
     } else {
       inputs[numInputs] = op->inputs[i];
+      input_data_types[numInputs] = op->inputs[i]->data_type;
       // input_lps[numInputs] = op->input_lps[i];
       // input_grad_lps[numInputs] = op->input_grad_lps[i];
       op_input_source[input_offset + i] = SOURCE_INPUT;
@@ -181,6 +190,7 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
       weights[numWeights] = op->weights[i];
       weights[numWeights]->owner_op = this;
       weights[numWeights]->owner_idx = numWeights;
+      weight_data_types[numWeights] = op->weights[i]->data_type;
       op_weight_source[weight_offset + i] = SOURCE_WEIGHT;
       op_weight_idx[weight_offset + i] = numWeights;
       numWeights += 1;
@@ -202,6 +212,7 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
     outputs[numOutputs] = op->outputs[i];
     outputs[numOutputs]->owner_op = this;
     outputs[numOutputs]->owner_idx = numOutputs;
+    output_data_types[numOutputs] = op->outputs[i]->data_type;
     op_output_source[output_offset + i] = SOURCE_OUTPUT;
     op_output_idx[output_offset + i] = numOutputs;
     numOutputs += 1;

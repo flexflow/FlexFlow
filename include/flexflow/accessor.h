@@ -94,6 +94,28 @@ DT *helperGetTensorPointerRW(Legion::PhysicalRegion region,
                              Legion::FieldID fid,
                              Legion::Context ctx,
                              Legion::Runtime *runtime);
+
+void const *helperGetUntypedTensorPointerRO(DataType datatype,
+                                            Legion::PhysicalRegion region,
+                                            Legion::RegionRequirement req,
+                                            Legion::FieldID fid,
+                                            Legion::Context ctx,
+                                            Legion::Runtime *runtime);
+
+void *helperGetUntypedTensorPointerWO(DataType datatype,
+                                      Legion::PhysicalRegion region,
+                                      Legion::RegionRequirement req,
+                                      Legion::FieldID fid,
+                                      Legion::Context ctx,
+                                      Legion::Runtime *runtime);
+
+void *helperGetUntypedTensorPointerRW(DataType datatype,
+                                      Legion::PhysicalRegion region,
+                                      Legion::RegionRequirement req,
+                                      Legion::FieldID fid,
+                                      Legion::Context ctx,
+                                      Legion::Runtime *runtime);
+
 }; // namespace FlexFlow
 
 #endif

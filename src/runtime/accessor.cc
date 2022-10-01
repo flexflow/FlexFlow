@@ -196,6 +196,81 @@ DT *helperGetTensorPointerWO(PhysicalRegion region,
   }
 }
 
+void const *helperGetUntypedTensorPointerRO(DataType datatype,
+                                            Legion::PhysicalRegion region,
+                                            Legion::RegionRequirement req,
+                                            Legion::FieldID fid,
+                                            Legion::Context ctx,
+                                            Legion::Runtime *runtime) {
+  switch (datatype) {
+    case DT_INT32: {
+      return helperGetTensorPointerRO<int32_t>(region, req, fid, ctx, runtime);
+    }
+    case DT_INT64: {
+      return helperGetTensorPointerRO<int64_t>(region, req, fid, ctx, runtime);
+    }
+    case DT_FLOAT: {
+      return helperGetTensorPointerRO<float>(region, req, fid, ctx, runtime);
+    }
+    case DT_DOUBLE: {
+      return helperGetTensorPointerRO<double>(region, req, fid, ctx, runtime);
+    }
+    default: {
+      assert(false);
+    }
+  }
+}
+
+void *helperGetUntypedTensorPointerWO(DataType datatype,
+                                      Legion::PhysicalRegion region,
+                                      Legion::RegionRequirement req,
+                                      Legion::FieldID fid,
+                                      Legion::Context ctx,
+                                      Legion::Runtime *runtime) {
+  switch (datatype) {
+    case DT_INT32: {
+      return helperGetTensorPointerWO<int32_t>(region, req, fid, ctx, runtime);
+    }
+    case DT_INT64: {
+      return helperGetTensorPointerWO<int64_t>(region, req, fid, ctx, runtime);
+    }
+    case DT_FLOAT: {
+      return helperGetTensorPointerWO<float>(region, req, fid, ctx, runtime);
+    }
+    case DT_DOUBLE: {
+      return helperGetTensorPointerWO<double>(region, req, fid, ctx, runtime);
+    }
+    default: {
+      assert(false);
+    }
+  }
+}
+
+void *helperGetUntypedTensorPointerRW(DataType datatype,
+                                      Legion::PhysicalRegion region,
+                                      Legion::RegionRequirement req,
+                                      Legion::FieldID fid,
+                                      Legion::Context ctx,
+                                      Legion::Runtime *runtime) {
+  switch (datatype) {
+    case DT_INT32: {
+      return helperGetTensorPointerRW<int32_t>(region, req, fid, ctx, runtime);
+    }
+    case DT_INT64: {
+      return helperGetTensorPointerRW<int64_t>(region, req, fid, ctx, runtime);
+    }
+    case DT_FLOAT: {
+      return helperGetTensorPointerRW<float>(region, req, fid, ctx, runtime);
+    }
+    case DT_DOUBLE: {
+      return helperGetTensorPointerRW<double>(region, req, fid, ctx, runtime);
+    }
+    default: {
+      assert(false);
+    }
+  }
+}
+
 #define DIMFUNC(DIM)                                                           \
   template class TensorAccessorR<float, DIM>;                                  \
   template class TensorAccessorR<int32_t, DIM>;                                \
