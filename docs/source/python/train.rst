@@ -1,7 +1,7 @@
 **************************
 Model Training and Testing
 **************************
-.. automodule:: flexflow.core.flexflow_cbinding
+.. automodule:: flexflow.core.flexflow_cffi
    :noindex:
 
 Fit
