@@ -17,7 +17,8 @@ class CMake_Build_Extension(build_ext):
     for command in build_cmds:
       print(f"Running {command}")
       subprocess.run(command, shell=True, check=True, capture_output=False,)
-      os.chdir(wdir)
+    
+    os.chdir(wdir)
     build_ext.run(self)
 
 setup(
