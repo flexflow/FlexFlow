@@ -1,0 +1,51 @@
+name: "pip-install"
+on:
+  pull_request:
+    paths:
+      - "cmake/**"
+      - "config/**"
+      - "python/**"
+      - "setup.py"
+      - ".github/workflows/helpers/install-dependencies.sh"
+      - ".github/workflows/pip-install.yml"
+  push:
+    paths:
+      - "cmake/**"
+      - "config/**"
+      - "python/**"
+      - "setup.py"
+      - ".github/workflows/helpers/install-dependencies.sh"
+      - ".github/workflows/pip-install.yml"
+  workflow_dispatch:
+concurrency:
+  group: pip-install-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  pip-install-flexflow:
+    name: Install FlexFlow with pip
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Install CUDA
+        uses: Jimver/cuda-toolkit@v0.2.8
+        id: cuda-toolkit
+        with:
+          cuda: "11.1.1"
+
+      - name: Install FlexFlow Dependencies
+        run: .github/workflows/helpers/install_dependencies.sh
+
+      - name: Build and Install FlexFlow
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export FF_HOME=$(pwd)
+          sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
+          pip install . --verbose
+
+      - name: Check availability of Python flexflow.core module
+        run: python -c "import flexflow.core; exit()"

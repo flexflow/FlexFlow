@@ -4,15 +4,19 @@ on:
     paths:
       - "include/**"
       - "cmake/**"
+      - "config/**"
       - "python/**"
       - "src/**"
+      - ".github/workflows/helpers/install-dependencies.sh"
       - ".github/workflows/build.yml"
   push:
     paths:
       - "include/**"
       - "cmake/**"
+      - "config/**"
       - "python/**"
       - "src/**"
+      - ".github/workflows/helpers/install-dependencies.sh"
       - ".github/workflows/build.yml"
   workflow_dispatch:
 concurrency:
