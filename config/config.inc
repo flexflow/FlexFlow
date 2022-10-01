@@ -61,6 +61,13 @@ else
   SET_PYTHON="-DFF_USE_PYTHON=ON"
 fi
 
+# set whether we are building from pip
+if [ "$FF_BUILD_FROM_PYPI" = "ON" ] && [ "$SET_PYTHON" = "-DFF_USE_PYTHON=ON" ]; then
+  SET_PIP="-DFF_BUILD_FROM_PYPI=ON"
+else 
+  SET_PIP="-DFF_BUILD_FROM_PYPI=OFF"
+fi
+
 # enable NCCL
 if [ "$FF_USE_NCCL" = "ON" ]; then
   SET_NCCL="-DFF_USE_NCCL=ON"
