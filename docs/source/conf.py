@@ -12,7 +12,17 @@
 #
 import os
 import sys
+import subprocess
 sys.path.insert(0, os.path.abspath('../../python'))
+
+def get_parent_dir_path(path):
+    return os.path.abspath(os.path.join(path, ".."))
+
+# Build the Doxygen docs
+docs_path = get_parent_dir_path(os.path.dirname(os.path.abspath(__file__)))
+doxygen_path = os.path.join(docs_path, "doxygen")
+FF_HOME = get_parent_dir_path(docs_path)
+subprocess.call(f'cd {doxygen_path}; FF_HOME={FF_HOME} doxygen', shell=True)
 
 import sphinx_rtd_theme
 
@@ -32,6 +42,7 @@ extensions = [
     'sphinx_rtd_theme',
     'sphinx.ext.autodoc',
     'm2r2',
+    'breathe',
 ]
 
 # Theme options are theme-specific and customize the look and feel of a theme

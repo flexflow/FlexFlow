@@ -81,9 +81,10 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/build/
 
 # Doxygen documentation
-docs/doxygen/output/html/
+docs/doxygen/output/
 
 # PyBuilder
 .pybuilder/
