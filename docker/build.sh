@@ -11,4 +11,4 @@ n_build_cores=$(( cores_available -1 ))
 # TODO
 
 # Build Docker image
-docker build --build-arg path=$n_build_cores -t flexflow .
+docker build --build-arg n_build_cores=$n_build_cores -t flexflow .

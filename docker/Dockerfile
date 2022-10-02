@@ -33,11 +33,15 @@ COPY ./config /usr/FlexFlow/config
 
 ARG n_build_cores
 
+# Build and install C++ and Python versions of FlexFlow
 RUN cd /usr/FlexFlow && mkdir -p build && cd build && \
     ../config/config.linux && \
     make -j $n_build_cores && \
     ../config/config.linux && \
     make install
+
+# Add the FlexFlow module to Conda's Python
+RUN /opt/conda/bin/conda develop /usr/local
 
 ENTRYPOINT ["/bin/bash"]
 
