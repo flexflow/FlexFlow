@@ -29,10 +29,15 @@ RUN cd /usr && \
     git clone --recursive https://github.com/flexflow/FlexFlow.git
 ENV FF_HOME /usr/FlexFlow
 # overwrite configs file with those (potentially) modified by the user
-COPY config.linux /usr/FlexFlow/config
+COPY ./config /usr/FlexFlow/config
 
-COPY entrypoint.sh /usr/entrypoint.sh
-RUN chmod +x /usr/entrypoint.sh
-ENTRYPOINT ["/usr/entrypoint.sh"]
+ARG n_build_cores
+
+RUN cd /usr/FlexFlow && mkdir -p build && cd build && \
+    ../config/config.linux && \
+    make -j $n_build_cores && \
+    make install
+
+ENTRYPOINT ["/bin/bash"]
 
 WORKDIR /usr/FlexFlow

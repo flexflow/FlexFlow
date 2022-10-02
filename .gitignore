@@ -163,7 +163,7 @@ cython_debug/
 .vscode/*
 
 # Docker container 
-docker/config.linux
+docker/config
 
 # yarn prettier module (for linting workflows)
 .prettierrc.json
