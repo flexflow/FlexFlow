@@ -128,10 +128,10 @@ Op::Op(FFModel &model,
     // resetInputGrads[i] = true;
   }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
-    outputs[i] = NULL;
+    outputs[i] = nullptr;
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
-    meta[i] = NULL;
+    meta[i] = nullptr;
   parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
 }
 
@@ -559,8 +559,8 @@ ncclComm_t Op::init_nccl_comms_task(Task const *task,
   }
   ncclComm_t ncclComm;
   checkNCCL(ncclCommInitRank(&ncclComm, allRanks, ncclId, myRank));
-  // fprintf(stderr, "ncclComm(%p) allRanks(%d) myRank(%d) ncclId(%p)\n",
-  //     ncclComm, allRanks, myRank, ncclId);
+  fprintf(stderr, "ncclComm(%p) allRanks(%d) myRank(%d) ncclId(%p)\n",
+      ncclComm, allRanks, myRank, ncclId);
   return ncclComm;
 }
 #endif

@@ -8,6 +8,7 @@
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/concat_params.h"
+#include "flexflow/accessor.h"
 
 namespace FlexFlow {
 
@@ -56,34 +57,26 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  static void forward_kernel(float *output,
-                             float const *const *inputs,
+  static void forward_kernel(GenericTensorAccessorW const &output,
+                             GenericTensorAccessorR const *inputs,
                              int num_inputs,
                              int axis,
-                             Legion::Domain const &out_domain,
-                             Legion::Domain const *in_domain,
                              ffStream_t stream);
   static void forward_kernel_wrapper(ConcatMeta const *m,
-                                     float *output,
-                                     float const *const *inputs,
+                                     GenericTensorAccessorW const &output,
+                                     GenericTensorAccessorR const *inputs,
                                      int num_inputs,
-                                     int axis,
-                                     Legion::Domain const &out_domain,
-                                     Legion::Domain const *in_domain);
-  static void backward_kernel(float const *output_grad,
-                              float **input_grads,
+                                     int axis);
+  static void backward_kernel(GenericTensorAccessorR const &output_grad,
+                              GenericTensorAccessorW const *input_grads,
                               int num_inputs,
                               int axis,
-                              Legion::Domain const &out_grad_domain,
-                              Legion::Domain const *in_grad_domain,
                               ffStream_t stream);
   static void backward_kernel_wrapper(ConcatMeta const *m,
-                                      float const *output_grad,
-                                      float **input_grads,
+                                      GenericTensorAccessorR const &output_grad,
+                                      GenericTensorAccessorW const *input_grads,
                                       int num_inputs,
-                                      int axis,
-                                      Legion::Domain const &out_grad_domain,
-                                      Legion::Domain const *in_grad_domain);
+                                      int axis);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
