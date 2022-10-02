@@ -43,6 +43,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'm2r2',
     'breathe',
+    'exhale',
 ]
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -81,3 +82,27 @@ html_theme = 'sphinx_rtd_theme'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+# Breathe + Exhale configuration
+
+# Setup the breathe extension
+breathe_projects = {
+    "FlexFlow": "./_doxygen/xml"
+}
+breathe_default_project = "FlexFlow"
+
+# Setup the exhale extension
+exhale_args = {
+    # These arguments are required
+    "containmentFolder":     "./c++_api",
+    "rootFileName":          "c++_api_root.rst",
+    "doxygenStripFromPath":  "..",
+    # Heavily encouraged optional argument (see docs)
+    #"rootFileTitle":         "Library API",
+    # Suggested optional arguments
+    "createTreeView":        True,
+    # TIP: if using the sphinx-bootstrap-theme, you need
+    # "treeViewIsBootstrap": True,
+    "exhaleExecutesDoxygen": True,
+    "exhaleDoxygenStdin":    f"INPUT = {os.path.join(FF_HOME, 'include')}"
+}

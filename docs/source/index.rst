@@ -19,6 +19,12 @@ Welcome to FlexFlow's documentation!
    python/models
    python/layers
    python/dataloader
+
+.. toctree::
+   :maxdepth: 2
+   :caption: C++ API
+
+   c++_api/c++_api_root
    
 .. toctree::
    :maxdepth: 2
