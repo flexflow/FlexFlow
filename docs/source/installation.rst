@@ -1,5 +1,5 @@
 *************
-Installation
+Installing FlexFlow
 *************
 
 .. mdinclude:: ../../INSTALL.md
