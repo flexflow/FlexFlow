@@ -559,8 +559,8 @@ ncclComm_t Op::init_nccl_comms_task(Task const *task,
   }
   ncclComm_t ncclComm;
   checkNCCL(ncclCommInitRank(&ncclComm, allRanks, ncclId, myRank));
-  fprintf(stderr, "ncclComm(%p) allRanks(%d) myRank(%d) ncclId(%p)\n",
-      ncclComm, allRanks, myRank, ncclId);
+  //fprintf(stderr, "ncclComm(%p) allRanks(%d) myRank(%d) ncclId(%p)\n",
+  //    ncclComm, allRanks, myRank, ncclId);
   return ncclComm;
 }
 #endif
