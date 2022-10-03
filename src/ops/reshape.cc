@@ -380,12 +380,12 @@ bool Reshape::measure_operator_cost(Simulator *sim,
 
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf(
-        "[Meausre Reshape] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+        "[Measure Reshape] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
         name,
         cost_metrics.forward_time,
         cost_metrics.backward_time);
   } else {
-    printf("[Meausre Reshape] name(%s) forward_time(%.4lf)\n",
+    printf("[Measure Reshape] name(%s) forward_time(%.4lf)\n",
            name,
            cost_metrics.forward_time);
   }
