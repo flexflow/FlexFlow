@@ -15,6 +15,7 @@ build:
     # rust: "1.55"
     # golang: "1.17"
   commands:
+    - pip install docs/requirements.txt
     - cd docs && make html
 
 
@@ -27,6 +28,6 @@ sphinx:
 #    - pdf
 
 # Optionally declare the Python requirements required to build your docs
-python:
-  install:
-    - requirements: docs/requirements.txt
+#python:
+#  install:
+#    - requirements: docs/requirements.txt
