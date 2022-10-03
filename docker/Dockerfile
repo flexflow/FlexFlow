@@ -3,12 +3,12 @@ FROM nvidia/cuda:11.1.1-devel-ubuntu18.04
 RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binutils git zlib1g-dev && \
     rm -rf /var/lib/apt/lists/*
 
-RUN wget -c http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-11.1-linux-x64-v8.0.5.39.tgz && \
+RUN wget -c -q http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-11.1-linux-x64-v8.0.5.39.tgz && \
     tar -xzf cudnn-11.1-linux-x64-v8.0.5.39.tgz -C /usr/local && \
     rm cudnn-11.1-linux-x64-v8.0.5.39.tgz && \
     ldconfig
 
-RUN wget -c https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
+RUN wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     mv Miniconda3-latest-Linux-x86_64.sh ~/Miniconda3-latest-Linux-x86_64.sh && \
     chmod +x ~/Miniconda3-latest-Linux-x86_64.sh && \
     ~/Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
