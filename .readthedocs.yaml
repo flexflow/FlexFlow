@@ -15,7 +15,7 @@ build:
     # rust: "1.55"
     # golang: "1.17"
   commands:
-    - pip install docs/requirements.txt
+    - pip install -r docs/requirements.txt
     - cd docs && make html
 
 
