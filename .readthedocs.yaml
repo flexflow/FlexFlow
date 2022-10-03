@@ -17,6 +17,7 @@ build:
   commands:
     - pip install -r docs/requirements.txt
     - cd docs && make html
+    - cp -r build/* _readthedocs/
 
 
 # Build documentation in the docs/ directory with Sphinx
