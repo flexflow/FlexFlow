@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "flexflow/accessor.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
@@ -29,7 +30,6 @@
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/utils/cuda_helper.h"
-#include "flexflow/accessor.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -73,46 +73,49 @@ __host__ void FusedOp::forward_task(Task const *task,
   assert(regions.size() == task->regions.size());
   assert((int)regions.size() ==
          fused->numInputs + fused->numWeights + fused->numOutputs);
-  //Domain input_domain[MAX_NUM_INPUTS];
-  //Domain weight_domain[MAX_NUM_WEIGHTS];
-  //Domain output_domain[MAX_NUM_OUTPUTS];
+  // Domain input_domain[MAX_NUM_INPUTS];
+  // Domain weight_domain[MAX_NUM_WEIGHTS];
+  // Domain output_domain[MAX_NUM_OUTPUTS];
   GenericTensorAccessorR input_accessor[MAX_NUM_INPUTS];
   GenericTensorAccessorR weight_accessor[MAX_NUM_WEIGHTS];
   GenericTensorAccessorW output_accessor[MAX_NUM_OUTPUTS];
   assert(fused->numInputs <= MAX_NUM_INPUTS);
   for (int i = 0; i < fused->numInputs; i++) {
-    //input_domain[i] = runtime->get_index_space_domain(
-    //    ctx, task->regions[i].region.get_index_space());
-    input_accessor[i] = helperGetGenericTensorAccessorRO(fused->input_data_types[i],
-                                                         regions[i],
-                                                         task->regions[i],
-                                                         FID_DATA,
-                                                         ctx,
-                                                         runtime);
+    // input_domain[i] = runtime->get_index_space_domain(
+    //     ctx, task->regions[i].region.get_index_space());
+    input_accessor[i] =
+        helperGetGenericTensorAccessorRO(fused->input_data_types[i],
+                                         regions[i],
+                                         task->regions[i],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
   }
   int roff = fused->numInputs;
   assert(fused->numWeights <= MAX_NUM_WEIGHTS);
   for (int i = 0; i < fused->numWeights; i++) {
-    //weight_domain[i] = runtime->get_index_space_domain(
-    //    ctx, task->regions[i + roff].region.get_index_space());
-    weight_accessor[i] = helperGetGenericTensorAccessorRO(fused->weight_data_types[i],
-                                                    regions[i + roff],
-                                                    task->regions[i + roff],
-                                                    FID_DATA,
-                                                    ctx,
-                                                    runtime);
+    // weight_domain[i] = runtime->get_index_space_domain(
+    //     ctx, task->regions[i + roff].region.get_index_space());
+    weight_accessor[i] =
+        helperGetGenericTensorAccessorRO(fused->weight_data_types[i],
+                                         regions[i + roff],
+                                         task->regions[i + roff],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
   }
   roff += fused->numWeights;
   assert(fused->numOutputs <= MAX_NUM_OUTPUTS);
   for (int i = 0; i < fused->numOutputs; i++) {
-    //output_domain[i] = runtime->get_index_space_domain(
-    //    ctx, task->regions[i + roff].region.get_index_space());
-    output_accessor[i] = helperGetGenericTensorAccessorWO(fused->output_data_types[i],
-                                                    regions[i + roff],
-                                                    task->regions[i + roff],
-                                                    FID_DATA,
-                                                    ctx,
-                                                    runtime);
+    // output_domain[i] = runtime->get_index_space_domain(
+    //     ctx, task->regions[i + roff].region.get_index_space());
+    output_accessor[i] =
+        helperGetGenericTensorAccessorWO(fused->output_data_types[i],
+                                         regions[i + roff],
+                                         task->regions[i + roff],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
   }
   // Assert that all meta share the same dnn/blas handler
   int start = 0;
@@ -134,33 +137,33 @@ __host__ void FusedOp::forward_task(Task const *task,
 
   int ioff = 0, woff = 0, ooff = 0;
   for (int op = 0; op < fused->numOperators; op++) {
-    //Domain my_id[MAX_NUM_INPUTS];
-    //Domain my_wd[MAX_NUM_WEIGHTS];
-    //Domain my_od[MAX_NUM_OUTPUTS];
+    // Domain my_id[MAX_NUM_INPUTS];
+    // Domain my_wd[MAX_NUM_WEIGHTS];
+    // Domain my_od[MAX_NUM_OUTPUTS];
     GenericTensorAccessorR my_input_accessor[MAX_NUM_INPUTS];
     GenericTensorAccessorR my_weight_accessor[MAX_NUM_WEIGHTS];
     GenericTensorAccessorW my_output_accessor[MAX_NUM_OUTPUTS];
     for (int i = 0; i < fused->op_num_inputs[op]; i++) {
       int my_off = fused->op_input_idx[i + ioff];
       if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
-        //my_id[i] = input_domain[my_off];
+        // my_id[i] = input_domain[my_off];
         my_input_accessor[i] = input_accessor[my_off];
       } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
-        //my_id[i] = output_domain[my_off];
+        // my_id[i] = output_domain[my_off];
         my_input_accessor[i] = output_accessor[my_off];
       } else
         assert(false);
     }
     for (int i = 0; i < fused->op_num_weights[op]; i++) {
       assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
-      //my_wd[i] = weight_domain[fused->op_weight_idx[i + woff]];
-      //my_wp[i] = weight_ptr[fused->op_weight_idx[i + woff]];
+      // my_wd[i] = weight_domain[fused->op_weight_idx[i + woff]];
+      // my_wp[i] = weight_ptr[fused->op_weight_idx[i + woff]];
       my_weight_accessor[i] = weight_accessor[fused->op_weight_idx[i + woff]];
     }
     for (int i = 0; i < fused->op_num_outputs[op]; i++) {
       assert(fused->op_output_source[i + ooff] == SOURCE_OUTPUT);
-      //my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
-      //my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
+      // my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
+      // my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
       my_output_accessor[i] = output_accessor[i + ooff];
     }
     switch (fused->op_op_type[op]) {
@@ -209,8 +212,9 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta *m = (DropoutMeta *)metas->meta[op];
-        Dropout::forward_kernel_wrapper(
-            m, my_input_accessor[0].get_float_ptr(), my_output_accessor[0].get_float_ptr());
+        Dropout::forward_kernel_wrapper(m,
+                                        my_input_accessor[0].get_float_ptr(),
+                                        my_output_accessor[0].get_float_ptr());
         break;
       }
       case OP_LINEAR: {
@@ -220,9 +224,10 @@ __host__ void FusedOp::forward_task(Task const *task,
         int in_dim = kernel_domain.hi()[0] - kernel_domain.lo()[0] + 1;
         int out_dim = kernel_domain.hi()[1] - kernel_domain.lo()[1] + 1;
         int batch_size = my_input_accessor[0].domain.get_volume() / in_dim;
-        assert(my_output_accessor[0].domain.get_volume() == out_dim * batch_size);
+        assert(my_output_accessor[0].domain.get_volume() ==
+               out_dim * batch_size);
         assert(my_input_accessor[0].domain.get_volume() == in_dim * batch_size);
-        const float *bias_ptr = nullptr;
+        float const *bias_ptr = nullptr;
         if (fused->op_num_weights[op] == 2) {
           assert(my_weight_accessor[1].domain.get_volume() == out_dim);
           bias_ptr = my_weight_accessor[1].get_float_ptr();
@@ -263,18 +268,19 @@ __host__ void FusedOp::forward_task(Task const *task,
           batch *= dim_size;
         }
         BatchMatmulMeta *meta = (BatchMatmulMeta *)metas->meta[op];
-        BatchMatmul::forward_kernel_wrapper(meta,
-                                            my_output_accessor[0].get_float_ptr(),
-                                            my_input_accessor[0].get_float_ptr(),
-                                            my_input_accessor[1].get_float_ptr(),
-                                            (float const*) nullptr,
-                                            m,
-                                            n,
-                                            k,
-                                            batch,
-                                            meta->a_seq_length_dim,
-                                            meta->b_seq_length_dim,
-                                            fused->iter_config.seq_length);
+        BatchMatmul::forward_kernel_wrapper(
+            meta,
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].get_float_ptr(),
+            my_input_accessor[1].get_float_ptr(),
+            (float const *)nullptr,
+            m,
+            n,
+            k,
+            batch,
+            meta->a_seq_length_dim,
+            meta->b_seq_length_dim,
+            fused->iter_config.seq_length);
         break;
       }
       case OP_EW_ADD:
@@ -287,59 +293,78 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
-        ElementBinary::forward_kernel_wrapper(m,
-                                              my_input_accessor[0].get_float_ptr(),
-                                              my_input_accessor[1].get_float_ptr(),
-                                              my_output_accessor[0].get_float_ptr());
+        ElementBinary::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_input_accessor[1].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr());
         break;
       }
       case OP_EMBEDDING: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
-        EmbeddingMeta *m = (EmbeddingMeta*)metas->meta[op];
+        EmbeddingMeta *m = (EmbeddingMeta *)metas->meta[op];
         if (m->aggr == AGGR_MODE_NONE) {
           // assert(kernel_domain.get_dim() == 2);
-          assert(my_input_accessor[0].domain.get_dim() + 1 == my_output_accessor[0].domain.get_dim());
+          assert(my_input_accessor[0].domain.get_dim() + 1 ==
+                 my_output_accessor[0].domain.get_dim());
           for (size_t i = 0; i < my_input_accessor[0].domain.get_dim(); i++) {
-            assert(my_input_accessor[0].domain.hi()[i] == my_output_accessor[0].domain.hi()[i + 1]);
-            assert(my_input_accessor[0].domain.lo()[i] == my_output_accessor[0].domain.lo()[i + 1]);
+            assert(my_input_accessor[0].domain.hi()[i] ==
+                   my_output_accessor[0].domain.hi()[i + 1]);
+            assert(my_input_accessor[0].domain.lo()[i] ==
+                   my_output_accessor[0].domain.lo()[i + 1]);
           }
-          assert(my_weight_accessor[0].domain.hi()[0] - my_weight_accessor[0].domain.lo()[0] ==
-                 my_output_accessor[0].domain.hi()[0] - my_output_accessor[0].domain.lo()[0]);
+          assert(my_weight_accessor[0].domain.hi()[0] -
+                     my_weight_accessor[0].domain.lo()[0] ==
+                 my_output_accessor[0].domain.hi()[0] -
+                     my_output_accessor[0].domain.lo()[0]);
         } else {
-          assert(my_input_accessor[0].domain.get_dim()  == my_output_accessor[0].domain.get_dim());
+          assert(my_input_accessor[0].domain.get_dim() ==
+                 my_output_accessor[0].domain.get_dim());
           for (size_t i = 1; i < my_input_accessor[0].domain.get_dim(); i++) {
-            assert(my_input_accessor[0].domain.hi()[i] == my_output_accessor[0].domain.hi()[i]);
-            assert(my_input_accessor[0].domain.lo()[i] == my_output_accessor[0].domain.lo()[i]);
+            assert(my_input_accessor[0].domain.hi()[i] ==
+                   my_output_accessor[0].domain.hi()[i]);
+            assert(my_input_accessor[0].domain.lo()[i] ==
+                   my_output_accessor[0].domain.lo()[i]);
           }
-          assert(my_weight_accessor[0].domain.hi()[0] - my_weight_accessor[0].domain.lo()[0] ==
-                 my_output_accessor[0].domain.hi()[0] - my_output_accessor[0].domain.lo()[0]);
+          assert(my_weight_accessor[0].domain.hi()[0] -
+                     my_weight_accessor[0].domain.lo()[0] ==
+                 my_output_accessor[0].domain.hi()[0] -
+                     my_output_accessor[0].domain.lo()[0]);
         }
         int in_dim, out_dim, effective_batch_size;
         if (m->aggr == AGGR_MODE_NONE) {
           in_dim = 1;
-          out_dim = my_output_accessor[0].domain.hi()[0] - my_output_accessor[0].domain.lo()[0] + 1;
-          effective_batch_size = my_output_accessor[0].domain.get_volume() / out_dim;
-          assert(effective_batch_size * in_dim == my_input_accessor[0].domain.get_volume());
+          out_dim = my_output_accessor[0].domain.hi()[0] -
+                    my_output_accessor[0].domain.lo()[0] + 1;
+          effective_batch_size =
+              my_output_accessor[0].domain.get_volume() / out_dim;
+          assert(effective_batch_size * in_dim ==
+                 my_input_accessor[0].domain.get_volume());
         } else {
           assert(m->aggr == AGGR_MODE_AVG || m->aggr == AGGR_MODE_SUM);
-          in_dim = my_input_accessor[0].domain.hi()[0] - my_input_accessor[0].domain.lo()[0] + 1;
-          out_dim = my_output_accessor[0].domain.hi()[0] - my_output_accessor[0].domain.lo()[0] + 1;
-          effective_batch_size = my_output_accessor[0].domain.get_volume() / out_dim;
-          assert(effective_batch_size * in_dim == my_input_accessor[0].domain.get_volume());
+          in_dim = my_input_accessor[0].domain.hi()[0] -
+                   my_input_accessor[0].domain.lo()[0] + 1;
+          out_dim = my_output_accessor[0].domain.hi()[0] -
+                    my_output_accessor[0].domain.lo()[0] + 1;
+          effective_batch_size =
+              my_output_accessor[0].domain.get_volume() / out_dim;
+          assert(effective_batch_size * in_dim ==
+                 my_input_accessor[0].domain.get_volume());
         }
 
         assert(my_input_accessor[0].data_type == DT_INT64);
-        Embedding::forward_kernel_wrapper(m,
-                                          my_input_accessor[0].get_int64_ptr(),
-                                          my_output_accessor[0].get_float_ptr(),
-                                          my_weight_accessor[0].get_float_ptr(),
-                                          in_dim,
-                                          out_dim,
-                                          effective_batch_size,
-                                          m->aggr,
-                                          my_output_accessor[0].domain.get_volume());
+        Embedding::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_int64_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            in_dim,
+            out_dim,
+            effective_batch_size,
+            m->aggr,
+            my_output_accessor[0].domain.get_volume());
         break;
       }
       case OP_RELU:
@@ -351,10 +376,11 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementUnaryMeta *m = (ElementUnaryMeta *)metas->meta[op];
-        ElementUnary::forward_kernel_wrapper(m,
-                                             my_input_accessor[0].get_float_ptr(),
-                                             my_output_accessor[0].get_float_ptr(),
-                                             my_input_accessor[0].domain.get_volume());
+        ElementUnary::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].domain.get_volume());
         break;
       }
       case OP_POOL2D: {
@@ -363,35 +389,46 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         Pool2DMeta *m = (Pool2DMeta *)metas->meta[op];
-        Pool2D::forward_kernel_wrapper(m, my_input_accessor[0].get_float_ptr(), my_output_accessor[0].get_float_ptr());
+        Pool2D::forward_kernel_wrapper(m,
+                                       my_input_accessor[0].get_float_ptr(),
+                                       my_output_accessor[0].get_float_ptr());
         break;
       }
       case OP_FLAT: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_accessor[0].domain.get_volume() == my_output_accessor[0].domain.get_volume());
-        Flat::forward_kernel_wrapper(
-            my_input_accessor[0].get_float_ptr(), my_output_accessor[0].get_float_ptr(), my_input_accessor[0].domain.get_volume());
+        assert(my_input_accessor[0].domain.get_volume() ==
+               my_output_accessor[0].domain.get_volume());
+        Flat::forward_kernel_wrapper(my_input_accessor[0].get_float_ptr(),
+                                     my_output_accessor[0].get_float_ptr(),
+                                     my_input_accessor[0].domain.get_volume());
         break;
       }
       case OP_RESHAPE: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_accessor[0].domain.get_volume() == my_output_accessor[0].domain.get_volume());
+        assert(my_input_accessor[0].domain.get_volume() ==
+               my_output_accessor[0].domain.get_volume());
         Reshape::forward_kernel_wrapper(
-            my_input_accessor[0].get_float_ptr(), my_output_accessor[0].get_float_ptr(), my_input_accessor[0].domain.get_volume());
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].domain.get_volume());
         break;
       }
       case OP_TRANSPOSE: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_accessor[0].domain.get_volume() == my_output_accessor[0].domain.get_volume());
+        assert(my_input_accessor[0].domain.get_volume() ==
+               my_output_accessor[0].domain.get_volume());
         TransposeMeta *m = (TransposeMeta *)metas->meta[op];
-        Transpose::forward_kernel_wrapper(
-            m, my_input_accessor[0].get_float_ptr(), my_output_accessor[0].get_float_ptr(), my_input_accessor[0].domain, my_output_accessor[0].domain);
+        Transpose::forward_kernel_wrapper(m,
+                                          my_input_accessor[0].get_float_ptr(),
+                                          my_output_accessor[0].get_float_ptr(),
+                                          my_input_accessor[0].domain,
+                                          my_output_accessor[0].domain);
         break;
       }
       default: {
@@ -433,9 +470,9 @@ __host__ void FusedOp::backward_task(Task const *task,
     int sum = fused->numInputs + fused->numWeights + fused->numOutputs;
     assert(sum * 2 == (int)regions.size());
   }
-  //Domain input_domain[MAX_NUM_INPUTS], input_grad_domain[MAX_NUM_INPUTS];
-  //Domain weight_domain[MAX_NUM_WEIGHTS], weight_grad_domain[MAX_NUM_WEIGHTS];
-  //Domain output_domain[MAX_NUM_OUTPUTS], output_grad_domain[MAX_NUM_OUTPUTS];
+  // Domain input_domain[MAX_NUM_INPUTS], input_grad_domain[MAX_NUM_INPUTS];
+  // Domain weight_domain[MAX_NUM_WEIGHTS], weight_grad_domain[MAX_NUM_WEIGHTS];
+  // Domain output_domain[MAX_NUM_OUTPUTS], output_grad_domain[MAX_NUM_OUTPUTS];
   GenericTensorAccessorR input_accessor[MAX_NUM_INPUTS];
   GenericTensorAccessorW input_grad_accessor[MAX_NUM_INPUTS];
   GenericTensorAccessorR weight_accessor[MAX_NUM_WEIGHTS];
@@ -445,76 +482,80 @@ __host__ void FusedOp::backward_task(Task const *task,
   int roff = 0;
   assert(fused->numInputs <= MAX_NUM_INPUTS);
   for (int i = 0; i < fused->numInputs; i++) {
-    //input_domain[i] = runtime->get_index_space_domain(
-    //    ctx, task->regions[i].region.get_index_space());
-    input_accessor[i] = helperGetGenericTensorAccessorRO(fused->input_data_types[i],
-                                                   regions[i],
-                                                   task->regions[i],
-                                                   FID_DATA,
-                                                   ctx,
-                                                   runtime);
+    // input_domain[i] = runtime->get_index_space_domain(
+    //     ctx, task->regions[i].region.get_index_space());
+    input_accessor[i] =
+        helperGetGenericTensorAccessorRO(fused->input_data_types[i],
+                                         regions[i],
+                                         task->regions[i],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
   }
   roff += fused->numInputs;
   assert(fused->numWeights <= MAX_NUM_WEIGHTS);
   for (int i = 0; i < fused->numWeights; i++) {
-    //weight_domain[i] = runtime->get_index_space_domain(
-    //    ctx, task->regions[i + roff].region.get_index_space());
-    weight_accessor[i] = helperGetGenericTensorAccessorRO(fused->weight_data_types[i],
-                                                    regions[i + roff],
-                                                    task->regions[i + roff],
-                                                    FID_DATA,
-                                                    ctx,
-                                                    runtime);
+    // weight_domain[i] = runtime->get_index_space_domain(
+    //     ctx, task->regions[i + roff].region.get_index_space());
+    weight_accessor[i] =
+        helperGetGenericTensorAccessorRO(fused->weight_data_types[i],
+                                         regions[i + roff],
+                                         task->regions[i + roff],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
   }
   roff += fused->numWeights;
   assert(fused->numOutputs <= MAX_NUM_OUTPUTS);
   for (int i = 0; i < fused->numOutputs; i++) {
-    //output_domain[i] = runtime->get_index_space_domain(
-    //    ctx, task->regions[i + roff].region.get_index_space());
-    output_accessor[i] = helperGetGenericTensorAccessorRO(fused->output_data_types[i],
-                                                    regions[i + roff],
-                                                    task->regions[i + roff],
-                                                    FID_DATA,
-                                                    ctx,
-                                                    runtime);
+    // output_domain[i] = runtime->get_index_space_domain(
+    //     ctx, task->regions[i + roff].region.get_index_space());
+    output_accessor[i] =
+        helperGetGenericTensorAccessorRO(fused->output_data_types[i],
+                                         regions[i + roff],
+                                         task->regions[i + roff],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
   }
   roff += fused->numOutputs;
   for (int i = 0; i < fused->numInputs; i++) {
-    //input_grad_domain[i] = runtime->get_index_space_domain(
-    //    ctx, task->regions[i + roff].region.get_index_space());
+    // input_grad_domain[i] = runtime->get_index_space_domain(
+    //     ctx, task->regions[i + roff].region.get_index_space());
     input_grad_accessor[i] =
         helperGetGenericTensorAccessorRW(fused->input_data_types[i],
-                                        regions[i + roff],
-                                        task->regions[i + roff],
-                                        FID_DATA,
-                                        ctx,
-                                        runtime);
+                                         regions[i + roff],
+                                         task->regions[i + roff],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
     assert(input_grad_accessor[i].domain == input_accessor[i].domain);
   }
   roff += fused->numInputs;
   for (int i = 0; i < fused->numWeights; i++) {
-    //weight_grad_domain[i] = runtime->get_index_space_domain(
-    //    ctx, task->regions[i + roff].region.get_index_space());
+    // weight_grad_domain[i] = runtime->get_index_space_domain(
+    //     ctx, task->regions[i + roff].region.get_index_space());
     weight_grad_accessor[i] =
         helperGetGenericTensorAccessorRW(fused->weight_data_types[i],
-                                        regions[i + roff],
-                                        task->regions[i + roff],
-                                        FID_DATA,
-                                        ctx,
-                                        runtime);
-    assert(weight_grad_accessor[i].domain.get_volume() == weight_accessor[i].domain.get_volume());
+                                         regions[i + roff],
+                                         task->regions[i + roff],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
+    assert(weight_grad_accessor[i].domain.get_volume() ==
+           weight_accessor[i].domain.get_volume());
   }
   roff += fused->numWeights;
   for (int i = 0; i < fused->numOutputs; i++) {
-    //output_grad_domain[i] = runtime->get_index_space_domain(
-    //    ctx, task->regions[i + roff].region.get_index_space());
+    // output_grad_domain[i] = runtime->get_index_space_domain(
+    //     ctx, task->regions[i + roff].region.get_index_space());
     output_grad_accessor[i] =
         helperGetGenericTensorAccessorRW(fused->output_data_types[i],
-                                        regions[i + roff],
-                                        task->regions[i + roff],
-                                        FID_DATA,
-                                        ctx,
-                                        runtime);
+                                         regions[i + roff],
+                                         task->regions[i + roff],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
     assert(output_grad_accessor[i].domain == output_accessor[i].domain);
   }
   roff += fused->numOutputs;
@@ -535,9 +576,9 @@ __host__ void FusedOp::backward_task(Task const *task,
 #endif
 
   int ioff = 0, woff = 0, ooff = 0;
-  //Domain my_id[MAX_NUM_INPUTS], my_grad_id[MAX_NUM_INPUTS];
-  //Domain my_wd[MAX_NUM_WEIGHTS], my_grad_wd[MAX_NUM_WEIGHTS];
-  //Domain my_od[MAX_NUM_OUTPUTS], my_grad_od[MAX_NUM_OUTPUTS];
+  // Domain my_id[MAX_NUM_INPUTS], my_grad_id[MAX_NUM_INPUTS];
+  // Domain my_wd[MAX_NUM_WEIGHTS], my_grad_wd[MAX_NUM_WEIGHTS];
+  // Domain my_od[MAX_NUM_OUTPUTS], my_grad_od[MAX_NUM_OUTPUTS];
   GenericTensorAccessorR my_input_accessor[MAX_NUM_INPUTS];
   GenericTensorAccessorR my_weight_accessor[MAX_NUM_WEIGHTS];
   GenericTensorAccessorR my_output_accessor[MAX_NUM_OUTPUTS];
@@ -558,19 +599,19 @@ __host__ void FusedOp::backward_task(Task const *task,
     for (int i = 0; i < fused->op_num_inputs[op]; i++) {
       int my_off = fused->op_input_idx[i + ioff];
       if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
-        //my_id[i] = input_domain[my_off];
-        //my_ip[i] = input_ptr[my_off];
+        // my_id[i] = input_domain[my_off];
+        // my_ip[i] = input_ptr[my_off];
         my_input_accessor[i] = input_accessor[my_off];
-        //my_grad_id[i] = input_grad_domain[my_off];
-        //my_grad_ip[i] = input_grad_ptr[my_off];
+        // my_grad_id[i] = input_grad_domain[my_off];
+        // my_grad_ip[i] = input_grad_ptr[my_off];
         my_input_grad_accessor[i] = input_grad_accessor[my_off];
         assert(my_input_grad_accessor[i].domain == my_input_accessor[i].domain);
       } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
-        //my_id[i] = output_domain[my_off];
-        //my_ip[i] = output_ptr[my_off];
+        // my_id[i] = output_domain[my_off];
+        // my_ip[i] = output_ptr[my_off];
         my_input_accessor[i] = output_accessor[my_off];
-        //my_grad_id[i] = output_grad_domain[my_off];
-        //my_grad_ip[i] = output_grad_ptr[my_off];
+        // my_grad_id[i] = output_grad_domain[my_off];
+        // my_grad_ip[i] = output_grad_ptr[my_off];
         my_input_grad_accessor[i] = output_grad_accessor[my_off];
         assert(my_input_grad_accessor[i].domain == my_input_accessor[i].domain);
       } else
@@ -578,22 +619,25 @@ __host__ void FusedOp::backward_task(Task const *task,
     }
     for (int i = 0; i < fused->op_num_weights[op]; i++) {
       assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
-      //my_wd[i] = weight_domain[fused->op_weight_idx[i + woff]];
-      //my_wp[i] = weight_ptr[fused->op_weight_idx[i + woff]];
+      // my_wd[i] = weight_domain[fused->op_weight_idx[i + woff]];
+      // my_wp[i] = weight_ptr[fused->op_weight_idx[i + woff]];
       my_weight_accessor[i] = weight_accessor[fused->op_weight_idx[i + woff]];
-      //my_grad_wd[i] = weight_grad_domain[fused->op_weight_idx[i + woff]];
-      //my_grad_wp[i] = weight_grad_ptr[fused->op_weight_idx[i + woff]];
-      my_weight_grad_accessor[i] = weight_grad_accessor[fused->op_weight_idx[i + woff]];
-      assert(my_weight_grad_accessor[i].domain.get_volume() == my_weight_accessor[i].domain.get_volume());
+      // my_grad_wd[i] = weight_grad_domain[fused->op_weight_idx[i + woff]];
+      // my_grad_wp[i] = weight_grad_ptr[fused->op_weight_idx[i + woff]];
+      my_weight_grad_accessor[i] =
+          weight_grad_accessor[fused->op_weight_idx[i + woff]];
+      assert(my_weight_grad_accessor[i].domain.get_volume() ==
+             my_weight_accessor[i].domain.get_volume());
     }
     for (int i = 0; i < fused->op_num_outputs[op]; i++) {
       assert(fused->op_output_source[i + ooff] == SOURCE_OUTPUT);
-      //my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
-      //my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
+      // my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
+      // my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
       my_output_accessor[i] = output_accessor[fused->op_output_idx[i + ooff]];
-      //my_grad_od[i] = output_grad_domain[fused->op_output_idx[i + ooff]];
-      //my_grad_op[i] = output_grad_ptr[fused->op_output_idx[i + ooff]];
-      my_output_grad_accessor[i] = output_grad_accessor[fused->op_output_idx[i + ooff]];
+      // my_grad_od[i] = output_grad_domain[fused->op_output_idx[i + ooff]];
+      // my_grad_op[i] = output_grad_ptr[fused->op_output_idx[i + ooff]];
+      my_output_grad_accessor[i] =
+          output_grad_accessor[fused->op_output_idx[i + ooff]];
       assert(my_output_grad_accessor[i].domain == my_output_accessor[i].domain);
     }
     switch (fused->op_op_type[op]) {
@@ -621,18 +665,19 @@ __host__ void FusedOp::backward_task(Task const *task,
           batch *= dim_size;
         }
         BatchMatmulMeta *meta = (BatchMatmulMeta *)metas->meta[op];
-        BatchMatmul::backward_kernel_wrapper(meta,
-                                             (float const *)my_output_accessor[0].get_float_ptr(),
-                                             (float const *)my_output_grad_accessor[0].get_float_ptr(),
-                                             (float const *)my_input_accessor[0].get_float_ptr(),
-                                             (float *)my_input_grad_accessor[0].get_float_ptr(),
-                                             (float const *)my_input_accessor[1].get_float_ptr(),
-                                             (float *)my_input_grad_accessor[1].get_float_ptr(),
-                                             (float *)nullptr,
-                                             m,
-                                             n,
-                                             k,
-                                             batch);
+        BatchMatmul::backward_kernel_wrapper(
+            meta,
+            (float const *)my_output_accessor[0].get_float_ptr(),
+            (float const *)my_output_grad_accessor[0].get_float_ptr(),
+            (float const *)my_input_accessor[0].get_float_ptr(),
+            (float *)my_input_grad_accessor[0].get_float_ptr(),
+            (float const *)my_input_accessor[1].get_float_ptr(),
+            (float *)my_input_grad_accessor[1].get_float_ptr(),
+            (float *)nullptr,
+            m,
+            n,
+            k,
+            batch);
         break;
       }
       case OP_BATCHNORM: {
@@ -643,15 +688,16 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(my_weight_accessor[1].domain.get_dim() == 2);
         assert(my_output_accessor[0].domain.get_dim() == 5);
         BatchNormMeta *m = (BatchNormMeta *)metas->meta[op];
-        BatchNorm::backward_kernel(m,
-                                   (float const *)my_input_accessor[0].get_float_ptr(),
-                                   (float *)my_output_grad_accessor[0].get_float_ptr(),
-                                   (float const *)my_output_accessor[0].get_float_ptr(),
-                                   (float *)my_input_grad_accessor[0].get_float_ptr(),
-                                   (float const *)my_weight_accessor[0].get_float_ptr(),
-                                   (float *)my_weight_grad_accessor[0].get_float_ptr(),
-                                   (float *)my_weight_grad_accessor[1].get_float_ptr(),
-                                   my_output_accessor[0].domain.get_volume());
+        BatchNorm::backward_kernel(
+            m,
+            (float const *)my_input_accessor[0].get_float_ptr(),
+            (float *)my_output_grad_accessor[0].get_float_ptr(),
+            (float const *)my_output_accessor[0].get_float_ptr(),
+            (float *)my_input_grad_accessor[0].get_float_ptr(),
+            (float const *)my_weight_accessor[0].get_float_ptr(),
+            (float *)my_weight_grad_accessor[0].get_float_ptr(),
+            (float *)my_weight_grad_accessor[1].get_float_ptr(),
+            my_output_accessor[0].domain.get_volume());
         break;
       }
       case OP_CONCAT: {
@@ -673,14 +719,15 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(my_weight_accessor[0].domain.get_dim() == 5);
         assert(my_output_accessor[0].domain.get_dim() == 5);
         Conv2DMeta *m = (Conv2DMeta *)metas->meta[op];
-        Conv2D::backward_kernel_wrapper(m,
-                                        my_input_accessor[0].get_float_ptr(),
-                                        my_input_grad_accessor[0].get_float_ptr(),
-                                        my_output_accessor[0].get_float_ptr(),
-                                        my_output_grad_accessor[0].get_float_ptr(),
-                                        my_weight_accessor[0].get_float_ptr(),
-                                        my_weight_grad_accessor[0].get_float_ptr(),
-                                        my_weight_grad_accessor[1].get_float_ptr());
+        Conv2D::backward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            my_weight_grad_accessor[0].get_float_ptr(),
+            my_weight_grad_accessor[1].get_float_ptr());
         break;
       }
       case OP_DROPOUT: {
@@ -688,7 +735,9 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta *m = (DropoutMeta *)metas->meta[op];
         Dropout::backward_kernel_wrapper(
-            m, my_output_grad_accessor[0].get_float_ptr(), my_input_grad_accessor[0].get_float_ptr());
+            m,
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr());
         break;
       }
       case OP_EW_ADD:
@@ -701,41 +750,50 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
-        ElementBinary::backward_kernel_wrapper(m,
-                                               my_output_grad_accessor[0].get_float_ptr(),
-                                               my_input_accessor[0].get_float_ptr(),
-                                               my_input_accessor[1].get_float_ptr(),
-                                               my_input_grad_accessor[0].get_float_ptr(),
-                                               my_input_grad_accessor[1].get_float_ptr());
+        ElementBinary::backward_kernel_wrapper(
+            m,
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_accessor[0].get_float_ptr(),
+            my_input_accessor[1].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[1].get_float_ptr());
         break;
       }
       case OP_EMBEDDING: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
-        EmbeddingMeta *m = (EmbeddingMeta*) metas->meta[op];
+        EmbeddingMeta *m = (EmbeddingMeta *)metas->meta[op];
         assert(my_input_accessor[0].data_type == DT_INT64);
         int in_dim, out_dim, effective_batch_size;
         if (m->aggr == AGGR_MODE_NONE) {
           in_dim = 1;
-          out_dim = my_output_grad_accessor[0].domain.hi()[0] - my_output_grad_accessor[0].domain.lo()[0] + 1;
-          effective_batch_size = my_output_grad_accessor[0].domain.get_volume() / out_dim;
-          assert(effective_batch_size * in_dim == my_input_accessor[0].domain.get_volume());
+          out_dim = my_output_grad_accessor[0].domain.hi()[0] -
+                    my_output_grad_accessor[0].domain.lo()[0] + 1;
+          effective_batch_size =
+              my_output_grad_accessor[0].domain.get_volume() / out_dim;
+          assert(effective_batch_size * in_dim ==
+                 my_input_accessor[0].domain.get_volume());
         } else {
-          in_dim = my_input_accessor[0].domain.hi()[0] - my_input_accessor[0].domain.lo()[0] + 1;
-          out_dim = my_output_grad_accessor[0].domain.hi()[0] - my_output_grad_accessor[0].domain.lo()[0] + 1;
-          effective_batch_size = my_output_grad_accessor[0].domain.get_volume() / out_dim;
-          assert(effective_batch_size * in_dim == my_input_accessor[0].domain.get_volume());
+          in_dim = my_input_accessor[0].domain.hi()[0] -
+                   my_input_accessor[0].domain.lo()[0] + 1;
+          out_dim = my_output_grad_accessor[0].domain.hi()[0] -
+                    my_output_grad_accessor[0].domain.lo()[0] + 1;
+          effective_batch_size =
+              my_output_grad_accessor[0].domain.get_volume() / out_dim;
+          assert(effective_batch_size * in_dim ==
+                 my_input_accessor[0].domain.get_volume());
         }
-        Embedding::backward_kernel_wrapper(m,
-                                           my_input_accessor[0].get_int64_ptr(),
-                                           my_output_grad_accessor[0].get_float_ptr(),
-                                           my_weight_grad_accessor[0].get_float_ptr(),
-                                           in_dim,
-                                           out_dim,
-                                           effective_batch_size,
-                                           m->aggr,
-                                           my_output_grad_accessor[0].domain.get_volume());
+        Embedding::backward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_int64_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_weight_grad_accessor[0].get_float_ptr(),
+            in_dim,
+            out_dim,
+            effective_batch_size,
+            m->aggr,
+            my_output_grad_accessor[0].domain.get_volume());
         break;
       }
       case OP_LINEAR: {
@@ -745,9 +803,10 @@ __host__ void FusedOp::backward_task(Task const *task,
         int in_dim = kernel_domain.hi()[0] - kernel_domain.lo()[0] + 1;
         int out_dim = kernel_domain.hi()[1] - kernel_domain.lo()[1] + 1;
         int batch_size = my_input_accessor[0].domain.get_volume() / in_dim;
-        assert(my_output_accessor[0].domain.get_volume() == out_dim * batch_size);
+        assert(my_output_accessor[0].domain.get_volume() ==
+               out_dim * batch_size);
         assert(my_input_accessor[0].domain.get_volume() == in_dim * batch_size);
-        float* bias_grad_ptr = nullptr;
+        float *bias_grad_ptr = nullptr;
         if (fused->op_num_weights[op] == 2) {
           assert(my_weight_accessor[1].domain.get_volume() == out_dim);
           bias_grad_ptr = my_weight_grad_accessor[1].get_float_ptr();
@@ -755,17 +814,18 @@ __host__ void FusedOp::backward_task(Task const *task,
           assert(fused->op_num_weights[op] == 1);
         }
         LinearMeta *m = (LinearMeta *)metas->meta[op];
-        Linear::backward_kernel_wrapper(m,
-                                        my_input_accessor[0].get_float_ptr(),
-                                        my_input_grad_accessor[0].get_float_ptr(),
-                                        my_output_accessor[0].get_float_ptr(),
-                                        my_output_grad_accessor[0].get_float_ptr(),
-                                        my_weight_accessor[0].get_float_ptr(),
-                                        my_weight_grad_accessor[0].get_float_ptr(),
-                                        bias_grad_ptr,
-                                        in_dim,
-                                        out_dim,
-                                        batch_size);
+        Linear::backward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            my_weight_grad_accessor[0].get_float_ptr(),
+            bias_grad_ptr,
+            in_dim,
+            out_dim,
+            batch_size);
         break;
       }
       case OP_RELU:
@@ -777,12 +837,13 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementUnaryMeta *m = (ElementUnaryMeta *)metas->meta[op];
-        ElementUnary::backward_kernel_wrapper(m,
-                                              my_input_accessor[0].get_float_ptr(),
-                                              my_input_grad_accessor[0].get_float_ptr(),
-                                              my_output_accessor[0].get_float_ptr(),
-                                              my_output_grad_accessor[0].get_float_ptr(),
-                                              my_input_accessor[0].domain.get_volume());
+        ElementUnary::backward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_accessor[0].domain.get_volume());
         break;
       }
       case OP_POOL2D: {
@@ -792,40 +853,50 @@ __host__ void FusedOp::backward_task(Task const *task,
         // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         Pool2DMeta *m = (Pool2DMeta *)metas->meta[op];
         Pool2D::backward_kernel_wrapper(
-            m, my_input_accessor[0].get_float_ptr(), my_input_grad_accessor[0].get_float_ptr(), my_output_accessor[0].get_float_ptr(), my_output_grad_accessor[0].get_float_ptr());
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr());
         break;
       }
       case OP_FLAT: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_grad_accessor[0].domain.get_volume() == my_output_grad_accessor[0].domain.get_volume());
-        Flat::backward_kernel_wrapper(my_input_grad_accessor[0].get_float_ptr(),
-                                      my_output_grad_accessor[0].get_float_ptr(),
-                                      my_input_grad_accessor[0].domain.get_volume());
+        assert(my_input_grad_accessor[0].domain.get_volume() ==
+               my_output_grad_accessor[0].domain.get_volume());
+        Flat::backward_kernel_wrapper(
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].domain.get_volume());
         break;
       }
       case OP_RESHAPE: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_grad_accessor[0].domain.get_volume() == my_output_grad_accessor[0].domain.get_volume());
-        Reshape::backward_kernel_wrapper(my_input_grad_accessor[0].get_float_ptr(),
-                                         my_output_grad_accessor[0].get_float_ptr(),
-                                         my_input_grad_accessor[0].domain.get_volume());
+        assert(my_input_grad_accessor[0].domain.get_volume() ==
+               my_output_grad_accessor[0].domain.get_volume());
+        Reshape::backward_kernel_wrapper(
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].domain.get_volume());
         break;
       }
       case OP_TRANSPOSE: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_grad_accessor[0].domain.get_volume() == my_output_grad_accessor[0].domain.get_volume());
+        assert(my_input_grad_accessor[0].domain.get_volume() ==
+               my_output_grad_accessor[0].domain.get_volume());
         TransposeMeta *m = (TransposeMeta *)metas->meta[op];
-        Transpose::backward_kernel_wrapper(m,
-                                           my_input_grad_accessor[0].get_float_ptr(),
-                                           my_output_grad_accessor[0].get_float_ptr(),
-                                           my_input_grad_accessor[0].domain,
-                                           my_output_grad_accessor[0].domain);
+        Transpose::backward_kernel_wrapper(
+            m,
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].domain,
+            my_output_grad_accessor[0].domain);
         break;
       }
       default:

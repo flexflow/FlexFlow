@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_CONCAT_H
 #define _FLEXFLOW_CONCAT_H
 
+#include "flexflow/accessor.h"
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/layer.h"
@@ -8,7 +9,6 @@
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/concat_params.h"
-#include "flexflow/accessor.h"
 
 namespace FlexFlow {
 

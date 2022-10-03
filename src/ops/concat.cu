@@ -72,10 +72,11 @@ void Concat::forward_kernel(GenericTensorAccessorW const &output,
     copy_with_stride<<<GET_BLOCKS(input_blk_sizes[i] * num_blocks),
                        CUDA_NUM_THREADS,
                        0,
-                       stream>>>(
-        output.get_float_ptr() + offset,
-        inputs[i].get_float_ptr(),
-        num_blocks, output_blk_size, input_blk_sizes[i]);
+                       stream>>>(output.get_float_ptr() + offset,
+                                 inputs[i].get_float_ptr(),
+                                 num_blocks,
+                                 output_blk_size,
+                                 input_blk_sizes[i]);
     // printf("output = %x num_blocks=%d output_blk_size=%d
     // input_blk_size[%d]=%d\n",
     //        output, num_blocks, output_blk_size, i, input_blk_sizes[i]);
@@ -98,8 +99,7 @@ void Concat::forward_kernel_wrapper(ConcatMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  Concat::forward_kernel(
-      output, inputs, num_inputs, axis, stream);
+  Concat::forward_kernel(output, inputs, num_inputs, axis, stream);
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -179,11 +179,7 @@ void Concat::backward_kernel_wrapper(ConcatMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  Concat::backward_kernel(output_grad,
-                          input_grads,
-                          num_inputs,
-                          axis,
-                          stream);
+  Concat::backward_kernel(output_grad, input_grads, num_inputs, axis, stream);
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));

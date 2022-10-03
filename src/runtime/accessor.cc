@@ -23,47 +23,48 @@ TensorAccessorR<DT, dim>::TensorAccessorR() {}
 GenericTensorAccessorR::GenericTensorAccessorR(DataType _data_type,
                                                Legion::Domain _domain,
                                                void const *_ptr)
-  : data_type(_data_type), domain(_domain), ptr(_ptr) {}
+    : data_type(_data_type), domain(_domain), ptr(_ptr) {}
 
-GenericTensorAccessorR::GenericTensorAccessorR(GenericTensorAccessorW const &acc)
-  : data_type(acc.data_type), domain(acc.domain), ptr(acc.ptr) {}
+GenericTensorAccessorR::GenericTensorAccessorR(
+    GenericTensorAccessorW const &acc)
+    : data_type(acc.data_type), domain(acc.domain), ptr(acc.ptr) {}
 
 GenericTensorAccessorR::GenericTensorAccessorR()
-  : data_type(DT_NONE), domain(Domain::NO_DOMAIN), ptr(nullptr) {}
+    : data_type(DT_NONE), domain(Domain::NO_DOMAIN), ptr(nullptr) {}
 
 int32_t const *GenericTensorAccessorR::get_int32_ptr() const {
   if (data_type == DT_INT32)
-    return static_cast<int32_t const*>(ptr);
+    return static_cast<int32_t const *>(ptr);
   else {
     assert(false && "Invalid Accessor Type");
-    return static_cast<int32_t const*>(nullptr);
+    return static_cast<int32_t const *>(nullptr);
   }
 }
 
 int64_t const *GenericTensorAccessorR::get_int64_ptr() const {
   if (data_type == DT_INT64)
-    return static_cast<int64_t const*>(ptr);
+    return static_cast<int64_t const *>(ptr);
   else {
     assert(false && "Invalid Accessor Type");
-    return static_cast<int64_t const*>(nullptr);
+    return static_cast<int64_t const *>(nullptr);
   }
 }
 
 float const *GenericTensorAccessorR::get_float_ptr() const {
   if (data_type == DT_FLOAT)
-    return static_cast<float const*>(ptr);
+    return static_cast<float const *>(ptr);
   else {
     assert(false && "Invalid Accessor Type");
-    return static_cast<float const*>(nullptr);
+    return static_cast<float const *>(nullptr);
   }
 }
 
 double const *GenericTensorAccessorR::get_double_ptr() const {
   if (data_type == DT_DOUBLE)
-    return static_cast<double const*>(ptr);
+    return static_cast<double const *>(ptr);
   else {
     assert(false && "Invalid Accessor Type");
-    return static_cast<double const*>(nullptr);
+    return static_cast<double const *>(nullptr);
   }
 }
 
@@ -96,44 +97,44 @@ TensorAccessorW<DT, dim>::TensorAccessorW() {}
 GenericTensorAccessorW::GenericTensorAccessorW(DataType _data_type,
                                                Legion::Domain _domain,
                                                void *_ptr)
-  : data_type(_data_type), domain(_domain), ptr(_ptr) {}
+    : data_type(_data_type), domain(_domain), ptr(_ptr) {}
 
 GenericTensorAccessorW::GenericTensorAccessorW()
-  : data_type(DT_NONE), domain(Domain::NO_DOMAIN), ptr(nullptr) {}
+    : data_type(DT_NONE), domain(Domain::NO_DOMAIN), ptr(nullptr) {}
 
 int32_t *GenericTensorAccessorW::get_int32_ptr() const {
   if (data_type == DT_INT32)
-    return static_cast<int32_t*>(ptr);
+    return static_cast<int32_t *>(ptr);
   else {
     assert(false && "Invalid Accessor Type");
-    return static_cast<int32_t*>(nullptr);
+    return static_cast<int32_t *>(nullptr);
   }
 }
 
 int64_t *GenericTensorAccessorW::get_int64_ptr() const {
   if (data_type == DT_INT64)
-    return static_cast<int64_t*>(ptr);
+    return static_cast<int64_t *>(ptr);
   else {
     assert(false && "Invalid Accessor Type");
-    return static_cast<int64_t*>(nullptr);
+    return static_cast<int64_t *>(nullptr);
   }
 }
 
 float *GenericTensorAccessorW::get_float_ptr() const {
   if (data_type == DT_FLOAT)
-    return static_cast<float*>(ptr);
+    return static_cast<float *>(ptr);
   else {
     assert(false && "Invalid Accessor Type");
-    return static_cast<float*>(nullptr);
+    return static_cast<float *>(nullptr);
   }
 }
 
 double *GenericTensorAccessorW::get_double_ptr() const {
   if (data_type == DT_DOUBLE)
-    return static_cast<double*>(ptr);
+    return static_cast<double *>(ptr);
   else {
     assert(false && "Invalid Accessor Type");
-    return static_cast<double*>(nullptr);
+    return static_cast<double *>(nullptr);
   }
 }
 
@@ -211,15 +212,16 @@ DT *helperGetTensorPointerWO(PhysicalRegion region,
   }
 }
 
-GenericTensorAccessorR helperGetGenericTensorAccessorRO(DataType datatype,
-                                                        Legion::PhysicalRegion region,
-                                                        Legion::RegionRequirement req,
-                                                        Legion::FieldID fid,
-                                                        Legion::Context ctx,
-                                                        Legion::Runtime *runtime) {
-  Domain domain = runtime->get_index_space_domain(
-      ctx, req.region.get_index_space());
-  void const * ptr = nullptr;
+GenericTensorAccessorR
+    helperGetGenericTensorAccessorRO(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime) {
+  Domain domain =
+      runtime->get_index_space_domain(ctx, req.region.get_index_space());
+  void const *ptr = nullptr;
   switch (datatype) {
     case DT_INT32: {
       ptr = helperGetTensorPointerRO<int32_t>(region, req, fid, ctx, runtime);
@@ -244,14 +246,15 @@ GenericTensorAccessorR helperGetGenericTensorAccessorRO(DataType datatype,
   return GenericTensorAccessorR(datatype, domain, ptr);
 }
 
-GenericTensorAccessorW helperGetGenericTensorAccessorWO(DataType datatype,
-                                                        Legion::PhysicalRegion region,
-                                                        Legion::RegionRequirement req,
-                                                        Legion::FieldID fid,
-                                                        Legion::Context ctx,
-                                                        Legion::Runtime *runtime) {
-  Domain domain = runtime->get_index_space_domain(
-      ctx, req.region.get_index_space());
+GenericTensorAccessorW
+    helperGetGenericTensorAccessorWO(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime) {
+  Domain domain =
+      runtime->get_index_space_domain(ctx, req.region.get_index_space());
   void *ptr = nullptr;
   switch (datatype) {
     case DT_INT32: {
@@ -277,14 +280,15 @@ GenericTensorAccessorW helperGetGenericTensorAccessorWO(DataType datatype,
   return GenericTensorAccessorW(datatype, domain, ptr);
 }
 
-GenericTensorAccessorW helperGetGenericTensorAccessorRW(DataType datatype,
-                                                        Legion::PhysicalRegion region,
-                                                        Legion::RegionRequirement req,
-                                                        Legion::FieldID fid,
-                                                        Legion::Context ctx,
-                                                        Legion::Runtime *runtime) {
-  Domain domain = runtime->get_index_space_domain(
-      ctx, req.region.get_index_space());
+GenericTensorAccessorW
+    helperGetGenericTensorAccessorRW(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime) {
+  Domain domain =
+      runtime->get_index_space_domain(ctx, req.region.get_index_space());
   void *ptr = nullptr;
   switch (datatype) {
     case DT_INT32: {

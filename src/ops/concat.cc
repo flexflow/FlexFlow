@@ -14,10 +14,10 @@
  */
 
 #include "flexflow/ops/concat.h"
+#include "flexflow/accessor.h"
 #include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
-#include "flexflow/accessor.h"
 
 namespace FlexFlow {
 
@@ -254,21 +254,21 @@ void Concat::forward_task(Task const *task,
   // Note that our internal axis index ordering is opposite to other frameworks
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
-  //Domain out_domain = runtime->get_index_space_domain(
-  //    ctx, task->regions[0].region.get_index_space());
+  // Domain out_domain = runtime->get_index_space_domain(
+  //     ctx, task->regions[0].region.get_index_space());
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
   // assert(out_domain.get_dim() == cc->outputs[0].num_dims);
-  //Domain in_domain[MAX_NUM_INPUTS];
-  //for (int i = 0; i < cc->numInputs; i++)
+  // Domain in_domain[MAX_NUM_INPUTS];
+  // for (int i = 0; i < cc->numInputs; i++)
   //  in_domain[i] = runtime->get_index_space_domain(
   //      ctx, task->regions[i + 1].region.get_index_space());
-  //float *output = helperGetTensorPointerWO<float>(
+  // float *output = helperGetTensorPointerWO<float>(
   //    regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR inputs[MAX_NUM_INPUTS];
   for (int i = 0; i < cc->numInputs; i++) {
-    //inputs[i] = helperGetTensorPointerRO<float>(
-    //    regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
+    // inputs[i] = helperGetTensorPointerRO<float>(
+    //     regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
     inputs[i] = helperGetGenericTensorAccessorRO(
         DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
   }
@@ -324,29 +324,26 @@ void Concat::backward_task(Task const *task,
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
   assert(cc->numInputs <= MAX_NUM_INPUTS);
-  //Domain out_grad_domain = runtime->get_index_space_domain(
-  //    ctx, task->regions[0].region.get_index_space());
-  // assert(out_grad_domain.get_dim() == cc->outputs[0].num_dims);
-  //Domain in_grad_domains[MAX_NUM_INPUTS];
-  //for (int i = 0; i < cc->numInputs; i++)
-  //  in_grad_domains[i] = runtime->get_index_space_domain(
-  //      ctx, task->regions[i + 1].region.get_index_space());
-  //float const *output_grad = helperGetTensorPointerRO<float>(
-  //    regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  // Domain out_grad_domain = runtime->get_index_space_domain(
+  //     ctx, task->regions[0].region.get_index_space());
+  //  assert(out_grad_domain.get_dim() == cc->outputs[0].num_dims);
+  // Domain in_grad_domains[MAX_NUM_INPUTS];
+  // for (int i = 0; i < cc->numInputs; i++)
+  //   in_grad_domains[i] = runtime->get_index_space_domain(
+  //       ctx, task->regions[i + 1].region.get_index_space());
+  // float const *output_grad = helperGetTensorPointerRO<float>(
+  //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
       DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW input_grads[MAX_NUM_INPUTS];
   for (int i = 0; i < cc->numInputs; i++) {
-    //input_grads[i] = helperGetTensorPointerRW<float>(
-    //    regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
+    // input_grads[i] = helperGetTensorPointerRW<float>(
+    //     regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
     input_grads[i] = helperGetGenericTensorAccessorRW(
-        DT_FLOAT, regions[i+1], task->regions[i+1], FID_DATA, ctx, runtime);
+        DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
   }
-  Concat::backward_kernel_wrapper(m,
-                                  output_grad,
-                                  input_grads,
-                                  cc->numInputs,
-                                  cc->legion_axis);
+  Concat::backward_kernel_wrapper(
+      m, output_grad, input_grads, cc->numInputs, cc->legion_axis);
 }
 
 bool Concat::get_int_parameter(PMParameter para, int *value) const {
@@ -403,18 +400,15 @@ bool Concat::measure_operator_cost(Simulator *sim,
   GenericTensorAccessorR input_acc[MAX_NUM_INPUTS];
   for (int i = 0; i < numInputs; i++) {
     in_domains[i] = sub_inputs[i].get_domain();
-    input_acc[i] = GenericTensorAccessorR(DT_FLOAT, in_domains[i], input_ptrs[i]);
+    input_acc[i] =
+        GenericTensorAccessorR(DT_FLOAT, in_domains[i], input_ptrs[i]);
   }
 
   assert(m->profiling == false);
-  
+
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel_wrapper(m,
-                           output_acc,
-                           input_acc,
-                           numInputs,
-                           legion_axis);
+    forward_kernel_wrapper(m, output_acc, input_acc, numInputs, legion_axis);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     GenericTensorAccessorW input_grad_accs[MAX_NUM_INPUTS];
@@ -440,11 +434,8 @@ bool Concat::measure_operator_cost(Simulator *sim,
       return true;
     }
     backward = [&] {
-      backward_kernel_wrapper(m,
-                              output_grad_acc,
-                              input_grad_accs,
-                              numInputs,
-                              legion_axis);
+      backward_kernel_wrapper(
+          m, output_grad_acc, input_grad_accs, numInputs, legion_axis);
     };
   }
 

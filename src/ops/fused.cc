@@ -63,8 +63,8 @@ FusedOp::FusedOp(FFModel &model, Op *op)
   numWeights = op->numWeights;
   for (int i = 0; i < numWeights; i++) {
     weights[i] = op->weights[i];
-    //weights[i]->owner_op = this;
-    //weights[i]->owner_idx = i;
+    // weights[i]->owner_op = this;
+    // weights[i]->owner_idx = i;
     weight_data_types[i] = op->weights[i]->data_type;
   }
   numOutputs = op->numOutputs;
@@ -188,8 +188,8 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
       // Do nothing
     } else {
       weights[numWeights] = op->weights[i];
-      //weights[numWeights]->owner_op = this;
-      //weights[numWeights]->owner_idx = numWeights;
+      // weights[numWeights]->owner_op = this;
+      // weights[numWeights]->owner_idx = numWeights;
       weight_data_types[numWeights] = op->weights[i]->data_type;
       op_weight_source[weight_offset + i] = SOURCE_WEIGHT;
       op_weight_idx[weight_offset + i] = numWeights;
