@@ -52,6 +52,8 @@ if 'FF_BUILD_DOCS' not in os.environ:
   build_docs = 0
 else:
   build_docs = int(os.environ['FF_BUILD_DOCS'])
+if 'READTHEDOCS' in os.environ and build_docs == 0:
+  build_docs = int(os.environ['READTHEDOCS'])
 _FF_BUILD_DOCS = bool(build_docs)
   
 # init import
