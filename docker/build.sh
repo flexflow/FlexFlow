@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 # Copy the config files into the Docker folder
-cp -r ../config/ .
+cp -r ../config ./config
 
 # Get number of cores available on the machine. Build with all cores but one, to prevent RAM choking
 cores_available=$(nproc --all)
