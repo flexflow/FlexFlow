@@ -120,6 +120,7 @@ void Embedding::forward_kernel(const TI *input_ptr,
         <<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
             input_ptr, output_ptr, weight_ptr, out_dim, batch_size);
   } else {
+    assert(aggr == AGGR_MODE_AVG || aggr == AGGR_MODE_SUM);
     embed_forward_with_aggr<TI>
         <<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(input_ptr,
                                                                   output_ptr,
