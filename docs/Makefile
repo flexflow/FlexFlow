@@ -15,7 +15,7 @@ help:
 .PHONY: help Makefile clean
 
 clean:
-	rm -rf source/_doxygen/ source/c++_api/
+	rm -rf build source/_doxygen/ source/c++_api/ doxygen/output
 	@$(SPHINXBUILD) -M clean "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 # Catch-all target: route all unknown targets to Sphinx using the new

@@ -25,7 +25,7 @@ python_package_path = os.path.join(FF_HOME, "python")
 sys.path.insert(0, os.path.abspath(python_package_path))
 
 # Build the Doxygen docs
-subprocess.call(f'cd {doxygen_path}; FF_HOME={FF_HOME} doxygen', shell=True)
+#subprocess.call(f'cd {doxygen_path}; FF_HOME={FF_HOME} doxygen', shell=True)
 
 import sphinx_rtd_theme
 
@@ -107,5 +107,6 @@ exhale_args = {
     # TIP: if using the sphinx-bootstrap-theme, you need
     # "treeViewIsBootstrap": True,
     "exhaleExecutesDoxygen": True,
-    "exhaleDoxygenStdin":    f"INPUT = {os.path.join(FF_HOME, 'include')}"
+    #"exhaleDoxygenStdin":    f"INPUT = {os.path.join(FF_HOME, 'include', 'flexflow')}{os.path.join(FF_HOME, 'src')}"
+    "exhaleDoxygenStdin":    f"INPUT = {FF_HOME}/include/flexflow {FF_HOME}/src/loss_functions {FF_HOME}/src/mapper {FF_HOME}/src/metric_functions {FF_HOME}/src/ops {FF_HOME}/src/parallel_ops {FF_HOME}/src/recompile {FF_HOME}/src/runtime"
 }
