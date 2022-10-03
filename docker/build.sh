@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 # Copy the config files into the Docker folder
-cp -r ../config ./config
+rm -rf config && cp -r ../config ./config
 
 # Get number of cores available on the machine. Build with all cores but one, to prevent RAM choking
 cores_available=$(nproc --all)
@@ -36,7 +36,8 @@ if [ -n "$gpu_arch_codes" ]; then
   sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=${gpu_arch_codes}" ./config/config.linux
 else
   echo "Could not detect any GPU on the host machine."
-  echo "Letting FlexFlow build for a default GPU architecture"
+  echo "Letting FlexFlow build for a default GPU architecture: code=70"
+  sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
 fi
 rm -f ./get_gpu_arch.cu ./get_gpu_arch
 
