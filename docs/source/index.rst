@@ -10,6 +10,7 @@ Welcome to FlexFlow's documentation!
    :maxdepth: 2
    :caption: Getting Started
    
+   welcome
    installation
    
 .. toctree::
