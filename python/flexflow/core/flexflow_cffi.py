@@ -23,7 +23,8 @@ import warnings
 import numpy as np
 from .flexflow_logger import fflogger
 from flexflow.type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
-from .flexflow_cffi_header import ffc, ffi
+if not bool(os.environ.get('READTHEDOCS')):
+  from .flexflow_cffi_header import ffc, ffi
 
 ff_tracing_id = 200
 
