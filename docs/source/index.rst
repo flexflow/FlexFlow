@@ -12,6 +12,22 @@ Welcome to FlexFlow's documentation!
    
    welcome
    installation
+   docker
+   jupyter
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Interoperability
+   
+   keras
+   pytorch
+   onnx
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Examples
+
+   mt5
    
 .. toctree::
    :maxdepth: 3
@@ -27,20 +43,13 @@ Welcome to FlexFlow's documentation!
 
    c++_api/c++_api_root
    
-.. toctree::
-   :maxdepth: 2
-   :caption: Interoperability
-   
-   keras
-   pytorch
-   onnx
-   
-.. toctree::
-   :maxdepth: 2
-   :caption: Tutorial
 
-   tutorial
-   cmd
+.. .. toctree::
+..    :maxdepth: 2
+..    :caption: Tutorial
+
+..    tutorial
+..    cmd
 
 .. Indices and tables
 .. ==================

@@ -108,5 +108,5 @@ exhale_args = {
     # "treeViewIsBootstrap": True,
     "exhaleExecutesDoxygen": True,
     #"exhaleDoxygenStdin":    f"INPUT = {os.path.join(FF_HOME, 'include', 'flexflow')}{os.path.join(FF_HOME, 'src')}"
-    "exhaleDoxygenStdin":    f"INPUT = {FF_HOME}/include/flexflow {FF_HOME}/src/loss_functions {FF_HOME}/src/mapper {FF_HOME}/src/metric_functions {FF_HOME}/src/ops {FF_HOME}/src/parallel_ops {FF_HOME}/src/recompile {FF_HOME}/src/runtime"
+    "exhaleDoxygenStdin":    f"INPUT = {FF_HOME}/include/flexflow {FF_HOME}/src/loss_functions {FF_HOME}/src/mapper {FF_HOME}/src/metric_functions {FF_HOME}/src/ops {FF_HOME}/src/parallel_ops {FF_HOME}/src/utils"
 }
