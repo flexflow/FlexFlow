@@ -13,15 +13,18 @@
 import os
 import sys
 import subprocess
-sys.path.insert(0, os.path.abspath('../../python'))
 
 def get_parent_dir_path(path):
     return os.path.abspath(os.path.join(path, ".."))
 
-# Build the Doxygen docs
 docs_path = get_parent_dir_path(os.path.dirname(os.path.abspath(__file__)))
 doxygen_path = os.path.join(docs_path, "doxygen")
 FF_HOME = get_parent_dir_path(docs_path)
+python_package_path = os.path.join(FF_HOME, "python")
+
+sys.path.insert(0, os.path.abspath(python_package_path))
+
+# Build the Doxygen docs
 subprocess.call(f'cd {doxygen_path}; FF_HOME={FF_HOME} doxygen', shell=True)
 
 import sphinx_rtd_theme
