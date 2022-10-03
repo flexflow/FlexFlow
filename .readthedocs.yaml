@@ -17,6 +17,7 @@ build:
   commands:
     - pip install -r docs/requirements.txt
     - cd docs && make html
+    - mkdir -p _readthedocs
     - cp -r docs/build/* _readthedocs/
 
 
