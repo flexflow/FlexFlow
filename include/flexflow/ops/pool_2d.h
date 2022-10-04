@@ -141,11 +141,11 @@ public:
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
   ActiMode activation;
-  int fwd_input_idx = 0;
-  int fwd_output_idx = 0;
-  int bwd_input_idx = 0;
-  int bwd_output_idx = 0;
-  int init_output_idx = 0;
+  // int fwd_input_idx = 0;
+  // int fwd_output_idx = 0;
+  // int bwd_input_idx = 0;
+  // int bwd_output_idx = 0;
+  // int init_output_idx = 0;
 };
 
 }; // namespace FlexFlow

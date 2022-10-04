@@ -241,11 +241,11 @@ public:
   ActiMode activation;
   bool use_bias;
   ParallelTensor replica;
-  int fwd_input_idx = 0;
-  int bwd_input_idx = 0;
-  int fwd_output_idx = 0;
-  int bwd_output_idx = 0;
-  int init_output_idx = 0;
+  // int fwd_input_idx = 0;
+  // int bwd_input_idx = 0;
+  // int fwd_output_idx = 0;
+  // int bwd_output_idx = 0;
+  // int init_output_idx = 0;
 };
 
 }; // namespace FlexFlow

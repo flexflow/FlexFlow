@@ -166,7 +166,7 @@ void FlexFlow::top_level_task(Task const *task,
   Optimizer *optimizer = new SGDOptimizer(&ff, 0.01f);
   std::vector<MetricsType> metrics;
   // metrics.push_back(METRICS_ACCURACY);
-  metrics.push_back(METRICS_MEAN_SQUARED_ERROR);
+  // metrics.push_back(METRICS_MEAN_SQUARED_ERROR);
   ff.compile(optimizer, LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics);
   // Data Loader
   DataLoader data_loader(
@@ -287,7 +287,7 @@ void FlexFlow::top_level_task(Task const *task,
         // log_app.print("DEBUG: forward...");
         ff.forward();
         // log_app.print("DEBUG: zero input gradients...");
-        ff.zero_input_gradients();
+        // ff.zero_input_gradients();
         // log_app.print("DEBUG: backward...");
         ff.backward();
       }

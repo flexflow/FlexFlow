@@ -284,9 +284,9 @@ Pool2D::Pool2D(FFModel &model,
              name) {}
 
 void Pool2D::reset_idx(FFModel const &ff) {
-  fwd_input_idx = 0;
+  fwd_input_idx[0] = 0;
   fwd_output_idx = 0;
-  bwd_input_idx = 0;
+  bwd_input_idx[0] = 0;
   bwd_output_idx = 0;
 }
 
@@ -467,7 +467,7 @@ void Pool2D::pipeforward(FFModel const &ff) {
                          0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
-      RegionRequirement(in_pipepart[0][fwd_input_idx],
+      RegionRequirement(in_pipepart[0][fwd_input_idx[0]],
                         0 /*projection id*/,
                         READ_ONLY,
                         EXCLUSIVE,
@@ -481,7 +481,8 @@ void Pool2D::pipeforward(FFModel const &ff) {
                         outputs[0]->region));
   launcher.add_field(1, FID_DATA);
 
-  fwd_input_idx = (fwd_input_idx + 1) % (inputs[0]->pipe_buf_size / ubSize);
+  fwd_input_idx[0] =
+      (fwd_input_idx[0] + 1) % (inputs[0]->pipe_buf_size / ubSize);
   fwd_output_idx = (fwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
 
   runtime->execute_index_space(ctx, launcher);
@@ -571,7 +572,7 @@ void Pool2D::pipebackward(FFModel const &ff) {
                          outputs[0]->machine_view.hash());
   // regions[0](I): input
   launcher.add_region_requirement(
-      RegionRequirement(in_pipepart[0][bwd_input_idx],
+      RegionRequirement(in_pipepart[0][bwd_input_idx[0]],
                         0 /*projection id*/,
                         READ_ONLY,
                         EXCLUSIVE,
@@ -579,7 +580,7 @@ void Pool2D::pipebackward(FFModel const &ff) {
   launcher.add_field(0, FID_DATA);
   // regions[1](I/O): input_grad
   launcher.add_region_requirement(
-      RegionRequirement(in_pipepart_grad[0][bwd_input_idx],
+      RegionRequirement(in_pipepart_grad[0][bwd_input_idx[0]],
                         0 /*projection id*/,
                         READ_WRITE,
                         EXCLUSIVE,
@@ -602,7 +603,8 @@ void Pool2D::pipebackward(FFModel const &ff) {
                         outputs[0]->region_grad));
   launcher.add_field(3, FID_DATA);
 
-  bwd_input_idx = (bwd_input_idx + 1) % (inputs[0]->pipe_buf_size / ubSize);
+  bwd_input_idx[0] =
+      (bwd_input_idx[0] + 1) % (inputs[0]->pipe_buf_size / ubSize);
   bwd_output_idx = (bwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
 
   runtime->execute_index_space(ctx, launcher);

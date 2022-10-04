@@ -145,9 +145,9 @@ Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
 }
 
 void Flat::reset_idx(FFModel const &ff) {
-  fwd_input_idx = 0;
+  fwd_input_idx[0] = 0;
   fwd_output_idx = 0;
-  bwd_input_idx = 0;
+  bwd_input_idx[0] = 0;
   bwd_output_idx = 0;
 }
 
@@ -268,7 +268,7 @@ void Flat::pipeforward(FFModel const &ff) {
                          0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
-      RegionRequirement(in_pipepart[0][fwd_input_idx],
+      RegionRequirement(in_pipepart[0][fwd_input_idx[0]],
                         0 /*projection id*/,
                         READ_ONLY,
                         EXCLUSIVE,
@@ -281,7 +281,8 @@ void Flat::pipeforward(FFModel const &ff) {
                         EXCLUSIVE,
                         outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  fwd_input_idx = (fwd_input_idx + 1) % (inputs[0]->pipe_buf_size / ubSize);
+  fwd_input_idx[0] =
+      (fwd_input_idx[0] + 1) % (inputs[0]->pipe_buf_size / ubSize);
   fwd_output_idx = (fwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
   runtime->execute_index_space(ctx, launcher);
 }
@@ -353,7 +354,7 @@ void Flat::pipebackward(FFModel const &ff) {
                          0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   launcher.add_region_requirement(
-      RegionRequirement(in_pipepart_grad[0][bwd_input_idx],
+      RegionRequirement(in_pipepart_grad[0][bwd_input_idx[0]],
                         0 /*projection id*/,
                         READ_WRITE,
                         EXCLUSIVE,
@@ -366,7 +367,8 @@ void Flat::pipebackward(FFModel const &ff) {
                         EXCLUSIVE,
                         outputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
-  bwd_input_idx = (bwd_input_idx + 1) % (inputs[0]->pipe_buf_size / ubSize);
+  bwd_input_idx[0] =
+      (bwd_input_idx[0] + 1) % (inputs[0]->pipe_buf_size / ubSize);
   bwd_output_idx = (bwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
   runtime->execute_index_space(ctx, launcher);
 }

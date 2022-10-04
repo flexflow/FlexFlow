@@ -39,7 +39,7 @@ public:
 
 public:
   size_t input_tensor_guid;
-  int init_output_idx = 0;
+  // int init_output_idx = 0;
 };
 
 }; // namespace FlexFlow

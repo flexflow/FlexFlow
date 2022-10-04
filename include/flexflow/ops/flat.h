@@ -85,11 +85,11 @@ public:
   size_t get_params_hash() const override;
 
 public:
-  int fwd_input_idx = 0;
-  int bwd_input_idx = 0;
-  int fwd_output_idx = 0;
-  int bwd_output_idx = 0;
-  int init_output_idx = 0;
+  // int fwd_input_idx = 0;
+  // int bwd_input_idx = 0;
+  // int fwd_output_idx = 0;
+  // int bwd_output_idx = 0;
+  // int init_output_idx = 0;
 };
 
 }; // namespace FlexFlow

@@ -274,6 +274,12 @@ public:
   int nFnB;
   int zero_grad_idx[MAX_NUM_OUTPUTS];
   bool profiling;
+  // pipe
+  int fwd_output_idx = 0;
+  int bwd_output_idx = 0;
+  int fwd_input_idx[MAX_NUM_INPUTS];
+  int bwd_input_idx[MAX_NUM_INPUTS];
+  int init_output_idx = 0;
 
   // shicao branch
   Legion::LogicalPartition in_pipepart[MAX_NUM_INPUTS][MAX_PIPE_PART];
