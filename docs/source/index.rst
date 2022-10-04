@@ -42,14 +42,7 @@ Welcome to FlexFlow's documentation!
    :caption: C++ API
 
    c++_api/c++_api_root
-   
 
-.. .. toctree::
-..    :maxdepth: 2
-..    :caption: Tutorial
-
-..    tutorial
-..    cmd
 
 .. Indices and tables
 .. ==================
