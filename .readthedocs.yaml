@@ -16,7 +16,7 @@ build:
     # golang: "1.17"
   commands:
     - pip install -r docs/requirements.txt
-    - cd docs && make html
+    - cd docs && make html latexpdf epub
     - mkdir -p _readthedocs
     - cp -r docs/build/* _readthedocs/
 
