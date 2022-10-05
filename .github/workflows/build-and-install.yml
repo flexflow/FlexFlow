@@ -53,7 +53,7 @@ jobs:
           make -j $n_build_cores
 
       - name: Install FlexFlow
-        working_directory: build
+        working-directory: build
         run: |
           export PATH=/opt/conda/bin:$PATH
           export CUDNN_DIR=/usr/local/cuda
