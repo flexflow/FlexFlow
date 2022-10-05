@@ -94,7 +94,7 @@ breathe_projects = {
 }
 breathe_default_project = "FlexFlow"
 
-c_plus_plus_src_dir = os.path.join(FF_HOME, 'src')
+c_plus_plus_src_dir = os.path.join(FF_HOME, 'src', 'runtime')
 # Setup the exhale extension
 exhale_args = {
     # These arguments are required
