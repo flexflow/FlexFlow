@@ -30,3 +30,7 @@ jobs:
 
       - name: Check availability of Python flexflow.core module
         run: docker run --entrypoint python flexflow:latest -c "import flexflow.core; exit()"
+
+      - name: Build mT5 Docker container
+        working-directory: examples/python/pytorch/mt5
+        run: docker build -t flexflow-mt5 .
