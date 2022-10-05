@@ -10,7 +10,6 @@ struct LayerNormParams {
   bool elementwise_affine;
   float eps;
   bool is_valid(ParallelTensorShape const &) const;
-  size_t get_hash(const ParallelTensor input) const;
 };
 
 bool operator==(LayerNormParams const &, LayerNormParams const &);
