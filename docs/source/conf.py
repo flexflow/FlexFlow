@@ -94,7 +94,7 @@ breathe_projects = {
 }
 breathe_default_project = "FlexFlow"
 
-c_plus_plus_include_dir = os.path.join(FF_HOME, 'include', 'flexflow')
+c_plus_plus_src_dir = os.path.join(FF_HOME, 'src')
 # Setup the exhale extension
 exhale_args = {
     # These arguments are required
@@ -108,6 +108,5 @@ exhale_args = {
     # TIP: if using the sphinx-bootstrap-theme, you need
     # "treeViewIsBootstrap": True,
     "exhaleExecutesDoxygen": True,
-    #"exhaleDoxygenStdin":    f"INPUT = {os.path.join(FF_HOME, 'include', 'flexflow')}{os.path.join(FF_HOME, 'src')}"
-    "exhaleDoxygenStdin":    f'INPUT = "{c_plus_plus_include_dir}"'
+    "exhaleDoxygenStdin":    f'INPUT = "{c_plus_plus_src_dir}"'
 }
