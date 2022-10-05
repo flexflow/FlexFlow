@@ -12,6 +12,7 @@
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/softmax.h"
+#include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
@@ -58,6 +59,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((Flat *)op)->get_params();
     case OP_MULTIHEAD_ATTENTION:
       return ((MultiHeadAttention *)op)->get_params();
+    case OP_LAYERNORM:
+      return ((LayerNorm *)op)->get_params();
     case OP_RESHAPE:
       return ((Reshape *)op)->get_params();
     case OP_SOFTMAX:
