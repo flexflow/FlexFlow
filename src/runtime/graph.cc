@@ -1575,40 +1575,42 @@ GraphOptimalViewSerialized
   // random 3-stage partition
 
   if (model->config.only_data_parallel) {
-    StageInfo sinfo[4];
+    StageInfo sinfo[3];
     sinfo[0].sid = 0;
     sinfo[0].ubatchSize = 16;
-    sinfo[0].bufSize = 64;
+    sinfo[0].bufSize = 48;
     sinfo[0].nFnB = 1;
     sinfo[0].device_num = 1;
 
     sinfo[1].sid = 1;
     sinfo[1].ubatchSize = 16;
-    sinfo[1].bufSize = 48;
+    sinfo[1].bufSize = 32;
     sinfo[1].nFnB = 1;
     sinfo[1].device_num = 1;
 
     sinfo[2].sid = 2;
     sinfo[2].ubatchSize = 16;
-    sinfo[2].bufSize = 32;
+    sinfo[2].bufSize = 16;
     sinfo[2].nFnB = 1;
-    sinfo[2].device_num = 1;
+    sinfo[2].device_num = 2;
 
-    sinfo[3].sid = 3;
-    sinfo[3].ubatchSize = 16;
-    sinfo[3].bufSize = 16;
-    sinfo[3].nFnB = 1;
-    sinfo[3].device_num = 1;
+    // sinfo[3].sid = 3;
+    // sinfo[3].ubatchSize = 16;
+    // sinfo[3].bufSize = 16;
+    // sinfo[3].nFnB = 1;
+    // sinfo[3].device_num = 1;
 
-    MachineView data_parallel_view[4];
-    for (int i = 0; i < 4; i++) {
+    MachineView data_parallel_view[3];
+    int start_device = 0;
+    for (int i = 0; i < 3; i++) {
       data_parallel_view[i].device_type = MachineView::GPU;
       data_parallel_view[i].ndims = 1;
       // data_parallel_view.dim[0] = model->config.numNodes *
       // model->config.workersPerNode;
       data_parallel_view[i].dim[0] = 1;
-      data_parallel_view[i].stride[0] = 1;
-      data_parallel_view[i].start_device_id = i;
+      data_parallel_view[i].stride[0] = sinfo[i].device_num;
+      data_parallel_view[i].start_device_id = start_device;
+      start_device += sinfo[i].device_num;
     }
 
     int op_per_stage = model->operators.size() / 2;

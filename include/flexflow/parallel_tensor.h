@@ -200,9 +200,9 @@ public:
   Legion::LogicalPartition part = Legion::LogicalPartition::NO_PART,
                            part_grad = Legion::LogicalPartition::NO_PART;
   // shicao for pipeline, multiple partitions
-  Legion::LogicalPartition in_pipepart[MAX_PIPE_PART];
+  // Legion::LogicalPartition in_pipepart[MAX_PIPE_PART];
   Legion::LogicalPartition out_pipepart[MAX_PIPE_PART];
-  Legion::LogicalPartition in_pipepart_grad[MAX_PIPE_PART];
+  // Legion::LogicalPartition in_pipepart_grad[MAX_PIPE_PART];
   Legion::LogicalPartition out_pipepart_grad[MAX_PIPE_PART];
 
   Legion::PhysicalRegion physical_region;

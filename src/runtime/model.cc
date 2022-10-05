@@ -1805,7 +1805,9 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor,
   // second-level partition: intra-stage parallelism, for input tensor, we need
   // to use the task_is of the op temp, need to be fixed, need a better
   // abstraction when later support branch-level parallelism
-  IndexSpaceT<TDIM> part_is = (IndexSpaceT<TDIM>)get_or_create_task_is(tensor);
+  // shicao
+  IndexSpaceT<TDIM> part_is =
+      (IndexSpaceT<TDIM>)get_or_create_task_is(parallel_op->input_dims[idx]);
   assert(parallel_op != NULL);
   int k = 0;
   for (PointInRectIterator<1> it(ubdim_rect); it(); it++, k++) {
@@ -1818,7 +1820,7 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor,
     Point<NDIM> ext_hi;
     Point<NDIM> ext_lo;
     for (int i = 0; i < NDIM; i++) {
-      int nparts = tensor->dims[i].degree;
+      int nparts = parallel_op->input_dims[idx][i].degree;
       ext_hi[i] = (sub_rect.hi[i] - sub_rect.lo[i] + nparts) / nparts - 1 +
                   sub_rect.lo[i];
       ext_lo[i] = sub_rect.lo[i];
@@ -1826,7 +1828,7 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor,
     Rect<NDIM> extent(ext_lo, ext_hi);
     for (int i = 0; i < NDIM; i++)
       for (int j = 0; j < TDIM; j++)
-        if (tensor->dims[i].parallel_idx == j)
+        if (parallel_op->input_dims[idx][i].parallel_idx == j)
           transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
         else
           transform[i][j] = 0;
@@ -2468,6 +2470,21 @@ IndexSpace FFModel::get_or_create_task_is(const ParallelTensor tensor) {
   return get_or_create_task_is(view);
 }
 
+IndexSpace FFModel::get_or_create_task_is(ParallelDim const &dims) {
+  MachineView view;
+  view.ndims = 0;
+  for (int i = 0; i < MAX_TENSOR_DIM; i++)
+    if (dims[i].parallel_idx >= 0) {
+      view.dim[dims[i].parallel_idx] = dims[i].degree;
+      view.ndims++;
+    }
+  if (view.ndims == 0) {
+    view.ndims = 1;
+    view.dim[0] = 1;
+  }
+  return get_or_create_task_is(view);
+}
+
 IndexSpace FFModel::get_or_create_task_is(ParallelConfig const &pc) {
   MachineView view;
   view.ndims = pc.nDims;
@@ -3069,8 +3086,8 @@ void FFModel::compile(LossType loss_type,
     for (int i = 0; i < op->numOutputs; i++) {
       // Output tensor
       // scale sample dim
-      int ndims = op->outputs[i]->num_dims;
-      op->outputs[i]->dims[ndims - 2].size *= op->outputs[i]->pipe_buf_size;
+      // int ndims = op->outputs[i]->num_dims;
+      // op->outputs[i]->dims[ndims - 2].size *= op->outputs[i]->pipe_buf_size;
       map_tensor(op->outputs[i], op);
     }
     for (int i = 0; i < op->numInputs; i++) {

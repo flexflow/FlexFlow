@@ -3164,7 +3164,7 @@ bool FFModel::convert_graph_to_operators(
       new_op->weights[i]->machine_view = view;
     }
     // set pipeline info for the op, the input and output tensors of this
-    // operator, scale thr ubatch dimension according to bufSize
+    // operator, scale the ubatch dimension according to bufSize
     StageInfo sinfo = optimal_partition.find(node)->second;
     new_op->stage_guid = sinfo.sid;
     new_op->ubSize = sinfo.ubatchSize;
@@ -3185,17 +3185,19 @@ bool FFModel::convert_graph_to_operators(
       // pipe info
       new_op->outputs[i]->pipe_buf_size = sinfo.bufSize;
       new_op->outputs[i]->pipe_num_part_out = sinfo.bufSize / sinfo.ubatchSize;
-      // new_op->outputs[i]->dims[ndims-2].size =
-      // new_op->outputs[i]->pipe_buf_size;
+      new_op->outputs[i]->dims[ndims - 2].size =
+          new_op->outputs[i]->pipe_buf_size;
       printf("size %d op(%s), %d\n",
              new_op->outputs[i]->dims[ndims - 2].size,
              optype_to_string(new_op->op_type).data(),
              ndims);
     }
-    // for (int i = 0; i < new_op->numInputs; i++) {
-    //   new_op->inputs[i]->pipe_num_part_in = new_op->inputs[i]->pipe_buf_size
-    //   / sinfo.ubatchSize;
-    // }
+    for (int i = 0; i < new_op->numInputs; i++) {
+      for (int j = 0; j < new_op->inputs[i]->num_dims; j++) {
+        new_op->input_dims[i][j] = new_op->inputs[i]->dims[j];
+        new_op->input_dims[i][j].degree = sinfo.device_num;
+      }
+    }
     node_to_op[node] = new_op;
     operators.push_back(new_op);
     // Decrease the todos
