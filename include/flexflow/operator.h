@@ -216,6 +216,7 @@ public:
   void reset_zeroig_idx(FFModel const &);
   void zero_weight_grad(FFModel const &);
   ParallelTensor get_parameter(int index);
+  virtual void map_output_tensors(FFModel &ff);
   virtual bool can_inplace_output();
   virtual bool has_inplace_output();
   virtual void do_inplace_output();

@@ -187,34 +187,6 @@ bool operator==(Conv2DParams const &lhs, Conv2DParams const &rhs) {
          lhs.activation == rhs.activation && lhs.use_bias == rhs.use_bias;
 }
 
-Node FFModel::get_or_create_conv2d_node(LayerID const &layer_guid,
-                                        const ParallelTensor input,
-                                        int outChannels,
-                                        int kernelH,
-                                        int kernelW,
-                                        int strideH,
-                                        int strideW,
-                                        int paddingH,
-                                        int paddingW,
-                                        ActiMode activation,
-                                        int groups,
-                                        bool use_bias) {
-  Conv2DParams params;
-  params.layer_guid = layer_guid;
-  params.out_channels = outChannels;
-  params.kernel_h = kernelH;
-  params.kernel_w = kernelW;
-  params.stride_h = strideH;
-  params.stride_w = strideW;
-  params.padding_h = paddingH;
-  params.padding_w = paddingW;
-  params.activation = activation;
-  params.groups = groups;
-  params.use_bias = use_bias;
-
-  return this->get_or_create_node<Conv2D>(input, params);
-}
-
 void Conv2DParams::mark_replica_dims(
     ParallelTensorShape const &input,
     ParallelDim output_dims[MAX_TENSOR_DIM],
@@ -1252,18 +1224,20 @@ Node Conv2D::deserialize(FFModel &ff,
   dez.deserialize(use_bias);
   dez.deserialize(activation);
 
-  return ff.get_or_create_conv2d_node(layer_guid,
-                                      inputs[0],
-                                      out_channels,
-                                      kernel_h,
-                                      kernel_w,
-                                      stride_h,
-                                      stride_w,
-                                      padding_h,
-                                      padding_w,
-                                      activation,
-                                      groups,
-                                      use_bias);
+  Conv2DParams params;
+  params.layer_guid = layer_guid;
+  params.out_channels = out_channels;
+  params.kernel_h = kernel_h;
+  params.kernel_w = kernel_w;
+  params.stride_h = stride_h;
+  params.stride_w = stride_w;
+  params.padding_h = padding_h;
+  params.padding_w = padding_w;
+  params.groups = groups;
+  params.use_bias = use_bias;
+  params.activation = activation;
+
+  return ff.get_or_create_node<Conv2D>(inputs[0], params);
 }
 
 tl::optional<RecordFormatter> Conv2D::as_dot() const {

@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/parallel_ops/partition.h"
+#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -36,6 +37,28 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+/* Params */
+bool operator==(RepartitionParams const &lhs, RepartitionParams const &rhs) {
+  return lhs.repartition_legion_dim == rhs.repartition_legion_dim &&
+         lhs.repartition_degree == rhs.repartition_degree;
+}
+
+bool RepartitionParams::is_valid(ParallelTensorShape const &input) const {
+  bool valid = input.is_valid();
+  valid &= (input.dims[this->repartition_legion_dim].size %
+                (this->repartition_degree *
+                 input.dims[this->repartition_legion_dim].degree) ==
+            0);
+  return valid;
+}
+
+RepartitionParams Repartition::get_params() const {
+  RepartitionParams params;
+  params.repartition_legion_dim = this->repartition_dim;
+  params.repartition_degree = this->repartition_degree;
+  return params;
+}
 
 ParallelTensor FFModel::repartition(const ParallelTensor input,
                                     int repartition_legion_dim,
@@ -70,6 +93,16 @@ Repartition::Repartition(FFModel &model,
   // inputs[0]->print("Repartition::input");
   // outputs[0]->print("Repartition::output");
 }
+
+Repartition::Repartition(FFModel &model,
+                         RepartitionParams const &params,
+                         ParallelTensor const input,
+                         char const *name)
+    : Repartition(model,
+                  input,
+                  params.repartition_legion_dim,
+                  params.repartition_degree,
+                  name) {}
 
 OpMeta *Repartition::init_task(Task const *task,
                                std::vector<PhysicalRegion> const &regions,
@@ -216,47 +249,6 @@ bool Repartition::append_parallel_op_info(
   return true;
 }
 
-size_t Repartition::get_params_hash() const {
-  size_t hash = this->inputs[0]->get_owner_independent_hash();
-  hash_combine(hash, this->repartition_dim);
-  hash_combine(hash, this->repartition_degree);
-
-  return hash;
-}
-
-using PCG::Node;
-Node FFModel::get_or_create_repartition_node(const ParallelTensor input,
-                                             int repartition_dim,
-                                             int repartition_degree) {
-  // check that degree is not larger than total available devices
-  int degree = input->get_total_num_parts() * repartition_degree;
-  if (degree > config.workersPerNode * config.numNodes &&
-      (degree > config.cpusPerNode * config.numNodes))
-    return Node::INVALID_NODE;
-  if (input->dims[repartition_dim].size %
-          (repartition_degree * input->dims[repartition_dim].degree) !=
-      0) {
-    return Node::INVALID_NODE;
-  }
-
-  size_t hash = input->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(repartition_dim);
-  hash = hash * 31 + std::hash<int>()(repartition_degree);
-  auto const &it = cached_repartition_ops.find(hash);
-  Repartition *repartition = NULL;
-  if (it != cached_repartition_ops.end()) {
-    repartition = it->second;
-  } else {
-    repartition = new Repartition(
-        *this, input, repartition_dim, repartition_degree, NULL);
-    cached_repartition_ops[hash] = repartition;
-  }
-  Node ret;
-  ret.ptr = repartition;
-  ret.guid = node_global_guid++;
-  return ret;
-}
-
 tl::optional<RecordFormatter> Repartition::as_dot() const {
   RecordFormatter rf;
   {
@@ -355,3 +347,13 @@ void Repartition::backward_task_with_type(
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::RepartitionParams>::operator()(
+    FlexFlow::RepartitionParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.repartition_legion_dim);
+  hash_combine(key, params.repartition_degree);
+  return key;
+}
+}; // namespace std

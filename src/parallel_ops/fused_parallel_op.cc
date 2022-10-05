@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/parallel_ops/fused_parallel_op.h"
+#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -36,6 +37,30 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+/* Params */
+bool operator==(ParallelOpInfo const &lhs, ParallelOpInfo const &rhs) {
+  return lhs.op_type == rhs.op_type &&
+         lhs.parallel_degree == rhs.parallel_degree &&
+         lhs.parallel_dim == rhs.parallel_dim;
+}
+
+bool operator==(FusedParallelOpParams const &lhs,
+                FusedParallelOpParams const &rhs) {
+  return lhs.parallel_ops == rhs.parallel_ops;
+}
+
+bool FusedParallelOpParams::is_valid(ParallelTensorShape const &input) const {
+  return input.is_valid();
+}
+
+FusedParallelOpParams FusedParallelOp::get_params() const {
+  FusedParallelOpParams params;
+  std::vector<ParallelOpInfo> ops(std::begin(this->parallel_ops),
+                                  std::end(this->parallel_ops));
+  params.parallel_ops = ops;
+  return params;
+}
 
 FusedParallelOp::FusedParallelOp(
     FFModel &model,
@@ -81,6 +106,11 @@ FusedParallelOp::FusedParallelOp(
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, inputs[0]->data_type, this);
 }
+
+FusedParallelOp::FusedParallelOp(FFModel &model,
+                                 FusedParallelOpParams const &params,
+                                 const ParallelTensor input)
+    : FusedParallelOp(model, input, params.parallel_ops) {}
 
 void FusedParallelOp::set_parallel_ops(
     std::vector<ParallelOpInfo> const &_parallel_ops) {
@@ -227,18 +257,6 @@ bool FusedParallelOp::append_parallel_op_info(
   return true;
 }
 
-size_t FusedParallelOp::get_params_hash() const {
-  size_t hash = this->inputs[0]->get_owner_independent_hash();
-  hash_combine(hash, this->num_parallel_ops);
-  for (ParallelOpInfo const &p : this->parallel_ops) {
-    hash_combine(hash, p.op_type);
-    hash_combine(hash, p.parallel_dim);
-    hash_combine(hash, p.parallel_degree);
-  }
-
-  return hash;
-}
-
 using PCG::Node;
 Node FFModel::get_or_create_fused_parallel_node(
     const ParallelTensor input,
@@ -249,25 +267,9 @@ Node FFModel::get_or_create_fused_parallel_node(
   } else if (parallel_ops.size() == 1) {
     return this->get_or_create_parallel_op_node(input, parallel_ops[0]);
   }
-  size_t hash = input->get_owner_independent_hash();
-  for (size_t i = 0; i < parallel_ops.size(); i++) {
-    hash = hash * 31 + std::hash<int>()(parallel_ops[i].op_type);
-    hash = hash * 31 + std::hash<int>()(parallel_ops[i].parallel_dim);
-    hash = hash * 31 + std::hash<int>()(parallel_ops[i].parallel_degree);
-  }
-  auto const &it = cached_fused_parallel_ops.find(hash);
-  FusedParallelOp *fused = NULL;
-  if (it != cached_fused_parallel_ops.end()) {
-    fused = it->second;
-  } else {
-    fused = new FusedParallelOp(*this, input, parallel_ops);
-    cached_fused_parallel_ops[hash] = fused;
-  }
-
-  Node ret;
-  ret.ptr = fused;
-  ret.guid = node_global_guid++;
-  return ret;
+  FusedParallelOpParams params;
+  params.parallel_ops = parallel_ops;
+  return get_or_create_node<FusedParallelOp>(input, params);
 }
 
 void FusedParallelOp::forward_task(Task const *task,
@@ -281,3 +283,18 @@ void FusedParallelOp::backward_task(Task const *task,
                                     Runtime *runtime) {}
 
 }; // namespace FlexFlow
+
+namespace std {
+
+size_t hash<FlexFlow::FusedParallelOpParams>::operator()(
+    FlexFlow::FusedParallelOpParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.parallel_ops.size());
+  for (FlexFlow::ParallelOpInfo const &p : params.parallel_ops) {
+    hash_combine(key, p.op_type);
+    hash_combine(key, p.parallel_dim);
+    hash_combine(key, p.parallel_degree);
+  }
+  return key;
+}
+}; // namespace std

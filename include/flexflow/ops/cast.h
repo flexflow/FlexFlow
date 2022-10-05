@@ -13,7 +13,13 @@
  * limitations under the License.
  */
 #pragma once
-#include "flexflow/model.h"
+#include "flexflow/device.h"
+#include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/ops/cast_params.h"
 
 namespace FlexFlow {
 
@@ -25,10 +31,16 @@ public:
 
 class Cast : public Op {
 public:
+  using Params = CastParams;
+  using Input = ParallelTensor;
   Cast(FFModel &model,
        ParallelTensor const &input,
        DataType dtype,
        char const *name);
+  Cast(FFModel &model,
+       Params const &params,
+       Input const &input,
+       char const *name = nullptr);
   void init(FFModel const &);
   void forward(FFModel const &);
   void backward(FFModel const &);
@@ -107,6 +119,15 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const;
+  void serialize(Legion::Serializer &s) const override;
+  static PCG::Node deserialize(FFModel &ff,
+                               Legion::Deserializer &d,
+                               ParallelTensor inputs[],
+                               int num_inputs);
+  Op *materialize(FFModel &ff,
+                  ParallelTensor inputs[],
+                  int num_inputs) const override;
+  Params get_params() const;
 };
 
 }; // namespace FlexFlow

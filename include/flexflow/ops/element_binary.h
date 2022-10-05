@@ -7,17 +7,9 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
+#include "flexflow/ops/element_binary_params.h"
 
 namespace FlexFlow {
-
-struct ElementBinaryParams {
-  OperatorType type;
-
-  bool is_valid(
-      std::pair<ParallelTensorShape, ParallelTensorShape> const &) const;
-};
-
-bool operator==(ElementBinaryParams const &, ElementBinaryParams const &);
 
 class ElementBinaryMeta : public OpMeta {
 public:
@@ -34,6 +26,7 @@ public:
   OperatorType op_type;
   bool inplace_a, has_same_operands;
   bool broadcast_input1, broadcast_input2;
+  char op_name[MAX_OPNAME];
 };
 
 class ElementBinary : public Op {
@@ -70,6 +63,7 @@ public:
   void print_layer(FFModel const &model) override {
     assert(0);
   }
+  void map_output_tensors(FFModel &model) override;
   bool can_inplace_output() override;
   bool has_inplace_output() override;
   void do_inplace_output() override;
@@ -126,12 +120,5 @@ public:
 };
 
 }; // namespace FlexFlow
-
-namespace std {
-template <>
-struct hash<FlexFlow::ElementBinaryParams> {
-  size_t operator()(FlexFlow::ElementBinaryParams const &) const;
-};
-}; // namespace std
 
 #endif // _FLEXFFLOW_ELEMENT_BINARY_H

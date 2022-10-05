@@ -26,14 +26,26 @@ Tensor FFModel::unary(OperatorType op,
                       bool inplace,
                       char const *name,
                       float scalar) {
-  Layer *ele =
-      new Layer(this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
+  Layer *ele = nullptr;
+  DataType dtype;
+  // FIXME: currently cast input to float if it has a lower type
+  if (x->data_type < DT_FLOAT) {
+    dtype = DT_FLOAT;
+    std::string str(name);
+    Tensor new_x = cast(x, dtype, (str + "input_pre_cast").c_str());
+    ele = new Layer(
+        this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, new_x);
+  } else {
+    dtype = x->data_type;
+    ele = new Layer(
+        this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
+  }
   int numdims = x->num_dims;
   int dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdims; i++)
     dims[i] = x->dims[i];
   ele->outputs[0] = create_tensor_legion_ordering(
-      numdims, dims, DT_FLOAT, ele, 0, true /*create_grad*/);
+      numdims, dims, dtype, ele, 0, true /*create_grad*/);
   ele->add_int_property("inplace", inplace);
   ele->add_float_property("scalar", scalar);
   layers.push_back(ele);
@@ -59,19 +71,6 @@ ElementUnaryParams ElementUnary::get_params() const {
   params.inplace = this->inplace;
   params.scalar = this->scalar;
   return params;
-}
-
-using PCG::Node;
-Node FFModel::get_or_create_element_unary_node(const ParallelTensor input,
-                                               OperatorType op,
-                                               bool inplace,
-                                               float scalar) {
-  ElementUnaryParams params;
-  params.op_type = op;
-  params.inplace = inplace;
-  params.scalar = scalar;
-
-  return get_or_create_node<ElementUnary>(input, params);
 }
 
 Tensor FFModel::exp(const Tensor x, char const *name) {
@@ -144,7 +143,6 @@ Tensor FFModel::pow(const Tensor x,
 }
 
 bool ElementUnaryParams::is_valid(ParallelTensorShape const &input) const {
-  // TODO: more check on the input shape
   return input.is_valid();
 }
 
@@ -168,7 +166,10 @@ ElementUnary::ElementUnary(FFModel &model,
     dims[i] = x->dims[i];
   }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      numdim, dims, x->data_type, this);
+      numdim, dims, inputs[0]->data_type, this);
+  // Disable inplace if shape mismatch
+  if (outputs[0]->get_shape() != inputs[0]->get_shape())
+    inplace = false;
 }
 
 ElementUnary::ElementUnary(FFModel &model,
@@ -178,8 +179,22 @@ ElementUnary::ElementUnary(FFModel &model,
     : ElementUnary(
           model, params.op_type, input, params.inplace, name, params.scalar) {}
 
+void ElementUnary::map_output_tensors(FFModel &ff) {
+  if (has_inplace_output()) {
+    assert(numOutputs == 1);
+    assert(outputs[0]->get_volume() == inputs[0]->get_volume());
+    outputs[0]->parallel_is = inputs[0]->parallel_is;
+    outputs[0]->region = inputs[0]->region;
+    outputs[0]->part = inputs[0]->part;
+    outputs[0]->region_grad = inputs[0]->region_grad;
+    outputs[0]->part_grad = inputs[0]->part_grad;
+  } else {
+    Op::map_output_tensors(ff);
+  }
+}
+
 bool ElementUnary::can_inplace_output(void) {
-  return true;
+  return outputs[0]->get_shape() == inputs[0]->get_shape();
 }
 
 bool ElementUnary::has_inplace_output(void) {
@@ -217,20 +232,26 @@ void ElementUnary::init(FFModel const &ff) {
                               false /*must*/,
                               0 /*mapper_id*/,
                               outputs[0]->machine_view.hash());
-  init_launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                         0 /*projection id*/,
-                                                         READ_ONLY,
-                                                         EXCLUSIVE,
-                                                         inputs[0]->region));
-  init_launcher.add_field(0, FID_DATA);
-  assert(!inplace);
   if (!inplace) {
+    init_launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                           0 /*projection id*/,
+                                                           READ_ONLY,
+                                                           EXCLUSIVE,
+                                                           inputs[0]->region));
+    init_launcher.add_field(0, FID_DATA);
     init_launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
                                                            0 /*projection id*/,
                                                            WRITE_ONLY,
                                                            EXCLUSIVE,
                                                            outputs[0]->region));
     init_launcher.add_field(1, FID_DATA);
+  } else {
+    init_launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                           0 /*projection id*/,
+                                                           READ_WRITE,
+                                                           EXCLUSIVE,
+                                                           inputs[0]->region));
+    init_launcher.add_field(0, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
@@ -246,11 +267,12 @@ OpMeta *ElementUnary::init_task(Task const *task,
   ElementUnaryMeta *m = new ElementUnaryMeta(handle);
   m->op_type = eu->op_type;
   m->data_type = eu->outputs[0]->data_type;
-  // Current assume input and output have the same data type
+  // Input and output should have the same data type
   assert(eu->outputs[0]->data_type == eu->inputs[0]->data_type);
   m->profiling = eu->profiling;
   m->inplace = eu->inplace;
   m->scalar = eu->scalar;
+  std::strcpy(m->op_name, eu->name);
   if (m->inplace) {
     assert(regions.size() == 1);
     assert(task->regions.size() == 1);
@@ -506,9 +528,7 @@ void ElementUnary::backward_task_with_type(
 void ElementUnary::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->op_type);
   sez.serialize(this->inplace);
-  if (this->op_type == OP_SCALAR_MULTIPLY) {
-    sez.serialize(scalar);
-  }
+  sez.serialize(scalar);
 }
 
 bool ElementUnary::measure_operator_cost(Simulator *sim,
@@ -537,7 +557,8 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
     init_kernel(m, input_domain, output_domain);
   }
   sim->free_all();
-  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  float *input_ptr =
+      (float *)sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
   assert(input_ptr != NULL);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
@@ -545,7 +566,8 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
   if (inplace) {
     output_ptr = input_ptr;
   } else {
-    output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    output_ptr =
+        (float *)sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
   }
   assert(output_ptr != NULL);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
@@ -558,7 +580,7 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr =
-        (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+        (float *)sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
     assert(input_grad_ptr != NULL);
     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
@@ -566,8 +588,8 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
     if (inplace) {
       output_grad_ptr = input_grad_ptr;
     } else {
-      output_grad_ptr =
-          (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+      output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(),
+                                               outputs[0]->data_type);
     }
     assert(output_grad_ptr != NULL);
     cost_metrics.outputs_memory +=
@@ -614,12 +636,13 @@ Node ElementUnary::deserialize(FFModel &ff,
   bool inplace;
   dez.deserialize(op_type);
   dez.deserialize(inplace);
-  if (op_type == OP_SCALAR_MULTIPLY) {
-    dez.deserialize(scalar);
-  }
+  dez.deserialize(scalar);
 
-  return ff.get_or_create_element_unary_node(
-      inputs[0], op_type, inplace, scalar);
+  ElementUnaryParams params;
+  params.op_type = op_type;
+  params.inplace = inplace;
+  params.scalar = scalar;
+  return ff.get_or_create_node<ElementUnary>(inputs[0], params);
 }
 
 Op *ElementUnary::materialize(FFModel &ff,

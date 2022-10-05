@@ -1,7 +1,13 @@
 #ifndef _FLEXFLOW_RESHAPE_H
 #define _FLEXFLOW_RESHAPE_H
 
-#include "flexflow/model.h"
+#include "flexflow/device.h"
+#include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/ops/reshape_params.h"
 
 namespace FlexFlow {
 
@@ -11,18 +17,18 @@ public:
   DataType data_type;
 };
 
-struct ReshapeParams {
-  ReshapeParams(std::vector<int> const &_shape);
-  size_t get_hash(const ParallelTensor input) const;
-  std::vector<int> shape;
-};
-
 class Reshape : public Op {
 public:
+  using Params = ReshapeParams;
+  using Input = ParallelTensor;
   Reshape(FFModel &model,
           const ParallelTensor input,
           std::vector<int> const &shape,
           char const *name);
+  Reshape(FFModel &model,
+          Params const &params,
+          const Input input,
+          char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -79,7 +85,6 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  size_t get_params_hash() const override;
   void serialize(Legion::Serializer &s) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
@@ -88,7 +93,7 @@ public:
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;
-  ReshapeParams get_params() const;
+  Params get_params() const;
 
 public:
   size_t shape_length;

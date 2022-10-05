@@ -20,39 +20,51 @@ TensorAccessorR<DT, dim>::TensorAccessorR(PhysicalRegion region,
 template <typename DT, int dim>
 TensorAccessorR<DT, dim>::TensorAccessorR() {}
 
-GenericTensorAccessorR::GenericTensorAccessorR(int _num_dim,
-                                               DataType _data_type,
-                                               PhysicalRegion region,
-                                               RegionRequirement req,
-                                               FieldID fid,
-                                               Context ctx,
-                                               Runtime *runtime)
-    : data_type(_data_type), ptr(NULL) {
-  switch (_num_dim) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM: {                                                                  \
-    if (data_type == DT_FLOAT) {                                               \
-      TensorAccessorR<float, DIM> acc(region, req, fid, ctx, runtime);         \
-      domain = acc.rect;                                                       \
-      ptr = acc.ptr;                                                           \
-    } else if (data_type == DT_DOUBLE) {                                       \
-      TensorAccessorR<double, DIM> acc(region, req, fid, ctx, runtime);        \
-      domain = acc.rect;                                                       \
-      ptr = acc.ptr;                                                           \
-    } else if (data_type == DT_INT64) {                                        \
-      TensorAccessorR<int64_t, DIM> acc(region, req, fid, ctx, runtime);       \
-      domain = acc.rect;                                                       \
-      ptr = acc.ptr;                                                           \
-    } else {                                                                   \
-      assert(false && "Unsupported data_type");                                \
-    }                                                                          \
+GenericTensorAccessorR::GenericTensorAccessorR(DataType _data_type,
+                                               Legion::Domain _domain,
+                                               void const *_ptr)
+    : data_type(_data_type), domain(_domain), ptr(_ptr) {}
+
+GenericTensorAccessorR::GenericTensorAccessorR(
+    GenericTensorAccessorW const &acc)
+    : data_type(acc.data_type), domain(acc.domain), ptr(acc.ptr) {}
+
+GenericTensorAccessorR::GenericTensorAccessorR()
+    : data_type(DT_NONE), domain(Domain::NO_DOMAIN), ptr(nullptr) {}
+
+int32_t const *GenericTensorAccessorR::get_int32_ptr() const {
+  if (data_type == DT_INT32)
+    return static_cast<int32_t const *>(ptr);
+  else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<int32_t const *>(nullptr);
   }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default: {
-      fprintf(stderr, "Unsupported accessor dimension");
-      assert(false);
-    }
+}
+
+int64_t const *GenericTensorAccessorR::get_int64_ptr() const {
+  if (data_type == DT_INT64)
+    return static_cast<int64_t const *>(ptr);
+  else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<int64_t const *>(nullptr);
+  }
+}
+
+float const *GenericTensorAccessorR::get_float_ptr() const {
+  if (data_type == DT_FLOAT)
+    return static_cast<float const *>(ptr);
+  else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<float const *>(nullptr);
+  }
+}
+
+double const *GenericTensorAccessorR::get_double_ptr() const {
+  if (data_type == DT_DOUBLE)
+    return static_cast<double const *>(ptr);
+  else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<double const *>(nullptr);
   }
 }
 
@@ -82,43 +94,47 @@ TensorAccessorW<DT, dim>::TensorAccessorW(PhysicalRegion region,
 template <typename DT, int dim>
 TensorAccessorW<DT, dim>::TensorAccessorW() {}
 
-GenericTensorAccessorW::GenericTensorAccessorW(int _num_dim,
-                                               DataType _data_type,
-                                               PhysicalRegion region,
-                                               RegionRequirement req,
-                                               FieldID fid,
-                                               Context ctx,
-                                               Runtime *runtime,
-                                               bool readOutput)
-    : data_type(_data_type), ptr(NULL) {
-  switch (_num_dim) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM: {                                                                  \
-    if (data_type == DT_FLOAT) {                                               \
-      TensorAccessorW<float, DIM> acc(                                         \
-          region, req, fid, ctx, runtime, readOutput);                         \
-      domain = acc.rect;                                                       \
-      ptr = acc.ptr;                                                           \
-    } else if (data_type == DT_DOUBLE) {                                       \
-      TensorAccessorW<double, DIM> acc(                                        \
-          region, req, fid, ctx, runtime, readOutput);                         \
-      domain = acc.rect;                                                       \
-      ptr = acc.ptr;                                                           \
-    } else if (data_type == DT_INT64) {                                        \
-      TensorAccessorW<int64_t, DIM> acc(                                       \
-          region, req, fid, ctx, runtime, readOutput);                         \
-      domain = acc.rect;                                                       \
-      ptr = acc.ptr;                                                           \
-    } else {                                                                   \
-      assert(false && "Unsupported data_type");                                \
-    }                                                                          \
+GenericTensorAccessorW::GenericTensorAccessorW(DataType _data_type,
+                                               Legion::Domain _domain,
+                                               void *_ptr)
+    : data_type(_data_type), domain(_domain), ptr(_ptr) {}
+
+GenericTensorAccessorW::GenericTensorAccessorW()
+    : data_type(DT_NONE), domain(Domain::NO_DOMAIN), ptr(nullptr) {}
+
+int32_t *GenericTensorAccessorW::get_int32_ptr() const {
+  if (data_type == DT_INT32)
+    return static_cast<int32_t *>(ptr);
+  else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<int32_t *>(nullptr);
   }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default: {
-      fprintf(stderr, "Unsupported accessor dimension");
-      assert(false);
-    }
+}
+
+int64_t *GenericTensorAccessorW::get_int64_ptr() const {
+  if (data_type == DT_INT64)
+    return static_cast<int64_t *>(ptr);
+  else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<int64_t *>(nullptr);
+  }
+}
+
+float *GenericTensorAccessorW::get_float_ptr() const {
+  if (data_type == DT_FLOAT)
+    return static_cast<float *>(ptr);
+  else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<float *>(nullptr);
+  }
+}
+
+double *GenericTensorAccessorW::get_double_ptr() const {
+  if (data_type == DT_DOUBLE)
+    return static_cast<double *>(ptr);
+  else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<double *>(nullptr);
   }
 }
 
@@ -194,6 +210,108 @@ DT *helperGetTensorPointerWO(PhysicalRegion region,
       return NULL;
     }
   }
+}
+
+GenericTensorAccessorR
+    helperGetGenericTensorAccessorRO(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime) {
+  Domain domain =
+      runtime->get_index_space_domain(ctx, req.region.get_index_space());
+  void const *ptr = nullptr;
+  switch (datatype) {
+    case DT_INT32: {
+      ptr = helperGetTensorPointerRO<int32_t>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_INT64: {
+      ptr = helperGetTensorPointerRO<int64_t>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_FLOAT: {
+      ptr = helperGetTensorPointerRO<float>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_DOUBLE: {
+      ptr = helperGetTensorPointerRO<double>(region, req, fid, ctx, runtime);
+      break;
+    }
+    default: {
+      assert(false);
+    }
+  }
+  return GenericTensorAccessorR(datatype, domain, ptr);
+}
+
+GenericTensorAccessorW
+    helperGetGenericTensorAccessorWO(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime) {
+  Domain domain =
+      runtime->get_index_space_domain(ctx, req.region.get_index_space());
+  void *ptr = nullptr;
+  switch (datatype) {
+    case DT_INT32: {
+      ptr = helperGetTensorPointerWO<int32_t>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_INT64: {
+      ptr = helperGetTensorPointerWO<int64_t>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_FLOAT: {
+      ptr = helperGetTensorPointerWO<float>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_DOUBLE: {
+      ptr = helperGetTensorPointerWO<double>(region, req, fid, ctx, runtime);
+      break;
+    }
+    default: {
+      assert(false);
+    }
+  }
+  return GenericTensorAccessorW(datatype, domain, ptr);
+}
+
+GenericTensorAccessorW
+    helperGetGenericTensorAccessorRW(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime) {
+  Domain domain =
+      runtime->get_index_space_domain(ctx, req.region.get_index_space());
+  void *ptr = nullptr;
+  switch (datatype) {
+    case DT_INT32: {
+      ptr = helperGetTensorPointerRW<int32_t>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_INT64: {
+      ptr = helperGetTensorPointerRW<int64_t>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_FLOAT: {
+      ptr = helperGetTensorPointerRW<float>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_DOUBLE: {
+      ptr = helperGetTensorPointerRW<double>(region, req, fid, ctx, runtime);
+      break;
+    }
+    default: {
+      assert(false);
+    }
+  }
+  return GenericTensorAccessorW(datatype, domain, ptr);
 }
 
 #define DIMFUNC(DIM)                                                           \

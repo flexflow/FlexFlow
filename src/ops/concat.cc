@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/concat.h"
+#include "flexflow/accessor.h"
 #include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
@@ -41,9 +42,13 @@ bool operator==(ConcatParams const &lhs, ConcatParams const &rhs) {
   return lhs.axis == rhs.axis;
 }
 
-bool ConcatParams::is_valid(std::vector<ParallelTensorShape> const &) const {
-  // TODO: more check on the input shape
-  return true;
+bool ConcatParams::is_valid(
+    std::vector<ParallelTensorShape> const &input) const {
+  bool valid = true;
+  for (auto p : input) {
+    valid &= p.is_valid();
+  }
+  return valid;
 }
 
 ConcatParams Concat::get_params() const {
@@ -337,22 +342,26 @@ void Concat::forward_task(Task const *task,
   // Note that our internal axis index ordering is opposite to other frameworks
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
-  Domain out_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
+  // Domain out_domain = runtime->get_index_space_domain(
+  //     ctx, task->regions[0].region.get_index_space());
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
   // assert(out_domain.get_dim() == cc->outputs[0].num_dims);
-  Domain in_domain[MAX_NUM_INPUTS];
-  for (int i = 0; i < cc->numInputs; i++)
-    in_domain[i] = runtime->get_index_space_domain(
-        ctx, task->regions[i + 1].region.get_index_space());
-  float *output = helperGetTensorPointerWO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float const *inputs[MAX_NUM_INPUTS];
-  for (int i = 0; i < cc->numInputs; i++)
-    inputs[i] = helperGetTensorPointerRO<float>(
-        regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
-
+  // Domain in_domain[MAX_NUM_INPUTS];
+  // for (int i = 0; i < cc->numInputs; i++)
+  //  in_domain[i] = runtime->get_index_space_domain(
+  //      ctx, task->regions[i + 1].region.get_index_space());
+  // float *output = helperGetTensorPointerWO<float>(
+  //    regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR inputs[MAX_NUM_INPUTS];
+  for (int i = 0; i < cc->numInputs; i++) {
+    // inputs[i] = helperGetTensorPointerRO<float>(
+    //     regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
+    inputs[i] = helperGetGenericTensorAccessorRO(
+        DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  }
   Concat::forward_kernel_wrapper(
-      m, output, inputs, cc->numInputs, cc->legion_axis, out_domain, in_domain);
+      m, output, inputs, cc->numInputs, cc->legion_axis);
 }
 
 void Concat::backward(FFModel const &ff) {
@@ -442,27 +451,26 @@ void Concat::backward_task(Task const *task,
   assert(regions.size() == cc->numInputs + 1);
   assert(task->regions.size() == cc->numInputs + 1);
   assert(cc->numInputs <= MAX_NUM_INPUTS);
-  Domain out_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  // assert(out_grad_domain.get_dim() == cc->outputs[0].num_dims);
-  Domain in_grad_domains[MAX_NUM_INPUTS];
-  for (int i = 0; i < cc->numInputs; i++)
-    in_grad_domains[i] = runtime->get_index_space_domain(
-        ctx, task->regions[i + 1].region.get_index_space());
-  float const *output_grad = helperGetTensorPointerRO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float *input_grads[MAX_NUM_INPUTS];
-  for (int i = 0; i < cc->numInputs; i++)
-    input_grads[i] = helperGetTensorPointerRW<float>(
-        regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
-
-  Concat::backward_kernel_wrapper(m,
-                                  output_grad,
-                                  input_grads,
-                                  cc->numInputs,
-                                  cc->legion_axis,
-                                  out_grad_domain,
-                                  in_grad_domains);
+  // Domain out_grad_domain = runtime->get_index_space_domain(
+  //     ctx, task->regions[0].region.get_index_space());
+  //  assert(out_grad_domain.get_dim() == cc->outputs[0].num_dims);
+  // Domain in_grad_domains[MAX_NUM_INPUTS];
+  // for (int i = 0; i < cc->numInputs; i++)
+  //   in_grad_domains[i] = runtime->get_index_space_domain(
+  //       ctx, task->regions[i + 1].region.get_index_space());
+  // float const *output_grad = helperGetTensorPointerRO<float>(
+  //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW input_grads[MAX_NUM_INPUTS];
+  for (int i = 0; i < cc->numInputs; i++) {
+    // input_grads[i] = helperGetTensorPointerRW<float>(
+    //     regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
+    input_grads[i] = helperGetGenericTensorAccessorRW(
+        DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
+  }
+  Concat::backward_kernel_wrapper(
+      m, output_grad, input_grads, cc->numInputs, cc->legion_axis);
 }
 
 bool Concat::get_int_parameter(PMParameter para, int *value) const {
@@ -503,7 +511,9 @@ bool Concat::measure_operator_cost(Simulator *sim,
   }
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
+  Domain out_domain = sub_output.get_domain();
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  GenericTensorAccessorW output_acc(DT_FLOAT, out_domain, output_ptr);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   out_of_memory = out_of_memory || (output_ptr == NULL);
@@ -513,33 +523,34 @@ bool Concat::measure_operator_cost(Simulator *sim,
     return true;
   }
 
-  Domain out_domain = sub_output.get_domain();
   Domain in_domains[MAX_NUM_INPUTS];
+  GenericTensorAccessorR input_acc[MAX_NUM_INPUTS];
   for (int i = 0; i < numInputs; i++) {
     in_domains[i] = sub_inputs[i].get_domain();
+    input_acc[i] =
+        GenericTensorAccessorR(DT_FLOAT, in_domains[i], input_ptrs[i]);
   }
 
   assert(m->profiling == false);
 
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel_wrapper(m,
-                           output_ptr,
-                           input_ptrs,
-                           numInputs,
-                           legion_axis,
-                           out_domain,
-                           in_domains);
+    forward_kernel_wrapper(m, output_acc, input_acc, numInputs, legion_axis);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
+    GenericTensorAccessorW input_grad_accs[MAX_NUM_INPUTS];
     for (int i = 0; i < numInputs; i++) {
       input_grad_ptrs[i] =
           (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
       out_of_memory = out_of_memory || (input_grad_ptrs[i] == NULL);
+      input_grad_accs[i] =
+          GenericTensorAccessorW(DT_FLOAT, in_domains[i], input_grad_ptrs[i]);
     }
     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    GenericTensorAccessorR output_grad_acc(
+        DT_FLOAT, out_domain, output_grad_ptr);
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
 
@@ -550,13 +561,8 @@ bool Concat::measure_operator_cost(Simulator *sim,
       return true;
     }
     backward = [&] {
-      backward_kernel_wrapper(m,
-                              output_grad_ptr,
-                              input_grad_ptrs,
-                              numInputs,
-                              legion_axis,
-                              out_domain,
-                              in_domains);
+      backward_kernel_wrapper(
+          m, output_grad_acc, input_grad_accs, numInputs, legion_axis);
     };
   }
 
@@ -575,20 +581,6 @@ bool Concat::measure_operator_cost(Simulator *sim,
   }
 
   return true;
-}
-
-Node FFModel::get_or_create_concat_node(int num_inputs,
-                                        ParallelTensor const *inputs,
-                                        int legion_axis) {
-  std::vector<ParallelTensor> _inputs;
-  for (int i = 0; i < num_inputs; ++i) {
-    _inputs.push_back(inputs[i]);
-  }
-
-  ConcatParams params;
-  params.axis = legion_axis;
-
-  return this->get_or_create_node<Concat>(_inputs, params);
 }
 
 }; // namespace FlexFlow

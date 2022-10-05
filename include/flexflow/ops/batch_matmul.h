@@ -13,12 +13,19 @@ public:
 
 class BatchMatmul : public Op {
 public:
+  using Params = BatchMatmulParams;
+  using Input = std::pair<ParallelTensor, ParallelTensor>;
+  BatchMatmul(FFModel &model,
+              BatchMatmulParams const &params,
+              Input const &inputs,
+              char const *name = nullptr);
+
   BatchMatmul(FFModel &model,
               const ParallelTensor A,
               const ParallelTensor B,
               int a_seq_length_dim,
               int b_seq_length_dim,
-              char const *name);
+              char const *name = nullptr);
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
@@ -40,6 +47,15 @@ public:
     assert(0);
   }
   void print_layer(FFModel const &model) override;
+  void serialize(Legion::Serializer &) const override;
+  static PCG::Node deserialize(FFModel &ff,
+                               Legion::Deserializer &d,
+                               ParallelTensor inputs[],
+                               int num_inputs);
+  Op *materialize(FFModel &ff,
+                  ParallelTensor inputs[],
+                  int num_inputs) const override;
+  Params get_params() const;
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,

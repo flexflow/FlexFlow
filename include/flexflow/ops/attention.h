@@ -1,7 +1,13 @@
 #ifndef _FLEXFLOW_ATTENTION_H
 #define _FLEXFLOW_ATTENTION_H
 
-#include "flexflow/model.h"
+#include "flexflow/device.h"
+#include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/ops/attention_params.h"
 
 namespace FlexFlow {
 
@@ -9,6 +15,9 @@ class MultiHeadAttentionMeta;
 
 class MultiHeadAttention : public Op {
 public:
+  using Params = MultiHeadAttentionParams;
+  using Input = std::tuple<ParallelTensor, ParallelTensor, ParallelTensor>;
+
   MultiHeadAttention(FFModel &model,
                      LayerID const &layer_guid,
                      const ParallelTensor _query,
@@ -45,6 +54,11 @@ public:
                      const ParallelTensor key,
                      const ParallelTensor value,
                      bool allocate_weights);
+  MultiHeadAttention(FFModel &model,
+                     Params const &params,
+                     Input const &inputs,
+                     bool allocate_weights = false,
+                     char const *name = nullptr);
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
@@ -68,7 +82,6 @@ public:
     assert(0);
   }
   bool get_int_parameter(PMParameter, int *) const override;
-  size_t get_params_hash() const override;
 
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
@@ -119,6 +132,8 @@ public:
                                       float const *weight_ptr,
                                       float *weight_grad_ptr,
                                       float const *output_grad_ptr);
+
+  Params get_params() const;
 
 public:
   int num_heads;

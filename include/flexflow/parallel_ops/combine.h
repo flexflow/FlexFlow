@@ -1,6 +1,13 @@
 #ifndef _FLEXFLOW_COMBINE_H
 #define _FLEXFLOW_COMBINE_H
 
+#include "flexflow/device.h"
+#include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/parallel_ops/combine_params.h"
 #include "parallel_op.h"
 
 namespace FlexFlow {
@@ -13,11 +20,18 @@ public:
 
 class Combine : public ParallelOp {
 public:
+  using Params = CombineParams;
+  using Input = ParallelTensor;
+
   Combine(FFModel &model,
           const ParallelTensor input,
           int combine_legion_dim,
           int combine_degree,
           char const *name = NULL);
+  Combine(FFModel &model,
+          Params const &params,
+          Input const input,
+          char const *name = nullptr);
   void create_input_partition(FFModel &model) override;
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -72,7 +86,7 @@ public:
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
 
-  size_t get_params_hash() const override;
+  Params get_params() const;
   tl::optional<RecordFormatter> as_dot() const override;
 
 public:

@@ -6,14 +6,6 @@
 
 namespace FlexFlow {
 
-struct ParallelOpInfo {
-  friend void swap(ParallelOpInfo &, ParallelOpInfo &);
-
-  OperatorType op_type;
-  int parallel_dim;
-  int parallel_degree;
-};
-
 struct ParallelOpJoinResult {
   tl::optional<ParallelOpInfo> op = tl::nullopt;
   bool join_did_succeed = false;

@@ -1,16 +1,22 @@
 #ifndef _FLEXFLOW_FLAT_H
 #define _FLEXFLOW_FLAT_H
 
-#include "flexflow/model.h"
+#include "flexflow/device.h"
+#include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/ops/flat_params.h"
 
 namespace FlexFlow {
 
-namespace Input {
+namespace FlatInput {
 constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
               REPLICA = 4;
 }
 
-namespace Output {
+namespace FlatOutput {
 constexpr int NUMDIM = 3, CHANNEL = 0, SAMPLE = 1, REPLICA = 2;
 }
 
@@ -21,7 +27,14 @@ public:
 
 class Flat : public Op {
 public:
+  using Params = FlatParams;
+  using Input = ParallelTensor;
+
   Flat(FFModel &model, const ParallelTensor input, char const *name);
+  Flat(FFModel &model,
+       Params const &params,
+       const Input input,
+       char const *name = nullptr);
 
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -82,14 +95,7 @@ public:
   static void
       construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
 
-  size_t get_params_hash() const override;
-
-public:
-  // int fwd_input_idx = 0;
-  // int bwd_input_idx = 0;
-  // int fwd_output_idx = 0;
-  // int bwd_output_idx = 0;
-  // int init_output_idx = 0;
+  Params get_params() const;
 };
 
 }; // namespace FlexFlow

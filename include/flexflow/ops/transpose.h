@@ -2,6 +2,7 @@
 #define _FLEXFLOW_TRANSPOSE_H_
 
 #include "flexflow/model.h"
+#include "flexflow/ops/transpose_params.h"
 
 namespace FlexFlow {
 
@@ -14,10 +15,16 @@ public:
 
 class Transpose : public Op {
 public:
+  using Params = TransposeParams;
+  using Input = ParallelTensor;
+  Transpose(FFModel &model,
+            Params const &params,
+            const Input input,
+            char const *name = nullptr);
   Transpose(FFModel &model,
             const ParallelTensor input,
             std::vector<int> const &perm,
-            char const *name);
+            char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -82,6 +89,15 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
+  void serialize(Legion::Serializer &s) const override;
+  static PCG::Node deserialize(FFModel &ff,
+                               Legion::Deserializer &d,
+                               ParallelTensor inputs[],
+                               int num_inputs);
+  Op *materialize(FFModel &ff,
+                  ParallelTensor inputs[],
+                  int num_inputs) const override;
+  Params get_params() const;
 
 public:
   int perm[MAX_TENSOR_DIM];

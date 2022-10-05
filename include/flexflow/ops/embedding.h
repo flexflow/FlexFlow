@@ -1,7 +1,13 @@
 #ifndef _FLEXFLOW_EMBEDDING_H
 #define _FLEXFLOW_EMBEDDING_H
 
-#include "flexflow/model.h"
+#include "flexflow/device.h"
+#include "flexflow/fftype.h"
+#include "flexflow/layer.h"
+#include "flexflow/node.h"
+#include "flexflow/op_meta.h"
+#include "flexflow/operator.h"
+#include "flexflow/ops/embedding_params.h"
 
 namespace FlexFlow {
 
@@ -23,15 +29,11 @@ public:
   AggrMode aggr;
 };
 
-struct EmbeddingParams {
-  int num_entries, out_channels;
-  AggrMode aggr;
-
-  size_t get_hash(const ParallelTensor input) const;
-};
-
 class Embedding : public Op {
 public:
+  using Params = EmbeddingParams;
+  using Input = ParallelTensor;
+
   Embedding(FFModel &model,
             LayerID const &_layer_guid,
             const ParallelTensor _input,
@@ -44,6 +46,11 @@ public:
             Embedding const &other,
             const ParallelTensor input,
             bool allocate_weights);
+  Embedding(FFModel &model,
+            Params const &params,
+            Input const input,
+            bool allocate_weights = false,
+            char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -130,9 +137,7 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
-  size_t get_params_hash() const override;
-
-  EmbeddingParams get_params() const;
+  Params get_params() const;
 
 private:
   template <typename TI>

@@ -43,22 +43,9 @@ struct TensorAccessorW {
   DT *ptr;
 };
 
-struct GenericTensorAccessorR {
-  GenericTensorAccessorR(int num_dim,
-                         DataType data_type,
-                         Legion::PhysicalRegion region,
-                         Legion::RegionRequirement req,
-                         Legion::FieldID fid,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime);
-  GenericTensorAccessorR();
-  DataType data_type;
-  Legion::Domain domain;
-  Legion::Memory memory;
-  void const *ptr;
-};
-
-struct GenericTensorAccessorW {
+class GenericTensorAccessorW {
+public:
+#ifdef DEADCODE
   GenericTensorAccessorW(int num_dim,
                          DataType data_type,
                          Legion::PhysicalRegion region,
@@ -67,11 +54,42 @@ struct GenericTensorAccessorW {
                          Legion::Context ctx,
                          Legion::Runtime *runtime,
                          bool readOutput = false);
+#endif
   GenericTensorAccessorW();
+  GenericTensorAccessorW(DataType data_type, Legion::Domain domain, void *ptr);
+  int32_t *get_int32_ptr() const;
+  int64_t *get_int64_ptr() const;
+  float *get_float_ptr() const;
+  double *get_double_ptr() const;
   DataType data_type;
   Legion::Domain domain;
-  Legion::Memory memory;
   void *ptr;
+};
+
+class GenericTensorAccessorR {
+public:
+#ifdef DEADCODE
+  GenericTensorAccessorR(int num_dim,
+                         DataType data_type,
+                         Legion::PhysicalRegion region,
+                         Legion::RegionRequirement req,
+                         Legion::FieldID fid,
+                         Legion::Context ctx,
+                         Legion::Runtime *runtime);
+#endif
+  GenericTensorAccessorR();
+  GenericTensorAccessorR(DataType data_type,
+                         Legion::Domain domain,
+                         void const *ptr);
+  GenericTensorAccessorR(GenericTensorAccessorW const &acc);
+  // GenericTensorAccessorR &operator=(GenericTensorAccessorW const &acc);
+  int32_t const *get_int32_ptr() const;
+  int64_t const *get_int64_ptr() const;
+  float const *get_float_ptr() const;
+  double const *get_double_ptr() const;
+  DataType data_type;
+  Legion::Domain domain;
+  void const *ptr;
 };
 
 template <typename DT>
@@ -94,6 +112,31 @@ DT *helperGetTensorPointerRW(Legion::PhysicalRegion region,
                              Legion::FieldID fid,
                              Legion::Context ctx,
                              Legion::Runtime *runtime);
+
+GenericTensorAccessorR
+    helperGetGenericTensorAccessorRO(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime);
+
+GenericTensorAccessorW
+    helperGetGenericTensorAccessorWO(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime);
+
+GenericTensorAccessorW
+    helperGetGenericTensorAccessorRW(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime);
+
 }; // namespace FlexFlow
 
 #endif
