@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   build-and-install-flexflow:
-    name: Install the necessary requirements
+    name: Build and Install FlexFlow
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout Git Repository
