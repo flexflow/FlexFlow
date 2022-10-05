@@ -57,19 +57,6 @@ LayerNormParams LayerNorm::get_params() const {
   return params;
 }
 
-size_t LayerNormParams::get_hash(const ParallelTensor input) const {
-  size_t hash = input->get_owner_independent_hash();
-  hash_combine(hash, this->layer_guid.id);
-  hash_combine(hash, this->axes);
-  hash_combine(hash, this->elementwise_affine);
-  hash_combine(hash, this->eps);
-  return hash;
-}
-
-size_t LayerNorm::get_params_hash() const {
-  return this->get_params().get_hash(this->inputs[0]);
-}
-
 Tensor FFModel::layer_norm(const Tensor input,
                            std::vector<int> const &axes,
                            bool elementwise_affine,

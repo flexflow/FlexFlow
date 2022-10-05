@@ -41,7 +41,7 @@ public:
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;
-  size_t get_params_hash() const override;
+  // size_t get_params_hash() const override;
   LayerNormParams get_params() const;
 
   static OpMeta *init_task(Legion::Task const *task,
