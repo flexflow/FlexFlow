@@ -1,7 +1,7 @@
 **************
 Dataloader API
 **************
-.. automodule:: flexflow.core.flexflow_cbinding
+.. automodule:: flexflow.core.flexflow_cffi
    :noindex:
 
 Dataloader Creation
