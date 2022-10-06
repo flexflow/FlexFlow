@@ -222,6 +222,8 @@ bool Combine::measure_operator_cost(Simulator *sim,
   // TODO: to be implemented
   cost_metrics.forward_time = 0.05f;
   cost_metrics.backward_time = 0.05f;
+  
+  cost_metrics.sync_time = 0.0f;
   return true;
 }
 
