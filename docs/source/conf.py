@@ -95,7 +95,7 @@ breathe_projects = {
 breathe_default_project = "FlexFlow"
 
 #c_plus_plus_src_dirs = " ".join([f"\"{os.path.join(FF_HOME, 'src', dirname)}\"" for dirname in ("loss_functions", "mapper", "metrics_functions", "ops", "parallel_ops", "recompile", "runtime", "tools","utils")])
-c_plus_plus_src_dirs=f"\"{os.path.join(FF_HOME, 'src')}\""
+c_plus_plus_src_dirs=f"\"{os.path.join(FF_HOME, 'src', '*')}\""
 # Setup the exhale extension
 exhale_args = {
     # These arguments are required
