@@ -273,6 +273,7 @@ public:
   int numInputs, numWeights, numOutputs;
   int ubSize;
   int nFnB;
+  int device_num;
   int zero_grad_idx[MAX_NUM_OUTPUTS];
   bool profiling;
   // pipe

@@ -475,8 +475,9 @@ bool ParallelTensorBase::check_valid() const {
   for (int i = 0; i < num_dims; i++) {
     if (dims[i].size < 0)
       return false;
-    if (dims[i].size % dims[i].degree != 0)
-      return false;
+    // shicao
+    // if (dims[i].size % dims[i].degree != 0)
+    //   return false;
     if (dims[i].parallel_idx > MAX_TENSOR_DIM)
       return false;
     assert(dims[i].parallel_idx >= -1);

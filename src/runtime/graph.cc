@@ -1607,8 +1607,8 @@ GraphOptimalViewSerialized
       data_parallel_view[i].ndims = 1;
       // data_parallel_view.dim[0] = model->config.numNodes *
       // model->config.workersPerNode;
-      data_parallel_view[i].dim[0] = 1;
-      data_parallel_view[i].stride[0] = sinfo[i].device_num;
+      data_parallel_view[i].dim[0] = sinfo[i].device_num;
+      data_parallel_view[i].stride[0] = 1;
       data_parallel_view[i].start_device_id = start_device;
       start_device += sinfo[i].device_num;
     }

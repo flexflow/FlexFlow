@@ -796,7 +796,7 @@ public:
   Legion::IndexSpace get_or_create_task_is(MachineView const &view);
   Legion::IndexSpace get_or_create_task_is(Legion::Domain const &domain);
   Legion::IndexSpace get_or_create_task_is(const ParallelTensor);
-  Legion::IndexSpace get_or_create_task_is(const &ParallelDim);
+  Legion::IndexSpace get_or_create_task_is(const ParallelDim dims[]);
   Legion::IndexSpace get_task_is(Legion::Domain const &domain) const;
   Legion::IndexSpace get_task_is(ParallelConfig const &pc) const;
   Legion::IndexSpace get_task_is(MachineView const &view) const;

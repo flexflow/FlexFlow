@@ -1785,6 +1785,7 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor,
 
   int np = tensor->pipe_buf_size / parallel_op->ubSize;
   Rect<1> ubdim_rect(0, np - 1);
+  printf("%d in-flight microbatch\n", np);
   IndexSpaceT<1> ub_is = runtime->create_index_space(ctx, ubdim_rect);
 
   Transform<NDIM, 1> trans;
@@ -1800,12 +1801,12 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor,
   trans[NDIM - 2][0] = ext.hi[NDIM - 2] - ext.lo[NDIM - 2] + 1;
   IndexPartition ub_ip =
       runtime->create_partition_by_restriction(ctx, is, ub_is, trans, ext);
+  assert(runtime->is_index_partition_complete(ctx, ub_ip));
   LogicalPartition ub_lp =
       runtime->get_logical_partition(ctx, tensor->region, ub_ip);
   // second-level partition: intra-stage parallelism, for input tensor, we need
   // to use the task_is of the op temp, need to be fixed, need a better
   // abstraction when later support branch-level parallelism
-  // shicao
   IndexSpaceT<TDIM> part_is =
       (IndexSpaceT<TDIM>)get_or_create_task_is(parallel_op->input_dims[idx]);
   assert(parallel_op != NULL);
@@ -1824,6 +1825,7 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor,
       ext_hi[i] = (sub_rect.hi[i] - sub_rect.lo[i] + nparts) / nparts - 1 +
                   sub_rect.lo[i];
       ext_lo[i] = sub_rect.lo[i];
+      printf("dim(%d), degree(%d), idx(%d), hi(%lld), lo(%lld)\n", i, nparts, parallel_op->input_dims[idx][i].parallel_idx, ext_hi[i], ext_lo[i]);
     }
     Rect<NDIM> extent(ext_lo, ext_hi);
     for (int i = 0; i < NDIM; i++)
@@ -2470,7 +2472,7 @@ IndexSpace FFModel::get_or_create_task_is(const ParallelTensor tensor) {
   return get_or_create_task_is(view);
 }
 
-IndexSpace FFModel::get_or_create_task_is(ParallelDim const &dims) {
+IndexSpace FFModel::get_or_create_task_is(const ParallelDim dims[]) {
   MachineView view;
   view.ndims = 0;
   for (int i = 0; i < MAX_TENSOR_DIM; i++)
@@ -3086,8 +3088,8 @@ void FFModel::compile(LossType loss_type,
     for (int i = 0; i < op->numOutputs; i++) {
       // Output tensor
       // scale sample dim
-      // int ndims = op->outputs[i]->num_dims;
-      // op->outputs[i]->dims[ndims - 2].size *= op->outputs[i]->pipe_buf_size;
+      int ndims = op->outputs[i]->num_dims;
+      op->outputs[i]->dims[ndims - 2].size *= op->outputs[i]->pipe_buf_size;
       map_tensor(op->outputs[i], op);
     }
     for (int i = 0; i < op->numInputs; i++) {

@@ -3035,10 +3035,24 @@ bool FFModel::convert_graph_to_operators(
     auto const &inList = graph->inEdges.find(node)->second;
     ParallelTensor inputs[MAX_NUM_INPUTS];
     int num_inputs = 0;
+    StageInfo sinfo = optimal_partition.find(node)->second;
     for (auto const &e : inList) {
       inputs[e.dstIdx] = node_to_op[e.srcOp]->outputs[e.srcIdx];
       assert(e.dstIdx < (int)inList.size());
       num_inputs++;
+      // shicao change inputs dim degree according to current op's stage info temporarily
+      int ndims = inputs[e.dstIdx]->num_dims;
+      inputs[e.dstIdx]->dims[ndims - 2].degree = sinfo.device_num;
+      // update parallel ids
+      int next_parallel_idx = 0;
+      for (int i = 0; i < ndims; i++) {
+        if (inputs[e.dstIdx]->dims[i].degree == 1) {
+          inputs[e.dstIdx]->dims[i].parallel_idx = -1;
+        } else {
+          inputs[e.dstIdx]->dims[i].parallel_idx = next_parallel_idx;
+          next_parallel_idx++;
+        }
+      }
     }
     Op *new_op = NULL;
     switch (node.ptr->op_type) {
@@ -3165,39 +3179,54 @@ bool FFModel::convert_graph_to_operators(
     }
     // set pipeline info for the op, the input and output tensors of this
     // operator, scale the ubatch dimension according to bufSize
-    StageInfo sinfo = optimal_partition.find(node)->second;
+    // StageInfo sinfo = optimal_partition.find(node)->second;
     new_op->stage_guid = sinfo.sid;
     new_op->ubSize = sinfo.ubatchSize;
     new_op->nFnB = sinfo.nFnB;
+    new_op->device_num = sinfo.device_num;
     for (int i = 0; i < new_op->numOutputs; i++) {
       int ndims = new_op->outputs[i]->num_dims;
       // new_op->outputs[i]->dims[ndims-2].size *= sinfo.bufSize; // TODO check
       // dim[3] is ubatch dim? since we do not have parallel op, parallel dim
       // info set here? only support data parallelism now
-      new_op->outputs[i]->dims[ndims - 2].degree = sinfo.device_num;
-      if (sinfo.device_num > 1 &&
-          new_op->outputs[i]->dims[ndims - 2].parallel_idx == -1) {
-        new_op->outputs[i]->dims[ndims - 2].parallel_idx += 1;
-        // printf("dim %d
-        // op(%s)\n",new_op->outputs[i]->dims[ndims-2].parallel_idx,
-        // optype_to_string(new_op->op_type).data());
-      }
+      // new_op->outputs[i]->dims[ndims - 2].degree = sinfo.device_num;
+      // if (sinfo.device_num > 1 &&
+      //     new_op->outputs[i]->dims[ndims - 2].parallel_idx == -1) {
+      //   new_op->outputs[i]->dims[ndims - 2].parallel_idx += 1;
+      //   // printf("dim %d
+      //   // op(%s)\n",new_op->outputs[i]->dims[ndims-2].parallel_idx,
+      //   // optype_to_string(new_op->op_type).data());
+      // }
       // pipe info
       new_op->outputs[i]->pipe_buf_size = sinfo.bufSize;
       new_op->outputs[i]->pipe_num_part_out = sinfo.bufSize / sinfo.ubatchSize;
-      new_op->outputs[i]->dims[ndims - 2].size =
-          new_op->outputs[i]->pipe_buf_size;
+      // new_op->outputs[i]->dims[ndims - 2].size =
+      //     new_op->outputs[i]->pipe_buf_size;
       printf("size %d op(%s), %d\n",
              new_op->outputs[i]->dims[ndims - 2].size,
              optype_to_string(new_op->op_type).data(),
              ndims);
     }
     for (int i = 0; i < new_op->numInputs; i++) {
-      for (int j = 0; j < new_op->inputs[i]->num_dims; j++) {
+      int ndims = new_op->inputs[i]->num_dims;
+      for (int j = 0; j < ndims; j++) {
         new_op->input_dims[i][j] = new_op->inputs[i]->dims[j];
-        new_op->input_dims[i][j].degree = sinfo.device_num;
+      }
+      // change back degree for inputs
+      assert(new_op->inputs[i]->owner_op!=NULL);
+      new_op->inputs[i]->dims[ndims - 2].degree = new_op->inputs[i]->owner_op->device_num;
+      // change back parallel ids
+      int next_parallel_idx = 0;
+      for (int k = 0; k < ndims; k++) {
+        if (new_op->inputs[i]->dims[k].degree == 1) {
+          new_op->inputs[i]->dims[k].parallel_idx = -1;
+        } else {
+          new_op->inputs[i]->dims[k].parallel_idx = next_parallel_idx;
+          next_parallel_idx++;
+        }
       }
     }
+    
     node_to_op[node] = new_op;
     operators.push_back(new_op);
     // Decrease the todos

@@ -23,10 +23,10 @@ BUILD_TYPE=Release
 #FF_CUDA_ARCH=xx
 
 # set CUDNN dir in case cmake cannot autodetect a path
-CUDNN_DIR=/usr/local/cuda-11
+CUDNN_DIR=/usr/local/cuda
 
 # set CUDA dir in case cmake cannot autodetect a path
-CUDA_DIR=/usr/local/cuda-11
+CUDA_DIR=/usr/local/cuda
 
 # enable Python
 FF_USE_PYTHON=OFF
@@ -35,7 +35,7 @@ FF_USE_PYTHON=OFF
 FF_USE_NCCL=ON
 
 # enable GASNet
-FF_USE_GASNET=ON
+FF_USE_GASNET=OFF
 
 # select GASNET conduit
 FF_GASNET_CONDUIT=ibv
