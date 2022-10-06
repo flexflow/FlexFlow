@@ -159,3 +159,9 @@ cython_debug/
 
 # Docker container 
 docker/config.linux
+
+# yarn prettier module (for linting workflows)
+.prettierrc.json
+node_modules/
+package.json
+yarn.lock
