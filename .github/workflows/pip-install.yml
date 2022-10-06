@@ -2,10 +2,12 @@ name: "pip-install"
 on:
   pull_request:
     paths:
+      - "python/**"
       - "setup.py"
       - ".github/workflows/pip-install.yml"
   push:
     paths:
+      - "python/**"
       - "setup.py"
       - ".github/workflows/pip-install.yml"
   workflow_dispatch:
