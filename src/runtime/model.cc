@@ -1825,7 +1825,12 @@ void FFModel::map_input_tensor_with_dim2(ParallelTensor tensor,
       ext_hi[i] = (sub_rect.hi[i] - sub_rect.lo[i] + nparts) / nparts - 1 +
                   sub_rect.lo[i];
       ext_lo[i] = sub_rect.lo[i];
-      printf("dim(%d), degree(%d), idx(%d), hi(%lld), lo(%lld)\n", i, nparts, parallel_op->input_dims[idx][i].parallel_idx, ext_hi[i], ext_lo[i]);
+      printf("dim(%d), degree(%d), idx(%d), hi(%lld), lo(%lld)\n",
+             i,
+             nparts,
+             parallel_op->input_dims[idx][i].parallel_idx,
+             ext_hi[i],
+             ext_lo[i]);
     }
     Rect<NDIM> extent(ext_lo, ext_hi);
     for (int i = 0; i < NDIM; i++)

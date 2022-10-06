@@ -3040,7 +3040,8 @@ bool FFModel::convert_graph_to_operators(
       inputs[e.dstIdx] = node_to_op[e.srcOp]->outputs[e.srcIdx];
       assert(e.dstIdx < (int)inList.size());
       num_inputs++;
-      // shicao change inputs dim degree according to current op's stage info temporarily
+      // shicao change inputs dim degree according to current op's stage info
+      // temporarily
       int ndims = inputs[e.dstIdx]->num_dims;
       inputs[e.dstIdx]->dims[ndims - 2].degree = sinfo.device_num;
       // update parallel ids
@@ -3213,8 +3214,9 @@ bool FFModel::convert_graph_to_operators(
         new_op->input_dims[i][j] = new_op->inputs[i]->dims[j];
       }
       // change back degree for inputs
-      assert(new_op->inputs[i]->owner_op!=NULL);
-      new_op->inputs[i]->dims[ndims - 2].degree = new_op->inputs[i]->owner_op->device_num;
+      assert(new_op->inputs[i]->owner_op != NULL);
+      new_op->inputs[i]->dims[ndims - 2].degree =
+          new_op->inputs[i]->owner_op->device_num;
       // change back parallel ids
       int next_parallel_idx = 0;
       for (int k = 0; k < ndims; k++) {
@@ -3226,7 +3228,7 @@ bool FFModel::convert_graph_to_operators(
         }
       }
     }
-    
+
     node_to_op[node] = new_op;
     operators.push_back(new_op);
     // Decrease the todos
