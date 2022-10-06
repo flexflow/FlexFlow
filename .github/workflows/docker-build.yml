@@ -1,5 +1,16 @@
 name: "docker build"
-on: [push, pull_request, workflow_dispatch]
+on:
+  pull_request:
+    paths:
+      - "docker/**"
+      - "!docker/README.md"
+      - ".github/workflows/docker-build.yml"
+  push:
+    paths:
+      - "docker/**"
+      - "!docker/README.md"
+      - ".github/workflows/docker-build.yml"
+  workflow_dispatch:
 concurrency:
   group: docker-build-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
