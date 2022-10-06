@@ -1,5 +1,5 @@
-#!/bin/bash
-set -e
+#! /usr/bin/env bash
+set -euo pipefail
 # Copy the config files into the Docker folder
 rm -rf config && cp -r ../config ./config
 
@@ -30,7 +30,7 @@ then
 fi
 gpu_arch_codes=$(echo "$gpu_arch_codes" | xargs -n1 | sort -u | xargs)
 gpu_arch_codes=$(echo ${gpu_arch_codes// /,})
-if [ -n "$gpu_arch_codes" ]; then
+if [[ -n "$gpu_arch_codes" ]]; then
   echo "Host machine has GPUs with architecture codes: $gpu_arch_codes"
   echo "Configuring FlexFlow to build for the $gpu_arch_codes code(s)."
   sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=${gpu_arch_codes}" ./config/config.linux
