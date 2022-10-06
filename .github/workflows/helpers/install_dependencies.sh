@@ -3,7 +3,7 @@
 # General dependencies
 echo "Installing apt dependencies..."
 sudo apt-get update && sudo apt-get install -y --no-install-recommends wget binutils git zlib1g-dev && \
-    rm -rf /var/lib/apt/lists/*
+    sudo rm -rf /var/lib/apt/lists/*
 
 # Install CUDNN
 echo "Installing CUDNN..."
@@ -17,7 +17,7 @@ echo "Installing Miniconda..."
 wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     chmod +x ./Miniconda3-latest-Linux-x86_64.sh && \
     ./Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
-    rm ~/Miniconda3-latest-Linux-x86_64.sh && \
+    rm ./Miniconda3-latest-Linux-x86_64.sh && \
     /opt/conda/bin/conda upgrade --all && \
     /opt/conda/bin/conda install conda-build conda-verify && \
     /opt/conda/bin/conda clean -ya
