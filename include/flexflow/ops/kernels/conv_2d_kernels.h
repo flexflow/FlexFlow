@@ -89,6 +89,7 @@ void backward_kernel(Conv2DMeta const *m,
                      float *bias_grad_ptr,
                      cudaStream_t stream);
 
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 cudnnConvolutionFwdAlgo_t selectConvolutionForwardAlgorithm(
     cudnnHandle_t handle,
     const cudnnTensorDescriptor_t xDesc,
@@ -127,6 +128,44 @@ cudnnConvolutionBwdFilterAlgo_t selectConvolutionBackwardFilterAlgorithm(
     const cudnnFilterDescriptor_t dwDesc,
     void *dw,
     float *time);
+#else 
+miopenConvFwdAlgorithm_t selectConvolutionForwardAlgorithm(
+    miopenHandle_t handle,
+    const miopenTensorDescriptor_t xDesc,
+    void const *x,
+    const miopenTensorDescriptor_t wDesc,
+    void const *w,
+    const miopenConvolutionDescriptor_t convDesc,
+    void *workSpace,
+    size_t workSpaceSize,
+    const miopenTensorDescriptor_t yDesc,
+    void *y, 
+    float *time);
+miopenConvBwdWeightsAlgorithm_t selectConvolutionBackwardFilterAlgorithm(
+    miopenHandle_t handle,
+    const miopenTensorDescriptor_t xDesc,
+    void const *x,
+    const miopenTensorDescriptor_t dyDesc,
+    void const *dy,
+    const miopenConvolutionDescriptor_t convDesc,
+    void *workSpace,
+    size_t workSpaceSize,
+    const miopenTensorDescriptor_t dwDesc,
+    void *dw,
+    float *time);
+miopenConvBwdDataAlgorithm_t selectConvolutionBackwardDataAlgorithm(
+    miopenHandle_t handle,
+    const miopenTensorDescriptor_t wDesc,
+    void const *w,
+    const miopenTensorDescriptor_t dyDesc,
+    void const *dy,
+    const miopenConvolutionDescriptor_t convDesc,
+    void *workSpace,
+    size_t workSpaceSize,
+    const miopenTensorDescriptor_t dxDesc,
+    void *dx, 
+    float *time);
+#endif
 
 } // namespace Internal
 } // namespace Conv2D
