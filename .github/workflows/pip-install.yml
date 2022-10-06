@@ -4,11 +4,13 @@ on:
     paths:
       - "python/**"
       - "setup.py"
+      - ".github/workflows/helpers/install-dependencies.sh"
       - ".github/workflows/pip-install.yml"
   push:
     paths:
       - "python/**"
       - "setup.py"
+      - ".github/workflows/helpers/install-dependencies.sh"
       - ".github/workflows/pip-install.yml"
   workflow_dispatch:
 concurrency:

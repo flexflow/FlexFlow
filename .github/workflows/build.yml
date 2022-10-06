@@ -6,6 +6,7 @@ on:
       - "cmake/**"
       - "python/**"
       - "src/**"
+      - ".github/workflows/helpers/install-dependencies.sh"
       - ".github/workflows/build.yml"
   push:
     paths:
@@ -13,6 +14,7 @@ on:
       - "cmake/**"
       - "python/**"
       - "src/**"
+      - ".github/workflows/helpers/install-dependencies.sh"
       - ".github/workflows/build.yml"
   workflow_dispatch:
 concurrency:
