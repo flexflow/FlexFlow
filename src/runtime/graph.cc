@@ -1577,20 +1577,20 @@ GraphOptimalViewSerialized
   if (model->config.only_data_parallel) {
     StageInfo sinfo[3];
     sinfo[0].sid = 0;
-    sinfo[0].ubatchSize = 16;
-    sinfo[0].bufSize = 48;
+    sinfo[0].ubatchSize = 128;
+    sinfo[0].bufSize = 384;
     sinfo[0].nFnB = 1;
     sinfo[0].device_num = 1;
 
     sinfo[1].sid = 1;
     sinfo[1].ubatchSize = 16;
-    sinfo[1].bufSize = 32;
+    sinfo[1].bufSize = 256;
     sinfo[1].nFnB = 1;
     sinfo[1].device_num = 1;
 
     sinfo[2].sid = 2;
     sinfo[2].ubatchSize = 16;
-    sinfo[2].bufSize = 16;
+    sinfo[2].bufSize = 128;
     sinfo[2].nFnB = 1;
     sinfo[2].device_num = 2;
 

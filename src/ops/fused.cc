@@ -80,6 +80,9 @@ FusedOp::FusedOp(FFModel &model, Op *op)
   op_num_outputs[0] = numOutputs;
   op_op_type[0] = op->op_type;
   operators[0] = op;
+  // pipe
+  nFnB = op->nFnB;
+  ubSize = op->ubSize;
   for (int i = 0; i < numInputs; i++) {
     op_input_source[i] = SOURCE_INPUT;
     op_input_idx[i] = i;
@@ -257,6 +260,17 @@ void FusedOp::map_output_tensors(FFModel &model) {
 }
 #endif
 
+void FusedOp::reset_idx(FFModel const &ff) {
+  for (int i = 0; i < numOperators; i++) {
+    for (int j = 0; j < operators[i]->numInputs; j++) {
+      operators[i]->fwd_input_idx[j] = 0;
+      operators[i]->bwd_input_idx[j] = 0;
+    }
+    fwd_output_idx = 0;
+    bwd_output_idx = 0;
+  }
+}
+
 void FusedOp::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
@@ -267,6 +281,64 @@ void FusedOp::init(FFModel const &ff) {
   Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
   for (int i = 0; i < numOperators; i++) {
     operators[i]->init(ff);
+    for (size_t j = 0; j < domain.get_volume(); j++)
+      fused_meta[j].meta[i] = operators[i]->meta[j];
+  }
+  for (size_t j = 0; j < domain.get_volume(); j++)
+    fused_meta[j].numOperators = numOperators;
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      argmap.set_point(*it,                                                    \
+                       TaskArgument(&fused_meta[idx++], sizeof(FusedOpMeta))); \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+  IndexLauncher launcher(FUSEDOP_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(FusedOp)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      meta[idx++] = fm.get_result<OpMeta *>(*it);                              \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+void FusedOp::pipeinit(FFModel const &ff) {
+  // assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  // Call init methods in individual operators
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+  for (int i = 0; i < numOperators; i++) {
+    operators[i]->pipeinit(ff);
     for (size_t j = 0; j < domain.get_volume(); j++)
       fused_meta[j].meta[i] = operators[i]->meta[j];
   }
@@ -364,6 +436,63 @@ void FusedOp::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+void FusedOp::pipeforward(FFModel const &ff) {
+  // Set iter_config
+  iter_config = ff.iter_config;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_forward(ff, argmap);
+  IndexLauncher launcher(FUSEDOP_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  int offset = 0;
+  for (int i = 0; i < numOperators; i++) {
+    for (int j = 0; j < operators[i]->numInputs; j++) {
+      launcher.add_region_requirement(RegionRequirement(
+          operators[i]->in_pipepart[j][operators[i]->fwd_input_idx[j]],
+          0 /*projection id*/,
+          READ_ONLY,
+          EXCLUSIVE,
+          operators[i]->inputs[j]->region));
+      launcher.add_field(offset + j, FID_DATA);
+      operators[i]->fwd_input_idx[j] =
+          (operators[i]->fwd_input_idx[j] + 1) %
+          (operators[i]->inputs[j]->pipe_buf_size / ubSize);
+    }
+    offset += operators[i]->numInputs;
+  }
+
+  for (int i = 0; i < numWeights; i++) {
+    assert(weights[i]->region != LogicalRegion::NO_REGION);
+    launcher.add_region_requirement(RegionRequirement(weights[i]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[i]->region));
+    launcher.add_field(offset + i, FID_DATA);
+  }
+  offset += numWeights;
+
+  for (int i = 0; i < numOutputs; i++) {
+    assert(outputs[i]->region != LogicalRegion::NO_REGION);
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[i]->out_pipepart[fwd_output_idx],
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          outputs[i]->region));
+    launcher.add_field(offset + i, FID_DATA);
+  }
+  fwd_output_idx = (fwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
+  runtime->execute_index_space(ctx, launcher);
+}
+
 void FusedOp::backward(FFModel const &ff) {
   // Set iter_config
   iter_config = ff.iter_config;
@@ -428,6 +557,85 @@ void FusedOp::backward(FFModel const &ff) {
                                                       outputs[i]->region_grad));
     launcher.add_field(idx++, FID_DATA);
   }
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void FusedOp::pipebackward(FFModel const &ff) {
+  // Set iter_config
+  iter_config = ff.iter_config;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_backward(ff, argmap);
+  IndexLauncher launcher(FUSEDOP_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(FusedOp)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  int idx = 0;
+  for (int i = 0; i < numOperators; i++) {
+    for (int j = 0; j < operators[i]->numInputs; j++) {
+      launcher.add_region_requirement(RegionRequirement(
+          operators[i]->in_pipepart[j][operators[i]->bwd_input_idx[j]],
+          0 /*projection id*/,
+          READ_ONLY,
+          EXCLUSIVE,
+          operators[i]->inputs[j]->region));
+      launcher.add_field(idx++, FID_DATA);
+    }
+  }
+  for (int i = 0; i < numWeights; i++) {
+    launcher.add_region_requirement(RegionRequirement(weights[i]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[i]->region));
+    launcher.add_field(idx++, FID_DATA);
+  }
+  for (int i = 0; i < numOutputs; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[i]->out_pipepart[bwd_output_idx],
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          outputs[i]->region));
+    launcher.add_field(idx++, FID_DATA);
+  }
+  for (int i = 0; i < numOperators; i++) {
+    for (int j = 0; j < operators[i]->numInputs; j++) {
+      launcher.add_region_requirement(RegionRequirement(
+          operators[i]->in_pipepart_grad[j][operators[i]->bwd_input_idx[j]],
+          0 /*projection id*/,
+          READ_WRITE,
+          EXCLUSIVE,
+          operators[i]->inputs[j]->region_grad));
+      launcher.add_field(idx++, FID_DATA);
+      operators[i]->bwd_input_idx[j] =
+          (operators[i]->bwd_input_idx[j] + 1) %
+          (operators[i]->inputs[j]->pipe_buf_size / ubSize);
+    }
+  }
+  for (int i = 0; i < numWeights; i++) {
+    launcher.add_region_requirement(RegionRequirement(weights[i]->part_grad,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      weights[i]->region_grad));
+    launcher.add_field(idx++, FID_DATA);
+  }
+  for (int i = 0; i < numOutputs; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(outputs[i]->out_pipepart_grad[bwd_output_idx],
+                          0 /*projection id*/,
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          outputs[i]->region_grad));
+    launcher.add_field(idx++, FID_DATA);
+  }
+  bwd_output_idx = (bwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
   runtime->execute_index_space(ctx, launcher);
 }
 

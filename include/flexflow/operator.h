@@ -283,7 +283,8 @@ public:
   int bwd_input_idx[MAX_NUM_INPUTS];
   int init_output_idx = 0;
 
-  // shicao branch
+  // shicao pipe
+  // input_dims only used when compiling
   ParallelDim input_dims[MAX_NUM_INPUTS][MAX_TENSOR_DIM];
   Legion::LogicalPartition in_pipepart[MAX_NUM_INPUTS][MAX_PIPE_PART];
   Legion::LogicalPartition in_pipepart_grad[MAX_NUM_INPUTS][MAX_PIPE_PART];

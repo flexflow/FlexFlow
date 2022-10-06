@@ -261,8 +261,8 @@ void Linear::init(FFModel const &ff) {
 }
 
 void Linear::pipeinit(FFModel const &ff) {
-  // shicao the input tensor may not have the same parallel_is in data-parallelism
-  // assert(check_output_input_weight_same_parallel_is());
+  // shicao the input tensor may not have the same parallel_is in
+  // data-parallelism assert(check_output_input_weight_same_parallel_is());
   // assert(check_output_input_weight_same_machine_view());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;

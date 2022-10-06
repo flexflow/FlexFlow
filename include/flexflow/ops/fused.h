@@ -31,18 +31,10 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void reset_idx(FFModel const &) override {
-    assert(0);
-  }
-  void pipeinit(FFModel const &) override {
-    assert(0);
-  }
-  void pipeforward(FFModel const &) override {
-    assert(0);
-  }
-  void pipebackward(FFModel const &) override {
-    assert(0);
-  }
+  void reset_idx(FFModel const &) override;
+  void pipeinit(FFModel const &) override;
+  void pipeforward(FFModel const &) override;
+  void pipebackward(FFModel const &) override;
   void print_layer(FFModel const &model) override {
     assert(0);
   }
