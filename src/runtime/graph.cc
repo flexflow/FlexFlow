@@ -1583,13 +1583,13 @@ GraphOptimalViewSerialized
     sinfo[0].device_num = 1;
 
     sinfo[1].sid = 1;
-    sinfo[1].ubatchSize = 16;
+    sinfo[1].ubatchSize = 128;
     sinfo[1].bufSize = 256;
     sinfo[1].nFnB = 1;
     sinfo[1].device_num = 1;
 
     sinfo[2].sid = 2;
-    sinfo[2].ubatchSize = 16;
+    sinfo[2].ubatchSize = 128;
     sinfo[2].bufSize = 128;
     sinfo[2].nFnB = 1;
     sinfo[2].device_num = 2;

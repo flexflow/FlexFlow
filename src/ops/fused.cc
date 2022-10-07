@@ -57,6 +57,9 @@ FusedOp::FusedOp(FFModel &model, Op *op)
   for (int i = 0; i < numInputs; i++) {
     inputs[i] = op->inputs[i];
     input_data_types[i] = op->inputs[i]->data_type;
+    input_pipebuf[i] = op->inputs[i]->pipe_buf_size;
+    in_pipepart[i] = op->in_pipepart[i];
+    in_pipepart_grad[i] = op->in_pipepart_grad[i];
     // input_lps[i] = op->input_lps[i];
     // input_grad_lps[i] = op->input_grad_lps[i];
   }
@@ -83,6 +86,7 @@ FusedOp::FusedOp(FFModel &model, Op *op)
   // pipe
   nFnB = op->nFnB;
   ubSize = op->ubSize;
+
   for (int i = 0; i < numInputs; i++) {
     op_input_source[i] = SOURCE_INPUT;
     op_input_idx[i] = i;
@@ -168,6 +172,9 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
     } else {
       inputs[numInputs] = op->inputs[i];
       input_data_types[numInputs] = op->inputs[i]->data_type;
+      input_pipebuf[numInputs] = op->inputs[i]->pipe_buf_size;
+      in_pipepart[numInputs] = op->in_pipepart[i];
+      in_pipepart_grad[numInputs] = op->in_pipepart_grad[i];
       // input_lps[numInputs] = op->input_lps[i];
       // input_grad_lps[numInputs] = op->input_grad_lps[i];
       op_input_source[input_offset + i] = SOURCE_INPUT;
@@ -452,21 +459,17 @@ void FusedOp::pipeforward(FFModel const &ff) {
                          0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   int offset = 0;
-  for (int i = 0; i < numOperators; i++) {
-    for (int j = 0; j < operators[i]->numInputs; j++) {
-      launcher.add_region_requirement(RegionRequirement(
-          operators[i]->in_pipepart[j][operators[i]->fwd_input_idx[j]],
-          0 /*projection id*/,
-          READ_ONLY,
-          EXCLUSIVE,
-          operators[i]->inputs[j]->region));
-      launcher.add_field(offset + j, FID_DATA);
-      operators[i]->fwd_input_idx[j] =
-          (operators[i]->fwd_input_idx[j] + 1) %
-          (operators[i]->inputs[j]->pipe_buf_size / ubSize);
-    }
-    offset += operators[i]->numInputs;
+  for (int i = 0; i < numInputs; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(in_pipepart[i][fwd_input_idx[i]],
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          inputs[i]->region));
+    launcher.add_field(offset + i, FID_DATA);
+    fwd_input_idx[i] = (fwd_input_idx[i] + 1) % (pipe_buf_size[i] / ubSize);
   }
+  offset += numInputs;
 
   for (int i = 0; i < numWeights; i++) {
     assert(weights[i]->region != LogicalRegion::NO_REGION);
@@ -576,16 +579,14 @@ void FusedOp::pipebackward(FFModel const &ff) {
                          0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
   int idx = 0;
-  for (int i = 0; i < numOperators; i++) {
-    for (int j = 0; j < operators[i]->numInputs; j++) {
-      launcher.add_region_requirement(RegionRequirement(
-          operators[i]->in_pipepart[j][operators[i]->bwd_input_idx[j]],
-          0 /*projection id*/,
-          READ_ONLY,
-          EXCLUSIVE,
-          operators[i]->inputs[j]->region));
-      launcher.add_field(idx++, FID_DATA);
-    }
+  for (int i = 0; i < numInputs; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(in_pipepart[i][bwd_input_idx[i]],
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          inputs[i]->region));
+    launcher.add_field(idx++, FID_DATA);
   }
   for (int i = 0; i < numWeights; i++) {
     launcher.add_region_requirement(RegionRequirement(weights[i]->part,
@@ -604,19 +605,15 @@ void FusedOp::pipebackward(FFModel const &ff) {
                           outputs[i]->region));
     launcher.add_field(idx++, FID_DATA);
   }
-  for (int i = 0; i < numOperators; i++) {
-    for (int j = 0; j < operators[i]->numInputs; j++) {
-      launcher.add_region_requirement(RegionRequirement(
-          operators[i]->in_pipepart_grad[j][operators[i]->bwd_input_idx[j]],
-          0 /*projection id*/,
-          READ_WRITE,
-          EXCLUSIVE,
-          operators[i]->inputs[j]->region_grad));
-      launcher.add_field(idx++, FID_DATA);
-      operators[i]->bwd_input_idx[j] =
-          (operators[i]->bwd_input_idx[j] + 1) %
-          (operators[i]->inputs[j]->pipe_buf_size / ubSize);
-    }
+  for (int i = 0; i < numInputs; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(in_pipepart_grad[i][bwd_input_idx[i]],
+                          0 /*projection id*/,
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          inputs[i]->region_grad));
+    launcher.add_field(idx++, FID_DATA);
+    bwd_input_idx[i] = (bwd_input_idx[i] + 1) % (pipe_buf_size[i] / ubSize);
   }
   for (int i = 0; i < numWeights; i++) {
     launcher.add_region_requirement(RegionRequirement(weights[i]->part_grad,

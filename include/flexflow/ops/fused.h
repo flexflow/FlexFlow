@@ -69,6 +69,8 @@ public:
   int op_input_idx[MAX_NUM_FUSED_TENSORS];
   int op_weight_idx[MAX_NUM_FUSED_TENSORS];
   int op_output_idx[MAX_NUM_FUSED_TENSORS];
+  // pipe
+  int input_pipebuf[MAX_NUM_INPUTS];
   Op *operators[MAX_NUM_FUSED_OPERATORS];
   FusedOpMeta fused_meta[MAX_NUM_WORKERS];
   int numOperators;
