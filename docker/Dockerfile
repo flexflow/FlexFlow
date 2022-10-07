@@ -1,6 +1,6 @@
 FROM nvidia/cuda:11.1.1-devel-ubuntu18.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binutils git zlib1g-dev nano && \
+RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binutils git zlib1g-dev && \
     rm -rf /var/lib/apt/lists/*
 
 RUN wget -c http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-11.1-linux-x64-v8.0.5.39.tgz && \
@@ -18,7 +18,7 @@ RUN wget -c https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.s
     /opt/conda/bin/conda clean -ya
 
 RUN /opt/conda/bin/conda install cmake make pillow
-RUN /opt/conda/bin/conda install -c conda-forge numpy keras-preprocessing pybind11
+RUN /opt/conda/bin/conda install -c conda-forge numpy keras-preprocessing pybind11 cmake-build-extension
 
 ENV PATH /opt/conda/bin:$PATH
 ENV CUDNN_DIR /usr/local/cuda

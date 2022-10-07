@@ -32,9 +32,6 @@ CUDA_LIB_PATH="${CUDA_DIR}/lib64/stubs"
 # enable Python
 FF_USE_PYTHON=ON
 
-# whether we are building from pip. Default to OFF
-FF_BUILD_FROM_PYPI="${FF_BUILD_FROM_PYPI:-OFF}"
-
 # enable NCCL
 FF_USE_NCCL=ON
 
