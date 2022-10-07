@@ -157,11 +157,11 @@ void Embedding::forward_kernel_wrapper(EmbeddingMeta const *m,
 
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
-    // print_tensor<TI>(input_ptr, input_domain.get_volume(),
-    // "[Embedding:forward:input]"); print_tensor<float>(kernel_ptr,
+    // print_tensor<TI>(input_ptr, 10,
+    // "[Embedding:forward:input]"); 
+    // print_tensor<float>(kernel_ptr,
     // kernel_domain.get_volume(), "[Embedding:forward:weight]");
-    // print_tensor<float>(output_ptr, output_domain.get_volume(),
-    // "[Embedding:forward:output]");
+    print_tensor<float>(output_ptr, 10, "[Embedding:forward:output]");
   }
 }
 

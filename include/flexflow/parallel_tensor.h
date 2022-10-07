@@ -204,6 +204,9 @@ public:
   Legion::LogicalPartition out_pipepart[MAX_PIPE_PART];
   // Legion::LogicalPartition in_pipepart_grad[MAX_PIPE_PART];
   Legion::LogicalPartition out_pipepart_grad[MAX_PIPE_PART];
+  // record to_stages
+  int num_to_stages;
+  int input_to_stage[MAX_PIPE_PART];
 
   Legion::PhysicalRegion physical_region;
 };
