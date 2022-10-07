@@ -11,7 +11,7 @@ rm -rf config && cp -r ../config ./config
 cores_available=$(nproc --all)
 n_build_cores=$(( cores_available -1 ))
 
-# Get CUDA architecture, if GPUs are available
+# Get CUDA architecture(s), if GPUs are available
 cat << EOF > ./get_gpu_arch.cu
 #include <stdio.h>
 int main() {
@@ -30,10 +30,13 @@ gpu_arch_codes=""
 if command -v nvcc &> /dev/null
 then
   nvcc ./get_gpu_arch.cu -o ./get_gpu_arch
-  gpu_arch_codes=$(./get_gpu_arch)
+  gpu_arch_codes="$(./get_gpu_arch)"
 fi
-gpu_arch_codes=$(echo "$gpu_arch_codes" | xargs -n1 | sort -u | xargs)
-gpu_arch_codes=$(echo ${gpu_arch_codes// /,})
+gpu_arch_codes="$(echo "$gpu_arch_codes" | xargs -n1 | sort -u | xargs)"
+gpu_arch_codes="$(echo ${gpu_arch_codes// /,})"
+rm -f ./get_gpu_arch.cu ./get_gpu_arch
+
+# Print the CUDA architecture(s) to the config file
 if [[ -n "$gpu_arch_codes" ]]; then
   echo "Host machine has GPUs with architecture codes: $gpu_arch_codes"
   echo "Configuring FlexFlow to build for the $gpu_arch_codes code(s)."
@@ -43,7 +46,6 @@ else
   echo "Letting FlexFlow build for a default GPU architecture: code=70"
   sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
 fi
-rm -f ./get_gpu_arch.cu ./get_gpu_arch
 
 # Build Docker image
 docker build --build-arg n_build_cores=$n_build_cores  -t flexflow .
