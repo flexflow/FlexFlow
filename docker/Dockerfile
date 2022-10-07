@@ -37,7 +37,7 @@ ARG n_build_cores
 RUN cd /usr/FlexFlow && mkdir -p build && cd build && \
     ../config/config.linux && \
     make -j $n_build_cores && \
-    #../config/config.linux && \
+    ../config/config.linux && \
     make install
 
 # Add the FlexFlow module to Conda's Python
