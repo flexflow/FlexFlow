@@ -44,3 +44,6 @@ jobs:
           export FF_HOME=$(pwd)
           export CUDA_PATH=/usr/local/cuda/lib64/stubs
           pip install . --verbose
+
+      - name: Check availability of Python flexflow.core module
+        run: python -c "import flexflow.core; exit()"
