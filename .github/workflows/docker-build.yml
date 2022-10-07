@@ -11,9 +11,12 @@ on:
       - "!docker/README.md"
       - ".github/workflows/docker-build.yml"
   workflow_dispatch:
+
+# Cancel outdated workflows if they are still running
 concurrency:
   group: docker-build-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
+
 jobs:
   docker-build:
     name: Build and Install FlexFlow in a Docker Container
