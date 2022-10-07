@@ -42,5 +42,5 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
-          sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
-          pip install .
+          export CUDA_PATH=/usr/local/cuda/lib64/stubs
+          pip install . --verbose

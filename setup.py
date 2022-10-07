@@ -1,25 +1,39 @@
 from setuptools import setup, find_packages
 from pathlib import Path
-import sys, os, subprocess
-from setuptools.command.build_ext import build_ext
+from cmake_build_extension import BuildExtension, CMakeExtension
+import sys
+# from setuptools.command.install import install
+#
+# global enable_nccl
+# enable_nccl = '-DFF_USE_NCCL=OFF'
+#
+# class InstallCommand(install):
+#   user_options = install.user_options + [
+#     ('nccl', None, 'Enable NCCL'),
+#     #('someval=', None, None) # an option that takes a value
+#   ]
+#
+#   def initialize_options(self):
+#     install.initialize_options(self)
+#     self.nccl = 0
+#     #self.someval = None
+#
+#   def finalize_options(self):
+#     install.finalize_options(self)
+#
+#   def run(self):
+#       if self.nccl != None:
+#         global enable_nccl
+#         enable_nccl = '-DFF_USE_NCCL=ON'
+#         print(self.nccl, enable_nccl)
+#        # assert 0
+#       install.run(self)
 
 datadir = Path(__file__).parent / 'python/flexflow'
 files = [str(p.relative_to(datadir)) for p in datadir.rglob('*.py')]
-wdir = os.getcwd()
-ncores = os.cpu_count()
 
-class CMake_Build_Extension(build_ext):
-  def run(self):
-    os.makedirs("build",exist_ok=True)
-    os.chdir("build")
-    build_cmds = ["FF_BUILD_FROM_PYPI=ON ../config/config.linux", f"make -j {ncores-1}"]
-    
-    for command in build_cmds:
-      print(f"Running {command}")
-      subprocess.run(command, shell=True, check=True, capture_output=False,)
-    
-    os.chdir(wdir)
-    build_ext.run(self)
+cmdclass = dict()
+cmdclass['build_ext'] = BuildExtension
 
 setup(
   name='flexflow',
@@ -28,8 +42,6 @@ setup(
   url='https://github.com/flexflow/FlexFlow',
   license='Apache',
   packages=find_packages("python"),
-  include_package_data=True,
-  has_ext_modules=lambda: True,
   package_dir={'': "python"},
   package_data={'flexflow': files},
   zip_safe= False,
@@ -38,15 +50,30 @@ setup(
                     'qualname>=0.1',
                     'keras_preprocessing',
                     'Pillow',
+                    'cmake-build-extension',
                     'pybind11',
                     'ninja'
                     ],
   entry_points = {
           'console_scripts': ['flexflow_python=flexflow.driver:flexflow_driver'],
       },
-  cmdclass={
-      'build_ext': CMake_Build_Extension
-  },
+  ext_modules=[
+    CMakeExtension(name='flexflow',
+                   install_prefix='flexflow',
+                   cmake_configure_options=[
+                       '-DFF_BUILD_FROM_PYPI=ON',
+                       '-DCUDA_USE_STATIC_CUDA_RUNTIME=OFF',
+                       '-DFF_USE_PYTHON=ON',
+                       '-DCUDA_PATH=/usr/local/cuda',
+                       '-DCUDNN_PATH=/usr/local/cuda',
+                       '-DFF_CUDA_ARCH=70',
+                       '-DFF_USE_NCCL=ON',
+                       '-DFF_USE_GASNET=OFF',
+                       '-DFF_USE_AVX2=OFF',
+                       '-DFF_MAX_DIM=5'
+                   ]),
+  ],
+  cmdclass=cmdclass,
   classifiers=[
       'Programming Language :: Python :: 3.6',
       'License :: OSI Approved :: Apache Software License',
