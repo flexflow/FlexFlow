@@ -1575,24 +1575,25 @@ GraphOptimalViewSerialized
   // random 3-stage partition
 
   if (model->config.only_data_parallel) {
-    StageInfo sinfo[3];
-    sinfo[0].sid = 0;
-    sinfo[0].ubatchSize = 128;
-    sinfo[0].bufSize = 384;
-    sinfo[0].nFnB = 1;
-    sinfo[0].device_num = 1;
+    // DLRM
+    // StageInfo sinfo[3];
+    // sinfo[0].sid = 0;
+    // sinfo[0].ubatchSize = 128;
+    // sinfo[0].bufSize = 384;
+    // sinfo[0].nFnB = 1;
+    // sinfo[0].device_num = 1;
 
-    sinfo[1].sid = 1;
-    sinfo[1].ubatchSize = 128;
-    sinfo[1].bufSize = 256;
-    sinfo[1].nFnB = 1;
-    sinfo[1].device_num = 2;
+    // sinfo[1].sid = 1;
+    // sinfo[1].ubatchSize = 128;
+    // sinfo[1].bufSize = 256;
+    // sinfo[1].nFnB = 1;
+    // sinfo[1].device_num = 2;
 
-    sinfo[2].sid = 2;
-    sinfo[2].ubatchSize = 128;
-    sinfo[2].bufSize = 128;
-    sinfo[2].nFnB = 1;
-    sinfo[2].device_num = 1;
+    // sinfo[2].sid = 2;
+    // sinfo[2].ubatchSize = 128;
+    // sinfo[2].bufSize = 128;
+    // sinfo[2].nFnB = 1;
+    // sinfo[2].device_num = 1;
 
     // sinfo[3].sid = 3;
     // sinfo[3].ubatchSize = 128;
@@ -1600,9 +1601,35 @@ GraphOptimalViewSerialized
     // sinfo[3].nFnB = 1;
     // sinfo[3].device_num = 1;
 
-    MachineView data_parallel_view[3];
+    // candle-uno
+    StageInfo sinfo[4];
+    sinfo[0].sid = 0;
+    sinfo[0].ubatchSize = 64;
+    sinfo[0].bufSize = 128;
+    sinfo[0].nFnB = 1;
+    sinfo[0].device_num = 1;
+
+    sinfo[1].sid = 1;
+    sinfo[1].ubatchSize = 64;
+    sinfo[1].bufSize = 128;
+    sinfo[1].nFnB = 1;
+    sinfo[1].device_num = 1;
+
+    sinfo[2].sid = 2;
+    sinfo[2].ubatchSize = 64;
+    sinfo[2].bufSize = 64;
+    sinfo[2].nFnB = 1;
+    sinfo[2].device_num = 1;
+
+    sinfo[3].sid = 3;
+    sinfo[3].ubatchSize = 64;
+    sinfo[3].bufSize = 64;
+    sinfo[3].nFnB = 1;
+    sinfo[3].device_num = 1;
+
+    MachineView data_parallel_view[4];
     int start_device = 0;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 4; i++) {
       data_parallel_view[i].device_type = MachineView::GPU;
       data_parallel_view[i].ndims = 1;
       // data_parallel_view.dim[0] = model->config.numNodes *
