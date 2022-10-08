@@ -3104,21 +3104,22 @@ void FFModel::compile(LossType loss_type,
       for (int j = 0; j < op->inputs[i]->num_to_stages; j++) {
         // this input has already been mapped to this stage before
         if (op->inputs[i]->input_to_stage[j] == op->stage_guid) {
-            assert(!found);
-            found = true;
-            for (int k = 0; k < op->inputs[i]->pipe_buf_size / op->ubSize; k++) {
-              op->in_pipepart[i][k] = op->in_pipepart[j][k];
-              op->in_pipepart_grad[i][k] = op->in_pipepart_grad[j][k];
-            }
-            break;
+          assert(!found);
+          found = true;
+          for (int k = 0; k < op->inputs[i]->pipe_buf_size / op->ubSize; k++) {
+            op->in_pipepart[i][k] = op->in_pipepart[j][k];
+            op->in_pipepart_grad[i][k] = op->in_pipepart_grad[j][k];
+          }
+          break;
         }
       }
-          
+
       if (found) {
         // do nothing
       } else {
         op->inputs[i]->num_to_stages += 1;
-        op->inputs[i]->input_to_stage[op->inputs[i]->num_to_stages] = op->stage_guid;
+        op->inputs[i]->input_to_stage[op->inputs[i]->num_to_stages] =
+            op->stage_guid;
         if (op->inputs[i]->owner_op->stage_guid == op->stage_guid) {
           for (int j = 0; j < op->inputs[i]->pipe_buf_size / op->ubSize; j++) {
             op->in_pipepart[i][j] = op->inputs[i]->out_pipepart[j];
@@ -3128,7 +3129,6 @@ void FFModel::compile(LossType loss_type,
           map_input_tensors(op->inputs[i], op, i);
         }
       }
-      
     }
 
     if (op->is_parallel_op())

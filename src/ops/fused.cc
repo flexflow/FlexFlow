@@ -61,7 +61,7 @@ FusedOp::FusedOp(FFModel &model, Op *op)
     inputs[i] = op->inputs[i];
     input_data_types[i] = op->inputs[i]->data_type;
     input_pipebuf[i] = op->inputs[i]->pipe_buf_size;
-    for (int j = 0; j < op->inputs[i]->pipe_buf_size/ubSize; j++){
+    for (int j = 0; j < op->inputs[i]->pipe_buf_size / ubSize; j++) {
       assert(op->in_pipepart[i][j] != LogicalPartition::NO_PART);
       in_pipepart[i][j] = op->in_pipepart[i][j];
       in_pipepart_grad[i][j] = op->in_pipepart_grad[i][j];
@@ -178,7 +178,7 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
       inputs[numInputs] = op->inputs[i];
       input_data_types[numInputs] = op->inputs[i]->data_type;
       input_pipebuf[numInputs] = op->inputs[i]->pipe_buf_size;
-      for (int j = 0; j < op->inputs[i]->pipe_buf_size/ubSize; j++){
+      for (int j = 0; j < op->inputs[i]->pipe_buf_size / ubSize; j++) {
         assert(op->in_pipepart[i][j] != LogicalPartition::NO_PART);
         in_pipepart[numInputs][j] = op->in_pipepart[i][j];
         in_pipepart_grad[numInputs][j] = op->in_pipepart_grad[i][j];
@@ -491,7 +491,8 @@ void FusedOp::pipeforward(FFModel const &ff) {
 
   for (int i = 0; i < numOutputs; i++) {
     assert(outputs[i]->region != LogicalRegion::NO_REGION);
-    assert(outputs[i]->out_pipepart[fwd_output_idx] != LogicalPartition::NO_PART);
+    assert(outputs[i]->out_pipepart[fwd_output_idx] !=
+           LogicalPartition::NO_PART);
     launcher.add_region_requirement(
         RegionRequirement(outputs[i]->out_pipepart[fwd_output_idx],
                           0 /*projection id*/,
@@ -499,7 +500,7 @@ void FusedOp::pipeforward(FFModel const &ff) {
                           EXCLUSIVE,
                           outputs[i]->region));
     launcher.add_field(offset + i, FID_DATA);
-  } 
+  }
   fwd_output_idx = (fwd_output_idx + 1) % outputs[0]->pipe_num_part_out;
   runtime->execute_index_space(ctx, launcher);
 }
