@@ -25,7 +25,7 @@ void DataLoader::load_input(Task const *task,
   SampleIdxs *meta = (SampleIdxs *)task->local_args;
   TensorAccessorR<float, 2> acc_full_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_batch_input(regions[1],
+  TensorAccessorW<float, 3> acc_batch_input(regions[1],
                                             task->regions[1],
                                             FID_DATA,
                                             ctx,

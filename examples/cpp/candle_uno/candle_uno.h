@@ -43,10 +43,16 @@ public:
                                   Context ctx,
                                   Runtime *runtime);
   void next_batch(FFModel &);
+  void next_label_ubatch(FlexFlow::FFModel &);
+  void next_input_ubatch(FlexFlow::FFModel &, int idx);
   void reset(void);
+  void reset_idx(void);
 
 public:
-  int num_samples, next_index;
+  int num_samples, next_index, next_label_index;
+  int next_input_index[MAX_NUM_INPUTS];
+  int input_idx[MAX_NUM_INPUTS];
+  int label_idx = 0;
   std::vector<Tensor> full_inputs, batch_inputs;
   Tensor full_label, batch_label;
 };

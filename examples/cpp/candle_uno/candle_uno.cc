@@ -75,7 +75,7 @@ void FlexFlow::top_level_task(Task const *task,
     int argc = command_args.argc;
     parse_input_args(argv, argc, candle_config);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-                  ff_config.batchSize,
+                  ffConfig.ubatchUnit,
                   ff_config.workersPerNode,
                   ff_config.numNodes);
     print_vector("Dense Layers", candle_config.dense_layers);
@@ -104,7 +104,7 @@ void FlexFlow::top_level_task(Task const *task,
        it++) {
     assert(feature_shapes.find(it->second) != feature_shapes.end());
     int shape = feature_shapes[it->second];
-    int const dims[] = {ff_config.batchSize, shape};
+    int const dims[] = {ffConfig.ubatchUnit, shape};
     Tensor input = ff.create_tensor<2>(dims, DT_FLOAT);
     all_inputs.push_back(input);
     if (input_models.find(it->second) != input_models.end()) {
@@ -135,9 +135,39 @@ void FlexFlow::top_level_task(Task const *task,
   ff.compile(optimizer, LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics);
   // Data Loader
   DataLoader data_loader(ff, candle_config, all_inputs, ff.label_tensor);
-  data_loader.next_batch(ff);
-  data_loader.reset();
   ff.init_operators();
+  ff.zero_weight_gradients();
+  // data_loader.next_batch(ff);
+  // data_loader.reset();
+  // ff.init_operators();
+  for (int iter = 0; iter < 1; iter++) {
+    data_loader.reset();
+    ff.reset_metrics();
+    ff.reset_pipe_idx();
+    data_loader.reset_idx();
+    for (int iter_inner = 0; iter_inner < ff.iter_perbatch; iter_inner++) {
+      if (candle_config.dataset_path.length() == 0) {
+        // Only load data once for random input
+        for (size_t i = 0; i < data_loader.batch_inputs.size(); i++) {
+          printf("load input [%ld]\n", i);
+          for (int k = 0;
+               k < data_loader.batch_nputs[i]->parallel_tensor->owner_op->nFnB;
+               k++) {
+            data_loader.next_input_ubatch(ff, i);
+          }
+        }
+
+        for (int i = 0; i < ff.get_final_operator()->nFnB; i++) {
+          data_loader.next_label_ubatch(ff);
+        }
+      }
+      ff.forward();
+      ff.zero_input_gradients();
+      ff.backward();
+    }
+    ff.update();
+    ff.zero_weight_gradients();
+  }
 
   log_app.print("Warmup finished...Start timer...");
   log_app.print("Num. epochs = %d", ff_config.epochs);
@@ -145,22 +175,56 @@ void FlexFlow::top_level_task(Task const *task,
                 data_loader.num_samples / ff_config.batchSize);
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ff_config.epochs; epoch++) {
-    data_loader.reset();
+    // data_loader.reset();
     ff.reset_metrics();
     int iterations = data_loader.num_samples / ff_config.batchSize;
     for (int iter = 0; iter < iterations; iter++) {
-      if (candle_config.dataset_path.length() == 0) {
-        // Only load data once for random input
-        if (iter == 0 && epoch == 0)
-          data_loader.next_batch(ff);
-      } else {
-        data_loader.next_batch(ff);
-      }
+      ff.reset_pipe_idx();
+      // data_loader.reset_idx();
       runtime->begin_trace(ctx, 111 /*trace_id*/);
-      ff.forward();
-      ff.zero_gradients();
-      ff.backward();
+      for (int iter_inner = 0; iter_inner < ff.iter_perbatch; iter_inner++) {
+        if (candle_config.dataset_path.length() == 2) {
+          // Only load data once for random input
+          for (size_t i = 0; i < data_loader.batch_inputs.size(); i++) {
+            printf("load input [%ld]\n", i);
+            for (int k = 0;
+                 k <
+                 data_loader.batch_inputs[i]->parallel_tensor->owner_op->nFnB;
+                 k++) {
+              data_loader.next_input_ubatch(ff, i);
+            }
+          }
+
+          for (int i = 0; i < ff.get_final_operator()->nFnB; i++) {
+            data_loader.next_label_ubatch(ff);
+          }
+        } else if (candle_config.dataset_path.length() != 0) {
+          // shicao pipeline
+          for (size_t i = 0; i < data_loader.batch_inputs.size(); i++) {
+            for (int k = 0;
+                 k <
+                 data_loader.batch_inputs[i]->parallel_tensor->owner_op->nFnB;
+                 k++) {
+              data_loader.next_sparse_input_ubatch(ff, i);
+            }
+          }
+
+          for (int i = 0; i < ff.get_final_operator()->nFnB; i++) {
+            data_loader.next_label_ubatch(ff);
+          }
+        }
+        // log_app.print("DEBUG: forward...");
+        ff.forward();
+        // log_app.print("DEBUG: zero input gradients...");
+        // ff.zero_input_gradients();
+        // log_app.print("DEBUG: backward...");
+        ff.backward();
+      }
+      // log_app.print("DEBUG:update weight");
       ff.update();
+      // log_app.print("DEBUG:zero weight gradients");
+      ff.zero_weight_gradients();
+      // log_app.print("DEBUG:finish zero weight gradients");
       runtime->end_trace(ctx, 111 /*trace_id*/);
     }
   }
@@ -245,17 +309,36 @@ DataLoader::DataLoader(FFModel &ff,
       assert(get_file_size(filename) == (size_t)num_samples * sizeof(float));
     }
   }
-  return;
+  // return;
   for (size_t i = 0; i < _inputs.size(); i++) {
     batch_inputs.push_back(_inputs[i]);
     int const dims[] = {num_samples, _inputs[i]->dims[0]};
+    ParallelDim pdims[2];
+    pdims[0].size = num_samples;
+    pdims[1].size = _inputs[i]->dims[0];
+    pdims[0].parallel_idx = -1;
+    pdims[1].parallel_idx = -1;
+    pdims[0].degree = 1;
+    pdims[1].degree = 1;
     Tensor full_input = ff.create_tensor<2>(dims, DT_FLOAT);
+    full_input->parallel_tensor = ff.create_parallel_tensor<2>(pdims, DT_INT64);
+    ff.map_tensor(full_input->parallel_tensor, NULL);
     full_inputs.push_back(full_input);
   }
   {
     batch_label = _label;
     int const dims[] = {num_samples, 1};
+    ParallelDim pdims[2];
+    pdims[0].size = num_samples;
+    pdims[1].size = 1;
+    pdims[0].parallel_idx = -1;
+    pdims[1].parallel_idx = -1;
+    pdims[0].degree = 1;
+    pdims[1].degree = 1;
     full_label = ff.create_tensor<2>(dims, DT_FLOAT);
+    full_label->parallel_tensor = ff.create_parallel_tensor<2>(pdims, DT_FLOAT);
+    log_app.print("Created full label parallel tensor...");
+    ff.map_tensor(full_label->parallel_tensor, NULL);
   }
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
@@ -429,8 +512,123 @@ void DataLoader::next_batch(FFModel &ff) {
   next_index += ff.config.batchSize;
 }
 
+void DataLoader::next_input_ubatch(FFModel &ff, int idx) {
+  // return;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  assert(full_inputs.size() == batch_inputs.size());
+  // Load inputs
+  Domain domain = runtime->get_index_space_domain(
+      ctx, batch_inputs[idx]->parallel_tensor->parallel_is);
+  ArgumentMap argmap;
+  int bidx = next_input_index[idx];
+  int ubSize = batch_inputs[idx]->parallel_tensor->owner_op->ubSize;
+  for (Domain::DomainPointIterator it(domain); it; it++) {
+    SampleIdxs meta;
+    int ndims = batch_inputs[idx]->parallel_tensor->num_dims;
+    meta.num_samples =
+        ubSize / batch_inputs[idx]->parallel_tensor->dims[ndims - 2].degree;
+    for (int i = 0; i < meta.num_samples; i++)
+      meta.idxs[i] = bidx++;
+    argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+  }
+  IndexLauncher launcher(
+      CUSTOM_GPU_TASK_ID_1,
+      batch_inputs[idx]->parallel_tensor->parallel_is,
+      TaskArgument(&i, sizeof(int)),
+      argmap,
+      Predicate::TRUE_PRED,
+      false /*must*/,
+      0 /*mapper_id*/,
+      batch_inputs[idx]->parallel_tensor->machine_view.hash());
+  launcher.add_region_requirement(
+      RegionRequirement(full_inputs[idx]->parallel_tensor->region,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        full_inputs[idx]->parallel_tensor->region,
+                        MAP_TO_ZC_MEMORY));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(
+      batch_inputs[idx]->parallel_tensor->out_pipepart[input_idx[idx]],
+      0 /*projection id*/,
+      WRITE_ONLY,
+      EXCLUSIVE,
+      batch_inputs[idx]->parallel_tensor->region));
+  launcher.add_field(1, FID_DATA);
+  input_idx[idx] = (input_idx[idx] + 1) %
+                   batch_inputs[idx]->parallel_tensor->pipe_num_part_out;
+  next_input_index[idx] += ubSize;
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void DataLoader::next_label_ubatch(FFModel &ff) {
+  // return;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  assert(full_inputs.size() == batch_inputs.size());
+  // Load label
+  {
+    Domain domain = runtime->get_index_space_domain(
+        ctx, batch_label->parallel_tensor->parallel_is);
+    ArgumentMap argmap;
+    int idx = next_label_index;
+    int ubSize = batch_label->parallel_tensor->pipe_buf_size /
+                 batch_label->parallel_tensor->pipe_num_part_out;
+    for (Domain::DomainPointIterator it(domain); it; it++) {
+      SampleIdxs meta;
+      int ndims = batch_label->parallel_tensor->num_dims;
+      meta.num_samples =
+          ubSize / batch_label->parallel_tensor->dims[ndims - 2].degree;
+      for (int i = 0; i < meta.num_samples; i++)
+        meta.idxs[i] = idx++;
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
+    IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1,
+                           batch_label->parallel_tensor->parallel_is,
+                           TaskArgument(NULL, 0),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false /*must*/,
+                           0 /*mapper_id*/,
+                           batch_label->parallel_tensor->machine_view.hash());
+    launcher.add_region_requirement(
+        RegionRequirement(full_label->parallel_tensor->region,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          full_label->parallel_tensor->region,
+                          MAP_TO_ZC_MEMORY));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_label->parallel_tensor->out_pipepart[label_idx],
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_label->parallel_tensor->region));
+    launcher.add_field(1, FID_DATA);
+    label_idx =
+        (label_idx + 1) % batch_label->parallel_tensor->pipe_num_part_out;
+    next_label_index += ubSize;
+    runtime->execute_index_space(ctx, launcher);
+  }
+}
+
 void DataLoader::reset() {
   next_index = 0;
+  next_label_index = 0;
+  label_idx = 0;
+  for (size_t i = 0; i < batch_inputs.size(); i++) {
+    next_input_index[i] = 0;
+    input_idx[i] = 0;
+  }
+}
+
+void DataLoader::reset_idx() {
+  label_idx = 0;
+  for (size_t i = 0; i < batch_inputs.size(); i++) {
+    input_idx[i] = 0;
+  }
 }
 
 void FlexFlow::register_custom_tasks() {
