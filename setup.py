@@ -21,7 +21,14 @@ cfg = dict(
     ]
 )
 # Pip supports the configs in the two lists below
-support_env_vars = ["CC_FLAGS", "NVCC_FLAGS", "LD_FLAGS", "CUDA_PATH"]
+support_env_vars = [
+    "CC_FLAGS",
+    "NVCC_FLAGS",
+    "LD_FLAGS",
+    "CUDA_PATH",
+    "CUDA_DIR",
+    "CUDNN_DIR",
+]
 supported_cmake_vars = [
     "SET_CC",
     "SET_CXX",
@@ -39,13 +46,13 @@ supported_cmake_vars = [
     "SET_AVX2",
     "SET_MAX_DIM",
 ]
-# If the config file sets any variable whose name appears in the support_env_vars list, 
+# If the config file sets any variable whose name appears in the support_env_vars list,
 # export such variable before running CMake
 for k in support_env_vars:
     if k in cfg:
         os.environ[k] = cfg[k]
-# If the config file sets any variable whose name appears in the supported_cmake_vars list, 
-# pass such variable as a config option to CMake, in addition to the two default configs 
+# If the config file sets any variable whose name appears in the supported_cmake_vars list,
+# pass such variable as a config option to CMake, in addition to the two default configs
 # '-DFF_BUILD_FROM_PYPI=ON' and '-DCUDA_USE_STATIC_CUDA_RUNTIME=OFF'.
 cmake_configure_options = [
     "-DFF_BUILD_FROM_PYPI=ON",
