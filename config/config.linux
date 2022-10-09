@@ -69,7 +69,7 @@ if [ -n "$CC_FLAGS" ]; then
   SET_CC_FLAGS="CC_FLAGS=${CC_FLAGS}"
 fi
 
-if [ -n "$CC_FLAGS" ]; then
+if [ -n "$NVCC_FLAGS" ]; then
   SET_NVCC_FLAGS="NVCC_FLAGS=${NVCC_FLAGS}"
 fi
 
