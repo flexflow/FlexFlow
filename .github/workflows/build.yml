@@ -4,6 +4,7 @@ on:
     paths:
       - "include/**"
       - "cmake/**"
+      - "config/**"
       - "python/**"
       - "src/**"
       - ".github/workflows/helpers/install-dependencies.sh"
@@ -12,6 +13,7 @@ on:
     paths:
       - "include/**"
       - "cmake/**"
+      - "config/**"
       - "python/**"
       - "src/**"
       - ".github/workflows/helpers/install-dependencies.sh"
@@ -51,7 +53,7 @@ jobs:
           sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
           mkdir build
           cd build
-          ../config/config.linux
+          ../config/configure.sh
           make -j $n_build_cores
 
       - name: Install FlexFlow
@@ -61,6 +63,9 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
-          ../config/config.linux
+          ../config/configure.sh
           sudo make install
           /opt/conda/bin/conda develop /usr/local
+
+      - name: Check availability of Python flexflow.core module
+        run: python -c "import flexflow.core; exit()"

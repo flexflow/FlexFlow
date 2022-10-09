@@ -33,7 +33,7 @@ To build FlexFlow with CMake, go to the FlexFlow home directory, and run
 ```
 mkdir build
 cd build
-../config/config.linux
+../config/configure.sh
 make -j N
 ```
 where N is the desired number of threads to use for the build.

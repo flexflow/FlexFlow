@@ -7,19 +7,19 @@ jobs:
     strategy:
       matrix:
         path:
-          - check: 'src'
+          - check: "src"
             exclude: '\.proto$'
-          - check: 'include'
-          - check: 'nmt'
-          - check: 'python'
-          - check: 'scripts'
-          - check: 'tests'
-          - check: 'examples'
+          - check: "include"
+          - check: "nmt"
+          - check: "python"
+          - check: "scripts"
+          - check: "tests"
+          - check: "examples"
     steps:
-    - uses: actions/checkout@v2
-    - name: Run clang-format style check for C/C++/Protobuf programs.
-      uses: jidicula/clang-format-action@v4.8.0
-      with:
-        clang-format-version: '14'
-        check-path: ${{ matrix.path['check'] }}
-        exclude-regex: ${{ matrix.path['exclude'] }}
+      - uses: actions/checkout@v2
+      - name: Run clang-format style check for C/C++/Protobuf programs.
+        uses: jidicula/clang-format-action@v4.8.0
+        with:
+          clang-format-version: "14"
+          check-path: ${{ matrix.path['check'] }}
+          exclude-regex: ${{ matrix.path['exclude'] }}
