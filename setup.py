@@ -11,7 +11,7 @@ configs_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "configs", "config.linux"
 )
 output = subprocess.check_output(
-    f"source {configs_path} && ( set -o posix ; set ) | cat", shell=True
+    f". {configs_path} && ( set -o posix ; set ) | cat", shell=True
 )
 cfg = dict(
     [
