@@ -8,7 +8,7 @@ files = [str(p.relative_to(datadir)) for p in datadir.rglob("*.py")]
 
 # Load CMake configs from config/config.linux file
 configs_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "configs", "config.linux"
+    os.path.dirname(os.path.abspath(__file__)), "config", "config.linux"
 )
 output = subprocess.check_output(
     f". {configs_path} && ( set -o posix ; set ) | cat", shell=True

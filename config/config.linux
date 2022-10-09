@@ -53,113 +53,113 @@ FF_MAX_DIM=5
 
 ########################################################################################################
 
-## Parsing the configs ##
+## Parsing the configs
 
 # set CC and CXX
 if [ -n "$CC" ]; then
-    SET_CC="-DCMAKE_C_COMPILER=${CC}"
+  SET_CC="-DCMAKE_C_COMPILER=${CC}"
 fi
 
 if [ -n "$CXX" ]; then
-    SET_CXX="-DCMAKE_CXX_COMPILER=${CXX}"
+  SET_CXX="-DCMAKE_CXX_COMPILER=${CXX}"
 fi
 
 # set FLAGS
 if [ -n "$CC_FLAGS" ]; then
-    SET_CC_FLAGS="CC_FLAGS=${CC_FLAGS}"
+  SET_CC_FLAGS="CC_FLAGS=${CC_FLAGS}"
 fi
 
 if [ -n "$CC_FLAGS" ]; then
-    SET_NVCC_FLAGS="NVCC_FLAGS=${NVCC_FLAGS}"
+  SET_NVCC_FLAGS="NVCC_FLAGS=${NVCC_FLAGS}"
 fi
 
 if [ -n "$LD_FLAGS" ]; then
-    SET_LD_FLAGS="LD_FLAGS=${LD_FLAGS}"
+  SET_LD_FLAGS="LD_FLAGS=${LD_FLAGS}"
 fi
 
 #set installation dir
 if [ -n "$INSTALL_DIR" ]; then
-    SET_INSTALL_DIR="-DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}"
+  SET_INSTALL_DIR="-DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}"
 fi
 
 # set build type
 if [ -n "$BUILD_TYPE" ]; then
-    SET_BUILD="-DCMAKE_BUILD_TYPE=${BUILD_TYPE}"
+  SET_BUILD="-DCMAKE_BUILD_TYPE=${BUILD_TYPE}"
 fi
 
 # set CUDA Arch
 if [ -n "$FF_CUDA_ARCH" ]; then
-    SET_CUDA_ARCH="-DFF_CUDA_ARCH=${FF_CUDA_ARCH}"
+  SET_CUDA_ARCH="-DFF_CUDA_ARCH=${FF_CUDA_ARCH}"
 fi
 
 # set CUDA dir
 if [ -n "$CUDA_DIR" ]; then
-    SET_CUDA="-DCUDA_PATH=${CUDA_DIR}"
+  SET_CUDA="-DCUDA_PATH=${CUDA_DIR}"
 fi
 
 if [ -n "$CUDA_LIB_PATH" ]; then
-    SET_CUDA_LIB_PATH="CUDA_PATH=${CUDA_LIB_PATH}"
+  SET_CUDA_LIB_PATH="CUDA_PATH=${CUDA_LIB_PATH}"
 fi
 
 # set cudnn dir
 if [ -n "$CUDNN_DIR" ]; then
-    SET_CUDNN="-DCUDNN_PATH=${CUDNN_DIR}"
+  SET_CUDNN="-DCUDNN_PATH=${CUDNN_DIR}"
 fi
 
 # enable Python
 if [ "$FF_USE_PYTHON" = "ON" ]; then
-    SET_PYTHON="-DFF_USE_PYTHON=ON"
+  SET_PYTHON="-DFF_USE_PYTHON=ON"
 elif [ "$FF_USE_PYTHON" = "OFF" ]; then
-    SET_PYTHON="-DFF_USE_PYTHON=OFF"
+  SET_PYTHON="-DFF_USE_PYTHON=OFF"
 else
-    SET_PYTHON="-DFF_USE_PYTHON=ON"
+  SET_PYTHON="-DFF_USE_PYTHON=ON"
 fi
 
 # enable NCCL
 if [ "$FF_USE_NCCL" = "ON" ]; then
-    SET_NCCL="-DFF_USE_NCCL=ON"
+  SET_NCCL="-DFF_USE_NCCL=ON"
 elif [ "$FF_USE_NCCL" = "OFF" ]; then
-    SET_NCCL="-DFF_USE_NCCL=OFF"
+  SET_NCCL="-DFF_USE_NCCL=OFF"
 else
-    SET_NCCL="-DFF_USE_NCCL=ON"
+  SET_NCCL="-DFF_USE_NCCL=ON"
 fi
 
 # enable GASNET
 if [ "$FF_USE_GASNET" = "ON" ]; then
-    SET_GASNET="-DFF_USE_GASNET=ON"
-    if [ "$FF_GASNET_CONDUIT" = "ibv" ]; then
-        SET_GASNET+=" -DFF_GASNET_CONDUIT=ibv"
-    elif [ "$FF_GASNET_CONDUIT" = "mpi" ]; then
-        SET_GASNET+=" -DFF_GASNET_CONDUIT=mpi"
-    elif [ "$FF_GASNET_CONDUIT" = "udp" ]; then
-        SET_GASNET+=" -DFF_GASNET_CONDUIT=udp"
-    fi
+  SET_GASNET="-DFF_USE_GASNET=ON"
+  if [ "$FF_GASNET_CONDUIT" = "ibv" ]; then
+    SET_GASNET+=" -DFF_GASNET_CONDUIT=ibv"
+  elif [ "$FF_GASNET_CONDUIT" = "mpi" ]; then
+    SET_GASNET+=" -DFF_GASNET_CONDUIT=mpi"
+  elif [ "$FF_GASNET_CONDUIT" = "udp" ]; then
+    SET_GASNET+=" -DFF_GASNET_CONDUIT=udp"
+  fi
 elif [ "$FF_USE_GASNET" = "OFF" ]; then
-    SET_GASNET="-DFF_USE_GASNET=OFF"
+  SET_GASNET="-DFF_USE_GASNET=OFF"
 else
-    SET_GASNET="-DFF_USE_GASNET=ON"
+  SET_GASNET="-DFF_USE_GASNET=ON"
 fi
 
 # build C++ examples
 if [ "$FF_BUILD_ALL_EXAMPLES" = "ON" ]; then
-    SET_EXAMPLES="-DFF_BUILD_ALL_EXAMPLES=ON"
+  SET_EXAMPLES="-DFF_BUILD_ALL_EXAMPLES=ON"
 elif [ "$FF_BUILD_ALL_EXAMPLES" = "OFF" ]; then
-    SET_EXAMPLES="-DFF_BUILD_ALL_EXAMPLES=OFF"
+  SET_EXAMPLES="-DFF_BUILD_ALL_EXAMPLES=OFF"
 else
-    SET_EXAMPLES="-DFF_BUILD_ALL_EXAMPLES=ON"
+  SET_EXAMPLES="-DFF_BUILD_ALL_EXAMPLES=ON"
 fi
 
 # enable avx2
 if [ "$FF_USE_AVX2" = "ON" ]; then
-    SET_AVX2="-DFF_USE_AVX2=ON"
+  SET_AVX2="-DFF_USE_AVX2=ON"
 elif [ "$FF_USE_AVX2" = "OFF" ]; then
-    SET_AVX2="-DFF_USE_AVX2=OFF"
+  SET_AVX2="-DFF_USE_AVX2=OFF"
 else
-    SET_AVX2="-DFF_USE_AVX2=OFF"
+  SET_AVX2="-DFF_USE_AVX2=OFF"
 fi
 
 #set max dims
 if [ -n "$FF_MAX_DIM" ]; then
-    SET_MAX_DIM="-DFF_MAX_DIM=${FF_MAX_DIM}"
+  SET_MAX_DIM="-DFF_MAX_DIM=${FF_MAX_DIM}"
 fi
 
