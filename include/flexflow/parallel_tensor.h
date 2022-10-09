@@ -181,7 +181,7 @@ public:
   // shicao for pipeline, set in model.compile
   int pipe_buf_size = 1;
   int pipe_num_part_in = 1;
-  int pipe_num_part_out = 1;
+  int pipe_num_part_out = 0;
   // int adim[MAX_TENSOR_DIM];
   ParallelDim dims[MAX_TENSOR_DIM];
   DataType data_type = DT_NONE;

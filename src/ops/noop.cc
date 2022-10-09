@@ -143,8 +143,8 @@ void NoOp::pipeinit(FFModel const &ff) {
   // For OP_INPUT, initialize tensor to zero
   if (op_type == OP_INPUT) {
     assert(outputs[0]->region != LogicalRegion::NO_REGION);
-    if (outputs[0]->part == LogicalPartition::NO_PART)
-      return;
+    // if (outputs[0]->part == LogicalPartition::NO_PART)
+    //   return;
     ConstantInitializer *initializer = NULL;
     if (outputs[0]->data_type == DT_FLOAT) {
       initializer = new ConstantInitializer(0.0f);
@@ -172,7 +172,7 @@ void NoOp::pipeinit(FFModel const &ff) {
                           EXCLUSIVE,
                           outputs[0]->region));
     launcher.add_field(0, FID_DATA);
-    init_output_idx = (init_output_idx + 1) / outputs[0]->pipe_num_part_out;
+    init_output_idx = (init_output_idx + 1) % outputs[0]->pipe_num_part_out;
     runtime->execute_index_space(ctx, launcher);
   } else if (op_type == OP_WEIGHT) {
     ArgumentMap argmap;

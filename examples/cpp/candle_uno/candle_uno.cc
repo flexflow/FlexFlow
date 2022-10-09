@@ -75,7 +75,7 @@ void FlexFlow::top_level_task(Task const *task,
     int argc = command_args.argc;
     parse_input_args(argv, argc, candle_config);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
-                  ffConfig.ubatchUnit,
+                  ff_config.ubatchUnit,
                   ff_config.workersPerNode,
                   ff_config.numNodes);
     print_vector("Dense Layers", candle_config.dense_layers);
@@ -104,7 +104,7 @@ void FlexFlow::top_level_task(Task const *task,
        it++) {
     assert(feature_shapes.find(it->second) != feature_shapes.end());
     int shape = feature_shapes[it->second];
-    int const dims[] = {ffConfig.ubatchUnit, shape};
+    int const dims[] = {ff_config.ubatchUnit, shape};
     Tensor input = ff.create_tensor<2>(dims, DT_FLOAT);
     all_inputs.push_back(input);
     if (input_models.find(it->second) != input_models.end()) {
@@ -140,34 +140,34 @@ void FlexFlow::top_level_task(Task const *task,
   // data_loader.next_batch(ff);
   // data_loader.reset();
   // ff.init_operators();
-  for (int iter = 0; iter < 1; iter++) {
-    data_loader.reset();
-    ff.reset_metrics();
-    ff.reset_pipe_idx();
-    data_loader.reset_idx();
-    for (int iter_inner = 0; iter_inner < ff.iter_perbatch; iter_inner++) {
-      if (candle_config.dataset_path.length() == 0) {
-        // Only load data once for random input
-        for (size_t i = 0; i < data_loader.batch_inputs.size(); i++) {
-          printf("load input [%ld]\n", i);
-          for (int k = 0;
-               k < data_loader.batch_nputs[i]->parallel_tensor->owner_op->nFnB;
-               k++) {
-            data_loader.next_input_ubatch(ff, i);
-          }
-        }
+  // for (int iter = 0; iter < 1; iter++) {
+  //   data_loader.reset();
+  //   ff.reset_metrics();
+  //   ff.reset_pipe_idx();
+  //   data_loader.reset_idx();
+  //   for (int iter_inner = 0; iter_inner < ff.iter_perbatch; iter_inner++) {
+  //     if (candle_config.dataset_path.length() == 0) {
+  //       // Only load data once for random input
+  //       for (size_t i = 0; i < data_loader.batch_inputs.size(); i++) {
+  //         printf("load input [%ld]\n", i);
+  //         for (int k = 0;
+  //              k < data_loader.batch_inputs[i]->parallel_tensor->owner_op->nFnB;
+  //              k++) {
+  //           data_loader.next_input_ubatch(ff, i);
+  //         }
+  //       }
 
-        for (int i = 0; i < ff.get_final_operator()->nFnB; i++) {
-          data_loader.next_label_ubatch(ff);
-        }
-      }
-      ff.forward();
-      ff.zero_input_gradients();
-      ff.backward();
-    }
-    ff.update();
-    ff.zero_weight_gradients();
-  }
+  //       for (int i = 0; i < ff.get_final_operator()->nFnB; i++) {
+  //         data_loader.next_label_ubatch(ff);
+  //       }
+  //     }
+  //     ff.forward();
+  //     ff.zero_input_gradients();
+  //     ff.backward();
+  //   }
+  //   ff.update();
+  //   ff.zero_weight_gradients();
+  // }
 
   log_app.print("Warmup finished...Start timer...");
   log_app.print("Num. epochs = %d", ff_config.epochs);
@@ -205,7 +205,7 @@ void FlexFlow::top_level_task(Task const *task,
                  k <
                  data_loader.batch_inputs[i]->parallel_tensor->owner_op->nFnB;
                  k++) {
-              data_loader.next_sparse_input_ubatch(ff, i);
+              data_loader.next_input_ubatch(ff, i);
             }
           }
 
@@ -216,7 +216,7 @@ void FlexFlow::top_level_task(Task const *task,
         // log_app.print("DEBUG: forward...");
         ff.forward();
         // log_app.print("DEBUG: zero input gradients...");
-        // ff.zero_input_gradients();
+        ff.zero_input_gradients();
         // log_app.print("DEBUG: backward...");
         ff.backward();
       }
@@ -309,7 +309,7 @@ DataLoader::DataLoader(FFModel &ff,
       assert(get_file_size(filename) == (size_t)num_samples * sizeof(float));
     }
   }
-  // return;
+  return;
   for (size_t i = 0; i < _inputs.size(); i++) {
     batch_inputs.push_back(_inputs[i]);
     int const dims[] = {num_samples, _inputs[i]->dims[0]};
@@ -364,6 +364,12 @@ DataLoader::DataLoader(FFModel &ff,
     launcher.add_field(i + 1, FID_DATA);
   }
   runtime->execute_task(ctx, launcher);
+  reset();
+  for (size_t i = 0; i < batch_inputs.size(); i++) {
+    for (int k = 0; k < batch_inputs[i]->parallel_tensor->owner_op->nFnB; k++) {
+      next_input_ubatch(ff, i);
+    }
+  }
 }
 
 void DataLoader::load_entire_dataset(Task const *task,
@@ -513,7 +519,7 @@ void DataLoader::next_batch(FFModel &ff) {
 }
 
 void DataLoader::next_input_ubatch(FFModel &ff, int idx) {
-  // return;
+  return;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   assert(full_inputs.size() == batch_inputs.size());
@@ -535,7 +541,7 @@ void DataLoader::next_input_ubatch(FFModel &ff, int idx) {
   IndexLauncher launcher(
       CUSTOM_GPU_TASK_ID_1,
       batch_inputs[idx]->parallel_tensor->parallel_is,
-      TaskArgument(&i, sizeof(int)),
+      TaskArgument(&idx, sizeof(int)),
       argmap,
       Predicate::TRUE_PRED,
       false /*must*/,
@@ -563,7 +569,7 @@ void DataLoader::next_input_ubatch(FFModel &ff, int idx) {
 }
 
 void DataLoader::next_label_ubatch(FFModel &ff) {
-  // return;
+  return;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   assert(full_inputs.size() == batch_inputs.size());
