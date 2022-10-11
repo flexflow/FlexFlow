@@ -67,4 +67,6 @@ jobs:
           sudo make install
 
       - name: Check availability of Python flexflow.core module
-        run: python -c "import flexflow.core; exit()"
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          python -c "import flexflow.core; exit()"
