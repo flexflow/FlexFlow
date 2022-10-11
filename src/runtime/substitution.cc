@@ -1162,32 +1162,37 @@ void Graph::export_strategy_computation_graph(
     if (strategy.find(node) == strategy.end()) {
       dot.add_node(node, {{"label", node.to_string()}});
     } else {
-      RecordFormatter rf, meta_row, machine_view_row;
+      RecordFormatter rf, meta_row, machine_view_row, runtime_cost_row, memory_cost_row;
       MachineView mv = strategy.at(node);
       std::ostringstream oss;
+      CostMetrics op_cost = this->model->simulator->measure_operator_cost(node.ptr, mv);
       switch (node.ptr->op_type) {
         case OP_REPARTITION: {
           Repartition *rp = (Repartition *)node.ptr;
           meta_row << std::to_string(rp->repartition_dim)
                    << std::to_string(rp->repartition_degree);
+          runtime_cost_row << std::to_string(op_cost.sync_time);
           break;
         }
         case OP_COMBINE: {
           Combine *c = (Combine *)node.ptr;
           meta_row << std::to_string(c->combine_dim)
                    << std::to_string(c->combine_degree);
+          runtime_cost_row << std::to_string(op_cost.sync_time);
           break;
         }
         case OP_REPLICATE: {
           Replicate *r = (Replicate *)node.ptr;
           meta_row << std::to_string(r->replicate_dim)
                    << std::to_string(r->replicate_degree);
+          runtime_cost_row << std::to_string(op_cost.sync_time);
           break;
         }
         case OP_REDUCTION: {
           Reduction *r = (Reduction *)node.ptr;
           meta_row << std::to_string(r->reduction_dim)
                    << std::to_string(r->reduction_degree);
+          runtime_cost_row << std::to_string(op_cost.sync_time);
           break;
         }
         default: {
@@ -1198,13 +1203,17 @@ void Graph::export_strategy_computation_graph(
               meta_row << std::to_string(mv.dim[i]);
             }
           }
+          runtime_cost_row << std::to_string(op_cost.forward_time + op_cost.backward_time);
         }
       }
       for (int device_id : mv.device_ids()) {
         machine_view_row << std::to_string(device_id);
       }
+
+      memory_cost_row << std::to_string(op_cost.total_memory());
+
       rf << node.to_string() << std::to_string(node.guid) << meta_row
-         << machine_view_row;
+         << machine_view_row << runtime_cost_row << memory_cost_row; // TODO: add runtime and memory cost here?
       dot.add_record_node(node, rf);
     }
 
