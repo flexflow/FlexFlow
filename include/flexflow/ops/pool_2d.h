@@ -95,23 +95,23 @@ public:
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   static void forward_kernel(Pool2DMeta const *m,
-                             float const *input_ptr,
-                             float *output_ptr,
+                             void const *input_ptr,
+                             void *output_ptr,
                              ffStream_t stream);
   static void forward_kernel_wrapper(Pool2DMeta const *m,
-                                     float const *input_ptr,
-                                     float *output_ptr);
+                                     void const *input_ptr,
+                                     void *output_ptr);
   static void backward_kernel(Pool2DMeta const *m,
-                              float const *input_ptr,
-                              float *input_grad_ptr,
-                              float const *output_ptr,
-                              float const *output_grad_ptr,
+                              void const *input_ptr,
+                              void *input_grad_ptr,
+                              void const *output_ptr,
+                              void const *output_grad_ptr,
                               ffStream_t stream);
   static void backward_kernel_wrapper(Pool2DMeta const *m,
-                                      float const *input_ptr,
-                                      float *input_grad_ptr,
-                                      float const *output_ptr,
-                                      float const *output_grad_ptr);
+                                      void const *input_ptr,
+                                      void *input_grad_ptr,
+                                      void const *output_ptr,
+                                      void const *output_grad_ptr);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
