@@ -18,18 +18,11 @@ RUN rm -rf /var/lib/apt/lists/* \
         build-essential \
         apt-utils \
         ca-certificates \
-        wget \
-        git \
         libssl-dev \
         curl \
         unzip \
-        cmake \
-        net-tools \
-        sudo \
         htop \
 	    nano \
-        binutils \
-        zlib1g-dev && \
     DEBIAN_FRONTEND=noninteractive \
         apt-get install -y software-properties-common && \
         add-apt-repository ppa:ubuntu-toolchain-r/test && \
