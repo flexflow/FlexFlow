@@ -65,4 +65,6 @@ jobs:
           export FF_HOME=$(pwd)
           ../config/config.linux
           sudo make install
-          /opt/conda/bin/conda develop /usr/local
+
+      - name: Check availability of Python flexflow.core module
+        run: python -c "import flexflow.core; exit()"
