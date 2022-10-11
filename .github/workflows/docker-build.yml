@@ -27,3 +27,6 @@ jobs:
 
       - name: Build Docker container
         run: ./docker/build.sh
+
+      - name: Check availability of Python flexflow.core module
+        run: docker run -it --entrypoint python flexflow:latest -c "import flexflow.core; exit()"
