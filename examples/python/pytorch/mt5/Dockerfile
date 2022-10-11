@@ -22,7 +22,7 @@ RUN rm -rf /var/lib/apt/lists/* \
         curl \
         unzip \
         htop \
-	    nano \
+	    nano && \
     DEBIAN_FRONTEND=noninteractive \
         apt-get install -y software-properties-common && \
         add-apt-repository ppa:ubuntu-toolchain-r/test && \
