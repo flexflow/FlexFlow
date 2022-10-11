@@ -1,5 +1,5 @@
 # FlexFlow
-![build](https://github.com/flexflow/flexflow/workflows/build/badge.svg?branch=master) [![Documentation Status](https://readthedocs.org/projects/flexflow/badge/?version=latest)](https://flexflow.readthedocs.io/en/latest/?badge=latest)
+![build](https://github.com/flexflow/flexflow/workflows/build/badge.svg?branch=master) ![docker](https://github.com/flexflow/flexflow/workflows/docker-build/badge.svg?branch=master) [![Documentation Status](https://readthedocs.org/projects/flexflow/badge/?version=latest)](https://flexflow.readthedocs.io/en/latest/?badge=latest)
 
 
 FlexFlow is a deep learning framework that accelerates distributed DNN training by automatically searching for efficient parallelization strategies. FlexFlow provides a drop-in replacement for TensorFlow Keras and PyTorch. Running existing Keras and PyTorch programs in FlexFlow only requires [a few lines of changes to the program](https://flexflow.ai/keras).
