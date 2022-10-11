@@ -57,7 +57,8 @@ if(FF_BUILD_FROM_PYPI)
 	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core/legion_cffi_header.py ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core/flexflow_cffi_header.py 
 	  DESTINATION ${PY_DEST}/core)
 else()
-	set(PY_DEST "flexflow")
+	#set(PY_DEST "flexflow")
+  execute_process(COMMAND python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))" OUTPUT_VARIABLE PY_DEST)
 	install(
 		DIRECTORY ${PROJECT_SOURCE_DIR}/flexflow/ 
 		DESTINATION ${PY_DEST}
