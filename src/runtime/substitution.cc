@@ -1171,28 +1171,24 @@ void Graph::export_strategy_computation_graph(
           Repartition *rp = (Repartition *)node.ptr;
           meta_row << std::to_string(rp->repartition_dim)
                    << std::to_string(rp->repartition_degree);
-          runtime_cost_row << std::to_string(op_cost.sync_time);
           break;
         }
         case OP_COMBINE: {
           Combine *c = (Combine *)node.ptr;
           meta_row << std::to_string(c->combine_dim)
                    << std::to_string(c->combine_degree);
-          runtime_cost_row << std::to_string(op_cost.sync_time);
           break;
         }
         case OP_REPLICATE: {
           Replicate *r = (Replicate *)node.ptr;
           meta_row << std::to_string(r->replicate_dim)
                    << std::to_string(r->replicate_degree);
-          runtime_cost_row << std::to_string(op_cost.sync_time);
           break;
         }
         case OP_REDUCTION: {
           Reduction *r = (Reduction *)node.ptr;
           meta_row << std::to_string(r->reduction_dim)
                    << std::to_string(r->reduction_degree);
-          runtime_cost_row << std::to_string(op_cost.sync_time);
           break;
         }
         default: {
@@ -1203,17 +1199,46 @@ void Graph::export_strategy_computation_graph(
               meta_row << std::to_string(mv.dim[i]);
             }
           }
-          runtime_cost_row << std::to_string(op_cost.forward_time + op_cost.backward_time);
+          
         }
       }
       for (int device_id : mv.device_ids()) {
         machine_view_row << std::to_string(device_id);
       }
 
-      memory_cost_row << std::to_string(op_cost.total_memory());
+      runtime_cost_row << "ft"+std::to_string(op_cost.forward_time) << "bt"+std::to_string(op_cost.backward_time)
+                       << "st"+std::to_string(op_cost.sync_time);
+
+      // get memory cost
+      int input_degree = 1;
+      for (ParallelDim dim: (*node.ptr->inputs)->dims) {
+        if (dim.degree > 1) {
+          input_degree *= dim.degree;
+        }
+      }
+      int output_degree = 1;
+      for (ParallelDim dim: (*node.ptr->outputs)->dims) {
+        if (dim.degree > 1) {
+          output_degree *= dim.degree;
+        }
+      }
+      int param_degree = 1;
+      if (node.ptr->numWeights > 0) {
+        for (ParallelDim dim: (*node.ptr->weights)->dims) {
+          if (dim.degree > 1) {
+            param_degree *= dim.degree;
+          }
+        }
+      }
+      memory_cost_row << "sum"+std::to_string(op_cost.total_memory()) << "im"+std::to_string(op_cost.inputs_memory / input_degree)
+                      << "om"+std::to_string(op_cost.outputs_memory / output_degree)
+                      << "wm"+std::to_string(op_cost.weights_memory / param_degree)
+                      << "diff"+std::to_string(op_cost.total_mem_diff_from(this->model->simulator->offset))
+                      << "of"+std::to_string(this->model->simulator->offset);
+
 
       rf << node.to_string() << std::to_string(node.guid) << meta_row
-         << machine_view_row << runtime_cost_row << memory_cost_row; // TODO: add runtime and memory cost here?
+         << machine_view_row << runtime_cost_row << memory_cost_row;
       dot.add_record_node(node, rf);
     }
 
