@@ -28,7 +28,7 @@ A FlexFlow program can directly import a previously saved PyTorch model and auto
 
     from flexflow.torch.model import PyTorchModel
 
-    #create input tensors
+    # create input tensors
     dims_input = [ffconfig.get_batch_size(), 3, 32, 32]
     input_tensor = ffmodel.create_tensor(dims_input, DataType.DT_FLOAT)
 
@@ -39,7 +39,13 @@ A FlexFlow program can directly import a previously saved PyTorch model and auto
     # use the Python API to train the model
     ffoptimizer = SGDOptimizer(ffmodel, 0.01)
     ffmodel.set_sgd_optimizer(ffoptimizer)
-    ffmodel.compile(loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics=[MetricsType.METRICS_ACCURACY, MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY])
+    ffmodel.compile(
+        loss_type=LossType.LOSS_SPARSE_CATEGORICAL_CROSSENTROPY,
+        metrics=[
+            MetricsType.METRICS_ACCURACY,
+            MetricsType.METRICS_SPARSE_CATEGORICAL_CROSSENTROPY,
+        ],
+    )
     ...
     ffmodel.fit(x=dataloader_input, y=dataloader_label, epochs=epochs)
 
