@@ -1331,6 +1331,14 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
   // Context ctx = config.lg_ctx;
   // Runtime* runtime = config.lg_hlr;
   for (size_t l = 1; l < operators.size() - 1; l++) {
+    // don't fuse input and weight operator since they don't involve any
+    // forward/backward task launches
+    if (operators[l]->op_type == OP_INPUT || operators[l]->op_type == OP_WEIGHT)
+      continue;
+    // don't fuse parallel op since they have different parallel_is in
+    // forward/backward
+    if (operators[l]->is_parallel_op())
+      continue;
     size_t start = 0;
     {
       Op *opl = operators[l];
@@ -1354,16 +1362,25 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
       MachineView view1 = operators[l]->outputs[0]->machine_view;
       MachineView view2 = operators[i]->outputs[0]->machine_view;
       if (view1 == view2) {
-        FusedOp *fused_op;
-        // bool created = false;
+        FusedOp *fused_op = nullptr;
+        bool allocate_new_fused_op = false;
         if (operators[i]->op_type == OP_FUSED)
           fused_op = (FusedOp *)operators[i];
         else {
-          // created = true;
           //  cannot be an in-place operator
           if (operators[i]->has_inplace_output())
             continue;
+          // don't fuse input and weight operator since they don't involve any
+          // forward/backward kernels
+          if (operators[i]->op_type == OP_INPUT ||
+              operators[i]->op_type == OP_WEIGHT)
+            continue;
+          // don't fuse parallel op since they have different parallel_is in
+          // forward/backward
+          if (operators[i]->is_parallel_op())
+            continue;
           fused_op = new FusedOp(*this, operators[i]);
+          allocate_new_fused_op = true;
         }
         if (fused_op->add_operator(*this, operators[l])) {
           // Construct new operators
@@ -1397,8 +1414,8 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
           return true;
         } else {
           // TODO: delete fused_op to avoid memory leakage
-          // if (created)
-          // delete fused_op;
+          if (allocate_new_fused_op)
+            delete fused_op;
           continue;
         }
       }

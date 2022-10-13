@@ -37,7 +37,7 @@ class BatchNormalization(Layer):
                gamma_constraint=None,
                **kwargs):
                
-    super(Dense, self).__init__('batch_normalization', 'BatchNormalization', **kwargs) 
+    super(BatchNormalization, self).__init__('batch_normalization', 'BatchNormalization', **kwargs) 
     self.axis = axis
     self.momentum = momentum
     self.epsilon = epsilon

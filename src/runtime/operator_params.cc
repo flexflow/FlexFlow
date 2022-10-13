@@ -8,6 +8,7 @@
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
@@ -59,6 +60,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((Flat *)op)->get_params();
     case OP_MULTIHEAD_ATTENTION:
       return ((MultiHeadAttention *)op)->get_params();
+    case OP_LAYERNORM:
+      return ((LayerNorm *)op)->get_params();
     case OP_RESHAPE:
       return ((Reshape *)op)->get_params();
     case OP_SOFTMAX:
