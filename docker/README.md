@@ -6,19 +6,11 @@ You will need a machine with a NVIDIA GPU, with drivers installed. You will also
 
 ## Build and run instructions
 1. Apply any desired configurations by editing the [config.linux](../config/config.linux) file in the `FlexFlow/configs` folder. Leave the file unchanged if you want to run with the default options
-2. Build the Docker image with the following command (run from the `FlexFlow/docker` folder):
-```bash
-./build.sh
+2. Build the Docker image with the following command (replace `base` with `mt5` if you are looking to build a container supporting the mt5 model in `examples/python/pytorch/mt5`):
 ```
-3. Run the Docker container with the following command. If you don't have GPUs available on the machine, remove the `--gpus all` flag.
-```bash
-docker run -it --gpus all flexflow:latest
+./build.sh base
 ```
-4. After exiting the container, you can take note of the container ID and log back in (without losing your changes) with:
+3. Run the Docker container with the following command (again replacing `base` with `mt5` if needed). If you don't have GPUs available on the machine, edit the `run.sh` script and set `ATTACH_GPUS=false` before running it.
 ```
-docker start <container ID> && docker attach <container ID>
-```
-In alternative, you can commit your changes to a new image for better permanence:
-```
-docker commit <container ID> new_image_name:tag_name(optional)
+./run.sh base
 ```

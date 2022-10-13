@@ -47,5 +47,12 @@ else
   sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
 fi
 
-# Build Docker image
-docker build --build-arg n_build_cores=$n_build_cores -t flexflow .
+# Build base Docker image
+docker build --build-arg n_build_cores=$n_build_cores -t flexflow -f base/Dockerfile .
+
+# Build mt5 docker image if required
+image=${1:-base}
+
+if [[ "$image" == "mt5" ]]; then
+  docker build -t flexflow-mt5 -f mt5/Dockerfile .
+fi

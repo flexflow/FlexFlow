@@ -26,11 +26,10 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Build Docker container
-        run: ./docker/build.sh
+        run: ./docker/build.sh base
 
       - name: Check availability of Python flexflow.core module
         run: docker run --entrypoint python flexflow:latest -c "import flexflow.core; exit()"
 
       - name: Build mT5 Docker container
-        working-directory: examples/python/pytorch/mt5
-        run: docker build -t flexflow-mt5 .
+        run: ./docker/build.sh mt5
