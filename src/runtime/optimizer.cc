@@ -23,10 +23,10 @@ using namespace Legion;
 Optimizer::Optimizer(FFModel const *_model) : model(_model) {}
 
 ParallelTensor create_replica_parameter(FFModel const *model,
-                                        const ParallelTensor p) {
+                                        ParallelTensor const &p) {
   Context ctx = model->config.lg_ctx;
   Runtime *runtime = model->config.lg_hlr;
-  ParallelTensor v = new ParallelTensorBase(*p);
+  ParallelTensor v = make_parallel_tensor(p);
   v->region_grad = LogicalRegion::NO_REGION;
   v->part_grad = LogicalPartition::NO_PART;
   v->region = runtime->create_logical_region(

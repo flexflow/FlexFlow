@@ -1299,7 +1299,7 @@ ParallelTensor FFModel::create_parallel_tensor(const ParallelDim dims[],
                                                int owner_idx,
                                                bool create_grad,
                                                size_t input_tensor_guid) {
-  ParallelTensor tensor = new ParallelTensorBase();
+  ParallelTensor tensor = make_parallel_tensor();
   tensor->parallel_tensor_guid = parallel_tensor_global_guid++;
   tensor->data_type = data_type;
   if (owner_op == nullptr) {
@@ -1378,7 +1378,7 @@ ParallelParameter FFModel::create_parallel_weight(const ParallelDim dims[],
                                                   bool create_grad,
                                                   Initializer *initializer,
                                                   ParameterSyncType sync_type) {
-  ParallelParameter p = new ParallelTensorBase();
+  ParallelParameter p = ParallelParameter::create();
   p->parallel_tensor_guid = parallel_tensor_global_guid++;
   p->data_type = data_type;
   if (owner_op == NULL) {
@@ -2097,7 +2097,7 @@ ParallelTensor FFModel::create_linear_replica(int const dims[],
   int num_parts[TDIM];
   for (int i = 0; i < TDIM; i++)
     num_parts[i] = part_rect.hi[i] - part_rect.lo[i] + 1;
-  ParallelTensor replica = new ParallelTensorBase();
+  ParallelTensor replica = make_parallel_tensor();
   replica->parallel_tensor_guid = parallel_tensor_global_guid++;
   replica->num_dims = NDIM;
   replica->data_type = data_type;

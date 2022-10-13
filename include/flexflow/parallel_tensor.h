@@ -17,7 +17,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef _FLEXFLOW_PARALLEL_TENSOR_H
+#define _FLEXFLOW_PARALLEL_TENSOR_H
 
 #include "flexflow/ffconst.h"
 #include "flexflow/machine_view.h"
@@ -25,6 +26,7 @@
 #include "legion.h"
 #include <ostream>
 #include <unordered_map>
+#include <memory>
 
 namespace FlexFlow {
 
@@ -106,13 +108,6 @@ std::ostream &operator<<(std::ostream &, ParallelTensorShape const &);
 
 }; // namespace FlexFlow
 
-namespace std {
-template <>
-struct hash<FlexFlow::ParallelTensorShape> {
-  size_t operator()(FlexFlow::ParallelTensorShape const &) const;
-};
-} // namespace std
-
 namespace FlexFlow {
 
 class FFConfig;
@@ -189,7 +184,42 @@ public:
   Legion::PhysicalRegion physical_region;
 };
 
-typedef ParallelTensorBase *ParallelTensor;
-typedef ParallelTensorBase *ParallelParameter;
+class ParallelTensor {
+public:
+  ParallelTensor();
+  ParallelTensor(ParallelTensorBase *);
+
+  std::shared_ptr<ParallelTensorBase const> operator->() const;
+  std::shared_ptr<ParallelTensorBase> operator->();
+
+  friend bool operator==(ParallelTensor const &, ParallelTensorBase const *);
+  friend bool operator!=(ParallelTensor const &, ParallelTensorBase const *);
+
+  friend bool operator==(ParallelTensor const &, ParallelTensor const &);
+  friend bool operator!=(ParallelTensor const &, ParallelTensor const &);
+private:
+  std::shared_ptr<ParallelTensorBase> base;
+};
+
+ParallelTensor make_parallel_tensor();
+ParallelTensor make_parallel_tensor(ParallelTensor const &);
+
+/* typedef ParallelTensorBase *ParallelTensor; */
+using ParallelParameter = ParallelTensor;
 
 }; // namespace FlexFlow
+
+namespace std {
+template <>
+struct hash<FlexFlow::ParallelTensorShape> {
+  size_t operator()(FlexFlow::ParallelTensorShape const &) const;
+};
+
+template <>
+struct hash<FlexFlow::ParallelTensor> {
+  size_t operator()(FlexFlow::ParallelTensor const &) const;
+};
+} // namespace std
+
+
+#endif // _FLEXFLOW_PARALLEL_TENSOR_H

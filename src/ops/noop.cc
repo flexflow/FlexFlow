@@ -185,7 +185,7 @@ Node FFModel::get_or_create_input_node(
   if (it != cached_input_ops.end()) {
     input = it->second;
   } else {
-    ParallelTensor tensor = new ParallelTensorBase();
+    ParallelTensor tensor = make_parallel_tensor();
     tensor->parallel_tensor_guid = parallel_tensor_global_guid++;
     tensor->data_type = DT_FLOAT; // TODO FIXME @lockshaw
     tensor->num_dims = output_shape.num_dims;

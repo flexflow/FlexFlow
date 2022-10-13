@@ -575,19 +575,6 @@ std::ostream &operator<<(std::ostream &s, ParallelTensorShape const &shape) {
 
 }; // namespace FlexFlow
 
-namespace std {
-size_t hash<FlexFlow::ParallelTensorShape>::operator()(
-    FlexFlow::ParallelTensorShape const &shape) const {
-  size_t key = 0;
-  hash_combine(key, shape.num_dims);
-  for (int i = 0; i < shape.num_dims; i++) {
-    hash_combine(key, shape.dims[i].size);
-    hash_combine(key, shape.dims[i].degree);
-  }
-  return key;
-}
-}; // namespace std
-
 namespace FlexFlow {
 
 bool ParallelTensorBase::is_valid_machine_view(MachineView const &view) const {
@@ -760,4 +747,62 @@ template bool ParallelTensorBase::get_tensor<int64_t>(FFModel const *ff,
                                                       int64_t *data,
                                                       bool get_gradients);
 
+ParallelTensor::ParallelTensor()
+  : ParallelTensor(nullptr) 
+{ }
+
+ParallelTensor::ParallelTensor(ParallelTensorBase *raw)
+  : base(raw) 
+{ }
+
+std::shared_ptr<ParallelTensorBase const> operator->() const {
+  return this->base;
+};
+
+std::shared_ptr<ParallelTensorBase> operator->() {
+  return this->base;
+};
+
+bool operator==(ParallelTensor const &lhs, ParallelTensorBase const *rhs) {
+  return lhs.base == rhs;
+}
+
+bool operator!=(ParallelTensor const &lhs, ParallelTensorBase const *rhs) {
+  return !(lhs == rhs);
+}
+
+bool operator==(ParallelTensor const &lhs, ParallelTensor const &rhs) {
+  return lhs.base == rhs.base;
+}
+
+bool operator!=(ParallelTensor const &lhs, ParallelTensor const &rhs) {
+  return !(lhs == rhs);
+}
+
+ParallelTensor make_parallel_tensor() {
+  return ParallelTensor(new ParallelTensorBase());
+}
+
+ParallelTensor make_parallel_tensor(ParallelTensor const &p) {
+  return ParallelTensor(new ParallelTensorBase(*p.base));
+}
+
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::ParallelTensorShape>::operator()(
+    FlexFlow::ParallelTensorShape const &shape) const {
+  size_t key = 0;
+  hash_combine(key, shape.num_dims);
+  for (int i = 0; i < shape.num_dims; i++) {
+    hash_combine(key, shape.dims[i].size);
+    hash_combine(key, shape.dims[i].degree);
+  }
+  return key;
+}
+
+size_t hash<FlexFlow::ParallelTensor>::operator()(FlexFlow::ParallelTensor const &t) const {
+  return std::hash<std::shared_ptr<FlexFlow::ParallelTensorBase>>{}(t->operator());
+};
+}; // namespace std
+
