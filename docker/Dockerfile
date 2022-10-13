@@ -40,9 +40,6 @@ RUN cd /usr/FlexFlow && mkdir -p build && cd build && \
     ../config/config.linux && \
     make install
 
-# Add the FlexFlow module to Conda's Python
-RUN /opt/conda/bin/conda develop /usr/local
-
 ENTRYPOINT ["/bin/bash"]
 
 WORKDIR /usr/FlexFlow
