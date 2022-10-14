@@ -122,6 +122,6 @@ notable code snippets):
 
 A base implementation may be found in `mt5_ff.py`.
 ```
-./python/flexflow_python examples/python/pytorch/mt5/mt5_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 14000 -ll:zsize 4096 --simulator-workspace-size 7057475584
+./python/flexflow_python examples/python/pytorch/mt5/mt5_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 14000 -ll:zsize 4096
 ```
 _Note:_ Running `mt5_ff.py` requires a CPU-version of PyTorch.
