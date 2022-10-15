@@ -67,6 +67,8 @@ Tensor FFModel::binary(OperatorType op,
     ele = new Layer(
         this, op, name, 2 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, in1, in2);
   }
+  // Assert type match after broadcast
+  assert(ele->inputs[0]->data_type == ele->inputs[1]->data_type);
   ele->outputs[0] = create_tensor_legion_ordering(
       in1->num_dims, in1->dims, dtype, ele, 0, true /*create_grad*/);
   ele->add_int_property("inplace_a", inplace_a);
@@ -114,9 +116,22 @@ Tensor FFModel::divide(const Tensor in1,
 }
 
 bool ElementBinaryParams::is_valid(
-    std::pair<ParallelTensorShape, ParallelTensorShape> const &) const {
-  // TODO: more check on the input shape
-  return true;
+    std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
+  bool is_valid = true;
+  is_valid &= (input.first.is_valid() & input.second.is_valid());
+  if (!is_valid)
+    return false;
+  // is_valid &= (input.first == input.second);
+  ParallelTensorShape A = input.first;
+  ParallelTensorShape B = input.second;
+  int numdim = std::min(A.num_dims, B.num_dims);
+  for (int i = 0; i < numdim; i++) {
+    if (A.dims[i].size > 1 && B.dims[i].size > 1) {
+      if (A.dims[i] != B.dims[i])
+        return false;
+    }
+  }
+  return is_valid;
 }
 
 bool operator==(ElementBinaryParams const &lhs,
@@ -176,6 +191,20 @@ ElementBinary::ElementBinary(
     : ElementBinary(
           model, params.type, inputs.first, inputs.second, inplace_a, name) {}
 
+void ElementBinary::map_output_tensors(FFModel &ff) {
+  if (has_inplace_output()) {
+    assert(numOutputs == 1);
+    assert(outputs[0]->get_volume() == inputs[0]->get_volume());
+    outputs[0]->parallel_is = inputs[0]->parallel_is;
+    outputs[0]->region = inputs[0]->region;
+    outputs[0]->part = inputs[0]->part;
+    outputs[0]->region_grad = inputs[0]->region_grad;
+    outputs[0]->part_grad = inputs[0]->part_grad;
+  } else {
+    Op::map_output_tensors(ff);
+  }
+}
+
 bool ElementBinary::can_inplace_output(void) {
   if (op_type == OP_EW_ADD || op_type == OP_EW_MUL) {
     // TODO: Currently assume that we always inplace_a
@@ -185,7 +214,7 @@ bool ElementBinary::can_inplace_output(void) {
       if (inputs[0]->dims[i] != outputs[0]->dims[i])
         return false;
     }
-    return true;
+    return outputs[0]->get_shape() == inputs[0]->get_shape();
   }
   return false;
 }
@@ -199,6 +228,8 @@ void ElementBinary::do_inplace_output(void) {
 }
 
 void ElementBinary::init(FFModel const &ff) {
+  // Check if we have the same oprands
+  has_same_operands = (inputs[0]->region == inputs[1]->region);
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -227,6 +258,8 @@ void ElementBinary::init(FFModel const &ff) {
                                                       EXCLUSIVE,
                                                       inputs[1]->region));
     launcher.add_field(rid++, FID_DATA);
+  } else {
+    assert(inputs[0]->part == inputs[1]->part);
   }
   if (!inplace_a) {
     launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
@@ -268,6 +301,7 @@ OpMeta *ElementBinary::init_task(Task const *task,
   m->has_same_operands = eb->has_same_operands;
   m->broadcast_input1 = eb->broadcast_input1;
   m->broadcast_input2 = eb->broadcast_input2;
+  std::strcpy(m->op_name, eb->name);
   Domain input1_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain input2_domain, output_domain;
@@ -415,7 +449,7 @@ __host__ void
       assert(task->regions.size() == 2);
       Domain out_domain = runtime->get_index_space_domain(
           ctx, task->regions[1].region.get_index_space());
-      assert(out_domain == in1_domain);
+      // assert(out_domain == in1_domain);
       in1_ptr = helperGetTensorPointerRO<float>(
           regions[0], task->regions[0], FID_DATA, ctx, runtime);
       in2_ptr = in1_ptr;
@@ -426,7 +460,7 @@ __host__ void
       assert(task->regions.size() == 3);
       Domain out_domain = runtime->get_index_space_domain(
           ctx, task->regions[2].region.get_index_space());
-      assert(out_domain == in1_domain);
+      // assert(out_domain == in1_domain);
       in1_ptr = helperGetTensorPointerRO<float>(
           regions[0], task->regions[0], FID_DATA, ctx, runtime);
       in2_ptr = helperGetTensorPointerRO<float>(
@@ -722,19 +756,8 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
 
 ElementBinaryParams ElementBinary::get_params() const {
   ElementBinaryParams params;
-  params.type = op_type;
+  params.type = this->op_type;
   return params;
-}
-
-using PCG::Node;
-Node FFModel::get_or_create_element_binary_node(const ParallelTensor input1,
-                                                const ParallelTensor input2,
-                                                OperatorType op_type) {
-  auto inputs = std::make_pair(input1, input2);
-  ElementBinaryParams params;
-  params.type = op_type;
-
-  return get_or_create_node<ElementBinary>(inputs, params);
 }
 
 }; // namespace FlexFlow

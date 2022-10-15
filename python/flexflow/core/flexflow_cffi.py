@@ -23,7 +23,9 @@ import warnings
 import numpy as np
 from .flexflow_logger import fflogger
 from flexflow.type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
-from .flexflow_cffi_header import ffc, ffi
+_FF_BUILD_DOCS = bool(os.environ.get('READTHEDOCS') or os.environ.get("FF_BUILD_DOCS"))
+if not _FF_BUILD_DOCS:
+  from .flexflow_cffi_header import ffc, ffi
 
 ff_tracing_id = 200
 
@@ -1825,7 +1827,7 @@ class FFModel(object):
       comp_mode = CompMode.TRAINING
     c_comp_mode = enum_to_int(CompMode, comp_mode)
     ffc.flexflow_model_compile(self.handle, c_loss_type, c_metrics, len(metrics), c_comp_mode)
-    for (ff_tensor, np_tensor) in self.attr_tensors:
+    for (ff_tensor, np_tensor) in self.attr_tensors.items():
       ff_tensor.set_tensor(self, np_tensor)
     print("Compiled ffmodel!")
 

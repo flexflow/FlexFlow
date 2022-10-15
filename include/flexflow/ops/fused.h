@@ -59,6 +59,9 @@ public:
   SourceType op_input_source[MAX_NUM_FUSED_TENSORS];
   SourceType op_weight_source[MAX_NUM_FUSED_TENSORS];
   SourceType op_output_source[MAX_NUM_FUSED_TENSORS];
+  DataType input_data_types[MAX_NUM_INPUTS];
+  DataType weight_data_types[MAX_NUM_WEIGHTS];
+  DataType output_data_types[MAX_NUM_OUTPUTS];
   int op_input_idx[MAX_NUM_FUSED_TENSORS];
   int op_weight_idx[MAX_NUM_FUSED_TENSORS];
   int op_output_idx[MAX_NUM_FUSED_TENSORS];

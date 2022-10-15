@@ -35,6 +35,34 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
 
+bool operator==(BatchMatmulParams const &lhs, BatchMatmulParams const &rhs) {
+  return lhs.a_seq_length_dim == rhs.a_seq_length_dim &&
+         lhs.a_seq_length_dim == rhs.a_seq_length_dim;
+}
+
+bool BatchMatmulParams::is_valid(
+    std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
+  if (!input.first.is_valid())
+    return false;
+  if (!input.second.is_valid())
+    return false;
+  if (input.first.num_dims != input.second.num_dims)
+    return false;
+  for (int i = input.first.num_dims - 1; i >= 2; i--)
+    if (input.first.dims[i] != input.second.dims[i])
+      return false;
+  if (input.first.dims[0] != input.second.dims[1])
+    return false;
+  return true;
+}
+
+BatchMatmulParams BatchMatmul::get_params() const {
+  BatchMatmulParams params;
+  params.a_seq_length_dim = inputs[0]->num_dims - 1 - this->a_seq_length_dim;
+  params.b_seq_length_dim = inputs[1]->num_dims - 1 - this->b_seq_length_dim;
+  return params;
+}
+
 Tensor FFModel::batch_matmul(const Tensor A,
                              const Tensor B,
                              int a_seq_length_dim,
@@ -88,6 +116,18 @@ Op *BatchMatmul::create_operator_from_layer(
                          layer->name);
 }
 
+BatchMatmul::BatchMatmul(
+    FFModel &model,
+    BatchMatmulParams const &params,
+    std::pair<ParallelTensor, ParallelTensor> const &inputs,
+    char const *name)
+    : BatchMatmul(model,
+                  inputs.first,
+                  inputs.second,
+                  params.a_seq_length_dim,
+                  params.b_seq_length_dim,
+                  name) {}
+
 // return A*B
 BatchMatmul::BatchMatmul(FFModel &model,
                          const ParallelTensor A,
@@ -129,6 +169,36 @@ BatchMatmul::BatchMatmul(FFModel &model,
   //  for (int i = 0; i < C.num_dims; i++)
   //    assert(C.adim[i] == outputs[0].adim[i]);
   //}
+}
+
+void BatchMatmul::serialize(Legion::Serializer &sez) const {
+  BatchMatmulParams params = get_params();
+  sez.serialize(params.a_seq_length_dim);
+  sez.serialize(params.b_seq_length_dim);
+}
+
+using PCG::Node;
+/*static*/
+Node BatchMatmul::deserialize(FFModel &ff,
+                              Legion::Deserializer &dez,
+                              ParallelTensor inputs[],
+                              int num_inputs) {
+  assert(num_inputs == 2);
+  int a_seq_length_dim, b_seq_length_dim;
+  dez.deserialize(a_seq_length_dim);
+  dez.deserialize(b_seq_length_dim);
+
+  BatchMatmulParams params;
+  params.a_seq_length_dim = a_seq_length_dim;
+  params.b_seq_length_dim = b_seq_length_dim;
+  return ff.get_or_create_node<BatchMatmul>({inputs[0], inputs[1]}, params);
+}
+
+Op *BatchMatmul::materialize(FFModel &ff,
+                             ParallelTensor inputs[],
+                             int num_inputs) const {
+  BatchMatmulParams params = get_params();
+  return new BatchMatmul(ff, params, {inputs[0], inputs[1]}, this->name);
 }
 
 void BatchMatmul::init(FFModel const &ff) {
@@ -463,8 +533,10 @@ __host__ void
 
   // TODO: add support for meta->a_seq_length_dim >= 0
   // or meta->b_seq_length_dim >= 0
-  assert((meta->a_seq_length_dim < 0) || (iter_config->seq_length == 0));
-  assert((meta->b_seq_length_dim < 0) || (iter_config->seq_length == 0));
+  assert((meta->a_seq_length_dim >= a_domain.get_dim()) ||
+         (iter_config->seq_length == 0));
+  assert((meta->b_seq_length_dim >= b_domain.get_dim()) ||
+         (iter_config->seq_length == 0));
 
   BatchMatmul::backward_kernel_wrapper(meta,
                                        out_ptr,
@@ -612,3 +684,13 @@ bool BatchMatmul::measure_operator_cost(Simulator *sim,
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::BatchMatmulParams>::operator()(
+    FlexFlow::BatchMatmulParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.a_seq_length_dim);
+  hash_combine(key, params.b_seq_length_dim);
+  return key;
+}
+}; // namespace std

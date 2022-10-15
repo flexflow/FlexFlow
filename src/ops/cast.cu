@@ -42,7 +42,25 @@ void Cast::forward_kernel_wrapper(const IDT *input_ptr,
                                   size_t volume) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (false) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
   Cast::forward_kernel<IDT, ODT>(input_ptr, output_ptr, volume, stream);
+  if (false) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[%s] forward time (CF) = %.2fms\n", "Cast", elapsed);
+    print_tensor<IDT>(input_ptr, 32, "[Cast:forward:input]");
+    print_tensor<ODT>(output_ptr, 32, "[Cast:forward:output]");
+  }
 }
 
 template <typename IDT, typename ODT>

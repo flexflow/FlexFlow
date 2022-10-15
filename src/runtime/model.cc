@@ -128,10 +128,10 @@ Op::Op(FFModel &model,
     // resetInputGrads[i] = true;
   }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
-    outputs[i] = NULL;
+    outputs[i] = nullptr;
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
-    meta[i] = NULL;
+    meta[i] = nullptr;
   parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
 }
 
@@ -193,6 +193,11 @@ void Op::do_inplace_output() {
   assert(false);
 }
 
+void Op::map_output_tensors(FFModel &ff) {
+  for (int i = 0; i < numOutputs; i++)
+    ff.map_tensor(outputs[i], this);
+}
+
 tl::optional<RecordFormatter> Op::as_dot() const {
   if (this->numOutputs != 1) {
     return tl::nullopt;
@@ -235,6 +240,7 @@ void Op::zero_grad(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   ArgumentMap argmap;
   ZeroInitMeta meta;
+  meta.op_ptr = this;
   meta.num_regions = numWeights + numOutputs;
   assert(meta.num_regions <= ZeroInitMeta::MAX_NUM_REGIONS);
   IndexSpace parallel_is = IndexSpace::NO_SPACE;
@@ -806,9 +812,9 @@ int Op::get_output_to_weight_dim_mapping(const ParallelTensor output,
 }
 
 bool Op::check_output_input_weight_parallel_dims(bool allocate_weights) const {
-  if (!allocate_weights) {
-    assert(this->numWeights == 0);
-  }
+  // if (!allocate_weights) {
+  //   assert(this->numWeights == 0);
+  // }
 
   for (ParallelDimMappingRecord const &record : *parallel_dims_mapping) {
     assert(record.input_idx < this->numInputs);
@@ -2339,6 +2345,14 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
   // Context ctx = config.lg_ctx;
   // Runtime* runtime = config.lg_hlr;
   for (size_t l = 1; l < operators.size() - 1; l++) {
+    // don't fuse input and weight operator since they don't involve any
+    // forward/backward task launches
+    if (operators[l]->op_type == OP_INPUT || operators[l]->op_type == OP_WEIGHT)
+      continue;
+    // don't fuse parallel op since they have different parallel_is in
+    // forward/backward
+    if (operators[l]->is_parallel_op())
+      continue;
     size_t start = 0;
     {
       Op *opl = operators[l];
@@ -2362,16 +2376,25 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
       MachineView view1 = operators[l]->outputs[0]->machine_view;
       MachineView view2 = operators[i]->outputs[0]->machine_view;
       if (view1 == view2) {
-        FusedOp *fused_op;
-        // bool created = false;
+        FusedOp *fused_op = nullptr;
+        bool allocate_new_fused_op = false;
         if (operators[i]->op_type == OP_FUSED)
           fused_op = (FusedOp *)operators[i];
         else {
-          // created = true;
           //  cannot be an in-place operator
           if (operators[i]->has_inplace_output())
             continue;
+          // don't fuse input and weight operator since they don't involve any
+          // forward/backward kernels
+          if (operators[i]->op_type == OP_INPUT ||
+              operators[i]->op_type == OP_WEIGHT)
+            continue;
+          // don't fuse parallel op since they have different parallel_is in
+          // forward/backward
+          if (operators[i]->is_parallel_op())
+            continue;
           fused_op = new FusedOp(*this, operators[i]);
+          allocate_new_fused_op = true;
         }
         if (fused_op->add_operator(*this, operators[l])) {
           // Construct new operators
@@ -2405,8 +2428,8 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
           return true;
         } else {
           // TODO: delete fused_op to avoid memory leakage
-          // if (created)
-          // delete fused_op;
+          if (allocate_new_fused_op)
+            delete fused_op;
           continue;
         }
       }
@@ -2461,6 +2484,16 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_BATCHMATMUL: {
+      Op *op = BatchMatmul::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_CAST: {
+      Op *op = Cast::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_CONCAT: {
       Op *op = Concat::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -2494,6 +2527,7 @@ Op *FFModel::create_operator_from_layer(
     case OP_SCALAR_ADD:
     case OP_SCALAR_SUB:
     case OP_SCALAR_TRUE_DIV:
+    case OP_POW:
     case OP_RELU:
     case OP_SIGMOID:
     case OP_TANH:
@@ -2506,6 +2540,11 @@ Op *FFModel::create_operator_from_layer(
     }
     case OP_FLAT: {
       Op *op = Flat::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_LAYERNORM: {
+      Op *op = LayerNorm::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -2531,6 +2570,11 @@ Op *FFModel::create_operator_from_layer(
     }
     case OP_SPLIT: {
       Op *op = Split::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_TRANSPOSE: {
+      Op *op = Transpose::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -2592,6 +2636,7 @@ void FFModel::compile(LossType loss_type,
     deserialize_graph_optimal_view(dez, best_graph, optimal_views);
     operators.clear();
     convert_graph_to_operators(best_graph, optimal_views);
+    best_graph->print_dot();
     delete best_graph;
     for (auto const &layer : layers) {
       // map inputs to parallel tensor
@@ -2682,10 +2727,11 @@ void FFModel::compile(LossType loss_type,
       assert(op->weights[i]->region != LogicalRegion::NO_REGION);
       parameters.push_back(op->weights[i]);
     }
-    for (int i = 0; i < op->numOutputs; i++) {
-      // Output tensor
-      map_tensor(op->outputs[i], op);
-    }
+    op->map_output_tensors(*this);
+    // for (int i = 0; i < op->numOutputs; i++) {
+    //   // Output tensor
+    //   map_tensor(op->outputs[i], op);
+    // }
     if (op->is_parallel_op())
       ((ParallelOp *)op)->create_input_partition(*this);
     // op->map_output_tensors(*this);
@@ -3152,6 +3198,16 @@ std::tuple<> get_input_shape(std::tuple<> const &) {
 }
 
 template <>
+std::tuple<ParallelTensorShape, ParallelTensorShape, ParallelTensorShape>
+    get_input_shape(
+        std::tuple<ParallelTensor, ParallelTensor, ParallelTensor> const
+            &inputs) {
+  return std::make_tuple(std::get<0>(inputs)->get_shape(),
+                         std::get<1>(inputs)->get_shape(),
+                         std::get<2>(inputs)->get_shape());
+}
+
+template <>
 ParallelTensorShape get_input_shape(ParallelTensor const &input) {
   return input->get_shape();
 }
@@ -3577,6 +3633,8 @@ std::string optype_to_string(OperatorType op_type) {
       return "Exp";
     case OP_ROUND:
       return "Round";
+    case OP_LAYERNORM:
+      return "LayerNorm";
     case OP_LOG:
       return "Log";
     case OP_LOGICAL_NOT:

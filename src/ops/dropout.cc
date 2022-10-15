@@ -1,4 +1,5 @@
 #include "flexflow/ops/dropout.h"
+#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
@@ -22,6 +23,7 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+using PCG::Node;
 
 Tensor FFModel::dropout(const Tensor input,
                         float rate,
@@ -66,42 +68,16 @@ DropoutParams Dropout::get_params() const {
   DropoutParams params;
   params.rate = this->rate;
   params.seed = this->seed;
-
   return params;
 }
 
-size_t DropoutParams::get_hash(const ParallelTensor input) const {
-  size_t hash = input->get_owner_independent_hash();
-  hash_combine(hash, this->rate);
-  hash_combine(hash, this->seed);
-
-  return hash;
+bool DropoutParams::is_valid(ParallelTensorShape const &) const {
+  // dropout is always valid
+  return true;
 }
 
-size_t Dropout::get_params_hash() const {
-  return this->get_params().get_hash(this->inputs[0]);
-}
-
-using PCG::Node;
-Node FFModel::get_or_create_dropout_node(const ParallelTensor input,
-                                         DropoutParams const &params) {
-  // Don't check is_valid since all inputs should be valid for dropout
-  // if (!params.is_valid(input)) {
-  //  return Node::INVALID_NODE;
-  //}
-
-  size_t hash = params.get_hash(input);
-
-  Dropout *dropout = nullptr;
-  auto const &it = this->cached_dropout_ops.find(hash);
-  if (it != this->cached_dropout_ops.end()) {
-    dropout = it->second;
-  } else {
-    dropout = new Dropout(*this, input, params.rate, params.seed, nullptr);
-    cached_dropout_ops[hash] = dropout;
-  }
-
-  return this->new_node(dropout);
+bool operator==(DropoutParams const &lhs, DropoutParams const &rhs) {
+  return lhs.rate == rhs.rate && lhs.seed == rhs.seed;
 }
 
 Dropout::Dropout(FFModel &model,
@@ -130,6 +106,12 @@ Dropout::Dropout(FFModel &model,
                  Dropout const &other,
                  const ParallelTensor input)
     : Dropout(model, input, other.rate, other.seed, other.name) {}
+
+Dropout::Dropout(FFModel &model,
+                 DropoutParams const &params,
+                 const ParallelTensor input,
+                 char const *name)
+    : Dropout(model, input, params.rate, params.seed, name) {}
 
 #ifdef DEADCODE
 void Dropout::map_output_tensors(FFModel &model) {
@@ -339,7 +321,7 @@ Node Dropout::deserialize(FFModel &ff,
   DropoutParams params;
   params.rate = rate;
   params.seed = seed;
-  return ff.get_or_create_dropout_node(inputs[0], params);
+  return ff.get_or_create_node<Dropout>(inputs[0], params);
 }
 
 bool Dropout::measure_operator_cost(Simulator *sim,
@@ -390,12 +372,12 @@ bool Dropout::measure_operator_cost(Simulator *sim,
 
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf(
-        "[Meausre Dropout] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+        "[Measure Dropout] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
         name,
         cost_metrics.forward_time,
         cost_metrics.backward_time);
   } else {
-    printf("[Meausre Dropout] name(%s) forward_time(%.4lf)\n",
+    printf("[Measure Dropout] name(%s) forward_time(%.4lf)\n",
            name,
            cost_metrics.forward_time);
   }
@@ -405,3 +387,13 @@ bool Dropout::measure_operator_cost(Simulator *sim,
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::DropoutParams>::operator()(
+    FlexFlow::DropoutParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.rate);
+  hash_combine(key, params.seed);
+  return key;
+}
+}; // namespace std

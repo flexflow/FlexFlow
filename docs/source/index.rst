@@ -10,7 +10,24 @@ Welcome to FlexFlow's documentation!
    :maxdepth: 2
    :caption: Getting Started
    
+   welcome
    installation
+   docker
+   jupyter
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Interoperability
+   
+   keras
+   pytorch
+   onnx
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Examples
+
+   mt5
    
 .. toctree::
    :maxdepth: 3
@@ -19,21 +36,13 @@ Welcome to FlexFlow's documentation!
    python/models
    python/layers
    python/dataloader
-   
-.. toctree::
-   :maxdepth: 2
-   :caption: Interoperability
-   
-   keras
-   pytorch
-   onnx
-   
-.. toctree::
-   :maxdepth: 2
-   :caption: Tutorial
 
-   tutorial
-   cmd
+.. toctree::
+   :maxdepth: 2
+   :caption: C++ API
+
+   c++_api/c++_api_root
+
 
 .. Indices and tables
 .. ==================

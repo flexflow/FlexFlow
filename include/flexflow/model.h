@@ -245,25 +245,23 @@ class NoOp;
 
 ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
 
+class BatchMatmul;
 class Cast;
 class Concat;
 class Conv2D;
-class Conv2DParams;
 class Dropout;
-class DropoutParams;
 class ElementBinary;
 class ElementUnary;
 class Embedding;
 class Flat;
+class LayerNorm;
 class Linear;
-class LinearParams;
 class MultiHeadAttention;
 class Pool2D;
-class Pool2DParams;
 class Reshape;
-class ReshapeParams;
 class Softmax;
 class Split;
+class Transpose;
 class Combine;
 class Repartition;
 class Reduction;
@@ -298,6 +296,11 @@ typename ToShape<Input>::type get_input_shape(Input const &input) = delete;
 
 template <>
 std::tuple<> get_input_shape(std::tuple<> const &);
+
+template <>
+std::tuple<ParallelTensorShape, ParallelTensorShape, ParallelTensorShape>
+    get_input_shape(
+        std::tuple<ParallelTensor, ParallelTensor, ParallelTensor> const &);
 
 template <>
 ParallelTensorShape get_input_shape(ParallelTensor const &input);
@@ -680,87 +683,9 @@ public:
 
   PCG::Node get_or_create_noop_node(const ParallelTensor input);
   PCG::Node get_or_create_input_node(ParallelTensorShape const &);
-  PCG::Node get_or_create_cast_node(const ParallelTensor input, DataType dtype);
-  PCG::Node get_or_create_concat_node(int num_inputs,
-                                      ParallelTensor const *inputs,
-                                      int legion_axis);
-  PCG::Node get_or_create_element_binary_node(const ParallelTensor input1,
-                                              const ParallelTensor input2,
-                                              OperatorType type);
-  PCG::Node get_or_create_embedding_node(LayerID const &layer_guid,
-                                         const ParallelTensor input,
-                                         int num_entries,
-                                         int out_channels,
-                                         AggrMode aggr);
-  PCG::Node get_or_create_linear_node(LayerID const &layer_guid,
-                                      const ParallelTensor input,
-                                      int out_dim,
-                                      ActiMode activation,
-                                      bool use_bias);
-  PCG::Node get_or_create_multihead_attn_node(LayerID const &layer_guid,
-                                              const ParallelTensor query,
-                                              const ParallelTensor key,
-                                              const ParallelTensor value,
-                                              int embed_dim,
-                                              int num_heads,
-                                              int kdim,
-                                              int vdim,
-                                              float dropout,
-                                              bool bias,
-                                              bool add_bias_kv,
-                                              bool add_zero_attn);
-  PCG::Node get_or_create_reshape_node(const ParallelTensor input,
-                                       ReshapeParams const &shape);
-  PCG::Node get_or_create_reshape_node(const ParallelTensor input,
-                                       std::vector<int> const &shape);
-  PCG::Node get_or_create_softmax_node(const ParallelTensor input,
-                                       int softmax_dim);
-  PCG::Node get_or_create_split_node(const ParallelTensor input,
-                                     std::vector<int> const &splits,
-                                     int legion_axis);
-  PCG::Node get_or_create_repartition_node(const ParallelTensor input,
-                                           int repartition_dim,
-                                           int repartition_degree);
-  PCG::Node get_or_create_replicate_node(const ParallelTensor input,
-                                         int replicate_dim,
-                                         int replicate_degree);
-  PCG::Node get_or_create_reduction_node(const ParallelTensor input,
-                                         int reduction_dim,
-                                         int reduction_degree);
-  PCG::Node get_or_create_combine_node(const ParallelTensor input,
-                                       int combine_dim,
-                                       int combine_degree);
   PCG::Node get_or_create_fused_parallel_node(
       const ParallelTensor input,
       std::vector<ParallelOpInfo> const &parallel_ops);
-  PCG::Node get_or_create_conv2d_node(LayerID const &layer_guid,
-                                      const ParallelTensor input,
-                                      int out_channels,
-                                      int kernel_h,
-                                      int kernel_w,
-                                      int stride_h,
-                                      int stride_w,
-                                      int padding_h,
-                                      int padding_w,
-                                      ActiMode activation,
-                                      int groups,
-                                      bool use_bias);
-  PCG::Node get_or_create_dropout_node(const ParallelTensor input,
-                                       DropoutParams const &params);
-  PCG::Node get_or_create_pool2d_node(const ParallelTensor input,
-                                      int kernelH,
-                                      int kernelW,
-                                      int strideH,
-                                      int strideW,
-                                      int paddingH,
-                                      int paddingW,
-                                      PoolType type,
-                                      ActiMode activation);
-  PCG::Node get_or_create_flat_node(const ParallelTensor input);
-  PCG::Node get_or_create_element_unary_node(const ParallelTensor input,
-                                             OperatorType type,
-                                             bool inplace,
-                                             float scalar);
   PCG::Node get_or_create_parallel_op_node(const ParallelTensor input,
                                            ParallelOpInfo const &);
   // ========================================
@@ -898,43 +823,63 @@ public:
   // Cached operators: key: operator hash, value: operator pointer
   std::tuple<
       std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    BatchMatmulParams>,
+          BatchMatmul *>,
+      std::unordered_map<std::pair<ParallelTensorShape, CastParams>, Cast *>,
+      std::unordered_map<
           std::pair<std::vector<ParallelTensorShape>, ConcatParams>,
           Concat *>,
       std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>,
                          Conv2D *>,
+      std::unordered_map<std::pair<ParallelTensorShape, DropoutParams>,
+                         Dropout *>,
       std::unordered_map<
           std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
                     ElementBinaryParams>,
           ElementBinary *>,
-      std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
-                         Linear *>,
       std::unordered_map<std::pair<ParallelTensorShape, ElementUnaryParams>,
                          ElementUnary *>,
+      std::unordered_map<std::pair<ParallelTensorShape, EmbeddingParams>,
+                         Embedding *>,
+      std::unordered_map<std::pair<ParallelTensorShape, FlatParams>, Flat *>,
+      std::unordered_map<std::pair<ParallelTensorShape, LayerNormParams>,
+                         LayerNorm *>,
+      std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
+                         Linear *>,
       std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>,
-                         Pool2D *>>
+                         Pool2D *>,
+      std::unordered_map<std::pair<std::tuple<ParallelTensorShape,
+                                              ParallelTensorShape,
+                                              ParallelTensorShape>,
+                                   MultiHeadAttentionParams>,
+                         MultiHeadAttention *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,
+                         Reshape *>,
+      std::unordered_map<std::pair<ParallelTensorShape, SplitParams>, Split *>,
+      std::unordered_map<std::pair<ParallelTensorShape, SoftmaxParams>,
+                         Softmax *>,
+      std::unordered_map<std::pair<ParallelTensorShape, TransposeParams>,
+                         Transpose *>,
+      std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
+                         Repartition *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ReplicateParams>,
+                         Replicate *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ReductionParams>,
+                         Reduction *>,
+      std::unordered_map<std::pair<ParallelTensorShape, CombineParams>,
+                         Combine *>,
+      std::unordered_map<std::pair<ParallelTensorShape, FusedParallelOpParams>,
+                         FusedParallelOp *>>
       cached_ops;
   std::unordered_map<size_t, NoOp *> cached_noop_ops;
   std::unordered_map<size_t, NoOp *> cached_input_ops;
-  std::unordered_map<size_t, Cast *> cached_cast_ops;
-  std::unordered_map<size_t, Dropout *> cached_dropout_ops;
-  std::unordered_map<size_t, Embedding *> cached_embedding_ops;
-  std::unordered_map<size_t, Flat *> cached_flat_ops;
-  std::unordered_map<size_t, MultiHeadAttention *> cached_multihead_attn_ops;
-  std::unordered_map<size_t, Reshape *> cached_reshape_ops;
-  std::unordered_map<size_t, Softmax *> cached_softmax_ops;
-  std::unordered_map<size_t, Split *> cached_split_ops;
-  std::unordered_map<size_t, Repartition *> cached_repartition_ops;
-  std::unordered_map<size_t, Replicate *> cached_replicate_ops;
-  std::unordered_map<size_t, Reduction *> cached_reduction_ops;
-  std::unordered_map<size_t, Combine *> cached_combine_ops;
-  std::unordered_map<size_t, FusedParallelOp *> cached_fused_parallel_ops;
   std::vector<MachineView> all_valid_views;
 #ifdef FF_USE_NCCL
   std::unordered_map<size_t, ncclComm_t *> view_hash_to_nccl_comms;
 #endif
 private:
   bool debug;
-  // ParallelTensor label_tensor_with_final_part;//FIXME: to be removed
   std::map<MachineView, Legion::IndexSpace, MachineViewDimCompare> all_task_is;
 
   template <int NDIM>

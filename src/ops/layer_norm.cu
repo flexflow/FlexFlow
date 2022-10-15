@@ -28,6 +28,7 @@ LayerNormMeta::LayerNormMeta(FFHandler handle, LayerNorm const *ln)
   elementwise_affine = ln->elementwise_affine;
   effective_batch_size = ln->effective_batch_size;
   effective_num_elements = ln->effective_num_elements;
+  profiling = ln->profiling;
   eps = ln->eps;
   checkCUDA(cudaMalloc(&mean_ptr, sizeof(float) * effective_batch_size));
   checkCUDA(cudaMalloc(&rstd_ptr, sizeof(float) * effective_batch_size));
@@ -152,8 +153,26 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
                                        T *beta_ptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
   LayerNorm::forward_kernel<float>(
       m, in_ptr, out_ptr, gamma_ptr, beta_ptr, stream);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[LayerNorm] forward time (CF) = %.2fms\n", elapsed);
+    print_tensor<T>(in_ptr, 32, "[LayerNorm:forward:input]");
+    print_tensor<T>(out_ptr, 32, "[LayerNorm:forward:output]");
+  }
 }
 
 template <typename T>
