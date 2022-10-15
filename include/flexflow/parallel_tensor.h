@@ -207,6 +207,8 @@ public:
   // record to_stages
   int num_to_stages;
   int input_to_stage[MAX_PIPE_PART];
+  Op* stage_mapped_op[MAX_PIPE_PART];
+  int mapped_op_dst_idx[MAX_PIPE_PART];
 
   Legion::PhysicalRegion physical_region;
 };

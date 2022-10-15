@@ -3028,6 +3028,8 @@ bool FFModel::convert_graph_to_operators(
       todos[it.first] = (int)inList.size();
     }
   }
+  sort(queue.begin(), queue.end());
+
   size_t index = 0;
   while (index < queue.size()) {
     Node node = queue[index++];
@@ -3203,10 +3205,10 @@ bool FFModel::convert_graph_to_operators(
       new_op->outputs[i]->pipe_num_part_out = sinfo.bufSize / sinfo.ubatchSize;
       // new_op->outputs[i]->dims[ndims - 2].size =
       //     new_op->outputs[i]->pipe_buf_size;
-      printf("size %d op(%s), %d\n",
+      printf("size %d op(%s), %d, stage %d\n",
              new_op->outputs[i]->dims[ndims - 2].size,
              optype_to_string(new_op->op_type).data(),
-             ndims);
+             ndims, sinfo.sid);
     }
     for (int i = 0; i < new_op->numInputs; i++) {
       int ndims = new_op->inputs[i]->num_dims;

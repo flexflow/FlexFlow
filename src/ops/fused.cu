@@ -431,6 +431,9 @@ __host__ void FusedOp::forward_task(Task const *task,
                                           my_output_accessor[0].domain);
         break;
       }
+      case OP_SPLIT: {
+        break;
+      }
       default: {
         fprintf(stderr,
                 "Fusion currently does not support type = %d\n",
@@ -897,6 +900,9 @@ __host__ void FusedOp::backward_task(Task const *task,
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].domain,
             my_output_grad_accessor[0].domain);
+        break;
+      }
+      case OP_SPLIT: {
         break;
       }
       default:

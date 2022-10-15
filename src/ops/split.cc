@@ -168,6 +168,38 @@ void Split::init(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Split::pipeinit(FFModel const &ff) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  IndexLauncher launcher(SPLIT_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Split)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(RegionRequirement(in_pipepart[0][0],
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  for (int i = 0; i < numOutputs; i++) {
+    launcher.add_region_requirement(RegionRequirement(outputs[i]->out_pipepart[init_output_idx],
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      outputs[i]->region));
+    launcher.add_field(i + 1, FID_DATA);
+  }
+  init_output_idx = (init_output_idx + 1) % outputs[0]->pipe_num_part_out;
+  runtime->execute_index_space(ctx, launcher);
+}
+
 OpMeta *Split::init_task(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
                          Context ctx,

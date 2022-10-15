@@ -176,7 +176,7 @@ void FlexFlow::top_level_task(Task const *task,
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ff_config.epochs; epoch++) {
     // data_loader.reset();
-    ff.reset_metrics();
+    // ff.reset_metrics();
     int iterations = data_loader.num_samples / ff_config.batchSize;
     for (int iter = 0; iter < iterations; iter++) {
       ff.reset_pipe_idx();

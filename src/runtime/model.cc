@@ -2658,7 +2658,7 @@ void FFModel::backward(int seq_length) {
   iter_config.seq_length = seq_length;
   assert(config.computationMode == COMP_MODE_TRAINING);
   // Compute metrics
-  compute_metrics();
+  // compute_metrics();
   // Compute the gradients of the final operator wrt loss
   Op *final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
@@ -2752,6 +2752,13 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
       // runtime->get_index_space_domain(operators[l]->outputs[0]->parallel_is);
       // Domain d2 =
       // runtime->get_index_space_domain(operators[i]->outputs[0]->parallel_is);
+      printf("checking fusion  %ld op(%s, %ld) and %ld op(%s, %ld)\n",
+             l,
+             optype_to_string(operators[l]->op_type).data(),
+             operators[l]->stage_guid,
+             i,
+             optype_to_string(operators[i]->op_type).data(),
+             operators[i]->stage_guid);
       MachineView view1 = operators[l]->outputs[0]->machine_view;
       MachineView view2 = operators[i]->outputs[0]->machine_view;
       if (view1 == view2) {
@@ -3129,12 +3136,15 @@ void FFModel::compile(LossType loss_type,
       bool found = false;
       for (int j = 0; j < op->inputs[i]->num_to_stages; j++) {
         // this input has already been mapped to this stage before
-        if (op->inputs[i]->input_to_stage[j] == op->stage_guid) {
+        if (op->inputs[i]->stage_mapped_op[j]->outputs[0]->machine_view == op->outputs[0]->machine_view) {
+          printf("input[%d] mapped to stage[%ld] before\n", i, op->stage_guid);
           assert(!found);
           found = true;
+          int dst_idx = op->inputs[i]->mapped_op_dst_idx[j];
           for (int k = 0; k < op->inputs[i]->pipe_buf_size / op->ubSize; k++) {
-            op->in_pipepart[i][k] = op->in_pipepart[j][k];
-            op->in_pipepart_grad[i][k] = op->in_pipepart_grad[j][k];
+            assert(op->inputs[i]->stage_mapped_op[j]->in_pipepart[dst_idx][k] != LogicalPartition::NO_PART);
+            op->in_pipepart[i][k] = op->inputs[i]->stage_mapped_op[j]->in_pipepart[dst_idx][k];
+            op->in_pipepart_grad[i][k] = op->inputs[i]->stage_mapped_op[j]->in_pipepart_grad[dst_idx][k];
           }
           break;
         }
@@ -3143,9 +3153,9 @@ void FFModel::compile(LossType loss_type,
       if (found) {
         // do nothing
       } else {
+        op->inputs[i]->stage_mapped_op[op->inputs[i]->num_to_stages] = op;
+        op->inputs[i]->mapped_op_dst_idx[op->inputs[i]->num_to_stages] = i;
         op->inputs[i]->num_to_stages += 1;
-        op->inputs[i]->input_to_stage[op->inputs[i]->num_to_stages] =
-            op->stage_guid;
         if (op->inputs[i]->owner_op->stage_guid == op->stage_guid) {
           for (int j = 0; j < op->inputs[i]->pipe_buf_size / op->ubSize; j++) {
             op->in_pipepart[i][j] = op->inputs[i]->out_pipepart[j];
@@ -3157,10 +3167,10 @@ void FFModel::compile(LossType loss_type,
       }
     }
 
-    if (op->is_parallel_op())
+    // if (op->is_parallel_op())
       // intra-stage parallelism, TODO: this should partition on subregion when
       // pipeline is enabled
-      ((ParallelOp *)op)->create_input_partition(*this);
+      // ((ParallelOp *)op)->create_input_partition(*this);
     // op->map_output_tensors(*this);
   }
 
