@@ -1206,35 +1206,38 @@ void Graph::export_strategy_computation_graph(
         machine_view_row << std::to_string(device_id);
       }
 
-      runtime_cost_row << "ft"+std::to_string(op_cost.forward_time) << "bt"+std::to_string(op_cost.backward_time)
-                       << "st"+std::to_string(op_cost.sync_time);
-
       // get memory cost
-      int input_degree = 1;
-      for (ParallelDim dim: (*node.ptr->inputs)->dims) {
-        if (dim.degree > 1) {
-          input_degree *= dim.degree;
-        }
+      size_t input_mem = op_cost.inputs_memory;
+      if (node.ptr->numInputs > 0) {
+        input_mem /= (*node.ptr->inputs)->get_total_num_parts();
       }
-      int output_degree = 1;
-      for (ParallelDim dim: (*node.ptr->outputs)->dims) {
-        if (dim.degree > 1) {
-          output_degree *= dim.degree;
-        }
+      size_t output_mem = op_cost.outputs_memory;
+      if (node.ptr->numOutputs > 0) {
+        output_mem /= (*node.ptr->outputs)->get_total_num_parts();
       }
-      int param_degree = 1;
+      size_t weight_mem = op_cost.weights_memory;
       if (node.ptr->numWeights > 0) {
-        for (ParallelDim dim: (*node.ptr->weights)->dims) {
-          if (dim.degree > 1) {
-            param_degree *= dim.degree;
-          }
-        }
+        weight_mem /= (*node.ptr->weights)->get_total_num_parts();
       }
-      memory_cost_row << "sum"+std::to_string(op_cost.total_memory()) << "im"+std::to_string(op_cost.inputs_memory / input_degree)
-                      << "om"+std::to_string(op_cost.outputs_memory / output_degree)
-                      << "wm"+std::to_string(op_cost.weights_memory / param_degree)
-                      << "diff"+std::to_string(op_cost.total_mem_diff_from(this->model->simulator->offset))
-                      << "of"+std::to_string(this->model->simulator->offset);
+
+      std::string sum_str = std::to_string(op_cost.total_memory());
+      std::string im_str = std::to_string(input_mem);
+      std::string om_str = std::to_string(output_mem);
+      std::string wm_str = std::to_string(weight_mem);
+
+      // convert to scientific notation
+      const int NUM_COSTS = 4;
+      std::string costs [NUM_COSTS] = {sum_str, im_str, om_str, wm_str};
+      for (int i=0; i<NUM_COSTS; i++) {
+        const int PRECISION = 4;
+        int dec_index = 1;
+        std::string cost = costs[i];
+        if (cost[0] == '-') dec_index++;
+        costs[i] = cost.substr(0, dec_index) + '.' + cost.substr(dec_index, PRECISION) + 'e' + std::to_string(cost.length()-dec_index);
+      }
+
+      runtime_cost_row << "ft"+std::to_string(op_cost.forward_time) << "bt"+std::to_string(op_cost.backward_time) << "st"+std::to_string(op_cost.sync_time);
+      memory_cost_row << "sum"+costs[0] << "im"+costs[1] << "om"+costs[2] << "wm"+costs[3];
 
 
       rf << node.to_string() << std::to_string(node.guid) << meta_row
