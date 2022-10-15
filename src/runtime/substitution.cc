@@ -1169,10 +1169,12 @@ void Graph::export_strategy_computation_graph(
     if (strategy.find(node) == strategy.end()) {
       dot.add_node(node, {{"label", node.to_string()}});
     } else {
-      RecordFormatter rf, meta_row, machine_view_row, runtime_cost_row, memory_cost_row;
+      RecordFormatter rf, meta_row, machine_view_row, runtime_cost_row,
+          memory_cost_row;
       MachineView mv = strategy.at(node);
       std::ostringstream oss;
-      CostMetrics op_cost = this->model->simulator->measure_operator_cost(node.ptr, mv);
+      CostMetrics op_cost =
+          this->model->simulator->measure_operator_cost(node.ptr, mv);
       switch (node.ptr->op_type) {
         case OP_REPARTITION: {
           Repartition *rp = (Repartition *)node.ptr;
@@ -1206,7 +1208,6 @@ void Graph::export_strategy_computation_graph(
               meta_row << std::to_string(mv.dim[i]);
             }
           }
-          
         }
       }
       for (int device_id : mv.device_ids()) {
@@ -1233,19 +1234,24 @@ void Graph::export_strategy_computation_graph(
       std::string wm_str = std::to_string(weight_mem);
 
       // convert to scientific notation
-      const int NUM_COSTS = 4;
-      std::string costs [NUM_COSTS] = {sum_str, im_str, om_str, wm_str};
-      for (int i=0; i<NUM_COSTS; i++) {
-        const int PRECISION = 4;
+      int const NUM_COSTS = 4;
+      std::string costs[NUM_COSTS] = {sum_str, im_str, om_str, wm_str};
+      for (int i = 0; i < NUM_COSTS; i++) {
+        int const PRECISION = 4;
         int dec_index = 1;
         std::string cost = costs[i];
-        if (cost[0] == '-') dec_index++;
-        costs[i] = cost.substr(0, dec_index) + '.' + cost.substr(dec_index, PRECISION) + 'e' + std::to_string(cost.length()-dec_index);
+        if (cost[0] == '-')
+          dec_index++;
+        costs[i] = cost.substr(0, dec_index) + '.' +
+                   cost.substr(dec_index, PRECISION) + 'e' +
+                   std::to_string(cost.length() - dec_index);
       }
 
-      runtime_cost_row << "ft"+std::to_string(op_cost.forward_time) << "bt"+std::to_string(op_cost.backward_time) << "st"+std::to_string(op_cost.sync_time);
-      memory_cost_row << "sum"+costs[0] << "im"+costs[1] << "om"+costs[2] << "wm"+costs[3];
-
+      runtime_cost_row << "ft" + std::to_string(op_cost.forward_time)
+                       << "bt" + std::to_string(op_cost.backward_time)
+                       << "st" + std::to_string(op_cost.sync_time);
+      memory_cost_row << "sum" + costs[0] << "im" + costs[1] << "om" + costs[2]
+                      << "wm" + costs[3];
 
       rf << node.to_string() << std::to_string(node.guid) << meta_row
          << machine_view_row << runtime_cost_row << memory_cost_row;
