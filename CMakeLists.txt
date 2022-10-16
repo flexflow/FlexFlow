@@ -209,7 +209,7 @@ if(FF_USE_NCCL)
 endif()
 
 # build binary
-option(FF_BUILD_RESNET "build resnet example" OFF)
+option(FF_BUILD_RESNET "build resnet example" ON)
 option(FF_BUILD_RESNEXT "build resnext example" OFF)
 option(FF_BUILD_ALEXNET "build alexnet example" ON)
 option(FF_BUILD_DLRM "build DLRM example" ON)

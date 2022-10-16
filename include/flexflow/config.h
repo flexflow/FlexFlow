@@ -45,6 +45,7 @@ namespace FlexFlow {
 #define MAX_NUM_FUSED_OPERATORS 64
 #define MAX_NUM_FUSED_TENSORS 64
 #define MAX_NUM_WORKERS 1024
+#define MAX_NUM_STAGES 16
 #define MAX_FILENAME 200
 #define MAX_OPNAME 128
 // DataLoader
@@ -84,8 +85,17 @@ struct FFInitInfo {
   // int myRank, allRanks;
 };
 
+struct Stage {
+  int bufSize = 1;
+  int nFnB = 1;
+  int ubatchSize = 1;
+  int device_num = 1;
+};
+
 bool load_partition_from_file(std::string const &filename,
-                              std::unordered_map<int, int> &partition);
+                              std::unordered_map<int, int> &partition,
+                              int &num_stages,
+                              Stage *stages);
 
 // bool load_strategies_from_file(const std::string& filename,
 //          std::map<Legion::MappingTagID, ParallelConfig>& strategies);
@@ -150,7 +160,11 @@ public:
   tl::optional<std::string> substitution_json_path = tl::nullopt;
   // We use MappingTagID as the key since we will pass the tag to the mapper
   // std::map<Legion::MappingTagID, ParallelConfig> strategies;
+  // shicao pipeline
+  bool sequential_pipeline;
   std::unordered_map<int, int> partition;
+  Stage stages[MAX_NUM_STAGES];
+  int num_stages;
   int machine_model_version;
   std::string machine_model_file;
   int simulator_segment_size;

@@ -2752,13 +2752,13 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
       // runtime->get_index_space_domain(operators[l]->outputs[0]->parallel_is);
       // Domain d2 =
       // runtime->get_index_space_domain(operators[i]->outputs[0]->parallel_is);
-      printf("checking fusion  %ld op(%s, %ld) and %ld op(%s, %ld)\n",
-             l,
-             optype_to_string(operators[l]->op_type).data(),
-             operators[l]->stage_guid,
-             i,
-             optype_to_string(operators[i]->op_type).data(),
-             operators[i]->stage_guid);
+      // printf("checking fusion  %ld op(%s, %ld) and %ld op(%s, %ld)\n",
+      //        l,
+      //        optype_to_string(operators[l]->op_type).data(),
+      //        operators[l]->stage_guid,
+      //        i,
+      //        optype_to_string(operators[i]->op_type).data(),
+      //        operators[i]->stage_guid);
       MachineView view1 = operators[l]->outputs[0]->machine_view;
       MachineView view2 = operators[i]->outputs[0]->machine_view;
       if (view1 == view2) {
@@ -2995,7 +2995,10 @@ void FFModel::compile(LossType loss_type,
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
   config.computationMode = comp_mode;
-  load_partition_from_file(config.import_strategy_file, config.partition);
+  load_partition_from_file(config.import_strategy_file,
+                           config.partition,
+                           config.num_stages,
+                           config.stages);
   // if (config.import_strategy_file.length() > 0) {
   //  load_strategies_from_file(config.import_strategy_file, config.strategies);
   // }
@@ -3789,6 +3792,8 @@ struct DefaultConfig {
   constexpr static float searchAlpha = 1.2f;
   const static bool searchOverlapBackwardUpdate = false;
   const static bool onlyDataParallel = true;
+  // shicao pipeline
+  const static bool sequentialPipeline = false;
   const static bool enableSampleParallel = true;
   const static bool enableParameterParallel = false;
   const static bool enableAttributeParallel = false;
@@ -3821,6 +3826,8 @@ FFConfig::FFConfig() {
   search_overlap_backward_update = DefaultConfig::searchOverlapBackwardUpdate;
   computationMode = COMP_MODE_TRAINING;
   only_data_parallel = DefaultConfig::onlyDataParallel;
+  // shicao pipeline
+  sequential_pipeline = DefaultConfig::sequentialPipeline;
   enable_sample_parallel = DefaultConfig::enableSampleParallel;
   enable_parameter_parallel = DefaultConfig::enableParameterParallel;
   enable_attribute_parallel = DefaultConfig::enableAttributeParallel;
@@ -3913,6 +3920,10 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if ((!strcmp(argv[i], "--only-data-parallel"))) {
       only_data_parallel = true;
+      continue;
+    }
+    if ((!strcmp(argv[i], "--sequential-pipeline"))) {
+      sequential_pipeline = true;
       continue;
     }
     if ((!strcmp(argv[i], "--enable-parameter-parallel"))) {

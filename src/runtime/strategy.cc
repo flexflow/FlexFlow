@@ -98,7 +98,9 @@ bool FFConfig::find_parallel_config(int ndims,
 */
 
 bool load_partition_from_file(std::string const &filename,
-                              std::unordered_map<int, int> &partition) {
+                              std::unordered_map<int, int> &partition,
+                              int &num_stages,
+                              Stage *stages) {
   std::fstream input(filename, std::ios::in);
   if (!input) {
     std::cerr << "Failed to open partition file for reading" << std::endl;
@@ -112,6 +114,25 @@ bool load_partition_from_file(std::string const &filename,
     input >> sid;
     printf("%d, %d\n", i, sid);
     partition[i] = sid;
+  }
+  input >> num_stages;
+  for (int i = 0; i < num_stages; i++) {
+    int in;
+    input >> in;
+    stages[i].ubatchSize = in;
+    input >> in;
+    stages[i].bufSize = in;
+    input >> in;
+    stages[i].nFnB = in;
+    input >> in;
+    stages[i].device_num = in;
+    printf("stage[%d]: ubatchSize(%d), bufSize(%d), nFnB(%d), device_num(%d)\n",
+         i,
+         stages[i].ubatchSize,
+         stages[i].bufSize,
+         stages[i].nFnB,
+         stages[i].device_num);
+
   }
   input.close();
   return true;

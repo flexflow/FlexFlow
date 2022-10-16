@@ -1628,7 +1628,7 @@ GraphOptimalViewSerialized
     // sinfo[3].device_num = 1;
 
     // ns
-    StageInfo sinfo[6];
+    // StageInfo sinfo[6];
     // sinfo[0].sid = 0;
     // sinfo[0].ubatchSize = 64;
     // sinfo[0].bufSize = 128;
@@ -1666,66 +1666,74 @@ GraphOptimalViewSerialized
     // sinfo[5].device_num = 1;
 
     // s
-    sinfo[0].sid = 0;
-    sinfo[0].ubatchSize = 64;
-    sinfo[0].bufSize = 384;
-    sinfo[0].nFnB = 1;
-    sinfo[0].device_num = 1;
+    // sinfo[0].sid = 0;
+    // sinfo[0].ubatchSize = 64;
+    // sinfo[0].bufSize = 384;
+    // sinfo[0].nFnB = 1;
+    // sinfo[0].device_num = 1;
 
-    sinfo[1].sid = 1;
-    sinfo[1].ubatchSize = 64;
-    sinfo[1].bufSize = 320;
-    sinfo[1].nFnB = 1;
-    sinfo[1].device_num = 1;
+    // sinfo[1].sid = 1;
+    // sinfo[1].ubatchSize = 64;
+    // sinfo[1].bufSize = 320;
+    // sinfo[1].nFnB = 1;
+    // sinfo[1].device_num = 1;
 
-    sinfo[2].sid = 2;
-    sinfo[2].ubatchSize = 64;
-    sinfo[2].bufSize = 256;
-    sinfo[2].nFnB = 1;
-    sinfo[2].device_num = 1;
+    // sinfo[2].sid = 2;
+    // sinfo[2].ubatchSize = 64;
+    // sinfo[2].bufSize = 256;
+    // sinfo[2].nFnB = 1;
+    // sinfo[2].device_num = 1;
 
-    sinfo[3].sid = 3;
-    sinfo[3].ubatchSize = 64;
-    sinfo[3].bufSize = 192;
-    sinfo[3].nFnB = 1;
-    sinfo[3].device_num = 1;
+    // sinfo[3].sid = 3;
+    // sinfo[3].ubatchSize = 64;
+    // sinfo[3].bufSize = 192;
+    // sinfo[3].nFnB = 1;
+    // sinfo[3].device_num = 1;
 
-    sinfo[4].sid = 4;
-    sinfo[4].ubatchSize = 64;
-    sinfo[4].bufSize = 128;
-    sinfo[4].nFnB = 1;
-    sinfo[4].device_num = 1;
+    // sinfo[4].sid = 4;
+    // sinfo[4].ubatchSize = 64;
+    // sinfo[4].bufSize = 128;
+    // sinfo[4].nFnB = 1;
+    // sinfo[4].device_num = 1;
 
-    sinfo[5].sid = 5;
-    sinfo[5].ubatchSize = 64;
-    sinfo[5].bufSize = 64;
-    sinfo[5].nFnB = 1;
-    sinfo[5].device_num = 1;
+    // sinfo[5].sid = 5;
+    // sinfo[5].ubatchSize = 64;
+    // sinfo[5].bufSize = 64;
+    // sinfo[5].nFnB = 1;
+    // sinfo[5].device_num = 1;
 
-    MachineView data_parallel_view[6];
+    // MachineView data_parallel_view[6];
     int start_device = 0;
-    for (int i = 0; i < 6; i++) {
-      data_parallel_view[i].device_type = MachineView::GPU;
-      data_parallel_view[i].ndims = 1;
-      // data_parallel_view.dim[0] = model->config.numNodes *
-      // model->config.workersPerNode;
-      data_parallel_view[i].dim[0] = sinfo[i].device_num;
-      data_parallel_view[i].stride[0] = 1;
-      data_parallel_view[i].start_device_id = start_device;
-      start_device += sinfo[i].device_num;
+    int num_stages = model->config.num_stages;
+    std::vector<MachineView> data_parallel_view;
+    std::vector<StageInfo> sinfo;
+    for (int i = 0; i < num_stages; i++) {
+      MachineView view;
+      view.device_type = MachineView::GPU;
+      view.ndims = 1;
+      view.dim[0] = model->config.stages[i].device_num;
+      view.stride[0] = 1;
+      view.start_device_id = start_device;
+      data_parallel_view.push_back(view);
+      start_device +=  model->config.stages[i].device_num;
+
+      StageInfo info;
+      info.sid = i;
+      info.ubatchSize = model->config.stages[i].ubatchSize;
+      info.bufSize = model->config.stages[i].bufSize;
+      info.nFnB = model->config.stages[i].nFnB;
+      info.device_num = model->config.stages[i].device_num;
+      sinfo.push_back(info);
     }
 
-    int op_per_stage = model->operators.size() / 2;
-    // int op_per_stage = 100;
     int num = 0;
 
     Graph *graph = new Graph(model);
     std::unordered_map<FlexFlow::Op const *, Node> op_to_node_map;
 
     // shicao sequential pipeline
-    bool seq = true;
-    bool stage_dep[5] = {false};
-    FlexFlow::Op const *stage_to_op[6];
+    std::vector<bool> stage_dep(num_stages, false);
+    std::vector<FlexFlow::Op const *> stage_to_op(num_stages);
 
     for (FlexFlow::Op const *dstOp : model->operators) {
       Node dstNode;
@@ -1733,12 +1741,14 @@ GraphOptimalViewSerialized
       dstNode.guid = model->node_global_guid++;
       op_to_node_map[dstOp] = dstNode;
 
-      printf("Node type(%s), id: %d, stage: %d\n",
-             dstNode.to_string().c_str(),
-             num,
-             model->config.partition[num]);
       optimal_views[dstNode] = data_parallel_view[model->config.partition[num]];
       optimal_partition[dstNode] = sinfo[model->config.partition[num]];
+      printf("Node type(%s), id: %d, stageinfo: %d, %d, %d\n",
+             dstNode.to_string().c_str(),
+             num,
+             model->config.partition[num],
+             sinfo[model->config.partition[num]].ubatchSize,
+             sinfo[model->config.partition[num]].bufSize);
       num++;
 
       for (int j = 0; j < dstOp->numInputs; j++) {
@@ -1761,17 +1771,15 @@ GraphOptimalViewSerialized
     }
     
     // shicao for sequential pipeline: add dummy op to each stage
-    if (seq) {
-      for (int i = 0; i < 5; i++) {
-        printf("stage[%d] dep %d\n", i, stage_dep[i]);
+    if (model->config.sequential_pipeline) {
+      for (int i = 0; i < num_stages - 1; i++) {
+        printf("stage[%d] dep %s\n", i, stage_dep[i] ? "true" : "false");
         if (!stage_dep[i]) {
           FlexFlow::Op const *src_op = stage_to_op[i];
           std::vector<int> splits;
           splits.push_back(src_op->outputs[0]->dims[0].size);
           Node dummy_node =
               model->get_or_create_node<Split>(src_op->outputs[0], {splits, 0});
-          // Node dummy_node = model->get_or_create_node<Repartition>(
-          //     dstOp->outputs[0], {0 /*legion_dim*/, 1});
           Node src_node = op_to_node_map[src_op];
           assert(optimal_partition[src_node].sid == i);
           graph->add_edge(src_node, dummy_node, 0, 0);
