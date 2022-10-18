@@ -220,10 +220,9 @@ bool Combine::measure_operator_cost(Simulator *sim,
                                     MachineView const &mv,
                                     CostMetrics &cost_metrics) const {
   // TODO: to be implemented
+  cost_metris = CostMetrics();
   cost_metrics.forward_time = 0.05f;
   cost_metrics.backward_time = 0.05f;
-  
-  cost_metrics.sync_time = 0.0f;
   return true;
 }
 

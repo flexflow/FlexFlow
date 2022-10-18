@@ -69,8 +69,7 @@ struct CostMetrics {
   size_t total_mem_diff_from(off_t sim_offset) const;
 
 public:
-  float forward_time, backward_time;
-  float sync_time = 0;
+  float forward_time = 0, backward_time = 0, sync_time = 0;
   ///< Bytes of memory usage of different parts
   // Assume:
   // 1. all memory allocations use Simulator::allocate
