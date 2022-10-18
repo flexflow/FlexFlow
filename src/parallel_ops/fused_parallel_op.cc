@@ -58,8 +58,9 @@ bool FusedParallelOpParams::is_valid(
 FusedParallelOpParams FusedParallelOp::get_params() const {
   FusedParallelOpParams params;
   std::vector<ParallelOpInfo> ops(std::begin(this->parallel_ops),
-                                  std::end(this->parallel_ops));
+                                  this->parallel_ops + this->num_parallel_ops);
   params.parallel_ops = ops;
+  assert (params.parallel_ops.size() == this->num_parallel_ops);
   return params;
 }
 

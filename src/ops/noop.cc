@@ -81,11 +81,14 @@ NoOp::NoOp(FFModel &model,
     : Op(model, params.op_type, name, 0 /*weights*/, 1 /*outputs*/, inputs) {
   if (params.op_type == OP_NOOP) {
     assert(inputs.size() == 1);
+    this->inputs[0] = inputs[0];
+    this->outputs[0] = inputs[0];
   } else {
     assert(params.op_type == OP_INPUT);
     assert(inputs.size() == 0);
     auto input_metadata = params.input_metadata.value();
     if (mp::holds_alternative<size_t>(input_metadata)) {
+      assert (false && "Error: unsupported case in OP_INPUT constructor. Please file an issue with the FlexFlow developers.");
       this->input_tensor_guid = mp::get<size_t>(input_metadata);
     } else {
       ParallelTensor tensor = new ParallelTensorBase();
@@ -106,8 +109,11 @@ NoOp::NoOp(FFModel &model,
         }
       }
       assert(tensor->check_valid());
+      this->outputs[0] = tensor;
     }
   }
+  outputs[0]->owner_op = this;
+  outputs[0]->owner_idx = 0;
 }
 
 OpMeta *NoOp::init_task(Task const *task,
@@ -231,7 +237,7 @@ tl::optional<RecordFormatter> NoOp::as_dot() const {
 
 NoOpParams NoOp::get_params() const {
   NoOpParams params;
-  params.op_type == this->op_type;
+  params.op_type = this->op_type;
   if (this->op_type == OP_INPUT) {
     params.input_metadata = this->input_tensor_guid;
   }
