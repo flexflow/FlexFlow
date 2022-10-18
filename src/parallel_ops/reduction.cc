@@ -180,6 +180,7 @@ void Reduction::backward(FFModel const &ff) {
 bool Reduction::measure_operator_cost(Simulator *sim,
                                       MachineView const &pc,
                                       CostMetrics &cost_metrics) const {
+  cost_metrics = CostMetrics();
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
   return true;
