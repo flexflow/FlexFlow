@@ -1,5 +1,10 @@
 #include "flexflow/operator_params.h"
+#include "flexflow/ops/aggregate.h"
+#include "flexflow/ops/aggregate_spec.h"
 #include "flexflow/ops/attention.h"
+#include "flexflow/ops/batch_matmul.h"
+#include "flexflow/ops/batch_norm.h"
+#include "flexflow/ops/cache.h"
 #include "flexflow/ops/cast.h"
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/conv_2d.h"
@@ -8,11 +13,17 @@
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/groupby.h"
 #include "flexflow/ops/layer_norm.h"
+#include "flexflow/ops/mean.h"
 #include "flexflow/ops/linear.h"
+#include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reshape.h"
+#include "flexflow/ops/reverse.h"
 #include "flexflow/ops/softmax.h"
+#include "flexflow/ops/split.h"
+#include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
@@ -24,18 +35,30 @@ namespace FlexFlow {
 
 tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
   switch (op->op_type) {
+    case OP_INPUT:
+    case OP_WEIGHT:
+    case OP_NOOP:
+      return ((NoOp *)op)->get_params();
     case OP_LINEAR:
       return ((Linear *)op)->get_params();
     case OP_CONV2D:
       return ((Conv2D *)op)->get_params();
+    case OP_BATCHMATMUL:
+      return ((BatchMatmul *)op)->get_params();
     case OP_EW_ADD:
     case OP_EW_SUB:
     case OP_EW_MUL:
     case OP_EW_DIV:
       return ((ElementBinary *)op)->get_params();
+    case OP_EW_EQUAL:
+    case OP_EW_GREATER:
+    case OP_EW_LESS:
+    case OP_EW_MAX:
+    case OP_EW_MIN:
     case OP_EXP:
     case OP_SCALAR_MULTIPLY:
     case OP_SCALAR_ADD:
+    case OP_SCALAR_FLOOR_DIV:
     case OP_SCALAR_SUB:
     case OP_SCALAR_TRUE_DIV:
     case OP_RELU:
@@ -45,8 +68,49 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
     case OP_GELU:
     case OP_ELU:
       return ((ElementUnary *)op)->get_params();
+    case OP_MATMUL:
+    case OP_MUL:
+    case OP_ENLARGE:
+    case OP_MERGE_GCONV:
+    case OP_CONSTANT_IMM:
+    case OP_CONSTANT_ICONV:
+    case OP_CONSTANT_ONE:
+    case OP_CONSTANT_POOL:
+    case OP_SQUEEZE:
+    case OP_UNSQUEEZE:
+    case OP_REDUCE_ARGMAX:
+    case OP_REDUCE_ARGMIN:
+    case OP_REDUCE_MAX:
+    case OP_REDUCE_MEAN:
+    case OP_REDUCE_MIN:
+    case OP_REDUCE_PROD:
+    case OP_REDUCE_SUM:
+    case OP_PAD:
+    case OP_SHAPE:
+    case OP_SIZE:
+    case OP_TOPK:
+      return ((TopK *)op)->get_params();
+    case OP_WHERE:
+    case OP_CEIL:
+    case OP_ROUND:
+    case OP_LOG:
+    case OP_LOGICAL_NOT:
+    case OP_SQRT:
+    case OP_LEAKYRELU:
+    case OP_SLICE:
+    case OP_RESIZE:
+    case OP_PRELU:
+    case OP_GELU:
+    case OP_FUSED:
+    case OP_RSQRT:
+    case OP_POW:
+    case OP_PIPELINE:
+    case OP_MEAN:
+      return ((Mean *)op)->get_params();
     case OP_CONCAT:
       return ((Concat *)op)->get_params();
+    case OP_SPLIT:
+      return ((Split *)op)->get_params();
     case OP_POOL2D:
       return ((Pool2D *)op)->get_params();
     case OP_CAST:
@@ -55,6 +119,14 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((Dropout *)op)->get_params();
     case OP_EMBEDDING:
       return ((Embedding *)op)->get_params();
+    case OP_GROUP_BY:
+      return ((Group_by *)op)->get_params();
+    case OP_CACHE:
+      return ((Cache *)op)->get_params();
+    case OP_AGGREGATE:
+      return ((Aggregate *)op)->get_params();
+    case OP_AGG_SPEC:
+      return ((AggregateSpec *)op)->get_params();
     case OP_FLAT:
       return ((Flat *)op)->get_params();
     case OP_MULTIHEAD_ATTENTION:
@@ -63,8 +135,12 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((LayerNorm *)op)->get_params();
     case OP_RESHAPE:
       return ((Reshape *)op)->get_params();
+    case OP_REVERSE:
+      return ((Reverse *)op)->get_params();
     case OP_SOFTMAX:
       return ((Softmax *)op)->get_params();
+    case OP_BATCHNORM:
+      return ((BatchNorm *)op)->get_params();
     case OP_REPARTITION:
       return ((Repartition *)op)->get_params();
     case OP_REPLICATE:
