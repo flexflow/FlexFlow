@@ -288,6 +288,68 @@ void ElementBinary::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
+void ElementBinary::pipeinit(FFModel const &ff) {
+  // Check if we have the same oprands
+  has_same_operands = (inputs[0]->region == inputs[1]->region);
+  // assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_init(ff, argmap);
+  IndexLauncher launcher(ELEMENTBINARY_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(ElementBinary)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  int rid = 0;
+  launcher.add_region_requirement(RegionRequirement(in_pipepart[0][0],
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
+  launcher.add_field(rid++, FID_DATA);
+  if (!has_same_operands) {
+    launcher.add_region_requirement(RegionRequirement(in_pipepart[1][0],
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      inputs[1]->region));
+    launcher.add_field(rid++, FID_DATA);
+  } else {
+    assert(in_pipepart[0][0] == in_pipepart[1][0]);
+  }
+  if (!inplace_a) {
+    launcher.add_region_requirement(RegionRequirement(outputs[0]->out_pipepart[init_output_idx],
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      outputs[0]->region));
+    launcher.add_field(rid++, FID_DATA);
+  } else {
+    // assert(outputs[0]->part == inputs[0]->part);
+    assert(outputs[0]->region == inputs[0]->region);
+  }
+  // launcher.add_region_requirement(
+  //   RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+  //     WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
+  // launcher.add_field(3, FID_DATA);
+  // if (inputs[0]->region_grad != inputs[1]->region_grad) {
+  //  regions[4](I/O): input1_grad
+  //  launcher.add_region_requirement(
+  //    RegionRequirement(input_grad_lps[1], 0/*projection id*/,
+  //                      WRITE_ONLY, EXCLUSIVE, inputs[1]->region_grad));
+  //  launcher.add_field(4, FID_DATA);
+  //}
+  init_output_idx = (init_output_idx + 1) % outputs[0]->pipe_num_part_out;
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
+}
+
 OpMeta *ElementBinary::init_task(Task const *task,
                                  std::vector<PhysicalRegion> const &regions,
                                  Context ctx,

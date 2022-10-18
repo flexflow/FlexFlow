@@ -78,7 +78,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   Tensor input;
   {
-    int const dims[] = {ffConfig.batchSize, 3, 229, 229};
+    int const dims[] = {ffConfig.ubatchUnit, 3, 229, 229};
     input = ff.create_tensor<4>(dims, DT_FLOAT);
   }
   // Tensor label;
@@ -112,12 +112,25 @@ void FlexFlow::top_level_task(Task const *task,
   t = ff.softmax(t);
   Optimizer *optimizer = new SGDOptimizer(&ff, 0.001f);
   std::vector<MetricsType> metrics;
-  metrics.push_back(METRICS_ACCURACY);
-  metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
+  // metrics.push_back(METRICS_ACCURACY);
+  // metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
   // Data Loader
   /* DataLoader data_loader(ff, resnetConfig, input, ff.label_tensor); */
   ff.init_operators();
+  ff.zero_weight_gradients();
+
+  for (int iter = 0; iter < 1; iter++) {
+    ff.reset_pipe_idx();
+    for (int iter_inner = 0; iter_inner < ff.iter_perbatch; iter_inner++) {
+      ff.forward();
+      ff.zero_input_gradients();
+      ff.backward();
+    }
+    ff.update();
+    ff.zero_weight_gradients();
+  }
+
   // Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -128,22 +141,20 @@ void FlexFlow::top_level_task(Task const *task,
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
     /* data_loader.reset(); */
-    ff.reset_metrics();
+    // ff.reset_metrics();
     int iterations = 128; // data_loader.num_samples / ffConfig.batchSize;
 
     for (int iter = 0; iter < iterations; iter++) {
-      if (resnetConfig.dataset_path.length() == 0) {
-        // Only load data once for random input
-        // if (iter == 0 && epoch == 0)
-        //  data_loader.next_batch(ff);
-      } else {
-        // data_loader.next_batch(ff);
-      }
+      ff.reset_pipe_idx();
+      // data_loader.reset_idx();
       runtime->begin_trace(ctx, 111 /*trace_id*/);
-      ff.forward();
-      ff.zero_gradients();
-      ff.backward();
+      for (int iter_inner = 0; iter_inner < ff.iter_perbatch; iter_inner++) {
+        ff.forward();
+        // ff.zero_input_gradients();
+        ff.backward();
+      }
       ff.update();
+      ff.zero_weight_gradients();
       runtime->end_trace(ctx, 111 /*trace_id*/);
     }
   }

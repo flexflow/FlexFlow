@@ -258,6 +258,48 @@ void ElementUnary::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
+void ElementUnary::pipeinit(FFModel const &ff) {
+  // assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_init(ff, argmap);
+  IndexLauncher init_launcher(ELEMENTUNARY_INIT_TASK_ID,
+                              parallel_is,
+                              TaskArgument(this, sizeof(ElementUnary)),
+                              argmap,
+                              Predicate::TRUE_PRED,
+                              false /*must*/,
+                              0 /*mapper_id*/,
+                              outputs[0]->machine_view.hash());
+  if (!inplace) {
+    init_launcher.add_region_requirement(RegionRequirement(in_pipepart[0][0],
+                                                           0 /*projection id*/,
+                                                           READ_ONLY,
+                                                           EXCLUSIVE,
+                                                           inputs[0]->region));
+    init_launcher.add_field(0, FID_DATA);
+    init_launcher.add_region_requirement(RegionRequirement(outputs[0]->out_pipepart[init_output_idx],
+                                                           0 /*projection id*/,
+                                                           WRITE_ONLY,
+                                                           EXCLUSIVE,
+                                                           outputs[0]->region));
+    init_launcher.add_field(1, FID_DATA);
+  } else {
+    init_launcher.add_region_requirement(RegionRequirement(in_pipepart[0][0],
+                                                           0 /*projection id*/,
+                                                           READ_WRITE,
+                                                           EXCLUSIVE,
+                                                           inputs[0]->region));
+    init_launcher.add_field(0, FID_DATA);
+  }
+  init_output_idx = (init_output_idx + 1) % outputs[0]->pipe_num_part_out;
+  FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
+}
+
 OpMeta *ElementUnary::init_task(Task const *task,
                                 std::vector<PhysicalRegion> const &regions,
                                 Context ctx,

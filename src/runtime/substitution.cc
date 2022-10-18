@@ -3187,6 +3187,20 @@ bool FFModel::convert_graph_to_operators(
     new_op->ubSize = sinfo.ubatchSize;
     new_op->nFnB = sinfo.nFnB;
     new_op->device_num = sinfo.device_num;
+    if (new_op->op_type == OP_INPUT) {
+      int ndims = new_op->outputs[0]->num_dims;
+      new_op->outputs[0]->dims[ndims - 2].degree = sinfo.device_num;
+      // update parallel ids
+      int next_parallel_idx = 0;
+      for (int i = 0; i < ndims; i++) {
+        if (new_op->outputs[0]->dims[i].degree == 1) {
+          new_op->outputs[0]->dims[i].parallel_idx = -1;
+        } else {
+          new_op->outputs[0]->dims[i].parallel_idx = next_parallel_idx;
+          next_parallel_idx++;
+        }
+      }
+    }
     for (int i = 0; i < new_op->numOutputs; i++) {
       int ndims = new_op->outputs[i]->num_dims;
       // new_op->outputs[i]->dims[ndims-2].size *= sinfo.bufSize; // TODO check
@@ -3205,16 +3219,21 @@ bool FFModel::convert_graph_to_operators(
       new_op->outputs[i]->pipe_num_part_out = sinfo.bufSize / sinfo.ubatchSize;
       // new_op->outputs[i]->dims[ndims - 2].size =
       //     new_op->outputs[i]->pipe_buf_size;
-      printf("size %d op(%s), %d, stage %d\n",
+      printf("size %d op(%s, %ld), device_num(%d), degree(%d), stage %d\n",
              new_op->outputs[i]->dims[ndims - 2].size,
              optype_to_string(new_op->op_type).data(),
-             ndims, sinfo.sid);
+             new_op->op_guid,
+             new_op->device_num,
+             new_op->outputs[i]->dims[ndims - 2].degree,
+             sinfo.sid);
     }
     for (int i = 0; i < new_op->numInputs; i++) {
       int ndims = new_op->inputs[i]->num_dims;
+      assert(new_op->inputs[i]->dims[ndims - 2].degree == sinfo.device_num);
       for (int j = 0; j < ndims; j++) {
         new_op->input_dims[i][j] = new_op->inputs[i]->dims[j];
       }
+      assert(new_op->input_dims[i][ndims - 2].degree == sinfo.device_num);
       // change back degree for inputs
       assert(new_op->inputs[i]->owner_op != NULL);
       new_op->inputs[i]->dims[ndims - 2].degree =

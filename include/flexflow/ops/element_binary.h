@@ -51,9 +51,7 @@ public:
   void reset_idx(FFModel const &) override {
     assert(0);
   }
-  void pipeinit(FFModel const &) override {
-    assert(0);
-  }
+  void pipeinit(FFModel const &) override;
   void pipeforward(FFModel const &) override {
     assert(0);
   }

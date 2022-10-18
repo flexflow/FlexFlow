@@ -290,8 +290,8 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
-        assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
+        // assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
+        // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
         ElementBinary::forward_kernel_wrapper(
             m,
@@ -374,7 +374,7 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
+        // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementUnaryMeta *m = (ElementUnaryMeta *)metas->meta[op];
         ElementUnary::forward_kernel_wrapper(
             m,
@@ -750,8 +750,8 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
-        assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
+        // assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
+        // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
         ElementBinary::backward_kernel_wrapper(
             m,
@@ -838,7 +838,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
+        // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementUnaryMeta *m = (ElementUnaryMeta *)metas->meta[op];
         ElementUnary::backward_kernel_wrapper(
             m,
