@@ -1,12 +1,24 @@
+#! /usr/bin/env bash
+set -euo pipefail
 set -x
-set -e
+
+# Cd into directory holding this script
+cd "${BASH_SOURCE[0]%/*}"
 
 GPUS=$1
 LEGION_FSIZE_SMALL=4096
 LEGION_FSIZE_LARGE=$(( 2 * LEGION_FSIZE_SMALL ))
 LEGION_ZSIZE=12192
 
-if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit; fi
+if [[ -z "$GPUS" ]]; then 
+    echo "No GPU index passed, aborting tests"
+    exit
+fi
+
+if [[ -z "$FF_HOME" ]]; then 
+    echo "FF_HOME variable is not defined, aborting tests"
+    exit
+fi
 
 #torch
 ./flexflow_python $FF_HOME/examples/python/pytorch/cifar10_cnn_torch.py -ll:py 1 -ll:gpu $GPUS -ll:fsize $LEGION_FSIZE_SMALL -ll:zsize $LEGION_ZSIZE
