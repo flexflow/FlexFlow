@@ -29,12 +29,12 @@ fi
 #ONNX
 python3 $FF_HOME/examples/python/onnx/mnist_mlp_pt.py
 ./flexflow_python $FF_HOME/examples/python/onnx/mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize $LEGION_FSIZE_SMALL -ll:zsize $LEGION_ZSIZE --epochs 5 --test_type 1
-python3 $FF_HOME/examples/python/onnx/mnist_mlp_keras.py
-./flexflow_python $FF_HOME/examples/python/onnx/mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize $LEGION_FSIZE_SMALL -ll:zsize $LEGION_ZSIZE --epochs 5 --test_type 0 
+#python3 $FF_HOME/examples/python/onnx/mnist_mlp_keras.py
+#./flexflow_python $FF_HOME/examples/python/onnx/mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize $LEGION_FSIZE_SMALL -ll:zsize $LEGION_ZSIZE --epochs 5 --test_type 0 
 python3 $FF_HOME/examples/python/onnx/cifar10_cnn_pt.py
 ./flexflow_python $FF_HOME/examples/python/onnx/cifar10_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize $LEGION_FSIZE_SMALL -ll:zsize $LEGION_ZSIZE --epochs 40 --test_type 1
-python3 $FF_HOME/examples/python/onnx/cifar10_cnn_keras.py
-./flexflow_python $FF_HOME/examples/python/onnx/cifar10_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize $LEGION_FSIZE_SMALL -ll:zsize $LEGION_ZSIZE --epochs 40 --test_type 0
+#python3 $FF_HOME/examples/python/onnx/cifar10_cnn_keras.py
+#./flexflow_python $FF_HOME/examples/python/onnx/cifar10_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize $LEGION_FSIZE_SMALL -ll:zsize $LEGION_ZSIZE --epochs 40 --test_type 0
  
 #Sequential model tests
 ./flexflow_python $FF_HOME/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize $LEGION_FSIZE_SMALL -ll:zsize $LEGION_ZSIZE
