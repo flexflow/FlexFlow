@@ -5,17 +5,17 @@ set -x
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"
 
-GPUS=$1
+GPUS=${1:-}
 LEGION_FSIZE_SMALL=4096
 LEGION_FSIZE_LARGE=$(( 2 * LEGION_FSIZE_SMALL ))
 LEGION_ZSIZE=12192
 
-if [[ -z "$GPUS" ]]; then 
+if [[ -z "${GPUS}" ]]; then 
     echo "No GPU index passed, aborting tests"
     exit
 fi
 
-if [[ -z "$FF_HOME" ]]; then 
+if [[ -z "${FF_HOME+1}" ]]; then 
     echo "FF_HOME variable is not defined, aborting tests"
     exit
 fi
