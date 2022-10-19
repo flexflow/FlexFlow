@@ -1168,6 +1168,28 @@ void Graph::export_strategy_computation_graph(
   for (auto const &node : s.get_nodes(*this)) {
     if (strategy.find(node) == strategy.end()) {
       dot.add_node(node, {{"label", node.to_string()}});
+      // Check FusedParallel node here and print out the detailed information
+      if (node.ptr->op_type == OperatorType::OP_FUSED_PARALLEL) {
+        RecordFormatter rf;
+        std::vector<RecordFormatter> rows{};
+
+        FusedParallelOp *fused_op = (FusedParallelOp *)node.ptr;
+        for (int i = 0; i < fused_op->num_parallel_ops; i++) {
+          RecordFormatter row{};
+          ParallelOpInfo op_info = fused_op->parallel_ops[i];
+          std::string op_type_str = optype_to_string(op_info.op_type);
+          row << op_type_str << "dim: " + std::to_string(op_info.parallel_dim)
+              << "degree: " + std::to_string(op_info.parallel_degree);
+          rows.emplace_back(row);
+        }
+        rf << node.to_string();
+        for (auto &r : rows) {
+          rf << r;
+        }
+        dot.add_record_node(node, rf);
+      } else {
+        dot.add_node(node, {{"label", node.to_string()}});
+      }
     } else {
       RecordFormatter rf, meta_row, machine_view_row;
       MachineView mv = strategy.at(node);
