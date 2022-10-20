@@ -51,6 +51,7 @@ jobs:
           cores_available=$(nproc --all)
           n_build_cores=$(( cores_available -1 ))
           sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
+          sed -i "/FF_BUILD_UNIT_TESTS/c\FF_BUILD_UNIT_TESTS=ON" ./config/config.linux
           mkdir build
           cd build
           ../config/config.linux
@@ -70,3 +71,9 @@ jobs:
         run: |
           export PATH=/opt/conda/bin:$PATH
           python -c "import flexflow.core; exit()"
+
+      - name: Run C++ unit tests
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export FF_HOME=$(pwd)
+          ./build/tests/unit/unit-test
