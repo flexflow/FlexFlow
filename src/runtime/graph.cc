@@ -14,6 +14,7 @@
  */
 #include "flexflow/graph.h"
 #include "flexflow/dominators.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/cast.h"
@@ -40,7 +41,6 @@
 #include "flexflow/utils/disjoint_set.h"
 #include "legion.h"
 #include "legion/legion_utilities.h"
-#include "flexflow/ffconst_utils.h"
 
 namespace FlexFlow::PCG {
 
