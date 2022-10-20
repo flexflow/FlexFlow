@@ -755,16 +755,16 @@ ParallelTensor::ParallelTensor(ParallelTensorBase *raw)
   : base(raw) 
 { }
 
-std::shared_ptr<ParallelTensorBase const> operator->() const {
+std::shared_ptr<ParallelTensorBase const> ParallelTensor::operator->() const {
   return this->base;
 };
 
-std::shared_ptr<ParallelTensorBase> operator->() {
+std::shared_ptr<ParallelTensorBase> ParallelTensor::operator->() {
   return this->base;
 };
 
 bool operator==(ParallelTensor const &lhs, ParallelTensorBase const *rhs) {
-  return lhs.base == rhs;
+  return (*lhs.base) == (*rhs);
 }
 
 bool operator!=(ParallelTensor const &lhs, ParallelTensorBase const *rhs) {
@@ -802,7 +802,7 @@ size_t hash<FlexFlow::ParallelTensorShape>::operator()(
 }
 
 size_t hash<FlexFlow::ParallelTensor>::operator()(FlexFlow::ParallelTensor const &t) const {
-  return std::hash<std::shared_ptr<FlexFlow::ParallelTensorBase>>{}(t->operator());
+  return std::hash<std::shared_ptr<FlexFlow::ParallelTensorBase>>{}(t.base);
 };
 }; // namespace std
 

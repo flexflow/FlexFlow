@@ -1378,7 +1378,7 @@ ParallelParameter FFModel::create_parallel_weight(const ParallelDim dims[],
                                                   bool create_grad,
                                                   Initializer *initializer,
                                                   ParameterSyncType sync_type) {
-  ParallelParameter p = ParallelParameter::create();
+  ParallelParameter p = make_parallel_tensor();
   p->parallel_tensor_guid = parallel_tensor_global_guid++;
   p->data_type = data_type;
   if (owner_op == NULL) {

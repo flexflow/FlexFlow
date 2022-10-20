@@ -197,6 +197,8 @@ public:
 
   friend bool operator==(ParallelTensor const &, ParallelTensor const &);
   friend bool operator!=(ParallelTensor const &, ParallelTensor const &);
+
+  friend struct std::hash<FlexFlow::ParallelTensorShape>;
 private:
   std::shared_ptr<ParallelTensorBase> base;
 };
