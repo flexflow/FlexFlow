@@ -38,6 +38,19 @@ jobs:
         id: cuda-toolkit
         with:
           cuda: "11.1.1"
+      - name: Run C++ unit tests
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          echo "Find1"
+          sudo find /usr/ -name 'libcuda.so.*'
+          export LD_LIBRARY_PATH=/usr/local/cuda/compat/:$LD_LIBRARY_PATH
+          echo "Find2"
+          sudo find /usr/ -name 'libcuda.so.*'
+          export LD_LIBRARY_PATH=$CUDA_PATH/compat/:$LD_LIBRARY_PATH
+          echo "Find3"
+          sudo find /usr/ -name 'libcuda.so.*'
+          exit
+
 
       - name: Install FlexFlow Dependencies
         run: .github/workflows/helpers/install_dependencies.sh
