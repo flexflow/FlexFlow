@@ -75,7 +75,8 @@ jobs:
       - name: Run C++ unit tests
         run: |
           export PATH=/opt/conda/bin:$PATH
-          sudo find /usr/ -name 'libcuda.so.*'
-          export LD_LIBRARY_PATH=/usr/local/cuda/compat/:$LD_LIBRARY_PATH
+          export CUDNN_DIR=/usr/local/cuda
+          export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
+          ../config/config.linux
           ./build/tests/unit/unit-test
