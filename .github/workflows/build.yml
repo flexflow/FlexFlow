@@ -58,12 +58,12 @@ jobs:
           make -j $n_build_cores
 
       - name: Install FlexFlow
-        working-directory: build
         run: |
           export PATH=/opt/conda/bin:$PATH
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
+          cd build
           ../config/config.linux
           sudo make install
 
@@ -78,5 +78,6 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
+          cd build
           ../config/config.linux
-          ./build/tests/unit/unit-test
+          ./tests/unit/unit-test
