@@ -129,7 +129,9 @@ NLOHMANN_JSON_SERIALIZE_ENUM(OperatorType,
                               {OP_PIPELINE, "OP_PIPELINE"},
                               {OP_FUSED_PARALLEL, "OP_FUSED_PARALLEL"}})
 
-namespace FlexFlow::substitution_loader {
+namespace FlexFlow {
+namespace substitution_loader {
+
 using json = nlohmann::json;
 
 struct Parameter {
@@ -177,6 +179,7 @@ void from_json(json const &j, RuleCollection &c);
 RuleCollection load_rule_collection(std::istream &s);
 RuleCollection load_rule_collection_from_path(std::string const &path);
 
-} // namespace FlexFlow::substitution_loader
+} // namespace substitution_loader
+} // namespace FlexFlow
 
 #endif // _FLEXFLOW_SUBSTITUTION_LOADER_H

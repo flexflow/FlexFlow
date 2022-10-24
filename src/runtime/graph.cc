@@ -14,6 +14,7 @@
  */
 #include "flexflow/graph.h"
 #include "flexflow/dominators.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/cast.h"
@@ -54,7 +55,7 @@ const Node Node::INVALID_NODE = Node();
 Node::Node(void) : guid(0), ptr(NULL) {}
 
 std::string Node::op_to_string(Op const *op) const {
-  return optype_to_string(op->op_type);
+  return get_operator_type_name(op->op_type);
 }
 
 Edge::Edge(void)
@@ -368,7 +369,7 @@ void Graph::print(void) const {
       continue;
     log_graph.print("	guid(%zu) type(%s): ",
                     it.first.guid,
-                    optype_to_string(it.first.ptr->op_type).data());
+                    get_operator_type_name(it.first.ptr->op_type).data());
     std::unordered_set<Edge> const &list = it.second;
     for (auto const &it2 : list) {
       Edge e = it2;
@@ -2110,7 +2111,7 @@ void FFModel::deserialize_graph_optimal_view(
                 "The following operator type is currently not supported"
                 " for graph deserialization: %s\n"
                 "Report the issue to the FlexFlow developers",
-                optype_to_string(op_type).c_str());
+                get_operator_type_name(op_type).c_str());
         assert(false && "Unsupported operator type");
       }
     }

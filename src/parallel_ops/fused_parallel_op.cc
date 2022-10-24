@@ -244,6 +244,7 @@ void FusedParallelOp::backward(FFModel const &ff) {
 bool FusedParallelOp::measure_operator_cost(Simulator *sim,
                                             MachineView const &pc,
                                             CostMetrics &cost_metrics) const {
+  cost_metrics = CostMetrics();
   cost_metrics.forward_time = 0.1f;
   cost_metrics.backward_time = 0.1f;
   return true;

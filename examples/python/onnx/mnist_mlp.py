@@ -59,7 +59,7 @@ def top_level_task(test_type=1):
 if __name__ == "__main__":
   print("mnist mlp onnx")
   parser = argparse.ArgumentParser()
-  parser.add_argument('--test_type')
+  parser.add_argument('--test_type', type=int, choices=[0, 1], help="Whether to test using Keras (test_type 0) or PyTorch (test_type 1) ")
   args, unknown = parser.parse_known_args()
   test_type = args.test_type
   top_level_task(test_type)
