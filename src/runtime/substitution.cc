@@ -1177,7 +1177,7 @@ void Graph::export_strategy_computation_graph(
         for (int i = 0; i < fused_op->num_parallel_ops; i++) {
           RecordFormatter row{};
           ParallelOpInfo op_info = fused_op->parallel_ops[i];
-          std::string op_type_str = optype_to_string(op_info.op_type);
+          std::string op_type_str = get_operator_type_name(op_info.op_type);
           row << op_type_str << "dim: " + std::to_string(op_info.parallel_dim)
               << "degree: " + std::to_string(op_info.parallel_degree);
           rows.emplace_back(row);

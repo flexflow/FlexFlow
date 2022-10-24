@@ -167,7 +167,8 @@ std::string get_operator_type_name(OperatorType type) {
     case OP_FUSED_PARALLEL:
       return "FusedParallelOp";
     default:
-      throw std::runtime_error("Operator type unsupported");
+      throw std::runtime_error("Operator type unsupported: " +
+                               std::to_string(type));
   }
 }
 
