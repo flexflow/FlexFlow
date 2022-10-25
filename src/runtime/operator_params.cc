@@ -1,5 +1,10 @@
 #include "flexflow/operator_params.h"
+#include "flexflow/ops/aggregate.h"
+#include "flexflow/ops/aggregate_spec.h"
 #include "flexflow/ops/attention.h"
+#include "flexflow/ops/batch_matmul.h"
+#include "flexflow/ops/batch_norm.h"
+#include "flexflow/ops/cache.h"
 #include "flexflow/ops/cast.h"
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/conv_2d.h"
@@ -8,11 +13,17 @@
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/groupby.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
+#include "flexflow/ops/mean.h"
+#include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reshape.h"
+#include "flexflow/ops/reverse.h"
 #include "flexflow/ops/softmax.h"
+#include "flexflow/ops/split.h"
+#include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
@@ -77,6 +88,33 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((FusedParallelOp *)op)->get_params();
     case OP_TRANSPOSE:
       return ((Transpose *)op)->get_params();
+    case OP_BATCHMATMUL:
+      return ((BatchMatmul *)op)->get_params();
+    case OP_SPLIT:
+      return ((Split *)op)->get_params();
+
+      // TODO: implement the get_params() function for the operators below and
+      // uncomment the lines below
+
+      // case OP_NOOP:
+      //   return ((NoOp *)op)->get_params();
+      // case OP_TOPK:
+      //   return ((TopK *)op)->get_params();
+      // case OP_MEAN:
+      //   return ((Mean *)op)->get_params();
+      // case OP_GROUP_BY:
+      //   return ((Group_by *)op)->get_params();
+      // case OP_CACHE:
+      //   return ((Cache *)op)->get_params();
+      // case OP_AGGREGATE:
+      //   return ((Aggregate *)op)->get_params();
+      // case OP_AGG_SPEC:
+      //   return ((AggregateSpec *)op)->get_params();
+      // case OP_REVERSE:
+      //   return ((Reverse *)op)->get_params();
+      // case OP_BATCHNORM:
+      //   return ((BatchNorm *)op)->get_params();
+
     default:
       return tl::nullopt;
   }

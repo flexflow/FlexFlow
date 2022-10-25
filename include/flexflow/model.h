@@ -229,8 +229,6 @@ class Graph;
 class FFModel;
 class ParallelOp;
 
-std::string optype_to_string(OperatorType);
-
 void solve_parallel_dim_mappings(
     std::vector<ParallelDimMappingRecord> const &mapping,
     std::vector<ParallelDim const *> const &inputs,
