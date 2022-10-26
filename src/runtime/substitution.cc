@@ -1900,7 +1900,9 @@ void GraphSearchHelper::graph_optimize_with_memory(
   this->logger->debug() << "Total cache size: "
                         << this->cached_optimized_graphs.size();
   std::cout << "Optimal run time cost: " << optimal.cost
-            << ", Memory usage: " << optimal.mem_cost << std::endl;
+            << ", Memory usage: " << optimal.mem_cost
+            << " | run_time_cost_factor: "
+            << this->mem_config.run_time_cost_factor << std::endl;
 
   // Further simplify the "optimal" graph/schedule to have a more efficient
   // graph and more accurate cost.
@@ -1977,6 +1979,11 @@ static void graph_log_representation(Graph const *graph,
   for (Node const &n : topo_sorted) {
     logger.spew() << n.to_string();
   }
+}
+
+void GraphSearchHelper::update_mem_optim_config(
+    MemoryOptimConfig const &new_config) {
+  mem_config = new_config;
 }
 
 void GraphSearchHelper::find_rewrite_matches(
@@ -3479,16 +3486,35 @@ using PCG::Edge;
 using PCG::Graph;
 using PCG::Node;
 
+///
+/// Backup: normal memory optimization search procedure entry
+///
+// void FFModel::graph_optimize(
+//     size_t budget,
+//     bool only_data_parallel,
+//     std::unique_ptr<Graph> &best_graph,
+//     std::unordered_map<Node, MachineView> &optimal_views) {
+//   // this->graph_search->graph_optimize(budget, only_data_parallel,
+//   best_graph,
+//   // optimal_views);
+
+//   // Experimental. Change the function call above to this line to search
+//   // with memory consideration.
+//   this->graph_search->graph_optimize_with_memory(
+//       budget, only_data_parallel, best_graph, optimal_views);
+// }
+
+/**
+ * @brief Use the same simulator instance in the rounds of search to avoid
+ * profiling noises.
+ */
 void FFModel::graph_optimize(
     size_t budget,
     bool only_data_parallel,
     std::unique_ptr<Graph> &best_graph,
-    std::unordered_map<Node, MachineView> &optimal_views) {
-  // this->graph_search->graph_optimize(budget, only_data_parallel, best_graph,
-  // optimal_views);
-
-  // Experimental. Change the function call above to this line to search with
-  // memory consideration.
+    std::unordered_map<Node, MachineView> &optimal_views,
+    MemoryOptimConfig new_config) {
+  this->graph_search->update_mem_optim_config(new_config);
   this->graph_search->graph_optimize_with_memory(
       budget, only_data_parallel, best_graph, optimal_views);
 }

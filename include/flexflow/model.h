@@ -761,6 +761,11 @@ public:
                       bool only_data_parallel,
                       std::unique_ptr<PCG::Graph> &best_graph,
                       std::unordered_map<PCG::Node, MachineView> &optimal_view);
+  void graph_optimize(size_t budget,
+                      bool only_data_parallel,
+                      std::unique_ptr<PCG::Graph> &best_graph,
+                      std::unordered_map<PCG::Node, MachineView> &optimal_view,
+                      MemoryOptimConfig new_config);
   void mcmc_optimize(std::map<Op const *, ParallelConfig> &best,
                      size_t budget,
                      float alpha,
