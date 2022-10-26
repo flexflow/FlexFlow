@@ -191,6 +191,12 @@ bool Combine::measure_operator_cost(Simulator *sim,
   // TODO: to be implemented
   cost_metrics.forward_time = 0.05f;
   cost_metrics.backward_time = 0.05f;
+
+  // ? Why these were not there?
+  cost_metrics.sync_time = 0;
+  cost_metrics.inputs_memory = 0;
+  cost_metrics.outputs_memory = 0;
+  cost_metrics.weights_memory = 0;
   return true;
 }
 

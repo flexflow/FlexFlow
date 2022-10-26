@@ -552,7 +552,7 @@ CostMetrics Simulator::measure_operator_cost(Op const *op,
     ProfilingRecordKey key{params, mv};
     if (this->strict_hash_to_operator_cost.find(key) ==
         this->strict_hash_to_operator_cost.end()) {
-      CostMetrics cost_metrics;
+      CostMetrics cost_metrics{};
       bool is_implemented = op->measure_operator_cost(this, mv, cost_metrics);
       if (!is_implemented) {
         handle_measure_operator_cost_unimplemented(op);
@@ -572,7 +572,7 @@ CostMetrics Simulator::measure_operator_cost(Op const *op,
       hash_to_operator_cost.find(hash);
 
   if (iter == hash_to_operator_cost.end()) {
-    CostMetrics cost_metrics;
+    CostMetrics cost_metrics{};
     bool is_implemented = op->measure_operator_cost(this, mv, cost_metrics);
     if (!is_implemented) {
       handle_measure_operator_cost_unimplemented(op);

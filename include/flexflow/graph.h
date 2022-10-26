@@ -296,8 +296,8 @@ public:
   Graph subgraph(std::unordered_set<Node> const &nodes) const;
   void contract_out_node(Node const &);
   float optimal_cost() const;
-  float optimal_cost_with_memory(float const run_time_cost_factor)
-      const; // Experimental. To be merged with optimal_cost().
+  // Experimental. To be merged with optimal_cost().
+  float optimal_cost_with_memory(float const run_time_cost_factor) const;
   std::unordered_map<Node, MachineView> optimal_views() const;
   void remove_input_nodes();
   void duplicate_input_node(Node const &);

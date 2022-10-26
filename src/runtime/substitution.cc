@@ -18,6 +18,7 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/graph.h"
 #include "flexflow/graph_structures.h"
+#include "flexflow/operator.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/conv_2d.h"
@@ -1132,11 +1133,6 @@ OpX *GraphXfer::create_combine(TensorX const &input,
   return part;
 }
 
-/* std::vector<Device> MachineView::get_devices() const { */
-/*   std::vector<Device> devices; */
-
-/* } */
-
 void Graph::print_strategy_computation_graph(
     std::unordered_map<Node, MachineView> const &strategy) const {
   DotFile<Node> dot(std::cout);
@@ -1159,12 +1155,35 @@ void Graph::export_strategy_computation_graph(
   GraphStructure<Graph> s;
 
   for (auto const &node : s.get_nodes(*this)) {
+    // Add node
     if (strategy.find(node) == strategy.end()) {
-      dot.add_node(node, {{"label", node.to_string()}});
+      // Check FusedParallel node here and print out the detailed information
+      if (node.ptr->op_type == OperatorType::OP_FUSED_PARALLEL) {
+        RecordFormatter rf;
+        std::vector<RecordFormatter> rows{};
+
+        FusedParallelOp *fused_op = (FusedParallelOp *)node.ptr;
+        for (int i = 0; i < fused_op->num_parallel_ops; i++) {
+          RecordFormatter row{};
+          ParallelOpInfo op_info = fused_op->parallel_ops[i];
+          std::string op_type_str = optype_to_string(op_info.op_type);
+          row << op_type_str << "dim: " + std::to_string(op_info.parallel_dim)
+              << "degree: " + std::to_string(op_info.parallel_degree);
+          rows.emplace_back(row);
+        }
+        rf << node.to_string();
+        for (auto &r : rows) {
+          rf << r;
+        }
+        dot.add_record_node(node, rf);
+      } else {
+        dot.add_node(node, {{"label", node.to_string()}});
+      }
     } else {
       RecordFormatter rf, meta_row, machine_view_row;
       MachineView mv = strategy.at(node);
-      std::ostringstream oss;
+
+      // Fetch the meta information
       switch (node.ptr->op_type) {
         case OP_REPARTITION: {
           Repartition *rp = (Repartition *)node.ptr;
@@ -1200,14 +1219,16 @@ void Graph::export_strategy_computation_graph(
           }
         }
       }
+
+      // Fetch machine view information
       for (int device_id : mv.device_ids()) {
         machine_view_row << std::to_string(device_id);
       }
-      rf << node.to_string() << std::to_string(node.guid) << meta_row
-         << machine_view_row;
+      rf << node.to_string() << meta_row << machine_view_row;
       dot.add_record_node(node, rf);
     }
 
+    // Add edges
     for (auto const &edge : s.get_incoming_edges(*this, node)) {
       dot.add_edge(s.get_src(*this, edge), s.get_dst(*this, edge));
     }
@@ -1600,7 +1621,7 @@ std::vector<GraphXfer *> create_xfers(FFModel *model,
 
 // Experimental: change this mem_config to control run time cost factor
 GraphSearchHelper::GraphSearchHelper(FFModel *model)
-    : model(model), config(model->config), mem_config(0.9) {
+    : model(model), config(model->config), mem_config(1.0) {
   this->logger = std::unique_ptr<RecursiveLogger>(new RecursiveLogger("gs"));
   generate_all_pcg_xfers();
 }
@@ -1864,13 +1885,6 @@ void GraphSearchHelper::graph_optimize_with_memory(
   }
 
   Node sink_node = graph->find_sink_node();
-
-  // Main step to find the optimal graph.
-  // GraphOptimizeResult optimal =
-  //     this->generic_sequence_optimize<GraphOptimizeResult>(
-  //         graph, sink_node, tl::nullopt /*output_shape*/,
-  //         tl::nullopt /*input_shape*/);
-
   GraphOptimizeResultWithMemory optimal =
       this->generic_sequence_optimize_with_memory<
           GraphOptimizeResultWithMemory>(
@@ -1883,11 +1897,21 @@ void GraphSearchHelper::graph_optimize_with_memory(
 
   // Further simplify the "optimal" graph/schedule to have a more efficient
   // graph and more accurate cost.
+  best_graph = std::unique_ptr<Graph>(new Graph(optimal.graph.value()));
   SimplificationSettings settings;
-  settings.fuse_parallel_ops = true;
+  // TODO: temp disable parallel_op fusion to observe the strategy in dot graph.
+  settings.fuse_parallel_ops = false;
   settings.remove_noops = true;
   settings.remove_trailing_parallel_ops = true;
   settings.simplify_parallel_ops = true;
+  best_graph->simplify(settings);
+
+  std::cout << "Dot graph without parallel op fusion:" << std::endl;
+  best_graph->print_strategy_computation_graph(optimal.views);
+  std::cout << std::endl;
+
+  // Simplify to consider parallel op fusion
+  settings.fuse_parallel_ops = true;
   best_graph = std::unique_ptr<Graph>(new Graph(optimal.graph.value()));
   best_graph->simplify(settings);
 
@@ -1904,7 +1928,10 @@ void GraphSearchHelper::graph_optimize_with_memory(
       real_optimal_views[kv.first] = kv.second;
     }
   }
+  std::cout << "Dot graph with parallel op fusion:" << std::endl;
   best_graph->print_strategy_computation_graph(optimal.views);
+  std::cout << std::endl;
+
   optimal_views = real_optimal_views;
 }
 
@@ -2228,7 +2255,8 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(
 
   // Actual exploration
   for (int iter = 0; iter < budget || budget == -1; iter++) {
-    log_xfers.spew() << "Considering " << candidates.size() << " candidates";
+    log_xfers.spew() << "Considering " << candidates.size()
+                     << " candidates in base_optimize_with_memory";
     if (candidates.empty()) {
       break;
     }
@@ -2245,6 +2273,7 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(
                    mem_config.run_time_cost_factor) > best_cost * alpha) {
       continue;
     }
+
     log_xfers.info(
         "[%d] cur_cost(%.4lf) best_cost(%.4lf) candidates.size(%zu)",
         counter,
@@ -2252,7 +2281,8 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(
         best_cost,
         candidates.size());
 
-    log_xfers.debug() << "Considering " << xfers.size() << " possible xfers";
+    log_xfers.debug() << "Considering " << xfers.size()
+                      << " possible xfers in base_optimize_with_memory";
     for (size_t i = 0; i < xfers.size(); i++) {
       int num_matches_found = 0, num_matches_rejected = 0;
       log_xfers.debug() << "Considering xfer: " << xfers[i]->get_name();
@@ -2274,9 +2304,9 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(
     }
   }
 
-  this->logger->debug() << "Optimized cost: "
-                        << best_graph->optimal_cost_with_memory(
-                               mem_config.run_time_cost_factor);
+  this->logger->debug()
+      << "Optimized cost at the end of base_optimize_with_memory: "
+      << best_graph->optimal_cost_with_memory(mem_config.run_time_cost_factor);
 
   return std::unique_ptr<Graph>(best_graph);
 }
