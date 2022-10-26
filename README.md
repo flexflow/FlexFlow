@@ -1,9 +1,11 @@
 # FlexFlow
+![build](https://github.com/flexflow/flexflow/workflows/build/badge.svg?branch=master) ![docker](https://github.com/flexflow/flexflow/workflows/docker-build/badge.svg?branch=master) [![Documentation Status](https://readthedocs.org/projects/flexflow/badge/?version=latest)](https://flexflow.readthedocs.io/en/latest/?badge=latest)
+
 
 FlexFlow is a deep learning framework that accelerates distributed DNN training by automatically searching for efficient parallelization strategies. FlexFlow provides a drop-in replacement for TensorFlow Keras and PyTorch. Running existing Keras and PyTorch programs in FlexFlow only requires [a few lines of changes to the program](https://flexflow.ai/keras).
 
 ## Install FlexFlow
-To install FlexFlow from source code, please read the [instructions](INSTALL.md). If you would like to quickly try FlexFlow, we also provide prebuilt [docker images](INSTALL.md) with all dependencies pre-installed. You can also use `conda` to install the FlexFlow Python package (coming soon).
+To install FlexFlow from source code, please read the [instructions](INSTALL.md). If you would like to quickly try FlexFlow, we also provide a [Dockerfile](./docker) with all dependencies pre-installed. You can also use `conda` to install the FlexFlow Python package (coming soon).
 
 ## TensorFlow Keras Support
 Users can use FlexFlow to accelerate the training procedure of existing TensorFlow Keras models by just changing the following import header lines.
@@ -32,7 +34,7 @@ if __name__ == "__main__":
   top_level_task()
 ```
 
-During model compilation (i.e., `model.compile` in Keras), FlexFlow can [autotune](https://flexflow.ai/search) the parallelization performance by searching for efficient strategies on the given parallel machine. Next, `model.fit` performs DNN training on all available GPUs (potentially across multiple nodes) using the best discovered strategy. As a result, users don't need to manually design and optimize the device assignments.
+During model compilation (i.e., `model.compile` in Keras), FlexFlow can [autotune](https://www.usenix.org/conference/osdi22/presentation/unger) the parallelization performance by searching for efficient strategies on the given parallel machine. Next, `model.fit` performs DNN training on all available GPUs (potentially across multiple nodes) using the best discovered strategy. As a result, users don't need to manually design and optimize the device assignments.
 
 **More FlexFlow Keras examples**: see the [keras examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/keras).
 
@@ -46,7 +48,7 @@ model = MyPyTorchModule()
 fx.torch_to_flexflow(model, "mymodel.ff")
 ```
 
-Second, a FlexFlow program can directly import a previously saved PyTorch model and [autotune](SEARCH.md) the parallelization performance for a given parallel machine.
+Second, a FlexFlow program can directly import a previously saved PyTorch model and [autotune](https://www.usenix.org/conference/osdi22/presentation/unger) the parallelization performance for a given parallel machine.
 
 ```
 from flexflow.pytorch.model import PyTorchModel

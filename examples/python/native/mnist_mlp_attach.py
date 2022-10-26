@@ -96,15 +96,15 @@ def top_level_task():
     ffmodel.reset_metrics()
     iterations = num_samples / ffconfig.batch_size
     for iter in range(0, int(iterations)):
+      #ffconfig.begin_trace(111)
       next_batch(ct, x_train, input_tensor, ffconfig, ffmodel)
       next_batch_label(ct, y_train, label_tensor, ffconfig, ffmodel)
       ct += 1
-      ffconfig.begin_trace(111)
       ffmodel.forward()
       ffmodel.zero_gradients()
       ffmodel.backward()
       ffmodel.update()
-      ffconfig.end_trace(111)
+      #ffconfig.end_trace(111)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
@@ -118,11 +118,11 @@ def top_level_task():
   dense1 = ffmodel.get_layer_by_id(0)
 
   dbias_tensor = label_tensor#dense1.get_bias_tensor()
-  dbias_tensor.inline_map(ffconfig)
-  dbias = dbias_tensor.get_array(ffconfig, DataType.DT_INT32)
+  dbias_tensor.inline_map(ffmodel, ffconfig)
+  dbias = dbias_tensor.get_array(ffmodel, ffconfig)
   print(dbias.shape)
   print(dbias)
-  dbias_tensor.inline_unmap(ffconfig)
+  dbias_tensor.inline_unmap(ffmodel, ffconfig)
 
   # dweight_tensor = dense1.get_output_tensor()
   # dweight_tensor.inline_map(ffconfig)

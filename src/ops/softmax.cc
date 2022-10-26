@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/softmax.h"
+#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -32,6 +33,21 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+/* Params */
+bool operator==(SoftmaxParams const &lhs, SoftmaxParams const &rhs) {
+  return lhs.dim == rhs.dim;
+}
+
+bool SoftmaxParams::is_valid(ParallelTensorShape const &input) const {
+  return input.is_valid();
+}
+
+SoftmaxParams Softmax::get_params() const {
+  SoftmaxParams params;
+  params.dim = this->dim;
+  return params;
+}
 
 Tensor FFModel::softmax(const Tensor _input, int dim, char const *name) {
   Layer *sm = new Layer(this,
@@ -92,6 +108,12 @@ Softmax::Softmax(FFModel &model,
     dims[i] = _input->dims[numdim - 1 - i];
   outputs[0] = model.create_parallel_tensor(numdim, dims, DT_FLOAT, this);
 }
+
+Softmax::Softmax(FFModel &model,
+                 SoftmaxParams const &params,
+                 const ParallelTensor input,
+                 char const *name)
+    : Softmax(model, input, params.dim, name) {}
 
 void Softmax::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -321,13 +343,6 @@ bool Softmax::get_int_parameter(PMParameter para, int *value) const {
   }
 }
 
-size_t Softmax::get_params_hash() const {
-  size_t hash = this->inputs[0]->get_owner_independent_hash();
-  hash_combine(hash, this->dim);
-
-  return hash;
-}
-
 bool Softmax::measure_operator_cost(Simulator *sim,
                                     MachineView const &mv,
                                     CostMetrics &cost_metrics) const {
@@ -390,23 +405,13 @@ bool Softmax::measure_operator_cost(Simulator *sim,
   return true;
 }
 
-using PCG::Node;
-Node FFModel::get_or_create_softmax_node(const ParallelTensor input,
-                                         int softmax_dim) {
-  size_t hash = input->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(softmax_dim);
-  auto const &it = cached_softmax_ops.find(hash);
-  Softmax *softmax = NULL;
-  if (it != cached_softmax_ops.end()) {
-    softmax = it->second;
-  } else {
-    softmax = new Softmax(*this, input, softmax_dim, NULL);
-    cached_softmax_ops[hash] = softmax;
-  }
-  Node ret;
-  ret.guid = node_global_guid++;
-  ret.ptr = softmax;
-  return ret;
-}
-
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::SoftmaxParams>::operator()(
+    FlexFlow::SoftmaxParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.dim);
+  return key;
+}
+}; // namespace std

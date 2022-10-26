@@ -14,6 +14,9 @@
  */
 
 #include "flexflow/ops/layer_norm.h"
+#include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
+#include "legion/legion_utilities.h"
 
 namespace FlexFlow {
 
@@ -36,11 +39,31 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
+bool operator==(LayerNormParams const &lhs, LayerNormParams const &rhs) {
+  return lhs.layer_guid == rhs.layer_guid && lhs.axes == rhs.axes &&
+         lhs.elementwise_affine == rhs.elementwise_affine;
+}
+
+bool LayerNormParams::is_valid(ParallelTensorShape const &input) const {
+  return input.is_valid();
+}
+
+LayerNormParams LayerNorm::get_params() const {
+  LayerNormParams params;
+  params.layer_guid = this->layer_guid;
+  params.axes = this->axes;
+  params.elementwise_affine = this->elementwise_affine;
+  params.eps = this->eps;
+  return params;
+}
+
 Tensor FFModel::layer_norm(const Tensor input,
                            std::vector<int> const &axes,
                            bool elementwise_affine,
                            float eps,
                            char const *name) {
+  // FIXME: currently disable elementwise_affine
+  elementwise_affine = false;
   // axes must be the last axes.size() dimensions
   for (int i = 0; i < axes.size(); i++) {
     bool found = false;
@@ -114,9 +137,23 @@ Op *LayerNorm::create_operator_from_layer(
 }
 
 LayerNorm::LayerNorm(FFModel &model,
+                     LayerNormParams const &params,
+                     ParallelTensor const input,
+                     char const *name,
+                     bool allocate_weights)
+    : LayerNorm(model,
+                params.layer_guid,
+                input,
+                params.axes,
+                params.elementwise_affine,
+                params.eps,
+                allocate_weights,
+                name) {}
+
+LayerNorm::LayerNorm(FFModel &model,
                      LayerID const &_layer_guid,
                      const ParallelTensor _input,
-                     std::vector<int> const &axes,
+                     std::vector<int> const &_axes,
                      bool _elementwise_affine,
                      float _eps,
                      bool allocate_weights,
@@ -128,7 +165,7 @@ LayerNorm::LayerNorm(FFModel &model,
          _elementwise_affine ? 2 : 0 /*weights*/,
          1 /*outputs*/,
          _input),
-      elementwise_affine(_elementwise_affine), eps(_eps) {
+      elementwise_affine(_elementwise_affine), eps(_eps), axes(_axes) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -482,4 +519,65 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
   return false;
 }
 
+void LayerNorm::serialize(Legion::Serializer &sez) const {
+  sez.serialize(this->layer_guid.id);
+  sez.serialize(this->axes.size());
+  for (size_t i = 0; i < this->axes.size(); i++)
+    sez.serialize(this->axes[i]);
+  sez.serialize(this->elementwise_affine);
+  sez.serialize(this->eps);
+}
+
+using PCG::Node;
+/*static*/
+Node LayerNorm::deserialize(FFModel &ff,
+                            Legion::Deserializer &dez,
+                            ParallelTensor inputs[],
+                            int num_inputs) {
+  assert(num_inputs == 1);
+  size_t num_axes;
+  std::vector<int> axes;
+  bool elementwise_affine;
+  float eps;
+  size_t id;
+  dez.deserialize(id);
+  LayerID layer_guid(id);
+  dez.deserialize(num_axes);
+  for (size_t i = 0; i < num_axes; i++) {
+    int axis_idx;
+    dez.deserialize(axis_idx);
+    axes.push_back(axis_idx);
+  }
+  dez.deserialize(elementwise_affine);
+  dez.deserialize(eps);
+
+  LayerNormParams params;
+  params.layer_guid = layer_guid;
+  params.axes = axes;
+  params.elementwise_affine = elementwise_affine;
+  params.eps = eps;
+  return ff.get_or_create_node<LayerNorm>(inputs[0], params);
+}
+
+Op *LayerNorm::materialize(FFModel &ff,
+                           ParallelTensor inputs[],
+                           int num_inputs) const {
+  LayerNormParams params = get_params();
+  return new LayerNorm(
+      ff, params, inputs[0], this->name, true /*allocate_weights*/);
+}
+
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::LayerNormParams>::operator()(
+    FlexFlow::LayerNormParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.axes.size());
+  for (int n : params.axes) {
+    hash_combine(key, n);
+  }
+  hash_combine(key, params.elementwise_affine);
+  return key;
+}
+}; // namespace std

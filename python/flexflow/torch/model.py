@@ -2264,9 +2264,11 @@ class AttributeNode(Node):
         ff_tensor = ffmodel.create_tensor(
             torch_tensor.shape, ff_dtype, requires_grad,
         )
-        ff_tensor.set_tensor(
-            ffmodel, np_tensor
-        )
+        # delay set_tensor, add to ffmodel
+        ffmodel.attr_tensors[ff_tensor] = np_tensor
+        # ff_tensor.set_tensor(
+        #     ffmodel, np_tensor
+        # )
         return ff_tensor
 
 

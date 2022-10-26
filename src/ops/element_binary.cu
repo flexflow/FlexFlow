@@ -166,10 +166,7 @@ void ElementBinary::forward_kernel_wrapper(ElementBinaryMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  // print_tensor<float>(in1_ptr, in1_domain.get_volume(), "input1:");
-  // print_tensor<float>(in2_ptr, in2_domain.get_volume(), "input2:");
   ElementBinary::forward_kernel(m, in1_ptr, in2_ptr, out_ptr, stream);
-  // print_tensor<float>(out_ptr, in1_domain.get_volume(), "output:");
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -194,7 +191,10 @@ void ElementBinary::forward_kernel_wrapper(ElementBinaryMeta const *m,
       default:
         assert(false);
     }
-    log_measure.debug("[%s] forward time (CF) = %.2fms\n", opName, elapsed);
+    printf("[%s] forward time (CF) = %.2fms\n", m->op_name, elapsed);
+    // print_tensor<float>(in1_ptr, 32, "[EWB:forward:input1]");
+    // print_tensor<float>(in2_ptr, 32, "[EWB:forward:input2]");
+    // print_tensor<float>(out_ptr, 32, "[EWB:forward:output]");
   }
 }
 

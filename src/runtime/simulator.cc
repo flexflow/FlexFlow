@@ -512,38 +512,6 @@ ParallelConfig Op::view_to_pc(MachineView const &view) const {
   return config;
 }
 
-tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
-  switch (op->op_type) {
-    case OP_LINEAR:
-      return ((Linear *)op)->get_params();
-    case OP_CONV2D:
-      return ((Conv2D *)op)->get_params();
-    case OP_EW_ADD:
-    case OP_EW_SUB:
-    case OP_EW_MUL:
-    case OP_EW_DIV:
-      return ((ElementBinary *)op)->get_params();
-    case OP_EXP:
-    case OP_SCALAR_MULTIPLY:
-    case OP_SCALAR_ADD:
-    case OP_SCALAR_SUB:
-    case OP_SCALAR_TRUE_DIV:
-    case OP_RELU:
-    case OP_SIGMOID:
-    case OP_TANH:
-    case OP_IDENTITY:
-    case OP_GELU:
-    case OP_ELU:
-      return ((ElementUnary *)op)->get_params();
-    case OP_CONCAT:
-      return ((Concat *)op)->get_params();
-    case OP_POOL2D:
-      return ((Pool2D *)op)->get_params();
-    default:
-      return tl::nullopt;
-  }
-}
-
 CostMetrics Simulator::measure_operator_cost(Op const *op,
                                              MachineView const &mv) {
   tl::optional<OperatorParameters> retrieved_params = get_op_parameters(op);

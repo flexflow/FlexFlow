@@ -47,139 +47,33 @@ ifeq ($(strip $(USE_GASNET)),1)
   endif
 endif
 
-GEN_SRC += ${FF_HOME}/src/runtime/accessor.cc\
-		${FF_HOME}/src/runtime/graph.cc\
-		${FF_HOME}/src/runtime/initializer.cc\
-		${FF_HOME}/src/runtime/layer.cc\
-		${FF_HOME}/src/runtime/machine_model.cc\
-		${FF_HOME}/src/runtime/machine_view.cc\
-		${FF_HOME}/src/runtime/model.cc\
-		${FF_HOME}/src/runtime/network.cc\
-		${FF_HOME}/src/runtime/optimizer.cc\
-		${FF_HOME}/src/runtime/parallel_op.cc\
-		${FF_HOME}/src/runtime/recursive_logger.cc\
-		${FF_HOME}/src/runtime/simulator.cc\
-		${FF_HOME}/src/runtime/strategy.cc\
-		${FF_HOME}/src/runtime/substitution.cc\
-		${FF_HOME}/src/runtime/tensor.cc\
-		${FF_HOME}/src/mapper/mapper.cc\
-		${FF_HOME}/src/ops/aggregate.cc\
-		${FF_HOME}/src/ops/aggregate_spec.cc\
-		${FF_HOME}/src/ops/attention.cc\
-		${FF_HOME}/src/ops/batch_matmul.cc\
-		${FF_HOME}/src/ops/batch_norm.cc\
-		${FF_HOME}/src/ops/cast.cc\
-		${FF_HOME}/src/ops/cache.cc\
-		${FF_HOME}/src/ops/concat.cc\
-		${FF_HOME}/src/ops/conv_2d.cc\
-		${FF_HOME}/src/ops/dropout.cc\
-		${FF_HOME}/src/ops/element_binary.cc\
-		${FF_HOME}/src/ops/element_unary.cc\
-		${FF_HOME}/src/ops/embedding.cc\
-		${FF_HOME}/src/ops/flat.cc\
-		${FF_HOME}/src/ops/fused.cc\
-		${FF_HOME}/src/ops/group_by.cc\
-		${FF_HOME}/src/ops/layer_norm.cc\
-		${FF_HOME}/src/ops/linear.cc\
-		${FF_HOME}/src/ops/mean.cc\
-		${FF_HOME}/src/ops/noop.cc\
-		${FF_HOME}/src/ops/pool_2d.cc\
-		${FF_HOME}/src/ops/reshape.cc\
-		${FF_HOME}/src/ops/reverse.cc\
-		${FF_HOME}/src/ops/softmax.cc\
-		${FF_HOME}/src/ops/split.cc\
-		${FF_HOME}/src/ops/topk.cc\
-		${FF_HOME}/src/ops/transpose.cc\
-		${FF_HOME}/src/parallel_ops/partition.cc\
-		${FF_HOME}/src/parallel_ops/combine.cc\
-		${FF_HOME}/src/parallel_ops/replicate.cc\
-		${FF_HOME}/src/parallel_ops/reduction.cc\
-		${FF_HOME}/src/parallel_ops/fused_parallel_op.cc\
-		${FF_HOME}/src/loss_functions/loss_functions.cc\
-		${FF_HOME}/src/metrics_functions/metrics_functions.cc\
-		${FF_HOME}/src/recompile/recompile_state.cc
+GEN_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cc')\
+		$(shell find $(FF_HOME)/src/mapper/ -name '*.cc')\
+		$(shell find $(FF_HOME)/src/metrics_functions/ -name '*.cc')\
+		$(shell find $(FF_HOME)/src/ops/ -name '*.cc')\
+		$(shell find $(FF_HOME)/src/parallel_ops/ -name '*.cc')\
+		$(shell find $(FF_HOME)/src/recompile/ -name '*.cc')\
+		$(shell find $(FF_HOME)/src/runtime/ -name '*.cc')\
+		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cc')
+GEN_SRC := $(filter-out $(FF_HOME)/src/runtime/cpp_driver.cc, $(GEN_SRC))
 
-FF_CUDA_SRC	+= ${FF_HOME}/src/ops/conv_2d.cu\
-		${FF_HOME}/src/ops/aggregate.cu\
-		${FF_HOME}/src/ops/aggregate_spec.cu\
-		${FF_HOME}/src/ops/attention.cu\
-		${FF_HOME}/src/ops/batch_matmul.cu\
-		${FF_HOME}/src/ops/batch_norm.cu\
-		${FF_HOME}/src/ops/cache.cu\
-		${FF_HOME}/src/ops/cast.cu\
-		${FF_HOME}/src/ops/concat.cu\
-		${FF_HOME}/src/ops/dropout.cu\
-		${FF_HOME}/src/ops/element_binary.cu\
-		${FF_HOME}/src/ops/element_unary.cu\
-		${FF_HOME}/src/ops/embedding.cu\
-		${FF_HOME}/src/ops/flat.cu\
-		${FF_HOME}/src/ops/fused.cu\
-		${FF_HOME}/src/ops/group_by.cu\
-		${FF_HOME}/src/ops/layer_norm.cu\
-		${FF_HOME}/src/ops/linear.cu\
-		${FF_HOME}/src/ops/mean.cu\
-		${FF_HOME}/src/ops/pool_2d.cu\
-		${FF_HOME}/src/ops/reshape.cu\
-		${FF_HOME}/src/ops/reverse.cu\
-		${FF_HOME}/src/ops/softmax.cu\
-		${FF_HOME}/src/ops/split.cu\
-		${FF_HOME}/src/ops/topk.cu\
-		${FF_HOME}/src/ops/transpose.cu\
-		${FF_HOME}/src/parallel_ops/combine.cu\
-		${FF_HOME}/src/parallel_ops/partition.cu\
-		${FF_HOME}/src/parallel_ops/replicate.cu\
-		${FF_HOME}/src/parallel_ops/reduction.cu\
-		${FF_HOME}/src/parallel_ops/fused_parallel_op.cu\
-		${FF_HOME}/src/loss_functions/loss_functions.cu\
-		${FF_HOME}/src/metrics_functions/metrics_functions.cu\
-		${FF_HOME}/src/runtime/accessor_kernel.cu\
-		${FF_HOME}/src/runtime/cuda_helper.cu\
-		${FF_HOME}/src/runtime/initializer_kernel.cu\
-		${FF_HOME}/src/runtime/model.cu\
-		${FF_HOME}/src/runtime/optimizer_kernel.cu\
-		${FF_HOME}/src/runtime/simulator.cu\
-		${FF_HOME}/src/runtime/tensor.cu
-		
-FF_HIP_SRC	+= ${FF_HOME}/src/ops/conv_2d.cpp\
-		${FF_HOME}/src/ops/aggregate.cpp\
-		${FF_HOME}/src/ops/aggregate_spec.cpp\
-		${FF_HOME}/src/ops/attention.cpp\
-		${FF_HOME}/src/ops/batch_matmul.cpp\
-		${FF_HOME}/src/ops/batch_norm.cpp\
-		${FF_HOME}/src/ops/cache.cpp\
-		${FF_HOME}/src/ops/cast.cpp\
-		${FF_HOME}/src/ops/concat.cpp\
-		${FF_HOME}/src/ops/dropout.cpp\
-		${FF_HOME}/src/ops/element_binary.cpp\
-		${FF_HOME}/src/ops/element_unary.cpp\
-		${FF_HOME}/src/ops/embedding.cpp\
-		${FF_HOME}/src/ops/flat.cpp\
-		${FF_HOME}/src/ops/fused.cpp\
-		${FF_HOME}/src/ops/group_by.cpp\
-		${FF_HOME}/src/ops/layer_norm.cpp\
-		${FF_HOME}/src/ops/linear.cpp\
-		${FF_HOME}/src/ops/mean.cpp\
-		${FF_HOME}/src/ops/pool_2d.cpp\
-		${FF_HOME}/src/ops/reshape.cpp\
-		${FF_HOME}/src/ops/reverse.cpp\
-		${FF_HOME}/src/ops/softmax.cpp\
-		${FF_HOME}/src/ops/split.cpp\
-		${FF_HOME}/src/ops/topk.cpp\
-		${FF_HOME}/src/ops/transpose.cpp\
-		${FF_HOME}/src/parallel_ops/combine.cpp\
-		${FF_HOME}/src/parallel_ops/partition.cpp\
-		${FF_HOME}/src/parallel_ops/replicate.cpp\
-		${FF_HOME}/src/parallel_ops/reduction.cpp\
-		${FF_HOME}/src/parallel_ops/fused_parallel_op.cpp\
-		${FF_HOME}/src/loss_functions/loss_functions.cpp\
-		${FF_HOME}/src/metrics_functions/metrics_functions.cpp\
-		${FF_HOME}/src/runtime/accessor_kernel.cpp\
-    ${FF_HOME}/src/runtime/hip_helper.cpp\
-		${FF_HOME}/src/runtime/initializer_kernel.cpp\
-		${FF_HOME}/src/runtime/model.cpp\
-		${FF_HOME}/src/runtime/optimizer_kernel.cpp\
-		${FF_HOME}/src/runtime/simulator.cpp\
-		${FF_HOME}/src/runtime/tensor.cpp
+FF_CUDA_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cu')\
+		$(shell find $(FF_HOME)/src/mapper/ -name '*.cu')\
+		$(shell find $(FF_HOME)/src/metrics_functions/ -name '*.cu')\
+		$(shell find $(FF_HOME)/src/ops/ -name '*.cu')\
+		$(shell find $(FF_HOME)/src/parallel_ops/ -name '*.cu')\
+		$(shell find $(FF_HOME)/src/recompile/ -name '*.cu')\
+		$(shell find $(FF_HOME)/src/runtime/ -name '*.cu')\
+		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cu')
+
+FF_HIP_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cpp')\
+		$(shell find $(FF_HOME)/src/mapper/ -name '*.cpp')\
+		$(shell find $(FF_HOME)/src/metrics_functions/ -name '*.cpp')\
+		$(shell find $(FF_HOME)/src/ops/ -name '*.cpp')\
+		$(shell find $(FF_HOME)/src/parallel_ops/ -name '*.cpp')\
+		$(shell find $(FF_HOME)/src/recompile/ -name '*.cpp')\
+		$(shell find $(FF_HOME)/src/runtime/ -name '*.cpp')\
+		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cpp')
 		
 GEN_GPU_SRC += $(FF_CUDA_SRC)
 ifeq ($(strip $(HIP_TARGET)),CUDA)
@@ -193,7 +87,7 @@ ifneq ($(strip $(FF_USE_PYTHON)), 1)
 endif
 
 
-INC_FLAGS	+= -I${FF_HOME}/include
+INC_FLAGS	+= -I${FF_HOME}/include -I${FF_HOME}/deps/optional/include -I${FF_HOME}/deps/variant/include -I${FF_HOME}/deps/json/include
 CC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 NVCC_FLAGS	+= -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768
 HIPCC_FLAGS     += -DMAX_TENSOR_DIM=$(MAX_DIM) -DLEGION_MAX_RETURN_SIZE=32768

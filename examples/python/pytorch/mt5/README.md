@@ -7,16 +7,23 @@ We mention a few prerequisites and tips for setting up.
 - Using PyTorch and FlexFlow concurrently requires a CPU version of PyTorch.
     - To install the CPU version of `torch` (and `torchvision`), run:
     ```
-    conda install pytorch torchvision cpuonly -c pytorch
+    conda install pytorch==1.9.0 torchvision==0.10.0 cpuonly -c pytorch
     ```
     - To install the CPU version of `torch` from source, clone the [repository](https://github.com/pytorch/pytorch/tree/release/1.9), run `export USE_CUDA=0 USE_CUDNN=0 USE_MKLDNN=1`, run `git submodule sync; git submodule update --init --recursive`, and run `python setup.py develop` (or `python setup.py install`).
 - We need an installation of the HuggingFace `transformers` repository.
     - To install `transformers`, run:
     ```
-    conda install -c huggingface transformers
+    conda install -c conda-forge transformers
     ```
+    
     - To install `transformers` from source, clone the [repository](https://github.com/huggingface/transformers/tree/v4.10.2-release), and run `python setup.py develop` (or `python setup.py install`).
 - To run PyTorch-FlexFlow examples, make sure to run `export FF_USE_CFFI=1` to use `cffi` instead of `pybind11`.
+- Additional notes:
+    - You may need to update `huggingface_hub` with:
+    ```
+    conda update huggingface_hub
+    ```
+    - If you encounter `ImportError: Found an incompatible version of torch.`, try updating to a later version of `transformers`.
 
 
 

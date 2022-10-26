@@ -1,0 +1,35 @@
+name: "docker-build"
+on:
+  pull_request:
+    paths:
+      - "docker/**"
+      - "!docker/README.md"
+      - ".github/workflows/docker-build.yml"
+  push:
+    paths:
+      - "docker/**"
+      - "!docker/README.md"
+      - ".github/workflows/docker-build.yml"
+  workflow_dispatch:
+
+# Cancel outdated workflows if they are still running
+concurrency:
+  group: docker-build-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  docker-build:
+    name: Build and Install FlexFlow in a Docker Container
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+
+      - name: Build Docker container
+        run: ./docker/build.sh base
+
+      - name: Check availability of Python flexflow.core module
+        run: docker run --entrypoint python flexflow:latest -c "import flexflow.core; exit()"
+
+      - name: Build mT5 Docker container
+        run: ./docker/build.sh mt5

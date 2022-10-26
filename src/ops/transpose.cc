@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/transpose.h"
+#include "legion/legion_utilities.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -32,6 +33,23 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
+bool operator==(TransposeParams const &lhs, TransposeParams const &rhs) {
+  return lhs.perm == rhs.perm;
+}
+
+bool TransposeParams::is_valid(ParallelTensorShape const &input) const {
+  return input.is_valid();
+}
+
+TransposeParams Transpose::get_params() const {
+  TransposeParams params;
+  params.perm.clear();
+  assert(inputs[0]->num_dims == outputs[0]->num_dims);
+  for (int i = 0; i < outputs[0]->num_dims; i++)
+    params.perm.push_back(this->perm[i]);
+  return params;
+}
+
 Tensor FFModel::transpose(const Tensor input,
                           std::vector<int> const &_perm,
                           char const *name) {
@@ -44,16 +62,18 @@ Tensor FFModel::transpose(const Tensor input,
                                input);
   assert(_perm.size() == input->num_dims);
   // Use Legion indexing to store perm
-  int perm[MAX_TENSOR_DIM];
+  std::vector<int> perm;
   for (int i = 0; i < input->num_dims; i++)
-    perm[i] = input->num_dims - 1 - _perm[input->num_dims - 1 - i];
+    perm.push_back(input->num_dims - 1 - _perm[input->num_dims - 1 - i]);
+  // Assume a single leading replica dim
+  perm.push_back(input->num_dims);
   int dims[MAX_TENSOR_DIM];
   int numdim = input->num_dims;
   for (int i = 0; i < numdim; i++)
     dims[i] = input->dims[perm[i]];
   transpose->outputs[0] = create_tensor_legion_ordering(
       numdim, dims, input->data_type, transpose, 0, true /*create_grad*/);
-  transpose->add_int_vector_property("perm", _perm);
+  transpose->add_int_vector_property("legion_perm", perm);
   layers.push_back(transpose);
   return transpose->outputs[0];
 }
@@ -63,9 +83,15 @@ Op *Transpose::create_operator_from_layer(
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
   std::vector<int> perm;
-  layer->get_int_vector_property("perm", perm);
+  layer->get_int_vector_property("legion_perm", perm);
   return new Transpose(model, inputs[0], perm, layer->name);
 }
+
+Transpose::Transpose(FFModel &model,
+                     TransposeParams const &params,
+                     const ParallelTensor input,
+                     char const *name)
+    : Transpose(model, input, params.perm, name) {}
 
 Transpose::Transpose(FFModel &model,
                      const ParallelTensor input,
@@ -78,16 +104,21 @@ Transpose::Transpose(FFModel &model,
          0 /*weights*/,
          1 /*outputs*/,
          input) {
-  assert(_perm.size() == input->num_dims);
-  // Use Legion indexing to store perm
-  for (int i = 0; i < input->num_dims; i++)
-    perm[i] = input->num_dims - 1 - _perm[input->num_dims - 1 - i];
+  int num_dims = input->num_dims;
+  // Assume only the leading dims are replica_dims
+  // while (num_dims > 0 && input->dims[num_dims-1].is_replica_dim)
+  //  num_dims -= 1;
+  assert(_perm.size() == num_dims);
+  for (int i = 0; i < num_dims; i++)
+    perm[i] = _perm[i];
   ParallelDim dims[MAX_TENSOR_DIM];
-  int numdim = input->num_dims;
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < num_dims; i++)
     dims[i] = input->dims[perm[i]];
+  // The replica dims remain the same
+  for (int i = num_dims; i < input->num_dims; i++)
+    dims[i] = input->dims[i];
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      numdim, dims, input->data_type, this);
+      input->num_dims, dims, input->data_type, this);
 }
 
 void Transpose::init(FFModel const &ff) {
@@ -193,7 +224,7 @@ void Transpose::forward_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  for (int i = 0; i < out_domain.get_dim(); i++) {
+  for (int i = 0; i < m->num_dim; i++) {
     assert(out_domain.hi()[i] == in_domain.hi()[m->perm[i]]);
     assert(out_domain.lo()[i] == in_domain.lo()[m->perm[i]]);
   }
@@ -247,7 +278,7 @@ void Transpose::backward_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   Domain in_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  for (int i = 0; i < out_grad_domain.get_dim(); i++) {
+  for (int i = 0; i < m->num_dim; i++) {
     assert(out_grad_domain.hi()[i] == in_grad_domain.hi()[m->perm[i]]);
     assert(out_grad_domain.lo()[i] == in_grad_domain.lo()[m->perm[i]]);
   }
@@ -331,4 +362,47 @@ bool Transpose::measure_operator_cost(Simulator *sim,
   return true;
 }
 
+void Transpose::serialize(Legion::Serializer &sez) const {
+  TransposeParams params = get_params();
+  sez.serialize(params.perm.size());
+  for (size_t i = 0; i < params.perm.size(); i++)
+    sez.serialize(params.perm[i]);
+}
+
+using PCG::Node;
+Node Transpose::deserialize(FFModel &ff,
+                            Legion::Deserializer &dez,
+                            ParallelTensor inputs[],
+                            int num_inputs) {
+  assert(num_inputs == 1);
+  size_t perm_size;
+  std::vector<int> perm;
+  dez.deserialize(perm_size);
+  for (size_t i = 0; i < perm_size; i++) {
+    int dim_idx;
+    dez.deserialize(dim_idx);
+    perm.push_back(dim_idx);
+  }
+  return ff.get_or_create_node<Transpose>(inputs[0], {perm});
+}
+
+Op *Transpose::materialize(FFModel &ff,
+                           ParallelTensor inputs[],
+                           int num_inputs) const {
+  TransposeParams params = get_params();
+  return new Transpose(ff, params, inputs[0], this->name);
+}
+
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::TransposeParams>::operator()(
+    FlexFlow::TransposeParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.perm.size());
+  for (int n : params.perm) {
+    hash_combine(key, n);
+  }
+  return key;
+}
+}; // namespace std

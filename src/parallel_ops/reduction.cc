@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/parallel_ops/reduction.h"
+#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -36,6 +37,23 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+/* Params */
+bool operator==(ReductionParams const &lhs, ReductionParams const &rhs) {
+  return lhs.reduction_legion_dim == rhs.reduction_legion_dim &&
+         lhs.reduction_degree == rhs.reduction_degree;
+}
+
+bool ReductionParams::is_valid(ParallelTensorShape const &input) const {
+  return input.is_valid();
+}
+
+ReductionParams Reduction::get_params() const {
+  ReductionParams params;
+  params.reduction_legion_dim = this->reduction_dim;
+  params.reduction_degree = this->reduction_degree;
+  return params;
+}
 
 ParallelTensor FFModel::reduction(const ParallelTensor input,
                                   int reduction_legion_dim,
@@ -71,6 +89,16 @@ Reduction::Reduction(FFModel &model,
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, DT_FLOAT, this);
 }
+
+Reduction::Reduction(FFModel &model,
+                     ReductionParams const &params,
+                     ParallelTensor const input,
+                     char const *name)
+    : Reduction(model,
+                input,
+                params.reduction_legion_dim,
+                params.reduction_degree,
+                name) {}
 
 void Reduction::create_input_partition(FFModel &ff) {
   assert(outputs[0]->part != LogicalPartition::NO_PART);
@@ -152,6 +180,7 @@ void Reduction::backward(FFModel const &ff) {
 bool Reduction::measure_operator_cost(Simulator *sim,
                                       MachineView const &pc,
                                       CostMetrics &cost_metrics) const {
+  cost_metrics = CostMetrics();
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
 
@@ -184,36 +213,6 @@ bool Reduction::append_parallel_op_info(
   ret.parallel_degree = reduction_degree;
   parallel_ops.push_back(ret);
   return true;
-}
-
-size_t Reduction::get_params_hash() const {
-  size_t hash = this->inputs[0]->get_owner_independent_hash();
-  hash_combine(hash, this->reduction_dim);
-  hash_combine(hash, this->reduction_degree);
-
-  return hash;
-}
-
-using PCG::Node;
-Node FFModel::get_or_create_reduction_node(const ParallelTensor input,
-                                           int reduction_dim,
-                                           int reduction_degree) {
-  size_t hash = input->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(reduction_dim);
-  hash = hash * 31 + std::hash<int>()(reduction_degree);
-  auto const &it = cached_reduction_ops.find(hash);
-  Reduction *reduction = NULL;
-  if (it != cached_reduction_ops.end()) {
-    reduction = it->second;
-  } else {
-    reduction =
-        new Reduction(*this, input, reduction_dim, reduction_degree, NULL);
-    cached_reduction_ops[hash] = reduction;
-  }
-  Node ret;
-  ret.ptr = reduction;
-  ret.guid = node_global_guid++;
-  return ret;
 }
 
 /*static*/
@@ -263,3 +262,13 @@ void Reduction::backward_task(Task const *task,
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::ReductionParams>::operator()(
+    FlexFlow::ReductionParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.reduction_legion_dim);
+  hash_combine(key, params.reduction_degree);
+  return key;
+}
+}; // namespace std

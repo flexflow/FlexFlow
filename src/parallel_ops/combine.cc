@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/parallel_ops/combine.h"
+#include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -36,6 +37,36 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+/* Params */
+bool operator==(CombineParams const &lhs, CombineParams const &rhs) {
+  return lhs.combine_legion_dim == rhs.combine_legion_dim &&
+         lhs.combine_degree == rhs.combine_degree;
+}
+
+bool CombineParams::is_valid(ParallelTensorShape const &input) const {
+  bool valid = input.is_valid();
+  valid &=
+      (input.dims[this->combine_legion_dim].degree % this->combine_degree == 0);
+  return valid;
+}
+
+CombineParams Combine::get_params() const {
+  CombineParams params;
+  params.combine_legion_dim = this->combine_dim;
+  params.combine_degree = this->combine_degree;
+  return params;
+}
+
+Combine::Combine(FFModel &model,
+                 CombineParams const &params,
+                 ParallelTensor const input,
+                 char const *name)
+    : Combine(model,
+              input,
+              params.combine_legion_dim,
+              params.combine_degree,
+              name) {}
 
 ParallelTensor FFModel::combine(const ParallelTensor input,
                                 int combine_legion_dim,
@@ -77,7 +108,7 @@ OpMeta *Combine::init_task(Task const *task,
                            Context ctx,
                            Runtime *runtime) {
   Combine *rep = (Combine *)task->args;
-  FFHandler handle = *((FFHandler *)task->local_args);
+  // FFHandler handle = *((FFHandler *)task->local_args);
   // CombineMeta* m = new CombineMeta(handle);
   // m->data_type = rep->outputs[0]->data_type;
   return nullptr;
@@ -189,6 +220,7 @@ bool Combine::measure_operator_cost(Simulator *sim,
                                     MachineView const &mv,
                                     CostMetrics &cost_metrics) const {
   // TODO: to be implemented
+  cost_metrics = CostMetrics();
   cost_metrics.forward_time = 0.05f;
   cost_metrics.backward_time = 0.05f;
 
@@ -221,39 +253,6 @@ bool Combine::append_parallel_op_info(
   ret.parallel_degree = combine_degree;
   parallel_ops.push_back(ret);
   return true;
-}
-
-size_t Combine::get_params_hash() const {
-  size_t hash = this->inputs[0]->get_owner_independent_hash();
-  hash_combine(hash, this->combine_dim);
-  hash_combine(hash, this->combine_degree);
-
-  return hash;
-}
-
-using PCG::Node;
-Node FFModel::get_or_create_combine_node(const ParallelTensor input,
-                                         int combine_dim,
-                                         int combine_degree) {
-  if (input->dims[combine_dim].degree % combine_degree != 0) {
-    return Node::INVALID_NODE;
-  }
-
-  size_t hash = input->get_owner_independent_hash();
-  hash = hash * 31 + std::hash<int>()(combine_dim);
-  hash = hash * 31 + std::hash<int>()(combine_degree);
-  auto const &it = cached_combine_ops.find(hash);
-  Combine *combine = NULL;
-  if (it != cached_combine_ops.end()) {
-    combine = it->second;
-  } else {
-    combine = new Combine(*this, input, combine_dim, combine_degree, NULL);
-    cached_combine_ops[hash] = combine;
-  }
-  Node ret;
-  ret.ptr = combine;
-  ret.guid = node_global_guid++;
-  return ret;
 }
 
 tl::optional<RecordFormatter> Combine::as_dot() const {
@@ -353,3 +352,13 @@ void Combine::backward_task_with_type(
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::CombineParams>::operator()(
+    FlexFlow::CombineParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.combine_legion_dim);
+  hash_combine(key, params.combine_degree);
+  return key;
+}
+}; // namespace std

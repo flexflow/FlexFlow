@@ -40,7 +40,25 @@ void Reshape::forward_kernel_wrapper(const T *input_ptr,
                                      size_t num_elements) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (false) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
   Reshape::forward_kernel<T>(input_ptr, output_ptr, num_elements, stream);
+  if (false) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[Reshape] forward time (CF) = %.2fms\n", elapsed);
+    print_tensor<T>(input_ptr, 32, "[Reshape:forward:input]");
+    print_tensor<T>(output_ptr, 32, "[Reshape:forward:output]");
+  }
 }
 
 /*static*/

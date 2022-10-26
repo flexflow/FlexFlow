@@ -6,6 +6,7 @@
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
+#include "flexflow/ops/conv_2d_params.h"
 
 namespace FlexFlow {
 
@@ -47,38 +48,6 @@ enum {
   NUMDIM
 };
 } // namespace Conv2DBias
-
-struct Conv2DParams {
-  LayerID layer_guid;
-  int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h,
-      padding_w, groups;
-  ActiMode activation;
-  bool use_bias;
-
-  bool is_valid(ParallelTensorShape const &input) const;
-  void solve_dims(ParallelTensorShape const &input,
-                  ParallelDim output_dims[MAX_TENSOR_DIM],
-                  int *output_ndims,
-                  ParallelDim kernel_dims[MAX_TENSOR_DIM],
-                  int *kernel_ndims,
-                  ParallelDim bias_dims[MAX_TENSOR_DIM],
-                  int *bias_ndims) const;
-  // size_t get_hash(const ParallelTensor input) const;
-
-  friend bool operator==(Conv2DParams const &lhs, Conv2DParams const &rhs);
-
-private:
-  void mark_replica_dims(ParallelTensorShape const &input,
-                         ParallelDim output_dims[MAX_TENSOR_DIM],
-                         ParallelDim kernel_dims[MAX_TENSOR_DIM],
-                         ParallelDim bias_dims[MAX_TENSOR_DIM]) const;
-  int output_size(ParallelTensorShape const &input,
-                  ParallelDim output_dims[MAX_TENSOR_DIM]) const;
-  int kernel_size(ParallelTensorShape const &input_shape,
-                  ParallelDim kernel_dims[MAX_TENSOR_DIM]) const;
-  int bias_size(ParallelTensorShape const &input,
-                ParallelDim bias_dims[MAX_TENSOR_DIM]) const;
-};
 
 class Conv2DMeta : public OpMeta {
 public:
@@ -129,8 +98,8 @@ public:
          const ParallelTensor input,
          bool allocate_weights);
   Conv2D(FFModel &model,
-         Conv2DParams const &params,
-         ParallelTensor input,
+         Params const &params,
+         Input const input,
          char const *name = nullptr,
          bool allocate_weights = false);
   void init(FFModel const &) override;
@@ -222,7 +191,7 @@ public:
   static void construct_weight_mappings(std::vector<ParallelDimMappingRecord> &,
                                         bool use_bias);
 
-  Conv2DParams get_params() const;
+  Params get_params() const;
 
   tl::optional<RecordFormatter> as_dot() const override;
 
@@ -235,12 +204,5 @@ public:
 };
 
 }; // namespace FlexFlow
-
-namespace std {
-template <>
-struct hash<FlexFlow::Conv2DParams> {
-  size_t operator()(FlexFlow::Conv2DParams const &) const;
-};
-}; // namespace std
 
 #endif // _FLEXFLOW_CONV_2D_H

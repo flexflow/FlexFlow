@@ -15,6 +15,16 @@ std::string get_operator_type_name(OperatorType type) {
       return "BatchMatMul";
     case OP_POOL2D:
       return "Pool2D";
+    case OP_SCALAR_MULTIPLY:
+      return "ScalarMultiply";
+    case OP_SCALAR_ADD:
+      return "ScalarAdd";
+    case OP_SCALAR_FLOOR_DIV:
+      return "ScalarFloorDiv";
+    case OP_SCALAR_TRUE_DIV:
+      return "ScalarTrueDiv";
+    case OP_SCALAR_SUB:
+      return "ScalarSub";
     case OP_RELU:
       return "ReLU";
     case OP_SIGMOID:
@@ -139,6 +149,10 @@ std::string get_operator_type_name(OperatorType type) {
       return "Pow";
     case OP_MEAN:
       return "Mean";
+    case OP_LAYERNORM:
+      return "LayerNorm";
+    case OP_IDENTITY:
+      return "Identity";
     // Parallel Ops
     case OP_REPARTITION:
       return "Repartition";
@@ -153,7 +167,8 @@ std::string get_operator_type_name(OperatorType type) {
     case OP_FUSED_PARALLEL:
       return "FusedParallelOp";
     default:
-      throw std::runtime_error("Operator type unsupported");
+      throw std::runtime_error("Operator type unsupported: " +
+                               std::to_string(type));
   }
 }
 

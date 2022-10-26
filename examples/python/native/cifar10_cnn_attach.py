@@ -68,7 +68,6 @@ def top_level_task():
   full_input_array = x_train
   print(full_input_array.__array_interface__["strides"])
 
-
   y_train = y_train.astype('int32')
 
   full_label_array = y_train
@@ -107,15 +106,15 @@ def top_level_task():
     print(iterations, num_samples)
     ct = 0
     for iter in range(0, int(iterations)):
+      #ffconfig.begin_trace(111)
       next_batch(ct, x_train, input_tensor, ffconfig, ffmodel)
       next_batch_label(ct, y_train, label_tensor, ffconfig, ffmodel)
       ct += 1
-      ffconfig.begin_trace(111)
       ffmodel.forward()
       ffmodel.zero_gradients()
       ffmodel.backward()
       ffmodel.update()
-      ffconfig.end_trace(111)
+      #ffconfig.end_trace(111)
 
   ts_end = ffconfig.get_current_time()
   run_time = 1e-6 * (ts_end - ts_start);
@@ -129,18 +128,18 @@ def top_level_task():
   conv_2d1 = ffmodel.get_layer_by_id(0)
   cbias_tensor = conv_2d1.get_input_tensor()
   #cbias_tensor = conv_2d1.get_output_tensor()
-  cbias_tensor.inline_map(ffconfig)
-  cbias = cbias_tensor.get_flat_array(ffconfig, DataType.DT_FLOAT)
+  cbias_tensor.inline_map(ffmodel, ffconfig)
+  cbias = cbias_tensor.get_flat_array(ffmodel, ffconfig)
   print(cbias.shape)
   print(cbias)
-  cbias_tensor.inline_unmap(ffconfig)
+  cbias_tensor.inline_unmap(ffmodel, ffconfig)
 
-  label_tensor.inline_map(ffconfig)
-  label_array = label_tensor.get_flat_array(ffconfig, DataType.DT_INT32)
+  label_tensor.inline_map(ffmodel, ffconfig)
+  label_array = label_tensor.get_flat_array(ffmodel, ffconfig)
   print(label_array.shape)
   # print(cbias)
   print(label_array)
-  label_tensor.inline_unmap(ffconfig)
+  label_tensor.inline_unmap(ffmodel, ffconfig)
 
 
 if __name__ == "__main__":

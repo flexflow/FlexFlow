@@ -47,12 +47,8 @@ else:
 def flexflow_python_interpreter():
   return _FF_PYTHON_INTERPRETER
 
-# build docs  
-if 'FF_BUILD_DOCS' not in os.environ:
-  build_docs = 0
-else:
-  build_docs = int(os.environ['FF_BUILD_DOCS'])
-_FF_BUILD_DOCS = bool(build_docs)
+# build docs
+_FF_BUILD_DOCS = bool(os.environ.get('READTHEDOCS') or os.environ.get("FF_BUILD_DOCS"))
   
 # init import
 # It is used to run __init__.py in flexflow/core
