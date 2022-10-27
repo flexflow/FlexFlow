@@ -1,4 +1,4 @@
-name: "pip-install"
+name: "gpu-ci"
 on:
   pull_request:
     paths:
@@ -20,11 +20,11 @@ on:
       - ".github/workflows/self-hosted-runner/**"
   workflow_dispatch:
 concurrency:
-  group: pip-install-${{ github.head_ref || github.run_id }}
+  group: gpu-ci-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  pip-install-flexflow:
+  gpu-ci-flexflow:
     name: Install FlexFlow with pip
     runs-on: self-hosted
     steps:
