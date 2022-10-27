@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   gpu-ci-flexflow:
-    name: Install FlexFlow with pip
+    name: Install and test Flexflow on self-hosted runner with GPU
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
