@@ -28,10 +28,7 @@ jobs:
     name: Install FlexFlow with pip
     runs-on: self-hosted
     steps:
-      - name: Checkout Git Repository
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
+      - uses: actions/checkout@v2
 
       - name: Install CUDA
         uses: Jimver/cuda-toolkit@v0.2.8
