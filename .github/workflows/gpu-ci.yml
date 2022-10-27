@@ -1,4 +1,4 @@
-name: "gpu-ci" 
+name: "gpu-ci"
 on:
   pull_request:
     paths:
