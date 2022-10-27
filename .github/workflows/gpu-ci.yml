@@ -7,7 +7,7 @@ on:
       - "python/**"
       - "setup.py"
       - ".github/workflows/helpers/install-dependencies.sh"
-      - ".github/workflows/gpu_ci.yml"
+      - ".github/workflows/gpu-ci.yml"
       - ".github/workflows/self-hosted-runner/**"
   push:
     paths:
@@ -16,7 +16,7 @@ on:
       - "python/**"
       - "setup.py"
       - ".github/workflows/helpers/install-dependencies.sh"
-      - ".github/workflows/gpu_ci.yml"
+      - ".github/workflows/gpu-ci.yml"
       - ".github/workflows/self-hosted-runner/**"
   workflow_dispatch:
 concurrency:
