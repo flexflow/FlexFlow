@@ -6,7 +6,7 @@ on:
       - "config/**"
       - "python/**"
       - "setup.py"
-      - ".github/workflows/helpers/install-dependencies.sh"
+      - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/gpu-ci.yml"
       - ".github/workflows/self_hosted_runner/**"
   push:
@@ -15,7 +15,7 @@ on:
       - "config/**"
       - "python/**"
       - "setup.py"
-      - ".github/workflows/helpers/install-dependencies.sh"
+      - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/gpu-ci.yml"
       - ".github/workflows/self_hosted_runner/**"
   workflow_dispatch:
