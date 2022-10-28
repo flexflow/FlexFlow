@@ -3322,6 +3322,7 @@ FFConfig::FFConfig() {
   import_strategy_file = "";
   export_strategy_file = "";
   export_strategy_task_graph_file = "";
+  include_costs_dot_graph = false;
   export_strategy_computation_graph_file = "";
   dataset_path = "";
   substitution_json_path = tl::nullopt;
@@ -3443,6 +3444,10 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if (!strcmp(argv[i], "--taskgraph")) {
       export_strategy_task_graph_file = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--include-costs-dot-graph")) {
+      include_costs_dot_graph = true;
       continue;
     }
     if (!strcmp(argv[i], "--compgraph")) {
