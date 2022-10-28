@@ -4,6 +4,7 @@
 #include "flexflow/basic_graph.h"
 #include "flexflow/graph_structures.h"
 #include "flexflow/utils/dot/dot_file.h"
+#include "flexflow/utils/dot/record_formatter.h"
 #include "tl/optional.hpp"
 #include <algorithm>
 #include <functional>
