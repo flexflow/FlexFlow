@@ -1,5 +1,5 @@
 # Acknowledged to https://testdriven.io/blog/github-actions-docker/
-FROM ubuntu:latest
+FROM ubuntu:20.04
 
 # set the github runner version
 ARG RUNNER_VERSION="2.298.2"
@@ -12,13 +12,15 @@ RUN apt-get update -y && apt-get upgrade -y && useradd -m docker
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     sudo curl jq build-essential libssl-dev libffi-dev python3 python3-venv python3-dev python3-pip
 
+RUN adduser docker sudo && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
 # cd into the user directory, download and unzip the github actions runner
 RUN cd /home/docker && mkdir actions-runner && cd actions-runner \
     && curl -O -L https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz \
     && tar xzf ./actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz
 
 # install some additional dependencies
-RUN chown -R docker ~docker && /home/docker/actions-runner/bin/installdependencies.sh
+RUN chown -R docker ~docker && DEBIAN_FRONTEND=noninteractive /home/docker/actions-runner/bin/installdependencies.sh
 
 # copy over the start.sh script
 COPY start.sh start.sh
