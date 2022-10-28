@@ -16,6 +16,7 @@
 from collections import OrderedDict
 from enum import Enum
 from typing import List
+import copy
 
 import numpy as np
 from flexflow.core.flexflow_cffi import Tensor, NormInitializer
@@ -1417,23 +1418,73 @@ class GetItemNode(FunctionNode):
             """Returns if the slice is equivalent to unsqueezing that
             dimension."""
             return slice_elem is None
+
+        def is_truncate(slice_elem, old_size):
+            start = 0 if slice_elem.start == None else slice_elem.start
+            new_size = slice_elem.stop - start
+            return new_size < old_size
+        
+        def is_element(slice_elem):
+            return type(slice_elem) == int
+
         shape = tensor.dims
+        print('shape', shape)
+        print('slices', slices)
+        
         # Match dimensions from right to left
         new_shape = []  # append then reverse
         j = len(shape) - 1
+        new_size = None
+        curr_tensor = copy.copy(tensor) #shallow copy since I'm not sure if I can change input tensor
+        
+        # In there are less slices than input dimensions, add 'colon' slices until num slices matches dimension
+        diff = len(shape) - len(slices)
+        if diff > 0:
+            slices_lst = list(slices)
+            for i in range(diff):
+                slices_lst.append(slice(None, None, None))
+            slices = tuple(slices_lst)
+        #print('slices_new', slices)
+            
         for slice_elem in reversed(slices):
             if is_colon(slice_elem):
+                #print('colon')
                 assert j >= 0
                 new_shape.append(shape[j])
                 j -= 1
             elif is_unsqueeze(slice_elem):
+                #print('unsqueeze')
                 new_shape.append(1)
+            elif is_element(slice_elem):
+                #print('elem')
+                assert j >= 0
+                splits = [1, shape[j] - 1]
+                print('splits', splits)
+                curr_tensor = ffmodel.split(input=curr_tensor, sizes=splits, axis=j, name=name)[0]
+                new_shape.append(1)
+                j -= 1
+            elif is_truncate(slice_elem, shape[j]):
+                #print('resize')
+                assert j >= 0
+                start = 0 if slice_elem.start == None else slice_elem.start
+                splits = []
+                if start != 0: splits.append(start) # left split
+                splits.append(slice_elem.stop - start) # main split
+                if slice_elem.stop < shape[j]: splits.append(shape[j] - slice_elem.stop) # right_split
+                print('splits', splits)
+                curr_tensor = ffmodel.split(input=curr_tensor, sizes=splits, axis=j, name=name)[0] #split tensor in current dimension (j)
+                new_shape.append(slice_elem.stop - start)
+                j -= 1
             else:
                 assert 0, f"Unsupported slice element: {slice_elem}"
+                
         new_shape.reverse()
-        return ffmodel.reshape(
-            input=tensor, shape=new_shape, name=name,
-        )
+        print('new_shape', new_shape)
+        
+        #print('curr', curr_tensor.dims)
+        return ffmodel.reshape(input=curr_tensor, shape=new_shape, name=name,)
+        
+            
 
     @staticmethod
     def strings_to_slices(strings: List[str]):
