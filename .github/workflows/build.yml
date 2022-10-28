@@ -51,18 +51,19 @@ jobs:
           cores_available=$(nproc --all)
           n_build_cores=$(( cores_available -1 ))
           sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
+          sed -i "/FF_BUILD_UNIT_TESTS/c\FF_BUILD_UNIT_TESTS=ON" ./config/config.linux
           mkdir build
           cd build
           ../config/config.linux
           make -j $n_build_cores
 
       - name: Install FlexFlow
-        working-directory: build
         run: |
           export PATH=/opt/conda/bin:$PATH
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
+          cd build
           ../config/config.linux
           sudo make install
 
@@ -70,3 +71,14 @@ jobs:
         run: |
           export PATH=/opt/conda/bin:$PATH
           python -c "import flexflow.core; exit()"
+
+      - name: Run C++ unit tests
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export CUDNN_DIR=/usr/local/cuda
+          export CUDA_DIR=/usr/local/cuda
+          export FF_HOME=$(pwd)
+          export LD_LIBRARY_PATH=$CUDA_DIR/lib64/stubs:$LD_LIBRARY_PATH
+          sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1
+          cd build
+          ./tests/unit/unit-test
