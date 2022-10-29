@@ -1160,12 +1160,13 @@ Tensor FFModel::create_constant(int const dims[],
   // FIXME: currently create gradients for constants since the current auto grad
   // algorithm computes gradients for all operators
   Tensor tensor = create_tensor<NDIM>(
-      dims, data_type, NULL /*owner_op*/, true /*create_grad*/);
-  ConstantInitializer *init = new ConstantInitializer(value);
+      dims, data_type, NULL /*owner_op*/, false /*create_grad*/);
+  tensor->initializer = new ConstantInitializer(value);
+  return tensor;
+#ifdef DEADCODE
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
   assert(false);
-#ifdef DEADCODE
   ArgumentMap argmap;
   IndexLauncher launcher(CONSTANT_INIT_TASK_ID,
                          tensor->parallel_is,
