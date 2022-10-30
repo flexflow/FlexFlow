@@ -7,7 +7,7 @@ on:
       - "config/**"
       - "python/**"
       - "src/**"
-      - ".github/workflows/helpers/install-dependencies.sh"
+      - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/build.yml"
   push:
     paths:
@@ -16,7 +16,7 @@ on:
       - "config/**"
       - "python/**"
       - "src/**"
-      - ".github/workflows/helpers/install-dependencies.sh"
+      - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/build.yml"
   workflow_dispatch:
 concurrency:
@@ -48,14 +48,12 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
-          cores_available=$(nproc --all)
-          n_build_cores=$(( cores_available -1 ))
           sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
           sed -i "/FF_BUILD_UNIT_TESTS/c\FF_BUILD_UNIT_TESTS=ON" ./config/config.linux
           mkdir build
           cd build
           ../config/config.linux
-          make -j $n_build_cores
+          make -j
 
       - name: Install FlexFlow
         run: |
