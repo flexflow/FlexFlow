@@ -50,6 +50,10 @@ set(FF_CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
 # option for nccl
 option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)
 
+if (FF_GPU_BACKEND STREQUAL "hip_rocm" AND FF_USE_NCCL STREQUAL "ON")
+  message(FATAL_ERROR "NCCL: ON for FF_GPU_BACKEND: hip_rocm. hip_rocm backend must have NCCL disabled.")
+endif()
+
 # option for avx2
 option(FF_USE_AVX2 "Run FlexFlow with AVX2" OFF)
 
@@ -78,14 +82,22 @@ add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
 link_libraries(${LD_FLAGS})
 
+if(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
+  set(ROCM_PATH "/opt/rocm" CACHE STRING "Default ROCM installation directory.")
+endif()
+
 # ZLIB
 include(zlib)
 
 # CUDA
-include(cuda)
+if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
+  include(cuda)
+endif()
 
 # CUDNN
-include(cudnn)
+if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
+  include(cudnn)
+endif()
 
 # NCCL
 if(FF_USE_NCCL)
@@ -179,10 +191,6 @@ file(GLOB_RECURSE FLEXFLOW_SRC
   ${FLEXFLOW_ROOT}/src/*.cc)
 list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc")
 
-file(GLOB_RECURSE FLEXFLOW_GPU_SRC
-  LIST_DIRECTORIES False
-  ${FLEXFLOW_ROOT}/src/*.cu)
-
 set(FLEXFLOW_CPP_DRV_SRC
   ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)
 
@@ -195,10 +203,71 @@ target_link_libraries(substitution_loader nlohmann_json::nlohmann_json)
 #message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
 
 # compile flexflow lib
-if(BUILD_SHARED_LIBS)
-  cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
+if (FF_GPU_BACKEND STREQUAL "cuda")
+  file(GLOB_RECURSE FLEXFLOW_GPU_SRC
+    LIST_DIRECTORIES False
+    ${FLEXFLOW_ROOT}/src/*.cu)
+
+  if(BUILD_SHARED_LIBS)
+    cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
+  else()
+    cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
+  endif()
+elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
+  file(GLOB_RECURSE FLEXFLOW_GPU_SRC
+    LIST_DIRECTORIES False
+    ${FLEXFLOW_ROOT}/src/*.cpp)
+
+  if(BUILD_SHARED_LIBS)
+    add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
+  else()
+    add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC})
+  endif()
+
+  list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
+
+  find_package(hip REQUIRED)
+
+  if (FF_GPU_BACKEND STREQUAL "hip_cuda")
+    # The targets defined by the hip cmake config only target amd devices.
+    # For targeting nvidia devices, we'll make our own interface target,
+    # hip_device_nvidia, that includes the rocm and hip headers. 
+    add_library(hip_device_nvidia INTERFACE)
+
+    if (NOT FF_CUDA_ARCH STREQUAL "")
+      target_compile_options(hip_device_nvidia INTERFACE -arch=compute_${FF_CUDA_ARCH})
+    endif()
+
+    target_include_directories(hip_device_nvidia SYSTEM INTERFACE ${HIP_INCLUDE_DIRS} ${ROCM_PATH}/include)
+    target_include_directories(hip_device_nvidia INTERFACE ${HIP_INCLUDE_DIRS} ${ROCM_PATH}/include)
+
+    # Linking cuda: 
+    # We do not explicitly link cuda. hipcc when targeting nvidia will 
+    # use nvcc under the hood. nvcc when used for linking will handle 
+    # linking cuda dependencies
+    target_link_libraries(flexflow hip_device_nvidia)
+  elseif(FF_GPU_BACKEND STREQUAL "hip_rocm")
+    find_package(hipblas REQUIRED)
+    find_package(miopen REQUIRED)
+    # find_package(rocrand REQUIRED)
+    find_library(HIP_RAND_LIBRARY hiprand REQUIRED)
+
+    # The hip cmake config module defines three targets, 
+    # hip::amdhip64, hip::host, and hip::device.
+    #
+    # hip::host and hip::device are interface targets. hip::amdhip64 is an 
+    # imported target for libamdhip.
+    #
+    # You do not directly link to hip::amdhip64. hip::host links to hip::amdhip64
+    # and hip::device links to hip::host. Link to hip::host to just use hip without 
+    # compiling any GPU code. Link to hip::device to compile the GPU device code.
+    #
+    # Docs (outdated):
+    # https://rocmdocs.amd.com/en/latest/Installation_Guide/Using-CMake-with-AMD-ROCm.html
+    target_link_libraries(flexflow hip::device roc::hipblas MIOpen ${HIP_RAND_LIBRARY})
+  endif()
 else()
-  cuda_add_library(flexflow STATIC ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
+  message(FATAL_ERROR "Unsupported FF_GPU_BACKEND for cmake: ${FF_GPU_BACKEND}")
 endif()
 
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
