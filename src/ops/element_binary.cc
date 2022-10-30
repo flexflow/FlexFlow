@@ -295,6 +295,8 @@ OpMeta *ElementBinary::init_task(Task const *task,
   ElementBinary *eb = (ElementBinary *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   ElementBinaryMeta *m = new ElementBinaryMeta(handle);
+  for (int i = 0; i < eb->numInputs; i++)
+    m->trainableInputs[i] = eb->trainableInputs[i];
   m->op_type = eb->op_type;
   m->profiling = eb->profiling;
   m->inplace_a = eb->inplace_a;
