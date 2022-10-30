@@ -242,7 +242,8 @@ endif()
 
 # Python
 if(FF_USE_PYTHON)
-  add_subdirectory(deps/pybind11)
+  FetchContent_Declare(pybind11 GIT_REPOSITORY https://github.com/pybind/pybind11.git)
+  FetchContent_MakeAvailable(pybind11)
   add_subdirectory(python)
 endif()
 
