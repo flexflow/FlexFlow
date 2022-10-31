@@ -27,15 +27,11 @@ jobs:
   gpu-ci-flexflow:
     name: Install and test Flexflow on self-hosted runner with GPU
     runs-on: self-hosted
+    container: 
+      image: nvidia/cuda:11.1.1-devel-ubuntu18.04
+      options: --gpus all
     steps:
       - uses: actions/checkout@v2
-
-      - name: Install CUDA
-        uses: Jimver/cuda-toolkit@v0.2.8
-        id: cuda-toolkit
-        with:
-          cuda: "11.1.1"
-          #use-github-cache: 'false'
 
       - name: Install FlexFlow Dependencies
         run: .github/workflows/helpers/install_dependencies.sh
