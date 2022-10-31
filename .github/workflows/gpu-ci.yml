@@ -33,14 +33,14 @@ jobs:
     steps:
       - name: Install sudo and git
         run: DEBIAN_FRONTEND=noninteractive apt-get update -y && apt-get upgrade && apt-get install -y --no-install-recommends sudo git
+      - name: Check git version
+        run: git --version
       - name: Checkout Git Repository
         uses: actions/checkout@v3
-        # with:
-        #   submodules: recursive
-      - name: pwd
-        run: pwd
-      - name: Checkout submodules
-        run: git submodule update --init --recursive
+        with:
+          submodules: recursive
+      # - name: Checkout submodules
+      #   run: git submodule update --init --recursive
       
       - name: Install FlexFlow Dependencies
         run: .github/workflows/helpers/install_dependencies.sh
