@@ -32,7 +32,10 @@ jobs:
       options: --gpus all
     steps:
       - uses: actions/checkout@v2
-
+      
+      - name: Install sudo
+        run: DEBIAN_FRONTEND=noninteractive apt-get update -y && apt-get upgrade && apt-get install -y --no-install-recommends sudo
+      
       - name: Install FlexFlow Dependencies
         run: .github/workflows/helpers/install_dependencies.sh
 
