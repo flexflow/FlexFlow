@@ -34,7 +34,7 @@ jobs:
       - name: Install sudo
         run: DEBIAN_FRONTEND=noninteractive apt-get update -y && apt-get upgrade && apt-get install -y --no-install-recommends sudo software-properties-common
       - name: Install updated git version
-        run: sudo add-apt-repository ppa:git-core/ppa && sudo apt update && sudo apt install git
+        run: DEBIAN_FRONTEND=noninteractive sudo add-apt-repository ppa:git-core/ppa && sudo apt update && sudo apt install -y --no-install-recommends git
       - name: Checkout Git Repository
         uses: actions/checkout@v3
         with:
