@@ -1,6 +1,7 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 set -x
+
 # General dependencies
 echo "Installing apt dependencies..."
 sudo apt-get update && sudo apt-get install -y --no-install-recommends wget binutils git zlib1g-dev && \

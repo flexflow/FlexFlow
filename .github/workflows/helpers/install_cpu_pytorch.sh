@@ -1,4 +1,6 @@
 #!/bin/bash
+set -euo pipefail
+set -x
 
 DEBIAN_FRONTEND=noninteractive
 
@@ -33,4 +35,4 @@ echo "Installing PyTorch and related packages"
 # Install Hugging-face/MT5 related packages
 /opt/conda/bin/conda install -c conda-forge pip pandas numpy transformers=4.16.2 sentencepiece
 # Install packages required by other example applications
-pip install onnx tensorflow keras2onnx
+pip3 install onnx tensorflow keras2onnx
