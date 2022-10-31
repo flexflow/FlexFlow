@@ -8,6 +8,7 @@ class RecordFormatter {
   friend RecordFormatter &operator<<(RecordFormatter &r,
                                      std::string const &tok);
   friend RecordFormatter &operator<<(RecordFormatter &r, int tok);
+  friend RecordFormatter &operator<<(RecordFormatter &r, float tok);
   friend RecordFormatter &operator<<(RecordFormatter &r,
                                      RecordFormatter const &sub_r);
   friend RecordFormatter &operator<<(RecordFormatter &r,
