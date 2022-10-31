@@ -114,5 +114,4 @@ jobs:
 
           cd python
           make -j $n_build_cores
-          pip install -e .
           python -c 'import flexflow.core'
