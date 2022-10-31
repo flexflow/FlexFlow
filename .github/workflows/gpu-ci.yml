@@ -32,7 +32,7 @@ jobs:
       options: --gpus all
     steps:
       - name: Install sudo
-        run: DEBIAN_FRONTEND=noninteractive apt-get update -y && apt-get upgrade && apt-get install -y --no-install-recommends sudo
+        run: DEBIAN_FRONTEND=noninteractive apt-get update -y && apt-get upgrade && apt-get install -y --no-install-recommends sudo software-properties-common
       - name: Install updated git version
         run: sudo add-apt-repository ppa:git-core/ppa && sudo apt update && sudo apt install git
       - name: Checkout Git Repository
