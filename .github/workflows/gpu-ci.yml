@@ -56,4 +56,4 @@ jobs:
           python -c "import flexflow.core; exit()"
 
       - name: Run Python tests
-        run: ./python/test.sh
+        run: ./python/test.sh 1
