@@ -31,13 +31,14 @@ jobs:
       image: nvidia/cuda:11.1.1-devel-ubuntu18.04
       options: --gpus all
     steps:
+      - name: Install sudo and git
+        run: DEBIAN_FRONTEND=noninteractive apt-get update -y && apt-get upgrade && apt-get install -y --no-install-recommends sudo git
       - name: Checkout Git Repository
         uses: actions/checkout@v3
-      - name: Checkout submodules
-        run: git submodule update --init --recursive
-      
-      - name: Install sudo
-        run: DEBIAN_FRONTEND=noninteractive apt-get update -y && apt-get upgrade && apt-get install -y --no-install-recommends sudo
+        with:
+          submodules: recursive
+      # - name: Checkout submodules
+      #   run: git submodule update --init --recursive
       
       - name: Install FlexFlow Dependencies
         run: .github/workflows/helpers/install_dependencies.sh
