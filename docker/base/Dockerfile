@@ -24,7 +24,8 @@ ENV PATH /opt/conda/bin:$PATH
 ENV CUDNN_DIR /usr/local/cuda
 ENV CUDA_DIR /usr/local/cuda
 
-# Clone the repo
+# Clone the repo, invalidating the cache in case of new commits
+ADD https://api.github.com/repos/flexflow/flexflow/git/refs/heads/master ff_version.json
 RUN cd /usr && \
     git clone --recursive https://github.com/flexflow/FlexFlow.git
 ENV FF_HOME /usr/FlexFlow
@@ -39,9 +40,6 @@ RUN cd /usr/FlexFlow && mkdir -p build && cd build && \
     make -j $n_build_cores && \
     ../config/config.linux && \
     make install
-
-# Add the FlexFlow module to Conda's Python
-RUN /opt/conda/bin/conda develop /usr/local
 
 ENTRYPOINT ["/bin/bash"]
 

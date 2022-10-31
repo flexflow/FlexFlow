@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Cd into directory holding this script
-cd "$( echo "${BASH_SOURCE[0]%/*}" )"
+cd "${BASH_SOURCE[0]%/*}"
 
 # Copy the config files into the Docker folder
 rm -rf config && cp -r ../config ./config
@@ -33,7 +33,7 @@ then
   gpu_arch_codes="$(./get_gpu_arch)"
 fi
 gpu_arch_codes="$(echo "$gpu_arch_codes" | xargs -n1 | sort -u | xargs)"
-gpu_arch_codes="$(echo ${gpu_arch_codes// /,})"
+gpu_arch_codes="${gpu_arch_codes// /,}"
 rm -f ./get_gpu_arch.cu ./get_gpu_arch
 
 # Print the CUDA architecture(s) to the config file
@@ -47,5 +47,12 @@ else
   sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
 fi
 
-# Build Docker image
-docker build --build-arg n_build_cores=$n_build_cores  -t flexflow .
+# Build base Docker image
+docker build --build-arg n_build_cores=$n_build_cores -t flexflow -f base/Dockerfile .
+
+# Build mt5 docker image if required
+image=${1:-base}
+
+if [[ "$image" == "mt5" ]]; then
+  docker build -t flexflow-mt5 -f mt5/Dockerfile .
+fi

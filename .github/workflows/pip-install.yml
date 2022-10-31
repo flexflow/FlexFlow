@@ -1,31 +1,29 @@
-name: "build"
+name: "pip-install"
 on:
   pull_request:
     paths:
-      - "include/**"
       - "cmake/**"
       - "config/**"
       - "python/**"
-      - "src/**"
+      - "setup.py"
       - ".github/workflows/helpers/install-dependencies.sh"
-      - ".github/workflows/build.yml"
+      - ".github/workflows/pip-install.yml"
   push:
     paths:
-      - "include/**"
       - "cmake/**"
       - "config/**"
       - "python/**"
-      - "src/**"
+      - "setup.py"
       - ".github/workflows/helpers/install-dependencies.sh"
-      - ".github/workflows/build.yml"
+      - ".github/workflows/pip-install.yml"
   workflow_dispatch:
 concurrency:
-  group: build-${{ github.head_ref || github.run_id }}
+  group: pip-install-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
-  build-and-install-flexflow:
-    name: Build and Install FlexFlow
+  pip-install-flexflow:
+    name: Install FlexFlow with pip
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout Git Repository
@@ -42,29 +40,12 @@ jobs:
       - name: Install FlexFlow Dependencies
         run: .github/workflows/helpers/install_dependencies.sh
 
-      - name: Build FlexFlow
+      - name: Build and Install FlexFlow
         run: |
           export PATH=/opt/conda/bin:$PATH
-          export CUDNN_DIR=/usr/local/cuda
-          export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
-          cores_available=$(nproc --all)
-          n_build_cores=$(( cores_available -1 ))
           sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
-          mkdir build
-          cd build
-          ../config/config.linux
-          make -j $n_build_cores
-
-      - name: Install FlexFlow
-        working-directory: build
-        run: |
-          export PATH=/opt/conda/bin:$PATH
-          export CUDNN_DIR=/usr/local/cuda
-          export CUDA_DIR=/usr/local/cuda
-          export FF_HOME=$(pwd)
-          ../config/config.linux
-          sudo make install
+          pip install . --verbose
 
       - name: Check availability of Python flexflow.core module
         run: |

@@ -27,8 +27,6 @@ CUDNN_DIR=/usr/local/cuda
 # set CUDA dir in case cmake cannot autodetect a path
 CUDA_DIR=/usr/local/cuda
 
-CUDA_LIB_PATH="${CUDA_DIR}/lib64/stubs"
-
 # enable Python
 FF_USE_PYTHON=ON
 
