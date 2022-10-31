@@ -31,7 +31,10 @@ jobs:
       image: nvidia/cuda:11.1.1-devel-ubuntu18.04
       options: --gpus all
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
       
       - name: Install sudo
         run: DEBIAN_FRONTEND=noninteractive apt-get update -y && apt-get upgrade && apt-get install -y --no-install-recommends sudo
