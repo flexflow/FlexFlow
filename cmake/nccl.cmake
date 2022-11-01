@@ -26,7 +26,6 @@ list(TRANSFORM CUDA_GENCODE PREPEND "NVCC_GENCODE=" OUTPUT_VARIABLE NCCL_BUILD_N
 include(FetchContent)
 FetchContent_Declare(nccl URL https://github.com/gabrieleoliaro/flexflow-third-party/releases/latest/download/nccl_11.1.1_ubuntu-20.04.tar.gz)
 FetchContent_MakeAvailable(nccl)
-list(APPEND FLEXFLOW_INCLUDE_DIRS ${nccl_SOURCE_DIR}/include/)
 
 list(APPEND FLEXFLOW_INCLUDE_DIRS
   ${nccl_SOURCE_DIR}/include)
