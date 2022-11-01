@@ -61,5 +61,8 @@ jobs:
 
       - name: Run Python tests
         run: |
+          export PATH=/opt/conda/bin:$PATH
+          export CUDNN_DIR=/usr/local/cuda
+          export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
           ./python/test.sh 1
