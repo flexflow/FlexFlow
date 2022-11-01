@@ -20,10 +20,10 @@ if [[ -z "$FF_HOME" ]]; then
   exit 1 
 fi
 EXE="gdb -ex r --args $FF_HOME/python/flexflow_python"
+EXE="$FF_HOME/python/flexflow_python"
 
 #Accuracy tests
 #$EXE $FF_HOME/examples/python/native/mnist_mlp.py -a -ll:py 1 -ll:gpu $GPUS -ll:fsize 12000 -ll:zsize 12192 --epochs 5 -b ${BATCHSIZE}
-$EXE $FF_HOME/examples/python/native/mnist_cnn.py -a -ll:py 1 -ll:gpu $GPUS -ll:fsize 12000 -ll:zsize 12192 --epochs 5 -b ${BATCHSIZE}
+$EXE $FF_HOME/examples/python/native/mnist_cnn.py -a -ll:py 1 -ll:gpu $GPUS -ll:fsize 12000 -ll:zsize 12192 --epochs 1 -b ${BATCHSIZE}
 #$EXE $FF_HOME/examples/python/native/cifar10_cnn.py -a -ll:py 1 -ll:gpu $GPUS -ll:fsize 12000 -ll:zsize 12192 --epochs 40
 #$EXE $FF_HOME/examples/python/native/alexnet.py -a -ll:py 1 -ll:gpu $GPUS -ll:fsize 12000 -ll:zsize 12192 --epochs 40
-

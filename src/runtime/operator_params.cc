@@ -16,10 +16,7 @@
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
-<<<<<<< HEAD
-=======
 #include "flexflow/ops/mean.h"
->>>>>>> master
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reshape.h"

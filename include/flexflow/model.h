@@ -35,6 +35,7 @@
 #include <functional>
 #include <unistd.h>
 #include <utility>
+#include "flexflow/ffconst_utils.h"
 
 #include "ffconst.h"
 #include "fftype.h"
@@ -630,7 +631,11 @@ public:
       cached_ops[key] = op;
     }
 
-    assert(op->get_params() == params);
+    if (!(op->get_params() == params)) {
+        std::ostringstream oss;
+        oss << "Param reconstruction invalid for operator type " << get_operator_type_name(op->op_type);
+        throw std::runtime_error(oss.str());
+    }
     return this->new_node(op);
   }
 

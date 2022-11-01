@@ -1163,30 +1163,28 @@ void Graph::export_strategy_computation_graph(
     DotFile<Node> &dot) const {
   using FlexFlow::PCG::Utils::GraphStructure;
 
+  auto expand_fused_parallel_op = [](Node const &node) {
+    RecordFormatter rf;
+    assert (node.ptr->op_type == OP_FUSED_PARALLEL);
+    FusedParallelOp *fused_op = (FusedParallelOp *)node.ptr;
+    rf << node.to_string();
+    for (int i = 0; i < fused_op->num_parallel_ops; i++) {
+      RecordFormatter row{};
+      ParallelOpInfo op_info = fused_op->parallel_ops[i];
+      std::string op_type_str = get_operator_type_name(op_info.op_type);
+      row << op_type_str << "dim: " + std::to_string(op_info.parallel_dim)
+          << "degree: " + std::to_string(op_info.parallel_degree);
+      rf << row;
+    }
+    return rf;
+  };
+
   GraphStructure<Graph> s;
 
   for (auto const &node : s.get_nodes(*this)) {
     if (strategy.find(node) == strategy.end()) {
-      dot.add_node(node, {{"label", node.to_string()}});
-      // Check FusedParallel node here and print out the detailed information
       if (node.ptr->op_type == OperatorType::OP_FUSED_PARALLEL) {
-        RecordFormatter rf;
-        std::vector<RecordFormatter> rows{};
-
-        FusedParallelOp *fused_op = (FusedParallelOp *)node.ptr;
-        for (int i = 0; i < fused_op->num_parallel_ops; i++) {
-          RecordFormatter row{};
-          ParallelOpInfo op_info = fused_op->parallel_ops[i];
-          std::string op_type_str = get_operator_type_name(op_info.op_type);
-          row << op_type_str << "dim: " + std::to_string(op_info.parallel_dim)
-              << "degree: " + std::to_string(op_info.parallel_degree);
-          rows.emplace_back(row);
-        }
-        rf << node.to_string();
-        for (auto &r : rows) {
-          rf << r;
-        }
-        dot.add_record_node(node, rf);
+        dot.add_record_node(node, expand_fused_parallel_op(node));
       } else {
         dot.add_node(node, {{"label", node.to_string()}});
       }
@@ -1220,6 +1218,12 @@ void Graph::export_strategy_computation_graph(
           Reduction *r = (Reduction *)node.ptr;
           meta_row << std::to_string(r->reduction_dim)
                    << std::to_string(r->reduction_degree);
+          break;
+        }
+        case OP_FUSED_PARALLEL: {
+          RecordFormatter rr;
+          rr << expand_fused_parallel_op(node);
+          meta_row << rr;
           break;
         }
         default: {

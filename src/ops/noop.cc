@@ -261,7 +261,7 @@ NoOpParams NoOp::get_params() const {
   NoOpParams params;
   params.op_type = this->op_type;
   if (this->op_type == OP_INPUT) {
-    params.input_metadata = this->input_tensor_guid;
+    params.input_metadata = {this->input_tensor_guid, outputs[0]->get_shape()};
   }
 
   return params;
