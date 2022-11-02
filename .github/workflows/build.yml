@@ -57,6 +57,7 @@ jobs:
           mkdir build
           cd build
           ../config/config.linux
+          export VERBOSE=1
           make -j $n_build_cores
 
       - name: Install FlexFlow
@@ -67,6 +68,7 @@ jobs:
           export FF_HOME=$(pwd)
           cd build
           ../config/config.linux
+          export VERBOSE=1
           sudo make install
 
       - name: Check availability of Python flexflow.core module
