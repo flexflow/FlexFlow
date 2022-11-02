@@ -1679,6 +1679,9 @@ T SearchHelper::graph_cost(Graph const *graph,
     }
     this->logger->spew() << "  weight ParallelTensor shape|num_replicas:";
     for (int i = 0; i < op->numWeights; i++) {
+      if (op->weights[i] == nullptr) {
+        continue;
+      }
       auto shape = op->weights[i]->get_shape();
       this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
       if (weight_num_parts == 0) {
@@ -2125,8 +2128,18 @@ GraphOptimalViewSerialized
                                Context ctx,
                                Runtime *runtime) {
 
-  std::vector<float> lambdas{
-      0.0, 0.5, 0.9, 0.95, 0.99, 0.995, 0.999, 0.9999, 0.99999, 0.999999, 1.0};
+  // DLRM
+  std::vector<float> lambdas{0.0, 0.5, 0.9, 0.92, 0.94, 0.96, 0.98, 1.0};
+
+  // BERT
+  // std::vector<float> lambdas{0.0, 0.2, 0.4, 0.6, 0.8, 0.9, 0.92, 0.94, 1.0};
+
+  // 0.0 - 0.95 is the change range for resnext50
+  // std::vector<float> lambdas{0.0, 0.2, 0.4, 0.6, 0.8, 0.9, 0.92, 0.94, 1.0};
+
+  // 0.9 - 0.99 is the change range for MLP
+  // std::vector<float> lambdas{
+  //     0.9, 0.91, 0.92, 0.93, 0.94, 0.95, 0.96, 0.97, 0.98, 0.99, 1.0};
 
   Simulator *cached_sim = nullptr; // Cached simulator
 
