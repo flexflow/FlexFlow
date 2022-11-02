@@ -36,6 +36,10 @@ else()
 	# FetchContent_Declare(legion URL https://github.com/gabrieleoliaro/flexflow-third-party/releases/latest/download/legion_11.1.1_ubuntu-20.04.tar.gz)
 	# FetchContent_MakeAvailable(legion)
 	# set(LEGION_LIBRARY Legion)
+	# set(LEGION_URL https://github.com/gabrieleoliaro/flexflow-third-party/releases/latest/download/legion_11.1.1_ubuntu-20.04.tar.gz)
+ #    execute_process(COMMAND ${BASH} wget ${LEGION_URL} -o ${CMAKE_BINARY_DIR}/deps && 
+ #                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+ #                    RESULT_VARIABLE download_result)
 
 endif()
 
