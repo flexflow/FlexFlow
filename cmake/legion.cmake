@@ -33,9 +33,11 @@ else()
 	# set(LEGION_LIBRARY Legion)
 
 	set(LEGION_LIBRARY legion)
-	set(LEGION_URL https://github.com/gabrieleoliaro/flexflow-third-party/releases/latest/download/legion_11.1.1_ubuntu-20.04.tar.gz)
+	set(REALM_LIBRARY legion)
+	set(LEGION_DOWNLOAD)
+	set(LEGION_URL https://www.gabrieleoliaro.it/legion.tar.gz)
 
-	ExternalProject_Add(${LEGION_LIBRARY}
+	ExternalProject_Add(${LEGION_DOWNLOAD}
 	  SOURCE_DIR ""
 	  PREFIX ${CMAKE_BINARY_DIR}/deps/${LEGION_LIBRARY}
 	  URL ${LEGION_URL}
@@ -57,10 +59,19 @@ else()
 	SET(LEGION_LIB_DIR ${LEGION_BASE_DIR}/lib)
 	SET(LEGION_SHARE_DIR ${LEGION_BASE_DIR}/share/)
 
-	add_library(${LEGION_LIBRARY} SHARED IMPORTED)
-	set_target_properties(${LEGION_LIBRARY} PROPERTIES IMPORTED_LOCATION ${LEGION_LIB_DIR}/liblegion${LIBEXT} ${LEGION_LIB_DIR}/librealm${LIBEXT})
+	add_library(${LEGION_LIBRARY} STATIC IMPORTED)
+	add_library(${REALM_LIBRARY} STATIC IMPORTED)
+	set_target_properties(${LEGION_LIBRARY} PROPERTIES IMPORTED_LOCATION ${LEGION_LIB_DIR}/liblegion${LIBEXT})
+	set_target_properties(${REALM_LIBRARY} PROPERTIES IMPORTED_LOCATION ${LEGION_LIB_DIR}/librealm${LIBEXT})
+	set_target_properties(${LEGION_LIBRARY} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${LEGION_INCLUDE_DIR})
+
+	#add_library(${LEGION_LIBRARY} SHARED IMPORTED)
+	#set_target_properties(${LEGION_LIBRARY} PROPERTIES IMPORTED_LOCATION ${LEGION_LIB_DIR}/liblegion${LIBEXT} ${LEGION_LIB_DIR}/librealm${LIBEXT})
 	list(APPEND FLEXFLOW_INCLUDE_DIRS ${LEGION_INCLUDE_DIR})
 	#list(APPEND FLEXFLOW_EXT_LIBRARIES ${LEGION_LIB_DIR}/liblegion${LIBEXT} ${LEGION_LIB_DIR}/librealm${LIBEXT})
+
+	i#nclude_directories(${LEGION_INCLUDE_DIR})
+
 
 	install(DIRECTORY ${LEGION_SHARE_DIR} DESTINATION share)
 	install(DIRECTORY ${LEGION_BIN_DIR} DESTINATION bin)
