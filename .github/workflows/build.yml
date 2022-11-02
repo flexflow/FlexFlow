@@ -72,6 +72,7 @@ jobs:
           ../config/config.linux
           #export VERBOSE=1
           sudo make install
+          sudo ldconfig
 
       - name: Check availability of Python flexflow.core module
         run: |
