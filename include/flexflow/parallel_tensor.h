@@ -167,7 +167,6 @@ private:
                                          ParallelTensorBase &tensor) const;
 
 public:
-  size_t parallel_tensor_guid = 0;
   int num_dims = 0;
   // int adim[MAX_TENSOR_DIM];
   ParallelDim dims[MAX_TENSOR_DIM];

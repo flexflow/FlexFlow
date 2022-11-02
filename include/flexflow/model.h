@@ -755,7 +755,7 @@ public:
 
 public:
   size_t op_global_guid, layer_global_guid;
-  size_t tensor_global_guid, parallel_tensor_global_guid, node_global_guid;
+  size_t tensor_global_guid, node_global_guid;
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer *optimizer;

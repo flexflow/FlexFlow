@@ -108,6 +108,10 @@ bool ParallelTensorShape::operator==(ParallelTensorShape const &other) const {
     if (this->dims[i].degree != other.dims[i].degree) {
       return false;
     }
+
+    if (this->dims[i].parallel_idx != other.dims[i].parallel_idx) {
+      return false;
+    }
   }
 
   return true;
@@ -173,7 +177,6 @@ bool ParallelTensorBase::update_parallel_ids(int numdim, ParallelDim *dims) {
 }
 
 ParallelTensorBase::ParallelTensorBase(ParallelTensorBase const &rhs) {
-  parallel_tensor_guid = rhs.parallel_tensor_guid;
   num_dims = rhs.num_dims;
   for (int i = 0; i < num_dims; i++)
     dims[i] = rhs.dims[i];
@@ -583,6 +586,7 @@ size_t hash<FlexFlow::ParallelTensorShape>::operator()(
   for (int i = 0; i < shape.num_dims; i++) {
     hash_combine(key, shape.dims[i].size);
     hash_combine(key, shape.dims[i].degree);
+    hash_combine(key, shape.dims[i].parallel_idx);
   }
   return key;
 }

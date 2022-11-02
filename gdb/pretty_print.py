@@ -56,21 +56,21 @@ class TensorShapePrinter:
     def to_string(self):
         toks = []
         ndim = self.val['num_dims']
+        datatype = self.val['data_type']
         for i in range(ndim):
             dim = self.val['dims'][i]
             size = dim['size']
             degree = dim['degree']
             parallel_idx = dim['parallel_idx']
             toks.append(f'{i}=[s={size} d={degree} pi={parallel_idx}]')
-        return f'TensorShape<{" ".join(toks)}>'
+        return f'TensorShape<dt={datatype} {" ".join(toks)}>'
 
 class ParallelTensorBasePrinter:
     def __init__(self, val):
         self.val = val
-    
+
     def to_string(self):
         toks = []
-        toks.append(f'guid={self.val["parallel_tensor_guid"]}')
         ndim = self.val['num_dims']
         for i in range(ndim):
             dim = self.val['dims'][i]

@@ -67,7 +67,6 @@ FFModel::FFModel(FFConfig &_config)
     : op_global_guid(OP_GUID_FIRST_VALID),
       layer_global_guid(LAYER_GUID_FIRST_VALID),
       tensor_global_guid(TENSOR_GUID_FIRST_VALID),
-      parallel_tensor_global_guid(PARALLEL_TENSOR_GUID_FIRST_VALID),
       node_global_guid(NODE_GUID_FIRST_VALID), config(_config), optimizer(NULL),
       loss_op(NULL), metrics_op(NULL), simulator(NULL) {
   this->search = new PCG::SearchHelper(this);
@@ -287,7 +286,6 @@ ParallelTensor FFModel::create_parallel_tensor(const ParallelDim dims[],
                                                bool create_grad,
                                                size_t input_tensor_guid) {
   ParallelTensor tensor = new ParallelTensorBase();
-  tensor->parallel_tensor_guid = parallel_tensor_global_guid++;
   tensor->data_type = data_type;
   if (owner_op == nullptr) {
     NoOp *input_op = new NoOp(*this, OP_INPUT, input_tensor_guid, tensor);
@@ -366,7 +364,6 @@ ParallelParameter FFModel::create_parallel_weight(const ParallelDim dims[],
                                                   Initializer *initializer,
                                                   ParameterSyncType sync_type) {
   ParallelParameter p = new ParallelTensorBase();
-  p->parallel_tensor_guid = parallel_tensor_global_guid++;
   p->data_type = data_type;
   if (owner_op == NULL) {
     NoOp *weight_op = new NoOp(*this, OP_WEIGHT, p);
@@ -1085,7 +1082,6 @@ ParallelTensor FFModel::create_linear_replica(int const dims[],
   for (int i = 0; i < TDIM; i++)
     num_parts[i] = part_rect.hi[i] - part_rect.lo[i] + 1;
   ParallelTensor replica = new ParallelTensorBase();
-  replica->parallel_tensor_guid = parallel_tensor_global_guid++;
   replica->num_dims = NDIM;
   replica->data_type = data_type;
   for (int i = 0; i < NDIM; i++)
@@ -1730,7 +1726,6 @@ void FFModel::compile(LossType loss_type,
     for (int i = 0; i < op->numOutputs; i++) {
       assert(op->outputs[i]->owner_op == op);
       assert(op->outputs[i]->owner_idx == i);
-      assert(op->outputs[i]->parallel_tensor_guid != 0);
     }
   }
 

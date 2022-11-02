@@ -194,6 +194,9 @@ Linear::Linear(FFModel &model,
     }
   }
 
+  for (int i = 0; i < output_shape.num_dims; i++) {
+    assert (output_shape.dims[i].parallel_idx >= -1);
+  }
   // Create the output tensor
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       output_shape.num_dims, output_shape.dims, _data_type, this);

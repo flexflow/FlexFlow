@@ -87,30 +87,18 @@ NoOp::NoOp(FFModel &model,
     assert(params.op_type == OP_INPUT);
     assert(inputs.size() == 0);
     auto input_metadata = params.input_metadata.value();
-    if (mp::holds_alternative<size_t>(input_metadata)) {
-      assert (false && "Error: unsupported case in OP_INPUT constructor. Please file an issue with the FlexFlow developers.");
-      this->input_tensor_guid = mp::get<size_t>(input_metadata);
-    } else {
-      ParallelTensor tensor = new ParallelTensorBase();
-      tensor->parallel_tensor_guid = model.parallel_tensor_global_guid++;
-      tensor->data_type = DT_FLOAT; // TODO FIXME @lockshaw
-      ParallelTensorShape output_shape =
-          mp::get<ParallelTensorShape>(input_metadata);
-      tensor->num_dims = output_shape.num_dims;
-      int parallel_idx = 0;
-      for (int i = 0; i < output_shape.num_dims; i++) {
-        tensor->dims[i].size = output_shape.dims[i].size;
-        tensor->dims[i].degree = output_shape.dims[i].degree;
-        if (tensor->dims[i].degree > 1) {
-          tensor->dims[i].parallel_idx = parallel_idx;
-          parallel_idx++;
-        } else {
-          tensor->dims[i].parallel_idx = -1;
-        }
-      }
-      assert(tensor->check_valid());
-      this->outputs[0] = tensor;
+    ParallelTensor tensor = new ParallelTensorBase();
+    tensor->data_type = input_metadata.data_type;
+    ParallelTensorShape output_shape = input_metadata;
+    tensor->num_dims = output_shape.num_dims;
+    int parallel_idx = 0;
+    for (int i = 0; i < output_shape.num_dims; i++) {
+      tensor->dims[i].size = output_shape.dims[i].size;
+      tensor->dims[i].degree = output_shape.dims[i].degree;
+      tensor->dims[i].parallel_idx = output_shape.dims[i].parallel_idx;
     }
+    /* assert(tensor->check_valid()); */
+    this->outputs[0] = tensor;
   }
   outputs[0]->owner_op = this;
   outputs[0]->owner_idx = 0;
@@ -261,7 +249,7 @@ NoOpParams NoOp::get_params() const {
   NoOpParams params;
   params.op_type = this->op_type;
   if (this->op_type == OP_INPUT) {
-    params.input_metadata = {this->input_tensor_guid, outputs[0]->get_shape()};
+    params.input_metadata = outputs[0]->get_shape();
   }
 
   return params;

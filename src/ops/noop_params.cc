@@ -6,7 +6,8 @@ namespace FlexFlow {
 bool NoOpParams::is_valid(
     std::vector<ParallelTensorShape> const &inputs) const {
   if (this->op_type == OP_NOOP) {
-    return inputs[0].is_valid();
+    return inputs.size() == 1;
+    /* return inputs[0].is_valid(); */
   } else {
     assert(this->op_type == OP_INPUT);
     return true;

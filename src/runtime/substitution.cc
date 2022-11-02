@@ -694,6 +694,8 @@ void Graph::reshape_output_tensor(ParallelTensorShape const &desired_shape) {
     int desired_size = desired_shape.dims[i].size;
     int desired_degree = desired_shape.dims[i].degree;
 
+    output_tensor->dims[i].parallel_idx = desired_shape.dims[i].parallel_idx;
+
     assert(current_size == desired_size);
 
     if (current_degree < desired_degree) {
@@ -726,12 +728,7 @@ void Graph::reshape_output_tensor(ParallelTensorShape const &desired_shape) {
     assert(current_degree == desired_degree);
   }
 
-  assert(output_tensor == output_node.ptr->outputs[0]);
-  assert(output_tensor->num_dims == desired_shape.num_dims);
-  for (int i = 0; i < desired_shape.num_dims; i++) {
-    assert(output_tensor->dims[i].size == desired_shape.dims[i].size);
-    assert(output_tensor->dims[i].degree == desired_shape.dims[i].degree);
-  }
+  assert(output_tensor->get_shape() == desired_shape);
 }
 
 std::unique_ptr<Graph> Graph::with_output_tensor_reshaped_to(
@@ -2461,6 +2458,7 @@ std::vector<ParallelTensorShape>
 
   ParallelTensorShape base_shape;
   base_shape.num_dims = output_tensor->num_dims;
+  base_shape.data_type = output_tensor->data_type;
   for (int i = 0; i < output_tensor->num_dims; i++) {
     base_shape.dims[i].degree = 1;
     base_shape.dims[i].size = output_tensor->dims[i].size;
@@ -2493,6 +2491,7 @@ std::vector<ParallelTensorShape>
       int total_degree = 1;
       ParallelTensorShape shape;
       shape.num_dims = output_tensor->num_dims;
+      shape.data_type = output_tensor->data_type;
       for (int i = 0; i < output_tensor->num_dims; i++) {
         total_degree *= degrees[i];
         shape.dims[i].degree = degrees[i];
