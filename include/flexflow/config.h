@@ -141,6 +141,7 @@ public:
   std::string export_strategy_file;
   std::string export_strategy_task_graph_file;
   std::string export_strategy_computation_graph_file;
+  bool include_costs_dot_graph;
   tl::optional<std::string> substitution_json_path = tl::nullopt;
   // We use MappingTagID as the key since we will pass the tag to the mapper
   // std::map<Legion::MappingTagID, ParallelConfig> strategies;

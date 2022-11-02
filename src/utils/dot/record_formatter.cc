@@ -15,6 +15,16 @@ RecordFormatter &operator<<(RecordFormatter &r, int tok) {
   return r;
 }
 
+RecordFormatter &operator<<(RecordFormatter &r, float tok) {
+  std::ostringstream oss;
+  oss << std::scientific;
+  oss << tok;
+
+  r << oss;
+
+  return r;
+}
+
 RecordFormatter &operator<<(RecordFormatter &r, RecordFormatter const &sub_r) {
   std::ostringstream oss;
   oss << sub_r;
