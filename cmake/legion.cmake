@@ -70,7 +70,7 @@ else()
 	list(APPEND FLEXFLOW_INCLUDE_DIRS ${LEGION_INCLUDE_DIR})
 	#list(APPEND FLEXFLOW_EXT_LIBRARIES ${LEGION_LIB_DIR}/liblegion${LIBEXT} ${LEGION_LIB_DIR}/librealm${LIBEXT})
 
-	i#nclude_directories(${LEGION_INCLUDE_DIR})
+	#include_directories(${LEGION_INCLUDE_DIR})
 
 
 	install(DIRECTORY ${LEGION_SHARE_DIR} DESTINATION share)
