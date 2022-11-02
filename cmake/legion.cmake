@@ -33,8 +33,8 @@ else()
 	# set(LEGION_LIBRARY Legion)
 
 	set(LEGION_LIBRARY legion)
-	set(REALM_LIBRARY legion)
-	set(LEGION_DOWNLOAD)
+	set(REALM_LIBRARY realm)
+	set(LEGION_DOWNLOAD legionDownload)
 	set(LEGION_URL https://www.gabrieleoliaro.it/legion.tar.gz)
 
 	ExternalProject_Add(${LEGION_DOWNLOAD}
