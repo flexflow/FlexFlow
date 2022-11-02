@@ -1,0 +1,37 @@
+name: "build"
+on:
+  pull_request:
+    paths-ignore:
+      - "include/**"
+      - "cmake/**"
+      - "config/**"
+      - "python/**"
+      - "src/**"
+      - ".github/workflows/helpers/install_dependencies.sh"
+      - ".github/workflows/build.yml"
+  push:
+    paths-ignore:
+      - "include/**"
+      - "cmake/**"
+      - "config/**"
+      - "python/**"
+      - "src/**"
+      - ".github/workflows/helpers/install_dependencies.sh"
+      - ".github/workflows/build.yml"
+  workflow_dispatch:
+concurrency:
+  group: build-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  cmake-build:
+    name: Build FlexFlow with CMake
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "No build required"'
+
+  makefile-build:
+    name: Build FlexFlow with the Makefile
+    runs-on: ubuntu-20.04
+    steps:
+      - run: 'echo "No build required"'

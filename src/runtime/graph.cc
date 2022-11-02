@@ -1679,6 +1679,9 @@ T SearchHelper::graph_cost(Graph const *graph,
     }
     this->logger->spew() << "  weight ParallelTensor shape|num_replicas:";
     for (int i = 0; i < op->numWeights; i++) {
+      if (op->weights[i] == nullptr) {
+        continue;
+      }
       auto shape = op->weights[i]->get_shape();
       this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
       if (weight_num_parts == 0) {
@@ -1861,9 +1864,253 @@ size_t dp_state_hash(Graph const *graph,
   return key;
 }
 
+// Backup: Normal memory optimization search procedure
+// GraphOptimalViewSerialized
+//     Graph::graph_optimize_task(Task const *task,
+//                                std::vector<PhysicalRegion> const &regions,
+//                                Context ctx,
+//                                Runtime *runtime) {
+//   FFModel *model = *((FFModel **)task->args);
+//   if (model->config.search_num_nodes.has_value()) {
+//     model->config.numNodes = model->config.search_num_nodes.value();
+//   }
+//   if (model->config.search_num_workers.has_value()) {
+//     model->config.workersPerNode = model->config.search_num_workers.value();
+//   }
+//   model->all_valid_views.clear();
+//   model->register_all_machine_views(model->config.numNodes,
+//                                     model->config.workersPerNode,
+//                                     model->config.cpusPerNode,
+//                                     model->all_valid_views);
+//   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+//                        .only_kind(Memory::GPU_FB_MEM)
+//                        .best_affinity_to(task->target_proc)
+//                        .first();
+//   MachineModel *machine;
+//   if (model->config.machine_model_version == 0) {
+//     machine =
+//         (MachineModel *)new SimpleMachineModel(model->config.numNodes,
+//                                                model->config.workersPerNode,
+//                                                gpu_mem.capacity());
+//   } else if (model->config.machine_model_version == 1 and
+//              !model->config.machine_model_file.empty()) {
+//     machine = (MachineModel *)new EnhancedMachineModel(
+//         model->config.machine_model_file, gpu_mem.capacity());
+//   } else {
+//     assert(false &&
+//            "machine model creation error: currently only support "
+//            "machine-model-version = 0 or 1. When machine-model-version = 1, "
+//            "machine-model-file should not be empty.");
+//   }
+//   // Assume this task is running on GPU0
+//   std::shared_ptr<Simulator> simulator(
+//       new Simulator(model, model->handlers[0], gpu_mem, machine));
+//   model->simulator = simulator.get();
+//   std::unique_ptr<Graph> best_graph;
+//   std::unordered_map<Node, MachineView> optimal_views;
+//   if (model->config.only_data_parallel) {
+//     Graph *graph = new Graph(model);
+//     std::unordered_map<FlexFlow::Op const *, Node> op_to_node_map;
+//     for (FlexFlow::Op const *dstOp : model->operators) {
+//       Node dstNode;
+//       dstNode.ptr = dstOp;
+//       dstNode.guid = model->node_global_guid++;
+//       op_to_node_map[dstOp] = dstNode;
+//       for (int j = 0; j < dstOp->numInputs; j++) {
+//         FlexFlow::Op const *srcOp = dstOp->inputs[j]->owner_op;
+//         assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
+//         Node srcNode = op_to_node_map[srcOp];
+//         graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
+//       }
+//     }
+//     best_graph = std::unique_ptr<Graph>(graph);
+//     MachineView data_parallel_view;
+//     data_parallel_view.device_type = MachineView::GPU;
+//     data_parallel_view.ndims = 1;
+//     data_parallel_view.dim[0] =
+//         model->config.numNodes * model->config.workersPerNode;
+//     data_parallel_view.stride[0] = 1;
+//     data_parallel_view.start_device_id = 0;
+//     for (auto const &node : best_graph->inEdges) {
+//       optimal_views[node.first] = data_parallel_view;
+//     }
+//   } else {
+//     // Main step to optimize the PCG of an FFModel
+//     model->graph_optimize(model->config.search_budget,
+//                           model->config.only_data_parallel,
+//                           best_graph,
+//                           optimal_views);
+//   }
+
+//   // Following lines are to serialize the optimized PCG.
+//   Serializer sez;
+//   // First serialize graph
+//   sez.serialize(best_graph->inEdges.size());
+//   std::unordered_map<Node, int> todos;
+//   std::vector<Node> opList;
+//   for (auto const &it : best_graph->inEdges) {
+//     auto const &inList = it.second;
+//     todos[it.first] = (int)inList.size();
+//     if (todos[it.first] == 0)
+//       opList.push_back(it.first);
+//   }
+//   size_t node_idx = 0;
+//   while (node_idx < opList.size()) {
+//     Node cur_node = opList[node_idx++];
+//     auto const &outList = best_graph->outEdges[cur_node];
+//     for (auto const &e : outList) {
+//       todos[e.dstOp]--;
+//       if (todos[e.dstOp] == 0) {
+//         opList.push_back(e.dstOp);
+//       }
+//     }
+//     auto const &inList = best_graph->inEdges[cur_node];
+//     sez.serialize(inList.size());
+//     for (auto const &e : inList) {
+//       sez.serialize(e.srcOp.guid);
+//       assert(e.dstOp.guid == cur_node.guid);
+//       sez.serialize(e.srcIdx);
+//       sez.serialize(e.dstIdx);
+//     }
+//     sez.serialize((size_t)10101010); // safe guard for the end of inedges
+//     Op const *op = cur_node.ptr;
+//     assert(op != NULL);
+//     sez.serialize(cur_node.guid);
+//     sez.serialize(op->op_type);
+//     switch (op->op_type) {
+//       case OP_INPUT: {
+//         assert(op->numOutputs == 1);
+//         NoOp *noop = (NoOp *)op;
+//         sez.serialize(noop->op_type);
+//         sez.serialize(noop->input_tensor_guid);
+//         sez.serialize(noop->outputs[0]->data_type);
+//         sez.serialize(noop->outputs[0]->num_dims);
+//         for (int i = 0; i < noop->outputs[0]->num_dims; i++)
+//           sez.serialize(noop->outputs[0]->dims[i]);
+//         break;
+//       }
+//       case OP_NOOP: {
+//         break;
+//       }
+//       case OP_CONCAT: {
+//         Concat *concat = (Concat *)op;
+//         sez.serialize(concat->legion_axis);
+//         break;
+//       }
+//       case OP_SPLIT: {
+//         Split *split = (Split *)op;
+//         sez.serialize(split->legion_axis);
+//         sez.serialize(split->numOutputs);
+//         for (int i = 0; i < split->numOutputs; i++)
+//           sez.serialize(split->outputs[i]->dims[split->legion_axis].size);
+//         break;
+//       }
+//       case OP_EMBEDDING: {
+//         Embedding *embed = (Embedding *)op;
+//         sez.serialize(embed->layer_guid.id);
+//         sez.serialize(embed->num_entries);
+//         sez.serialize(embed->out_channels);
+//         sez.serialize(embed->aggr);
+//         break;
+//       }
+//       case OP_EW_ADD:
+//       case OP_EW_SUB:
+//       case OP_EW_MUL: {
+//         sez.serialize(op->op_type);
+//         break;
+//       }
+//       case OP_MULTIHEAD_ATTENTION: {
+//         MultiHeadAttention *attn = (MultiHeadAttention *)op;
+//         sez.serialize(attn->layer_guid.id);
+//         sez.serialize(attn->oProjSize);
+//         sez.serialize(attn->num_heads);
+//         sez.serialize(attn->qProjSize);
+//         sez.serialize(attn->vProjSize);
+//         sez.serialize(attn->dropout);
+//         sez.serialize(attn->bias);
+//         sez.serialize(attn->add_bias_kv);
+//         sez.serialize(attn->add_zero_attn);
+//         break;
+//       }
+//       case OP_SOFTMAX: {
+//         Softmax *softmax = (Softmax *)op;
+//         sez.serialize(softmax->dim);
+//         break;
+//       }
+//       case OP_REPARTITION: {
+//         Repartition *repart = (Repartition *)op;
+//         sez.serialize(repart->repartition_dim);
+//         sez.serialize(repart->repartition_degree);
+//         break;
+//       }
+//       case OP_REPLICATE: {
+//         Replicate *replicate = (Replicate *)op;
+//         sez.serialize(replicate->replicate_dim);
+//         sez.serialize(replicate->replicate_degree);
+//         break;
+//       }
+//       case OP_REDUCTION: {
+//         Reduction *reduction = (Reduction *)op;
+//         sez.serialize(reduction->reduction_dim);
+//         sez.serialize(reduction->reduction_degree);
+//         break;
+//       }
+//       case OP_COMBINE: {
+//         Combine *combine = (Combine *)op;
+//         sez.serialize(combine->combine_dim);
+//         sez.serialize(combine->combine_degree);
+//         break;
+//       }
+//       case OP_FUSED_PARALLEL: {
+//         FusedParallelOp *fused = (FusedParallelOp *)op;
+//         sez.serialize(fused->num_parallel_ops);
+//         for (int i = 0; i < fused->num_parallel_ops; i++)
+//           sez.serialize(fused->parallel_ops[i]);
+//         break;
+//       }
+//       default: {
+//         op->serialize(sez);
+//       }
+//     }
+//     sez.serialize((size_t)12345678); // safe guard for the end of an op
+//   }
+//   assert(node_idx == best_graph->inEdges.size());
+//   // Second, serialize optimal machine view
+//   printf("opotimal_views.size = %zu\n", optimal_views.size());
+//   sez.serialize(optimal_views.size());
+//   for (auto const &it : optimal_views) {
+//     sez.serialize((size_t)98765432); // safe guard
+//     sez.serialize(it.first.guid);
+//     sez.serialize(it.second);
+//   }
+// #ifdef DEADCODE
+//   // Third, serialize input mappings
+//   sez.serialize((size_t)23456789);
+//   size_t num_inputs = 0;
+//   for (size_t i = 0; i < model->layers.size(); i++)
+//     if (model->layers[i]->op_type == OP_INPUT)
+//       num_inputs++;
+//   sez.serialize(num_inputs);
+//   for (size_t i = 0; i < model->layers.size(); i++) {
+//     if (model->layers[i]->op_type == OP_INPUT) {
+//       Tensor tensor = model->layers[i]->outputs[i];
+//       sez.serialize(tensor->tensor_guid);
+//       sez.serialize(tensor->parallel_tensor->parallel_tensor_guid);
+//     }
+//   }
+// #endif
+//   assert(sez.get_used_bytes() < GraphOptimalViewSerialized::buffer_size);
+//   GraphOptimalViewSerialized ret;
+//   ret.total_bytes = sez.get_used_bytes();
+//   memcpy(ret.data, sez.get_buffer(), ret.total_bytes);
+//   // Deallocate best_graph
+//   // delete best_graph;
+//   return ret;
+// }
+
 /**
  * @brief Starting point of Unity search procedure. Registered on Legion
- * runtime.
+ * runtime. Legion task to launch as one step of model.compile().
  *
  * @param task Legion task to get FFModel and other configs
  * @param regions Not used
@@ -1876,79 +2123,123 @@ GraphOptimalViewSerialized
                                std::vector<PhysicalRegion> const &regions,
                                Context ctx,
                                Runtime *runtime) {
-  FFModel *model = *((FFModel **)task->args);
-  if (model->config.search_num_nodes.has_value()) {
-    model->config.numNodes = model->config.search_num_nodes.value();
+
+  // Dummy flags to control the behavior; these should be inferred from config
+  bool perform_memory_search = true;
+  float global_memory_threshold = 32; // 32 GB
+
+  // Grid search on the best lambda value
+  // std::vector<float> ls{0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8,
+  // 0.9, 1.0};
+  std::vector<float> ls{0.0, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0};
+  std::vector<std::pair<float, MemorySearchResult>> lambdas{};
+  for (auto const l : ls) {
+    lambdas.emplace_back(std::make_pair(l, MemorySearchResult{}));
   }
-  if (model->config.search_num_workers.has_value()) {
-    model->config.workersPerNode = model->config.search_num_workers.value();
-  }
-  model->all_valid_views.clear();
-  model->register_all_machine_views(model->config.numNodes,
-                                    model->config.workersPerNode,
-                                    model->config.cpusPerNode,
-                                    model->all_valid_views);
-  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-                       .only_kind(Memory::GPU_FB_MEM)
-                       .best_affinity_to(task->target_proc)
-                       .first();
-  MachineModel *machine;
-  if (model->config.machine_model_version == 0) {
-    machine =
-        (MachineModel *)new SimpleMachineModel(model->config.numNodes,
-                                               model->config.workersPerNode,
-                                               gpu_mem.capacity());
-  } else if (model->config.machine_model_version == 1 and
-             !model->config.machine_model_file.empty()) {
-    machine = (MachineModel *)new EnhancedMachineModel(
-        model->config.machine_model_file, gpu_mem.capacity());
-  } else {
-    assert(false &&
-           "machine model creation error: currently only support "
-           "machine-model-version = 0 or 1. When machine-model-version = 1, "
-           "machine-model-file should not be empty.");
-  }
-  // Assume this task is running on GPU0
-  std::shared_ptr<Simulator> simulator(
-      new Simulator(model, model->handlers[0], gpu_mem, machine));
-  model->simulator = simulator.get();
+
+  Simulator *cached_sim = nullptr; // Cached simulator
+
+  // Optimized graph from the search
   std::unique_ptr<Graph> best_graph;
   std::unordered_map<Node, MachineView> optimal_views;
-  if (model->config.only_data_parallel) {
-    Graph *graph = new Graph(model);
-    std::unordered_map<FlexFlow::Op const *, Node> op_to_node_map;
-    for (FlexFlow::Op const *dstOp : model->operators) {
-      Node dstNode;
-      dstNode.ptr = dstOp;
-      dstNode.guid = model->node_global_guid++;
-      op_to_node_map[dstOp] = dstNode;
-      for (int j = 0; j < dstOp->numInputs; j++) {
-        FlexFlow::Op const *srcOp = dstOp->inputs[j]->owner_op;
-        assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
-        Node srcNode = op_to_node_map[srcOp];
-        graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
+
+  for (auto &lambda : lambdas) {
+    // Create a new fresh model
+    FFModel *model = *((FFModel **)task->args);
+    if (model->config.search_num_nodes.has_value()) {
+      model->config.numNodes = model->config.search_num_nodes.value();
+    }
+    if (model->config.search_num_workers.has_value()) {
+      model->config.workersPerNode = model->config.search_num_workers.value();
+    }
+    model->all_valid_views.clear();
+    model->register_all_machine_views(model->config.numNodes,
+                                      model->config.workersPerNode,
+                                      model->config.cpusPerNode,
+                                      model->all_valid_views);
+    Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                         .only_kind(Memory::GPU_FB_MEM)
+                         .best_affinity_to(task->target_proc)
+                         .first();
+    MachineModel *machine;
+    if (model->config.machine_model_version == 0) {
+      machine =
+          (MachineModel *)new SimpleMachineModel(model->config.numNodes,
+                                                 model->config.workersPerNode,
+                                                 gpu_mem.capacity());
+    } else if (model->config.machine_model_version == 1 and
+               !model->config.machine_model_file.empty()) {
+      machine = (MachineModel *)new EnhancedMachineModel(
+          model->config.machine_model_file, gpu_mem.capacity());
+    } else {
+      assert(false &&
+             "machine model creation error: currently only support "
+             "machine-model-version = 0 or 1. When machine-model-version = 1, "
+             "machine-model-file should not be empty.");
+    }
+    // Assume this task is running on GPU0
+    if (cached_sim == nullptr) {
+      cached_sim = new Simulator(model, model->handlers[0], gpu_mem, machine);
+    } else {
+      // Update simulator with the new stuff
+      cached_sim->handler = model->handlers[0];
+      cached_sim->memory = gpu_mem;
+      cached_sim->machine = machine;
+    }
+    model->simulator = cached_sim;
+
+    // Perform the search
+    std::unique_ptr<Graph> curr_best_graph;
+    std::unordered_map<Node, MachineView> curr_optimal_views;
+
+    if (model->config.only_data_parallel) {
+      Graph *graph = new Graph(model);
+      std::unordered_map<FlexFlow::Op const *, Node> op_to_node_map;
+      for (FlexFlow::Op const *dstOp : model->operators) {
+        Node dstNode;
+        dstNode.ptr = dstOp;
+        dstNode.guid = model->node_global_guid++;
+        op_to_node_map[dstOp] = dstNode;
+        for (int j = 0; j < dstOp->numInputs; j++) {
+          FlexFlow::Op const *srcOp = dstOp->inputs[j]->owner_op;
+          assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
+          Node srcNode = op_to_node_map[srcOp];
+          graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
+        }
       }
+      curr_best_graph = std::unique_ptr<Graph>(graph);
+      MachineView data_parallel_view;
+      data_parallel_view.device_type = MachineView::GPU;
+      data_parallel_view.ndims = 1;
+      data_parallel_view.dim[0] =
+          model->config.numNodes * model->config.workersPerNode;
+      data_parallel_view.stride[0] = 1;
+      data_parallel_view.start_device_id = 0;
+      for (auto const &node : curr_best_graph->inEdges) {
+        curr_optimal_views[node.first] = data_parallel_view;
+      }
+    } else {
+      // Main step to optimize the PCG of an FFModel
+      model->graph_optimize(model->config.search_budget,
+                            model->config.only_data_parallel,
+                            curr_best_graph,
+                            curr_optimal_views,
+                            perform_memory_search,
+                            MemoryOptimConfig{lambda.first},
+                            lambda.second);
     }
-    best_graph = std::unique_ptr<Graph>(graph);
-    MachineView data_parallel_view;
-    data_parallel_view.device_type = MachineView::GPU;
-    data_parallel_view.ndims = 1;
-    data_parallel_view.dim[0] =
-        model->config.numNodes * model->config.workersPerNode;
-    data_parallel_view.stride[0] = 1;
-    data_parallel_view.start_device_id = 0;
-    for (auto const &node : best_graph->inEdges) {
-      optimal_views[node.first] = data_parallel_view;
-    }
-  } else {
-    // Main step to optimize the PCG of an FFModel
-    model->graph_optimize(model->config.search_budget,
-                          model->config.only_data_parallel,
-                          best_graph,
-                          optimal_views);
+  }
+
+  // Print out the grid search results
+  for (auto l : lambdas) {
+    std::cout << "lambda: " << l.first
+              << ", run time cost: " << l.second.run_time_cost
+              << ", memory cost: " << l.second.memory_cost
+              << ", search time: " << l.second.search_time << std::endl;
   }
 
   // Following lines are to serialize the optimized PCG.
+  // Only need best_graph and optimal_views below.
   Serializer sez;
   // First serialize graph
   sez.serialize(best_graph->inEdges.size());
@@ -2082,29 +2373,13 @@ GraphOptimalViewSerialized
   }
   assert(node_idx == best_graph->inEdges.size());
   // Second, serialize optimal machine view
-  printf("opotimal_views.size = %zu\n", optimal_views.size());
+  printf("optimal_views.size = %zu\n", optimal_views.size());
   sez.serialize(optimal_views.size());
   for (auto const &it : optimal_views) {
     sez.serialize((size_t)98765432); // safe guard
     sez.serialize(it.first.guid);
     sez.serialize(it.second);
   }
-#ifdef DEADCODE
-  // Third, serialize input mappings
-  sez.serialize((size_t)23456789);
-  size_t num_inputs = 0;
-  for (size_t i = 0; i < model->layers.size(); i++)
-    if (model->layers[i]->op_type == OP_INPUT)
-      num_inputs++;
-  sez.serialize(num_inputs);
-  for (size_t i = 0; i < model->layers.size(); i++) {
-    if (model->layers[i]->op_type == OP_INPUT) {
-      Tensor tensor = model->layers[i]->outputs[i];
-      sez.serialize(tensor->tensor_guid);
-      sez.serialize(tensor->parallel_tensor->parallel_tensor_guid);
-    }
-  }
-#endif
   assert(sez.get_used_bytes() < GraphOptimalViewSerialized::buffer_size);
   GraphOptimalViewSerialized ret;
   ret.total_bytes = sez.get_used_bytes();

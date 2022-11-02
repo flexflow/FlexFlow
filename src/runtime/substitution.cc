@@ -1187,10 +1187,12 @@ void Graph::export_strategy_computation_graph(
         dot.add_node(node, {{"label", node.to_string()}});
       }
     } else {
-      RecordFormatter rf, meta_row, machine_view_row;
+      RecordFormatter rf, meta_row, machine_view_row, runtime_code, memory_code,
+          runtime_cost_row, memory_cost_row;
       MachineView mv = strategy.at(node);
-
-      // Fetch the meta information
+      std::ostringstream oss;
+      CostMetrics op_cost =
+          this->model->simulator->measure_operator_cost(node.ptr, mv);
       switch (node.ptr->op_type) {
         case OP_REPARTITION: {
           Repartition *rp = (Repartition *)node.ptr;
@@ -1231,7 +1233,39 @@ void Graph::export_strategy_computation_graph(
       for (int device_id : mv.device_ids()) {
         machine_view_row << std::to_string(device_id);
       }
-      rf << node.to_string() << meta_row << machine_view_row;
+      rf << node.to_string() << std::to_string(node.guid) << meta_row
+         << machine_view_row;
+
+      // get memory cost
+      if (this->model->config.include_costs_dot_graph) {
+        float input_mem = (float)op_cost.inputs_memory;
+        if (node.ptr->numInputs > 0) {
+          input_mem /= (*node.ptr->inputs)->get_total_num_parts();
+        }
+        float output_mem = (float)op_cost.outputs_memory;
+        if (node.ptr->numOutputs > 0) {
+          output_mem /= (*node.ptr->outputs)->get_total_num_parts();
+        }
+        float weight_mem = (float)op_cost.weights_memory;
+        if (node.ptr->numWeights > 0) {
+          weight_mem /= (*node.ptr->weights)->get_total_num_parts();
+        }
+
+        runtime_code << "fwd"
+                     << "bwd"
+                     << "sync"
+                     << "secs";
+        runtime_cost_row << op_cost.forward_time << op_cost.backward_time
+                         << op_cost.sync_time;
+        memory_code << "in"
+                    << "out"
+                    << "weight"
+                    << "bytes";
+        memory_cost_row << input_mem << output_mem << weight_mem;
+        rf << runtime_code << runtime_cost_row << memory_code
+           << memory_cost_row;
+      }
+
       dot.add_record_node(node, rf);
     }
 
@@ -1867,12 +1901,14 @@ void GraphSearchHelper::graph_optimize(
  * @param[out] best_graph The best possible PCG after optimization
  * @param[out] optimal_views The corresponding device placement views of the
  * best graph
+ * @param[out] search_result The performance result of the search
  */
 void GraphSearchHelper::graph_optimize_with_memory(
     size_t budget,
     bool only_data_parallel,
     std::unique_ptr<Graph> &best_graph,
-    std::unordered_map<Node, MachineView> &optimal_views) {
+    std::unordered_map<Node, MachineView> &optimal_views,
+    MemorySearchResult &search_result) {
   this->logger->debug()
       << "Starting graph optimization with memory consideration";
 
@@ -1892,15 +1928,27 @@ void GraphSearchHelper::graph_optimize_with_memory(
   }
 
   Node sink_node = graph->find_sink_node();
+
+  auto const start = std::chrono::system_clock::now();
   GraphOptimizeResultWithMemory optimal =
       this->generic_sequence_optimize_with_memory<
           GraphOptimizeResultWithMemory>(
           graph, sink_node, tl::nullopt, tl::nullopt);
+  auto const end = std::chrono::system_clock::now();
 
   this->logger->debug() << "Total cache size: "
                         << this->cached_optimized_graphs.size();
   std::cout << "Optimal run time cost: " << optimal.cost
-            << ", Memory usage: " << optimal.mem_cost << std::endl;
+            << ", Memory usage: " << optimal.mem_cost
+            << " | run_time_cost_factor: "
+            << this->mem_config.run_time_cost_factor << std::endl;
+
+  // Save the search performance results to the output argument
+  search_result.run_time_cost = optimal.cost;
+  search_result.memory_cost = optimal.mem_cost.num;
+  search_result.search_time =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
+          .count();
 
   // Further simplify the "optimal" graph/schedule to have a more efficient
   // graph and more accurate cost.
@@ -1977,6 +2025,11 @@ static void graph_log_representation(Graph const *graph,
   for (Node const &n : topo_sorted) {
     logger.spew() << n.to_string();
   }
+}
+
+void GraphSearchHelper::update_mem_optim_config(
+    MemoryOptimConfig const &new_config) {
+  mem_config = new_config;
 }
 
 void GraphSearchHelper::find_rewrite_matches(
@@ -3479,18 +3532,53 @@ using PCG::Edge;
 using PCG::Graph;
 using PCG::Node;
 
+///
+/// Backup: normal memory optimization search procedure entry
+///
+// void FFModel::graph_optimize(
+//     size_t budget,
+//     bool only_data_parallel,
+//     std::unique_ptr<Graph> &best_graph,
+//     std::unordered_map<Node, MachineView> &optimal_views) {
+//   // this->graph_search->graph_optimize(budget, only_data_parallel,
+//   best_graph,
+//   // optimal_views);
+
+//   // Experimental. Change the function call above to this line to search
+//   // with memory consideration.
+//   this->graph_search->graph_optimize_with_memory(
+//       budget, only_data_parallel, best_graph, optimal_views);
+// }
+
+/**
+ * @brief Optimize the graph stored in FFModel.
+ *
+ * @param[in] budget The search budget
+ * @param[in] only_data_parallel True if only doing data parallel training
+ * @param[out] best_graph The searched best graph
+ * @param[out] optimal_views The corresponding machine view of the best_graph
+ * @param[in] perform_memory_search True if we want to consider memory during
+ * the search
+ * @param[in] new_config Memory optimization config to use if this is a memory
+ * search
+ * @param[out] search_result The performance result of this search
+ */
 void FFModel::graph_optimize(
     size_t budget,
     bool only_data_parallel,
     std::unique_ptr<Graph> &best_graph,
-    std::unordered_map<Node, MachineView> &optimal_views) {
-  // this->graph_search->graph_optimize(budget, only_data_parallel, best_graph,
-  // optimal_views);
-
-  // Experimental. Change the function call above to this line to search with
-  // memory consideration.
-  this->graph_search->graph_optimize_with_memory(
-      budget, only_data_parallel, best_graph, optimal_views);
+    std::unordered_map<Node, MachineView> &optimal_views,
+    bool perform_memory_search,
+    MemoryOptimConfig new_config,
+    MemorySearchResult &search_result) {
+  if (perform_memory_search) {
+    this->graph_search->update_mem_optim_config(new_config);
+    this->graph_search->graph_optimize_with_memory(
+        budget, only_data_parallel, best_graph, optimal_views, search_result);
+  } else {
+    this->graph_search->graph_optimize(
+        budget, only_data_parallel, best_graph, optimal_views);
+  }
 }
 
 bool FFModel::convert_graph_to_operators(

@@ -255,12 +255,14 @@ public:
       size_t budget,
       bool only_data_parallel,
       std::unique_ptr<Graph> &best_graph,
-      std::unordered_map<Node, MachineView> &optimal_views);
+      std::unordered_map<Node, MachineView> &optimal_views,
+      MemorySearchResult &search_result);
   void graph_optimize_no_split(
       size_t budget,
       bool only_data_parallel,
       std::unique_ptr<Graph> &best_graph,
       std::unordered_map<Node, MachineView> &optimal_views);
+  void update_mem_optim_config(MemoryOptimConfig const &new_config);
 
 private:
   template <typename T>

@@ -67,6 +67,17 @@ public:
         run_time_cost_factor{factor} {}
 };
 
+/**
+ * @brief Hold the result (including memory information) of a graph_optimize on
+ * a PCG.
+ */
+class MemorySearchResult {
+public:
+  float run_time_cost{};
+  float memory_cost{};
+  float search_time{};
+};
+
 namespace PCG {
 
 /**
