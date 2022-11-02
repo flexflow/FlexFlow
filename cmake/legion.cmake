@@ -81,6 +81,7 @@ else()
 
 	install(DIRECTORY ${LEGION_SHARE_DIR} DESTINATION share)
 	install(DIRECTORY ${LEGION_BIN_DIR} DESTINATION bin)
+	install(DIRECTORY ${LEGION_LIB_DIR} DESTINATION lib)
 
 
 endif()
