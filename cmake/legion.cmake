@@ -50,7 +50,7 @@ else()
 	  UPDATE_COMMAND ""
 	)
 
-	ExternalProject_Get_Property(${LEGION_LIBRARY} INSTALL_DIR)
+	ExternalProject_Get_Property(${LEGION_DOWNLOAD} INSTALL_DIR)
 	message(STATUS "LEGION install dir: ${INSTALL_DIR}")
 
 	SET(LEGION_BASE_DIR ${INSTALL_DIR}/src/${LEGION_LIBRARY})
