@@ -203,7 +203,7 @@ endif()
 
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
 target_link_libraries(flexflow ${LEGION_LIBRARY} ${REALM_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
-#add_dependencies(flexflow ${LEGION_DOWNLOAD})
+add_dependencies(flexflow ${LEGION_DOWNLOAD})
 
 if(FF_USE_NCCL)
   add_dependencies(flexflow ${NCCL_NAME})
