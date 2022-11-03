@@ -28,4 +28,4 @@ echo "Installing conda packages..."
 /opt/conda/bin/conda install -c conda-forge numpy keras-preprocessing pybind11 cmake-build-extension
 
 # Examples
-sudo apt-get install libhdf5-dev
+sudo apt-get update -y && sudo apt-get install -y --no-install-recommends libhdf5-dev
