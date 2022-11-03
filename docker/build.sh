@@ -1,12 +1,6 @@
 #! /usr/bin/env bash
 set -euo pipefail
 
-# Cd into directory holding this script
-cd "${BASH_SOURCE[0]%/*}"
-
-# Copy the config files into the Docker folder
-rm -rf config && cp -r ../config ./config
-
 # Get number of cores available on the machine. Build with all cores but one, to prevent RAM choking
 cores_available=$(nproc --all)
 n_build_cores=$(( cores_available -1 ))
@@ -36,19 +30,27 @@ gpu_arch_codes="$(echo "$gpu_arch_codes" | xargs -n1 | sort -u | xargs)"
 gpu_arch_codes="${gpu_arch_codes// /,}"
 rm -f ./get_gpu_arch.cu ./get_gpu_arch
 
-# Print the CUDA architecture(s) to the config file
 if [[ -n "$gpu_arch_codes" ]]; then
   echo "Host machine has GPUs with architecture codes: $gpu_arch_codes"
   echo "Configuring FlexFlow to build for the $gpu_arch_codes code(s)."
-  sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=${gpu_arch_codes}" ./config/config.linux
+  FF_CUDA_ARCH="${gpu_arch_codes}"
 else
   echo "Could not detect any GPU on the host machine."
   echo "Letting FlexFlow build for a default GPU architecture: code=70"
-  sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
+  FF_CUDA_ARCH=70
+fi
+
+FF_GPU_BACKEND=${FF_GPU_BACKEND:-""}
+
+if [[ -n "$FF_GPU_BACKEND" ]]; then
+  echo "Configuring FlexFlow to build for gpu backend: ${FF_GPU_BACKEND}"
+else
+  echo "Letting FlexFlow build for a default GPU backend: cuda"
+  FF_GPU_BACKEND="cuda"
 fi
 
 # Build base Docker image
-docker build --build-arg n_build_cores=$n_build_cores -t flexflow -f base/Dockerfile .
+docker build --build-arg N_BUILD_CORES=$n_build_cores --build-arg "FF_CUDA_ARCH=${FF_CUDA_ARCH}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" -t flexflow -f docker/base/Dockerfile .
 
 # Build mt5 docker image if required
 image=${1:-base}
