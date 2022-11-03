@@ -302,11 +302,11 @@ if(FF_BUILD_UNIT_TESTS)
 endif()
 
 if(FF_BUILD_SUBSTITUTION_TOOL)
-  add_subdirectory(src/tools/protobuf_to_json)
+  add_subdirectory(tools/protobuf_to_json)
 endif()
 
 if(FF_BUILD_VISUALIZATION_TOOL)
-  add_subdirectory(src/tools/substitutions_to_dot)
+  add_subdirectory(tools/substitutions_to_dot)
 endif()
 
 # Python
