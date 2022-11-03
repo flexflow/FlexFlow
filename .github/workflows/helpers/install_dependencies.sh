@@ -26,3 +26,6 @@ wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 echo "Installing conda packages..."
 /opt/conda/bin/conda install cmake make pillow
 /opt/conda/bin/conda install -c conda-forge numpy keras-preprocessing pybind11 cmake-build-extension
+
+# Examples
+sudo apt-get update -y && sudo apt-get install -y --no-install-recommends libhdf5-dev
