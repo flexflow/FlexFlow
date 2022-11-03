@@ -72,8 +72,8 @@ void Pool2D::init_kernel(Pool2D const *pool,
 
 /*static*/
 void Pool2D::forward_kernel(Pool2DMeta const *m,
-                            float const *input_ptr,
-                            float *output_ptr,
+                            void const *input_ptr,
+                            void *output_ptr,
                             hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -93,8 +93,8 @@ void Pool2D::forward_kernel(Pool2DMeta const *m,
 
 /*static*/
 void Pool2D::forward_kernel_wrapper(Pool2DMeta const *m,
-                                    float const *input_ptr,
-                                    float *output_ptr) {
+                                    void const *input_ptr,
+                                    void *output_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -121,10 +121,10 @@ void Pool2D::forward_kernel_wrapper(Pool2DMeta const *m,
 
 /*static*/
 void Pool2D::backward_kernel(Pool2DMeta const *m,
-                             float const *input_ptr,
-                             float *input_grad_ptr,
-                             float const *output_ptr,
-                             float const *output_grad_ptr,
+                             void const *input_ptr,
+                             void *input_grad_ptr,
+                             void const *output_ptr,
+                             void const *output_grad_ptr,
                              hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -147,10 +147,10 @@ void Pool2D::backward_kernel(Pool2DMeta const *m,
 
 /*static*/
 void Pool2D::backward_kernel_wrapper(Pool2DMeta const *m,
-                                     float const *input_ptr,
-                                     float *input_grad_ptr,
-                                     float const *output_ptr,
-                                     float const *output_grad_ptr) {
+                                     void const *input_ptr,
+                                     void *input_grad_ptr,
+                                     void const *output_ptr,
+                                     void const *output_grad_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
