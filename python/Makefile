@@ -132,10 +132,10 @@ flexflow/core/flexflow_cffi_header.py: flexflow_cffi_header.py.in flexflow_cffi_
 
 ifeq ($(strip $(FF_USE_NATIVE_PYTHON)), 0)
 $(FF_BYBIND_LIB): bindings.cc
-	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -std=c++11 -fPIC $< -o $@
+	$(CXX) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -std=c++11 -fPIC $< -o $@
 else
 $(FF_BYBIND_LIB): bindings.cc $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM)
-	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -L$(FF_HOME)/python $(LD_FLAGS) $(LEGION_LD_FLAGS) $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM) $< -o $@
+	$(CXX) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -L$(FF_HOME)/python $(APP_OBJS) $(LD_FLAGS) $(LEGION_LIBS) $(LEGION_LD_FLAGS) $< -o $@
 endif
 
 clean::
