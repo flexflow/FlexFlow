@@ -1703,7 +1703,7 @@ class ScalarFloorDivNode(FunctionNode):
     def parse(self):
         s = [self.name]
         scalar = self.innodes[1]
-        if type(scalar) is not int or type(scalar) is not float:
+        if type(scalar) not in [int, float]:
             assert 0, "FlexFlow does not support tensor floor division"
         innodes = (self.innodes[0],)
         s.append(self.parse_inoutnodes(innodes))
