@@ -2,32 +2,12 @@
 set -euo pipefail
 set -x
 
-DEBIAN_FRONTEND=noninteractive
-
 echo "Installing PyTorch dependencies"
-rm -rf /var/lib/apt/lists/* \
-/etc/apt/sources.list.d/cuda.list \
-/etc/apt/sources.list.d/nvidia-ml.list && \
-apt-get update && \
-DEBIAN_FRONTEND=noninteractive \
-	apt-get install -y --no-install-recommends \
-    software-properties-common && \
-apt-get update && \
-DEBIAN_FRONTEND=noninteractive \
-	apt-get install -y --no-install-recommends \
-    build-essential \
-    apt-utils \
-    ca-certificates \
-    libssl-dev \
-    curl \
-    unzip \
-    htop \
-    nano && \
-DEBIAN_FRONTEND=noninteractive \
-    apt-get install -y software-properties-common && \
-    add-apt-repository ppa:ubuntu-toolchain-r/test && \
-    apt-get update -y && \
-    apt-get upgrade -y libstdc++6
+rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/nvidia-ml.list
+sudo apt-get update -y
+sudo apt-get install -y --no-install-recommends software-properties-common build-essential apt-utils ca-certificates libssl-dev curl \
+    unzip htop nano
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test && sudo apt-get update -y && sudo apt-get upgrade -y libstdc++6
 
 # Install CPU-only Pytorch and related packages
 echo "Installing PyTorch and related packages"
