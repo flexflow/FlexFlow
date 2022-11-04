@@ -4,7 +4,7 @@ set -x
 
 # General dependencies
 echo "Installing apt dependencies..."
-sudo apt-get update && sudo apt-get install -y --no-install-recommends wget binutils git zlib1g-dev && \
+sudo apt-get update && sudo apt-get install -y --no-install-recommends wget binutils git zlib1g-dev libhdf5-dev && \
     sudo rm -rf /var/lib/apt/lists/*
 
 # Install CUDNN
@@ -27,8 +27,5 @@ wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 # Install conda packages
 echo "Installing conda packages..."
 export PATH=/opt/conda/bin:$PATH
-conda install cmake make
-conda install -c conda-forge numpy keras-preprocessing pybind11 cmake-build-extension pillow=9.0.0
-
-# Examples
-sudo apt-get update -y && sudo apt-get install -y --no-install-recommends libhdf5-dev
+conda install cmake make pillow
+conda install -c conda-forge numpy keras-preprocessing pybind11 cmake-build-extension

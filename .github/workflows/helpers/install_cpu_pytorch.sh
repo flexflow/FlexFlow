@@ -12,7 +12,9 @@ sudo add-apt-repository ppa:ubuntu-toolchain-r/test && sudo apt-get update -y &&
 # Install CPU-only Pytorch and related packages
 echo "Installing PyTorch and related packages"
 export PATH=/opt/conda/bin:$PATH
-conda install -c conda-forge pip pytorch-cpu=1.9.0 torchvision-cpu pandas numpy transformers=4.16.2 sentencepiece
+# Install CPU-only Pytorch
+conda install pytorch==1.9.0 torchvision==0.10.0 torchaudio==0.9.0 cpuonly -c pytorch
+# Install Hugging-face/MT5 related packages
+conda install -c conda-forge pandas numpy transformers=4.16.2 sentencepiece
 # Install packages required by other example applications
 pip install onnx tensorflow keras2onnx
-
