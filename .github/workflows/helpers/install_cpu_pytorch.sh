@@ -31,9 +31,10 @@ DEBIAN_FRONTEND=noninteractive \
 
 # Install CPU-only Pytorch
 echo "Installing PyTorch and related packages"
-/opt/conda/bin/conda install pytorch==1.9.0 torchvision==0.10.0 torchaudio==0.9.0 cpuonly -c pytorch
+#/opt/conda/bin/conda install pytorch==1.9.0 torchvision==0.10.0 torchaudio==0.9.0 cpuonly -c pytorch
 # Install Hugging-face/MT5 related packages
 /opt/conda/bin/conda install -c conda-forge pip pandas numpy transformers=4.16.2 sentencepiece
+pip install torch==1.9.0 torchvision==0.10.0 torchaudio==0.9.0
 # Install packages required by other example applications
 export PATH=/opt/conda/bin:$PATH
 pip install onnx tensorflow keras2onnx
