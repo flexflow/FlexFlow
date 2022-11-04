@@ -36,9 +36,9 @@ jobs:
       options: --gpus all
     steps:
       - name: Install sudo
-        run: DEBIAN_FRONTEND=noninteractive apt-get update -y && apt-get upgrade -y && apt-get install -y --no-install-recommends sudo software-properties-common
+        run: apt-get update -y && apt-get upgrade -y && apt-get install -y --no-install-recommends sudo software-properties-common
       - name: Install updated git version
-        run: DEBIAN_FRONTEND=noninteractive sudo add-apt-repository ppa:git-core/ppa -y && sudo apt update -y && sudo apt install -y --no-install-recommends git
+        run: sudo add-apt-repository ppa:git-core/ppa -y && sudo apt update -y && sudo apt install -y --no-install-recommends git
       - name: Checkout Git Repository
         uses: actions/checkout@v3
         with:
