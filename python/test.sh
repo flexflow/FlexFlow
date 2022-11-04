@@ -73,7 +73,7 @@ python3 $FF_HOME/examples/python/onnx/mnist_mlp_pt.py
 ./flexflow_python $FF_HOME/examples/python/native/mnist_mlp_attach.py -ll:py 1 -ll:gpu $GPUS -ll:fsize $LEGION_FSIZE_SMALL -ll:zsize $LEGION_ZSIZE --epochs 5
 
 #Only work with CFFI
-./flexflow_python $FF_HOME/examples/python/native/print_layers.py -ll:py 1 -ll:gpu $GPUS -ll:fsize $LEGION_FSIZE_SMALL -ll:zsize $LEGION_ZSIZE --epochs 5
+#./flexflow_python $FF_HOME/examples/python/native/print_layers.py -ll:py 1 -ll:gpu $GPUS -ll:fsize $LEGION_FSIZE_SMALL -ll:zsize $LEGION_ZSIZE --epochs 5
 
 #Possible crash
 #./flexflow_python $FF_HOME/examples/python/keras/func_cifar10_cnn_concat.py -ll:py 1 -ll:gpu $GPUS -ll:fsize $LEGION_FSIZE_SMALL -ll:zsize $LEGION_ZSIZE
