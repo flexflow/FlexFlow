@@ -15,6 +15,6 @@ export PATH=/opt/conda/bin:$PATH
 # Install CPU-only Pytorch
 conda install pytorch==1.9.0 torchvision==0.10.0 torchaudio==0.9.0 cpuonly -c pytorch
 # Install Hugging-face/MT5 related packages
-conda install -c conda-forge pandas numpy transformers=4.16.2 sentencepiece
+conda install -c conda-forge pandas numpy transformers=4.16.2 sentencepiece pillow
 # Install packages required by other example applications
 pip install onnx tensorflow keras2onnx
