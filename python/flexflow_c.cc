@@ -1797,8 +1797,7 @@ void register_c_custom_tasks() {
 
 static Context ctx;
 
-void begin_flexflow_task(int argc, char **argv) 
-{
+void begin_flexflow_task(int argc, char **argv) {
   // This needs to be set, otherwise NCCL will try to use group kernel launches,
   // which are not compatible with the Realm CUDA hijack.
   setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
@@ -1828,8 +1827,7 @@ void begin_flexflow_task(int argc, char **argv)
                                      true /*control replicable*/);
 }
 
-void finish_flexflow_task() 
-{
+void finish_flexflow_task() {
   Runtime *runtime = Runtime::get_runtime();
   runtime->finish_implicit_task(ctx);
   // The previous call is asynchronous so we still need to
