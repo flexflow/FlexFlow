@@ -16,10 +16,10 @@ wget -c -q http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudn
 
 # Install Miniconda
 echo "Installing Miniconda..."
-wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-    chmod +x ./Miniconda3-latest-Linux-x86_64.sh && \
-    ./Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
-    rm ./Miniconda3-latest-Linux-x86_64.sh && \
+wget -c -q https://repo.anaconda.com/miniconda/Miniconda3-py38_4.12.0-Linux-x86_64.sh && \
+    chmod +x ./Miniconda3-py38_4.12.0-Linux-x86_64.sh && \
+    ./Miniconda3-py38_4.12.0-Linux-x86_64.sh -b -p /opt/conda && \
+    rm ./Miniconda3-py38_4.12.0-Linux-x86_64.sh && \
     /opt/conda/bin/conda upgrade --all && \
     /opt/conda/bin/conda install conda-build conda-verify && \
     /opt/conda/bin/conda clean -ya
