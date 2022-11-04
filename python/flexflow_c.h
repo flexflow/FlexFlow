@@ -705,6 +705,10 @@ void flexflow_op_forward(flexflow_op_t handle, flexflow_model_t model);
 
 void register_c_custom_tasks();
 
+void begin_flexflow_task(int argc, char **argv);
+
+void finish_flexflow_task();
+
 #ifdef __cplusplus
 }
 #endif

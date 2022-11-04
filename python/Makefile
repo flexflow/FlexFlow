@@ -134,8 +134,10 @@ ifeq ($(strip $(FF_USE_NATIVE_PYTHON)), 0)
 $(FF_BYBIND_LIB): bindings.cc
 	$(CXX) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -std=c++11 -fPIC $< -o $@
 else
-$(FF_BYBIND_LIB): bindings.cc $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM)
-	$(CXX) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -L$(FF_HOME)/python $(APP_OBJS) $(LD_FLAGS) $(LEGION_LIBS) $(LEGION_LD_FLAGS) $< -o $@
+# hack: we do not need main.cc anymore
+NATIVE_SHARED_OBJS := $(filter-out main.cc.o,$(APP_OBJS))
+$(FF_BYBIND_LIB): $(NATIVE_SHARED_OBJS) $(SLIB_LEGION) $(SLIB_REALM)
+	$(CXX) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -L$(FF_HOME)/python $(NATIVE_SHARED_OBJS) $(LD_FLAGS) $(LEGION_LIBS) $(LEGION_LD_FLAGS) -o $@
 endif
 
 clean::
