@@ -10,6 +10,8 @@ on:
       - "docker/**"
       - "!docker/README.md"
       - ".github/workflows/docker-build.yml"
+    branches-ignore:
+      - "master"
   workflow_dispatch:
 
 # Cancel outdated workflows if they are still running
