@@ -206,6 +206,7 @@ target_link_libraries(flexflow ${LEGION_LIBRARY} nlohmann_json::nlohmann_json mp
 
 if(FF_USE_NCCL)
   add_dependencies(flexflow ${NCCL_NAME})
+  target_link_libraries(flexflow ${NCCL_NAME})
 endif()
 
 # build binary
