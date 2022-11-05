@@ -14,7 +14,7 @@ on:
 
 # Cancel outdated workflows if they are still running
 concurrency:
-  group: docker-build-${{ github.head_ref || github.run_id }}
+  group: docker-build-skip-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
