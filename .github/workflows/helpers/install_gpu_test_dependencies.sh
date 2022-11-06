@@ -2,6 +2,9 @@
 set -euo pipefail
 set -x
 
+# Cd into directory holding this script
+cd "${BASH_SOURCE[0]%/*}"
+
 # General dependencies
 echo "Installing apt dependencies..."
 sudo apt-get update && sudo apt-get install -y --no-install-recommends \
@@ -10,11 +13,7 @@ sudo apt-get update && sudo apt-get install -y --no-install-recommends \
     sudo rm -rf /var/lib/apt/lists/*
 
 # Install CUDNN
-echo "Installing CUDNN..."
-wget -c -q http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-11.1-linux-x64-v8.0.5.39.tgz && \
-    sudo tar -xzf cudnn-11.1-linux-x64-v8.0.5.39.tgz -C /usr/local && \
-    rm cudnn-11.1-linux-x64-v8.0.5.39.tgz && \
-    sudo ldconfig
+./install_cudnn.sh
 
 # Install Miniconda
 echo "Installing Miniconda..."
@@ -29,6 +28,7 @@ wget -c -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 # Install conda packages
 echo "Installing conda packages..."
 export PATH=/opt/conda/bin:$PATH
-conda install -c pytorch -c conda-forge \
-    cmake make cmake-build-extension pybind11 numpy pandas keras-preprocessing pillow transformers sentencepiece onnx tensorflow \
-    pytorch==1.9.0 torchvision==0.10.1 torchaudio==0.9.1 cpuonly
+conda install -c conda-forge cmake make cmake-build-extension pybind11 numpy pandas keras-preprocessing 
+conda install -c pytorch==1.9.0 torchvision==0.10.1 torchaudio==0.9.1 cpuonly
+conda install -c conda-forge pillow transformers sentencepiece onnx tensorflow
+    
