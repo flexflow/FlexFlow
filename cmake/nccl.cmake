@@ -1,63 +1,98 @@
+set(NCCL_NAME nccl)
 # set(NCCL_CUDA_ARCH "-gencode=arch=compute_${CUDA_ARCH},code=sm_${CUDA_ARCH}")
 # message("NCCL_CUDA_ARCH: ${NCCL_CUDA_ARCH}")
-#list(TRANSFORM CUDA_GENCODE PREPEND "NVCC_GENCODE=" OUTPUT_VARIABLE NCCL_BUILD_NVCC_GENCODE)
 
-set(NCCL_NAME nccl)
-set(NCCL_URL https://github.com/gabrieleoliaro/flexflow-third-party/releases/latest/download/nccl_11.1.1_ubuntu-20.04.tar.gz)
+set(NCCL_URL "")
+if(FF_USE_PRECOMPILED_LIBRARIES)
+  if(LINUX_VERSION MATCHES "20.04")
+    if (CUDA_VERSION VERSION_EQUAL "11.0")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-20.04_11.0.3.tar.gz")
+    elseif(CUDA_VERSION VERSION_EQUAL "11.1")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-20.04_11.1.1.tar.gz")
+    elseif(CUDA_VERSION VERSION_EQUAL "11.2")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-20.04_11.2.2.tar.gz")
+    elseif(CUDA_VERSION VERSION_EQUAL "11.3")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-20.04_11.3.1.tar.gz")
+    elseif(CUDA_VERSION VERSION_EQUAL "11.4")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-20.04_11.4.3.tar.gz")
+    elseif(CUDA_VERSION VERSION_EQUAL "11.5")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-20.04_11.5.2.tar.gz")
+    elseif(CUDA_VERSION VERSION_EQUAL "11.6")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-20.04_11.6.2.tar.gz")
+    elseif(CUDA_VERSION VERSION_EQUAL "11.7")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-20.04_11.7.0.tar.gz")
+    endif()
+  elseif(LINUX_VERSION MATCHES "18.04")
+    if (CUDA_VERSION VERSION_EQUAL "10.1")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-18.04_10.1.243.tar.gz")
+    elseif (CUDA_VERSION VERSION_EQUAL "10.2")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-18.04_10.2.89.tar.gz")
+    elseif (CUDA_VERSION VERSION_EQUAL "11.0")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-18.04_11.0.3.tar.gz")
+    elseif(CUDA_VERSION VERSION_EQUAL "11.1")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-18.04_11.1.1.tar.gz")
+    elseif(CUDA_VERSION VERSION_EQUAL "11.2")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-18.04_11.2.2.tar.gz")
+    elseif(CUDA_VERSION VERSION_EQUAL "11.3")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-18.04_11.3.1.tar.gz")
+    elseif(CUDA_VERSION VERSION_EQUAL "11.4")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-18.04_11.4.3.tar.gz")
+    elseif(CUDA_VERSION VERSION_EQUAL "11.5")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-18.04_11.5.2.tar.gz")
+    elseif(CUDA_VERSION VERSION_EQUAL "11.6")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-18.04_11.6.2.tar.gz")
+    elseif(CUDA_VERSION VERSION_EQUAL "11.7")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-18.04_11.7.0.tar.gz")
+    endif()
+  endif()
+endif()
 
-ExternalProject_Add(${NCCL_NAME}
-  SOURCE_DIR ""
-  PREFIX ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}
-  URL ${NCCL_URL}
-  DOWNLOAD_DIR ${CMAKE_BINARY_DIR}/deps/
-  #INSTALL_DIR ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}
-  #BUILD_COMMAND "echo 'Building...'"
-  BUILD_BYPRODUCTS deps/${NCCL_NAME}/src/${NCCL_NAME}/lib/libnccl${LIBEXT}
-  INSTALL_COMMAND ""
-  CONFIGURE_COMMAND ""
-  BUILD_COMMAND ""
-  UPDATE_COMMAND ""
-)
+if(NCCL_URL)
+  # Download and import pre-compiled NCCL library
+  message(STATUS "Using pre-compiled NCCL library")
+  message(STATUS "NCCL_URL: ${NCCL_URL}")
 
-ExternalProject_Get_Property(${NCCL_NAME} INSTALL_DIR)
-message(STATUS "NCCL install dir: ${INSTALL_DIR}")
+  ExternalProject_Add(${NCCL_NAME}
+    SOURCE_DIR ""
+    PREFIX ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}
+    URL ${NCCL_URL}
+    DOWNLOAD_DIR ${CMAKE_BINARY_DIR}/deps/
+    BUILD_BYPRODUCTS deps/${NCCL_NAME}/src/${NCCL_NAME}/lib/libnccl${LIBEXT}
+    INSTALL_COMMAND ""
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    UPDATE_COMMAND ""
+  )
 
-SET(NCCL_BASE_DIR ${INSTALL_DIR}/src/nccl)
-SET(NCCL_INCLUDE_DIR ${NCCL_BASE_DIR}/include)
-SET(NCCL_LIB_DIR ${NCCL_BASE_DIR}/lib)
+  ExternalProject_Get_Property(${NCCL_NAME} INSTALL_DIR)
+  message(STATUS "NCCL install dir: ${INSTALL_DIR}")
 
-#add_library(nccl SHARED IMPORTED)
-#set_target_properties(nccl PROPERTIES IMPORTED_LOCATION ${NCCL_LIB_DIR}/libnccl${LIBEXT})
-list(APPEND FLEXFLOW_INCLUDE_DIRS ${NCCL_INCLUDE_DIR})
-list(APPEND FLEXFLOW_EXT_LIBRARIES ${NCCL_LIB_DIR}/libnccl${LIBEXT})
+  SET(NCCL_BASE_DIR ${INSTALL_DIR}/src/nccl)
+  SET(NCCL_INCLUDE_DIR ${NCCL_BASE_DIR}/include)
+  SET(NCCL_LIB_DIR ${NCCL_BASE_DIR}/lib)
 
-#set_directory_properties(PROPERTIES ADDITIONAL_CLEAN_FILES "${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/")
+  list(APPEND FLEXFLOW_INCLUDE_DIRS ${NCCL_INCLUDE_DIR})
+  list(APPEND FLEXFLOW_EXT_LIBRARIES ${NCCL_LIB_DIR}/libnccl${LIBEXT})
+else()
+  # Build NCCL from source
+  list(TRANSFORM CUDA_GENCODE PREPEND "NVCC_GENCODE=" OUTPUT_VARIABLE NCCL_BUILD_NVCC_GENCODE)
+  
+  ExternalProject_Add(${NCCL_NAME}
+   SOURCE_DIR ${PROJECT_SOURCE_DIR}/deps/${NCCL_NAME}
+   PREFIX ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}
+   INSTALL_DIR ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}
+   BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/libnccl${LIBEXT}
+   INSTALL_COMMAND ""
+   CONFIGURE_COMMAND ""
+   BUILD_COMMAND make src.build "${NCCL_BUILD_NVCC_GENCODE}" "CUDA_HOME=${CUDA_TOOLKIT_ROOT_DIR}" "BUILDDIR=${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}"
+   BUILD_IN_SOURCE 1
+  )
 
-# ExternalProject_Add(${NCCL_NAME}
-#  SOURCE_DIR ${PROJECT_SOURCE_DIR}/deps/${NCCL_NAME}
-#  PREFIX ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}
-#  INSTALL_DIR ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}
-#  BUILD_BYPRODUCTS ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/libnccl${LIBEXT}
-#  INSTALL_COMMAND ""
-#  CONFIGURE_COMMAND ""
-#  BUILD_COMMAND make src.build "${NCCL_BUILD_NVCC_GENCODE}" "CUDA_HOME=${CUDA_TOOLKIT_ROOT_DIR}" "BUILDDIR=${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}"
-#  BUILD_IN_SOURCE 1
-# )
-
-# ExternalProject_Get_Property(${NCCL_NAME} INSTALL_DIR)
-# message(STATUS "NCCL install dir: ${INSTALL_DIR}")
-# list(APPEND FLEXFLOW_INCLUDE_DIRS
-#   ${INSTALL_DIR}/include)
-# list(APPEND FLEXFLOW_EXT_LIBRARIES
-#   ${INSTALL_DIR}/lib/libnccl${LIBEXT})
-# set_directory_properties(PROPERTIES ADDITIONAL_CLEAN_FILES "${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/")
-
-# include(FetchContent)
-# FetchContent_Declare(nccl URL )
-# FetchContent_MakeAvailable(nccl)
-
-# list(APPEND FLEXFLOW_INCLUDE_DIRS
-#   ${nccl_SOURCE_DIR}/include)
-# list(APPEND FLEXFLOW_EXT_LIBRARIES
-#   ${nccl_SOURCE_DIR}/lib/libnccl${LIBEXT})
-
+  ExternalProject_Get_Property(${NCCL_NAME} INSTALL_DIR)
+  message(STATUS "NCCL install dir: ${INSTALL_DIR}")
+  list(APPEND FLEXFLOW_INCLUDE_DIRS
+    ${INSTALL_DIR}/include)
+  list(APPEND FLEXFLOW_EXT_LIBRARIES
+    ${INSTALL_DIR}/lib/libnccl${LIBEXT})
+  set_directory_properties(PROPERTIES ADDITIONAL_CLEAN_FILES "${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/")
+endif()

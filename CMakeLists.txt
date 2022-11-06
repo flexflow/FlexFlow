@@ -34,6 +34,9 @@ option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 # option for using Python
 option(FF_USE_PYTHON "Enable Python" ON)
 
+# option to download pre-compiled NCCL/Legion libraries
+option(FF_USE_PRECOMPILED_LIBRARIES "Enable use of pre-compiled NCCL & Legion libraries, if available" ON)
+
 # option for using Python
 option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)
 set(FF_GASNET_CONDUITS aries udp mpi ibv ucx)
@@ -77,6 +80,17 @@ list(APPEND NVCC_FLAGS
 add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
 link_libraries(${LD_FLAGS})
+
+# Detect OS type and Linux version (if it applies)
+set(LINUX_VERSION "")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  find_program(LSB_RELEASE_EXEC lsb_release)
+  if(LSB_RELEASE_EXEC)
+    execute_process(COMMAND ${LSB_RELEASE_EXEC} -r --short 
+                    OUTPUT_VARIABLE LINUX_VERSION 
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  endif()
+endif()
 
 # ZLIB
 include(zlib)
@@ -202,8 +216,12 @@ else()
 endif()
 
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-target_link_libraries(flexflow ${LEGION_LIBRARY} ${REALM_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
-add_dependencies(flexflow ${LEGION_DOWNLOAD})
+if(LEGION_URL)
+  target_link_libraries(flexflow ${LEGION_LIBRARY} ${REALM_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
+  add_dependencies(flexflow ${LEGION_DOWNLOAD})
+else()
+  target_link_libraries(flexflow ${LEGION_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
+endif()
 
 if(FF_USE_NCCL)
   add_dependencies(flexflow ${NCCL_NAME})
