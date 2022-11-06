@@ -55,35 +55,37 @@ if(NCCL_URL)
   set(NCCL_TARBALL_PATH ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}.tar.gz)
   set(NCCL_EXTRACTED_TARBALL_PATH ${CMAKE_BINARY_DIR}/build/deps/${NCCL_NAME})
   set(NCCL_FOLDER_PATH ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME})
-  file(DOWNLOAD ${NCCL_URL} ${NCCL_TARBALL_PATH} STATUS NCCL_DOWNLOAD_RESULT)
-  list(GET NCCL_DOWNLOAD_RESULT 0 NCCL_DOWNLOAD_FAILED)
-
-  if(NCCL_DOWNLOAD_FAILED)
-    #message(STATUS "Could not download prebuilt library. (${NCCL_DOWNLOAD_RESULT})")
-    #file(REMOVE ${NCCL_TARBALL_PATH})
-    message(FATAL_ERROR "Could not download ${NCCL_URL}!")
-  endif()
-
-  if(EXISTS ${NCCL_FOLDER_PATH})
-    message(FATAL_ERROR "${NCCL_FOLDER_PATH} already exists!")
-  endif()
-
-  execute_process(
-    COMMAND ${CMAKE_COMMAND} -E tar xzf ${NCCL_TARBALL_PATH}
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-  )
-  execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${NCCL_EXTRACTED_TARBALL_PATH} ${NCCL_FOLDER_PATH})
-  execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/build)
-  execute_process(COMMAND ${CMAKE_COMMAND} -E remove ${NCCL_TARBALL_PATH})
-
   if(NOT EXISTS ${NCCL_FOLDER_PATH})
-    message(FATAL_ERROR "Could not extract tarball ${NCCL_TARBALL_PATH} to ${NCCL_FOLDER_PATH}!")
+    file(DOWNLOAD ${NCCL_URL} ${NCCL_TARBALL_PATH} STATUS NCCL_DOWNLOAD_RESULT)
+    list(GET NCCL_DOWNLOAD_RESULT 0 NCCL_DOWNLOAD_FAILED)
+
+    if(NCCL_DOWNLOAD_FAILED)
+      message(FATAL_ERROR "Could not download ${NCCL_URL}!")
+    endif()
+
+    if(EXISTS ${NCCL_FOLDER_PATH})
+      message(FATAL_ERROR "${NCCL_FOLDER_PATH} already exists!")
+    endif()
+
+    execute_process(
+      COMMAND ${CMAKE_COMMAND} -E tar xzf ${NCCL_TARBALL_PATH}
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+    execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${NCCL_EXTRACTED_TARBALL_PATH} ${NCCL_FOLDER_PATH})
+    execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/build)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E remove ${NCCL_TARBALL_PATH})
+
+    if(NOT EXISTS ${NCCL_FOLDER_PATH})
+      message(FATAL_ERROR "Could not extract tarball ${NCCL_TARBALL_PATH} to ${NCCL_FOLDER_PATH}!")
+    endif()
   endif()
 
-  add_library(nccl SHARED IMPORTED)
-  set_target_properties(nccl PROPERTIES IMPORTED_LOCATION ${NCCL_FOLDER_PATH})
   set(NCCL_INCLUDE_DIR ${NCCL_FOLDER_PATH}/include)
   set(NCCL_LIB_DIR ${NCCL_FOLDER_PATH}/lib)
+  message(STATUS "NCCL library path: ${NCCL_FOLDER_PATH}")
+  add_library(nccl SHARED IMPORTED)
+  set_target_properties(nccl PROPERTIES IMPORTED_LOCATION ${NCCL_FOLDER_PATH})
+
 
   list(APPEND FLEXFLOW_INCLUDE_DIRS ${NCCL_INCLUDE_DIR})
   list(APPEND FLEXFLOW_EXT_LIBRARIES ${NCCL_LIB_DIR}/libnccl${LIBEXT})
