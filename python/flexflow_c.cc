@@ -55,8 +55,6 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_perf_metrics_t, PerfMetrics *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_net_config_t, NetConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_dlrm_config_t, DLRMConfig *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_4d_t, ImgDataLoader4D *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_2d_t, ImgDataLoader2D *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_single_dataloader_t, SingleDataLoader *);
 };
 
@@ -1554,134 +1552,6 @@ int *flexflow_dlrm_config_get_embedding_size(flexflow_dlrm_config_t handle_) {
 }
 
 // -----------------------------------------------------------------------
-// DataLoader
-// -----------------------------------------------------------------------
-
-flexflow_dataloader_4d_t
-    flexflow_dataloader_4d_create(flexflow_model_t ffmodel_,
-                                  flexflow_net_config_t netconfig_,
-                                  flexflow_tensor_t input_,
-                                  flexflow_tensor_t label_) {
-  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  NetConfig *netconfig = FFCObjectWrapper::unwrap(netconfig_);
-  Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor label = FFCObjectWrapper::unwrap(label_);
-  assert(input->parallel_tensor != nullptr);
-  assert(label->parallel_tensor != nullptr);
-  ImgDataLoader4D *dataloader = new ImgDataLoader4D(
-      *ffmodel, *netconfig, input->parallel_tensor, label->parallel_tensor);
-  return FFCObjectWrapper::wrap(dataloader);
-}
-
-flexflow_dataloader_4d_t
-    flexflow_dataloader_4d_create_v2(flexflow_model_t ffmodel_,
-                                     flexflow_tensor_t input_,
-                                     flexflow_tensor_t label_,
-                                     flexflow_tensor_t full_input_,
-                                     flexflow_tensor_t full_label_,
-                                     int num_samples) {
-  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor label = FFCObjectWrapper::unwrap(label_);
-  Tensor full_input = FFCObjectWrapper::unwrap(full_input_);
-  Tensor full_label = FFCObjectWrapper::unwrap(full_label_);
-  assert(input->parallel_tensor != nullptr);
-  assert(label->parallel_tensor != nullptr);
-  assert(full_input->parallel_tensor != nullptr);
-  assert(full_label->parallel_tensor != nullptr);
-  ImgDataLoader4D *dataloader = new ImgDataLoader4D(*ffmodel,
-                                                    input->parallel_tensor,
-                                                    label->parallel_tensor,
-                                                    full_input->parallel_tensor,
-                                                    full_label->parallel_tensor,
-                                                    num_samples);
-  return FFCObjectWrapper::wrap(dataloader);
-}
-
-void flexflow_dataloader_4d_destroy(flexflow_dataloader_4d_t handle_) {
-  ImgDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
-  delete handle;
-}
-
-void flexflow_dataloader_4d_set_num_samples(flexflow_dataloader_4d_t handle_,
-                                            int samples) {
-  ImgDataLoader4D *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->num_samples = samples;
-  DEBUG_PRINT("[Dataloader4D] set number of samples %d", samples);
-}
-
-int flexflow_dataloader_4d_get_num_samples(flexflow_dataloader_4d_t handle_) {
-  ImgDataLoader4D *handle = FFCObjectWrapper::unwrap(handle_);
-  return handle->num_samples;
-}
-
-void flexflow_dataloader_4d_reset(flexflow_dataloader_4d_t handle_) {
-  ImgDataLoader4D *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->reset();
-}
-
-void flowflow_dataloader_4d_next_batch(flexflow_dataloader_4d_t handle_,
-                                       flexflow_model_t ffmodel_) {
-  ImgDataLoader4D *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  handle->next_batch(*ffmodel);
-}
-
-flexflow_dataloader_2d_t
-    flexflow_dataloader_2d_create_v2(flexflow_model_t ffmodel_,
-                                     flexflow_tensor_t input_,
-                                     flexflow_tensor_t label_,
-                                     flexflow_tensor_t full_input_,
-                                     flexflow_tensor_t full_label_,
-                                     int num_samples) {
-  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor label = FFCObjectWrapper::unwrap(label_);
-  Tensor full_input = FFCObjectWrapper::unwrap(full_input_);
-  Tensor full_label = FFCObjectWrapper::unwrap(full_label_);
-  assert(input->parallel_tensor != nullptr);
-  assert(label->parallel_tensor != nullptr);
-  assert(full_input->parallel_tensor != nullptr);
-  assert(full_label->parallel_tensor != nullptr);
-  ImgDataLoader2D *dataloader = new ImgDataLoader2D(*ffmodel,
-                                                    input->parallel_tensor,
-                                                    label->parallel_tensor,
-                                                    full_input->parallel_tensor,
-                                                    full_label->parallel_tensor,
-                                                    num_samples);
-  return FFCObjectWrapper::wrap(dataloader);
-}
-
-void flexflow_dataloader_2d_destroy(flexflow_dataloader_2d_t handle_) {
-  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
-  delete handle;
-}
-
-void flexflow_dataloader_2d_set_num_samples(flexflow_dataloader_2d_t handle_,
-                                            int samples) {
-  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->num_samples = samples;
-  DEBUG_PRINT("[Dataloader2D] set number of samples %d", samples);
-}
-
-int flexflow_dataloader_2d_get_num_samples(flexflow_dataloader_2d_t handle_) {
-  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
-  return handle->num_samples;
-}
-
-void flexflow_dataloader_2d_reset(flexflow_dataloader_2d_t handle_) {
-  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->reset();
-}
-
-void flowflow_dataloader_2d_next_batch(flexflow_dataloader_2d_t handle_,
-                                       flexflow_model_t ffmodel_) {
-  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  handle->next_batch(*ffmodel);
-}
-
-// -----------------------------------------------------------------------
 // Single Dataloader
 // -----------------------------------------------------------------------
 
@@ -1918,59 +1788,6 @@ DLRMConfig::DLRMConfig(void)
 }
 
 void register_c_custom_tasks() {
-  // 4D Load entire dataset
-  {
-    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_1,
-                                   "4D Load Entire Dataset");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<ImgDataLoader4D::load_entire_dataset>(
-        registrar, "4D Load Entire Dataset Task");
-  }
-  // 4D Load entire dataset from numpy
-  {
-    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_2,
-                                   "4D Load Entire Dataset Numpy");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        ImgDataLoader4D::load_entire_dataset_from_numpy>(
-        registrar, "4D Load Entire Dataset Task Numpy");
-  }
-  // 2D Load entire dataset from numpy
-  {
-    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_3,
-                                   "2D Load Entire Dataset Numpy");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        ImgDataLoader2D::load_entire_dataset_from_numpy>(
-        registrar, "2D Load Entire Dataset Task Numpy");
-  }
-  // 4D Load input
-  {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_1, "4D Load Inputs");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<ImgDataLoader4D::load_input>(
-        registrar, "4D Load Input Task");
-  }
-  // Load label
-  {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_2, "Load Labels");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<ImgDataLoader::load_label>(
-        registrar, "Load Label Task");
-  }
-  // 2D Load input
-  {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_3, "2D Load Inputs");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<ImgDataLoader2D::load_input>(
-        registrar, "2D Load Input Task");
-  }
 
   SingleDataLoader::register_cpu_tasks();
 
