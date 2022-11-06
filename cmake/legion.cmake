@@ -69,8 +69,7 @@ else()
 		set(LEGION_LIBRARY legion)
 		set(REALM_LIBRARY realm)
 		set(LEGION_DOWNLOAD legionDownload)
-		set(LEGION_URL https://github.com/gabrieleoliaro/flexflow-third-party/releases/latest/download/legion_11.1.1_ubuntu-20.04.tar.gz)
-
+		
 		ExternalProject_Add(${LEGION_DOWNLOAD}
 			PREFIX ${CMAKE_BINARY_DIR}/deps/${LEGION_LIBRARY}
 			SOURCE_DIR ""
