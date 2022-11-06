@@ -33,5 +33,5 @@ echo "Installing conda packages..."
 export PATH=/opt/conda/bin:$PATH
 conda install -c conda-forge cmake make cmake-build-extension pybind11 numpy pandas keras-preprocessing 
 conda install pytorch==1.9.0 torchvision==0.10.0 torchaudio==0.9.0 cpuonly -c pytorch
-conda install -c conda-forge pillow transformers sentencepiece onnx tensorflow
+conda install -c conda-forge onnx tensorflow
     
