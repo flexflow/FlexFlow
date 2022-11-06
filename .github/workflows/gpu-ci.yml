@@ -45,9 +45,7 @@ jobs:
           submodules: recursive
 
       - name: Install FlexFlow Dependencies
-        run: |
-          .github/workflows/helpers/install_dependencies.sh
-          .github/workflows/helpers/install_cpu_pytorch.sh
+        run: .github/workflows/helpers/install_gpu_test_dependencies.sh
 
       - name: Build and Install FlexFlow
         run: |
