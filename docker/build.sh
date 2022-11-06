@@ -4,6 +4,14 @@ set -euo pipefail
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"
 
+# Detect git branch
+git_branch="master"
+# Check if we are in a git repository
+if check=$(git rev-parse --git-dir > /dev/null 2>&1) ; then
+  git_branch=$(git rev-parse --abbrev-ref HEAD)
+fi
+echo $git_branch
+
 # Copy the config files into the Docker folder
 rm -rf config && cp -r ../config ./config
 
@@ -48,7 +56,7 @@ else
 fi
 
 # Build base Docker image
-docker build --build-arg n_build_cores=$n_build_cores -t flexflow -f base/Dockerfile .
+docker build --build-arg n_build_cores=$n_build_cores --build-arg git_branch=$git_branch -t flexflow -f base/Dockerfile .
 
 # Build mt5 docker image if required
 image=${1:-base}

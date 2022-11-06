@@ -24,10 +24,12 @@ ENV PATH /opt/conda/bin:$PATH
 ENV CUDNN_DIR /usr/local/cuda
 ENV CUDA_DIR /usr/local/cuda
 
+ARG git_branch
+
 # Clone the repo, invalidating the cache in case of new commits
-ADD https://api.github.com/repos/flexflow/flexflow/git/refs/heads/master ff_version.json
+ADD https://api.github.com/repos/flexflow/flexflow/git/refs/heads/$git_branch ff_version.json
 RUN cd /usr && \
-    git clone --recursive https://github.com/flexflow/FlexFlow.git
+    git clone --recursive -b $git_branch https://github.com/flexflow/FlexFlow.git
 ENV FF_HOME /usr/FlexFlow
 # overwrite configs file with those (potentially) modified by the user
 COPY ./config /usr/FlexFlow/config
