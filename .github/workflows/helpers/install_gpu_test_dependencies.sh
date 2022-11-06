@@ -9,8 +9,11 @@ cd "${BASH_SOURCE[0]%/*}"
 echo "Installing apt dependencies..."
 sudo apt-get update && sudo apt-get install -y --no-install-recommends \
     wget binutils git nano zlib1g-dev libhdf5-dev software-properties-common \
-    build-essential apt-utils ca-certificates libssl-dev curl unzip htop && \
-    sudo rm -rf /var/lib/apt/lists/*
+    build-essential apt-utils ca-certificates libssl-dev curl unzip htop
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test && apt-get update -y && \
+    apt-get upgrade -y libstdc++6
+sudo rm -rf /var/lib/apt/lists/*
+
 
 # Install CUDNN
 ./install_cudnn.sh
@@ -29,6 +32,6 @@ wget -c -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 echo "Installing conda packages..."
 export PATH=/opt/conda/bin:$PATH
 conda install -c conda-forge cmake make cmake-build-extension pybind11 numpy pandas keras-preprocessing 
-conda install pytorch==1.9.0 torchvision==0.10.1 torchaudio==0.9.1 cpuonly -c pytorch
+conda install pytorch==1.9.0 torchvision==0.10.0 torchaudio==0.9.0 cpuonly -c pytorch
 conda install -c conda-forge pillow transformers sentencepiece onnx tensorflow
     
