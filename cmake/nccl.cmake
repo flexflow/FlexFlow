@@ -52,27 +52,43 @@ if(NCCL_URL)
   message(STATUS "Using pre-compiled NCCL library")
   message(STATUS "NCCL_URL: ${NCCL_URL}")
 
-  ExternalProject_Add(${NCCL_NAME}
-    SOURCE_DIR ""
-    PREFIX ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}
-    URL ${NCCL_URL}
-    DOWNLOAD_DIR ${CMAKE_BINARY_DIR}/deps/
-    BUILD_BYPRODUCTS deps/${NCCL_NAME}/src/${NCCL_NAME}/lib/libnccl${LIBEXT}
-    INSTALL_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    UPDATE_COMMAND ""
+  set(NCCL_TARBALL_PATH ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}.tar.gz)
+  set(NCCL_EXTRACTED_TARBALL_PATH ${CMAKE_BINARY_DIR}/build/deps/${NCCL_NAME})
+  set(NCCL_FOLDER_PATH ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME})
+  file(DOWNLOAD ${NCCL_URL} ${NCCL_TARBALL_PATH} STATUS NCCL_DOWNLOAD_RESULT)
+  list(GET NCCL_DOWNLOAD_RESULT 0 NCCL_DOWNLOAD_FAILED)
+
+  if(NCCL_DOWNLOAD_FAILED)
+    #message(STATUS "Could not download prebuilt library. (${NCCL_DOWNLOAD_RESULT})")
+    #file(REMOVE ${NCCL_TARBALL_PATH})
+    message(FATAL_ERROR "Could not download ${NCCL_URL}!")
+  endif()
+
+  if(EXISTS ${NCCL_FOLDER_PATH})
+    message(FATAL_ERROR "${NCCL_FOLDER_PATH} already exists!")
+  endif()
+
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E tar xzf ${NCCL_TARBALL_PATH}
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   )
+  execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${NCCL_EXTRACTED_TARBALL_PATH} ${NCCL_FOLDER_PATH})
+  execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/build)
+  execute_process(COMMAND ${CMAKE_COMMAND} -E remove ${NCCL_TARBALL_PATH})
 
-  ExternalProject_Get_Property(${NCCL_NAME} INSTALL_DIR)
-  message(STATUS "NCCL install dir: ${INSTALL_DIR}")
+  if(NOT EXISTS ${NCCL_FOLDER_PATH})
+    message(FATAL_ERROR "Could not extract tarball ${NCCL_TARBALL_PATH} to ${NCCL_FOLDER_PATH}!")
+  endif()
 
-  SET(NCCL_BASE_DIR ${INSTALL_DIR}/src/nccl)
-  SET(NCCL_INCLUDE_DIR ${NCCL_BASE_DIR}/include)
-  SET(NCCL_LIB_DIR ${NCCL_BASE_DIR}/lib)
+  add_library(nccl SHARED IMPORTED)
+  set_target_properties(nccl PROPERTIES IMPORTED_LOCATION ${NCCL_FOLDER_PATH})
+  set(NCCL_INCLUDE_DIR ${NCCL_FOLDER_PATH}/include)
+  set(NCCL_LIB_DIR ${NCCL_FOLDER_PATH}/lib)
 
   list(APPEND FLEXFLOW_INCLUDE_DIRS ${NCCL_INCLUDE_DIR})
   list(APPEND FLEXFLOW_EXT_LIBRARIES ${NCCL_LIB_DIR}/libnccl${LIBEXT})
+  install(DIRECTORY ${NCCL_INCLUDE_DIR} DESTINATION include)
+	install(DIRECTORY ${NCCL_LIB_DIR}/ DESTINATION lib)
 else()
   # Build NCCL from source
   list(TRANSFORM CUDA_GENCODE PREPEND "NVCC_GENCODE=" OUTPUT_VARIABLE NCCL_BUILD_NVCC_GENCODE)
@@ -95,4 +111,5 @@ else()
   list(APPEND FLEXFLOW_EXT_LIBRARIES
     ${INSTALL_DIR}/lib/libnccl${LIBEXT})
   set_directory_properties(PROPERTIES ADDITIONAL_CLEAN_FILES "${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}/lib/")
+
 endif()
