@@ -30,5 +30,5 @@ wget -c -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 echo "Installing conda packages..."
 export PATH=/opt/conda/bin:$PATH
 conda install -c pytorch -c conda-forge \
-    cmake make cmake-build-extension pybind11 numpy pandas keras-preprocessing pillow transformers sentencepiece onnx tensorflow keras2onnx \
+    cmake make cmake-build-extension pybind11 numpy pandas keras-preprocessing pillow transformers sentencepiece onnx tensorflow \
     pytorch==1.9.0 torchvision==0.10.1 torchaudio==0.9.1 cpuonly
