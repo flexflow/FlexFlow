@@ -33,7 +33,7 @@ jobs:
     runs-on: self-hosted
     container:
       image: nvidia/cuda:11.1.1-devel-ubuntu18.04
-      options: --gpus all
+      options: --gpus ${{ secrets.gpu_index }}
     steps:
       - name: Install sudo
         run: apt-get update -y && apt-get upgrade -y && apt-get install -y --no-install-recommends sudo software-properties-common
