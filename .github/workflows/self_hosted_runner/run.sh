@@ -3,23 +3,23 @@ set -euo pipefail
 
 ORGANIZATION="flexflow/FlexFlow"
 REGISTRATION_TOKEN=""
-GPUS=""
+GPUS=
 
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"
 
 # Check that the ORGANIZATION and REGISTRATION_TOKEN are set
-if [[ -z "${ORGANIZATION+1}" ]]; then 
+if [[ -z "${ORGANIZATION}" ]]; then 
     echo "Please set the ORGANIZATION before starting the runner"
     exit
 fi
-if [[ -z "${REGISTRATION_TOKEN+1}" ]]; then 
+if [[ -z "${REGISTRATION_TOKEN}" ]]; then 
     echo "Please set the REGISTRATION_TOKEN before starting the runner"
     exit
 fi
 
 # Ensure that one or more GPU indexes are passed
-if [[ -z "${GPUS+1}" ]]; then 
+if [[ -z "${GPUS}" ]]; then 
     echo "Please set the GPU index(es) before starting the runner"
     exit
 fi
