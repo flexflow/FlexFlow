@@ -12,6 +12,9 @@ RUN apt-get update -y && apt-get upgrade -y && useradd -m docker
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     sudo curl jq build-essential libxml2 libssl-dev libffi-dev python3 python3-venv python3-dev python3-pip
 
+# Install Docker
+RUN curl -fsSL https://get.docker.com/ | sh
+
 RUN adduser docker sudo && echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 RUN chown -R docker /opt
 # cd into the user directory, download and unzip the github actions runner
