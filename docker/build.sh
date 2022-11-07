@@ -1,6 +1,11 @@
 #! /usr/bin/env bash
 set -euo pipefail
 
+# https://stackoverflow.com/questions/59895/how-do-i-get-the-directory-where-a-bash-script-is-located-from-within-the-script
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+# Cd into $FF_HOME. Assumes this script is in $FF_HOME/docker
+cd "$SCRIPT_DIR/.."
+
 # Get number of cores available on the machine. Build with all cores but one, to prevent RAM choking
 cores_available=$(nproc --all)
 n_build_cores=$(( cores_available -1 ))
