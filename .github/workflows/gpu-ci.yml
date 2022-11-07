@@ -31,11 +31,9 @@ jobs:
   gpu-ci-flexflow:
     name: Install and test Flexflow on self-hosted runner with GPU
     runs-on: self-hosted
-    env:
-      GPU_INDEX: ${{ secrets.GPU_INDEX }}
     container:
       image: nvidia/cuda:11.1.1-devel-ubuntu18.04
-      options: --gpus $GPU_INDEX
+      options: --gpus 1
     steps:
       - name: Install sudo
         run: apt-get update -y && apt-get upgrade -y && apt-get install -y --no-install-recommends sudo software-properties-common
