@@ -74,7 +74,7 @@ else()
 		set(LEGION_EXTRACTED_TARBALL_PATH ${CMAKE_BINARY_DIR}/build/export/${LEGION_DOWNLOAD})
 		set(LEGION_FOLDER_PATH ${CMAKE_BINARY_DIR}/deps/${LEGION_DOWNLOAD})
 		# If LEGION_FOLDER_PATH already exists (this is the case when calling `make install`), don't re-download.
-		if(NOT EXISTS ${LEGION_FOLDER_PATH})
+		if(NOT EXISTS ${LEGION_FOLDER_PATH}/download_succeeded)
 			file(DOWNLOAD ${LEGION_URL} ${LEGION_TARBALL_PATH} STATUS LEGION_DOWNLOAD_RESULT)
 			list(GET LEGION_DOWNLOAD_RESULT 0 LEGION_DOWNLOAD_FAILED)
 
@@ -94,6 +94,7 @@ else()
 					message(WARNING "Could not extract tarball ${LEGION_TARBALL_PATH} to ${LEGION_FOLDER_PATH}! Building Legion library from scratch")
 					set(LEGION_URL "")
 				endif()
+				execute_process(COMMAND ${CMAKE_COMMAND} -E touch ${LEGION_FOLDER_PATH}/download_succeeded)
 			endif()
 		endif()
 

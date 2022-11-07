@@ -56,7 +56,7 @@ if(NCCL_URL)
   set(NCCL_EXTRACTED_TARBALL_PATH ${CMAKE_BINARY_DIR}/build/deps/${NCCL_NAME})
   set(NCCL_FOLDER_PATH ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME})
   # If NCCL_FOLDER_PATH already exists (this is the case when calling `make install`), don't re-download.
-  if(NOT EXISTS ${NCCL_FOLDER_PATH})
+  if(NOT EXISTS ${NCCL_FOLDER_PATH}/download_succeeded)
     file(DOWNLOAD ${NCCL_URL} ${NCCL_TARBALL_PATH} STATUS NCCL_DOWNLOAD_RESULT)
     list(GET NCCL_DOWNLOAD_RESULT 0 NCCL_DOWNLOAD_FAILED)
 
@@ -76,6 +76,7 @@ if(NCCL_URL)
         message(WARNING "Could not extract tarball ${NCCL_TARBALL_PATH} to ${NCCL_FOLDER_PATH}! Building NCCL library from scratch")
         set(NCCL_URL "")
       endif()
+      execute_process(COMMAND ${CMAKE_COMMAND} -E touch ${NCCL_FOLDER_PATH}/download_succeeded)
     endif()
   endif()
 
