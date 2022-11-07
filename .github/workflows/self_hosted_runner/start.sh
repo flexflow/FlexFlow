@@ -1,15 +1,15 @@
 #!/bin/bash
 set -x
 ORGANIZATION=$ORGANIZATION
-REG_TOKEN=$REG_TOKEN
+REGISTRATION_TOKEN=$REGISTRATION_TOKEN
 
 cd /home/docker/actions-runner
 
-./config.sh --url https://github.com/${ORGANIZATION} --token ${REG_TOKEN}
+./config.sh --url https://github.com/${ORGANIZATION} --token ${REGISTRATION_TOKEN}
 
 cleanup() {
     echo "Removing runner..."
-    ./config.sh remove --token ${REG_TOKEN}
+    ./config.sh remove --token ${REGISTRATION_TOKEN}
 }
 
 trap 'cleanup; exit 130' INT
