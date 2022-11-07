@@ -22,7 +22,7 @@ on:
       - ".github/workflows/build.yml"
   workflow_dispatch:
 concurrency:
-  group: build-${{ github.head_ref || github.run_id }}
+  group: build-skip-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:

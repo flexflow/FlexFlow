@@ -20,7 +20,7 @@ on:
       - ".github/workflows/pip-install.yml"
   workflow_dispatch:
 concurrency:
-  group: pip-install-${{ github.head_ref || github.run_id }}
+  group: pip-install-skip-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
