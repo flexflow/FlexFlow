@@ -8,7 +8,7 @@ if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests
 EXE=$FF_HOME/python/flexflow_python
 
 #Sequantial model tests
-#$EXE $FF_HOME/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE} --only-data-parallel
+$EXE $FF_HOME/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE} --only-data-parallel
 $EXE $FF_HOME/examples/python/keras/seq_mnist_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE} --only-data-parallel
 $EXE $FF_HOME/examples/python/keras/seq_reuters_mlp.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE} --only-data-parallel
 $EXE $FF_HOME/examples/python/keras/seq_cifar10_cnn.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE} --only-data-parallel
@@ -33,7 +33,7 @@ $EXE $FF_HOME/examples/python/keras/func_cifar10_alexnet.py -ll:py 1 -ll:gpu $GP
 $EXE $FF_HOME/examples/python/keras/func_mnist_mlp_net2net.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE} --only-data-parallel
 $EXE $FF_HOME/examples/python/keras/func_cifar10_cnn_net2net.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE} --only-data-parallel
 
-Python
+#Python
 $EXE $FF_HOME/examples/python/native/print_layers.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 --epochs 5 -b ${BATCHSIZE} --only-data-parallel
 $EXE $FF_HOME/examples/python/native/split.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 -b ${BATCHSIZE} --only-data-parallel
 $EXE $FF_HOME/examples/python/native/alexnet.py -ll:py 1 -ll:gpu $GPUS -ll:fsize 14048 -ll:zsize 12192 --epochs 40 --only-data-parallel
