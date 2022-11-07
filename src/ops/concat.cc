@@ -120,8 +120,6 @@ Concat::Concat(FFModel &model,
          1 /*outputs*/,
          _tensors),
       legion_axis(_legion_axis) {
-  printf("legion_axis = %d\n", legion_axis);
-  // TODO: swich to use the Legion dim ordering
   int num_dim = inputs[0]->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < num_dim; i++)
@@ -270,7 +268,7 @@ void Concat::forward_task(Task const *task,
     // inputs[i] = helperGetTensorPointerRO<float>(
     //     regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
     inputs[i] = helperGetGenericTensorAccessorRO(
-        DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+        DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
   }
   Concat::forward_kernel_wrapper(
       m, output, inputs, cc->numInputs, cc->legion_axis);
