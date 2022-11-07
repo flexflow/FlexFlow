@@ -55,44 +55,49 @@ if(NCCL_URL)
   set(NCCL_TARBALL_PATH ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}.tar.gz)
   set(NCCL_EXTRACTED_TARBALL_PATH ${CMAKE_BINARY_DIR}/build/deps/${NCCL_NAME})
   set(NCCL_FOLDER_PATH ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME})
+  # If NCCL_FOLDER_PATH already exists (this is the case when calling `make install`), don't re-download.
   if(NOT EXISTS ${NCCL_FOLDER_PATH})
     file(DOWNLOAD ${NCCL_URL} ${NCCL_TARBALL_PATH} STATUS NCCL_DOWNLOAD_RESULT)
     list(GET NCCL_DOWNLOAD_RESULT 0 NCCL_DOWNLOAD_FAILED)
 
     if(NCCL_DOWNLOAD_FAILED)
-      message(FATAL_ERROR "Could not download ${NCCL_URL}!")
-    endif()
+      message(WARNING "Could not download ${NCCL_URL}! Building NCCL library from scratch")
+      set(NCCL_URL "")
+    else()
+      execute_process(
+        COMMAND ${CMAKE_COMMAND} -E tar xzf ${NCCL_TARBALL_PATH}
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      )
+      execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${NCCL_EXTRACTED_TARBALL_PATH} ${NCCL_FOLDER_PATH})
+      execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/build)
+      execute_process(COMMAND ${CMAKE_COMMAND} -E remove ${NCCL_TARBALL_PATH})
 
-    if(EXISTS ${NCCL_FOLDER_PATH})
-      message(FATAL_ERROR "${NCCL_FOLDER_PATH} already exists!")
-    endif()
-
-    execute_process(
-      COMMAND ${CMAKE_COMMAND} -E tar xzf ${NCCL_TARBALL_PATH}
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    )
-    execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${NCCL_EXTRACTED_TARBALL_PATH} ${NCCL_FOLDER_PATH})
-    execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/build)
-    execute_process(COMMAND ${CMAKE_COMMAND} -E remove ${NCCL_TARBALL_PATH})
-
-    if(NOT EXISTS ${NCCL_FOLDER_PATH})
-      message(FATAL_ERROR "Could not extract tarball ${NCCL_TARBALL_PATH} to ${NCCL_FOLDER_PATH}!")
+      if(NOT EXISTS ${NCCL_FOLDER_PATH})
+        message(WARNING "Could not extract tarball ${NCCL_TARBALL_PATH} to ${NCCL_FOLDER_PATH}! Building NCCL library from scratch")
+        set(NCCL_URL "")
+      endif()
     endif()
   endif()
 
-  set(NCCL_INCLUDE_DIR ${NCCL_FOLDER_PATH}/include)
-  set(NCCL_LIB_DIR ${NCCL_FOLDER_PATH}/lib)
-  message(STATUS "NCCL library path: ${NCCL_FOLDER_PATH}")
-  add_library(nccl SHARED IMPORTED)
-  set_target_properties(nccl PROPERTIES IMPORTED_LOCATION ${NCCL_FOLDER_PATH})
+  # If the download and extraction of the tarball succeeded, use the precompiled NCCL library.
+  if(NCCL_URL)
+    set(NCCL_INCLUDE_DIR ${NCCL_FOLDER_PATH}/include)
+    set(NCCL_LIB_DIR ${NCCL_FOLDER_PATH}/lib)
+    message(STATUS "NCCL library path: ${NCCL_FOLDER_PATH}")
+    add_library(nccl SHARED IMPORTED)
+    set_target_properties(nccl PROPERTIES IMPORTED_LOCATION ${NCCL_FOLDER_PATH})
 
 
-  list(APPEND FLEXFLOW_INCLUDE_DIRS ${NCCL_INCLUDE_DIR})
-  list(APPEND FLEXFLOW_EXT_LIBRARIES ${NCCL_LIB_DIR}/libnccl${LIBEXT})
-  install(DIRECTORY ${NCCL_INCLUDE_DIR}/ DESTINATION include)
-	install(DIRECTORY ${NCCL_LIB_DIR}/ DESTINATION lib PATTERN "pkgconfig" EXCLUDE)
-else()
+    list(APPEND FLEXFLOW_INCLUDE_DIRS ${NCCL_INCLUDE_DIR})
+    list(APPEND FLEXFLOW_EXT_LIBRARIES ${NCCL_LIB_DIR}/libnccl${LIBEXT})
+    install(DIRECTORY ${NCCL_INCLUDE_DIR}/ DESTINATION include)
+  	install(DIRECTORY ${NCCL_LIB_DIR}/ DESTINATION lib PATTERN "pkgconfig" EXCLUDE)
+  endif()
+endif()
+
+if(NOT NCCL_URL)
   # Build NCCL from source
+  message(STATUS "Building NCCL from source")
   list(TRANSFORM CUDA_GENCODE PREPEND "NVCC_GENCODE=" OUTPUT_VARIABLE NCCL_BUILD_NVCC_GENCODE)
   
   ExternalProject_Add(${NCCL_NAME}
