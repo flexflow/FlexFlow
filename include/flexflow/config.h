@@ -23,7 +23,7 @@
 #include <cudnn.h>
 #elif defined(FF_USE_HIP_ROCM)
 #include <hipblas.h>
-#include <miopen.h>
+#include <miopen/miopen.h>
 #else
 #error "Unknown device"
 #endif

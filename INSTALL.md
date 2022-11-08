@@ -7,12 +7,26 @@ Clone the FlexFlow source code, and the third-party dependencies from GitHub.
 git clone --recursive https://github.com/flexflow/FlexFlow.git
 ```
 
-## 2. Install the Python dependencies
+## 2. Install system dependencies
+FlexFlow has system dependencies on cuda and/or rocm depending on which gpu backend you target. The gpu backend is configured by the cmake variable FF_GPU_BACKEND. By default, FlexFlow targets CUDA. `docker/base/Dockerfile` installs system dependencies in a standard ubuntu system.
+
+### Targeting CUDA - `FF_GPU_BACKEND=cuda`
+If you are targeting CUDA, FlexFlow requires CUDA and CUDNN to be installed. You can follow the standard nvidia installation instructions [CUDA](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) and [CUDNN](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html).
+
+### Targeting ROCM - `FF_GPU_BACKEND=hip_rocm`
+If you are targeting ROCM, FlexFlow requires a ROCM and HIP installation with a few additional packages. Note that this can be done on a system with or without an AMD GPU. You can follow the standard installation instructions [ROCM](https://docs.amd.com/bundle/ROCm-Installation-Guide-v5.3/page/Introduction_to_ROCm_Installation_Guide_for_Linux.html) and [HIP](https://docs.amd.com/bundle/HIP-Installation-Guide-v5.3/page/Introduction_to_HIP_Installation_Guide.html). When running `amdgpu-install`, install the use cases hip and rocm. You can avoid installing the kernel drivers (not necessary on systems without an AMD graphics card) with `--no-dkms` I.e. `amdgpu-install --usecase=hip,rocm --no-dkms`. Additionally, install the packages `hip-dev`, `hipblas`, `miopen-hip`, and `rocm-hip-sdk`.
+
+See `./docker/base/Dockerfile` for an example ROCM install.
+
+### Targeting CUDA through HIP - `FF_GPU_BACKEND=hip_cuda`
+This is not currently supported.
+
+## 3. Install the Python dependencies
 If you are planning to build the Python interface, you will need to install several additional Python libraries, please check [this](https://github.com/flexflow/FlexFlow/blob/master/requirements.txt) for details. If you are only looking to use the C++ interface, you can skip to the next section.
 
 **We recommend that you create your own `conda` environment and then install the Python dependencies, to avoid any version mismatching with your system pre-installed libraries.** 
 
-## 3. Configuring the FlexFlow build
+## 4. Configuring the FlexFlow build
 Before building FlexFlow, you should configure the build by editing the `config/config.linux` file. Leave it unchanged if you want to build with the default options. We recommend that you spend some time familiarizing with the available options. In particular, the main parameters are:
 * `CUDA_DIR` is used to specify the directory of CUDA. It is only required when CMake can not automatically detect the installation directory of CUDA.
 * `CUDNN_DIR` is used to specify the directory of CUDNN. It is only required when CUDNN is not installed in the CUDA directory.
@@ -26,7 +40,7 @@ Before building FlexFlow, you should configure the build by editing the `config/
 
 More options are available in cmake, please run `ccmake` and search for options starting with FF. 
 
-## 4. Build FlexFlow
+## 5. Build FlexFlow
 You can build FlexFlow in three ways: with CMake, with Make, and with `pip`. We recommend that you use the CMake building system as it will automatically build all C++ dependencies inlcuding NCCL and Legion. 
 
 ### Building FlexFlow with CMake
@@ -49,7 +63,7 @@ cd python
 make -j N
 ```
 
-## 5. Test FlexFlow
+## 6. Test FlexFlow
 After building FlexFlow, you can test it to ensure that the build completed without issue, and that your system is ready to run FlexFlow.
 
 ### Set the `FF_HOME` environment variable before running FlexFlow. To make it permanent, you can add the following line in ~/.bashrc.
@@ -80,7 +94,7 @@ For example, the AlexNet can be run as:
 
 Size of buffers is in MBs, e.g. for an 8GB gpu `-ll:fsize 8000`
 
-## 6. Install FlexFlow
+## 7. Install FlexFlow
 If you built/installed FlexFlow using `pip`, this step is not required. If you built using Make or CMake, install FlexFlow with:
 ```
 cd build
