@@ -1,7 +1,12 @@
 **Description of changes:**
 
-**Issues closed:**
+**Related Issues:**
 
+Linked Issues:
+- Issue #
+- Issue #
+
+Issues closed by this PR:
 - Closes #
 - Closes #
 
