@@ -1,3 +1,5 @@
+#! /usr/bin/env bash
+
 # git checkout dcr # We are using the dcr branch by default
 git submodule update --init --recursive
 source FC_env_setup.sh

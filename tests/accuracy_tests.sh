@@ -1,3 +1,4 @@
+#! /usr/bin/env bash
 iset -x
 set -e
 

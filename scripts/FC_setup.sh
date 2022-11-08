@@ -1,3 +1,5 @@
+#! /usr/bin/env bash
+
 git submodule update --init --recursive
 source FC_env_setup.sh
 

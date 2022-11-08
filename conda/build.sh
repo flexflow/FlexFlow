@@ -1,3 +1,5 @@
+#! /usr/bin/env bash
+
 # build flexflow
 export CXXFLAGS=$(echo $CXXFLAGS | sed 's/-O2//g')
 export CXXFLAGS=$(echo $CXXFLAGS | sed 's/-std=c++17//g')
