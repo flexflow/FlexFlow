@@ -17,29 +17,46 @@ RUN wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_6
     /opt/conda/bin/conda install conda-build conda-verify && \
     /opt/conda/bin/conda clean -ya
 
+# Optionally install HIP dependencies
+# Note that amd's docs say to also install the `hip-runtime-nvidia` package. This
+# package attempts to re-install cuda even though cuda is already installed
+# in the container. It also attempts to install packages for a graphical install.
+# For our container, we don't need `hip-runtime-nvidia`
+ARG FF_GPU_BACKEND "cuda"
+RUN  if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]; then \
+        echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Installing HIP dependencies"; \
+        wget https://repo.radeon.com/amdgpu-install/latest/ubuntu/bionic/amdgpu-install_22.20.50200-1_all.deb; \
+        apt-get install -y ./amdgpu-install_22.20.50200-1_all.deb; \
+        rm ./amdgpu-install_22.20.50200-1_all.deb; \
+        amdgpu-install -y --usecase=hip,rocm --no-dkms; \
+        apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk; \
+     else \
+        echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Skipping installing HIP dependencies"; \
+     fi
+RUN rm -rf /var/lib/apt/lists/*
+
+# Set env varas
 ENV PATH /opt/conda/bin:$PATH
 ENV CUDNN_DIR /usr/local/cuda
 ENV CUDA_DIR /usr/local/cuda
+ENV FF_HOME /usr/FlexFlow
 
+# Install python packages and other dependencies
 RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind11 numpy pandas keras-preprocessing 
 
-# Clone the repo, invalidating the cache in case of new commits
-ADD https://api.github.com/repos/flexflow/flexflow/git/refs/heads/master ff_version.json
-RUN cd /usr && \
-    git clone --recursive https://github.com/flexflow/FlexFlow.git
-ENV FF_HOME /usr/FlexFlow
-# overwrite configs file with those (potentially) modified by the user
-COPY ./config /usr/FlexFlow/config
+# Copy FlexFlow repository
+WORKDIR ${FF_HOME}
+COPY . .
 
-ARG n_build_cores
+# Args to build FlexFlow
+ARG N_BUILD_CORES
+ARG FF_CUDA_ARCH
 
 # Build and install C++ and Python versions of FlexFlow
-RUN cd /usr/FlexFlow && mkdir -p build && cd build && \
+RUN mkdir -p build && cd build && \
     ../config/config.linux && \
-    make -j $n_build_cores && \
+    make -j $N_BUILD_CORES && \
     ../config/config.linux && \
     make install
 
 ENTRYPOINT ["/bin/bash"]
-
-WORKDIR /usr/FlexFlow
