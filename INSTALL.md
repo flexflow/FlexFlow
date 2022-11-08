@@ -30,12 +30,13 @@ If you are planning to build the Python interface, you will need to install seve
 Before building FlexFlow, you should configure the build by editing the `config/config.linux` file. Leave it unchanged if you want to build with the default options. We recommend that you spend some time familiarizing with the available options. In particular, the main parameters are:
 * `CUDA_DIR` is used to specify the directory of CUDA. It is only required when CMake can not automatically detect the installation directory of CUDA.
 * `CUDNN_DIR` is used to specify the directory of CUDNN. It is only required when CUDNN is not installed in the CUDA directory.
-* `FF_CUDA_ARCH` is used to set the architecture of targeted GPUs, for example, the value can be 60 if the GPU architecture is Pascal. If it is not sepecified, FlexFlow is compiled for all architectures that are detecte on the machine. **If your machine does not have any GPU, you have to set FF_CUDA_ARCH to at least one valid architecture code**, since the compiler won't be able to detect the architecture(s) automatically.
+* `FF_CUDA_ARCH` is used to set the architecture of targeted GPUs, for example, the value can be 60 if the GPU architecture is Pascal. If it is not sepecified, FlexFlow is compiled for all architectures that are detecte on the machine. **If your machine does not have any GPU, you have to set FF_CUDA_ARCH to at least one valid architecture code**, since the compiler won't be able to detect the architecture(s) automatically. 
 * `FF_USE_PYTHON` controls whether to build the FlexFlow Python interface.
 * `FF_USE_NCCL` controls whether to build FlexFlow with NCCL support. By default, it is set to ON.
 * `FF_USE_GASNET` is used to enable distributed run of FlexFlow.
 * `FF_BUILD_EXAMPLES` controls whether to build all C++ example programs.
 * `FF_MAX_DIM` is used to set the maximum dimension of tensors, by default it is set to 4. 
+* `FF_USE_{NCCL,LEGION,ALL}_PRECOMPILED_LIBRARY`, controls whether to build FlexFlow using a pre-compiled version of the Legion, NCCL (if `FF_USE_NCCL` is `ON`), or both libraries . By default, `FF_USE_NCCL_PRECOMPILED_LIBRARY` and `FF_USE_LEGION_PRECOMPILED_LIBRARY` are both set to `ON`, allowing you to build FlexFlow faster. If you want to build Legion and NCCL from source, set them to `OFF`.
 
 More options are available in cmake, please run `ccmake` and search for options starting with FF. 
 
@@ -56,8 +57,11 @@ where N is the desired number of threads to use for the build.
 To build Flexflow with `pip`, run `pip install .` from the FlexFlow home directory. This command will build FlexFlow, and also install the Python interface as a Python module.
 
 ### Building FlexFlow with Make
-The Makefile we provide is mainly for development purpose, and may not be fully up to date. 
-
+The Makefile we provide is mainly for development purposes, and may not be fully up to date. To use it, run:
+```
+cd python
+make -j N
+```
 
 ## 6. Test FlexFlow
 After building FlexFlow, you can test it to ensure that the build completed without issue, and that your system is ready to run FlexFlow.

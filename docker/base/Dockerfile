@@ -1,6 +1,8 @@
 FROM nvidia/cuda:11.1.1-devel-ubuntu18.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binutils git zlib1g-dev
+
+RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binutils git zlib1g-dev lsb-release && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN wget -c -q http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-11.1-linux-x64-v8.0.5.39.tgz && \
     tar -xzf cudnn-11.1-linux-x64-v8.0.5.39.tgz -C /usr/local && \

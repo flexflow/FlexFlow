@@ -38,6 +38,8 @@ jobs:
         id: cuda-toolkit
         with:
           cuda: "11.1.1"
+          # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
+          use-github-cache: "false"
 
       - name: Install FlexFlow Dependencies
         run: .github/workflows/helpers/install_dependencies.sh
@@ -65,6 +67,7 @@ jobs:
           cd build
           ../config/config.linux
           sudo make install
+          sudo ldconfig
 
       - name: Check availability of Python flexflow.core module
         run: |
@@ -96,6 +99,7 @@ jobs:
         id: cuda-toolkit
         with:
           cuda: "11.1.1"
+          use-github-cache: "false"
 
       - name: Install FlexFlow Dependencies
         run: .github/workflows/helpers/install_dependencies.sh

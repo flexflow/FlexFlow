@@ -34,6 +34,11 @@ option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 # option for using Python
 option(FF_USE_PYTHON "Enable Python" ON)
 
+# option to download pre-compiled NCCL/Legion libraries
+option(FF_USE_NCCL_PRECOMPILED_LIBRARY "Enable use of NCCL pre-compiled library, if available" ON)
+option(FF_USE_LEGION_PRECOMPILED_LIBRARY "Enable use of Legion pre-compiled library, if available" ON)
+option(FF_USE_ALL_PRECOMPILED_LIBRARIES "Enable use of all pre-compiled libraries, if available" OFF)
+
 # option for using Python
 option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)
 set(FF_GASNET_CONDUITS aries udp mpi ibv ucx)
@@ -81,6 +86,17 @@ list(APPEND NVCC_FLAGS
 add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
 link_libraries(${LD_FLAGS})
+
+# Detect OS type and Linux version (if it applies)
+set(LINUX_VERSION "")
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  find_program(LSB_RELEASE_EXEC lsb_release)
+  if(LSB_RELEASE_EXEC)
+    execute_process(COMMAND ${LSB_RELEASE_EXEC} -r --short 
+                    OUTPUT_VARIABLE LINUX_VERSION 
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  endif()
+endif()
 
 if(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
   set(ROCM_PATH "/opt/rocm" CACHE STRING "Default ROCM installation directory.")
@@ -271,7 +287,18 @@ else()
 endif()
 
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-target_link_libraries(flexflow ${LEGION_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
+# LEGION_URL is defined if we found a precompiled Legion library to download
+if(LEGION_URL)
+  # Legion builds produce two library files: one for the Legion runtime and one for the Realm runtime. 
+  # When linking FlexFlow to a precompiled version of Legion, we need to manually link to both library files.
+  target_link_libraries(flexflow ${LEGION_LIBRARY} ${REALM_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
+  add_dependencies(flexflow ${LEGION_NAME})
+else()
+  # When building Legion from source, we do so by calling add_subdirectory(), and obtain a library with both the
+  # Legion and Realm runtimes. The library's name is saved into the LEGION_LIBRARY variable. Hence, we only need
+  # to link FlexFlow to ${LEGION_LIBRARY}
+  target_link_libraries(flexflow ${LEGION_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
+endif()
 
 if(FF_USE_NCCL)
   add_dependencies(flexflow ${NCCL_NAME})
