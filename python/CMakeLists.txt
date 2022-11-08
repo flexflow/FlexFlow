@@ -47,8 +47,8 @@ if(FF_USE_EXTERNAL_LEGION)
   set(LEGION_HEADER_DIR ${LEGION_ROOT}/include)
   set(LEGION_DEFINE_DIR ${LEGION_ROOT}/include)
 else()
-  set(LEGION_HEADER_DIR ${CMAKE_SOURCE_DIR}/deps/legion/runtime)
-  set(LEGION_DEFINE_DIR ${CMAKE_BINARY_DIR}/deps/legion/runtime)
+  set(LEGION_HEADER_DIR ${LEGION_INCLUDE_DIR})
+  set(LEGION_DEFINE_DIR ${LEGION_DEF_DIR})
 endif()
 add_custom_command(TARGET ${project_target} 
   PRE_BUILD	
