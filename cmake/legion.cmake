@@ -79,8 +79,7 @@ else()
 			list(GET LEGION_DOWNLOAD_RESULT 0 LEGION_DOWNLOAD_FAILED)
 
 			if(LEGION_DOWNLOAD_FAILED)
-				message(WARNING "Could not download ${LEGION_URL}! Building Legion library from scratch")
-				set(LEGION_URL "")
+				message(FATAL_ERROR "Could not download pre-built Legion library from URL: ${LEGION_URL}! ")
 			else()
 				execute_process(
 					COMMAND ${CMAKE_COMMAND} -E tar xzf ${LEGION_TARBALL_PATH}
@@ -91,35 +90,39 @@ else()
 				execute_process(COMMAND ${CMAKE_COMMAND} -E remove ${LEGION_TARBALL_PATH})
 
 				if(NOT EXISTS ${LEGION_FOLDER_PATH})
-					message(WARNING "Could not extract tarball ${LEGION_TARBALL_PATH} to ${LEGION_FOLDER_PATH}! Building Legion library from scratch")
-					set(LEGION_URL "")
+					message(FATAL_ERROR "Could not extract pre-built Legion tarball ${LEGION_TARBALL_PATH} to ${LEGION_FOLDER_PATH}!")
 				endif()
 				execute_process(COMMAND ${CMAKE_COMMAND} -E touch ${LEGION_FOLDER_PATH}/download_succeeded)
 			endif()
 		endif()
 
 		# If the download and extraction of the tarball succeeded, use the precompiled Legion library.
-		if(LEGION_URL)
-			SET(LEGION_INCLUDE_DIR ${LEGION_FOLDER_PATH}/include)
-			SET(LEGION_DEF_DIR ${LEGION_INCLUDE_DIR})
-			SET(LEGION_BIN_DIR ${LEGION_FOLDER_PATH}/bin/)
-			SET(LEGION_LIB_DIR ${LEGION_FOLDER_PATH}/lib)
-			SET(LEGION_SHARE_DIR ${LEGION_FOLDER_PATH}/share/)
-			message(STATUS "Legion library path: ${LEGION_FOLDER_PATH}")
+		SET(LEGION_INCLUDE_DIR ${LEGION_FOLDER_PATH}/include)
+		SET(LEGION_DEF_DIR ${LEGION_INCLUDE_DIR})
+		SET(LEGION_BIN_DIR ${LEGION_FOLDER_PATH}/bin/)
+		SET(LEGION_LIB_DIR ${LEGION_FOLDER_PATH}/lib)
+		SET(LEGION_SHARE_DIR ${LEGION_FOLDER_PATH}/share/)
+		message(STATUS "Legion library path: ${LEGION_FOLDER_PATH}")
 
-			add_library(${LEGION_LIBRARY} SHARED IMPORTED)
-			add_library(${REALM_LIBRARY} SHARED IMPORTED)
-			set_target_properties(${LEGION_LIBRARY} PROPERTIES IMPORTED_LOCATION ${LEGION_LIB_DIR}/liblegion${LIBEXT})
-			set_target_properties(${REALM_LIBRARY} PROPERTIES IMPORTED_LOCATION ${LEGION_LIB_DIR}/librealm${LIBEXT})
+		add_library(${LEGION_LIBRARY} SHARED IMPORTED)
+		add_library(${REALM_LIBRARY} SHARED IMPORTED)
+		set_target_properties(${LEGION_LIBRARY} PROPERTIES IMPORTED_LOCATION ${LEGION_LIB_DIR}/liblegion${LIBEXT})
+		set_target_properties(${REALM_LIBRARY} PROPERTIES IMPORTED_LOCATION ${LEGION_LIB_DIR}/librealm${LIBEXT})
+	
+		list(APPEND FLEXFLOW_INCLUDE_DIRS 
+			${LEGION_INCLUDE_DIR} 
+			${LEGION_INCLUDE_DIR}/hip_cuda_compat 
+			${LEGION_INCLUDE_DIR}/legion 
+			${LEGION_INCLUDE_DIR}/mappers 
+			${LEGION_INCLUDE_DIR}/mathtypes 
+			${LEGION_INCLUDE_DIR}/realm
+		)
 		
-			list(APPEND FLEXFLOW_INCLUDE_DIRS ${LEGION_INCLUDE_DIR} ${LEGION_INCLUDE_DIR}/hip_cuda_compat ${LEGION_INCLUDE_DIR}/legion ${LEGION_INCLUDE_DIR}/mappers ${LEGION_INCLUDE_DIR}/mathtypes ${LEGION_INCLUDE_DIR}/realm)
-			
-			install(DIRECTORY ${LEGION_SHARE_DIR} DESTINATION share)
-			install(DIRECTORY ${LEGION_BIN_DIR} DESTINATION bin)
-			install(DIRECTORY ${LEGION_LIB_DIR}/ DESTINATION lib)
-		endif()
-	endif()
-	if(NOT LEGION_URL)
+		install(DIRECTORY ${LEGION_SHARE_DIR} DESTINATION share)
+		install(DIRECTORY ${LEGION_BIN_DIR} DESTINATION bin)
+		install(DIRECTORY ${LEGION_LIB_DIR}/ DESTINATION lib)
+		
+	else()
 		# Build Legion from source
 		message(STATUS "Building Legion from source")
 		if(FF_USE_PYTHON)

@@ -216,10 +216,16 @@ else()
 endif()
 
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
+# LEGION_URL is defined if we found a precompiled Legion library to download
 if(LEGION_URL)
+  # Legion builds produce two library files: one for the Legion runtime and one for the Realm runtime. 
+  # When linking FlexFlow to a precompiled version of Legion, we need to manually link to both library files.
   target_link_libraries(flexflow ${LEGION_LIBRARY} ${REALM_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
   add_dependencies(flexflow ${LEGION_DOWNLOAD})
 else()
+  # When building Legion from source, we do so by calling add_subdirectory(), and obtain a library with both the
+  # Legion and Realm runtimes. The library's name is saved into the LEGION_LIBRARY variable. Hence, we only need
+  # to link FlexFlow to ${LEGION_LIBRARY}
   target_link_libraries(flexflow ${LEGION_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
 endif()
 

@@ -61,8 +61,7 @@ if(NCCL_URL)
     list(GET NCCL_DOWNLOAD_RESULT 0 NCCL_DOWNLOAD_FAILED)
 
     if(NCCL_DOWNLOAD_FAILED)
-      message(WARNING "Could not download ${NCCL_URL}! Building NCCL library from scratch")
-      set(NCCL_URL "")
+      message(FATAL_ERROR "Could not download pre-built NCCL library from URL: ${NCCL_URL}! ")
     else()
       execute_process(
         COMMAND ${CMAKE_COMMAND} -E tar xzf ${NCCL_TARBALL_PATH}
@@ -73,30 +72,25 @@ if(NCCL_URL)
       execute_process(COMMAND ${CMAKE_COMMAND} -E remove ${NCCL_TARBALL_PATH})
 
       if(NOT EXISTS ${NCCL_FOLDER_PATH})
-        message(WARNING "Could not extract tarball ${NCCL_TARBALL_PATH} to ${NCCL_FOLDER_PATH}! Building NCCL library from scratch")
-        set(NCCL_URL "")
+        message(FATAL_ERROR "Could not extract pre-built NCCL tarball ${NCCL_TARBALL_PATH} to ${NCCL_FOLDER_PATH}!")
       endif()
       execute_process(COMMAND ${CMAKE_COMMAND} -E touch ${NCCL_FOLDER_PATH}/download_succeeded)
     endif()
   endif()
 
   # If the download and extraction of the tarball succeeded, use the precompiled NCCL library.
-  if(NCCL_URL)
-    set(NCCL_INCLUDE_DIR ${NCCL_FOLDER_PATH}/include)
-    set(NCCL_LIB_DIR ${NCCL_FOLDER_PATH}/lib)
-    message(STATUS "NCCL library path: ${NCCL_FOLDER_PATH}")
-    add_library(nccl SHARED IMPORTED)
-    set_target_properties(nccl PROPERTIES IMPORTED_LOCATION ${NCCL_FOLDER_PATH})
+  set(NCCL_INCLUDE_DIR ${NCCL_FOLDER_PATH}/include)
+  set(NCCL_LIB_DIR ${NCCL_FOLDER_PATH}/lib)
+  message(STATUS "NCCL library path: ${NCCL_FOLDER_PATH}")
+  add_library(nccl SHARED IMPORTED)
+  set_target_properties(nccl PROPERTIES IMPORTED_LOCATION ${NCCL_FOLDER_PATH})
 
-
-    list(APPEND FLEXFLOW_INCLUDE_DIRS ${NCCL_INCLUDE_DIR})
-    list(APPEND FLEXFLOW_EXT_LIBRARIES ${NCCL_LIB_DIR}/libnccl${LIBEXT})
-    install(DIRECTORY ${NCCL_INCLUDE_DIR}/ DESTINATION include)
-  	install(DIRECTORY ${NCCL_LIB_DIR}/ DESTINATION lib PATTERN "pkgconfig" EXCLUDE)
-  endif()
-endif()
-
-if(NOT NCCL_URL)
+  list(APPEND FLEXFLOW_INCLUDE_DIRS ${NCCL_INCLUDE_DIR})
+  list(APPEND FLEXFLOW_EXT_LIBRARIES ${NCCL_LIB_DIR}/libnccl${LIBEXT})
+  install(DIRECTORY ${NCCL_INCLUDE_DIR}/ DESTINATION include)
+  install(DIRECTORY ${NCCL_LIB_DIR}/ DESTINATION lib PATTERN "pkgconfig" EXCLUDE)
+  
+else()
   # Build NCCL from source
   message(STATUS "Building NCCL from source")
   list(TRANSFORM CUDA_GENCODE PREPEND "NVCC_GENCODE=" OUTPUT_VARIABLE NCCL_BUILD_NVCC_GENCODE)
