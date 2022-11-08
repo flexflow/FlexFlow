@@ -44,7 +44,7 @@ jobs:
         run: |
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
-          sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
+          export FF_CUDA_ARCH=70
           pip install . --verbose
 
       - name: Check availability of Python flexflow.core module
