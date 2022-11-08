@@ -61,5 +61,5 @@ docker build --build-arg N_BUILD_CORES=$n_build_cores --build-arg "FF_CUDA_ARCH=
 image=${1:-base}
 
 if [[ "$image" == "mt5" ]]; then
-  docker build -t flexflow-mt5 -f mt5/Dockerfile .
+  docker build -t flexflow-mt5 -f docker/mt5/Dockerfile .
 fi
