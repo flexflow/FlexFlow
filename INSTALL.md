@@ -19,7 +19,7 @@ If you are targeting ROCM, FlexFlow requires a ROCM and HIP installation with a 
 See `./docker/base/Dockerfile` for an example ROCM install.
 
 ### Targeting CUDA through HIP - `FF_GPU_BACKEND=hip_cuda`
-Follow both the CUDA and ROCM instructions.
+This is not currently supported.
 
 ## 3. Install the Python dependencies
 If you are planning to build the Python interface, you will need to install several additional Python libraries, please check [this](https://github.com/flexflow/FlexFlow/blob/master/requirements.txt) for details. If you are only looking to use the C++ interface, you can skip to the next section.
