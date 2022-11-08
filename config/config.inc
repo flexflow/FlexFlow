@@ -1,6 +1,5 @@
 #!/bin/bash
 
-function run_cmake() {
 # set CC and CXX
 if [ -n "$CC" ]; then
   SET_CC="-DCMAKE_C_COMPILER=${CC}"
@@ -41,7 +40,8 @@ fi
 # set CUDA dir
 if [ -n "$CUDA_DIR" ]; then
   SET_CUDA="-DCUDA_PATH=${CUDA_DIR}"
-  SET_CUDA_LIB_PATH="CUDA_PATH=${CUDA_DIR}/lib64/stubs"
+  CUDA_PATH="${CUDA_DIR}/lib64/stubs"
+  SET_CUDA_LIB_PATH="CUDA_PATH=${CUDA_PATH}"
 fi
 
 # set cudnn dir
@@ -132,8 +132,8 @@ if [ -n "$FF_GPU_BACKEND" ]; then
   # to set these values but this is a sufficient compromise.
   if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]; then
     if [ -n "$SET_CXX" ]; then
-      echo "FF_GPU_BACKEND is set to ${FF_GPU_BACKEND}. Normally we would set the compiler and linker"
-      echo "to hipcc, but the compiler is already set to ${SET_CXX}".
+      echo "FF_GPU_BACKEND is set to ${FF_GPU_BACKEND}. Normally we would set the compiler and linker" 1>&2
+      echo "to hipcc, but the compiler is already set to ${SET_CXX}". 1>&2
     else
       if [ "$FF_GPU_BACKEND" = "hip_cuda" ]; then
         # Configuring hipcc for nvidia:
@@ -158,8 +158,11 @@ if [ -n "$FF_GPU_BACKEND" ]; then
   fi
 fi
 
+CMAKE_FLAGS="-DCUDA_USE_STATIC_CUDA_RUNTIME=OFF ${SET_CC} ${SET_CXX} ${SET_INSTALL_DIR} ${SET_BUILD} ${SET_CUDA_ARCH} ${SET_CUDA} ${SET_CUDNN} ${SET_PYTHON} ${SET_NCCL} ${SET_GASNET} ${SET_EXAMPLES} ${SET_BUILD_UNIT_TESTS} ${SET_AVX2} ${SET_MAX_DIM} ${SET_ROCM_PATH} ${SET_FF_GPU_BACKEND}"
+
+function run_cmake() {
 SRC_LOCATION=${SRC_LOCATION:=`dirname $0`/../}
-CMAKE_COMMAND="${SET_CC_FLAGS} ${SET_NVCC_FLAGS} ${SET_LD_FLAGS} ${SET_CUDA_LIB_PATH} cmake -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF ${SET_CC} ${SET_CXX} ${SET_INSTALL_DIR} ${SET_BUILD} ${SET_CUDA_ARCH} ${SET_CUDA} ${SET_CUDNN} ${SET_PYTHON} ${SET_NCCL} ${SET_GASNET} ${SET_EXAMPLES} ${SET_BUILD_UNIT_TESTS} ${SET_AVX2} ${SET_MAX_DIM} ${SET_ROCM_PATH} ${SET_FF_GPU_BACKEND} $* ${SRC_LOCATION}"
+CMAKE_COMMAND="${SET_CC_FLAGS} ${SET_NVCC_FLAGS} ${SET_LD_FLAGS} ${SET_CUDA_LIB_PATH} cmake ${CMAKE_FLAGS} $* ${SRC_LOCATION}"
 echo $CMAKE_COMMAND
 eval $CMAKE_COMMAND
 }

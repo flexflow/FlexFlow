@@ -1,7 +1,5 @@
 #!/bin/bash
 
-echo " Defaults for Linux machine"
-
 # set the CC and CXX, usually it is not needed as cmake can detect it
 # set CC and CXX to mpicc and mpic++ when enable gasnet
 # CC=mpicc
@@ -62,4 +60,11 @@ else
 fi
 
 . $(dirname $0)/config.inc
-run_cmake $*
+
+if [ -n "$1" ]; then
+    # You can pass the name of the variable you want to print out as $1. This
+    # is used in the python setup script to get the cmake config
+    echo "${!1}"
+else
+    run_cmake $*
+fi
