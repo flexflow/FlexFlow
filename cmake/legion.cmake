@@ -66,37 +66,22 @@ else()
 		# Download and import pre-compiled Legion library
 		message(STATUS "Using pre-compiled Legion library")
 		message(STATUS "LEGION_URL: ${LEGION_URL}")
+		set(LEGION_NAME legion)
 		set(LEGION_LIBRARY legion)
 		set(REALM_LIBRARY realm)
-		set(LEGION_DOWNLOAD legion)
 
-		set(LEGION_TARBALL_PATH ${CMAKE_BINARY_DIR}/deps/${LEGION_DOWNLOAD}.tar.gz)
-		set(LEGION_EXTRACTED_TARBALL_PATH ${CMAKE_BINARY_DIR}/build/export/${LEGION_DOWNLOAD})
-		set(LEGION_FOLDER_PATH ${CMAKE_BINARY_DIR}/deps/${LEGION_DOWNLOAD})
-		# If LEGION_FOLDER_PATH already exists (this is the case when calling `make install`), don't re-download.
-		if(NOT EXISTS ${LEGION_FOLDER_PATH}/download_succeeded)
-			file(DOWNLOAD ${LEGION_URL} ${LEGION_TARBALL_PATH} STATUS LEGION_DOWNLOAD_RESULT)
-			list(GET LEGION_DOWNLOAD_RESULT 0 LEGION_DOWNLOAD_FAILED)
-
-			if(LEGION_DOWNLOAD_FAILED)
-				message(FATAL_ERROR "Could not download pre-built Legion library from URL: ${LEGION_URL}! ")
-			else()
-				execute_process(
-					COMMAND ${CMAKE_COMMAND} -E tar xzf ${LEGION_TARBALL_PATH}
-					WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-				)
-				execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${LEGION_EXTRACTED_TARBALL_PATH} ${LEGION_FOLDER_PATH})
-				execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/build)
-				execute_process(COMMAND ${CMAKE_COMMAND} -E remove ${LEGION_TARBALL_PATH})
-
-				if(NOT EXISTS ${LEGION_FOLDER_PATH})
-					message(FATAL_ERROR "Could not extract pre-built Legion tarball ${LEGION_TARBALL_PATH} to ${LEGION_FOLDER_PATH}!")
-				endif()
-				execute_process(COMMAND ${CMAKE_COMMAND} -E touch ${LEGION_FOLDER_PATH}/download_succeeded)
-			endif()
+		include(FetchContent)
+		FetchContent_Declare(${LEGION_NAME}
+			URL ${LEGION_URL}
+			CONFIGURE_COMMAND ""
+			BUILD_COMMAND ""
+		)
+		FetchContent_GetProperties(${LEGION_NAME})
+		if(NOT ${LEGION_NAME}_POPULATED)
+			FetchContent_Populate(${LEGION_NAME})
 		endif()
-
-		# If the download and extraction of the tarball succeeded, use the precompiled Legion library.
+		
+		set(LEGION_FOLDER_PATH ${${LEGION_NAME}_SOURCE_DIR}/export/${LEGION_NAME})
 		SET(LEGION_INCLUDE_DIR ${LEGION_FOLDER_PATH}/include)
 		SET(LEGION_DEF_DIR ${LEGION_INCLUDE_DIR})
 		SET(LEGION_BIN_DIR ${LEGION_FOLDER_PATH}/bin/)

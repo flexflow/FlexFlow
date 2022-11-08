@@ -52,33 +52,18 @@ if(NCCL_URL)
   message(STATUS "Using pre-compiled NCCL library")
   message(STATUS "NCCL_URL: ${NCCL_URL}")
 
-  set(NCCL_TARBALL_PATH ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}.tar.gz)
-  set(NCCL_EXTRACTED_TARBALL_PATH ${CMAKE_BINARY_DIR}/build/deps/${NCCL_NAME})
-  set(NCCL_FOLDER_PATH ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME})
-  # If NCCL_FOLDER_PATH already exists (this is the case when calling `make install`), don't re-download.
-  if(NOT EXISTS ${NCCL_FOLDER_PATH}/download_succeeded)
-    file(DOWNLOAD ${NCCL_URL} ${NCCL_TARBALL_PATH} STATUS NCCL_DOWNLOAD_RESULT)
-    list(GET NCCL_DOWNLOAD_RESULT 0 NCCL_DOWNLOAD_FAILED)
-
-    if(NCCL_DOWNLOAD_FAILED)
-      message(FATAL_ERROR "Could not download pre-built NCCL library from URL: ${NCCL_URL}! ")
-    else()
-      execute_process(
-        COMMAND ${CMAKE_COMMAND} -E tar xzf ${NCCL_TARBALL_PATH}
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-      )
-      execute_process(COMMAND ${CMAKE_COMMAND} -E rename ${NCCL_EXTRACTED_TARBALL_PATH} ${NCCL_FOLDER_PATH})
-      execute_process(COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/build)
-      execute_process(COMMAND ${CMAKE_COMMAND} -E remove ${NCCL_TARBALL_PATH})
-
-      if(NOT EXISTS ${NCCL_FOLDER_PATH})
-        message(FATAL_ERROR "Could not extract pre-built NCCL tarball ${NCCL_TARBALL_PATH} to ${NCCL_FOLDER_PATH}!")
-      endif()
-      execute_process(COMMAND ${CMAKE_COMMAND} -E touch ${NCCL_FOLDER_PATH}/download_succeeded)
-    endif()
+  include(FetchContent)
+  FetchContent_Declare(${NCCL_NAME}
+    URL ${NCCL_URL}
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+  )
+  FetchContent_GetProperties(${NCCL_NAME})
+  if(NOT ${NCCL_NAME}_POPULATED)
+    FetchContent_Populate(${NCCL_NAME})
   endif()
-
-  # If the download and extraction of the tarball succeeded, use the precompiled NCCL library.
+  
+  set(NCCL_FOLDER_PATH ${${NCCL_NAME}_SOURCE_DIR}/deps/${NCCL_NAME})
   set(NCCL_INCLUDE_DIR ${NCCL_FOLDER_PATH}/include)
   set(NCCL_LIB_DIR ${NCCL_FOLDER_PATH}/lib)
   message(STATUS "NCCL library path: ${NCCL_FOLDER_PATH}")
