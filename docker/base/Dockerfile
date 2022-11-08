@@ -1,7 +1,7 @@
 FROM nvidia/cuda:11.1.1-devel-ubuntu18.04
 
 
-RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binutils git zlib1g-dev lsb-release && \
+RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binutils git zlib1g-dev lsb-release nano libhdf5-dev && \
     rm -rf /var/lib/apt/lists/*
 
 RUN wget -c -q http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-11.1-linux-x64-v8.0.5.39.tgz && \
@@ -34,21 +34,22 @@ RUN  if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]
      else \
         echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Skipping installing HIP dependencies"; \
      fi
-
 RUN rm -rf /var/lib/apt/lists/*
 
-RUN /opt/conda/bin/conda install cmake make pillow
-RUN /opt/conda/bin/conda install -c conda-forge numpy keras-preprocessing pybind11 cmake-build-extension
-
+# Set env varas
 ENV PATH /opt/conda/bin:$PATH
 ENV CUDNN_DIR /usr/local/cuda
 ENV CUDA_DIR /usr/local/cuda
-
 ENV FF_HOME /usr/FlexFlow
-WORKDIR ${FF_HOME}
 
+# Install python packages and other dependencies
+RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind11 numpy pandas keras-preprocessing 
+
+# Copy FlexFlow repository
+WORKDIR ${FF_HOME}
 COPY . .
 
+# Args to build FlexFlow
 ARG N_BUILD_CORES
 ARG FF_CUDA_ARCH
 
