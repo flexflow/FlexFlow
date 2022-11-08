@@ -3,7 +3,7 @@ set(NCCL_NAME nccl)
 # message("NCCL_CUDA_ARCH: ${NCCL_CUDA_ARCH}")
 
 set(NCCL_URL "")
-if(FF_USE_PRECOMPILED_LIBRARIES)
+if(FF_USE_NCCL_PRECOMPILED_LIBRARY OR FF_USE_ALL_PRECOMPILED_LIBRARIES)
   if(LINUX_VERSION MATCHES "20.04")
     if (CUDA_VERSION VERSION_EQUAL "11.0")
       set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-20.04_11.0.3.tar.gz")

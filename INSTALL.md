@@ -22,7 +22,7 @@ Before building FlexFlow, you should configure the build by editing the `config/
 * `FF_USE_GASNET` is used to enable distributed run of FlexFlow.
 * `FF_BUILD_EXAMPLES` controls whether to build all C++ example programs.
 * `FF_MAX_DIM` is used to set the maximum dimension of tensors, by default it is set to 4. 
-* `FF_USE_PRECOMPILED_LIBRARIES` controls whether to build FlexFlow using a pre-compiled version of the Legion library and the NCCL library (if `FF_USE_NCCL` is `ON`). By default set to `ON`, this option will allow you to build FlexFlow faster. If you want to build Legion and NCCL from source, set it to `OFF`.
+* `FF_USE_{NCCL,LEGION,ALL}_PRECOMPILED_LIBRARY`, controls whether to build FlexFlow using a pre-compiled version of the Legion, NCCL (if `FF_USE_NCCL` is `ON`), or both libraries . By default, `FF_USE_NCCL_PRECOMPILED_LIBRARY` and `FF_USE_LEGION_PRECOMPILED_LIBRARY` are both set to `ON`, allowing you to build FlexFlow faster. If you want to build Legion and NCCL from source, set them to `OFF`.
 
 More options are available in cmake, please run `ccmake` and search for options starting with FF. 
 

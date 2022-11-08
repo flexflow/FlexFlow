@@ -35,7 +35,9 @@ option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 option(FF_USE_PYTHON "Enable Python" ON)
 
 # option to download pre-compiled NCCL/Legion libraries
-option(FF_USE_PRECOMPILED_LIBRARIES "Enable use of pre-compiled NCCL & Legion libraries, if available" ON)
+option(FF_USE_NCCL_PRECOMPILED_LIBRARY "Enable use of NCCL pre-compiled library, if available" ON)
+option(FF_USE_LEGION_PRECOMPILED_LIBRARY "Enable use of Legion pre-compiled library, if available" ON)
+option(FF_USE_ALL_PRECOMPILED_LIBRARIES "Enable use of all pre-compiled libraries, if available" OFF)
 
 # option for using Python
 option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)
