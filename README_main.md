@@ -69,7 +69,7 @@ Similar to the PyTorch front-end, FlexFlow also supports training existing ONNX 
 **More FlexFlow ONNX examples**: see the [ONNX examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/keras).
 
 ## C++ Interface
-For users that prefer to program in C/C++. FlexFlow supports a C++ program inference that is equivalent to its Python APIs.
+For users that prefer to program in C/C++. FlexFlow supports a C++ program interface that is equivalent to its Python APIs.
 
 **More FlexFlow C++ examples**: see the [C++ examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/c++).
 
