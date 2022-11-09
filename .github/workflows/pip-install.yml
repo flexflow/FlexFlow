@@ -47,7 +47,6 @@ jobs:
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
           export FF_CUDA_ARCH=70
-          export FF_USE_ALL_PREBUILT_LIBRARIES=ON
           pip install . --verbose
 
       - name: Check availability of Python flexflow.core module

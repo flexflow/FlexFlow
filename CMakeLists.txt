@@ -36,7 +36,7 @@ option(FF_USE_PYTHON "Enable Python" ON)
 
 # option to download pre-compiled NCCL/Legion libraries
 option(FF_USE_PREBUILT_NCCL "Enable use of NCCL pre-compiled library, if available" ON)
-option(FF_USE_PREBUILT_LEGION "Enable use of Legion pre-compiled library, if available" OFF)
+option(FF_USE_PREBUILT_LEGION "Enable use of Legion pre-compiled library, if available" ON)
 option(FF_USE_ALL_PREBUILT_LIBRARIES "Enable use of all pre-compiled libraries, if available" OFF)
 
 # option for using Python
