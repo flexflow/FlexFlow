@@ -95,8 +95,12 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     execute_process(COMMAND ${LSB_RELEASE_EXEC} -r --short 
                     OUTPUT_VARIABLE LINUX_VERSION 
                     OUTPUT_STRIP_TRAILING_WHITESPACE)
+    message(STATUS "Linux Version: ${LINUX_VERSION}")
   endif()
 endif()
+
+# Detect CPU architecture
+message(STATUS "CPU architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
 if(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
   set(ROCM_PATH "/opt/rocm" CACHE STRING "Default ROCM installation directory.")
