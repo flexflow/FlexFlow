@@ -35,9 +35,9 @@ option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
 option(FF_USE_PYTHON "Enable Python" ON)
 
 # option to download pre-compiled NCCL/Legion libraries
-option(FF_USE_NCCL_PRECOMPILED_LIBRARY "Enable use of NCCL pre-compiled library, if available" ON)
-option(FF_USE_LEGION_PRECOMPILED_LIBRARY "Enable use of Legion pre-compiled library, if available" ON)
-option(FF_USE_ALL_PRECOMPILED_LIBRARIES "Enable use of all pre-compiled libraries, if available" OFF)
+option(FF_USE_PREBUILT_NCCL "Enable use of NCCL pre-compiled library, if available" ON)
+option(FF_USE_PREBUILT_LEGION "Enable use of Legion pre-compiled library, if available" ON)
+option(FF_USE_ALL_PREBUILT_LIBRARIES "Enable use of all pre-compiled libraries, if available" OFF)
 
 # option for using Python
 option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)
@@ -95,8 +95,12 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     execute_process(COMMAND ${LSB_RELEASE_EXEC} -r --short 
                     OUTPUT_VARIABLE LINUX_VERSION 
                     OUTPUT_STRIP_TRAILING_WHITESPACE)
+    message(STATUS "Linux Version: ${LINUX_VERSION}")
   endif()
 endif()
+
+# Detect CPU architecture
+message(STATUS "CPU architecture: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
 
 if(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
   set(ROCM_PATH "/opt/rocm" CACHE STRING "Default ROCM installation directory.")
