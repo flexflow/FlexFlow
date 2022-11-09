@@ -54,7 +54,7 @@ void FlexFlow::top_level_task(Task const *task,
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
-  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
+  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics, CompMode.COMP_MODE_INFERENCE);
   ff.init_operators();
   // Start timer
   {
@@ -64,18 +64,18 @@ void FlexFlow::top_level_task(Task const *task,
     future.get_void_result();
   }
   double ts_start = Realm::Clock::current_time_in_microseconds();
-  for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
-    ff.reset_metrics();
-    int iterations = 128;
-    for (int iter = 0; iter < iterations; iter++) {
-      runtime->begin_trace(ctx, 111 /*trace_id*/);
-      ff.forward();
-      ff.zero_gradients();
-      // ff.backward();
-      // ff.update();
-      runtime->end_trace(ctx, 111 /*trace_id*/);
-    }
+  //for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
+  ff.reset_metrics();
+  int iterations = 128;
+  for (int iter = 0; iter < iterations; iter++) {
+    runtime->begin_trace(ctx, 111 /*trace_id*/);
+    ff.forward();
+    ff.zero_gradients();
+    // ff.backward();
+    // ff.update();
+    runtime->end_trace(ctx, 111 /*trace_id*/);
   }
+  //}
   // End timer
   {
     runtime->issue_execution_fence(ctx);
