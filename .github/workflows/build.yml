@@ -65,7 +65,7 @@ jobs:
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
           cd build
-          ../config/config.linux
+          FF_CUDA_ARCH=70 FF_BUILD_ALL_EXAMPLES=ON FF_BUILD_UNIT_TESTS=ON FF_USE_ALL_PREBUILT_LIBRARIES=ON ../config/config.linux
           sudo make install
           sudo ldconfig
 
