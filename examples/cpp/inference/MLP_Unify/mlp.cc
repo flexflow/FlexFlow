@@ -54,7 +54,7 @@ void FlexFlow::top_level_task(Task const *task,
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
-  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics, CompMode.COMP_MODE_INFERENCE);
+  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics, CompMode::COMP_MODE_INFERENCE);
   ff.init_operators();
   // Start timer
   {
