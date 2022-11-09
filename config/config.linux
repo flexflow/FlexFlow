@@ -41,8 +41,11 @@ FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES:-OFF}
 FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS:-OFF}
 
 # use precompiled NCCL and Legion libraries, where available
-FF_USE_NCCL_PRECOMPILED_LIBRARY=ON
-FF_USE_LEGION_PRECOMPILED_LIBRARY=ON
+FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL:-ON}
+FF_USE_PREBUILT_LEGION=${FF_USE_PREBUILT_LEGION:-ON}
+# use the flag below to use both the NCCL and Legion pre-built libraries.
+# when the flag below is set to ON, the two flags above are ignored.
+FF_USE_ALL_PREBUILT_LIBRARIES=${FF_USE_ALL_PREBUILT_LIBRARIES:-OFF}
 
 # enable avx2
 FF_USE_AVX2=${FF_USE_AVX2:-OFF}

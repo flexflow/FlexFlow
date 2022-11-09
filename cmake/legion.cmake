@@ -18,7 +18,7 @@ if(FF_USE_EXTERNAL_LEGION)
 else()
 	# Check availability of precompiled Legion library
 	set(LEGION_URL "")
-	if(FF_USE_LEGION_PRECOMPILED_LIBRARY OR FF_USE_ALL_PRECOMPILED_LIBRARIES)
+	if((FF_USE_PREBUILT_LEGION OR FF_USE_ALL_PREBUILT_LIBRARIES) AND CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x86_64")
 		if(LINUX_VERSION MATCHES "20.04")
 		  if (CUDA_VERSION VERSION_EQUAL "11.0")
 		    set(LEGION_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/legion_ubuntu-20.04_11.0.3.tar.gz")
