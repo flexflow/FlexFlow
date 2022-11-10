@@ -3,7 +3,7 @@
 #include "flexflow/ffconst.h"
 #include "legion.h"
 #include <hipblas.h>
-#include <miopen.h>
+#include <miopen/miopen.h>
 
 #define FatalError(s)                                                          \
   do {                                                                         \

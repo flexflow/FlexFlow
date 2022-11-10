@@ -7,15 +7,32 @@ set(CPU_SRC
   flexflow_c.cc
   flexflow_dataloader.cc)
 
-set(GPU_SRC
-  flexflow_dataloader.cu)
+if (FF_GPU_BACKEND STREQUAL "cuda")
+  set(GPU_SRC
+    flexflow_dataloader.cu)
 
-cuda_add_library(flexflow_c SHARED ${GPU_SRC} ${CPU_SRC} OPTIONS ${CUDA_GENCODE})
+  cuda_add_library(flexflow_c SHARED ${GPU_SRC} ${CPU_SRC} OPTIONS ${CUDA_GENCODE})
+elseif (FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
+  set(GPU_SRC
+    flexflow_dataloader.cpp)
+
+  add_library(flexflow_c SHARED ${GPU_SRC} ${CPU_SRC})
+else()
+  message(FATAL_ERROR "Unsupported FF_GPU_BACKEND for cmake: ${FF_GPU_BACKEND}")
+endif()
+
 target_include_directories(flexflow_c PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
 target_link_libraries(flexflow_c ${LEGION_LIBRARY})
 add_dependencies(flexflow_c flexflow)
 
-cuda_add_executable(${project_target} main.cc)
+if (FF_GPU_BACKEND STREQUAL "cuda")
+  cuda_add_executable(${project_target} main.cc)
+elseif (FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
+  add_executable(${project_target} main.cc)
+else()
+  message(FATAL_ERROR "Unsupported FF_GPU_BACKEND for cmake: ${FF_GPU_BACKEND}")
+endif()
+
 set_target_properties(${project_target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
 target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
 target_link_libraries(${project_target} -Wl,--whole-archive flexflow -Wl,--no-whole-archive flexflow_c ${FLEXFLOW_EXT_LIBRARIES})
@@ -30,8 +47,8 @@ if(FF_USE_EXTERNAL_LEGION)
   set(LEGION_HEADER_DIR ${LEGION_ROOT}/include)
   set(LEGION_DEFINE_DIR ${LEGION_ROOT}/include)
 else()
-  set(LEGION_HEADER_DIR ${CMAKE_SOURCE_DIR}/deps/legion/runtime)
-  set(LEGION_DEFINE_DIR ${CMAKE_BINARY_DIR}/deps/legion/runtime)
+  set(LEGION_HEADER_DIR ${LEGION_INCLUDE_DIR})
+  set(LEGION_DEFINE_DIR ${LEGION_DEF_DIR})
 endif()
 add_custom_command(TARGET ${project_target} 
   PRE_BUILD	
