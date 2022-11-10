@@ -117,6 +117,10 @@ std::string get_operator_type_name(OperatorType type) {
       return "Cast";
     case OP_EXP:
       return "Exp";
+    case OP_SIN:
+      return "Sin";
+    case OP_COS:
+      return "Cos";
     case OP_ROUND:
       return "Round";
     case OP_LOG:

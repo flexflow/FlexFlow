@@ -92,6 +92,12 @@ __global__ void elewise_unary_forward_kernel(
         out[i] = (T)(powf(in[i], scalar));
         break;
       }
+      case OP_SIN: {
+        out[i] = (T)sin((float)in[i]);
+      }
+      case OP_COS: {
+        out[i] = (T)cos((float)in[i]);
+      }
       default:
         assert(false);
     }
@@ -206,6 +212,14 @@ __global__ void elewise_unary_backward_kernel(coord_t volume,
       case OP_POW: {
         input_grad[i] =
             (T)(output_grad[i] * scalar * powf(input[i], scalar - 1));
+        break;
+      }
+      case OP_SIN: {
+        input_grad[i] += (T)(output_grad[i] * cos((float)input[i]));
+        break;
+      }
+      case OP_COS: {
+        input_grad[i] += (T)(output_grad[i] * -sin((float)input[i]));
         break;
       }
       default:

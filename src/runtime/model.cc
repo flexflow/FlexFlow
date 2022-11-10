@@ -2524,6 +2524,8 @@ Op *FFModel::create_operator_from_layer(
       return op;
     }
     case OP_EXP:
+    case OP_SIN:
+    case OP_COS:
     case OP_SCALAR_MULTIPLY:
     case OP_SCALAR_ADD:
     case OP_SCALAR_SUB:

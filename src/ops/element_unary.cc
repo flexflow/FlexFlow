@@ -142,6 +142,14 @@ Tensor FFModel::pow(const Tensor x,
   return this->unary(OP_POW, x, inplace, name, exponent);
 }
 
+Tensor FFModel::sin(const Tensor x, char const *name) {
+  return this->unary(OP_SIN, x, false /*inplace*/, name);
+}
+
+Tensor FFModel::cos(const Tensor x, char const *name) {
+  return this->unary(OP_COS, x, false /*inplace*/, name);
+}
+
 bool ElementUnaryParams::is_valid(ParallelTensorShape const &input) const {
   return input.is_valid();
 }
