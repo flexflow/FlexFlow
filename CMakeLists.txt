@@ -403,6 +403,10 @@ if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/Transformer)
 endif()
 
+if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/inference/Transformer)
+endif()
+
 # installation
 set(INCLUDE_DEST "include")
 set(LIB_DEST "lib")
