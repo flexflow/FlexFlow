@@ -70,12 +70,8 @@ void FlexFlow::top_level_task(Task const *task,
   for (int iter = 0; iter < iterations; iter++) {
     runtime->begin_trace(ctx, 111 /*trace_id*/);
     ff.forward();
-    ff.zero_gradients();
-    // ff.backward();
-    // ff.update();
     runtime->end_trace(ctx, 111 /*trace_id*/);
   }
-  //}
   // End timer
   {
     runtime->issue_execution_fence(ctx);
