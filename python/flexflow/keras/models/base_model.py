@@ -17,7 +17,7 @@ import flexflow.core as ff
 from flexflow.core.flexflow_logger import fflogger
 
 from .tensor import Tensor
-from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout, BatchNormalization, Embedding, Reshape
+from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout, BatchNormalization, Embedding, Reshape, BatchMatmul
 from flexflow.keras.optimizers import SGD, Adam
 from flexflow.keras.callbacks import Callback, LearningRateScheduler, VerifyMetrics, EpochVerifyMetrics
 from flexflow.keras import losses as keras_losses
@@ -497,6 +497,8 @@ class BaseModel(object):
         out_t = self._ffmodel.embedding(layer.input_tensors[0].ffhandle, layer.input_dim, layer.out_channels, ff.AggrMode.AGGR_MODE_SUM, None, layer.embeddings_initializer.ffhandle)
       elif isinstance(layer, Reshape) == True:
         out_t = self._ffmodel.reshape(layer.input_tensors[0].ffhandle, layer.output_shape)
+      elif isinstance(layer, BatchMatmul):
+        out_t = self._ffmodel.batch_matmul(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       else:
         assert 0, "unknow layer"
 

@@ -20,3 +20,4 @@ from .normalization import BatchNormalization
 from .pool import Pooling2D, MaxPooling2D, AveragePooling2D 
 from .core import Dense, Embedding, Flatten, Activation, Dropout, Reshape
 from .merge import Concatenate, Add, Subtract, Multiply, concatenate, add, subtract, multiply
+from .backend_functions import BatchMatmul
