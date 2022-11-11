@@ -12,4 +12,4 @@ Issues closed by this PR:
 
 **Before merging:**
 
-- [] Did you update the [flexflow-third-party](https://github.com/flexflow/flexflow-third-party) repo, if modifying any of the Cmake files, the build configs, or the submodules?
+- [ ] Did you update the [flexflow-third-party](https://github.com/flexflow/flexflow-third-party) repo, if modifying any of the Cmake files, the build configs, or the submodules?
