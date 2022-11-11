@@ -419,6 +419,9 @@ endif()
 
 if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/mixture_of_experts)
+
+if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/inference/Transformer)
 endif()
 
 # installation
