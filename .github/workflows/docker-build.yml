@@ -28,10 +28,8 @@ jobs:
           submodules: recursive
 
       - name: Build Docker container
-        run: ./docker/build.sh base
+        run: ./docker/build.sh flexflow
 
       - name: Check availability of Python flexflow.core module
         run: docker run --entrypoint python flexflow:latest -c "import flexflow.core; exit()"
-
-      - name: Build mT5 Docker container
-        run: ./docker/build.sh mt5
+      

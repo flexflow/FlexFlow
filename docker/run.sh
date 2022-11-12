@@ -6,19 +6,22 @@ ATTACH_GPUS=true
 
 gpu_arg=""
 if $ATTACH_GPUS ; then gpu_arg="--gpus all" ; fi
-image=${1:-base}
+image=${1:-flexflow}
 
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"
 
 
-if [[ "$image" == "base" ]]; then
+if [[ "$image" == "environment" ]]; then
+    eval docker run -it "$gpu_arg" flexflow-environment:latest
+elif [[ "$image" == "flexflow" ]]; then
     eval docker run -it "$gpu_arg" flexflow:latest
 elif [[ "$image" == "mt5" ]]; then
+    # Backward compatibility
     eval docker run -it "$gpu_arg" \
     -v "$(pwd)"/../examples/python/pytorch/mt5/data:/usr/FlexFlow/examples/python/pytorch/mt5/data \
     -v "$(pwd)"/../examples/python/pytorch/mt5/eng-sin.tar:/usr/FlexFlow/examples/python/pytorch/mt5/eng-sin.tar \
-    flexflow-mt5:latest
+    flexflow:latest
 else
     echo "Docker image name not valid"
 fi
