@@ -335,6 +335,8 @@ option(FF_BUILD_MLP_UNIFY "build mlp unify example" OFF)
 option(FF_BUILD_SPLIT_TEST "build split test example" OFF)
 option(FF_BUILD_SPLIT_TEST_2 "build split test 2 example" OFF)
 option(FF_BUILD_MLP_UNIFY_INFERENCE "build mlp unify inference example" OFF)
+option(FF_BUILD_TRANSFORMER_INFERENCE "build transformer inference example" OFF)
+option(FF_BUILD_G_SHARD_INFERENCE "build G-Shard inference example" OFF)
 option(FF_BUILD_ALL_INFERENCE_EXAMPLES "build all inference examples. Overrides others" OFF)
 option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
 option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
@@ -419,9 +421,14 @@ endif()
 
 if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/mixture_of_experts)
+endif()
 
-if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
+if(FF_BUILD_TRANSFORMER_INFERENCE OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/inference/Transformer)
+endif()
+
+if(FF_BUILD_G_SHARD_INFERENCE OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/inference/G-Shard-MoE)
 endif()
 
 # installation
