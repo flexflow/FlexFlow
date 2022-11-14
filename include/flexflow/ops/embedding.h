@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_EMBEDDING_H
 #define _FLEXFLOW_EMBEDDING_H
 
+#include "flexflow/accessor.h"
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/layer.h"
@@ -22,9 +23,11 @@ namespace Output {
 enum { OUT_CHANNELS = 0 };
 };
 
+class Embedding;
+
 class EmbeddingMeta : public OpMeta {
 public:
-  EmbeddingMeta(FFHandler handle) : OpMeta(handle) {}
+  EmbeddingMeta(FFHandler handle, Op const* op);
   DataType input_data_type;
   AggrMode aggr;
 };
@@ -88,46 +91,40 @@ public:
                         std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,
                         Legion::Runtime *runtime);
-  template <typename TI>
+  template <typename TI, typename TD>
   static void forward_kernel(TI const *input_ptr,
-                             float *output_ptr,
-                             float const *weight_ptr,
+                             TD *output_ptr,
+                             TD const *weight_ptr,
                              int in_dim,
                              int out_dim,
                              int batch_size,
                              AggrMode aggr,
                              int outputSize,
                              ffStream_t stream);
-  template <typename TI>
   static void forward_kernel_wrapper(EmbeddingMeta const *m,
-                                     TI const *input_ptr,
-                                     float *output_ptr,
-                                     float const *weight_ptr,
+		                     GenericTensorAccessorR const &input,
+                                     GenericTensorAccessorW const &output,
+                                     GenericTensorAccessorR const &weight,
                                      int in_dim,
                                      int out_dim,
-                                     int batch_size,
-                                     AggrMode aggr,
-                                     int outputSize);
-  template <typename TI>
+                                     int batch_size);
+  template <typename TI, typename TD>
   static void backward_kernel(TI const *input_ptr,
-                              float const *output_ptr,
-                              float *weight_grad_ptr,
+                              TD const *output_ptr,
+                              TD *weight_grad_ptr,
                               int in_dim,
                               int out_dim,
                               int batch_size,
                               AggrMode aggr,
                               int outputSize,
                               ffStream_t stream);
-  template <typename TI>
   static void backward_kernel_wrapper(EmbeddingMeta const *m,
-                                      TI const *input_ptr,
-                                      float const *output_ptr,
-                                      float *weight_grad_ptr,
+		                      GenericTensorAccessorR const &input,
+                                      GenericTensorAccessorR const &output,
+                                      GenericTensorAccessorW const &weight_grad,
                                       int in_dim,
                                       int out_dim,
-                                      int batch_size,
-                                      AggrMode aggr,
-                                      int outputSize);
+                                      int batch_size);
   void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p) const;
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
@@ -136,6 +133,7 @@ public:
   Params get_params() const;
 
 private:
+#ifdef DEADCODE
   template <typename TI>
   static void
       forward_task_with_type(Legion::Task const *task,
@@ -148,7 +146,7 @@ private:
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
-
+#endif
   int input_vocab_size_replica_dim() const;
   int input_channel_out_replica_dim() const;
   int output_vocab_size_replica_dim() const;

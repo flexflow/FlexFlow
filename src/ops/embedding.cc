@@ -374,8 +374,7 @@ OpMeta *Embedding::init_task(Task const *task,
                              Runtime *runtime) {
   Embedding const *embed = (Embedding *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  EmbeddingMeta *m = new EmbeddingMeta(handle);
-  m->input_data_type = embed->inputs[0]->data_type;
+  EmbeddingMeta *m = new EmbeddingMeta(handle, embed);
   m->profiling = embed->profiling;
   m->aggr = embed->aggr;
   return m;
@@ -429,15 +428,60 @@ void Embedding::forward_task(Task const *task,
                              Context ctx,
                              Runtime *runtime) {
   EmbeddingMeta const *m = *((EmbeddingMeta **)task->local_args);
-  if (m->input_data_type == DT_INT32) {
-    forward_task_with_type<int32_t>(task, regions, ctx, runtime);
-  } else if (m->input_data_type == DT_INT64) {
-    forward_task_with_type<int64_t>(task, regions, ctx, runtime);
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3);
+  // Assert that weight and output must have the same data type
+  // otherwise, a cast operator should be inserted
+  assert(m->weight_type[0] == m->output_type[0]);
+  assert(m->input_type[0] == DT_INT32 || m->input_type[0] == DT_INT64);
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR kernel = helperGetGenericTensorAccessorRO(
+      m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  if (m->aggr == AGGR_MODE_NONE) {
+    // assert(kernel_domain.get_dim() == 2);
+    assert(input.domain.get_dim() + 1 == output.domain.get_dim());
+    for (size_t i = 0; i < input.domain.get_dim(); i++) {
+      assert(input.domain.hi()[i] == output.domain.hi()[i + 1]);
+      assert(input.domain.lo()[i] == output.domain.lo()[i + 1]);
+    }
+    assert(kernel.domain.hi()[0] - kernel.domain.lo()[0] ==
+           output.domain.hi()[0] - output.domain.lo()[0]);
   } else {
-    assert(false && "Unsupported data type in Embedding forward");
+    // assert(kernel_domain.get_dim() == 2);
+    assert(input.domain.get_dim() == output.domain.get_dim());
+    for (size_t i = 1; i < input.domain.get_dim(); i++) {
+      assert(input.domain.hi()[i] == output.domain.hi()[i]);
+      assert(input.domain.lo()[i] == output.domain.lo()[i]);
+    }
+    assert(kernel.domain.hi()[0] - kernel.domain.lo()[0] ==
+           output.domain.hi()[0] - output.domain.lo()[0]);
   }
+
+  int in_dim, out_dim, effective_batch_size;
+  if (m->aggr == AGGR_MODE_NONE) {
+    in_dim = 1;
+    out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
+    effective_batch_size = output.domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input.domain.get_volume());
+  } else {
+    in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+    out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
+    effective_batch_size = output.domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input.domain.get_volume());
+  }
+  Embedding::forward_kernel_wrapper(m,
+                                    input,
+                                    output,
+                                    kernel,
+                                    in_dim,
+                                    out_dim,
+                                    effective_batch_size);
 }
 
+#ifdef DEADCODE
 template <typename TI>
 void Embedding::forward_task_with_type(
     Task const *task,
@@ -503,6 +547,7 @@ void Embedding::forward_task_with_type(
                                         m->aggr,
                                         output_domain.get_volume());
 }
+#endif
 
 void Embedding::backward(FFModel const &ff) {
   ArgumentMap argmap;
@@ -546,15 +591,59 @@ void Embedding::backward_task(Task const *task,
                               Context ctx,
                               Runtime *runtime) {
   EmbeddingMeta const *m = *((EmbeddingMeta **)task->local_args);
-  if (m->input_data_type == DT_INT32) {
-    backward_task_with_type<int32_t>(task, regions, ctx, runtime);
-  } else if (m->input_data_type == DT_INT64) {
-    backward_task_with_type<int64_t>(task, regions, ctx, runtime);
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3);
+  // Assert that weight and output must have the same data type
+  // otherwise, a cast operator should be inserted
+  assert(m->weight_type[0] == m->output_type[0]);
+  assert(m->input_type[0] == DT_INT32 || m->input_type[0] == DT_INT64);
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW kernel_grad = helperGetGenericTensorAccessorRW(
+      m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+   if (m->aggr == AGGR_MODE_NONE) {
+    // assert(kernel_grad_domain.get_dim() == 2);
+    assert(input.domain.get_dim() + 1 == output_grad.domain.get_dim());
+    for (size_t i = 0; i < input.domain.get_dim(); i++) {
+      assert(input.domain.hi()[i] == output_grad.domain.hi()[i + 1]);
+      assert(input.domain.lo()[i] == output_grad.domain.lo()[i + 1]);
+    }
+    assert(kernel_grad.domain.hi()[0] - kernel_grad.domain.lo()[0] ==
+           output_grad.domain.hi()[0] - output_grad.domain.lo()[0]);
   } else {
-    assert(false && "Unsupported data type in Embedding forward");
+    // assert(kernel_grad_domain.get_dim() == 2);
+    assert(input.domain.get_dim() == output_grad.domain.get_dim());
+    for (size_t i = 1; i < input.domain.get_dim(); i++) {
+      assert(input.domain.hi()[i] == output_grad.domain.hi()[i]);
+      assert(input.domain.lo()[i] == output_grad.domain.lo()[i]);
+    }
+    assert(kernel_grad.domain.hi()[0] - kernel_grad.domain.lo()[0] ==
+           output_grad.domain.hi()[0] - output_grad.domain.lo()[0]);
   }
+  int in_dim, out_dim, effective_batch_size;
+  if (m->aggr == AGGR_MODE_NONE) {
+    in_dim = 1;
+    out_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
+    effective_batch_size = output_grad.domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input.domain.get_volume());
+  } else {
+    in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+    out_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
+    effective_batch_size = output_grad.domain.get_volume() / out_dim;
+    assert(effective_batch_size * in_dim == input.domain.get_volume());
+  }
+  Embedding::backward_kernel_wrapper(m,
+                                     input,
+                                     output_grad,
+                                     kernel_grad,
+                                     in_dim,
+                                     out_dim,
+                                     effective_batch_size);
 }
 
+#ifdef DEADCODE
 template <typename TI>
 void Embedding::backward_task_with_type(
     Task const *task,
@@ -619,36 +708,46 @@ void Embedding::backward_task_with_type(
                                          m->aggr,
                                          output_grad_domain.get_volume());
 }
+#endif
 
 bool Embedding::measure_operator_cost(Simulator *sim,
                                       MachineView const &mv,
                                       CostMetrics &cost_metrics) const {
-  ParallelTensorBase sub_input, sub_output;
+  ParallelTensorBase sub_input, sub_output, sub_weight;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
   }
   if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
   }
+  if (!weights[0]->get_sub_tensor(mv, sub_weight)) {
+    return false;
+  }
 
-  EmbeddingMeta *m = sim->embedding_meta;
+  EmbeddingMeta *m = new EmbeddingMeta(sim->handler, this);
   assert(m->profiling == false);
 
   sim->free_all();
   bool out_of_memory = false;
+  Domain in_domain = sub_input.get_domain();
   int64_t *input_ptr =
       (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  GenericTensorAccessorR input_acc(DT_INT64, in_domain, input_ptr);
 
   out_of_memory = out_of_memory || (input_ptr == NULL);
+  Domain out_domain = sub_output.get_domain();
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   out_of_memory = out_of_memory || (output_ptr == NULL);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  GenericTensorAccessorW output_acc(DT_FLOAT, out_domain, output_ptr);
 
+  Domain weight_domain = sub_weight.get_domain();
   float *weight_ptr =
       (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
   cost_metrics.weights_memory += cost_metrics.total_mem_diff_from(sim->offset);
   out_of_memory = out_of_memory || (weight_ptr == NULL);
+  GenericTensorAccessorR weight_acc(DT_FLOAT, weight_domain, weight_ptr);
   if (out_of_memory) {
     cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
     cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
@@ -665,14 +764,12 @@ bool Embedding::measure_operator_cost(Simulator *sim,
   std::function<void()> forward, backward;
   forward = [&] {
     forward_kernel_wrapper(m,
-                           input_ptr,
-                           output_ptr,
-                           weight_ptr,
+                           input_acc,
+                           output_acc,
+                           weight_acc,
                            in_dim,
                            out_dim,
-                           effective_batch_size,
-                           this->aggr,
-                           sub_output.get_volume());
+                           effective_batch_size);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *weight_grad_ptr =
@@ -680,17 +777,20 @@ bool Embedding::measure_operator_cost(Simulator *sim,
     cost_metrics.weights_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
     out_of_memory = out_of_memory || (weight_grad_ptr == NULL);
+    GenericTensorAccessorW weight_grad_acc(DT_FLOAT, weight_domain, weight_grad_ptr);
 
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
     out_of_memory = out_of_memory || (output_grad_ptr == NULL);
+    GenericTensorAccessorR output_grad_acc(DT_FLOAT, out_domain, output_grad_ptr);
 
     int64_t *input_grad_ptr =
         (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
     out_of_memory = out_of_memory || (input_grad_ptr == NULL);
+    GenericTensorAccessorW input_grad_acc(DT_INT64, in_domain, input_grad_ptr);
 
     if (out_of_memory) {
       cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
@@ -699,14 +799,12 @@ bool Embedding::measure_operator_cost(Simulator *sim,
     }
     backward = [&] {
       backward_kernel_wrapper(m,
-                              input_grad_ptr,
-                              output_grad_ptr,
-                              weight_grad_ptr,
+                              input_grad_acc,
+                              output_grad_acc,
+                              weight_grad_acc,
                               in_dim,
                               out_dim,
-                              effective_batch_size,
-                              this->aggr,
-                              sub_output.get_volume());
+                              effective_batch_size);
     };
   }
 
@@ -723,7 +821,7 @@ bool Embedding::measure_operator_cost(Simulator *sim,
            name,
            cost_metrics.forward_time);
   }
-
+  delete m;
   return true;
 }
 
@@ -1077,6 +1175,10 @@ void Embedding::backward_task_cpu(Task const *task,
                  index_size,
                  data_size);
 }
+
+EmbeddingMeta::EmbeddingMeta(FFHandler _handle, Op const* op)
+: OpMeta(_handle, op) {}
+
 }
 ; // namespace FlexFlow
 
