@@ -472,13 +472,8 @@ void Embedding::forward_task(Task const *task,
     effective_batch_size = output.domain.get_volume() / out_dim;
     assert(effective_batch_size * in_dim == input.domain.get_volume());
   }
-  Embedding::forward_kernel_wrapper(m,
-                                    input,
-                                    output,
-                                    kernel,
-                                    in_dim,
-                                    out_dim,
-                                    effective_batch_size);
+  Embedding::forward_kernel_wrapper(
+      m, input, output, kernel, in_dim, out_dim, effective_batch_size);
 }
 
 #ifdef DEADCODE
@@ -603,7 +598,7 @@ void Embedding::backward_task(Task const *task,
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW kernel_grad = helperGetGenericTensorAccessorRW(
       m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
-   if (m->aggr == AGGR_MODE_NONE) {
+  if (m->aggr == AGGR_MODE_NONE) {
     // assert(kernel_grad_domain.get_dim() == 2);
     assert(input.domain.get_dim() + 1 == output_grad.domain.get_dim());
     for (size_t i = 0; i < input.domain.get_dim(); i++) {
@@ -777,14 +772,16 @@ bool Embedding::measure_operator_cost(Simulator *sim,
     cost_metrics.weights_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
     out_of_memory = out_of_memory || (weight_grad_ptr == NULL);
-    GenericTensorAccessorW weight_grad_acc(DT_FLOAT, weight_domain, weight_grad_ptr);
+    GenericTensorAccessorW weight_grad_acc(
+        DT_FLOAT, weight_domain, weight_grad_ptr);
 
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
     out_of_memory = out_of_memory || (output_grad_ptr == NULL);
-    GenericTensorAccessorR output_grad_acc(DT_FLOAT, out_domain, output_grad_ptr);
+    GenericTensorAccessorR output_grad_acc(
+        DT_FLOAT, out_domain, output_grad_ptr);
 
     int64_t *input_grad_ptr =
         (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
@@ -1176,9 +1173,8 @@ void Embedding::backward_task_cpu(Task const *task,
                  data_size);
 }
 
-EmbeddingMeta::EmbeddingMeta(FFHandler _handle, Op const* op)
-: OpMeta(_handle, op) {}
-
+EmbeddingMeta::EmbeddingMeta(FFHandler _handle, Op const *op)
+    : OpMeta(_handle, op) {}
 }
 ; // namespace FlexFlow
 

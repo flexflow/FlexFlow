@@ -27,7 +27,7 @@ class Embedding;
 
 class EmbeddingMeta : public OpMeta {
 public:
-  EmbeddingMeta(FFHandler handle, Op const* op);
+  EmbeddingMeta(FFHandler handle, Op const *op);
   DataType input_data_type;
   AggrMode aggr;
 };
@@ -102,7 +102,7 @@ public:
                              int outputSize,
                              ffStream_t stream);
   static void forward_kernel_wrapper(EmbeddingMeta const *m,
-		                     GenericTensorAccessorR const &input,
+                                     GenericTensorAccessorR const &input,
                                      GenericTensorAccessorW const &output,
                                      GenericTensorAccessorR const &weight,
                                      int in_dim,
@@ -119,7 +119,7 @@ public:
                               int outputSize,
                               ffStream_t stream);
   static void backward_kernel_wrapper(EmbeddingMeta const *m,
-		                      GenericTensorAccessorR const &input,
+                                      GenericTensorAccessorR const &input,
                                       GenericTensorAccessorR const &output,
                                       GenericTensorAccessorW const &weight_grad,
                                       int in_dim,

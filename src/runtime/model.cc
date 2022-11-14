@@ -1083,7 +1083,7 @@ OpMeta::OpMeta(FFHandler _handle) : handle(_handle), profiling(false) {
     output_type[i] = DT_NONE;
 }
 
-OpMeta::OpMeta(FFHandler _handle, Op const* op) : OpMeta(_handle) {
+OpMeta::OpMeta(FFHandler _handle, Op const *op) : OpMeta(_handle) {
   for (int i = 0; i < op->numInputs; i++)
     input_type[i] = op->inputs[i]->data_type;
   for (int i = 0; i < op->numWeights; i++)
