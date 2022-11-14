@@ -57,6 +57,7 @@ void FFModel::split(const Tensor input,
                     char const *name) {
   Layer *split = new Layer(this,
                            OP_SPLIT,
+                           DT_FLOAT,
                            name,
                            1 /*inputs*/,
                            0 /*weights*/,

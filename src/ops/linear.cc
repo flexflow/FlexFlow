@@ -37,6 +37,7 @@ Tensor FFModel::dense(const Tensor input,
                       char const *name) {
   Layer *li = new Layer(this,
                         OP_LINEAR,
+                        data_type,
                         name,
                         1 /*inputs*/,
                         use_bias ? 2 : 1 /*weights*/,
@@ -56,7 +57,7 @@ Tensor FFModel::dense(const Tensor input,
     li->weights[KERNEL_IDX] =
         create_weight_legion_ordering(2,
                                       dims,
-                                      DT_FLOAT,
+                                      data_type,
                                       li,
                                       true /*create_grad*/,
                                       kernel_initializer,
@@ -66,13 +67,12 @@ Tensor FFModel::dense(const Tensor input,
     int dims[1] = {outDim};
     li->weights[BIAS_IDX] = create_weight_legion_ordering(1,
                                                           dims,
-                                                          DT_FLOAT,
+                                                          data_type,
                                                           li,
                                                           true /*create_grad*/,
                                                           bias_initializer,
                                                           CHOSEN_SYNC_TYPE);
   }
-  li->data_type = data_type;
   li->add_int_property("use_bias", use_bias);
   li->add_int_property("out_dim", outDim);
   li->add_int_property("activation", activation);

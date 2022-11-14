@@ -44,6 +44,7 @@ public:
             int _out_channels,
             AggrMode _aggr,
             bool allocate_weights,
+            DataType _dtype,
             char const *name);
   Embedding(FFModel &model,
             Embedding const &other,

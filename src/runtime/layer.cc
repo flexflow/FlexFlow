@@ -6,7 +6,7 @@ namespace FlexFlow {
 
 Layer::Layer(FFModel *model,
              OperatorType _otype,
-             DataType _dtype
+             DataType _dtype,
              char const *_name,
              int _numInputs,
              int _numWeights,

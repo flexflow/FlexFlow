@@ -43,6 +43,7 @@ Tensor FFModel::conv2d(const Tensor input,
 
   Layer *conv = new Layer(this,
                           OP_CONV2D,
+                          DT_FLOAT,
                           name,
                           1 /*inputs*/,
                           use_bias ? 2 : 1 /*weights*/,

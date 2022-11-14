@@ -398,6 +398,7 @@ public:
                    int num_entires,
                    int outDim,
                    AggrMode aggr,
+                   DataType dtype = DT_FLOAT,
                    Layer const *shared_op = NULL,
                    Initializer *kernel_initializer = NULL,
                    char const *name = NULL);

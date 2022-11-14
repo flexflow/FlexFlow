@@ -401,8 +401,10 @@ flexflow_tensor_t
   Layer *shared_op = FFCObjectWrapper::unwrap(shared_op_);
   Initializer *kernel_initializer =
       FFCObjectWrapper::unwrap(kernel_initializer_);
+  // TODO: update the flexflow_c and Python API to support other data types
+  // Currently we assume it's float
   Tensor tensor = handle->embedding(
-      input, num_entires, out_dim, aggr, shared_op, kernel_initializer, name);
+      input, num_entires, out_dim, aggr, DT_FLOAT, shared_op, kernel_initializer, name);
   DEBUG_PRINT("[Embedding] new Tensor %p, input %p, num_entires %d, out_dim "
               "%d, aggr %d, shared_op %p, kernel_init %p, name %s",
               tensor,

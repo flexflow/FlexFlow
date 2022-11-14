@@ -49,6 +49,7 @@ Tensor FFModel::reshape(const Tensor input,
                         char const *name) {
   Layer *reshape = new Layer(this,
                              OP_RESHAPE,
+                             DT_FLOAT,
                              name,
                              1 /*inputs*/,
                              0 /*weights*/,

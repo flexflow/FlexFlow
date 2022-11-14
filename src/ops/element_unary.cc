@@ -34,11 +34,11 @@ Tensor FFModel::unary(OperatorType op,
     std::string str(name);
     Tensor new_x = cast(x, dtype, (str + "input_pre_cast").c_str());
     ele = new Layer(
-        this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, new_x);
+        this, op, dtype, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, new_x);
   } else {
     dtype = x->data_type;
     ele = new Layer(
-        this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
+        this, op, dtype, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
   }
   int numdims = x->num_dims;
   int dims[MAX_TENSOR_DIM];

@@ -70,6 +70,7 @@ Tensor FFModel::batch_matmul(const Tensor A,
                              char const *name) {
   Layer *bmm = new Layer(this,
                          OP_BATCHMATMUL,
+                         DT_FLOAT,
                          name,
                          2 /*inputs*/,
                          0 /*weights*/,

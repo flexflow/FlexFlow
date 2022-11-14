@@ -35,6 +35,7 @@ Tensor FFModel::dropout(const Tensor input,
   }
   Layer *dropout = new Layer(this,
                              OP_DROPOUT,
+                             DT_FLOAT,
                              name,
                              1 /*inputs*/,
                              0 /*weights*/,

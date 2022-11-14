@@ -61,6 +61,7 @@ Tensor
     FFModel::concat(int n, Tensor const *tensors, int axis, char const *name) {
   Layer *concat = new Layer(this,
                             OP_CONCAT,
+                            DT_FLOAT,
                             name,
                             n /*inputs*/,
                             0 /*weights*/,

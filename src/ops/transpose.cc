@@ -55,6 +55,7 @@ Tensor FFModel::transpose(const Tensor input,
                           char const *name) {
   Layer *transpose = new Layer(this,
                                OP_TRANSPOSE,
+                               DT_FLOAT,
                                name,
                                1 /*inputs*/,
                                0 /*weights*/,

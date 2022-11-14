@@ -552,6 +552,7 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
            "num_embeddings"_a,
            "embedding_dim"_a,
            "aggr"_a,
+           "datatype"_a,
            "shared_op"_a = nullptr,
            "kernel_initializer"_a = nullptr,
            "name"_a = nullptr)

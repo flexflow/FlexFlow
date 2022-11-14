@@ -68,6 +68,15 @@ double const *GenericTensorAccessorR::get_double_ptr() const {
   }
 }
 
+half const *GenericTensorAccessorR::get_half_ptr() const {
+  if (data_type == DT_HALF)
+    return static_cast<half const *>(ptr);
+  else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<half const *>(nullptr);
+  }
+}
+
 template <typename DT, int dim>
 TensorAccessorW<DT, dim>::TensorAccessorW(PhysicalRegion region,
                                           RegionRequirement req,
@@ -135,6 +144,15 @@ double *GenericTensorAccessorW::get_double_ptr() const {
   else {
     assert(false && "Invalid Accessor Type");
     return static_cast<double *>(nullptr);
+  }
+}
+
+half *GenericTensorAccessorW::get_half_ptr() const {
+  if (data_type == DT_HALF)
+    return static_cast<half *>(ptr);
+  else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<half *>(nullptr);
   }
 }
 

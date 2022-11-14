@@ -63,6 +63,7 @@ Tensor FFModel::multihead_attention(const Tensor query,
                                     char const *name) {
   Layer *li = new Layer(this,
                         OP_MULTIHEAD_ATTENTION,
+                        DT_FLOAT,
                         name,
                         3 /*inputs*/,
                         1 /*weights*/,

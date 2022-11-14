@@ -40,12 +40,13 @@ Tensor FFModel::embedding(const Tensor input,
                           int num_entries,
                           int out_dim,
                           AggrMode aggr,
+                          DataType dtype,
                           Layer const *shared_op,
                           Initializer *kernel_initializer,
-                          DataType dtype,
                           char const *name) {
   Layer *embed = new Layer(this,
                            OP_EMBEDDING,
+                           dtype,
                            name,
                            1 /*inputs*/,
                            1 /*weights*/,
@@ -92,6 +93,7 @@ EmbeddingParams Embedding::get_params() const {
   params.num_entries = this->num_entries;
   params.out_channels = this->out_channels;
   params.aggr = this->aggr;
+  params.data_type = this->data_type;
   // TODO: get rid of layer_guid
   // https://github.com/flexflow/FlexFlow/issues/304
   params.layer_guid = this->layer_guid;
@@ -118,6 +120,7 @@ Op *Embedding::create_operator_from_layer(
                        out_dim,
                        aggr,
                        false /*allocate_weights*/,
+                       layer->data_type,
                        layer->name);
 }
 
@@ -238,7 +241,9 @@ bool EmbeddingParams::is_valid(ParallelTensorShape const &input) const {
 bool operator==(EmbeddingParams const &lhs, EmbeddingParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid &&
          lhs.out_channels == rhs.out_channels &&
-         lhs.num_entries == rhs.num_entries && lhs.aggr == rhs.aggr;
+         lhs.num_entries == rhs.num_entries &&
+         lhs.aggr == rhs.aggr &&
+         lhs.data_type == rhs.data_type;
 }
 
 Embedding::Embedding(FFModel &model,
@@ -253,6 +258,7 @@ Embedding::Embedding(FFModel &model,
                 params.out_channels,
                 params.aggr,
                 allocate_weights,
+                params.data_type,
                 name) {}
 
 Embedding::Embedding(FFModel &model,
@@ -266,6 +272,7 @@ Embedding::Embedding(FFModel &model,
                 other.out_channels,
                 other.aggr,
                 allocate_weights,
+                other.data_type,
                 other.name) {}
 
 Embedding::Embedding(FFModel &model,
@@ -1188,6 +1195,7 @@ size_t hash<FlexFlow::EmbeddingParams>::operator()(
   hash_combine(key, params.out_channels);
   hash_combine(key, params.aggr);
   hash_combine(key, params.num_entries);
+  hash_combine(key, params.data_type);
   return key;
 }
 }; // namespace std

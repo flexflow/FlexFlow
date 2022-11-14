@@ -77,6 +77,7 @@ Tensor FFModel::layer_norm(const Tensor input,
   int num_weights = elementwise_affine ? 2 : 0;
   Layer *ln = new Layer(this,
                         OP_LAYERNORM,
+                        DT_FLOAT,
                         name,
                         1 /*inputs*/,
                         num_weights,
