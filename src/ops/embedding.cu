@@ -46,17 +46,18 @@ __global__ void embed_forward_with_aggr(TI const *input,
                                         int in_dim,
                                         int batch_size,
                                         AggrMode aggr) {
+  TD scale = 1.0f / in_dim;
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     output[i] = 0;
     int idx = i / out_dim;
     int off = i % out_dim;
     for (int j = 0; j < in_dim; j++) {
       TI wordIdx = input[idx * in_dim + j];
-      output[i] += embed[wordIdx * out_dim + off];
+      output[i] = outputs[i] + embed[wordIdx * out_dim + off];
       if (aggr == AGGR_MODE_SUM) {
       } else {
         assert(aggr == AGGR_MODE_AVG);
-        output[i] /= in_dim;
+        output[i] = outputs[i] * scale;
       }
     }
   }
@@ -176,7 +177,7 @@ void Embedding::forward_kernel_wrapper(EmbeddingMeta const *m,
       assert(false && "Unsupported DataType in Embedding");
     }
   } else if (input.data_type == DT_INT64) {
-     if (weight.data_type == DT_HALF) {
+    if (weight.data_type == DT_HALF) {
       Embedding::forward_kernel(input.get_int64_ptr(),
                                 output.get_half_ptr(),
                                 weight.get_half_ptr(),
@@ -265,7 +266,7 @@ void Embedding::backward_kernel_wrapper(
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   if (m->input_type[0] == DT_INT32) {
-     if (m->output_type[0] == DT_HALF) {
+    if (m->output_type[0] == DT_HALF) {
       Embedding::backward_kernel(input.get_int32_ptr(),
                                  output.get_half_ptr(),
                                  weight_grad.get_half_ptr(),

@@ -241,8 +241,7 @@ bool EmbeddingParams::is_valid(ParallelTensorShape const &input) const {
 bool operator==(EmbeddingParams const &lhs, EmbeddingParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid &&
          lhs.out_channels == rhs.out_channels &&
-         lhs.num_entries == rhs.num_entries &&
-         lhs.aggr == rhs.aggr &&
+         lhs.num_entries == rhs.num_entries && lhs.aggr == rhs.aggr &&
          lhs.data_type == rhs.data_type;
 }
 

@@ -33,8 +33,14 @@ Tensor FFModel::pool2d(const Tensor input,
                        ActiMode activation,
                        char const *name) {
   assert(input->num_dims == 4); /*NCHW*/
-  Layer *pool = new Layer(
-      this, OP_POOL2D, DT_FLOAT, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, input);
+  Layer *pool = new Layer(this,
+                          OP_POOL2D,
+                          DT_FLOAT,
+                          name,
+                          1 /*inputs*/,
+                          0 /*weights*/,
+                          1 /*outputs*/,
+                          input);
   int numdims = 4;
   int dims[MAX_TENSOR_DIM];
   dims[3] = input->dims[3];

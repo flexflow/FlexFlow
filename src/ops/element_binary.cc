@@ -66,8 +66,15 @@ Tensor FFModel::binary(OperatorType op,
                     new_in2);
   } else {
     dtype = in1->data_type;
-    ele = new Layer(
-        this, op, dtype, name, 2 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, in1, in2);
+    ele = new Layer(this,
+                    op,
+                    dtype,
+                    name,
+                    2 /*inputs*/,
+                    0 /*weights*/,
+                    1 /*outputs*/,
+                    in1,
+                    in2);
   }
   // Assert type match after broadcast
   assert(ele->inputs[0]->data_type == ele->inputs[1]->data_type);

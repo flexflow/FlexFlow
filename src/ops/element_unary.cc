@@ -33,8 +33,14 @@ Tensor FFModel::unary(OperatorType op,
     dtype = DT_FLOAT;
     std::string str(name);
     Tensor new_x = cast(x, dtype, (str + "input_pre_cast").c_str());
-    ele = new Layer(
-        this, op, dtype, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, new_x);
+    ele = new Layer(this,
+                    op,
+                    dtype,
+                    name,
+                    1 /*inputs*/,
+                    0 /*weights*/,
+                    1 /*outputs*/,
+                    new_x);
   } else {
     dtype = x->data_type;
     ele = new Layer(
