@@ -42,6 +42,7 @@ Tensor FFModel::embedding(const Tensor input,
                           AggrMode aggr,
                           Layer const *shared_op,
                           Initializer *kernel_initializer,
+                          DataType dtype,
                           char const *name) {
   Layer *embed = new Layer(this,
                            OP_EMBEDDING,
@@ -77,7 +78,7 @@ Tensor FFModel::embedding(const Tensor input,
                                                       kernel_initializer,
                                                       CHOSEN_SYNC_TYPE);
   }
-  embed->data_type = DT_FLOAT;
+  embed->data_type = dtype;
   embed->add_int_property("num_entries", num_entries);
   embed->add_int_property("out_dim", out_dim);
   embed->add_int_property("aggr_mode", aggr);
@@ -274,6 +275,7 @@ Embedding::Embedding(FFModel &model,
                      int _out_channels,
                      AggrMode _aggr,
                      bool allocate_weights,
+                     DataType dtype,
                      char const *name)
     : Op(model,
          OP_EMBEDDING,
@@ -309,7 +311,7 @@ Embedding::Embedding(FFModel &model,
     weights[0] =
         model.create_parallel_weight_legion_ordering(weight_ndim,
                                                      weight_dims,
-                                                     DT_FLOAT,
+                                                     dtype,
                                                      nullptr /*owner_op*/,
                                                      true /*create_grad*/,
                                                      weight_initializer,
@@ -317,7 +319,7 @@ Embedding::Embedding(FFModel &model,
   }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      output_ndim, output_dims, DT_FLOAT, this);
+      output_ndim, output_dims, dtype, this);
 
   assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
