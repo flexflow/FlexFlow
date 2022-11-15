@@ -1,6 +1,7 @@
 #include "flexflow/ops/linear.h"
 #include "flexflow/layer.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
@@ -22,6 +23,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::Linear;
 
 static constexpr int KERNEL_IDX = 0;
 static constexpr int BIAS_IDX = 1;
@@ -315,7 +318,7 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
   m->output_type = linear->outputs[0]->data_type;
   std::strcpy(m->op_name, linear->name);
 
-  Linear::init_kernel(m, batch_size, out_dim);
+  init_kernel(m, batch_size, out_dim);
 
   return m;
 }
@@ -419,7 +422,7 @@ void Linear::forward_task_with_dim(Task const *task,
     acc_bias_ptr = acc_bias.ptr;
   }
 
-  Linear::forward_kernel_wrapper(m,
+  forward_kernel_wrapper(m,
                                  acc_input.ptr,
                                  acc_output.ptr,
                                  acc_kernel.ptr,
@@ -611,7 +614,7 @@ void Linear::backward_task_with_dim(Task const *task,
   }
   assert(rid == regions.size());
 
-  Linear::backward_kernel_wrapper(m,
+  backward_kernel_wrapper(m,
                                   acc_input.ptr,
                                   input_grad,
                                   acc_output.ptr,
@@ -789,7 +792,7 @@ bool Linear::measure_operator_cost(Simulator *sim,
   m->output_type = outputs[0]->data_type;
   assert(m->profiling == false);
 
-  Linear::init_kernel(m, output_n, output_c);
+  init_kernel(m, output_n, output_c);
 
   // allocate tensors in simulator
   sim->free_all();
