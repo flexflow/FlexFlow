@@ -758,21 +758,6 @@ bool Linear::is_valid_parallel_config(FFModel const &ff,
   return true;
 }
 
-bool Linear::use_activation(ActiMode mode) {
-  switch (mode) {
-    case AC_MODE_RELU:
-    case AC_MODE_SIGMOID:
-    case AC_MODE_TANH:
-      return true;
-    case AC_MODE_NONE:
-      return false;
-    default:
-      assert(0);
-      break;
-  }
-  return false;
-}
-
 bool Linear::measure_operator_cost(Simulator *sim,
                                    MachineView const &mv,
                                    CostMetrics &cost_metrics) const {

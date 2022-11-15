@@ -38,7 +38,22 @@ LinearMeta::LinearMeta(FFHandler handler, int batch_size) : OpMeta(handler) {
 namespace Kernels {
 namespace Linear {
 
-void Linear::init_kernel(LinearMeta *m, int batch_size, int channel) {
+bool use_activation(ActiMode mode) {
+  switch (mode) {
+    case AC_MODE_RELU:
+    case AC_MODE_SIGMOID:
+    case AC_MODE_TANH:
+      return true;
+    case AC_MODE_NONE:
+      return false;
+    default:
+      assert(0);
+      break;
+  }
+  return false;
+}
+
+void init_kernel(LinearMeta *m, int batch_size, int channel) {
   if (use_activation(m->activation)) {
     cudnnActivationMode_t mode;
     switch (m->activation) {

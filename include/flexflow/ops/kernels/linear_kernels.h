@@ -46,7 +46,7 @@ namespace Linear {
                               int in_dim,
                               int out_dim,
                               int batch_size);
-}
+  bool use_activation(ActiMode mode);
 
 namespace Internal {
   void forward_kernel(LinearMeta const *m,
@@ -70,6 +70,7 @@ namespace Internal {
                       int out_dim,
                       int batch_size,
                       ffStream_t stream);
+}
 }
 }
 }
