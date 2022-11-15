@@ -26,53 +26,53 @@ public:
 
 namespace Kernels {
 namespace Linear {
-  void init_kernel(LinearMeta *m, int batch_size, int channel);
-  void forward_kernel_wrapper(LinearMeta const *m,
-                              void const *input_ptr,
-                              void *output_ptr,
-                              void const *filter_ptr,
-                              void const *bias_ptr,
-                              int in_dim,
-                              int out_dim,
-                              int batch_size);
-  void backward_kernel_wrapper(LinearMeta const *m,
-                              void const *input_ptr,
-                              void *input_grad_ptr,
-                              void const *output_ptr,
-                              void *output_grad_ptr,
-                              void const *kernel_ptr,
-                              void *kernel_grad_ptr,
-                              void *bias_ptr,
-                              int in_dim,
-                              int out_dim,
-                              int batch_size);
-  bool use_activation(ActiMode mode);
+void init_kernel(LinearMeta *m, int batch_size, int channel);
+void forward_kernel_wrapper(LinearMeta const *m,
+                            void const *input_ptr,
+                            void *output_ptr,
+                            void const *filter_ptr,
+                            void const *bias_ptr,
+                            int in_dim,
+                            int out_dim,
+                            int batch_size);
+void backward_kernel_wrapper(LinearMeta const *m,
+                             void const *input_ptr,
+                             void *input_grad_ptr,
+                             void const *output_ptr,
+                             void *output_grad_ptr,
+                             void const *kernel_ptr,
+                             void *kernel_grad_ptr,
+                             void *bias_ptr,
+                             int in_dim,
+                             int out_dim,
+                             int batch_size);
+bool use_activation(ActiMode mode);
 
 namespace Internal {
-  void forward_kernel(LinearMeta const *m,
-                      void const *input_ptr,
-                      void *output_ptr,
-                      void const *filter_ptr,
-                      void const *bias_ptr,
-                      int in_dim,
-                      int out_dim,
-                      int batch_size,
-                      ffStream_t stream);
-  void backward_kernel(LinearMeta const *m,
-                      void const *input_ptr,
-                      void *input_grad_ptr,
-                      void const *output_ptr,
-                      void *output_grad_ptr,
-                      void const *kernel_ptr,
-                      void *kernel_grad_ptr,
-                      void *bias_ptr,
-                      int in_dim,
-                      int out_dim,
-                      int batch_size,
-                      ffStream_t stream);
-}
-}
-}
-}
+void forward_kernel(LinearMeta const *m,
+                    void const *input_ptr,
+                    void *output_ptr,
+                    void const *filter_ptr,
+                    void const *bias_ptr,
+                    int in_dim,
+                    int out_dim,
+                    int batch_size,
+                    ffStream_t stream);
+void backward_kernel(LinearMeta const *m,
+                     void const *input_ptr,
+                     void *input_grad_ptr,
+                     void const *output_ptr,
+                     void *output_grad_ptr,
+                     void const *kernel_ptr,
+                     void *kernel_grad_ptr,
+                     void *bias_ptr,
+                     int in_dim,
+                     int out_dim,
+                     int batch_size,
+                     ffStream_t stream);
+} // namespace Internal
+} // namespace Linear
+} // namespace Kernels
+} // namespace FlexFlow
 
 #endif // _FLEXFLOW_OPS_KERNELS_LINEAR_KERNELS_H

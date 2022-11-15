@@ -423,13 +423,13 @@ void Linear::forward_task_with_dim(Task const *task,
   }
 
   forward_kernel_wrapper(m,
-                                 acc_input.ptr,
-                                 acc_output.ptr,
-                                 acc_kernel.ptr,
-                                 acc_bias_ptr,
-                                 in_dim,
-                                 out_dim,
-                                 batch_size);
+                         acc_input.ptr,
+                         acc_output.ptr,
+                         acc_kernel.ptr,
+                         acc_bias_ptr,
+                         in_dim,
+                         out_dim,
+                         batch_size);
 }
 
 void Linear::backward(FFModel const &ff) {
@@ -615,16 +615,16 @@ void Linear::backward_task_with_dim(Task const *task,
   assert(rid == regions.size());
 
   backward_kernel_wrapper(m,
-                                  acc_input.ptr,
-                                  input_grad,
-                                  acc_output.ptr,
-                                  acc_output_grad.ptr,
-                                  acc_kernel.ptr,
-                                  acc_kernel_grad.ptr,
-                                  acc_bias_grad_ptr,
-                                  in_dim,
-                                  out_dim,
-                                  batch_size);
+                          acc_input.ptr,
+                          input_grad,
+                          acc_output.ptr,
+                          acc_output_grad.ptr,
+                          acc_kernel.ptr,
+                          acc_kernel_grad.ptr,
+                          acc_bias_grad_ptr,
+                          in_dim,
+                          out_dim,
+                          batch_size);
 }
 
 void Linear::print_layer(FFModel const &ff) {

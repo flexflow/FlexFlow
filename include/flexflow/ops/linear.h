@@ -101,7 +101,7 @@ private:
       backward_task_with_dim(Legion::Task const *task,
                              std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
-                             Legion::Runtime *runtime); 
+                             Legion::Runtime *runtime);
 
   void register_mappings();
   void register_output_mappings();

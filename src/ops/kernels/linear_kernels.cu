@@ -80,13 +80,13 @@ void init_kernel(LinearMeta *m, int batch_size, int channel) {
 }
 
 void forward_kernel_wrapper(LinearMeta const *m,
-                                    void const *input_ptr,
-                                    void *output_ptr,
-                                    void const *weight_ptr,
-                                    void const *bias_ptr,
-                                    int in_dim,
-                                    int out_dim,
-                                    int batch_size) {
+                            void const *input_ptr,
+                            void *output_ptr,
+                            void const *weight_ptr,
+                            void const *bias_ptr,
+                            int in_dim,
+                            int out_dim,
+                            int batch_size) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -97,14 +97,14 @@ void forward_kernel_wrapper(LinearMeta const *m,
     cudaEventRecord(t_start, stream);
   }
   Internal::forward_kernel(m,
-                         input_ptr,
-                         output_ptr,
-                         weight_ptr,
-                         bias_ptr,
-                         in_dim,
-                         out_dim,
-                         batch_size,
-                         stream);
+                           input_ptr,
+                           output_ptr,
+                           weight_ptr,
+                           bias_ptr,
+                           in_dim,
+                           out_dim,
+                           batch_size,
+                           stream);
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
@@ -123,16 +123,16 @@ void forward_kernel_wrapper(LinearMeta const *m,
 }
 
 void backward_kernel_wrapper(LinearMeta const *m,
-                                     void const *input_ptr,
-                                     void *input_grad_ptr,
-                                     void const *output_ptr,
-                                     void *output_grad_ptr,
-                                     void const *kernel_ptr,
-                                     void *kernel_grad_ptr,
-                                     void *bias_grad_ptr,
-                                     int in_dim,
-                                     int out_dim,
-                                     int batch_size) {
+                             void const *input_ptr,
+                             void *input_grad_ptr,
+                             void const *output_ptr,
+                             void *output_grad_ptr,
+                             void const *kernel_ptr,
+                             void *kernel_grad_ptr,
+                             void *bias_grad_ptr,
+                             int in_dim,
+                             int out_dim,
+                             int batch_size) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -143,17 +143,17 @@ void backward_kernel_wrapper(LinearMeta const *m,
     cudaEventRecord(t_start, stream);
   }
   Internal::backward_kernel(m,
-                          input_ptr,
-                          input_grad_ptr,
-                          output_ptr,
-                          output_grad_ptr,
-                          kernel_ptr,
-                          kernel_grad_ptr,
-                          bias_grad_ptr,
-                          in_dim,
-                          out_dim,
-                          batch_size,
-                          stream);
+                            input_ptr,
+                            input_grad_ptr,
+                            output_ptr,
+                            output_grad_ptr,
+                            kernel_ptr,
+                            kernel_grad_ptr,
+                            bias_grad_ptr,
+                            in_dim,
+                            out_dim,
+                            batch_size,
+                            stream);
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -189,14 +189,14 @@ Parameter* Linear::get_parameter(int index)
 namespace Internal {
 
 void forward_kernel(LinearMeta const *m,
-                            void const *input_ptr,
-                            void *output_ptr,
-                            void const *weight_ptr,
-                            void const *bias_ptr,
-                            int in_dim,
-                            int out_dim,
-                            int batch_size,
-                            ffStream_t stream) {
+                    void const *input_ptr,
+                    void *output_ptr,
+                    void const *weight_ptr,
+                    void const *bias_ptr,
+                    int in_dim,
+                    int out_dim,
+                    int batch_size,
+                    ffStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
@@ -272,19 +272,18 @@ void forward_kernel(LinearMeta const *m,
   }
 }
 
-
 void backward_kernel(LinearMeta const *m,
-                             void const *input_ptr,
-                             void *input_grad_ptr,
-                             void const *output_ptr,
-                             void *output_grad_ptr,
-                             void const *kernel_ptr,
-                             void *kernel_grad_ptr,
-                             void *bias_grad_ptr,
-                             int in_dim,
-                             int out_dim,
-                             int batch_size,
-                             ffStream_t stream) {
+                     void const *input_ptr,
+                     void *input_grad_ptr,
+                     void const *output_ptr,
+                     void *output_grad_ptr,
+                     void const *kernel_ptr,
+                     void *kernel_grad_ptr,
+                     void *bias_grad_ptr,
+                     int in_dim,
+                     int out_dim,
+                     int batch_size,
+                     ffStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
