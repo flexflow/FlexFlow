@@ -2125,17 +2125,13 @@ GraphOptimalViewSerialized
                                Runtime *runtime) {
 
   // Dummy flags to control the behavior; these should be inferred from config
-  bool perform_memory_search = true;
-  float global_memory_threshold = 30000; // 32 GB
+  bool perform_memory_search =
+      (*((FFModel **)task->args))->config.perform_memory_search;
+  float global_memory_threshold = 20000; // 32 GB
 
   // Binary search of the best lambda such that the PCG can be placed on the
   // devices but the run time cost is minimized
   std::vector<std::pair<float, MemorySearchResult>> lambdas{};
-
-  // std::vector<float> ls{0.0, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0};
-  // for (auto const l : ls) {
-  // lambdas.emplace_back(std::make_pair(l, MemorySearchResult{}));
-  // }
 
   Simulator *cached_sim = nullptr; // Cached simulator
 
@@ -2230,6 +2226,21 @@ GraphOptimalViewSerialized
     }
   };
 
+  /**
+   * @brief Analyze the per-device memory cost and compare with the memory
+   * threshold of each device.
+   */
+  auto is_valid_strategy =
+      [&](std::vector<std::pair<float, MemorySearchResult>> &lambdas_results) {
+        // Only need to check the last lambda result because we append the
+        // results one by one
+        if (lambdas_results.back().second.memory_cost >=
+            global_memory_threshold) {
+          return false;
+        }
+        return true;
+      };
+
   // Be optimistic
   lambdas.emplace_back(std::make_pair(1.0, MemorySearchResult{}));
   try_one_lambda(lambdas.back());
@@ -2237,22 +2248,21 @@ GraphOptimalViewSerialized
   bool has_valid_strategy = false;
   int best_lambda_index = -1;
 
-  int binary_search_budget = 10;
+  int binary_search_budget = 5;
 
-  if (lambdas[0].second.memory_cost >= global_memory_threshold) {
+  if (perform_memory_search && !is_valid_strategy(lambdas)) {
     // Not found the strategy; need to do binary search
     lambdas.emplace_back(std::make_pair(0.0, MemorySearchResult{}));
     try_one_lambda(lambdas.back());
 
-    if (lambdas.back().second.memory_cost >= global_memory_threshold) {
+    if (!is_valid_strategy(lambdas)) {
       // Cannot find a valid strategy
       has_valid_strategy = false;
     } else {
       has_valid_strategy = true;
+      best_lambda_index = 1;
 
-      // Do a binary search between 0 and 1 for lambda
-      // ...
-
+      // Do a binary search between 0 and 1 for the best lambda
       int bianry_search_num = 0;
       float lower = 0.0;
       float upper = 1.0;
@@ -2260,15 +2270,16 @@ GraphOptimalViewSerialized
       while (bianry_search_num < binary_search_budget) {
         bianry_search_num++;
 
-        float mid = (lower + upper) / 2;
+        float mid = (lower + upper) * 0.5;
 
         lambdas.emplace_back(std::make_pair(mid, MemorySearchResult{}));
         try_one_lambda(lambdas.back());
 
-        if (lambdas.back().second.memory_cost >= global_memory_threshold) {
+        if (!is_valid_strategy(lambdas)) {
           upper = mid;
         } else {
           lower = mid;
+          best_lambda_index = 1 + bianry_search_num;
         }
       }
     }
@@ -2277,12 +2288,30 @@ GraphOptimalViewSerialized
     best_lambda_index = 0;
   }
 
-  // Print out the grid search results
-  for (auto l : lambdas) {
-    std::cout << "lambda: " << l.first
-              << ", run time cost: " << l.second.run_time_cost
-              << ", memory cost: " << l.second.memory_cost
-              << ", search time: " << l.second.search_time << std::endl;
+  // Print out the results
+  if (perform_memory_search) {
+    if (has_valid_strategy) {
+      auto &best_l = lambdas[best_lambda_index];
+      std::cout << "Found valid strategy with global_memory_threshold: "
+                << global_memory_threshold
+                << " | lambda index: " << best_lambda_index
+                << ", lambda value: " << best_l.first
+                << ", result: run time cost: " << best_l.second.run_time_cost
+                << ", memory cost: " << best_l.second.memory_cost
+                << ", search time: " << best_l.second.search_time << std::endl;
+    } else {
+      std::cout << "Failed to find a valid strategy" << std::endl;
+    }
+
+    std::cout << "All lambda results:" << std::endl;
+    for (auto l : lambdas) {
+      std::cout << "lambda: " << l.first
+                << ", run time cost: " << l.second.run_time_cost
+                << ", memory cost: " << l.second.memory_cost
+                << ", search time: " << l.second.search_time << std::endl;
+    }
+  } else {
+    std::cout << "\nNot doing memory search" << std::endl;
   }
 
   // Following lines are to serialize the optimized PCG.
