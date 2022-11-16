@@ -174,23 +174,6 @@ void ElementBinary::forward_kernel_wrapper(ElementBinaryMeta const *m,
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
-    char const *opName;
-    switch (m->op_type) {
-      case OP_EW_ADD:
-        opName = "Add";
-        break;
-      case OP_EW_SUB:
-        opName = "Sub";
-        break;
-      case OP_EW_MUL:
-        opName = "Mul";
-        break;
-      case OP_EW_DIV:
-        opName = "Div";
-        break;
-      default:
-        assert(false);
-    }
     printf("[%s] forward time (CF) = %.2fms\n", m->op_name, elapsed);
     // print_tensor<float>(in1_ptr, 32, "[EWB:forward:input1]");
     // print_tensor<float>(in2_ptr, 32, "[EWB:forward:input2]");

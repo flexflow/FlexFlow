@@ -430,6 +430,7 @@ Conv2D::Conv2D(FFModel &model,
                char const *name)
     : Op(model,
          OP_CONV2D,
+         DT_FLOAT,
          name,
          1 /*inputs*/,
          use_bias ? 2 : 1 /*weights*/,

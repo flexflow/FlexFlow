@@ -53,11 +53,11 @@ __global__ void embed_forward_with_aggr(TI const *input,
     int off = i % out_dim;
     for (int j = 0; j < in_dim; j++) {
       TI wordIdx = input[idx * in_dim + j];
-      output[i] = outputs[i] + embed[wordIdx * out_dim + off];
+      output[i] = output[i] + embed[wordIdx * out_dim + off];
       if (aggr == AGGR_MODE_SUM) {
       } else {
         assert(aggr == AGGR_MODE_AVG);
-        output[i] = outputs[i] * scale;
+        output[i] = output[i] * scale;
       }
     }
   }
@@ -345,7 +345,8 @@ void Embedding::backward_kernel_wrapper(
   }
 }
 
-__global__ void rand_generate_int64(int64_t *ptr, size_t size, int64_t p) {
+template <typename TD>
+__global__ void rand_generate_int(TD *ptr, size_t size, TD p) {
   CUDA_KERNEL_LOOP(i, size) {
     ptr[i] = i % p;
   }
@@ -357,7 +358,17 @@ void Embedding::rand_generate_int64_wrapper(int64_t *ptr,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   // Randomly initialize the intput tensor to avoid out of index range issues
-  rand_generate_int64<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
+  rand_generate_int<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
+      ptr, size, p);
+}
+
+void Embedding::rand_generate_int32_wrapper(int32_t *ptr,
+                                            size_t size,
+                                            int32_t p) const {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  // Randomly initialize the intput tensor to avoid out of index range issues
+  rand_generate_int<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
       ptr, size, p);
 }
 

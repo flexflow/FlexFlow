@@ -138,6 +138,7 @@ BatchMatmul::BatchMatmul(FFModel &model,
                          char const *name)
     : Op(model,
          OP_BATCHMATMUL,
+         DT_FLOAT,
          name,
          2 /*inputs*/,
          0 /*weights*/,

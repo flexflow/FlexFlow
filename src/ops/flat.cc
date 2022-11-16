@@ -111,6 +111,7 @@ void Flat::construct_output_mappings(
 Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
     : Op(model,
          OP_FLAT,
+         _input->data_type,
          name,
          1 /*inputs*/,
          0 /*weights*/,

@@ -161,6 +161,7 @@ LayerNorm::LayerNorm(FFModel &model,
                      char const *name)
     : Op(model,
          OP_LAYERNORM,
+         _input->data_type,
          name,
          1 /*inputs*/,
          _elementwise_affine ? 2 : 0 /*weights*/,

@@ -285,6 +285,7 @@ Embedding::Embedding(FFModel &model,
                      char const *name)
     : Op(model,
          OP_EMBEDDING,
+         dtype,
          name,
          1 /*inputs*/,
          1 /*weights*/,
@@ -313,6 +314,7 @@ Embedding::Embedding(FFModel &model,
 
   if (allocate_weights) {
     Initializer *weight_initializer = new GlorotUniform(std::rand() /*seed*/);
+    // Initializer *weight_initializer = new ZeroInitializer(/*seed*/);
 
     weights[0] =
         model.create_parallel_weight_legion_ordering(weight_ndim,
@@ -716,54 +718,64 @@ void Embedding::backward_task_with_type(
 bool Embedding::measure_operator_cost(Simulator *sim,
                                       MachineView const &mv,
                                       CostMetrics &cost_metrics) const {
-  ParallelTensorBase sub_input, sub_output, sub_weight;
+  ParallelTensorBase sub_input, sub_output;
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
   }
   if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
   }
-  if (!weights[0]->get_sub_tensor(mv, sub_weight)) {
-    return false;
-  }
 
   EmbeddingMeta *m = new EmbeddingMeta(sim->handler, this);
   assert(m->profiling == false);
+  m->aggr = this->aggr;
 
   sim->free_all();
   bool out_of_memory = false;
   Domain in_domain = sub_input.get_domain();
-  int64_t *input_ptr =
-      (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
+  void *input_ptr = sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-  GenericTensorAccessorR input_acc(DT_INT64, in_domain, input_ptr);
+  GenericTensorAccessorW input_acc(inputs[0]->data_type, in_domain, input_ptr);
 
   out_of_memory = out_of_memory || (input_ptr == NULL);
   Domain out_domain = sub_output.get_domain();
-  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  void *output_ptr =
+      sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
   out_of_memory = out_of_memory || (output_ptr == NULL);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-  GenericTensorAccessorW output_acc(DT_FLOAT, out_domain, output_ptr);
+  GenericTensorAccessorW output_acc(
+      outputs[0]->data_type, out_domain, output_ptr);
 
-  Domain weight_domain = sub_weight.get_domain();
-  float *weight_ptr =
-      (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
+  Domain weight_domain;
+  weight_domain.dim = 2;
+  weight_domain.rect_data[0] = 0;
+  weight_domain.rect_data[1] = 0;
+  weight_domain.rect_data[2] = num_entries - 1;
+  weight_domain.rect_data[3] = out_channels - 1;
+
+  void *weight_ptr = sim->allocate(num_entries * out_channels, this->data_type);
   cost_metrics.weights_memory += cost_metrics.total_mem_diff_from(sim->offset);
   out_of_memory = out_of_memory || (weight_ptr == NULL);
-  GenericTensorAccessorR weight_acc(DT_FLOAT, weight_domain, weight_ptr);
+  GenericTensorAccessorR weight_acc(this->data_type, weight_domain, weight_ptr);
   if (out_of_memory) {
     cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
     cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
     return true;
   }
 
-  int in_dim = aggr == AGGR_MODE_NONE ? 1 : sub_input.dims[0].size;
+  int in_dim = this->aggr == AGGR_MODE_NONE ? 1 : sub_input.dims[0].size;
   int out_dim = sub_output.dims[0].size;
   int effective_batch_size = sub_output.get_volume() / out_dim;
   assert(effective_batch_size * in_dim == sub_input.get_volume());
 
   // Randomly initialize the intput tensor to avoid out of index range issues
-  rand_generate_int64_wrapper(input_ptr, sub_input.get_volume(), num_entries);
+  if (inputs[0]->data_type == DT_INT32)
+    rand_generate_int32_wrapper(
+        input_acc.get_int32_ptr(), sub_input.get_volume(), num_entries);
+  else if (inputs[0]->data_type == DT_INT64)
+    rand_generate_int64_wrapper(
+        input_acc.get_int64_ptr(), sub_input.get_volume(), num_entries);
+
   std::function<void()> forward, backward;
   forward = [&] {
     forward_kernel_wrapper(m,
@@ -775,27 +787,28 @@ bool Embedding::measure_operator_cost(Simulator *sim,
                            effective_batch_size);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
-    float *weight_grad_ptr =
-        (float *)sim->allocate(num_entries * out_channels, DT_FLOAT);
+    void *weight_grad_ptr =
+        sim->allocate(num_entries * out_channels, this->data_type);
     cost_metrics.weights_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
     out_of_memory = out_of_memory || (weight_grad_ptr == NULL);
     GenericTensorAccessorW weight_grad_acc(
         DT_FLOAT, weight_domain, weight_grad_ptr);
 
-    float *output_grad_ptr =
-        (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    void *output_grad_ptr =
+        sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
     out_of_memory = out_of_memory || (output_grad_ptr == NULL);
     GenericTensorAccessorR output_grad_acc(
-        DT_FLOAT, out_domain, output_grad_ptr);
+        outputs[0]->data_type, out_domain, output_grad_ptr);
 
-    int64_t *input_grad_ptr =
-        (int64_t *)sim->allocate(sub_input.get_volume(), DT_INT64);
+    void *input_grad_ptr =
+        sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
     out_of_memory = out_of_memory || (input_grad_ptr == NULL);
-    GenericTensorAccessorW input_grad_acc(DT_INT64, in_domain, input_grad_ptr);
+    GenericTensorAccessorW input_grad_acc(
+        inputs[0]->data_type, in_domain, input_grad_ptr);
 
     if (out_of_memory) {
       cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;

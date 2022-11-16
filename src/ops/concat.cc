@@ -115,6 +115,7 @@ Concat::Concat(FFModel &model,
                char const *name)
     : Op(model,
          OP_CONCAT,
+         DT_FLOAT,
          name,
          _n /*inputs*/,
          0 /*weights*/,

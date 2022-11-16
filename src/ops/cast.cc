@@ -87,6 +87,7 @@ Cast::Cast(FFModel &model,
            char const *name)
     : Op(model,
          OP_CAST,
+         _dtype,
          name,
          1 /*inputs*/,
          0 /*weights*/,

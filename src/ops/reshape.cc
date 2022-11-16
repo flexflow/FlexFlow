@@ -83,6 +83,7 @@ Reshape::Reshape(FFModel &model,
                  char const *name)
     : Op(model,
          OP_RESHAPE,
+         input->data_type,
          name,
          1 /*inputs*/,
          0 /*weights*/,

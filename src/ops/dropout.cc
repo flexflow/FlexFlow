@@ -88,6 +88,7 @@ Dropout::Dropout(FFModel &model,
                  char const *name)
     : Op(model,
          OP_DROPOUT,
+         DT_FLOAT,
          name,
          1 /*inputs*/,
          0 /*weights*/,

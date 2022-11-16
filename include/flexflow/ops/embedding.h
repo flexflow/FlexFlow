@@ -127,6 +127,7 @@ public:
                                       int out_dim,
                                       int batch_size);
   void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p) const;
+  void rand_generate_int32_wrapper(int32_t *ptr, size_t size, int32_t p) const;
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;

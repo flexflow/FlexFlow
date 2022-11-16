@@ -60,6 +60,7 @@ BatchNorm::BatchNorm(FFModel &model,
                      char const *name)
     : Op(model,
          OP_BATCHNORM,
+         DT_FLOAT,
          name,
          1 /*inputs*/,
          2 /*weights*/,

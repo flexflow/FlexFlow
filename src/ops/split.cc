@@ -104,6 +104,7 @@ Split::Split(FFModel &model,
              char const *name)
     : Op(model,
          OP_SPLIT,
+         input->data_type,
          name,
          1 /*inputs*/,
          0 /*weights*/,

@@ -146,6 +146,7 @@ Linear::Linear(FFModel &model,
                char const *name)
     : Op(model,
          OP_LINEAR,
+         _data_type,
          name,
          1 /*inputs*/,
          _use_bias ? 2 : 1 /*weights*/,

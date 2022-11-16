@@ -249,6 +249,10 @@ GenericTensorAccessorR
       ptr = helperGetTensorPointerRO<int64_t>(region, req, fid, ctx, runtime);
       break;
     }
+    case DT_HALF: {
+      ptr = helperGetTensorPointerRO<half>(region, req, fid, ctx, runtime);
+      break;
+    }
     case DT_FLOAT: {
       ptr = helperGetTensorPointerRO<float>(region, req, fid, ctx, runtime);
       break;
@@ -281,6 +285,10 @@ GenericTensorAccessorW
     }
     case DT_INT64: {
       ptr = helperGetTensorPointerWO<int64_t>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_HALF: {
+      ptr = helperGetTensorPointerWO<half>(region, req, fid, ctx, runtime);
       break;
     }
     case DT_FLOAT: {
@@ -317,6 +325,10 @@ GenericTensorAccessorW
       ptr = helperGetTensorPointerRW<int64_t>(region, req, fid, ctx, runtime);
       break;
     }
+    case DT_HALF: {
+      ptr = helperGetTensorPointerRW<half>(region, req, fid, ctx, runtime);
+      break;
+    }
     case DT_FLOAT: {
       ptr = helperGetTensorPointerRW<float>(region, req, fid, ctx, runtime);
       break;
@@ -343,6 +355,21 @@ GenericTensorAccessorW
   template class TensorAccessorW<int64_t, DIM>;
 LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
+template half const *helperGetTensorPointerRO(PhysicalRegion region,
+                                              RegionRequirement req,
+                                              FieldID fid,
+                                              Context ctx,
+                                              Runtime *runtime);
+template half *helperGetTensorPointerRW(PhysicalRegion region,
+                                        RegionRequirement req,
+                                        FieldID fid,
+                                        Context ctx,
+                                        Runtime *runtime);
+template half *helperGetTensorPointerWO(PhysicalRegion region,
+                                        RegionRequirement req,
+                                        FieldID fid,
+                                        Context ctx,
+                                        Runtime *runtime);
 
 template float const *helperGetTensorPointerRO(PhysicalRegion region,
                                                RegionRequirement req,

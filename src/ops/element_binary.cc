@@ -156,6 +156,7 @@ ElementBinary::ElementBinary(FFModel &model,
                              char const *name)
     : Op(model,
          _op_type,
+         in1->data_type,
          name,
          2 /*inputs*/,
          0 /*weights*/,
