@@ -133,6 +133,9 @@ enum TaskIDs {
   FUSEDOP_INIT_TASK_ID,
   FUSEDOP_FWD_TASK_ID,
   FUSEDOP_BWD_TASK_ID,
+  STOPGRAD_INIT_TASK_ID,
+  STOPGRAD_FWD_TASK_ID,
+  STOPGRAD_BWD_TASK_ID,
   NOOP_INIT_TASK_ID,
   // Metrics tasks
   METRICS_COMP_TASK_ID,
@@ -271,6 +274,7 @@ class Combine;
 class Repartition;
 class Reduction;
 class Replicate;
+class StopGrad;
 class FusedParallelOp;
 class ParallelOpInfo;
 
@@ -512,6 +516,8 @@ public:
                  std::vector<int> const &shape,
                  char const *name = NULL);
   Tensor reverse(const Tensor input, int axis, char const *name = NULL);
+  Tensor stopgrad(Tensor const x,
+               char const *name = NULL);
   void top_k(const Tensor input,
              Tensor *outputs,
              int k,
@@ -882,6 +888,8 @@ public:
                          Replicate *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReductionParams>,
                          Reduction *>,
+      std::unordered_map<std::pair<ParallelTensorShape, StopGradParams>,
+                         StopGrad *>,
       std::unordered_map<std::pair<ParallelTensorShape, CombineParams>,
                          Combine *>,
       std::unordered_map<std::pair<ParallelTensorShape, FusedParallelOpParams>,

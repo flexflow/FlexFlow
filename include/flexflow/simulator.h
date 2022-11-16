@@ -37,6 +37,7 @@ class Conv2DMeta;
 class LinearMeta;
 class Pool2DMeta;
 class ElementUnaryMeta;
+class StopGradMeta;
 class ElementBinaryMeta;
 // class EmbeddingMeta;
 // class SoftmaxMeta;
@@ -747,6 +748,7 @@ public:
   LinearMeta *linear_meta;
   Pool2DMeta *pool2d_meta;
   ElementUnaryMeta *ele_unary_meta;
+  StopGradMeta *stop_grad_meta;
   ElementBinaryMeta *ele_binary_meta;
   // EmbeddingMeta *embedding_meta;
   // SoftmaxMeta *softmax_meta;

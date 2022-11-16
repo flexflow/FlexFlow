@@ -34,6 +34,7 @@
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
+#include "flexflow/ops/stop_grad.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
@@ -2698,6 +2699,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_STOPGRAD: {
+      Op *op = StopGrad::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_FLAT: {
       Op *op = Flat::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -4329,6 +4335,31 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<MultiHeadAttention::backward_task>(
         registrar, "MultiHeadAttention Backward Task");
+  }
+  // StopGrad task
+  {
+    TaskVariantRegistrar registrar(STOPGRAD_INIT_TASK_ID,
+                                   "StopGrad Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, StopGrad::init_task>(
+        registrar, "StopGrad Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(STOPGRAD_FWD_TASK_ID,
+                                   "StopGrad Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<StopGrad::forward_task>(
+        registrar, "StopGrad Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(STOPGRAD_BWD_TASK_ID,
+                                   "StopGrad Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<StopGrad::backward_task>(
+        registrar, "StopGrad Backward Task");
   }
   // NoOp
   {

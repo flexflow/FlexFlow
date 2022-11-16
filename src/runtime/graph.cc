@@ -24,6 +24,7 @@
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
+#include "flexflow/ops/stop_grad.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/groupby.h"
@@ -2005,6 +2006,10 @@ void FFModel::deserialize_graph_optimal_view(
       case OP_GELU:
       case OP_ELU: {
         node = ElementUnary::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_STOPGRAD: {
+        node = StopGrad::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_FLAT: {

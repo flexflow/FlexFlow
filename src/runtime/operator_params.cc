@@ -11,6 +11,7 @@
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
+#include "flexflow/ops/stop_grad.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/groupby.h"
@@ -59,6 +60,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
     case OP_GELU:
     case OP_ELU:
       return ((ElementUnary *)op)->get_params();
+    case OP_STOPGRAD:
+      return ((StopGrad *)op)->get_params();
     case OP_CONCAT:
       return ((Concat *)op)->get_params();
     case OP_POOL2D:

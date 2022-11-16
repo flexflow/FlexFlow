@@ -17,6 +17,8 @@
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/kernels/batch_matmul_kernels.h"
+#include "flexflow/ops/stop_grad.h"
+#include "flexflow/ops/embedding.h"
 #include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
@@ -87,6 +89,7 @@ Simulator::Simulator(FFModel const *model,
   linear_meta = new LinearMeta(handler, 4096);
   pool2d_meta = new Pool2DMeta(handler);
   ele_unary_meta = new ElementUnaryMeta(handler);
+  stop_grad_meta = new StopGradMeta(handler);
   ele_binary_meta = new ElementBinaryMeta(handler);
   // embedding_meta = new EmbeddingMeta(handler);
   // softmax_meta = new SoftmaxMeta(handler);
@@ -108,6 +111,7 @@ Simulator::~Simulator(void) {
   delete conv2d_meta;
   delete pool2d_meta;
   delete ele_unary_meta;
+  delete stop_grad_meta;
   delete ele_binary_meta;
   delete batch_matmul_meta;
   delete concat_meta;

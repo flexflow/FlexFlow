@@ -1436,6 +1436,8 @@ int get_num_inputs(sl::Operator const &op) {
     case OP_TANH:
     case OP_ELU:
       return 1;
+    case OP_STOPGRAD:
+      return 1;
     case OP_CONCAT:
       return op.at(PM_NUM_INPUTS).value();
     case OP_INPUT:
