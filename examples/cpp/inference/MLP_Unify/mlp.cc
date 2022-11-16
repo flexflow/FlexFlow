@@ -25,6 +25,7 @@ void FlexFlow::top_level_task(Task const *task,
                               Context ctx,
                               Runtime *runtime) {
   FFConfig ffConfig;
+  ffConfig.batchSize=1;
   fprintf(stderr,
           "batchSize(%d) workersPerNodes(%d) numNodes(%d)\n",
           ffConfig.batchSize,
@@ -36,7 +37,7 @@ void FlexFlow::top_level_task(Task const *task,
       8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192};
   Tensor input1, input2;
   {
-    int const dims[] = {ffConfig.batchSize, 1024};
+    int const dims[] = {64, 1024};
     input1 = ff.create_tensor<2>(dims, DT_FLOAT);
     input2 = ff.create_tensor<2>(dims, DT_FLOAT);
   }
