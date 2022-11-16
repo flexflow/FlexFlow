@@ -3370,6 +3370,7 @@ FFConfig::FFConfig() {
   syntheticInput = false;
   perform_fusion = false;
   base_optimize_threshold = DefaultConfig::base_optimize_threshold;
+  perform_memory_search = false;
 
   // Parse input arguments
   {
@@ -3540,6 +3541,10 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if (!strcmp(argv[i], "--substitution-json")) {
       substitution_json_path = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--memory-search")) {
+      perform_memory_search = true;
       continue;
     }
   }
