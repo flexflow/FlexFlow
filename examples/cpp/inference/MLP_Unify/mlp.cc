@@ -17,6 +17,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include "data_generator.h"
 using namespace Legion;
 using namespace FlexFlow;
 
@@ -26,6 +27,7 @@ void FlexFlow::top_level_task(Task const *task,
                               Runtime *runtime) {
   FFConfig ffConfig;
   ffConfig.batchSize=1;
+  size_t total_requests = 256;
   fprintf(stderr,
           "batchSize(%d) workersPerNodes(%d) numNodes(%d)\n",
           ffConfig.batchSize,
@@ -37,7 +39,7 @@ void FlexFlow::top_level_task(Task const *task,
       8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192};
   Tensor input1, input2;
   {
-    int const dims[] = {64, 1024};
+    int const dims[] = {total_requests, 1024};
     input1 = ff.create_tensor<2>(dims, DT_FLOAT);
     input2 = ff.create_tensor<2>(dims, DT_FLOAT);
   }
@@ -67,12 +69,25 @@ void FlexFlow::top_level_task(Task const *task,
   double ts_start = Realm::Clock::current_time_in_microseconds();
   //for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
   ff.reset_metrics();
-  int iterations = 128;
-  for (int iter = 0; iter < iterations; iter++) {
-    runtime->begin_trace(ctx, 111 /*trace_id*/);
-    ff.forward();
-    runtime->end_trace(ctx, 111 /*trace_id*/);
+  //int iterations = 128;
+  size_t processed_requests=0;
+  Generator data_generator(total_requests, 4, true, 25);
+  while(processed_requests < total_requests) {
+    vector<vector<double>> req = data_generator.get_requests();
+    size_t iterations = req.size();
+    for (size_t iter = 0; iter < iterations; iter++) {
+      runtime->begin_trace(ctx, 111 /*trace_id*/);
+      ff.forward();
+      runtime->end_trace(ctx, 111 /*trace_id*/);
+    }
+    processed_requests+= iterations;
   }
+
+  // for (int iter = 0; iter < iterations; iter++) {
+  //   runtime->begin_trace(ctx, 111 /*trace_id*/);
+  //   ff.forward();
+  //   runtime->end_trace(ctx, 111 /*trace_id*/);
+  // }
   // End timer
   {
     runtime->issue_execution_fence(ctx);
