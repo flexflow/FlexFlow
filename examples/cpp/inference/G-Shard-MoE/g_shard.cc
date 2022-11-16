@@ -20,15 +20,87 @@
 using namespace Legion;
 using namespace FlexFlow;
 
+// embed_dim=768,
+// num_heads=12,
+// kdim=None,
+// vdim=None,
+// dropout=0.1,
+// bias=True,
+// add_bias_kv=False,
+// add_zero_attn=False,
+// self_attention=True,
+// encoder_decoder_attention=False,
+// q_noise=0.0,
+// qn_block_size=8,
+
+// Tensor FFModel::multihead_attention(const Tensor query,
+// const Tensor key,
+// const Tensor value,
+// int embed_dim,
+// int num_heads,
+// int kdim,
+// int vdim,
+// float dropout,
+// bool bias,
+// bool add_bias_kv,
+// bool add_zero_attn,
+// Initializer *kernel_initializer,
+// char const *name) {
+
+
 void create_attention_decoder(FFModel *model,
                                       Tensor const &input1,
                                       Tensor const &input2,
                                       Tensor &output1,
                                       Tensor &output2,
-                                      int hidden_dim,
+                                      int embed_dim,
                                       int num_heads,
                                       int kdim,
-                                      int vdim) {
+                                      int vdim,
+                                      float dropout=0.1,
+                                      bool normalize_before,
+                                      bool is_moe) {
+  
+  std::vector<int> axes = {embed_dim};
+  Tensor x = normalize_before ? model->LayerNorm(input1 /*const Tensor input*/, &axes /*std::vector<int> const &axes*/, true /*elementwise_affine*/, 1e-05 /*eps*/) : input1;
+  x = model->add(model->dropout(model->multihead_attention(x, x, x, embed_dim, num_heads, embed_dim, embed_dim, dropout, true /*bias*/, false /*add_bias_kv*/, false /*add_zero_attn*/), dropout), x);
+  //x = normalize_before ? x : model->LayerNorm(x, &axes, true, 1e-05);
+  x = model->LayerNorm(x, &axes, true, 1e-05);
+
+  if(!is_moe) {
+    x = model->dropout(model->dense(model->dropout(model->dense(x, 3072, AC_MODE_GELU, true /*bias*/), dropout), embed_dim, AC_MODE_NONE, true /*bias*/), dropout);
+  } else {
+    // x - seq_len, batch_size, model_dim
+    // x = x.transpose(0, 1) # batch_size, seq_len, model_dim
+    // x, l_aux = self.moe_layer(x)
+    // x = x.transpose(0, 1) # seq_len, batch_size, model_dim
+    //x = self.residual_connection(x, residual)
+    
+    //if not self.normalize_before:
+    //    x = self.final_layer_norm(x)
+    x = normalize_before ? x : model->LayerNorm(x, &axes, true, 1e-05);
+    float alpha = 2.0f;   // factor overhead tensor size for imbalance
+    float lambda = 0.04f; // multiplier for load balance term
+
+    // MoE model
+    Tensor gate_preds = ff.dense(x, num_exp, AC_MODE_RELU);
+    Tensor topK_output[2];
+    ff.top_k(gate_preds, topK_output, num_select, false);
+
+    Tensor exp_tensors[num_exp];
+    ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
+
+    Tensor agg_inputs[num_exp + 4];
+    agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
+    agg_inputs[1] = topK_output[1];             // gate assign
+    agg_inputs[2] = topK_output[1];             // gate assign TopK (for cache)
+    agg_inputs[3] = gate_preds;                 // full gate preds
+    for (int i = 0; i < num_exp; i++) {
+      Tensor exp_pred = ff.dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
+      agg_inputs[i + 4] = ff.softmax(exp_pred);
+    }
+  }
+  
   Tensor t1 =
       model->add(model->multihead_attention(
                      input1, input1, input1, hidden_dim, num_heads, kdim, vdim),
