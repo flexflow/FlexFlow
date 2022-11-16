@@ -73,7 +73,7 @@ Tensor FFModel::embedding(const Tensor input,
     int dims[2] = {out_dim, num_entries};
     embed->weights[0] = create_weight_legion_ordering(2,
                                                       dims,
-                                                      DT_FLOAT,
+                                                      dtype,
                                                       embed,
                                                       true /*create_grad*/,
                                                       kernel_initializer,
@@ -793,7 +793,7 @@ bool Embedding::measure_operator_cost(Simulator *sim,
         cost_metrics.total_mem_diff_from(sim->offset);
     out_of_memory = out_of_memory || (weight_grad_ptr == NULL);
     GenericTensorAccessorW weight_grad_acc(
-        DT_FLOAT, weight_domain, weight_grad_ptr);
+        this->data_type, weight_domain, weight_grad_ptr);
 
     void *output_grad_ptr =
         sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
