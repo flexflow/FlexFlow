@@ -58,14 +58,14 @@ void create_attention_decoder(FFModel *model,
                                       int kdim,
                                       int vdim,
                                       float dropout=0.1,
-                                      bool normalize_before,
-                                      bool is_moe) {
+                                      bool normalize_before=false,
+                                      bool is_moe=false) {
   
   std::vector<int> axes = {embed_dim};
-  Tensor x = normalize_before ? model->LayerNorm(input1 /*const Tensor input*/, &axes /*std::vector<int> const &axes*/, true /*elementwise_affine*/, 1e-05 /*eps*/) : input1;
+  Tensor x = normalize_before ? model->layer_norm(input1 /*const Tensor input*/, axes /*std::vector<int> const &axes*/, true /*elementwise_affine*/, 1e-05 /*eps*/) : input1;
   x = model->add(model->dropout(model->multihead_attention(x, x, x, embed_dim, num_heads, embed_dim, embed_dim, dropout, true /*bias*/, false /*add_bias_kv*/, false /*add_zero_attn*/), dropout), x);
-  //x = normalize_before ? x : model->LayerNorm(x, &axes, true, 1e-05);
-  x = model->LayerNorm(x, &axes, true, 1e-05);
+  //x = normalize_before ? x : model->layer_norm(x, axes, true, 1e-05);
+  x = model->layer_norm(x, axes, true, 1e-05);
 
   if(!is_moe) {
     x = model->dropout(model->dense(model->dropout(model->dense(x, 3072, AC_MODE_GELU, true /*bias*/), dropout), embed_dim, AC_MODE_NONE, true /*bias*/), dropout);
@@ -78,50 +78,53 @@ void create_attention_decoder(FFModel *model,
     
     //if not self.normalize_before:
     //    x = self.final_layer_norm(x)
-    x = normalize_before ? x : model->LayerNorm(x, &axes, true, 1e-05);
+    x = normalize_before ? x : model->layer_norm(x, axes, true, 1e-05);
     float alpha = 2.0f;   // factor overhead tensor size for imbalance
     float lambda = 0.04f; // multiplier for load balance term
+    int num_exp = 128;
+    int num_select = 2;
 
     // MoE model
-    Tensor gate_preds = ff.dense(x, num_exp, AC_MODE_RELU);
+    Tensor input = x;
+    Tensor gate_preds = model->dense(x, num_exp, AC_MODE_RELU);
     Tensor topK_output[2];
-    ff.top_k(gate_preds, topK_output, num_select, false);
+    model->top_k(gate_preds, topK_output, num_select, false);
 
     Tensor exp_tensors[num_exp];
-    ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
+    model->group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
 
     Tensor agg_inputs[num_exp + 4];
-    agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
+    agg_inputs[0] = model->softmax(topK_output[0]); // gate preds
     agg_inputs[1] = topK_output[1];             // gate assign
     agg_inputs[2] = topK_output[1];             // gate assign TopK (for cache)
     agg_inputs[3] = gate_preds;                 // full gate preds
     for (int i = 0; i < num_exp; i++) {
-      Tensor exp_pred = ff.dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
-      agg_inputs[i + 4] = ff.softmax(exp_pred);
+      Tensor exp_pred = model->dense(exp_tensors[i], embed_dim, AC_MODE_RELU);
+      agg_inputs[i + 4] = model->softmax(exp_pred);
     }
   }
   
-  Tensor t1 =
-      model->add(model->multihead_attention(
-                     input1, input1, input1, hidden_dim, num_heads, kdim, vdim),
-                 input1);
-  t1 = model->dense(model->dense(t1, hidden_dim, AC_MODE_RELU, false /*bias*/),
-                    hidden_dim,
-                    AC_MODE_NONE,
-                    false /*bias*/);
-  Tensor t2 =
-      model->add(model->multihead_attention(
-                     input2, input2, input2, hidden_dim, num_heads, kdim, vdim),
-                 input2);
-  t2 = model->add(
-      model->multihead_attention(t2, t1, t1, hidden_dim, num_heads, kdim, vdim),
-      t2);
-  t2 = model->dense(model->dense(t2, hidden_dim, AC_MODE_RELU, false /*bias*/),
-                    hidden_dim,
-                    AC_MODE_NONE,
-                    false /*bias*/);
-  output1 = t1;
-  output2 = t2;
+  // Tensor t1 =
+  //     model->add(model->multihead_attention(
+  //                    input1, input1, input1, hidden_dim, num_heads, kdim, vdim),
+  //                input1);
+  // t1 = model->dense(model->dense(t1, hidden_dim, AC_MODE_RELU, false /*bias*/),
+  //                   hidden_dim,
+  //                   AC_MODE_NONE,
+  //                   false /*bias*/);
+  // Tensor t2 =
+  //     model->add(model->multihead_attention(
+  //                    input2, input2, input2, hidden_dim, num_heads, kdim, vdim),
+  //                input2);
+  // t2 = model->add(
+  //     model->multihead_attention(t2, t1, t1, hidden_dim, num_heads, kdim, vdim),
+  //     t2);
+  // t2 = model->dense(model->dense(t2, hidden_dim, AC_MODE_RELU, false /*bias*/),
+  //                   hidden_dim,
+  //                   AC_MODE_NONE,
+  //                   false /*bias*/);
+  // output1 = t1;
+  // output2 = t2;
 }
 
 void FlexFlow::top_level_task(Task const *task,
