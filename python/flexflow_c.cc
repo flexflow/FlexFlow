@@ -1735,7 +1735,7 @@ DLRMConfig::DLRMConfig(void)
       continue;
     }
     if (!strcmp(argv[i], "--arch-embedding-size")) {
-      std::stringstream ss(std::string(argv[++i]));
+      std::stringstream ss((std::string(argv[++i])));
       std::string word;
       embedding_size.clear();
       while (std::getline(ss, word, '-')) {
@@ -1748,7 +1748,7 @@ DLRMConfig::DLRMConfig(void)
       continue;
     }
     if (!strcmp(argv[i], "--arch-mlp-bot")) {
-      std::stringstream ss(std::string(argv[++i]));
+      std::stringstream ss((std::string(argv[++i])));
       std::string word;
       mlp_bot.clear();
       while (std::getline(ss, word, '-')) {
@@ -1757,7 +1757,7 @@ DLRMConfig::DLRMConfig(void)
       continue;
     }
     if (!strcmp(argv[i], "--arch-mlp-top")) {
-      std::stringstream ss(std::string(argv[++i]));
+      std::stringstream ss((std::string(argv[++i])));
       std::string word;
       mlp_top.clear();
       while (std::getline(ss, word, '-')) {

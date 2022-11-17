@@ -38,6 +38,8 @@ jobs:
         id: cuda-toolkit
         with:
           cuda: "11.1.1"
+          # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
+          use-github-cache: "false"
 
       - name: Install FlexFlow Dependencies
         run: .github/workflows/helpers/install_dependencies.sh
@@ -51,12 +53,9 @@ jobs:
           cores_available=$(nproc --all)
           n_build_cores=$(( cores_available -1 ))
           if (( $n_build_cores < 1 )) ; then n_build_cores=1 ; fi
-          sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
-          sed -i "/FF_BUILD_ALL_EXAMPLES/c\FF_BUILD_ALL_EXAMPLES=ON" ./config/config.linux
-          sed -i "/FF_BUILD_UNIT_TESTS/c\FF_BUILD_UNIT_TESTS=ON" ./config/config.linux
           mkdir build
           cd build
-          ../config/config.linux
+          FF_CUDA_ARCH=70 FF_BUILD_ALL_EXAMPLES=ON FF_BUILD_UNIT_TESTS=ON ../config/config.linux
           make -j $n_build_cores
 
       - name: Install FlexFlow
@@ -66,8 +65,9 @@ jobs:
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
           cd build
-          ../config/config.linux
+          FF_CUDA_ARCH=70 FF_BUILD_ALL_EXAMPLES=ON FF_BUILD_UNIT_TESTS=ON ../config/config.linux
           sudo make install
+          sudo ldconfig
 
       - name: Check availability of Python flexflow.core module
         run: |
@@ -99,6 +99,7 @@ jobs:
         id: cuda-toolkit
         with:
           cuda: "11.1.1"
+          use-github-cache: "false"
 
       - name: Install FlexFlow Dependencies
         run: .github/workflows/helpers/install_dependencies.sh
