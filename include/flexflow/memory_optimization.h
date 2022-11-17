@@ -76,6 +76,8 @@ public:
   float run_time_cost{};
   float memory_cost{};
   float search_time{};
+  ///< The max of per-device memory usage among all devices
+  float max_per_device_mem_all_deivces{0.0};
 };
 
 namespace PCG {
