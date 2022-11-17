@@ -183,6 +183,11 @@ public:
   virtual void init(FFModel const &) = 0;
   virtual void forward(FFModel const &) = 0;
   virtual void backward(FFModel const &) = 0;
+  // Pure virtual functions for inference
+  virtual void inference(FFModel const &,
+                         std::vector<ParallelTensor> const &,
+                         std::vector<ParallelTensor> const &,
+                         std::vector<ParallelTensor> const &) {assert(false);};
   virtual void print_layer(FFModel const &model) = 0;
   virtual bool measure_operator_cost(Simulator *sim,
                                      MachineView const &mv,
