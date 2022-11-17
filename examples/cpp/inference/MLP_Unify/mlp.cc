@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/model.h"
+#include "flexflow/inference.h"
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -53,11 +54,8 @@ void FlexFlow::top_level_task(Task const *task,
   }
   Tensor t = ff.add(t1, t2);
   t = ff.softmax(t);
-  Optimizer *optimizer = new SGDOptimizer(&ff, 0.001f);
-  std::vector<MetricsType> metrics;
-  metrics.push_back(METRICS_ACCURACY);
-  metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
-  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics, CompMode::COMP_MODE_INFERENCE);
+  int num_inflight_batches = 10;
+  InferenceManager im(&ff, 5/*num_requests_per_batch*/, num_inflight_batches);
   ff.init_operators();
   // Start timer
   {
@@ -67,8 +65,9 @@ void FlexFlow::top_level_task(Task const *task,
     future.get_void_result();
   }
   double ts_start = Realm::Clock::current_time_in_microseconds();
+  int index = 0;
   //for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
-  ff.reset_metrics();
+  // ff.reset_metrics();
   //int iterations = 128;
   size_t processed_requests=0;
   Generator data_generator(total_requests, 4, true, 25);
@@ -77,7 +76,7 @@ void FlexFlow::top_level_task(Task const *task,
     size_t iterations = req.size();
     for (size_t iter = 0; iter < iterations; iter++) {
       runtime->begin_trace(ctx, 111 /*trace_id*/);
-      ff.forward();
+      im.inference((index++) % num_inflight_batches);
       runtime->end_trace(ctx, 111 /*trace_id*/);
     }
     processed_requests+= iterations;
