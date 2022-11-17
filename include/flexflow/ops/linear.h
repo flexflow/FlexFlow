@@ -37,6 +37,10 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
+  void inference(FFModel const &,
+                 std::vector<ParallelTensor> const &,
+                 std::vector<ParallelTensor> const &,
+                 std::vector<ParallelTensor> const &) override;
   void print_layer(FFModel const &model) override;
   bool get_int_parameter(PMParameter, int *) const override;
   static Op *

@@ -367,6 +367,51 @@ void Linear::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Linear::inference(FFModel const &ff,
+                       std::vector<ParallelTensor> const &batch_inputs,
+                       std::vector<ParallelTensor> const &batch_weights,
+                       std::vector<ParallelTensor> const &batch_outputs) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_forward(ff, argmap);
+  IndexLauncher launcher(LINEAR_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_weights[0]->region));
+  launcher.add_field(2, FID_DATA);
+  if (use_bias) {
+    launcher.add_region_requirement(RegionRequirement(batch_weights[1]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      batch_weights[1]->region));
+    launcher.add_field(3, FID_DATA);
+  }
+  runtime->execute_index_space(ctx, launcher);
+}
+
 void Linear::forward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
