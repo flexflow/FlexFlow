@@ -14,8 +14,8 @@
  */
 
 #include "flexflow_c.h"
-#include "flexflow_dataloader.h"
 #include "flexflow/mapper.h"
+#include "flexflow_dataloader.h"
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -33,9 +33,7 @@ public:
     t_.impl = const_cast<void *>(static_cast<void const *>(t));                \
     return t_;                                                                 \
   }                                                                            \
-  static T unwrap(T_ t_) {                                                     \
-    return static_cast<T>(t_.impl);                                            \
-  }                                                                            \
+  static T unwrap(T_ t_) { return static_cast<T>(t_.impl); }                   \
   static const T unwrap_const(const T_ t_) {                                   \
     return static_cast<const T>(t_.impl);                                      \
   }
@@ -1804,7 +1802,8 @@ void begin_flexflow_task(int argc, char **argv) {
 
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "-ll:py")) {
-      std::cerr << "-ll:py is not supported when using native python" << std::endl;
+      std::cerr << "-ll:py is not supported when using native python"
+                << std::endl;
       abort();
     }
   }
@@ -1834,4 +1833,3 @@ void finish_flexflow_task() {
   // wait for the shutdown of the runtime to complete
   Runtime::wait_for_shutdown();
 }
-
