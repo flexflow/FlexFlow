@@ -3457,6 +3457,10 @@ void FFConfig::parse_args(char **argv, int argc) {
       workersPerNode = atoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "-ll:fsize")) {
+      device_mem = atoi(argv[++i]);
+      continue;
+    }
     if (!strcmp(argv[i], "--nodes")) {
       fprintf(stderr,
               "[Warning] --nodes is deprecated. "
