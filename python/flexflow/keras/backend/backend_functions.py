@@ -16,8 +16,8 @@
 import flexflow.core as ff
 from flexflow.core.flexflow_logger import fflogger
 
-from .base_layer import Layer
-from .input_layer import Input
+from ..layers.base_layer import Layer
+from ..layers.input_layer import Input
 from flexflow.keras.models.tensor import Tensor
 
 
@@ -68,3 +68,7 @@ class BatchMatmul(Layer):
 
   def _reset_layer(self):
     pass
+
+
+def batch_dot(x, y):
+    return BatchMatmul()([x, y])
