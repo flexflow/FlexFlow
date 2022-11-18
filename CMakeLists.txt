@@ -6,6 +6,10 @@ include(ExternalProject)
 # Set policy CMP0074 to eliminate cmake warnings
 cmake_policy(SET CMP0074 NEW)
 cmake_policy(SET CMP0077 NEW)
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+  # Fix DOWNLOAD_EXTRACT_TIMESTAMP warnings
+  cmake_policy(SET CMP0135 NEW)
+endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -UNDEBUG")
