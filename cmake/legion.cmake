@@ -21,7 +21,7 @@ else()
 	if((FF_USE_PREBUILT_LEGION OR FF_USE_ALL_PREBUILT_LIBRARIES) AND CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x86_64" AND 
 		FF_USE_PYTHON AND NOT FF_USE_GASNET AND FF_MAX_DIM EQUAL 5 AND FF_GPU_BACKEND STREQUAL "cuda")
 		# For now, reusing pre-compiled Legion library only works when the Python library on the target machine 
-		# is stores at the path `/opt/conda/lib/libpython3.9.so`. Here, we check if this is the case.
+		# is stored at the path `/opt/conda/lib/libpython3.9.so`. Here, we check if this is the case.
 		find_package(PythonInterp)
   		find_package(PythonLibs)
 		if(PYTHON_LIBRARIES STREQUAL "/opt/conda/lib/libpython3.9.so")
