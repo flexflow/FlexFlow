@@ -74,8 +74,8 @@ else
 GEN_HIP_SRC	  ?= flexflow_dataloader.cpp # .cpp files
 endif
 
-FF_NATIVE_LIB = flexflow/core/flexflow_native_python.$(PYTHON_EXT)
-FF_NATIVE_LIB_NAME = flexflow_native_python.$(PYTHON_EXT)
+FF_NATIVE_LIB = flexflow/core/libflexflow_native_python.$(PYTHON_EXT)
+FF_NATIVE_LIB_NAME = libflexflow_native_python.$(PYTHON_EXT)
 INC_FLAGS     += -I${FF_HOME}
 CC_FLAGS      += -fPIC
 NVCC_FLAGS    += -Xcompiler -fPIC
