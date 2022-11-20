@@ -1,10 +1,26 @@
 #! /usr/bin/env bash
 set -euo pipefail
 
+# Usage: ./build.sh [-b] <docker_image_name>
+# Pass the -b flag to build the flexflow-environment image from scratch 
+# (as opposed to downloading the latest version) from ghrc.io
+
 # https://stackoverflow.com/questions/59895/how-do-i-get-the-directory-where-a-bash-script-is-located-from-within-the-script
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # Cd into $FF_HOME. Assumes this script is in $FF_HOME/docker
 cd "$SCRIPT_DIR/.."
+
+build_environment=false
+while getopts ":b" 'OPTKEY'
+do
+  case "${OPTKEY}" in
+    'b') 
+      build_environment=true 
+    ;;
+  esac
+done
+shift $(( OPTIND - 1 ))
+[[ "${1}" == "--" ]] && shift
 
 # Get name of desired Docker image as input
 image=${1:-flexflow}
@@ -24,9 +40,12 @@ else
   echo "Letting FlexFlow build for a default GPU backend: cuda"
 fi
 
-# Build FlexFlow Enviroment docker image
-docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" -t ${ff_env_image_name} -f docker/environment/Dockerfile .
-
+# Build (or download) FlexFlow Enviroment docker image
+if [ "$build_environment" = true ]; then
+  docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" -t ${ff_env_image_name} -f docker/environment/Dockerfile .
+else
+  ./docker/pull.sh ${ff_env_image_name}
+fi
 # If the user only wants to build the environment image, we are done
 if [[ "$image" == "environment" ]]; then
   exit 0
