@@ -6,20 +6,26 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # Cd into $FF_HOME. Assumes this script is in $FF_HOME/docker
 cd "$SCRIPT_DIR/.."
 
+# Get name of desired Docker image as input
+image=${1:-flexflow}
+
+# Set up GPU backend
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
+ff_env_image_name="flexflow-environment"
 if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
   echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid."
   exit 1
 elif [[ "${FF_GPU_BACKEND}" != "cuda" ]]; then
   echo "Configuring FlexFlow to build for gpu backend: ${FF_GPU_BACKEND}"
+  if [[ "${FF_GPU_BACKEND}" == "hip_cuda" ||  "${FF_GPU_BACKEND}" == "hip_rocm" ]]; then
+    ff_env_image_name="flexflow-environment-hip"
+  fi
 else
   echo "Letting FlexFlow build for a default GPU backend: cuda"
 fi
 
 # Build FlexFlow Enviroment docker image
-docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" -t flexflow-environment -f docker/environment/Dockerfile .
-
-image=${1:-flexflow}
+docker build --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" -t ${ff_env_image_name} -f docker/environment/Dockerfile .
 
 # If the user only wants to build the environment image, we are done
 if [[ "$image" == "environment" ]]; then
@@ -67,4 +73,8 @@ else
 fi
 
 # Build FlexFlow Docker image
-docker build --build-arg N_BUILD_CORES=$n_build_cores --build-arg "FF_CUDA_ARCH=${FF_CUDA_ARCH}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" -t flexflow -f docker/flexflow/Dockerfile .
+. config/config.linux get-docker-configs
+# Set value of BUILD_CONFIGS
+get_build_configs
+
+docker build --build-arg N_BUILD_CORES=$n_build_cores --build-arg "BUILD_CONFIGS=${BUILD_CONFIGS}" -t flexflow -f docker/flexflow/Dockerfile .

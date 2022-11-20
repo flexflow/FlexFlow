@@ -7,15 +7,14 @@ WORKDIR ${FF_HOME}
 COPY . .
 
 # Args to build FlexFlow
-ARG FF_GPU_BACKEND "cuda"
+ARG BUILD_CONFIGS
 ARG N_BUILD_CORES
-ARG FF_CUDA_ARCH
 
 # Build and install C++ and Python versions of FlexFlow
 RUN mkdir -p build && cd build && \
-    ../config/config.linux && \
+    eval "$BUILD_CONFIGS" ../config/config.linux && \
     make -j $N_BUILD_CORES && \
-    ../config/config.linux && \
-    make install
+    make install && \
+    ldconfig
 
 ENTRYPOINT ["/bin/bash"]
