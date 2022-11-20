@@ -59,6 +59,12 @@ ROCM_PATH=${ROCM_PATH:-"/opt/rocm"}
 # set GPU backend
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
 
+# Validate GPU backend
+if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
+  echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid."
+  exit 1
+fi
+
 if [ "$FF_GPU_BACKEND" = "cuda" ] || [ "$FF_GPU_BACKEND" = "hip_cuda" ]; then
     # enable NCCL
     FF_USE_NCCL=${FF_USE_NCCL:-ON}

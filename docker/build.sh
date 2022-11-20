@@ -6,12 +6,14 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 # Cd into $FF_HOME. Assumes this script is in $FF_HOME/docker
 cd "$SCRIPT_DIR/.."
 
-FF_GPU_BACKEND=${FF_GPU_BACKEND:-""}
-if [[ -n "$FF_GPU_BACKEND" ]]; then
+FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
+if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
+  echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid."
+  exit 1
+elif [[ "${FF_GPU_BACKEND}" != "cuda" ]]; then
   echo "Configuring FlexFlow to build for gpu backend: ${FF_GPU_BACKEND}"
 else
   echo "Letting FlexFlow build for a default GPU backend: cuda"
-  FF_GPU_BACKEND="cuda"
 fi
 
 # Build FlexFlow Enviroment docker image
