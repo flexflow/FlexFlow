@@ -1,5 +1,8 @@
 FROM nvidia/cuda:11.7.0-cudnn8-devel-ubuntu20.04
 
+LABEL org.opencontainers.image.source=https://github.com/flexflow/FlexFlow
+LABEL org.opencontainers.image.description="FlexFlow environment container"
+
 # Install basic dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binutils git zlib1g-dev lsb-release nano libhdf5-dev && \
     rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/nvidia-ml.list && \
@@ -47,9 +50,7 @@ ENV CUDA_DIR /usr/local/cuda
 # Install python packages and other dependencies
 RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind11 numpy pandas keras-preprocessing 
 # Install CPU-only Pytorch and related dependencies
-RUN conda install pytorch==1.9.0 torchvision==0.10.0 torchaudio==0.9.0 cpuonly -c pytorch
-RUN conda install -c conda-forge onnx tensorflow
-# Install Hugging-face/MT5 related packages
-RUN /opt/conda/bin/conda install -c conda-forge transformers=4.16.2 sentencepiece
+RUN conda install pytorch torchvision torchaudio cpuonly -c pytorch
+RUN conda install -c conda-forge onnx tensorflow transformers sentencepiece
 
 ENTRYPOINT ["/bin/bash"]
