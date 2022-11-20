@@ -8,10 +8,9 @@ on:
       - "config/**"
       - "python/**"
       - "setup.py"
-      - ".github/workflows/helpers/install_dependencies.sh"
-      - ".github/workflows/helpers/install_cpu_pytorch.sh"
+      - "include/**"
+      - "src/**"
       - ".github/workflows/gpu-ci.yml"
-      - ".github/workflows/self_hosted_runner/**"
   push:
     branches:
       - "master"
@@ -20,10 +19,9 @@ on:
       - "config/**"
       - "python/**"
       - "setup.py"
-      - ".github/workflows/helpers/install_dependencies.sh"
-      - ".github/workflows/helpers/install_cpu_pytorch.sh"
+      - "include/**"
+      - "src/**"
       - ".github/workflows/gpu-ci.yml"
-      - ".github/workflows/self_hosted_runner/**"
   workflow_dispatch:
 
 concurrency:
