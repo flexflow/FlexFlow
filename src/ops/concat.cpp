@@ -41,22 +41,20 @@ void calc_blk_size(coord_t &num_blocks,
 }
 
 /*static*/
-void Concat::forward_kernel(float *output,
-                            float const *const *inputs,
+void Concat::forward_kernel(GenericTensorAccessorW const &output,
+                            GenericTensorAccessorR const *inputs,
                             int num_inputs,
                             int axis,
-                            Domain const &out_domain,
-                            Domain const *in_domain,
                             hipStream_t stream) {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
-  switch (out_domain.get_dim()) {
+  switch (output.domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
-    Rect<DIM> rect = out_domain;                                               \
+    Rect<DIM> rect = output.domain;                                            \
     calc_blk_size<DIM>(num_blocks, output_blk_size, rect, axis);               \
     for (int i = 0; i < num_inputs; i++) {                                     \
-      rect = in_domain[i];                                                     \
+      rect = inputs[i].domain;                                                 \
       coord_t input_num_blocks = 1;                                            \
       calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], rect, axis);    \
       assert(input_num_blocks == num_blocks);                                  \
@@ -70,32 +68,28 @@ void Concat::forward_kernel(float *output,
       assert(false);
   }
 
+  off_t offset = 0;
   for (int i = 0; i < num_inputs; i++) {
     hipLaunchKernelGGL(copy_with_stride,
                        GET_BLOCKS(input_blk_sizes[i] * num_blocks),
                        CUDA_NUM_THREADS,
                        0,
                        stream,
-                       output,
-                       inputs[i],
+                       output.get_float_ptr() + offset,
+                       inputs[i].get_float_ptr(),
                        num_blocks,
                        output_blk_size,
                        input_blk_sizes[i]);
-    // printf("output = %x num_blocks=%d output_blk_size=%d
-    // input_blk_size[%d]=%d\n",
-    //        output, num_blocks, output_blk_size, i, input_blk_sizes[i]);
-    output += input_blk_sizes[i];
+    offset += input_blk_sizes[i];
   }
 }
 
 /*static*/
 void Concat::forward_kernel_wrapper(ConcatMeta const *m,
-                                    float *output,
-                                    float const *const *inputs,
+                                    GenericTensorAccessorW const &output,
+                                    GenericTensorAccessorR const *inputs,
                                     int num_inputs,
-                                    int axis,
-                                    Domain const &out_domain,
-                                    Domain const *in_domain) {
+                                    int axis) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -105,8 +99,7 @@ void Concat::forward_kernel_wrapper(ConcatMeta const *m,
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  Concat::forward_kernel(
-      output, inputs, num_inputs, axis, out_domain, in_domain, stream);
+  Concat::forward_kernel(output, inputs, num_inputs, axis, stream);
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
@@ -124,22 +117,20 @@ void Concat::forward_kernel_wrapper(ConcatMeta const *m,
 }
 
 /*static*/
-void Concat::backward_kernel(float const *output_grad,
-                             float **input_grads,
+void Concat::backward_kernel(GenericTensorAccessorR const &output_grad,
+                             GenericTensorAccessorW const *input_grads,
                              int num_inputs,
                              int axis,
-                             Domain const &out_grad_domain,
-                             Domain const *in_grad_domain,
-                             hipStream_t stream) {
+                             ffStream_t stream) {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
-  switch (out_grad_domain.get_dim()) {
+  switch (output_grad.domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
-    Rect<DIM> rect = out_grad_domain;                                          \
+    Rect<DIM> rect = output_grad.domain;                                       \
     calc_blk_size<DIM>(num_blocks, output_blk_size, rect, axis);               \
     for (int i = 0; i < num_inputs; i++) {                                     \
-      rect = in_grad_domain[i];                                                \
+      rect = input_grads[i].domain;                                            \
       coord_t input_num_blocks = 1;                                            \
       calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], rect, axis);    \
       assert(input_num_blocks == num_blocks);                                  \
@@ -153,18 +144,19 @@ void Concat::backward_kernel(float const *output_grad,
       assert(false);
   }
 
+  off_t offset = 0;
   for (int i = 0; i < num_inputs; i++) {
     hipLaunchKernelGGL(add_with_stride,
                        GET_BLOCKS(input_blk_sizes[i] * num_blocks),
                        CUDA_NUM_THREADS,
                        0,
                        stream,
-                       input_grads[i],
-                       output_grad,
+                       input_grads[i].get_float_ptr(),
+                       output_grad.get_float_ptr() + offset,
                        num_blocks,
                        input_blk_sizes[i],
                        output_blk_size);
-    output_grad += input_blk_sizes[i];
+    offset += input_blk_sizes[i];
   }
 
   // Rect<2> output_rect(Point<2>(0, 0), Point<2>(output_blk_size-1, batch_size
@@ -176,12 +168,10 @@ void Concat::backward_kernel(float const *output_grad,
 
 /*static*/
 void Concat::backward_kernel_wrapper(ConcatMeta const *m,
-                                     float const *output_grad,
-                                     float **input_grads,
+                                     GenericTensorAccessorR const &output_grad,
+                                     GenericTensorAccessorW const *input_grads,
                                      int num_inputs,
-                                     int axis,
-                                     Domain const &out_grad_domain,
-                                     Domain const *in_grad_domain) {
+                                     int axis) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -191,13 +181,7 @@ void Concat::backward_kernel_wrapper(ConcatMeta const *m,
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  Concat::backward_kernel(output_grad,
-                          input_grads,
-                          num_inputs,
-                          axis,
-                          out_grad_domain,
-                          in_grad_domain,
-                          stream);
+  Concat::backward_kernel(output_grad, input_grads, num_inputs, axis, stream);
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
