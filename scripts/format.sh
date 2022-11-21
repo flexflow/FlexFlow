@@ -66,5 +66,5 @@ if [[ ! -e $CLANG_FORMAT_PATH ]]; then
   chmod u+x "$CLANG_FORMAT_PATH"
 fi
 
-FILES=($(git ls-files | grep -E '\.(h|cc|cpp|cu)$'))
+mapfile -t FILES < <(git ls-files | grep -E '\.(h|cc|cpp|cu)$')
 "$CLANG_FORMAT_PATH" -i "${FILES[@]}"
