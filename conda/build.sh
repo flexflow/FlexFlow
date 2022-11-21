@@ -20,5 +20,5 @@ export LG_RT_DIR=$SRC_DIR/legion/runtime
 #export FF_ENABLE_DEBUG=1
 #export DEBUG=0
 
-cd python
+cd python || exit
 make
