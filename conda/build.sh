@@ -5,6 +5,8 @@ set -euo pipefail
 cd "${BASH_SOURCE[0]%/*}/../"
 
 # build flexflow
+# "search and replace" bash syntax used below to make shellcheck happy.
+# see here: https://wiki-dev.bash-hackers.org/syntax/pe
 CXXFLAGS="${CXXFLAGS//-O2/}"
 CXXFLAGS="${CXXFLAGS//-std=c++17/}"
 CXXFLAGS="${CXXFLAGS//-DNDEBUG/}"
