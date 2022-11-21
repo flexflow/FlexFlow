@@ -1,10 +1,13 @@
 #! /usr/bin/env bash
 
+# Cd into FF_HOME
+cd "${BASH_SOURCE[0]%/*}/../"
+
 # git checkout dcr # We are using the dcr branch by default
 git submodule update --init --recursive
-source FC_env_setup.sh
+./scripts/FC_env_setup.sh
 
-cd $PROTOBUF
+cd $PROTOBUF || exit
 git submodule update --init --recursive
 ##git checkout 6d4e7fd #still cannot get the strategy compile to use the local runtime. So need to checkout v 3.10.0
 ./autogen.sh
@@ -12,17 +15,17 @@ git submodule update --init --recursive
 make -j
 cd .. || exit
 
-cd $GASNET
+cd $GASNET || exit
 ./FC.build_script.sh
 cd .. || exit
 
-cd src/runtime
+cd src/runtime || exit
 ../../protobuf/src/protoc --cpp_out=. strategy.proto
 ./gen_strategy.sh 8 8 1 # for 8 gpu per node,  and 8 embeddings per node, and 1 node
 ./gen_strategy.sh 2 1 1 # for 2 gpu per node, testing purpose
 cd ../.. || exit
 
-cd $LEGION
+cd $LEGION || exit
 git checkout control_replication
 cd ../ || exit
 

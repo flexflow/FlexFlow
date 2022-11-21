@@ -14,16 +14,16 @@ git submodule update --init --recursive
 make -j
 cd .. || exit
 
-cd $GASNET
+cd $GASNET || exit
 ./FC.build_script.sh
 cd .. || exit
 
-cd src/runtime
+cd src/runtime || exit
 ../../protobuf/src/protoc --cpp_out=. strategy.proto
 ./gen_strategy.sh 8 8 1 # for 8 gpu per node,  and 8 embeddings per node, and 1 node
 cd ../.. || exit
 
-cd $LEGION
+cd $LEGION || exit
 git checkout control_replication
 cd ../ || exit
 
