@@ -200,30 +200,6 @@ __host__ void updateGAS(float *para_ptr,
       para_ptr, grad_ptr, replica_size, scale_factor);
 }
 
-#ifdef DEADCODE
-template <unsigned DIM, typename T>
-__host__ void print_tensor(const T *ptr, Rect<DIM> rect, char const *prefix) {
-  // device synchronize to make sure the data are ready
-  // checkCUDA(cudaDeviceSynchronize());
-  T *host_ptr;
-  checkCUDA(cudaHostAlloc(&host_ptr,
-                          sizeof(T) * rect.volume(),
-                          cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpy(
-      host_ptr, ptr, sizeof(T) * rect.volume(), cudaMemcpyDeviceToHost));
-  // checkCUDA(cudaDeviceSynchronize());
-  int idx = 0;
-  printf("%s", prefix);
-  for (PointInRectIterator<DIM> it(rect); it(); it++, idx++) {
-    printf(" %.4lf", (float)host_ptr[idx]);
-    if (idx >= 16)
-      break;
-  }
-  printf("\n");
-  checkCUDA(cudaFreeHost(host_ptr));
-}
-#endif
-
 template <typename T>
 __host__ void
     print_tensor(const T *ptr, size_t num_elements, char const *prefix) {

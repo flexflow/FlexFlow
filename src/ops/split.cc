@@ -74,12 +74,6 @@ void FFModel::split(const Tensor input,
   }
   split->add_int_property("legion_axis", numdim - axis - 1);
   layers.push_back(split);
-#ifdef DEADCODE
-  Split *split = new Split(*this, input, splits, axis, name);
-  layers.push_back(split);
-  for (size_t i = 0; i < splits.size(); i++)
-    outputs[i] = split->outputs[i];
-#endif
 }
 
 Op *Split::create_operator_from_layer(

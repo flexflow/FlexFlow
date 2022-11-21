@@ -66,13 +66,6 @@ Tensor FFModel::softmax(const Tensor _input, int dim, char const *name) {
   sm->add_int_property("softmax_dim", dim);
   layers.push_back(sm);
   return sm->outputs[0];
-#ifdef DEADCODE
-  if (dim < 0)
-    dim += _input->num_dims;
-  Softmax *sm = new Softmax(*this, _input, _input->num_dims - 1 - dim, name);
-  layers.push_back(sm);
-  return sm->outputs[0];
-#endif
 }
 
 Op *Softmax::create_operator_from_layer(

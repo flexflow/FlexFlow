@@ -30,13 +30,6 @@ Tensor FFModel::flat(const Tensor input, char const *name) {
       2, dims, DT_FLOAT, flat, 0, true /*create_grad*/);
   layers.push_back(flat);
   return flat->outputs[0];
-#ifdef DEADCODE
-  // assert(strategies.find(name) != strategies.end());
-  // ParallelConfig pc = strategies[name];
-  Flat *flat = new Flat(*this, input, name);
-  layers.push_back(flat);
-  return flat->outputs[0];
-#endif
 }
 
 Op *Flat::create_operator_from_layer(

@@ -45,16 +45,6 @@ struct TensorAccessorW {
 
 class GenericTensorAccessorW {
 public:
-#ifdef DEADCODE
-  GenericTensorAccessorW(int num_dim,
-                         DataType data_type,
-                         Legion::PhysicalRegion region,
-                         Legion::RegionRequirement req,
-                         Legion::FieldID fid,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime,
-                         bool readOutput = false);
-#endif
   GenericTensorAccessorW();
   GenericTensorAccessorW(DataType data_type, Legion::Domain domain, void *ptr);
   int32_t *get_int32_ptr() const;
@@ -68,15 +58,6 @@ public:
 
 class GenericTensorAccessorR {
 public:
-#ifdef DEADCODE
-  GenericTensorAccessorR(int num_dim,
-                         DataType data_type,
-                         Legion::PhysicalRegion region,
-                         Legion::RegionRequirement req,
-                         Legion::FieldID fid,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime);
-#endif
   GenericTensorAccessorR();
   GenericTensorAccessorR(DataType data_type,
                          Legion::Domain domain,
