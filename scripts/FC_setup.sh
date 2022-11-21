@@ -1,7 +1,10 @@
 #! /usr/bin/env bash
 
+# Cd into FF_HOME
+cd "${BASH_SOURCE[0]%/*}/../"
+
 git submodule update --init --recursive
-source FC_env_setup.sh
+./scripts/FC_env_setup.sh
 
 cd $PROTOBUF || exit
 git submodule update --init --recursive
