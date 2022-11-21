@@ -20,7 +20,7 @@ do
   esac
 done
 shift $(( OPTIND - 1 ))
-[[ "${1}" == "--" ]] && shift
+[[ "${1:-}" == "--" ]] && shift
 
 # Get name of desired Docker image as input
 image=${1:-flexflow}
