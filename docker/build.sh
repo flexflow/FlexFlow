@@ -17,6 +17,8 @@ do
     'b') 
       build_environment=true 
     ;;
+    *) echo "usage: $0 [-b] <docker_image_name>" >&2
+      exit 1 ;;
   esac
 done
 shift $(( OPTIND - 1 ))
@@ -93,6 +95,7 @@ fi
 export FF_CUDA_ARCH
 
 # Build FlexFlow Docker image
+# shellcheck source=config/config.linux
 . config/config.linux get-docker-configs
 # Set value of BUILD_CONFIGS
 get_build_configs
