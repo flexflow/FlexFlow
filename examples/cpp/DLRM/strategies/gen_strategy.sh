@@ -11,7 +11,7 @@ pnembs=$2
 nnodes=$3
 
 #ngpus=$((pngpus * nnodes))
-nembs=$((pnembs * nnodes))
+#nembs=$((pnembs * nnodes))
 
 #python3 dlrm_strategy.py -f dlrm_strategy.cc -g ${ngpus} -e ${nembs}
 

@@ -2,7 +2,7 @@
 
 ulimit -l unlimited
 
-fs=12000
+#fs=12000
 zs=12000
 b=1
 g=1
