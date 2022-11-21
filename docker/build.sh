@@ -90,6 +90,7 @@ else
   echo "Letting FlexFlow build for a default GPU architecture: code=70"
   FF_CUDA_ARCH=70
 fi
+export FF_CUDA_ARCH
 
 # Build FlexFlow Docker image
 . config/config.linux get-docker-configs

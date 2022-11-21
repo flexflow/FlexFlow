@@ -13,4 +13,4 @@ docker pull ghcr.io/flexflow/"$image"
 docker tag ghcr.io/flexflow/"$image":latest "$image":latest 
 
 # Check that image exists
-image_exists=$(docker image inspect ${image}:latest)
+docker image inspect "${image}":latest > /dev/null

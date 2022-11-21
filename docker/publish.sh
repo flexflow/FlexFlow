@@ -7,7 +7,7 @@ image=${1:-flexflow-environment}
 cd "${BASH_SOURCE[0]%/*}"
 
 # Check that image exists
-image_exists=$(docker image inspect ${image}:latest)
+docker image inspect "${image}":latest > /dev/null
 
 # Log into container registry
 FLEXFLOW_CONTAINER_TOKEN=${FLEXFLOW_CONTAINER_TOKEN:-}
