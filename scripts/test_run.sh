@@ -1,5 +1,5 @@
 #! /usr/bin/env bash
-set -e
+set -euo pipefail
 
 # Cd into FF_HOME
 cd "${BASH_SOURCE[0]%/*}/../"

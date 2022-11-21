@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Cd into FF_HOME
 cd "${BASH_SOURCE[0]%/*}/../"
