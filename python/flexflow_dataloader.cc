@@ -231,6 +231,7 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel &ff, int task_id) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   // Load input
+#if 1
   {
     Domain domain =
         runtime->get_index_space_domain(ctx, batch_input->parallel_is);
@@ -269,6 +270,49 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel &ff, int task_id) {
     runtime->execute_index_space(ctx, launcher);
   }
   next_index += ff.config.batchSize;
+#else
+  {
+    IndexSpaceT<NDIM> task_is =
+        IndexSpaceT<NDIM>(ff.get_or_create_task_is(NDIM, ""));
+    Rect<NDIM> rect = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
+    int idx = next_index;
+    SampleIdxs meta;
+    assert(ff.config.batchSize % (rect.hi[NDIM - 1] - rect.lo[NDIM - 1] + 1) ==
+           0);
+    meta.num_samples =
+        ff.config.batchSize / (rect.hi[NDIM - 1] - rect.lo[NDIM - 1] + 1);
+    for (int i = 0; i < meta.num_samples; i++)
+      meta.idxs[i] = idx++;
+    for (PointInRectIterator<NDIM> it(rect); it(); it++) {
+      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+    }
+    IndexLauncher launcher(task_id,
+                           task_is,
+                           TaskArgument(NULL, 0),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false /*must*/,
+                           0 /*mapper_id*/,
+                           FFConfig::get_hash_id(""));
+    launcher.add_region_requirement(RegionRequirement(full_input->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      full_input->region,
+                                                      MAP_TO_ZC_MEMORY));
+    launcher.add_field(0, FID_DATA);
+    launcher.add_region_requirement(RegionRequirement(batch_input->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      batch_input->region));
+    launcher.add_field(1, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+    next_index +=
+        ff.config.batchSize / (rect.hi[NDIM - 1] - rect.lo[NDIM - 1] + 1);
+  }
+#endif
 }
 
 // Task body
