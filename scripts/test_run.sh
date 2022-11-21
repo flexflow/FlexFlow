@@ -10,25 +10,25 @@ git submodule update --init --recursive
 ./autogen.sh
 ./configure
 make -j
-cd ..
+cd .. || exit
 
 cd $GASNET
 ./FC.build_script.sh
-cd ..
+cd .. || exit
 
 cd src/runtime
 ../../protobuf/src/protoc --cpp_out=. strategy.proto
 ./gen_strategy.sh 8 8 1 # for 8 gpu per node,  and 8 embeddings per node, and 1 node
 ./gen_strategy.sh 2 1 1 # for 2 gpu per node, testing purpose
-cd ../..
+cd ../.. || exit
 
 cd $LEGION
 git checkout control_replication
-cd ../
+cd ../ || exit
 
 
 make app=src/ops/tests/concat_test -j -f Makefile
-cd src/ops/tests 
+cd src/ops/tests || exit
 ./test_run_FF_target.sh concat_test 2 && cp output.txt output_2gpus.txt
 ./test_run_FF_target.sh concat_test 1 && cp output.txt output_1gpus.txt
 
