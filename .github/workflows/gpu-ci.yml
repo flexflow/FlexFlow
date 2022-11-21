@@ -1,8 +1,6 @@
 name: "gpu-ci"
 on:
-  pull_request_target:
-    types:
-      - synchronize
+  pull_request:
     paths:
       - "cmake/**"
       - "config/**"
