@@ -1,3 +1,5 @@
+#! /usr/bin/env bash
+
 eval "$(conda shell.bash hook)";
 rm align/view/out/*.pt;
 conda activate flexflow;
