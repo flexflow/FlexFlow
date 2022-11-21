@@ -1,4 +1,8 @@
 #! /usr/bin/env bash
+set -euo pipefail
+
+# Cd into FF_HOME
+cd "${BASH_SOURCE[0]%/*}/../"
 
 # build flexflow
 CXXFLAGS="${CXXFLAGS//-O2/}"
@@ -20,5 +24,5 @@ export LG_RT_DIR=$SRC_DIR/legion/runtime
 #export FF_ENABLE_DEBUG=1
 #export DEBUG=0
 
-cd python || exit
+cd python
 make
