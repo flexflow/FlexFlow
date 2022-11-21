@@ -95,7 +95,7 @@ fi
 export FF_CUDA_ARCH
 
 # Build FlexFlow Docker image
-# shellcheck source=config/config.linux
+# shellcheck source=/dev/null
 . config/config.linux get-docker-configs
 # Set value of BUILD_CONFIGS
 get_build_configs
