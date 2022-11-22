@@ -79,7 +79,7 @@ else()
   # Build NCCL from source
   message(STATUS "Building NCCL from source")
   if("${CUDA_GENCODE}" STREQUAL "")
-    set(NCCL_BUILD_NVCC_GENCODE "")
+    set(NCCL_BUILD_NVCC_GENCODE "NVCC_GENCODE=")
   else()
     list(TRANSFORM CUDA_GENCODE PREPEND "NVCC_GENCODE=" OUTPUT_VARIABLE NCCL_BUILD_NVCC_GENCODE)
   endif()
