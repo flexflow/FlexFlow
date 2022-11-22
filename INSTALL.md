@@ -13,6 +13,8 @@ FlexFlow has system dependencies on cuda and/or rocm depending on which gpu back
 ### Targeting CUDA - `FF_GPU_BACKEND=cuda`
 If you are targeting CUDA, FlexFlow requires CUDA and CUDNN to be installed. You can follow the standard nvidia installation instructions [CUDA](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) and [CUDNN](https://docs.nvidia.com/deeplearning/cudnn/install-guide/index.html).
 
+Disclaimer: CUDA architecutres < 60 (Maxwell and older) are no longer supported.
+
 ### Targeting ROCM - `FF_GPU_BACKEND=hip_rocm`
 If you are targeting ROCM, FlexFlow requires a ROCM and HIP installation with a few additional packages. Note that this can be done on a system with or without an AMD GPU. You can follow the standard installation instructions [ROCM](https://docs.amd.com/bundle/ROCm-Installation-Guide-v5.3/page/Introduction_to_ROCm_Installation_Guide_for_Linux.html) and [HIP](https://docs.amd.com/bundle/HIP-Installation-Guide-v5.3/page/Introduction_to_HIP_Installation_Guide.html). When running `amdgpu-install`, install the use cases hip and rocm. You can avoid installing the kernel drivers (not necessary on systems without an AMD graphics card) with `--no-dkms` I.e. `amdgpu-install --usecase=hip,rocm --no-dkms`. Additionally, install the packages `hip-dev`, `hipblas`, `miopen-hip`, and `rocm-hip-sdk`.
 
