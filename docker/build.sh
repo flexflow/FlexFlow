@@ -89,8 +89,12 @@ if [[ -n "$gpu_arch_codes" ]]; then
   FF_CUDA_ARCH="${gpu_arch_codes}"
 else
   echo "Could not detect any GPU on the host machine."
-  echo "Letting FlexFlow build for a default GPU architecture: code=70"
-  FF_CUDA_ARCH=70
+  if [[ "${FF_AUTODETECT_CUDA_ARCH:-ON}" == "OFF" ]]; then
+    echo "FF_AUTODETECT_CUDA_ARCH is turned off. Building for all compatible architectures."
+  else
+    echo "Letting FlexFlow build for a default GPU architecture: code=70"
+    FF_CUDA_ARCH=70
+  fi
 fi
 export FF_CUDA_ARCH
 

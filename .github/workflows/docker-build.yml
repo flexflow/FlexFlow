@@ -27,8 +27,10 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Build Docker container
-        run: ./docker/build.sh flexflow
+      - name: Build Docker containers
+        run: |
+          ./docker/build.sh -b flexflow
+          FF_GPU_BACKEND=hip_cuda ./docker/build.sh -b environment
 
       - name: Check availability of Python flexflow.core module
         run: docker run --entrypoint python flexflow:latest -c "import flexflow.core; exit()"
@@ -39,6 +41,8 @@ jobs:
         run: |
           if [[ ${{ github.event_name }} == 'push' && ${GITHUB_REF#refs/heads/} == "master" ]]; then
             ./docker/publish.sh flexflow-environment
+            ./docker/publish.sh flexflow-environment-hip
+            ./docker/publish.sh flexflow
           else
             echo "No need to update Docker containers in ghrc.io registry at this time."
           fi
