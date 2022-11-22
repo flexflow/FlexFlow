@@ -1,5 +1,8 @@
 FROM flexflow-environment:latest
 
+LABEL org.opencontainers.image.source=https://github.com/flexflow/FlexFlow
+LABEL org.opencontainers.image.description="FlexFlow container"
+
 # Copy FlexFlow repository
 RUN mkdir FlexFlow
 ENV FF_HOME /usr/FlexFlow
