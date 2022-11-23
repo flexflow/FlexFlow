@@ -2732,6 +2732,8 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_EXP:
       case OP_SCALAR_MULTIPLY:
+      case OP_SCALAR_FLOOR_DIV:
+      case OP_SCALAR_TRUE_DIV:
       case OP_SCALAR_ADD:
       case OP_SCALAR_SUB:
       case OP_RELU:
