@@ -60,7 +60,8 @@ struct CostMetrics {
   size_t total_memory() const;
 
   /**
-   * @brief Return the sum of memory recorded in this CostMetrics, but in MB, instead of Bytes.
+   * @brief Return the sum of memory recorded in this CostMetrics, but in MB,
+   * instead of Bytes.
    */
   float total_memory_as_mb() const;
 
