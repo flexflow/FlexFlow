@@ -6,6 +6,7 @@ set(project_target mlp_inference_unify)
 set(CPU_SRC
   ${FLEXFLOW_CPP_DRV_SRC}
   mlp.cc
+  mlp.h
   ../data_generator.h)
 
 cuda_add_executable(${project_target} ${CPU_SRC})
