@@ -1710,7 +1710,7 @@ T SearchHelper::graph_cost(Graph const *graph,
                            weight_num_parts * metrics.weights_memory;
 
     this->logger->spew() << "  op_total_mem: " << metrics.op_total_mem;
-    float op_total_mem_mb = (float)((metrics.op_total_mem) / 1e4) / 1e2;
+    float op_total_mem_mb = metrics.total_memory_as_mb();
     this->logger->debug() << "[PCG::SearchHelper::graph_cost] Sink node cost ["
                           << sink.node.to_string() << "]: "
                           << "forward(" << metrics.forward_time << ") "
@@ -2125,12 +2125,8 @@ GraphOptimalViewSerialized
                                Runtime *runtime) {
   bool perform_memory_search =
       (*((FFModel **)task->args))->config.perform_memory_search;
-  float global_memory_threshold = 20000; // Dummy for now
-  // float global_memory_threshold =
-  //     (*((FFModel **)task->args))->config.device_mem;
-
-  std::cout << "global_memory_threshold: " << global_memory_threshold
-            << std::endl;
+  // float memory_threshold = 13000; // Dummy for now
+  float memory_threshold = (*((FFModel **)task->args))->config.device_mem;
 
   // Binary search of the best lambda such that the PCG can be placed on the
   // devices but the run time cost is minimized
@@ -2239,33 +2235,32 @@ GraphOptimalViewSerialized
       [&](std::vector<std::pair<float, MemorySearchResult>> &lambdas_results,
           Graph *curr_graph,
           std::unordered_map<Node, MachineView> &curr_views) {
-        std::cout << "try to check valid for lambda"
+        std::cout << "try to check valid for lambda "
                   << lambdas_results.back().first << std::endl;
 
         // Analyze the strategy and update max_per_device_mem_all_deivces in the
         // lambda_result.
         std::unordered_map<int, float> device_to_mem{};
         for (const auto &view : curr_views) {
-          auto node = view.first.ptr;
           CostMetrics op_cost =
-              cached_sim->measure_operator_cost(node, view.second);
-          float input_mem = (float)op_cost.inputs_memory;
-          float output_mem = (float)op_cost.outputs_memory;
-          float weight_mem = (float)op_cost.weights_memory;
-          float node_mem = input_mem + output_mem + weight_mem;
+              cached_sim->measure_operator_cost(view.first.ptr, view.second);
+          float node_mem_as_mb = op_cost.total_memory_as_mb();
+
           for (const auto d_id : view.second.device_ids()) {
             if (device_to_mem.find(d_id) == device_to_mem.end()) {
-              device_to_mem.emplace(std::make_pair(d_id, node_mem));
+              device_to_mem.emplace(std::make_pair(d_id, node_mem_as_mb));
             } else {
-              device_to_mem[d_id] += node_mem;
+              device_to_mem[d_id] += node_mem_as_mb;
             }
           }
         }
 
         float max_per_device_mem = 0.0;
+        float total_device_mem = 0.0;
         for (const auto &d : device_to_mem) {
           std::cout << "d_id: " << d.first << ", mem: " << d.second
                     << std::endl;
+          total_device_mem += d.second;
           if (d.second > max_per_device_mem) {
             max_per_device_mem = d.second;
           }
@@ -2274,22 +2269,15 @@ GraphOptimalViewSerialized
         lambdas_results.back().second.max_per_device_mem_all_deivces =
             max_per_device_mem;
 
-        // Temp
-        return false;
+        std::cout
+            << "max_per_device_mem: "
+            << lambdas_results.back().second.max_per_device_mem_all_deivces
+            << ", total_device_mem: " << total_device_mem << std::endl;
 
-        // if (max_per_device_mem >= global_memory_threshold) {
-        //   return false;
-        // }
-        // return true;
-
-        // Proxy memory
-        // Only need to check the last lambda result because we append the
-        // results one by one
-        // if (lambdas_results.back().second.memory_cost >=
-        //     global_memory_threshold) {
-        //   return false;
-        // }
-        // return true;
+        if (max_per_device_mem >= memory_threshold) {
+          return false;
+        }
+        return true;
       };
 
   // Be optimistic
@@ -2300,10 +2288,7 @@ GraphOptimalViewSerialized
 
   bool has_valid_strategy = false;
   int best_lambda_index = -1;
-
-  int binary_search_budget = 5;
-
-  std::cout << "done first try" << std::endl;
+  int binary_search_budget = 10;
 
   if (perform_memory_search &&
       !is_valid_strategy(lambdas, best_graph.get(), optimal_views)) {
@@ -2312,8 +2297,6 @@ GraphOptimalViewSerialized
     try_result = try_one_lambda(lambdas.back());
     best_graph = std::move(try_result.first);
     optimal_views = try_result.second;
-
-    std::cout << "done second try" << std::endl;
 
     if (!is_valid_strategy(lambdas, best_graph.get(), optimal_views)) {
       // Cannot find a valid strategy
@@ -2328,7 +2311,6 @@ GraphOptimalViewSerialized
       float upper = 1.0;
 
       while (bianry_search_num < binary_search_budget) {
-        std::cout << "binary search try: " << bianry_search_num << std::endl;
         bianry_search_num++;
 
         float mid = (lower + upper) * 0.5;
@@ -2358,9 +2340,8 @@ GraphOptimalViewSerialized
   if (perform_memory_search) {
     if (has_valid_strategy) {
       auto &best_l = lambdas[best_lambda_index];
-      std::cout << "Found valid strategy with global_memory_threshold: "
-                << global_memory_threshold
-                << " | lambda index: " << best_lambda_index
+      std::cout << "Found valid strategy with memory_threshold: "
+                << memory_threshold << " | lambda index: " << best_lambda_index
                 << ", lambda value: " << best_l.first
                 << ", result: run time cost: " << best_l.second.run_time_cost
                 << ", memory cost: " << best_l.second.memory_cost

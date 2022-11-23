@@ -60,6 +60,11 @@ struct CostMetrics {
   size_t total_memory() const;
 
   /**
+   * @brief Return the sum of memory recorded in this CostMetrics, but in MB, instead of Bytes.
+   */
+  float total_memory_as_mb() const;
+
+  /**
    * @brief Get the incremental difference between the total memory in
    * CostMetrics and sim->offset.
    * @details This is to easily compute the difference between sim->offset and
