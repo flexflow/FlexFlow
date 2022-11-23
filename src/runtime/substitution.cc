@@ -1660,7 +1660,7 @@ std::vector<GraphXfer *> create_xfers(FFModel *model,
   return xfers;
 }
 
-// Experimental: change this mem_config to control run time cost factor
+// Experimental
 GraphSearchHelper::GraphSearchHelper(FFModel *model)
     : model(model), config(model->config), mem_config(1.0) {
   this->logger = std::unique_ptr<RecursiveLogger>(new RecursiveLogger("gs"));
@@ -1954,7 +1954,8 @@ void GraphSearchHelper::graph_optimize_with_memory(
   // graph and more accurate cost.
   best_graph = std::unique_ptr<Graph>(new Graph(optimal.graph.value()));
   SimplificationSettings settings;
-  // TODO: temp disable parallel_op fusion to observe the strategy in dot graph.
+  // Temp disable parallel_op fusion to observe the strategy in dot graph.
+  // TODO(eric): reverse this back
   settings.fuse_parallel_ops = false;
   settings.remove_noops = true;
   settings.remove_trailing_parallel_ops = true;
@@ -2402,8 +2403,6 @@ tl::optional<float>
   }
 }
 
-// TODO: how to handle this? -> Handle this by handling graph_cost<float> but
-// consider memory usage.
 template <>
 float GraphSearchHelper::get_optimal_cost<float>(
     std::unique_ptr<Graph> optimized) const {
@@ -3531,24 +3530,6 @@ namespace FlexFlow {
 using PCG::Edge;
 using PCG::Graph;
 using PCG::Node;
-
-///
-/// Backup: normal memory optimization search procedure entry
-///
-// void FFModel::graph_optimize(
-//     size_t budget,
-//     bool only_data_parallel,
-//     std::unique_ptr<Graph> &best_graph,
-//     std::unordered_map<Node, MachineView> &optimal_views) {
-//   // this->graph_search->graph_optimize(budget, only_data_parallel,
-//   best_graph,
-//   // optimal_views);
-
-//   // Experimental. Change the function call above to this line to search
-//   // with memory consideration.
-//   this->graph_search->graph_optimize_with_memory(
-//       budget, only_data_parallel, best_graph, optimal_views);
-// }
 
 /**
  * @brief Optimize the graph stored in FFModel.

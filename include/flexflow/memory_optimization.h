@@ -2,7 +2,8 @@
  * @file memory_optimization.h
  * @brief Memory optimization related stuff
  *
- * @copyright Copyright 2022 CMU
+ * @copyright Copyright 2022 CMU, Facebook, LANL, MIT, and Stanford
+ * (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
