@@ -1667,6 +1667,11 @@ GraphSearchHelper::GraphSearchHelper(FFModel *model)
   generate_all_pcg_xfers();
 }
 
+void GraphSearchHelper::clear_cache() {
+  cached_optimized_graphs.clear();
+  std::cout << "clear cached_optimized_graphs" << std::endl;
+}
+
 void GraphSearchHelper::load_graph_substitutions(
     std::vector<GraphXfer *> &xfers) const {
   xfers = all_pcg_xfers;

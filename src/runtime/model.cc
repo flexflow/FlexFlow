@@ -1141,6 +1141,12 @@ FFModel::FFModel(FFConfig &_config)
   }
 }
 
+void FFModel::clear_graph_search_cache() {
+  this->graph_search->clear_cache();
+
+  this->search->clear_cache();
+}
+
 #ifdef FF_USE_NCCL
 ncclComm_t *FFModel::find_nccl_comms(MachineView const &view) const {
   auto const &it = view_hash_to_nccl_comms.find(view.hash());

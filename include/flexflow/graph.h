@@ -245,6 +245,8 @@ public:
 public:
   mutable std::unique_ptr<RecursiveLogger> logger;
 
+  void clear_cache();
+
 private:
   template <typename T>
   T execute_nonsequence_split(std::unique_ptr<Graph> const &first_graph,
