@@ -4,6 +4,7 @@
 #include "flexflow/fftype.h"
 #include "flexflow/machine_view.h"
 #include "flexflow/parallel_tensor.h"
+#include "flexflow/utils/dot/record_formatter.h"
 #include <vector>
 
 namespace FlexFlow {

@@ -29,9 +29,8 @@ RUN rm -rf /var/lib/apt/lists/* \
         apt-get update -y && \
         apt-get upgrade -y libstdc++6
 
-# Install CPU-only Pytorch
-RUN /opt/conda/bin/conda install pytorch==1.9.0 torchvision==0.10.0 torchaudio==0.9.0 cpuonly -c pytorch
+# Install CPU-only Pytorch and related dependencies
+RUN conda install pytorch==1.9.0 torchvision==0.10.0 torchaudio==0.9.0 cpuonly -c pytorch
+RUN conda install -c conda-forge onnx tensorflow
 # Install Hugging-face/MT5 related packages
-RUN /opt/conda/bin/conda install -c conda-forge pandas numpy transformers=4.16.2 sentencepiece
-# Install packages required by other example applications
-RUN pip install onnx tensorflow keras2onnx
+RUN /opt/conda/bin/conda install -c conda-forge transformers=4.16.2 sentencepiece

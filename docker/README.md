@@ -14,3 +14,6 @@ You will need a machine with a NVIDIA GPU, with drivers installed. You will also
 ```
 ./run.sh base
 ```
+
+## Configuring the docker build for different GPU backends
+The container can be built for different GPU backends by setting the `FF_GPU_BACKEND` env var. By default, the container is built to target cuda. See the corresponding cmake variable `FF_GPU_BACKEND` for available values.

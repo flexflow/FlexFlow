@@ -2,7 +2,8 @@
  * @file memory_optimization.h
  * @brief Memory optimization related stuff
  *
- * @copyright Copyright 2022 CMU
+ * @copyright Copyright 2022 CMU, Facebook, LANL, MIT, and Stanford
+ * (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,6 +66,19 @@ public:
       : mem_usage_type{MemoryUsageType::GLOBAL},
         mem_search_algo{MemorySearchAlgo::MULTI_OBJECTIVE},
         run_time_cost_factor{factor} {}
+};
+
+/**
+ * @brief Hold the result (including memory information) of a graph_optimize on
+ * a PCG.
+ */
+class MemorySearchResult {
+public:
+  float run_time_cost{};
+  float memory_cost{};
+  float search_time{};
+  ///< The max of per-device memory usage among all devices
+  float max_per_device_mem_all_deivces{0.0};
 };
 
 namespace PCG {

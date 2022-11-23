@@ -43,6 +43,11 @@ size_t CostMetrics::total_memory() const {
   return inputs_memory + outputs_memory + weights_memory;
 }
 
+float CostMetrics::total_memory_as_mb() const {
+  float mem_mb = (float)((total_memory()) / 1e4) / 1e2;
+  return mem_mb;
+}
+
 size_t CostMetrics::total_mem_diff_from(off_t sim_offset) const {
   return static_cast<size_t>(sim_offset) - total_memory();
 }

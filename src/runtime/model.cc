@@ -1160,12 +1160,13 @@ Tensor FFModel::create_constant(int const dims[],
   // FIXME: currently create gradients for constants since the current auto grad
   // algorithm computes gradients for all operators
   Tensor tensor = create_tensor<NDIM>(
-      dims, data_type, NULL /*owner_op*/, true /*create_grad*/);
-  ConstantInitializer *init = new ConstantInitializer(value);
+      dims, data_type, NULL /*owner_op*/, false /*create_grad*/);
+  tensor->initializer = new ConstantInitializer(value);
+  return tensor;
+#ifdef DEADCODE
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
   assert(false);
-#ifdef DEADCODE
   ArgumentMap argmap;
   IndexLauncher launcher(CONSTANT_INIT_TASK_ID,
                          tensor->parallel_is,
@@ -3362,12 +3363,14 @@ FFConfig::FFConfig() {
   import_strategy_file = "";
   export_strategy_file = "";
   export_strategy_task_graph_file = "";
+  include_costs_dot_graph = false;
   export_strategy_computation_graph_file = "";
   dataset_path = "";
   substitution_json_path = tl::nullopt;
   syntheticInput = false;
   perform_fusion = false;
   base_optimize_threshold = DefaultConfig::base_optimize_threshold;
+  perform_memory_search = false;
 
   // Parse input arguments
   {
@@ -3454,6 +3457,10 @@ void FFConfig::parse_args(char **argv, int argc) {
       workersPerNode = atoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "-ll:fsize")) {
+      device_mem = atoi(argv[++i]);
+      continue;
+    }
     if (!strcmp(argv[i], "--nodes")) {
       fprintf(stderr,
               "[Warning] --nodes is deprecated. "
@@ -3483,6 +3490,10 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if (!strcmp(argv[i], "--taskgraph")) {
       export_strategy_task_graph_file = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--include-costs-dot-graph")) {
+      include_costs_dot_graph = true;
       continue;
     }
     if (!strcmp(argv[i], "--compgraph")) {
@@ -3534,6 +3545,10 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if (!strcmp(argv[i], "--substitution-json")) {
       substitution_json_path = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--memory-search")) {
+      perform_memory_search = true;
       continue;
     }
   }

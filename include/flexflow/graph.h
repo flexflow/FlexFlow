@@ -85,11 +85,11 @@ struct NodeCompare {
 };
 
 struct GraphOptimalViewSerialized {
-  //#ifdef LEGION_MAX_RETURN_SIZE
-  //  static const size_t buffer_size = LEGION_MAX_RETURN_SIZE - 8;
-  //#else
+#ifdef LEGION_MAX_RETURN_SIZE
+  static const size_t buffer_size = LEGION_MAX_RETURN_SIZE - 8;
+#else
   static const size_t buffer_size = 1024 * 1024 - 8;
-  //#endif
+#endif
   size_t total_bytes;
   char data[buffer_size];
 };

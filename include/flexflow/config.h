@@ -23,7 +23,7 @@
 #include <cudnn.h>
 #elif defined(FF_USE_HIP_ROCM)
 #include <hipblas.h>
-#include <miopen.h>
+#include <miopen/miopen.h>
 #else
 #error "Unknown device"
 #endif
@@ -117,6 +117,7 @@ public:
   int epochs, batchSize, printFreq;
   // int inputHeight, inputWidth;
   int numNodes, cpusPerNode, workersPerNode;
+  float device_mem; // The device (GPU) memory threshold; given by -ll:fsize
   float learningRate, weightDecay;
   size_t workSpaceSize;
   Legion::Context lg_ctx;
@@ -141,6 +142,7 @@ public:
   std::string export_strategy_file;
   std::string export_strategy_task_graph_file;
   std::string export_strategy_computation_graph_file;
+  bool include_costs_dot_graph;
   tl::optional<std::string> substitution_json_path = tl::nullopt;
   // We use MappingTagID as the key since we will pass the tag to the mapper
   // std::map<Legion::MappingTagID, ParallelConfig> strategies;
@@ -154,6 +156,7 @@ public:
   int base_optimize_threshold;
   bool enable_control_replication;
   int python_data_loader_type;
+  bool perform_memory_search{false};
 };
 
 class FFIterationConfig {

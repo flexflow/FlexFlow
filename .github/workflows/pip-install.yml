@@ -6,7 +6,7 @@ on:
       - "config/**"
       - "python/**"
       - "setup.py"
-      - ".github/workflows/helpers/install-dependencies.sh"
+      - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/pip-install.yml"
   push:
     paths:
@@ -14,7 +14,7 @@ on:
       - "config/**"
       - "python/**"
       - "setup.py"
-      - ".github/workflows/helpers/install-dependencies.sh"
+      - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/pip-install.yml"
   workflow_dispatch:
 concurrency:
@@ -36,6 +36,8 @@ jobs:
         id: cuda-toolkit
         with:
           cuda: "11.1.1"
+          # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
+          use-github-cache: "false"
 
       - name: Install FlexFlow Dependencies
         run: .github/workflows/helpers/install_dependencies.sh
@@ -44,7 +46,7 @@ jobs:
         run: |
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
-          sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
+          export FF_CUDA_ARCH=70
           pip install . --verbose
 
       - name: Check availability of Python flexflow.core module
