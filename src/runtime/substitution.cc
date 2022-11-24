@@ -1669,7 +1669,6 @@ GraphSearchHelper::GraphSearchHelper(FFModel *model)
 
 void GraphSearchHelper::clear_cache() {
   cached_optimized_graphs.clear();
-  std::cout << "clear cached_optimized_graphs" << std::endl;
 }
 
 void GraphSearchHelper::load_graph_substitutions(

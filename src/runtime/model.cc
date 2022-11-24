@@ -1143,7 +1143,6 @@ FFModel::FFModel(FFConfig &_config)
 
 void FFModel::clear_graph_search_cache() {
   this->graph_search->clear_cache();
-
   this->search->clear_cache();
 }
 

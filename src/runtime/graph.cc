@@ -1883,8 +1883,7 @@ GraphOptimalViewSerialized
                                Runtime *runtime) {
   auto model_config = (*((FFModel **)task->args))->config;
   bool perform_memory_search = model_config.perform_memory_search;
-  float memory_threshold = 13000; // Dummy for now
-  // float memory_threshold = model_config.device_mem;
+  float memory_threshold = model_config.device_mem;
 
   // Binary search of the best lambda such that the PCG can be placed on the
   // devices but the run time cost is minimized

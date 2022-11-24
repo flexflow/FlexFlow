@@ -805,7 +805,7 @@ public:
   void set_iteration_config_sequence_length(int seq_length);
 
   /**
-   * @brief Clear the cache of the GraphSearchHelper in this FFModel.
+   * @brief Clear the cache of the GraphSearchHelper and SearchHelper.
    */
   void clear_graph_search_cache();
 
