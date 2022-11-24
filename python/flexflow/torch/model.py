@@ -1425,7 +1425,7 @@ class GetItemNode(FunctionNode):
             return new_size < old_size
         
         def is_single_element(slice_elem):
-            return type(slice_elem) == int
+            return isinstance(slice_elem, int)
 
         shape = tensor.dims
 
@@ -1459,13 +1459,19 @@ class GetItemNode(FunctionNode):
                 assert j >= 0
                 start = 0 if slice_elem.start == None else slice_elem.start
                 splits = []
+                left_trunc, right_trunc = False, False
                 # create splits
-                if start != 0: 
-                    splits.append(start) # truncation from left
+                if start != 0: # truncation from left 
+                    splits.append(start)
+                    left_trunc = True
                 splits.append(slice_elem.stop - start)
-                if slice_elem.stop < shape[j]: 
-                    splits.append(shape[j] - slice_elem.stop) # truncation from right
-                curr_tensor = ffmodel.split(input=curr_tensor, sizes=splits, axis=j, name=name)[0]
+                if slice_elem.stop < shape[j]: # truncation from right
+                    splits.append(shape[j] - slice_elem.stop)
+                    right_trunc = True
+                if left_trunc:
+                    curr_tensor = ffmodel.split(input=curr_tensor, sizes=splits, axis=j, name=name)[1]
+                else:
+                    curr_tensor = ffmodel.split(input=curr_tensor, sizes=splits, axis=j, name=name)[0]
                 new_shape.append(slice_elem.stop - start)
                 j -= 1
             else:
