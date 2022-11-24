@@ -1560,7 +1560,7 @@ void SearchHelper::add_sink_node_costs<GraphCostResultWithMemory>(
     NodeAssignment const &sink,
     CostMetrics metrics,
     GraphCostResultWithMemory *result) const {
-  float op_total_mem_mb = metrics.total_memory_as_mb();
+  float op_total_mem_mb = ((float)(metrics.op_total_mem / 1e4)) / 1e2;
   this->add_operator_cost_with_memory(
       sink,
       metrics.forward_time + metrics.backward_time + metrics.sync_time,
@@ -1712,7 +1712,7 @@ T SearchHelper::graph_cost(Graph const *graph,
                            weight_num_parts * metrics.weights_memory;
 
     this->logger->spew() << "  op_total_mem: " << metrics.op_total_mem;
-    float op_total_mem_mb = metrics.total_memory_as_mb();
+    float op_total_mem_mb = (float)((metrics.op_total_mem) / 1e4) / 1e2;
     this->logger->debug() << "[PCG::SearchHelper::graph_cost] Sink node cost ["
                           << sink.node.to_string() << "]: "
                           << "forward(" << metrics.forward_time << ") "
