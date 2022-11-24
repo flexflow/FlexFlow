@@ -804,6 +804,11 @@ public:
 public:
   void set_iteration_config_sequence_length(int seq_length);
 
+  /**
+   * @brief Clear the cache of the GraphSearchHelper and SearchHelper.
+   */
+  void clear_graph_search_cache();
+
 public:
   size_t op_global_guid, layer_global_guid;
   size_t tensor_global_guid, parallel_tensor_global_guid, node_global_guid;

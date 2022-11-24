@@ -168,6 +168,11 @@ T SearchHelper::find_optimal_sequence_graph_time(
   return optimal;
 }
 
+void SearchHelper::clear_cache() {
+  cached_graph_costs.clear();
+  cached_operator_valid_views.clear();
+}
+
 template <typename T>
 T SearchHelper::execute_nonsequence_split(
     std::unique_ptr<Graph> const &first_graph,
@@ -1555,7 +1560,7 @@ void SearchHelper::add_sink_node_costs<GraphCostResultWithMemory>(
     NodeAssignment const &sink,
     CostMetrics metrics,
     GraphCostResultWithMemory *result) const {
-  float op_total_mem_mb = metrics.total_memory_as_mb();
+  float op_total_mem_mb = ((float)(metrics.op_total_mem / 1e4)) / 1e2;
   this->add_operator_cost_with_memory(
       sink,
       metrics.forward_time + metrics.backward_time + metrics.sync_time,
@@ -1707,7 +1712,7 @@ T SearchHelper::graph_cost(Graph const *graph,
                            weight_num_parts * metrics.weights_memory;
 
     this->logger->spew() << "  op_total_mem: " << metrics.op_total_mem;
-    float op_total_mem_mb = metrics.total_memory_as_mb();
+    float op_total_mem_mb = (float)((metrics.op_total_mem) / 1e4) / 1e2;
     this->logger->debug() << "[PCG::SearchHelper::graph_cost] Sink node cost ["
                           << sink.node.to_string() << "]: "
                           << "forward(" << metrics.forward_time << ") "
@@ -1876,10 +1881,9 @@ GraphOptimalViewSerialized
                                std::vector<PhysicalRegion> const &regions,
                                Context ctx,
                                Runtime *runtime) {
-  bool perform_memory_search =
-      (*((FFModel **)task->args))->config.perform_memory_search;
-  // float memory_threshold = 13000; // Dummy for now
-  float memory_threshold = (*((FFModel **)task->args))->config.device_mem;
+  auto model_config = (*((FFModel **)task->args))->config;
+  bool perform_memory_search = model_config.perform_memory_search;
+  float memory_threshold = model_config.device_mem;
 
   // Binary search of the best lambda such that the PCG can be placed on the
   // devices but the run time cost is minimized
@@ -1894,6 +1898,8 @@ GraphOptimalViewSerialized
   auto try_one_lambda = [&](std::pair<float, MemorySearchResult> &lambda) {
     // Create a new fresh model
     FFModel *model = *((FFModel **)task->args);
+    model->clear_graph_search_cache();
+
     if (model->config.search_num_nodes.has_value()) {
       model->config.numNodes = model->config.search_num_nodes.value();
     }
