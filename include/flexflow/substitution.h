@@ -264,6 +264,11 @@ public:
       std::unordered_map<Node, MachineView> &optimal_views);
   void update_mem_optim_config(MemoryOptimConfig const &new_config);
 
+  /**
+   * @brief Clear the optimized graph cache of this helper.
+   */
+  void clear_cache();
+
 private:
   template <typename T>
   T generic_sequence_optimize(
