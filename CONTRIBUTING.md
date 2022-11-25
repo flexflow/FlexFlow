@@ -1,30 +1,32 @@
 # Developers Guide
 
 ## Code Organization
-The organization of FlexFlow repository is as follows (the core part of the code is stored in the bolded folders):
+The bulk of the FlexFlow source code is stored in the following folders:
 
-1. [.github](./.github): contains the Github CI workflows, and the pull request template
-2. [align](./align): 
-3. [cmake](./cmake): the CMake build helpers, included by [CMakeLists.txt](https://github.com/flexflow/FlexFlow/blob/master/CMakeLists.txt)
-4. [conda](./conda): support for installing FlexFlow with `conda`
-5. [config](./config): scripts used by CMake, `pip` and Docker to configure the FlexFlow builds
-6. [deps](./deps): the submodule dependencies (GoogleTest, Json, Legion, NCCL, Optional, PyBind11 and Variant)
-7. [docker](./docker): the docker containers and helper scripts
-8. [docs](./docs): all the docs
-9. **[examples](./examples): sample FlexFlow DNNs in C++ and Python**
-10. [gdb](./gdb): 
-11. **[include](./include): the FlexFlow include headers**
-12. [jupyter_notebook](./jupyter_notebook): support for running FlexFlow in a Jupyter notebook
-13. [nmt](./nmt): the original version of FlexFlow
-14. [python](./python): the Python front-end interface
-15. [scripts](./scripts): helper scripts for formatting and testing
-16. [spack](./spack): helper file to use FlexFlow with the [Spack](https://spack.io/) package manager
-17. **[src](./src): the FlexFlow source code**
-18. [substitutions](./substitutions): 
-19. [tests](./tests): the unit and integration tests
-20. [tools](./tools): 
+1. `examples`: example DNNs in C++ and Python
+2. `include`: the FlexFlow headers
+3. `src`: the FlexFlow source code
+4. `python`: bindings for the Python interface
 
-The best way to familiarize with the FlexFlow codebase is to walk through one of the existing examples, then check out the relevant FlexFlow runtime functions that are used in the example. 
+The `src` folder is divided into the following subfolders:
+
+* `loss_functions`: contains the implementation of all the supported loss functions, as well as the backward function to be used during training.
+* `mapper`: contains the implentation of the Legion custom mapper for FlexFlow, `FFMapper`.
+* `metric_functions`: contains the implementation of all the metrics functions, such as accuracy, categorical crossentropy, or mean squared error.
+* `ops`: contains the implementation of all tensor operators.
+* `parallel_ops`: contains the operators used to represent parallelization on the Parallel Computation Graph (PCG) as described in the [Unity paper](https://www.usenix.org/system/files/osdi22-unger.pdf).
+* `recompile`: support for the dynamic recompilation functionality described in [this paper](https://arxiv.org/pdf/2205.01848.pdf)
+* `runtime`: contains the implementation of the high-level FlexFlow runtime
+* `utils`: only contains implementation of the RecordFormatter class.
+
+In many parts of the source code you will see triplets of files with the following three different extensions: `.cc`, `.cpp` and `.cu`. The `.cc` file contains the main, high-level C++ implementation, whereas the `.cpp` and `.cu` file contain, respectively, the HIP and CUDA kernels.
+
+The best way to familiarize with the FlexFlow codebase is to walk through one of the existing examples, then check out the relevant FlexFlow runtime functions that are used in the example.
+
+### AlexNet example (C++)
+
+[TODO]: In this section, we will walk through the AlexNet C++ implementation, which can be found in the [examples/cpp/AlexNet](https://github.com/flexflow/FlexFlow/tree/master/examples/cpp/AlexNet) folder of the repository.
+
 
 ## Continuous Integration
 We currently implement CI testing using Github Workflows. Each workflow is defined by its corresponding YAML file in the [.github/workflows](.github/workflows) folder of the repo. We currently have the following workflows:
