@@ -25,7 +25,16 @@ The best way to familiarize with the FlexFlow codebase is to walk through one of
 
 ### AlexNet example (C++)
 
-[TODO]: In this section, we will walk through the AlexNet C++ implementation, which can be found in the [examples/cpp/AlexNet](https://github.com/flexflow/FlexFlow/tree/master/examples/cpp/AlexNet) folder of the repository.
+In this section, we will walk through the AlexNet C++ implementation, which can be found in the [examples/cpp/AlexNet](https://github.com/flexflow/FlexFlow/tree/master/examples/cpp/AlexNet) folder of the repository. You can use this example as a template to write your own C++ DNN model using FlexFlow. 
+
+You can start by taking a look at the `alexnet.cc` file, containing the core of the implementation. You will notice the absence of a `main()` function. The FlexFlow C++ interface uses the `main()` function defined in [src/runtime/cpp_driver.cc](https://github.com/flexflow/FlexFlow/blob/master/src/runtime/cpp_driver.cc), so you will not need to create a new one when writing a FlexFlow program. Instead, you will use a function called `top_level_task` and with the following signature:
+
+```c++
+void FlexFlow::top_level_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime);
+```
 
 
 ## Continuous Integration
