@@ -116,7 +116,7 @@ yarn prettier --write <filename.yml>
 
 In this section, we will walk through an example workflow:
 
-```yml
+```yaml
 name: "build"
 
 on:
