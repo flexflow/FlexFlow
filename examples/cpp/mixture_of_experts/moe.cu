@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "cuda_helper.h"
+#include "flexflow/utils/cuda_helper.h"
 #include "moe.h"
 
 void DataLoader::load_input(Task const *task,

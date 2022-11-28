@@ -55,10 +55,10 @@ void FFModel::top_k(
   {
     int numdims = input->num_dims;
     int dims[MAX_TENSOR_DIM];
-    for (int i = 0; i < numdim; i++){
+    for (int i = 0; i < numdims; i++){
       dims[i] = input->dims[i];
     }
-    dims[0].size = k;
+    dims[0] = k;
     li->outputs[0] = create_tensor_legion_ordering(
         numdims, dims, input->data_type, li, 0, true /*create_grad*/);
     li->outputs[1] = create_tensor_legion_ordering(
@@ -71,7 +71,7 @@ void FFModel::top_k(
   outputs[1] = li->outputs[1];
 }
 
-Op *Linear::create_operator_from_layer(
+Op *TopK::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
