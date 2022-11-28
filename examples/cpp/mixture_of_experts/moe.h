@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
-#include "model.h"
+#include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 60000
 
 using namespace Legion;
 using namespace std;
+using namespace FlexFlow;
 
 struct MoeConfig {
   MoeConfig(void) {

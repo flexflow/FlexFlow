@@ -14,7 +14,6 @@
  */
 
 #include "moe.h"
-#include "model.h"
 #include <fstream>
 #include <sstream>
 #include <string>
