@@ -45,6 +45,8 @@ FFModel ff(ffConfig);
 
 `FFModel` is a very large class, and is the cornerstone of every FlexFlow DNN, providing the methods required to instantiate input tensors, add layers, compile the model, etc... 
 
+#### Tensor creation
+
 The typical first step in a FlexFlow DNN is to define the input tensors. You can do that using the `FFModel.create_tensor` function. In the case of AlexNet:
 
 ```c++
@@ -57,7 +59,7 @@ Tensor input;
 
 In the case of AlexNet, the input tensor has dimension `batch_size x 3 x 229 x 229`, so it is a 4-dimensional tensor. To initialize the tensor, we use the templated `create_tensor` function, which is part of `FFModel`.
 
-There are two versions of the `create_tensor` function: one (used in the last snippet above) uses a template that takes the number of tensor dimensions as its parameter; the second is a wrapper around the first, and takes the number of tensor dimensions as a regular function parameter. Both versions are implemented in `model.cc`, and you can their signature is identical, except for the number of dimensions parameter. Below, we discuss the implementation of the `create_tensor` wrapper, since it illustrates a common pattern among FlexFlow functions:
+There are two versions of the `create_tensor` function: one (used in the last snippet above) uses a template that takes the number of tensor dimensions as its parameter; the second is a wrapper around the first, and takes the number of tensor dimensions as a regular function parameter. Both versions are implemented in `model.cc`, and their signature is identical, except for the number of dimensions parameter. Below, we discuss the implementation of the `create_tensor` wrapper, since it illustrates a common pattern among FlexFlow functions:
 
 ```c++
 Tensor FFModel::create_tensor(int numdim,
@@ -94,6 +96,30 @@ switch (numdim) {
 		assert(false && "Unsupported dim!");
 }
 ```
+
+In addition to the two versions of `create_tensor` discuessed above, `model.cc` also offers a `create_tensor_legion_ordering` function, which simply creates a tensor with the specified dimensions in reverse order. The explicit template instantiations at the bottom of `model.cc` will ensure that functions such `create_tensor` are only instantiated for number of dimensions that are less or equal to `FF_MAX_DIM`.
+
+#### Adding layers to a DNN model
+
+Going back to the AlexNet example, after defining the input tensors, we can add each of the DNN's layers by using the corresponding method from `FFModel`. For instance, the first layer is added using: 
+
+```c++
+t = ff.conv2d(input, 64, 11, 11, 4, 4, 2, 2, AC_MODE_RELU);
+```
+The `conv2d` function is defined in [src/ops/conv_2d.cc](https://github.com/flexflow/FlexFlow/blob/master/src/ops/conv_2d.cc). Just like the other `FFModel` layer functions, it creates a new `Layer` object, populates with all relevant properties, and then enqueues to the list of layers in the `FFModel` class. 
+
+#### Optimizer and training metrics
+
+After adding the DNN layers, the next step before compiling the model for training is to initialize an optimizer and then create a vector with all the metrics that you want to monitor at each training step.
+
+
+#### Model compilation
+
+Compiling the model does the following:
+
+* call `create_operators_from_layers()`, which creates a list of operators from the list of layers created during DNN instantiation.
+* 
+
 
 ## Continuous Integration
 We currently implement CI testing using Github Workflows. Each workflow is defined by its corresponding YAML file in the [.github/workflows](.github/workflows) folder of the repo. We currently have the following workflows:
