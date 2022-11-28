@@ -2579,6 +2579,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_TOPK: {
+      Op *op = TopK::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     default:
       assert(false);
   }

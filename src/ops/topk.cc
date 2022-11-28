@@ -37,14 +37,54 @@ using Legion::TaskLauncher;
 // values.shape = indices.shape = input.shape[:-1] + [k]
 void FFModel::top_k(
     const Tensor input, Tensor *outputs, int k, bool sorted, char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  TopK *topk = new TopK(*this, input, k, sorted, name);
-  layers.push_back(topk);
-  assert(topk->numOutputs == 2);
-  outputs[0] = topk->outputs[0];
-  outputs[1] = topk->outputs[1];
-#endif
+//   assert(false);
+// #ifdef DEADCODE
+//   TopK *topk = new TopK(*this, input, k, sorted, name);
+//   layers.push_back(topk);
+//   assert(topk->numOutputs == 2);
+//   outputs[0] = topk->outputs[0];
+//   outputs[1] = topk->outputs[1];
+// #endif
+  Layer *li = new Layer(this,
+                        OP_TOPK,
+                        name,
+                        1 /*inputs*/,
+                        0 /*weights*/,
+                        2 /*outputs*/,
+                        input);
+  {
+    int numdims = input->num_dims;
+    int dims[MAX_TENSOR_DIM];
+    for (int i = 0; i < numdim; i++){
+      dims[i] = input->dims[i];
+    }
+    dims[0].size = k;
+    li->outputs[0] = create_tensor_legion_ordering(
+        numdims, dims, input->data_type, li, 0, true /*create_grad*/);
+    li->outputs[1] = create_tensor_legion_ordering(
+        numdims, dims, DT_INT32, li, 0, true /*create_grad*/);
+  }
+  li->add_int_property("k", k);
+  li->add_int_property("sorted", sorted);
+  layers.push_back(li);
+  outputs[0] = li->outputs[0];
+  outputs[1] = li->outputs[1];
+}
+
+Op *Linear::create_operator_from_layer(
+    FFModel &model,
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
+  long long value;
+  layer->get_int_property("k", value);
+  int k = value;
+  layer->get_int_property("sorted", value);
+  bool sorted = (bool)value;
+  return new TopK(model,
+                  inputs[0],
+                  k,
+                  sorted,
+                  layer->name);
 }
 
 TopK::TopK(FFModel &model,
