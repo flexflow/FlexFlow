@@ -321,6 +321,7 @@ option(FF_BUILD_XDL "build XDL example" OFF)
 option(FF_BUILD_INCEPTION "build inception example" OFF)
 option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
 option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
+option(FF_BUILD_MOE "build mixture of experts example" OFF)
 option(FF_BUILD_MLP_UNIFY "build mlp unify example" OFF)
 option(FF_BUILD_SPLIT_TEST "build split test example" OFF)
 option(FF_BUILD_SPLIT_TEST_2 "build split test 2 example" OFF)
@@ -370,7 +371,7 @@ if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/MLP_Unify)
 endif()
 
-if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
+if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_INFERENCE_EXAMPLES)
   add_subdirectory(examples/cpp/inference/MLP_Unify)
 endif()
 
@@ -409,14 +410,17 @@ if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/Transformer)
 endif()
 
-if(FF_BUILD_TRANSFORMER_INFERENCE OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
+if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/mixture_of_experts)
+endif()
+
+if(FF_BUILD_TRANSFORMER_INFERENCE OR FF_BUILD_ALL_INFERENCE_EXAMPLES)
   add_subdirectory(examples/cpp/inference/Transformer)
 endif()
 
-if(FF_BUILD_G_SHARD_INFERENCE OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
+if(FF_BUILD_G_SHARD_INFERENCE OR FF_BUILD_ALL_INFERENCE_EXAMPLES)
   add_subdirectory(examples/cpp/inference/G-Shard-MoE)
 endif()
-
 
 # installation
 set(INCLUDE_DEST "include")
