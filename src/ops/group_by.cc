@@ -56,11 +56,11 @@ void FFModel::group_by(const Tensor input,
                         input,
                         assign);
   {
-    int k = assign->dims[0].size;
+    int k = assign->dims[0];
     int num_dims = 2;
     int dims[num_dims];
-    dims[0] = inputs[0]->dims[0].size;
-    dims[1] = (int)ceil(alpha * k / n * inputs[0]->dims[1].size);
+    dims[0] = input->dims[0];
+    dims[1] = (int)ceil(alpha * k / n * input->dims[1]);
     for (int i=0; i<n; i++) {
       li->outputs[0] = create_tensor_legion_ordering(
         num_dims, dims, input->data_type, li, 0, true /*create_grad*/);
@@ -79,15 +79,16 @@ Op *Group_by::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
-  long long value;
-  layer->get_int_property("n", value);
-  int n = value;
-  layer->get_float_property("alpha", value);
-  float alpha = value;
+  long long value1;
+  layer->get_int_property("n", value1);
+  int n = value1;
+  float value2;
+  layer->get_float_property("alpha", value2);
+  float alpha = value2;
   return new Group_by(model,
                   inputs[0],
                   inputs[1],
-                  k,
+                  n,
                   alpha,
                   layer->name);
 }
