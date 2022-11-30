@@ -62,7 +62,7 @@ void FFModel::group_by(const Tensor input,
     dims[0] = input->dims[0];
     dims[1] = (int)ceil(alpha * k / n * input->dims[1]);
     for (int i=0; i<n; i++) {
-      li->outputs[0] = create_tensor_legion_ordering(
+      li->outputs[i] = create_tensor_legion_ordering(
         num_dims, dims, input->data_type, li, 0, true /*create_grad*/);
     }
 
