@@ -39,12 +39,55 @@ Tensor FFModel::aggregate(
     int n,
     float lambda_bal,
     char const *name) {
-#ifdef DEADCODE
-  Aggregate *aggr = new Aggregate(*this, inputs, n, lambda_bal, name);
-  layers.push_back(aggr);
-  return aggr->outputs[0];
-#endif
-  return nullptr;
+// #ifdef DEADCODE
+//   Aggregate *aggr = new Aggregate(*this, inputs, n, lambda_bal, name);
+//   layers.push_back(aggr);
+//   return aggr->outputs[0];
+// #endif
+//   return nullptr;
+  Layer *li = new Layer(this,
+                        OP_AGGREGATE,
+                        name,
+                        n+4 /*inputs*/,
+                        0 /*weights*/,
+                        1 /*outputs*/,
+                        inputs);
+  {
+    // expert inputs
+    int num_dim = inputs[4]->num_dims;
+    int out_dim = inputs[4]->dims[0];
+    for (int i = 1; i < n; i++) {
+      assert(inputs[i + 4]->num_dims == num_dim);
+      assert(inputs[i + 4]->dims[0] == out_dim);
+    }
+    // Set output shape
+    int dims[MAX_TENSOR_DIM];
+    for (int i = 0; i < num_dim - 1; i++)
+      dims[i] = inputs[4]->dims[i];
+    dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
+    li->outputs[0] = create_tensor_legion_ordering(num_dim, dims, DT_FLOAT, li, 0, true /*create_grad*/);
+  }
+  li->add_int_property("n", n);
+  li->add_float_property("lambda_bal", lambda_bal);
+  layers.push_back(li);
+  return li->outputs[0];
+}
+
+Op *Aggregate::create_operator_from_layer(
+    FFModel &model,
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
+  long long value1;
+  layer->get_int_property("n", value1);
+  int n = value1;
+  float value2;
+  layer->get_float_property("lambda_bal", value2);
+  float lambda_bal = value2;
+  return new Aggregate(model,
+                  inputs.data(),
+                  n,
+                  lambda_bal,
+                  layer->name);
 }
 
 Aggregate::Aggregate(FFModel &model,
