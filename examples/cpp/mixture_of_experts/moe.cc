@@ -140,9 +140,9 @@ void FlexFlow::top_level_task(Task const *task,
   //ff.cache(topK_output[1], TRAIN_SAMPLES / ffConfig.batchSize, moe_score);
 
   Tensor exp_tensors[num_exp];
-  printf("num_exp: %i, alpha: %f\n", num_exp);
-  input->print("input_tensor");
-  topK_output[1]->print("topK_output[1]");
+  //printf("num_exp: %i, alpha: %f\n", num_exp);
+  //input->print("input_tensor");
+  //topK_output[1]->print("topK_output[1]");
   //exp_tensors->print("exp_tensors");
   ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
 
