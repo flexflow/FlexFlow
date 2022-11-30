@@ -20,23 +20,30 @@ using namespace FlexFlow;
 
 DataLoader::DataLoader(FFModel &ff,
                        MLPConfig const &mlpConfig,
-                       InferenceManager const *im, 
+                       InferenceManager const *im,
                        Tensor input) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   log_app.print("Use random dataset...");
-  
-  // The number of samples is the total number of request samples that can ever be loaded into memory at the same time. In the case of training, the value is batchSize * workersPerNode * numNodes, since each worker can only process one batch at a time. In inference,  batchSize
-  size_t max_parallel_requests = im->max_num_inflight_batches * (ff.config.batchSize * im->max_num_requests_per_batch);
-  num_samples = max_parallel_requests * ff.config.workersPerNode * ff.config.numNodes;
+
+  // The number of samples is the total number of request samples that can ever
+  // be loaded into memory at the same time. In the case of training, the value
+  // is batchSize * workersPerNode * numNodes, since each worker can only
+  // process one batch at a time. In inference,  batchSize
+  size_t max_parallel_requests =
+      im->max_num_inflight_batches *
+      (ff.config.batchSize * im->max_num_requests_per_batch);
+  num_samples =
+      max_parallel_requests * ff.config.workersPerNode * ff.config.numNodes;
   log_app.print("Number of random samples = %d\n", num_samples);
 
   // return;
-  
+
   // Create full input
   {
     batch_input = input;
-    int const dims[] = {num_samples, tf.sequence_length * mlpConfig->embedding_size};
+    int const dims[] = {num_samples,
+                        tf.sequence_length * mlpConfig->embedding_size};
     full_input = ff.create_tensor<2>(dims, DT_FLOAT);
   }
 
@@ -80,7 +87,8 @@ void DataLoader::next_batch(FFModel &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   // Load Input
   {
-    Rect<2> rect = runtime->get_index_space_domain(ctx, batch_input->parallel_tensor->parallel_is);
+    Rect<2> rect = runtime->get_index_space_domain(
+        ctx, batch_input->parallel_tensor->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
     for (PointInRectIterator<2> it(rect); it(); it++) {
@@ -125,7 +133,6 @@ void DataLoader::reset() {
   next_index = 0;
 }
 
-
 Tensor create_mlp(FFModel *model,
                   MLPConfig const *mlpConfig,
                   Tensor const &input1,
@@ -146,57 +153,60 @@ void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
-  
+
   // Inference parameters
-  size_t total_requests = 256; // total number of requests processed as part of the simulation
+  size_t total_requests =
+      256; // total number of requests processed as part of the simulation
   size_t request_tensor_size = 4; // request tensor dimensions
-  bool poisson_distribution=true;
+  bool poisson_distribution = true;
   double lambda = 25; // average number of request arrivals per second
-  size_t num_requests_per_batch=5;
+  size_t num_requests_per_batch = 5;
   size_t num_inflight_batches = 10;
 
   // MLP parameters
-  size_t embedding_size=1024;
-  size_t sequence_length=512;
-  std::vector<size_t> hidden_dims = {8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192};
+  size_t embedding_size = 1024;
+  size_t sequence_length = 512;
+  std::vector<size_t> hidden_dims = {
+      8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192};
 
   FFConfig ffConfig;
-  ffConfig.batchSize=1;
+  ffConfig.batchSize = 1;
   {
-    fprintf(stderr, "batchSize(%d) workersPerNodes(%d) numNodes(%d)\n",
-      ffConfig.batchSize,
-      ffConfig.workersPerNode,
-      ffConfig.numNodes
-    );
+    fprintf(stderr,
+            "batchSize(%d) workersPerNodes(%d) numNodes(%d)\n",
+            ffConfig.batchSize,
+            ffConfig.workersPerNode,
+            ffConfig.numNodes);
   }
   FFModel ff(ffConfig);
   MLPConfig mlpConfig(embedding_size, sequence_length, hidden_dims);
   {
     stringstream hd;
-    hd << '{'
-    for (size_t i = 0; i < hidden_dims.size(); i++) {
-      if (i != 0) hd << ",";
+    hd << '{' for (size_t i = 0; i < hidden_dims.size(); i++) {
+      if (i != 0)
+        hd << ",";
       hd << hidden_dims[i];
     }
-    hd << '}'
-    fprintf(stderr,
-      "embedding_size(%d) sequence_length(%d) hidden_dims(%s)\n",
-      mlpConfig.embedding_size,
-      mlpConfig.sequence_length,
-      hd.c_str());
+    hd << '}' fprintf(
+        stderr,
+        "embedding_size(%d) sequence_length(%d) hidden_dims(%s)\n",
+        mlpConfig.embedding_size,
+        mlpConfig.sequence_length,
+        hd.c_str());
   }
-  
+
   Tensor input1, input2;
   {
-    int const dims[] = {total_requests, mlpConfig.sequence_length * mlpConfig.embedding_size};
+    int const dims[] = {total_requests,
+                        mlpConfig.sequence_length * mlpConfig.embedding_size};
     input1 = ff.create_tensor<2>(dims, DT_FLOAT);
     input2 = ff.create_tensor<2>(dims, DT_FLOAT);
   }
   Tensor t = create_mlp(&ff, &mlpConfig, input1, input2);
-  
+
   InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);
   ff.init_operators();
-  
+
   // Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -205,15 +215,15 @@ void FlexFlow::top_level_task(Task const *task,
     future.get_void_result();
   }
   double ts_start = Realm::Clock::current_time_in_microseconds();
-  
-  
+
   ///////////////////////////////////////////////////////////////////////////////////
-  
+
   // Main loop, processing requests as they come (from the generator)
   int index = 0;
-  size_t processed_requests=0;
-  Generator data_generator(total_requests, request_tensor_size, poisson_distribution, lambda);
-  while(processed_requests < total_requests) {
+  size_t processed_requests = 0;
+  Generator data_generator(
+      total_requests, request_tensor_size, poisson_distribution, lambda);
+  while (processed_requests < total_requests) {
     vector<vector<double>> req = data_generator.get_requests();
     size_t iterations = req.size();
     for (size_t iter = 0; iter < iterations; iter++) {
@@ -221,12 +231,11 @@ void FlexFlow::top_level_task(Task const *task,
       im.inference((index++) % num_inflight_batches);
       runtime->end_trace(ctx, 111 /*trace_id*/);
     }
-    processed_requests+= iterations;
+    processed_requests += iterations;
   }
 
   ///////////////////////////////////////////////////////////////////////////////////
-  
-  
+
   // End timer
   {
     runtime->issue_execution_fence(ctx);

@@ -104,9 +104,9 @@ float moe_score(float *cached_score,
 } */
 
 void FlexFlow::top_level_task(Task const *task,
-                    std::vector<PhysicalRegion> const &regions,
-                    Context ctx,
-                    Runtime *runtime) {
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
   FFConfig ffConfig;
   MoeConfig moeConfig;
   {
@@ -137,13 +137,13 @@ void FlexFlow::top_level_task(Task const *task,
   gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_RELU);
   Tensor topK_output[2];
   ff.top_k(gate_preds, topK_output, num_select, false);
-  //ff.cache(topK_output[1], TRAIN_SAMPLES / ffConfig.batchSize, moe_score);
+  // ff.cache(topK_output[1], TRAIN_SAMPLES / ffConfig.batchSize, moe_score);
 
   Tensor exp_tensors[num_exp];
-  //printf("num_exp: %i, alpha: %f\n", num_exp);
-  //input->print("input_tensor");
-  //topK_output[1]->print("topK_output[1]");
-  //exp_tensors->print("exp_tensors");
+  // printf("num_exp: %i, alpha: %f\n", num_exp);
+  // input->print("input_tensor");
+  // topK_output[1]->print("topK_output[1]");
+  // exp_tensors->print("exp_tensors");
   ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
 
   Tensor agg_inputs[num_exp + 4];
@@ -170,7 +170,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   // Data Loader
   DataLoader data_loader(ff, moeConfig, input, ff.label_tensor);
-  //RecompileState r(&moe_trigger, &moe_alter, &ff);
+  // RecompileState r(&moe_trigger, &moe_alter, &ff);
   ff.init_operators();
   // Start timer
   {
@@ -193,9 +193,9 @@ void FlexFlow::top_level_task(Task const *task,
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      //ff.recompile_on_condition(r);
-      // if (epoch > 0)
-      //    runtime->end_trace(ctx, 111/*trace_id*/);
+      // ff.recompile_on_condition(r);
+      //  if (epoch > 0)
+      //     runtime->end_trace(ctx, 111/*trace_id*/);
     }
 
     // TODO: Do properly
@@ -249,18 +249,20 @@ DataLoader::DataLoader(FFModel &ff,
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
                         TaskArgument(&ptr, sizeof(MoeConfig *)));
   // regions[0]: full_input
-  launcher.add_region_requirement(RegionRequirement(full_input->parallel_tensor->region,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    full_input->parallel_tensor->region,
-                                                    MAP_TO_ZC_MEMORY));
+  launcher.add_region_requirement(
+      RegionRequirement(full_input->parallel_tensor->region,
+                        WRITE_ONLY,
+                        EXCLUSIVE,
+                        full_input->parallel_tensor->region,
+                        MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_label
-  launcher.add_region_requirement(RegionRequirement(full_input->parallel_tensor->region,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    full_input->parallel_tensor->region,
-                                                    MAP_TO_ZC_MEMORY));
+  launcher.add_region_requirement(
+      RegionRequirement(full_input->parallel_tensor->region,
+                        WRITE_ONLY,
+                        EXCLUSIVE,
+                        full_input->parallel_tensor->region,
+                        MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
 
   runtime->execute_task(ctx, launcher);
@@ -417,24 +419,26 @@ void DataLoader::next_batch(FFModel &ff) {
                            false /*must*/,
                            0 /*mapper_id*/,
                            batch_input->parallel_tensor->machine_view.hash());
-    launcher.add_region_requirement(RegionRequirement(full_input->parallel_tensor->region,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      full_input->parallel_tensor->region,
-                                                      MAP_TO_ZC_MEMORY));
+    launcher.add_region_requirement(
+        RegionRequirement(full_input->parallel_tensor->region,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          full_input->parallel_tensor->region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(batch_input->parallel_tensor->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_input->parallel_tensor->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_input->parallel_tensor->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_input->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
   // Load label
   {
-    //IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
+    // IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
     IndexSpace task_is = batch_label->parallel_tensor->parallel_is;
     Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
     ArgumentMap argmap;
@@ -455,18 +459,20 @@ void DataLoader::next_batch(FFModel &ff) {
                            false /*must*/,
                            0 /*mapper_id*/,
                            batch_label->parallel_tensor->machine_view.hash());
-    launcher.add_region_requirement(RegionRequirement(full_label->parallel_tensor->region,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      full_label->parallel_tensor->region,
-                                                      MAP_TO_ZC_MEMORY));
+    launcher.add_region_requirement(
+        RegionRequirement(full_label->parallel_tensor->region,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          full_label->parallel_tensor->region,
+                          MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(batch_label->parallel_tensor->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_label->parallel_tensor->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_label->parallel_tensor->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_label->parallel_tensor->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }

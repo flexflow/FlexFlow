@@ -13,22 +13,23 @@
  * limitations under the License.
  */
 
-#include "flexflow/model.h"
+#include "data_generator.h"
 #include "flexflow/inference.h"
+#include "flexflow/model.h"
 #include <fstream>
 #include <sstream>
 #include <string>
-#include "data_generator.h"
 
 using namespace Legion;
 using namespace FlexFlow;
 
 struct MLPConfig {
   MLPConfig(void);
-  MLPConfig(int embedding_size, int sequence_length, std::vector<size_t> hidden_dims)
-  : embedding_size(embedding_size),
-    sequence_length(sequence_length),
-    hidden_dims(hidden_dims) {}
+  MLPConfig(int embedding_size,
+            int sequence_length,
+            std::vector<size_t> hidden_dims)
+      : embedding_size(embedding_size), sequence_length(sequence_length),
+        hidden_dims(hidden_dims) {}
 
   int embedding_size, sequence_length;
   std::vector<size_t> hidden_dims;

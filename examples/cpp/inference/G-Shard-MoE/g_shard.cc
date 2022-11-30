@@ -47,37 +47,61 @@ using namespace FlexFlow;
 // Initializer *kernel_initializer,
 // char const *name) {
 
-
 void create_attention_decoder(FFModel *model,
-                                      Tensor const &input1,
-                                      Tensor const &input2,
-                                      Tensor &output1,
-                                      Tensor &output2,
-                                      int embed_dim,
-                                      int num_heads,
-                                      int kdim,
-                                      int vdim,
-                                      float dropout=0.1,
-                                      bool normalize_before=false,
-                                      bool is_moe=false) {
-  
+                              Tensor const &input1,
+                              Tensor const &input2,
+                              Tensor &output1,
+                              Tensor &output2,
+                              int embed_dim,
+                              int num_heads,
+                              int kdim,
+                              int vdim,
+                              float dropout = 0.1,
+                              bool normalize_before = false,
+                              bool is_moe = false) {
+
   std::vector<int> axes = {embed_dim};
-  Tensor x = normalize_before ? model->layer_norm(input1 /*const Tensor input*/, axes /*std::vector<int> const &axes*/, true /*elementwise_affine*/, 1e-05 /*eps*/) : input1;
-  x = model->add(model->dropout(model->multihead_attention(x, x, x, embed_dim, num_heads, embed_dim, embed_dim, dropout, true /*bias*/, false /*add_bias_kv*/, false /*add_zero_attn*/), dropout), x);
-  //x = normalize_before ? x : model->layer_norm(x, axes, true, 1e-05);
+  Tensor x = normalize_before
+                 ? model->layer_norm(input1 /*const Tensor input*/,
+                                     axes /*std::vector<int> const &axes*/,
+                                     true /*elementwise_affine*/,
+                                     1e-05 /*eps*/)
+                 : input1;
+  x = model->add(
+      model->dropout(model->multihead_attention(x,
+                                                x,
+                                                x,
+                                                embed_dim,
+                                                num_heads,
+                                                embed_dim,
+                                                embed_dim,
+                                                dropout,
+                                                true /*bias*/,
+                                                false /*add_bias_kv*/,
+                                                false /*add_zero_attn*/),
+                     dropout),
+      x);
+  // x = normalize_before ? x : model->layer_norm(x, axes, true, 1e-05);
   x = model->layer_norm(x, axes, true, 1e-05);
 
-  if(!is_moe) {
-    x = model->dropout(model->dense(model->dropout(model->dense(x, 3072, AC_MODE_GELU, true /*bias*/), dropout), embed_dim, AC_MODE_NONE, true /*bias*/), dropout);
+  if (!is_moe) {
+    x = model->dropout(
+        model->dense(
+            model->dropout(model->dense(x, 3072, AC_MODE_GELU, true /*bias*/),
+                           dropout),
+            embed_dim,
+            AC_MODE_NONE,
+            true /*bias*/),
+        dropout);
   } else {
     // x - seq_len, batch_size, model_dim
     // x = x.transpose(0, 1) # batch_size, seq_len, model_dim
     // x, l_aux = self.moe_layer(x)
     // x = x.transpose(0, 1) # seq_len, batch_size, model_dim
-    //x = self.residual_connection(x, residual)
-    
-    //if not self.normalize_before:
-    //    x = self.final_layer_norm(x)
+    // x = self.residual_connection(x, residual)
+
+    // if not self.normalize_before:
+    //     x = self.final_layer_norm(x)
     x = normalize_before ? x : model->layer_norm(x, axes, true, 1e-05);
     float alpha = 2.0f;   // factor overhead tensor size for imbalance
     float lambda = 0.04f; // multiplier for load balance term
@@ -95,31 +119,35 @@ void create_attention_decoder(FFModel *model,
 
     Tensor agg_inputs[num_exp + 4];
     agg_inputs[0] = model->softmax(topK_output[0]); // gate preds
-    agg_inputs[1] = topK_output[1];             // gate assign
-    agg_inputs[2] = topK_output[1];             // gate assign TopK (for cache)
-    agg_inputs[3] = gate_preds;                 // full gate preds
+    agg_inputs[1] = topK_output[1];                 // gate assign
+    agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
+    agg_inputs[3] = gate_preds;     // full gate preds
     for (int i = 0; i < num_exp; i++) {
       Tensor exp_pred = model->dense(exp_tensors[i], embed_dim, AC_MODE_RELU);
       agg_inputs[i + 4] = model->softmax(exp_pred);
     }
   }
-  
+
   // Tensor t1 =
   //     model->add(model->multihead_attention(
-  //                    input1, input1, input1, hidden_dim, num_heads, kdim, vdim),
+  //                    input1, input1, input1, hidden_dim, num_heads, kdim,
+  //                    vdim),
   //                input1);
-  // t1 = model->dense(model->dense(t1, hidden_dim, AC_MODE_RELU, false /*bias*/),
+  // t1 = model->dense(model->dense(t1, hidden_dim, AC_MODE_RELU, false
+  // /*bias*/),
   //                   hidden_dim,
   //                   AC_MODE_NONE,
   //                   false /*bias*/);
   // Tensor t2 =
   //     model->add(model->multihead_attention(
-  //                    input2, input2, input2, hidden_dim, num_heads, kdim, vdim),
+  //                    input2, input2, input2, hidden_dim, num_heads, kdim,
+  //                    vdim),
   //                input2);
   // t2 = model->add(
-  //     model->multihead_attention(t2, t1, t1, hidden_dim, num_heads, kdim, vdim),
-  //     t2);
-  // t2 = model->dense(model->dense(t2, hidden_dim, AC_MODE_RELU, false /*bias*/),
+  //     model->multihead_attention(t2, t1, t1, hidden_dim, num_heads, kdim,
+  //     vdim), t2);
+  // t2 = model->dense(model->dense(t2, hidden_dim, AC_MODE_RELU, false
+  // /*bias*/),
   //                   hidden_dim,
   //                   AC_MODE_NONE,
   //                   false /*bias*/);
@@ -161,7 +189,10 @@ void FlexFlow::top_level_task(Task const *task,
   std::vector<MetricsType> metrics;
   metrics.push_back(METRICS_ACCURACY);
   metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
-  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics, CompMode::COMP_MODE_INFERENCE);
+  ff.compile(optimizer,
+             LOSS_SPARSE_CATEGORICAL_CROSSENTROPY,
+             metrics,
+             CompMode::COMP_MODE_INFERENCE);
   ff.init_operators();
   // Start timer
   {
@@ -171,7 +202,7 @@ void FlexFlow::top_level_task(Task const *task,
     future.get_void_result();
   }
   double ts_start = Realm::Clock::current_time_in_microseconds();
-  //for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
+  // for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
   ff.reset_metrics();
   int iterations = 128;
   for (int iter = 0; iter < iterations; iter++) {

@@ -160,7 +160,10 @@ void FlexFlow::top_level_task(Task const *task,
   std::vector<MetricsType> metrics;
   // metrics.push_back(METRICS_ACCURACY);
   // metrics.push_back(METRICS_MEAN_SQUARED_ERROR);
-  ff.compile(optimizer, LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics, CompMode::COMP_MODE_INFERENCE);
+  ff.compile(optimizer,
+             LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE,
+             metrics,
+             CompMode::COMP_MODE_INFERENCE);
   // Data Loader
   DataLoader loader(ff, tfConfig, input, ff.label_tensor);
   loader.next_batch(ff);
@@ -180,22 +183,22 @@ void FlexFlow::top_level_task(Task const *task,
                 loader.num_samples / ffConfig.batchSize);
   printf("parameters.size() = %lu\n", ff.parameters.size());
   double ts_start = Realm::Clock::current_time_in_microseconds();
-  int epoch=0;
-  //for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
-    loader.reset();
-    ff.reset_metrics();
-    int iterations = loader.num_samples / ffConfig.batchSize;
-    for (int iter = 0; iter < iterations; iter++) {
-      // Only load data once for random input
-      if (iter == 0 && epoch == 0)
-        loader.next_batch(ff);
-      runtime->begin_trace(ctx, 111 /*trace_id*/);
-      ff.forward();
-      //ff.zero_gradients();
-      //ff.backward();
-      //ff.update();
-      runtime->end_trace(ctx, 111 /*trace_id*/);
-    }
+  int epoch = 0;
+  // for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
+  loader.reset();
+  ff.reset_metrics();
+  int iterations = loader.num_samples / ffConfig.batchSize;
+  for (int iter = 0; iter < iterations; iter++) {
+    // Only load data once for random input
+    if (iter == 0 && epoch == 0)
+      loader.next_batch(ff);
+    runtime->begin_trace(ctx, 111 /*trace_id*/);
+    ff.forward();
+    // ff.zero_gradients();
+    // ff.backward();
+    // ff.update();
+    runtime->end_trace(ctx, 111 /*trace_id*/);
+  }
   //}
   // End timer
   {

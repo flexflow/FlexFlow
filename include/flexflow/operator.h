@@ -187,7 +187,9 @@ public:
   virtual void inference(FFModel const &,
                          std::vector<ParallelTensor> const &,
                          std::vector<ParallelTensor> const &,
-                         std::vector<ParallelTensor> const &) {assert(false);};
+                         std::vector<ParallelTensor> const &) {
+    assert(false);
+  };
   virtual void print_layer(FFModel const &model) = 0;
   virtual bool measure_operator_cost(Simulator *sim,
                                      MachineView const &mv,

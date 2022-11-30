@@ -40,13 +40,13 @@ void FFModel::group_by(const Tensor input,
                        int n,
                        float alpha,
                        char const *name) {
-//   assert(false);
-// #ifdef DEADCODE
-//   Group_by *group_by = new Group_by(*this, input, assign, n, alpha, name);
-//   layers.push_back(group_by);
-//   for (int i = 0; i < n; i++)
-//     outputs[i] = group_by->outputs[i];
-// #endif
+  //   assert(false);
+  // #ifdef DEADCODE
+  //   Group_by *group_by = new Group_by(*this, input, assign, n, alpha, name);
+  //   layers.push_back(group_by);
+  //   for (int i = 0; i < n; i++)
+  //     outputs[i] = group_by->outputs[i];
+  // #endif
   Layer *li = new Layer(this,
                         OP_GROUP_BY,
                         name,
@@ -61,16 +61,15 @@ void FFModel::group_by(const Tensor input,
     int dims[num_dims];
     dims[0] = input->dims[0];
     dims[1] = (int)ceil(alpha * k / n * input->dims[1]);
-    for (int i=0; i<n; i++) {
+    for (int i = 0; i < n; i++) {
       li->outputs[i] = create_tensor_legion_ordering(
-        num_dims, dims, input->data_type, li, 0, true /*create_grad*/);
+          num_dims, dims, input->data_type, li, 0, true /*create_grad*/);
     }
-
   }
   li->add_int_property("n", n);
   li->add_float_property("alpha", alpha);
   layers.push_back(li);
-  for (int i=0; i<n; i++){
+  for (int i = 0; i < n; i++) {
     outputs[i] = li->outputs[i];
   }
 }
@@ -85,12 +84,7 @@ Op *Group_by::create_operator_from_layer(
   float value2;
   layer->get_float_property("alpha", value2);
   float alpha = value2;
-  return new Group_by(model,
-                  inputs[0],
-                  inputs[1],
-                  n,
-                  alpha,
-                  layer->name);
+  return new Group_by(model, inputs[0], inputs[1], n, alpha, layer->name);
 }
 
 Group_by::Group_by(FFModel &model,
