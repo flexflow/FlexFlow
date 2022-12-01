@@ -25,11 +25,14 @@ wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
 
 # Install HIP dependencies if needed
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-"cuda"}
-if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]; then \
+if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
+  echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid."
+  exit 1
+elif [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]; then \
     echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Installing HIP dependencies"; \
-    wget https://repo.radeon.com/amdgpu-install/latest/ubuntu/bionic/amdgpu-install_22.20.50200-1_all.deb; \
-    sudo apt-get install -y ./amdgpu-install_22.20.50200-1_all.deb; \
-    rm ./amdgpu-install_22.20.50200-1_all.deb; \
+    wget https://repo.radeon.com/amdgpu-install/latest/ubuntu/focal/amdgpu-install_5.3.50300-1_all.deb; \
+    sudo apt-get install -y ./amdgpu-install_5.3.50300-1_all.deb; \
+    rm ./amdgpu-install_5.3.50300-1_all.deb; \
     sudo amdgpu-install -y --usecase=hip,rocm --no-dkms; \
     sudo apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk; \
 else \
