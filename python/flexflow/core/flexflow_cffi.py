@@ -2193,53 +2193,6 @@ class DLRMConfig(object):
       self.embedding_size.append(embedding_size_c[i+1])
 
 # -----------------------------------------------------------------------
-# DataLoader
-# -----------------------------------------------------------------------
-
-class DataLoader4D(object):
-  __slots__ = ['handle', '_handle']
-  def __init__(self, ffmodel, input, label, full_input=0, full_label=0, num_samples=0, ffnetconfig=0):
-    if (ffnetconfig == 0):
-      self.handle = ffc.flexflow_dataloader_4d_create_v2(ffmodel.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
-    else:
-      self.handle = ffc.flexflow_dataloader_4d_create(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_4d_destroy)
-
-  @property
-  def num_samples(self):
-    return ffc.flexflow_dataloader_4d_get_num_samples(self.handle)
-
-  @num_samples.setter
-  def num_samples(self, samples):
-    ffc.flexflow_dataloader_4d_set_num_samples(self.handle, samples)
-
-  def next_batch(self, ffmodel):
-    ffc.flowflow_dataloader_4d_next_batch(self.handle, ffmodel.handle)
-
-  def reset(self):
-    ffc.flexflow_dataloader_4d_reset(self.handle)
-
-class DataLoader2D(object):
-  __slots__ = ['handle', '_handle']
-  def __init__(self, ffmodel, input, label, full_input=0, full_label=0, num_samples=0):
-    self.handle = ffc.flexflow_dataloader_2d_create_v2(ffmodel.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_2d_destroy)
-
-  @property
-  def num_samples(self):
-    return ffc.flexflow_dataloader_2d_get_num_samples(self.handle)
-
-  @num_samples.setter
-  def num_samples(self, samples):
-    ffc.flexflow_dataloader_2d_set_num_samples(self.handle, samples)
-
-  def next_batch(self, ffmodel):
-    ffc.flowflow_dataloader_2d_next_batch(self.handle, ffmodel.handle)
-
-  def reset(self):
-    ffc.flexflow_dataloader_2d_reset(self.handle)
-
-# -----------------------------------------------------------------------
 # Single DataLoader
 # -----------------------------------------------------------------------
 
