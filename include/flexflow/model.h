@@ -32,7 +32,6 @@
 #include "simulator.h"
 #include "tensor.h"
 #include "tl/optional.hpp"
-#include "utils/dot/record_formatter.h"
 #include <functional>
 #include <unistd.h>
 #include <utility>
@@ -228,8 +227,6 @@ class Graph;
 
 class FFModel;
 class ParallelOp;
-
-std::string optype_to_string(OperatorType);
 
 void solve_parallel_dim_mappings(
     std::vector<ParallelDimMappingRecord> const &mapping,

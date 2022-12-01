@@ -1,16 +1,17 @@
 #!/bin/bash
+set -euo pipefail
+set -x
+
+# Cd into directory holding this script
+cd "${BASH_SOURCE[0]%/*}"
 
 # General dependencies
 echo "Installing apt dependencies..."
-sudo apt-get update && sudo apt-get install -y --no-install-recommends wget binutils git zlib1g-dev && \
+sudo apt-get update && sudo apt-get install -y --no-install-recommends wget binutils git zlib1g-dev libhdf5-dev && \
     sudo rm -rf /var/lib/apt/lists/*
 
 # Install CUDNN
-echo "Installing CUDNN..."
-wget -c -q http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-11.1-linux-x64-v8.0.5.39.tgz && \
-    sudo tar -xzf cudnn-11.1-linux-x64-v8.0.5.39.tgz -C /usr/local && \
-    rm cudnn-11.1-linux-x64-v8.0.5.39.tgz && \
-    sudo ldconfig
+./install_cudnn.sh
 
 # Install Miniconda
 echo "Installing Miniconda..."

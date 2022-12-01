@@ -1,0 +1,2 @@
+# Ignore all folders which start with "build"
+/build*/

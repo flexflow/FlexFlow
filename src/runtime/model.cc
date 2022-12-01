@@ -217,7 +217,7 @@ void Op::serialize(Legion::Serializer &serializer) const {
           "The following operator type is currently not supported"
           " for graph serialization: %s\n"
           "Report the issue to the FlexFlow developers",
-          optype_to_string(this->op_type).c_str());
+          get_operator_type_name(this->op_type).c_str());
   assert(false && "This op does not support serialization");
 }
 
@@ -228,7 +228,7 @@ Op *Op::materialize(FFModel &ff,
           "The following operator type is currently not supported"
           " for layer materialization: %s\n"
           "Report the issue to the FlexFlow developers",
-          optype_to_string(this->op_type).c_str());
+          get_operator_type_name(this->op_type).c_str());
   assert(false && "This op does not support materialization");
 }
 
@@ -1160,12 +1160,13 @@ Tensor FFModel::create_constant(int const dims[],
   // FIXME: currently create gradients for constants since the current auto grad
   // algorithm computes gradients for all operators
   Tensor tensor = create_tensor<NDIM>(
-      dims, data_type, NULL /*owner_op*/, true /*create_grad*/);
-  ConstantInitializer *init = new ConstantInitializer(value);
+      dims, data_type, NULL /*owner_op*/, false /*create_grad*/);
+  tensor->initializer = new ConstantInitializer(value);
+  return tensor;
+#ifdef DEADCODE
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
   assert(false);
-#ifdef DEADCODE
   ArgumentMap argmap;
   IndexLauncher launcher(CONSTANT_INIT_TASK_ID,
                          tensor->parallel_is,
@@ -2823,7 +2824,7 @@ void FFModel::compile(LossType loss_type,
       Op *op = operators[i];
       printf("operator[%zu]: type(%s) guid(%lu)\n",
              i,
-             optype_to_string(operators[i]->op_type).c_str(),
+             get_operator_type_name(operators[i]->op_type).c_str(),
              operators[i]->op_guid);
       for (int j = 0; j < op->numInputs; j++) {
         LogicalRegion handle = op->inputs[j]->region;
@@ -3362,6 +3363,7 @@ FFConfig::FFConfig() {
   import_strategy_file = "";
   export_strategy_file = "";
   export_strategy_task_graph_file = "";
+  include_costs_dot_graph = false;
   export_strategy_computation_graph_file = "";
   dataset_path = "";
   substitution_json_path = tl::nullopt;
@@ -3485,6 +3487,10 @@ void FFConfig::parse_args(char **argv, int argc) {
       export_strategy_task_graph_file = std::string(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--include-costs-dot-graph")) {
+      include_costs_dot_graph = true;
+      continue;
+    }
     if (!strcmp(argv[i], "--compgraph")) {
       export_strategy_computation_graph_file = std::string(argv[++i]);
       continue;
@@ -3536,135 +3542,6 @@ void FFConfig::parse_args(char **argv, int argc) {
       substitution_json_path = std::string(argv[++i]);
       continue;
     }
-  }
-}
-
-std::string optype_to_string(OperatorType op_type) {
-  switch (op_type) {
-    case OP_INPUT:
-      return "Input";
-    case OP_WEIGHT:
-      return "Weight";
-    case OP_NOOP:
-      return "Noop";
-    case OP_CONV2D:
-      return "Conv";
-    case OP_DROPOUT:
-      return "Dropout";
-    case OP_EMBEDDING:
-      return "Embedding";
-    case OP_LINEAR:
-      return "Linear";
-    case OP_POOL2D:
-      return "Pool";
-    case OP_RELU:
-      return "Relu";
-    case OP_SIGMOID:
-      return "Sigmoid";
-    case OP_TANH:
-      return "TanH";
-    case OP_BATCHNORM:
-      return "Batchnorm";
-    case OP_CONCAT:
-      return "Concat";
-    case OP_SPLIT:
-      return "Split";
-    case OP_RESHAPE:
-      return "Reshape";
-    case OP_TRANSPOSE:
-      return "Transpose";
-    case OP_EW_ADD:
-      return "Add";
-    case OP_EW_MUL:
-      return "Mul";
-    case OP_MATMUL:
-      return "MatMul";
-    case OP_MUL:
-      return "Mul";
-    case OP_ENLARGE:
-      return "Enlarge";
-    case OP_SQUEEZE:
-      return "Squeeze";
-    case OP_UNSQUEEZE:
-      return "Unsqueeze";
-    case OP_EW_SUB:
-      return "Sub";
-    case OP_EW_DIV:
-      return "Div";
-    case OP_EW_EQUAL:
-      return "Equal";
-    case OP_EW_GREATER:
-      return "Greater";
-    case OP_EW_LESS:
-      return "Less";
-    case OP_EW_MAX:
-      return "Max";
-    case OP_EW_MIN:
-      return "Min";
-    case OP_REDUCE_ARGMAX:
-      return "ArgMax";
-    case OP_REDUCE_ARGMIN:
-      return "ArgMin";
-    case OP_REDUCE_MAX:
-      return "ReduceMax";
-    case OP_REDUCE_MEAN:
-      return "ReduceMean";
-    case OP_REDUCE_MIN:
-      return "ReduceMin";
-    case OP_REDUCE_PROD:
-      return "ReduceProd";
-    case OP_REDUCE_SUM:
-      return "ReduceSum";
-    case OP_PAD:
-      return "Pad";
-    case OP_SHAPE:
-      return "Shape";
-    case OP_SIZE:
-      return "Size";
-    case OP_TOPK:
-      return "TopK";
-    case OP_WHERE:
-      return "Where";
-    case OP_CEIL:
-      return "Ceil";
-    case OP_CAST:
-      return "Cast";
-    case OP_EXP:
-      return "Exp";
-    case OP_ROUND:
-      return "Round";
-    case OP_LAYERNORM:
-      return "LayerNorm";
-    case OP_LOG:
-      return "Log";
-    case OP_LOGICAL_NOT:
-      return "Not";
-    case OP_SQRT:
-      return "Sqrt";
-    case OP_LEAKYRELU:
-      return "LeakyRelu";
-    case OP_SLICE:
-      return "Slice";
-    case OP_RESIZE:
-      return "Resize";
-    case OP_SOFTMAX:
-      return "Softmax";
-    case OP_MULTIHEAD_ATTENTION:
-      return "MultiHeadAttn";
-    case OP_REPARTITION:
-      return "Partition";
-    case OP_REPLICATE:
-      return "Replicate";
-    case OP_REDUCTION:
-      return "Reduction";
-    case OP_COMBINE:
-      return "Combine";
-    case OP_FUSED_PARALLEL:
-      return "FusedParallel";
-    case OP_FLAT:
-      return "Flat";
-    default:
-      return "Unknown_" + std::to_string(op_type);
   }
 }
 
