@@ -33,11 +33,20 @@ if flexflow_init_import():
     from .flexflow_cffi import *
 
   # check if use native python interpreter
-  if flexflow_python_interpreter() == 'native':  
-    from .flexflow_pybind11_internal import begin_flexflow_task, finish_flexflow_task
+  if flexflow_python_interpreter() == 'native': 
     print("Using native python")
-    begin_flexflow_task(sys.argv)
-    atexit.register(finish_flexflow_task)
+    if flexflow_python_binding() == 'pybind11':
+      from .flexflow_pybind11_internal import begin_flexflow_task, finish_flexflow_task
+      print("Using native python")
+      begin_flexflow_task(sys.argv)
+      atexit.register(finish_flexflow_task)
+    else:
+      from .flexflow_cffi_header import ffc, ffi
+      argv = []
+      for arg in sys.argv:
+        argv.append(ffi.new("char[]", arg.encode('ascii')))
+      ffc.begin_flexflow_task(len(sys.argv), argv)
+      atexit.register(ffc.finish_flexflow_task)
   else:
     print("Using flexflow python")
     
