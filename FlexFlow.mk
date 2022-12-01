@@ -130,6 +130,44 @@ LD_FLAGS	+= -lMIOpen -lhipblas -lhiprand -L$(HIPLIB_HOME)/lib
 endif
 endif
 
+# CUDA arch variables
+GPU_ARCH ?= auto
+
+# translate legacy arch names into numbers
+ifeq ($(strip $(GPU_ARCH)),pascal)
+override GPU_ARCH = 60
+NVCC_FLAGS	+= -DPASCAL_ARCH
+endif
+ifeq ($(strip $(GPU_ARCH)),volta)
+override GPU_ARCH = 70
+NVCC_FLAGS	+= -DVOLTA_ARCH
+endif
+ifeq ($(strip $(GPU_ARCH)),turing)
+override GPU_ARCH = 75
+NVCC_FLAGS	+= -DTURING_ARCH
+endif
+ifeq ($(strip $(GPU_ARCH)),ampere)
+override GPU_ARCH = 80
+NVCC_FLAGS	+= -DAMPERE_ARCH
+endif
+
+ifeq ($(strip $(GPU_ARCH)),auto)
+  # detect based on what nvcc supports
+  ALL_ARCHES = 60 61 62 70 72 75 80
+  override GPU_ARCH = $(shell for X in $(ALL_ARCHES) ; do \
+    $(NVCC) -gencode arch=compute_$$X,code=sm_$$X -cuda -x c++ /dev/null -o /dev/null 2> /dev/null && echo $$X; \
+  done)
+endif
+
+# finally, convert space-or-comma separated list of architectures (e.g. 35,50)
+#  into nvcc -gencode arguments
+ifeq ($(findstring nvc++,$(shell $(NVCC) --version)),nvc++)
+NVCC_FLAGS += $(foreach X,$(subst $(COMMA), ,$(GPU_ARCH)),-gpu=cc$(X))
+else
+COMMA=,
+NVCC_FLAGS += $(foreach X,$(subst $(COMMA), ,$(GPU_ARCH)),-gencode arch=compute_$(X)$(COMMA)code=sm_$(X))
+endif
+
 #ifndef HDF5
 #HDF5_inc	?= /usr/include/hdf5/serial
 #HDF5_lib	?= /usr/lib/x86_64-linux-gnu/hdf5/serial
