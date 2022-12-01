@@ -1,4 +1,8 @@
 #!/bin/bash
+set -euo pipefail
+
+# Cd into FF_HOME
+cd "${BASH_SOURCE[0]%/*}/../"
 
 export GASNET=${PWD}/GASNet-2019.9.0
 export LEGION=${PWD}/legion
