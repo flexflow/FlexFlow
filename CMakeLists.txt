@@ -423,13 +423,13 @@ if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/mixture_of_experts)
 endif()
 
-if(FF_BUILD_TRANSFORMER_INFERENCE OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/inference/Transformer)
-endif()
+# if(FF_BUILD_TRANSFORMER_INFERENCE OR FF_BUILD_ALL_INFERENCE_EXAMPLES)
+#   add_subdirectory(examples/cpp/inference/Transformer)
+# endif()
 
-if(FF_BUILD_G_SHARD_INFERENCE OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
-  add_subdirectory(examples/cpp/inference/G-Shard-MoE)
-endif()
+# if(FF_BUILD_G_SHARD_INFERENCE OR FF_BUILD_ALL_INFERENCE_EXAMPLES)
+#   add_subdirectory(examples/cpp/inference/G-Shard-MoE)
+# endif()
 
 # installation
 set(INCLUDE_DEST "include")

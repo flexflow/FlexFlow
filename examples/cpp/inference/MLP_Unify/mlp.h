@@ -23,15 +23,18 @@
 using namespace Legion;
 using namespace FlexFlow;
 
+#define MAX_NUM_SAMPLES 1024000
+
 struct MLPConfig {
   MLPConfig(void);
-  MLPConfig(int embedding_size, int sequence_length, std::vector<size_t> hidden_dims)
-  : embedding_size(embedding_size),
-    sequence_length(sequence_length),
-    hidden_dims(hidden_dims) {}
+  MLPConfig(int embedding_size,
+            int sequence_length,
+            std::vector<int> hidden_dims)
+      : embedding_size(embedding_size), sequence_length(sequence_length),
+        hidden_dims(hidden_dims) {}
 
   int embedding_size, sequence_length;
-  std::vector<size_t> hidden_dims;
+  std::vector<int> hidden_dims;
 };
 
 class DataLoader {
