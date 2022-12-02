@@ -39,8 +39,8 @@ elif [[ "$FF_GPU_BACKEND" == "hip_cuda" || "$FF_GPU_BACKEND" = "hip_rocm" ]]; th
     script_name="amdgpu-install_${latest_version}_all.deb"
     script_url="https://repo.radeon.com/amdgpu-install/latest/ubuntu/focal/${script_name}"
     eval wget "$script_url"
-    sudo apt-get install -y $script_name
-    rm $script_name
+    sudo apt-get install -y "./${script_name}"
+    rm "./${script_name}"
     sudo amdgpu-install -y --usecase=hip,rocm --no-dkms
     sudo apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk
 else
