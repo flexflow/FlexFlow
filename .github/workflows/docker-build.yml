@@ -24,6 +24,9 @@ jobs:
     name: Build and Install FlexFlow in a Docker Container
     runs-on: ubuntu-20.04
     steps:
+      - name: Free additional space on runner
+        run: .github/workflows/helpers/free_space_on_runner.sh
+
       - name: Checkout Git Repository
         uses: actions/checkout@v3
         with:
