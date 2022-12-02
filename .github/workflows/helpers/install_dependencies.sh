@@ -30,7 +30,6 @@ if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
   exit 1
 elif [[ "$FF_GPU_BACKEND" == "hip_cuda" || "$FF_GPU_BACKEND" = "hip_rocm" ]]; then
     echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Installing HIP dependencies"
-    
     # Get latest version of amdgpu-install script. We have to do this because new versions are rolled out
     # relatively often, and previous versions are removed, so only the latest version is available.
     # Similar approach as: https://stackoverflow.com/questions/22510705/get-the-latest-download-link-programmatically
