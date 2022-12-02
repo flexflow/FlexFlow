@@ -24,18 +24,18 @@ DataLoader::DataLoader(FFModel &ff,
                        Tensor input) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  log_app.print("Use random dataset...");
+  printf("Use random dataset...");
 
   // The number of samples is the total number of request samples that can ever
   // be loaded into memory at the same time. In the case of training, the value
   // is batchSize * workersPerNode * numNodes, since each worker can only
   // process one batch at a time. In inference,  batchSize
-  size_t max_parallel_requests =
+  int max_parallel_requests =
       im->max_num_inflight_batches *
       (ff.config.batchSize * im->max_num_requests_per_batch);
   num_samples =
       max_parallel_requests * ff.config.workersPerNode * ff.config.numNodes;
-  log_app.print("Number of random samples = %d\n", num_samples);
+  printf("Number of random samples = %d\n", num_samples);
 
   // return;
 
@@ -43,7 +43,7 @@ DataLoader::DataLoader(FFModel &ff,
   {
     batch_input = input;
     int const dims[] = {num_samples,
-                        tf.sequence_length * mlpConfig->embedding_size};
+                        mlpConfig.sequence_length * mlpConfig.embedding_size};
     full_input = ff.create_tensor<2>(dims, DT_FLOAT);
   }
 
@@ -51,15 +51,15 @@ DataLoader::DataLoader(FFModel &ff,
   // TODO: Use index launcher instead of task launcher
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1, TaskArgument(NULL, 0));
   launcher.add_region_requirement(
-      RegionRequirement(full_input.parallel_tensor->region,
+      RegionRequirement(full_input->parallel_tensor->region,
                         WRITE_ONLY,
                         EXCLUSIVE,
-                        full_input.parallel_tensor->region,
+                        full_input->parallel_tensor->region,
                         MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   runtime->execute_task(ctx, launcher);
   reset();
-  next_batch(ff);
+  //next_batch(ff);
 }
 
 void DataLoader::load_entire_dataset(Task const *task,
@@ -76,10 +76,10 @@ void DataLoader::load_entire_dataset(Task const *task,
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
   float *input_ptr = acc_input.ptr(rect_input.lo);
   // Fill dataset with random data
-  for (size_t i = 0; i < rect_input.volume(); i++) {
+  for (int i = 0; i < rect_input.volume(); i++) {
     input_ptr[i] = ((float)std::rand()) / RAND_MAX;
   }
-  log_app.print("finish loading data\n");
+  printf("finish loading data\n");
 }
 
 void DataLoader::next_batch(FFModel &ff) {
@@ -138,7 +138,7 @@ Tensor create_mlp(FFModel *model,
                   Tensor const &input1,
                   Tensor const &input2) {
   Tensor t1 = input1, t2 = input2;
-  for (size_t i = 0; i < mlpConfig->hidden_dims.size(); i++) {
+  for (int i = 0; i < mlpConfig->hidden_dims.size(); i++) {
     int const dims[] = {mlpConfig->hidden_dims[i], t1->dims[0]};
     ActiMode acti_mode =
         (i + 1 == mlpConfig->hidden_dims.size()) ? AC_MODE_NONE : AC_MODE_RELU;
@@ -155,18 +155,18 @@ void FlexFlow::top_level_task(Task const *task,
                               Runtime *runtime) {
 
   // Inference parameters
-  size_t total_requests =
+  int total_requests =
       256; // total number of requests processed as part of the simulation
-  size_t request_tensor_size = 4; // request tensor dimensions
+  int request_tensor_size = 4; // request tensor dimensions
   bool poisson_distribution = true;
   double lambda = 25; // average number of request arrivals per second
-  size_t num_requests_per_batch = 5;
-  size_t num_inflight_batches = 10;
+  int num_requests_per_batch = 5;
+  int num_inflight_batches = 10;
 
   // MLP parameters
-  size_t embedding_size = 1024;
-  size_t sequence_length = 512;
-  std::vector<size_t> hidden_dims = {
+  int embedding_size = 1024;
+  int sequence_length = 512;
+  std::vector<int> hidden_dims = {
       8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192};
 
   FFConfig ffConfig;
@@ -182,17 +182,15 @@ void FlexFlow::top_level_task(Task const *task,
   MLPConfig mlpConfig(embedding_size, sequence_length, hidden_dims);
   {
     stringstream hd;
-    hd << '{' for (size_t i = 0; i < hidden_dims.size(); i++) {
-      if (i != 0)
+    hd << '{';
+    for (int i = 0; i < hidden_dims.size(); i++) {
+      if (i != 0) {
         hd << ",";
+      }
       hd << hidden_dims[i];
     }
-    hd << '}' fprintf(
-        stderr,
-        "embedding_size(%d) sequence_length(%d) hidden_dims(%s)\n",
-        mlpConfig.embedding_size,
-        mlpConfig.sequence_length,
-        hd.c_str());
+    hd << '}';
+    fprintf(stderr, "embedding_size(%d) sequence_length(%d) hidden_dims(%s)\n", mlpConfig.embedding_size, mlpConfig.sequence_length, hd.str().c_str());
   }
 
   Tensor input1, input2;
@@ -220,13 +218,13 @@ void FlexFlow::top_level_task(Task const *task,
 
   // Main loop, processing requests as they come (from the generator)
   int index = 0;
-  size_t processed_requests = 0;
+  int processed_requests = 0;
   Generator data_generator(
       total_requests, request_tensor_size, poisson_distribution, lambda);
   while (processed_requests < total_requests) {
     vector<vector<double>> req = data_generator.get_requests();
-    size_t iterations = req.size();
-    for (size_t iter = 0; iter < iterations; iter++) {
+    int iterations = req.size();
+    for (int iter = 0; iter < iterations; iter++) {
       runtime->begin_trace(ctx, 111 /*trace_id*/);
       im.inference((index++) % num_inflight_batches);
       runtime->end_trace(ctx, 111 /*trace_id*/);

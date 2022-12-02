@@ -15,6 +15,7 @@
 #include "data_generator.h"
 using namespace std;
 
+// This is for running the dataloader standalone
 int main(int argc, char const *argv[]) {
   // insert code here...
   cout << "Hello, World!\n";
