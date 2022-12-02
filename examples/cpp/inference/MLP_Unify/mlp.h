@@ -43,10 +43,10 @@ public:
              MLPConfig const &mlpConfig,
              InferenceManager const *im,
              Tensor input);
-  /*static void load_input(Task const *task,
+  static void load_input(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
                          Context ctx,
-                         Runtime *runtime);*/
+                         Runtime *runtime);
   static void load_entire_dataset(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
                                   Context ctx,

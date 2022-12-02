@@ -29,8 +29,8 @@ USE_GPU_REDUCTIONS ?= 0
 OUTFILE		?= mlp_inference
 # List all the application source files here
 GEN_SRC		= mlp.cc
-GEN_GPU_SRC	=
-GEN_HIP_SRC     =
+GEN_GPU_SRC	= mlp.cu
+GEN_HIP_SRC =
 
 ifndef FF_HOME
 $(error FF_HOME variable is not defined, aborting build)
