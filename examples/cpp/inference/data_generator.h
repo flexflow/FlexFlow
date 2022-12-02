@@ -82,6 +82,13 @@ vector<vector<double>> Generator::get_requests(void) {
     return requests;
 };
 
+template< class ForwardIt, class Generator >
+void generate( ForwardIt first, ForwardIt last, Generator gen ) {
+  while (first != last) {
+    *first++ = gen();
+  }
+}
+
 vector<double> Generator::get_random_tensor(void) {
     random_device rnd_device;
     mt19937 mersenne_engine {rnd_device()};
