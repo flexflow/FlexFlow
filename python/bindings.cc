@@ -82,17 +82,17 @@ py::array get_array(Tensor t, FFConfig &config) {
     printf("raw_ptr = %p\n", t->parallel_tensor->get_raw_ptr<float>(config));
     return py::array(
         py::dtype("f"),
-        {dims},                                         // shape
-        {},                                             // stride
+        {dims},                                        // shape
+        {},                                            // stride
         t->parallel_tensor->get_raw_ptr<float>(config) // the data pointer
-        );
+    );
   } else if (t->data_type == DataType::DT_INT32) {
     return py::array(
         py::dtype("i"),
-        {dims},                                           // shape
-        {},                                               // stride
+        {dims},                                          // shape
+        {},                                              // stride
         t->parallel_tensor->get_raw_ptr<int32_t>(config) // the data pointer
-        );
+    );
   } else {
     assert(0);
   }
