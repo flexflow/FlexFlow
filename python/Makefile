@@ -26,8 +26,13 @@ HIP_TARGET      ?= ROCM
 GPU_ARCH        ?= 60,61,62,70,72,75,80
 USE_GPU_REDUCTIONS ?= 0
 FF_USE_NCCL  ?= 0
-FF_USE_NATIVE_PYTHON ?= 0
 # FF_PYTHON_USE_INDEX_LOADER = 1
+
+ifeq ($(strip $(DARWIN)),1)
+  PYTHON_EXT := dylib
+else
+  PYTHON_EXT := so
+endif
 
 USE_PYTHON := 1
 ifndef PYTHON_LIB
@@ -43,11 +48,6 @@ ifndef PYTHON_LIB
 
   # Try searching for common locations of the Python shared library.
   ifneq ($(strip $(PYTHON_ROOT)),)
-    ifeq ($(strip $(DARWIN)),1)
-      PYTHON_EXT := dylib
-    else
-      PYTHON_EXT := so
-    endif
     PYTHON_LIB := $(wildcard $(PYTHON_ROOT)/libpython$(PYTHON_VERSION_MAJOR).$(PYTHON_VERSION_MINOR)*.$(PYTHON_EXT))
     ifeq ($(strip $(PYTHON_LIB)),)
       PYTHON_LIB := $(wildcard $(abspath $(PYTHON_ROOT)/../lib/libpython$(PYTHON_VERSION_MAJOR).$(PYTHON_VERSION_MINOR)*.$(PYTHON_EXT)))
@@ -75,10 +75,8 @@ else
 GEN_HIP_SRC	  ?= flexflow_dataloader.cpp # .cpp files
 endif
 
-PYBIND_INC    = $(shell $(PYTHON_EXE) -m pybind11 --includes)
-PYBIND_EXT    = $(shell $(PYTHON_EXE)-config --extension-suffix)
-FF_BYBIND_LIB = flexflow/core/flexflow_pybind11_internal$(PYBIND_EXT)
-FF_BYBIND_LIB_NAME = flexflow_pybind11_internal$(PYBIND_EXT)
+FF_NATIVE_LIB = flexflow/core/libflexflow_native_python.$(PYTHON_EXT)
+FF_NATIVE_LIB_NAME = libflexflow_native_python.$(PYTHON_EXT)
 INC_FLAGS     += -I${FF_HOME}
 CC_FLAGS      += -fPIC
 NVCC_FLAGS    += -Xcompiler -fPIC
@@ -121,7 +119,7 @@ include $(FF_HOME)/FlexFlow.mk
 
 NO_BUILD_ALL=1
 .PHONY: all
-all: $(OUTFILE) flexflow/core/legion_cffi_header.py flexflow/core/flexflow_cffi_header.py $(FF_BYBIND_LIB)
+all: $(OUTFILE) flexflow/core/legion_cffi_header.py flexflow/core/flexflow_cffi_header.py $(FF_NATIVE_LIB)
 
 DEFINE_HEADERS_DIR ?= ./
 
@@ -129,16 +127,14 @@ flexflow/core/legion_cffi_header.py: legion_cffi_header.py.in legion_cffi_build.
 	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR) --output-dir flexflow/core
 	
 flexflow/core/flexflow_cffi_header.py: flexflow_cffi_header.py.in flexflow_cffi_build.py flexflow_c.h
-	$(PYTHON_EXE) flexflow_cffi_build.py --ffhome-dir $(FF_HOME) --libname $(FF_BYBIND_LIB_NAME) --output-dir flexflow/core
+	$(PYTHON_EXE) flexflow_cffi_build.py --ffhome-dir $(FF_HOME) --libname $(FF_NATIVE_LIB_NAME) --output-dir flexflow/core
 
-ifeq ($(strip $(FF_USE_NATIVE_PYTHON)), 0)
-$(FF_BYBIND_LIB): bindings.cc
-	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -std=c++11 -fPIC $< -o $@
-else
-$(FF_BYBIND_LIB): bindings.cc $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM)
-	$(CC) $(CC_FLAGS) $(INC_FLAGS) $(PYBIND_INC) -shared -lstdc++ -L$(FF_HOME)/python $(LD_FLAGS) $(LEGION_LD_FLAGS) $(APP_OBJS) $(SLIB_LEGION) $(SLIB_REALM) $< -o $@
-endif
+# build the .so for native python
+# hack: we do not need main.cc anymore
+NATIVE_SHARED_OBJS := $(filter-out main.cc.o,$(APP_OBJS))
+$(FF_NATIVE_LIB): $(NATIVE_SHARED_OBJS) $(SLIB_LEGION) $(SLIB_REALM)
+	$(CXX) $(CC_FLAGS) $(INC_FLAGS) -shared -lstdc++ -L$(FF_HOME)/python $(NATIVE_SHARED_OBJS) $(LD_FLAGS) $(LEGION_LIBS) $(LEGION_LD_FLAGS) -o $@
 
 clean::
-	$(RM) -f $(FF_BYBIND_LIB) legion_defines.h realm_defines.h flexflow/core/legion_cffi_header.py flexflow/core/flexflow_cffi_header.py *.pyc
+	$(RM) -f $(FF_NATIVE_LIB) legion_defines.h realm_defines.h flexflow/core/legion_cffi_header.py flexflow/core/flexflow_cffi_header.py *.pyc
 	$(RM) -rf build dist *.egg-info
