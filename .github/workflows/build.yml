@@ -31,7 +31,8 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        gpu_backend: [cuda, hip_rocm]
+        gpu_backend: [hip_rocm]
+        amdgpu_name: [ {script_name: amdgpu-install_22.20.50200-1_all.deb, url: https://repo.radeon.com/amdgpu-install/22.20/ubuntu/focal/amdgpu-install_22.20.50200-1_all.deb}, {script_name: amdgpu-install_22.10.50100-1_all.deb, url: https://repo.radeon.com/amdgpu-install/22.10/ubuntu/focal/amdgpu-install_22.10.50100-1_all.deb}, {script_name: amdgpu-install_5.3.50300-1_all.deb, url: https://repo.radeon.com/amdgpu-install/5.3/ubuntu/focal/amdgpu-install_5.3.50300-1_all.deb}, {script_name: amdgpu-install_5.4.50400-1_all.deb, url: https://repo.radeon.com/amdgpu-install/5.4/ubuntu/focal/amdgpu-install_5.4.50400-1_all.deb}, {script_name: amdgpu-install_21.50.50000-1_all.deb, url: https://repo.radeon.com/amdgpu-install/21.50/ubuntu/focal/amdgpu-install_21.50.50000-1_all.deb}, ]
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
@@ -50,7 +51,8 @@ jobs:
           use-github-cache: "false"
 
       - name: Install FlexFlow Dependencies
-        run: FF_GPU_BACKEND=${{ matrix.gpu_backend }} .github/workflows/helpers/install_dependencies.sh
+        run: |
+          FF_GPU_BACKEND=${{ matrix.gpu_backend }} AMDGPU_SCRIPTNAME: ${{ matrix.amdgpu_name.script_name }} AMDGPU_URL: ${{ matrix.amdgpu_name.url }} .github/workflows/helpers/install_dependencies.sh
 
       - name: Build FlexFlow
         run: |
