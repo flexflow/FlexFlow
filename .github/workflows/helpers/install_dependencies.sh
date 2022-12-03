@@ -30,11 +30,13 @@ if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
   exit 1
 elif [[ "$FF_GPU_BACKEND" == "hip_cuda" || "$FF_GPU_BACKEND" = "hip_rocm" ]]; then
     echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Installing HIP dependencies"
-    script_name="${AMDGPU_SCRIPTNAME}"
-    script_url="${AMDGPU_URL}"
-    eval wget "$script_url"
-    sudo apt-get install -y "./${script_name}"
-    rm "./${script_name}"
+    if [[ "$(lsb_release -r --short)" != "18.04" ]]; then 
+        echo "Error, miopen-hip package is only compatible with amdgpu-install for Ubuntu 18.04"
+        exit 1
+    fi
+    wget https://repo.radeon.com/amdgpu-install/22.20.5/ubuntu/bionic/amdgpu-install_22.20.50205-1_all.deb
+    apt-get install -y ./amdgpu-install_22.20.50205-1_all.deb
+    rm ./amdgpu-install_22.20.50205-1_all.deb
     sudo amdgpu-install -y --usecase=hip,rocm --no-dkms
     sudo apt-get install -y --no-install-recommends hip-dev hipblas miopen-hip rocm-hip-sdk
 else

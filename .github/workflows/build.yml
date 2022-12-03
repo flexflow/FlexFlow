@@ -28,12 +28,14 @@ concurrency:
 jobs:
   cmake-build:
     name: Build FlexFlow with CMake
-    runs-on: ubuntu-20.04
     strategy:
       matrix:
-        gpu_backend: [hip_rocm]
-        amdgpu_name: [ {script_name: "amdgpu-install_22.20.50200-1_all.deb", url: "https://repo.radeon.com/amdgpu-install/22.20/ubuntu/focal/amdgpu-install_22.20.50200-1_all.deb"}, {script_name: "amdgpu-install_22.10.50100-1_all.deb", url: "https://repo.radeon.com/amdgpu-install/22.10/ubuntu/focal/amdgpu-install_22.10.50100-1_all.deb"}, {script_name: "amdgpu-install_5.3.50300-1_all.deb", url: "https://repo.radeon.com/amdgpu-install/5.3/ubuntu/focal/amdgpu-install_5.3.50300-1_all.deb"}, {script_name: "amdgpu-install_5.4.50400-1_all.deb", url: "https://repo.radeon.com/amdgpu-install/5.4/ubuntu/focal/amdgpu-install_5.4.50400-1_all.deb"}, {script_name: "amdgpu-install_21.50.50000-1_all.deb", url: "https://repo.radeon.com/amdgpu-install/21.50/ubuntu/focal/amdgpu-install_21.50.50000-1_all.deb"} ]
-      fail-fast: false
+        environment:
+          [
+            { os: "ubuntu-20.04", gpu_backend: "cuda" },
+            { os: "ubuntu-18.04", gpu_backend: "hip_rocm" },
+          ]
+    runs-on: ${{ matrix.environment.os }}
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
@@ -52,8 +54,7 @@ jobs:
           use-github-cache: "false"
 
       - name: Install FlexFlow Dependencies
-        run: |
-          FF_GPU_BACKEND=${{ matrix.gpu_backend }} AMDGPU_SCRIPTNAME=${{ matrix.amdgpu_name.script_name }} AMDGPU_URL=${{ matrix.amdgpu_name.url }} .github/workflows/helpers/install_dependencies.sh
+        run: FF_GPU_BACKEND=${{ matrix.environment.gpu_backend }} .github/workflows/helpers/install_dependencies.sh
 
       - name: Build FlexFlow
         run: |
@@ -66,7 +67,7 @@ jobs:
           if (( $n_build_cores < 1 )) ; then n_build_cores=1 ; fi
           mkdir build
           cd build
-          FF_CUDA_ARCH=70 FF_BUILD_ALL_EXAMPLES=ON FF_BUILD_UNIT_TESTS=ON FF_GPU_BACKEND=${{ matrix.gpu_backend }} ../config/config.linux
+          FF_CUDA_ARCH=70 FF_BUILD_ALL_EXAMPLES=ON FF_BUILD_UNIT_TESTS=ON FF_GPU_BACKEND=${{ matrix.environment.gpu_backend }} ../config/config.linux
           make -j $n_build_cores
 
       - name: Install FlexFlow
@@ -76,7 +77,7 @@ jobs:
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
           cd build
-          FF_CUDA_ARCH=70 FF_BUILD_ALL_EXAMPLES=ON FF_BUILD_UNIT_TESTS=ON FF_GPU_BACKEND=${{ matrix.gpu_backend }} ../config/config.linux
+          FF_CUDA_ARCH=70 FF_BUILD_ALL_EXAMPLES=ON FF_BUILD_UNIT_TESTS=ON FF_GPU_BACKEND=${{ matrix.environment.gpu_backend }} ../config/config.linux
           sudo make install
           sudo ldconfig
 
