@@ -32,7 +32,7 @@ jobs:
     strategy:
       matrix:
         gpu_backend: [hip_rocm]
-        amdgpu_name: [ {script_name: amdgpu-install_22.20.50200-1_all.deb, url: https://repo.radeon.com/amdgpu-install/22.20/ubuntu/focal/amdgpu-install_22.20.50200-1_all.deb}, {script_name: amdgpu-install_22.10.50100-1_all.deb, url: https://repo.radeon.com/amdgpu-install/22.10/ubuntu/focal/amdgpu-install_22.10.50100-1_all.deb}, {script_name: amdgpu-install_5.3.50300-1_all.deb, url: https://repo.radeon.com/amdgpu-install/5.3/ubuntu/focal/amdgpu-install_5.3.50300-1_all.deb}, {script_name: amdgpu-install_5.4.50400-1_all.deb, url: https://repo.radeon.com/amdgpu-install/5.4/ubuntu/focal/amdgpu-install_5.4.50400-1_all.deb}, {script_name: amdgpu-install_21.50.50000-1_all.deb, url: https://repo.radeon.com/amdgpu-install/21.50/ubuntu/focal/amdgpu-install_21.50.50000-1_all.deb}, ]
+        amdgpu_name: [ {script_name: "amdgpu-install_22.20.50200-1_all.deb", url: "https://repo.radeon.com/amdgpu-install/22.20/ubuntu/focal/amdgpu-install_22.20.50200-1_all.deb"}, {script_name: "amdgpu-install_22.10.50100-1_all.deb", url: "https://repo.radeon.com/amdgpu-install/22.10/ubuntu/focal/amdgpu-install_22.10.50100-1_all.deb"}, {script_name: "amdgpu-install_5.3.50300-1_all.deb", url: "https://repo.radeon.com/amdgpu-install/5.3/ubuntu/focal/amdgpu-install_5.3.50300-1_all.deb"}, {script_name: "amdgpu-install_5.4.50400-1_all.deb", url: "https://repo.radeon.com/amdgpu-install/5.4/ubuntu/focal/amdgpu-install_5.4.50400-1_all.deb"}, {script_name: "amdgpu-install_21.50.50000-1_all.deb", url: "https://repo.radeon.com/amdgpu-install/21.50/ubuntu/focal/amdgpu-install_21.50.50000-1_all.deb"} ]
       fail-fast: false
     steps:
       - name: Checkout Git Repository
