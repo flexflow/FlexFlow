@@ -9,7 +9,7 @@ set(CPU_SRC
   mlp.h
   ../data_generator.h)
 
-set(GPU_SRC alexnet.cu)
+set(GPU_SRC mlp.cu)
 
 cuda_add_executable(${project_target} ${CPU_SRC} ${GPU_SRC})
 target_include_directories(${project_target} PRIVATE ${CMAKE_SOURCE_DIR}/examples/cpp/inference)
