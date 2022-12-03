@@ -53,7 +53,7 @@ jobs:
 
       - name: Install FlexFlow Dependencies
         run: |
-          FF_GPU_BACKEND=${{ matrix.gpu_backend }} AMDGPU_SCRIPTNAME: ${{ matrix.amdgpu_name.script_name }} AMDGPU_URL: ${{ matrix.amdgpu_name.url }} .github/workflows/helpers/install_dependencies.sh
+          FF_GPU_BACKEND=${{ matrix.gpu_backend }} AMDGPU_SCRIPTNAME=${{ matrix.amdgpu_name.script_name }} AMDGPU_URL=${{ matrix.amdgpu_name.url }} .github/workflows/helpers/install_dependencies.sh
 
       - name: Build FlexFlow
         run: |
