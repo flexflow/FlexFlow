@@ -367,13 +367,13 @@ if(FF_BUILD_ALEXNET OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/AlexNet)
 endif()
 
-# if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
-#   add_subdirectory(examples/cpp/MLP_Unify)
-# endif()
-
-if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_INFERENCE_EXAMPLES)
-  add_subdirectory(examples/cpp/inference/MLP_Unify)
+if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/MLP_Unify)
 endif()
+
+# if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_INFERENCE_EXAMPLES)
+#   add_subdirectory(examples/cpp/inference/MLP_Unify)
+# endif()
 
 if(FF_BUILD_SPLIT_TEST OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/split_test)
