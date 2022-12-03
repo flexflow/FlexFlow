@@ -35,7 +35,7 @@ elif [[ "$FF_GPU_BACKEND" == "hip_cuda" || "$FF_GPU_BACKEND" = "hip_rocm" ]]; th
         exit 1
     fi
     wget https://repo.radeon.com/amdgpu-install/22.20.5/ubuntu/bionic/amdgpu-install_22.20.50205-1_all.deb
-    apt-get install -y ./amdgpu-install_22.20.50205-1_all.deb
+    sudo apt-get install -y ./amdgpu-install_22.20.50205-1_all.deb
     rm ./amdgpu-install_22.20.50205-1_all.deb
     sudo amdgpu-install -y --usecase=hip,rocm --no-dkms
     sudo apt-get install -y --no-install-recommends hip-dev hipblas miopen-hip rocm-hip-sdk
