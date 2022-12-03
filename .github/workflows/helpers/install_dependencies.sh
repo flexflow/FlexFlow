@@ -38,7 +38,7 @@ elif [[ "$FF_GPU_BACKEND" == "hip_cuda" || "$FF_GPU_BACKEND" = "hip_rocm" ]]; th
     sudo apt-get install -y ./amdgpu-install_22.20.50205-1_all.deb
     rm ./amdgpu-install_22.20.50205-1_all.deb
     sudo amdgpu-install -y --usecase=hip,rocm --no-dkms
-    sudo apt-get install -y --no-install-recommends hip-dev hipblas miopen-hip rocm-hip-sdk
+    sudo apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk
 else
     echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Skipping installing HIP dependencies"
 fi
