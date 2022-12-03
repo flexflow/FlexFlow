@@ -26,17 +26,9 @@ RUN wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_6
 ARG FF_GPU_BACKEND "cuda"
 RUN  if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]; then \
         echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Installing HIP dependencies"; \
-        # Get latest version of amdgpu-install script. We have to do this because new versions are rolled out
-        # relatively often, and previous versions are removed, so only the latest version is available.
-        # Similar approach as: https://stackoverflow.com/questions/22510705/get-the-latest-download-link-programmatically
-        latest_version=$(curl 'http://repo.radeon.com/amdgpu-install/latest/ubuntu/focal/' | \
-        grep -oP 'href="amdgpu-install_\K[0-9]+\.[0-9]+\.[0-9]+\-[0-9]+' | \
-        sort -t. -rn -k1,1 -k2,2 -k3,3 | head -1); \
-        script_name="amdgpu-install_${latest_version}_all.deb"; \
-        script_url="https://repo.radeon.com/amdgpu-install/latest/ubuntu/focal/${script_name}"; \
-        eval wget "$script_url"; \
-        apt-get install -y "./${script_name}"; \
-        rm "./${script_name}"; \
+        wget https://repo.radeon.com/amdgpu-install/22.20.5/ubuntu/bionic/amdgpu-install_22.20.50205-1_all.deb; \
+        apt-get install -y ./amdgpu-install_22.20.50205-1_all.deb; \
+        rm ./amdgpu-install_22.20.50205-1_all.deb; \
         amdgpu-install -y --usecase=hip,rocm --no-dkms; \
         apt-get install -y --no-install-recommends hip-dev hipblas miopen-hip rocm-hip-sdk; \
     else \
