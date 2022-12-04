@@ -102,7 +102,14 @@ __global__ void embed_backward_with_aggr(TI const *input,
     }
     for (int j = 0; j < in_dim; j++) {
       TI wordIdx = input[idx * in_dim + j];
+#if __CUDA_ARCH__ >= 700
       atomicAdd(embed + wordIdx * out_dim + off, gradient);
+#else
+      assert(false);
+      // TODO: this implementation may result in race condition
+      // so we use an assertion failure to warn users
+      embed[wordIdx * out_dim + off] += gradient;
+#endif
     }
   }
 }
