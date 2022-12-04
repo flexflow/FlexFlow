@@ -94,7 +94,8 @@ bool AggregateSpecParams::is_valid(ParallelTensorShape const &) const {
   return true;
 }
 
-bool operator==(AggregateSpecParams const &lhs, AggregateSpecParams const &rhs) {
+bool operator==(AggregateSpecParams const &lhs,
+                AggregateSpecParams const &rhs) {
   return lhs.n == rhs.n && lhs.lambda_bal == rhs.lambda_bal;
 }
 

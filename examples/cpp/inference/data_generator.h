@@ -85,8 +85,8 @@ vector<vector<double>> Generator::get_requests(void) {
   return requests;
 };
 
-template< class ForwardIt, class Generator >
-void generate( ForwardIt first, ForwardIt last, Generator gen ) {
+template <class ForwardIt, class Generator>
+void generate(ForwardIt first, ForwardIt last, Generator gen) {
   while (first != last) {
     *first++ = gen();
   }

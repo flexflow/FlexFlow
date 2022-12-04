@@ -122,8 +122,9 @@ Group_by::Group_by(FFModel &model,
       n(_n), alpha(_alpha) {
   _input->print("_input");
   _assign->print("_assign");
-  assert(_input->num_dims == 2+1); // NOTE: Is that a problem if you e.g. want to pass in images
-  assert(_input->num_dims == 2+1);
+  assert(_input->num_dims ==
+         2 + 1); // NOTE: Is that a problem if you e.g. want to pass in images
+  assert(_input->num_dims == 2 + 1);
   assert(_input->dims[1] == _assign->dims[1]);
   assert(n > 0);
 

@@ -59,7 +59,7 @@ DataLoader::DataLoader(FFModel &ff,
   launcher.add_field(0, FID_DATA);
   runtime->execute_task(ctx, launcher);
   reset();
-  //next_batch(ff);
+  // next_batch(ff);
 }
 
 void DataLoader::load_entire_dataset(Task const *task,
@@ -190,7 +190,11 @@ void FlexFlow::top_level_task(Task const *task,
       hd << hidden_dims[i];
     }
     hd << '}';
-    fprintf(stderr, "embedding_size(%d) sequence_length(%d) hidden_dims(%s)\n", mlpConfig.embedding_size, mlpConfig.sequence_length, hd.str().c_str());
+    fprintf(stderr,
+            "embedding_size(%d) sequence_length(%d) hidden_dims(%s)\n",
+            mlpConfig.embedding_size,
+            mlpConfig.sequence_length,
+            hd.str().c_str());
   }
 
   Tensor input1, input2;

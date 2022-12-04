@@ -5,6 +5,7 @@
 //  Created by User on 11/15/22.
 //
 
+#include "data_generator.h"
 #include <chrono>
 #include <ctime>
 #include <iostream>
@@ -12,7 +13,6 @@
 #include <random>
 #include <thread>
 #include <unistd.h>
-#include "data_generator.h"
 using namespace std;
 
 // This is for running the dataloader standalone
