@@ -85,6 +85,22 @@ Op *AggregateSpec::create_operator_from_layer(
                   layer->name);
 }
 
+AggregateSpecParams AggregateSpec::get_params() const {
+  AggregateSpecParams params;
+  params.n = this->n;
+  params.lambda_bal = this->lambda_bal;
+  return params;
+}
+
+bool AggregateSpecParams::is_valid(ParallelTensorShape const &) const {
+  // AggregateSpec is always valid
+  return true;
+}
+
+bool operator==(AggregateSpecParams const &lhs, AggregateSpecParams const &rhs) {
+  return lhs.n == rhs.n && lhs.lambda_bal == rhs.lambda_bal;
+}
+
 AggregateSpec::AggregateSpec(FFModel &model,
                              ParallelTensor const *_inputs,
                              int _n,

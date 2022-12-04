@@ -93,6 +93,22 @@ Op *Group_by::create_operator_from_layer(
                   layer->name);
 }
 
+Group_byParams Group_by::get_params() const {
+  Group_byParams params;
+  params.n = this->n;
+  params.alpha = this->alpha;
+  return params;
+}
+
+bool Group_byParams::is_valid(ParallelTensorShape const &) const {
+  // Group_by is always valid
+  return true;
+}
+
+bool operator==(Group_byParams const &lhs, Group_byParams const &rhs) {
+  return lhs.n == rhs.n && lhs.alpha == rhs.alpha;
+}
+
 Group_by::Group_by(FFModel &model,
                    const ParallelTensor _input,
                    const ParallelTensor _assign,
