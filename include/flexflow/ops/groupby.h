@@ -2,6 +2,7 @@
 #define _FLEXFLOW_GROUPBY_H_
 
 #include "flexflow/model.h"
+#include "flexflow/ops/groupby_params.h"
 
 namespace FlexFlow {
 
@@ -65,6 +66,7 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
+  Group_byParams get_params() const;
 
 public:
   int n;

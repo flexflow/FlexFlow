@@ -22,4 +22,4 @@ struct hash<FlexFlow::Group_byParams> {
 };
 } // namespace std
 
-#endif // _FLEXFLOW_DROPOUT_PARAMS_H
+#endif // _FLEXFLOW_GROUPBY_PARAMS_H

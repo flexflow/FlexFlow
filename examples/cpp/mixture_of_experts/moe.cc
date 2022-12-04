@@ -142,25 +142,25 @@ void FlexFlow::top_level_task(Task const *task,
   //ff.cache(topK_output[1], TRAIN_SAMPLES / ffConfig.batchSize, moe_score);
 
   Tensor exp_tensors[num_exp];
-  //printf("num_exp: %i, alpha: %f\n", num_exp);
-  //input->print("input_tensor");
-  //topK_output[1]->print("topK_output[1]");
-  //exp_tensors->print("exp_tensors");
-  ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
+  // printf("num_exp: %i, alpha: %f\n", num_exp);
+  input->print("input_tensor");
+  topK_output[1]->print("topK_output[1]");
+  // exp_tensors->print("exp_tensors");
+  // ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
 
-  Tensor agg_inputs[num_exp + 4];
-  agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
-  agg_inputs[1] = topK_output[1];             // gate assign
-  agg_inputs[2] = topK_output[1];             // gate assign TopK (for cache)
-  agg_inputs[3] = gate_preds;                 // full gate preds
-  for (int i = 0; i < num_exp; i++) {
-    Tensor exp_pred = ff.dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
-    agg_inputs[i + 4] = ff.softmax(exp_pred);
-  }
+  // Tensor agg_inputs[num_exp + 4];
+  // agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
+  // agg_inputs[1] = topK_output[1];             // gate assign
+  // agg_inputs[2] = topK_output[1];             // gate assign TopK (for cache)
+  // agg_inputs[3] = gate_preds;                 // full gate preds
+  // for (int i = 0; i < num_exp; i++) {
+  //   Tensor exp_pred = ff.dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
+  //   agg_inputs[i + 4] = ff.softmax(exp_pred);
+  // }
 
-  Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
-  ff.get_metrics();
-  Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
+  // Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
+  // ff.get_metrics();
+  // Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
 
   //-----------------------------------------------------------------
 

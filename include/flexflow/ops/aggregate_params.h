@@ -22,4 +22,4 @@ struct hash<FlexFlow::AggregateParams> {
 };
 } // namespace std
 
-#endif // _FLEXFLOW_DROPOUT_PARAMS_H
+#endif // _FLEXFLOW_AGGREGATE_PARAMS_H

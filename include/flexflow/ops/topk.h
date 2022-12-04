@@ -2,6 +2,7 @@
 #define _FLEXFLOW_TOPK_H_
 
 #include "flexflow/model.h"
+#include "flexflow/ops/topk_params.h"
 
 namespace FlexFlow {
 
@@ -76,6 +77,7 @@ public:
                                       size_t batch_size,
                                       int length,
                                       int k);
+  TopKParams get_params() const;
 
 public:
   int k;
