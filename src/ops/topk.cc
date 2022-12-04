@@ -78,6 +78,22 @@ Op *TopK::create_operator_from_layer(
   return new TopK(model, inputs[0], k, sorted, layer->name);
 }
 
+TopKParams TopK::get_params() const {
+  TopKParams params;
+  params.k = this->k;
+  params.sorted = this->sorted;
+  return params;
+}
+
+bool TopKParams::is_valid(ParallelTensorShape const &) const {
+  // topk is always valid
+  return true;
+}
+
+bool operator==(TopKParams const &lhs, TopKParams const &rhs) {
+  return lhs.k == rhs.k && lhs.sorted == rhs.sorted;
+}
+
 TopK::TopK(FFModel &model,
            const ParallelTensor _input,
            int _k,

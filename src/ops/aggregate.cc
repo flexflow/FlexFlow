@@ -87,6 +87,22 @@ Op *Aggregate::create_operator_from_layer(
   return new Aggregate(model, inputs.data(), n, lambda_bal, layer->name);
 }
 
+AggregateParams Aggregate::get_params() const {
+  AggregateParams params;
+  params.n = this->n;
+  params.lambda_bal = this->lambda_bal;
+  return params;
+}
+
+bool AggregateParams::is_valid(ParallelTensorShape const &) const {
+  // Aggregate is always valid
+  return true;
+}
+
+bool operator==(AggregateParams const &lhs, AggregateParams const &rhs) {
+  return lhs.n == rhs.n && lhs.lambda_bal == rhs.lambda_bal;
+}
+
 Aggregate::Aggregate(FFModel &model,
                      ParallelTensor const *_inputs,
                      int _n,
