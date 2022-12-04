@@ -13,7 +13,10 @@
  * limitations under the License.
  */
 
+#include "flexflow/model.h"
 #include "flexflow/ops/groupby.h"
+#include "flexflow/utils/hash_utils.h"
+#include "legion/legion_utilities.h"
 #include <math.h>
 #include <stdio.h>
 
@@ -399,3 +402,13 @@ bool Group_by::measure_operator_cost(Simulator *sim,
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::Group_byParams>::operator()(
+    FlexFlow::Group_byParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.n);
+  hash_combine(key, params.alpha);
+  return key;
+}
+}; // namespace std

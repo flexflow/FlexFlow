@@ -14,6 +14,8 @@ public:
 
 class TopK : public Op {
 public:
+  using Params = TopKParams;
+  using Input = ParallelTensor;
   TopK(FFModel &model,
        const ParallelTensor input,
        int k,
@@ -77,7 +79,7 @@ public:
                                       size_t batch_size,
                                       int length,
                                       int k);
-  TopKParams get_params() const;
+  Params get_params() const;
 
 public:
   int k;

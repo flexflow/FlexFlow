@@ -19,6 +19,8 @@ public:
 
 class AggregateSpec : public Op {
 public:
+  using Params = AggregateSpecParams;
+  using Input = ParallelTensor;
   AggregateSpec(FFModel &model,
                 ParallelTensor const *inputs,
                 int _n,
@@ -71,7 +73,7 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  AggregateSpecParams get_params() const;
+  Params get_params() const;
 
 public:
   int n;
