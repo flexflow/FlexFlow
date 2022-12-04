@@ -2,6 +2,7 @@
 #define _FLEXFLOW_AGGREGATE_H_
 
 #include "flexflow/model.h"
+#include "flexflow/ops/aggregate_params.h"
 
 namespace FlexFlow {
 
@@ -73,6 +74,7 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
+  AggregateParams get_params() const;
 
 public:
   int n;

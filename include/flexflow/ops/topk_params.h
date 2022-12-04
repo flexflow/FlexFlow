@@ -22,4 +22,4 @@ struct hash<FlexFlow::TopKParams> {
 };
 } // namespace std
 
-#endif // _FLEXFLOW_DROPOUT_PARAMS_H
+#endif // _FLEXFLOW_TOPK_PARAMS_H
