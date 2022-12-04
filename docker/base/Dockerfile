@@ -26,9 +26,9 @@ RUN wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_6
 ARG FF_GPU_BACKEND "cuda"
 RUN  if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]; then \
         echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Installing HIP dependencies"; \
-        wget https://repo.radeon.com/amdgpu-install/latest/ubuntu/bionic/amdgpu-install_22.20.50200-1_all.deb; \
-        apt-get install -y ./amdgpu-install_22.20.50200-1_all.deb; \
-        rm ./amdgpu-install_22.20.50200-1_all.deb; \
+        wget https://repo.radeon.com/amdgpu-install/22.20.5/ubuntu/bionic/amdgpu-install_22.20.50205-1_all.deb; \
+        apt-get install -y ./amdgpu-install_22.20.50205-1_all.deb; \
+        rm ./amdgpu-install_22.20.50205-1_all.deb; \
         amdgpu-install -y --usecase=hip,rocm --no-dkms; \
         apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk; \
      else \
