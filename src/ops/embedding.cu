@@ -70,6 +70,43 @@ __global__ void embed_backward_no_aggr(
     int idx = i / out_dim;
     int off = i % out_dim;
     TI wordIdx = input[idx];
+    atomicAdd(embed + wordIdx * out_dim + off, output[i]);
+  }
+}
+
+// Specialization for half type
+
+template <>
+__global__ void embed_backward_no_aggr<int, half>(int const *input,
+                                                  half const *output,
+                                                  half *embed,
+                                                  int out_dim,
+                                                  int batch_size) {
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
+    int idx = i / out_dim;
+    int off = i % out_dim;
+    int wordIdx = input[idx];
+#if __CUDA_ARCH__ >= 700
+    atomicAdd(embed + wordIdx * out_dim + off, output[i]);
+#else
+    assert(false);
+    // TODO: this implementation may result in race condition
+    // so we use an assertion failure to warn users
+    embed[wordIdx * out_dim + off] += output[i];
+#endif
+  }
+}
+
+template <>
+__global__ void embed_backward_no_aggr<int64_t, half>(int64_t const *input,
+                                                      half const *output,
+                                                      half *embed,
+                                                      int out_dim,
+                                                      int batch_size) {
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
+    int idx = i / out_dim;
+    int off = i % out_dim;
+    int64_t wordIdx = input[idx];
 #if __CUDA_ARCH__ >= 700
     atomicAdd(embed + wordIdx * out_dim + off, output[i]);
 #else
@@ -102,6 +139,67 @@ __global__ void embed_backward_with_aggr(TI const *input,
     }
     for (int j = 0; j < in_dim; j++) {
       TI wordIdx = input[idx * in_dim + j];
+      atomicAdd(embed + wordIdx * out_dim + off, gradient);
+    }
+  }
+}
+
+// Specialization for half type
+
+template <>
+__global__ void embed_backward_with_aggr<int, half>(int const *input,
+                                                    half const *output,
+                                                    half *embed,
+                                                    int out_dim,
+                                                    int in_dim,
+                                                    int batch_size,
+                                                    AggrMode aggr) {
+  half scale = 1.0f / in_dim;
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
+    int idx = i / out_dim;
+    int off = i % out_dim;
+    half gradient;
+    if (aggr == AGGR_MODE_SUM) {
+      gradient = output[i];
+    } else {
+      assert(aggr == AGGR_MODE_AVG);
+      gradient = output[i] * scale;
+    }
+    for (int j = 0; j < in_dim; j++) {
+      int wordIdx = input[idx * in_dim + j];
+#if __CUDA_ARCH__ >= 700
+      atomicAdd(embed + wordIdx * out_dim + off, gradient);
+#else
+      assert(false);
+      // TODO: this implementation may result in race condition
+      // so we use an assertion failure to warn users
+      embed[wordIdx * out_dim + off] += gradient;
+#endif
+    }
+  }
+}
+
+template <>
+__global__ void embed_backward_with_aggr<int64_t, half>(int64_t const *input,
+                                                        half const *output,
+                                                        half *embed,
+                                                        int out_dim,
+                                                        int in_dim,
+                                                        int batch_size,
+                                                        AggrMode aggr) {
+  half scale = 1.0f / in_dim;
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
+    int idx = i / out_dim;
+    int off = i % out_dim;
+    half gradient;
+    if (aggr == AGGR_MODE_SUM) {
+      gradient = output[i];
+    } else {
+      assert(aggr == AGGR_MODE_AVG);
+      gradient = output[i] * scale;
+    }
+    for (int j = 0; j < in_dim; j++) {
+      int64_t wordIdx = input[idx * in_dim + j];
 #if __CUDA_ARCH__ >= 700
       atomicAdd(embed + wordIdx * out_dim + off, gradient);
 #else
