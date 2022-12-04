@@ -14,6 +14,9 @@
  */
 
 #include "flexflow/ops/topk.h"
+#include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
+#include "legion/legion_utilities.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -338,3 +341,13 @@ bool TopK::measure_operator_cost(Simulator *sim,
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::TopKParams>::operator()(
+    FlexFlow::TopKParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.k);
+  hash_combine(key, params.sorted);
+  return key;
+}
+}; // namespace std

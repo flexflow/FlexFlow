@@ -14,6 +14,9 @@
  */
 
 #include "flexflow/ops/aggregate.h"
+#include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
+#include "legion/legion_utilities.h"
 
 namespace FlexFlow {
 
@@ -477,3 +480,13 @@ bool Aggregate::measure_operator_cost(Simulator *sim,
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::AggregateParams>::operator()(
+    FlexFlow::AggregateParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.n);
+  hash_combine(key, params.lambda_bal);
+  return key;
+}
+}; // namespace std

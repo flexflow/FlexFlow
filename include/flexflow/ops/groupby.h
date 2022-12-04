@@ -15,6 +15,8 @@ public:
 
 class Group_by : public Op {
 public:
+  using Params = Group_byParams;
+  using Input = ParallelTensor;
   Group_by(FFModel &model,
            const ParallelTensor _input,
            const ParallelTensor _assign,
@@ -66,7 +68,7 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  Group_byParams get_params() const;
+  Params get_params() const;
 
 public:
   int n;

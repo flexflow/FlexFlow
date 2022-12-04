@@ -20,6 +20,8 @@ public:
 
 class Aggregate : public Op {
 public:
+  using Params = AggregateParams;
+  using Input = ParallelTensor;
   Aggregate(FFModel &model,
             ParallelTensor const *inputs,
             int _n,
@@ -74,7 +76,7 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
-  AggregateParams get_params() const;
+  Params get_params() const;
 
 public:
   int n;
