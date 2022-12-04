@@ -242,6 +242,8 @@ class NoOp;
 
 ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
 
+class Aggregate;
+class AggregateSpec;
 class BatchMatmul;
 class Cast;
 class Concat;
@@ -251,6 +253,7 @@ class ElementBinary;
 class ElementUnary;
 class Embedding;
 class Flat;
+class Group_by;
 class LayerNorm;
 class Linear;
 class MultiHeadAttention;
@@ -258,6 +261,7 @@ class Pool2D;
 class Reshape;
 class Softmax;
 class Split;
+class TopK;
 class Transpose;
 class Combine;
 class Repartition;
@@ -819,6 +823,8 @@ public:
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
   std::tuple<
+      std::unordered_map<std::pair<ParallelTensorShape, AggregateParams>, Aggregate *>,
+      std::unordered_map<std::pair<ParallelTensorShape, AggregateSpecParams>, AggregateSpec *>,
       std::unordered_map<
           std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
                     BatchMatmulParams>,
@@ -840,6 +846,7 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, EmbeddingParams>,
                          Embedding *>,
       std::unordered_map<std::pair<ParallelTensorShape, FlatParams>, Flat *>,
+      std::unordered_map<std::pair<ParallelTensorShape, Group_byParams>, Group_by *>,
       std::unordered_map<std::pair<ParallelTensorShape, LayerNormParams>,
                          LayerNorm *>,
       std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
@@ -856,6 +863,7 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, SplitParams>, Split *>,
       std::unordered_map<std::pair<ParallelTensorShape, SoftmaxParams>,
                          Softmax *>,
+      std::unordered_map<std::pair<ParallelTensorShape, TopKParams>, TopK *>,
       std::unordered_map<std::pair<ParallelTensorShape, TransposeParams>,
                          Transpose *>,
       std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
