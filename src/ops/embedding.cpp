@@ -256,7 +256,7 @@ void Embedding::forward_kernel(TI const *input_ptr,
 }
 
 /*static*/
-template <typename TI>
+template <typename TI, typename TD>
 void Embedding::forward_kernel_wrapper(EmbeddingMeta const *m,
                                        GenericTensorAccessorR const &input,
                                        GenericTensorAccessorW const &output,
@@ -390,7 +390,6 @@ void Embedding::backward_kernel(TI const *input_ptr,
 }
 
 /*static*/
-template <typename TI>
 void Embedding::backward_kernel_wrapper(
     EmbeddingMeta const *m,
     GenericTensorAccessorR const &input,
