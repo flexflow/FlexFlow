@@ -178,7 +178,7 @@ void ElementBinary::forward_kernel_wrapper(ElementBinaryMeta const *m,
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
     hipEventDestroy(t_start);
     hipEventDestroy(t_end);
-    log_measure.debug("[%s] forward time (CF) = %.2fms\n", opName, elapsed);
+    log_measure.debug("[%s] forward time (CF) = %.2fms\n", m->opName, elapsed);
   }
 }
 
