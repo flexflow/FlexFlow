@@ -27,7 +27,7 @@ Tensor create_emb(FFModel *model,
   float range = sqrt(1.0f / input_dim);
   Initializer *embed_init = new UniformInitializer(std::rand(), -range, range);
   return model->embedding(
-      input, input_dim, output_dim, AGGR_MODE_SUM, NULL, embed_init);
+      input, input_dim, output_dim, AGGR_MODE_SUM, DT_FLOAT, NULL, embed_init);
 }
 
 Tensor create_attention_encoder(FFModel *model,
