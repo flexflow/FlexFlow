@@ -28,7 +28,8 @@ using Legion::Runtime;
 using Legion::Task;
 
 template <typename TI, typename TD>
-__global__ void embed_forward_no_aggr(TI const *input, TD *output, TD const *embed, int out_dim, int batch_size) {
+__global__ void embed_forward_no_aggr(
+    TI const *input, TD *output, TD const *embed, int out_dim, int batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     output[i] = 0;
     int idx = i / out_dim;
@@ -278,58 +279,58 @@ void Embedding::forward_kernel_wrapper(EmbeddingMeta const *m,
                          stream);
     } else if (weight.data_type == DT_FLOAT) {
       forward_kernel(input.get_int32_ptr(),
-                    output.get_float_ptr(),
-                    weight.get_float_ptr(),
-                    in_dim,
-                    out_dim,
-                    batch_size,
-                    m->aggr,
-                    output.domain.get_volume(),
-                    stream);
+                     output.get_float_ptr(),
+                     weight.get_float_ptr(),
+                     in_dim,
+                     out_dim,
+                     batch_size,
+                     m->aggr,
+                     output.domain.get_volume(),
+                     stream);
     } else if (weight.data_type == DT_HALF) {
       forward_kernel(input.get_int32_ptr(),
-                    output.get_double_ptr(),
-                    weight.get_double_ptr(),
-                    in_dim,
-                    out_dim,
-                    batch_size,
-                    m->aggr,
-                    output.domain.get_volume(),
-                    stream);
+                     output.get_double_ptr(),
+                     weight.get_double_ptr(),
+                     in_dim,
+                     out_dim,
+                     batch_size,
+                     m->aggr,
+                     output.domain.get_volume(),
+                     stream);
     } else {
       assert(false && "Unsupported DataType in Embedding");
     }
   } else if (input.data_type == DT_INT64) {
     if (weight.data_type == DT_HALF) {
       forward_kernel(input.get_int64_ptr(),
-                    output.get_half_ptr(),
-                    weight.get_half_ptr(),
-                    in_dim,
-                    out_dim,
-                    batch_size,
-                    m->aggr,
-                    output.domain.get_volume(),
-                    stream);
+                     output.get_half_ptr(),
+                     weight.get_half_ptr(),
+                     in_dim,
+                     out_dim,
+                     batch_size,
+                     m->aggr,
+                     output.domain.get_volume(),
+                     stream);
     } else if (weight.data_type == DT_FLOAT) {
       forward_kernel(input.get_int64_ptr(),
-                    output.get_float_ptr(),
-                    weight.get_float_ptr(),
-                    in_dim,
-                    out_dim,
-                    batch_size,
-                    m->aggr,
-                    output.domain.get_volume(),
-                    stream);
+                     output.get_float_ptr(),
+                     weight.get_float_ptr(),
+                     in_dim,
+                     out_dim,
+                     batch_size,
+                     m->aggr,
+                     output.domain.get_volume(),
+                     stream);
     } else if (weight.data_type == DT_DOUBLE) {
       forward_kernel(input.get_int64_ptr(),
-                    output.get_double_ptr(),
-                    weight.get_double_ptr(),
-                    in_dim,
-                    out_dim,
-                    batch_size,
-                    m->aggr,
-                    output.domain.get_volume(),
-                    stream);
+                     output.get_double_ptr(),
+                     weight.get_double_ptr(),
+                     in_dim,
+                     out_dim,
+                     batch_size,
+                     m->aggr,
+                     output.domain.get_volume(),
+                     stream);
     } else {
       assert(false && "Unsupported DataType in Embedding");
     }
@@ -390,13 +391,14 @@ void Embedding::backward_kernel(TI const *input_ptr,
 
 /*static*/
 template <typename TI>
-void Embedding::backward_kernel_wrapper(EmbeddingMeta const *m,
-                                        GenericTensorAccessorR const &input,
-                                        GenericTensorAccessorR const &output,
-                                        GenericTensorAccessorW const &weight_grad,
-                                        int in_dim,
-                                        int out_dim,
-                                        int batch_size) {
+void Embedding::backward_kernel_wrapper(
+    EmbeddingMeta const *m,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorR const &output,
+    GenericTensorAccessorW const &weight_grad,
+    int in_dim,
+    int out_dim,
+    int batch_size) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   if (m->input_type[0] == DT_INT32) {
