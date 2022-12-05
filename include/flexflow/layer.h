@@ -10,7 +10,8 @@ class FFModel;
 class Layer {
 public:
   Layer(FFModel *model,
-        OperatorType type,
+        OperatorType otype,
+        DataType dtype,
         char const *name,
         int numInputs,
         int numWeights,
@@ -20,7 +21,8 @@ public:
         const Tensor input3 = NULL,
         const Tensor input4 = NULL);
   Layer(FFModel *model,
-        OperatorType type,
+        OperatorType otype,
+        DataType dtype,
         char const *name,
         int numInputs,
         int numWeights,

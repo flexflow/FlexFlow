@@ -52,6 +52,7 @@ SoftmaxParams Softmax::get_params() const {
 Tensor FFModel::softmax(const Tensor _input, int dim, char const *name) {
   Layer *sm = new Layer(this,
                         OP_SOFTMAX,
+                        DT_FLOAT,
                         name,
                         1 /*inputs*/,
                         0 /*weights*/,
@@ -94,6 +95,7 @@ Softmax::Softmax(FFModel &model,
                  char const *name)
     : Op(model,
          OP_SOFTMAX,
+         _input->data_type,
          name,
          1 /*inputs*/,
          0 /*weights*/,
