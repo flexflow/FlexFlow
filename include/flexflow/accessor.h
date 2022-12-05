@@ -2,7 +2,15 @@
 #define _FF_ACCESSOR_H_
 #include "ffconst.h"
 #include "legion.h"
-#include <cuda_fp16.h>
+
+#if defined(FF_USE_CUDA)
+  #include <cuda_fp16.h>
+#elif defined(FF_USE_HIP_CUDA)
+  #include <cuda_fp16.h>
+#elif defined(FF_USE_HIP_ROCM)
+  #include <hip/hip_fp16.h>
+#endif
+
 // using namespace Legion;
 
 namespace FlexFlow {
