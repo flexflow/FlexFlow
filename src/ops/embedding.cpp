@@ -267,7 +267,7 @@ void Embedding::forward_kernel_wrapper(EmbeddingMeta const *m,
   checkCUDA(get_legion_stream(&stream));
   if (input.data_type == DT_INT32) {
     if (weight.data_type == DT_HALF) {
-      forward_kernel<TI>(input.get_int32_ptr(),
+      Embedding::forward_kernel(input.get_int32_ptr(),
                          output.get_half_ptr(),
                          weight.get_half_ptr(),
                          in_dim,
@@ -277,7 +277,7 @@ void Embedding::forward_kernel_wrapper(EmbeddingMeta const *m,
                          output.domain.get_volume(),
                          stream);
     } else if (weight.data_type == DT_FLOAT) {
-      forward_kernel(input.get_int32_ptr(),
+      Embedding::forward_kernel(input.get_int32_ptr(),
                      output.get_float_ptr(),
                      weight.get_float_ptr(),
                      in_dim,
@@ -287,7 +287,7 @@ void Embedding::forward_kernel_wrapper(EmbeddingMeta const *m,
                      output.domain.get_volume(),
                      stream);
     } else if (weight.data_type == DT_HALF) {
-      forward_kernel(input.get_int32_ptr(),
+      Embedding::forward_kernel(input.get_int32_ptr(),
                      output.get_double_ptr(),
                      weight.get_double_ptr(),
                      in_dim,
@@ -301,7 +301,7 @@ void Embedding::forward_kernel_wrapper(EmbeddingMeta const *m,
     }
   } else if (input.data_type == DT_INT64) {
     if (weight.data_type == DT_HALF) {
-      forward_kernel(input.get_int64_ptr(),
+      Embedding::forward_kernel(input.get_int64_ptr(),
                      output.get_half_ptr(),
                      weight.get_half_ptr(),
                      in_dim,
@@ -311,7 +311,7 @@ void Embedding::forward_kernel_wrapper(EmbeddingMeta const *m,
                      output.domain.get_volume(),
                      stream);
     } else if (weight.data_type == DT_FLOAT) {
-      forward_kernel(input.get_int64_ptr(),
+      Embedding::forward_kernel(input.get_int64_ptr(),
                      output.get_float_ptr(),
                      weight.get_float_ptr(),
                      in_dim,
@@ -321,7 +321,7 @@ void Embedding::forward_kernel_wrapper(EmbeddingMeta const *m,
                      output.domain.get_volume(),
                      stream);
     } else if (weight.data_type == DT_DOUBLE) {
-      forward_kernel(input.get_int64_ptr(),
+      Embedding::forward_kernel(input.get_int64_ptr(),
                      output.get_double_ptr(),
                      weight.get_double_ptr(),
                      in_dim,
