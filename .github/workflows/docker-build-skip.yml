@@ -6,7 +6,7 @@ on:
       - "!docker/README.md"
       - ".github/workflows/docker-build.yml"
   push:
-    branches:
+    branches-ignore:
       - "master"
     paths-ignore:
       - "docker/**"

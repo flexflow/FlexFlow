@@ -10,7 +10,7 @@ on:
       - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/build.yml"
   push:
-    branches:
+    branches-ignore:
       - "master"
     paths-ignore:
       - "include/**"

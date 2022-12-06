@@ -9,7 +9,7 @@ on:
       - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/pip-install.yml"
   push:
-    branches:
+    branches-ignore:
       - "master"
     paths-ignore:
       - "cmake/**"
