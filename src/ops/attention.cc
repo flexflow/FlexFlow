@@ -523,6 +523,56 @@ void MultiHeadAttention::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+void MultiHeadAttention::inference(FFModel const &ff,
+                       std::vector<ParallelTensor> const &batch_inputs,
+                       std::vector<ParallelTensor> const &batch_weights,
+                       std::vector<ParallelTensor> const &batch_outputs) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_forward(ff, argmap);
+  int idx = 0;
+  IndexLauncher launcher(ATTENTION_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(idx++, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[1]->region));
+  launcher.add_field(idx++, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[2]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[2]->region));
+  launcher.add_field(idx++, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_weights[0]->region));
+  launcher.add_field(idx++, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(4, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
+
 /*
   regions[0](I): query
   regions[1](I): key
