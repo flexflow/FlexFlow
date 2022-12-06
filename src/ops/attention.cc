@@ -520,10 +520,11 @@ void MultiHeadAttention::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void MultiHeadAttention::inference(FFModel const &ff,
-                       std::vector<ParallelTensor> const &batch_inputs,
-                       std::vector<ParallelTensor> const &batch_weights,
-                       std::vector<ParallelTensor> const &batch_outputs) {
+void MultiHeadAttention::inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_weights,
+    std::vector<ParallelTensor> const &batch_outputs) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;

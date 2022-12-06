@@ -52,6 +52,7 @@ void FFModel::group_by(const Tensor input,
   // #endif
   Layer *li = new Layer(this,
                         OP_GROUP_BY,
+                        DT_FLOAT,
                         name,
                         2 /*inputs*/,
                         0 /*weights*/,

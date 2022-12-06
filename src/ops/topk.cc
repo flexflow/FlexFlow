@@ -48,8 +48,14 @@ void FFModel::top_k(
   //   outputs[0] = topk->outputs[0];
   //   outputs[1] = topk->outputs[1];
   // #endif
-  Layer *li = new Layer(
-      this, OP_TOPK, name, 1 /*inputs*/, 0 /*weights*/, 2 /*outputs*/, input);
+  Layer *li = new Layer(this,
+                        OP_TOPK,
+                        input->data_type,
+                        name,
+                        1 /*inputs*/,
+                        0 /*weights*/,
+                        2 /*outputs*/,
+                        input);
   {
     int numdims = input->num_dims;
     int dims[MAX_TENSOR_DIM];
@@ -326,8 +332,8 @@ bool TopK::measure_operator_cost(Simulator *sim,
                                  MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
   // To be implemented
-  //assert(false);
-  //return false;
+  // assert(false);
+  // return false;
   return true;
 }
 

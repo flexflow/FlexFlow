@@ -50,6 +50,7 @@ Tensor FFModel::aggregate(
   //   return nullptr;
   Layer *li = new Layer(this,
                         OP_AGGREGATE,
+                        DT_FLOAT,
                         name,
                         n + 4 /*inputs*/,
                         0 /*weights*/,
