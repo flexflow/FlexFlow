@@ -31,9 +31,9 @@ RUN  if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]
         rm ./amdgpu-install_22.20.50205-1_all.deb; \
         amdgpu-install -y --usecase=hip,rocm --no-dkms; \
         apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk; \
-     else \
+    else \
         echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Skipping installing HIP dependencies"; \
-     fi
+    fi
 RUN rm -rf /var/lib/apt/lists/*
 
 # Set env varas
