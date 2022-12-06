@@ -178,7 +178,24 @@ void ElementBinary::forward_kernel_wrapper(ElementBinaryMeta const *m,
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
     hipEventDestroy(t_start);
     hipEventDestroy(t_end);
-    log_measure.debug("[%s] forward time (CF) = %.2fms\n", m->op_name, elapsed);
+    char const *opName;
+    switch (m->op_type) {
+      case OP_EW_ADD:
+        opName = "Add";
+        break;
+      case OP_EW_SUB:
+        opName = "Sub";
+        break;
+      case OP_EW_MUL:
+        opName = "Mul";
+        break;
+      case OP_EW_DIV:
+        opName = "Div";
+        break;
+      default:
+        assert(false);
+    }
+    log_measure.debug("[%s] forward time (CF) = %.2fms\n", opName, elapsed);
   }
 }
 

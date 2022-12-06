@@ -48,8 +48,6 @@ void UniformInitializer::init_task(Task const *task,
 
   assert(regions.size() == task->regions.size());
   UniformInitializer *initializer = (UniformInitializer *)task->args;
-  // Assume the data type is float
-  assert(initializer->data_type == DT_FLOAT);
   hiprandGenerator_t gen;
   hiprandCreateGenerator(&gen, HIPRAND_RNG_PSEUDO_DEFAULT);
   hipStream_t stream;
@@ -136,7 +134,6 @@ void GlorotUniform::init_task(Task const *task,
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
   GlorotUniform const *gu = (GlorotUniform const *)task->args;
-  assert(gu->data_type == DT_FLOAT);
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   float *w = helperGetTensorPointerWO<float>(
@@ -235,18 +232,7 @@ void ZeroInitializer::init_task(Task const *task,
   for (size_t i = 0; i < regions.size(); i++) {
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
-    if (meta->data_types[i] == DT_HALF) {
-      half *w = helperGetTensorPointerWO<half>(
-          regions[i], task->regions[i], FID_DATA, ctx, runtime);
-      hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<half>),
-                         GET_BLOCKS(domain.get_volume()),
-                         CUDA_NUM_THREADS,
-                         0,
-                         stream,
-                         w,
-                         domain.get_volume(),
-                         0.0f);
-    } else if (meta->data_types[i] == DT_FLOAT) {
+    if (meta->data_types[i] == DT_FLOAT) {
       float *w = helperGetTensorPointerWO<float>(
           regions[i], task->regions[i], FID_DATA, ctx, runtime);
       hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<float>),
