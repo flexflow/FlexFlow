@@ -45,6 +45,7 @@ Tensor FFModel::aggregate_spec(
   //assert(false);
   Layer *li = new Layer(this,
                         OP_AGG_SPEC,
+                        DT_FLOAT,
                         name,
                         n+4 /*inputs*/,
                         0 /*weights*/,

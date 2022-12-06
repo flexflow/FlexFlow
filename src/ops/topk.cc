@@ -40,16 +40,17 @@ using Legion::TaskLauncher;
 // values.shape = indices.shape = input.shape[:-1] + [k]
 void FFModel::top_k(
     const Tensor input, Tensor *outputs, int k, bool sorted, char const *name) {
-//   assert(false);
-// #ifdef DEADCODE
-//   TopK *topk = new TopK(*this, input, k, sorted, name);
-//   layers.push_back(topk);
-//   assert(topk->numOutputs == 2);
-//   outputs[0] = topk->outputs[0];
-//   outputs[1] = topk->outputs[1];
-// #endif
+  //   assert(false);
+  // #ifdef DEADCODE
+  //   TopK *topk = new TopK(*this, input, k, sorted, name);
+  //   layers.push_back(topk);
+  //   assert(topk->numOutputs == 2);
+  //   outputs[0] = topk->outputs[0];
+  //   outputs[1] = topk->outputs[1];
+  // #endif
   Layer *li = new Layer(this,
                         OP_TOPK,
+                        input->data_type,
                         name,
                         1 /*inputs*/,
                         0 /*weights*/,
@@ -336,8 +337,8 @@ bool TopK::measure_operator_cost(Simulator *sim,
                                  MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
   // To be implemented
-  //assert(false);
-  //return false;
+  // assert(false);
+  // return false;
   return true;
 }
 
