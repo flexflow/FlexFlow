@@ -69,6 +69,7 @@ Tensor create_emb(FFModel *model,
                           input_dim,
                           output_dim,
                           AGGR_MODE_SUM,
+                          DT_FLOAT /*dtype*/,
                           NULL /*weight_sharing*/,
                           embed_init);
 }

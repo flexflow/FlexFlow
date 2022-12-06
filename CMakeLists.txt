@@ -232,6 +232,8 @@ if (FF_GPU_BACKEND STREQUAL "cuda")
     LIST_DIRECTORIES False
     ${FLEXFLOW_ROOT}/src/*.cu)
 
+  add_compile_definitions(FF_USE_CUDA)
+
   if(BUILD_SHARED_LIBS)
     cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
   else()
@@ -265,6 +267,8 @@ elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
     target_include_directories(hip_device_nvidia SYSTEM INTERFACE ${HIP_INCLUDE_DIRS} ${ROCM_PATH}/include)
     target_include_directories(hip_device_nvidia INTERFACE ${HIP_INCLUDE_DIRS} ${ROCM_PATH}/include)
 
+    add_compile_definitions(FF_USE_HIP_CUDA)
+
     # Linking cuda: 
     # We do not explicitly link cuda. hipcc when targeting nvidia will 
     # use nvcc under the hood. nvcc when used for linking will handle 
@@ -275,6 +279,8 @@ elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
     find_package(miopen REQUIRED)
     # find_package(rocrand REQUIRED)
     find_library(HIP_RAND_LIBRARY hiprand REQUIRED)
+
+    add_compile_definitions(FF_USE_HIP_ROCM)
 
     # The hip cmake config module defines three targets, 
     # hip::amdhip64, hip::host, and hip::device.

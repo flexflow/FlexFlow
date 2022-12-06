@@ -355,16 +355,13 @@ __host__ void FusedOp::forward_task(Task const *task,
         }
 
         assert(my_input_accessor[0].data_type == DT_INT64);
-        Embedding::forward_kernel_wrapper(
-            m,
-            my_input_accessor[0].get_int64_ptr(),
-            my_output_accessor[0].get_float_ptr(),
-            my_weight_accessor[0].get_float_ptr(),
-            in_dim,
-            out_dim,
-            effective_batch_size,
-            m->aggr,
-            my_output_accessor[0].domain.get_volume());
+        Embedding::forward_kernel_wrapper(m,
+                                          my_input_accessor[0],
+                                          my_output_accessor[0],
+                                          my_weight_accessor[0],
+                                          in_dim,
+                                          out_dim,
+                                          effective_batch_size);
         break;
       }
       case OP_RELU:
@@ -784,16 +781,13 @@ __host__ void FusedOp::backward_task(Task const *task,
           assert(effective_batch_size * in_dim ==
                  my_input_accessor[0].domain.get_volume());
         }
-        Embedding::backward_kernel_wrapper(
-            m,
-            my_input_accessor[0].get_int64_ptr(),
-            my_output_grad_accessor[0].get_float_ptr(),
-            my_weight_grad_accessor[0].get_float_ptr(),
-            in_dim,
-            out_dim,
-            effective_batch_size,
-            m->aggr,
-            my_output_grad_accessor[0].domain.get_volume());
+        Embedding::backward_kernel_wrapper(m,
+                                           my_input_accessor[0],
+                                           my_output_grad_accessor[0],
+                                           my_weight_grad_accessor[0],
+                                           in_dim,
+                                           out_dim,
+                                           effective_batch_size);
         break;
       }
       case OP_LINEAR: {

@@ -113,6 +113,7 @@ Aggregate::Aggregate(FFModel &model,
                      char const *name)
     : Op(model,
          OP_AGGREGATE,
+         DT_FLOAT,
          name,
          _n + 4 /*inputs*/,
          0 /*weights*/,

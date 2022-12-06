@@ -68,6 +68,15 @@ double const *GenericTensorAccessorR::get_double_ptr() const {
   }
 }
 
+half const *GenericTensorAccessorR::get_half_ptr() const {
+  if (data_type == DT_HALF)
+    return static_cast<half const *>(ptr);
+  else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<half const *>(nullptr);
+  }
+}
+
 template <typename DT, int dim>
 TensorAccessorW<DT, dim>::TensorAccessorW(PhysicalRegion region,
                                           RegionRequirement req,
@@ -135,6 +144,15 @@ double *GenericTensorAccessorW::get_double_ptr() const {
   else {
     assert(false && "Invalid Accessor Type");
     return static_cast<double *>(nullptr);
+  }
+}
+
+half *GenericTensorAccessorW::get_half_ptr() const {
+  if (data_type == DT_HALF)
+    return static_cast<half *>(ptr);
+  else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<half *>(nullptr);
   }
 }
 
@@ -231,6 +249,10 @@ GenericTensorAccessorR
       ptr = helperGetTensorPointerRO<int64_t>(region, req, fid, ctx, runtime);
       break;
     }
+    case DT_HALF: {
+      ptr = helperGetTensorPointerRO<half>(region, req, fid, ctx, runtime);
+      break;
+    }
     case DT_FLOAT: {
       ptr = helperGetTensorPointerRO<float>(region, req, fid, ctx, runtime);
       break;
@@ -263,6 +285,10 @@ GenericTensorAccessorW
     }
     case DT_INT64: {
       ptr = helperGetTensorPointerWO<int64_t>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_HALF: {
+      ptr = helperGetTensorPointerWO<half>(region, req, fid, ctx, runtime);
       break;
     }
     case DT_FLOAT: {
@@ -299,6 +325,10 @@ GenericTensorAccessorW
       ptr = helperGetTensorPointerRW<int64_t>(region, req, fid, ctx, runtime);
       break;
     }
+    case DT_HALF: {
+      ptr = helperGetTensorPointerRW<half>(region, req, fid, ctx, runtime);
+      break;
+    }
     case DT_FLOAT: {
       ptr = helperGetTensorPointerRW<float>(region, req, fid, ctx, runtime);
       break;
@@ -325,6 +355,21 @@ GenericTensorAccessorW
   template class TensorAccessorW<int64_t, DIM>;
 LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
+template half const *helperGetTensorPointerRO(PhysicalRegion region,
+                                              RegionRequirement req,
+                                              FieldID fid,
+                                              Context ctx,
+                                              Runtime *runtime);
+template half *helperGetTensorPointerRW(PhysicalRegion region,
+                                        RegionRequirement req,
+                                        FieldID fid,
+                                        Context ctx,
+                                        Runtime *runtime);
+template half *helperGetTensorPointerWO(PhysicalRegion region,
+                                        RegionRequirement req,
+                                        FieldID fid,
+                                        Context ctx,
+                                        Runtime *runtime);
 
 template float const *helperGetTensorPointerRO(PhysicalRegion region,
                                                RegionRequirement req,

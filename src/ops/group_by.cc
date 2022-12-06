@@ -116,6 +116,7 @@ Group_by::Group_by(FFModel &model,
                    char const *name)
     : Op(model,
          OP_GROUP_BY,
+         _input->data_type,
          name,
          2 /*inputs*/,
          0 /*weights*/,
