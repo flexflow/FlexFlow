@@ -220,7 +220,7 @@ void Op::serialize(Legion::Serializer &serializer) const {
   fprintf(stderr,
           "The following operator type is currently not supported"
           " for graph serialization: %s\n"
-          "Report the issue to the FlexFlow developers",
+          "Report the issue to the FlexFlow developers\n",
           get_operator_type_name(this->op_type).c_str());
   assert(false && "This op does not support serialization");
 }
@@ -231,7 +231,7 @@ Op *Op::materialize(FFModel &ff,
   fprintf(stderr,
           "The following operator type is currently not supported"
           " for layer materialization: %s\n"
-          "Report the issue to the FlexFlow developers",
+          "Report the issue to the FlexFlow developers\n",
           get_operator_type_name(this->op_type).c_str());
   assert(false && "This op does not support materialization");
 }
