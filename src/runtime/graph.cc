@@ -32,6 +32,7 @@
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
+#include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
@@ -2044,6 +2045,10 @@ void FFModel::deserialize_graph_optimal_view(
         params.layer_guid = layer_guid;
         node = get_or_create_node<MultiHeadAttention>(
             {inputs[0], inputs[1], inputs[2]}, params);
+        break;
+      }
+      case OP_TOPK: {
+        node = TopK::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_POOL2D: {
