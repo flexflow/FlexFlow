@@ -361,6 +361,13 @@ Node TopK::deserialize(FFModel &ff,
   return ff.get_or_create_node<TopK>(inputs[0], params);
 }
 
+Op *TopK::materialize(FFModel &ff,
+                      ParallelTensor inputs[],
+                      int num_inputs) const {
+  TopKParams params = get_params();
+  return new TopK(ff, params, inputs[0], this->name);
+}
+
 bool TopK::measure_operator_cost(Simulator *sim,
                                  MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
