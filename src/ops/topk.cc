@@ -26,6 +26,9 @@ using Legion::coord_t;
 using Legion::Domain;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
+using Legion::InlineLauncher;
+using Legion::Machine;
+using Legion::Memory;
 using Legion::PhysicalRegion;
 using Legion::Predicate;
 using Legion::Rect;
@@ -34,6 +37,7 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+using PCG::Node;
 
 // For an input tensor, computes the top k entries in each row
 // (resp. vector along the last dimension). Thus,
@@ -129,6 +133,15 @@ TopK::TopK(FFModel &model,
   outputs[1] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, DT_INT32, this, 1 /*owner_idx*/);
 }
+
+TopK::TopK(FFModel &model, TopK const &other, const ParallelTensor input)
+    : TopK(model, input, other.k, other.sorted, other.name) {}
+
+TopK::TopK(FFModel &model,
+           TopKParams const &params,
+           const ParallelTensor input,
+           char const *name)
+    : TopK(model, input, params.k, params.sorted, name) {}
 
 void TopK::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -326,6 +339,26 @@ void TopK::backward_task(Task const *task,
   size_t batch_size = in_domain.get_volume() / length;
   TopK::backward_kernel_wrapper(
       m, value_grad_ptr, indices_ptr, in_grad_ptr, batch_size, length, k);
+}
+
+void TopK::serialize(Legion::Serializer &sez) const {
+  sez.serialize(this->k);
+  sez.serialize(this->sorted);
+}
+
+Node TopK::deserialize(FFModel &ff,
+                       Legion::Deserializer &dez,
+                       ParallelTensor inputs[],
+                       int num_inputs) {
+  assert(num_inputs == 1);
+  int k;
+  bool sorted;
+  dez.deserialize(k);
+  dez.deserialize(sorted);
+  TopKParams params;
+  params.k = k;
+  params.sorted = sorted;
+  return ff.get_or_create_node<TopK>(inputs[0], params);
 }
 
 bool TopK::measure_operator_cost(Simulator *sim,

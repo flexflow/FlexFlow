@@ -2,6 +2,7 @@
 #define _FLEXFLOW_TOPK_H_
 
 #include "flexflow/model.h"
+#include "flexflow/node.h"
 #include "flexflow/ops/topk_params.h"
 
 namespace FlexFlow {
@@ -21,6 +22,11 @@ public:
        int k,
        bool sorted,
        char const *name);
+  TopK(FFModel &model, TopK const &other, const ParallelTensor input);
+  TopK(FFModel &model,
+       Params const &params,
+       Input const input,
+       char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -44,6 +50,11 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
+  void serialize(Legion::Serializer &s) const override;
+  static PCG::Node deserialize(FFModel &ff,
+                               Legion::Deserializer &d,
+                               ParallelTensor inputs[],
+                               int num_inputs);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
