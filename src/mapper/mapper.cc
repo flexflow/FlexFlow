@@ -368,7 +368,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
     fprintf(stderr,
             "The following task is currently not captured by the "
             "FlexFlow Mapper: %s\n"
-            "Report the issue to the FlexFlow developers",
+            "Report the issue to the FlexFlow developers\n",
             task.get_task_name());
   }
   assert(task.is_index_space);

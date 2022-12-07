@@ -2123,7 +2123,7 @@ void FFModel::deserialize_graph_optimal_view(
         fprintf(stderr,
                 "The following operator type is currently not supported"
                 " for graph deserialization: %s\n"
-                "Report the issue to the FlexFlow developers",
+                "Report the issue to the FlexFlow developers\n",
                 get_operator_type_name(op_type).c_str());
         assert(false && "Unsupported operator type");
       }
