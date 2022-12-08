@@ -61,10 +61,11 @@ void FFModel::group_by(const Tensor input,
                         assign);
   {
     int k = assign->dims[0];
-    int num_dims = 2;
+    int num_dims = 3;
     int dims[num_dims];
     dims[0] = input->dims[0];
     dims[1] = (int)ceil(alpha * k / n * input->dims[1]);
+    // dims[2] = input->dims[2];
     for (int i = 0; i < n; i++) {
       li->outputs[i] = create_tensor_legion_ordering(
           num_dims, dims, input->data_type, li, 0, true /*create_grad*/);
@@ -74,8 +75,11 @@ void FFModel::group_by(const Tensor input,
   li->add_float_property("alpha", alpha);
   layers.push_back(li);
   for (int i = 0; i < n; i++) {
+    assert(li->outputs[i] != nullptr);
     outputs[i] = li->outputs[i];
+    assert(outputs[i] != nullptr);
   }
+  printf("Checked all outputs[i], none is nullptr!\n");
 }
 
 Op *Group_by::create_operator_from_layer(
@@ -88,8 +92,8 @@ Op *Group_by::create_operator_from_layer(
   float value2;
   layer->get_float_property("alpha", value2);
   float alpha = value2;
-  inputs[0]->print("inputs[0]");
-  inputs[1]->print("inputs[1]");
+  // inputs[0]->print("inputs[0]");
+  // inputs[1]->print("inputs[1]");
   return new Group_by(model, inputs[0], inputs[1], n, alpha, layer->name);
 }
 
@@ -133,9 +137,30 @@ Group_by::Group_by(FFModel &model,
   assert(_input->dims[1] == _assign->dims[1]);
   assert(n > 0);
 
-  // List of outputs
+  assert(inputs[0] != nullptr);
+  inputs[0]->print("inputs[0]");
+
   int k = _assign->dims[0].size;
+
+  ParallelDim dims[MAX_TENSOR_DIM];
+  dims[0].size = inputs[0]->dims[0].size;
+  dims[0].degree = 1;
+  dims[0].parallel_idx = -1;
+  dims[0].is_replica_dim = false;
+  dims[1].size = (int)ceil(alpha * k / n * inputs[0]->dims[1].size);
+  dims[1].degree = 1;
+  dims[1].parallel_idx = -1;
+  dims[1].is_replica_dim = false;
+  dims[2] = inputs[0]->dims[2];
+
   for (int i = 0; i < n; i++) {
+    outputs[i] =
+        model.create_parallel_tensor_legion_ordering(3, dims, DT_FLOAT, this);
+  }
+
+  // List of outputs
+  for (int i = 0; i < n; i++) {
+    assert(outputs[i] != nullptr);
     outputs[i]->num_dims = 2;
     outputs[i]->dims[0].size = inputs[0]->dims[0].size;
     outputs[i]->dims[1].size =

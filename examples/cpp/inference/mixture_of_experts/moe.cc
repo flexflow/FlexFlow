@@ -59,10 +59,11 @@ Tensor create_moe(FFModel *model,
   // printf("num_exp: %i, alpha: %f\n", num_exp);
   input->print("input_tensor");
   topK_output[1]->print("topK_output[1]");
-  return topK_output[0];
-  // exp_tensors->print("exp_tensors");
-  // model->group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
-
+  // return topK_output[0];
+  // exp_tensors[0]->print("exp_tensors[0]");
+  // exp_tensors[num_exp-1]->print("exp_tensors[num_exp-1]");
+  model->group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
+  return input;
   // Tensor agg_inputs[num_exp + 4];
   // agg_inputs[0] = model->softmax(topK_output[0]); // gate preds
   // agg_inputs[1] = topK_output[1];             // gate assign
