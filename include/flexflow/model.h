@@ -853,8 +853,11 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, EmbeddingParams>,
                          Embedding *>,
       std::unordered_map<std::pair<ParallelTensorShape, FlatParams>, Flat *>,
-      std::unordered_map<std::pair<ParallelTensorShape, Group_byParams>,
-                         Group_by *>,
+
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    Group_byParams>,
+          Group_by *>,
       std::unordered_map<std::pair<ParallelTensorShape, LayerNormParams>,
                          LayerNorm *>,
       std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,

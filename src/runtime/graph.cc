@@ -25,6 +25,7 @@
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/groupby.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -2049,6 +2050,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_TOPK: {
         node = TopK::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_GROUP_BY: {
+        node = Group_by::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_POOL2D: {
