@@ -28,6 +28,9 @@ using Legion::coord_t;
 using Legion::Domain;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
+using Legion::InlineLauncher;
+using Legion::Machine;
+using Legion::Memory;
 using Legion::PhysicalRegion;
 using Legion::Predicate;
 using Legion::Rect;
@@ -36,6 +39,7 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+using PCG::Node;
 
 void FFModel::group_by(const Tensor input,
                        const Tensor assign,
@@ -104,7 +108,8 @@ Group_byParams Group_by::get_params() const {
   return params;
 }
 
-bool Group_byParams::is_valid(ParallelTensorShape const &) const {
+bool Group_byParams::is_valid(
+    std::pair<ParallelTensorShape, ParallelTensorShape> const &) const {
   // Group_by is always valid
   return true;
 }
@@ -169,6 +174,19 @@ Group_by::Group_by(FFModel &model,
 
   numWeights = 0;
 }
+
+Group_by::Group_by(FFModel &model,
+                   Group_by const &other,
+                   const ParallelTensor input,
+                   const ParallelTensor assign)
+    : Group_by(model, input, assign, other.n, other.alpha, other.name) {}
+
+Group_by::Group_by(FFModel &model,
+                   Group_byParams const &params,
+                   std::pair<ParallelTensor, ParallelTensor> const &inputs,
+                   char const *name)
+    : Group_by(
+          model, inputs.first, inputs.second, params.n, params.alpha, name) {}
 
 void Group_by::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -416,6 +434,34 @@ void Group_by::backward_task(Task const *task,
                                     data_dim);
 }
 
+void Group_by::serialize(Legion::Serializer &sez) const {
+  sez.serialize(this->n);
+  sez.serialize(this->alpha);
+}
+
+Node Group_by::deserialize(FFModel &ff,
+                           Legion::Deserializer &dez,
+                           ParallelTensor inputs[],
+                           int num_inputs) {
+  assert(num_inputs == 1);
+  int n;
+  float alpha;
+  dez.deserialize(n);
+  dez.deserialize(alpha);
+  Group_byParams params;
+  params.n = n;
+  params.alpha = alpha;
+  return ff.get_or_create_node<Group_by>(std::make_pair(inputs[0], inputs[1]),
+                                         params);
+}
+
+Op *Group_by::materialize(FFModel &ff,
+                          ParallelTensor inputs[],
+                          int num_inputs) const {
+  Group_byParams params = get_params();
+  return new Group_by(ff, params, {inputs[0], inputs[1]}, this->name);
+}
+
 bool Group_by::measure_operator_cost(Simulator *sim,
                                      MachineView const &mv,
                                      CostMetrics &cost_metrics) const {
@@ -425,7 +471,8 @@ bool Group_by::measure_operator_cost(Simulator *sim,
   cost_metrics.inputs_memory = 0;
   cost_metrics.outputs_memory = 0;
   cost_metrics.weights_memory = 0;
-  return false;
+  // return false;
+  return true;
 }
 
 }; // namespace FlexFlow
