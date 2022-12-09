@@ -1,4 +1,5 @@
-FROM flexflow-environment:latest
+ARG FF_GPU_BACKEND "cuda"
+FROM flexflow-environment-$FF_GPU_BACKEND:latest
 
 LABEL org.opencontainers.image.source=https://github.com/flexflow/FlexFlow
 LABEL org.opencontainers.image.description="FlexFlow container"
