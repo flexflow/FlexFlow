@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/linear.h"
+#include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
