@@ -1083,7 +1083,6 @@ tl::optional<RecordFormatter> Conv2D::as_dot() const {
   return rr;
 }
 
-// TODO: refactor it
 bool Conv2D::measure_operator_cost(Simulator *sim,
                                    MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
