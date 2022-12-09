@@ -538,7 +538,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(my_weight_accessor[0].domain.get_dim() == 5);
         assert(my_output_accessor[0].domain.get_dim() == 5);
         Conv2DMeta *m = (Conv2DMeta *)metas->meta[op];
-        Conv2D::backward_kernel_wrapper(
+        Kernels::Conv2D::backward_kernel_wrapper(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr(),
