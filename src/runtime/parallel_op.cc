@@ -12,6 +12,7 @@ ParallelOp::ParallelOp(FFModel &model,
                        const ParallelTensor input)
     : Op(model,
          op_type,
+         input->data_type,
          name,
          1 /*num_inputs*/,
          0 /*num_weights*/,
