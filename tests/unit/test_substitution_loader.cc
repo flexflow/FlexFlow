@@ -134,11 +134,11 @@ TEST(substitution_loader, operator_deserialization) {
   EXPECT_EQ(o.para.size(), 0);
 }
 
-TEST(substitution_loader, load_full_file) {
-  sl::RuleCollection collection =
-      sl::load_rule_collection_from_path("tests/unit/graph_subst_3_v2.json");
-  EXPECT_EQ(collection.rules.size(), 640);
+// TEST(substitution_loader, load_full_file) {
+//   sl::RuleCollection collection =
+//       sl::load_rule_collection_from_path("tests/unit/graph_subst_3_v2.json");
+//   EXPECT_EQ(collection.rules.size(), 640);
 
-  std::vector<GraphXfer *> xfers = create_xfers(nullptr, collection, 2);
-  EXPECT_EQ(xfers.size(), 640);
-}
+//   std::vector<GraphXfer *> xfers = create_xfers(nullptr, collection, 2);
+//   EXPECT_EQ(xfers.size(), 640);
+// }

@@ -1168,10 +1168,35 @@ void Graph::export_strategy_computation_graph(
   for (auto const &node : s.get_nodes(*this)) {
     if (strategy.find(node) == strategy.end()) {
       dot.add_node(node, {{"label", node.to_string()}});
+      // Check FusedParallel node here and print out the detailed information
+      if (node.ptr->op_type == OperatorType::OP_FUSED_PARALLEL) {
+        RecordFormatter rf;
+        std::vector<RecordFormatter> rows{};
+
+        FusedParallelOp *fused_op = (FusedParallelOp *)node.ptr;
+        for (int i = 0; i < fused_op->num_parallel_ops; i++) {
+          RecordFormatter row{};
+          ParallelOpInfo op_info = fused_op->parallel_ops[i];
+          std::string op_type_str = get_operator_type_name(op_info.op_type);
+          row << op_type_str << "dim: " + std::to_string(op_info.parallel_dim)
+              << "degree: " + std::to_string(op_info.parallel_degree);
+          rows.emplace_back(row);
+        }
+        rf << node.to_string();
+        for (auto &r : rows) {
+          rf << r;
+        }
+        dot.add_record_node(node, rf);
+      } else {
+        dot.add_node(node, {{"label", node.to_string()}});
+      }
     } else {
-      RecordFormatter rf, meta_row, machine_view_row;
+      RecordFormatter rf, meta_row, machine_view_row, runtime_code, memory_code,
+          runtime_cost_row, memory_cost_row;
       MachineView mv = strategy.at(node);
       std::ostringstream oss;
+      CostMetrics op_cost =
+          this->model->simulator->measure_operator_cost(node.ptr, mv);
       switch (node.ptr->op_type) {
         case OP_REPARTITION: {
           Repartition *rp = (Repartition *)node.ptr;
@@ -1212,6 +1237,37 @@ void Graph::export_strategy_computation_graph(
       }
       rf << node.to_string() << std::to_string(node.guid) << meta_row
          << machine_view_row;
+
+      // get memory cost
+      if (this->model->config.include_costs_dot_graph) {
+        float input_mem = (float)op_cost.inputs_memory;
+        if (node.ptr->numInputs > 0) {
+          input_mem /= (*node.ptr->inputs)->get_total_num_parts();
+        }
+        float output_mem = (float)op_cost.outputs_memory;
+        if (node.ptr->numOutputs > 0) {
+          output_mem /= (*node.ptr->outputs)->get_total_num_parts();
+        }
+        float weight_mem = (float)op_cost.weights_memory;
+        if (node.ptr->numWeights > 0) {
+          weight_mem /= (*node.ptr->weights)->get_total_num_parts();
+        }
+
+        runtime_code << "fwd"
+                     << "bwd"
+                     << "sync"
+                     << "secs";
+        runtime_cost_row << op_cost.forward_time << op_cost.backward_time
+                         << op_cost.sync_time;
+        memory_code << "in"
+                    << "out"
+                    << "weight"
+                    << "bytes";
+        memory_cost_row << input_mem << output_mem << weight_mem;
+        rf << runtime_code << runtime_cost_row << memory_code
+           << memory_cost_row;
+      }
+
       dot.add_record_node(node, rf);
     }
 

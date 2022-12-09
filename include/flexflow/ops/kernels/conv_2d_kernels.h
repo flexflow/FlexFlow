@@ -128,7 +128,7 @@ cudnnConvolutionBwdFilterAlgo_t selectConvolutionBackwardFilterAlgorithm(
     const cudnnFilterDescriptor_t dwDesc,
     void *dw,
     float *time);
-#else 
+#else
 miopenConvFwdAlgorithm_t selectConvolutionForwardAlgorithm(
     miopenHandle_t handle,
     const miopenTensorDescriptor_t xDesc,
@@ -139,7 +139,7 @@ miopenConvFwdAlgorithm_t selectConvolutionForwardAlgorithm(
     void *workSpace,
     size_t workSpaceSize,
     const miopenTensorDescriptor_t yDesc,
-    void *y, 
+    void *y,
     float *time);
 miopenConvBwdWeightsAlgorithm_t selectConvolutionBackwardFilterAlgorithm(
     miopenHandle_t handle,
@@ -163,7 +163,7 @@ miopenConvBwdDataAlgorithm_t selectConvolutionBackwardDataAlgorithm(
     void *workSpace,
     size_t workSpaceSize,
     const miopenTensorDescriptor_t dxDesc,
-    void *dx, 
+    void *dx,
     float *time);
 #endif
 

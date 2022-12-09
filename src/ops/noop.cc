@@ -42,7 +42,13 @@ NoOp::NoOp(FFModel &model,
            OperatorType _type,
            const ParallelTensor _output,
            char const *_name)
-    : Op(model, _type, _name, 0 /*inputs*/, 0 /*weights*/, 1 /*outputs*/),
+    : Op(model,
+         _type,
+         DT_NONE,
+         _name,
+         0 /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/),
       input_tensor_guid(0) {
   // NOOP takes one input and has one output
   // both of them are _output
@@ -60,7 +66,13 @@ NoOp::NoOp(FFModel &model,
            size_t _input_tensor_guid,
            const ParallelTensor _output,
            char const *_name)
-    : Op(model, _type, _name, 0 /*inputs*/, 0 /*weights*/, 1 /*outputs*/),
+    : Op(model,
+         _type,
+         DT_NONE,
+         _name,
+         0 /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/),
       input_tensor_guid(_input_tensor_guid) {
   // NOOP takes one input and has one output
   // both of them are _output
@@ -84,8 +96,30 @@ OpMeta *NoOp::init_task(Task const *task,
 
 void NoOp::init(FFModel const &ff) {
   parallel_is = outputs[0]->parallel_is;
-  // For OP_INPUT, initialize tensor to zero
-  if (op_type == OP_INPUT) {
+  if (op_type == OP_INPUT && outputs[0]->initializer != nullptr) {
+    ConstantInitializer *initializer =
+        (ConstantInitializer *)outputs[0]->initializer;
+    Runtime *runtime = ff.config.lg_hlr;
+    Context ctx = ff.config.lg_ctx;
+    ArgumentMap argmap;
+    IndexLauncher launcher(
+        CONSTANT_INIT_TASK_ID,
+        parallel_is,
+        TaskArgument(initializer, sizeof(ConstantInitializer)),
+        argmap,
+        Predicate::TRUE_PRED,
+        false /*must*/,
+        0 /*mapper_id*/,
+        outputs[0]->machine_view.hash());
+    launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      outputs[0]->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  } else if (op_type == OP_INPUT) {
+    // For OP_INPUT, initialize tensor to zero
     assert(outputs[0]->region != LogicalRegion::NO_REGION);
     if (outputs[0]->part == LogicalPartition::NO_PART)
       return;

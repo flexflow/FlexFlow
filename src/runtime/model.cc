@@ -69,7 +69,8 @@ LegionRuntime::Logger::Category log_model("Model");
 LegionRuntime::Logger::Category log_measure("measure");
 
 Op::Op(FFModel &model,
-       OperatorType op_type,
+       OperatorType otype,
+       DataType dtype,
        char const *name,
        int numInputs,
        int numWeights,
@@ -80,7 +81,8 @@ Op::Op(FFModel &model,
        const ParallelTensor input3,
        const ParallelTensor input4)
     : Op(model,
-         op_type,
+         otype,
+         dtype,
          name,
          numInputs,
          allocate_weights ? numWeights : 0,
@@ -91,7 +93,8 @@ Op::Op(FFModel &model,
          input4) {}
 
 Op::Op(FFModel &model,
-       OperatorType _op_type,
+       OperatorType _otype,
+       DataType _dtype,
        char const *_name,
        int _numInputs,
        int _numWeights,
@@ -100,8 +103,8 @@ Op::Op(FFModel &model,
        const ParallelTensor _input2,
        const ParallelTensor _input3,
        const ParallelTensor _input4)
-    : op_type(_op_type), op_guid(model.op_global_guid++), numInputs(_numInputs),
-      numWeights(_numWeights), numOutputs(_numOutputs),
+    : op_type(_otype), data_type(_dtype), op_guid(model.op_global_guid++),
+      numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
       profiling(model.config.profiling) {
   for (int i = 0; i < MAX_NUM_INPUTS; i++)
     inputs[i] = NULL;
@@ -128,22 +131,23 @@ Op::Op(FFModel &model,
     // resetInputGrads[i] = true;
   }
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
-    outputs[i] = NULL;
+    outputs[i] = nullptr;
   }
   for (int i = 0; i < MAX_NUM_WORKERS; i++)
-    meta[i] = NULL;
+    meta[i] = nullptr;
   parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
 }
 
 Op::Op(FFModel &model,
-       OperatorType _op_type,
+       OperatorType _otype,
+       DataType _dtype,
        char const *_name,
        int _numInputs,
        int _numWeights,
        int _numOutputs,
        ParallelTensor const *_inputs)
-    : op_type(_op_type), op_guid(model.op_global_guid++), numInputs(_numInputs),
-      numWeights(_numWeights), numOutputs(_numOutputs),
+    : op_type(_otype), data_type(_dtype), op_guid(model.op_global_guid++),
+      numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
       profiling(model.config.profiling) {
   std::string pcname;
   if (_name == NULL) {
@@ -217,7 +221,7 @@ void Op::serialize(Legion::Serializer &serializer) const {
           "The following operator type is currently not supported"
           " for graph serialization: %s\n"
           "Report the issue to the FlexFlow developers",
-          optype_to_string(this->op_type).c_str());
+          get_operator_type_name(this->op_type).c_str());
   assert(false && "This op does not support serialization");
 }
 
@@ -228,7 +232,7 @@ Op *Op::materialize(FFModel &ff,
           "The following operator type is currently not supported"
           " for layer materialization: %s\n"
           "Report the issue to the FlexFlow developers",
-          optype_to_string(this->op_type).c_str());
+          get_operator_type_name(this->op_type).c_str());
   assert(false && "This op does not support materialization");
 }
 
@@ -1075,6 +1079,21 @@ bool Op::get_weight_parameter(TNParameter tnp,
 OpMeta::OpMeta(FFHandler _handle) : handle(_handle), profiling(false) {
   for (int i = 0; i < MAX_NUM_INPUTS; i++)
     trainableInputs[i] = true;
+  for (int i = 0; i < MAX_NUM_INPUTS; i++)
+    input_type[i] = DT_NONE;
+  for (int i = 0; i < MAX_NUM_WEIGHTS; i++)
+    weight_type[i] = DT_NONE;
+  for (int i = 0; i < MAX_NUM_OUTPUTS; i++)
+    output_type[i] = DT_NONE;
+}
+
+OpMeta::OpMeta(FFHandler _handle, Op const *op) : OpMeta(_handle) {
+  for (int i = 0; i < op->numInputs; i++)
+    input_type[i] = op->inputs[i]->data_type;
+  for (int i = 0; i < op->numWeights; i++)
+    weight_type[i] = op->weights[i]->data_type;
+  for (int i = 0; i < op->numOutputs; i++)
+    output_type[i] = op->outputs[i]->data_type;
 }
 
 FFModel::FFModel(FFConfig &_config)
@@ -1160,12 +1179,13 @@ Tensor FFModel::create_constant(int const dims[],
   // FIXME: currently create gradients for constants since the current auto grad
   // algorithm computes gradients for all operators
   Tensor tensor = create_tensor<NDIM>(
-      dims, data_type, NULL /*owner_op*/, true /*create_grad*/);
-  ConstantInitializer *init = new ConstantInitializer(value);
+      dims, data_type, NULL /*owner_op*/, false /*create_grad*/);
+  tensor->initializer = new ConstantInitializer(value);
+  return tensor;
+#ifdef DEADCODE
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
   assert(false);
-#ifdef DEADCODE
   ArgumentMap argmap;
   IndexLauncher launcher(CONSTANT_INIT_TASK_ID,
                          tensor->parallel_is,
@@ -1270,6 +1290,7 @@ Tensor FFModel::create_tensor(int const dims[],
   if (owner_layer == NULL) {
     Layer *input_layer = new Layer(this,
                                    OP_INPUT,
+                                   data_type,
                                    "input",
                                    0 /*inputs*/,
                                    0 /*weight*/,
@@ -1347,6 +1368,7 @@ Parameter FFModel::create_weight(int numdim,
   if (owner_layer == NULL) {
     Layer *weight_layer = new Layer(this,
                                     OP_WEIGHT,
+                                    data_type,
                                     NULL,
                                     0 /*inputs*/,
                                     0 /*weights*/,
@@ -1495,6 +1517,9 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
   switch (tensor->data_type) {
+    case DT_HALF:
+      allocator.allocate_field(sizeof(half), FID_DATA);
+      break;
     case DT_FLOAT:
       allocator.allocate_field(sizeof(float), FID_DATA);
       break;
@@ -2345,6 +2370,14 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
   // Context ctx = config.lg_ctx;
   // Runtime* runtime = config.lg_hlr;
   for (size_t l = 1; l < operators.size() - 1; l++) {
+    // don't fuse input and weight operator since they don't involve any
+    // forward/backward task launches
+    if (operators[l]->op_type == OP_INPUT || operators[l]->op_type == OP_WEIGHT)
+      continue;
+    // don't fuse parallel op since they have different parallel_is in
+    // forward/backward
+    if (operators[l]->is_parallel_op())
+      continue;
     size_t start = 0;
     {
       Op *opl = operators[l];
@@ -2368,16 +2401,25 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
       MachineView view1 = operators[l]->outputs[0]->machine_view;
       MachineView view2 = operators[i]->outputs[0]->machine_view;
       if (view1 == view2) {
-        FusedOp *fused_op;
-        // bool created = false;
+        FusedOp *fused_op = nullptr;
+        bool allocate_new_fused_op = false;
         if (operators[i]->op_type == OP_FUSED)
           fused_op = (FusedOp *)operators[i];
         else {
-          // created = true;
           //  cannot be an in-place operator
           if (operators[i]->has_inplace_output())
             continue;
+          // don't fuse input and weight operator since they don't involve any
+          // forward/backward kernels
+          if (operators[i]->op_type == OP_INPUT ||
+              operators[i]->op_type == OP_WEIGHT)
+            continue;
+          // don't fuse parallel op since they have different parallel_is in
+          // forward/backward
+          if (operators[i]->is_parallel_op())
+            continue;
           fused_op = new FusedOp(*this, operators[i]);
+          allocate_new_fused_op = true;
         }
         if (fused_op->add_operator(*this, operators[l])) {
           // Construct new operators
@@ -2411,8 +2453,8 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
           return true;
         } else {
           // TODO: delete fused_op to avoid memory leakage
-          // if (created)
-          // delete fused_op;
+          if (allocate_new_fused_op)
+            delete fused_op;
           continue;
         }
       }
@@ -2806,7 +2848,7 @@ void FFModel::compile(LossType loss_type,
       Op *op = operators[i];
       printf("operator[%zu]: type(%s) guid(%lu)\n",
              i,
-             optype_to_string(operators[i]->op_type).c_str(),
+             get_operator_type_name(operators[i]->op_type).c_str(),
              operators[i]->op_guid);
       for (int j = 0; j < op->numInputs; j++) {
         LogicalRegion handle = op->inputs[j]->region;
@@ -3345,6 +3387,7 @@ FFConfig::FFConfig() {
   import_strategy_file = "";
   export_strategy_file = "";
   export_strategy_task_graph_file = "";
+  include_costs_dot_graph = false;
   export_strategy_computation_graph_file = "";
   dataset_path = "";
   substitution_json_path = tl::nullopt;
@@ -3468,6 +3511,10 @@ void FFConfig::parse_args(char **argv, int argc) {
       export_strategy_task_graph_file = std::string(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--include-costs-dot-graph")) {
+      include_costs_dot_graph = true;
+      continue;
+    }
     if (!strcmp(argv[i], "--compgraph")) {
       export_strategy_computation_graph_file = std::string(argv[++i]);
       continue;
@@ -3519,135 +3566,6 @@ void FFConfig::parse_args(char **argv, int argc) {
       substitution_json_path = std::string(argv[++i]);
       continue;
     }
-  }
-}
-
-std::string optype_to_string(OperatorType op_type) {
-  switch (op_type) {
-    case OP_INPUT:
-      return "Input";
-    case OP_WEIGHT:
-      return "Weight";
-    case OP_NOOP:
-      return "Noop";
-    case OP_CONV2D:
-      return "Conv";
-    case OP_DROPOUT:
-      return "Dropout";
-    case OP_EMBEDDING:
-      return "Embedding";
-    case OP_LINEAR:
-      return "Linear";
-    case OP_POOL2D:
-      return "Pool";
-    case OP_RELU:
-      return "Relu";
-    case OP_SIGMOID:
-      return "Sigmoid";
-    case OP_TANH:
-      return "TanH";
-    case OP_BATCHNORM:
-      return "Batchnorm";
-    case OP_CONCAT:
-      return "Concat";
-    case OP_SPLIT:
-      return "Split";
-    case OP_RESHAPE:
-      return "Reshape";
-    case OP_TRANSPOSE:
-      return "Transpose";
-    case OP_EW_ADD:
-      return "Add";
-    case OP_EW_MUL:
-      return "Mul";
-    case OP_MATMUL:
-      return "MatMul";
-    case OP_MUL:
-      return "Mul";
-    case OP_ENLARGE:
-      return "Enlarge";
-    case OP_SQUEEZE:
-      return "Squeeze";
-    case OP_UNSQUEEZE:
-      return "Unsqueeze";
-    case OP_EW_SUB:
-      return "Sub";
-    case OP_EW_DIV:
-      return "Div";
-    case OP_EW_EQUAL:
-      return "Equal";
-    case OP_EW_GREATER:
-      return "Greater";
-    case OP_EW_LESS:
-      return "Less";
-    case OP_EW_MAX:
-      return "Max";
-    case OP_EW_MIN:
-      return "Min";
-    case OP_REDUCE_ARGMAX:
-      return "ArgMax";
-    case OP_REDUCE_ARGMIN:
-      return "ArgMin";
-    case OP_REDUCE_MAX:
-      return "ReduceMax";
-    case OP_REDUCE_MEAN:
-      return "ReduceMean";
-    case OP_REDUCE_MIN:
-      return "ReduceMin";
-    case OP_REDUCE_PROD:
-      return "ReduceProd";
-    case OP_REDUCE_SUM:
-      return "ReduceSum";
-    case OP_PAD:
-      return "Pad";
-    case OP_SHAPE:
-      return "Shape";
-    case OP_SIZE:
-      return "Size";
-    case OP_TOPK:
-      return "TopK";
-    case OP_WHERE:
-      return "Where";
-    case OP_CEIL:
-      return "Ceil";
-    case OP_CAST:
-      return "Cast";
-    case OP_EXP:
-      return "Exp";
-    case OP_ROUND:
-      return "Round";
-    case OP_LAYERNORM:
-      return "LayerNorm";
-    case OP_LOG:
-      return "Log";
-    case OP_LOGICAL_NOT:
-      return "Not";
-    case OP_SQRT:
-      return "Sqrt";
-    case OP_LEAKYRELU:
-      return "LeakyRelu";
-    case OP_SLICE:
-      return "Slice";
-    case OP_RESIZE:
-      return "Resize";
-    case OP_SOFTMAX:
-      return "Softmax";
-    case OP_MULTIHEAD_ATTENTION:
-      return "MultiHeadAttn";
-    case OP_REPARTITION:
-      return "Partition";
-    case OP_REPLICATE:
-      return "Replicate";
-    case OP_REDUCTION:
-      return "Reduction";
-    case OP_COMBINE:
-      return "Combine";
-    case OP_FUSED_PARALLEL:
-      return "FusedParallel";
-    case OP_FLAT:
-      return "Flat";
-    default:
-      return "Unknown_" + std::to_string(op_type);
   }
 }
 

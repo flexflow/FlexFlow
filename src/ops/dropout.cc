@@ -35,6 +35,7 @@ Tensor FFModel::dropout(const Tensor input,
   }
   Layer *dropout = new Layer(this,
                              OP_DROPOUT,
+                             DT_FLOAT,
                              name,
                              1 /*inputs*/,
                              0 /*weights*/,
@@ -87,6 +88,7 @@ Dropout::Dropout(FFModel &model,
                  char const *name)
     : Op(model,
          OP_DROPOUT,
+         DT_FLOAT,
          name,
          1 /*inputs*/,
          0 /*weights*/,
@@ -372,12 +374,12 @@ bool Dropout::measure_operator_cost(Simulator *sim,
 
   if (sim->computationMode == COMP_MODE_TRAINING) {
     printf(
-        "[Meausre Dropout] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+        "[Measure Dropout] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
         name,
         cost_metrics.forward_time,
         cost_metrics.backward_time);
   } else {
-    printf("[Meausre Dropout] name(%s) forward_time(%.4lf)\n",
+    printf("[Measure Dropout] name(%s) forward_time(%.4lf)\n",
            name,
            cost_metrics.forward_time);
   }

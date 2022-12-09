@@ -332,6 +332,8 @@ void Simulator::free_all() {
 
 size_t data_type_size(DataType type) {
   switch (type) {
+    case DT_HALF:
+      return sizeof(half);
     case DT_FLOAT:
       return sizeof(float);
     case DT_DOUBLE:

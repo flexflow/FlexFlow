@@ -33,12 +33,18 @@ Tensor FFModel::unary(OperatorType op,
     dtype = DT_FLOAT;
     std::string str(name);
     Tensor new_x = cast(x, dtype, (str + "input_pre_cast").c_str());
-    ele = new Layer(
-        this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, new_x);
+    ele = new Layer(this,
+                    op,
+                    dtype,
+                    name,
+                    1 /*inputs*/,
+                    0 /*weights*/,
+                    1 /*outputs*/,
+                    new_x);
   } else {
     dtype = x->data_type;
     ele = new Layer(
-        this, op, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
+        this, op, dtype, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
   }
   int numdims = x->num_dims;
   int dims[MAX_TENSOR_DIM];
@@ -157,7 +163,14 @@ ElementUnary::ElementUnary(FFModel &model,
                            bool _inplace,
                            char const *name,
                            float _scalar)
-    : Op(model, _op_type, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x),
+    : Op(model,
+         _op_type,
+         x->data_type,
+         name,
+         1 /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/,
+         x),
       inplace(_inplace), scalar(_scalar) {
   numOutputs = 1;
   int numdim = x->num_dims;

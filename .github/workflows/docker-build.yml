@@ -1,0 +1,47 @@
+name: "docker-build"
+on:
+  pull_request:
+    paths:
+      - "docker/**"
+      - "!docker/README.md"
+      - ".github/workflows/docker-build.yml"
+  push:
+    branches:
+      - "master"
+    paths:
+      - "docker/**"
+      - "!docker/README.md"
+      - ".github/workflows/docker-build.yml"
+  workflow_dispatch:
+
+# Cancel outdated workflows if they are still running
+concurrency:
+  group: docker-build-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  docker-build:
+    name: Build and Install FlexFlow in a Docker Container
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        gpu_backend: ["cuda", "hip_rocm"]
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Free additional space on runner
+        run: .github/workflows/helpers/free_space_on_runner.sh
+
+      - name: Build Docker container
+        run: FF_GPU_BACKEND=${{ matrix.gpu_backend }} ./docker/build.sh base
+
+      - name: Check availability of Python flexflow.core module
+        if: ${{ matrix.gpu_backend == 'cuda' }}
+        run: docker run --entrypoint python flexflow:latest -c "import flexflow.core; exit()"
+
+      - name: Build mT5 Docker container
+        if: ${{ matrix.gpu_backend == 'cuda' }}
+        run: ./docker/build.sh mt5

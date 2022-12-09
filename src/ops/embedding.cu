@@ -26,12 +26,9 @@ using Legion::Rect;
 using Legion::Runtime;
 using Legion::Task;
 
-template <typename TI>
-__global__ void embed_forward_no_aggr(const TI *input,
-                                      float *output,
-                                      float const *embed,
-                                      int out_dim,
-                                      int batch_size) {
+template <typename TI, typename TD>
+__global__ void embed_forward_no_aggr(
+    TI const *input, TD *output, TD const *embed, int out_dim, int batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     output[i] = 0;
     int idx = i / out_dim;
@@ -41,36 +38,34 @@ __global__ void embed_forward_no_aggr(const TI *input,
   }
 }
 
-template <typename TI>
-__global__ void embed_forward_with_aggr(const TI *input,
-                                        float *output,
-                                        float const *embed,
+template <typename TI, typename TD>
+__global__ void embed_forward_with_aggr(TI const *input,
+                                        TD *output,
+                                        TD const *embed,
                                         int out_dim,
                                         int in_dim,
                                         int batch_size,
                                         AggrMode aggr) {
+  TD scale = 1.0f / in_dim;
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     output[i] = 0;
     int idx = i / out_dim;
     int off = i % out_dim;
     for (int j = 0; j < in_dim; j++) {
       TI wordIdx = input[idx * in_dim + j];
-      output[i] += embed[wordIdx * out_dim + off];
+      output[i] = output[i] + embed[wordIdx * out_dim + off];
       if (aggr == AGGR_MODE_SUM) {
       } else {
         assert(aggr == AGGR_MODE_AVG);
-        output[i] /= in_dim;
+        output[i] = output[i] * scale;
       }
     }
   }
 }
 
-template <typename TI>
-__global__ void embed_backward_no_aggr(const TI *input,
-                                       float const *output,
-                                       float *embed,
-                                       int out_dim,
-                                       int batch_size) {
+template <typename TI, typename TD>
+__global__ void embed_backward_no_aggr(
+    TI const *input, TD const *output, TD *embed, int out_dim, int batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     int idx = i / out_dim;
     int off = i % out_dim;
@@ -79,23 +74,68 @@ __global__ void embed_backward_no_aggr(const TI *input,
   }
 }
 
-template <typename TI>
-__global__ void embed_backward_with_aggr(const TI *input,
-                                         float const *output,
-                                         float *embed,
+// Specialization for half type
+
+template <>
+__global__ void embed_backward_no_aggr<int, half>(int const *input,
+                                                  half const *output,
+                                                  half *embed,
+                                                  int out_dim,
+                                                  int batch_size) {
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
+    int idx = i / out_dim;
+    int off = i % out_dim;
+    int wordIdx = input[idx];
+#if __CUDA_ARCH__ >= 700
+    atomicAdd(embed + wordIdx * out_dim + off, output[i]);
+#else
+    assert(false);
+    // TODO: this implementation may result in race condition
+    // so we use an assertion failure to warn users
+    embed[wordIdx * out_dim + off] += output[i];
+#endif
+  }
+}
+
+template <>
+__global__ void embed_backward_no_aggr<int64_t, half>(int64_t const *input,
+                                                      half const *output,
+                                                      half *embed,
+                                                      int out_dim,
+                                                      int batch_size) {
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
+    int idx = i / out_dim;
+    int off = i % out_dim;
+    int64_t wordIdx = input[idx];
+#if __CUDA_ARCH__ >= 700
+    atomicAdd(embed + wordIdx * out_dim + off, output[i]);
+#else
+    assert(false);
+    // TODO: this implementation may result in race condition
+    // so we use an assertion failure to warn users
+    embed[wordIdx * out_dim + off] += output[i];
+#endif
+  }
+}
+
+template <typename TI, typename TD>
+__global__ void embed_backward_with_aggr(TI const *input,
+                                         TD const *output,
+                                         TD *embed,
                                          int out_dim,
                                          int in_dim,
                                          int batch_size,
                                          AggrMode aggr) {
+  TD scale = 1.0f / in_dim;
   CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
     int idx = i / out_dim;
     int off = i % out_dim;
-    float gradient;
+    TD gradient;
     if (aggr == AGGR_MODE_SUM) {
       gradient = output[i];
     } else {
       assert(aggr == AGGR_MODE_AVG);
-      gradient = output[i] / in_dim;
+      gradient = output[i] * scale;
     }
     for (int j = 0; j < in_dim; j++) {
       TI wordIdx = input[idx * in_dim + j];
@@ -104,23 +144,96 @@ __global__ void embed_backward_with_aggr(const TI *input,
   }
 }
 
+// Specialization for half type
+
+template <>
+__global__ void embed_backward_with_aggr<int, half>(int const *input,
+                                                    half const *output,
+                                                    half *embed,
+                                                    int out_dim,
+                                                    int in_dim,
+                                                    int batch_size,
+                                                    AggrMode aggr) {
+  half scale = 1.0f / in_dim;
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
+    int idx = i / out_dim;
+    int off = i % out_dim;
+    half gradient;
+    if (aggr == AGGR_MODE_SUM) {
+      gradient = output[i];
+    } else {
+      assert(aggr == AGGR_MODE_AVG);
+      gradient = output[i] * scale;
+    }
+    for (int j = 0; j < in_dim; j++) {
+      int wordIdx = input[idx * in_dim + j];
+#if __CUDA_ARCH__ >= 700
+      atomicAdd(embed + wordIdx * out_dim + off, gradient);
+#else
+      assert(false);
+      // TODO: this implementation may result in race condition
+      // so we use an assertion failure to warn users
+      embed[wordIdx * out_dim + off] += gradient;
+#endif
+    }
+  }
+}
+
+template <>
+__global__ void embed_backward_with_aggr<int64_t, half>(int64_t const *input,
+                                                        half const *output,
+                                                        half *embed,
+                                                        int out_dim,
+                                                        int in_dim,
+                                                        int batch_size,
+                                                        AggrMode aggr) {
+  half scale = 1.0f / in_dim;
+  CUDA_KERNEL_LOOP(i, batch_size * out_dim) {
+    int idx = i / out_dim;
+    int off = i % out_dim;
+    half gradient;
+    if (aggr == AGGR_MODE_SUM) {
+      gradient = output[i];
+    } else {
+      assert(aggr == AGGR_MODE_AVG);
+      gradient = output[i] * scale;
+    }
+    for (int j = 0; j < in_dim; j++) {
+      int64_t wordIdx = input[idx * in_dim + j];
+#if __CUDA_ARCH__ >= 700
+      atomicAdd(embed + wordIdx * out_dim + off, gradient);
+#else
+      assert(false);
+      // TODO: this implementation may result in race condition
+      // so we use an assertion failure to warn users
+      embed[wordIdx * out_dim + off] += gradient;
+#endif
+    }
+  }
+}
+
 /*static*/
-template <typename TI>
-void Embedding::forward_kernel(const TI *input_ptr,
-                               float *output_ptr,
-                               float const *weight_ptr,
+template <typename TI, typename TD>
+void Embedding::forward_kernel(TI const *input_ptr,
+                               TD *output_ptr,
+                               TD const *weight_ptr,
                                int in_dim,
                                int out_dim,
                                int batch_size,
                                AggrMode aggr,
                                int outputSize,
                                cudaStream_t stream) {
+  assert(input_ptr != nullptr);
+  assert(output_ptr != nullptr);
+  assert(weight_ptr != nullptr);
+
   if (aggr == AGGR_MODE_NONE) {
-    embed_forward_no_aggr<TI>
+    embed_forward_no_aggr<TI, TD>
         <<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
             input_ptr, output_ptr, weight_ptr, out_dim, batch_size);
   } else {
-    embed_forward_with_aggr<TI>
+    assert(aggr == AGGR_MODE_AVG || aggr == AGGR_MODE_SUM);
+    embed_forward_with_aggr<TI, TD>
         <<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(input_ptr,
                                                                   output_ptr,
                                                                   weight_ptr,
@@ -132,28 +245,86 @@ void Embedding::forward_kernel(const TI *input_ptr,
 }
 
 /*static*/
-template <typename TI>
 void Embedding::forward_kernel_wrapper(EmbeddingMeta const *m,
-                                       const TI *input_ptr,
-                                       float *output_ptr,
-                                       float const *weight_ptr,
+                                       GenericTensorAccessorR const &input,
+                                       GenericTensorAccessorW const &output,
+                                       GenericTensorAccessorR const &weight,
                                        int in_dim,
                                        int out_dim,
-                                       int batch_size,
-                                       AggrMode aggr,
-                                       int outputSize) {
+                                       int batch_size) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  Embedding::forward_kernel<TI>(input_ptr,
-                                output_ptr,
-                                weight_ptr,
+  if (input.data_type == DT_INT32) {
+    if (weight.data_type == DT_HALF) {
+      Embedding::forward_kernel(input.get_int32_ptr(),
+                                output.get_half_ptr(),
+                                weight.get_half_ptr(),
                                 in_dim,
                                 out_dim,
                                 batch_size,
-                                aggr,
-                                outputSize,
+                                m->aggr,
+                                output.domain.get_volume(),
                                 stream);
-
+    } else if (weight.data_type == DT_FLOAT) {
+      Embedding::forward_kernel(input.get_int32_ptr(),
+                                output.get_float_ptr(),
+                                weight.get_float_ptr(),
+                                in_dim,
+                                out_dim,
+                                batch_size,
+                                m->aggr,
+                                output.domain.get_volume(),
+                                stream);
+    } else if (weight.data_type == DT_HALF) {
+      Embedding::forward_kernel(input.get_int32_ptr(),
+                                output.get_double_ptr(),
+                                weight.get_double_ptr(),
+                                in_dim,
+                                out_dim,
+                                batch_size,
+                                m->aggr,
+                                output.domain.get_volume(),
+                                stream);
+    } else {
+      assert(false && "Unsupported DataType in Embedding");
+    }
+  } else if (input.data_type == DT_INT64) {
+    if (weight.data_type == DT_HALF) {
+      Embedding::forward_kernel(input.get_int64_ptr(),
+                                output.get_half_ptr(),
+                                weight.get_half_ptr(),
+                                in_dim,
+                                out_dim,
+                                batch_size,
+                                m->aggr,
+                                output.domain.get_volume(),
+                                stream);
+    } else if (weight.data_type == DT_FLOAT) {
+      Embedding::forward_kernel(input.get_int64_ptr(),
+                                output.get_float_ptr(),
+                                weight.get_float_ptr(),
+                                in_dim,
+                                out_dim,
+                                batch_size,
+                                m->aggr,
+                                output.domain.get_volume(),
+                                stream);
+    } else if (weight.data_type == DT_DOUBLE) {
+      Embedding::forward_kernel(input.get_int64_ptr(),
+                                output.get_double_ptr(),
+                                weight.get_double_ptr(),
+                                in_dim,
+                                out_dim,
+                                batch_size,
+                                m->aggr,
+                                output.domain.get_volume(),
+                                stream);
+    } else {
+      assert(false && "Unsupported DataType in Embedding");
+    }
+  } else {
+    assert(false && "Unsupported DataType in Embedding");
+  }
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
     // print_tensor<TI>(input_ptr, input_domain.get_volume(),
@@ -165,22 +336,25 @@ void Embedding::forward_kernel_wrapper(EmbeddingMeta const *m,
 }
 
 /*static*/
-template <typename TI>
-void Embedding::backward_kernel(const TI *input_ptr,
-                                float const *output_ptr,
-                                float *weight_grad_ptr,
+template <typename TI, typename TD>
+void Embedding::backward_kernel(TI const *input_ptr,
+                                TD const *output_ptr,
+                                TD *weight_grad_ptr,
                                 int in_dim,
                                 int out_dim,
                                 int batch_size,
                                 AggrMode aggr,
                                 int outputSize,
                                 cudaStream_t stream) {
+  assert(input_ptr != nullptr);
+  assert(output_ptr != nullptr);
+  assert(weight_grad_ptr != nullptr);
   if (aggr == AGGR_MODE_NONE) {
-    embed_backward_no_aggr<TI>
+    embed_backward_no_aggr<TI, TD>
         <<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
             input_ptr, output_ptr, weight_grad_ptr, out_dim, batch_size);
   } else {
-    embed_backward_with_aggr<TI>
+    embed_backward_with_aggr<TI, TD>
         <<<GET_BLOCKS(outputSize), CUDA_NUM_THREADS, 0, stream>>>(
             input_ptr,
             output_ptr,
@@ -193,27 +367,85 @@ void Embedding::backward_kernel(const TI *input_ptr,
 }
 
 /*static*/
-template <typename TI>
-void Embedding::backward_kernel_wrapper(EmbeddingMeta const *m,
-                                        const TI *input_ptr,
-                                        float const *output_ptr,
-                                        float *weight_grad_ptr,
-                                        int in_dim,
-                                        int out_dim,
-                                        int batch_size,
-                                        AggrMode aggr,
-                                        int outputSize) {
+void Embedding::backward_kernel_wrapper(
+    EmbeddingMeta const *m,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorR const &output,
+    GenericTensorAccessorW const &weight_grad,
+    int in_dim,
+    int out_dim,
+    int batch_size) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  Embedding::backward_kernel<TI>(input_ptr,
-                                 output_ptr,
-                                 weight_grad_ptr,
+  if (m->input_type[0] == DT_INT32) {
+    if (m->output_type[0] == DT_HALF) {
+      Embedding::backward_kernel(input.get_int32_ptr(),
+                                 output.get_half_ptr(),
+                                 weight_grad.get_half_ptr(),
                                  in_dim,
                                  out_dim,
                                  batch_size,
-                                 aggr,
-                                 outputSize,
+                                 m->aggr,
+                                 output.domain.get_volume(),
                                  stream);
+    } else if (m->output_type[0] == DT_FLOAT) {
+      Embedding::backward_kernel(input.get_int32_ptr(),
+                                 output.get_float_ptr(),
+                                 weight_grad.get_float_ptr(),
+                                 in_dim,
+                                 out_dim,
+                                 batch_size,
+                                 m->aggr,
+                                 output.domain.get_volume(),
+                                 stream);
+    } else if (m->output_type[0] == DT_DOUBLE) {
+      Embedding::backward_kernel(input.get_int32_ptr(),
+                                 output.get_double_ptr(),
+                                 weight_grad.get_double_ptr(),
+                                 in_dim,
+                                 out_dim,
+                                 batch_size,
+                                 m->aggr,
+                                 output.domain.get_volume(),
+                                 stream);
+    } else {
+      assert(false && "Unsupported DataType in Embedding");
+    }
+  } else if (m->input_type[0] == DT_INT64) {
+    if (m->output_type[0] == DT_HALF) {
+      Embedding::backward_kernel(input.get_int64_ptr(),
+                                 output.get_half_ptr(),
+                                 weight_grad.get_half_ptr(),
+                                 in_dim,
+                                 out_dim,
+                                 batch_size,
+                                 m->aggr,
+                                 output.domain.get_volume(),
+                                 stream);
+    } else if (m->output_type[0] == DT_FLOAT) {
+      Embedding::backward_kernel(input.get_int64_ptr(),
+                                 output.get_float_ptr(),
+                                 weight_grad.get_float_ptr(),
+                                 in_dim,
+                                 out_dim,
+                                 batch_size,
+                                 m->aggr,
+                                 output.domain.get_volume(),
+                                 stream);
+    } else if (m->output_type[0] == DT_DOUBLE) {
+      Embedding::backward_kernel(input.get_int64_ptr(),
+                                 output.get_double_ptr(),
+                                 weight_grad.get_double_ptr(),
+                                 in_dim,
+                                 out_dim,
+                                 batch_size,
+                                 m->aggr,
+                                 output.domain.get_volume(),
+                                 stream);
+    } else {
+      assert(false && "Unsupported DataType in Embedding");
+    }
+  }
 
   if (m->profiling) {
     checkCUDA(cudaDeviceSynchronize());
@@ -225,7 +457,8 @@ void Embedding::backward_kernel_wrapper(EmbeddingMeta const *m,
   }
 }
 
-__global__ void rand_generate_int64(int64_t *ptr, size_t size, int64_t p) {
+template <typename TD>
+__global__ void rand_generate_int(TD *ptr, size_t size, TD p) {
   CUDA_KERNEL_LOOP(i, size) {
     ptr[i] = i % p;
   }
@@ -237,10 +470,21 @@ void Embedding::rand_generate_int64_wrapper(int64_t *ptr,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   // Randomly initialize the intput tensor to avoid out of index range issues
-  rand_generate_int64<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
+  rand_generate_int<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
       ptr, size, p);
 }
 
+void Embedding::rand_generate_int32_wrapper(int32_t *ptr,
+                                            size_t size,
+                                            int32_t p) const {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  // Randomly initialize the intput tensor to avoid out of index range issues
+  rand_generate_int<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
+      ptr, size, p);
+}
+
+#ifdef DEADCODE
 template void
     Embedding::forward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
                                                int32_t const *input_ptr,
@@ -282,5 +526,5 @@ template void
                                                 int batch_size,
                                                 AggrMode aggr,
                                                 int outputSize);
-
+#endif
 }; // namespace FlexFlow

@@ -23,7 +23,9 @@ import warnings
 import numpy as np
 from .flexflow_logger import fflogger
 from flexflow.type import ActiMode, AggrMode, PoolType, DataType, LossType, CompMode, MetricsType, OpType, ParameterSyncType, enum_to_int, int_to_enum
-from .flexflow_cffi_header import ffc, ffi
+_FF_BUILD_DOCS = bool(os.environ.get('READTHEDOCS') or os.environ.get("FF_BUILD_DOCS"))
+if not _FF_BUILD_DOCS:
+  from .flexflow_cffi_header import ffc, ffi
 
 ff_tracing_id = 200
 
@@ -718,8 +720,10 @@ class Tensor(object):
     elif (dtype == 42):
       self.data_type = DataType.DT_INT64
     elif (dtype == 43):
-      self.data_type = DataType.DT_FLOAT
+      self.data_type = DataType.DT_HALF
     elif (dtype == 44):
+      self.data_type = DataType.DT_FLOAT
+    elif (dtype == 45):
       self.data_type = DataType.DT_DOUBLE
     else:
       assert 0, "unknown data type {}".format(dtype)
@@ -2189,53 +2193,6 @@ class DLRMConfig(object):
     self.embedding_size = []
     for i in range(0, embedding_size_c[0]):
       self.embedding_size.append(embedding_size_c[i+1])
-
-# -----------------------------------------------------------------------
-# DataLoader
-# -----------------------------------------------------------------------
-
-class DataLoader4D(object):
-  __slots__ = ['handle', '_handle']
-  def __init__(self, ffmodel, input, label, full_input=0, full_label=0, num_samples=0, ffnetconfig=0):
-    if (ffnetconfig == 0):
-      self.handle = ffc.flexflow_dataloader_4d_create_v2(ffmodel.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
-    else:
-      self.handle = ffc.flexflow_dataloader_4d_create(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_4d_destroy)
-
-  @property
-  def num_samples(self):
-    return ffc.flexflow_dataloader_4d_get_num_samples(self.handle)
-
-  @num_samples.setter
-  def num_samples(self, samples):
-    ffc.flexflow_dataloader_4d_set_num_samples(self.handle, samples)
-
-  def next_batch(self, ffmodel):
-    ffc.flowflow_dataloader_4d_next_batch(self.handle, ffmodel.handle)
-
-  def reset(self):
-    ffc.flexflow_dataloader_4d_reset(self.handle)
-
-class DataLoader2D(object):
-  __slots__ = ['handle', '_handle']
-  def __init__(self, ffmodel, input, label, full_input=0, full_label=0, num_samples=0):
-    self.handle = ffc.flexflow_dataloader_2d_create_v2(ffmodel.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_2d_destroy)
-
-  @property
-  def num_samples(self):
-    return ffc.flexflow_dataloader_2d_get_num_samples(self.handle)
-
-  @num_samples.setter
-  def num_samples(self, samples):
-    ffc.flexflow_dataloader_2d_set_num_samples(self.handle, samples)
-
-  def next_batch(self, ffmodel):
-    ffc.flowflow_dataloader_2d_next_batch(self.handle, ffmodel.handle)
-
-  def reset(self):
-    ffc.flexflow_dataloader_2d_reset(self.handle)
 
 # -----------------------------------------------------------------------
 # Single DataLoader

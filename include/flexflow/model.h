@@ -32,7 +32,6 @@
 #include "simulator.h"
 #include "tensor.h"
 #include "tl/optional.hpp"
-#include "utils/dot/record_formatter.h"
 #include <functional>
 #include <unistd.h>
 #include <utility>
@@ -229,8 +228,6 @@ class Graph;
 class FFModel;
 class ParallelOp;
 
-std::string optype_to_string(OperatorType);
-
 void solve_parallel_dim_mappings(
     std::vector<ParallelDimMappingRecord> const &mapping,
     std::vector<ParallelDim const *> const &inputs,
@@ -401,6 +398,7 @@ public:
                    int num_entires,
                    int outDim,
                    AggrMode aggr,
+                   DataType dtype = DT_FLOAT,
                    Layer const *shared_op = NULL,
                    Initializer *kernel_initializer = NULL,
                    char const *name = NULL);
@@ -464,7 +462,7 @@ public:
                Initializer *bias_initializer = NULL,
                char const *name = NULL);
   // Add a cast layer
-  Tensor cast(const Tensor input, DataType dtype, char const *name);
+  Tensor cast(const Tensor input, DataType dtype, char const *name = nullptr);
   // Add a concat layer
   Tensor
       concat(int n, Tensor const *tensors, int axis, char const *name = NULL);

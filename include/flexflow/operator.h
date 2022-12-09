@@ -4,6 +4,7 @@
 #include "flexflow/fftype.h"
 #include "flexflow/machine_view.h"
 #include "flexflow/parallel_tensor.h"
+#include "flexflow/utils/dot/record_formatter.h"
 #include <vector>
 
 namespace FlexFlow {
@@ -135,7 +136,8 @@ protected:
 
 public:
   Op(FFModel &model,
-     OperatorType type,
+     OperatorType otype,
+     DataType dtype,
      char const *_name,
      int numInputs,
      int numWeights,
@@ -146,7 +148,8 @@ public:
      const ParallelTensor input3 = NULL,
      const ParallelTensor input4 = NULL);
   Op(FFModel &model,
-     OperatorType type,
+     OperatorType otype,
+     DataType dtype,
      char const *_name,
      int numInputs,
      int numWeights,
@@ -157,7 +160,8 @@ public:
      const ParallelTensor input4 = NULL);
   Op(int guid,
      bool profiling,
-     OperatorType type,
+     OperatorType otype,
+     DataType dtype,
      char const *name,
      int numInputs,
      int numWeights,
@@ -167,7 +171,8 @@ public:
      const ParallelTensor input3 = NULL,
      const ParallelTensor input4 = NULL);
   Op(FFModel &model,
-     OperatorType type,
+     OperatorType otype,
+     DataType dtype,
      char const *_name,
      int numInputs,
      int numWeights,

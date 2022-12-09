@@ -133,6 +133,9 @@ void SGDOptimizer::update(const ParallelTensor p) {
     index_launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, index_launcher);
   } else if (p->sync_type == ParameterSyncType::NCCL) {
+    // Currently assume that we don't change the owner_op of weights
+    // during fusion; thus the owner of a weight cannot be FusedOp
+    assert(p->owner_op->op_type != OP_FUSED);
     assert(p->parallel_is != IndexSpace::NO_SPACE);
     ArgumentMap argmap;
     Domain domain = runtime->get_index_space_domain(ctx, p->parallel_is);

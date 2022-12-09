@@ -44,6 +44,7 @@ Tensor FFModel::binary(OperatorType op,
     Tensor new_in1 = cast(in1, dtype, (str + "input1_pre_cast").c_str());
     ele = new Layer(this,
                     op,
+                    dtype,
                     name,
                     2 /*inputs*/,
                     0 /*weights*/,
@@ -56,6 +57,7 @@ Tensor FFModel::binary(OperatorType op,
     Tensor new_in2 = cast(in2, dtype, (str + "input2_pre_cast").c_str());
     ele = new Layer(this,
                     op,
+                    dtype,
                     name,
                     2 /*inputs*/,
                     0 /*weights*/,
@@ -64,13 +66,20 @@ Tensor FFModel::binary(OperatorType op,
                     new_in2);
   } else {
     dtype = in1->data_type;
-    ele = new Layer(
-        this, op, name, 2 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, in1, in2);
+    ele = new Layer(this,
+                    op,
+                    dtype,
+                    name,
+                    2 /*inputs*/,
+                    0 /*weights*/,
+                    1 /*outputs*/,
+                    in1,
+                    in2);
   }
   // Assert type match after broadcast
   assert(ele->inputs[0]->data_type == ele->inputs[1]->data_type);
   ele->outputs[0] = create_tensor_legion_ordering(
-      in1->num_dims, in1->dims, dtype, ele, 0, true /*create_grad*/);
+      in1->num_dims, in1->dims, ele->data_type, ele, 0, true /*create_grad*/);
   ele->add_int_property("inplace_a", inplace_a);
   layers.push_back(ele);
   return ele->outputs[0];
@@ -147,6 +156,7 @@ ElementBinary::ElementBinary(FFModel &model,
                              char const *name)
     : Op(model,
          _op_type,
+         in1->data_type,
          name,
          2 /*inputs*/,
          0 /*weights*/,
@@ -295,6 +305,8 @@ OpMeta *ElementBinary::init_task(Task const *task,
   ElementBinary *eb = (ElementBinary *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   ElementBinaryMeta *m = new ElementBinaryMeta(handle);
+  for (int i = 0; i < eb->numInputs; i++)
+    m->trainableInputs[i] = eb->trainableInputs[i];
   m->op_type = eb->op_type;
   m->profiling = eb->profiling;
   m->inplace_a = eb->inplace_a;

@@ -14,6 +14,7 @@
  */
 #include "flexflow/graph.h"
 #include "flexflow/dominators.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/cast.h"
@@ -54,7 +55,7 @@ const Node Node::INVALID_NODE = Node();
 Node::Node(void) : guid(0), ptr(NULL) {}
 
 std::string Node::op_to_string(Op const *op) const {
-  return optype_to_string(op->op_type);
+  return get_operator_type_name(op->op_type);
 }
 
 Edge::Edge(void)
@@ -368,7 +369,7 @@ void Graph::print(void) const {
       continue;
     log_graph.print("	guid(%zu) type(%s): ",
                     it.first.guid,
-                    optype_to_string(it.first.ptr->op_type).data());
+                    get_operator_type_name(it.first.ptr->op_type).data());
     std::unordered_set<Edge> const &list = it.second;
     for (auto const &it2 : list) {
       Edge e = it2;
@@ -1669,6 +1670,7 @@ GraphOptimalViewSerialized
         sez.serialize(embed->num_entries);
         sez.serialize(embed->out_channels);
         sez.serialize(embed->aggr);
+        sez.serialize(embed->data_type);
         break;
       }
       case OP_EW_ADD:
@@ -1948,17 +1950,20 @@ void FFModel::deserialize_graph_optimal_view(
         AggrMode aggr;
         int num_entries, out_channels;
         size_t id;
+        DataType data_type;
         dez.deserialize(id);
         LayerID layer_guid(id);
         dez.deserialize(num_entries);
         dez.deserialize(out_channels);
         dez.deserialize(aggr);
+        dez.deserialize(data_type);
 
         EmbeddingParams params;
         params.aggr = aggr;
         params.num_entries = num_entries;
         params.out_channels = out_channels;
         params.layer_guid = layer_guid;
+        params.data_type = data_type;
         node = get_or_create_node<Embedding>(inputs[0], params);
         break;
       }
@@ -1982,6 +1987,8 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_EXP:
       case OP_SCALAR_MULTIPLY:
+      case OP_SCALAR_FLOOR_DIV:
+      case OP_SCALAR_TRUE_DIV:
       case OP_SCALAR_ADD:
       case OP_SCALAR_SUB:
       case OP_RELU:
@@ -2110,7 +2117,7 @@ void FFModel::deserialize_graph_optimal_view(
                 "The following operator type is currently not supported"
                 " for graph deserialization: %s\n"
                 "Report the issue to the FlexFlow developers",
-                optype_to_string(op_type).c_str());
+                get_operator_type_name(op_type).c_str());
         assert(false && "Unsupported operator type");
       }
     }

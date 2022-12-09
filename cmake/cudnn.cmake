@@ -34,7 +34,7 @@ if(CUDNN_FOUND)
 endif()
 
 if(CUDNN_FOUND)
-message( STATUS "CUDNN inlcude : ${CUDNN_INCLUDE_DIR}" )
+message( STATUS "CUDNN include : ${CUDNN_INCLUDE_DIR}" )
   message( STATUS "CUDNN libraries : ${CUDNN_LIBRARIES}" )
 else()
   message( FATAL_ERROR "CUDNN package not found -> specify search path via CUDNN_DIR variable")

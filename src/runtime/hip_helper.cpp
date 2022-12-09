@@ -348,9 +348,12 @@ hipblasDatatype_t ff_to_cuda_datatype(DataType type) {
   }
   return HIPBLAS_R_32F;
 }
-
+template __global__ void
+    assign_kernel<half>(half *ptr, coord_t size, half value);
 template __global__ void
     assign_kernel<float>(float *ptr, coord_t size, float value);
+template __global__ void
+    assign_kernel<double>(double *ptr, coord_t size, double value);
 template __global__ void
     assign_kernel<int32_t>(int32_t *ptr, coord_t size, int32_t value);
 template __global__ void
@@ -360,6 +363,9 @@ template __global__ void
     add_kernel<float>(float *dst, float const *src, size_t size);
 template __global__ void
     add_kernel<double>(double *dst, double const *src, size_t size);
+template __global__ void add_kernel<int>(int *dst, int const *src, size_t size);
+template __global__ void
+    add_kernel<long>(long *dst, long const *src, size_t size);
 
 template __global__ void
     copy_kernel<float>(float *dst, float const *src, coord_t size);

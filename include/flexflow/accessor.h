@@ -2,6 +2,15 @@
 #define _FF_ACCESSOR_H_
 #include "ffconst.h"
 #include "legion.h"
+
+#if defined(FF_USE_CUDA)
+#include <cuda_fp16.h>
+#elif defined(FF_USE_HIP_CUDA)
+#include <cuda_fp16.h>
+#elif defined(FF_USE_HIP_ROCM)
+#include <hip/hip_fp16.h>
+#endif
+
 // using namespace Legion;
 
 namespace FlexFlow {
@@ -43,35 +52,36 @@ struct TensorAccessorW {
   DT *ptr;
 };
 
-struct GenericTensorAccessorR {
-  GenericTensorAccessorR(int num_dim,
-                         DataType data_type,
-                         Legion::PhysicalRegion region,
-                         Legion::RegionRequirement req,
-                         Legion::FieldID fid,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime);
-  GenericTensorAccessorR();
+class GenericTensorAccessorW {
+public:
+  GenericTensorAccessorW();
+  GenericTensorAccessorW(DataType data_type, Legion::Domain domain, void *ptr);
+  int32_t *get_int32_ptr() const;
+  int64_t *get_int64_ptr() const;
+  float *get_float_ptr() const;
+  double *get_double_ptr() const;
+  half *get_half_ptr() const;
   DataType data_type;
   Legion::Domain domain;
-  Legion::Memory memory;
-  void const *ptr;
+  void *ptr;
 };
 
-struct GenericTensorAccessorW {
-  GenericTensorAccessorW(int num_dim,
-                         DataType data_type,
-                         Legion::PhysicalRegion region,
-                         Legion::RegionRequirement req,
-                         Legion::FieldID fid,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime,
-                         bool readOutput = false);
-  GenericTensorAccessorW();
+class GenericTensorAccessorR {
+public:
+  GenericTensorAccessorR();
+  GenericTensorAccessorR(DataType data_type,
+                         Legion::Domain domain,
+                         void const *ptr);
+  GenericTensorAccessorR(GenericTensorAccessorW const &acc);
+  // GenericTensorAccessorR &operator=(GenericTensorAccessorW const &acc);
+  int32_t const *get_int32_ptr() const;
+  int64_t const *get_int64_ptr() const;
+  float const *get_float_ptr() const;
+  double const *get_double_ptr() const;
+  half const *get_half_ptr() const;
   DataType data_type;
   Legion::Domain domain;
-  Legion::Memory memory;
-  void *ptr;
+  void const *ptr;
 };
 
 template <typename DT>
@@ -94,6 +104,31 @@ DT *helperGetTensorPointerRW(Legion::PhysicalRegion region,
                              Legion::FieldID fid,
                              Legion::Context ctx,
                              Legion::Runtime *runtime);
+
+GenericTensorAccessorR
+    helperGetGenericTensorAccessorRO(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime);
+
+GenericTensorAccessorW
+    helperGetGenericTensorAccessorWO(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime);
+
+GenericTensorAccessorW
+    helperGetGenericTensorAccessorRW(DataType datatype,
+                                     Legion::PhysicalRegion region,
+                                     Legion::RegionRequirement req,
+                                     Legion::FieldID fid,
+                                     Legion::Context ctx,
+                                     Legion::Runtime *runtime);
+
 }; // namespace FlexFlow
 
 #endif
