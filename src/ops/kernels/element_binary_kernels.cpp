@@ -107,7 +107,7 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
       default:
         assert(false);
     }
-    log_measure.debug("[%s] forward time (CF) = %.2fms\n", opName, elapsed);
+    printf("[%s] forward time (CF) = %.2fms\n", opName, elapsed);
   }
 }
 
