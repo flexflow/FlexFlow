@@ -13,7 +13,7 @@ image=${1:-flexflow}
 
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
 if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
-  echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid. Pick between `cuda`, `hip_cuda`, `hip_rocm` or `intel`."
+  echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid. Pick between 'cuda', 'hip_cuda', 'hip_rocm' or 'intel'."
   exit 1
 elif [[ "${FF_GPU_BACKEND}" != "cuda" ]]; then
   echo "Configuring FlexFlow to build for gpu backend: ${FF_GPU_BACKEND}"

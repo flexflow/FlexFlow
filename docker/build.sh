@@ -13,14 +13,14 @@ cd "$SCRIPT_DIR/.."
 # Get name of desired Docker image as input
 image=${1:-flexflow}
 if [[ "${image}" != @(flexflow-environment|flexflow) ]]; then
-  echo "Error, image name ${image} is invalid. Choose between `flexflow-environment` and `flexflow`."
+  echo "Error, image name ${image} is invalid. Choose between 'flexflow-environment' and 'flexflow'."
   exit 1
 fi
 
 # Set up GPU backend
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
 if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
-  echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid. Pick between `cuda`, `hip_cuda`, `hip_rocm` or `intel`."
+  echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid. Pick between 'cuda', 'hip_cuda', 'hip_rocm' or 'intel'."
   exit 1
 elif [[ "${FF_GPU_BACKEND}" != "cuda" ]]; then
   echo "Configuring FlexFlow to build for gpu backend: ${FF_GPU_BACKEND}"
