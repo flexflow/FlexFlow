@@ -22,6 +22,7 @@
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
+#include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/transpose.h"
