@@ -23,7 +23,7 @@
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/flat.h"
-#include "flexflow/ops/linear.h"
+#include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/transpose.h"
@@ -216,14 +216,15 @@ __host__ void FusedOp::forward_task(Task const *task,
           assert(fused->op_num_weights[op] == 1);
         }
         LinearMeta *m = (LinearMeta *)metas->meta[op];
-        Linear::forward_kernel_wrapper(m,
-                                       my_input_accessor[0].get_float_ptr(),
-                                       my_output_accessor[0].get_float_ptr(),
-                                       my_weight_accessor[0].get_float_ptr(),
-                                       bias_ptr,
-                                       in_dim,
-                                       out_dim,
-                                       batch_size);
+        Kernels::Linear::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            bias_ptr,
+            in_dim,
+            out_dim,
+            batch_size);
         break;
       }
       case OP_BATCHMATMUL: {
@@ -596,7 +597,7 @@ __host__ void FusedOp::backward_task(Task const *task,
           assert(fused->op_num_weights[op] == 1);
         }
         LinearMeta *m = (LinearMeta *)metas->meta[op];
-        Linear::backward_kernel_wrapper(
+        Kernels::Linear::backward_kernel_wrapper(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr(),
