@@ -5,13 +5,6 @@ on:
       - "docker/**"
       - "!docker/README.md"
       - ".github/workflows/docker-build.yml"
-  push:
-    branches-ignore:
-      - "master"
-    paths-ignore:
-      - "docker/**"
-      - "!docker/README.md"
-      - ".github/workflows/docker-build.yml"
   workflow_dispatch:
 
 # Cancel outdated workflows if they are still running
