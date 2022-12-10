@@ -6,13 +6,27 @@ GPUS=$1
 BATCHSIZE=$((GPUS * 64))
 FSIZE=14048
 ZSIZE=12192
-
 if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit; fi
-EXE="$FF_HOME"/python/flexflow_python
 
-#Sequantial model tests
-$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
-$EXE "$FF_HOME"/examples/python/keras/seq_mnist_cnn.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
+NUM_NODES=2
+if [[ $NUM_NODES > 1 ]]; then
+    SET_CUDA_DEVS='CUDA_VISIBLE_DEVICES=$(seq -s, $((OMPI_COMM_WORLD_RANK * GPUS ))  $(( OMPI_COMM_WORLD_RANK * GPUS +1 )) )'
+    FSIZE=$(( FSIZE / GPUS ))
+    ZSIZE=$(( FSIZE / GPUS ))
+fi
+
+#EXE="${FF_HOME}/python/flexflow_python"
+export PYTHONPATH="${FF_HOME}/python"
+export FF_USE_NATIVE_PYTHON=1
+EXE="python"
+
+
+#Sequential model tests
+#eval "$RUNNER" $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
+mpirun -np 2 "$SET_CUDA_DEVS" $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
+
+mpirun -np 2 "$SET_CUDA_DEVS" $EXE "$FF_HOME"/examples/python/keras/seq_mnist_cnn.py -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
+exit 0
 $EXE "$FF_HOME"/examples/python/keras/seq_reuters_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 $EXE "$FF_HOME"/examples/python/keras/seq_cifar10_cnn.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp_net2net.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
