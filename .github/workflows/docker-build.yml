@@ -40,7 +40,7 @@ jobs:
 
       - name: Check availability of Python flexflow.core module
         if: ${{ matrix.gpu_backend == 'cuda' }}
-        run: docker run --entrypoint python flexflow:latest -c "import flexflow.core; exit()"
+        run: docker run --entrypoint python flexflow-cuda:latest -c "import flexflow.core; exit()"
       
       - name: Build mT5 Docker container
         if: ${{ matrix.gpu_backend == 'cuda' }}
