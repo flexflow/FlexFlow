@@ -26,6 +26,7 @@ jobs:
     strategy:
       matrix:
         gpu_backend: ["cuda", "hip_rocm"]
+      fail-fast: false
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
@@ -41,11 +42,7 @@ jobs:
       - name: Check availability of Python flexflow.core module
         if: ${{ matrix.gpu_backend == 'cuda' }}
         run: docker run --entrypoint python flexflow-cuda:latest -c "import flexflow.core; exit()"
-      
-      - name: Build mT5 Docker container
-        if: ${{ matrix.gpu_backend == 'cuda' }}
-        run: ./docker/build.sh mt5
-  
+
       - name: Publish Docker environment image (on push to master)
         env:
           FLEXFLOW_CONTAINER_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
@@ -57,5 +54,3 @@ jobs:
           else
             echo "No need to update Docker containers in ghrc.io registry at this time."
           fi
-
-      
