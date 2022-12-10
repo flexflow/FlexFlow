@@ -1663,6 +1663,7 @@ GraphOptimalViewSerialized
         sez.serialize(embed->num_entries);
         sez.serialize(embed->out_channels);
         sez.serialize(embed->aggr);
+        sez.serialize(embed->data_type);
         break;
       }
       case OP_EW_ADD:
@@ -1926,17 +1927,20 @@ void FFModel::deserialize_graph_optimal_view(
         AggrMode aggr;
         int num_entries, out_channels;
         size_t id;
+        DataType data_type;
         dez.deserialize(id);
         LayerID layer_guid(id);
         dez.deserialize(num_entries);
         dez.deserialize(out_channels);
         dez.deserialize(aggr);
+        dez.deserialize(data_type);
 
         EmbeddingParams params;
         params.aggr = aggr;
         params.num_entries = num_entries;
         params.out_channels = out_channels;
         params.layer_guid = layer_guid;
+        params.data_type = data_type;
         node = get_or_create_node<Embedding>(inputs[0], params);
         break;
       }

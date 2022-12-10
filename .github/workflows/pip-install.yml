@@ -33,6 +33,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Free additional space on runner
+        run: .github/workflows/helpers/free_space_on_runner.sh
+
       - name: Install CUDA
         uses: Jimver/cuda-toolkit@v0.2.8
         id: cuda-toolkit

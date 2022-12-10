@@ -49,6 +49,7 @@ using Legion::TaskLauncher;
 FusedOp::FusedOp(FFModel &model, Op *op)
     : Op(model,
          OP_FUSED,
+         DT_NONE,
          op->name,
          0 /*weights*/,
          0 /*weights*/,

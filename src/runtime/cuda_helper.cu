@@ -318,7 +318,11 @@ cudaDataType_t ff_to_cuda_datatype(DataType type) {
 }
 
 template __global__ void
+    assign_kernel<half>(half *ptr, coord_t size, half value);
+template __global__ void
     assign_kernel<float>(float *ptr, coord_t size, float value);
+template __global__ void
+    assign_kernel<double>(double *ptr, coord_t size, double value);
 template __global__ void
     assign_kernel<int32_t>(int32_t *ptr, coord_t size, int32_t value);
 template __global__ void

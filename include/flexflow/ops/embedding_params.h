@@ -11,6 +11,7 @@ struct EmbeddingParams {
   int num_entries, out_channels;
   LayerID layer_guid;
   AggrMode aggr;
+  DataType data_type;
 
   bool is_valid(ParallelTensorShape const &) const;
 };
