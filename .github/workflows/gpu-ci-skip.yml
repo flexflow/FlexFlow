@@ -30,7 +30,7 @@ concurrency:
 
 jobs:
   gpu-ci-flexflow:
-    name: Install and test Flexflow on self-hosted runner with GPU
+    name: Single Machine, Multiple GPUs Tests
     runs-on: ubuntu-20.04
     steps:
       - run: 'echo "No gpu-ci required"'

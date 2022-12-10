@@ -23,5 +23,9 @@ jobs:
   docker-build:
     name: Build and Install FlexFlow in a Docker Container
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        gpu_backend: ["cuda", "hip_rocm"]
+      fail-fast: false
     steps:
       - run: 'echo "No docker-build required"'

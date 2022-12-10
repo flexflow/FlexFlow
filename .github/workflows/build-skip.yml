@@ -29,6 +29,10 @@ jobs:
   cmake-build:
     name: Build FlexFlow with CMake
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        gpu_backend: ["cuda", "hip_rocm"]
+      fail-fast: false
     steps:
       - run: 'echo "No build required"'
 
