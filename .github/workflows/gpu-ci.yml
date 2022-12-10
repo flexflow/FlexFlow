@@ -30,7 +30,7 @@ concurrency:
 
 jobs:
   gpu-ci-flexflow:
-    name: Install and test Flexflow on self-hosted runner with GPU
+    name: Single Machine, Multiple GPUs Tests
     runs-on: self-hosted
     container:
       image: ghcr.io/flexflow/flexflow-environment:latest
