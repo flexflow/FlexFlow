@@ -26,6 +26,7 @@ jobs:
     strategy:
       matrix:
         gpu_backend: ["cuda", "hip_rocm"]
+      fail-fast: false
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
