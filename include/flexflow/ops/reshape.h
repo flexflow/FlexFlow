@@ -52,24 +52,7 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  template <typename T>
-  static void forward_kernel(const T *input_ptr,
-                             T *output_ptr,
-                             size_t num_elements,
-                             ffStream_t stream);
-  template <typename T>
-  static void forward_kernel_wrapper(const T *input_ptr,
-                                     T *output_ptr,
-                                     size_t num_elements);
-  template <typename T>
-  static void backward_kernel(T *input_grad_ptr,
-                              const T *output_grad_ptr,
-                              size_t num_elements,
-                              ffStream_t stream);
-  template <typename T>
-  static void backward_kernel_wrapper(T *input_grad_ptr,
-                                      const T *output_grad_ptr,
-                                      size_t num_elements);
+  
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;

@@ -13,29 +13,19 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/reshape.h"
+#include "flexflow/ops/kernels/reshape_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 
 ReshapeMeta::ReshapeMeta(FFHandler handler) : OpMeta(handler) {}
 
-/*static*/
-template <typename T>
-void Reshape::forward_kernel(const T *input_ptr,
-                             T *output_ptr,
-                             size_t num_elements,
-                             cudaStream_t stream) {
-  checkCUDA(cudaMemcpyAsync(output_ptr,
-                            input_ptr,
-                            num_elements * sizeof(T),
-                            cudaMemcpyDeviceToDevice,
-                            stream));
-}
+namespace Kernels {
+namespace Reshape {
 
 /*static*/
 template <typename T>
-void Reshape::forward_kernel_wrapper(const T *input_ptr,
+void forward_kernel_wrapper(const T *input_ptr,
                                      T *output_ptr,
                                      size_t num_elements) {
   cudaStream_t stream;
@@ -47,7 +37,7 @@ void Reshape::forward_kernel_wrapper(const T *input_ptr,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  Reshape::forward_kernel<T>(input_ptr, output_ptr, num_elements, stream);
+  Internal::forward_kernel<T>(input_ptr, output_ptr, num_elements, stream);
   if (false) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -61,9 +51,61 @@ void Reshape::forward_kernel_wrapper(const T *input_ptr,
   }
 }
 
+
 /*static*/
 template <typename T>
-void Reshape::backward_kernel(T *input_grad_ptr,
+void backward_kernel_wrapper(T *input_grad_ptr,
+                                      const T *output_grad_ptr,
+                                      size_t num_elements) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::backward_kernel<T>(
+      input_grad_ptr, output_grad_ptr, num_elements, stream);
+}
+
+
+template void forward_kernel_wrapper<float>(float const *input_ptr,
+                                                     float *output_ptr,
+                                                     size_t volume);
+template void forward_kernel_wrapper<double>(double const *input_ptr,
+                                                      double *output_ptr,
+                                                      size_t volume);
+template void forward_kernel_wrapper<int32_t>(int32_t const *input_ptr,
+                                                       int32_t *output_ptr,
+                                                       size_t volume);
+template void forward_kernel_wrapper<int64_t>(int64_t const *input_ptr,
+                                                       int64_t *output_ptr,
+                                                       size_t volume);
+
+template void backward_kernel_wrapper<float>(float *in_grad_ptr,
+                                                      float const *out_grad_ptr,
+                                                      size_t volume);
+template void backward_kernel_wrapper<double>(
+    double *in_grad_ptr, double const *out_grad_ptr, size_t volume);
+template void backward_kernel_wrapper<int32_t>(
+    int32_t *in_grad_ptr, int32_t const *out_grad_ptr, size_t volume);
+template void backward_kernel_wrapper<int64_t>(
+    int64_t *in_grad_ptr, int64_t const *out_grad_ptr, size_t volume);
+
+
+namespace Internal {
+
+/*static*/
+template <typename T>
+void forward_kernel(const T *input_ptr,
+                             T *output_ptr,
+                             size_t num_elements,
+                             cudaStream_t stream) {
+  checkCUDA(cudaMemcpyAsync(output_ptr,
+                            input_ptr,
+                            num_elements * sizeof(T),
+                            cudaMemcpyDeviceToDevice,
+                            stream));
+}
+
+/*static*/
+template <typename T>
+void backward_kernel(T *input_grad_ptr,
                               const T *output_grad_ptr,
                               size_t num_elements,
                               cudaStream_t stream) {
@@ -73,72 +115,41 @@ void Reshape::backward_kernel(T *input_grad_ptr,
           input_grad_ptr, output_grad_ptr, num_elements, (T)alpha);
 }
 
-/*static*/
-template <typename T>
-void Reshape::backward_kernel_wrapper(T *input_grad_ptr,
-                                      const T *output_grad_ptr,
-                                      size_t num_elements) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Reshape::backward_kernel<T>(
-      input_grad_ptr, output_grad_ptr, num_elements, stream);
-}
-
-template void Reshape::forward_kernel<float>(float const *input_ptr,
+template void forward_kernel<float>(float const *input_ptr,
                                              float *output_ptr,
                                              size_t num_elements,
                                              cudaStream_t stream);
-template void Reshape::forward_kernel<double>(double const *input_ptr,
+template void forward_kernel<double>(double const *input_ptr,
                                               double *output_ptr,
                                               size_t num_elements,
                                               cudaStream_t stream);
-template void Reshape::forward_kernel<int32_t>(int32_t const *input_ptr,
+template void forward_kernel<int32_t>(int32_t const *input_ptr,
                                                int32_t *output_ptr,
                                                size_t num_elements,
                                                cudaStream_t stream);
-template void Reshape::forward_kernel<int64_t>(int64_t const *input_ptr,
+template void forward_kernel<int64_t>(int64_t const *input_ptr,
                                                int64_t *output_ptr,
                                                size_t num_elements,
                                                cudaStream_t stream);
 
-template void Reshape::forward_kernel_wrapper<float>(float const *input_ptr,
-                                                     float *output_ptr,
-                                                     size_t volume);
-template void Reshape::forward_kernel_wrapper<double>(double const *input_ptr,
-                                                      double *output_ptr,
-                                                      size_t volume);
-template void Reshape::forward_kernel_wrapper<int32_t>(int32_t const *input_ptr,
-                                                       int32_t *output_ptr,
-                                                       size_t volume);
-template void Reshape::forward_kernel_wrapper<int64_t>(int64_t const *input_ptr,
-                                                       int64_t *output_ptr,
-                                                       size_t volume);
-
-template void Reshape::backward_kernel<float>(float *input_grad_ptr,
+template void backward_kernel<float>(float *input_grad_ptr,
                                               float const *output_grad_ptr,
                                               size_t num_elements,
                                               cudaStream_t stream);
-template void Reshape::backward_kernel<double>(double *input_grad_ptr,
+template void backward_kernel<double>(double *input_grad_ptr,
                                                double const *output_grad_ptr,
                                                size_t num_elements,
                                                cudaStream_t stream);
-template void Reshape::backward_kernel<int32_t>(int32_t *input_grad_ptr,
+template void backward_kernel<int32_t>(int32_t *input_grad_ptr,
                                                 int32_t const *output_grad_ptr,
                                                 size_t num_elements,
                                                 cudaStream_t stream);
-template void Reshape::backward_kernel<int64_t>(int64_t *input_grad_ptr,
+template void backward_kernel<int64_t>(int64_t *input_grad_ptr,
                                                 int64_t const *output_grad_ptr,
                                                 size_t num_elements,
                                                 cudaStream_t stream);
 
-template void Reshape::backward_kernel_wrapper<float>(float *in_grad_ptr,
-                                                      float const *out_grad_ptr,
-                                                      size_t volume);
-template void Reshape::backward_kernel_wrapper<double>(
-    double *in_grad_ptr, double const *out_grad_ptr, size_t volume);
-template void Reshape::backward_kernel_wrapper<int32_t>(
-    int32_t *in_grad_ptr, int32_t const *out_grad_ptr, size_t volume);
-template void Reshape::backward_kernel_wrapper<int64_t>(
-    int64_t *in_grad_ptr, int64_t const *out_grad_ptr, size_t volume);
-
+} // namespace Internal
+} // namespace Reshape
+} // namespace Kernels
 }; // namespace FlexFlow
