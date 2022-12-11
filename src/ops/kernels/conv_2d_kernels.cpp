@@ -107,51 +107,52 @@ void init_kernel(Conv2DMeta *m,
 
   float time;
   // select forward algorithm
-  m->fwdAlgo = selectConvolutionForwardAlgorithm(m->handle.dnn,
-                                                 m->inputTensor,
-                                                 input_ptr,
-                                                 m->filterDesc,
-                                                 kernel_ptr,
-                                                 m->convDesc,
-                                                 m->handle.workSpace,
-                                                 m->handle.workSpaceSize,
-                                                 m->outputTensor,
-                                                 output_ptr,
-                                                 &time);
+  m->fwdAlgo =
+      Internal::selectConvolutionForwardAlgorithm(m->handle.dnn,
+                                                  m->inputTensor,
+                                                  input_ptr,
+                                                  m->filterDesc,
+                                                  kernel_ptr,
+                                                  m->convDesc,
+                                                  m->handle.workSpace,
+                                                  m->handle.workSpaceSize,
+                                                  m->outputTensor,
+                                                  output_ptr,
+                                                  &time);
   if (forward_time != nullptr) {
     *forward_time += time;
   }
 
   // select backward filter algorithm
-  m->bwdFilterAlgo =
-      selectConvolutionBackwardFilterAlgorithm(m->handle.dnn,
-                                               m->inputTensor,
-                                               input_ptr,
-                                               m->outputTensor,
-                                               output_ptr,
-                                               m->convDesc,
-                                               m->handle.workSpace,
-                                               m->handle.workSpaceSize,
-                                               m->filterDesc,
-                                               kernel_grad_ptr,
-                                               &time);
+  m->bwdFilterAlgo = Internal::selectConvolutionBackwardFilterAlgorithm(
+      m->handle.dnn,
+      m->inputTensor,
+      input_ptr,
+      m->outputTensor,
+      output_ptr,
+      m->convDesc,
+      m->handle.workSpace,
+      m->handle.workSpaceSize,
+      m->filterDesc,
+      kernel_grad_ptr,
+      &time);
   if (backward_time != nullptr) {
     *backward_time += time;
   }
 
   // select backward data algorithm
   m->bwdDataAlgo =
-      selectConvolutionBackwardDataAlgorithm(m->handle.dnn,
-                                             m->filterDesc,
-                                             kernel_ptr,
-                                             m->outputTensor,
-                                             output_ptr,
-                                             m->convDesc,
-                                             m->handle.workSpace,
-                                             m->handle.workSpaceSize,
-                                             m->inputTensor,
-                                             (float *)input_ptr,
-                                             &time);
+      Internal::selectConvolutionBackwardDataAlgorithm(m->handle.dnn,
+                                                       m->filterDesc,
+                                                       kernel_ptr,
+                                                       m->outputTensor,
+                                                       output_ptr,
+                                                       m->convDesc,
+                                                       m->handle.workSpace,
+                                                       m->handle.workSpaceSize,
+                                                       m->inputTensor,
+                                                       (float *)input_ptr,
+                                                       &time);
   if (backward_time != nullptr) {
     *backward_time += time;
   }
