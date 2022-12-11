@@ -166,8 +166,8 @@ Group_by::Group_by(FFModel &model,
   dims[2] = inputs[0]->dims[2];
 
   for (int i = 0; i < n; i++) {
-    outputs[i] =
-        model.create_parallel_tensor_legion_ordering(3, dims, DT_FLOAT, this);
+    outputs[i] = model.create_parallel_tensor_legion_ordering(
+        3, dims, DT_FLOAT, this, i /*owner_idx*/);
   }
 
   // List of outputs
