@@ -69,7 +69,8 @@ LegionRuntime::Logger::Category log_model("Model");
 LegionRuntime::Logger::Category log_measure("measure");
 
 Op::Op(FFModel &model,
-       OperatorType op_type,
+       OperatorType otype,
+       DataType dtype,
        char const *name,
        int numInputs,
        int numWeights,
@@ -80,7 +81,8 @@ Op::Op(FFModel &model,
        const ParallelTensor input3,
        const ParallelTensor input4)
     : Op(model,
-         op_type,
+         otype,
+         dtype,
          name,
          numInputs,
          allocate_weights ? numWeights : 0,
@@ -91,7 +93,8 @@ Op::Op(FFModel &model,
          input4) {}
 
 Op::Op(FFModel &model,
-       OperatorType _op_type,
+       OperatorType _otype,
+       DataType _dtype,
        char const *_name,
        int _numInputs,
        int _numWeights,
@@ -100,8 +103,8 @@ Op::Op(FFModel &model,
        const ParallelTensor _input2,
        const ParallelTensor _input3,
        const ParallelTensor _input4)
-    : op_type(_op_type), op_guid(model.op_global_guid++), numInputs(_numInputs),
-      numWeights(_numWeights), numOutputs(_numOutputs),
+    : op_type(_otype), data_type(_dtype), op_guid(model.op_global_guid++),
+      numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
       profiling(model.config.profiling) {
   for (int i = 0; i < MAX_NUM_INPUTS; i++)
     inputs[i] = NULL;
@@ -136,14 +139,15 @@ Op::Op(FFModel &model,
 }
 
 Op::Op(FFModel &model,
-       OperatorType _op_type,
+       OperatorType _otype,
+       DataType _dtype,
        char const *_name,
        int _numInputs,
        int _numWeights,
        int _numOutputs,
        ParallelTensor const *_inputs)
-    : op_type(_op_type), op_guid(model.op_global_guid++), numInputs(_numInputs),
-      numWeights(_numWeights), numOutputs(_numOutputs),
+    : op_type(_otype), data_type(_dtype), op_guid(model.op_global_guid++),
+      numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
       profiling(model.config.profiling) {
   std::string pcname;
   if (_name == NULL) {
@@ -1075,6 +1079,21 @@ bool Op::get_weight_parameter(TNParameter tnp,
 OpMeta::OpMeta(FFHandler _handle) : handle(_handle), profiling(false) {
   for (int i = 0; i < MAX_NUM_INPUTS; i++)
     trainableInputs[i] = true;
+  for (int i = 0; i < MAX_NUM_INPUTS; i++)
+    input_type[i] = DT_NONE;
+  for (int i = 0; i < MAX_NUM_WEIGHTS; i++)
+    weight_type[i] = DT_NONE;
+  for (int i = 0; i < MAX_NUM_OUTPUTS; i++)
+    output_type[i] = DT_NONE;
+}
+
+OpMeta::OpMeta(FFHandler _handle, Op const *op) : OpMeta(_handle) {
+  for (int i = 0; i < op->numInputs; i++)
+    input_type[i] = op->inputs[i]->data_type;
+  for (int i = 0; i < op->numWeights; i++)
+    weight_type[i] = op->weights[i]->data_type;
+  for (int i = 0; i < op->numOutputs; i++)
+    output_type[i] = op->outputs[i]->data_type;
 }
 
 FFModel::FFModel(FFConfig &_config)
@@ -1276,6 +1295,7 @@ Tensor FFModel::create_tensor(int const dims[],
   if (owner_layer == NULL) {
     Layer *input_layer = new Layer(this,
                                    OP_INPUT,
+                                   data_type,
                                    "input",
                                    0 /*inputs*/,
                                    0 /*weight*/,
@@ -1353,6 +1373,7 @@ Parameter FFModel::create_weight(int numdim,
   if (owner_layer == NULL) {
     Layer *weight_layer = new Layer(this,
                                     OP_WEIGHT,
+                                    data_type,
                                     NULL,
                                     0 /*inputs*/,
                                     0 /*weights*/,
@@ -1501,6 +1522,9 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
   switch (tensor->data_type) {
+    case DT_HALF:
+      allocator.allocate_field(sizeof(half), FID_DATA);
+      break;
     case DT_FLOAT:
       allocator.allocate_field(sizeof(float), FID_DATA);
       break;

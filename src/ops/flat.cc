@@ -21,8 +21,14 @@ using Legion::TaskLauncher;
 
 Tensor FFModel::flat(const Tensor input, char const *name) {
   assert(input->num_dims == 4);
-  Layer *flat = new Layer(
-      this, OP_FLAT, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, input);
+  Layer *flat = new Layer(this,
+                          OP_FLAT,
+                          DT_FLOAT,
+                          name,
+                          1 /*inputs*/,
+                          0 /*weights*/,
+                          1 /*outputs*/,
+                          input);
   int dims[MAX_TENSOR_DIM];
   dims[1] = input->dims[3];
   dims[0] = input->dims[2] * input->dims[1] * input->dims[0];
@@ -105,6 +111,7 @@ void Flat::construct_output_mappings(
 Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
     : Op(model,
          OP_FLAT,
+         _input->data_type,
          name,
          1 /*inputs*/,
          0 /*weights*/,

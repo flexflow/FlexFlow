@@ -57,7 +57,10 @@ set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")
 set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
 
 # option for cuda arch
-set(FF_CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
+set(FF_CUDA_ARCH "autodetect" CACHE STRING "Target CUDA Arch")
+if (FF_CUDA_ARCH STREQUAL "")
+  message(FATAL_ERROR "FF_CUDA_ARCH cannot be an empty string. Set it to `autodetect`, `all`, or pass one or multiple valid CUDA archs.")
+endif()
 
 # option for nccl
 option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)
@@ -235,6 +238,8 @@ if (FF_GPU_BACKEND STREQUAL "cuda")
     LIST_DIRECTORIES False
     ${FLEXFLOW_ROOT}/src/*.cu)
 
+  add_compile_definitions(FF_USE_CUDA)
+
   if(BUILD_SHARED_LIBS)
     cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
   else()
@@ -268,6 +273,8 @@ elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
     target_include_directories(hip_device_nvidia SYSTEM INTERFACE ${HIP_INCLUDE_DIRS} ${ROCM_PATH}/include)
     target_include_directories(hip_device_nvidia INTERFACE ${HIP_INCLUDE_DIRS} ${ROCM_PATH}/include)
 
+    add_compile_definitions(FF_USE_HIP_CUDA)
+
     # Linking cuda: 
     # We do not explicitly link cuda. hipcc when targeting nvidia will 
     # use nvcc under the hood. nvcc when used for linking will handle 
@@ -278,6 +285,8 @@ elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
     find_package(miopen REQUIRED)
     # find_package(rocrand REQUIRED)
     find_library(HIP_RAND_LIBRARY hiprand REQUIRED)
+
+    add_compile_definitions(FF_USE_HIP_ROCM)
 
     # The hip cmake config module defines three targets, 
     # hip::amdhip64, hip::host, and hip::device.

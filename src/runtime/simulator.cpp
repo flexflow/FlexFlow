@@ -19,9 +19,10 @@
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/conv_2d.h"
-#include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
+#include "flexflow/ops/kernels/element_binary_kernels.h"
+#include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/transpose.h"
@@ -88,8 +89,8 @@ Simulator::Simulator(FFModel const *model,
   pool2d_meta = new Pool2DMeta(handler);
   ele_unary_meta = new ElementUnaryMeta(handler);
   ele_binary_meta = new ElementBinaryMeta(handler);
-  embedding_meta = new EmbeddingMeta(handler);
-  // softmax_meta = new SoftmaxMeta(handler);
+  // embedding_meta = new EmbeddingMeta(handler);
+  //  softmax_meta = new SoftmaxMeta(handler);
   batch_matmul_meta = new BatchMatmulMeta(handler);
   concat_meta = new ConcatMeta(handler);
   // dropout_meta = new DropoutMeta(handler);

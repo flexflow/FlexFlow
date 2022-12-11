@@ -82,17 +82,17 @@ py::array get_array(Tensor t, FFConfig &config) {
     printf("raw_ptr = %p\n", t->parallel_tensor->get_raw_ptr<float>(config));
     return py::array(
         py::dtype("f"),
-        {dims},                                         // shape
-        {},                                             // stride
-        t->parallel_tensor->get_raw_ptr<float>(config), // the data pointer
-        NULL);
+        {dims},                                        // shape
+        {},                                            // stride
+        t->parallel_tensor->get_raw_ptr<float>(config) // the data pointer
+    );
   } else if (t->data_type == DataType::DT_INT32) {
     return py::array(
         py::dtype("i"),
-        {dims},                                           // shape
-        {},                                               // stride
-        t->parallel_tensor->get_raw_ptr<int32_t>(config), // the data pointer
-        NULL);
+        {dims},                                          // shape
+        {},                                              // stride
+        t->parallel_tensor->get_raw_ptr<int32_t>(config) // the data pointer
+    );
   } else {
     assert(0);
   }
@@ -552,6 +552,7 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
            "num_embeddings"_a,
            "embedding_dim"_a,
            "aggr"_a,
+           "datatype"_a,
            "shared_op"_a = nullptr,
            "kernel_initializer"_a = nullptr,
            "name"_a = nullptr)
