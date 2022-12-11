@@ -26,9 +26,9 @@
 #include "flexflow/ops/fused.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
+#include "flexflow/ops/kernels/reshape_kernels.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/pool_2d.h"
-#include "flexflow/ops/kernels/reshape_kernels.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/utils/cuda_helper.h"
 

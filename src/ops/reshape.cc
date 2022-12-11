@@ -223,29 +223,25 @@ void Reshape::forward_task(Task const *task,
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     float *out_ptr = helperGetTensorPointerWO<float>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    forward_kernel_wrapper<float>(
-        in_ptr, out_ptr, in_domain.get_volume());
+    forward_kernel_wrapper<float>(in_ptr, out_ptr, in_domain.get_volume());
   } else if (m->data_type == DT_DOUBLE) {
     double const *in_ptr = helperGetTensorPointerRO<double>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     double *out_ptr = helperGetTensorPointerWO<double>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    forward_kernel_wrapper<double>(
-        in_ptr, out_ptr, in_domain.get_volume());
+    forward_kernel_wrapper<double>(in_ptr, out_ptr, in_domain.get_volume());
   } else if (m->data_type == DT_INT32) {
     int32_t const *in_ptr = helperGetTensorPointerRO<int32_t>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int32_t *out_ptr = helperGetTensorPointerWO<int32_t>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    forward_kernel_wrapper<int32_t>(
-        in_ptr, out_ptr, in_domain.get_volume());
+    forward_kernel_wrapper<int32_t>(in_ptr, out_ptr, in_domain.get_volume());
   } else if (m->data_type == DT_INT64) {
     int64_t const *in_ptr = helperGetTensorPointerRO<int64_t>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int64_t *out_ptr = helperGetTensorPointerWO<int64_t>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    forward_kernel_wrapper<int64_t>(
-        in_ptr, out_ptr, in_domain.get_volume());
+    forward_kernel_wrapper<int64_t>(in_ptr, out_ptr, in_domain.get_volume());
   } else {
     assert(false && "Unsupported data type in Reshape forward");
   }

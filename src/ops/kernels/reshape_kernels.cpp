@@ -27,8 +27,8 @@ namespace Reshape {
 /*static*/
 template <typename T>
 void forward_kernel_wrapper(const T *input_ptr,
-                                     T *output_ptr,
-                                     size_t num_elements) {
+                            T *output_ptr,
+                            size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Internal::forward_kernel<T>(input_ptr, output_ptr, num_elements, stream);
@@ -37,8 +37,8 @@ void forward_kernel_wrapper(const T *input_ptr,
 /*static*/
 template <typename T>
 void backward_kernel_wrapper(T *input_grad_ptr,
-                                      const T *output_grad_ptr,
-                                      size_t num_elements) {
+                             const T *output_grad_ptr,
+                             size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Internal::backward_kernel<T>(
@@ -46,35 +46,38 @@ void backward_kernel_wrapper(T *input_grad_ptr,
 }
 
 template void forward_kernel_wrapper<float>(float const *input_ptr,
-                                                     float *output_ptr,
-                                                     size_t volume);
+                                            float *output_ptr,
+                                            size_t volume);
 template void forward_kernel_wrapper<double>(double const *input_ptr,
-                                                      double *output_ptr,
-                                                      size_t volume);
+                                             double *output_ptr,
+                                             size_t volume);
 template void forward_kernel_wrapper<int32_t>(int32_t const *input_ptr,
-                                                       int32_t *output_ptr,
-                                                       size_t volume);
+                                              int32_t *output_ptr,
+                                              size_t volume);
 template void forward_kernel_wrapper<int64_t>(int64_t const *input_ptr,
-                                                       int64_t *output_ptr,
-                                                       size_t volume);
+                                              int64_t *output_ptr,
+                                              size_t volume);
 
 template void backward_kernel_wrapper<float>(float *in_grad_ptr,
-                                                      float const *out_grad_ptr,
-                                                      size_t volume);
-template void backward_kernel_wrapper<double>(
-    double *in_grad_ptr, double const *out_grad_ptr, size_t volume);
-template void backward_kernel_wrapper<int32_t>(
-    int32_t *in_grad_ptr, int32_t const *out_grad_ptr, size_t volume);
-template void backward_kernel_wrapper<int64_t>(
-    int64_t *in_grad_ptr, int64_t const *out_grad_ptr, size_t volume);
+                                             float const *out_grad_ptr,
+                                             size_t volume);
+template void backward_kernel_wrapper<double>(double *in_grad_ptr,
+                                              double const *out_grad_ptr,
+                                              size_t volume);
+template void backward_kernel_wrapper<int32_t>(int32_t *in_grad_ptr,
+                                               int32_t const *out_grad_ptr,
+                                               size_t volume);
+template void backward_kernel_wrapper<int64_t>(int64_t *in_grad_ptr,
+                                               int64_t const *out_grad_ptr,
+                                               size_t volume);
 
 namespace Internal {
 /*static*/
 template <typename T>
 void forward_kernel(const T *input_ptr,
-                             T *output_ptr,
-                             size_t num_elements,
-                             hipStream_t stream) {
+                    T *output_ptr,
+                    size_t num_elements,
+                    hipStream_t stream) {
   checkCUDA(hipMemcpyAsync(output_ptr,
                            input_ptr,
                            num_elements * sizeof(T),
@@ -82,13 +85,12 @@ void forward_kernel(const T *input_ptr,
                            stream));
 }
 
-
 /*static*/
 template <typename T>
 void backward_kernel(T *input_grad_ptr,
-                              const T *output_grad_ptr,
-                              size_t num_elements,
-                              hipStream_t stream) {
+                     const T *output_grad_ptr,
+                     size_t num_elements,
+                     hipStream_t stream) {
   float alpha = 1.0f;
   hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_add_with_scale<T>),
                      GET_BLOCKS(num_elements),
@@ -102,39 +104,38 @@ void backward_kernel(T *input_grad_ptr,
 }
 
 template void forward_kernel<float>(float const *input_ptr,
-                                             float *output_ptr,
-                                             size_t num_elements,
-                                             hipStream_t stream);
+                                    float *output_ptr,
+                                    size_t num_elements,
+                                    hipStream_t stream);
 template void forward_kernel<double>(double const *input_ptr,
-                                              double *output_ptr,
-                                              size_t num_elements,
-                                              hipStream_t stream);
+                                     double *output_ptr,
+                                     size_t num_elements,
+                                     hipStream_t stream);
 template void forward_kernel<int32_t>(int32_t const *input_ptr,
-                                               int32_t *output_ptr,
-                                               size_t num_elements,
-                                               hipStream_t stream);
+                                      int32_t *output_ptr,
+                                      size_t num_elements,
+                                      hipStream_t stream);
 template void forward_kernel<int64_t>(int64_t const *input_ptr,
-                                               int64_t *output_ptr,
-                                               size_t num_elements,
-                                               hipStream_t stream);
-
+                                      int64_t *output_ptr,
+                                      size_t num_elements,
+                                      hipStream_t stream);
 
 template void backward_kernel<float>(float *input_grad_ptr,
-                                              float const *output_grad_ptr,
-                                              size_t num_elements,
-                                              hipStream_t stream);
+                                     float const *output_grad_ptr,
+                                     size_t num_elements,
+                                     hipStream_t stream);
 template void backward_kernel<double>(double *input_grad_ptr,
-                                               double const *output_grad_ptr,
-                                               size_t num_elements,
-                                               hipStream_t stream);
+                                      double const *output_grad_ptr,
+                                      size_t num_elements,
+                                      hipStream_t stream);
 template void backward_kernel<int32_t>(int32_t *input_grad_ptr,
-                                                int32_t const *output_grad_ptr,
-                                                size_t num_elements,
-                                                hipStream_t stream);
+                                       int32_t const *output_grad_ptr,
+                                       size_t num_elements,
+                                       hipStream_t stream);
 template void backward_kernel<int64_t>(int64_t *input_grad_ptr,
-                                                int64_t const *output_grad_ptr,
-                                                size_t num_elements,
-                                                hipStream_t stream);
+                                       int64_t const *output_grad_ptr,
+                                       size_t num_elements,
+                                       hipStream_t stream);
 
 } // namespace Internal
 } // namespace Reshape

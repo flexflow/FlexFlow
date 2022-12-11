@@ -15,7 +15,7 @@ public:
 
 namespace Kernels {
 namespace Reshape {
-  
+
 template <typename T>
 static void forward_kernel_wrapper(const T *input_ptr,
                                    T *output_ptr,

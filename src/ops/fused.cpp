@@ -24,9 +24,9 @@
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
+#include "flexflow/ops/kernels/reshape_kernels.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/pool_2d.h"
-#include "flexflow/ops/kernels/reshape_kernels.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
@@ -721,9 +721,9 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(my_input_grad_accessor[0].domain.get_volume() ==
                my_output_grad_accessor[0].domain.get_volume());
         Kernels::Reshape::backward_kernel_wrapper(
-          my_input_grad_accessor[0].get_float_ptr(),
-          my_output_grad_accessor[0].get_float_ptr(),
-          my_input_grad_accessor[0].domain.get_volume());
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].domain.get_volume());
         break;
       }
       case OP_TRANSPOSE: {

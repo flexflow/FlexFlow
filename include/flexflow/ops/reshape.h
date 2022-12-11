@@ -11,12 +11,6 @@
 
 namespace FlexFlow {
 
-class ReshapeMeta : public OpMeta {
-public:
-  ReshapeMeta(FFHandler handler);
-  DataType data_type;
-};
-
 class Reshape : public Op {
 public:
   using Params = ReshapeParams;
@@ -52,7 +46,7 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  
+
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
