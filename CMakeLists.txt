@@ -55,7 +55,6 @@ set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
 
 # option for cuda arch
 set(FF_CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
-option(FF_AUTODETECT_CUDA_ARCH "Autodetect CUDA Arch if left unspecified" ON)
 
 # option for nccl
 option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)

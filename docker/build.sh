@@ -1,9 +1,7 @@
 #! /usr/bin/env bash
 set -euo pipefail
 
-# Usage: ./build.sh [-b] <docker_image_name>
-# Pass the -b flag to build the flexflow-environment image from scratch 
-# (as opposed to downloading the latest version) from ghrc.io
+# Usage: ./build.sh <docker_image_name>
 
 # https://stackoverflow.com/questions/59895/how-do-i-get-the-directory-where-a-bash-script-is-located-from-within-the-script
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
@@ -41,9 +39,10 @@ fi
 cores_available=$(nproc --all)
 n_build_cores=$(( cores_available -1 ))
 
-if [[ "${FF_AUTODETECT_CUDA_ARCH:-ON}" == "OFF" ]]; then
-  echo "FF_AUTODETECT_CUDA_ARCH is turned off. Building for all compatible architectures."
-else
+# If FF_CUDA_ARCH is set to autodetect, we need to perform the autodetection here because the Docker
+# image will not have access to GPUs during the build phase (due to a Docker restriction). In all other
+# cases, we pass the value of FF_CUDA_ARCH directly to Cmake.
+if [[ "${FF_CUDA_ARCH:-autodetect}" == "autodetect" ]]; then
   # Get CUDA architecture(s), if GPUs are available
   cat << EOF > ./get_gpu_arch.cu
 #include <stdio.h>
@@ -73,12 +72,11 @@ EOF
   echo "Host machine has GPUs with architecture codes: $gpu_arch_codes"
   echo "Configuring FlexFlow to build for the $gpu_arch_codes code(s)."
   FF_CUDA_ARCH="${gpu_arch_codes}"
-  else
-    echo "Could not detect any GPU on the host machine."
-    echo "Letting FlexFlow build for a default GPU architecture: code=70"
-    FF_CUDA_ARCH=70
-  fi
   export FF_CUDA_ARCH
+  else
+    echo "FF_CUDA_ARCH is set to 'autodetect', but the host machine does not have any compatible GPUs."
+    exit 1
+  fi
 fi
 
 # Build FlexFlow Docker image

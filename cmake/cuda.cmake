@@ -22,7 +22,7 @@ if(CUDA_FOUND)
 
   # set CUDA ARCH
   # if CUDA_ARCH is not specified, then detect it
-  if(FF_AUTODETECT_CUDA_ARCH AND "${FF_CUDA_ARCH}" STREQUAL "")
+  if("${FF_CUDA_ARCH}" STREQUAL "")
     include(utils)
     detect_installed_gpus(DETECTED_CUDA_ARCH)
     message( STATUS "CUDA Detected CUDA_ARCH : ${DETECTED_CUDA_ARCH}" )
