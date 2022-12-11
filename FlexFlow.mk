@@ -131,7 +131,7 @@ endif
 endif
 
 # CUDA arch variables
-GPU_ARCH ?= auto
+GPU_ARCH ?= all
 
 # translate legacy arch names into numbers
 ifeq ($(strip $(GPU_ARCH)),pascal)
@@ -151,9 +151,9 @@ override GPU_ARCH = 80
 NVCC_FLAGS	+= -DAMPERE_ARCH
 endif
 
-ifeq ($(strip $(GPU_ARCH)),auto)
+ifeq ($(strip $(GPU_ARCH)),all)
   # detect based on what nvcc supports
-  ALL_ARCHES = 60 61 62 70 72 75 80
+  ALL_ARCHES = 60 61 62 70 72 75 80 86
   override GPU_ARCH = $(shell for X in $(ALL_ARCHES) ; do \
     $(NVCC) -gencode arch=compute_$$X,code=sm_$$X -cuda -x c++ /dev/null -o /dev/null 2> /dev/null && echo $$X; \
   done)
