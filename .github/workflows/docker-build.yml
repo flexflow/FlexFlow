@@ -38,7 +38,7 @@ jobs:
 
       - name: Build Docker container
         env:
-          FF_GPU_BACKEND=${{ matrix.gpu_backend }}
+          FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
         run: |
           # On push to master, build for all compatible architectures, so that we can publish 
           # a pre-built general-purpose image. On all other cases, only build for one architecture
