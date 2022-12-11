@@ -811,7 +811,7 @@ __host__ void FusedOp::backward_task(Task const *task,
           assert(fused->op_num_weights[op] == 1);
         }
         LinearMeta *m = (LinearMeta *)metas->meta[op];
-        Linear::backward_kernel_wrapper(
+        Kernels::Linear::backward_kernel_wrapper(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr(),

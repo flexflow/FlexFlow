@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/conv_2d.h"
+#include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
