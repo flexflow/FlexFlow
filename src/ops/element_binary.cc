@@ -1,5 +1,6 @@
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/element_binary_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
@@ -20,6 +21,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::ElementBinary;
 
 bool broadcastable(const Tensor t1, const Tensor t2) {
   int dim = std::min(t1->num_dims, t2->num_dims);
@@ -346,7 +349,7 @@ OpMeta *ElementBinary::init_task(Task const *task,
   }
   assert(task->regions.size() == regions.size());
   assert(regions.size() == num_regions);
-  ElementBinary::init_kernel(m, input1_domain, input2_domain, output_domain);
+  init_kernel(m, input1_domain, input2_domain, output_domain);
   return m;
 }
 
@@ -482,7 +485,7 @@ __host__ void
     }
   }
 
-  ElementBinary::forward_kernel_wrapper(m, in1_ptr, in2_ptr, out_ptr);
+  forward_kernel_wrapper(m, in1_ptr, in2_ptr, out_ptr);
 }
 
 void ElementBinary::backward(FFModel const &ff) {
@@ -667,7 +670,7 @@ void ElementBinary::backward_task(Task const *task,
     assert(task->regions.size() == regions.size());
   }
 
-  ElementBinary::backward_kernel_wrapper(
+  backward_kernel_wrapper(
       m, out_grad_ptr, in0_ptr, in1_ptr, in0_grad_ptr, in1_grad_ptr);
 }
 
