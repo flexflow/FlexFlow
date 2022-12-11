@@ -1,6 +1,7 @@
 #include "flexflow/ops/linear.h"
 #include "flexflow/layer.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
@@ -22,6 +23,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::Linear;
 
 static constexpr int KERNEL_IDX = 0;
 static constexpr int BIAS_IDX = 1;
@@ -316,7 +319,7 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
   m->output_type = linear->outputs[0]->data_type;
   std::strcpy(m->op_name, linear->name);
 
-  Linear::init_kernel(m, batch_size, out_dim);
+  init_kernel(m, batch_size, out_dim);
 
   return m;
 }
@@ -466,14 +469,14 @@ void Linear::forward_task_with_dim(Task const *task,
     acc_bias_ptr = acc_bias.ptr;
   }
 
-  Linear::forward_kernel_wrapper(m,
-                                 acc_input.ptr,
-                                 acc_output.ptr,
-                                 acc_kernel.ptr,
-                                 acc_bias_ptr,
-                                 in_dim,
-                                 out_dim,
-                                 batch_size);
+  forward_kernel_wrapper(m,
+                         acc_input.ptr,
+                         acc_output.ptr,
+                         acc_kernel.ptr,
+                         acc_bias_ptr,
+                         in_dim,
+                         out_dim,
+                         batch_size);
 }
 
 void Linear::backward(FFModel const &ff) {
@@ -658,17 +661,17 @@ void Linear::backward_task_with_dim(Task const *task,
   }
   assert(rid == regions.size());
 
-  Linear::backward_kernel_wrapper(m,
-                                  acc_input.ptr,
-                                  input_grad,
-                                  acc_output.ptr,
-                                  acc_output_grad.ptr,
-                                  acc_kernel.ptr,
-                                  acc_kernel_grad.ptr,
-                                  acc_bias_grad_ptr,
-                                  in_dim,
-                                  out_dim,
-                                  batch_size);
+  backward_kernel_wrapper(m,
+                          acc_input.ptr,
+                          input_grad,
+                          acc_output.ptr,
+                          acc_output_grad.ptr,
+                          acc_kernel.ptr,
+                          acc_kernel_grad.ptr,
+                          acc_bias_grad_ptr,
+                          in_dim,
+                          out_dim,
+                          batch_size);
 }
 
 void Linear::print_layer(FFModel const &ff) {
@@ -802,21 +805,6 @@ bool Linear::is_valid_parallel_config(FFModel const &ff,
   return true;
 }
 
-bool Linear::use_activation(ActiMode mode) {
-  switch (mode) {
-    case AC_MODE_RELU:
-    case AC_MODE_SIGMOID:
-    case AC_MODE_TANH:
-      return true;
-    case AC_MODE_NONE:
-      return false;
-    default:
-      assert(0);
-      break;
-  }
-  return false;
-}
-
 bool Linear::measure_operator_cost(Simulator *sim,
                                    MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
@@ -836,7 +824,7 @@ bool Linear::measure_operator_cost(Simulator *sim,
   m->output_type = outputs[0]->data_type;
   assert(m->profiling == false);
 
-  Linear::init_kernel(m, output_n, output_c);
+  init_kernel(m, output_n, output_c);
 
   // allocate tensors in simulator
   sim->free_all();
