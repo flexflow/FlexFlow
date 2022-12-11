@@ -20,28 +20,6 @@ if(CUDA_FOUND)
     ${CUDA_CUBLAS_LIBRARIES}
     ${CUDA_curand_LIBRARY})
 
-  # set CUDA ARCH
-  # if CUDA_ARCH is not specified, then detect it
-  if("${FF_CUDA_ARCH}" STREQUAL "")
-    include(utils)
-    detect_installed_gpus(DETECTED_CUDA_ARCH)
-    message( STATUS "CUDA Detected CUDA_ARCH : ${DETECTED_CUDA_ARCH}" )
-    set(FF_CUDA_ARCH ${DETECTED_CUDA_ARCH})
-  endif()
-
-  # set CUDA_ARCH 
-  if("${FF_CUDA_ARCH}" STREQUAL "")
-    set(CUDA_GENCODE "")
-  else()
-    string(REPLACE "," ";" CUDA_GENCODE "${FF_CUDA_ARCH}")
-    foreach(CODE ${CUDA_GENCODE})
-	    if(CODE LESS 60)
-        message( FATAL_ERROR "CUDA architecture <60 not supported")
-      endif()
-    endforeach()
-    string(REGEX REPLACE "([0-9]+)" "-gencode arch=compute_\\1,code=sm_\\1" CUDA_GENCODE "${CUDA_GENCODE}")
-  endif()
-
   # Snippet below from legion/cmake/newcmake/FindCUDA.cmake
   find_program(CUDA_NVCC_EXECUTABLE
     NAMES nvcc
@@ -66,6 +44,26 @@ if(CUDA_FOUND)
     string(REGEX REPLACE "([0-9]+)\\.([0-9]+).*" "\\1" CUDA_VERSION_MAJOR "${CUDA_VERSION}")
     string(REGEX REPLACE "([0-9]+)\\.([0-9]+).*" "\\2" CUDA_VERSION_MINOR "${CUDA_VERSION}")
   endif()
+
+  # autodetect FF_CUDA_ARCH
+  if("${FF_CUDA_ARCH}" STREQUAL "autodetect")
+    include(utils)
+    detect_installed_gpus(DETECTED_CUDA_ARCH)
+    message( STATUS "CUDA Detected CUDA_ARCH : ${DETECTED_CUDA_ARCH}" )
+    set(FF_CUDA_ARCH ${DETECTED_CUDA_ARCH})
+  # set FF_CUDA_ARCH to all compatible architectures
+  elseif("${FF_CUDA_ARCH}" STREQUAL "all") 
+    set(FF_CUDA_ARCH 60,61,62,70,72,75,80,86)
+  endif()
+  
+  # create CUDA_GENCODE list based on FF_CUDA_ARCH
+  string(REPLACE "," ";" CUDA_GENCODE "${FF_CUDA_ARCH}")
+  foreach(CODE ${CUDA_GENCODE})
+    if(CODE LESS 60)
+      message( FATAL_ERROR "CUDA architecture <60 not supported")
+    endif()
+  endforeach()
+  string(REGEX REPLACE "([0-9]+)" "-gencode arch=compute_\\1,code=sm_\\1" CUDA_GENCODE "${CUDA_GENCODE}")
 
   #output
   message( STATUS "CUDA_VERSION: ${CUDA_VERSION}")

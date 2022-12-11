@@ -17,7 +17,7 @@
 BUILD_TYPE=Release
 
 # set CUDA Arch with your GPU architecture
-FF_CUDA_ARCH=${FF_CUDA_ARCH:-""}
+FF_CUDA_ARCH=${FF_CUDA_ARCH:-"autodetect"}
 
 # set CUDNN dir in case cmake cannot autodetect a path
 CUDNN_DIR=${CUDNN_DIR:-"/usr/local/cuda"}
