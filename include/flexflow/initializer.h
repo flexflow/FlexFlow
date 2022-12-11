@@ -41,6 +41,7 @@ public:
                         Legion::Runtime *runtime);
   int seed;
   float scale;
+  DataType data_type;
 };
 
 class Op;
@@ -77,6 +78,7 @@ public:
                         Legion::Runtime *runtime);
   int seed;
   float min_val, max_val;
+  DataType data_type;
 };
 
 class NormInitializer : public Initializer {
@@ -90,6 +92,7 @@ public:
                         Legion::Runtime *runtime);
   int seed;
   float mean, stddev;
+  DataType data_type;
 };
 
 class ConstantInitializer : public Initializer {

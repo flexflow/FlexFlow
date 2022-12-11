@@ -16,8 +16,11 @@
 # set build type
 BUILD_TYPE=Release
 
-# set CUDA Arch with your GPU architecture
-FF_CUDA_ARCH=${FF_CUDA_ARCH:-""}
+# set CUDA Arch to the desired GPU architecture(s) to target (e.g. pass "FF_CUDA_ARCH=60" for Pascal). 
+# To pass more than one value, separate architecture numbers with a comma (e.g. FF_CUDA_ARCH=70,75).
+# Alternatively, set "FF_CUDA_ARCH=autodetect" to build FlexFlow for all architectures detected on the machine,
+# or set "FF_CUDA_ARCH=all" to build FlexFlow for all supported GPU architectures
+FF_CUDA_ARCH=${FF_CUDA_ARCH:-"autodetect"}
 
 # set CUDNN dir in case cmake cannot autodetect a path
 CUDNN_DIR=${CUDNN_DIR:-"/usr/local/cuda"}
@@ -58,8 +61,10 @@ ROCM_PATH=${ROCM_PATH:-"/opt/rocm"}
 
 # set GPU backend
 FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
-
-if [ "$FF_GPU_BACKEND" = "cuda" ] || [ "$FF_GPU_BACKEND" = "hip_cuda" ]; then
+if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
+  echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid."
+  exit 1
+elif [[ "$FF_GPU_BACKEND" == "cuda" || "$FF_GPU_BACKEND" = "hip_cuda" ]]; then
     # enable NCCL
     FF_USE_NCCL=${FF_USE_NCCL:-ON}
 else

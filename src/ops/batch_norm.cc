@@ -34,6 +34,7 @@ Tensor FFModel::batch_norm(const Tensor input, bool relu, char const *name) {
   assert(input->num_dims == 4); /*NCHW*/
   Layer *bm = new Layer(this,
                         OP_BATCHNORM,
+                        DT_FLOAT,
                         name,
                         1 /*inputs*/,
                         2 /*weights*/,
@@ -59,6 +60,7 @@ BatchNorm::BatchNorm(FFModel &model,
                      char const *name)
     : Op(model,
          OP_BATCHNORM,
+         DT_FLOAT,
          name,
          1 /*inputs*/,
          2 /*weights*/,

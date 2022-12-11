@@ -720,8 +720,10 @@ class Tensor(object):
     elif (dtype == 42):
       self.data_type = DataType.DT_INT64
     elif (dtype == 43):
-      self.data_type = DataType.DT_FLOAT
+      self.data_type = DataType.DT_HALF
     elif (dtype == 44):
+      self.data_type = DataType.DT_FLOAT
+    elif (dtype == 45):
       self.data_type = DataType.DT_DOUBLE
     else:
       assert 0, "unknown data type {}".format(dtype)

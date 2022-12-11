@@ -71,12 +71,14 @@ Tensor create_emb(FFModel *model,
                   int idx) {
   float range = sqrt(1.0f / input_dim);
   Initializer *embed_init = new UniformInitializer(std::rand(), -range, range);
-  return model->embedding(input,
-                          input_dim,
-                          output_dim,
-                          AGGR_MODE_SUM,
-                          NULL /*weight_sharing*/,
-                          embed_init);
+  Tensor t = model->embedding(input,
+                              input_dim,
+                              output_dim,
+                              AGGR_MODE_SUM,
+                              DT_HALF /*dtype*/,
+                              NULL /*weight_sharing*/,
+                              embed_init);
+  return model->cast(t, DT_FLOAT);
 }
 
 Tensor interact_features(FFModel *model,
@@ -181,7 +183,7 @@ void FlexFlow::top_level_task(Task const *task,
     ff.forward();
     ff.zero_gradients();
     ff.backward();
-    ff.update();
+    // ff.update();
   }
 
   // Start timer
@@ -212,9 +214,9 @@ void FlexFlow::top_level_task(Task const *task,
       if (epoch > 0)
         runtime->begin_trace(ctx, 111 /*trace_id*/);
       ff.forward();
-      // ff.zero_gradients();
+      ff.zero_gradients();
       ff.backward();
-      ff.update();
+      // ff.update();
       if (epoch > 0)
         runtime->end_trace(ctx, 111 /*trace_id*/);
     }

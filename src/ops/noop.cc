@@ -42,7 +42,13 @@ NoOp::NoOp(FFModel &model,
            OperatorType _type,
            const ParallelTensor _output,
            char const *_name)
-    : Op(model, _type, _name, 0 /*inputs*/, 0 /*weights*/, 1 /*outputs*/),
+    : Op(model,
+         _type,
+         DT_NONE,
+         _name,
+         0 /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/),
       input_tensor_guid(0) {
   // NOOP takes one input and has one output
   // both of them are _output
@@ -60,7 +66,13 @@ NoOp::NoOp(FFModel &model,
            size_t _input_tensor_guid,
            const ParallelTensor _output,
            char const *_name)
-    : Op(model, _type, _name, 0 /*inputs*/, 0 /*weights*/, 1 /*outputs*/),
+    : Op(model,
+         _type,
+         DT_NONE,
+         _name,
+         0 /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/),
       input_tensor_guid(_input_tensor_guid) {
   // NOOP takes one input and has one output
   // both of them are _output
