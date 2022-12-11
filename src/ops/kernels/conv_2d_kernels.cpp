@@ -243,12 +243,12 @@ void backward_kernel_wrapper(Conv2DMeta const *m,
 
 namespace Internal {
 
-void Conv2D::forward_kernel(Conv2DMeta const *m,
-                            float const *input_ptr,
-                            float *output_ptr,
-                            float const *filter_ptr,
-                            float const *bias_ptr,
-                            hipStream_t stream) {
+void forward_kernel(Conv2DMeta const *m,
+                    float const *input_ptr,
+                    float *output_ptr,
+                    float const *filter_ptr,
+                    float const *bias_ptr,
+                    hipStream_t stream) {
 
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -289,15 +289,15 @@ void Conv2D::forward_kernel(Conv2DMeta const *m,
   }
 }
 
-void Conv2D::backward_kernel(Conv2DMeta const *m,
-                             float const *input_ptr,
-                             float *input_grad_ptr,
-                             float const *output_ptr,
-                             float *output_grad_ptr,
-                             float const *kernel_ptr,
-                             float *kernel_grad_ptr,
-                             float *bias_grad_ptr,
-                             hipStream_t stream) {
+void backward_kernel(Conv2DMeta const *m,
+                     float const *input_ptr,
+                     float *input_grad_ptr,
+                     float const *output_ptr,
+                     float *output_grad_ptr,
+                     float const *kernel_ptr,
+                     float *kernel_grad_ptr,
+                     float *bias_grad_ptr,
+                     hipStream_t stream) {
 
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
