@@ -29,7 +29,7 @@ If you are planning to build the Python interface, you will need to install seve
 **We recommend that you create your own `conda` environment and then install the Python dependencies, to avoid any version mismatching with your system pre-installed libraries.** 
 
 ## 4. Configuring the FlexFlow build
-Before building FlexFlow, you should configure the build by editing the `config/config.linux` file. Leave it unchanged if you want to build with the default options. We recommend that you spend some time familiarizing with the available options. In particular, the main parameters are:
+You can configure a FlexFlow build by running the `config/config.linux` file in the build folder. If you do not want to build with the default options, you can set your configurations by passing (or exporting) the relevant environment variables. We recommend that you spend some time familiarizing with the available options by scanning the `config/config.linux` file. In particular, the main parameters are:
 * `CUDA_DIR` is used to specify the directory of CUDA. It is only required when CMake can not automatically detect the installation directory of CUDA.
 * `CUDNN_DIR` is used to specify the directory of CUDNN. It is only required when CUDNN is not installed in the CUDA directory.
 * `FF_CUDA_ARCH` is used to set the architecture of targeted GPUs, for example, the value can be 60 if the GPU architecture is Pascal. If it is not sepecified, FlexFlow is compiled for all architectures that are detecte on the machine. **If your machine does not have any GPU, you have to set FF_CUDA_ARCH to at least one valid architecture code**, since the compiler won't be able to detect the architecture(s) automatically. 
