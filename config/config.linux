@@ -16,7 +16,10 @@
 # set build type
 BUILD_TYPE=Release
 
-# set CUDA Arch with your GPU architecture
+# set CUDA Arch to the desired GPU architecture(s) to target (e.g. pass "FF_CUDA_ARCH=60" for Pascal). 
+# To pass more than one value, separate architecture numbers with a comma (e.g. FF_CUDA_ARCH=70,75).
+# Alternatively, set "FF_CUDA_ARCH=autodetect" to build FlexFlow for all architectures detected on the machine,
+# or set "FF_CUDA_ARCH=all" to build FlexFlow for all supported GPU architectures
 FF_CUDA_ARCH=${FF_CUDA_ARCH:-"autodetect"}
 
 # set CUDNN dir in case cmake cannot autodetect a path

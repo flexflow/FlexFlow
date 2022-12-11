@@ -21,6 +21,7 @@ if(CUDA_FOUND)
     ${CUDA_curand_LIBRARY})
 
   # Snippet below from legion/cmake/newcmake/FindCUDA.cmake
+  # Find the `nvcc` executable
   find_program(CUDA_NVCC_EXECUTABLE
     NAMES nvcc
     PATHS "${CUDA_TOOLKIT_ROOT_DIR}"
@@ -32,8 +33,8 @@ if(CUDA_FOUND)
   # Search default search paths, after we search our own set of paths.
   find_program(CUDA_NVCC_EXECUTABLE nvcc)
   mark_as_advanced(CUDA_NVCC_EXECUTABLE)
+  # Compute the CUDA version.
   if(CUDA_NVCC_EXECUTABLE AND NOT CUDA_VERSION)
-    # Compute the version.
     execute_process (COMMAND ${CUDA_NVCC_EXECUTABLE} "--version" OUTPUT_VARIABLE NVCC_OUT)
     string(REGEX REPLACE ".*release ([0-9]+)\\.([0-9]+).*" "\\1" CUDA_VERSION_MAJOR ${NVCC_OUT})
     string(REGEX REPLACE ".*release ([0-9]+)\\.([0-9]+).*" "\\2" CUDA_VERSION_MINOR ${NVCC_OUT})
@@ -45,13 +46,13 @@ if(CUDA_FOUND)
     string(REGEX REPLACE "([0-9]+)\\.([0-9]+).*" "\\2" CUDA_VERSION_MINOR "${CUDA_VERSION}")
   endif()
 
-  # autodetect FF_CUDA_ARCH
+  # Set FF_CUDA_ARCH to the list of GPU architectures found on the machine.
   if("${FF_CUDA_ARCH}" STREQUAL "autodetect")
     include(utils)
     detect_installed_gpus(DETECTED_CUDA_ARCH)
     message( STATUS "CUDA Detected CUDA_ARCH : ${DETECTED_CUDA_ARCH}" )
     set(FF_CUDA_ARCH ${DETECTED_CUDA_ARCH})
-  # set FF_CUDA_ARCH to all compatible architectures
+  # Set FF_CUDA_ARCH to the list of all GPU architectures compatible with FlexFlow
   elseif("${FF_CUDA_ARCH}" STREQUAL "all") 
     set(FF_CUDA_ARCH 60,61,62,70,72,75,80,86)
   endif()
