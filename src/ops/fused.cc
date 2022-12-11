@@ -22,7 +22,6 @@
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/flat.h"
-#include "flexflow/ops/linear.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/transpose.h"

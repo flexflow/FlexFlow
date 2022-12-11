@@ -19,12 +19,13 @@
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/dropout.h"
-#include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
+#include "flexflow/ops/kernels/element_binary_kernels.h"
+#include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reshape.h"
@@ -39,8 +40,6 @@ using Legion::Domain;
 using Legion::LogicalPartition;
 using Legion::LogicalRegion;
 using Legion::PhysicalRegion;
-using Legion::PointInRectIterator;
-using Legion::Rect;
 using Legion::Runtime;
 using Legion::Task;
 
@@ -238,14 +237,15 @@ __host__ void FusedOp::forward_task(Task const *task,
           assert(fused->op_num_weights[op] == 1);
         }
         LinearMeta *m = (LinearMeta *)metas->meta[op];
-        Linear::forward_kernel_wrapper(m,
-                                       my_input_accessor[0].get_float_ptr(),
-                                       my_output_accessor[0].get_float_ptr(),
-                                       my_weight_accessor[0].get_float_ptr(),
-                                       bias_ptr,
-                                       in_dim,
-                                       out_dim,
-                                       batch_size);
+        Kernels::Linear::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            bias_ptr,
+            in_dim,
+            out_dim,
+            batch_size);
         break;
       }
       case OP_BATCHMATMUL: {
@@ -296,7 +296,7 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
-        ElementBinary::forward_kernel_wrapper(
+        Kernels::ElementBinary::forward_kernel_wrapper(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_input_accessor[1].get_float_ptr(),
@@ -750,7 +750,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
-        ElementBinary::backward_kernel_wrapper(
+        Kernels::ElementBinary::backward_kernel_wrapper(
             m,
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_accessor[0].get_float_ptr(),
