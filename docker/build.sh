@@ -9,7 +9,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 cd "$SCRIPT_DIR/.."
 
 # Get name of desired Docker image as input
-image=${1:-flexflow}
+image="${1:-flexflow}"
 if [[ "${image}" != @(flexflow-environment|flexflow) ]]; then
   echo "Error, image name ${image} is invalid. Choose between 'flexflow-environment' and 'flexflow'."
   exit 1
