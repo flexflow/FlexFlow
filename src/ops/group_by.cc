@@ -147,15 +147,22 @@ Group_by::Group_by(FFModel &model,
 
   int k = _assign->dims[0].size;
 
+  // ensure that batch size is not partitioned
+  assert(inputs[0]->dims[1].degree == 1 && "Batch size should not be partitioned for now");
+
   ParallelDim dims[MAX_TENSOR_DIM];
-  dims[0].size = inputs[0]->dims[0].size;
-  dims[0].degree = 1;
-  dims[0].parallel_idx = -1;
-  dims[0].is_replica_dim = false;
+  //dims[0].size = inputs[0]->dims[0].size;
+  //dims[0].degree = inputs[0]->dims[0].degree;
+  //dims[0].parallel_idx = inputs[0]->dims[0].parallel_idx;
+  //dims[0].is_replica_dim = false;
+  dims[0] = inputs[0]->dims[0];
   dims[1].size = (int)ceil(alpha * k / n * inputs[0]->dims[1].size);
-  dims[1].degree = 1;
-  dims[1].parallel_idx = -1;
-  dims[1].is_replica_dim = false;
+  //dims[1].degree = 1;
+  //dims[1].parallel_idx = -1;
+  //dims[1].is_replica_dim = false;
+  dims[1].degree = inputs[0]->dims[1].degree;
+  dims[1].parallel_idx = inputs[0]->dims[1].parallel_idx;
+  dims[1].is_replica_dim = inputs[0]->dims[1].is_replica_dim;
   dims[2] = inputs[0]->dims[2];
 
   for (int i = 0; i < n; i++) {
