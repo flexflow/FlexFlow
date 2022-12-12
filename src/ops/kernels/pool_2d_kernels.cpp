@@ -121,12 +121,6 @@ void backward_kernel_wrapper(Pool2DMeta const *m,
   }
 }
 
-Pool2DMeta::Pool2DMeta(FFHandler handler) : OpMeta(handler) {
-  checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
-  checkCUDNN(miopenCreatePoolingDescriptor(&poolDesc));
-}
-
 namespace Internal {
 
 void forward_kernel(Pool2DMeta const *m,
