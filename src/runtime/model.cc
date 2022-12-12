@@ -3262,58 +3262,6 @@ void Op::prefetch(FFModel const &ff) {
   // TODO: perform prefetch for performance imporvement
 }
 
-#ifdef DEADCODE
-// ========================================================
-// class DataLoader
-// ========================================================
-DataLoader::DataLoader(std::string datasetPath) {
-  std::string trainPath = datasetPath + "/train";
-  std::string valPath = datasetPath + "/val";
-  DIR *trainDir = opendir(trainPath.c_str());
-  DIR *valDir = opendir(valPath.c_str());
-  if (!trainDir) {
-    log_model.print("Failed to open %s\n", trainPath.c_str());
-    return;
-  }
-  if (!valDir) {
-    log_model.print("Failed to open %s\n", valPath.c_str());
-    return;
-  }
-  for (struct dirent *dp = readdir(trainDir); dp; dp = readdir(trainDir)) {
-    std::string labelId(dp->d_name);
-    if (labelId == "." || labelId == "..")
-      continue;
-    DIR *labelDir = opendir((trainPath + "/" + labelId).c_str());
-    if (!labelDir)
-      continue;
-    for (struct dirent *sp = readdir(labelDir); sp; sp = readdir(labelDir)) {
-      std::string sampleId(sp->d_name);
-      if (sampleId == "." || sampleId == "..")
-        continue;
-    }
-    printf("%s/%s\n", trainPath.c_str(), labelId.c_str());
-    closedir(labelDir);
-  }
-  closedir(trainDir);
-  closedir(valDir);
-}
-
-bool DataLoader::get_samples(int numSamples, DataLoadMeta &meta) {
-  meta.numSamples = numSamples;
-  for (int i = 0; i < numSamples; i++) {
-    if (sampleIter == samples.end())
-      sampleIter = samples.begin();
-    meta.samples[i] = *sampleIter;
-  }
-  return true;
-}
-
-bool DataLoader::shuffle_samples(void) {
-  std::random_shuffle(samples.begin(), samples.end());
-  return true;
-}
-#endif
-
 // ========================================================
 // class FFIterationConfig
 // ========================================================

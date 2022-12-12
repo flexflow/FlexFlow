@@ -467,13 +467,6 @@ bool Graph::has_loop(void) {
     if (todos[it.first] == 0)
       opList.push_back(it.first);
   }
-#ifdef DEADCODE
-  for (auto const &it : outEdges) {
-    if (inEdges.find(it.first) == inEdges.end()) {
-      opList.push_back(it.first);
-    }
-  }
-#endif
   size_t i = 0;
   while (i < opList.size()) {
     Node op = opList[i++];
@@ -2655,20 +2648,6 @@ void FFModel::deserialize_graph_optimal_view(
     dez.deserialize(view);
     optimal_views[guid_to_nodes[guid]] = view;
   }
-#ifdef DEADCODE
-  // Third, deserialize input mappings
-  size_t num_inputs, safecode;
-  dez.deserialize(safecode);
-  assert(safecode == 23456789);
-  dez.deserialize(num_inputs);
-  for (size_t i = 0; i < num_inputs; i++) {
-    size_t tensor_id, parallel_tensor_id;
-    dez.deserialize(tensor_id);
-    dez.deserialize(parallel_tensor_id);
-    input_tensorid_to_ptensorid_mapping.push_back(
-        std::make_pair(tensor_id, parallel_tensor_id));
-  }
-#endif
   assert(dez.get_remaining_bytes() == 0);
   printf("Deserialized Views...\n");
   for (auto const &it : optimal_views) {
