@@ -3,8 +3,10 @@
 
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include <cuda_runtime.h>
+#include <cudnn.h>
 #elif defined(FF_USE_HIP_ROCM)
 #include <hip/hip_runtime.h>
+#include <miopen/miopen.h>
 #else
 #error "Unknown device"
 #endif
