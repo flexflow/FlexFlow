@@ -21,9 +21,9 @@ if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
   echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid. Pick between 'cuda', 'hip_cuda', 'hip_rocm' or 'intel'."
   exit 1
 elif [[ "${FF_GPU_BACKEND}" != "cuda" ]]; then
-  echo "Configuring FlexFlow to build for gpu backend: ${FF_GPU_BACKEND}"
+  echo "Running FlexFlow with GPU backend: ${FF_GPU_BACKEND}"
 else
-  echo "Letting FlexFlow build for a default GPU backend: cuda"
+  echo "Running FlexFlow with default GPU backend: cuda"
 fi
 
 
