@@ -21,22 +21,6 @@ constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
               REPLICA = 4;
 };
 
-class Pool2DMeta : public OpMeta {
-public:
-  Pool2DMeta(FFHandler handle);
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
-  cudnnActivationDescriptor_t actiDesc;
-  cudnnPoolingDescriptor_t poolDesc;
-#else
-  miopenTensorDescriptor_t inputTensor, outputTensor;
-  miopenActivationDescriptor_t actiDesc;
-  miopenPoolingDescriptor_t poolDesc;
-#endif
-  bool relu;
-  char op_name[MAX_OPNAME];
-};
-
 class Pool2D : public Op {
 public:
   using Params = Pool2DParams;
@@ -74,18 +58,6 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void init_kernel(Pool2D const *pool,
-                          Pool2DMeta *m,
-                          int input_w,
-                          int input_h,
-                          int input_c,
-                          int input_n,
-                          int output_w,
-                          int output_h,
-                          int output_c,
-                          int output_n,
-                          int pad_h,
-                          int pad_w);
   static void forward_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
@@ -94,24 +66,6 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  static void forward_kernel(Pool2DMeta const *m,
-                             void const *input_ptr,
-                             void *output_ptr,
-                             ffStream_t stream);
-  static void forward_kernel_wrapper(Pool2DMeta const *m,
-                                     void const *input_ptr,
-                                     void *output_ptr);
-  static void backward_kernel(Pool2DMeta const *m,
-                              void const *input_ptr,
-                              void *input_grad_ptr,
-                              void const *output_ptr,
-                              void const *output_grad_ptr,
-                              ffStream_t stream);
-  static void backward_kernel_wrapper(Pool2DMeta const *m,
-                                      void const *input_ptr,
-                                      void *input_grad_ptr,
-                                      void const *output_ptr,
-                                      void const *output_grad_ptr);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
