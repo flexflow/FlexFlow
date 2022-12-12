@@ -27,22 +27,22 @@ Pool2DMeta::Pool2DMeta(FFHandler handler) : OpMeta(handler) {
 namespace Kernels {
 namespace Pool2D {
 
-void init_kernel( Pool2DMeta *m,
-                         int input_w,
-                         int input_h,
-                         int input_c,
-                         int input_n,
-                         int output_w,
-                         int output_h,
-                         int output_c,
-                         int output_n,
-                         int pad_h,
-                         int pad_w,
-                         int kernel_h,
-                         int kernel_w,
-                         int stride_h,
-                         int stride_w,
-                         PoolType pool_type) {
+void init_kernel(Pool2DMeta *m,
+                 int input_w,
+                 int input_h,
+                 int input_c,
+                 int input_n,
+                 int output_w,
+                 int output_h,
+                 int output_c,
+                 int output_n,
+                 int pad_h,
+                 int pad_w,
+                 int kernel_h,
+                 int kernel_w,
+                 int stride_h,
+                 int stride_w,
+                 PoolType pool_type) {
   checkCUDNN(miopenSet4dTensorDescriptor(
       m->inputTensor, miopenFloat, input_n, input_c, input_h, input_w));
 
@@ -53,14 +53,8 @@ void init_kernel( Pool2DMeta *m,
     assert(pool_type == POOL_AVG);
     mode = miopenPoolingAverage;
   }
-  checkCUDNN(miopenSet2dPoolingDescriptor(m->poolDesc,
-                                          mode,
-                                          kernel_h,
-                                          kernel_w,
-                                          pad_h, 
-                                          pad_w,
-                                          stride_h,
-                                          stride_w));
+  checkCUDNN(miopenSet2dPoolingDescriptor(
+      m->poolDesc, mode, kernel_h, kernel_w, pad_h, pad_w, stride_h, stride_w));
   int n, c, h, w;
   checkCUDNN(miopenGetPoolingForwardOutputDim(
       m->poolDesc, m->inputTensor, &n, &c, &h, &w));
@@ -74,8 +68,8 @@ void init_kernel( Pool2DMeta *m,
 }
 
 void forward_kernel_wrapper(Pool2DMeta const *m,
-                                    void const *input_ptr,
-                                    void *output_ptr) {
+                            void const *input_ptr,
+                            void *output_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -101,10 +95,10 @@ void forward_kernel_wrapper(Pool2DMeta const *m,
 }
 
 void backward_kernel_wrapper(Pool2DMeta const *m,
-                                     void const *input_ptr,
-                                     void *input_grad_ptr,
-                                     void const *output_ptr,
-                                     void const *output_grad_ptr) {
+                             void const *input_ptr,
+                             void *input_grad_ptr,
+                             void const *output_ptr,
+                             void const *output_grad_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -136,9 +130,9 @@ Pool2DMeta::Pool2DMeta(FFHandler handler) : OpMeta(handler) {
 namespace Internal {
 
 void forward_kernel(Pool2DMeta const *m,
-                            void const *input_ptr,
-                            void *output_ptr,
-                            hipStream_t stream) {
+                    void const *input_ptr,
+                    void *output_ptr,
+                    hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
@@ -156,11 +150,11 @@ void forward_kernel(Pool2DMeta const *m,
 }
 
 void backward_kernel(Pool2DMeta const *m,
-                             void const *input_ptr,
-                             void *input_grad_ptr,
-                             void const *output_ptr,
-                             void const *output_grad_ptr,
-                             hipStream_t stream) {
+                     void const *input_ptr,
+                     void *input_grad_ptr,
+                     void const *output_ptr,
+                     void const *output_grad_ptr,
+                     hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f;
@@ -180,7 +174,7 @@ void backward_kernel(Pool2DMeta const *m,
                                    m->handle.workSpace));
 }
 
-}  // namespace Internal
-}  // namespace Pool2D
-}  // namespace Kernels
-}  // namespace FlexFlow
+} // namespace Internal
+} // namespace Pool2D
+} // namespace Kernels
+} // namespace FlexFlow

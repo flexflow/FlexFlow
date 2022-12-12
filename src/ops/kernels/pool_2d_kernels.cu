@@ -28,21 +28,21 @@ namespace Kernels {
 namespace Pool2D {
 
 void init_kernel(Pool2DMeta *m,
-                         int input_w,
-                         int input_h,
-                         int input_c,
-                         int input_n,
-                         int output_w,
-                         int output_h,
-                         int output_c,
-                         int output_n,
-                         int pad_h,
-                         int pad_w,
-                         int kernel_h,
-                         int kernel_w,
-                         int stride_h,
-                         int stride_w,
-                         PoolType pool_type) {
+                 int input_w,
+                 int input_h,
+                 int input_c,
+                 int input_n,
+                 int output_w,
+                 int output_h,
+                 int output_c,
+                 int output_n,
+                 int pad_h,
+                 int pad_w,
+                 int kernel_h,
+                 int kernel_w,
+                 int stride_h,
+                 int stride_w,
+                 PoolType pool_type) {
   checkCUDNN(cudnnSetTensor4dDescriptor(m->inputTensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
@@ -64,7 +64,7 @@ void init_kernel(Pool2DMeta *m,
                                          kernel_h,
                                          kernel_w,
                                          pad_h,
-                                         pad_w, 
+                                         pad_w,
                                          stride_h,
                                          stride_w));
   int n, c, h, w;
@@ -80,8 +80,8 @@ void init_kernel(Pool2DMeta *m,
 }
 
 void forward_kernel_wrapper(Pool2DMeta const *m,
-                                    void const *input_ptr,
-                                    void *output_ptr) {
+                            void const *input_ptr,
+                            void *output_ptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -107,10 +107,10 @@ void forward_kernel_wrapper(Pool2DMeta const *m,
 }
 
 void backward_kernel_wrapper(Pool2DMeta const *m,
-                                     void const *input_ptr,
-                                     void *input_grad_ptr,
-                                     void const *output_ptr,
-                                     void const *output_grad_ptr) {
+                             void const *input_ptr,
+                             void *input_grad_ptr,
+                             void const *output_ptr,
+                             void const *output_grad_ptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -133,14 +133,12 @@ void backward_kernel_wrapper(Pool2DMeta const *m,
   }
 }
 
-
-
 namespace Internal {
 
 void forward_kernel(Pool2DMeta const *m,
-                            void const *input_ptr,
-                            void *output_ptr,
-                            cudaStream_t stream) {
+                    void const *input_ptr,
+                    void *output_ptr,
+                    cudaStream_t stream) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
@@ -155,11 +153,11 @@ void forward_kernel(Pool2DMeta const *m,
 }
 
 void backward_kernel(Pool2DMeta const *m,
-                             void const *input_ptr,
-                             void *input_grad_ptr,
-                             void const *output_ptr,
-                             void const *output_grad_ptr,
-                             cudaStream_t stream) {
+                     void const *input_ptr,
+                     void *input_grad_ptr,
+                     void const *output_ptr,
+                     void const *output_grad_ptr,
+                     cudaStream_t stream) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f;
@@ -177,9 +175,7 @@ void backward_kernel(Pool2DMeta const *m,
                                   input_grad_ptr));
 }
 
-
-}  // namespace Internal
-}  // namespace Pool2D
-}  // namespace Kernels
-}  // namespace FlexFlow
-
+} // namespace Internal
+} // namespace Pool2D
+} // namespace Kernels
+} // namespace FlexFlow

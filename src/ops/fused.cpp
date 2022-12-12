@@ -24,8 +24,8 @@
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
+#include "flexflow/ops/kernels/pool_2d_kernels.h"
 #include "flexflow/ops/linear.h"
-#include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/utils/hip_helper.h"
@@ -305,9 +305,10 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
         Pool2DMeta *m = (Pool2DMeta *)metas->meta[op];
-        Pool2D::forward_kernel_wrapper(m,
-                                       my_input_accessor[0].get_float_ptr(),
-                                       my_output_accessor[0].get_float_ptr());
+        Kernels::Pool2D::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr());
         break;
       }
       case OP_FLAT: {
@@ -694,7 +695,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         Pool2DMeta *m = (Pool2DMeta *)metas->meta[op];
-        Pool2D::backward_kernel_wrapper(
+        Kernels::Pool2D::backward_kernel_wrapper(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr(),
