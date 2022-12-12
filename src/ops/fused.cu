@@ -129,13 +129,6 @@ __host__ void FusedOp::forward_task(Task const *task,
       assert(metas->meta[start]->handle.dnn == metas->meta[op]->handle.dnn);
     }
 
-#ifdef DEADCODE
-  cudaStream_t stream;
-  if (start < fused->numOperators) {
-    checkCUDA(get_legion_stream(&stream));
-  }
-#endif
-
   int ioff = 0, woff = 0, ooff = 0;
   for (int op = 0; op < fused->numOperators; op++) {
     // Domain my_id[MAX_NUM_INPUTS];
@@ -568,11 +561,6 @@ __host__ void FusedOp::backward_task(Task const *task,
       assert(metas->meta[start]->handle.blas == metas->meta[op]->handle.blas);
       assert(metas->meta[start]->handle.dnn == metas->meta[op]->handle.dnn);
     }
-
-#ifdef DEADCODE
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-#endif
 
   int ioff = 0, woff = 0, ooff = 0;
   // Domain my_id[MAX_NUM_INPUTS], my_grad_id[MAX_NUM_INPUTS];
