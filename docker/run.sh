@@ -28,12 +28,12 @@ fi
 
 
 if [[ "$image" == "flexflow-environment" ]]; then
-    eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "flexflow-environment-${FF_GPU_BACKEND}:latest"
+    docker run -it $gpu_arg "--shm-size=${SHM_SIZE}" "flexflow-environment-${FF_GPU_BACKEND}:latest"
 elif [[ "$image" == "flexflow" ]]; then
-    eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "flexflow-${FF_GPU_BACKEND}:latest"
+    docker run -it $gpu_arg "--shm-size=${SHM_SIZE}" "flexflow-${FF_GPU_BACKEND}:latest"
 elif [[ "$image" == "mt5" ]]; then
     # Backward compatibility
-    eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" \
+    docker run -it $gpu_arg "--shm-size=${SHM_SIZE}" \
     -v "$(pwd)"/../examples/python/pytorch/mt5/data:/usr/FlexFlow/examples/python/pytorch/mt5/data \
     -v "$(pwd)"/../examples/python/pytorch/mt5/eng-sin.tar:/usr/FlexFlow/examples/python/pytorch/mt5/eng-sin.tar \
     "flexflow-${FF_GPU_BACKEND}:latest"
