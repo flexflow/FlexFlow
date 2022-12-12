@@ -356,8 +356,7 @@ OpMeta *Pool2D::init_task(Task const *task,
   if (pad_w != pool->padding_w)
     printf("Warning: changing pool_padding_w to satisfy output_w size\n");
 
-  init_kernel(pool,
-              m,
+  init_kernel(m,
               input_w,
               input_h,
               input_c,
