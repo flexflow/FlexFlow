@@ -18,12 +18,12 @@
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/concat.h"
-#include "flexflow/ops/conv_2d.h"
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
+#include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
@@ -180,11 +180,12 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(my_weight_accessor[0].domain.get_dim() == 5);
         assert(my_output_accessor[0].domain.get_dim() == 5);
         Conv2DMeta *m = (Conv2DMeta *)metas->meta[op];
-        Conv2D::forward_kernel_wrapper(m,
-                                       my_input_accessor[0].get_float_ptr(),
-                                       my_output_accessor[0].get_float_ptr(),
-                                       my_weight_accessor[0].get_float_ptr(),
-                                       my_weight_accessor[1].get_float_ptr());
+        Kernels::Conv2D::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            my_weight_accessor[1].get_float_ptr());
         break;
       }
       case OP_BATCHNORM: {
@@ -707,7 +708,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(my_weight_accessor[0].domain.get_dim() == 5);
         assert(my_output_accessor[0].domain.get_dim() == 5);
         Conv2DMeta *m = (Conv2DMeta *)metas->meta[op];
-        Conv2D::backward_kernel_wrapper(
+        Kernels::Conv2D::backward_kernel_wrapper(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr(),
