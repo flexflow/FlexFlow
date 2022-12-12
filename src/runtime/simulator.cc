@@ -15,7 +15,6 @@
 
 #include "flexflow/simulator.h"
 #include "flexflow/model.h"
-#include "flexflow/ops/pool_2d.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/reduction.h"
