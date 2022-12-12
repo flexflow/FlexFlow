@@ -368,10 +368,11 @@ OpMeta *Pool2D::init_task(Task const *task,
               output_n,
               pad_h,
               pad_w,
-              this->kernel_h,
-              this->kernel_w.this->stride_h,
-              this->stride_w,
-              this->pool_type);
+              pool->kernel_h,
+              pool->kernel_w,
+              pool->stride_h,
+              pool->stride_w,
+              pool->pool_type);
   return m;
 }
 
