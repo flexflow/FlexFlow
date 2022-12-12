@@ -7,9 +7,9 @@ You will need a machine with a NVIDIA GPU, with drivers installed. You will also
 ## Downloading a pre-built package
 The fastest way to run FlexFlow is to use one of the pre-built containers, which we update for each commit to the `master` branch. The available containers are the following, and can be found [at this link](https://github.com/orgs/flexflow/packages?repo_name=FlexFlow):
 
-* [flexflow-cuda](https://github.com/orgs/flexflow/packages/container/package/flexflow-cuda): the pre-built version of FlexFlow targeting GPUs with a CUDA backend
+* [flexflow-cuda](https://github.com/orgs/flexflow/packages/container/package/flexflow-cuda): the pre-built version of FlexFlow targeting GPUs with a CUDA backend. N.B.: currently, this container is only fully compatible with host machines that have CUDA 11.7 installed.
 * [flexflow-hip_rocm](https://github.com/orgs/flexflow/packages/container/package/flexflow-hip_rocm): the pre-built version of FlexFlow targeting GPUs with a HIP-ROCM backend.
-* [flexflow-environment-cuda](https://github.com/orgs/flexflow/packages/container/package/flexflow-environment-cuda) and [flexflow-environment-hip_rocm](https://github.com/orgs/flexflow/packages/container/package/flexflow-environment-hip_rocm): these are the base layers for `flexflow-cuda` and `flexflow-hip_rocm`. The packages are used in CI or for internal use, and contain all the dependencies needed to build/run Flexflow.
+* [flexflow-environment-cuda](https://github.com/orgs/flexflow/packages/container/package/flexflow-environment-cuda) and [flexflow-environment-hip_rocm](https://github.com/orgs/flexflow/packages/container/package/flexflow-environment-hip_rocm): these are the base layers for `flexflow-cuda` and `flexflow-hip_rocm`. The packages are used in CI or for internal use, and contain all the dependencies needed to build/run Flexflow. N.B.: currently, the `flexflow-environment-cuda` container is only fully compatible with host machines that have CUDA 11.7 installed.
 
 The easiest way to download any of the Docker containers above is to call:
 
