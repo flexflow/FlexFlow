@@ -152,15 +152,8 @@ Group_by::Group_by(FFModel &model,
          "Batch size should not be partitioned for now");
 
   ParallelDim dims[MAX_TENSOR_DIM];
-  // dims[0].size = inputs[0]->dims[0].size;
-  // dims[0].degree = inputs[0]->dims[0].degree;
-  // dims[0].parallel_idx = inputs[0]->dims[0].parallel_idx;
-  // dims[0].is_replica_dim = false;
   dims[0] = inputs[0]->dims[0];
   dims[1].size = (int)ceil(alpha * k / n * inputs[0]->dims[1].size);
-  // dims[1].degree = 1;
-  // dims[1].parallel_idx = -1;
-  // dims[1].is_replica_dim = false;
   dims[1].degree = inputs[0]->dims[1].degree;
   dims[1].parallel_idx = inputs[0]->dims[1].parallel_idx;
   dims[1].is_replica_dim = inputs[0]->dims[1].is_replica_dim;
@@ -169,15 +162,6 @@ Group_by::Group_by(FFModel &model,
   for (int i = 0; i < n; i++) {
     outputs[i] = model.create_parallel_tensor_legion_ordering(
         3, dims, DT_FLOAT, this, i /*owner_idx*/);
-  }
-
-  // List of outputs
-  for (int i = 0; i < n; i++) {
-    assert(outputs[i] != nullptr);
-    outputs[i]->num_dims = 2;
-    outputs[i]->dims[0].size = inputs[0]->dims[0].size;
-    outputs[i]->dims[1].size =
-        (int)ceil(alpha * k / n * inputs[0]->dims[1].size);
   }
 
   numWeights = 0;
@@ -298,28 +282,35 @@ void Group_by::forward_task(Task const *task,
   int n = gb->n;
   float alpha = gb->alpha;
 
+  // Check that the number of regions is n+2: n outputs and 2 inputs
   assert((int)regions.size() == n + 2);
   assert((int)task->regions.size() == n + 2);
 
   GroupByMeta const *m = *((GroupByMeta **)task->local_args);
 
-  // get input and assign regions
-  AccessorRO<float, 2> const acc_input(regions[0], FID_DATA);
-  AccessorRO<int, 2> const acc_assign(regions[1], FID_DATA);
+  // get input and assign regions. Each tensor has three dimensions: (datapoint_dim, batch_size, replica_dim)
+  AccessorRO<float, 3> const acc_input(regions[0], FID_DATA);
+  AccessorRO<int, 3> const acc_assign(regions[1], FID_DATA);
 
-  Rect<2> rect_input = runtime->get_index_space_domain(
+  Rect<3> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  Rect<2> rect_assign = runtime->get_index_space_domain(
+  Rect<3> rect_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
 
   coord_t input_rows = rect_input.hi[1] - rect_input.lo[1] + 1;
   coord_t input_cols = rect_input.hi[0] - rect_input.lo[0] + 1;
+  coord_t input_replicas = rect_input.hi[2] - rect_input.lo[2] + 1;
+  // Check that dimensions match in the input and assign tensors
   assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
+  assert(input_replicas == rect_assign.hi[2] - rect_assign.lo[2] + 1); // does this need to be true?
   int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
   int batch_size = input_rows;
   int data_dim = input_cols;
+  int n_replicas = input_replicas;
 
-  // get output
+  // Create a vector of n outputs, where n is the number of experts. 
+  // Each entry in the "outputs" vector points to the Legion tensor that will
+  // contain the tockens dispatched to the corresponding expert
   float *outputs[n];
   // int exp_output_rows = (int)ceil(alpha*k/n*batch_size);
   for (int i = 0; i < n; i++) {
@@ -334,6 +325,9 @@ void Group_by::forward_task(Task const *task,
     assert(output_cols == input_cols);
   }
 
+  // Launch the kernel responsible from copying the data from the input tensor
+  // to each output tensor, according to the input to expert assignments from
+  // the assign tensor.
   Group_by::forward_kernel_wrapper(m,
                                    acc_input.ptr(rect_input),
                                    acc_assign.ptr(rect_assign),
@@ -342,7 +336,8 @@ void Group_by::forward_task(Task const *task,
                                    k,
                                    alpha,
                                    batch_size,
-                                   data_dim);
+                                   data_dim,
+                                   n_replicas);
 }
 
 void Group_by::backward(FFModel const &ff) {
@@ -401,20 +396,23 @@ void Group_by::backward_task(Task const *task,
   assert((int)task->regions.size() == n + 2);
 
   // get input and assign regions
-  AccessorWO<float, 2> const acc_input_grad(regions[0], FID_DATA);
-  AccessorRO<int, 2> const acc_assign(regions[1], FID_DATA);
+  AccessorWO<float, 3> const acc_input_grad(regions[0], FID_DATA);
+  AccessorRO<int, 3> const acc_assign(regions[1], FID_DATA);
 
-  Rect<2> rect_input_grad = runtime->get_index_space_domain(
+  Rect<3> rect_input_grad = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  Rect<2> rect_assign = runtime->get_index_space_domain(
+  Rect<3> rect_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
 
   coord_t input_rows = rect_input_grad.hi[1] - rect_input_grad.lo[1] + 1;
   coord_t input_cols = rect_input_grad.hi[0] - rect_input_grad.lo[0] + 1;
+  coord_t input_replicas = rect_input_grad.hi[2] - rect_input_grad.lo[2] + 1;
   assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
+  assert(input_replicas == rect_assign.hi[2] - rect_assign.lo[2] + 1); // does this need to be true?
   int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
   int batch_size = input_rows;
   int data_dim = input_cols;
+  int n_replicas = input_replicas;
 
   // get output
   float *output_grads[n];
@@ -439,7 +437,8 @@ void Group_by::backward_task(Task const *task,
                                     k,
                                     alpha,
                                     batch_size,
-                                    data_dim);
+                                    data_dim,
+                                    n_replicas);
 }
 
 void Group_by::serialize(Legion::Serializer &sez) const {

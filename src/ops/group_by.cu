@@ -19,7 +19,7 @@
 #include <stdio.h>
 
 #define MAX_K 4
-#define MAX_BATCH_SIZE 32
+#define MAX_BATCH_SIZE 64
 #define MAX_N 12
 
 namespace FlexFlow {
@@ -32,7 +32,8 @@ __global__ void
                       int k,       // chosen experts
                       float alpha, // factor additional memory assigned
                       int batch_size,
-                      int data_dim) {
+                      int data_dim,
+                      int n_replicas) {
   __shared__ float *chosen_exp_preds[MAX_K * MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread per block
@@ -71,7 +72,8 @@ __global__ void
                        int k,       // chosen experts
                        float alpha, // factor additional memory assigned
                        int batch_size,
-                       int data_dim) {
+                       int data_dim,
+                       int n_replicas) {
   __shared__ float *chosen_exp_grads[MAX_K * MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread
@@ -113,7 +115,8 @@ void Group_by::forward_kernel_wrapper(
     int k,       // chosen experts
     float alpha, // factor additional memory assigned
     int batch_size,
-    int data_dim) {
+    int data_dim,
+    int n_replicas) {
   // TODO: why cublas/cudnn stream is needed here?
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -126,7 +129,7 @@ void Group_by::forward_kernel_wrapper(
                       min(CUDA_NUM_THREADS, (int)(batch_size * k * data_dim)),
                       0,
                       stream>>>(
-      input, exp_assign, m->dev_region_ptrs, n, k, alpha, batch_size, data_dim);
+      input, exp_assign, m->dev_region_ptrs, n, k, alpha, batch_size, data_dim, n_replicas);
 }
 
 void Group_by::backward_kernel_wrapper(
@@ -138,7 +141,8 @@ void Group_by::backward_kernel_wrapper(
     int k,       // chosen experts
     float alpha, // factor additional memory assigned
     int batch_size,
-    int data_dim) {
+    int data_dim,
+    int n_replicas) {
   // TODO: why cublas/cudnn stream is needed here
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -159,7 +163,8 @@ void Group_by::backward_kernel_wrapper(
                                  k,
                                  alpha,
                                  batch_size,
-                                 data_dim);
+                                 data_dim,
+                                 n_replicas);
 }
 
 GroupByMeta::GroupByMeta(FFHandler handler, int n) : OpMeta(handler) {
