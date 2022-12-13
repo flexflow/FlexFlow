@@ -523,7 +523,6 @@ void MultiHeadAttention::forward(FFModel const &ff) {
 void MultiHeadAttention::inference(
     FFModel const &ff,
     std::vector<ParallelTensor> const &batch_inputs,
-    std::vector<ParallelTensor> const &batch_weights,
     std::vector<ParallelTensor> const &batch_outputs) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -556,11 +555,11 @@ void MultiHeadAttention::inference(
                                                     EXCLUSIVE,
                                                     batch_inputs[2]->region));
   launcher.add_field(idx++, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(batch_weights[0]->part,
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
-                                                    batch_weights[0]->region));
+                                                    weights[0]->region));
   launcher.add_field(idx++, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,

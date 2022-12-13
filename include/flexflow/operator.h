@@ -190,7 +190,6 @@ public:
   // Pure virtual functions for inference
   virtual void inference(FFModel const &,
                          std::vector<ParallelTensor> const &,
-                         std::vector<ParallelTensor> const &,
                          std::vector<ParallelTensor> const &) {
     assert(false);
   };
