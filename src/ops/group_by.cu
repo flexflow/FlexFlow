@@ -128,8 +128,15 @@ void Group_by::forward_kernel_wrapper(
   gb_forward_kernel<<<GET_BLOCKS(batch_size * k * data_dim),
                       min(CUDA_NUM_THREADS, (int)(batch_size * k * data_dim)),
                       0,
-                      stream>>>(
-      input, exp_assign, m->dev_region_ptrs, n, k, alpha, batch_size, data_dim, n_replicas);
+                      stream>>>(input,
+                                exp_assign,
+                                m->dev_region_ptrs,
+                                n,
+                                k,
+                                alpha,
+                                batch_size,
+                                data_dim,
+                                n_replicas);
 }
 
 void Group_by::backward_kernel_wrapper(

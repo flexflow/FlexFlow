@@ -35,6 +35,7 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+using PCG::Node;
 
 Tensor FFModel::aggregate(
     Tensor const
@@ -98,7 +99,7 @@ AggregateParams Aggregate::get_params() const {
   return params;
 }
 
-bool AggregateParams::is_valid(ParallelTensorShape const &) const {
+bool AggregateParams::is_valid(std::vector<ParallelTensorShape> const &) const {
   // Aggregate is always valid
   return true;
 }
@@ -132,10 +133,10 @@ Aggregate::Aggregate(FFModel &model,
 
   assert(n + 4 == numInputs);
   assert(n > 0);
-  assert(inputs[0]->num_dims == 2+1);
-  assert(inputs[1]->num_dims == 2+1);
-  assert(inputs[2]->num_dims == 2+1);
-  assert(inputs[3]->num_dims == 2+1);
+  assert(inputs[0]->num_dims == 2 + 1);
+  assert(inputs[1]->num_dims == 2 + 1);
+  assert(inputs[2]->num_dims == 2 + 1);
+  assert(inputs[3]->num_dims == 2 + 1);
 
   for (int i = 0; i < inputs[0]->num_dims; i++) {
     assert(inputs[0]->dims[i] == inputs[1]->dims[i]);
@@ -162,6 +163,17 @@ Aggregate::Aggregate(FFModel &model,
 
   numWeights = 0;
 }
+
+Aggregate::Aggregate(FFModel &model,
+                     Aggregate const &other,
+                     std::vector<ParallelTensor> const &inputs)
+    : Aggregate(model, inputs.data(), other.n, other.lambda_bal, other.name) {}
+
+Aggregate::Aggregate(FFModel &model,
+                     AggregateParams const &params,
+                     std::vector<ParallelTensor> const &inputs,
+                     char const *name)
+    : Aggregate(model, inputs.data(), params.n, params.lambda_bal, name) {}
 
 void Aggregate::init(FFModel const &ff) {
   ArgumentMap argmap;
@@ -462,6 +474,11 @@ void Aggregate::backward_task(Task const *task,
       lambda_bal,
       batch_size,
       out_dim);
+}
+
+void Aggregate::serialize(Legion::Serializer &sez) const {
+  sez.serialize(this->n);
+  sez.serialize(this->lambda_bal);
 }
 
 bool Aggregate::measure_operator_cost(Simulator *sim,

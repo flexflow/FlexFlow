@@ -82,7 +82,7 @@ public:
                               int k,       // chosen experts
                               float alpha, // factor additional memory assigned
                               int batch_size,
-                              int data_dim, 
+                              int data_dim,
                               int n_replicas);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,

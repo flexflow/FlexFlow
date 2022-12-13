@@ -288,7 +288,8 @@ void Group_by::forward_task(Task const *task,
 
   GroupByMeta const *m = *((GroupByMeta **)task->local_args);
 
-  // get input and assign regions. Each tensor has three dimensions: (datapoint_dim, batch_size, replica_dim)
+  // get input and assign regions. Each tensor has three dimensions:
+  // (datapoint_dim, batch_size, replica_dim)
   AccessorRO<float, 3> const acc_input(regions[0], FID_DATA);
   AccessorRO<int, 3> const acc_assign(regions[1], FID_DATA);
 
@@ -302,13 +303,14 @@ void Group_by::forward_task(Task const *task,
   coord_t input_replicas = rect_input.hi[2] - rect_input.lo[2] + 1;
   // Check that dimensions match in the input and assign tensors
   assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
-  assert(input_replicas == rect_assign.hi[2] - rect_assign.lo[2] + 1); // does this need to be true?
+  assert(input_replicas == rect_assign.hi[2] - rect_assign.lo[2] +
+                               1); // does this need to be true?
   int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
   int batch_size = input_rows;
   int data_dim = input_cols;
   int n_replicas = input_replicas;
 
-  // Create a vector of n outputs, where n is the number of experts. 
+  // Create a vector of n outputs, where n is the number of experts.
   // Each entry in the "outputs" vector points to the Legion tensor that will
   // contain the tockens dispatched to the corresponding expert
   float *outputs[n];
@@ -408,7 +410,8 @@ void Group_by::backward_task(Task const *task,
   coord_t input_cols = rect_input_grad.hi[0] - rect_input_grad.lo[0] + 1;
   coord_t input_replicas = rect_input_grad.hi[2] - rect_input_grad.lo[2] + 1;
   assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
-  assert(input_replicas == rect_assign.hi[2] - rect_assign.lo[2] + 1); // does this need to be true?
+  assert(input_replicas == rect_assign.hi[2] - rect_assign.lo[2] +
+                               1); // does this need to be true?
   int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
   int batch_size = input_rows;
   int data_dim = input_cols;

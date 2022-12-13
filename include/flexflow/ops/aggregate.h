@@ -21,12 +21,19 @@ public:
 class Aggregate : public Op {
 public:
   using Params = AggregateParams;
-  using Input = ParallelTensor;
+  using Input = std::vector<ParallelTensor>;
   Aggregate(FFModel &model,
             ParallelTensor const *inputs,
             int _n,
             float _lambda_bal,
             char const *name);
+  Aggregate(FFModel &model,
+            Aggregate const &other,
+            std::vector<ParallelTensor> const &inputs);
+  Aggregate(FFModel &model,
+            Params const &params,
+            Input const &inputs,
+            char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -73,6 +80,7 @@ public:
                                       float lambda_bal,
                                       int const batch_size,
                                       int out_dim);
+  void serialize(Legion::Serializer &s) const override;
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
