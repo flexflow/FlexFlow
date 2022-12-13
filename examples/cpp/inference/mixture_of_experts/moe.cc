@@ -51,32 +51,41 @@ Tensor create_moe(FFModel *model,
 
   // MoE model
   Tensor gate_preds = model->dense(input, 64, AC_MODE_RELU);
+  // gate_preds->print("gate_preds");
   gate_preds = model->dense(gate_preds, num_exp, AC_MODE_RELU);
+  // gate_preds->print("gate_preds2");
   Tensor topK_output[2];
   model->top_k(gate_preds, topK_output, num_select, false);
-
+  // topK_output[0]->print("topK_output[0]");
+  // topK_output[1]->print("topK_output[1]");
   Tensor exp_tensors[num_exp];
   // printf("num_exp: %i, alpha: %f\n", num_exp);
-  input->print("input_tensor");
-  topK_output[1]->print("topK_output[1]");
+  // input->print("input_tensor");
+
   // return topK_output[0];
   // exp_tensors[0]->print("exp_tensors[0]");
   // exp_tensors[num_exp-1]->print("exp_tensors[num_exp-1]");
   model->group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
-  return input;
-  // Tensor agg_inputs[num_exp + 4];
-  // agg_inputs[0] = model->softmax(topK_output[0]); // gate preds
-  // agg_inputs[1] = topK_output[1];             // gate assign
-  // agg_inputs[2] = topK_output[1];             // gate assign TopK (for cache)
-  // agg_inputs[3] = gate_preds;                 // full gate preds
-  // for (int i = 0; i < num_exp; i++) {
-  //   Tensor exp_pred = model->dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
-  //   agg_inputs[i + 4] = model->softmax(exp_pred);
+  // for (int i=0; i<num_exp; i++) {
+  //   exp_tensors[i]->dims[2] = 1;
+  //   exp_tensors[i]->print("exp_tensors[i]");
   // }
-
-  // Tensor coop_output = model->aggregate(agg_inputs, num_exp, lambda);
+  Tensor agg_inputs[num_exp + 4];
+  agg_inputs[0] = model->softmax(topK_output[0]); // gate preds
+  agg_inputs[1] = topK_output[1];                 // gate assign
+  agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
+  agg_inputs[3] = gate_preds;     // full gate preds
+  for (int i = 0; i < num_exp; i++) {
+    Tensor exp_pred = model->dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
+    exp_pred->print("exp_pred");
+    agg_inputs[i + 4] = model->softmax(exp_pred);
+  }
+  for (int i = 0; i < num_exp + 4; i++) {
+    agg_inputs[i]->print("agg_inputs[i]");
+  }
+  Tensor coop_output = model->aggregate(agg_inputs, num_exp, lambda);
   // model->get_metrics();
-  // return coop_output;
+  return coop_output;
 }
 
 void FlexFlow::top_level_task(Task const *task,
