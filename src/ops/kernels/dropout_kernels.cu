@@ -18,6 +18,11 @@
 
 namespace FlexFlow {
 
+// declare Legion names
+using Legion::coord_t;
+using Legion::Domain;
+using Legion::Memory;
+
 DropoutMeta::DropoutMeta(FFHandler handler,
                          Dropout const *dropout,
                          Memory gpu_mem,

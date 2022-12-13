@@ -49,7 +49,7 @@ void backward_kernel(DropoutMeta *m,
                       ffStream_t stream);
 
 } // namespace Internal
-} // namespace Conv2D
+} // namespace Dropout
 } // namespace Kernels
 } // namespace FlexFlow
 
