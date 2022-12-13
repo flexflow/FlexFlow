@@ -18,7 +18,7 @@
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/concat.h"
-#include "flexflow/ops/dropout.h"
+#include "flexflow/ops/kernels/dropout_kernels.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
@@ -195,9 +195,9 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta *m = (DropoutMeta *)metas->meta[op];
-        Dropout::forward_kernel_wrapper(m,
-                                        my_input_accessor[0].get_float_ptr(),
-                                        my_output_accessor[0].get_float_ptr());
+        Kernels::Dropout::forward_kernel_wrapper(m,
+                          my_input_accessor[0].get_float_ptr(),
+                          my_output_accessor[0].get_float_ptr());
         break;
       }
       case OP_LINEAR: {
@@ -576,7 +576,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta *m = (DropoutMeta *)metas->meta[op];
-        Dropout::backward_kernel_wrapper(
+        Kernels::Dropout::backward_kernel_wrapper(
             m,
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr());
