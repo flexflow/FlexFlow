@@ -13,14 +13,11 @@
  * limitations under the License.
  */
 
+
 #include "flexflow/model.h"
 #include "flexflow/inference.h"
-#include <fstream>
-#include <sstream>
-#include <string>
-#include "data_generator.h"
-
 using namespace Legion;
+using namespace std;
 using namespace FlexFlow;
 
 #define MAX_NUM_SAMPLES 1024000
