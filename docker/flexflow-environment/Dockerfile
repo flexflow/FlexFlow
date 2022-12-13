@@ -1,14 +1,20 @@
-FROM nvidia/cuda:11.1.1-devel-ubuntu18.04
+FROM nvidia/cuda:11.7.0-cudnn8-devel-ubuntu20.04
 
+LABEL org.opencontainers.image.source=https://github.com/flexflow/FlexFlow
+LABEL org.opencontainers.image.description="FlexFlow environment container"
 
+# Install basic dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binutils git zlib1g-dev lsb-release nano libhdf5-dev && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/nvidia-ml.list && \
+	apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends software-properties-common && \
+    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends build-essential apt-utils \
+    ca-certificates libssl-dev curl unzip htop && DEBIAN_FRONTEND=noninteractive \
+        apt-get install -y software-properties-common && \
+        add-apt-repository ppa:ubuntu-toolchain-r/test && \
+        apt-get update -y && \
+        apt-get upgrade -y libstdc++6
 
-RUN wget -c -q http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-11.1-linux-x64-v8.0.5.39.tgz && \
-    tar -xzf cudnn-11.1-linux-x64-v8.0.5.39.tgz -C /usr/local && \
-    rm cudnn-11.1-linux-x64-v8.0.5.39.tgz && \
-    ldconfig
-
+# Install Python3 with Miniconda
 RUN wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     mv Miniconda3-latest-Linux-x86_64.sh ~/Miniconda3-latest-Linux-x86_64.sh && \
     chmod +x ~/Miniconda3-latest-Linux-x86_64.sh && \
@@ -36,28 +42,15 @@ RUN  if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]
     fi
 RUN rm -rf /var/lib/apt/lists/*
 
-# Set env varas
+# Set env vars
 ENV PATH /opt/conda/bin:$PATH
 ENV CUDNN_DIR /usr/local/cuda
 ENV CUDA_DIR /usr/local/cuda
-ENV FF_HOME /usr/FlexFlow
 
 # Install python packages and other dependencies
 RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind11 numpy pandas keras-preprocessing 
-
-# Copy FlexFlow repository
-WORKDIR ${FF_HOME}
-COPY . .
-
-# Args to build FlexFlow
-ARG N_BUILD_CORES
-ARG FF_CUDA_ARCH
-
-# Build and install C++ and Python versions of FlexFlow
-RUN mkdir -p build && cd build && \
-    ../config/config.linux && \
-    make -j $N_BUILD_CORES && \
-    ../config/config.linux && \
-    make install
+# Install CPU-only Pytorch and related dependencies
+RUN conda install pytorch torchvision torchaudio cpuonly -c pytorch
+RUN conda install -c conda-forge onnx tensorflow transformers sentencepiece
 
 ENTRYPOINT ["/bin/bash"]

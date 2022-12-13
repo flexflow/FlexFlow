@@ -644,45 +644,6 @@ void FFMapper::map_task(const MapperContext ctx,
       created_instances.push_back(clog);
     }
   } // for idx
-#ifdef DEADCODE
-  if ((task.task_id == CONV2D_INIT_TASK_ID) ||
-      (task.task_id == CONV2D_FWD_TASK_ID) ||
-      (task.task_id == CONV2D_BWD_TASK_ID)) {
-    VariantInfo chosen =
-        default_find_preferred_variant(task,
-                                       ctx,
-                                       true /*needs tight bound*/,
-                                       true /*cache*/,
-                                       task.target_proc.kind());
-    output.chosen_variant = chosen.variant;
-    output.task_priority = 0;
-    output.postmap_task = false;
-    output.target_procs.push_back(task.target_proc);
-    assert(task.target_proc.kind() == Processor::TOC_PROC);
-    Memory fbmem = proc_fbmems[task.target_proc];
-    for (unsigned idx = 0; idx < task.regions.size(); idx++) {
-      if ((task.regions[idx].privilege == NO_ACCESS) ||
-          (task.regions[idx].privilege_fields.empty()))
-        continue;
-      TaskLayoutConstraintSet const &layout_constraints =
-          runtime->find_task_layout_constraints(
-              ctx, task.task_id, output.chosen_variant);
-      std::set<FieldID> fields(task.regions[idx].privilege_fields);
-      if (!default_create_custom_instances(ctx,
-                                           task.target_proc,
-                                           fbmem,
-                                           task.regions[idx],
-                                           idx,
-                                           fields,
-                                           layout_constraints,
-                                           true,
-                                           output.chosen_instances[idx])) {
-        default_report_failed_instance_creation(
-            task, idx, task.target_proc, fbmem);
-      }
-    }
-  } else
-#endif
 }
 
 void FFMapper::map_replicate_task(const MapperContext ctx,
@@ -1292,33 +1253,6 @@ void FFMapper::permit_steal_request(const MapperContext ctx,
   }
   return result;
 }
-
-#ifdef DEADCODE
-Memory
-    FFMapper::default_policy_select_target_memory(MapperContext ctx,
-                                                  Processor target_proc,
-                                                  RegionRequirement const &req,
-                                                  MemoryConstraint mc) {
-  if (target_proc.kind() == Processor::TOC_PROC) {
-    if (req.tag == MAP_TO_ZC_MEMORY) {
-      assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
-      return proc_zcmems[target_proc];
-    } else {
-      assert(req.tag == 0);
-      // return DefaultMapper::default_policy_select_target_memory(
-      //            ctx, target_proc, req, mc);
-      assert(proc_fbmems.find(target_proc) != proc_fbmems.end());
-      return proc_fbmems[target_proc];
-    }
-  } else if (target_proc.kind() == Processor::LOC_PROC) {
-    assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
-    return proc_zcmems[target_proc];
-  } else {
-    return DefaultMapper::default_policy_select_target_memory(
-        ctx, target_proc, req, mc);
-  }
-}
-#endif
 
 std::vector<Processor> const &
     FFMapper::all_procs_by_kind(Processor::Kind kind) {

@@ -33,7 +33,7 @@ jobs:
     name: Single Machine, Multiple GPUs Tests
     runs-on: self-hosted
     container:
-      image: ghcr.io/flexflow/flexflow-environment:latest
+      image: ghcr.io/flexflow/flexflow-environment-cuda:latest
       options: --gpus all --shm-size=8192m
     steps:
       - name: Install updated git version

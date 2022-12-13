@@ -18,7 +18,6 @@
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/concat.h"
-#include "flexflow/ops/conv_2d.h"
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
@@ -246,16 +245,6 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
   }
   return true;
 }
-
-#ifdef DEADCODE
-void FusedOp::create_weights(FFModel &model) {
-  assert(false && "Weights should be created before fusion optimizations");
-}
-
-void FusedOp::map_output_tensors(FFModel &model) {
-  assert(false && "Outputs should be created before fusion optimizations");
-}
-#endif
 
 void FusedOp::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());

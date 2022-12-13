@@ -54,7 +54,10 @@ set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")
 set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
 
 # option for cuda arch
-set(FF_CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
+set(FF_CUDA_ARCH "autodetect" CACHE STRING "Target CUDA Arch")
+if (FF_CUDA_ARCH STREQUAL "")
+  message(FATAL_ERROR "FF_CUDA_ARCH cannot be an empty string. Set it to `autodetect`, `all`, or pass one or multiple valid CUDA archs.")
+endif()
 
 # option for nccl
 option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)

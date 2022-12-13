@@ -201,27 +201,9 @@ void Embedding::register_output_mappings() {
     for (int i = 1; i < num_dims - 1; i++)
       this->register_output_parallel_dims(i, i);
   }
-#ifdef DEADCODE
-  this->register_output_parallel_dims({
-      {this->input_vocab_size_replica_dim(),
-       this->output_vocab_size_replica_dim()},
-      {this->input_channel_out_replica_dim(), Output::OUT_CHANNELS},
-  });
-
-  for (int i = 1; i < this->inputs[0]->num_dims - 1; i++) {
-    this->register_output_parallel_dims(i - 1, i);
-  }
-#endif
 }
 
 void Embedding::register_weight_mappings() {
-#ifdef DEADCODE
-  this->register_weight_parallel_dims({
-      {this->input_vocab_size_replica_dim(), Weight::VOCAB_SIZE},
-      {this->input_channel_out_replica_dim(), Weight::OUT_CHANNELS},
-  });
-#endif
-
   for (int i = 2; i < this->inputs[0]->num_dims; i++) {
     this->register_weight_parallel_dims(i - 1, i);
   }
