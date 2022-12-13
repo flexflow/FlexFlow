@@ -135,10 +135,10 @@ Aggregate::Aggregate(FFModel &model,
 
   assert(n + 4 == numInputs);
   assert(n > 0);
-  assert(inputs[0]->num_dims == 2);
-  assert(inputs[1]->num_dims == 2);
-  assert(inputs[2]->num_dims == 2);
-  assert(inputs[3]->num_dims == 2);
+  assert(inputs[0]->num_dims == 2+1);
+  assert(inputs[1]->num_dims == 2+1);
+  assert(inputs[2]->num_dims == 2+1);
+  assert(inputs[3]->num_dims == 2+1);
 
   for (int i = 0; i < inputs[0]->num_dims; i++) {
     assert(inputs[0]->dims[i] == inputs[1]->dims[i]);
