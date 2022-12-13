@@ -61,15 +61,12 @@ void InferenceManager::inference(int index) {
   for (size_t o = 0; o < model->operators.size(); o++) {
     Op* op = model->operators[o];
     std::vector<ParallelTensor> inputs(op->numInputs);
-    std::vector<ParallelTensor> weights(op->numWeights);
     std::vector<ParallelTensor> outputs(op->numOutputs);
     for (int i = 0; i < op->numInputs; i++)
       inputs[i] = tensor_buffer[op->inputs[i]][index];
-    for (int i = 0; i < op->numWeights; i++)
-      weights[i] = op->weights[i];
     for (int i = 0; i < op->numOutputs; i++)
       outputs[i] = tensor_buffer[op->outputs[i]][index];
-    op->inference(*model, inputs, weights, outputs);
+    op->inference(*model, inputs, outputs);
   }
 };
 
