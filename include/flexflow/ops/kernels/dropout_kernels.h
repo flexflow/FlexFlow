@@ -166,7 +166,7 @@ miopenConvBwdDataAlgorithm_t selectConvolutionBackwardDataAlgorithm(
 #endif
 
 } // namespace Internal
-} // namespace Conv2D
+} // namespace Dropout
 } // namespace Kernels
 } // namespace FlexFlow
 

@@ -18,10 +18,10 @@
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/concat.h"
-#include "flexflow/ops/kernels/dropout_kernels.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
+#include "flexflow/ops/kernels/dropout_kernels.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
@@ -195,9 +195,10 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta *m = (DropoutMeta *)metas->meta[op];
-        Kernels::Dropout::forward_kernel_wrapper(m,
-                          my_input_accessor[0].get_float_ptr(),
-                          my_output_accessor[0].get_float_ptr());
+        Kernels::Dropout::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr());
         break;
       }
       case OP_LINEAR: {

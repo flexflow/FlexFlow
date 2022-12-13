@@ -71,28 +71,27 @@ namespace Kernels {
 namespace Dropout {
 
 void forward_kernel_wrapper(DropoutMeta *m,
-                                     float const *input_ptr,
-                                     float *output_ptr) {
+                            float const *input_ptr,
+                            float *output_ptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Internal::forward_kernel(m, input_ptr, output_ptr, stream);
 }
 
 void backward_kernel_wrapper(DropoutMeta *m,
-                                      float const *output_grad_ptr,
-                                      float *input_grad_ptr) {
+                             float const *output_grad_ptr,
+                             float *input_grad_ptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Internal::backward_kernel(m, output_grad_ptr, input_grad_ptr, stream);
 }
 
-
 namespace Internal {
 
 void forward_kernel(DropoutMeta *m,
-                             float const *input_ptr,
-                             float *output_ptr,
-                             cudaStream_t stream) {
+                    float const *input_ptr,
+                    float *output_ptr,
+                    cudaStream_t stream) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   checkCUDNN(cudnnDropoutForward(m->handle.dnn,
@@ -106,9 +105,9 @@ void forward_kernel(DropoutMeta *m,
 }
 
 void backward_kernel(DropoutMeta *m,
-                              float const *output_grad_ptr,
-                              float *input_grad_ptr,
-                              cudaStream_t stream) {
+                     float const *output_grad_ptr,
+                     float *input_grad_ptr,
+                     cudaStream_t stream) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   checkCUDNN(cudnnDropoutBackward(m->handle.dnn,
@@ -121,8 +120,7 @@ void backward_kernel(DropoutMeta *m,
                                   m->reserveSpaceSize));
 }
 
-
 } // namespace Internal
-} // namespace Conv2D
+} // namespace Dropout
 } // namespace Kernels
 } // namespace FlexFlow

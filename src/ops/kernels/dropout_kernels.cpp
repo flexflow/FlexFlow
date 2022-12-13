@@ -72,18 +72,17 @@ DropoutMeta::~DropoutMeta(void) {
 namespace Kernels {
 namespace Dropout {
 
-
 void forward_kernel_wrapper(DropoutMeta *m,
-                                     float const *input_ptr,
-                                     float *output_ptr) {
+                            float const *input_ptr,
+                            float *output_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Internal::forward_kernel(m, input_ptr, output_ptr, stream);
 }
 
 void backward_kernel_wrapper(DropoutMeta *m,
-                                      float const *output_grad_ptr,
-                                      float *input_grad_ptr) {
+                             float const *output_grad_ptr,
+                             float *input_grad_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Internal::backward_kernel(m, output_grad_ptr, input_grad_ptr, stream);
@@ -91,11 +90,10 @@ void backward_kernel_wrapper(DropoutMeta *m,
 
 namespace Internal {
 
-
 void forward_kernel(DropoutMeta *m,
-                           float const *input_ptr,
-                           float *output_ptr,
-                           hipStream_t stream) {
+                    float const *input_ptr,
+                    float *output_ptr,
+                    hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   checkCUDNN(miopenDropoutForward(m->handle.dnn,
@@ -110,9 +108,9 @@ void forward_kernel(DropoutMeta *m,
 }
 
 void backward_kernel(DropoutMeta *m,
-                              float const *output_grad_ptr,
-                              float *input_grad_ptr,
-                              hipStream_t stream) {
+                     float const *output_grad_ptr,
+                     float *input_grad_ptr,
+                     hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   checkCUDNN(miopenDropoutBackward(m->handle.dnn,
@@ -126,8 +124,7 @@ void backward_kernel(DropoutMeta *m,
                                    m->reserveSpaceSize));
 }
 
-
 } // namespace Internal
-} // namespace Pool2D
+} // namespace Dropout
 } // namespace Kernels
 } // namespace FlexFlow
