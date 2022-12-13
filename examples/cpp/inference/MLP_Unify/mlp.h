@@ -13,9 +13,8 @@
  * limitations under the License.
  */
 
-
-#include "flexflow/model.h"
 #include "flexflow/inference.h"
+#include "flexflow/model.h"
 using namespace Legion;
 using namespace std;
 using namespace FlexFlow;

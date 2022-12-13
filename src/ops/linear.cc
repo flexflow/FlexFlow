@@ -369,7 +369,6 @@ void Linear::forward(FFModel const &ff) {
 
 void Linear::inference(FFModel const &ff,
                        std::vector<ParallelTensor> const &batch_inputs,
-                       std::vector<ParallelTensor> const &batch_weights,
                        std::vector<ParallelTensor> const &batch_outputs) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -395,18 +394,18 @@ void Linear::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(batch_weights[0]->part,
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
-                                                    batch_weights[0]->region));
+                                                    weights[0]->region));
   launcher.add_field(2, FID_DATA);
   if (use_bias) {
-    launcher.add_region_requirement(RegionRequirement(batch_weights[1]->part,
+    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
                                                       0 /*projection id*/,
                                                       READ_ONLY,
                                                       EXCLUSIVE,
-                                                      batch_weights[1]->region));
+                                                      weights[1]->region));
     launcher.add_field(3, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
