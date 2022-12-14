@@ -23,8 +23,15 @@ using namespace FlexFlow;
 struct MoeConfig {
   MoeConfig(void) {
     // Set default configurations here
+    hidden_size = 64;
+    num_attention_heads = 16;
+    attention_kdim = attention_vdim = hidden_size / num_attention_heads;
   }
   std::string dataset_path;
+  int hidden_size;
+  int num_attention_heads;
+  int attention_kdim;
+  int attention_vdim;
 };
 
 class DataLoader {
