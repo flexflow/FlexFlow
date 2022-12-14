@@ -127,11 +127,11 @@ void FlexFlow::top_level_task(Task const *task,
 
   Tensor t = create_moe(&ff, &moeConfig, input);
   InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);
-  im.compile_model_and_allocate_buffer();
+  // im.compile_model_and_allocate_buffer();
   ff.init_operators();
 
   // Data Loader
-  DataLoader data_loader(ff, moeConfig, input, ff.label_tensor);
+  // DataLoader data_loader(ff, moeConfig, input, ff.label_tensor);
 
   //-----------------------------------------------------------------
 
@@ -154,7 +154,7 @@ void FlexFlow::top_level_task(Task const *task,
     vector<vector<double>> req = data_generator.get_requests();
     int iterations = req.size();
     for (int iter = 0; iter < iterations; iter++) {
-      data_loader.next_batch(ff);
+      // data_loader.next_batch(ff);
       runtime->begin_trace(ctx, 111 /*trace_id*/);
       im.inference((index++) % num_inflight_batches);
       runtime->end_trace(ctx, 111 /*trace_id*/);
