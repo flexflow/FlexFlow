@@ -262,8 +262,8 @@ void Group_by::forward(FFModel const &ff) {
 }
 
 void Group_by::inference(FFModel const &ff,
-                    std::vector<ParallelTensor> const &batch_inputs,
-                    std::vector<ParallelTensor> const &batch_outputs) {
+                         std::vector<ParallelTensor> const &batch_inputs,
+                         std::vector<ParallelTensor> const &batch_outputs) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -293,11 +293,12 @@ void Group_by::inference(FFModel const &ff,
 
   // output
   for (int i = 0; i < n; i++) {
-    launcher.add_region_requirement(RegionRequirement(batch_outputs[i]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_outputs[i]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[i]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[i]->region));
     launcher.add_field(i + 2, FID_DATA);
   }
 

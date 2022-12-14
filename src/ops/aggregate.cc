@@ -243,7 +243,7 @@ void Aggregate::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Aggregate::inference(FFModel const &ff
+void Aggregate::inference(FFModel const &ff,
                           std::vector<ParallelTensor> const &batch_inputs,
                           std::vector<ParallelTensor> const &batch_outputs) {
   ArgumentMap argmap;
@@ -275,11 +275,12 @@ void Aggregate::inference(FFModel const &ff
   launcher.add_field(1, FID_DATA);
   // exp_preds
   for (int i = 0; i < n; i++) {
-    launcher.add_region_requirement(RegionRequirement(batch_inputs[i + 4]->part,
-                                                      0 /*projection id*/,
-                                                      READ_WRITE,
-                                                      EXCLUSIVE,
-                                                      batch_inputs[i + 4]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_inputs[i + 4]->part,
+                          0 /*projection id*/,
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          batch_inputs[i + 4]->region));
     launcher.add_field(i + 2, FID_DATA);
   }
   // output
@@ -291,7 +292,6 @@ void Aggregate::inference(FFModel const &ff
   launcher.add_field(n + 2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
-
 
 void Aggregate::forward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
