@@ -261,6 +261,49 @@ void Group_by::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Group_by::inference(FFModel const &ff,
+                    std::vector<ParallelTensor> const &batch_inputs,
+                    std::vector<ParallelTensor> const &batch_outputs) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  IndexLauncher launcher(GROUP_BY_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Group_by)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  // data
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+
+  // assign
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[1]->region));
+  launcher.add_field(1, FID_DATA);
+
+  // output
+  for (int i = 0; i < n; i++) {
+    launcher.add_region_requirement(RegionRequirement(batch_outputs[i]->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      batch_outputs[i]->region));
+    launcher.add_field(i + 2, FID_DATA);
+  }
+
+  runtime->execute_index_space(ctx, launcher);
+}
+
 void Group_by::forward_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
                             Context ctx,
