@@ -237,9 +237,10 @@ void AggregateSpec::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void AggregateSpec::inference(FFModel const &ff
-                          std::vector<ParallelTensor> const &batch_inputs,
-                          std::vector<ParallelTensor> const &batch_outputs) {
+void AggregateSpec::inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -269,11 +270,12 @@ void AggregateSpec::inference(FFModel const &ff
   launcher.add_field(1, FID_DATA);
   // exp_preds
   for (int i = 0; i < n; i++) {
-    launcher.add_region_requirement(RegionRequirement(batch_inputs[i + 4]->part,
-                                                      0 /*projection id*/,
-                                                      READ_WRITE,
-                                                      EXCLUSIVE,
-                                                      batch_inputs[i + 4]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_inputs[i + 4]->part,
+                          0 /*projection id*/,
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          batch_inputs[i + 4]->region));
     launcher.add_field(i + 2, FID_DATA);
   }
   // output
