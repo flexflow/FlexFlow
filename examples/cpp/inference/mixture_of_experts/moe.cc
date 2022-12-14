@@ -89,6 +89,22 @@ Tensor create_moe(FFModel *model,
   return coop_output;
 }
 
+Tensor create_moe_encoder(FFModel *model,
+                          MoeConfig const *moeConfig,
+                          Tensor const &input,
+                          int num_heads,
+                          int kdim,
+                          int vdim) {
+  Tensor t = model->multihead_attention(input,
+                                        input,
+                                        input,
+                                        moeConfig->hidden_size,
+                                        moeConfig->num_attention_heads,
+                                        moeConfig->attention_kdim,
+                                        moeConfig->attention_vdim);
+  return create_moe(model, moeConfig, t);
+}
+
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
                               Context ctx,
