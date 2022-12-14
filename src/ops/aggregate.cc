@@ -243,6 +243,56 @@ void Aggregate::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Aggregate::inference(FFModel const &ff
+                          std::vector<ParallelTensor> const &batch_inputs,
+                          std::vector<ParallelTensor> const &batch_outputs) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_init(ff, argmap);
+  parallel_is = outputs[0]->parallel_is;
+  IndexLauncher launcher(AGGREGATE_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Aggregate)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  // gate_preds
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  // gate_assign
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[1]->region));
+  launcher.add_field(1, FID_DATA);
+  // exp_preds
+  for (int i = 0; i < n; i++) {
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[i + 4]->part,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      batch_inputs[i + 4]->region));
+    launcher.add_field(i + 2, FID_DATA);
+  }
+  // output
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(n + 2, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
+
+
 void Aggregate::forward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
