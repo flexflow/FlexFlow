@@ -26,6 +26,9 @@ public:
   void init(FFModel const &);
   void forward(FFModel const &);
   void backward(FFModel const &);
+  void inference(FFModel const &,
+                 std::vector<ParallelTensor> const &,
+                 std::vector<ParallelTensor> const &) override;
   void print_layer(FFModel const &model) {
     assert(0);
   }

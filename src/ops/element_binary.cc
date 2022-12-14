@@ -417,6 +417,77 @@ void ElementBinary::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+void ElementBinary::inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_forward(ff, argmap);
+  IndexLauncher launcher(ELEMENTBINARY_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  if (inplace_a) {
+    assert(batch_outputs[0]->part == batch_inputs[0]->part);
+    assert(batch_outputs[0]->region == batch_inputs[0]->region);
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      batch_inputs[0]->region));
+    launcher.add_field(0, FID_DATA);
+    if (has_same_operands) {
+      // do nothing else
+    } else {
+      launcher.add_region_requirement(
+          RegionRequirement(batch_inputs[1]->part,
+                            0 /*projection id*/,
+                            READ_ONLY,
+                            EXCLUSIVE,
+                            batch_inputs[1]->region));
+      launcher.add_field(1, FID_DATA);
+    }
+  } else {
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      batch_inputs[0]->region));
+    launcher.add_field(0, FID_DATA);
+    if (has_same_operands) {
+      launcher.add_region_requirement(
+          RegionRequirement(batch_outputs[0]->part,
+                            0 /*projection id*/,
+                            WRITE_ONLY,
+                            EXCLUSIVE,
+                            batch_outputs[0]->region));
+      launcher.add_field(1, FID_DATA);
+    } else {
+      launcher.add_region_requirement(
+          RegionRequirement(batch_inputs[1]->part,
+                            0 /*projection id*/,
+                            READ_ONLY,
+                            EXCLUSIVE,
+                            batch_inputs[1]->region));
+      launcher.add_field(1, FID_DATA);
+      launcher.add_region_requirement(
+          RegionRequirement(batch_outputs[0]->part,
+                            0 /*projection id*/,
+                            WRITE_ONLY,
+                            EXCLUSIVE,
+                            batch_outputs[0]->region));
+      launcher.add_field(2, FID_DATA);
+    }
+  }
+  runtime->execute_index_space(ctx, launcher);
+}
+
 /*
   regions[0](I): in1
   regions[1](I): in2

@@ -95,14 +95,21 @@ Tensor create_moe_encoder(FFModel *model,
                           int num_heads,
                           int kdim,
                           int vdim) {
-  Tensor t = model->multihead_attention(input,
-                                        input,
-                                        input,
-                                        moeConfig->hidden_size,
-                                        moeConfig->num_attention_heads,
-                                        moeConfig->attention_kdim,
-                                        moeConfig->attention_vdim);
-  return create_moe(model, moeConfig, t);
+  std::vector<int> axes = {moeConfig->hidden_size};
+  Tensor t = model->layer_norm(
+      model->add(model->multihead_attention(input,
+                                            input,
+                                            input,
+                                            moeConfig->hidden_size,
+                                            moeConfig->num_attention_heads,
+                                            moeConfig->attention_kdim,
+                                            moeConfig->attention_vdim),
+                 input),
+      axes,
+      true,
+      1e-05);
+  return model->layer_norm(
+      model->add(create_moe(model, moeConfig, t), t), axes, true, 1e-05);
 }
 
 void FlexFlow::top_level_task(Task const *task,
