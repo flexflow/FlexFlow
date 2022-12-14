@@ -212,7 +212,7 @@ void FlexFlow::top_level_task(Task const *task,
   Tensor t = create_mlp(&ff, &mlpConfig, input1, input2);
 
   InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);
-  im.compile_model_and_allocate_buffer();
+  // im.compile_model_and_allocate_buffer();
   ff.init_operators();
 
   // Start timer
