@@ -16,26 +16,25 @@ public:
 namespace Kernels {
 namespace Cast {
 template <typename IDT, typename ODT>
- void forward_kernel_wrapper(const IDT *input_ptr,
-                                    ODT *output_ptr,
-                                    size_t volume);
+void forward_kernel_wrapper(const IDT *input_ptr,
+                            ODT *output_ptr,
+                            size_t volume);
 
 template <typename IDT, typename ODT>
- void
-    backward_kernel_wrapper(const IDT *src_ptr, ODT *dst_ptr, size_t volume);
+void backward_kernel_wrapper(const IDT *src_ptr, ODT *dst_ptr, size_t volume);
 
 namespace Internal {
 
 template <typename IDT, typename ODT>
- void forward_kernel(const IDT *input_ptr,
-                             ODT *output_ptr,
-                             size_t volume,
-                             ffStream_t stream);
+void forward_kernel(const IDT *input_ptr,
+                    ODT *output_ptr,
+                    size_t volume,
+                    ffStream_t stream);
 template <typename IDT, typename ODT>
- void backward_kernel(const IDT *src_ptr,
-                            ODT *dst_ptr,
-                            size_t volume,
-                            ffStream_t stream);
+void backward_kernel(const IDT *src_ptr,
+                     ODT *dst_ptr,
+                     size_t volume,
+                     ffStream_t stream);
 } // namespace Internal
 } // namespace Cast
 } // namespace Kernels
