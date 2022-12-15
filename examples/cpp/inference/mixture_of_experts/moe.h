@@ -15,6 +15,13 @@
 
 #include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 60000
+#define NUM_SAMPLES 60000
+#define TRAIN_SAMPLES 60000
+#define TEST_SAMPLES 00000
+#define MNIST_DIMS 28 * 28
+#define CIFAR_DIMS 3 * 32 * 32
+#define DATA_DIMS MNIST_DIMS
+#define OUT_DIM 10
 
 using namespace Legion;
 using namespace std;
@@ -23,15 +30,17 @@ using namespace FlexFlow;
 struct MoeConfig {
   MoeConfig(void) {
     // Set default configurations here
-    hidden_size = 64;
+    hidden_size = DATA_DIMS;
     num_attention_heads = 16;
     attention_kdim = attention_vdim = hidden_size / num_attention_heads;
+    num_encoder_layers = 6;
   }
   std::string dataset_path;
   int hidden_size;
   int num_attention_heads;
   int attention_kdim;
   int attention_vdim;
+  int num_encoder_layers;
 };
 
 class DataLoader {
