@@ -18,26 +18,26 @@ namespace Reshape {
 
 template <typename T>
 void forward_kernel_wrapper(const T *input_ptr,
-                                   T *output_ptr,
-                                   size_t num_elements);
+                            T *output_ptr,
+                            size_t num_elements);
 
 template <typename T>
 void backward_kernel_wrapper(T *input_grad_ptr,
-                                    const T *output_grad_ptr,
-                                    size_t num_elements);
+                             const T *output_grad_ptr,
+                             size_t num_elements);
 
 namespace Internal {
 
 template <typename T>
 void forward_kernel(const T *input_ptr,
-                           T *output_ptr,
-                           size_t num_elements,
-                           ffStream_t stream);
+                    T *output_ptr,
+                    size_t num_elements,
+                    ffStream_t stream);
 template <typename T>
 void backward_kernel(T *input_grad_ptr,
-                            const T *output_grad_ptr,
-                            size_t num_elements,
-                            ffStream_t stream);
+                     const T *output_grad_ptr,
+                     size_t num_elements,
+                     ffStream_t stream);
 
 } // namespace Internal
 } // namespace Reshape
