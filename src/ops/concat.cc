@@ -89,12 +89,6 @@ Tensor
   concat->add_int_property("legion_axis", numdim - axis - 1);
   layers.push_back(concat);
   return concat->outputs[0];
-#ifdef DEADCODE
-  assert(axis < 0);
-  Concat *cat = new Concat(*this, n, tensors, -1 - axis, name);
-  layers.push_back(cat);
-  return cat->outputs[0];
-#endif
 }
 
 Op *Concat::create_operator_from_layer(
