@@ -15,8 +15,11 @@
 
 #include "flexflow/ops/cast.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/cast_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
+
+using namespace FlexFlow::Kernels::Cast;
 
 namespace FlexFlow {
 // declare Legion names
@@ -213,7 +216,7 @@ void Cast::forward_task_with_2_type(Task const *task,
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   ODT *output_ptr = helperGetTensorPointerWO<ODT>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  Cast::forward_kernel_wrapper<IDT, ODT>(
+  forward_kernel_wrapper<IDT, ODT>(
       input_ptr, output_ptr, output_domain.get_volume());
 }
 
@@ -293,7 +296,7 @@ void Cast::backward_task_with_2_type(Task const *task,
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   ODT *output_ptr = helperGetTensorPointerRW<ODT>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  Cast::backward_kernel_wrapper<IDT, ODT>(
+  backward_kernel_wrapper<IDT, ODT>(
       input_ptr, output_ptr, output_domain.get_volume());
 }
 

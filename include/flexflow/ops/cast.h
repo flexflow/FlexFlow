@@ -23,12 +23,6 @@
 
 namespace FlexFlow {
 
-class CastMeta : public OpMeta {
-public:
-  CastMeta(FFHandler handle);
-  DataType input_data_type, output_data_type;
-};
-
 class Cast : public Op {
 public:
   using Params = CastParams;
@@ -87,23 +81,7 @@ public:
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
-  template <typename IDT, typename ODT>
-  static void forward_kernel(const IDT *input_ptr,
-                             ODT *output_ptr,
-                             size_t volume,
-                             ffStream_t stream);
-  template <typename IDT, typename ODT>
-  static void forward_kernel_wrapper(const IDT *input_ptr,
-                                     ODT *output_ptr,
-                                     size_t volume);
-  template <typename IDT, typename ODT>
-  static void backward_kernel(const IDT *src_ptr,
-                              ODT *dst_ptr,
-                              size_t volume,
-                              ffStream_t stream);
-  template <typename IDT, typename ODT>
-  static void
-      backward_kernel_wrapper(const IDT *src_ptr, ODT *dst_ptr, size_t volume);
+
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const;
