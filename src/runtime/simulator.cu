@@ -16,7 +16,7 @@
 #include "flexflow/model.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
-#include "flexflow/ops/concat.h"
+#include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"

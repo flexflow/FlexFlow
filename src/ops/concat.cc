@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/ops/concat.h"
-#include "flexflow/accessor.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
@@ -37,6 +37,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
+
+using namespace FlexFlow::Kernels::Concat;
 
 bool operator==(ConcatParams const &lhs, ConcatParams const &rhs) {
   return lhs.axis == rhs.axis;
@@ -266,7 +268,7 @@ void Concat::forward_task(Task const *task,
     inputs[i] = helperGetGenericTensorAccessorRO(
         DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
   }
-  Concat::forward_kernel_wrapper(
+  forward_kernel_wrapper(
       m, output, inputs, cc->numInputs, cc->legion_axis);
 }
 
@@ -336,7 +338,7 @@ void Concat::backward_task(Task const *task,
     input_grads[i] = helperGetGenericTensorAccessorRW(
         DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
   }
-  Concat::backward_kernel_wrapper(
+  backward_kernel_wrapper(
       m, output_grad, input_grads, cc->numInputs, cc->legion_axis);
 }
 
