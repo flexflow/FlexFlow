@@ -67,6 +67,10 @@ Tensor FFModel::aggregate(
     }
     // Set output shape
     int dims[MAX_TENSOR_DIM];
+    // Ignore replica dimension for now
+    if (inputs[4]->dims[num_dim - 1] == 1) {
+      num_dim -= 1;
+    }
     for (int i = 0; i < num_dim - 1; i++)
       dims[i] = inputs[4]->dims[i];
     dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
