@@ -520,7 +520,7 @@ void MultiHeadAttention::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void MultiHeadAttention::inference(
+FutureMap MultiHeadAttention::inference(
     FFModel const &ff,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
@@ -569,7 +569,7 @@ void MultiHeadAttention::inference(
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(4, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 /*

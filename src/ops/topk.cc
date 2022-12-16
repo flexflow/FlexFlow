@@ -227,10 +227,10 @@ void TopK::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void TopK::inference(FFModel const &ff,
-                     std::vector<ParallelTensor> const &batch_inputs,
-                     std::vector<ParallelTensor> const &batch_outputs,
-                     MachineView const *mv) {
+FutureMap TopK::inference(FFModel const &ff,
+                          std::vector<ParallelTensor> const &batch_inputs,
+                          std::vector<ParallelTensor> const &batch_outputs,
+                          MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -262,7 +262,7 @@ void TopK::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[1]->region));
   launcher.add_field(2, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void TopK::forward_task(Task const *task,
