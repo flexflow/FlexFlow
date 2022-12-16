@@ -5,6 +5,7 @@
 #include "flexflow/ops/aggregate_params.h"
 
 namespace FlexFlow {
+using Legion::FutureMap;
 
 #define AGGREGATE_MAX_K 4
 #define AGGREGATE_MAX_BATCH_SIZE 64
@@ -36,10 +37,10 @@ public:
             char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
-  void inference(FFModel const &,
-                 std::vector<ParallelTensor> const &,
-                 std::vector<ParallelTensor> const &,
-                 MachineView const *mv = nullptr) override;
+  FutureMap inference(FFModel const &,
+                      std::vector<ParallelTensor> const &,
+                      std::vector<ParallelTensor> const &,
+                      MachineView const *mv = nullptr) override;
   void backward(FFModel const &) override;
   void print_layer(FFModel const &model) override {
     assert(0);
