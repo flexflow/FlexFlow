@@ -13,15 +13,57 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/split.h"
+#include "flexflow/ops/kernels/split_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
 
+namespace Kernels {
+namespace Split {
+
 /*static*/
-void Split::forward_kernel(float **out_ptrs,
+void forward_kernel_wrapper(float **out_ptrs,
+                                   float const *in_ptr,
+                                   coord_t const *out_blk_sizes,
+                                   coord_t in_blk_size,
+                                   coord_t num_blks,
+                                   int numOutputs) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::forward_kernel(out_ptrs,
+                        in_ptr,
+                        out_blk_sizes,
+                        in_blk_size,
+                        num_blks,
+                        numOutputs,
+                        stream);
+}
+
+/*static*/
+void backward_kernel_wrapper(float *in_grad_ptr,
+                                    float const **out_grad_ptr,
+                                    coord_t const *out_blk_sizes,
+                                    coord_t in_blk_size,
+                                    coord_t num_blks,
+                                    int numOutputs) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::backward_kernel(in_grad_ptr,
+                         out_grad_ptr,
+                         out_blk_sizes,
+                         in_blk_size,
+                         num_blks,
+                         numOutputs,
+                         stream);
+  // checkCUDA(cudaDeviceSynchronize());
+}
+
+namespace Internal {
+
+/*static*/
+void forward_kernel(float **out_ptrs,
                            float const *in_ptr,
                            coord_t const *out_blk_sizes,
                            coord_t in_blk_size,
@@ -39,25 +81,7 @@ void Split::forward_kernel(float **out_ptrs,
 }
 
 /*static*/
-void Split::forward_kernel_wrapper(float **out_ptrs,
-                                   float const *in_ptr,
-                                   coord_t const *out_blk_sizes,
-                                   coord_t in_blk_size,
-                                   coord_t num_blks,
-                                   int numOutputs) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Split::forward_kernel(out_ptrs,
-                        in_ptr,
-                        out_blk_sizes,
-                        in_blk_size,
-                        num_blks,
-                        numOutputs,
-                        stream);
-}
-
-/*static*/
-void Split::backward_kernel(float *in_grad_ptr,
+void backward_kernel(float *in_grad_ptr,
                             float const **out_grad_ptr,
                             coord_t const *out_blk_sizes,
                             coord_t in_blk_size,
@@ -74,23 +98,7 @@ void Split::backward_kernel(float *in_grad_ptr,
   }
 }
 
-/*static*/
-void Split::backward_kernel_wrapper(float *in_grad_ptr,
-                                    float const **out_grad_ptr,
-                                    coord_t const *out_blk_sizes,
-                                    coord_t in_blk_size,
-                                    coord_t num_blks,
-                                    int numOutputs) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Split::backward_kernel(in_grad_ptr,
-                         out_grad_ptr,
-                         out_blk_sizes,
-                         in_blk_size,
-                         num_blks,
-                         numOutputs,
-                         stream);
-  // checkCUDA(cudaDeviceSynchronize());
-}
-
-}; // namespace FlexFlow
+} // namespace Internal
+} // namespace Split
+} // namespace Kernels
+} // namespace FlexFlow
