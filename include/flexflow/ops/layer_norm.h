@@ -28,7 +28,8 @@ public:
   void backward(FFModel const &);
   void inference(FFModel const &,
                  std::vector<ParallelTensor> const &,
-                 std::vector<ParallelTensor> const &) override;
+                 std::vector<ParallelTensor> const &,
+                 MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) {
     assert(0);
   }
