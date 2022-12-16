@@ -369,11 +369,13 @@ void Linear::forward(FFModel const &ff) {
 
 void Linear::inference(FFModel const &ff,
                        std::vector<ParallelTensor> const &batch_inputs,
-                       std::vector<ParallelTensor> const &batch_outputs) {
+                       std::vector<ParallelTensor> const &batch_outputs,
+                       MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
+  size_t machine_view_hash = mv ? mv->hash() : outputs[0]->machine_view.hash();
   IndexLauncher launcher(LINEAR_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(nullptr, 0),
@@ -381,7 +383,7 @@ void Linear::inference(FFModel const &ff,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
+                         machine_view_hash);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
