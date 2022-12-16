@@ -268,8 +268,7 @@ void Concat::forward_task(Task const *task,
     inputs[i] = helperGetGenericTensorAccessorRO(
         DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
   }
-  forward_kernel_wrapper(
-      m, output, inputs, cc->numInputs, cc->legion_axis);
+  forward_kernel_wrapper(m, output, inputs, cc->numInputs, cc->legion_axis);
 }
 
 void Concat::backward(FFModel const &ff) {

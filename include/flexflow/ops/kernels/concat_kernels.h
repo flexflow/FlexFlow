@@ -18,32 +18,32 @@ public:
 namespace Kernels {
 namespace Concat {
 
-  void forward_kernel_wrapper(ConcatMeta const *m,
-                                     GenericTensorAccessorW const &output,
-                                     GenericTensorAccessorR const *inputs,
-                                     int num_inputs,
-                                     int axis);
-  void backward_kernel_wrapper(ConcatMeta const *m,
-                                      GenericTensorAccessorR const &output_grad,
-                                      GenericTensorAccessorW const *input_grads,
-                                      int num_inputs,
-                                      int axis);
+void forward_kernel_wrapper(ConcatMeta const *m,
+                            GenericTensorAccessorW const &output,
+                            GenericTensorAccessorR const *inputs,
+                            int num_inputs,
+                            int axis);
+void backward_kernel_wrapper(ConcatMeta const *m,
+                             GenericTensorAccessorR const &output_grad,
+                             GenericTensorAccessorW const *input_grads,
+                             int num_inputs,
+                             int axis);
 
 namespace Internal {
 
-  void forward_kernel(GenericTensorAccessorW const &output,
-                             GenericTensorAccessorR const *inputs,
-                             int num_inputs,
-                             int axis,
-                             ffStream_t stream);
-                             
-  void backward_kernel(GenericTensorAccessorR const &output_grad,
-                              GenericTensorAccessorW const *input_grads,
-                              int num_inputs,
-                              int axis,
-                              ffStream_t stream);
+void forward_kernel(GenericTensorAccessorW const &output,
+                    GenericTensorAccessorR const *inputs,
+                    int num_inputs,
+                    int axis,
+                    ffStream_t stream);
+
+void backward_kernel(GenericTensorAccessorR const &output_grad,
+                     GenericTensorAccessorW const *input_grads,
+                     int num_inputs,
+                     int axis,
+                     ffStream_t stream);
 } // namespace Internal
-} // namespace Cast
+} // namespace Concat
 } // namespace Kernels
 } // namespace FlexFlow
 

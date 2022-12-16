@@ -29,10 +29,10 @@ namespace Concat {
 
 /*static*/
 void forward_kernel_wrapper(ConcatMeta const *m,
-                                    GenericTensorAccessorW const &output,
-                                    GenericTensorAccessorR const *inputs,
-                                    int num_inputs,
-                                    int axis) {
+                            GenericTensorAccessorW const &output,
+                            GenericTensorAccessorR const *inputs,
+                            int num_inputs,
+                            int axis) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -61,10 +61,10 @@ void forward_kernel_wrapper(ConcatMeta const *m,
 
 /*static*/
 void backward_kernel_wrapper(ConcatMeta const *m,
-                                     GenericTensorAccessorR const &output_grad,
-                                     GenericTensorAccessorW const *input_grads,
-                                     int num_inputs,
-                                     int axis) {
+                             GenericTensorAccessorR const &output_grad,
+                             GenericTensorAccessorW const *input_grads,
+                             int num_inputs,
+                             int axis) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -105,10 +105,10 @@ void calc_blk_size(coord_t &num_blocks,
 
 /*static*/
 void forward_kernel(GenericTensorAccessorW const &output,
-                            GenericTensorAccessorR const *inputs,
-                            int num_inputs,
-                            int axis,
-                            cudaStream_t stream) {
+                    GenericTensorAccessorR const *inputs,
+                    int num_inputs,
+                    int axis,
+                    cudaStream_t stream) {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
   switch (output.domain.get_dim()) {
@@ -150,10 +150,10 @@ void forward_kernel(GenericTensorAccessorW const &output,
 
 /*static*/
 void backward_kernel(GenericTensorAccessorR const &output_grad,
-                             GenericTensorAccessorW const *input_grads,
-                             int num_inputs,
-                             int axis,
-                             cudaStream_t stream) {
+                     GenericTensorAccessorW const *input_grads,
+                     int num_inputs,
+                     int axis,
+                     cudaStream_t stream) {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
   switch (output_grad.domain.get_dim()) {
