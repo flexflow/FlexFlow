@@ -282,7 +282,7 @@ struct ToShape<ParallelTensor> {
   using type = ParallelTensorShape;
 };
 
-template <typename... Args, template <typename...> typename Container>
+template <typename... Args, template <typename...> class Container>
 struct ToShape<Container<Args...>> {
   using type = Container<typename ToShape<Args>::type...>;
 };
