@@ -424,14 +424,15 @@ void ElementBinary::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void ElementBinary::inference(
-    FFModel const &ff,
-    std::vector<ParallelTensor> const &batch_inputs,
-    std::vector<ParallelTensor> const &batch_outputs) {
+void ElementBinary::inference(FFModel const &ff,
+                              std::vector<ParallelTensor> const &batch_inputs,
+                              std::vector<ParallelTensor> const &batch_outputs,
+                              MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
+  size_t machine_view_hash = mv ? mv->hash() : outputs[0]->machine_view.hash();
   IndexLauncher launcher(ELEMENTBINARY_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
@@ -439,7 +440,7 @@ void ElementBinary::inference(
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
+                         machine_view_hash);
   if (inplace_a) {
     assert(batch_outputs[0]->part == batch_inputs[0]->part);
     assert(batch_outputs[0]->region == batch_inputs[0]->region);
