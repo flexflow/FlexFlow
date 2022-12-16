@@ -79,7 +79,7 @@ void Concat::backward_kernel_wrapper(ConcatMeta const *m,
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  Concat::backward_kernel(output_grad, input_grads, num_inputs, axis, stream);
+  Internal::backward_kernel(output_grad, input_grads, num_inputs, axis, stream);
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
