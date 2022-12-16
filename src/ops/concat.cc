@@ -147,10 +147,6 @@ Concat::Concat(FFModel &model,
                char const *name)
     : Concat(model, inputs.size(), inputs.data(), params.axis, name) {}
 
-void Concat::init_meta(ConcatMeta *m) const {
-  m->legion_axis = this->legion_axis;
-}
-
 void Concat::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
@@ -201,7 +197,7 @@ OpMeta *Concat::init_task(Task const *task,
   FFHandler handler = *((FFHandler const *)task->local_args);
   ConcatMeta *m = new ConcatMeta(handler);
   // Note that our internal axis index ordering is opposite to other frameworks
-  cc->init_meta(m);
+  init_meta(m, cc->legion_axis);
   m->profiling = cc->profiling;
   std::strcpy(m->op_name, cc->name);
   return m;
@@ -366,7 +362,7 @@ bool Concat::measure_operator_cost(Simulator *sim,
   }
 
   ConcatMeta *m = sim->concat_meta;
-  this->init_meta(m);
+  init_meta(m, this->legion_axis);
 
   sim->free_all();
   float *input_ptrs[MAX_NUM_INPUTS];

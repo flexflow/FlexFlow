@@ -13,8 +13,11 @@
  * limitations under the License.
  */
 #pragma once
+#include "flexflow/device.h"
+#include "flexflow/fftype.h"
 #include "flexflow/layer.h"
 #include "flexflow/node.h"
+#include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/cast_params.h"
 

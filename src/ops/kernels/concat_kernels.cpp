@@ -28,6 +28,10 @@ using Legion::Rect;
 namespace Kernels {
 namespace Concat {
 
+void init_meta(ConcatMeta *m, int legion_axis) {
+  m->legion_axis = legion_axis;
+}
+
 /*static*/
 void forward_kernel_wrapper(ConcatMeta const *m,
                             GenericTensorAccessorW const &output,

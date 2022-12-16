@@ -18,6 +18,7 @@ public:
 namespace Kernels {
 namespace Concat {
 
+void init_meta(ConcatMeta *meta, int legion_axis);
 void forward_kernel_wrapper(ConcatMeta const *m,
                             GenericTensorAccessorW const &output,
                             GenericTensorAccessorR const *inputs,
