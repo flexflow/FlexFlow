@@ -9,35 +9,35 @@ namespace FlexFlow {
 
 namespace Kernels {
 namespace Split {
-   void forward_kernel_wrapper(float **out_ptrs,
-                                     float const *in_ptr,
-                                     Legion::coord_t const *out_blk_sizes,
-                                     Legion::coord_t in_blk_size,
-                                     Legion::coord_t num_blks,
-                                     int numOutputs);
-   
-   void backward_kernel_wrapper(float *in_grad_ptr,
-                                      float const **out_grad_ptr,
-                                      Legion::coord_t const *out_blk_sizes,
-                                      Legion::coord_t in_blk_size,
-                                      Legion::coord_t num_blks,
-                                      int numOutputs);
+void forward_kernel_wrapper(float **out_ptrs,
+                            float const *in_ptr,
+                            Legion::coord_t const *out_blk_sizes,
+                            Legion::coord_t in_blk_size,
+                            Legion::coord_t num_blks,
+                            int numOutputs);
 
-namespace Internal {
- void forward_kernel(float **out_ptrs,
-                             float const *in_ptr,
+void backward_kernel_wrapper(float *in_grad_ptr,
+                             float const **out_grad_ptr,
                              Legion::coord_t const *out_blk_sizes,
                              Legion::coord_t in_blk_size,
                              Legion::coord_t num_blks,
-                             int numOutputs,
-                             ffStream_t stream);
+                             int numOutputs);
+
+namespace Internal {
+void forward_kernel(float **out_ptrs,
+                    float const *in_ptr,
+                    Legion::coord_t const *out_blk_sizes,
+                    Legion::coord_t in_blk_size,
+                    Legion::coord_t num_blks,
+                    int numOutputs,
+                    ffStream_t stream);
 void backward_kernel(float *in_grad_ptr,
-                              float const **out_grad_ptr,
-                              Legion::coord_t const *out_blk_sizes,
-                              Legion::coord_t in_blk_size,
-                              Legion::coord_t num_blks,
-                              int numOutputs,
-                              ffStream_t stream);
+                     float const **out_grad_ptr,
+                     Legion::coord_t const *out_blk_sizes,
+                     Legion::coord_t in_blk_size,
+                     Legion::coord_t num_blks,
+                     int numOutputs,
+                     ffStream_t stream);
 } // namespace Internal
 } // namespace Split
 } // namespace Kernels

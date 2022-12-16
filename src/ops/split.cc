@@ -317,11 +317,11 @@ void Split::backward_task(Task const *task,
   assert(total_volume == in_grad_domain.get_volume());
 
   backward_kernel_wrapper(in_grad_ptr,
-                                 out_grad_ptr,
-                                 out_blk_size,
-                                 in_blk_size,
-                                 num_blks,
-                                 split->numOutputs);
+                          out_grad_ptr,
+                          out_blk_size,
+                          in_blk_size,
+                          num_blks,
+                          split->numOutputs);
 }
 
 bool Split::measure_operator_cost(Simulator *sim,

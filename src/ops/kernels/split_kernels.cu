@@ -25,38 +25,38 @@ namespace Split {
 
 /*static*/
 void forward_kernel_wrapper(float **out_ptrs,
-                                   float const *in_ptr,
-                                   coord_t const *out_blk_sizes,
-                                   coord_t in_blk_size,
-                                   coord_t num_blks,
-                                   int numOutputs) {
+                            float const *in_ptr,
+                            coord_t const *out_blk_sizes,
+                            coord_t in_blk_size,
+                            coord_t num_blks,
+                            int numOutputs) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Internal::forward_kernel(out_ptrs,
-                        in_ptr,
-                        out_blk_sizes,
-                        in_blk_size,
-                        num_blks,
-                        numOutputs,
-                        stream);
+                           in_ptr,
+                           out_blk_sizes,
+                           in_blk_size,
+                           num_blks,
+                           numOutputs,
+                           stream);
 }
 
 /*static*/
 void backward_kernel_wrapper(float *in_grad_ptr,
-                                    float const **out_grad_ptr,
-                                    coord_t const *out_blk_sizes,
-                                    coord_t in_blk_size,
-                                    coord_t num_blks,
-                                    int numOutputs) {
+                             float const **out_grad_ptr,
+                             coord_t const *out_blk_sizes,
+                             coord_t in_blk_size,
+                             coord_t num_blks,
+                             int numOutputs) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Internal::backward_kernel(in_grad_ptr,
-                         out_grad_ptr,
-                         out_blk_sizes,
-                         in_blk_size,
-                         num_blks,
-                         numOutputs,
-                         stream);
+                            out_grad_ptr,
+                            out_blk_sizes,
+                            in_blk_size,
+                            num_blks,
+                            numOutputs,
+                            stream);
   // checkCUDA(cudaDeviceSynchronize());
 }
 
@@ -64,12 +64,12 @@ namespace Internal {
 
 /*static*/
 void forward_kernel(float **out_ptrs,
-                           float const *in_ptr,
-                           coord_t const *out_blk_sizes,
-                           coord_t in_blk_size,
-                           coord_t num_blks,
-                           int numOutputs,
-                           cudaStream_t stream) {
+                    float const *in_ptr,
+                    coord_t const *out_blk_sizes,
+                    coord_t in_blk_size,
+                    coord_t num_blks,
+                    int numOutputs,
+                    cudaStream_t stream) {
   for (int i = 0; i < numOutputs; i++) {
     copy_with_stride<<<GET_BLOCKS(out_blk_sizes[i] * num_blks),
                        CUDA_NUM_THREADS,
@@ -82,12 +82,12 @@ void forward_kernel(float **out_ptrs,
 
 /*static*/
 void backward_kernel(float *in_grad_ptr,
-                            float const **out_grad_ptr,
-                            coord_t const *out_blk_sizes,
-                            coord_t in_blk_size,
-                            coord_t num_blks,
-                            int numOutputs,
-                            cudaStream_t stream) {
+                     float const **out_grad_ptr,
+                     coord_t const *out_blk_sizes,
+                     coord_t in_blk_size,
+                     coord_t num_blks,
+                     int numOutputs,
+                     cudaStream_t stream) {
   for (int i = 0; i < numOutputs; i++) {
     add_with_stride<<<GET_BLOCKS(out_blk_sizes[i] * num_blks),
                       CUDA_NUM_THREADS,
