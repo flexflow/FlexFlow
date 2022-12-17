@@ -12,7 +12,7 @@ concurrency:
 jobs:
   gpu-ci-daemon:
     name: GPU CI Daemon
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     env:
       FLEXFLOW_TOKEN: ${{ secrets.FLEXFLOW_TOKEN }}
       FLEXFLOW_RUNNER_INSTANCE_ID: ${{ secrets.FLEXFLOW_RUNNER_INSTANCE_ID }}
