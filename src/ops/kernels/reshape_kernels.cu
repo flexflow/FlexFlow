@@ -24,7 +24,7 @@ namespace Kernels {
 namespace Reshape {
 
 template <typename T>
-void forward_kernel_wrapper(const T *input_ptr,
+void forward_kernel_wrapper(T const *input_ptr,
                             T *output_ptr,
                             size_t num_elements) {
   cudaStream_t stream;
@@ -52,7 +52,7 @@ void forward_kernel_wrapper(const T *input_ptr,
 
 template <typename T>
 void backward_kernel_wrapper(T *input_grad_ptr,
-                             const T *output_grad_ptr,
+                             T const *output_grad_ptr,
                              size_t num_elements) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -89,7 +89,7 @@ template void backward_kernel_wrapper<int64_t>(int64_t *in_grad_ptr,
 namespace Internal {
 
 template <typename T>
-void forward_kernel(const T *input_ptr,
+void forward_kernel(T const *input_ptr,
                     T *output_ptr,
                     size_t num_elements,
                     cudaStream_t stream) {
@@ -102,7 +102,7 @@ void forward_kernel(const T *input_ptr,
 
 template <typename T>
 void backward_kernel(T *input_grad_ptr,
-                     const T *output_grad_ptr,
+                     T const *output_grad_ptr,
                      size_t num_elements,
                      cudaStream_t stream) {
   float alpha = 1.0f;
