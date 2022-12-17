@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Wait for daemon to be done
-        run: .github/workflows/helpers/gpu_ci_helper.py
+        run: python3 .github/workflows/helpers/gpu_ci_helper.py
 
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests

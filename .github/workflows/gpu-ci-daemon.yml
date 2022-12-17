@@ -29,4 +29,4 @@ jobs:
           aws-region: us-east-2
 
       - name: Run daemon
-        run: .github/workflows/helpers/gpu_ci_helper.py --daemon
+        run: python3 .github/workflows/helpers/gpu_ci_helper.py --daemon
