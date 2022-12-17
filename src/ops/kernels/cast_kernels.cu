@@ -23,32 +23,13 @@ CastMeta::CastMeta(FFHandler handle) : OpMeta(handle) {}
 namespace Kernels {
 namespace Cast {
 
-/*static*/
 template <typename IDT, typename ODT>
-void forward_kernel_wrapper(const IDT *input_ptr,
+void forward_kernel_wrapper(IDT const *input_ptr,
                             ODT *output_ptr,
                             size_t volume) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-
-  cudaEvent_t t_start, t_end;
-  if (false) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
   Internal::forward_kernel<IDT, ODT>(input_ptr, output_ptr, volume, stream);
-  if (false) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("[%s] forward time (CF) = %.2fms\n", "Cast", elapsed);
-    print_tensor<IDT>(input_ptr, 32, "[Cast:forward:input]");
-    print_tensor<ODT>(output_ptr, 32, "[Cast:forward:output]");
-  }
 }
 
 template void forward_kernel_wrapper<float, float>(float const *input_ptr,
@@ -103,9 +84,8 @@ template void forward_kernel_wrapper<int64_t, int64_t>(int64_t const *input_ptr,
                                                        int64_t *output_ptr,
                                                        size_t volume);
 
-/*static*/
 template <typename IDT, typename ODT>
-void backward_kernel_wrapper(const IDT *src_ptr, ODT *dst_ptr, size_t volume) {
+void backward_kernel_wrapper(IDT const *src_ptr, ODT *dst_ptr, size_t volume) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Internal::backward_kernel<IDT, ODT>(src_ptr, dst_ptr, volume, stream);
@@ -166,15 +146,14 @@ template void backward_kernel_wrapper<int64_t, int64_t>(int64_t const *src_ptr,
 namespace Internal {
 
 template <typename IDT, typename ODT>
-__global__ void cast_forward(const IDT *input, ODT *output, size_t volume) {
+__global__ void cast_forward(IDT const *input, ODT *output, size_t volume) {
   CUDA_KERNEL_LOOP(i, volume) {
     output[i] = (ODT)input[i];
   }
 }
 
-/*static*/
 template <typename IDT, typename ODT>
-void forward_kernel(const IDT *input_ptr,
+void forward_kernel(IDT const *input_ptr,
                     ODT *output_ptr,
                     size_t volume,
                     cudaStream_t stream) {
@@ -184,15 +163,14 @@ void forward_kernel(const IDT *input_ptr,
 
 template <typename IDT, typename ODT>
 __global__ void
-    cast_backward(const IDT *input, ODT *output, size_t volume, ODT beta) {
+    cast_backward(IDT const *input, ODT *output, size_t volume, ODT beta) {
   CUDA_KERNEL_LOOP(i, volume) {
     output[i] = (ODT)input[i] + beta * output[i];
   }
 }
 
-/*static*/
 template <typename IDT, typename ODT>
-void backward_kernel(const IDT *src_ptr,
+void backward_kernel(IDT const *src_ptr,
                      ODT *dst_ptr,
                      size_t volume,
                      cudaStream_t stream) {
