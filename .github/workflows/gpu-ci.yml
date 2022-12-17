@@ -33,7 +33,7 @@ jobs:
     name: GPU CI Concierge
     runs-on: ubuntu-20.04
     env:
-      FLEXFLOW_TOKEN: "${GITHUB_TOKEN}"
+      FLEXFLOW_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
