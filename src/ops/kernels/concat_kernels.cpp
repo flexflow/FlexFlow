@@ -22,7 +22,6 @@ namespace FlexFlow {
 
 // declare Legion names
 using Legion::coord_t;
-using Legion::Domain;
 using Legion::Rect;
 
 namespace Kernels {
@@ -32,7 +31,6 @@ void init_meta(ConcatMeta *m, int legion_axis) {
   m->legion_axis = legion_axis;
 }
 
-/*static*/
 void forward_kernel_wrapper(ConcatMeta const *m,
                             GenericTensorAccessorW const &output,
                             GenericTensorAccessorR const *inputs,
@@ -64,12 +62,11 @@ void forward_kernel_wrapper(ConcatMeta const *m,
   }
 }
 
-/*static*/
-void Concat::backward_kernel_wrapper(ConcatMeta const *m,
-                                     GenericTensorAccessorR const &output_grad,
-                                     GenericTensorAccessorW const *input_grads,
-                                     int num_inputs,
-                                     int axis) {
+void backward_kernel_wrapper(ConcatMeta const *m,
+                             GenericTensorAccessorR const &output_grad,
+                             GenericTensorAccessorW const *input_grads,
+                             int num_inputs,
+                             int axis) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -108,7 +105,6 @@ void calc_blk_size(coord_t &num_blocks,
   }
 }
 
-/*static*/
 void forward_kernel(GenericTensorAccessorW const &output,
                     GenericTensorAccessorR const *inputs,
                     int num_inputs,
@@ -152,7 +148,6 @@ void forward_kernel(GenericTensorAccessorW const &output,
   }
 }
 
-/*static*/
 void backward_kernel(GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorW const *input_grads,
                      int num_inputs,
