@@ -50,7 +50,9 @@ if __name__ == "__main__":
         if len(instance_id) != 19:
             print("FLEXFLOW_RUNNER_INSTANCE_ID not set properly")
             sys.exit(1)
-        # If there are `gpu-ci` runs in progress or queued, turn on the `flexflow-runner` spot instance, if it is not already on. If there are no `gpu-ci` runs in progress or queued, turn off the spot instance if it is not already off.
+        # If there are `gpu-ci` runs in progress or queued, turn on the `flexflow-runner` spot instance,
+        # if it is not already on. If there are no `gpu-ci` runs in progress or queued, turn off 
+        # the spot instance if it is not already off.
         if n > 0:
             print("Starting the `flexflow-runner` spot instance (if not already on)...")
             os.system(
