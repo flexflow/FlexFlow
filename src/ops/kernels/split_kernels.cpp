@@ -24,7 +24,6 @@ using Legion::coord_t;
 namespace Kernels {
 namespace Split {
 
-/*static*/
 void backward_kernel_wrapper(float *in_grad_ptr,
                              float const **out_grad_ptr,
                              coord_t const *out_blk_sizes,
@@ -43,7 +42,6 @@ void backward_kernel_wrapper(float *in_grad_ptr,
   // checkCUDA(cudaDeviceSynchronize());
 }
 
-/*static*/
 void forward_kernel_wrapper(float **out_ptrs,
                             float const *in_ptr,
                             coord_t const *out_blk_sizes,
@@ -63,7 +61,6 @@ void forward_kernel_wrapper(float **out_ptrs,
 
 namespace Internal {
 
-/*static*/
 void forward_kernel(float **out_ptrs,
                     float const *in_ptr,
                     coord_t const *out_blk_sizes,
@@ -86,7 +83,6 @@ void forward_kernel(float **out_ptrs,
   }
 }
 
-/*static*/
 void backward_kernel(float *in_grad_ptr,
                      float const **out_grad_ptr,
                      coord_t const *out_blk_sizes,
