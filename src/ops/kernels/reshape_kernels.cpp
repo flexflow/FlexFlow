@@ -24,7 +24,6 @@ ReshapeMeta::ReshapeMeta(FFHandler handler) : OpMeta(handler) {}
 namespace Kernels {
 namespace Reshape {
 
-/*static*/
 template <typename T>
 void forward_kernel_wrapper(const T *input_ptr,
                             T *output_ptr,
@@ -34,7 +33,6 @@ void forward_kernel_wrapper(const T *input_ptr,
   Internal::forward_kernel<T>(input_ptr, output_ptr, num_elements, stream);
 }
 
-/*static*/
 template <typename T>
 void backward_kernel_wrapper(T *input_grad_ptr,
                              const T *output_grad_ptr,
@@ -72,7 +70,7 @@ template void backward_kernel_wrapper<int64_t>(int64_t *in_grad_ptr,
                                                size_t volume);
 
 namespace Internal {
-/*static*/
+
 template <typename T>
 void forward_kernel(const T *input_ptr,
                     T *output_ptr,
@@ -85,7 +83,6 @@ void forward_kernel(const T *input_ptr,
                            stream));
 }
 
-/*static*/
 template <typename T>
 void backward_kernel(T *input_grad_ptr,
                      const T *output_grad_ptr,
@@ -140,4 +137,4 @@ template void backward_kernel<int64_t>(int64_t *input_grad_ptr,
 } // namespace Internal
 } // namespace Reshape
 } // namespace Kernels
-}; // namespace FlexFlow
+} // namespace FlexFlow

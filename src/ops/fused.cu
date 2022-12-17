@@ -26,8 +26,8 @@
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
-#include "flexflow/ops/kernels/reshape_kernels.h"
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
+#include "flexflow/ops/kernels/reshape_kernels.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/utils/cuda_helper.h"
 
