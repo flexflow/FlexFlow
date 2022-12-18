@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from github import Github
-import os, sys, argparse
+import os, sys, argparse, time
 
 
 def get_num_workflow_runs(repo, workflow_name, in_progress_only=False):
@@ -42,16 +42,14 @@ if __name__ == "__main__":
         # Check if there is any `gpu-ci` workflow in progress or queued
         target_workflow = ".github/workflows/gpu-ci.yml"
         n = get_num_workflow_runs(repo, target_workflow, in_progress_only=False)
-        print(
-            f"Detected {len(current_runs)} `{workflow_name}` workflow runs in progress or queued"
-        )
+        print(f"Detected {n} `{target_workflow}` workflow runs in progress or queued")
 
         instance_id = os.getenv("FLEXFLOW_RUNNER_INSTANCE_ID") or ""
         if len(instance_id) != 19:
             print("FLEXFLOW_RUNNER_INSTANCE_ID not set properly")
             sys.exit(1)
         # If there are `gpu-ci` runs in progress or queued, turn on the `flexflow-runner` spot instance,
-        # if it is not already on. If there are no `gpu-ci` runs in progress or queued, turn off 
+        # if it is not already on. If there are no `gpu-ci` runs in progress or queued, turn off
         # the spot instance if it is not already off.
         if n > 0:
             print("Starting the `flexflow-runner` spot instance (if not already on)...")
@@ -70,5 +68,5 @@ if __name__ == "__main__":
         target_workflow = ".github/workflows/gpu-ci-daemon.yml"
         n = get_num_workflow_runs(repo, target_workflow, in_progress_only=True)
         while n > 0:
-            sleep(30)
+            time.sleep(30)
             n = get_num_workflow_runs(repo, target_workflow, in_progress_only=True)
