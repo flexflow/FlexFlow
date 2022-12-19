@@ -24,7 +24,7 @@ namespace Kernels {
 namespace Cast {
 
 template <typename IDT, typename ODT>
-void forward_kernel_wrapper(CastMeta *m,
+void forward_kernel_wrapper(CastMeta const *m,
                             IDT const *input_ptr,
                             ODT *output_ptr,
                             size_t volume) {
@@ -51,55 +51,71 @@ void forward_kernel_wrapper(CastMeta *m,
   }
 }
 
-template void forward_kernel_wrapper<float, float>(CastMeta *m, float const *input_ptr,
+template void forward_kernel_wrapper<float, float>(CastMeta *m,
+                                                   float const *input_ptr,
                                                    float *output_ptr,
                                                    size_t volume);
-template void forward_kernel_wrapper<float, double>(CastMeta *m, float const *input_ptr,
+template void forward_kernel_wrapper<float, double>(CastMeta *m,
+                                                    float const *input_ptr,
                                                     double *output_ptr,
                                                     size_t volume);
-template void forward_kernel_wrapper<float, int32_t>(CastMeta *m, float const *input_ptr,
+template void forward_kernel_wrapper<float, int32_t>(CastMeta *m,
+                                                     float const *input_ptr,
                                                      int32_t *output_ptr,
                                                      size_t volume);
-template void forward_kernel_wrapper<float, int64_t>(CastMeta *m, float const *input_ptr,
+template void forward_kernel_wrapper<float, int64_t>(CastMeta *m,
+                                                     float const *input_ptr,
                                                      int64_t *output_ptr,
                                                      size_t volume);
 
-template void forward_kernel_wrapper<double, float>(CastMeta *m, double const *input_ptr,
+template void forward_kernel_wrapper<double, float>(CastMeta *m,
+                                                    double const *input_ptr,
                                                     float *output_ptr,
                                                     size_t volume);
-template void forward_kernel_wrapper<double, double>(CastMeta *m, double const *input_ptr,
+template void forward_kernel_wrapper<double, double>(CastMeta *m,
+                                                     double const *input_ptr,
                                                      double *output_ptr,
                                                      size_t volume);
-template void forward_kernel_wrapper<double, int32_t>(CastMeta *m, double const *input_ptr,
+template void forward_kernel_wrapper<double, int32_t>(CastMeta *m,
+                                                      double const *input_ptr,
                                                       int32_t *output_ptr,
                                                       size_t volume);
-template void forward_kernel_wrapper<double, int64_t>(CastMeta *m, double const *input_ptr,
+template void forward_kernel_wrapper<double, int64_t>(CastMeta *m,
+                                                      double const *input_ptr,
                                                       int64_t *output_ptr,
                                                       size_t volume);
 
-template void forward_kernel_wrapper<int32_t, float>(CastMeta *m, int32_t const *input_ptr,
+template void forward_kernel_wrapper<int32_t, float>(CastMeta *m,
+                                                     int32_t const *input_ptr,
                                                      float *output_ptr,
                                                      size_t volume);
-template void forward_kernel_wrapper<int32_t, double>(CastMeta *m, int32_t const *input_ptr,
+template void forward_kernel_wrapper<int32_t, double>(CastMeta *m,
+                                                      int32_t const *input_ptr,
                                                       double *output_ptr,
                                                       size_t volume);
-template void forward_kernel_wrapper<int32_t, int32_t>(CastMeta *m, int32_t const *input_ptr,
+template void forward_kernel_wrapper<int32_t, int32_t>(CastMeta *m,
+                                                       int32_t const *input_ptr,
                                                        int32_t *output_ptr,
                                                        size_t volume);
-template void forward_kernel_wrapper<int32_t, int64_t>(CastMeta *m, int32_t const *input_ptr,
+template void forward_kernel_wrapper<int32_t, int64_t>(CastMeta *m,
+                                                       int32_t const *input_ptr,
                                                        int64_t *output_ptr,
                                                        size_t volume);
 
-template void forward_kernel_wrapper<int64_t, float>(CastMeta *m, int64_t const *input_ptr,
+template void forward_kernel_wrapper<int64_t, float>(CastMeta *m,
+                                                     int64_t const *input_ptr,
                                                      float *output_ptr,
                                                      size_t volume);
-template void forward_kernel_wrapper<int64_t, double>(CastMeta *m, int64_t const *input_ptr,
+template void forward_kernel_wrapper<int64_t, double>(CastMeta *m,
+                                                      int64_t const *input_ptr,
                                                       double *output_ptr,
                                                       size_t volume);
-template void forward_kernel_wrapper<int64_t, int32_t>(CastMeta *m, int64_t const *input_ptr,
+template void forward_kernel_wrapper<int64_t, int32_t>(CastMeta *m,
+                                                       int64_t const *input_ptr,
                                                        int32_t *output_ptr,
                                                        size_t volume);
-template void forward_kernel_wrapper<int64_t, int64_t>(CastMeta *m, int64_t const *input_ptr,
+template void forward_kernel_wrapper<int64_t, int64_t>(CastMeta *m,
+                                                       int64_t const *input_ptr,
                                                        int64_t *output_ptr,
                                                        size_t volume);
 
