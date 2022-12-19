@@ -24,63 +24,82 @@ namespace Kernels {
 namespace Cast {
 
 template <typename IDT, typename ODT>
-void forward_kernel_wrapper(IDT const *input_ptr,
+void forward_kernel_wrapper(CastMeta *m,
+                            IDT const *input_ptr,
                             ODT *output_ptr,
                             size_t volume) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
   Internal::forward_kernel<IDT, ODT>(input_ptr, output_ptr, volume, stream);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[%s] forward time (CF) = %.2fms\n", "Cast", elapsed);
+    print_tensor<IDT>(input_ptr, 32, "[Cast:forward:input]");
+    print_tensor<ODT>(output_ptr, 32, "[Cast:forward:output]");
+  }
 }
 
-template void forward_kernel_wrapper<float, float>(float const *input_ptr,
+template void forward_kernel_wrapper<float, float>(CastMeta *m, float const *input_ptr,
                                                    float *output_ptr,
                                                    size_t volume);
-template void forward_kernel_wrapper<float, double>(float const *input_ptr,
+template void forward_kernel_wrapper<float, double>(CastMeta *m, float const *input_ptr,
                                                     double *output_ptr,
                                                     size_t volume);
-template void forward_kernel_wrapper<float, int32_t>(float const *input_ptr,
+template void forward_kernel_wrapper<float, int32_t>(CastMeta *m, float const *input_ptr,
                                                      int32_t *output_ptr,
                                                      size_t volume);
-template void forward_kernel_wrapper<float, int64_t>(float const *input_ptr,
+template void forward_kernel_wrapper<float, int64_t>(CastMeta *m, float const *input_ptr,
                                                      int64_t *output_ptr,
                                                      size_t volume);
 
-template void forward_kernel_wrapper<double, float>(double const *input_ptr,
+template void forward_kernel_wrapper<double, float>(CastMeta *m, double const *input_ptr,
                                                     float *output_ptr,
                                                     size_t volume);
-template void forward_kernel_wrapper<double, double>(double const *input_ptr,
+template void forward_kernel_wrapper<double, double>(CastMeta *m, double const *input_ptr,
                                                      double *output_ptr,
                                                      size_t volume);
-template void forward_kernel_wrapper<double, int32_t>(double const *input_ptr,
+template void forward_kernel_wrapper<double, int32_t>(CastMeta *m, double const *input_ptr,
                                                       int32_t *output_ptr,
                                                       size_t volume);
-template void forward_kernel_wrapper<double, int64_t>(double const *input_ptr,
+template void forward_kernel_wrapper<double, int64_t>(CastMeta *m, double const *input_ptr,
                                                       int64_t *output_ptr,
                                                       size_t volume);
 
-template void forward_kernel_wrapper<int32_t, float>(int32_t const *input_ptr,
+template void forward_kernel_wrapper<int32_t, float>(CastMeta *m, int32_t const *input_ptr,
                                                      float *output_ptr,
                                                      size_t volume);
-template void forward_kernel_wrapper<int32_t, double>(int32_t const *input_ptr,
+template void forward_kernel_wrapper<int32_t, double>(CastMeta *m, int32_t const *input_ptr,
                                                       double *output_ptr,
                                                       size_t volume);
-template void forward_kernel_wrapper<int32_t, int32_t>(int32_t const *input_ptr,
+template void forward_kernel_wrapper<int32_t, int32_t>(CastMeta *m, int32_t const *input_ptr,
                                                        int32_t *output_ptr,
                                                        size_t volume);
-template void forward_kernel_wrapper<int32_t, int64_t>(int32_t const *input_ptr,
+template void forward_kernel_wrapper<int32_t, int64_t>(CastMeta *m, int32_t const *input_ptr,
                                                        int64_t *output_ptr,
                                                        size_t volume);
 
-template void forward_kernel_wrapper<int64_t, float>(int64_t const *input_ptr,
+template void forward_kernel_wrapper<int64_t, float>(CastMeta *m, int64_t const *input_ptr,
                                                      float *output_ptr,
                                                      size_t volume);
-template void forward_kernel_wrapper<int64_t, double>(int64_t const *input_ptr,
+template void forward_kernel_wrapper<int64_t, double>(CastMeta *m, int64_t const *input_ptr,
                                                       double *output_ptr,
                                                       size_t volume);
-template void forward_kernel_wrapper<int64_t, int32_t>(int64_t const *input_ptr,
+template void forward_kernel_wrapper<int64_t, int32_t>(CastMeta *m, int64_t const *input_ptr,
                                                        int32_t *output_ptr,
                                                        size_t volume);
-template void forward_kernel_wrapper<int64_t, int64_t>(int64_t const *input_ptr,
+template void forward_kernel_wrapper<int64_t, int64_t>(CastMeta *m, int64_t const *input_ptr,
                                                        int64_t *output_ptr,
                                                        size_t volume);
 

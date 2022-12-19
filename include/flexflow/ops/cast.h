@@ -12,7 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
+#ifndef _FLEXFLOW_CAST_H
+#define _FLEXFLOW_CAST_H
+
 #include "flexflow/layer.h"
 #include "flexflow/node.h"
 #include "flexflow/operator.h"
@@ -94,3 +96,5 @@ public:
 };
 
 }; // namespace FlexFlow
+
+#endif // _FLEXLOW_CAST_H

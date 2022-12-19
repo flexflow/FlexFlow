@@ -208,6 +208,7 @@ void Cast::forward_task_with_2_type(Task const *task,
                                     Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
+  CastMeta const *m = *((CastMeta **)task->local_args);
   // Domain input_domain = runtime->get_index_space_domain(
   //   ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
@@ -217,7 +218,7 @@ void Cast::forward_task_with_2_type(Task const *task,
   ODT *output_ptr = helperGetTensorPointerWO<ODT>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   forward_kernel_wrapper<IDT, ODT>(
-      input_ptr, output_ptr, output_domain.get_volume());
+      m, input_ptr, output_ptr, output_domain.get_volume());
 }
 
 void Cast::forward_task(Task const *task,
