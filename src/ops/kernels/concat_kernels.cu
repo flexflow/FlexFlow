@@ -15,7 +15,6 @@
 
 #include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
-#include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
 

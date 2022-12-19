@@ -14,7 +14,6 @@
  */
 
 #include "flexflow/ops/kernels/concat_kernels.h"
-#include "flexflow/utils/hash_utils.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
