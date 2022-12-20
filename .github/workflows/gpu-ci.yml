@@ -29,9 +29,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  gpu-ci-concierge:
+    name: GPU CI Concierge
+    runs-on: ubuntu-20.04
+    env:
+      FLEXFLOW_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+
+      - name: Wait for daemon to be done
+        run: |
+          pip install pygithub
+          python3 .github/workflows/helpers/gpu_ci_helper.py
+
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests
     runs-on: self-hosted
+    needs: gpu-ci-concierge
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
       options: --gpus all --shm-size=8192m
