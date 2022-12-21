@@ -16,7 +16,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import sys
-from .backend_functions import batch_dot, BatchMatmul
+from .backend_functions import batch_dot
+import .internal
 
 # Default backend: FlexFlow.
 _BACKEND = 'flexflow'
