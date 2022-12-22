@@ -15,6 +15,7 @@
 
 #include "flexflow/ops/split.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/split_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -34,6 +35,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
+
+using namespace FlexFlow::Kernels::Split;
 
 bool operator==(SplitParams const &lhs, SplitParams const &rhs) {
   return lhs.splits == rhs.splits && lhs.legion_axis == rhs.legion_axis;
@@ -75,12 +78,6 @@ void FFModel::split(const Tensor input,
   }
   split->add_int_property("legion_axis", numdim - axis - 1);
   layers.push_back(split);
-#ifdef DEADCODE
-  Split *split = new Split(*this, input, splits, axis, name);
-  layers.push_back(split);
-  for (size_t i = 0; i < splits.size(); i++)
-    outputs[i] = split->outputs[i];
-#endif
 }
 
 Op *Split::create_operator_from_layer(
@@ -253,7 +250,7 @@ void Split::forward_task(Task const *task,
   }
   assert(total_volume == in_domain.get_volume());
 
-  Split::forward_kernel_wrapper(
+  forward_kernel_wrapper(
       out_ptr, in_ptr, out_blk_size, in_blk_size, num_blks, split->numOutputs);
 }
 
@@ -319,12 +316,12 @@ void Split::backward_task(Task const *task,
   }
   assert(total_volume == in_grad_domain.get_volume());
 
-  Split::backward_kernel_wrapper(in_grad_ptr,
-                                 out_grad_ptr,
-                                 out_blk_size,
-                                 in_blk_size,
-                                 num_blks,
-                                 split->numOutputs);
+  backward_kernel_wrapper(in_grad_ptr,
+                          out_grad_ptr,
+                          out_blk_size,
+                          in_blk_size,
+                          num_blks,
+                          split->numOutputs);
 }
 
 bool Split::measure_operator_cost(Simulator *sim,
