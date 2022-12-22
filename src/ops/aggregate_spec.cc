@@ -49,6 +49,7 @@ AggregateSpec::AggregateSpec(FFModel &model,
                              char const *name)
     : Op(model,
          OP_AGG_SPEC,
+         DT_FLOAT,
          name,
          _n + 4 /*numInputs*/,
          0 /*numWeights*/,

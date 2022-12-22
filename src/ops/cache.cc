@@ -88,6 +88,7 @@ Cache::Cache(
     char const *name)
     : Op(model,
          OP_CACHE,
+         DT_FLOAT,
          name,
          1 /*inputs*/,
          0 /*weights*/,

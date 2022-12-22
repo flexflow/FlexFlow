@@ -282,7 +282,7 @@ struct ToShape<ParallelTensor> {
   using type = ParallelTensorShape;
 };
 
-template <typename... Args, template <typename...> typename Container>
+template <typename... Args, template <typename...> class Container>
 struct ToShape<Container<Args...>> {
   using type = Container<typename ToShape<Args>::type...>;
 };
@@ -402,6 +402,7 @@ public:
                    int num_entires,
                    int outDim,
                    AggrMode aggr,
+                   DataType dtype = DT_FLOAT,
                    Layer const *shared_op = NULL,
                    Initializer *kernel_initializer = NULL,
                    char const *name = NULL);
@@ -465,7 +466,7 @@ public:
                Initializer *bias_initializer = NULL,
                char const *name = NULL);
   // Add a cast layer
-  Tensor cast(const Tensor input, DataType dtype, char const *name);
+  Tensor cast(const Tensor input, DataType dtype, char const *name = nullptr);
   // Add a concat layer
   Tensor
       concat(int n, Tensor const *tensors, int axis, char const *name = NULL);

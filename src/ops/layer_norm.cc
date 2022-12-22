@@ -77,6 +77,7 @@ Tensor FFModel::layer_norm(const Tensor input,
   int num_weights = elementwise_affine ? 2 : 0;
   Layer *ln = new Layer(this,
                         OP_LAYERNORM,
+                        DT_FLOAT,
                         name,
                         1 /*inputs*/,
                         num_weights,
@@ -160,6 +161,7 @@ LayerNorm::LayerNorm(FFModel &model,
                      char const *name)
     : Op(model,
          OP_LAYERNORM,
+         _input->data_type,
          name,
          1 /*inputs*/,
          _elementwise_affine ? 2 : 0 /*weights*/,
@@ -187,81 +189,6 @@ LayerNorm::LayerNorm(FFModel &model,
   }
   return;
 }
-
-#ifdef DEADCODE
-void LayerNorm::create_weights(FFModel &model) {
-  std::string pcname = name;
-  task_is = model.get_or_create_task_is(outputs[0].numDim, pcname);
-
-  // TODO: temp work, will let users to pick either NCCL or PS
-#ifdef FF_USE_NCCL
-  ParameterSyncType comm_type = ParameterSyncType::NCCL;
-#else
-  ParameterSyncType comm_type = ParameterSyncType::PS;
-#endif
-
-  // Create scale and bias
-  Initializer *scale_initializer = new ConstantInitializer(1.0f);
-  Initializer *bias_initializer = new ConstantInitializer(0.0f);
-  int const dims[1] = {weights[0].adim[0]};
-  switch (outputs[0].numDim) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM: {                                                                  \
-    weights[0] = model.create_linear_weight<1, DIM>(this,                      \
-                                                    dims,                      \
-                                                    DT_FLOAT,                  \
-                                                    scale_initializer,         \
-                                                    true /*create_grad*/,      \
-                                                    comm_type);                \
-    weights[1] = model.create_linear_weight<1, DIM>(this,                      \
-                                                    dims,                      \
-                                                    DT_FLOAT,                  \
-                                                    bias_initializer,          \
-                                                    true /*create_grad*/,      \
-                                                    comm_type);                \
-    break;                                                                     \
-  }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-  }
-}
-
-void LayerNorm::create_output_and_partition(FFModel &model) {
-  // Retrive the task indexspace for the op
-  std::string pcname = name;
-  task_is = model.get_or_create_task_is(outputs[0].numDim, pcname);
-  Context ctx = model.config.lg_ctx;
-  Runtime *runtime = model.config.lg_hlr;
-  Domain part_rect = runtime->get_index_space_domain(ctx, task_is);
-  {
-    int dims[MAX_TENSOR_DIM];
-    int ndims = outputs[0].numDim;
-    for (int i = 0; i < outputs[0].numDim; i++)
-      dims[i] = outputs[0].adim[ndims - 1 - i];
-    switch (ndims) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM: {                                                                  \
-    outputs[0] = model.create_tensor<DIM>(dims, outputs[0].data_type, this);   \
-    break;                                                                     \
-  }
-      LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    }
-    outputs[0].owner_op = this;
-    outputs[0].owner_idx = 0;
-  }
-  Domain input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0].part.get_index_partition());
-  // Currently assume output and input must be partitioned in the same way
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0].part;
-    input_grad_lps[0] = inputs[0].part_grad;
-  } else {
-    assert(false &&
-           "LayerNorm currently assume output/input have same partition");
-  }
-}
-#endif
 
 void LayerNorm::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());

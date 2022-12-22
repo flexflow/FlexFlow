@@ -1,7 +1,10 @@
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/pool_2d_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
+
+using namespace FlexFlow::Kernels::Pool2D;
 
 namespace FlexFlow {
 
@@ -33,8 +36,14 @@ Tensor FFModel::pool2d(const Tensor input,
                        ActiMode activation,
                        char const *name) {
   assert(input->num_dims == 4); /*NCHW*/
-  Layer *pool = new Layer(
-      this, OP_POOL2D, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, input);
+  Layer *pool = new Layer(this,
+                          OP_POOL2D,
+                          DT_FLOAT,
+                          name,
+                          1 /*inputs*/,
+                          0 /*weights*/,
+                          1 /*outputs*/,
+                          input);
   int numdims = 4;
   int dims[MAX_TENSOR_DIM];
   dims[3] = input->dims[3];
@@ -224,6 +233,7 @@ Pool2D::Pool2D(FFModel &model,
                char const *name)
     : Op(model,
          OP_POOL2D,
+         _input->data_type,
          name,
          1 /*inputs*/,
          0 /*weights*/,
@@ -346,18 +356,22 @@ OpMeta *Pool2D::init_task(Task const *task,
   if (pad_w != pool->padding_w)
     printf("Warning: changing pool_padding_w to satisfy output_w size\n");
 
-  Pool2D::init_kernel(pool,
-                      m,
-                      input_w,
-                      input_h,
-                      input_c,
-                      input_n,
-                      output_w,
-                      output_h,
-                      output_c,
-                      output_n,
-                      pad_h,
-                      pad_w);
+  init_kernel(m,
+              input_w,
+              input_h,
+              input_c,
+              input_n,
+              output_w,
+              output_h,
+              output_c,
+              output_n,
+              pad_h,
+              pad_w,
+              pool->kernel_h,
+              pool->kernel_w,
+              pool->stride_h,
+              pool->stride_w,
+              pool->pool_type);
   return m;
 }
 
@@ -411,7 +425,7 @@ void Pool2D::forward_task(Task const *task,
                                                           runtime,
                                                           false /*readOutput*/);
 
-  Pool2D::forward_kernel_wrapper(m, acc_input.ptr, acc_output.ptr);
+  forward_kernel_wrapper(m, acc_input.ptr, acc_output.ptr);
 }
 
 void Pool2D::backward(FFModel const &ff) {
@@ -487,11 +501,11 @@ void Pool2D::backward_task(Task const *task,
   TensorAccessorR<float, Pool2DOutput::NUMDIM> acc_output_grad(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
-  Pool2D::backward_kernel_wrapper(m,
-                                  acc_input.ptr,
-                                  acc_input_grad.ptr,
-                                  acc_output.ptr,
-                                  acc_output_grad.ptr);
+  backward_kernel_wrapper(m,
+                          acc_input.ptr,
+                          acc_input_grad.ptr,
+                          acc_output.ptr,
+                          acc_output_grad.ptr);
 }
 
 void Pool2D::serialize(Legion::Serializer &sez) const {
@@ -525,8 +539,7 @@ bool Pool2D::measure_operator_cost(Simulator *sim,
   int pad_w = ((output_w - 1) * stride_w + kernel_w - input_w + 1) / 2;
   Pool2DMeta *m = sim->pool2d_meta;
 
-  init_kernel(this,
-              m,
+  init_kernel(m,
               input_w,
               input_h,
               input_c,
@@ -536,7 +549,12 @@ bool Pool2D::measure_operator_cost(Simulator *sim,
               output_c,
               output_n,
               pad_h,
-              pad_w);
+              pad_w,
+              this->kernel_h,
+              this->kernel_w,
+              this->stride_h,
+              this->stride_w,
+              this->pool_type);
   // allocate tensors in simulator
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);

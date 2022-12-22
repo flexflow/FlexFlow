@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/ops/concat.h"
-#include "flexflow/accessor.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
@@ -37,6 +37,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
+
+using namespace FlexFlow::Kernels::Concat;
 
 bool operator==(ConcatParams const &lhs, ConcatParams const &rhs) {
   return lhs.axis == rhs.axis;
@@ -61,6 +63,7 @@ Tensor
     FFModel::concat(int n, Tensor const *tensors, int axis, char const *name) {
   Layer *concat = new Layer(this,
                             OP_CONCAT,
+                            DT_FLOAT,
                             name,
                             n /*inputs*/,
                             0 /*weights*/,
@@ -88,12 +91,6 @@ Tensor
   concat->add_int_property("legion_axis", numdim - axis - 1);
   layers.push_back(concat);
   return concat->outputs[0];
-#ifdef DEADCODE
-  assert(axis < 0);
-  Concat *cat = new Concat(*this, n, tensors, -1 - axis, name);
-  layers.push_back(cat);
-  return cat->outputs[0];
-#endif
 }
 
 Op *Concat::create_operator_from_layer(
@@ -114,6 +111,7 @@ Concat::Concat(FFModel &model,
                char const *name)
     : Op(model,
          OP_CONCAT,
+         DT_FLOAT,
          name,
          _n /*inputs*/,
          0 /*weights*/,
@@ -148,10 +146,6 @@ Concat::Concat(FFModel &model,
                std::vector<ParallelTensor> const &inputs,
                char const *name)
     : Concat(model, inputs.size(), inputs.data(), params.axis, name) {}
-
-void Concat::init_meta(ConcatMeta *m) const {
-  m->legion_axis = this->legion_axis;
-}
 
 void Concat::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -203,7 +197,7 @@ OpMeta *Concat::init_task(Task const *task,
   FFHandler handler = *((FFHandler const *)task->local_args);
   ConcatMeta *m = new ConcatMeta(handler);
   // Note that our internal axis index ordering is opposite to other frameworks
-  cc->init_meta(m);
+  init_meta(m, cc->legion_axis);
   m->profiling = cc->profiling;
   std::strcpy(m->op_name, cc->name);
   return m;
@@ -270,8 +264,7 @@ void Concat::forward_task(Task const *task,
     inputs[i] = helperGetGenericTensorAccessorRO(
         DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
   }
-  Concat::forward_kernel_wrapper(
-      m, output, inputs, cc->numInputs, cc->legion_axis);
+  forward_kernel_wrapper(m, output, inputs, cc->numInputs, cc->legion_axis);
 }
 
 void Concat::backward(FFModel const &ff) {
@@ -340,7 +333,7 @@ void Concat::backward_task(Task const *task,
     input_grads[i] = helperGetGenericTensorAccessorRW(
         DT_FLOAT, regions[i + 1], task->regions[i + 1], FID_DATA, ctx, runtime);
   }
-  Concat::backward_kernel_wrapper(
+  backward_kernel_wrapper(
       m, output_grad, input_grads, cc->numInputs, cc->legion_axis);
 }
 
@@ -369,7 +362,7 @@ bool Concat::measure_operator_cost(Simulator *sim,
   }
 
   ConcatMeta *m = sim->concat_meta;
-  this->init_meta(m);
+  init_meta(m, this->legion_axis);
 
   sim->free_all();
   float *input_ptrs[MAX_NUM_INPUTS];
