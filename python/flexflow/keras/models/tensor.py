@@ -99,10 +99,10 @@ class Tensor(object):
 
   def create_ff_tensor(self, ffmodel):
     assert self.batch_shape[0] != 0, "[Tensor]: batch size is not set"
-    if (self.num_dims == 2 or self.num_dims == 4):
-      self._ffhandle = ffmodel.create_tensor(self.batch_shape, self.dtype);
-    else:
-      assert 0, "un-supported dims"
+    # if (self.num_dims == 2 or self.num_dims == 4):
+    self._ffhandle = ffmodel.create_tensor(self.batch_shape, self.dtype);
+    # else:
+    #   assert 0, "un-supported dims"
     self.__verify_ffhandle_shape()
     self.__verify_ffhandle_dtype()
 
