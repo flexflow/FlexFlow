@@ -297,3 +297,30 @@ class Reshape(Layer):
     
   def _reset_layer(self):
     pass
+
+
+class Permute(Layer):
+  def __init__(self, perm, input_shape=None, **kwargs):
+    super(Permute, self).__init__('permute', 'Permute', **kwargs)
+    self.perm = perm
+
+  def verify_meta_data(self):
+    pass
+
+  def get_summary(self):
+    summary = "%s%s\t\t%s%s\n"%(self._get_summary_name(), self.output_shape, self.input_shape, self._get_summary_connected_to())
+    return summary
+
+  def __call__(self, input_tensor):
+    return self._connect_layer_1_input_1_output(input_tensor)
+
+  def _calculate_inout_shape(self, input_tensor):
+    self.input_shape = input_tensor.batch_shape
+    self.output_shape = tuple(input_tensor.batch_shape[i] for i in self.perm)
+
+  def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
+    pass
+
+  def _reset_layer(self):
+    pass
+
