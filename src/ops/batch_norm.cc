@@ -72,8 +72,9 @@ BatchNorm::BatchNorm(FFModel &model,
   assert(_input->num_dims == 4);
   numOutputs = 1;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < _input->num_dims; i++)
+  for (int i = 0; i < _input->num_dims; i++) {
     dims[i] = _input->dims[_input->num_dims - 1 - i];
+  }
   outputs[0] =
       model.create_parallel_tensor(_input->num_dims, dims, DT_FLOAT, this);
   return;

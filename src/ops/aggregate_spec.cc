@@ -89,8 +89,9 @@ AggregateSpec::AggregateSpec(FFModel &model,
   }
   // Set output shape
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < num_dim - 1; i++)
+  for (int i = 0; i < num_dim - 1; i++) {
     dims[i] = inputs[4]->dims[i];
+  }
   dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
   numOutputs = 1;
   outputs[0] = model.create_parallel_tensor_legion_ordering(

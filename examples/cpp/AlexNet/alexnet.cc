@@ -109,8 +109,9 @@ void FlexFlow::top_level_task(Task const *task,
     for (int iter = 0; iter < iterations; iter++) {
       if (std::strlen(alexnetConfig.dataset_path) == 0) {
         // Only load data once for random input
-        if (iter == 0 && epoch == 0)
+        if (iter == 0 && epoch == 0) {
           data_loader.next_batch(ff);
+        }
       } else {
         data_loader.next_batch(ff);
       }
@@ -272,8 +273,9 @@ void DataLoader::load_entire_dataset(Task const *task,
   assert(rect_input.hi[3] - rect_input.lo[3] + 1 == num_samples);
   if (std::strlen(alexnet->dataset_path) == 0) {
     log_app.print("Start generating random input samples");
-    for (size_t i = 0; i < rect_label.volume(); i++)
+    for (size_t i = 0; i < rect_label.volume(); i++) {
       label_ptr[i] = std::rand() % 10;
+    }
     return;
   }
   log_app.print(
@@ -290,8 +292,9 @@ void DataLoader::load_entire_dataset(Task const *task,
   for (off_t i = 0; i < num_samples; i++) {
     size_t ret = fread(buffer, sizeof(unsigned char), 3073, file);
     assert(ret = 3073);
-    if ((i + 1) % 1000 == 0)
+    if ((i + 1) % 1000 == 0) {
       log_app.print("Loaded %ld samples", i + 1);
+    }
     label_ptr[i] = buffer[0];
     nearest_neigh(image,
                   buffer + 1,
@@ -303,9 +306,10 @@ void DataLoader::load_entire_dataset(Task const *task,
                   widthScale);
     off_t input_offset = i * 3 * height * width;
     off_t image_offset = 0;
-    for (off_t h = 0; h < 3 * height * width; h++)
+    for (off_t h = 0; h < 3 * height * width; h++) {
       input_ptr[input_offset++] =
           static_cast<float>(image[image_offset++]) / 255;
+    }
   }
   log_app.print("Finish loading %d samples from %s\n",
                 num_samples,
@@ -326,8 +330,9 @@ void DataLoader::next_batch(FFModel &ff) {
       SampleIdxs meta;
       assert(ff.config.batchSize % batch_input->dims[3].size == 0);
       meta.num_samples = batch_input->dims[3].size;
-      for (int i = 0; i < meta.num_samples; i++)
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(FlexFlow::CUSTOM_GPU_TASK_ID_1,
@@ -363,8 +368,9 @@ void DataLoader::next_batch(FFModel &ff) {
       SampleIdxs meta;
       assert(ff.config.batchSize % batch_label->dims[1].size == 0);
       meta.num_samples = batch_label->dims[1].size;
-      for (int i = 0; i < meta.num_samples; i++)
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(FlexFlow::CUSTOM_GPU_TASK_ID_2,

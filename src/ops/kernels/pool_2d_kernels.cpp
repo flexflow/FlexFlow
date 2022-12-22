@@ -47,9 +47,9 @@ void init_kernel(Pool2DMeta *m,
       m->inputTensor, miopenFloat, input_n, input_c, input_h, input_w));
 
   miopenPoolingMode_t mode;
-  if (pool_type == POOL_MAX)
+  if (pool_type == POOL_MAX) {
     mode = miopenPoolingMax;
-  else {
+  } else {
     assert(pool_type == POOL_AVG);
     mode = miopenPoolingAverage;
   }

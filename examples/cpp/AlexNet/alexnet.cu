@@ -39,8 +39,9 @@ void DataLoader::load_input(Task const *task,
   coord_t width = acc_batch_input.rect.hi[0] - acc_batch_input.rect.lo[0] + 1;
   // FIXME: currently assume continous indices
   assert(batch_size == meta->num_samples);
-  for (int i = 1; i < batch_size; i++)
+  for (int i = 1; i < batch_size; i++) {
     assert(meta->idxs[i] == meta->idxs[0] + i);
+  }
   coord_t start_idx = meta->idxs[0];
   float const *input_zc =
       acc_full_input.ptr + start_idx * channels * height * width;
@@ -67,8 +68,9 @@ void DataLoader::load_label(Task const *task,
   int batch_size = acc_batch_label.rect.hi[1] - acc_batch_label.rect.lo[1] + 1;
   // FIXME: currently assume continous indices
   assert(batch_size == meta->num_samples);
-  for (int i = 1; i < batch_size; i++)
+  for (int i = 1; i < batch_size; i++) {
     assert(meta->idxs[i] == meta->idxs[0] + i);
+  }
   int const *input_zc = acc_full_label.ptr + meta->idxs[0];
   copy_kernel<<<GET_BLOCKS(acc_batch_label.rect.volume()), CUDA_NUM_THREADS>>>(
       acc_batch_label.ptr, input_zc, acc_batch_label.rect.volume());

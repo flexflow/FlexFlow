@@ -19,19 +19,20 @@
 namespace FlexFlow {
 
 template <typename T>
-__global__ void reduction_forward_kernel(const T *input_ptr,
+__global__ void reduction_forward_kernel(T const *input_ptr,
                                          T *output_ptr,
                                          size_t num_elements,
                                          size_t num_replicas) {
   CUDA_KERNEL_LOOP(i, num_elements) {
     output_ptr[i] = input_ptr[i];
-    for (size_t j = 1; j < num_replicas; j++)
+    for (size_t j = 1; j < num_replicas; j++) {
       output_ptr[i] += input_ptr[i + j * num_elements];
+    }
   }
 }
 
 template <typename T>
-void Reduction::forward_kernel(const T *input_ptr,
+void Reduction::forward_kernel(T const *input_ptr,
                                T *output_ptr,
                                size_t num_elements,
                                size_t num_replicas) {
@@ -44,7 +45,7 @@ void Reduction::forward_kernel(const T *input_ptr,
 }
 
 template <typename T>
-void Reduction::backward_kernel(const T *output_grad_ptr,
+void Reduction::backward_kernel(T const *output_grad_ptr,
                                 T *input_grad_ptr,
                                 size_t num_elements) {
   cudaStream_t stream;

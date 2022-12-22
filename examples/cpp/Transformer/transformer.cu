@@ -46,9 +46,10 @@ void DataLoader::load_input(Task const *task,
   assert(batch_size == meta->num_samples);
   for (int i = 0; i < batch_size; i++) {
     int base_offset = meta->idxs[i] * embed_size * seq_length;
-    for (int j = 0; j < embed_size * seq_length; j++)
+    for (int j = 0; j < embed_size * seq_length; j++) {
       input_zc[i * embed_size * seq_length + j] =
           acc_full_input.ptr[base_offset + j];
+    }
   }
   checkCUDA(cudaMemcpy(acc_batch_input.ptr,
                        input_zc,
