@@ -883,7 +883,7 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.EXP)
 
   def sin(self, x, name=None):
-    """Sine function.
+    """Elementwise sine function.
              
     :param x: the input Tensor.
     :type x: Tensor
@@ -899,7 +899,7 @@ class FFModel(object):
     return Tensor(handle, owner_op_type=OpType.SIN)
 
   def cos(self, x, name=None):
-    """Cosine function.
+    """Elementwise cosine function.
              
     :param x: the input Tensor.
     :type x: Tensor

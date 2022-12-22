@@ -94,9 +94,11 @@ __global__ void elewise_unary_forward_kernel(
       }
       case OP_SIN: {
         out[i] = (T)sin((float)in[i]);
+        break;
       }
       case OP_COS: {
         out[i] = (T)cos((float)in[i]);
+        break;
       }
       default:
         assert(false);
