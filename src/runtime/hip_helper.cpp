@@ -147,14 +147,14 @@ __global__ void
 
 template <typename T>
 __global__ void
-    apply_add_with_scale(T *data_ptr, const T *grad_ptr, size_t size, T scale) {
+    apply_add_with_scale(T *data_ptr, T const *grad_ptr, size_t size, T scale) {
   CUDA_KERNEL_LOOP(i, size) {
     data_ptr[i] += grad_ptr[i] * scale;
   }
 }
 
 template <typename T>
-__global__ void add_kernel(T *data_ptr, const T *grad_ptr, size_t size) {
+__global__ void add_kernel(T *data_ptr, T const *grad_ptr, size_t size) {
   CUDA_KERNEL_LOOP(i, size) {
     data_ptr[i] += grad_ptr[i];
   }
@@ -224,7 +224,7 @@ __host__ void updateGAS(float *para_ptr,
 
 template <typename T>
 __host__ void
-    print_tensor(const T *ptr, size_t num_elements, char const *prefix) {
+    print_tensor(T const *ptr, size_t num_elements, char const *prefix) {
   // device synchronize to make sure the data are ready
   // checkCUDA(hipDeviceSynchronize());
   T *host_ptr;
@@ -238,8 +238,9 @@ __host__ void
   printf("%s", prefix);
   for (idx = 0; idx < num_elements; idx++) {
     printf(" %.4lf", (float)host_ptr[idx]);
-    if (idx >= 16)
+    if (idx >= 16) {
       break;
+    }
   }
   printf("\n");
   checkCUDA(hipHostFree(host_ptr));

@@ -120,8 +120,9 @@ void init_task_inner(Task const *task,
   // https://github.com/tensorflow/tensorflow/blob/r2.0/tensorflow/python/ops/init_ops.py#L1415-L1439
   int num_dim = domain.get_dim();
   coord_t receptive_field_size = 1;
-  for (int i = 2; i < num_dim; i++)
+  for (int i = 2; i < num_dim; i++) {
     receptive_field_size *= (accW.rect.hi[i] - accW.rect.lo[i] + 1);
+  }
   coord_t c_in = accW.rect.hi[1] - accW.rect.lo[1] + 1;
   coord_t c_out = accW.rect.hi[0] - accW.rect.lo[0] + 1;
   coord_t fan_in = c_in * receptive_field_size;
@@ -209,8 +210,9 @@ void NormInitializer::init_task(Task const *task,
     std::normal_distribution<float> distribution(initializer->mean,
                                                  initializer->stddev);
     float *w_dram = (float *)malloc(domain.get_volume() * sizeof(float));
-    for (size_t i = 0; i < domain.get_volume(); i++)
+    for (size_t i = 0; i < domain.get_volume(); i++) {
       w_dram[i] = distribution(generator);
+    }
     checkCUDA(hipMemcpy(
         w, w_dram, sizeof(float) * domain.get_volume(), hipMemcpyHostToDevice));
     checkCUDA(hipDeviceSynchronize());

@@ -27,8 +27,10 @@ using namespace FlexFlow::Kernels::ElementBinary;
 bool broadcastable(const Tensor t1, const Tensor t2) {
   int dim = std::min(t1->num_dims, t2->num_dims);
   for (int i = 0; i < dim; i++) {
-    if ((t1->dims[i] != t2->dims[i]) && (t1->dims[i] > 1) && (t2->dims[i] > 1))
+    if ((t1->dims[i] != t2->dims[i]) && (t1->dims[i] > 1) &&
+        (t2->dims[i] > 1)) {
       return false;
+    }
   }
   return true;
 }
@@ -131,16 +133,18 @@ bool ElementBinaryParams::is_valid(
     std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
   bool is_valid = true;
   is_valid &= (input.first.is_valid() & input.second.is_valid());
-  if (!is_valid)
+  if (!is_valid) {
     return false;
+  }
   // is_valid &= (input.first == input.second);
   ParallelTensorShape A = input.first;
   ParallelTensorShape B = input.second;
   int numdim = std::min(A.num_dims, B.num_dims);
   for (int i = 0; i < numdim; i++) {
     if (A.dims[i].size > 1 && B.dims[i].size > 1) {
-      if (A.dims[i] != B.dims[i])
+      if (A.dims[i] != B.dims[i]) {
         return false;
+      }
     }
   }
   return is_valid;
@@ -221,11 +225,13 @@ void ElementBinary::map_output_tensors(FFModel &ff) {
 bool ElementBinary::can_inplace_output(void) {
   if (op_type == OP_EW_ADD || op_type == OP_EW_MUL) {
     // TODO: Currently assume that we always inplace_a
-    if (outputs[0]->num_dims != inputs[0]->num_dims)
+    if (outputs[0]->num_dims != inputs[0]->num_dims) {
       return false;
+    }
     for (int i = 0; i < inputs[0]->num_dims; i++) {
-      if (inputs[0]->dims[i] != outputs[0]->dims[i])
+      if (inputs[0]->dims[i] != outputs[0]->dims[i]) {
         return false;
+      }
     }
     return outputs[0]->get_shape() == inputs[0]->get_shape();
   }
@@ -308,8 +314,9 @@ OpMeta *ElementBinary::init_task(Task const *task,
   ElementBinary *eb = (ElementBinary *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   ElementBinaryMeta *m = new ElementBinaryMeta(handle);
-  for (int i = 0; i < eb->numInputs; i++)
+  for (int i = 0; i < eb->numInputs; i++) {
     m->trainableInputs[i] = eb->trainableInputs[i];
+  }
   m->op_type = eb->op_type;
   m->profiling = eb->profiling;
   m->inplace_a = eb->inplace_a;
@@ -678,12 +685,15 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
                                           MachineView const &mv,
                                           CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input1, sub_input2;
-  if (!outputs[0]->get_sub_tensor(mv, sub_output))
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
-  if (!inputs[0]->get_sub_tensor(mv, sub_input1))
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_input1)) {
     return false;
-  if (!inputs[1]->get_sub_tensor(mv, sub_input2))
+  }
+  if (!inputs[1]->get_sub_tensor(mv, sub_input2)) {
     return false;
+  }
   ElementBinaryMeta *m = sim->ele_binary_meta;
   m->op_type = op_type;
   m->profiling = this->profiling;
