@@ -162,17 +162,20 @@ __global__ void
   // Get pred pointers, single thread per block
   if (threadIdx.x == 0) {
     // init arrays
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++) {
       expert_bal[i] = 0;
-    for (int i = 0; i < batch_size; i++)
+    }
+    for (int i = 0; i < batch_size; i++) {
       cache_corr[i] = true;
+    }
 
     // Get pointer to chosen expert grads and expert counts
     for (int i = 0; i < batch_size; i++) {
       for (int j = 0; j < k; j++) {
         int expert = true_exp_assign[k * i + j];
-        if (expert != exp_assign[k * i + j])
+        if (expert != exp_assign[k * i + j]) {
           cache_corr[i] = false;
+        }
         if (expert_bal[expert] >= exp_samples) {
           // dropped sample
           chosen_exp_grads[i * k + j] = 0;

@@ -62,23 +62,29 @@ int MachineView::get_device_id(DomainPoint const &p) const {
   assert(p.get_dim() == ndims);
   assert(this->get_domain().contains(p));
   int idx = this->start_device_id;
-  for (int i = 0; i < ndims; i++)
+  for (int i = 0; i < ndims; i++) {
     idx += p[i] * stride[i];
+  }
   return idx;
 }
 
 bool MachineView::operator==(MachineView const &rhs) const {
-  if (device_type != rhs.device_type)
+  if (device_type != rhs.device_type) {
     return false;
-  if (ndims != rhs.ndims)
+  }
+  if (ndims != rhs.ndims) {
     return false;
-  if (start_device_id != rhs.start_device_id)
+  }
+  if (start_device_id != rhs.start_device_id) {
     return false;
+  }
   for (int i = 0; i < ndims; i++) {
-    if (dim[i] != rhs.dim[i])
+    if (dim[i] != rhs.dim[i]) {
       return false;
-    if (stride[i] != rhs.stride[i])
+    }
+    if (stride[i] != rhs.stride[i]) {
       return false;
+    }
   }
   return true;
 }

@@ -83,13 +83,13 @@ template <typename DT>
 __global__ void copy_kernel(DT *dst, const DT *src, Legion::coord_t size);
 
 template <typename T>
-__global__ void add_kernel(T *data_ptr, const T *grad_ptr, size_t size);
+__global__ void add_kernel(T *data_ptr, T const *grad_ptr, size_t size);
 
 template <typename T>
-__global__ void reluBackward(T *grad_ptr, const T *input, size_t n);
+__global__ void reluBackward(T *grad_ptr, T const *input, size_t n);
 
 template <typename T>
-__global__ void sigmoid_backward_kernel(T *grad_ptr, const T *input, size_t n);
+__global__ void sigmoid_backward_kernel(T *grad_ptr, T const *input, size_t n);
 
 __host__ void relu_backward_kernel(DataType data_type,
                                    void *output_grad_ptr,
@@ -131,7 +131,7 @@ __host__ void updateGAS(float *para_ptr,
                         float learning_rate);
 
 template <typename T>
-void print_tensor(const T *ptr, size_t num_elements, char const *prefix);
+void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
 
 miopenStatus_t
     cudnnSetTensorDescriptorFromDomain(miopenTensorDescriptor_t tensor,

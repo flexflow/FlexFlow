@@ -52,9 +52,9 @@ void init_kernel(Pool2DMeta *m,
                                         input_w));
 
   cudnnPoolingMode_t mode;
-  if (pool_type == POOL_MAX)
+  if (pool_type == POOL_MAX) {
     mode = CUDNN_POOLING_MAX;
-  else {
+  } else {
     assert(pool_type == POOL_AVG);
     mode = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
   }

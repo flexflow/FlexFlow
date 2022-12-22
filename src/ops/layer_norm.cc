@@ -67,9 +67,11 @@ Tensor FFModel::layer_norm(const Tensor input,
   // axes must be the last axes.size() dimensions
   for (int i = 0; i < axes.size(); i++) {
     bool found = false;
-    for (int j = 0; j < axes.size(); j++)
-      if (axes[j] == input->num_dims - 1 - i)
+    for (int j = 0; j < axes.size(); j++) {
+      if (axes[j] == input->num_dims - 1 - i) {
         found = true;
+      }
+    }
     if (!found) {
       assert(false && "axes must be the last axes.size() dimensions");
     }
@@ -91,8 +93,9 @@ Tensor FFModel::layer_norm(const Tensor input,
                                                  true /*create_grad*/);
   if (num_weights == 2) {
     int M = 1;
-    for (int i = 0; i < axes.size(); i++)
+    for (int i = 0; i < axes.size(); i++) {
       M *= input->dims[input->num_dims - 1 - axes[i]];
+    }
     int dims[1] = {M};
     ln->weights[0] = create_weight_legion_ordering(1,
                                                    dims,
@@ -175,8 +178,9 @@ LayerNorm::LayerNorm(FFModel &model,
   assert(check_output_input_weight_parallel_dims(allocate_weights));
   ParallelDim output_dims[MAX_TENSOR_DIM];
   int M = 1;
-  for (int i = 0; i < axes.size(); i++)
+  for (int i = 0; i < axes.size(); i++) {
     M *= inputs[0]->dims[inputs[0]->num_dims - 1 - axes[i]].size;
+  }
   effective_num_elements = M;
   effective_batch_size = inputs[0]->get_volume() / M;
   if (numWeights > 0 && allocate_weights) {
@@ -449,8 +453,9 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
 void LayerNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->axes.size());
-  for (size_t i = 0; i < this->axes.size(); i++)
+  for (size_t i = 0; i < this->axes.size(); i++) {
     sez.serialize(this->axes[i]);
+  }
   sez.serialize(this->elementwise_affine);
   sez.serialize(this->eps);
 }

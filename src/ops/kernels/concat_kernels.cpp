@@ -97,10 +97,11 @@ void calc_blk_size(coord_t &num_blocks,
   num_blocks = 1;
   blk_size = 1;
   for (int d = 0; d < N; d++) {
-    if (d <= axis)
+    if (d <= axis) {
       blk_size *= (rect.hi[d] - rect.lo[d] + 1);
-    else
+    } else {
       num_blocks *= (rect.hi[d] - rect.lo[d] + 1);
+    }
   }
 }
 
