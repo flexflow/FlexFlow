@@ -49,8 +49,9 @@ Tensor FFModel::dense(const Tensor input,
   {
     int numdims = input->num_dims;
     int dims[MAX_TENSOR_DIM];
-    for (int i = 0; i < numdims; i++)
+    for (int i = 0; i < numdims; i++) {
       dims[i] = input->dims[i];
+    }
     dims[0] = outDim;
     li->outputs[0] = create_tensor_legion_ordering(
         numdims, dims, data_type, li, 0, true /*create_grad*/);
@@ -199,7 +200,7 @@ Linear::Linear(FFModel &model,
   }
 
   for (int i = 0; i < output_shape.num_dims; i++) {
-    assert (output_shape.dims[i].parallel_idx >= -1);
+    assert(output_shape.dims[i].parallel_idx >= -1);
   }
   // Create the output tensor
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -707,20 +708,24 @@ bool Linear::estimate_sync_cost(Simulator *sim,
 }
 
 ParallelConfig Linear::get_random_parallel_config(FFModel const &ff) const {
-  if (!ff.config.enable_parameter_parallel)
+  if (!ff.config.enable_parameter_parallel) {
     return Op::get_random_parallel_config(ff);
+  }
   std::vector<int> batch_candidates;
   std::vector<int> channel_candidates;
   int batch = outputs[0]->dims[outputs[0]->num_dims - 1].size;
   int channel = outputs[0]->dims[0].size;
   int total_devices = ff.config.workersPerNode * ff.config.numNodes;
-  for (int i = 1; i <= ff.config.workersPerNode; i++)
-    if (channel % i == 0)
-      for (int j = 1; i * j <= total_devices; j++)
+  for (int i = 1; i <= ff.config.workersPerNode; i++) {
+    if (channel % i == 0) {
+      for (int j = 1; i * j <= total_devices; j++) {
         if (batch % j == 0) {
           batch_candidates.push_back(j);
           channel_candidates.push_back(i);
         }
+      }
+    }
+  }
   assert(batch_candidates.size() > 0);
   int idx = std::rand() % batch_candidates.size();
   int num_par_c = channel_candidates[idx];
@@ -730,12 +735,14 @@ ParallelConfig Linear::get_random_parallel_config(FFModel const &ff) const {
   pc.nDims = outputs[0]->num_dims;
   pc.dim[0] = num_par_c;
   pc.dim[pc.nDims - 1] = num_par_b;
-  for (int i = 1; i < pc.nDims - 1; i++)
+  for (int i = 1; i < pc.nDims - 1; i++) {
     pc.dim[i] = 1;
+  }
   int start_idx = std::rand() % (total_devices - num_par_c * num_par_b + 1);
   start_idx = start_idx - start_idx % num_par_c;
-  for (int i = 0; i < num_par_c * num_par_b; i++)
+  for (int i = 0; i < num_par_c * num_par_b; i++) {
     pc.device_ids[i] = start_idx + i;
+  }
   return pc;
 }
 
@@ -751,14 +758,18 @@ bool Linear::get_int_parameter(PMParameter para, int *value) const {
 
 bool Linear::is_valid_parallel_config(FFModel const &ff,
                                       ParallelConfig const &pc) const {
-  if (!ff.config.enable_parameter_parallel)
+  if (!ff.config.enable_parameter_parallel) {
     return Op::is_valid_parallel_config(ff, pc);
+  }
   // Support data and parameter parallel
-  if (pc.nDims != outputs[0]->num_dims)
+  if (pc.nDims != outputs[0]->num_dims) {
     return false;
-  for (int i = 1; i < pc.nDims - 1; i++)
-    if (pc.dim[i] != 1)
+  }
+  for (int i = 1; i < pc.nDims - 1; i++) {
+    if (pc.dim[i] != 1) {
       return false;
+    }
+  }
   return true;
 }
 
@@ -766,10 +777,12 @@ bool Linear::measure_operator_cost(Simulator *sim,
                                    MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
-  if (!outputs[0]->get_sub_tensor(mv, sub_output))
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
-  if (!inputs[0]->get_sub_tensor(mv, sub_input))
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
+  }
   int input_c = sub_input.dims[0].size;
   int input_n = sub_input.get_volume() / input_c;
   int output_c = sub_output.dims[0].size;

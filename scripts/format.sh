@@ -34,7 +34,7 @@ download_clang_tool() {
   VERSION="$2"
   TARGET_PATH="$3"
 
-  BASE_URL="https://github.com/muttleyxd/clang-tools-static-binaries/releases/download/master-208096c1/"
+  BASE_URL="https://github.com/muttleyxd/clang-tools-static-binaries/releases/download/master-1d7ec53d/"
 
   OS="$(get_os)"
   case "$OS" in
@@ -58,12 +58,20 @@ download_clang_tool() {
   fi
 }
 
-CLANG_FORMAT_VERSION="14"
+CLANG_FORMAT_VERSION="15"
+CLANG_TIDY_VERSION="13"
+
 CLANG_FORMAT_PATH="$TOOLS_PATH/clang-format-$CLANG_FORMAT_VERSION"
+CLANG_TIDY_PATH="$TOOLS_PATH/clang-tidy-$CLANG_TIDY_VERSION"
 
 if [[ ! -e $CLANG_FORMAT_PATH ]]; then
   download_clang_tool format "$CLANG_FORMAT_VERSION" "$CLANG_FORMAT_PATH"
   chmod u+x "$CLANG_FORMAT_PATH"
+fi
+
+if [[ ! -e $CLANG_TIDY_PATH ]]; then
+  download_clang_tool tidy "$CLANG_TIDY_VERSION" "$CLANG_TIDY_PATH"
+  chmod u+x "$CLANG_TIDY_PATH"
 fi
 
 mapfile -t FILES < <(git ls-files | grep -E '\.(h|cc|cpp|cu)$')

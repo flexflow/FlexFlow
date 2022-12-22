@@ -73,8 +73,9 @@ Tensor
   // Making sure axis is between [0, numdim)
   axis = (axis % numdim + numdim) % numdim;
   int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = tensors[0]->dims[i];
+  }
   for (int i = 1; i < n; i++) {
     assert(tensors[i]->data_type == tensors[0]->data_type);
     assert(tensors[i]->num_dims == tensors[0]->num_dims);
@@ -120,15 +121,16 @@ Concat::Concat(FFModel &model,
       legion_axis(_legion_axis) {
   int num_dim = inputs[0]->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < num_dim; i++)
+  for (int i = 0; i < num_dim; i++) {
     dims[i] = inputs[0]->dims[i];
+  }
   for (int i = 1; i < numInputs; i++) {
     assert(inputs[i]->data_type == inputs[0]->data_type);
     assert(inputs[i]->num_dims == inputs[0]->num_dims);
     for (int j = 0; j < num_dim; j++) {
-      if (j != legion_axis)
+      if (j != legion_axis) {
         assert(inputs[i]->dims[j] == inputs[0]->dims[j]);
-      else {
+      } else {
         // Assert that the concat dim cannot be parallelized
         assert(inputs[i]->dims[j].parallel_idx == -1);
         assert(inputs[i]->dims[j].degree == 1);

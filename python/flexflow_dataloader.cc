@@ -32,8 +32,9 @@ SingleDataLoader::SingleDataLoader(FFModel &ff,
   datatype = datatype_;
   // Create full input
   assert(input->num_dims == full_input_->num_dims);
-  for (int i = 0; i < input->num_dims - 1; i++)
+  for (int i = 0; i < input->num_dims - 1; i++) {
     assert(full_input_->dims[i].size == input->dims[i].size);
+  }
   batch_input = input;
   // Currently assume that the leading dim of input is a replica dim of degree 1
   assert(input->dims[input->num_dims - 1].is_replica_dim);
@@ -206,14 +207,15 @@ void SingleDataLoader::reset() {
 
 void SingleDataLoader::next_batch(FFModel &ff) {
   int task_id = -1;
-  if (datatype == DT_FLOAT)
+  if (datatype == DT_FLOAT) {
     task_id = PY_DL_FLOAT_LOAD_BATCH_GPU_TASK_ID;
-  else if (datatype == DT_INT32)
+  } else if (datatype == DT_INT32) {
     task_id = PY_DL_INT32_LOAD_BATCH_GPU_TASK_ID;
-  else if (datatype == DT_INT64)
+  } else if (datatype == DT_INT64) {
     task_id = PY_DL_INT64_LOAD_BATCH_GPU_TASK_ID;
-  else
+  } else {
     assert(0);
+  }
   switch (full_input->num_dims) {
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
@@ -242,8 +244,9 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel &ff, int task_id) {
       assert(ff.config.batchSize == batch_input->dims[NDIM - 1].size);
       meta.num_samples =
           batch_input->dims[NDIM - 1].size / batch_input->dims[NDIM - 1].degree;
-      for (int i = 0; i < meta.num_samples; i++)
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(task_id,
@@ -282,8 +285,9 @@ void SingleDataLoader::next_batch_xd_launcher(FFModel &ff, int task_id) {
            0);
     meta.num_samples =
         ff.config.batchSize / (rect.hi[NDIM - 1] - rect.lo[NDIM - 1] + 1);
-    for (int i = 0; i < meta.num_samples; i++)
+    for (int i = 0; i < meta.num_samples; i++) {
       meta.idxs[i] = idx++;
+    }
     for (PointInRectIterator<NDIM> it(rect); it(); it++) {
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }

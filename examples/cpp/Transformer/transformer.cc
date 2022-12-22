@@ -186,8 +186,9 @@ void FlexFlow::top_level_task(Task const *task,
     int iterations = loader.num_samples / ffConfig.batchSize;
     for (int iter = 0; iter < iterations; iter++) {
       // Only load data once for random input
-      if (iter == 0 && epoch == 0)
+      if (iter == 0 && epoch == 0) {
         loader.next_batch(ff);
+      }
       runtime->begin_trace(ctx, 111 /*trace_id*/);
       ff.forward();
       ff.zero_gradients();
@@ -274,10 +275,12 @@ void DataLoader::load_entire_dataset(Task const *task,
   float *label_ptr = acc_label.ptr(rect_label.lo);
   // assert(rect_input == rect_label);
 
-  for (size_t i = 0; i < rect_input.volume(); i++)
+  for (size_t i = 0; i < rect_input.volume(); i++) {
     input_ptr[i] = ((float)std::rand()) / RAND_MAX;
-  for (size_t i = 0; i < rect_label.volume(); i++)
+  }
+  for (size_t i = 0; i < rect_label.volume(); i++) {
     label_ptr[i] = std::rand() % 2;
+  }
 }
 
 void DataLoader::next_batch(FFModel &ff) {
@@ -296,8 +299,9 @@ void DataLoader::next_batch(FFModel &ff) {
              0);
       meta.num_samples =
           ff.config.batchSize / batch_input->parallel_tensor->dims[2].size;
-      for (int i = 0; i < meta.num_samples; i++)
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2,
@@ -338,8 +342,9 @@ void DataLoader::next_batch(FFModel &ff) {
              0);
       meta.num_samples =
           ff.config.batchSize / batch_label->parallel_tensor->dims[2].size;
-      for (int i = 0; i < meta.num_samples; i++)
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2,

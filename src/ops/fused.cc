@@ -139,7 +139,7 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
   // Set inputs
   for (int i = 0; i < op->numInputs; i++) {
     bool found = false;
-    for (int j = 0; j < numInputs; j++)
+    for (int j = 0; j < numInputs; j++) {
       if (inputs[j]->region == op->inputs[i]->region) {
         // This input is one of my inputs
         assert(!found);
@@ -149,7 +149,8 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
         found = true;
         break;
       }
-    for (int j = 0; j < numOutputs; j++)
+    }
+    for (int j = 0; j < numOutputs; j++) {
       if ((outputs[j]->region == op->inputs[i]->region) && (!found)) {
         // This input is one of my outputs
         assert(!found);
@@ -159,6 +160,7 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
         found = true;
         break;
       }
+    }
     if (found) {
       // Do nothing
     } else {
@@ -174,7 +176,7 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
   // Set weights
   for (int i = 0; i < op->numWeights; i++) {
     bool found = false;
-    for (int j = 0; j < numWeights; j++)
+    for (int j = 0; j < numWeights; j++) {
       if (weights[j]->region == op->weights[i]->region) {
         assert(!found);
         assert(weights[j]->region != LogicalRegion::NO_REGION);
@@ -183,6 +185,7 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
         found = true;
         break;
       }
+    }
     if (found) {
       // Do nothing
     } else {
@@ -206,8 +209,9 @@ bool FusedOp::add_operator(FFModel &model, Op *op) {
         op_output_idx[output_offset + i] = j;
       }
     }
-    if (found)
+    if (found) {
       continue;
+    }
     outputs[numOutputs] = op->outputs[i];
     outputs[numOutputs]->owner_op = this;
     outputs[numOutputs]->owner_idx = numOutputs;
@@ -256,11 +260,13 @@ void FusedOp::init(FFModel const &ff) {
   Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
   for (int i = 0; i < numOperators; i++) {
     operators[i]->init(ff);
-    for (size_t j = 0; j < domain.get_volume(); j++)
+    for (size_t j = 0; j < domain.get_volume(); j++) {
       fused_meta[j].meta[i] = operators[i]->meta[j];
+    }
   }
-  for (size_t j = 0; j < domain.get_volume(); j++)
+  for (size_t j = 0; j < domain.get_volume(); j++) {
     fused_meta[j].numOperators = numOperators;
+  }
   switch (domain.get_dim()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \

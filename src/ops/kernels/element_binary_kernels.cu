@@ -338,8 +338,9 @@ void backward_kernel(ElementBinaryMeta const *m,
                                   in1_grad_ptr));
       }
     }
-    if (m->op_type == OP_EW_SUB)
+    if (m->op_type == OP_EW_SUB) {
       alpha = -1.0f;
+    }
     if (in2_grad_ptr != nullptr) {
       if (m->broadcast_input2) {
         checkCUDNN(cudnnReduceTensor(m->handle.dnn,

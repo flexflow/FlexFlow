@@ -61,8 +61,9 @@ Tensor FFModel::softmax(const Tensor _input, int dim, char const *name) {
                         _input);
   int numdims = _input->num_dims;
   int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdims; i++)
+  for (int i = 0; i < numdims; i++) {
     dims[i] = _input->dims[i];
+  }
   sm->outputs[0] = create_tensor_legion_ordering(
       numdims, dims, DT_FLOAT, sm, 0, true /*create_grad*/);
   sm->add_int_property("softmax_dim", dim);
@@ -100,8 +101,9 @@ Softmax::Softmax(FFModel &model,
   assert(dim == 0);
   ParallelDim dims[MAX_TENSOR_DIM];
   int numdim = _input->num_dims;
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[numdim - 1 - i];
+  }
   outputs[0] = model.create_parallel_tensor(numdim, dims, DT_FLOAT, this);
 }
 
@@ -162,8 +164,9 @@ OpMeta *Softmax::init_task(Task const *task,
   assert(input_domain == output_domain);
   int ndims = input_domain.get_dim();
   Domain domain;
-  for (int i = 0; i < ndims - 1; i++)
+  for (int i = 0; i < ndims - 1; i++) {
     assert(!softmax->outputs[0]->dims[i].is_replica_dim);
+  }
   // Only the outter-most dim can be a replica_dim
   if (softmax->outputs[0]->dims[ndims - 1].is_replica_dim) {
     int replica_degree = softmax->outputs[0]->dims[ndims - 1].size;

@@ -8,6 +8,7 @@ python/flexflow/core/legion_cffi_header.py
 *.pb.h
 *.o
 *.a
+/debug/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

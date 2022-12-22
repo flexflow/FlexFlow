@@ -43,8 +43,9 @@ Tensor FFModel::dropout(const Tensor input,
                              input);
   int numdims = input->num_dims;
   int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdims; i++)
+  for (int i = 0; i < numdims; i++) {
     dims[i] = input->dims[i];
+  }
   dropout->outputs[0] = create_tensor_legion_ordering(
       numdims, dims, DT_FLOAT, dropout, 0, true /*create_grad*/);
   dropout->add_float_property("rate", rate);
@@ -98,8 +99,9 @@ Dropout::Dropout(FFModel &model,
       rate(_rate), seed(_seed) {
   // Set output shape
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < _input->num_dims; i++)
+  for (int i = 0; i < _input->num_dims; i++) {
     dims[i] = _input->dims[i];
+  }
   numOutputs = 1;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _input->num_dims, dims, DT_FLOAT, this);

@@ -11,8 +11,7 @@ namespace FlexFlow {
 
 struct NoOpParams {
   OperatorType op_type;
-  tl::optional<ParallelTensorShape> input_metadata =
-      tl::nullopt;
+  tl::optional<ParallelTensorShape> input_metadata = tl::nullopt;
 
   bool is_valid(std::vector<ParallelTensorShape> const &inputs) const;
 };

@@ -90,7 +90,13 @@ NoOp::NoOp(FFModel &model,
            Params const &params,
            std::vector<ParallelTensor> const &inputs,
            char const *name)
-    : Op(model, params.op_type, name, 0 /*weights*/, 1 /*outputs*/, inputs) {
+    : Op(model,
+         params.op_type,
+         DT_NONE,
+         name,
+         0 /*weights*/,
+         1 /*outputs*/,
+         inputs) {
   if (params.op_type == OP_NOOP) {
     assert(inputs.size() == 1);
     this->inputs[0] = inputs[0];
@@ -152,8 +158,9 @@ void NoOp::init(FFModel const &ff) {
   } else if (op_type == OP_INPUT) {
     // For OP_INPUT, initialize tensor to zero
     assert(outputs[0]->region != LogicalRegion::NO_REGION);
-    if (outputs[0]->part == LogicalPartition::NO_PART)
+    if (outputs[0]->part == LogicalPartition::NO_PART) {
       return;
+    }
     ConstantInitializer *initializer = NULL;
     if (outputs[0]->data_type == DT_FLOAT) {
       initializer = new ConstantInitializer(0.0f);

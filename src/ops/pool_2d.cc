@@ -352,10 +352,12 @@ OpMeta *Pool2D::init_task(Task const *task,
       ((output_h - 1) * pool->stride_h + pool->kernel_h - input_h + 1) / 2;
   int pad_w =
       ((output_w - 1) * pool->stride_w + pool->kernel_w - input_w + 1) / 2;
-  if (pad_h != pool->padding_h)
+  if (pad_h != pool->padding_h) {
     printf("Warning: changing pool_padding_h to satisfy output_h size\n");
-  if (pad_w != pool->padding_w)
+  }
+  if (pad_w != pool->padding_w) {
     printf("Warning: changing pool_padding_w to satisfy output_w size\n");
+  }
 
   init_kernel(m,
               input_w,
@@ -524,10 +526,12 @@ bool Pool2D::measure_operator_cost(Simulator *sim,
                                    MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
-  if (!outputs[0]->get_sub_tensor(mv, sub_output))
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
-  if (!inputs[0]->get_sub_tensor(mv, sub_input))
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
+  }
   int input_w = sub_input.dims[0].size;
   int input_h = sub_input.dims[1].size;
   int input_c = sub_input.dims[2].size;

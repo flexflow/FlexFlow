@@ -48,8 +48,9 @@ Tensor FFModel::unary(OperatorType op,
   }
   int numdims = x->num_dims;
   int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdims; i++)
+  for (int i = 0; i < numdims; i++) {
     dims[i] = x->dims[i];
+  }
   ele->outputs[0] = create_tensor_legion_ordering(
       numdims, dims, dtype, ele, 0, true /*create_grad*/);
   ele->add_int_property("inplace", inplace);
@@ -182,8 +183,9 @@ ElementUnary::ElementUnary(FFModel &model,
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, inputs[0]->data_type, this);
   // Disable inplace if shape mismatch
-  if (outputs[0]->get_shape() != inputs[0]->get_shape())
+  if (outputs[0]->get_shape() != inputs[0]->get_shape()) {
     inplace = false;
+  }
 }
 
 ElementUnary::ElementUnary(FFModel &model,
@@ -224,14 +226,18 @@ void ElementUnary::do_inplace_output(void) {
 }
 
 bool ElementUnary::use_cudnn(OperatorType type) {
-  if (type == OP_RELU)
+  if (type == OP_RELU) {
     return true;
-  if (type == OP_SIGMOID)
+  }
+  if (type == OP_SIGMOID) {
     return true;
-  if (type == OP_TANH)
+  }
+  if (type == OP_TANH) {
     return true;
-  if (type == OP_ELU)
+  }
+  if (type == OP_ELU) {
     return true;
+  }
   return false;
 }
 
@@ -553,10 +559,12 @@ bool ElementUnary::measure_operator_cost(Simulator *sim,
                                          MachineView const &mv,
                                          CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
-  if (!outputs[0]->get_sub_tensor(mv, sub_output))
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
-  if (!inputs[0]->get_sub_tensor(mv, sub_input))
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
+  }
   ElementUnaryMeta *m = sim->ele_unary_meta;
   m->op_type = op_type;
   if (use_cudnn(m->op_type)) {

@@ -180,6 +180,7 @@ public:
      ParallelTensor const *tensors);
   Op(FFModel &model,
      OperatorType type,
+     DataType dtype,
      char const *name,
      int numWeights,
      int numOutputs,

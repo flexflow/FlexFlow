@@ -215,21 +215,28 @@ int Op::get_output_to_input_dim_mapping(const ParallelTensor output,
                                         int output_dim,
                                         const ParallelTensor input) {
   int output_idx = -1, input_idx = -1;
-  for (int i = 0; i < numOutputs; i++)
-    if (output == outputs[i])
+  for (int i = 0; i < numOutputs; i++) {
+    if (output == outputs[i]) {
       output_idx = i;
-  for (int i = 0; i < numInputs; i++)
-    if (input == inputs[i])
+    }
+  }
+  for (int i = 0; i < numInputs; i++) {
+    if (input == inputs[i]) {
       input_idx = i;
+    }
+  }
   assert(output_idx != -1);
   assert(input_idx != -1);
   for (size_t i = 0; i < parallel_dims_mapping->size(); i++) {
-    if ((*parallel_dims_mapping)[i].output_idx != output_idx)
+    if ((*parallel_dims_mapping)[i].output_idx != output_idx) {
       continue;
-    if ((*parallel_dims_mapping)[i].output_dim != output_dim)
+    }
+    if ((*parallel_dims_mapping)[i].output_dim != output_dim) {
       continue;
-    if ((*parallel_dims_mapping)[i].input_idx != input_idx)
+    }
+    if ((*parallel_dims_mapping)[i].input_idx != input_idx) {
       continue;
+    }
     // Check validness
     assert((*parallel_dims_mapping)[i].weight_idx = -1);
     assert((*parallel_dims_mapping)[i].weight_dim = -1);
@@ -243,21 +250,28 @@ int Op::get_output_to_weight_dim_mapping(const ParallelTensor output,
                                          int output_dim,
                                          const ParallelTensor weight) {
   int output_idx = -1, weight_idx = -1;
-  for (int i = 0; i < numOutputs; i++)
-    if (output == outputs[i])
+  for (int i = 0; i < numOutputs; i++) {
+    if (output == outputs[i]) {
       output_idx = i;
-  for (int i = 0; i < numInputs; i++)
-    if (weight == weights[i])
+    }
+  }
+  for (int i = 0; i < numInputs; i++) {
+    if (weight == weights[i]) {
       weight_idx = i;
+    }
+  }
   assert(output_idx != -1);
   assert(weight_idx != -1);
   for (size_t i = 0; i < parallel_dims_mapping->size(); i++) {
-    if ((*parallel_dims_mapping)[i].output_idx != output_idx)
+    if ((*parallel_dims_mapping)[i].output_idx != output_idx) {
       continue;
-    if ((*parallel_dims_mapping)[i].output_dim != output_dim)
+    }
+    if ((*parallel_dims_mapping)[i].output_dim != output_dim) {
       continue;
-    if ((*parallel_dims_mapping)[i].weight_idx != weight_idx)
+    }
+    if ((*parallel_dims_mapping)[i].weight_idx != weight_idx) {
       continue;
+    }
     // Check validness
     assert((*parallel_dims_mapping)[i].input_idx = -1);
     assert((*parallel_dims_mapping)[i].input_dim = -1);
@@ -309,30 +323,42 @@ bool Op::check_output_input_weight_parallel_dims(bool allocate_weights) const {
 bool Op::check_output_input_weight_same_parallel_is() const {
   assert(numOutputs > 0);
   IndexSpace parallel_is = outputs[0]->parallel_is;
-  for (int i = 0; i < numOutputs; i++)
-    if (outputs[i]->parallel_is != parallel_is)
+  for (int i = 0; i < numOutputs; i++) {
+    if (outputs[i]->parallel_is != parallel_is) {
       return false;
-  for (int i = 0; i < numInputs; i++)
-    if (inputs[i]->parallel_is != parallel_is)
+    }
+  }
+  for (int i = 0; i < numInputs; i++) {
+    if (inputs[i]->parallel_is != parallel_is) {
       return false;
-  for (int i = 0; i < numWeights; i++)
-    if (weights[i]->parallel_is != parallel_is)
+    }
+  }
+  for (int i = 0; i < numWeights; i++) {
+    if (weights[i]->parallel_is != parallel_is) {
       return false;
+    }
+  }
   return true;
 }
 
 bool Op::check_output_input_weight_same_machine_view() const {
   assert(numOutputs > 0);
   MachineView machine_view = outputs[0]->machine_view;
-  for (int i = 0; i < numOutputs; i++)
-    if (outputs[i]->machine_view != machine_view)
+  for (int i = 0; i < numOutputs; i++) {
+    if (outputs[i]->machine_view != machine_view) {
       return false;
-  for (int i = 0; i < numInputs; i++)
-    if (inputs[i]->machine_view != machine_view)
+    }
+  }
+  for (int i = 0; i < numInputs; i++) {
+    if (inputs[i]->machine_view != machine_view) {
       return false;
-  for (int i = 0; i < numWeights; i++)
-    if (weights[i]->machine_view != machine_view)
+    }
+  }
+  for (int i = 0; i < numWeights; i++) {
+    if (weights[i]->machine_view != machine_view) {
       return false;
+    }
+  }
   return true;
 }
 
@@ -463,10 +489,12 @@ bool Op::get_int_parameter(PMParameter para, int *value) const {
 bool Op::get_tensor_parameter(TNParameter tnp,
                               DIMParameter dim,
                               int *value) const {
-  if (tnp >= INPUT_0 && tnp <= INPUT_5)
+  if (tnp >= INPUT_0 && tnp <= INPUT_5) {
     return get_input_parameter(tnp, dim, value);
-  if (tnp >= WEIGHT_0 && tnp <= WEIGHT_5)
+  }
+  if (tnp >= WEIGHT_0 && tnp <= WEIGHT_5) {
     return get_weight_parameter(tnp, dim, value);
+  }
   return false;
 }
 
@@ -476,8 +504,9 @@ bool Op::get_input_parameter(TNParameter tnp,
   int inputIdx = 0, dimIdx = 0;
   assert(tnp <= INPUT_5 && tnp >= INPUT_0);
   inputIdx = tnp - INPUT_0;
-  if (inputIdx >= numInputs)
+  if (inputIdx >= numInputs) {
     return false;
+  }
   switch (dim) {
     case DIM_3:
       dimIdx++;
@@ -493,8 +522,9 @@ bool Op::get_input_parameter(TNParameter tnp,
     default:
       return false;
   }
-  if (dimIdx >= inputs[inputIdx]->num_dims)
+  if (dimIdx >= inputs[inputIdx]->num_dims) {
     return false;
+  }
   *value = inputs[inputIdx]->dims[dimIdx].size;
   return true;
 }
@@ -505,8 +535,9 @@ bool Op::get_weight_parameter(TNParameter tnp,
   int weightIdx = 0, dimIdx = 0;
   assert(tnp <= WEIGHT_5 && tnp >= WEIGHT_0);
   weightIdx = tnp - WEIGHT_0;
-  if (weightIdx >= numWeights)
+  if (weightIdx >= numWeights) {
     return false;
+  }
   switch (dim) {
     case DIM_3:
       dimIdx++;
@@ -522,8 +553,9 @@ bool Op::get_weight_parameter(TNParameter tnp,
     default:
       return false;
   }
-  if (dimIdx >= weights[weightIdx]->num_dims)
+  if (dimIdx >= weights[weightIdx]->num_dims) {
     return false;
+  }
   *value = weights[weightIdx]->dims[dimIdx].size;
   return true;
 }
@@ -549,40 +581,48 @@ ParallelConfig get_basic_data_parallel_config(int num_parts, int dims) {
   ParallelConfig pc;
   pc.device_type = ParallelConfig::GPU;
   pc.nDims = dims;
-  for (int i = 0; i < pc.nDims; i++)
+  for (int i = 0; i < pc.nDims; i++) {
     pc.dim[i] = i == pc.nDims - 1 ? num_parts : 1;
-  for (int i = 0; i < num_parts; i++)
+  }
+  for (int i = 0; i < num_parts; i++) {
     pc.device_ids[i] = i;
+  }
   return pc;
 }
 
 ParallelConfig Op::get_random_parallel_config(FFModel const &ff) const {
   std::vector<int> candidates;
   int batch_size = outputs[0]->dims[outputs[0]->num_dims - 1].size;
-  for (int i = 1; i <= ff.config.workersPerNode; i++)
+  for (int i = 1; i <= ff.config.workersPerNode; i++) {
     if (ff.config.workersPerNode % i == 0) {
-      if (batch_size % i != 0)
+      if (batch_size % i != 0) {
         continue;
+      }
       candidates.push_back(i);
     }
-  for (int i = 1; i <= ff.config.numNodes; i++)
+  }
+  for (int i = 1; i <= ff.config.numNodes; i++) {
     if (ff.config.numNodes % i == 0) {
-      if (batch_size % (i * ff.config.workersPerNode) != 0)
+      if (batch_size % (i * ff.config.workersPerNode) != 0) {
         continue;
+      }
       candidates.push_back(i * ff.config.workersPerNode);
     }
+  }
   assert(candidates.size() > 0);
   int idx = std::rand() % candidates.size();
   int num_parts = candidates[idx];
   ParallelConfig pc;
   pc.device_type = ParallelConfig::GPU;
   pc.nDims = outputs[0]->num_dims;
-  for (int i = 0; i < pc.nDims; i++)
+  for (int i = 0; i < pc.nDims; i++) {
     pc.dim[i] = i == pc.nDims - 1 ? num_parts : 1;
+  }
   int total_num_devices = ff.config.workersPerNode * ff.config.numNodes;
   int start_idx = std::rand() % (total_num_devices - num_parts + 1);
-  for (int i = 0; i < num_parts; i++)
+  for (int i = 0; i < num_parts; i++) {
     pc.device_ids[i] = start_idx + i;
+  }
   return pc;
 }
 
@@ -627,11 +667,14 @@ bool Op::is_valid_parallel_config(FFModel const &ff,
                                   ParallelConfig const &pc) const {
   // By default only data parallelism is allowed
   // Check dim match
-  if (pc.nDims != this->get_dimension())
+  if (pc.nDims != this->get_dimension()) {
     return false;
-  for (int i = 0; i < pc.nDims - 1; i++)
-    if (pc.dim[i] != 1)
+  }
+  for (int i = 0; i < pc.nDims - 1; i++) {
+    if (pc.dim[i] != 1) {
       return false;
+    }
+  }
   return true;
 }
 
@@ -672,10 +715,11 @@ Domain Op::get_input_tensor_shape(ParallelConfig const &pc,
     }
   } else {
     // Require data parallel when dims mismatch
-    for (int i = 0; i < pc.nDims; i++)
+    for (int i = 0; i < pc.nDims; i++) {
       if (i != pc.nDims - 2) {
         assert(pc.dim[i] == 1);
       }
+    }
     for (int i = 0; i < d.dim - 1; i++) {
       int dim_size = inputs[input_idx]->dims[i].size;
       d.rect_data[i] = 0;
@@ -805,8 +849,9 @@ ncclComm_t Op::init_nccl_comms_task(Task const *task,
   assert(task->index_domain.contains(task->index_point));
   int myRank = 0;
   for (Domain::DomainPointIterator it(task->index_domain); it; it++, myRank++) {
-    if (it.p == task->index_point)
+    if (it.p == task->index_point) {
       break;
+    }
   }
   ncclComm_t ncclComm;
   checkNCCL(ncclCommInitRank(&ncclComm, allRanks, ncclId, myRank));
@@ -818,6 +863,7 @@ ncclComm_t Op::init_nccl_comms_task(Task const *task,
 
 Op::Op(FFModel &model,
        OperatorType op_type,
+       DataType dtype,
        char const *name,
        int numInputs,
        int numWeights,
@@ -829,6 +875,7 @@ Op::Op(FFModel &model,
        const ParallelTensor input4)
     : Op(model,
          op_type,
+         dtype,
          name,
          numInputs,
          allocate_weights ? numWeights : 0,
@@ -840,6 +887,7 @@ Op::Op(FFModel &model,
 
 Op::Op(FFModel &model,
        OperatorType _op_type,
+       DataType dtype,
        char const *_name,
        int _numInputs,
        int _numWeights,
@@ -848,11 +896,12 @@ Op::Op(FFModel &model,
        const ParallelTensor _input2,
        const ParallelTensor _input3,
        const ParallelTensor _input4)
-    : op_type(_op_type), op_guid(model.op_global_guid++), numInputs(_numInputs),
-      numWeights(_numWeights), numOutputs(_numOutputs),
+    : op_type(_op_type), data_type(dtype), op_guid(model.op_global_guid++),
+      numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
       profiling(model.config.profiling) {
-  for (int i = 0; i < MAX_NUM_INPUTS; i++)
+  for (int i = 0; i < MAX_NUM_INPUTS; i++) {
     inputs[i] = NULL;
+  }
   std::vector<ParallelTensor> tensors;
   tensors.push_back(_input1);
   tensors.push_back(_input2);
@@ -878,20 +927,22 @@ Op::Op(FFModel &model,
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i] = NULL;
   }
-  for (int i = 0; i < MAX_NUM_WORKERS; i++)
+  for (int i = 0; i < MAX_NUM_WORKERS; i++) {
     meta[i] = NULL;
+  }
   parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
 }
 
 Op::Op(FFModel &model,
        OperatorType _op_type,
+       DataType dtype,
        char const *_name,
        int _numInputs,
        int _numWeights,
        int _numOutputs,
        ParallelTensor const *_inputs)
-    : op_type(_op_type), op_guid(model.op_global_guid++), numInputs(_numInputs),
-      numWeights(_numWeights), numOutputs(_numOutputs),
+    : op_type(_op_type), data_type(dtype), op_guid(model.op_global_guid++),
+      numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
       profiling(model.config.profiling) {
   std::string pcname;
   if (_name == NULL) {
@@ -920,19 +971,22 @@ Op::Op(FFModel &model,
   for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
     outputs[i] = NULL;
   }
-  for (int i = 0; i < MAX_NUM_WORKERS; i++)
+  for (int i = 0; i < MAX_NUM_WORKERS; i++) {
     meta[i] = NULL;
+  }
   parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
 }
 
 Op::Op(FFModel &model,
        OperatorType type,
+       DataType dtype,
        char const *name,
        int numWeights,
        int numOutputs,
        std::vector<ParallelTensor> const &inputs)
     : Op(model,
          type,
+         dtype,
          name,
          inputs.size(),
          numWeights,
@@ -956,8 +1010,9 @@ void Op::do_inplace_output() {
 }
 
 void Op::map_output_tensors(FFModel &ff) {
-  for (int i = 0; i < numOutputs; i++)
+  for (int i = 0; i < numOutputs; i++) {
     ff.map_tensor(outputs[i], this);
+  }
 }
 
 tl::optional<RecordFormatter> Op::as_dot() const {
@@ -996,8 +1051,9 @@ Op *Op::materialize(FFModel &ff,
 
 void Op::zero_grad(FFModel const &ff) {
   // Do nothing for input and weight
-  if (op_type == OP_INPUT || op_type == OP_WEIGHT)
+  if (op_type == OP_INPUT || op_type == OP_WEIGHT) {
     return;
+  }
   Runtime *runtime = ff.config.lg_hlr;
   Context ctx = ff.config.lg_ctx;
   ArgumentMap argmap;
@@ -1008,17 +1064,19 @@ void Op::zero_grad(FFModel const &ff) {
   IndexSpace parallel_is = IndexSpace::NO_SPACE;
   for (int i = 0; i < numWeights; i++) {
     meta.data_types[i] = weights[i]->data_type;
-    if (parallel_is == IndexSpace::NO_SPACE)
+    if (parallel_is == IndexSpace::NO_SPACE) {
       parallel_is = weights[i]->parallel_is;
-    else
+    } else {
       assert(parallel_is == weights[i]->parallel_is);
+    }
   }
   for (int i = 0; i < numOutputs; i++) {
     meta.data_types[i + numWeights] = outputs[i]->data_type;
-    if (parallel_is == IndexSpace::NO_SPACE)
+    if (parallel_is == IndexSpace::NO_SPACE) {
       parallel_is = outputs[i]->parallel_is;
-    else
+    } else {
       assert(parallel_is == outputs[i]->parallel_is);
+    }
   }
   IndexLauncher launcher(ZERO_INIT_TASK_ID,
                          parallel_is,

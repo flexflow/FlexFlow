@@ -59,32 +59,32 @@ public:
                              CostMetrics &cost_metrics) const;
   template <typename T>
   static void forward_kernel(LayerNormMeta const *m,
-                             const T *input_ptr,
+                             T const *input_ptr,
                              T *output_ptr,
                              T *gamma_ptr,
                              T *beta_ptr,
                              ffStream_t stream);
   template <typename T>
   static void forward_kernel_wrapper(LayerNormMeta const *m,
-                                     const T *input_ptr,
+                                     T const *input_ptr,
                                      T *output_ptr,
                                      T *gamma_ptr,
                                      T *beta_ptr);
   template <typename T>
   static void backward_kernel(LayerNormMeta const *m,
-                              const T *output_grad_ptr,
-                              const T *input_ptr,
+                              T const *output_grad_ptr,
+                              T const *input_ptr,
                               T *input_grad_ptr,
-                              const T *gamma_ptr,
+                              T const *gamma_ptr,
                               T *gamma_grad_ptr,
                               T *beta_grad_ptr,
                               ffStream_t stream);
   template <typename T>
   static void backward_kernel_wrapper(LayerNormMeta const *m,
-                                      const T *output_grad_ptr,
-                                      const T *input_ptr,
+                                      T const *output_grad_ptr,
+                                      T const *input_ptr,
                                       T *input_grad_ptr,
-                                      const T *gamma_ptr,
+                                      T const *gamma_ptr,
                                       T *gamma_grad_ptr,
                                       T *beta_grad_ptr);
 

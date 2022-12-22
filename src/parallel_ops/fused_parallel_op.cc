@@ -60,7 +60,7 @@ FusedParallelOpParams FusedParallelOp::get_params() const {
   std::vector<ParallelOpInfo> ops(std::begin(this->parallel_ops),
                                   this->parallel_ops + this->num_parallel_ops);
   params.parallel_ops = ops;
-  assert (params.parallel_ops.size() == this->num_parallel_ops);
+  assert(params.parallel_ops.size() == this->num_parallel_ops);
   return params;
 }
 
@@ -73,8 +73,9 @@ FusedParallelOp::FusedParallelOp(
   assert(check_no_redundant_parallel_ops());
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[i];
+  }
   for (int i = 0; i < num_parallel_ops; i++) {
     ParallelOpInfo info = parallel_ops[i];
     switch (info.op_type) {
@@ -116,8 +117,9 @@ FusedParallelOp::FusedParallelOp(FFModel &model,
 
 void FusedParallelOp::set_parallel_ops(
     std::vector<ParallelOpInfo> const &_parallel_ops) {
-  for (size_t i = 0; i < _parallel_ops.size(); i++)
+  for (size_t i = 0; i < _parallel_ops.size(); i++) {
     parallel_ops[num_parallel_ops++] = _parallel_ops[i];
+  }
 }
 
 bool FusedParallelOp::check_no_redundant_parallel_ops(void) const {
@@ -128,19 +130,22 @@ bool FusedParallelOp::check_no_redundant_parallel_ops(void) const {
   for (int i = 1; i < num_parallel_ops; i++) {
     if (parallel_ops[i].op_type == OP_COMBINE) {
       if (parallel_ops[i - 1].op_type == OP_REPARTITION) {
-        if (parallel_ops[i].parallel_dim == parallel_ops[i - 1].parallel_dim)
+        if (parallel_ops[i].parallel_dim == parallel_ops[i - 1].parallel_dim) {
           return false;
+        }
       }
     }
     if (parallel_ops[i].op_type == OP_REPARTITION) {
       if (parallel_ops[i - 1].op_type == OP_COMBINE) {
-        if (parallel_ops[i].parallel_dim == parallel_ops[i - 1].parallel_dim)
+        if (parallel_ops[i].parallel_dim == parallel_ops[i - 1].parallel_dim) {
           return false;
+        }
       }
     }
     if (parallel_ops[i].op_type == parallel_ops[i - 1].op_type) {
-      if (parallel_ops[i].parallel_dim == parallel_ops[i - 1].parallel_dim)
+      if (parallel_ops[i].parallel_dim == parallel_ops[i - 1].parallel_dim) {
         return false;
+      }
     }
   }
   return true;

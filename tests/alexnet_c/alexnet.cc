@@ -142,8 +142,9 @@ void top_level_task(Task const *task,
       //} else {
       // data_loader.next_batch(ff);
       //}
-      if (epoch > 0)
+      if (epoch > 0) {
         runtime->begin_trace(ctx, 111 /*trace_id*/);
+      }
       flexflow_model_forward(ffmodel);
       flexflow_model_zero_gradients(ffmodel);
       flexflow_model_backward(ffmodel);
@@ -152,8 +153,9 @@ void top_level_task(Task const *task,
       // ff->zero_gradients();
       // ff.backward();
       // ff.update();
-      if (epoch > 0)
+      if (epoch > 0) {
         runtime->end_trace(ctx, 111 /*trace_id*/);
+      }
     }
   }
   // End timer

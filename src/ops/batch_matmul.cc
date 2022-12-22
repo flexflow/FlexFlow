@@ -42,17 +42,23 @@ bool operator==(BatchMatmulParams const &lhs, BatchMatmulParams const &rhs) {
 
 bool BatchMatmulParams::is_valid(
     std::vector<ParallelTensorShape> const &inputs) const {
-  if (!inputs[0].is_valid())
+  if (!inputs[0].is_valid()) {
     return false;
-  if (!inputs[1].is_valid())
+  }
+  if (!inputs[1].is_valid()) {
     return false;
-  if (inputs[0].num_dims != inputs[1].num_dims)
+  }
+  if (inputs[0].num_dims != inputs[1].num_dims) {
     return false;
-  for (int i = inputs[0].num_dims - 1; i >= 2; i--)
-    if (inputs[0].dims[i] != inputs[1].dims[i])
+  }
+  for (int i = inputs[0].num_dims - 1; i >= 2; i--) {
+    if (inputs[0].dims[i] != inputs[1].dims[i]) {
       return false;
-  if (inputs[0].dims[0] != inputs[1].dims[1])
+    }
+  }
+  if (inputs[0].dims[0] != inputs[1].dims[1]) {
     return false;
+  }
   return true;
 }
 
@@ -84,13 +90,15 @@ Tensor FFModel::batch_matmul(const Tensor A,
          "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
          "Fortran ordering).");
   assert(A->num_dims == B->num_dims);
-  for (int i = A->num_dims - 1; i >= 2; i--)
+  for (int i = A->num_dims - 1; i >= 2; i--) {
     assert(A->dims[i] == B->dims[i]);
+  }
   assert(A->dims[0] == B->dims[1]);
   int dims[MAX_TENSOR_DIM];
   int numdim = A->num_dims;
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = A->dims[i];
+  }
   dims[0] = B->dims[0];
   bmm->outputs[0] = create_tensor_legion_ordering(
       numdim, dims, A->data_type, bmm, 0, true /*create_grad*/);
@@ -153,12 +161,14 @@ BatchMatmul::BatchMatmul(FFModel &model,
          "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
          "Fortran ordering).");
   assert(A->num_dims == B->num_dims);
-  for (int i = A->num_dims - 1; i >= 2; i--)
+  for (int i = A->num_dims - 1; i >= 2; i--) {
     assert(A->dims[i] == B->dims[i]);
+  }
   assert(A->dims[0] == B->dims[1]);
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < A->num_dims; i++)
+  for (int i = 0; i < A->num_dims; i++) {
     dims[i] = A->dims[i];
+  }
   dims[0] = B->dims[0];
   numOutputs = 1;
   outputs[0] = model.create_parallel_tensor_legion_ordering(

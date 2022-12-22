@@ -76,18 +76,21 @@ Tensor create_emb(FFModel *model,
 
 Tensor interact_features(FFModel *model, std::vector<Tensor> const &ly) {
   Tensor *inputs = (Tensor *)malloc(sizeof(Tensor) * (ly.size()));
-  for (size_t i = 0; i < ly.size(); i++)
+  for (size_t i = 0; i < ly.size(); i++) {
     inputs[i] = ly[i];
+  }
   return model->concat(ly.size(), inputs, -1 /*axis*/);
   free(inputs);
 }
 
 void print_vector(std::string const &name, std::vector<int> const &vector) {
   std::ostringstream out;
-  for (size_t i = 0; i < vector.size() - 1; i++)
+  for (size_t i = 0; i < vector.size() - 1; i++) {
     out << vector[i] << " ";
-  if (vector.size() > 0)
+  }
+  if (vector.size() > 0) {
     out << vector[vector.size() - 1];
+  }
   log_app.print("%s: %s", name.c_str(), out.str().c_str());
 }
 
@@ -176,14 +179,16 @@ void FlexFlow::top_level_task(Task const *task,
       } else {
         data_loader.next_batch(ff);
       }
-      if (epoch > 0)
+      if (epoch > 0) {
         runtime->begin_trace(ctx, 111 /*trace_id*/);
+      }
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      if (epoch > 0)
+      if (epoch > 0) {
         runtime->end_trace(ctx, 111 /*trace_id*/);
+      }
     }
   }
   // End timer
@@ -293,12 +298,15 @@ void DataLoader::load_entire_dataset(Task const *task,
   int const emb_size = xdl.embedding_size;
   std::string file_name((char const *)xdl.dataset_path);
   log_app.print("Start generating random input samples");
-  for (size_t i = 0; i < rect_sparse_input.volume(); i++)
+  for (size_t i = 0; i < rect_sparse_input.volume(); i++) {
     sparse_input_ptr[i] = std::rand() % emb_size;
-  for (size_t i = 0; i < rect_dense_input.volume(); i++)
+  }
+  for (size_t i = 0; i < rect_dense_input.volume(); i++) {
     dense_input_ptr[i] = ((float)std::rand()) / RAND_MAX;
-  for (size_t i = 0; i < rect_label_input.volume(); i++)
+  }
+  for (size_t i = 0; i < rect_label_input.volume(); i++) {
     label_input_ptr[i] = std::rand() % 2;
+  }
 }
 
 void DataLoader::next_batch(FFModel &ff) {
@@ -321,8 +329,9 @@ void DataLoader::next_batch(FFModel &ff) {
           batch_sparse_inputs[i]->parallel_tensor->dims[1].degree;
       // Assert that we have enough slots to save the indices
       assert(meta.num_samples <= MAX_NUM_SAMPLES);
-      for (int i = 0; i < meta.num_samples; i++)
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(
@@ -363,8 +372,9 @@ void DataLoader::next_batch(FFModel &ff) {
       assert(ff.config.batchSize % batch_label->parallel_tensor->dims[1].size);
       meta.num_samples =
           ff.config.batchSize / batch_label->parallel_tensor->dims[1].degree;
-      for (int i = 0; i < meta.num_samples; i++)
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_3,

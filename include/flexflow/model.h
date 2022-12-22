@@ -17,6 +17,7 @@
 #include "accessor.h"
 #include "config.h"
 #include "device.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/node.h"
 #include "flexflow/operator_params.h"
 #include "flexflow/utils/hash_utils.h"
@@ -35,7 +36,6 @@
 #include <functional>
 #include <unistd.h>
 #include <utility>
-#include "flexflow/ffconst_utils.h"
 
 #include "ffconst.h"
 #include "fftype.h"
@@ -633,9 +633,10 @@ public:
     }
 
     if (!(op->get_params() == params)) {
-        std::ostringstream oss;
-        oss << "Param reconstruction invalid for operator type " << get_operator_type_name(op->op_type);
-        throw std::runtime_error(oss.str());
+      std::ostringstream oss;
+      oss << "Param reconstruction invalid for operator type "
+          << get_operator_type_name(op->op_type);
+      throw std::runtime_error(oss.str());
     }
     return this->new_node(op);
   }
@@ -756,7 +757,7 @@ public:
 
 public:
   size_t op_global_guid, layer_global_guid;
-  size_t tensor_global_guid, parallel_tensor_global_guid, node_global_guid;
+  size_t tensor_global_guid, node_global_guid;
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer *optimizer;

@@ -72,7 +72,6 @@ FFModel::FFModel(FFConfig &_config)
     : op_global_guid(OP_GUID_FIRST_VALID),
       layer_global_guid(LAYER_GUID_FIRST_VALID),
       tensor_global_guid(TENSOR_GUID_FIRST_VALID),
-      parallel_tensor_global_guid(PARALLEL_TENSOR_GUID_FIRST_VALID),
       node_global_guid(NODE_GUID_FIRST_VALID), config(_config), optimizer(NULL),
       loss_op(NULL), metrics_op(NULL), simulator(NULL) {
   this->search = new PCG::SearchHelper(this);
@@ -230,8 +229,9 @@ Tensor FFModel::create_tensor_legion_ordering(int numdim,
                                               int idx,
                                               bool create_grad) {
   int c_dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     c_dims[i] = dims[numdim - 1 - i];
+  }
   return create_tensor(numdim, c_dims, data_type, layer, idx, create_grad);
 }
 
@@ -244,8 +244,9 @@ ParallelTensor
                                                     bool create_grad,
                                                     size_t input_tensor_guid) {
   ParallelDim c_dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     c_dims[i] = dims[numdim - 1 - i];
+  }
   return create_parallel_tensor(
       numdim, c_dims, data_type, op, idx, create_grad, input_tensor_guid);
 }
@@ -293,7 +294,6 @@ ParallelTensor FFModel::create_parallel_tensor(const ParallelDim dims[],
                                                bool create_grad,
                                                size_t input_tensor_guid) {
   ParallelTensor tensor = new ParallelTensorBase();
-  tensor->parallel_tensor_guid = parallel_tensor_global_guid++;
   tensor->data_type = data_type;
   if (owner_op == nullptr) {
     NoOp *input_op = new NoOp(*this, OP_INPUT, input_tensor_guid, tensor);
@@ -321,8 +321,9 @@ Parameter FFModel::create_weight_legion_ordering(int numdim,
                                                  Initializer *initializer,
                                                  ParameterSyncType sync_type) {
   int c_dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     c_dims[i] = dims[numdim - 1 - i];
+  }
   return create_weight(
       numdim, c_dims, data_type, layer, create_grad, initializer, sync_type);
 }
@@ -373,7 +374,6 @@ ParallelParameter FFModel::create_parallel_weight(const ParallelDim dims[],
                                                   Initializer *initializer,
                                                   ParameterSyncType sync_type) {
   ParallelParameter p = new ParallelTensorBase();
-  p->parallel_tensor_guid = parallel_tensor_global_guid++;
   p->data_type = data_type;
   if (owner_op == NULL) {
     NoOp *weight_op = new NoOp(*this, OP_WEIGHT, p);
@@ -509,8 +509,9 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
   }
 
   Point<NDIM> hi;
-  for (int i = 0; i < NDIM; i++)
+  for (int i = 0; i < NDIM; i++) {
     hi[i] = tensor->dims[i].size - 1;
+  }
   Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
   IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
   tensor->region = runtime->create_logical_region(ctx, is, fs);
@@ -531,12 +532,15 @@ void FFModel::map_tensor_with_dim2(ParallelTensor tensor,
       ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
     }
     Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
-    for (int i = 0; i < NDIM; i++)
-      for (int j = 0; j < TDIM; j++)
-        if (tensor->dims[i].parallel_idx == j)
+    for (int i = 0; i < NDIM; i++) {
+      for (int j = 0; j < TDIM; j++) {
+        if (tensor->dims[i].parallel_idx == j) {
           transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
-        else
+        } else {
           transform[i][j] = 0;
+        }
+      }
+    }
     IndexPartition ip = runtime->create_partition_by_restriction(
         ctx, is, part_is, transform, extent);
     assert(runtime->is_index_partition_disjoint(ctx, ip));
@@ -693,12 +697,15 @@ void FFModel::create_disjoint_partition_with_dim2(
     ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
   }
   Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
-  for (int i = 0; i < NDIM; i++)
-    for (int j = 0; j < TDIM; j++)
-      if (dims[i].parallel_idx == j)
+  for (int i = 0; i < NDIM; i++) {
+    for (int j = 0; j < TDIM; j++) {
+      if (dims[i].parallel_idx == j) {
         transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
-      else
+      } else {
         transform[i][j] = 0;
+      }
+    }
+  }
   IndexPartition ip = runtime->create_partition_by_restriction(
       ctx, region.get_index_space(), part_is, transform, extent);
   assert(runtime->is_index_partition_disjoint(ctx, ip));
@@ -745,17 +752,21 @@ void FFModel::create_aliased_partition_with_dim2(
       runtime->get_index_space_domain(ctx, region.get_index_space());
   for (int i = 0; i < NDIM; i++) {
     int nparts = dims[i].degree;
-    if (aliased_dim == i)
+    if (aliased_dim == i) {
       nparts = 1;
+    }
     ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
   }
   Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
-  for (int i = 0; i < NDIM; i++)
-    for (int j = 0; j < TDIM; j++)
-      if (dims[i].parallel_idx == j && i != aliased_dim)
+  for (int i = 0; i < NDIM; i++) {
+    for (int j = 0; j < TDIM; j++) {
+      if (dims[i].parallel_idx == j && i != aliased_dim) {
         transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
-      else
+      } else {
         transform[i][j] = 0;
+      }
+    }
+  }
   IndexPartition ip = runtime->create_partition_by_restriction(
       ctx, region.get_index_space(), part_is, transform, extent);
   // assert(runtime->is_index_partition_disjoint(ctx, ip));
@@ -786,12 +797,15 @@ void FFModel::create_disjoint_partition(const ParallelTensor tensor,
     ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
   }
   Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
-  for (int i = 0; i < NDIM; i++)
-    for (int j = 0; j < NDIM; j++)
-      if (i == j)
+  for (int i = 0; i < NDIM; i++) {
+    for (int j = 0; j < NDIM; j++) {
+      if (i == j) {
         transform[i][j] = extent.hi[i] - extent.lo[i] + 1;
-      else
+      } else {
         transform[i][j] = 0;
+      }
+    }
+  }
   IndexPartition ip = runtime->create_partition_by_restriction(
       ctx, tensor->region.get_index_space(), part_is, transform, extent);
   assert(runtime->is_index_partition_disjoint(ctx, ip));
@@ -816,9 +830,10 @@ void FFModel::create_data_parallel_partition_with_diff_dims(
   assert(tensor->num_dims == NDIM);
   if (config.computationMode == COMP_MODE_TRAINING) {
     // Current assume forward and grad share the same index space
-    if (tensor->region_grad != LogicalRegion::NO_REGION)
+    if (tensor->region_grad != LogicalRegion::NO_REGION) {
       assert(tensor->region.get_index_space() ==
              tensor->region_grad.get_index_space());
+    }
   }
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
@@ -826,20 +841,24 @@ void FFModel::create_data_parallel_partition_with_diff_dims(
       runtime->get_index_space_domain(ctx, tensor->region.get_index_space());
   Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, part_is);
   // Assume it is data parallel
-  for (int i = 0; i < TDIM - 1; i++)
+  for (int i = 0; i < TDIM - 1; i++) {
     assert(part_rect.lo[i] == part_rect.hi[i]);
+  }
   Transform<NDIM, TDIM> transform;
   Point<NDIM> ext_hi;
   for (int i = 0; i < NDIM; i++) {
     int nparts = 1;
-    if (i == NDIM - 1)
+    if (i == NDIM - 1) {
       nparts = part_rect.hi[TDIM - 1] - part_rect.lo[TDIM - 1] + 1;
+    }
     ext_hi[i] = (rect.hi[i] - rect.lo[i] + nparts) / nparts - 1;
   }
   Rect<NDIM> extent(Point<NDIM>::ZEROES(), ext_hi);
-  for (int i = 0; i < NDIM; i++)
-    for (int j = 0; j < TDIM; j++)
+  for (int i = 0; i < NDIM; i++) {
+    for (int j = 0; j < TDIM; j++) {
       transform[i][j] = 0;
+    }
+  }
   transform[NDIM - 1][TDIM - 1] = extent.hi[NDIM - 1] - extent.lo[NDIM - 1] + 1;
   IndexPartition ip = runtime->create_partition_by_restriction(
       ctx, tensor->region.get_index_space(), part_is, transform, extent);
@@ -847,8 +866,9 @@ void FFModel::create_data_parallel_partition_with_diff_dims(
   assert(runtime->is_index_partition_complete(ctx, ip));
   part_fwd = runtime->get_logical_partition(ctx, tensor->region, ip);
   if (config.computationMode == COMP_MODE_TRAINING) {
-    if (tensor->region_grad != LogicalRegion::NO_REGION)
+    if (tensor->region_grad != LogicalRegion::NO_REGION) {
       part_bwd = runtime->get_logical_partition(ctx, tensor->region_grad, ip);
+    }
   } else {
     part_bwd = LogicalPartition::NO_PART;
   }
@@ -866,8 +886,9 @@ void FFModel::map_linear_weight(ParallelTensor weight, Op const *op) {
   Runtime *runtime = config.lg_hlr;
   Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, op->parallel_is);
   int num_parts[TDIM];
-  for (int i = 0; i < TDIM; i++)
+  for (int i = 0; i < TDIM; i++) {
     num_parts[i] = part_rect.hi[i] - part_rect.lo[i] + 1;
+  }
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
   switch (weight->data_type) {
@@ -887,8 +908,9 @@ void FFModel::map_linear_weight(ParallelTensor weight, Op const *op) {
   // Step 1: forward region and partition
   if (weight->sync_type == ParameterSyncType::PS) {
     Point<NDIM> hi;
-    for (int i = 0; i < NDIM; i++)
+    for (int i = 0; i < NDIM; i++) {
       hi[i] = weight->dims[i].size - 1;
+    }
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight->region = runtime->create_logical_region(ctx, is, fs);
@@ -896,9 +918,11 @@ void FFModel::map_linear_weight(ParallelTensor weight, Op const *op) {
     hi[NDIM - 1] = out_channels / num_parts[0] - 1;
     Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
     Transform<NDIM, TDIM> transform;
-    for (int i = 0; i < NDIM; i++)
-      for (int j = 0; j < TDIM; j++)
+    for (int i = 0; i < NDIM; i++) {
+      for (int j = 0; j < TDIM; j++) {
         transform[i][j] = 0;
+      }
+    }
     transform[NDIM - 1][0] = out_channels / num_parts[0];
     IndexPartition ip = runtime->create_partition_by_restriction(
         ctx, is, op->parallel_is, transform, extent);
@@ -910,11 +934,13 @@ void FFModel::map_linear_weight(ParallelTensor weight, Op const *op) {
     // for (int i = 0; i < TDIM-1; i++)
     //  assert(num_parts[i] == 1);
     Point<NDIM> hi;
-    for (int i = 0; i < NDIM; i++)
+    for (int i = 0; i < NDIM; i++) {
       hi[i] = weight->dims[i].size - 1;
+    }
     int num_batches = 1;
-    for (int i = 1; i < TDIM; i++)
+    for (int i = 1; i < TDIM; i++) {
       num_batches *= num_parts[i];
+    }
     hi[NDIM - 1] = num_batches * out_channels - 1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
@@ -922,12 +948,15 @@ void FFModel::map_linear_weight(ParallelTensor weight, Op const *op) {
     hi[NDIM - 1] = out_channels / num_parts[0] - 1;
     Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
     Transform<NDIM, TDIM> transform;
-    for (int i = 0; i < NDIM; i++)
-      for (int j = 0; j < TDIM; j++)
+    for (int i = 0; i < NDIM; i++) {
+      for (int j = 0; j < TDIM; j++) {
         transform[i][j] = 0;
+      }
+    }
     transform[NDIM - 1][0] = out_channels / num_parts[0];
-    for (int i = 1; i < TDIM; i++)
+    for (int i = 1; i < TDIM; i++) {
       transform[NDIM - 1][i] = transform[NDIM - 1][i - 1] * num_parts[i - 1];
+    }
     IndexPartition ip = runtime->create_partition_by_restriction(
         ctx, is, op->parallel_is, transform, extent);
     assert(runtime->is_index_partition_complete(ctx, ip));
@@ -946,11 +975,13 @@ void FFModel::map_linear_weight(ParallelTensor weight, Op const *op) {
   if (weight->create_gradients &&
       config.computationMode == COMP_MODE_TRAINING) {
     Point<NDIM> hi;
-    for (int i = 0; i < NDIM; i++)
+    for (int i = 0; i < NDIM; i++) {
       hi[i] = weight->dims[i].size - 1;
+    }
     int num_batches = 1;
-    for (int i = 1; i < TDIM; i++)
+    for (int i = 1; i < TDIM; i++) {
       num_batches *= num_parts[i];
+    }
     hi[NDIM - 1] = num_batches * out_channels - 1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
@@ -958,12 +989,15 @@ void FFModel::map_linear_weight(ParallelTensor weight, Op const *op) {
     hi[NDIM - 1] = out_channels / num_parts[0] - 1;
     Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
     Transform<NDIM, TDIM> transform;
-    for (int i = 0; i < NDIM; i++)
-      for (int j = 0; j < TDIM; j++)
+    for (int i = 0; i < NDIM; i++) {
+      for (int j = 0; j < TDIM; j++) {
         transform[i][j] = 0;
+      }
+    }
     transform[NDIM - 1][0] = out_channels / num_parts[0];
-    for (int i = 1; i < TDIM; i++)
+    for (int i = 1; i < TDIM; i++) {
       transform[NDIM - 1][i] = transform[NDIM - 1][i - 1] * num_parts[i - 1];
+    }
     IndexPartition ip = runtime->create_partition_by_restriction(
         ctx, is, op->parallel_is, transform, extent);
     assert(runtime->is_index_partition_complete(ctx, ip));
@@ -1003,15 +1037,18 @@ void FFModel::map_conv_weight(ParallelTensor weight, Op const *op) {
   int out_channels = weight->dims[weight->num_dims - 1].size;
   if (weight->sync_type == ParameterSyncType::PS) {
     Point<NDIM> hi;
-    for (int i = 0; i < NDIM; i++)
+    for (int i = 0; i < NDIM; i++) {
       hi[i] = weight->dims[i].size - 1;
+    }
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
     weight->region = runtime->create_logical_region(ctx, is, fs);
     Transform<NDIM, 4> transform;
-    for (int i = 0; i < NDIM; i++)
-      for (int j = 0; j < 4; j++)
+    for (int i = 0; i < NDIM; i++) {
+      for (int j = 0; j < 4; j++) {
         transform[i][j] = 0;
+      }
+    }
     IndexPartition ip = runtime->create_partition_by_restriction(
         ctx, is, op->parallel_is, transform, rect);
     assert(runtime->is_index_partition_complete(ctx, ip));
@@ -1021,8 +1058,9 @@ void FFModel::map_conv_weight(ParallelTensor weight, Op const *op) {
     // communication
     assert(num_par_c == 1);
     Point<NDIM> hi;
-    for (int i = 0; i < NDIM; i++)
+    for (int i = 0; i < NDIM; i++) {
       hi[i] = weight->dims[i].size - 1;
+    }
     hi[NDIM - 1] = num_par_n * num_par_h * num_par_w * out_channels - 1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
@@ -1030,9 +1068,11 @@ void FFModel::map_conv_weight(ParallelTensor weight, Op const *op) {
     hi[NDIM - 1] = out_channels - 1;
     Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
     Transform<NDIM, 4> transform;
-    for (int i = 0; i < NDIM; i++)
-      for (int j = 0; j < 4; j++)
+    for (int i = 0; i < NDIM; i++) {
+      for (int j = 0; j < 4; j++) {
         transform[i][j] = 0;
+      }
+    }
     transform[NDIM - 1][0] = out_channels;
     transform[NDIM - 1][1] = out_channels * num_par_w;
     transform[NDIM - 1][2] = out_channels * num_par_w * num_par_h;
@@ -1056,8 +1096,9 @@ void FFModel::map_conv_weight(ParallelTensor weight, Op const *op) {
   if (weight->create_gradients &&
       config.computationMode == COMP_MODE_TRAINING) {
     Point<NDIM> hi;
-    for (int i = 0; i < NDIM; i++)
+    for (int i = 0; i < NDIM; i++) {
       hi[i] = weight->dims[i].size - 1;
+    }
     hi[NDIM - 1] = num_par_n * num_par_h * num_par_w * out_channels - 1;
     Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
     IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
@@ -1065,9 +1106,11 @@ void FFModel::map_conv_weight(ParallelTensor weight, Op const *op) {
     hi[NDIM - 1] = out_channels - 1;
     Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
     Transform<NDIM, 4> transform;
-    for (int i = 0; i < NDIM; i++)
-      for (int j = 0; j < 4; j++)
+    for (int i = 0; i < NDIM; i++) {
+      for (int j = 0; j < 4; j++) {
         transform[i][j] = 0;
+      }
+    }
     transform[NDIM - 1][0] = out_channels;
     transform[NDIM - 1][1] = out_channels * num_par_w;
     transform[NDIM - 1][2] = out_channels * num_par_w * num_par_h;
@@ -1092,14 +1135,15 @@ ParallelTensor FFModel::create_linear_replica(int const dims[],
   assert(NDIM >= 2);
   Rect<TDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
   int num_parts[TDIM];
-  for (int i = 0; i < TDIM; i++)
+  for (int i = 0; i < TDIM; i++) {
     num_parts[i] = part_rect.hi[i] - part_rect.lo[i] + 1;
+  }
   ParallelTensor replica = new ParallelTensorBase();
-  replica->parallel_tensor_guid = parallel_tensor_global_guid++;
   replica->num_dims = NDIM;
   replica->data_type = data_type;
-  for (int i = 0; i < NDIM; i++)
+  for (int i = 0; i < NDIM; i++) {
     replica->dims[i].size = dims[NDIM - 1 - i];
+  }
   FieldSpace fs = runtime->create_field_space(ctx);
   FieldAllocator allocator = runtime->create_field_allocator(ctx, fs);
   switch (data_type) {
@@ -1116,8 +1160,9 @@ ParallelTensor FFModel::create_linear_replica(int const dims[],
       assert(false);
   }
   Point<NDIM> hi;
-  for (int i = 0; i < NDIM; i++)
+  for (int i = 0; i < NDIM; i++) {
     hi[i] = dims[NDIM - 1 - i] - 1;
+  }
   Rect<NDIM> rect(Point<NDIM>::ZEROES(), hi);
   IndexSpaceT<NDIM> is = runtime->create_index_space(ctx, rect);
   replica->region_grad = runtime->create_logical_region(ctx, is, fs);
@@ -1127,9 +1172,11 @@ ParallelTensor FFModel::create_linear_replica(int const dims[],
   hi[NDIM - 2] = dims[1] / num_parts[TDIM - 1] - 1; // sample dim
   Rect<NDIM> extent(Point<NDIM>::ZEROES(), hi);
   Transform<NDIM, TDIM> transform;
-  for (int i = 0; i < NDIM; i++)
-    for (int j = 0; j < TDIM; j++)
+  for (int i = 0; i < NDIM; i++) {
+    for (int j = 0; j < TDIM; j++) {
       transform[i][j] = 0;
+    }
+  }
   transform[NDIM - 1][0] = hi[NDIM - 1] + 1;
   transform[NDIM - 2][TDIM - 1] = hi[NDIM - 2] + 1;
   // transform[NDIM-2][1] = dims[1] / num_parts[1];
@@ -1151,19 +1198,21 @@ IndexSpace FFModel::get_task_is(MachineView const &view) const {
 IndexSpace FFModel::get_task_is(ParallelConfig const &pc) const {
   MachineView view;
   view.ndims = pc.nDims;
-  for (int i = 0; i < view.ndims; i++)
+  for (int i = 0; i < view.ndims; i++) {
     view.dim[i] = pc.dim[i];
+  }
   return get_task_is(view);
 }
 
 IndexSpace FFModel::get_or_create_task_is(const ParallelTensor tensor) {
   MachineView view;
   view.ndims = 0;
-  for (int i = 0; i < tensor->num_dims; i++)
+  for (int i = 0; i < tensor->num_dims; i++) {
     if (tensor->dims[i].parallel_idx >= 0) {
       view.dim[tensor->dims[i].parallel_idx] = tensor->dims[i].degree;
       view.ndims++;
     }
+  }
   if (view.ndims == 0) {
     view.ndims = 1;
     view.dim[0] = 1;
@@ -1174,14 +1223,16 @@ IndexSpace FFModel::get_or_create_task_is(const ParallelTensor tensor) {
 IndexSpace FFModel::get_or_create_task_is(ParallelConfig const &pc) {
   MachineView view;
   view.ndims = pc.nDims;
-  for (int i = 0; i < view.ndims; i++)
+  for (int i = 0; i < view.ndims; i++) {
     view.dim[i] = pc.dim[i];
+  }
   return get_or_create_task_is(view);
 }
 
 IndexSpace FFModel::get_or_create_task_is(MachineView const &view) {
-  if (all_task_is.find(view) != all_task_is.end())
+  if (all_task_is.find(view) != all_task_is.end()) {
     return all_task_is[view];
+  }
   IndexSpace task_is;
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
@@ -1241,8 +1292,9 @@ IndexSpace FFModel::get_task_is(int ndims, const std::string& pcname) const
 IndexSpace FFModel::get_task_is(Domain const &domain) const {
   MachineView view;
   view.ndims = domain.get_dim();
-  for (int i = 0; i < view.ndims; i++)
+  for (int i = 0; i < view.ndims; i++) {
     view.dim[i] = domain.hi()[i] - domain.lo()[i] + 1;
+  }
   auto const &iter = all_task_is.find(view);
   assert(iter != all_task_is.end());
   return iter->second;
@@ -1257,19 +1309,22 @@ void FFModel::reset_metrics() {
 }
 
 void FFModel::init_operators() {
-  for (size_t i = 0; i < operators.size(); i++)
+  for (size_t i = 0; i < operators.size(); i++) {
     operators[i]->init(*this);
+  }
 }
 
 void FFModel::forward(int seq_length) {
   iter_config.seq_length = seq_length;
-  for (size_t i = 0; i < operators.size(); i++)
+  for (size_t i = 0; i < operators.size(); i++) {
     operators[i]->forward(*this);
+  }
 }
 
 void FFModel::recompile_on_condition(RecompileState &r) {
-  if (r.trigger())
+  if (r.trigger()) {
     r.alter();
+  }
 }
 
 void FFModel::compute_metrics() {
@@ -1295,7 +1350,7 @@ void FFModel::backward(int seq_length) {
   // std::set<LogicalRegion> resetedInputGrads;
   for (int l = operators.size() - 1; l >= 0; l--) {
 #ifdef ENABLE_RESNET_INPUT_GRADIENT_OPTIMIZATION
-    for (int i = 0; i < operators[l]->numInputs; i++)
+    for (int i = 0; i < operators[l]->numInputs; i++) {
       if (resetedInputGrads.find(operators[l]->inputs[i]->region) ==
           resetedInputGrads.end()) {
         resetedInputGrads.insert(operators[l]->inputs[i]->region);
@@ -1304,6 +1359,7 @@ void FFModel::backward(int seq_length) {
         // So we should not do it again
         operators[l]->resetInputGrads[i] = false;
       }
+    }
 #endif
     // TODO: If operator serves for metrics and for further prop
     // if(l == metrics_input && metrics_input < (int)operators.size()-1)
@@ -1322,8 +1378,9 @@ void FFModel::update() {
 Op *FFModel::get_final_operator() const {
   int idx = operators.size() - 1;
   while (operators[idx]->op_type == OP_INPUT ||
-         operators[idx]->op_type == OP_WEIGHT)
+         operators[idx]->op_type == OP_WEIGHT) {
     idx--;
+  }
   // assert that the final operator has exactly one output
   assert(operators[idx]->numOutputs == 1);
   return operators[idx];
@@ -1344,24 +1401,29 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
   for (size_t l = 1; l < operators.size() - 1; l++) {
     // don't fuse input and weight operator since they don't involve any
     // forward/backward task launches
-    if (operators[l]->op_type == OP_INPUT || operators[l]->op_type == OP_WEIGHT)
+    if (operators[l]->op_type == OP_INPUT ||
+        operators[l]->op_type == OP_WEIGHT) {
       continue;
+    }
     // don't fuse parallel op since they have different parallel_is in
     // forward/backward
-    if (operators[l]->is_parallel_op())
+    if (operators[l]->is_parallel_op()) {
       continue;
+    }
     size_t start = 0;
     {
       Op *opl = operators[l];
       for (int idx = 0; idx < opl->numInputs; idx++) {
         bool found = false;
-        for (size_t i = 0; i < l; i++)
+        for (size_t i = 0; i < l; i++) {
           if (opl->inputs[idx]->owner_op == operators[i]) {
             assert(!found);
             found = true;
-            if (i > start)
+            if (i > start) {
               start = i;
+            }
           }
+        }
         assert(found || (opl->inputs[idx]->owner_op == NULL));
       }
     }
@@ -1375,44 +1437,50 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
       if (view1 == view2) {
         FusedOp *fused_op = nullptr;
         bool allocate_new_fused_op = false;
-        if (operators[i]->op_type == OP_FUSED)
+        if (operators[i]->op_type == OP_FUSED) {
           fused_op = (FusedOp *)operators[i];
-        else {
+        } else {
           //  cannot be an in-place operator
-          if (operators[i]->has_inplace_output())
+          if (operators[i]->has_inplace_output()) {
             continue;
+          }
           // don't fuse input and weight operator since they don't involve any
           // forward/backward kernels
           if (operators[i]->op_type == OP_INPUT ||
-              operators[i]->op_type == OP_WEIGHT)
+              operators[i]->op_type == OP_WEIGHT) {
             continue;
+          }
           // don't fuse parallel op since they have different parallel_is in
           // forward/backward
-          if (operators[i]->is_parallel_op())
+          if (operators[i]->is_parallel_op()) {
             continue;
+          }
           fused_op = new FusedOp(*this, operators[i]);
           allocate_new_fused_op = true;
         }
         if (fused_op->add_operator(*this, operators[l])) {
           // Construct new operators
           new_operators.clear();
-          for (size_t j = 0; j < i; j++)
+          for (size_t j = 0; j < i; j++) {
             new_operators.push_back(operators[j]);
+          }
           new_operators.push_back(fused_op);
           for (size_t j = i + 1; j < operators.size(); j++) {
-            if (j == l)
+            if (j == l) {
               continue; // l and i are fused
+            }
             Op *op = operators[j];
             // Update input tensors that belong to operator[l] or operator[i]
             for (int idx = 0; idx < op->numInputs; idx++) {
               if ((op->inputs[idx]->owner_op == operators[l]) ||
                   (op->inputs[idx]->owner_op == operators[i])) {
                 int found = -1;
-                for (int k = 0; k < fused_op->numOutputs; k++)
+                for (int k = 0; k < fused_op->numOutputs; k++) {
                   if (fused_op->outputs[k]->region == op->inputs[idx]->region) {
                     assert(found == -1);
                     found = k;
                   }
+                }
                 assert(found >= 0);
                 op->inputs[idx] = fused_op->outputs[found];
               }
@@ -1425,8 +1493,9 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
           return true;
         } else {
           // TODO: delete fused_op to avoid memory leakage
-          if (allocate_new_fused_op)
+          if (allocate_new_fused_op) {
             delete fused_op;
+          }
           continue;
         }
       }
@@ -1601,8 +1670,9 @@ void FFModel::create_operators_from_layers() {
 void FFModel::compile(LossType loss_type,
                       std::vector<MetricsType> const &metrics,
                       CompMode comp_mode) {
-  if (metrics_input == -1)
+  if (metrics_input == -1) {
     metrics_input = operators.size() - 1;
+  }
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
   config.computationMode = comp_mode;
@@ -1693,8 +1763,9 @@ void FFModel::compile(LossType loss_type,
             // Check no others also need operators[l]->inputs[0]
             bool found = false;
             for (size_t i = 0; i < operators.size(); i++) {
-              if (i == l)
+              if (i == l) {
                 continue;
+              }
               for (int j = 0; j < operators[i]->numInputs; j++) {
                 if ((operators[i]->inputs[j]->owner_op ==
                      operators[l]->inputs[0]->owner_op) &&
@@ -1729,8 +1800,9 @@ void FFModel::compile(LossType loss_type,
     //   // Output tensor
     //   map_tensor(op->outputs[i], op);
     // }
-    if (op->is_parallel_op())
+    if (op->is_parallel_op()) {
       ((ParallelOp *)op)->create_input_partition(*this);
+    }
     // op->map_output_tensors(*this);
   }
 
@@ -1740,7 +1812,6 @@ void FFModel::compile(LossType loss_type,
     for (int i = 0; i < op->numOutputs; i++) {
       assert(op->outputs[i]->owner_op == op);
       assert(op->outputs[i]->owner_idx == i);
-      assert(op->outputs[i]->parallel_tensor_guid != 0);
     }
   }
 
@@ -1750,8 +1821,9 @@ void FFModel::compile(LossType loss_type,
     Op *op = operators[l];
     for (int i = 0; i < op->numInputs; i++) {
       assert(op->inputs[i]->owner_op != nullptr);
-      if (op->inputs[i]->owner_op->op_type == OP_INPUT)
+      if (op->inputs[i]->owner_op->op_type == OP_INPUT) {
         op->trainableInputs[i] = false;
+      }
     }
   }
 
@@ -1762,11 +1834,15 @@ void FFModel::compile(LossType loss_type,
     std::vector<Op *> new_operators;
     std::vector<Op *> old_operators = operators;
     while (apply_fusion(operators, new_operators)) {
-      for (size_t i = 0; i < new_operators.size(); i++)
-        for (int idx = 0; idx < new_operators[i]->numInputs; idx++)
-          for (size_t j = i + 1; j < new_operators.size(); j++)
-            if (new_operators[i]->inputs[idx]->owner_op == new_operators[j])
+      for (size_t i = 0; i < new_operators.size(); i++) {
+        for (int idx = 0; idx < new_operators[i]->numInputs; idx++) {
+          for (size_t j = i + 1; j < new_operators.size(); j++) {
+            if (new_operators[i]->inputs[idx]->owner_op == new_operators[j]) {
               assert(false);
+            }
+          }
+        }
+      }
       operators = new_operators;
     }
     // Check integrity
@@ -1785,8 +1861,9 @@ void FFModel::compile(LossType loss_type,
                        FusedOp::SOURCE_OUTPUT) {
               assert(fused->outputs[my_off]->region ==
                      old_op->inputs[i]->region);
-            } else
+            } else {
               assert(false);
+            }
           }
           for (int i = 0; i < fused->op_num_weights[op]; i++) {
             int my_off = fused->op_weight_idx[i + woff];
@@ -1879,8 +1956,9 @@ void FFModel::compile(LossType loss_type,
   // FIXME: Currently assume 1st input for 1st operator = batch_size
   for (int i = 0; i < num_p_dims; i++) {
     p_dims[i] = final_operator->outputs[0]->dims[i];
-    if (!p_dims[i].is_replica_dim)
+    if (!p_dims[i].is_replica_dim) {
       dims[num_dims++] = p_dims[i].size;
+    }
   }
   DataType label_type = DT_FLOAT;
   if (loss_type == LOSS_SPARSE_CATEGORICAL_CROSSENTROPY) {
@@ -1919,8 +1997,9 @@ void FFModel::compile(LossType loss_type,
     // init all nccl communicators
     for (size_t l = 0; l < operators.size(); l++) {
       // Only create nccl for weights
-      if (operators[l]->op_type != OP_WEIGHT)
+      if (operators[l]->op_type != OP_WEIGHT) {
         continue;
+      }
       MachineView view = operators[l]->outputs[0]->machine_view;
       if (view_hash_to_nccl_comms.find(view.hash()) ==
           view_hash_to_nccl_comms.end()) {
@@ -2062,8 +2141,9 @@ void FFModel::rewrite(std::map<Op const *, ParallelConfig> const &current,
   } else {
     size_t opId = std::rand() % operators.size();
     // TODO: need to make sure opId is not an output operator of the model
-    if (opId == operators.size() - 1)
+    if (opId == operators.size() - 1) {
       return;
+    }
     next[operators[opId]] = operators[opId]->get_random_parallel_config(*this);
   }
 }
@@ -2079,10 +2159,12 @@ void FFModel::mcmc_optimize(std::map<Op const *, ParallelConfig> &best,
   current = best;
   float current_runtime = best_runtime;
   size_t reset_span = budget / 100, last_reset_iter = 0;
-  if (reset_span == 0)
+  if (reset_span == 0) {
     reset_span = 1;
-  if (reset_span > 1000)
+  }
+  if (reset_span > 1000) {
     reset_span = 1000;
+  }
   for (size_t iter = 0; iter <= budget; iter++) {
     // Reset the current strategy to be the best strategy
     if (iter - last_reset_iter >= reset_span) {
@@ -2119,25 +2201,30 @@ void FFModel::mcmc_optimize(std::map<Op const *, ParallelConfig> &best,
   std::map<Op const *, ParallelConfig>::const_iterator it;
   for (it = best.begin(); it != best.end(); it++) {
     printf("[%s] num_dims(%d) dims[", it->first->name, it->second.nDims);
-    for (int i = 0; i < it->second.nDims; i++)
-      if (i < it->second.nDims - 1)
+    for (int i = 0; i < it->second.nDims; i++) {
+      if (i < it->second.nDims - 1) {
         printf("%d,", it->second.dim[i]);
-      else
+      } else {
         printf("%d", it->second.dim[i]);
+      }
+    }
     printf("] device_ids[");
-    for (int i = 0; i < it->second.num_parts(); i++)
-      if (i < it->second.num_parts() - 1)
+    for (int i = 0; i < it->second.num_parts(); i++) {
+      if (i < it->second.num_parts() - 1) {
         printf("%d,", it->second.device_ids[i]);
-      else
+      } else {
         printf("%d", it->second.device_ids[i]);
+      }
+    }
     printf("]\n");
   }
   printf("============= MCMC Search Finished ============\n\n");
 }
 
 void FFModel::zero_gradients(void) {
-  for (int l = operators.size() - 1; l >= 0; l--)
+  for (int l = operators.size() - 1; l >= 0; l--) {
     operators[l]->zero_grad(*this);
+  }
 }
 
 void FFModel::print_layers(int id) {

@@ -46,8 +46,9 @@ TransposeParams Transpose::get_params() const {
   TransposeParams params;
   params.perm.clear();
   assert(inputs[0]->num_dims == outputs[0]->num_dims);
-  for (int i = 0; i < outputs[0]->num_dims; i++)
+  for (int i = 0; i < outputs[0]->num_dims; i++) {
     params.perm.push_back(this->perm[i]);
+  }
   return params;
 }
 
@@ -65,14 +66,16 @@ Tensor FFModel::transpose(const Tensor input,
   assert(_perm.size() == input->num_dims);
   // Use Legion indexing to store perm
   std::vector<int> perm;
-  for (int i = 0; i < input->num_dims; i++)
+  for (int i = 0; i < input->num_dims; i++) {
     perm.push_back(input->num_dims - 1 - _perm[input->num_dims - 1 - i]);
+  }
   // Assume a single leading replica dim
   perm.push_back(input->num_dims);
   int dims[MAX_TENSOR_DIM];
   int numdim = input->num_dims;
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = input->dims[perm[i]];
+  }
   transpose->outputs[0] = create_tensor_legion_ordering(
       numdim, dims, input->data_type, transpose, 0, true /*create_grad*/);
   transpose->add_int_vector_property("legion_perm", perm);
@@ -112,14 +115,17 @@ Transpose::Transpose(FFModel &model,
   // while (num_dims > 0 && input->dims[num_dims-1].is_replica_dim)
   //  num_dims -= 1;
   assert(_perm.size() == num_dims);
-  for (int i = 0; i < num_dims; i++)
+  for (int i = 0; i < num_dims; i++) {
     perm[i] = _perm[i];
+  }
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < num_dims; i++)
+  for (int i = 0; i < num_dims; i++) {
     dims[i] = input->dims[perm[i]];
+  }
   // The replica dims remain the same
-  for (int i = num_dims; i < input->num_dims; i++)
+  for (int i = num_dims; i < input->num_dims; i++) {
     dims[i] = input->dims[i];
+  }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       input->num_dims, dims, input->data_type, this);
 }
@@ -164,8 +170,9 @@ void Transpose::init_meta(TransposeMeta *m,
     assert(out_domain.lo()[i] == in_domain.lo()[this->perm[i]]);
   }
   m->num_dim = out_domain.get_dim();
-  for (int i = 0; i < m->num_dim; i++)
+  for (int i = 0; i < m->num_dim; i++) {
     m->perm[i] = this->perm[i];
+  }
 }
 
 OpMeta *Transpose::init_task(Task const *task,
@@ -368,8 +375,9 @@ bool Transpose::measure_operator_cost(Simulator *sim,
 void Transpose::serialize(Legion::Serializer &sez) const {
   TransposeParams params = get_params();
   sez.serialize(params.perm.size());
-  for (size_t i = 0; i < params.perm.size(); i++)
+  for (size_t i = 0; i < params.perm.size(); i++) {
     sez.serialize(params.perm[i]);
+  }
 }
 
 using PCG::Node;
