@@ -16,12 +16,13 @@ public:
 namespace Kernels {
 namespace Cast {
 template <typename IDT, typename ODT>
-void forward_kernel_wrapper(IDT const *input_ptr,
+void forward_kernel_wrapper(CastMeta const *m,
+                            IDT const *input_ptr,
                             ODT *output_ptr,
                             size_t volume);
 
 template <typename IDT, typename ODT>
-void backward_kernel_wrapper(IDT const *src_ptr, ODT *dst_ptr, size_t volume);
+void backward_kernel_wrapper(CastMeta const *m, IDT const *src_ptr, ODT *dst_ptr, size_t volume);
 
 namespace Internal {
 
