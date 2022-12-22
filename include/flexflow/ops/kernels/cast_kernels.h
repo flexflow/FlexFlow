@@ -22,7 +22,7 @@ void forward_kernel_wrapper(CastMeta const *m,
                             size_t volume);
 
 template <typename IDT, typename ODT>
-void backward_kernel_wrapper(CastMeta const *m, IDT const *src_ptr, ODT *dst_ptr, size_t volume);
+void backward_kernel_wrapper(IDT const *src_ptr, ODT *dst_ptr, size_t volume);
 
 namespace Internal {
 
