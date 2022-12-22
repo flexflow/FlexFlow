@@ -1,11 +1,8 @@
 #ifndef _FLEXFLOW_SPLIT_H
 #define _FLEXFLOW_SPLIT_H
 
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
 #include "flexflow/layer.h"
 #include "flexflow/node.h"
-#include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/params/split_params.h"
 
@@ -46,32 +43,6 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  static void forward_kernel(float **out_ptrs,
-                             float const *in_ptr,
-                             Legion::coord_t const *out_blk_sizes,
-                             Legion::coord_t in_blk_size,
-                             Legion::coord_t num_blks,
-                             int numOutputs,
-                             ffStream_t stream);
-  static void forward_kernel_wrapper(float **out_ptrs,
-                                     float const *in_ptr,
-                                     Legion::coord_t const *out_blk_sizes,
-                                     Legion::coord_t in_blk_size,
-                                     Legion::coord_t num_blks,
-                                     int numOutputs);
-  static void backward_kernel(float *in_grad_ptr,
-                              float const **out_grad_ptr,
-                              Legion::coord_t const *out_blk_sizes,
-                              Legion::coord_t in_blk_size,
-                              Legion::coord_t num_blks,
-                              int numOutputs,
-                              ffStream_t stream);
-  static void backward_kernel_wrapper(float *in_grad_ptr,
-                                      float const **out_grad_ptr,
-                                      Legion::coord_t const *out_blk_sizes,
-                                      Legion::coord_t in_blk_size,
-                                      Legion::coord_t num_blks,
-                                      int numOutputs);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;

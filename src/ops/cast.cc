@@ -36,8 +36,14 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 Tensor FFModel::cast(const Tensor input, DataType dtype, char const *name) {
-  Layer *cast = new Layer(
-      this, OP_CAST, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, input);
+  Layer *cast = new Layer(this,
+                          OP_CAST,
+                          dtype,
+                          name,
+                          1 /*inputs*/,
+                          0 /*weights*/,
+                          1 /*outputs*/,
+                          input);
   int numdims = input->num_dims;
   int dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdims; i++)
@@ -82,6 +88,7 @@ Cast::Cast(FFModel &model,
            char const *name)
     : Op(model,
          OP_CAST,
+         _dtype,
          name,
          1 /*inputs*/,
          0 /*weights*/,

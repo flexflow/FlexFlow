@@ -9,6 +9,8 @@ on:
       - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/pip-install.yml"
   push:
+    branches:
+      - "master"
     paths:
       - "cmake/**"
       - "config/**"
@@ -31,11 +33,16 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Free additional space on runner
+        run: .github/workflows/helpers/free_space_on_runner.sh
+
       - name: Install CUDA
         uses: Jimver/cuda-toolkit@v0.2.8
         id: cuda-toolkit
         with:
           cuda: "11.1.1"
+          # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
+          use-github-cache: "false"
 
       - name: Install FlexFlow Dependencies
         run: .github/workflows/helpers/install_dependencies.sh
@@ -44,7 +51,7 @@ jobs:
         run: |
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
-          sed -i "/FF_CUDA_ARCH/c\FF_CUDA_ARCH=70" ./config/config.linux
+          export FF_CUDA_ARCH=70
           pip install . --verbose
 
       - name: Check availability of Python flexflow.core module

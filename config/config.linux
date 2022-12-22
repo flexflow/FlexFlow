@@ -1,7 +1,5 @@
 #!/bin/bash
 
-echo " Defaults for Linux machine"
-
 # set the CC and CXX, usually it is not needed as cmake can detect it
 # set CC and CXX to mpicc and mpic++ when enable gasnet
 # CC=mpicc
@@ -18,38 +16,74 @@ echo " Defaults for Linux machine"
 # set build type
 BUILD_TYPE=Release
 
-# set CUDA Arch, replace xx with your GPU architecture
-#FF_CUDA_ARCH=xx
+# set CUDA Arch to the desired GPU architecture(s) to target (e.g. pass "FF_CUDA_ARCH=60" for Pascal). 
+# To pass more than one value, separate architecture numbers with a comma (e.g. FF_CUDA_ARCH=70,75).
+# Alternatively, set "FF_CUDA_ARCH=autodetect" to build FlexFlow for all architectures detected on the machine,
+# or set "FF_CUDA_ARCH=all" to build FlexFlow for all supported GPU architectures
+FF_CUDA_ARCH=${FF_CUDA_ARCH:-"autodetect"}
 
 # set CUDNN dir in case cmake cannot autodetect a path
-CUDNN_DIR=/usr/local/cuda
+CUDNN_DIR=${CUDNN_DIR:-"/usr/local/cuda"}
 
 # set CUDA dir in case cmake cannot autodetect a path
-CUDA_DIR=/usr/local/cuda
+CUDA_DIR=${CUDA_DIR:-"/usr/local/cuda"}
 
 # enable Python
-FF_USE_PYTHON=ON
-
-# enable NCCL
-FF_USE_NCCL=ON
+FF_USE_PYTHON=${FF_USE_PYTHON:-ON}
 
 # enable GASNet
-FF_USE_GASNET=OFF
+FF_USE_GASNET=${FF_USE_GASNET:-OFF}
 
 # select GASNET conduit
-FF_GASNET_CONDUIT=ibv
+FF_GASNET_CONDUIT=${FF_GASNET_CONDUIT:-ibv}
 
 # build C++ examples
-FF_BUILD_ALL_EXAMPLES=OFF
+FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES:-OFF}
 
 # build C++ unit tests
-FF_BUILD_UNIT_TESTS=OFF
+FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS:-OFF}
+
+# use precompiled NCCL and Legion libraries, where available
+FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL:-ON}
+FF_USE_PREBUILT_LEGION=${FF_USE_PREBUILT_LEGION:-ON}
+# use the flag below to use both the NCCL and Legion pre-built libraries.
+# when the flag below is set to ON, the two flags above are ignored.
+FF_USE_ALL_PREBUILT_LIBRARIES=${FF_USE_ALL_PREBUILT_LIBRARIES:-OFF}
 
 # enable avx2
-FF_USE_AVX2=OFF
+FF_USE_AVX2=${FF_USE_AVX2:-OFF}
 
 # set MAX_DIM
-FF_MAX_DIM=5
+FF_MAX_DIM=${FF_MAX_DIM:-5}
 
-. $(dirname $0)/config.inc
-run_cmake $*
+# set ROCM path
+ROCM_PATH=${ROCM_PATH:-"/opt/rocm"}
+
+# set GPU backend
+FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
+if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
+  echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid."
+  exit 1
+elif [[ "$FF_GPU_BACKEND" == "cuda" || "$FF_GPU_BACKEND" = "hip_cuda" ]]; then
+    # enable NCCL
+    FF_USE_NCCL=${FF_USE_NCCL:-ON}
+else
+    FF_USE_NCCL=OFF
+fi
+
+function get_build_configs() {
+    # Create a string with the values of the variables set in this script
+    BUILD_CONFIGS="FF_CUDA_ARCH=${FF_CUDA_ARCH} CUDNN_DIR=${CUDNN_DIR} CUDA_DIR=${CUDA_DIR} FF_USE_PYTHON=${FF_USE_PYTHON} FF_USE_GASNET=${FF_USE_GASNET} FF_GASNET_CONDUIT=${FF_GASNET_CONDUIT} FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES} FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS} FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL} FF_USE_PREBUILT_LEGION=${FF_USE_PREBUILT_LEGION} FF_USE_ALL_PREBUILT_LIBRARIES=${FF_USE_ALL_PREBUILT_LIBRARIES} FF_USE_AVX2=${FF_USE_AVX2} FF_MAX_DIM=${FF_MAX_DIM} ROCM_PATH=${ROCM_PATH} FF_GPU_BACKEND=${FF_GPU_BACKEND}"
+}
+
+if [ -n "$1" ]; then
+    if [ "$1" != "get-docker-configs" ]; then
+        . $(dirname $0)/config.inc
+        # You can pass the name of the variable you want to print out as $1. This
+        # is used in the python setup script to get the cmake config
+        echo "${!1}"
+    fi
+else
+    . $(dirname $0)/config.inc
+    run_cmake $*
+fi

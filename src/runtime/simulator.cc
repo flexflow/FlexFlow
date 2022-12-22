@@ -15,7 +15,6 @@
 
 #include "flexflow/simulator.h"
 #include "flexflow/model.h"
-#include "flexflow/ops/pool_2d.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/reduction.h"
@@ -332,6 +331,8 @@ void Simulator::free_all() {
 
 size_t data_type_size(DataType type) {
   switch (type) {
+    case DT_HALF:
+      return sizeof(half);
     case DT_FLOAT:
       return sizeof(float);
     case DT_DOUBLE:

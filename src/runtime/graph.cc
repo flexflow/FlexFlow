@@ -447,13 +447,6 @@ bool Graph::has_loop(void) {
     if (todos[it.first] == 0)
       opList.push_back(it.first);
   }
-#ifdef DEADCODE
-  for (auto const &it : outEdges) {
-    if (inEdges.find(it.first) == inEdges.end()) {
-      opList.push_back(it.first);
-    }
-  }
-#endif
   size_t i = 0;
   while (i < opList.size()) {
     Node op = opList[i++];
@@ -1672,6 +1665,7 @@ GraphOptimalViewSerialized
         sez.serialize(embed->num_entries);
         sez.serialize(embed->out_channels);
         sez.serialize(embed->aggr);
+        sez.serialize(embed->data_type);
         break;
       }
       case OP_EW_ADD:
@@ -1930,26 +1924,31 @@ void FFModel::deserialize_graph_optimal_view(
         break;
       }
       case OP_EMBEDDING: {
+        assert(num_inputs == 1);
         AggrMode aggr;
         int num_entries, out_channels;
         size_t id;
+        DataType data_type;
         dez.deserialize(id);
         LayerID layer_guid(id);
         dez.deserialize(num_entries);
         dez.deserialize(out_channels);
         dez.deserialize(aggr);
+        dez.deserialize(data_type);
 
         EmbeddingParams params;
         params.aggr = aggr;
         params.num_entries = num_entries;
         params.out_channels = out_channels;
         params.layer_guid = layer_guid;
+        params.data_type = data_type;
         node = get_or_create_node<Embedding>(inputs, params);
         break;
       }
       case OP_EW_ADD:
       case OP_EW_SUB:
       case OP_EW_MUL: {
+        assert(num_inputs == 2);
         OperatorType op_type;
         dez.deserialize(op_type);
         node = get_or_create_node<ElementBinary>(inputs, {op_type});
@@ -1965,6 +1964,8 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_EXP:
       case OP_SCALAR_MULTIPLY:
+      case OP_SCALAR_FLOOR_DIV:
+      case OP_SCALAR_TRUE_DIV:
       case OP_SCALAR_ADD:
       case OP_SCALAR_SUB:
       case OP_RELU:

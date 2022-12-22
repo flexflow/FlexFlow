@@ -50,11 +50,34 @@ void Repartition::backward_kernel(const T *output_grad_ptr,
 
 RepartitionMeta::RepartitionMeta(FFHandler handler) : OpMeta(handler) {}
 
+// float
 template void Repartition::forward_kernel<float>(float const *input_ptr,
                                                  float *output_ptr,
                                                  size_t num_elements);
 template void Repartition::backward_kernel<float>(float const *output_grad_ptr,
                                                   float *input_grad_ptr,
                                                   size_t num_elements);
+// double
+template void Repartition::forward_kernel<double>(double const *input_ptr,
+                                                  double *output_ptr,
+                                                  size_t num_elements);
+template void Repartition::backward_kernel<double>(
+    double const *output_grad_ptr, double *input_grad_ptr, size_t num_elements);
+
+// int
+template void Repartition::forward_kernel<int>(int const *input_ptr,
+                                               int *output_ptr,
+                                               size_t num_elements);
+template void Repartition::backward_kernel<int>(int const *output_grad_ptr,
+                                                int *input_grad_ptr,
+                                                size_t num_elements);
+
+// long
+template void Repartition::forward_kernel<long>(long const *input_ptr,
+                                                long *output_ptr,
+                                                size_t num_elements);
+template void Repartition::backward_kernel<long>(long const *output_grad_ptr,
+                                                 long *input_grad_ptr,
+                                                 size_t num_elements);
 
 }; // namespace FlexFlow

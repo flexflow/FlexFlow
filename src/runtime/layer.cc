@@ -5,7 +5,8 @@
 namespace FlexFlow {
 
 Layer::Layer(FFModel *model,
-             OperatorType _type,
+             OperatorType _otype,
+             DataType _dtype,
              char const *_name,
              int _numInputs,
              int _numWeights,
@@ -14,7 +15,7 @@ Layer::Layer(FFModel *model,
              const Tensor _input2,
              const Tensor _input3,
              const Tensor _input4)
-    : op_type(_type), data_type(DT_FLOAT),
+    : op_type(_otype), data_type(_dtype),
       layer_guid(model->layer_global_guid++), numInputs(_numInputs),
       numWeights(_numWeights), numOutputs(_numOutputs) {
   std::string pcname;
@@ -41,13 +42,14 @@ Layer::Layer(FFModel *model,
 }
 
 Layer::Layer(FFModel *model,
-             OperatorType _type,
+             OperatorType _otype,
+             DataType _dtype,
              char const *_name,
              int _numInputs,
              int _numWeights,
              int _numOutputs,
              Tensor const *_tensors)
-    : op_type(_type), data_type(DT_FLOAT),
+    : op_type(_otype), data_type(_dtype),
       layer_guid(model->layer_global_guid++), numInputs(_numInputs),
       numWeights(_numWeights), numOutputs(_numOutputs) {
   std::string pcname;

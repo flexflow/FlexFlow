@@ -355,6 +355,7 @@ public:
                    int num_entires,
                    int outDim,
                    AggrMode aggr,
+                   DataType dtype = DT_FLOAT,
                    Layer const *shared_op = NULL,
                    Initializer *kernel_initializer = NULL,
                    char const *name = NULL);
@@ -418,7 +419,7 @@ public:
                Initializer *bias_initializer = NULL,
                char const *name = NULL);
   // Add a cast layer
-  Tensor cast(const Tensor input, DataType dtype, char const *name);
+  Tensor cast(const Tensor input, DataType dtype, char const *name = nullptr);
   // Add a concat layer
   Tensor
       concat(int n, Tensor const *tensors, int axis, char const *name = NULL);
@@ -755,7 +756,7 @@ public:
 
 public:
   size_t op_global_guid, layer_global_guid;
-  size_t tensor_global_guid, node_global_guid;
+  size_t tensor_global_guid, parallel_tensor_global_guid, node_global_guid;
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer *optimizer;
