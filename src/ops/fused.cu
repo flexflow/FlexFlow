@@ -17,12 +17,12 @@
 #include "flexflow/model.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
-#include "flexflow/ops/concat.h"
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
+#include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
@@ -165,11 +165,11 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         ConcatMeta *m = (ConcatMeta *)metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
-        Concat::forward_kernel_wrapper(m,
-                                       my_output_accessor[0],
-                                       my_input_accessor,
-                                       num_inputs,
-                                       m->legion_axis);
+        Kernels::Concat::forward_kernel_wrapper(m,
+                                                my_output_accessor[0],
+                                                my_input_accessor,
+                                                num_inputs,
+                                                m->legion_axis);
         break;
       }
       case OP_CONV2D: {
@@ -693,11 +693,11 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         ConcatMeta *m = (ConcatMeta *)metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
-        Concat::backward_kernel_wrapper(m,
-                                        my_output_grad_accessor[0],
-                                        my_input_grad_accessor,
-                                        num_inputs,
-                                        m->legion_axis);
+        Kernels::Concat::backward_kernel_wrapper(m,
+                                                 my_output_grad_accessor[0],
+                                                 my_input_grad_accessor,
+                                                 num_inputs,
+                                                 m->legion_axis);
         break;
       }
       case OP_CONV2D: {
