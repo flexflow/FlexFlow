@@ -28,7 +28,7 @@ void forward_kernel_wrapper(float const *input_ptr,
                                   size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  forward_kernel(input_ptr, output_ptr, num_elements, stream);
+  Internal::forward_kernel(input_ptr, output_ptr, num_elements, stream);
   // checkCUDA(hipDeviceSynchronize());
 }
 
@@ -37,7 +37,7 @@ void backward_kernel_wrapper(float *input_grad_ptr,
                                    size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  backward_kernel(input_grad_ptr, output_grad_ptr, num_elements, stream);
+  Internal::backward_kernel(input_grad_ptr, output_grad_ptr, num_elements, stream);
   // checkCUDA(hipMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
   //                           acc_input_grad.rect.volume() * sizeof(float),
   //                           hipMemcpyDeviceToDevice));
