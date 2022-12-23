@@ -53,7 +53,7 @@ void ElementUnary::init_kernel(ElementUnaryMeta *m,
 
 template <typename T>
 __global__ void elewise_unary_forward_kernel(
-    coord_t volume, const T scalar, OperatorType type, const T *in, T *out) {
+    coord_t volume, const T scalar, OperatorType type, T const *in, T *out) {
   CUDA_KERNEL_LOOP(i, volume) {
     switch (type) {
       case OP_EXP: {
@@ -109,7 +109,7 @@ __global__ void elewise_unary_forward_kernel(
 /*static*/
 template <typename T>
 void ElementUnary::forward_kernel(ElementUnaryMeta const *m,
-                                  const T *input_ptr,
+                                  T const *input_ptr,
                                   T *output_ptr,
                                   size_t num_elements,
                                   hipStream_t stream) {
@@ -142,7 +142,7 @@ void ElementUnary::forward_kernel(ElementUnaryMeta const *m,
 /*static*/
 template <typename T>
 void ElementUnary::forward_kernel_wrapper(ElementUnaryMeta const *m,
-                                          const T *input_ptr,
+                                          T const *input_ptr,
                                           T *output_ptr,
                                           size_t num_elements) {
   hipStream_t stream;
@@ -155,9 +155,9 @@ template <typename T>
 __global__ void elewise_unary_backward_kernel(coord_t volume,
                                               const T scalar,
                                               OperatorType type,
-                                              const T *output,
-                                              const T *output_grad,
-                                              const T *input,
+                                              T const *output,
+                                              T const *output_grad,
+                                              T const *input,
                                               T *input_grad) {
   CUDA_KERNEL_LOOP(i, volume) {
     switch (type) {
@@ -220,10 +220,10 @@ __global__ void elewise_unary_backward_kernel(coord_t volume,
 /*static*/
 template <typename T>
 void ElementUnary::backward_kernel(ElementUnaryMeta const *m,
-                                   const T *input_ptr,
+                                   T const *input_ptr,
                                    T *input_grad_ptr,
-                                   const T *output_ptr,
-                                   const T *output_grad_ptr,
+                                   T const *output_ptr,
+                                   T const *output_grad_ptr,
                                    size_t num_elements,
                                    hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
@@ -262,10 +262,10 @@ void ElementUnary::backward_kernel(ElementUnaryMeta const *m,
 /*static*/
 template <typename T>
 void ElementUnary::backward_kernel_wrapper(ElementUnaryMeta const *m,
-                                           const T *input_ptr,
+                                           T const *input_ptr,
                                            T *input_grad_ptr,
-                                           const T *output_ptr,
-                                           const T *output_grad_ptr,
+                                           T const *output_ptr,
+                                           T const *output_grad_ptr,
                                            size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));

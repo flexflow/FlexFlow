@@ -126,4 +126,3 @@ class Cos(Layer):
 
   def _reset_layer(self):
     pass
-

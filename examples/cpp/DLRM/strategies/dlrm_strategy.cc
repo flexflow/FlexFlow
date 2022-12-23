@@ -127,8 +127,9 @@ bool FFStrategy::add_concat_config(std::string const &name,
   op->add_dims(1);
   op->add_dims(num_parts_sample);
   assert(num_parts_sample == (int)device_ids.size());
-  for (int i = 0; i < num_parts_sample; i++)
+  for (int i = 0; i < num_parts_sample; i++) {
     op->add_device_ids(device_ids[i]);
+  }
 }
 
 bool FFStrategy::add_batch_matmul_config(std::string const &name,
@@ -148,8 +149,9 @@ bool FFStrategy::add_batch_matmul_config(std::string const &name,
   op->add_dims(1);                // n
   op->add_dims(num_parts_sample); // d
   assert(num_parts_sample == (int)device_ids.size());
-  for (int i = 0; i < num_parts_sample; i++)
+  for (int i = 0; i < num_parts_sample; i++) {
     op->add_device_ids(device_ids[i]);
+  }
 }
 
 bool FFStrategy::add_transpose_config(std::string const &name,
@@ -167,8 +169,9 @@ bool FFStrategy::add_transpose_config(std::string const &name,
   op->add_dims(1);                // m
   op->add_dims(num_parts_sample); // d
   assert(num_parts_sample == (int)device_ids.size());
-  for (int i = 0; i < num_parts_sample; i++)
+  for (int i = 0; i < num_parts_sample; i++) {
     op->add_device_ids(device_ids[i]);
+  }
 }
 
 bool FFStrategy::add_linear_config(std::string const &name,
@@ -188,8 +191,9 @@ bool FFStrategy::add_linear_config(std::string const &name,
   op->add_dims(num_parts_channel); // m
   op->add_dims(num_parts_sample);  // n
   assert(num_parts_sample * num_parts_channel == (int)device_ids.size());
-  for (int i = 0; i < num_parts_channel * num_parts_sample; i++)
+  for (int i = 0; i < num_parts_channel * num_parts_sample; i++) {
     op->add_device_ids(device_ids[i]);
+  }
 }
 
 bool FFStrategy::add_mse_config(std::string const &name,
@@ -204,8 +208,9 @@ bool FFStrategy::add_mse_config(std::string const &name,
   op->add_dims(1);
   op->add_dims(num_parts_sample);
   assert(num_parts_sample == (int)device_ids.size());
-  for (int i = 0; i < num_parts_sample; i++)
+  for (int i = 0; i < num_parts_sample; i++) {
     op->add_device_ids(device_ids[i]);
+  }
 }
 
 void FFStrategy::export_file(std::string const &output) {
@@ -254,8 +259,9 @@ int main(int argc, char **argv) {
   }
   {
     std::vector<int> device_ids;
-    for (int i = 0; i < num_nodes; i++)
+    for (int i = 0; i < num_nodes; i++) {
       device_ids.push_back(i * gpus_per_node);
+    }
     strategy.add_concat_config("concat",
                                "GPU",
                                "FBM" /*input*/,
@@ -265,8 +271,9 @@ int main(int argc, char **argv) {
   }
   {
     std::vector<int> device_ids;
-    for (int i = 0; i < num_nodes * gpus_per_node; i++)
+    for (int i = 0; i < num_nodes * gpus_per_node; i++) {
       device_ids.push_back(i);
+    }
     strategy.add_batch_matmul_config("batch_matmul",
                                      "GPU",
                                      "FBM" /*input1*/,
@@ -277,8 +284,9 @@ int main(int argc, char **argv) {
   }
   {
     std::vector<int> device_ids;
-    for (int i = 0; i < num_nodes * gpus_per_node; i++)
+    for (int i = 0; i < num_nodes * gpus_per_node; i++) {
       device_ids.push_back(i);
+    }
     strategy.add_transpose_config("transpose",
                                   "GPU",
                                   "FBM" /*input*/,
@@ -288,8 +296,9 @@ int main(int argc, char **argv) {
   }
   {
     std::vector<int> device_ids;
-    for (int i = 0; i < num_nodes * gpus_per_node; i++)
+    for (int i = 0; i < num_nodes * gpus_per_node; i++) {
       device_ids.push_back(i);
+    }
     strategy.add_linear_config("linear",
                                "GPU",
                                "FBM" /*input*/,
@@ -301,8 +310,9 @@ int main(int argc, char **argv) {
   }
   {
     std::vector<int> device_ids;
-    for (int i = 0; i < num_nodes * gpus_per_node; i++)
+    for (int i = 0; i < num_nodes * gpus_per_node; i++) {
       device_ids.push_back(i);
+    }
     strategy.add_mse_config("mse_loss",
                             "GPU",
                             "FBM" /*input*/,

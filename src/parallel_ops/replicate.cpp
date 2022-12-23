@@ -20,7 +20,7 @@
 namespace FlexFlow {
 
 template <typename T>
-void Replicate::forward_kernel(const T *input_ptr,
+void Replicate::forward_kernel(T const *input_ptr,
                                T *output_ptr,
                                size_t num_elements) {
   hipStream_t stream;
@@ -33,18 +33,19 @@ void Replicate::forward_kernel(const T *input_ptr,
 }
 
 template <typename T>
-__global__ void replicate_backward_kernel(const T *input_ptr,
+__global__ void replicate_backward_kernel(T const *input_ptr,
                                           T *output_ptr,
                                           size_t num_elements,
                                           size_t num_replicas) {
   CUDA_KERNEL_LOOP(i, num_elements) {
-    for (size_t j = 0; j < num_replicas; j++)
+    for (size_t j = 0; j < num_replicas; j++) {
       output_ptr[i] += input_ptr[i + j * num_elements];
+    }
   }
 }
 
 template <typename T>
-void Replicate::backward_kernel(const T *output_grad_ptr,
+void Replicate::backward_kernel(T const *output_grad_ptr,
                                 T *input_grad_ptr,
                                 size_t num_elements,
                                 size_t num_replicas) {

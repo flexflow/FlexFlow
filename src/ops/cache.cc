@@ -100,8 +100,9 @@ Cache::Cache(
 
   int num_dim = inputs[0]->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < num_dim; i++)
+  for (int i = 0; i < num_dim; i++) {
     dims[i] = inputs[0]->dims[i];
+  }
   numOutputs = 1;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       num_dim, dims, DT_FLOAT, this);
@@ -110,8 +111,9 @@ Cache::Cache(
 }
 
 Cache::~Cache() {
-  for (int i = 0; i < num_batches; i++)
+  for (int i = 0; i < num_batches; i++) {
     free(batch_ptrs[i]);
+  }
   free(batch_ptrs);
   free(batch_cmp);
 }
@@ -120,8 +122,9 @@ template <typename T>
 void cache_init(Cache *cache, size_t vol) {
   // init pointer array
   cache->batch_ptrs = (void **)malloc(cache->num_batches * sizeof(T *));
-  for (int i = 0; i < cache->num_batches; i++)
+  for (int i = 0; i < cache->num_batches; i++) {
     cache->batch_ptrs[i] = malloc(vol * sizeof(T));
+  }
   cache->batch_cmp = malloc(vol * sizeof(T));
 }
 

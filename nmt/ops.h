@@ -16,7 +16,7 @@
 #ifndef _LEGION_CNN_OPS_H_
 #define _LEGION_CNN_OPS_H_
 
-//#define DISABLE_COMPUTATION
+// #define DISABLE_COMPUTATION
 #include "legion.h"
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
