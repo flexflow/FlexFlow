@@ -1,4 +1,4 @@
-#include "flexflow/ops/flat.h"
+#include "flexflow/ops/kernels/flat_kernels.h"
 #include "flexflow/model.h"
 
 namespace FlexFlow {
@@ -18,6 +18,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::Flat;
 
 Tensor FFModel::flat(const Tensor input, char const *name) {
   assert(input->num_dims == 4);
@@ -220,7 +222,7 @@ void Flat::forward_task(Task const *task,
                                                         false /*readOutput*/);
   assert(acc_input.rect.volume() == acc_output.rect.volume());
 
-  Flat::forward_kernel_wrapper(
+  forward_kernel_wrapper(
       acc_input.ptr, acc_output.ptr, acc_input.rect.volume());
   // checkCUDA(cudaDeviceSynchronize());
 }
@@ -273,7 +275,7 @@ void Flat::backward_task(Task const *task,
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());
 
-  Flat::backward_kernel_wrapper(
+  backward_kernel_wrapper(
       acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
 }
 

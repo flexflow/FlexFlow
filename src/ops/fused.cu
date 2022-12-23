@@ -20,7 +20,6 @@
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
-#include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
 #include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
@@ -28,6 +27,7 @@
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
 #include "flexflow/ops/kernels/reshape_kernels.h"
+#include "flexflow/ops/kernels/flat_kernels.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/utils/cuda_helper.h"
 
@@ -397,7 +397,7 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
-        Flat::forward_kernel_wrapper(my_input_accessor[0].get_float_ptr(),
+	Kernels::Flat::forward_kernel_wrapper(my_input_accessor[0].get_float_ptr(),
                                      my_output_accessor[0].get_float_ptr(),
                                      my_input_accessor[0].domain.get_volume());
         break;
@@ -859,7 +859,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_grad_accessor[0].domain.get_volume() ==
                my_output_grad_accessor[0].domain.get_volume());
-        Flat::backward_kernel_wrapper(
+	Kernels::Flat::backward_kernel_wrapper(
             my_input_grad_accessor[0].get_float_ptr(),
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].domain.get_volume());

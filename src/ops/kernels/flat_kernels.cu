@@ -18,8 +18,35 @@
 
 namespace FlexFlow {
 
+namespace Kernels {
+namespace Flat {
+
 /*static*/
-void Flat::forward_kernel(float const *input_ptr,
+void forward_kernel_wrapper(float const *input_ptr,
+                                  float *output_ptr,
+                                  size_t num_elements) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  forward_kernel(input_ptr, output_ptr, num_elements, stream);
+  // checkCUDA(cudaDeviceSynchronize());
+}
+
+void backward_kernel_wrapper(float *input_grad_ptr,
+                                   float const *output_grad_ptr,
+                                   size_t num_elements) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  backward_kernel(input_grad_ptr, output_grad_ptr, num_elements, stream);
+  // checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
+  //                           acc_input_grad.rect.volume() * sizeof(float),
+  //                           cudaMemcpyDeviceToDevice));
+  // checkCUDA(cudaDeviceSynchronize());
+}
+
+namespace Internal {
+
+/*static*/
+void forward_kernel(float const *input_ptr,
                           float *output_ptr,
                           size_t num_elements,
                           cudaStream_t stream) {
@@ -30,17 +57,7 @@ void Flat::forward_kernel(float const *input_ptr,
                             stream));
 }
 
-/*static*/
-void Flat::forward_kernel_wrapper(float const *input_ptr,
-                                  float *output_ptr,
-                                  size_t num_elements) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Flat::forward_kernel(input_ptr, output_ptr, num_elements, stream);
-  // checkCUDA(cudaDeviceSynchronize());
-}
-
-void Flat::backward_kernel(float *input_grad_ptr,
+void backward_kernel(float *input_grad_ptr,
                            float const *output_grad_ptr,
                            size_t num_elements,
                            cudaStream_t stream) {
@@ -50,16 +67,7 @@ void Flat::backward_kernel(float *input_grad_ptr,
           input_grad_ptr, output_grad_ptr, num_elements, alpha);
 }
 
-void Flat::backward_kernel_wrapper(float *input_grad_ptr,
-                                   float const *output_grad_ptr,
-                                   size_t num_elements) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Flat::backward_kernel(input_grad_ptr, output_grad_ptr, num_elements, stream);
-  // checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
-  //                           acc_input_grad.rect.volume() * sizeof(float),
-  //                           cudaMemcpyDeviceToDevice));
-  // checkCUDA(cudaDeviceSynchronize());
-}
-
-}; // namespace FlexFlow
+} // namespace Internal
+} // namespace Flat
+} // namespace Kernels
+} // namespace FlexFlow
