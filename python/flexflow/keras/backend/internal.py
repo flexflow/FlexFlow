@@ -70,3 +70,59 @@ class BatchMatmul(Layer):
     pass
 
 
+class Sin(Layer):
+  def __init__(self, **kwargs):
+    super(Sin, self).__init__("sin", "Sin", **kwargs) 
+
+  def verify_meta_data(self):
+   pass
+
+  def _calculate_inout_shape(self, input_tensor):
+    self.input_shape = input_tensor.batch_shape
+    self.output_shape = input_tensor.batch_shape
+    fflogger.debug("add output %s" %( str(self.output_shape)))
+
+  def get_summary(self):
+    summary = "%s%s%s\n"%(self._get_summary_name(), self.output_shape, self._get_summary_connected_to())
+    return summary
+
+  def __call__(self, input_tensor):
+    return self._connect_layer_1_input_1_output(input_tensor)
+
+  def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
+    assert input_tensor.num_dims == len(self.input_shape), "[Sin]: check input tensor dims"
+    assert output_tensor.num_dims == len(self.output_shape), "[Sin]: check output tensor dims"
+    for i in range (1, output_tensor.num_dims):
+      assert output_tensor.batch_shape[i] == self.output_shape[i]
+
+  def _reset_layer(self):
+    pass
+
+
+class Cos(Layer):
+  def __init__(self, **kwargs):
+    super(Cos, self).__init__("cos", "Cos", **kwargs) 
+
+  def verify_meta_data(self):
+   pass
+
+  def _calculate_inout_shape(self, input_tensor):
+    self.input_shape = input_tensor.batch_shape
+    self.output_shape = input_tensor.batch_shape
+    fflogger.debug("add output %s" %( str(self.output_shape)))
+
+  def get_summary(self):
+    summary = "%s%s%s\n"%(self._get_summary_name(), self.output_shape, self._get_summary_connected_to())
+    return summary
+
+  def __call__(self, input_tensor):
+    return self._connect_layer_1_input_1_output(input_tensor)
+
+  def _verify_inout_tensor_shape(self, input_tensor, output_tensor):
+    assert input_tensor.num_dims == len(self.input_shape), "[Cos]: check input tensor dims"
+    assert output_tensor.num_dims == len(self.output_shape), "[Cos]: check output tensor dims"
+    for i in range (1, output_tensor.num_dims):
+      assert output_tensor.batch_shape[i] == self.output_shape[i]
+
+  def _reset_layer(self):
+    pass

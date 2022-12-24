@@ -13,7 +13,16 @@
 # limitations under the License.
 #
 
-from .internal import BatchMatmul
+from .internal import BatchMatmul, Sin, Cos
+
 
 def batch_dot(x, y):
     return BatchMatmul()([x, y])
+
+
+def sin(x):
+    return Sin()(x)
+
+
+def cos(x):
+    return Cos()(x)
