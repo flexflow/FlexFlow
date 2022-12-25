@@ -44,7 +44,7 @@ jobs:
           python3 .github/workflows/helpers/gpu_ci_helper.py
 
   gpu-ci-flexflow:
-    name: Multiple GPUs Tests
+    name: Single Machine, Multiple GPUs Tests
     runs-on: self-hosted
     needs: gpu-ci-concierge
     container:
@@ -71,18 +71,10 @@ jobs:
           export PATH=/opt/conda/bin:$PATH
           python -c "import flexflow.core; exit()"
 
-      - name: Run single node - multi-gpu tests
+      - name: Run multi-gpu tests
         run: |
           export PATH=/opt/conda/bin:$PATH
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
-          ./tests/multi_gpu_tests.sh 4
-
-      - name: Run multiple node - multi-gpu tests
-        run: |
-          export PATH=/opt/conda/bin:$PATH
-          export CUDNN_DIR=/usr/local/cuda
-          export CUDA_DIR=/usr/local/cuda
-          export FF_HOME=$(pwd)
-          ./tests/multi_gpu_tests.sh 4
+          ./tests/multi_gpu_tests.sh 2
