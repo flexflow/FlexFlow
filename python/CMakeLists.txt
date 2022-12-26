@@ -24,7 +24,7 @@ else()
 endif()
 
 target_include_directories(flexflow_c PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
-target_link_libraries(flexflow_c ${LEGION_LIBRARY})
+target_link_libraries(flexflow_c ${LEGION_LIBRARY} ${FLEXFLOW_EXT_LIBRARIES})
 add_dependencies(flexflow_c flexflow)
 
 target_include_directories(flexflow_native_python PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})

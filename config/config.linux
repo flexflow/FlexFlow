@@ -1,89 +1,64 @@
-#!/bin/bash
+#! /usr/bin/env python3
 
-# set the CC and CXX, usually it is not needed as cmake can detect it
-# set CC and CXX to mpicc and mpic++ when enable gasnet
-# CC=mpicc
-# CXX=mpic++
+from typing import Any
+from pathlib import Path
+import subprocess
+from ff_cmake import BuildType, CUDAArch, GasnetConduit, GPUBackend, FFBuildConfig
 
-# add flags if needed
-#CC_FLAGS=${CC_FLAGS+=""}
-#NVCC_FLAGS=${NVCC_FLAGS+=""}
-#LD_FLAGS=${LD_FLAGS+=""}
+def main():
+    import argparse
 
-#set install dir
-#INSTALL_DIR=
+    p = argparse.ArgumentParser()
 
-# set build type
-BUILD_TYPE=Release
+    p.add_argument('--cc', type=Path, default=None)
+    p.add_argument('--cxx', type=Path, default=None)
+    p.add_argument('--build-type', type=BuildType, default=BuildType.release, choices=BuildType.get_valid_values())
+    p.add_argument('--no-python', action='store_false', dest='use_python')
+    p.add_argument('--use-gasnet', action='store_true')
+    p.add_argument('--build-all-examples', action='store_true')
+    p.add_argument('--build-unit-tests', action='store_true')
+    p.add_argument('--no-prebuilt-nccl', action='store_false', dest='use_prebuilt_nccl')
+    p.add_argument('--use-prebuilt-legion', action='store_false', dest='use_prebuilt_legion')
+    p.add_argument('--cuda-dir', default=None, type=Path)
+    p.add_argument('--cudnn-dir', default=None, type=Path)
+    p.add_argument('--cuda-arch', type=CUDAArch, default=CUDAArch.autodetect, choices=CUDAArch.get_valid_values())
+    p.add_argument('--gasnet-conduit', type=GasnetConduit, default=GasnetConduit.ibv, choices=GasnetConduit.get_valid_values())
+    p.add_argument('--rocm-path', default='/opt/rocm', type=Path)
+    p.add_argument('--max-dim', default=str(5), type=int)
+    p.add_argument('--use-avx2', action='store_true')
+    p.add_argument('--gpu-backend', type=GPUBackend, default=GPUBackend.cuda, choices=GPUBackend.get_valid_values())
+    p.add_argument('--use-ccache', action='store_true')
 
-# set CUDA Arch to the desired GPU architecture(s) to target (e.g. pass "FF_CUDA_ARCH=60" for Pascal). 
-# To pass more than one value, separate architecture numbers with a comma (e.g. FF_CUDA_ARCH=70,75).
-# Alternatively, set "FF_CUDA_ARCH=autodetect" to build FlexFlow for all architectures detected on the machine,
-# or set "FF_CUDA_ARCH=all" to build FlexFlow for all supported GPU architectures
-FF_CUDA_ARCH=${FF_CUDA_ARCH:-"autodetect"}
+    args = p.parse_args()
 
-# set CUDNN dir in case cmake cannot autodetect a path
-CUDNN_DIR=${CUDNN_DIR:-"/usr/local/cuda"}
+    if args.cuda_dir is None and 'CONDA_PREFIX' in os.environ:
+        args.cuda_dir = os.environ['CONDA_PREFIX']
 
-# set CUDA dir in case cmake cannot autodetect a path
-CUDA_DIR=${CUDA_DIR:-"/usr/local/cuda"}
+    config = FFBuildConfig(
+        c_compiler=args.cc,
+        cxx_compiler=args.cxx,
+        c_flags=[],
+        nvcc_flags=[],
+        ld_flags=[],
+        install_dir=None,
+        build_type=args.build_type,
+        use_python=args.use_python,
+        build_all_examples=args.build_all_examples,
+        build_unit_tests=args.build_unit_tests,
+        use_prebuilt_nccl=args.use_prebuilt_nccl,
+        use_prebuilt_legion=args.use_prebuilt_legion,
+        cuda_dir=args.cuda_dir,
+        cudnn_dir=args.cudnn_dir,
+        cuda_arch=args.cuda_arch,
+        gasnet_conduit=args.gasnet_conduit,
+        rocm_path=args.rocm_path,
+        max_dim=args.max_dim,
+        use_avx2=args.use_avx2,
+        gpu_backend=args.gpu_backend,
+        use_ccache=args.use_ccache,
+    )
+    config.run()
 
-# enable Python
-FF_USE_PYTHON=${FF_USE_PYTHON:-ON}
+if __name__ == '__main__':
+    main()
 
-# enable GASNet
-FF_USE_GASNET=${FF_USE_GASNET:-OFF}
-
-# select GASNET conduit
-FF_GASNET_CONDUIT=${FF_GASNET_CONDUIT:-ibv}
-
-# build C++ examples
-FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES:-OFF}
-
-# build C++ unit tests
-FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS:-OFF}
-
-# use precompiled NCCL and Legion libraries, where available
-FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL:-ON}
-FF_USE_PREBUILT_LEGION=${FF_USE_PREBUILT_LEGION:-ON}
-# use the flag below to use both the NCCL and Legion pre-built libraries.
-# when the flag below is set to ON, the two flags above are ignored.
-FF_USE_ALL_PREBUILT_LIBRARIES=${FF_USE_ALL_PREBUILT_LIBRARIES:-OFF}
-
-# enable avx2
-FF_USE_AVX2=${FF_USE_AVX2:-OFF}
-
-# set MAX_DIM
-FF_MAX_DIM=${FF_MAX_DIM:-5}
-
-# set ROCM path
-ROCM_PATH=${ROCM_PATH:-"/opt/rocm"}
-
-# set GPU backend
-FF_GPU_BACKEND=${FF_GPU_BACKEND:-cuda}
-if [[ "${FF_GPU_BACKEND}" != @(cuda|hip_cuda|hip_rocm|intel) ]]; then
-  echo "Error, value of FF_GPU_BACKEND (${FF_GPU_BACKEND}) is invalid."
-  exit 1
-elif [[ "$FF_GPU_BACKEND" == "cuda" || "$FF_GPU_BACKEND" = "hip_cuda" ]]; then
-    # enable NCCL
-    FF_USE_NCCL=${FF_USE_NCCL:-ON}
-else
-    FF_USE_NCCL=OFF
-fi
-
-function get_build_configs() {
-    # Create a string with the values of the variables set in this script
-    BUILD_CONFIGS="FF_CUDA_ARCH=${FF_CUDA_ARCH} CUDNN_DIR=${CUDNN_DIR} CUDA_DIR=${CUDA_DIR} FF_USE_PYTHON=${FF_USE_PYTHON} FF_USE_GASNET=${FF_USE_GASNET} FF_GASNET_CONDUIT=${FF_GASNET_CONDUIT} FF_BUILD_ALL_EXAMPLES=${FF_BUILD_ALL_EXAMPLES} FF_BUILD_UNIT_TESTS=${FF_BUILD_UNIT_TESTS} FF_USE_PREBUILT_NCCL=${FF_USE_PREBUILT_NCCL} FF_USE_PREBUILT_LEGION=${FF_USE_PREBUILT_LEGION} FF_USE_ALL_PREBUILT_LIBRARIES=${FF_USE_ALL_PREBUILT_LIBRARIES} FF_USE_AVX2=${FF_USE_AVX2} FF_MAX_DIM=${FF_MAX_DIM} ROCM_PATH=${ROCM_PATH} FF_GPU_BACKEND=${FF_GPU_BACKEND}"
-}
-
-if [ -n "$1" ]; then
-    if [ "$1" != "get-docker-configs" ]; then
-        . $(dirname $0)/config.inc
-        # You can pass the name of the variable you want to print out as $1. This
-        # is used in the python setup script to get the cmake config
-        echo "${!1}"
-    fi
-else
-    . $(dirname $0)/config.inc
-    run_cmake $*
-fi
