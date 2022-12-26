@@ -65,11 +65,7 @@ jobs:
           export FF_HOME=$(pwd)
           export FF_USE_GASNET=ON
           export FF_GASNET_CONDUIT=mpi
-          mkdir build
-          cd build
-          ../config/config.linux
-          make -j
-          #pip install . --verbose
+          pip install . --verbose
 
 
       - name: Check availability of Python flexflow.core module
