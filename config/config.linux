@@ -4,6 +4,7 @@ from typing import Any
 from pathlib import Path
 import subprocess
 from ff_cmake import BuildType, CUDAArch, GasnetConduit, GPUBackend, FFBuildConfig
+import os
 
 def main():
     import argparse
