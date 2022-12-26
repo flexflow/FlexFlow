@@ -58,7 +58,7 @@ jobs:
         with:
           submodules: recursive
       - name: Install MPI
-        run: sudo apt-get install -y --no-install-recommends openmpi-bin openmpi-dev openmpi-common openmpi-doc libopenmpi-dev
+        run: sudo apt-get install -y --no-install-recommends openmpi-bin openmpi-common libopenmpi-dev
       - name: Build and Install FlexFlow
         run: |
           export PATH=/opt/conda/bin:$PATH
