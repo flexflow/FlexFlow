@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/batch_matmul.h"
+#include "flexflow/ops/kernels/batch_matmul_kernels.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {
@@ -34,6 +35,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
+
+using namespace FlexFlow::Kernels::BatchMatmul;
 
 bool operator==(BatchMatmulParams const &lhs, BatchMatmulParams const &rhs) {
   return lhs.a_seq_length_dim == rhs.a_seq_length_dim &&
@@ -365,7 +368,7 @@ void BatchMatmul::forward_task(Task const *task,
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
   }
 
-  BatchMatmul::forward_kernel_wrapper(meta,
+  forward_kernel_wrapper(meta,
                                       out_ptr,
                                       a_ptr,
                                       b_ptr,
@@ -540,7 +543,7 @@ __host__ void
   assert((meta->b_seq_length_dim >= b_domain.get_dim()) ||
          (iter_config->seq_length == 0));
 
-  BatchMatmul::backward_kernel_wrapper(meta,
+  backward_kernel_wrapper(meta,
                                        out_ptr,
                                        out_grad_ptr,
                                        a_ptr,

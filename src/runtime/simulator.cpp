@@ -15,7 +15,7 @@
 
 #include "flexflow/simulator.h"
 #include "flexflow/model.h"
-#include "flexflow/ops/batch_matmul.h"
+#include "flexflow/ops/kernels/batch_matmul_kernels.h"
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
