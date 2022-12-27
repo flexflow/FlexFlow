@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/batch_matmul.h"
+#include "flexflow/ops/kernels/batch_matmul_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
