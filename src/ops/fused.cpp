@@ -15,11 +15,11 @@
 
 #include "flexflow/ops/fused.h"
 #include "flexflow/model.h"
-#include "flexflow/ops/kernels/batch_matmul_kernels.h"
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/kernels/batch_matmul_kernels.h"
 #include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"

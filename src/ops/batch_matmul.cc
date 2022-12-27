@@ -379,17 +379,17 @@ void BatchMatmul::forward_task(Task const *task,
   }
 
   forward_kernel_wrapper(meta,
-                                      out_ptr,
-                                      a_ptr,
-                                      b_ptr,
-                                      c_ptr,
-                                      m,
-                                      n,
-                                      k,
-                                      batch,
-                                      meta->a_seq_length_dim,
-                                      meta->b_seq_length_dim,
-                                      iter_config->seq_length);
+                         out_ptr,
+                         a_ptr,
+                         b_ptr,
+                         c_ptr,
+                         m,
+                         n,
+                         k,
+                         batch,
+                         meta->a_seq_length_dim,
+                         meta->b_seq_length_dim,
+                         iter_config->seq_length);
 }
 
 void BatchMatmul::backward(FFModel const &ff) {
@@ -554,17 +554,17 @@ __host__ void
          (iter_config->seq_length == 0));
 
   backward_kernel_wrapper(meta,
-                                       out_ptr,
-                                       out_grad_ptr,
-                                       a_ptr,
-                                       a_grad_ptr,
-                                       b_ptr,
-                                       b_grad_ptr,
-                                       c_grad_ptr,
-                                       m,
-                                       n,
-                                       k,
-                                       batch);
+                          out_ptr,
+                          out_grad_ptr,
+                          a_ptr,
+                          a_grad_ptr,
+                          b_ptr,
+                          b_grad_ptr,
+                          c_grad_ptr,
+                          m,
+                          n,
+                          k,
+                          batch);
 }
 
 void BatchMatmul::print_layer(FFModel const &ff) {
