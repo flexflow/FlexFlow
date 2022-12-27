@@ -7,12 +7,18 @@ import os
 from typing import Optional, Dict, List, Callable, Tuple, Union
 import shutil
 
-logging.basicConfig(level=logging.INFO)
 _l = logging.getLogger(__file__)
 
 SRC_LOCATION = Path(__file__).parent.parent
 
-class BuildType:
+class Choices:
+  def __repr__(self):
+    return '{}({})'.format(self.__class__.__name__, self._value)
+
+  def __str__(self):
+    return self._value
+
+class BuildType(Choices):
   release = 'Release'
   debug = 'Debug'
 
@@ -25,10 +31,7 @@ class BuildType:
   def get_valid_values(cls):
     return [cls.release, cls.debug]
 
-  def __str__(self):
-    return self._value
-
-class CUDAArch:
+class CUDAArch(Choices):
   autodetect = 'autodetect'
   all = 'all'
 
@@ -46,7 +49,7 @@ class CUDAArch:
   def __str__(self):
     return self._value
 
-class GasnetConduit:
+class GasnetConduit(Choices):
   ibv = 'ibv'
 
   def __init__(self, value: str):
@@ -61,7 +64,7 @@ class GasnetConduit:
   def __str__(self):
     return self._value
 
-class GPUBackend:
+class GPUBackend(Choices):
   hip_rocm = 'hip_rocm'
   hip_cuda = 'hip_cuda'
   cuda = 'cuda'
@@ -79,9 +82,20 @@ class GPUBackend:
   def __str__(self):
     return self._value
 
-class CMakeBool:
+class CMakeBool(Choices):
   def __init__(self, value: bool):
+    if isinstance(value, str):
+      if value not in self.get_valid_values():
+        raise ValueError(f'Invalid cmake bool: {value}')
+      if value == 'ON':
+        value = True
+      elif value == 'OFF':
+        value = False
     self._value = value
+
+  @classmethod
+  def get_valid_values(cls):
+    return ['ON', 'OFF']
 
   def __str__(self):
     if self._value:
@@ -201,7 +215,7 @@ class FFBuildConfig:
     use_gasnet = CMakeBool(self._gasnet_conduit is None)
     b.add_flag('-DFF_USE_GASNET', use_gasnet)
     if use_gasnet:
-      b.add_flat(f'-DFF_GASNET_CONDUIT', self._gasnet_conduit)
+      b.add_flag(f'-DFF_GASNET_CONDUIT', self._gasnet_conduit)
     return b
 
   def _get_cxx_compiler(self):

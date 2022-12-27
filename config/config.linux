@@ -3,38 +3,110 @@
 from typing import Any
 from pathlib import Path
 import subprocess
-from ff_cmake import BuildType, CUDAArch, GasnetConduit, GPUBackend, FFBuildConfig
+from ff_cmake import BuildType, CUDAArch, GasnetConduit, GPUBackend, FFBuildConfig, CMakeBool
 import os
+import logging
+
+_l = logging.getLogger(__name__)
+
+def parse_cmake_bool(s):
+    if s == 'ON':
+        return True
+    elif s == 'OFF':
+        return False
+    else:
+        raise ValueError('Unknown cmake bool variable %s')
 
 def main():
     import argparse
 
-    p = argparse.ArgumentParser()
+    class LogLevel(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            logging.basicConfig(level=getattr(logging, values))
 
+    def set_log_level(*args, **kwargs):
+        return LogLevel(*args, **kwargs)
+
+    class EnvStore(argparse.Action):
+        def __init__(self, *args, **kwargs):
+            self.env_sources = kwargs.pop('env_sources', [])
+            self._has_logged = False
+            super().__init__(*args, **kwargs)
+
+        @property
+        def default(self):
+            for env_source in self.env_sources:
+                env_value = os.environ.get(env_source, '')
+                if env_value != '':
+                    if not self._has_logged:
+                        _l.info('Pulling args.%s from environment variable %s', self.dest, env_source)
+                        self._has_logged = True
+                    if self.type is not None:
+                        env_value = self.type(env_value)
+                    return env_value
+            default = self._env_store_default
+            if default is not None and self.type is not None:
+                default = self.type(default)
+            return default
+
+        @default.setter
+        def default(self, value):
+            self._env_store_default = value  # can't use self._default because it is used in the parent class
+
+        @property
+        def help(self):
+            return self._help
+
+        @help.setter
+        def help(self, value):
+            self._default = value
+
+    class EnvStoreConst(EnvStore):
+        def __init__(self, *args, **kwargs):
+            self._const = kwargs.pop('const')
+            kwargs['nargs'] = 0
+            super().__init__(*args, **kwargs)
+
+        def __call__(self, parser, namespace, values, option_string=None):
+            setattr(namespace, self.dest, self._const)
+
+    def env_store(*args, **kwargs):
+        return EnvStore(*args, **kwargs)
+
+    def env_store_false(*args, **kwargs):
+        kwargs['default'] = True
+        kwargs['const'] = CMakeBool(False)
+        return EnvStoreConst(*args, **kwargs)
+
+    def env_store_true(*args, **kwargs):
+        kwargs['default'] = False
+        kwargs['const'] = CMakeBool(True)
+        return EnvStoreConst(*args, **kwargs)
+
+    p = argparse.ArgumentParser()
+    p.add_argument('--meta::log-level', choices=['DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'], default='INFO', action=set_log_level)
     p.add_argument('--cc', type=Path, default=None)
     p.add_argument('--cxx', type=Path, default=None)
     p.add_argument('--build-type', type=BuildType, default=BuildType.release, choices=BuildType.get_valid_values())
-    p.add_argument('--no-python', action='store_false', dest='use_python')
-    p.add_argument('--use-gasnet', action='store_true')
-    p.add_argument('--build-all-examples', action='store_true')
-    p.add_argument('--build-unit-tests', action='store_true')
-    p.add_argument('--no-prebuilt-nccl', action='store_false', dest='use_prebuilt_nccl')
-    p.add_argument('--use-prebuilt-legion', action='store_false', dest='use_prebuilt_legion')
-    p.add_argument('--cuda-dir', default=None, type=Path)
-    p.add_argument('--cudnn-dir', default=None, type=Path)
-    p.add_argument('--cuda-arch', type=CUDAArch, default=CUDAArch.autodetect, choices=CUDAArch.get_valid_values())
-    p.add_argument('--gasnet-conduit', type=GasnetConduit, default=GasnetConduit.ibv, choices=GasnetConduit.get_valid_values())
-    p.add_argument('--rocm-path', default='/opt/rocm', type=Path)
-    p.add_argument('--max-dim', default=str(5), type=int)
-    p.add_argument('--use-avx2', action='store_true')
-    p.add_argument('--gpu-backend', type=GPUBackend, default=GPUBackend.cuda, choices=GPUBackend.get_valid_values())
-    p.add_argument('--use-ccache', action='store_true')
+    p.add_argument('--no-python', dest='use_python', action=env_store_false, env_sources=['FF_USE_PYTHON'], type=CMakeBool)
+    p.add_argument('--use-gasnet', action=env_store_true, env_sources=['FF_USE_GASNET'], type=CMakeBool)
+    p.add_argument('--build-all-examples', action=env_store_true, env_sources=['FF_BUILD_ALL_EXAMPLES'], type=CMakeBool)
+    p.add_argument('--build-unit-tests', action=env_store_true, env_sources=['FF_BUILD_UNIT_TESTS'], type=CMakeBool)
+    p.add_argument('--no-prebuilt-nccl', dest='use_prebuilt_nccl', action=env_store_false, env_sources=['FF_USE_PREBUILT_NCCL'], type=CMakeBool)
+    p.add_argument('--no-prebuilt-legion', dest='use_prebuilt_legion', action=env_store_false, env_sources=['FF_USE_PREBUILT_LEGION'], type=CMakeBool)
+    p.add_argument('--cuda-dir', default=None, type=Path, env_sources=['CUDA_DIR', 'CONDA_PREFIX'], action=env_store)
+    p.add_argument('--cudnn-dir', default=None, type=Path, env_sources=['CUDNN_DIR'], action=env_store)
+    p.add_argument('--cuda-arch', default=CUDAArch.autodetect, type=CUDAArch, choices=CUDAArch.get_valid_values(), env_sources=['FF_CUDA_ARCH'], action=env_store)
+    p.add_argument('--gasnet-conduit', type=GasnetConduit, default=GasnetConduit.ibv, choices=GasnetConduit.get_valid_values(), env_sources=['FF_GASNET_CONDUT'], action=env_store)
+    p.add_argument('--rocm-path', default='/opt/rocm', type=Path, action=env_store, env_sources=['ROCM_PATH'])
+    p.add_argument('--max-dim', default=str(5), type=int, action=env_store, env_sources=['FF_MAX_DIM'])
+    p.add_argument('--use-avx2', action=env_store_true, env_sources=['FF_USE_AVX2'], type=CMakeBool)
+    p.add_argument('--gpu-backend', type=GPUBackend, default=GPUBackend.cuda, choices=GPUBackend.get_valid_values(), action=env_store, env_sources=['FF_GPU_BACKEND'])
+    p.add_argument('--use-ccache', action=env_store_true, env_sources=['FF_USE_CCACHE'], type=CMakeBool)
 
     args = p.parse_args()
 
-    if args.cuda_dir is None and 'CONDA_PREFIX' in os.environ:
-        args.cuda_dir = os.environ['CONDA_PREFIX']
-
+    _l.debug(args)
     config = FFBuildConfig(
         c_compiler=args.cc,
         cxx_compiler=args.cxx,
