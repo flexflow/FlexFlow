@@ -75,8 +75,9 @@ double get_current_time(FFConfig &config) {
 //-------- Tensor --------
 py::array get_array(Tensor t, FFConfig &config) {
   std::vector<int> dims(t->num_dims);
-  for (int i = 0; i < t->num_dims; i++)
+  for (int i = 0; i < t->num_dims; i++) {
     dims[i] = t->dims[i];
+  }
   std::reverse(dims.begin(), dims.end());
   if (t->data_type == DataType::DT_FLOAT) {
     printf("raw_ptr = %p\n", t->parallel_tensor->get_raw_ptr<float>(config));
@@ -103,8 +104,9 @@ void set_tensor(Tensor t, FFModel &model, py::array &np_array) {
   bool retval = false;
   assert(info.ndim == t->num_dims);
   std::vector<int> dims(t->num_dims);
-  for (int i = 0; i < t->num_dims; i++)
+  for (int i = 0; i < t->num_dims; i++) {
     dims[i] = t->dims[i];
+  }
   std::reverse(dims.begin(), dims.end());
   if (info.format == "f") {
     assert(t->data_type == DataType::DT_FLOAT);
@@ -378,8 +380,9 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
       .def_property_readonly("dims",
                              [](TensorBase &t) {
                                std::vector<int> dims(t.num_dims);
-                               for (int i = 0; i < t.num_dims; i++)
+                               for (int i = 0; i < t.num_dims; i++) {
                                  dims[i] = t.dims[i];
+                               }
                                std::reverse(dims.begin(), dims.end());
                                return dims;
                              })

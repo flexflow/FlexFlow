@@ -55,16 +55,18 @@ Tensor FFModel::embedding(const Tensor input,
   if (aggr == AGGR_MODE_NONE) {
     int numdims = input->num_dims + 1;
     int dims[MAX_TENSOR_DIM];
-    for (int i = 1; i < numdims; i++)
+    for (int i = 1; i < numdims; i++) {
       dims[i] = input->dims[i - 1];
+    }
     dims[0] = out_dim;
     embed->outputs[0] = create_tensor_legion_ordering(
         numdims, dims, embed->data_type, embed, 0, true /*create_grad*/);
   } else {
     int numdims = input->num_dims;
     int dims[MAX_TENSOR_DIM];
-    for (int i = 0; i < numdims; i++)
+    for (int i = 0; i < numdims; i++) {
       dims[i] = input->dims[i];
+    }
     dims[0] = out_dim;
     embed->outputs[0] = create_tensor_legion_ordering(
         numdims, dims, embed->data_type, embed, 0, true /*create_grad*/);
@@ -143,8 +145,9 @@ int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
   int const OUT_CHANNELS = Output::OUT_CHANNELS;
   if (aggr == AGGR_MODE_NONE) {
     int num_dims = input->num_dims + 1;
-    for (int i = 1; i < num_dims - 1; i++)
+    for (int i = 1; i < num_dims - 1; i++) {
       output_dims[i] = input->dims[i - 1];
+    }
     assert(OUT_CHANNELS == 0);
     output_dims[OUT_CHANNELS].size = this->out_channels;
     output_dims[OUT_CHANNELS].degree = 1;
@@ -157,8 +160,9 @@ int Embedding::output_size(ParallelDim output_dims[MAX_TENSOR_DIM]) {
     return num_dims;
   } else {
     int num_dims = input->num_dims;
-    for (int i = 1; i < num_dims - 1; i++)
+    for (int i = 1; i < num_dims - 1; i++) {
       output_dims[i] = input->dims[i];
+    }
     assert(OUT_CHANNELS == 0);
     output_dims[OUT_CHANNELS].size = this->out_channels;
     output_dims[OUT_CHANNELS].degree = 1;
@@ -194,12 +198,14 @@ int Embedding::weight_size(ParallelDim weight_dims[MAX_TENSOR_DIM]) {
 void Embedding::register_output_mappings() {
   if (aggr == AGGR_MODE_NONE) {
     int num_dims = this->inputs[0]->num_dims + 1;
-    for (int i = 1; i < num_dims - 1; i++)
+    for (int i = 1; i < num_dims - 1; i++) {
       this->register_output_parallel_dims(i - 1, i);
+    }
   } else {
     int num_dims = this->inputs[0]->num_dims;
-    for (int i = 1; i < num_dims - 1; i++)
+    for (int i = 1; i < num_dims - 1; i++) {
       this->register_output_parallel_dims(i, i);
+    }
   }
 }
 
@@ -751,12 +757,13 @@ bool Embedding::measure_operator_cost(Simulator *sim,
   assert(effective_batch_size * in_dim == sub_input.get_volume());
 
   // Randomly initialize the intput tensor to avoid out of index range issues
-  if (inputs[0]->data_type == DT_INT32)
+  if (inputs[0]->data_type == DT_INT32) {
     rand_generate_int32_wrapper(
         input_acc.get_int32_ptr(), sub_input.get_volume(), num_entries);
-  else if (inputs[0]->data_type == DT_INT64)
+  } else if (inputs[0]->data_type == DT_INT64) {
     rand_generate_int64_wrapper(
         input_acc.get_int64_ptr(), sub_input.get_volume(), num_entries);
+  }
 
   std::function<void()> forward, backward;
   forward = [&] {

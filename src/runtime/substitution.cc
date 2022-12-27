@@ -207,12 +207,13 @@ bool OpX::add_input_constraint(Compare comp,
 }
 
 bool OpX::get_pm_constraint(PMParameter para, int &value) const {
-  for (size_t i = 0; i < pmConstraints.size(); i++)
+  for (size_t i = 0; i < pmConstraints.size(); i++) {
     if ((pmConstraints[i].comp == COMPARE_EQ) &&
         (pmConstraints[i].para == para)) {
       value = pmConstraints[i].value;
       return true;
     }
+  }
   return false;
 }
 
@@ -231,11 +232,13 @@ bool GraphXfer::map_output(TensorX const &src, TensorX const &dst) {
 }
 
 bool GraphXfer::can_match(OpX *srcOp, Node const &op, Graph const *graph) {
-  if (srcOp->type != op.ptr->op_type)
+  if (srcOp->type != op.ptr->op_type) {
     return false;
+  }
   // check num input tensors
-  if ((int)srcOp->inputs.size() != op.ptr->numInputs)
+  if ((int)srcOp->inputs.size() != op.ptr->numInputs) {
     return false;
+  }
   // check pmConstraints
   for (size_t i = 0; i < srcOp->pmConstraints.size(); i++) {
     PMConstraint pmc = srcOp->pmConstraints[i];
@@ -245,33 +248,39 @@ bool GraphXfer::can_match(OpX *srcOp, Node const &op, Graph const *graph) {
     //        i, pmc.para, pmc.comp, pmc.value, actValue);
     switch (pmc.comp) {
       case COMPARE_EQ: {
-        if (actValue != pmc.value)
+        if (actValue != pmc.value) {
           return false;
+        }
         break;
       }
       case COMPARE_NE: {
-        if (actValue == pmc.value)
+        if (actValue == pmc.value) {
           return false;
+        }
         break;
       }
       case COMPARE_LT: {
-        if (actValue >= pmc.value)
+        if (actValue >= pmc.value) {
           return false;
+        }
         break;
       }
       case COMPARE_LE: {
-        if (actValue > pmc.value)
+        if (actValue > pmc.value) {
           return false;
+        }
         break;
       }
       case COMPARE_GT: {
-        if (actValue <= pmc.value)
+        if (actValue <= pmc.value) {
           return false;
+        }
         break;
       }
       case COMPARE_GE: {
-        if (actValue < pmc.value)
+        if (actValue < pmc.value) {
           return false;
+        }
         break;
       }
       default:
@@ -289,16 +298,18 @@ bool GraphXfer::can_match(OpX *srcOp, Node const &op, Graph const *graph) {
       if (it != mappedInputs.end()) {
         Node mappedOp = it->second.first;
         int mappedIdx = it->second.second;
-        if (!(graph->has_edge(mappedOp, op, mappedIdx, i)))
+        if (!(graph->has_edge(mappedOp, op, mappedIdx, i))) {
           return false;
+        }
       } else {
         std::map<int, std::pair<Node, int>>::const_iterator newit;
         newit = newMapInputs.find(in.idx);
         if (newit != newMapInputs.end()) {
           Node mappedOp = newit->second.first;
           int mappedIdx = newit->second.second;
-          if (!(graph->has_edge(mappedOp, op, mappedIdx, i)))
+          if (!(graph->has_edge(mappedOp, op, mappedIdx, i))) {
             return false;
+          }
         } else {
           auto const &list = graph->inEdges.find(op)->second;
           for (auto const &e : list) {
@@ -321,8 +332,9 @@ bool GraphXfer::can_match(OpX *srcOp, Node const &op, Graph const *graph) {
     } else {
       // intermediate tensor
       assert(in.op->mapOp != Node::INVALID_NODE);
-      if (!(graph->has_edge(in.op->mapOp, op, in.idx, i)))
+      if (!(graph->has_edge(in.op->mapOp, op, in.idx, i))) {
         return false;
+      }
     }
   }
   // check tnConstraints
@@ -338,33 +350,39 @@ bool GraphXfer::can_match(OpX *srcOp, Node const &op, Graph const *graph) {
     }
     switch (tnc.comp) {
       case COMPARE_EQ: {
-        if (actValue != expValue)
+        if (actValue != expValue) {
           return false;
+        }
         break;
       }
       case COMPARE_NE: {
-        if (actValue == expValue)
+        if (actValue == expValue) {
           return false;
+        }
         break;
       }
       case COMPARE_LT: {
-        if (actValue >= expValue)
+        if (actValue >= expValue) {
           return false;
+        }
         break;
       }
       case COMPARE_LE: {
-        if (actValue > expValue)
+        if (actValue > expValue) {
           return false;
+        }
         break;
       }
       case COMPARE_GT: {
-        if (actValue <= expValue)
+        if (actValue <= expValue) {
           return false;
+        }
         break;
       }
       case COMPARE_GE: {
-        if (actValue < expValue)
+        if (actValue < expValue) {
           return false;
+        }
         break;
       }
       default:
@@ -594,8 +612,9 @@ void GraphXfer::run(
         pass &= create_new_operator(dstOp, dstOp->mapOp);
       }
     }
-    if (!pass)
+    if (!pass) {
       return;
+    }
     // Check that output tensors with external edges are mapped
     for (auto const &opIt : mappedOps) {
       auto const &list = graph->outEdges[opIt.first];
@@ -764,11 +783,11 @@ Graph *GraphXfer::create_new_graph(
   // Step 1: map dst ops
   std::vector<OpX *>::const_iterator dstIt;
   // Step 2: add edges to the graph
-  for (auto const &opIt : graph->inEdges)
+  for (auto const &opIt : graph->inEdges) {
     if (mappedOps.find(opIt.first) == mappedOps.end()) {
       // Unmapped ops
       auto const &list = opIt.second;
-      for (auto const &it : list)
+      for (auto const &it : list) {
         if (mappedOps.find(it.srcOp) != mappedOps.end()) {
           // mapped src -> unmapped dst
           TensorX srcTen;
@@ -781,11 +800,13 @@ Graph *GraphXfer::create_new_graph(
           // unmapped src -> unmmaped dst
           newGraph->add_edge(it.srcOp, it.dstOp, it.srcIdx, it.dstIdx);
         }
+      }
     }
+  }
   // Step 3: add edges for mapped ops
   for (dstIt = dstOps.begin(); dstIt != dstOps.end(); dstIt++) {
     OpX *dstOp = *dstIt;
-    for (size_t i = 0; i < dstOp->inputs.size(); i++)
+    for (size_t i = 0; i < dstOp->inputs.size(); i++) {
       if (dstOp->inputs[i].op == NULL) {
         // unmapped src -> mapped dst
         std::multimap<int, std::pair<Node, int>>::const_iterator it =
@@ -799,6 +820,7 @@ Graph *GraphXfer::create_new_graph(
         int srcIdx = dstOp->inputs[i].idx;
         newGraph->add_edge(srcOp->mapOp, dstOp->mapOp, srcIdx, i);
       }
+    }
   }
   newGraph->simplify(simplification_settings);
 
@@ -818,11 +840,13 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
   // resources
   if (opx->inputs.size() > 0) {
     int degree = 1;
-    for (int i = 0; i < inputs[0]->num_dims; i++)
+    for (int i = 0; i < inputs[0]->num_dims; i++) {
       degree *= inputs[0]->dims[i].degree;
+    }
     if (degree > model->config.workersPerNode * model->config.numNodes &&
-        (degree > model->config.cpusPerNode * model->config.numNodes))
+        (degree > model->config.cpusPerNode * model->config.numNodes)) {
       return false;
+    }
   }
   int num_inputs;
   if (opx->get_pm_constraint(PM_NUM_INPUTS, num_inputs) &&
@@ -980,8 +1004,9 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     }
   }
   // Check operator validness
-  if (op == Node::INVALID_NODE)
+  if (op == Node::INVALID_NODE) {
     return false;
+  }
   // Check tnConstraints
   for (size_t i = 0; i < opx->tnConstraints.size(); i++) {
     TNConstraint tnc = opx->tnConstraints[i];
@@ -995,28 +1020,34 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     }
     switch (tnc.comp) {
       case COMPARE_EQ:
-        if (actValue != expValue)
+        if (actValue != expValue) {
           return false;
+        }
         break;
       case COMPARE_NE:
-        if (actValue == expValue)
+        if (actValue == expValue) {
           return false;
+        }
         break;
       case COMPARE_LT:
-        if (actValue >= expValue)
+        if (actValue >= expValue) {
           return false;
+        }
         break;
       case COMPARE_LE:
-        if (actValue > expValue)
+        if (actValue > expValue) {
           return false;
+        }
         break;
       case COMPARE_GT:
-        if (actValue <= expValue)
+        if (actValue <= expValue) {
           return false;
+        }
         break;
       case COMPARE_GE:
-        if (actValue < expValue)
+        if (actValue < expValue) {
           return false;
+        }
         break;
       default:
         assert(false);
@@ -1580,36 +1611,44 @@ void create_xfer(GraphXfer &xfer, sl::Rule const &r, int parallel_degree) {
 
 bool check_opxes_have_same_type_and_constraints(OpX const &src_opx,
                                                 OpX const &dst_opx) {
-  if (src_opx.type != dst_opx.type)
+  if (src_opx.type != dst_opx.type) {
     return false;
-  if (src_opx.pmConstraints.size() != dst_opx.pmConstraints.size())
+  }
+  if (src_opx.pmConstraints.size() != dst_opx.pmConstraints.size()) {
     return false;
-  if (src_opx.tnConstraints.size() != dst_opx.tnConstraints.size())
+  }
+  if (src_opx.tnConstraints.size() != dst_opx.tnConstraints.size()) {
     return false;
+  }
   for (auto const &c1 : src_opx.pmConstraints) {
     bool found_same = false;
     for (auto const &c2 : dst_opx.pmConstraints) {
-      if (c1.comp == c2.comp && c1.para == c2.para && c1.value == c2.value)
+      if (c1.comp == c2.comp && c1.para == c2.para && c1.value == c2.value) {
         found_same = true;
+      }
     }
-    if (!found_same)
+    if (!found_same) {
       return false;
+    }
   }
   for (auto const &c1 : src_opx.tnConstraints) {
     bool found_same = false;
     for (auto const &c2 : dst_opx.tnConstraints) {
       if (c1.singlePara && c2.singlePara) {
         if (c1.comp == c2.comp && c1.para1 == c2.para1 && c1.dim1 == c2.dim1 &&
-            c1.value == c2.value)
+            c1.value == c2.value) {
           found_same = true;
+        }
       } else if ((!c1.singlePara) && (!c2.singlePara)) {
         if (c1.comp == c2.comp && c1.para1 == c2.para1 &&
-            c1.para2 == c2.para2 && c1.dim1 == c2.dim1 && c1.dim2 == c2.dim2)
+            c1.para2 == c2.para2 && c1.dim1 == c2.dim1 && c1.dim2 == c2.dim2) {
           found_same = true;
+        }
       }
     }
-    if (!found_same)
+    if (!found_same) {
       return false;
+    }
   }
 
   return true;
@@ -1634,29 +1673,35 @@ std::vector<GraphXfer *> create_xfers(FFModel *model,
         same = false;
         continue;
       }
-      for (size_t i = 0; i < old_xfer->srcOps.size(); i++)
+      for (size_t i = 0; i < old_xfer->srcOps.size(); i++) {
         if (!check_opxes_have_same_type_and_constraints(*old_xfer->srcOps[i],
-                                                        *xfer->srcOps[i]))
+                                                        *xfer->srcOps[i])) {
           same = false;
-      if (!same)
+        }
+      }
+      if (!same) {
         continue;
+      }
       if (old_xfer->dstOps.size() != xfer->dstOps.size()) {
         same = false;
         continue;
       }
-      for (size_t i = 0; i < old_xfer->dstOps.size(); i++)
+      for (size_t i = 0; i < old_xfer->dstOps.size(); i++) {
         if (!check_opxes_have_same_type_and_constraints(*old_xfer->dstOps[i],
-                                                        *xfer->dstOps[i]))
+                                                        *xfer->dstOps[i])) {
           same = false;
+        }
+      }
       if (same) {
         found_same_xfer = true;
         break;
       }
     }
-    if (!found_same_xfer && xfer->srcOps.size() == 1)
+    if (!found_same_xfer && xfer->srcOps.size() == 1) {
       xfers.push_back(xfer);
-    else
+    } else {
       delete (xfer);
+    }
   }
   return xfers;
 }
@@ -1722,8 +1767,9 @@ void GraphSearchHelper::generate_all_pcg_xfers() {
     // Currently only consider a subset of all_parallel_degrees
     std::vector<int> considered_parallel_degrees;
     considered_parallel_degrees.push_back(workersPerNode);
-    if (numNodes > 1)
+    if (numNodes > 1) {
       considered_parallel_degrees.push_back(numNodes * workersPerNode);
+    }
     sl::RuleCollection rule_collection = sl::load_rule_collection_from_path(
         config.substitution_json_path.value());
     for (int degree : considered_parallel_degrees) {
@@ -1791,9 +1837,11 @@ void GraphSearchHelper::generate_all_pcg_xfers() {
       }
       {
         std::unordered_set<int> concat_num_inputs;
-        for (size_t i = 0; i < this->model->operators.size(); i++)
-          if (this->model->operators[i]->op_type == OP_CONCAT)
+        for (size_t i = 0; i < this->model->operators.size(); i++) {
+          if (this->model->operators[i]->op_type == OP_CONCAT) {
             concat_num_inputs.insert(this->model->operators[i]->numInputs);
+          }
+        }
         for (auto const &it2 : concat_num_inputs) {
           all_pcg_xfers.push_back(
               create_partition_concat_combine(this->model,
@@ -2863,8 +2911,9 @@ GraphXfer *create_partition_concat_combine(FFModel *model,
   GraphXfer *subst = new GraphXfer(model);
   assert(num_inputs <= MAX_NUM_INPUTS);
   TensorX inputs[MAX_NUM_INPUTS];
-  for (int i = 0; i < num_inputs; i++)
+  for (int i = 0; i < num_inputs; i++) {
     inputs[i] = subst->new_tensor();
+  }
   OpX *concat =
       subst->create_concat(inputs, num_inputs, NULL /*matchOpX*/, concat_dim);
   subst->srcOps.push_back(concat);
@@ -3112,8 +3161,9 @@ bool FFModel::convert_graph_to_operators(
       case OP_SPLIT: {
         Split *split = (Split *)node.ptr;
         std::vector<int> splits;
-        for (int i = 0; i < split->numOutputs; i++)
+        for (int i = 0; i < split->numOutputs; i++) {
           splits.push_back(split->outputs[i]->dims[split->legion_axis].size);
+        }
         new_op = new Split(*this, inputs[0], splits, split->legion_axis, NULL);
         break;
       }
@@ -3198,8 +3248,9 @@ bool FFModel::convert_graph_to_operators(
         assert(inList.size() == 1);
         FusedParallelOp *fused = (FusedParallelOp *)node.ptr;
         std::vector<ParallelOpInfo> parallel_ops;
-        for (int i = 0; i < fused->num_parallel_ops; i++)
+        for (int i = 0; i < fused->num_parallel_ops; i++) {
           parallel_ops.push_back(fused->parallel_ops[i]);
+        }
         new_op = new FusedParallelOp(*this, inputs[0], parallel_ops);
         break;
       }
@@ -3233,17 +3284,20 @@ bool FFModel::convert_graph_to_operators(
   // Remove the final parallel operators
   while (operators[operators.size() - 1]->is_parallel_op()) {
     Op *op = operators[operators.size() - 1];
-    if (op->op_type == OP_REDUCTION)
+    if (op->op_type == OP_REDUCTION) {
       break;
+    }
     if (op->op_type == OP_FUSED_PARALLEL) {
       FusedParallelOp *fused_op = (FusedParallelOp *)op;
       bool has_reduction = false;
       for (int i = 0; i < fused_op->num_parallel_ops; i++) {
-        if (fused_op->parallel_ops[i].op_type == OP_REDUCTION)
+        if (fused_op->parallel_ops[i].op_type == OP_REDUCTION) {
           has_reduction = true;
+        }
       }
-      if (has_reduction)
+      if (has_reduction) {
         break;
+      }
     }
     operators.pop_back();
   }

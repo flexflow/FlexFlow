@@ -68,8 +68,9 @@ void FFModel::split(const Tensor input,
                            input);
   int numdim = input->num_dims;
   int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = input->dims[i];
+  }
   for (size_t i = 0; i < splits.size(); i++) {
     dims[numdim - axis - 1] = splits[i];
     split->outputs[i] = create_tensor_legion_ordering(
@@ -88,8 +89,9 @@ Op *Split::create_operator_from_layer(
   layer->get_int_property("legion_axis", value);
   int legion_axis = value;
   std::vector<int> splits;
-  for (int i = 0; i < layer->numOutputs; i++)
+  for (int i = 0; i < layer->numOutputs; i++) {
     splits.push_back(layer->outputs[i]->dims[legion_axis]);
+  }
   assert(inputs.size() == 1);
   return new Split(model, inputs[0], splits, legion_axis, layer->name);
 }
@@ -117,8 +119,9 @@ Split::Split(FFModel &model,
     split_size += splits[i];
     int numdim = input->num_dims;
     ParallelDim dims[MAX_TENSOR_DIM];
-    for (int j = 0; j < numdim; j++)
+    for (int j = 0; j < numdim; j++) {
       dims[j] = input->dims[j];
+    }
     dims[legion_axis].size = splits[i];
     // Assert the _axis dim cannot be parallelized
     assert(dims[legion_axis].degree == 1);
@@ -210,10 +213,11 @@ void calc_block_size(coord_t &num_blks,
   num_blks = 1;
   blk_size = 1;
   for (int d = 0; d < domain.get_dim(); d++) {
-    if (d <= axis)
+    if (d <= axis) {
       blk_size *= (domain.hi()[d] - domain.lo()[d] + 1);
-    else
+    } else {
       num_blks *= (domain.hi()[d] - domain.lo()[d] + 1);
+    }
   }
 }
 
@@ -241,11 +245,12 @@ void Split::forward_task(Task const *task,
     calc_block_size(
         out_num_blks, out_blk_size[i], out_domain, split->legion_axis);
     assert(out_num_blks == num_blks);
-    for (int j = 0; j < out_domain.get_dim(); j++)
+    for (int j = 0; j < out_domain.get_dim(); j++) {
       if (j != split->legion_axis) {
         assert(out_domain.hi()[j] == in_domain.hi()[j]);
         assert(out_domain.lo()[j] == in_domain.lo()[j]);
       }
+    }
     total_volume += out_domain.get_volume();
   }
   assert(total_volume == in_domain.get_volume());
@@ -307,11 +312,12 @@ void Split::backward_task(Task const *task,
     calc_block_size(
         out_num_blks, out_blk_size[i], out_grad_domain, split->legion_axis);
     assert(out_num_blks == num_blks);
-    for (int j = 0; j < out_grad_domain.get_dim(); j++)
+    for (int j = 0; j < out_grad_domain.get_dim(); j++) {
       if (j != split->legion_axis) {
         assert(out_grad_domain.hi()[j] == in_grad_domain.hi()[j]);
         assert(out_grad_domain.lo()[j] == in_grad_domain.lo()[j]);
       }
+    }
     total_volume += out_grad_domain.get_volume();
   }
   assert(total_volume == in_grad_domain.get_volume());
@@ -328,11 +334,14 @@ bool Split::measure_operator_cost(Simulator *sim,
                                   MachineView const &mv,
                                   CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output[MAX_NUM_OUTPUTS], sub_input;
-  for (int i = 0; i < numOutputs; i++)
-    if (!outputs[i]->get_sub_tensor(mv, sub_output[i]))
+  for (int i = 0; i < numOutputs; i++) {
+    if (!outputs[i]->get_sub_tensor(mv, sub_output[i])) {
       return false;
-  if (!inputs[0]->get_sub_tensor(mv, sub_input))
+    }
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
+  }
   Domain in_domain = sub_input.get_domain();
   sim->free_all();
   float *output_ptr[MAX_NUM_OUTPUTS];
@@ -348,11 +357,12 @@ bool Split::measure_operator_cost(Simulator *sim,
     coord_t out_num_blks;
     calc_block_size(out_num_blks, out_blk_size[i], out_domain, legion_axis);
     assert(out_num_blks == num_blks);
-    for (int j = 0; j < out_domain.get_dim(); j++)
+    for (int j = 0; j < out_domain.get_dim(); j++) {
       if (j != legion_axis) {
         assert(out_domain.hi()[j] == in_domain.hi()[j]);
         assert(out_domain.lo()[j] == in_domain.lo()[j]);
       }
+    }
     total_volume += out_domain.get_volume();
   }
   assert(total_volume == in_domain.get_volume());

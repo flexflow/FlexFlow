@@ -76,8 +76,9 @@ EcmpRoutes WeightedShortestPathRoutingStrategy::get_routes(int src_node,
     pq.pop();
     visited[min_node] = true;
 
-    if (min_node == dst_node)
+    if (min_node == dst_node) {
       break;
+    }
 
     for (int i = 0; i < total_devs; i++) {
       if (visited[i] || conn[min_node * total_devs + i] == 0) {
@@ -129,8 +130,9 @@ void WeightedShortestPathRoutingStrategy::hop_count(int src_node,
     int min_node = pq.top().second;
     pq.pop();
     visited[min_node] = true;
-    if (min_node == dst_node)
+    if (min_node == dst_node) {
       break;
+    }
     for (int i = 0; i < total_devs; i++) {
       if (visited[i] || conn[min_node * total_devs + i] == 0) {
         continue;
@@ -148,8 +150,9 @@ void WeightedShortestPathRoutingStrategy::hop_count(int src_node,
   narrowest = std::numeric_limits<int>::max();
   int curr = dst_node;
   while (prev[curr] != -1) {
-    if (narrowest > conn[prev[curr] * total_devs + curr])
+    if (narrowest > conn[prev[curr] * total_devs + curr]) {
       narrowest = conn[prev[curr] * total_devs + curr];
+    }
     hop++;
     curr = prev[curr];
   }
@@ -247,8 +250,9 @@ std::vector<std::pair<int, int>>
     int narrowest = 0;
     int curr = i;
     while (prev[curr] != -1) {
-      if (!narrowest || (narrowest > conn[prev[curr] * total_devs + curr]))
+      if (!narrowest || (narrowest > conn[prev[curr] * total_devs + curr])) {
         narrowest = conn[prev[curr] * total_devs + curr];
+      }
       hop++;
       curr = prev[curr];
     }
@@ -288,8 +292,9 @@ EcmpRoutes ShortestPathNetworkRoutingStrategy::get_routes(int src_node,
     q.pop();
     visited[min_node] = true;
 
-    if (min_node == dst_node)
+    if (min_node == dst_node) {
       break;
+    }
 
     for (int i = 0; i < total_devs; i++) {
       if (visited[i] || conn[min_node * total_devs + i] == 0) {
@@ -389,8 +394,9 @@ void ShortestPathNetworkRoutingStrategy::hop_count(int src_node,
     q.pop();
     visited[min_node] = true;
 
-    if (min_node == dst_node)
+    if (min_node == dst_node) {
       break;
+    }
 
     for (int i = 0; i < total_devs; i++) {
       if (visited[i] || conn[min_node * total_devs + i] == 0) {
@@ -408,8 +414,9 @@ void ShortestPathNetworkRoutingStrategy::hop_count(int src_node,
   narrowest = std::numeric_limits<int>::max();
   int curr = dst_node;
   while (prev[curr] != -1) {
-    if (narrowest > conn[prev[curr] * total_devs + curr])
+    if (narrowest > conn[prev[curr] * total_devs + curr]) {
       narrowest = conn[prev[curr] * total_devs + curr];
+    }
     hop++;
     curr = prev[curr];
   }
@@ -455,8 +462,9 @@ std::vector<std::pair<int, int>>
     int narrowest = 0;
     int curr = i;
     while (prev[curr] != -1) {
-      if (!narrowest || (narrowest > conn[prev[curr] * total_devs + curr]))
+      if (!narrowest || (narrowest > conn[prev[curr] * total_devs + curr])) {
         narrowest = conn[prev[curr] * total_devs + curr];
+      }
       hop++;
       curr = prev[curr];
     }
@@ -513,8 +521,9 @@ ConnectionMatrix
 
   while (node_with_avail_if.size() > 1) {
     a = distrib(gen);
-    while ((b = distrib(gen)) == a)
+    while ((b = distrib(gen)) == a) {
       ;
+    }
 
     assert(
         conn[get_id(node_with_avail_if[a].first, node_with_avail_if[b].first)] <

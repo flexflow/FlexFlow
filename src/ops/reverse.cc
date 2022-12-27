@@ -57,8 +57,9 @@ Reverse::Reverse(FFModel &model,
   numOutputs = 1;
   int numdim = input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = input->dims[i];
+  }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, input->data_type, this);
 }
@@ -145,12 +146,13 @@ void Reverse::forward_task(Task const *task,
   int axis = in_domain.get_dim() - reverse->axis - 1;
   coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < out_domain.get_dim(); i++) {
-    if (i < axis)
+    if (i < axis) {
       in_blk_size *= out_domain.hi()[i] - out_domain.lo()[i] + 1;
-    else if (i == axis)
+    } else if (i == axis) {
       reverse_dim_size = out_domain.hi()[i] - out_domain.lo()[i] + 1;
-    else
+    } else {
       num_out_blks *= out_domain.hi()[i] - out_domain.lo()[i] + 1;
+    }
   }
   int output_size = out_domain.get_volume();
 
@@ -211,12 +213,13 @@ void Reverse::backward_task(Task const *task,
   int axis = in_grad_domain.get_dim() - reverse->axis - 1;
   coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < in_grad_domain.get_dim(); i++) {
-    if (i < axis)
+    if (i < axis) {
       in_blk_size *= in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1;
-    else if (i == axis)
+    } else if (i == axis) {
       reverse_dim_size = in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1;
-    else
+    } else {
       num_out_blks *= in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1;
+    }
   }
 
   Reverse::backward_kernel_wrapper(out_grad_ptr,

@@ -87,29 +87,29 @@ public:
                           Legion::Domain const &output_domain);
   template <typename T>
   static void forward_kernel(ElementUnaryMeta const *m,
-                             const T *in_ptr,
+                             T const *in_ptr,
                              T *out_ptr,
                              size_t num_elements,
                              ffStream_t stream);
   template <typename T>
   static void forward_kernel_wrapper(ElementUnaryMeta const *m,
-                                     const T *in_ptr,
+                                     T const *in_ptr,
                                      T *out_ptr,
                                      size_t num_elements);
   template <typename T>
   static void backward_kernel(ElementUnaryMeta const *m,
-                              const T *in_ptr,
+                              T const *in_ptr,
                               T *in_grad_ptr,
-                              const T *out_ptr,
-                              const T *out_grad_ptr,
+                              T const *out_ptr,
+                              T const *out_grad_ptr,
                               size_t num_elements,
                               ffStream_t stream);
   template <typename T>
   static void backward_kernel_wrapper(ElementUnaryMeta const *m,
-                                      const T *in_ptr,
+                                      T const *in_ptr,
                                       T *in_grad_ptr,
-                                      const T *out_ptr,
-                                      const T *out_grad_ptr,
+                                      T const *out_ptr,
+                                      T const *out_grad_ptr,
                                       size_t num_elements);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,

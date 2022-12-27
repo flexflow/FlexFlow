@@ -44,8 +44,9 @@ int main() {
     op->set_device_type(FFProtoBuf::Op_DeviceType_GPU);
     op->add_dims(1);
     op->add_dims(gpu);
-    for (int j = 0; j < gpu; j++)
+    for (int j = 0; j < gpu; j++) {
       op->add_device_ids(j);
+    }
   }
   std::string output = "dlrm_strategy_" + std::to_string(nemb) + "nEmb_" +
                        std::to_string(cpu) + "cpu_" + std::to_string(gpu) +
