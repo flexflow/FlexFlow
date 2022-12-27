@@ -121,8 +121,9 @@ void NoOp::init(FFModel const &ff) {
   } else if (op_type == OP_INPUT) {
     // For OP_INPUT, initialize tensor to zero
     assert(outputs[0]->region != LogicalRegion::NO_REGION);
-    if (outputs[0]->part == LogicalPartition::NO_PART)
+    if (outputs[0]->part == LogicalPartition::NO_PART) {
       return;
+    }
     ConstantInitializer *initializer = NULL;
     if (outputs[0]->data_type == DT_FLOAT) {
       initializer = new ConstantInitializer(0.0f);

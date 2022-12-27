@@ -103,6 +103,7 @@ IndentExternBlock: AfterExternBlock
 IndentRequires:  false
 IndentWidth:     2
 IndentWrappedFunctionNames: true
+InsertBraces: true
 InsertTrailingCommas: None
 JavaScriptQuotes: Leave
 JavaScriptWrapImports: true

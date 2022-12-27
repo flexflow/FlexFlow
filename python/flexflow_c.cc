@@ -33,9 +33,7 @@ public:
     t_.impl = const_cast<void *>(static_cast<void const *>(t));                \
     return t_;                                                                 \
   }                                                                            \
-  static T unwrap(T_ t_) {                                                     \
-    return static_cast<T>(t_.impl);                                            \
-  }                                                                            \
+  static T unwrap(T_ t_) { return static_cast<T>(t_.impl); }                   \
   static const T unwrap_const(const T_ t_) {                                   \
     return static_cast<const T>(t_.impl);                                      \
   }
@@ -211,6 +209,26 @@ flexflow_tensor_t flexflow_model_add_exp(flexflow_model_t handle_,
   const Tensor x = FFCObjectWrapper::unwrap_const(x_);
   Tensor tensor = handle->exp(x, name);
   DEBUG_PRINT("[Exp] new Tensor %p, x %p, name %s", tensor, x, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_sin(flexflow_model_t handle_,
+                                         const flexflow_tensor_t x_,
+                                         char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor x = FFCObjectWrapper::unwrap_const(x_);
+  Tensor tensor = handle->sin(x, name);
+  DEBUG_PRINT("[Sin] new Tensor %p, x %p, name %s", tensor, x, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_cos(flexflow_model_t handle_,
+                                         const flexflow_tensor_t x_,
+                                         char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor x = FFCObjectWrapper::unwrap_const(x_);
+  Tensor tensor = handle->cos(x, name);
+  DEBUG_PRINT("[Cos] new Tensor %p, x %p, name %s", tensor, x, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 

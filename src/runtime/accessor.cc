@@ -33,45 +33,45 @@ GenericTensorAccessorR::GenericTensorAccessorR()
     : data_type(DT_NONE), domain(Domain::NO_DOMAIN), ptr(nullptr) {}
 
 int32_t const *GenericTensorAccessorR::get_int32_ptr() const {
-  if (data_type == DT_INT32)
+  if (data_type == DT_INT32) {
     return static_cast<int32_t const *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<int32_t const *>(nullptr);
   }
 }
 
 int64_t const *GenericTensorAccessorR::get_int64_ptr() const {
-  if (data_type == DT_INT64)
+  if (data_type == DT_INT64) {
     return static_cast<int64_t const *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<int64_t const *>(nullptr);
   }
 }
 
 float const *GenericTensorAccessorR::get_float_ptr() const {
-  if (data_type == DT_FLOAT)
+  if (data_type == DT_FLOAT) {
     return static_cast<float const *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<float const *>(nullptr);
   }
 }
 
 double const *GenericTensorAccessorR::get_double_ptr() const {
-  if (data_type == DT_DOUBLE)
+  if (data_type == DT_DOUBLE) {
     return static_cast<double const *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<double const *>(nullptr);
   }
 }
 
 half const *GenericTensorAccessorR::get_half_ptr() const {
-  if (data_type == DT_HALF)
+  if (data_type == DT_HALF) {
     return static_cast<half const *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<half const *>(nullptr);
   }
@@ -112,45 +112,45 @@ GenericTensorAccessorW::GenericTensorAccessorW()
     : data_type(DT_NONE), domain(Domain::NO_DOMAIN), ptr(nullptr) {}
 
 int32_t *GenericTensorAccessorW::get_int32_ptr() const {
-  if (data_type == DT_INT32)
+  if (data_type == DT_INT32) {
     return static_cast<int32_t *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<int32_t *>(nullptr);
   }
 }
 
 int64_t *GenericTensorAccessorW::get_int64_ptr() const {
-  if (data_type == DT_INT64)
+  if (data_type == DT_INT64) {
     return static_cast<int64_t *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<int64_t *>(nullptr);
   }
 }
 
 float *GenericTensorAccessorW::get_float_ptr() const {
-  if (data_type == DT_FLOAT)
+  if (data_type == DT_FLOAT) {
     return static_cast<float *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<float *>(nullptr);
   }
 }
 
 double *GenericTensorAccessorW::get_double_ptr() const {
-  if (data_type == DT_DOUBLE)
+  if (data_type == DT_DOUBLE) {
     return static_cast<double *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<double *>(nullptr);
   }
 }
 
 half *GenericTensorAccessorW::get_half_ptr() const {
-  if (data_type == DT_HALF)
+  if (data_type == DT_HALF) {
     return static_cast<half *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<half *>(nullptr);
   }

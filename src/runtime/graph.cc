@@ -66,14 +66,18 @@ Edge::Edge(Node const &_srcOp, Node const &_dstOp, int _srcIdx, int _dstIdx)
     : srcOp(_srcOp), dstOp(_dstOp), srcIdx(_srcIdx), dstIdx(_dstIdx) {}
 
 bool Edge::operator==(Edge const &rhs) const {
-  if (srcOp != rhs.srcOp)
+  if (srcOp != rhs.srcOp) {
     return false;
-  if (dstOp != rhs.dstOp)
+  }
+  if (dstOp != rhs.dstOp) {
     return false;
-  if (srcIdx != rhs.srcIdx)
+  }
+  if (srcIdx != rhs.srcIdx) {
     return false;
-  if (dstIdx != rhs.dstIdx)
+  }
+  if (dstIdx != rhs.dstIdx) {
     return false;
+  }
   return true;
 }
 
@@ -123,9 +127,11 @@ T SearchHelper::find_optimal_sequence_graph_time(
       }
     }
     if (found) {
-      for (int j = 0; j < bn_node.ptr->numOutputs; j++)
-        if (!bn_node.ptr->outputs[j]->is_valid_machine_view(sink.view))
+      for (int j = 0; j < bn_node.ptr->numOutputs; j++) {
+        if (!bn_node.ptr->outputs[j]->is_valid_machine_view(sink.view)) {
           found = false;
+        }
+      }
     }
     if (found) {
       valid_views.push_back(sink.view);
@@ -365,8 +371,9 @@ bool Graph::has_edge(Edge const &e) const {
 void Graph::print(void) const {
   log_graph.print("Printing in-edge graph...");
   for (auto const &it : inEdges) {
-    if (it.first.guid == 0)
+    if (it.first.guid == 0) {
       continue;
+    }
     log_graph.print("	guid(%zu) type(%s): ",
                     it.first.guid,
                     get_operator_type_name(it.first.ptr->op_type).data());
@@ -391,8 +398,9 @@ void Graph::print(void) const {
   }
   log_graph.print("Printing out-edge graph...");
   for (auto const &it : outEdges) {
-    if (it.first.guid == 0)
+    if (it.first.guid == 0) {
       continue;
+    }
     log_graph.print(
         "	guid(%zu) type(%d): ", it.first.guid, it.first.ptr->op_type);
     std::unordered_set<Edge> const &list = it.second;
@@ -444,8 +452,9 @@ bool Graph::has_loop(void) {
   for (auto const &it : inEdges) {
     auto const &inList = it.second;
     todos[it.first] = (int)inList.size();
-    if (todos[it.first] == 0)
+    if (todos[it.first] == 0) {
       opList.push_back(it.first);
+    }
   }
   size_t i = 0;
   while (i < opList.size()) {
@@ -467,15 +476,18 @@ bool Graph::check_correctness(void) {
     auto const &list = it->second;
     for (auto it2 = list.begin(); it2 != list.end(); it2++) {
       Edge e = *it2;
-      if (!has_edge(e))
+      if (!has_edge(e)) {
         assert(false);
-      if (e.srcOp.ptr == NULL)
+      }
+      if (e.srcOp.ptr == NULL) {
         continue;
+      }
       assert(e.srcOp != e.dstOp);
       ParallelTensor srcTensor = e.srcOp.ptr->outputs[e.srcIdx];
       ParallelTensor dstTensor = e.dstOp.ptr->inputs[e.dstIdx];
-      if (srcTensor->num_dims != dstTensor->num_dims)
+      if (srcTensor->num_dims != dstTensor->num_dims) {
         assert(false);
+      }
       for (int i = 0; i < srcTensor->num_dims; i++) {
         assert(srcTensor->dims[i] == dstTensor->dims[i]);
       }
@@ -559,14 +571,16 @@ std::vector<MachineView> SearchHelper::get_valid_machine_views(
   }
   for (size_t i = 0; i < cached_op_views->size(); i++) {
     MachineView view = (*cached_op_views)[i];
-    if (view.device_type == MachineView::GPU)
+    if (view.device_type == MachineView::GPU) {
       view.start_device_id = resource.start_gpu_id;
-    else if (view.device_type == MachineView::CPU)
+    } else if (view.device_type == MachineView::CPU) {
       view.start_device_id = resource.start_cpu_id;
-    else
+    } else {
       assert(false);
-    if (resource.is_valid_machine_view(view))
+    }
+    if (resource.is_valid_machine_view(view)) {
       valid_views.push_back(view);
+    }
   }
   return valid_views;
 }
@@ -824,8 +838,9 @@ void Graph::simplify(SimplificationSettings const &settings) {
     while (simplify) {
       simplify = false;
       for (auto const &it : this->inEdges) {
-        if (it.first.ptr == NULL)
+        if (it.first.ptr == NULL) {
           continue;
+        }
         if (it.first.ptr->is_parallel_op()) {
           Node n2 = it.first;
           assert(it.second.size() == 1);
@@ -859,8 +874,9 @@ void Graph::simplify(SimplificationSettings const &settings) {
             simplify = true;
           }
         }
-        if (simplify)
+        if (simplify) {
           break;
+        }
       }
     }
   }
@@ -893,8 +909,9 @@ void Graph::simplify(SimplificationSettings const &settings) {
     // Remove NoOps
     std::vector<Node> noop_nodes;
     for (auto const &it : this->inEdges) {
-      if (it.first.ptr == NULL)
+      if (it.first.ptr == NULL) {
         continue;
+      }
       if (it.first.ptr->op_type == OP_NOOP) {
         noop_nodes.push_back(it.first);
       }
@@ -1344,8 +1361,9 @@ T SearchHelper::graph_cost(Graph const *graph,
   }
 
   assert(graph->inEdges.find(sink.node) != graph->inEdges.end());
-  if (source.node != Node::INVALID_NODE)
+  if (source.node != Node::INVALID_NODE) {
     assert(graph->outEdges.find(source.node) != graph->outEdges.end());
+  }
 
   size_t hash = dp_state_hash(
       graph, sink.node, sink.view, source.node, source.view, resources);
@@ -1603,8 +1621,9 @@ GraphOptimalViewSerialized
   for (auto const &it : best_graph->inEdges) {
     auto const &inList = it.second;
     todos[it.first] = (int)inList.size();
-    if (todos[it.first] == 0)
+    if (todos[it.first] == 0) {
       opList.push_back(it.first);
+    }
   }
   size_t node_idx = 0;
   while (node_idx < opList.size()) {
@@ -1637,8 +1656,9 @@ GraphOptimalViewSerialized
         sez.serialize(noop->input_tensor_guid);
         sez.serialize(noop->outputs[0]->data_type);
         sez.serialize(noop->outputs[0]->num_dims);
-        for (int i = 0; i < noop->outputs[0]->num_dims; i++)
+        for (int i = 0; i < noop->outputs[0]->num_dims; i++) {
           sez.serialize(noop->outputs[0]->dims[i]);
+        }
         break;
       }
       case OP_NOOP: {
@@ -1653,8 +1673,9 @@ GraphOptimalViewSerialized
         Split *split = (Split *)op;
         sez.serialize(split->legion_axis);
         sez.serialize(split->numOutputs);
-        for (int i = 0; i < split->numOutputs; i++)
+        for (int i = 0; i < split->numOutputs; i++) {
           sez.serialize(split->outputs[i]->dims[split->legion_axis].size);
+        }
         break;
       }
       case OP_EMBEDDING: {
@@ -1717,8 +1738,9 @@ GraphOptimalViewSerialized
       case OP_FUSED_PARALLEL: {
         FusedParallelOp *fused = (FusedParallelOp *)op;
         sez.serialize(fused->num_parallel_ops);
-        for (int i = 0; i < fused->num_parallel_ops; i++)
+        for (int i = 0; i < fused->num_parallel_ops; i++) {
           sez.serialize(fused->parallel_ops[i]);
+        }
         break;
       }
       default: {
@@ -1873,8 +1895,9 @@ void FFModel::deserialize_graph_optimal_view(
         DataType data_type;
         dez.deserialize(data_type);
         dez.deserialize(num_dims);
-        for (int i = 0; i < num_dims; i++)
+        for (int i = 0; i < num_dims; i++) {
           dez.deserialize(dims[i]);
+        }
         ParallelTensor t =
             create_parallel_tensor_legion_ordering(num_dims,
                                                    dims,
@@ -1963,6 +1986,8 @@ void FFModel::deserialize_graph_optimal_view(
         break;
       }
       case OP_EXP:
+      case OP_SIN:
+      case OP_COS:
       case OP_SCALAR_MULTIPLY:
       case OP_SCALAR_FLOOR_DIV:
       case OP_SCALAR_TRUE_DIV:

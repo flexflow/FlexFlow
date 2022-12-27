@@ -185,8 +185,9 @@ void Repartition::forward(FFModel const &ff) {
 void Repartition::backward(FFModel const &ff) {
   // skip backpropagation for input
   if (inputs[0]->owner_op != nullptr &&
-      inputs[0]->owner_op->op_type == OP_INPUT)
+      inputs[0]->owner_op->op_type == OP_INPUT) {
     return;
+  }
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;

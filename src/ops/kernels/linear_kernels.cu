@@ -21,8 +21,9 @@ namespace FlexFlow {
 LinearMeta::LinearMeta(FFHandler handler, int batch_size) : OpMeta(handler) {
   // Allocate an all-one's vector
   float *dram_one_ptr = (float *)malloc(sizeof(float) * batch_size);
-  for (int i = 0; i < batch_size; i++)
+  for (int i = 0; i < batch_size; i++) {
     dram_one_ptr[i] = 1.0f;
+  }
   float *fb_one_ptr;
   checkCUDA(cudaMalloc(&fb_one_ptr, sizeof(float) * batch_size));
   checkCUDA(cudaMemcpy(fb_one_ptr,

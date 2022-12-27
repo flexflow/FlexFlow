@@ -112,14 +112,17 @@ __host__ void FusedOp::forward_task(Task const *task,
   }
   // Assert that all meta share the same dnn/blas handler
   int start = 0;
-  for (start = 0; start < fused->numOperators; start++)
-    if (metas->meta[start] != NULL)
+  for (start = 0; start < fused->numOperators; start++) {
+    if (metas->meta[start] != NULL) {
       break;
-  for (int op = start + 1; op < fused->numOperators; op++)
+    }
+  }
+  for (int op = start + 1; op < fused->numOperators; op++) {
     if (metas->meta[op] != NULL) {
       assert(metas->meta[start]->handle.blas == metas->meta[op]->handle.blas);
       assert(metas->meta[start]->handle.dnn == metas->meta[op]->handle.dnn);
     }
+  }
 
   hipStream_t stream;
   if (start < fused->numOperators) {
@@ -137,8 +140,9 @@ __host__ void FusedOp::forward_task(Task const *task,
         my_input_accessor[i] = input_accessor[my_off];
       } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
         my_input_accessor[i] = output_accessor[my_off];
-      } else
+      } else {
         assert(false);
+      }
     }
     for (int i = 0; i < fused->op_num_weights[op]; i++) {
       assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
@@ -464,14 +468,17 @@ __host__ void FusedOp::backward_task(Task const *task,
   roff += fused->numOutputs;
   // Assert that all meta share the same dnn/blas handler
   int start = 0;
-  for (start = 0; start < fused->numOperators; start++)
-    if (metas->meta[start] != NULL)
+  for (start = 0; start < fused->numOperators; start++) {
+    if (metas->meta[start] != NULL) {
       break;
-  for (int op = start + 1; op < fused->numOperators; op++)
+    }
+  }
+  for (int op = start + 1; op < fused->numOperators; op++) {
     if (metas->meta[op] != NULL) {
       assert(metas->meta[start]->handle.blas == metas->meta[op]->handle.blas);
       assert(metas->meta[start]->handle.dnn == metas->meta[op]->handle.dnn);
     }
+  }
 
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -503,8 +510,9 @@ __host__ void FusedOp::backward_task(Task const *task,
         my_input_accessor[i] = output_accessor[my_off];
         my_input_grad_accessor[i] = output_grad_accessor[my_off];
         assert(my_input_grad_accessor[i].domain == my_input_accessor[i].domain);
-      } else
+      } else {
         assert(false);
+      }
     }
     for (int i = 0; i < fused->op_num_weights[op]; i++) {
       assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
