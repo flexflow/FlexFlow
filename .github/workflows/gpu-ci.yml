@@ -65,10 +65,11 @@ jobs:
           mkdir build
           cd build
           ../config/config.linux
-          make -j
-          make install
+          #make -j
+          #make install
+          
+          pip install . --verbose
           ldconfig
-          #pip install . --verbose
 
       - name: Check availability of Python flexflow.core module
         run: |
