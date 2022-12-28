@@ -47,6 +47,7 @@ jobs:
     name: Single Machine, Multiple GPUs Tests
     runs-on: self-hosted
     needs: gpu-ci-concierge
+    continue-on-error: true
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
       options: --gpus all --shm-size=8192m
