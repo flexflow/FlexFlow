@@ -8,7 +8,6 @@ FSIZE=14048
 ZSIZE=12192
 
 if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit; fi
-#EXE="$FF_HOME"/python/flexflow_python
 EXE="python"
 
 #Sequantial model tests
