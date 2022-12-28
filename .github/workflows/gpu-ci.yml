@@ -77,6 +77,10 @@ jobs:
           # Run test with native Python interpreter
           export FF_USE_NATIVE_PYTHON=1
           EXE="python"
+          GPUS=4
+          BATCHSIZE=$((GPUS * 64))
+          FSIZE=14048
+          ZSIZE=12192
           $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 
       - name: Install FlexFlow
@@ -97,6 +101,10 @@ jobs:
           # Run test with native Python interpreter (without PYTHONPATH)
           export FF_USE_NATIVE_PYTHON=1
           EXE="python"
+          GPUS=4
+          BATCHSIZE=$((GPUS * 64))
+          FSIZE=14048
+          ZSIZE=12192
           $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 
       - name: Run multi-gpu tests
