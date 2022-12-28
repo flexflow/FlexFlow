@@ -74,20 +74,7 @@ jobs:
           export PYTHONPATH="${FF_HOME}/python:${FF_HOME}/build/python:${PYTHONPATH}"
           # Import flexflow.core module in Python
           python -c "import flexflow.core; exit()"
-          # Run test with flexflow_python
-          unset PYTHONPATH
-          GPUS=4
-          BATCHSIZE=$((GPUS * 64))
-          FSIZE=14048
-          ZSIZE=12192
-          
-          python -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LIBDIR"))'
-          ls /opt/conda/lib | grep python
-
-          EXE="$FF_HOME"/python/flexflow_python
-          $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
           # Run test with native Python interpreter
-          export PYTHONPATH="${FF_HOME}/python:${FF_HOME}/build/python:${PYTHONPATH}"
           export FF_USE_NATIVE_PYTHON=1
           EXE="python"
           $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
@@ -107,14 +94,7 @@ jobs:
           export FF_HOME=$(pwd)
           # Import flexflow.core module in Python
           python -c "import flexflow.core; exit()"
-          # Run test with flexflow_python
-          GPUS=4
-          BATCHSIZE=$((GPUS * 64))
-          FSIZE=14048
-          ZSIZE=12192
-          EXE="$FF_HOME"/python/flexflow_python
-          $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
-          # Run test with native Python interpreter
+          # Run test with native Python interpreter (without PYTHONPATH)
           export FF_USE_NATIVE_PYTHON=1
           EXE="python"
           $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
@@ -126,5 +106,4 @@ jobs:
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
           export FF_USE_NATIVE_PYTHON=1
-          export PYTHONPATH="${FF_HOME}/python:${FF_HOME}/build/python:${PYTHONPATH}"
           ./tests/multi_gpu_tests.sh 4
