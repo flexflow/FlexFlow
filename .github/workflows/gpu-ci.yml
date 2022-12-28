@@ -62,8 +62,8 @@ jobs:
         run: |
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
-          mkdir build
-          cd build
+          #mkdir build
+          #cd build
           ../config/config.linux
           #make -j
           #make install
