@@ -75,4 +75,5 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
+          export FF_USE_NATIVE_PYTHON=1
           ./tests/multi_gpu_tests.sh 4
