@@ -47,7 +47,6 @@ jobs:
     name: Single Machine, Multiple GPUs Tests
     runs-on: self-hosted
     needs: gpu-ci-concierge
-    continue-on-error: true
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
       options: --gpus all --shm-size=8192m
@@ -81,8 +80,8 @@ jobs:
           BATCHSIZE=$((GPUS * 64))
           FSIZE=14048
           ZSIZE=12192
-          EXE="$FF_HOME"/python/flexflow_python
-          $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
+          #EXE="$FF_HOME"/python/flexflow_python
+          #$EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
           # Run test with native Python interpreter
           export PYTHONPATH="${FF_HOME}/python:${FF_HOME}/build/python:${PYTHONPATH}"
           export FF_USE_NATIVE_PYTHON=1
