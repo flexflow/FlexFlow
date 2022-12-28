@@ -35,7 +35,7 @@ if flexflow_python_interpreter() == 'native':
   if 'PYTHONPATH' in os.environ:
     python_paths = os.environ['PYTHONPATH'].split(':')
     for p in python_paths:
-      flexflow_lib_p = p + flexflow_lib
+      flexflow_lib_p = os.path.join(p, flexflow_lib)
       if os.path.exists(flexflow_lib_p):
         flexflow_lib = flexflow_lib_p
         break
