@@ -64,7 +64,7 @@ jobs:
           export FF_HOME=$(pwd)
           #mkdir build
           #cd build
-          ../config/config.linux
+          #../config/config.linux
           #make -j
           #make install
           
