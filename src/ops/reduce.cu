@@ -38,7 +38,8 @@ ReduceMeta::ReduceMeta(FFHandler handler,
   Domain output_domain = input_domain;
   for (size_t i = 0; i < rd->num_axes; i++) {
     assert(input_domain.dim > rd->axes[i]);
-    output_domain.hi()[rd->axes[i]] = output_domain.lo()[rd->axes[i]];
+    output_domain.rect_data[rd->axes[i] + output_domain.dim] =
+        output_domain.rect_data[rd->axes[i]];
   }
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_domain));
 }

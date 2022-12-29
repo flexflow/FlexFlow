@@ -495,7 +495,7 @@ public:
                    char const *name = NULL);
   Tensor reduce_sum(const Tensor input,
                     std::vector<int> const &axes,
-                    bool keepdims,
+                    bool keepdims = false,
                     char const *name = nullptr);
   Tensor reshape(const Tensor input,
                  std::vector<int> const &shape,
