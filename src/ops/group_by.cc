@@ -307,16 +307,15 @@ void Group_by::forward_task(Task const *task,
   AccessorRO<float, 3> const acc_input(regions[0], FID_DATA);
   AccessorRO<int, 3> const acc_assign(regions[1], FID_DATA);
 
-  Rect<2> rect_input = runtime->get_index_space_domain(
+  Rect<3> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  Rect<2> rect_assign = runtime->get_index_space_domain(
+  Rect<3> rect_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
 
   coord_t input_rows = rect_input.hi[1] - rect_input.lo[1] + 1;
   coord_t input_cols = rect_input.hi[0] - rect_input.lo[0] + 1;
   assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
-  assert(input_replicas == rect_assign.hi[2] - rect_assign.lo[2] +
-                               1); // does this need to be true?
+
   int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
   int batch_size = input_rows;
   int data_dim = input_cols;
@@ -405,19 +404,18 @@ void Group_by::backward_task(Task const *task,
   assert((int)task->regions.size() == n + 2);
 
   // get input and assign regions
-  AccessorWO<float, 2> const acc_input_grad(regions[0], FID_DATA);
-  AccessorRO<int, 2> const acc_assign(regions[1], FID_DATA);
+  AccessorWO<float, 3> const acc_input_grad(regions[0], FID_DATA);
+  AccessorRO<int, 3> const acc_assign(regions[1], FID_DATA);
 
-  Rect<2> rect_input_grad = runtime->get_index_space_domain(
+  Rect<3> rect_input_grad = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  Rect<2> rect_assign = runtime->get_index_space_domain(
+  Rect<3> rect_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
 
   coord_t input_rows = rect_input_grad.hi[1] - rect_input_grad.lo[1] + 1;
   coord_t input_cols = rect_input_grad.hi[0] - rect_input_grad.lo[0] + 1;
   assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
-  assert(input_replicas == rect_assign.hi[2] - rect_assign.lo[2] +
-                               1); // does this need to be true?
+
   int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
   int batch_size = input_rows;
   int data_dim = input_cols;

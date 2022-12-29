@@ -33,8 +33,7 @@ __global__ void
                       int k,       // chosen experts
                       float alpha, // factor additional memory assigned
                       int batch_size,
-                      int data_dim,
-                      int n_replicas) {
+                      int data_dim) {
   __shared__ float
       *chosen_exp_preds[MAX_K *
                         MAX_BATCH_SIZE]; // one pointer for each exp_assign
