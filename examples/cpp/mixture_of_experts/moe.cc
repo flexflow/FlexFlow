@@ -41,6 +41,7 @@ void parse_input_args(char **argv, int argc, MoeConfig &config) {
   }
 }
 
+#ifdef DEADCODE
 // =============================================================================
 //  User-defined functions on using cached expert assignments
 // =============================================================================
@@ -71,7 +72,7 @@ float moe_score(float *cached_score,
 }
 
 // Trigger: If average score of all cache layers is above thresh
-/* bool moe_trigger(FFModel *ff) {
+bool moe_trigger(FFModel *ff) {
   float thresh = 0.9f;
 
   int num_futures = 0;
@@ -86,10 +87,10 @@ float moe_score(float *cached_score,
     }
   }
   return score >= thresh;
-} */
+}
 
 // Alter: GroupBy, Aggregate, AggregateSpec use cached values for expert assign.
-/* void moe_alter(FFModel *ff) {
+void moe_alter(FFModel *ff) {
   ((Cache *)ff->layers[3])->use_cached(true);
   // Group by input
   ff->layers[4]->inputs[1] = ff->layers[3]->outputs[0];
@@ -103,7 +104,69 @@ float moe_score(float *cached_score,
   ff->layers[17]->inputs[1] = ff->layers[3]->outputs[0];
   ff->layers[17]->input_lps[1] = ff->layers[3]->outputs[0].part;
   ff->layers[17]->input_grad_lps[1] = ff->layers[3]->outputs[0].part_grad;
-} */
+}
+#endif // DEADCODE
+
+Tensor create_moe(FFModel *model,
+                  MoeConfig const *moeConfig,
+                  Tensor const &input) {
+  float alpha = 2.0f;   // factor overhead tensor size for imbalance
+  float lambda = 0.04f; // multiplier for load balance term
+
+  // MoE model
+  Tensor gate_preds = model->dense(input, 64, AC_MODE_RELU);
+  gate_preds = model->dense(gate_preds, num_exp, AC_MODE_RELU);
+  Tensor topK_output[2];
+  model->top_k(gate_preds, topK_output, num_select, false);
+  Tensor exp_tensors[num_exp];
+  model->group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
+  for (int i = 0; i < num_exp; i++) {
+    exp_tensors[i]->dims[2] =
+        1; // temporary fix to replica dimension being undefined
+    exp_tensors[i]->print("exp_tensors[i]");
+  }
+  Tensor agg_inputs[num_exp + 4];
+  agg_inputs[0] = model->softmax(topK_output[0]); // gate preds
+  agg_inputs[1] = topK_output[1];                 // gate assign
+  agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
+  agg_inputs[3] = gate_preds;     // full gate preds
+  for (int i = 0; i < num_exp; i++) {
+    Tensor exp_pred =
+        model->dense(exp_tensors[i], moeConfig->hidden_size, AC_MODE_RELU);
+    exp_pred->print("exp_pred");
+    agg_inputs[i + 4] = model->softmax(exp_pred);
+  }
+  for (int i = 0; i < num_exp + 4; i++) {
+    agg_inputs[i]->print("agg_inputs[i]");
+  }
+  Tensor coop_output = model->aggregate(agg_inputs, num_exp, lambda);
+  // model->get_metrics();
+  return coop_output;
+}
+
+Tensor create_moe_encoder(FFModel *model,
+                          MoeConfig const *moeConfig,
+                          Tensor const &input) {
+  std::vector<int> axes = {0, 1};
+  Tensor x = input;
+  for (int i = 0; i < moeConfig->num_encoder_layers; i++) {
+    x = model->layer_norm(
+        model->add(model->multihead_attention(x,
+                                              x,
+                                              x,
+                                              moeConfig->hidden_size,
+                                              moeConfig->num_attention_heads,
+                                              moeConfig->attention_kdim,
+                                              moeConfig->attention_vdim),
+                   x),
+        axes,
+        true,
+        1e-05);
+    x = model->layer_norm(
+        model->add(create_moe(model, moeConfig, x), x), axes, true, 1e-05);
+  }
+  return x;
+}
 
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
@@ -131,36 +194,8 @@ void FlexFlow::top_level_task(Task const *task,
 
   //-----------------------------------------------------------------
 
-  float alpha = 2.0f;   // factor overhead tensor size for imbalance
-  float lambda = 0.04f; // multiplier for load balance term
-
-  // MoE model
-  Tensor gate_preds = ff.dense(input, 64, AC_MODE_RELU);
-  gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_RELU);
-  Tensor topK_output[2];
-  ff.top_k(gate_preds, topK_output, num_select, false);
-  // ff.cache(topK_output[1], TRAIN_SAMPLES / ffConfig.batchSize, moe_score);
-
-  Tensor exp_tensors[num_exp];
-  // printf("num_exp: %i, alpha: %f\n", num_exp);
-  input->print("input_tensor");
-  topK_output[1]->print("topK_output[1]");
-  // exp_tensors->print("exp_tensors");
-  // ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
-
-  // Tensor agg_inputs[num_exp + 4];
-  // agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
-  // agg_inputs[1] = topK_output[1];             // gate assign
-  // agg_inputs[2] = topK_output[1];             // gate assign TopK (for cache)
-  // agg_inputs[3] = gate_preds;                 // full gate preds
-  // for (int i = 0; i < num_exp; i++) {
-  //   Tensor exp_pred = ff.dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
-  //   agg_inputs[i + 4] = ff.softmax(exp_pred);
-  // }
-
-  // Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
-  // ff.get_metrics();
-  // Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
+  Tensor t = create_moe_encoder(&ff, &moeConfig, input);
+  t = ff.dense(t, OUT_DIM, AC_MODE_RELU);
 
   //-----------------------------------------------------------------
 
