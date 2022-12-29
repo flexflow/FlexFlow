@@ -26,8 +26,9 @@ bool operator==(ReduceParams const &lhs, ReduceParams const &rhs) {
 
 bool ReduceParams::is_valid(ParallelTensorShape const &input) const {
   for (size_t i = 0; i < axes.size(); i++) {
-    if (axes[i] >= input.num_dims)
+    if (axes[i] >= input.num_dims) {
       return false;
+    }
   }
   return input.is_valid();
 }
@@ -35,8 +36,9 @@ bool ReduceParams::is_valid(ParallelTensorShape const &input) const {
 ReduceParams Reduce::get_params() const {
   ReduceParams params;
   params.axes.clear();
-  for (int i = 0; i < num_axes; i++)
+  for (int i = 0; i < num_axes; i++) {
     params.axes.push_back(this->axes[i]);
+  }
   params.keepdims = keepdims;
   return params;
 }
@@ -55,22 +57,27 @@ Tensor FFModel::reduce_sum(const Tensor input,
                         input);
   // Use Legion indexing to store axes
   std::vector<int> axes;
-  for (size_t i = 0; i < _axes.size(); i++)
+  for (size_t i = 0; i < _axes.size(); i++) {
     axes.push_back(input->num_dims - 1 - _axes[i]);
+  }
   int dims[MAX_TENSOR_DIM];
   int numdim = input->num_dims;
   if (keepdims) {
-    for (int i = 0; i < input->num_dims; i++)
+    for (int i = 0; i < input->num_dims; i++) {
       dims[i] = input->dims[i];
-    for (size_t i = 0; i < axes.size(); i++)
+    }
+    for (size_t i = 0; i < axes.size(); i++) {
       dims[axes[i]] = 1;
+    }
   } else {
     numdim = 0;
     for (int i = 0; i < input->num_dims; i++) {
       bool reduced = false;
-      for (size_t j = 0; j < axes.size(); j++)
-        if (axes[j] == i)
+      for (size_t j = 0; j < axes.size(); j++) {
+        if (axes[j] == i) {
           reduced = true;
+        }
+      }
       if (!reduced) {
         dims[numdim++] = input->dims[i];
       }
@@ -78,7 +85,7 @@ Tensor FFModel::reduce_sum(const Tensor input,
     assert(numdim + axes.size() == input->num_dims);
   }
   rd->outputs[0] = create_tensor_legion_ordering(
-      numdim, dims, input->data_type, rd, 0, true/*create_grad*/);
+      numdim, dims, input->data_type, rd, 0, true /*create_grad*/);
   rd->add_int_vector_property("legion_axes", axes);
   rd->add_int_property("keepdims", keepdims);
   layers.push_back(rd);
@@ -112,18 +119,21 @@ Reduce::Reduce(FFModel &model,
          OP_REDUCE_SUM,
          input->data_type,
          name,
-         1/*inputs*/,
+         1 /*inputs*/,
          0 /*weights*/,
          1 /*outputs*/,
-         input), num_axes(_axes.size()), keepdims(_keepdims) {
-  for (size_t i = 0; i < num_axes; i++)
+         input),
+      num_axes(_axes.size()), keepdims(_keepdims) {
+  for (size_t i = 0; i < num_axes; i++) {
     axes[i] = _axes[i];
+  }
   int num_dims = input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   if (keepdims) {
     num_dims = input->num_dims;
-    for (int i = 0; i < num_dims; i++)
+    for (int i = 0; i < num_dims; i++) {
       dims[i] = input->dims[i];
+    }
     for (int i = 0; i < num_axes; i++) {
       // Currently assume that we cannot parallelize along reduced dims
       assert(dims[axes[i]].degree == 1);
@@ -134,8 +144,9 @@ Reduce::Reduce(FFModel &model,
     for (int i = 0; i < input->num_dims; i++) {
       bool reduced = false;
       for (int j = 0; j < num_axes; j++) {
-        if (axes[j] == i)
+        if (axes[j] == i) {
           reduced = true;
+        }
       }
       if (!reduced) {
         dims[num_dims++] = input->dims[i];
@@ -186,13 +197,13 @@ OpMeta *Reduce::init_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
-  Reduce *rd = (Reduce*) task->args;
-  FFHandler handle = *((FFHandler*) task->local_args);
+  Reduce *rd = (Reduce *)task->args;
+  FFHandler handle = *((FFHandler *)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       DT_FLOAT, regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  ReduceMeta* m = new ReduceMeta(handle, rd, input.domain);
+  ReduceMeta *m = new ReduceMeta(handle, rd, input.domain);
   return m;
 }
 
@@ -280,8 +291,7 @@ void Reduce::backward_task(Task const *task,
       DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
       DT_FLOAT, regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  Reduce::backward_kernel_wrapper(
-      m, output_grad, input_grad);
+  Reduce::backward_kernel_wrapper(m, output_grad, input_grad);
 }
 
 bool Reduce::measure_operator_cost(Simulator *sim,
@@ -299,7 +309,8 @@ bool Reduce::measure_operator_cost(Simulator *sim,
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   assert(input_ptr != NULL);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-  GenericTensorAccessorR input_acc(inputs[0]->data_type, sub_input.get_domain(), input_ptr);
+  GenericTensorAccessorR input_acc(
+      inputs[0]->data_type, sub_input.get_domain(), input_ptr);
 
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
   assert(output_ptr != NULL);
@@ -310,11 +321,7 @@ bool Reduce::measure_operator_cost(Simulator *sim,
   assert(m->profiling == false);
 
   std::function<void()> forward, backward;
-  forward = [&] {
-    forward_kernel_wrapper(m,
-                           input_acc,
-                           output_acc);
-  };
+  forward = [&] { forward_kernel_wrapper(m, input_acc, output_acc); };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr =
         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -332,9 +339,7 @@ bool Reduce::measure_operator_cost(Simulator *sim,
         outputs[0]->data_type, sub_output.get_domain(), output_grad_ptr);
 
     backward = [&] {
-      backward_kernel_wrapper(m,
-                              output_grad_acc,
-                              input_grad_acc);
+      backward_kernel_wrapper(m, output_grad_acc, input_grad_acc);
     };
   }
 
@@ -358,8 +363,9 @@ bool Reduce::measure_operator_cost(Simulator *sim,
 void Reduce::serialize(Legion::Serializer &sez) const {
   ReduceParams params = get_params();
   sez.serialize(params.axes.size());
-  for (size_t i = 0; i < params.axes.size(); i++)
+  for (size_t i = 0; i < params.axes.size(); i++) {
     sez.serialize(params.axes[i]);
+  }
   sez.serialize(params.keepdims);
 }
 

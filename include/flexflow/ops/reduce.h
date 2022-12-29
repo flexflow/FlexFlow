@@ -11,7 +11,7 @@ class ReduceMeta : public OpMeta {
 public:
   ReduceMeta(FFHandler handler,
              Reduce const *rd,
-             Legion::Domain const& input_domain);
+             Legion::Domain const &input_domain);
   ~ReduceMeta(void);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
@@ -93,4 +93,3 @@ public:
 };
 
 }; // namespace FlexFlow
-

@@ -22,8 +22,9 @@ using Legion::coord_t;
 using Legion::Domain;
 
 ReduceMeta::ReduceMeta(FFHandler handler,
-                       Reduce const* rd,
-                       Domain const& input_domain) : OpMeta(handler) {
+                       Reduce const *rd,
+                       Domain const &input_domain)
+    : OpMeta(handler) {
   checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceDesc));
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
@@ -33,15 +34,13 @@ ReduceMeta::ReduceMeta(FFHandler handler,
                                             CUDNN_PROPAGATE_NAN,
                                             CUDNN_REDUCE_TENSOR_NO_INDICES,
                                             CUDNN_32BIT_INDICES));
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
   Domain output_domain = input_domain;
   for (size_t i = 0; i < rd->num_axes; i++) {
     assert(input_domain.dim > rd->axes[i]);
     output_domain.hi()[rd->axes[i]] = output_domain.lo()[rd->axes[i]];
   }
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromDomain(outputTensor, output_domain));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_domain));
 }
 
 ReduceMeta::~ReduceMeta(void) {
@@ -76,7 +75,8 @@ void Reduce::forward_kernel_wrapper(ReduceMeta const *m,
                                     GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  Reduce::forward_kernel(m, input.get_float_ptr(), output.get_float_ptr(), stream);
+  Reduce::forward_kernel(
+      m, input.get_float_ptr(), output.get_float_ptr(), stream);
 }
 
 void Reduce::backward_kernel(ReduceMeta const *m,
@@ -99,7 +99,8 @@ void Reduce::backward_kernel_wrapper(ReduceMeta const *m,
                                      GenericTensorAccessorW const &input_grad) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  Reduce::backward_kernel(m, output_grad.get_float_ptr(), input_grad.get_float_ptr(), stream);
+  Reduce::backward_kernel(
+      m, output_grad.get_float_ptr(), input_grad.get_float_ptr(), stream);
 }
 
 }; // namespace FlexFlow
