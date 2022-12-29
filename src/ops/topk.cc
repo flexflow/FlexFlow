@@ -63,7 +63,7 @@ void FFModel::top_k(
   {
     int numdims = input->num_dims;
     int dims[MAX_TENSOR_DIM];
-    for (int i = 0; i < numdims; i++){
+    for (int i = 0; i < numdims; i++) {
       dims[i] = input->dims[i];
     }
     dims[0] = k;
@@ -88,11 +88,7 @@ Op *TopK::create_operator_from_layer(
   int k = value;
   layer->get_int_property("sorted", value);
   bool sorted = (bool)value;
-  return new TopK(model,
-                  inputs[0],
-                  k,
-                  sorted,
-                  layer->name);
+  return new TopK(model, inputs[0], k, sorted, layer->name);
 }
 
 TopKParams TopK::get_params() const {

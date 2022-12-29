@@ -42,12 +42,12 @@ Tensor FFModel::aggregate_spec(
     int n,
     float lambda_bal,
     char const *name) {
-  //assert(false);
+  // assert(false);
   Layer *li = new Layer(this,
                         OP_AGG_SPEC,
                         DT_FLOAT,
                         name,
-                        n+4 /*inputs*/,
+                        n + 4 /*inputs*/,
                         0 /*weights*/,
                         1 /*outputs*/,
                         inputs);
@@ -61,10 +61,12 @@ Tensor FFModel::aggregate_spec(
     }
     // Set output shape
     int dims[MAX_TENSOR_DIM];
-    for (int i = 0; i < num_dim - 1; i++)
+    for (int i = 0; i < num_dim - 1; i++) {
       dims[i] = inputs[4]->dims[i];
+    }
     dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
-    li->outputs[0] = create_tensor_legion_ordering(num_dim, dims, DT_FLOAT, li, 0, true /*create_grad*/);
+    li->outputs[0] = create_tensor_legion_ordering(
+        num_dim, dims, DT_FLOAT, li, 0, true /*create_grad*/);
   }
   li->add_int_property("n", n);
   li->add_float_property("lambda_bal", lambda_bal);
@@ -82,11 +84,7 @@ Op *AggregateSpec::create_operator_from_layer(
   float value2;
   layer->get_float_property("lambda_bal", value2);
   float lambda_bal = value2;
-  return new AggregateSpec(model,
-                  inputs.data(),
-                  n,
-                  lambda_bal,
-                  layer->name);
+  return new AggregateSpec(model, inputs.data(), n, lambda_bal, layer->name);
 }
 
 AggregateSpecParams AggregateSpec::get_params() const {
@@ -101,7 +99,8 @@ bool AggregateSpecParams::is_valid(ParallelTensorShape const &) const {
   return true;
 }
 
-bool operator==(AggregateSpecParams const &lhs, AggregateSpecParams const &rhs) {
+bool operator==(AggregateSpecParams const &lhs,
+                AggregateSpecParams const &rhs) {
   return lhs.n == rhs.n && lhs.lambda_bal == rhs.lambda_bal;
 }
 

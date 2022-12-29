@@ -47,13 +47,13 @@ void FFModel::group_by(const Tensor input,
                        int n,
                        float alpha,
                        char const *name) {
-//   assert(false);
-// #ifdef DEADCODE
-//   Group_by *group_by = new Group_by(*this, input, assign, n, alpha, name);
-//   layers.push_back(group_by);
-//   for (int i = 0; i < n; i++)
-//     outputs[i] = group_by->outputs[i];
-// #endif
+  //   assert(false);
+  // #ifdef DEADCODE
+  //   Group_by *group_by = new Group_by(*this, input, assign, n, alpha, name);
+  //   layers.push_back(group_by);
+  //   for (int i = 0; i < n; i++)
+  //     outputs[i] = group_by->outputs[i];
+  // #endif
   Layer *li = new Layer(this,
                         OP_GROUP_BY,
                         DT_FLOAT,
@@ -69,11 +69,10 @@ void FFModel::group_by(const Tensor input,
     int dims[num_dims];
     dims[0] = input->dims[0];
     dims[1] = (int)ceil(alpha * k / n * input->dims[1]);
-    for (int i=0; i<n; i++) {
+    for (int i = 0; i < n; i++) {
       li->outputs[i] = create_tensor_legion_ordering(
-        num_dims, dims, input->data_type, li, 0, true /*create_grad*/);
+          num_dims, dims, input->data_type, li, 0, true /*create_grad*/);
     }
-
   }
   li->add_int_property("n", n);
   li->add_float_property("alpha", alpha);
@@ -136,8 +135,9 @@ Group_by::Group_by(FFModel &model,
       n(_n), alpha(_alpha) {
   _input->print("_input");
   _assign->print("_assign");
-  assert(_input->num_dims == 2+1); // NOTE: Is that a problem if you e.g. want to pass in images
-  assert(_input->num_dims == 2+1);
+  assert(_input->num_dims ==
+         2 + 1); // NOTE: Is that a problem if you e.g. want to pass in images
+  assert(_input->num_dims == 2 + 1);
   assert(_input->dims[1] == _assign->dims[1]);
   assert(n > 0);
 
