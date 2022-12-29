@@ -20,7 +20,7 @@
 #include <stdio.h>
 
 #define MAX_K 4
-#define MAX_BATCH_SIZE 32
+#define MAX_BATCH_SIZE 64
 #define MAX_N 12
 
 namespace FlexFlow {
