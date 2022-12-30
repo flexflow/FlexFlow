@@ -81,7 +81,9 @@ jobs:
           ./tests/python_interface_test.sh flexflow_python
           
           # Run a single-gpu test using the native python interpreter
+          export PYTHONPATH="${FF_HOME}/python:${FF_HOME}/build/python"
           ./tests/python_interface_test.sh python
+          unset PYTHONPATH
 
       - name: Install FlexFlow
         run: |
