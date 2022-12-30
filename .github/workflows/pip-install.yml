@@ -54,6 +54,12 @@ jobs:
           export FF_CUDA_ARCH=70
           pip install . --verbose
 
+      - name: Check pip install folder
+        run: |
+          python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))"
+          folder=$(python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))")
+          ls $folder
+
       - name: Check availability of Python flexflow.core module
         run: |
           export PATH=/opt/conda/bin:$PATH
