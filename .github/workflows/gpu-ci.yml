@@ -74,14 +74,10 @@ jobs:
           export PYTHONPATH="${FF_HOME}/python:${FF_HOME}/build/python:${PYTHONPATH}"
           # Import flexflow.core module in Python
           python -c "import flexflow.core; exit()"
-          # Run test with native Python interpreter
-          export FF_USE_NATIVE_PYTHON=1
-          EXE="python"
-          GPUS=4
-          BATCHSIZE=$((GPUS * 64))
-          FSIZE=14048
-          ZSIZE=12192
-          $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
+          # Run a single-gpu test using the flexflow_python interpreter
+          ./tests/python_interface_test.sh flexflow_python
+          # Run a single-gpu test using the native python interpreter
+          ./tests/python_interface_test.sh python
 
       - name: Install FlexFlow
         run: |
@@ -98,14 +94,12 @@ jobs:
           export FF_HOME=$(pwd)
           # Import flexflow.core module in Python
           python -c "import flexflow.core; exit()"
-          # Run test with native Python interpreter (without PYTHONPATH)
-          export FF_USE_NATIVE_PYTHON=1
-          EXE="python"
-          GPUS=4
-          BATCHSIZE=$((GPUS * 64))
-          FSIZE=14048
-          ZSIZE=12192
-          $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
+          # Import flexflow.core module in Python
+          python -c "import flexflow.core; exit()"
+          # Run a single-gpu test using the flexflow_python interpreter
+          ./tests/python_interface_test.sh flexflow_python
+          # Run a single-gpu test using the native python interpreter
+          ./tests/python_interface_test.sh python
 
       - name: Run multi-gpu tests
         run: |
