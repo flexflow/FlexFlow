@@ -1986,6 +1986,8 @@ void FFModel::deserialize_graph_optimal_view(
         break;
       }
       case OP_EXP:
+      case OP_SIN:
+      case OP_COS:
       case OP_SCALAR_MULTIPLY:
       case OP_SCALAR_FLOOR_DIV:
       case OP_SCALAR_TRUE_DIV:
