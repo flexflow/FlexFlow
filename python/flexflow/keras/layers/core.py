@@ -300,6 +300,11 @@ class Reshape(Layer):
 
 
 class Permute(Layer):
+  """
+  Layer to permute dimensions of the input tensor.
+  
+  Refer: https://keras.io/api/layers/reshaping_layers/permute/
+  """
   def __init__(self, perm, input_shape=None, **kwargs):
     super(Permute, self).__init__('permute', 'Permute', **kwargs)
     self.perm = perm
