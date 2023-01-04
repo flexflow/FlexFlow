@@ -22,8 +22,9 @@ using namespace Legion;
 TensorBase::TensorBase(TensorBase const &rhs) {
   tensor_guid = rhs.tensor_guid;
   num_dims = rhs.num_dims;
-  for (int i = 0; i < num_dims; i++)
+  for (int i = 0; i < num_dims; i++) {
     dims[i] = rhs.dims[i];
+  }
   data_type = rhs.data_type;
   sync_type = rhs.sync_type;
   initializer = rhs.initializer;
@@ -35,20 +36,23 @@ TensorBase::TensorBase(TensorBase const &rhs) {
 
 size_t TensorBase::get_volume() const {
   size_t volume = 1;
-  for (int i = 0; i < num_dims; i++)
+  for (int i = 0; i < num_dims; i++) {
     volume *= dims[i];
+  }
   return volume;
 }
 
 template <typename T>
 bool TensorBase::set_tensor(FFModel const *ff,
                             std::vector<int> const &dim_sizes,
-                            const T *data) {
-  if (num_dims != (int)dim_sizes.size())
+                            T const *data) {
+  if (num_dims != (int)dim_sizes.size()) {
     return false;
+  }
   for (int i = 0; i < num_dims; i++) {
-    if (dims[num_dims - 1 - i] != dim_sizes[i])
+    if (dims[num_dims - 1 - i] != dim_sizes[i]) {
       return false;
+    }
   }
   ParallelTensor ptensor = nullptr;
   ff->get_parallel_tensor_from_tensor(this, ptensor);
@@ -175,8 +179,9 @@ bool ParallelTensorBase::update_parallel_ids(int numdim, ParallelDim *dims) {
 ParallelTensorBase::ParallelTensorBase(ParallelTensorBase const &rhs) {
   parallel_tensor_guid = rhs.parallel_tensor_guid;
   num_dims = rhs.num_dims;
-  for (int i = 0; i < num_dims; i++)
+  for (int i = 0; i < num_dims; i++) {
     dims[i] = rhs.dims[i];
+  }
   machine_view = rhs.machine_view;
   parallel_is = rhs.parallel_is;
   region = rhs.region;
@@ -322,8 +327,9 @@ bool ParallelTensorBase::get_input_sub_tensor(ParallelConfig const &pc,
       break;
     }
     case OP_RESHAPE: {
-      for (int i = 0; i < pc.nDims - 1; i++)
+      for (int i = 0; i < pc.nDims - 1; i++) {
         assert(pc.dim[i] == 1 && "Assuming data parallel for RESHAPE");
+      }
       int batchDim = pc.dim[pc.nDims - 1];
       if (dims[num_dims - 1].size % batchDim != 0) {
         printf("Could not get input subtensor because the dimension is not "
@@ -418,8 +424,9 @@ bool ParallelTensorBase::get_output_sub_tensor(ParallelConfig const &pc,
     }
   }
   tensor.num_dims = num_dims;
-  for (int i = 0; i < num_dims; i++)
+  for (int i = 0; i < num_dims; i++) {
     tensor.dims[i].size = dims[i].size / pc.dim[i];
+  }
   tensor.data_type = data_type;
   return true;
 }
@@ -438,15 +445,17 @@ size_t ParallelTensorBase::get_owner_independent_hash() const {
 
 size_t ParallelTensorBase::get_volume() const {
   size_t volume = 1;
-  for (int i = 0; i < num_dims; i++)
+  for (int i = 0; i < num_dims; i++) {
     volume *= dims[i].size;
+  }
   return volume;
 }
 
 size_t ParallelTensorBase::get_total_num_parts() const {
   size_t parts = 1;
-  for (int i = 0; i < num_dims; i++)
+  for (int i = 0; i < num_dims; i++) {
     parts *= dims[i].degree;
+  }
   return parts;
 }
 
@@ -470,30 +479,38 @@ Domain ParallelTensorBase::get_domain() const {
 
 bool ParallelTensorBase::check_valid() const {
   bool used[MAX_TENSOR_DIM];
-  for (int i = 0; i < MAX_TENSOR_DIM; i++)
+  for (int i = 0; i < MAX_TENSOR_DIM; i++) {
     used[i] = false;
+  }
   for (int i = 0; i < num_dims; i++) {
-    if (dims[i].size < 0)
+    if (dims[i].size < 0) {
       return false;
-    if (dims[i].size % dims[i].degree != 0)
+    }
+    if (dims[i].size % dims[i].degree != 0) {
       return false;
-    if (dims[i].parallel_idx > MAX_TENSOR_DIM)
+    }
+    if (dims[i].parallel_idx > MAX_TENSOR_DIM) {
       return false;
+    }
     assert(dims[i].parallel_idx >= -1);
     assert(dims[i].degree >= 1);
     if (dims[i].parallel_idx >= 0) {
-      if (used[dims[i].parallel_idx])
+      if (used[dims[i].parallel_idx]) {
         return false;
+      }
       used[dims[i].parallel_idx] = true;
     }
   }
   assert(this->data_type != DT_NONE);
   int idx = 0;
-  while (used[idx])
+  while (used[idx]) {
     idx++;
-  for (int i = idx; i < MAX_TENSOR_DIM; i++)
-    if (used[i])
+  }
+  for (int i = idx; i < MAX_TENSOR_DIM; i++) {
+    if (used[i]) {
       return false;
+    }
+  }
   return true;
 }
 
@@ -513,11 +530,13 @@ void ParallelTensorBase::print(std::string const &name) const {
     printf("%d ", dims[i].size);
   }
   printf("] degree[");
-  for (int i = 0; i < num_dims; i++)
+  for (int i = 0; i < num_dims; i++) {
     printf("%d ", dims[i].degree);
+  }
   printf("] parallel_ids[");
-  for (int i = 0; i < num_dims; i++)
+  for (int i = 0; i < num_dims; i++) {
     printf("%d ", dims[i].parallel_idx);
+  }
   printf("]\n");
 }
 
@@ -592,28 +611,33 @@ namespace FlexFlow {
 
 bool ParallelTensorBase::is_valid_machine_view(MachineView const &view) const {
   int is_dim = 0;
-  for (int i = 0; i < num_dims; i++)
+  for (int i = 0; i < num_dims; i++) {
     if (dims[i].parallel_idx != -1) {
       is_dim++;
-      if (dims[i].parallel_idx > view.ndims)
+      if (dims[i].parallel_idx > view.ndims) {
         return false;
-      if (view.dim[dims[i].parallel_idx] != dims[i].degree)
+      }
+      if (view.dim[dims[i].parallel_idx] != dims[i].degree) {
         return false;
+      }
     }
+  }
   if (is_dim == 0) {
     is_dim = 1;
   }
-  if (is_dim != view.ndims)
+  if (is_dim != view.ndims) {
     return false;
-  if (get_total_num_parts() != view.num_parts())
+  }
+  if (get_total_num_parts() != view.num_parts()) {
     return false;
+  }
   return true;
 }
 
 template <typename T>
 bool ParallelTensorBase::set_tensor(FFModel const *ff,
                                     std::vector<int> const &dim_sizes,
-                                    const T *data) {
+                                    T const *data) {
   Context ctx = ff->config.lg_ctx;
   Runtime *runtime = ff->config.lg_hlr;
   // TODO: check data type matches

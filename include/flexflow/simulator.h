@@ -426,11 +426,13 @@ public:
       print_conn_matrix(ConnectionMatrix const &conn, int nnode, int nswitch) {
     int nnwdevs = nnode + nswitch;
     for (int i = 0; i < nnwdevs; i++) {
-      if (i == nnode)
+      if (i == nnode) {
         std::cout << std::endl;
+      }
       for (int j = 0; j < nnwdevs; j++) {
-        if (j == nnode)
+        if (j == nnode) {
           std::cout << "\t";
+        }
         std::cout << conn[i * nnwdevs + j] << "\t";
       }
       std::cout << std::endl;
@@ -487,8 +489,9 @@ public:
   FCTopologyGenerator(int num_nodes) : num_nodes(num_nodes) {}
   virtual ConnectionMatrix generate_topology() const {
     ConnectionMatrix result = ConnectionMatrix(num_nodes * num_nodes, 1);
-    for (int i = 0; i < num_nodes; i++)
+    for (int i = 0; i < num_nodes; i++) {
       result[i + i * num_nodes] = 0;
+    }
     return result;
   }
 

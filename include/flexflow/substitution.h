@@ -75,8 +75,9 @@ struct TensorX {
 
 struct TensorXCompare {
   bool operator()(TensorX const &a, TensorX const &b) const {
-    if (a.op != b.op)
+    if (a.op != b.op) {
       return a.op < b.op;
+    }
     return a.idx < b.idx;
   };
 };

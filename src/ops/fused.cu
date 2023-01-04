@@ -17,18 +17,17 @@
 #include "flexflow/model.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
-#include "flexflow/ops/concat.h"
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
+#include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
-#include "flexflow/ops/linear.h"
-#include "flexflow/ops/pool_2d.h"
-#include "flexflow/ops/reshape.h"
+#include "flexflow/ops/kernels/pool_2d_kernels.h"
+#include "flexflow/ops/kernels/reshape_kernels.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/utils/cuda_helper.h"
 
@@ -120,14 +119,17 @@ __host__ void FusedOp::forward_task(Task const *task,
   }
   // Assert that all meta share the same dnn/blas handler
   int start = 0;
-  for (start = 0; start < fused->numOperators; start++)
-    if (metas->meta[start] != NULL)
+  for (start = 0; start < fused->numOperators; start++) {
+    if (metas->meta[start] != NULL) {
       break;
-  for (int op = start + 1; op < fused->numOperators; op++)
+    }
+  }
+  for (int op = start + 1; op < fused->numOperators; op++) {
     if (metas->meta[op] != NULL) {
       assert(metas->meta[start]->handle.blas == metas->meta[op]->handle.blas);
       assert(metas->meta[start]->handle.dnn == metas->meta[op]->handle.dnn);
     }
+  }
 
   int ioff = 0, woff = 0, ooff = 0;
   for (int op = 0; op < fused->numOperators; op++) {
@@ -145,8 +147,9 @@ __host__ void FusedOp::forward_task(Task const *task,
       } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
         // my_id[i] = output_domain[my_off];
         my_input_accessor[i] = output_accessor[my_off];
-      } else
+      } else {
         assert(false);
+      }
     }
     for (int i = 0; i < fused->op_num_weights[op]; i++) {
       assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
@@ -166,11 +169,11 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         ConcatMeta *m = (ConcatMeta *)metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
-        Concat::forward_kernel_wrapper(m,
-                                       my_output_accessor[0],
-                                       my_input_accessor,
-                                       num_inputs,
-                                       m->legion_axis);
+        Kernels::Concat::forward_kernel_wrapper(m,
+                                                my_output_accessor[0],
+                                                my_input_accessor,
+                                                num_inputs,
+                                                m->legion_axis);
         break;
       }
       case OP_CONV2D: {
@@ -382,9 +385,10 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         Pool2DMeta *m = (Pool2DMeta *)metas->meta[op];
-        Pool2D::forward_kernel_wrapper(m,
-                                       my_input_accessor[0].get_float_ptr(),
-                                       my_output_accessor[0].get_float_ptr());
+        Kernels::Pool2D::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr());
         break;
       }
       case OP_FLAT: {
@@ -404,7 +408,7 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
-        Reshape::forward_kernel_wrapper(
+        Kernels::Reshape::forward_kernel_wrapper(
             my_input_accessor[0].get_float_ptr(),
             my_output_accessor[0].get_float_ptr(),
             my_input_accessor[0].domain.get_volume());
@@ -554,14 +558,17 @@ __host__ void FusedOp::backward_task(Task const *task,
   roff += fused->numOutputs;
   // Assert that all meta share the same dnn/blas handler
   int start = 0;
-  for (start = 0; start < fused->numOperators; start++)
-    if (metas->meta[start] != NULL)
+  for (start = 0; start < fused->numOperators; start++) {
+    if (metas->meta[start] != NULL) {
       break;
-  for (int op = start + 1; op < fused->numOperators; op++)
+    }
+  }
+  for (int op = start + 1; op < fused->numOperators; op++) {
     if (metas->meta[op] != NULL) {
       assert(metas->meta[start]->handle.blas == metas->meta[op]->handle.blas);
       assert(metas->meta[start]->handle.dnn == metas->meta[op]->handle.dnn);
     }
+  }
 
   int ioff = 0, woff = 0, ooff = 0;
   // Domain my_id[MAX_NUM_INPUTS], my_grad_id[MAX_NUM_INPUTS];
@@ -602,8 +609,9 @@ __host__ void FusedOp::backward_task(Task const *task,
         // my_grad_ip[i] = output_grad_ptr[my_off];
         my_input_grad_accessor[i] = output_grad_accessor[my_off];
         assert(my_input_grad_accessor[i].domain == my_input_accessor[i].domain);
-      } else
+      } else {
         assert(false);
+      }
     }
     for (int i = 0; i < fused->op_num_weights[op]; i++) {
       assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
@@ -693,11 +701,11 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         ConcatMeta *m = (ConcatMeta *)metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
-        Concat::backward_kernel_wrapper(m,
-                                        my_output_grad_accessor[0],
-                                        my_input_grad_accessor,
-                                        num_inputs,
-                                        m->legion_axis);
+        Kernels::Concat::backward_kernel_wrapper(m,
+                                                 my_output_grad_accessor[0],
+                                                 my_input_grad_accessor,
+                                                 num_inputs,
+                                                 m->legion_axis);
         break;
       }
       case OP_CONV2D: {
@@ -837,7 +845,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         Pool2DMeta *m = (Pool2DMeta *)metas->meta[op];
-        Pool2D::backward_kernel_wrapper(
+        Kernels::Pool2D::backward_kernel_wrapper(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr(),
@@ -863,7 +871,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_grad_accessor[0].domain.get_volume() ==
                my_output_grad_accessor[0].domain.get_volume());
-        Reshape::backward_kernel_wrapper(
+        Kernels::Reshape::backward_kernel_wrapper(
             my_input_grad_accessor[0].get_float_ptr(),
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].domain.get_volume());

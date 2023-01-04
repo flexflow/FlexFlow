@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binut
 RUN wget -c -q https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
     mv Miniconda3-latest-Linux-x86_64.sh ~/Miniconda3-latest-Linux-x86_64.sh && \
     chmod +x ~/Miniconda3-latest-Linux-x86_64.sh && \
-    ~/Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
+    bash ~/Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda && \
     rm ~/Miniconda3-latest-Linux-x86_64.sh && \
     /opt/conda/bin/conda upgrade --all && \
     /opt/conda/bin/conda install conda-build conda-verify && \

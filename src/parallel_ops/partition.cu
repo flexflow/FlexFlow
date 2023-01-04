@@ -19,7 +19,7 @@
 namespace FlexFlow {
 
 template <typename T>
-void Repartition::forward_kernel(const T *input_ptr,
+void Repartition::forward_kernel(T const *input_ptr,
                                  T *output_ptr,
                                  size_t num_elements) {
   cudaStream_t stream;
@@ -32,7 +32,7 @@ void Repartition::forward_kernel(const T *input_ptr,
 }
 
 template <typename T>
-void Repartition::backward_kernel(const T *output_grad_ptr,
+void Repartition::backward_kernel(T const *output_grad_ptr,
                                   T *input_grad_ptr,
                                   size_t num_elements) {
   cudaStream_t stream;

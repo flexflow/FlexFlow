@@ -20,7 +20,7 @@
 namespace FlexFlow {
 
 template <typename T>
-void Combine::forward_kernel(const T *input_ptr,
+void Combine::forward_kernel(T const *input_ptr,
                              T *output_ptr,
                              size_t num_elements) {
   hipStream_t stream;
@@ -33,7 +33,7 @@ void Combine::forward_kernel(const T *input_ptr,
 }
 
 template <typename T>
-void Combine::backward_kernel(const T *output_grad_ptr,
+void Combine::backward_kernel(T const *output_grad_ptr,
                               T *input_grad_ptr,
                               size_t num_elements) {
   hipStream_t stream;

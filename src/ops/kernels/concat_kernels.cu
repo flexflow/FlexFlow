@@ -13,17 +13,80 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/concat.h"
-#include "flexflow/utils/hash_utils.h"
-#include "flexflow/utils/hip_helper.h"
-#include <hip/hip_runtime.h>
+#include "flexflow/ops/kernels/concat_kernels.h"
+#include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 
 // declare Legion names
 using Legion::coord_t;
-using Legion::Domain;
 using Legion::Rect;
+
+namespace Kernels {
+namespace Concat {
+
+void init_meta(ConcatMeta *m, int legion_axis) {
+  m->legion_axis = legion_axis;
+}
+
+void forward_kernel_wrapper(ConcatMeta const *m,
+                            GenericTensorAccessorW const &output,
+                            GenericTensorAccessorR const *inputs,
+                            int num_inputs,
+                            int axis) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+  Internal::forward_kernel(output, inputs, num_inputs, axis, stream);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    // print_tensor<4, float>(output - output_blk_size, output_rect,
+    // "[Concat:forward:output]"); printf("output_blk_size=%zu\n",
+    // output_blk_size); print_tensor<4, float>(inputs[0], input_rect[0],
+    // "[Concat:forward:input0]"); print_tensor<4, float>(inputs[1],
+    // input_rect[1], "[Concat:forward:input1]");
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    printf("[%s] forward time = %.4f ms\n", m->op_name, elapsed);
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+  }
+}
+
+void backward_kernel_wrapper(ConcatMeta const *m,
+                             GenericTensorAccessorR const &output_grad,
+                             GenericTensorAccessorW const *input_grads,
+                             int num_inputs,
+                             int axis) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+  Internal::backward_kernel(output_grad, input_grads, num_inputs, axis, stream);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    printf("[%s] forward time = %.4f ms\n", m->op_name, elapsed);
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+  }
+}
+
+namespace Internal {
 
 template <int N>
 void calc_blk_size(coord_t &num_blocks,
@@ -33,19 +96,19 @@ void calc_blk_size(coord_t &num_blocks,
   num_blocks = 1;
   blk_size = 1;
   for (int d = 0; d < N; d++) {
-    if (d <= axis)
+    if (d <= axis) {
       blk_size *= (rect.hi[d] - rect.lo[d] + 1);
-    else
+    } else {
       num_blocks *= (rect.hi[d] - rect.lo[d] + 1);
+    }
   }
 }
 
-/*static*/
-void Concat::forward_kernel(GenericTensorAccessorW const &output,
-                            GenericTensorAccessorR const *inputs,
-                            int num_inputs,
-                            int axis,
-                            hipStream_t stream) {
+void forward_kernel(GenericTensorAccessorW const &output,
+                    GenericTensorAccessorR const *inputs,
+                    int num_inputs,
+                    int axis,
+                    cudaStream_t stream) {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
   switch (output.domain.get_dim()) {
@@ -70,58 +133,26 @@ void Concat::forward_kernel(GenericTensorAccessorW const &output,
 
   off_t offset = 0;
   for (int i = 0; i < num_inputs; i++) {
-    hipLaunchKernelGGL(copy_with_stride,
-                       GET_BLOCKS(input_blk_sizes[i] * num_blocks),
+    copy_with_stride<<<GET_BLOCKS(input_blk_sizes[i] * num_blocks),
                        CUDA_NUM_THREADS,
                        0,
-                       stream,
-                       output.get_float_ptr() + offset,
-                       inputs[i].get_float_ptr(),
-                       num_blocks,
-                       output_blk_size,
-                       input_blk_sizes[i]);
+                       stream>>>(output.get_float_ptr() + offset,
+                                 inputs[i].get_float_ptr(),
+                                 num_blocks,
+                                 output_blk_size,
+                                 input_blk_sizes[i]);
+    // printf("output = %x num_blocks=%d output_blk_size=%d
+    // input_blk_size[%d]=%d\n",
+    //        output, num_blocks, output_blk_size, i, input_blk_sizes[i]);
     offset += input_blk_sizes[i];
   }
 }
 
-/*static*/
-void Concat::forward_kernel_wrapper(ConcatMeta const *m,
-                                    GenericTensorAccessorW const &output,
-                                    GenericTensorAccessorR const *inputs,
-                                    int num_inputs,
-                                    int axis) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  hipEvent_t t_start, t_end;
-  if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
-  }
-  Concat::forward_kernel(output, inputs, num_inputs, axis, stream);
-  if (m->profiling) {
-    hipEventRecord(t_end, stream);
-    checkCUDA(hipEventSynchronize(t_end));
-    // print_tensor<4, float>(output - output_blk_size, output_rect,
-    // "[Concat:forward:output]"); printf("output_blk_size=%zu\n",
-    // output_blk_size); print_tensor<4, float>(inputs[0], input_rect[0],
-    // "[Concat:forward:input0]"); print_tensor<4, float>(inputs[1],
-    // input_rect[1], "[Concat:forward:input1]");
-    float elapsed = 0;
-    checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    printf("[%s] forward time = %.4f ms\n", m->op_name, elapsed);
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
-  }
-}
-
-/*static*/
-void Concat::backward_kernel(GenericTensorAccessorR const &output_grad,
-                             GenericTensorAccessorW const *input_grads,
-                             int num_inputs,
-                             int axis,
-                             ffStream_t stream) {
+void backward_kernel(GenericTensorAccessorR const &output_grad,
+                     GenericTensorAccessorW const *input_grads,
+                     int num_inputs,
+                     int axis,
+                     cudaStream_t stream) {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
   switch (output_grad.domain.get_dim()) {
@@ -146,16 +177,14 @@ void Concat::backward_kernel(GenericTensorAccessorR const &output_grad,
 
   off_t offset = 0;
   for (int i = 0; i < num_inputs; i++) {
-    hipLaunchKernelGGL(add_with_stride,
-                       GET_BLOCKS(input_blk_sizes[i] * num_blocks),
-                       CUDA_NUM_THREADS,
-                       0,
-                       stream,
-                       input_grads[i].get_float_ptr(),
-                       output_grad.get_float_ptr() + offset,
-                       num_blocks,
-                       input_blk_sizes[i],
-                       output_blk_size);
+    add_with_stride<<<GET_BLOCKS(input_blk_sizes[i] * num_blocks),
+                      CUDA_NUM_THREADS,
+                      0,
+                      stream>>>(input_grads[i].get_float_ptr(),
+                                output_grad.get_float_ptr() + offset,
+                                num_blocks,
+                                input_blk_sizes[i],
+                                output_blk_size);
     offset += input_blk_sizes[i];
   }
 
@@ -166,31 +195,7 @@ void Concat::backward_kernel(GenericTensorAccessorR const &output_grad,
   // float>(input_grads[0], input_rect, "[Concat:backward:input0]");
 }
 
-/*static*/
-void Concat::backward_kernel_wrapper(ConcatMeta const *m,
-                                     GenericTensorAccessorR const &output_grad,
-                                     GenericTensorAccessorW const *input_grads,
-                                     int num_inputs,
-                                     int axis) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  hipEvent_t t_start, t_end;
-  if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
-  }
-  Concat::backward_kernel(output_grad, input_grads, num_inputs, axis, stream);
-  if (m->profiling) {
-    hipEventRecord(t_end, stream);
-    checkCUDA(hipEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    printf("[%s] forward time = %.4f ms\n", m->op_name, elapsed);
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
-  }
-}
-
-}; // namespace FlexFlow
+} // namespace Internal
+} // namespace Concat
+} // namespace Kernels
+} // namespace FlexFlow

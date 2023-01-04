@@ -365,6 +365,10 @@ public:
                         float const scalar,
                         bool inplace = true,
                         char const *name = NULL);
+  // Add a sin layer
+  Tensor sin(const Tensor x, char const *name = NULL);
+  // Add a cos layer
+  Tensor cos(const Tensor x, char const *name = NULL);
   // Add an activation layer
   Tensor relu(const Tensor x, bool inplace = true, char const *name = NULL);
   Tensor identity(const Tensor x, char const *name = NULL);

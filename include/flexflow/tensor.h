@@ -52,7 +52,7 @@ struct TensorBase {
   template <typename T>
   bool set_tensor(FFModel const *model,
                   std::vector<int> const &dims,
-                  const T *data);
+                  T const *data);
   template <typename T>
   bool get_tensor(FFModel const *model, T *data, bool get_gradients);
   // TensorShape get_shape() const;
