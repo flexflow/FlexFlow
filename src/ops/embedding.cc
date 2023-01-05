@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/ops/embedding.h"
-#include "flexflow/ops/kernels/embedding_kernels.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/embedding_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -534,14 +534,14 @@ void Embedding::forward_task_with_type(
   }
 
   forward_kernel_wrapper<TI>(m,
-                                        input_ptr,
-                                        output_ptr,
-                                        kernel_ptr,
-                                        in_dim,
-                                        out_dim,
-                                        effective_batch_size,
-                                        m->aggr,
-                                        output_domain.get_volume());
+                             input_ptr,
+                             output_ptr,
+                             kernel_ptr,
+                             in_dim,
+                             out_dim,
+                             effective_batch_size,
+                             m->aggr,
+                             output_domain.get_volume());
 }
 #endif
 
@@ -631,12 +631,12 @@ void Embedding::backward_task(Task const *task,
     assert(effective_batch_size * in_dim == input.domain.get_volume());
   }
   backward_kernel_wrapper(m,
-                                     input,
-                                     output_grad,
-                                     kernel_grad,
-                                     in_dim,
-                                     out_dim,
-                                     effective_batch_size);
+                          input,
+                          output_grad,
+                          kernel_grad,
+                          in_dim,
+                          out_dim,
+                          effective_batch_size);
 }
 
 #ifdef DEADCODE
@@ -695,14 +695,14 @@ void Embedding::backward_task_with_type(
     assert(effective_batch_size * in_dim == input_domain.get_volume());
   }
   backward_kernel_wrapper<TI>(m,
-                                         input_ptr,
-                                         output_grad_ptr,
-                                         kernel_grad_ptr,
-                                         in_dim,
-                                         out_dim,
-                                         effective_batch_size,
-                                         m->aggr,
-                                         output_grad_domain.get_volume());
+                              input_ptr,
+                              output_grad_ptr,
+                              kernel_grad_ptr,
+                              in_dim,
+                              out_dim,
+                              effective_batch_size,
+                              m->aggr,
+                              output_grad_domain.get_volume());
 }
 #endif
 

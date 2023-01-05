@@ -32,79 +32,79 @@ namespace Embedding {
 
 /*static*/
 void forward_kernel_wrapper(EmbeddingMeta const *m,
-                                       GenericTensorAccessorR const &input,
-                                       GenericTensorAccessorW const &output,
-                                       GenericTensorAccessorR const &weight,
-                                       int in_dim,
-                                       int out_dim,
-                                       int batch_size) {
+                            GenericTensorAccessorR const &input,
+                            GenericTensorAccessorW const &output,
+                            GenericTensorAccessorR const &weight,
+                            int in_dim,
+                            int out_dim,
+                            int batch_size) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   if (input.data_type == DT_INT32) {
     if (weight.data_type == DT_HALF) {
       Internal::forward_kernel(input.get_int32_ptr(),
-                                output.get_half_ptr(),
-                                weight.get_half_ptr(),
-                                in_dim,
-                                out_dim,
-                                batch_size,
-                                m->aggr,
-                                output.domain.get_volume(),
-                                stream);
+                               output.get_half_ptr(),
+                               weight.get_half_ptr(),
+                               in_dim,
+                               out_dim,
+                               batch_size,
+                               m->aggr,
+                               output.domain.get_volume(),
+                               stream);
     } else if (weight.data_type == DT_FLOAT) {
       Internal::forward_kernel(input.get_int32_ptr(),
-                                output.get_float_ptr(),
-                                weight.get_float_ptr(),
-                                in_dim,
-                                out_dim,
-                                batch_size,
-                                m->aggr,
-                                output.domain.get_volume(),
-                                stream);
+                               output.get_float_ptr(),
+                               weight.get_float_ptr(),
+                               in_dim,
+                               out_dim,
+                               batch_size,
+                               m->aggr,
+                               output.domain.get_volume(),
+                               stream);
     } else if (weight.data_type == DT_HALF) {
       Internal::forward_kernel(input.get_int32_ptr(),
-                                output.get_double_ptr(),
-                                weight.get_double_ptr(),
-                                in_dim,
-                                out_dim,
-                                batch_size,
-                                m->aggr,
-                                output.domain.get_volume(),
-                                stream);
+                               output.get_double_ptr(),
+                               weight.get_double_ptr(),
+                               in_dim,
+                               out_dim,
+                               batch_size,
+                               m->aggr,
+                               output.domain.get_volume(),
+                               stream);
     } else {
       assert(false && "Unsupported DataType in Embedding");
     }
   } else if (input.data_type == DT_INT64) {
     if (weight.data_type == DT_HALF) {
       Internal::forward_kernel(input.get_int64_ptr(),
-                                output.get_half_ptr(),
-                                weight.get_half_ptr(),
-                                in_dim,
-                                out_dim,
-                                batch_size,
-                                m->aggr,
-                                output.domain.get_volume(),
-                                stream);
+                               output.get_half_ptr(),
+                               weight.get_half_ptr(),
+                               in_dim,
+                               out_dim,
+                               batch_size,
+                               m->aggr,
+                               output.domain.get_volume(),
+                               stream);
     } else if (weight.data_type == DT_FLOAT) {
       Internal::forward_kernel(input.get_int64_ptr(),
-                                output.get_float_ptr(),
-                                weight.get_float_ptr(),
-                                in_dim,
-                                out_dim,
-                                batch_size,
-                                m->aggr,
-                                output.domain.get_volume(),
-                                stream);
+                               output.get_float_ptr(),
+                               weight.get_float_ptr(),
+                               in_dim,
+                               out_dim,
+                               batch_size,
+                               m->aggr,
+                               output.domain.get_volume(),
+                               stream);
     } else if (weight.data_type == DT_DOUBLE) {
       Internal::forward_kernel(input.get_int64_ptr(),
-                                output.get_double_ptr(),
-                                weight.get_double_ptr(),
-                                in_dim,
-                                out_dim,
-                                batch_size,
-                                m->aggr,
-                                output.domain.get_volume(),
-                                stream);
+                               output.get_double_ptr(),
+                               weight.get_double_ptr(),
+                               in_dim,
+                               out_dim,
+                               batch_size,
+                               m->aggr,
+                               output.domain.get_volume(),
+                               stream);
     } else {
       assert(false && "Unsupported DataType in Embedding");
     }
@@ -123,81 +123,80 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
 }
 
 /*static*/
-void backward_kernel_wrapper(
-    EmbeddingMeta const *m,
-    GenericTensorAccessorR const &input,
-    GenericTensorAccessorR const &output,
-    GenericTensorAccessorW const &weight_grad,
-    int in_dim,
-    int out_dim,
-    int batch_size) {
+void backward_kernel_wrapper(EmbeddingMeta const *m,
+                             GenericTensorAccessorR const &input,
+                             GenericTensorAccessorR const &output,
+                             GenericTensorAccessorW const &weight_grad,
+                             int in_dim,
+                             int out_dim,
+                             int batch_size) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   if (m->input_type[0] == DT_INT32) {
     if (m->output_type[0] == DT_HALF) {
       Internal::backward_kernel(input.get_int32_ptr(),
-                                 output.get_half_ptr(),
-                                 weight_grad.get_half_ptr(),
-                                 in_dim,
-                                 out_dim,
-                                 batch_size,
-                                 m->aggr,
-                                 output.domain.get_volume(),
-                                 stream);
+                                output.get_half_ptr(),
+                                weight_grad.get_half_ptr(),
+                                in_dim,
+                                out_dim,
+                                batch_size,
+                                m->aggr,
+                                output.domain.get_volume(),
+                                stream);
     } else if (m->output_type[0] == DT_FLOAT) {
       Internal::backward_kernel(input.get_int32_ptr(),
-                                 output.get_float_ptr(),
-                                 weight_grad.get_float_ptr(),
-                                 in_dim,
-                                 out_dim,
-                                 batch_size,
-                                 m->aggr,
-                                 output.domain.get_volume(),
-                                 stream);
+                                output.get_float_ptr(),
+                                weight_grad.get_float_ptr(),
+                                in_dim,
+                                out_dim,
+                                batch_size,
+                                m->aggr,
+                                output.domain.get_volume(),
+                                stream);
     } else if (m->output_type[0] == DT_DOUBLE) {
       Internal::backward_kernel(input.get_int32_ptr(),
-                                 output.get_double_ptr(),
-                                 weight_grad.get_double_ptr(),
-                                 in_dim,
-                                 out_dim,
-                                 batch_size,
-                                 m->aggr,
-                                 output.domain.get_volume(),
-                                 stream);
+                                output.get_double_ptr(),
+                                weight_grad.get_double_ptr(),
+                                in_dim,
+                                out_dim,
+                                batch_size,
+                                m->aggr,
+                                output.domain.get_volume(),
+                                stream);
     } else {
       assert(false && "Unsupported DataType in Embedding");
     }
   } else if (m->input_type[0] == DT_INT64) {
     if (m->output_type[0] == DT_HALF) {
       Internal::backward_kernel(input.get_int64_ptr(),
-                                 output.get_half_ptr(),
-                                 weight_grad.get_half_ptr(),
-                                 in_dim,
-                                 out_dim,
-                                 batch_size,
-                                 m->aggr,
-                                 output.domain.get_volume(),
-                                 stream);
+                                output.get_half_ptr(),
+                                weight_grad.get_half_ptr(),
+                                in_dim,
+                                out_dim,
+                                batch_size,
+                                m->aggr,
+                                output.domain.get_volume(),
+                                stream);
     } else if (m->output_type[0] == DT_FLOAT) {
       Internal::backward_kernel(input.get_int64_ptr(),
-                                 output.get_float_ptr(),
-                                 weight_grad.get_float_ptr(),
-                                 in_dim,
-                                 out_dim,
-                                 batch_size,
-                                 m->aggr,
-                                 output.domain.get_volume(),
-                                 stream);
+                                output.get_float_ptr(),
+                                weight_grad.get_float_ptr(),
+                                in_dim,
+                                out_dim,
+                                batch_size,
+                                m->aggr,
+                                output.domain.get_volume(),
+                                stream);
     } else if (m->output_type[0] == DT_DOUBLE) {
       Internal::backward_kernel(input.get_int64_ptr(),
-                                 output.get_double_ptr(),
-                                 weight_grad.get_double_ptr(),
-                                 in_dim,
-                                 out_dim,
-                                 batch_size,
-                                 m->aggr,
-                                 output.domain.get_volume(),
-                                 stream);
+                                output.get_double_ptr(),
+                                weight_grad.get_double_ptr(),
+                                in_dim,
+                                out_dim,
+                                batch_size,
+                                m->aggr,
+                                output.domain.get_volume(),
+                                stream);
     } else {
       assert(false && "Unsupported DataType in Embedding");
     }
@@ -213,9 +212,7 @@ void backward_kernel_wrapper(
   }
 }
 
-void rand_generate_int64_wrapper(int64_t *ptr,
-                                            size_t size,
-                                            int64_t p) const {
+void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p) const {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   // Randomly initialize the intput tensor to avoid out of index range issues
@@ -229,9 +226,7 @@ void rand_generate_int64_wrapper(int64_t *ptr,
                      p);
 }
 
-void rand_generate_int32_wrapper(int32_t *ptr,
-                                            size_t size,
-                                            int32_t p) const {
+void rand_generate_int32_wrapper(int32_t *ptr, size_t size, int32_t p) const {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   // Randomly initialize the intput tensor to avoid out of index range issues
@@ -435,14 +430,14 @@ __global__ void embed_backward_with_aggr<int64_t, half>(int64_t const *input,
 /*static*/
 template <typename TI, typename TD>
 void forward_kernel(TI const *input_ptr,
-                               TD *output_ptr,
-                               TD const *weight_ptr,
-                               int in_dim,
-                               int out_dim,
-                               int batch_size,
-                               AggrMode aggr,
-                               int outputSize,
-                               hipStream_t stream) {
+                    TD *output_ptr,
+                    TD const *weight_ptr,
+                    int in_dim,
+                    int out_dim,
+                    int batch_size,
+                    AggrMode aggr,
+                    int outputSize,
+                    hipStream_t stream) {
   assert(input_ptr != nullptr);
   assert(output_ptr != nullptr);
   assert(weight_ptr != nullptr);
@@ -474,19 +469,17 @@ void forward_kernel(TI const *input_ptr,
   }
 }
 
-
-
 /*static*/
 template <typename TI, typename TD>
 void backward_kernel(TI const *input_ptr,
-                                TD const *output_ptr,
-                                TD *weight_grad_ptr,
-                                int in_dim,
-                                int out_dim,
-                                int batch_size,
-                                AggrMode aggr,
-                                int outputSize,
-                                hipStream_t stream) {
+                     TD const *output_ptr,
+                     TD *weight_grad_ptr,
+                     int in_dim,
+                     int out_dim,
+                     int batch_size,
+                     AggrMode aggr,
+                     int outputSize,
+                     hipStream_t stream) {
   assert(input_ptr != nullptr);
   assert(output_ptr != nullptr);
   assert(weight_grad_ptr != nullptr);
@@ -525,47 +518,43 @@ __global__ void rand_generate_int(TD *ptr, size_t size, TD p) {
 }
 
 #ifdef DEADCODE
-template void
-    forward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
-                                               int32_t const *input_ptr,
-                                               float *output_ptr,
-                                               float const *weight_ptr,
-                                               int in_dim,
-                                               int out_dim,
-                                               int batch_size,
-                                               AggrMode aggr,
-                                               int outputSize);
-template void
-    forward_kernel_wrapper<int64_t>(EmbeddingMeta const *m,
-                                               int64_t const *input_ptr,
-                                               float *output_ptr,
-                                               float const *weight_ptr,
-                                               int in_dim,
-                                               int out_dim,
-                                               int batch_size,
-                                               AggrMode aggr,
-                                               int outputSize);
+template void forward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
+                                              int32_t const *input_ptr,
+                                              float *output_ptr,
+                                              float const *weight_ptr,
+                                              int in_dim,
+                                              int out_dim,
+                                              int batch_size,
+                                              AggrMode aggr,
+                                              int outputSize);
+template void forward_kernel_wrapper<int64_t>(EmbeddingMeta const *m,
+                                              int64_t const *input_ptr,
+                                              float *output_ptr,
+                                              float const *weight_ptr,
+                                              int in_dim,
+                                              int out_dim,
+                                              int batch_size,
+                                              AggrMode aggr,
+                                              int outputSize);
 
-template void
-    backward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
-                                                int32_t const *input_ptr,
-                                                float const *output_ptr,
-                                                float *weight_grad_ptr,
-                                                int in_dim,
-                                                int out_dim,
-                                                int batch_size,
-                                                AggrMode aggr,
-                                                int outputSize);
-template void
-    backward_kernel_wrapper<int64_t>(EmbeddingMeta const *m,
-                                                int64_t const *input_ptr,
-                                                float const *output_ptr,
-                                                float *weight_grad_ptr,
-                                                int in_dim,
-                                                int out_dim,
-                                                int batch_size,
-                                                AggrMode aggr,
-                                                int outputSize);
+template void backward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
+                                               int32_t const *input_ptr,
+                                               float const *output_ptr,
+                                               float *weight_grad_ptr,
+                                               int in_dim,
+                                               int out_dim,
+                                               int batch_size,
+                                               AggrMode aggr,
+                                               int outputSize);
+template void backward_kernel_wrapper<int64_t>(EmbeddingMeta const *m,
+                                               int64_t const *input_ptr,
+                                               float const *output_ptr,
+                                               float *weight_grad_ptr,
+                                               int in_dim,
+                                               int out_dim,
+                                               int batch_size,
+                                               AggrMode aggr,
+                                               int outputSize);
 #endif
 } // namespace Internal
 } // namespace Embedding
