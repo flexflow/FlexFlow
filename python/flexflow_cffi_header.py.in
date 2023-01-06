@@ -50,7 +50,7 @@ if flexflow_python_interpreter() == "native":
         ld_lib_path = os.environ.get("LD_LIBRARY_PATH") or ""
         # If the library exists at the ff_lib_path, rerun with the ff_lib_path in the LD_LIBRARY_PATH
         if os.path.exists(
-            os.path.join(ff_lib_path), libname
+            os.path.join(ff_lib_path, libname)
         ) and ff_lib_path not in ld_lib_path.split(":"):
             os.environ["LD_LIBRARY_PATH"] = ff_lib_path + ":" + ld_lib_path
             os.execv(sys.executable, ["python"] + sys.argv)
