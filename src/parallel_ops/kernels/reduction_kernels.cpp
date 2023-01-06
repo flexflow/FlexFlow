@@ -13,13 +13,16 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/reduction.h"
-#include "flexflow/utils/cuda_helper.h"
+#include "flexflow/parallel_ops/kernels/reduction_kernels.h"
+#include "flexflow/utils/hip_helper.h"
+#include <hip/hip_runtime.h>
 
 namespace FlexFlow {
+namespace Kernels {
+namespace Reduction {
 
 template <typename T>
-__global__ void reduction_forward_kernel(T const *input_ptr,
+void reduction_forward_kernel(T const *input_ptr,
                                          T *output_ptr,
                                          size_t num_elements,
                                          size_t num_replicas) {
@@ -32,41 +35,48 @@ __global__ void reduction_forward_kernel(T const *input_ptr,
 }
 
 template <typename T>
-void Reduction::forward_kernel(T const *input_ptr,
+void forward_kernel(T const *input_ptr,
                                T *output_ptr,
                                size_t num_elements,
                                size_t num_replicas) {
-  cudaStream_t stream;
+  hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   size_t total_elements = num_elements * num_replicas;
-  reduction_forward_kernel<T>
-      <<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS, 0, stream>>>(
-          input_ptr, output_ptr, num_elements, num_replicas);
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(reduction_forward_kernel<T>),
+                     GET_BLOCKS(total_elements),
+                     CUDA_NUM_THREADS,
+                     0,
+                     stream,
+                     input_ptr,
+                     output_ptr,
+                     num_elements,
+                     num_replicas);
 }
 
 template <typename T>
-void Reduction::backward_kernel(T const *output_grad_ptr,
+void backward_kernel(T const *output_grad_ptr,
                                 T *input_grad_ptr,
                                 size_t num_elements) {
-  cudaStream_t stream;
+  hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  checkCUDA(cudaMemcpyAsync(input_grad_ptr,
-                            output_grad_ptr,
-                            num_elements * sizeof(T),
-                            cudaMemcpyDeviceToDevice,
-                            stream));
+  checkCUDA(hipMemcpyAsync(input_grad_ptr,
+                           output_grad_ptr,
+                           num_elements * sizeof(T),
+                           hipMemcpyDeviceToDevice,
+                           stream));
 }
 
-template __global__ void reduction_forward_kernel<float>(float const *input_ptr,
+template void reduction_forward_kernel<float>(float const *input_ptr,
                                                          float *output_ptr,
                                                          size_t num_elements,
                                                          size_t num_replicas);
-template void Reduction::forward_kernel<float>(float const *input_ptr,
+template void forward_kernel<float>(float const *input_ptr,
                                                float *output_ptr,
                                                size_t num_elements,
                                                size_t num_replicas);
-template void Reduction::backward_kernel<float>(float const *output_grad_ptr,
+template void backward_kernel<float>(float const *output_grad_ptr,
                                                 float *input_grad_ptr,
                                                 size_t num_elements);
-
-}; // namespace FlexFlow
+} // namespace Reduction
+} // namespace Kernels
+} // namespace FlexFlow
