@@ -33,10 +33,10 @@ void forward_kernel(T const *input_ptr, T *output_ptr, size_t num_elements) {
 }
 
 template <typename T>
-void replicate_backward_kernel(T const *input_ptr,
-                               T *output_ptr,
-                               size_t num_elements,
-                               size_t num_replicas) {
+__global__ void replicate_backward_kernel(T const *input_ptr,
+                                          T *output_ptr,
+                                          size_t num_elements,
+                                          size_t num_replicas) {
   CUDA_KERNEL_LOOP(i, num_elements) {
     for (size_t j = 0; j < num_replicas; j++) {
       output_ptr[i] += input_ptr[i + j * num_elements];
@@ -66,10 +66,11 @@ void backward_kernel(T const *output_grad_ptr,
 template void forward_kernel<float>(float const *input_ptr,
                                     float *output_ptr,
                                     size_t num_elements);
-template void replicate_backward_kernel<float>(float const *input_ptr,
-                                               float *output_ptr,
-                                               size_t num_elements,
-                                               size_t num_replicas);
+template __global__ void
+    replicate_backward_kernel<float>(float const *input_ptr,
+                                     float *output_ptr,
+                                     size_t num_elements,
+                                     size_t num_replicas);
 template void backward_kernel<float>(float const *output_grad_ptr,
                                      float *input_grad_ptr,
                                      size_t num_elements,

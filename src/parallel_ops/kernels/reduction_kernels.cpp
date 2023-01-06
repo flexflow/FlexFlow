@@ -22,10 +22,10 @@ namespace Kernels {
 namespace Reduction {
 
 template <typename T>
-void reduction_forward_kernel(T const *input_ptr,
-                              T *output_ptr,
-                              size_t num_elements,
-                              size_t num_replicas) {
+__global__ void reduction_forward_kernel(T const *input_ptr,
+                                         T *output_ptr,
+                                         size_t num_elements,
+                                         size_t num_replicas) {
   CUDA_KERNEL_LOOP(i, num_elements) {
     output_ptr[i] = input_ptr[i];
     for (size_t j = 1; j < num_replicas; j++) {
@@ -66,10 +66,10 @@ void backward_kernel(T const *output_grad_ptr,
                            stream));
 }
 
-template void reduction_forward_kernel<float>(float const *input_ptr,
-                                              float *output_ptr,
-                                              size_t num_elements,
-                                              size_t num_replicas);
+template __global__ void reduction_forward_kernel<float>(float const *input_ptr,
+                                                         float *output_ptr,
+                                                         size_t num_elements,
+                                                         size_t num_replicas);
 template void forward_kernel<float>(float const *input_ptr,
                                     float *output_ptr,
                                     size_t num_elements,
