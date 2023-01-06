@@ -48,8 +48,8 @@ void forward_kernel_wrapper(CastMeta const *m,
     hipEventDestroy(t_start);
     hipEventDestroy(t_end);
     printf("[%s] forward time (CF) = %.2fms\n", "Cast", elapsed);
-    print_tensor<IDT>(input_ptr, 32, "[Cast:forward:input]");
-    print_tensor<ODT>(output_ptr, 32, "[Cast:forward:output]");
+    // print_tensor<IDT>(input_ptr, 32, "[Cast:forward:input]");
+    // print_tensor<ODT>(output_ptr, 32, "[Cast:forward:output]");
   }
 }
 
