@@ -21,7 +21,7 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import cffi, os
+import cffi, os, sys
 
 from flexflow.config import flexflow_python_interpreter
 
