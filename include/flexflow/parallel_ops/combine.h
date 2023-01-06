@@ -12,12 +12,6 @@
 
 namespace FlexFlow {
 
-class CombineMeta : public OpMeta {
-public:
-  CombineMeta(FFHandler handle);
-  DataType data_type;
-};
-
 class Combine : public ParallelOp {
 public:
   using Params = CombineParams;
@@ -63,13 +57,6 @@ public:
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
-  template <typename T>
-  static void
-      forward_kernel(T const *input_ptr, T *output_ptr, size_t num_elements);
-  template <typename T>
-  static void backward_kernel(T const *output_grad_ptr,
-                              T *input_grad_ptr,
-                              size_t num_elements);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;

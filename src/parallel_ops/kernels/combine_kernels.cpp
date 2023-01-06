@@ -13,59 +13,72 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/combine.h"
-#include "flexflow/utils/cuda_helper.h"
+#include "flexflow/parallel_ops/kernels/combine_kernels.h"
+#include "flexflow/utils/hip_helper.h"
+#include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
-template <typename T>
-void Combine::forward_kernel(T const *input_ptr,
-                             T *output_ptr,
-                             size_t num_elements) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  checkCUDA(cudaMemcpyAsync(output_ptr,
-                            input_ptr,
-                            num_elements * sizeof(T),
-                            cudaMemcpyDeviceToDevice,
-                            stream));
-}
-
-template <typename T>
-void Combine::backward_kernel(T const *output_grad_ptr,
-                              T *input_grad_ptr,
-                              size_t num_elements) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  add_kernel<T><<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
-      input_grad_ptr, output_grad_ptr, num_elements);
-}
-
 CombineMeta::CombineMeta(FFHandler handler) : OpMeta(handler) {}
 
-template void Combine::forward_kernel<float>(float const *input_ptr,
+namespace Kernels {
+namespace Combine {
+
+template <typename T>
+void forward_kernel(T const *input_ptr,
+                             T *output_ptr,
+                             size_t num_elements) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  checkCUDA(hipMemcpyAsync(output_ptr,
+                           input_ptr,
+                           num_elements * sizeof(T),
+                           hipMemcpyDeviceToDevice,
+                           stream));
+}
+
+template <typename T>
+void backward_kernel(T const *output_grad_ptr,
+                              T *input_grad_ptr,
+                              size_t num_elements) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(add_kernel<T>),
+                     GET_BLOCKS(num_elements),
+                     CUDA_NUM_THREADS,
+                     0,
+                     stream,
+                     input_grad_ptr,
+                     output_grad_ptr,
+                     num_elements);
+}
+
+template void forward_kernel<float>(float const *input_ptr,
                                              float *output_ptr,
                                              size_t num_elements);
-template void Combine::forward_kernel<double>(double const *input_ptr,
+template void forward_kernel<double>(double const *input_ptr,
                                               double *output_ptr,
                                               size_t num_elements);
-template void Combine::forward_kernel<int32_t>(int32_t const *input_ptr,
+template void forward_kernel<int32_t>(int32_t const *input_ptr,
                                                int32_t *output_ptr,
                                                size_t num_elements);
-template void Combine::forward_kernel<int64_t>(int64_t const *input_ptr,
+template void forward_kernel<int64_t>(int64_t const *input_ptr,
                                                int64_t *output_ptr,
                                                size_t num_elements);
-template void Combine::backward_kernel<float>(float const *output_grad_ptr,
+template void backward_kernel<float>(float const *output_grad_ptr,
                                               float *input_grad_ptr,
                                               size_t num_elements);
-template void Combine::backward_kernel<double>(double const *output_grad_ptr,
+template void backward_kernel<double>(double const *output_grad_ptr,
                                                double *input_grad_ptr,
                                                size_t num_elements);
-template void Combine::backward_kernel<int32_t>(int32_t const *output_grad_ptr,
+template void backward_kernel<int32_t>(int32_t const *output_grad_ptr,
                                                 int32_t *input_grad_ptr,
                                                 size_t num_elements);
-template void Combine::backward_kernel<int64_t>(int64_t const *output_grad_ptr,
+template void backward_kernel<int64_t>(int64_t const *output_grad_ptr,
                                                 int64_t *input_grad_ptr,
                                                 size_t num_elements);
 
-}; // namespace FlexFlow
+
+} // namespace Combine
+} // namespace Kernels
+} // namespace FlexFlow
