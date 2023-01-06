@@ -91,7 +91,7 @@ jobs:
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests
     runs-on: self-hosted
-    needs: python-interface-check
+    needs: gpu-ci-concierge
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
       options: --gpus all --shm-size=8192m
