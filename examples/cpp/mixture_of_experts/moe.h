@@ -46,9 +46,9 @@ struct MoeConfig {
 class DataLoader {
 public:
   DataLoader(FFModel &ff,
-             MoeConfig const &alexnet,
-             Tensor _input,
-             Tensor _label);
+             MoeConfig const &moe,
+             ParallelTensor input,
+             ParallelTensor label);
   static void load_input(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
                          Context ctx,
@@ -66,8 +66,8 @@ public:
 
 public:
   int num_samples, next_index;
-  Tensor full_input, batch_input;
-  Tensor full_label, batch_label;
+  FlexFlow::ParallelTensor full_input, batch_input;
+  FlexFlow::ParallelTensor full_label, batch_label;
 };
 
 struct SampleIdxs {

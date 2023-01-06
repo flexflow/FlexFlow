@@ -206,7 +206,10 @@ void FlexFlow::top_level_task(Task const *task,
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
 
   // Data Loader
-  DataLoader data_loader(ff, moeConfig, input, ff.label_tensor);
+  ParallelTensor input_pt, label_pt;
+  ff.get_parallel_tensor_from_tensor(input, input_pt);
+  ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
+  DataLoader data_loader(ff, moeConfig, input_pt, label_pt);
   // RecompileState r(&moe_trigger, &moe_alter, &ff);
   ff.init_operators();
   // Start timer
@@ -260,8 +263,8 @@ void FlexFlow::top_level_task(Task const *task,
 
 DataLoader::DataLoader(FFModel &ff,
                        MoeConfig const &moe,
-                       Tensor input,
-                       Tensor label) {
+                       ParallelTensor input,
+                       ParallelTensor label) {
   num_samples = NUM_SAMPLES;
 
   Context ctx = ff.config.lg_ctx;
@@ -270,36 +273,59 @@ DataLoader::DataLoader(FFModel &ff,
   // Create full input
   {
     batch_input = input;
-    int const dims[] = {NUM_SAMPLES, DATA_DIMS};
-    full_input = ff.create_tensor<2>(dims, DT_FLOAT);
+    // int const dims[] = {NUM_SAMPLES, DATA_DIMS};
+    assert(input->num_dims == 2 + 1); // two dimensions + the replica dimension
+    batch_input = input;
+    ParallelDim dims[2 + 1];
+    for (int i = 0; i < 3; i++) {
+      dims[i].size = input->dims[i].size;
+      dims[i].degree = 1;
+      dims[i].parallel_idx = -1;
+      dims[i].is_replica_dim = input->dims[i].is_replica_dim;
+      // Assume only the first dim can be the replica dim
+      assert(i == 2 || (!dims[i].is_replica_dim));
+    }
+    dims[1].size = num_samples;
+    // full_input = ff.create_tensor<2>(dims, DT_FLOAT);
+    full_input = ff.create_parallel_tensor_legion_ordering(3, dims, DT_FLOAT);
+    ff.map_tensor(full_input, NULL /*parallel_op*/);
   }
   // Create full label
-  {
-    batch_label = label;
-    int const dims[] = {NUM_SAMPLES, 1};
-    full_label = ff.create_tensor<2>(dims, DT_INT32);
+  assert(label->num_dims == 3);
+  batch_label = label;
+  ParallelDim dims[3];
+  for (int i = 0; i < 3; i++) {
+    dims[i].size = label->dims[i].size;
+    dims[i].degree = 1;
+    dims[i].parallel_idx = -1;
+    // Assume only the first dim can be the replica dim
+    assert(i == 2 || (!dims[i].is_replica_dim));
   }
+  dims[1].size = num_samples;
+  // int const dims[] = {num_samples, label->dims[0]};
+  full_label = ff.create_parallel_tensor_legion_ordering(3, dims, DT_INT32);
+  ff.map_tensor(full_label, NULL);
 
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
+  assert(full_input != nullptr && "full_input is nullptr");
+
   MoeConfig const *ptr = &moe;
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
                         TaskArgument(&ptr, sizeof(MoeConfig *)));
   // regions[0]: full_input
-  launcher.add_region_requirement(
-      RegionRequirement(full_input->parallel_tensor->region,
-                        WRITE_ONLY,
-                        EXCLUSIVE,
-                        full_input->parallel_tensor->region,
-                        MAP_TO_ZC_MEMORY));
+  launcher.add_region_requirement(RegionRequirement(full_input->region,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    full_input->region,
+                                                    MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_label
-  launcher.add_region_requirement(
-      RegionRequirement(full_input->parallel_tensor->region,
-                        WRITE_ONLY,
-                        EXCLUSIVE,
-                        full_input->parallel_tensor->region,
-                        MAP_TO_ZC_MEMORY));
+  launcher.add_region_requirement(RegionRequirement(full_label->region,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    full_label->region,
+                                                    MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
 
   runtime->execute_task(ctx, launcher);
@@ -416,12 +442,12 @@ void DataLoader::load_entire_dataset(Task const *task,
   assert(task->regions.size() == regions.size());
 
   // get input and label pointer
-  AccessorWO<float, 2> const acc_input(regions[0], FID_DATA);
-  AccessorWO<int, 2> const acc_label(regions[1], FID_DATA);
-  Rect<2> rect_input = runtime->get_index_space_domain(
+  AccessorWO<float, 3> const acc_input(regions[0], FID_DATA);
+  AccessorWO<int, 3> const acc_label(regions[1], FID_DATA);
+  Rect<3> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
-  Rect<2> rect_label = runtime->get_index_space_domain(
+  Rect<3> rect_label = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
   assert(acc_label.accessor.is_dense_arbitrary(rect_label));
   float *input_ptr = acc_input.ptr(rect_input.lo);
@@ -436,82 +462,78 @@ void DataLoader::next_batch(FFModel &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   // Load input
   {
-    IndexSpace task_is = batch_input->parallel_tensor->parallel_is;
-    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain =
+        runtime->get_index_space_domain(ctx, batch_input->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<2> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      assert(ff.config.batchSize % batch_input->dims[1].size == 0);
+      meta.num_samples = batch_input->dims[1].size;
       for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
       }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1,
-                           task_is,
+                           batch_input->parallel_is,
                            TaskArgument(NULL, 0),
                            argmap,
                            Predicate::TRUE_PRED,
                            false /*must*/,
                            0 /*mapper_id*/,
-                           batch_input->parallel_tensor->machine_view.hash());
-    launcher.add_region_requirement(
-        RegionRequirement(full_input->parallel_tensor->region,
-                          0 /*projection id*/,
-                          READ_ONLY,
-                          EXCLUSIVE,
-                          full_input->parallel_tensor->region,
-                          MAP_TO_ZC_MEMORY));
+                           batch_input->machine_view.hash());
+    launcher.add_region_requirement(RegionRequirement(full_input->region,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      full_input->region,
+                                                      MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(
-        RegionRequirement(batch_input->parallel_tensor->part,
-                          0 /*projection id*/,
-                          WRITE_ONLY,
-                          EXCLUSIVE,
-                          batch_input->parallel_tensor->region));
+    launcher.add_region_requirement(RegionRequirement(batch_input->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      batch_input->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
   // Load label
   {
     // IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
-    IndexSpace task_is = batch_label->parallel_tensor->parallel_is;
-    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain =
+        runtime->get_index_space_domain(ctx, batch_label->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<2> it(rect); it(); it++) {
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
+      assert(ff.config.batchSize % batch_label->dims[1].size == 0);
+      meta.num_samples = batch_label->dims[1].size;
       for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
       }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2,
-                           task_is,
+                           batch_label->parallel_is,
                            TaskArgument(NULL, 0),
                            argmap,
                            Predicate::TRUE_PRED,
                            false /*must*/,
                            0 /*mapper_id*/,
-                           batch_label->parallel_tensor->machine_view.hash());
-    launcher.add_region_requirement(
-        RegionRequirement(full_label->parallel_tensor->region,
-                          0 /*projection id*/,
-                          READ_ONLY,
-                          EXCLUSIVE,
-                          full_label->parallel_tensor->region,
-                          MAP_TO_ZC_MEMORY));
+                           batch_label->machine_view.hash());
+    launcher.add_region_requirement(RegionRequirement(full_label->region,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      full_label->region,
+                                                      MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(
-        RegionRequirement(batch_label->parallel_tensor->part,
-                          0 /*projection id*/,
-                          WRITE_ONLY,
-                          EXCLUSIVE,
-                          batch_label->parallel_tensor->region));
+    launcher.add_region_requirement(RegionRequirement(batch_label->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      batch_label->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
