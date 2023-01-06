@@ -58,7 +58,7 @@ void backward_kernel_wrapper(TransposeMeta const *m,
 
 namespace Internal {
 
-void transpose_simple_kernel(coord_t volume,
+__global__ void transpose_simple_kernel(coord_t volume,
                              float const *in_ptr,
                              float *out_ptr,
                              const TransposeStrides info,
