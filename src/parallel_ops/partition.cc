@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/parallel_ops/partition.h"
-#include "flexflow/parallel_ops/kernels/partition_kernels.h"
 #include "flexflow/model.h"
+#include "flexflow/parallel_ops/kernels/partition_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {

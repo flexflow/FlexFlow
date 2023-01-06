@@ -15,14 +15,14 @@ public:
 
 namespace Kernels {
 namespace Repartition {
-  
+
 template <typename T>
 void forward_kernel(T const *input_ptr, T *output_ptr, size_t num_elements);
 
 template <typename T>
 void backward_kernel(T const *output_grad_ptr,
-                              T *input_grad_ptr,
-                              size_t num_elements);
+                     T *input_grad_ptr,
+                     size_t num_elements);
 
 } // namespace Repartition
 } // namespace Kernels
