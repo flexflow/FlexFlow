@@ -33,6 +33,6 @@ jobs:
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests
     runs-on: ubuntu-20.04
-    needs: gpu-ci-concierge
+    needs: python-interface-check
     steps:
       - run: 'echo "No gpu-ci required"'

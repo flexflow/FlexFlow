@@ -71,19 +71,7 @@ jobs:
         run: |
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
-
-          # Import flexflow.core module in Python
-          export PYTHONPATH="${FF_HOME}/python"
-          python -c "import flexflow.core; exit()"
-          unset PYTHONPATH
-
-          # Run a single-gpu test using the flexflow_python interpreter
-          ./tests/python_interface_test.sh flexflow_python
-
-          # Run a single-gpu test using the native python interpreter
-          export PYTHONPATH="${FF_HOME}/python:${FF_HOME}/build/python"
-          ./tests/python_interface_test.sh python
-          unset PYTHONPATH
+          ./tests/python_interface_test.sh before-installation
 
       - name: Install FlexFlow
         run: |
@@ -98,23 +86,12 @@ jobs:
         run: |
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
-
-          # Import flexflow.core module in Python
-          python -c "import flexflow.core; exit()"
-
-          # Import flexflow.core module in Python
-          python -c "import flexflow.core; exit()"
-
-          # Run a single-gpu test using the flexflow_python interpreter
-          ./tests/python_interface_test.sh flexflow_python
-
-          # Run a single-gpu test using the native python interpreter
-          ./tests/python_interface_test.sh python
+          ./tests/python_interface_test.sh after-installation
 
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests
     runs-on: self-hosted
-    needs: gpu-ci-concierge
+    needs: python-interface-check
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
       options: --gpus all --shm-size=8192m
@@ -136,18 +113,7 @@ jobs:
         run: |
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
-
-          # Import flexflow.core module in Python
-          python -c "import flexflow.core; exit()"
-
-          # Import flexflow.core module in Python
-          python -c "import flexflow.core; exit()"
-
-          # Run a single-gpu test using the flexflow_python interpreter
-          ./tests/python_interface_test.sh flexflow_python
-
-          # Run a single-gpu test using the native python interpreter
-          ./tests/python_interface_test.sh python
+          ./tests/python_interface_test.sh after-installation
 
       - name: Run multi-gpu tests
         run: |
