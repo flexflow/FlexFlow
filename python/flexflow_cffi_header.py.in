@@ -43,10 +43,14 @@ if flexflow_python_interpreter() == "native":
     else:
         # When installing FlexFlow with pip, the library files are installed within
         # the pip package folder, instead of at /usr/local/lib
-        ff_install_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        ff_lib_path = os.path.join(ff_install_path, "lib")
+        ff_lib_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lib"
+        )
         ld_lib_path = os.environ.get("LD_LIBRARY_PATH") or ""
-        if os.path.exists(ff_lib_path) and ff_lib_path not in ld_lib_path.split(":"):
+        # If the library exists at the ff_lib_path, rerun with the ff_lib_path in the LD_LIBRARY_PATH
+        if os.path.exists(
+            os.path.join(ff_lib_path), libname
+        ) and ff_lib_path not in ld_lib_path.split(":"):
             os.environ["LD_LIBRARY_PATH"] = ff_lib_path + ":" + ld_lib_path
-            os.execv(sys.argv[0], sys.argv)
+            os.execv(sys.executable, ["python"] + sys.argv)
 ffc = ffi.dlopen(flexflow_lib)
