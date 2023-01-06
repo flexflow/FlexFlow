@@ -31,10 +31,10 @@ namespace Kernels {
 namespace Transpose {
 
 void forward_kernel_wrapper(TransposeMeta const *m,
-                                       float const *input_ptr,
-                                       float *output_ptr,
-                                       Domain in_domain,
-                                       Domain out_domain) {
+                            float const *input_ptr,
+                            float *output_ptr,
+                            Domain in_domain,
+                            Domain out_domain) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Internal::forward_kernel(
@@ -42,27 +42,27 @@ void forward_kernel_wrapper(TransposeMeta const *m,
 }
 
 void backward_kernel_wrapper(TransposeMeta const *m,
-                                        float *input_grad_ptr,
-                                        float const *output_grad_ptr,
-                                        Domain in_grad_domain,
-                                        Domain out_grad_domain) {
+                             float *input_grad_ptr,
+                             float const *output_grad_ptr,
+                             Domain in_grad_domain,
+                             Domain out_grad_domain) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Internal::backward_kernel(m,
-                             input_grad_ptr,
-                             output_grad_ptr,
-                             in_grad_domain,
-                             out_grad_domain,
-                             stream);
+                            input_grad_ptr,
+                            output_grad_ptr,
+                            in_grad_domain,
+                            out_grad_domain,
+                            stream);
 }
 
 namespace Internal {
 
 void transpose_simple_kernel(coord_t volume,
-                                        float const *in_ptr,
-                                        float *out_ptr,
-                                        const TransposeStrides info,
-                                        float const beta) {
+                             float const *in_ptr,
+                             float *out_ptr,
+                             const TransposeStrides info,
+                             float const beta) {
   CUDA_KERNEL_LOOP(o_idx, volume) {
     coord_t i_idx = 0;
     coord_t t = o_idx;
@@ -76,11 +76,11 @@ void transpose_simple_kernel(coord_t volume,
 }
 
 void forward_kernel(TransposeMeta const *m,
-                               float const *input_ptr,
-                               float *output_ptr,
-                               Domain in_domain,
-                               Domain out_domain,
-                               cudaStream_t stream) {
+                    float const *input_ptr,
+                    float *output_ptr,
+                    Domain in_domain,
+                    Domain out_domain,
+                    cudaStream_t stream) {
   TransposeStrides info;
   info.num_dim = out_domain.get_dim();
   assert(info.num_dim == m->num_dim);
@@ -104,11 +104,11 @@ void forward_kernel(TransposeMeta const *m,
 }
 
 void backward_kernel(TransposeMeta const *m,
-                                float *input_grad_ptr,
-                                float const *output_grad_ptr,
-                                Domain in_grad_domain,
-                                Domain out_grad_domain,
-                                cudaStream_t stream) {
+                     float *input_grad_ptr,
+                     float const *output_grad_ptr,
+                     Domain in_grad_domain,
+                     Domain out_grad_domain,
+                     cudaStream_t stream) {
   TransposeStrides info;
   info.num_dim = in_grad_domain.get_dim();
   assert(info.num_dim == m->num_dim);

@@ -26,8 +26,8 @@
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
 #include "flexflow/ops/kernels/reshape_kernels.h"
-#include "flexflow/ops/linear.h"
 #include "flexflow/ops/kernels/transpose_kernels.h"
+#include "flexflow/ops/linear.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -346,11 +346,12 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
         TransposeMeta *m = (TransposeMeta *)metas->meta[op];
-        Kernels::Transpose::forward_kernel_wrapper(m,
-                                          my_input_accessor[0].get_float_ptr(),
-                                          my_output_accessor[0].get_float_ptr(),
-                                          my_input_accessor[0].domain,
-                                          my_output_accessor[0].domain);
+        Kernels::Transpose::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].domain,
+            my_output_accessor[0].domain);
         break;
       }
       default: {
