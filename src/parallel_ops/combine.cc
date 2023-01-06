@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/parallel_ops/combine.h"
-#include "flexflow/parallel_ops/kernels/combine_kernels.h"
 #include "flexflow/model.h"
+#include "flexflow/parallel_ops/kernels/combine_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {

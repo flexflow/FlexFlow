@@ -13,14 +13,19 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/partition.h"
+#include "flexflow/parallel_ops/kernels/partition_kernels.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
+RepartitionMeta::RepartitionMeta(FFHandler handler) : OpMeta(handler) {}
+
+namespace Kernels {
+namespace Repartition {
+
 template <typename T>
-void Repartition::forward_kernel(T const *input_ptr,
+void forward_kernel(T const *input_ptr,
                                  T *output_ptr,
                                  size_t num_elements) {
   hipStream_t stream;
@@ -33,7 +38,7 @@ void Repartition::forward_kernel(T const *input_ptr,
 }
 
 template <typename T>
-void Repartition::backward_kernel(T const *output_grad_ptr,
+void backward_kernel(T const *output_grad_ptr,
                                   T *input_grad_ptr,
                                   size_t num_elements) {
   hipStream_t stream;
@@ -48,36 +53,37 @@ void Repartition::backward_kernel(T const *output_grad_ptr,
                      num_elements);
 }
 
-RepartitionMeta::RepartitionMeta(FFHandler handler) : OpMeta(handler) {}
-
 // float
-template void Repartition::forward_kernel<float>(float const *input_ptr,
+template void forward_kernel<float>(float const *input_ptr,
                                                  float *output_ptr,
                                                  size_t num_elements);
-template void Repartition::backward_kernel<float>(float const *output_grad_ptr,
+template void backward_kernel<float>(float const *output_grad_ptr,
                                                   float *input_grad_ptr,
                                                   size_t num_elements);
 // double
-template void Repartition::forward_kernel<double>(double const *input_ptr,
+template void forward_kernel<double>(double const *input_ptr,
                                                   double *output_ptr,
                                                   size_t num_elements);
-template void Repartition::backward_kernel<double>(
+template void backward_kernel<double>(
     double const *output_grad_ptr, double *input_grad_ptr, size_t num_elements);
 
 // int
-template void Repartition::forward_kernel<int>(int const *input_ptr,
+template void forward_kernel<int>(int const *input_ptr,
                                                int *output_ptr,
                                                size_t num_elements);
-template void Repartition::backward_kernel<int>(int const *output_grad_ptr,
+template void backward_kernel<int>(int const *output_grad_ptr,
                                                 int *input_grad_ptr,
                                                 size_t num_elements);
 
 // long
-template void Repartition::forward_kernel<long>(long const *input_ptr,
+template void forward_kernel<long>(long const *input_ptr,
                                                 long *output_ptr,
                                                 size_t num_elements);
-template void Repartition::backward_kernel<long>(long const *output_grad_ptr,
+template void backward_kernel<long>(long const *output_grad_ptr,
                                                  long *input_grad_ptr,
                                                  size_t num_elements);
 
-}; // namespace FlexFlow
+
+} // namespace Repartition
+} // namespace Kernels
+} // namespace FlexFlow

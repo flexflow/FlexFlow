@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_OPS_KERNELS_COMBINE_KERNELS_H
-#define _FLEXFLOW_OPS_KERNELS_COMBINE_KERNELS_H
+#ifndef _FLEXFLOW_OPS_KERNELS_PARTITION_KERNELS_H
+#define _FLEXFLOW_OPS_KERNELS_PARTITION_KERNELS_H
 
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
@@ -7,25 +7,25 @@
 
 namespace FlexFlow {
 
-class CombineMeta : public OpMeta {
+class RepartitionMeta : public OpMeta {
 public:
-  CombineMeta(FFHandler handle);
+  RepartitionMeta(FFHandler handle);
   DataType data_type;
 };
 
 namespace Kernels {
-namespace Combine {
-
+namespace Repartition {
+  
 template <typename T>
 void forward_kernel(T const *input_ptr, T *output_ptr, size_t num_elements);
 
 template <typename T>
 void backward_kernel(T const *output_grad_ptr,
-                     T *input_grad_ptr,
-                     size_t num_elements);
+                              T *input_grad_ptr,
+                              size_t num_elements);
 
-} // namespace Combine
+} // namespace Repartition
 } // namespace Kernels
 } // namespace FlexFlow
 
-#endif // _FLEXFLOW_OPS_KERNELS_COMBINE_KERNELS_H
+#endif // _FLEXFLOW_OPS_KERNELS_PARTITION_KERNELS_H
