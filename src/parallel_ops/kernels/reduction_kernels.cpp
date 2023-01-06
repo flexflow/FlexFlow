@@ -23,9 +23,9 @@ namespace Reduction {
 
 template <typename T>
 void reduction_forward_kernel(T const *input_ptr,
-                                         T *output_ptr,
-                                         size_t num_elements,
-                                         size_t num_replicas) {
+                              T *output_ptr,
+                              size_t num_elements,
+                              size_t num_replicas) {
   CUDA_KERNEL_LOOP(i, num_elements) {
     output_ptr[i] = input_ptr[i];
     for (size_t j = 1; j < num_replicas; j++) {
@@ -36,9 +36,9 @@ void reduction_forward_kernel(T const *input_ptr,
 
 template <typename T>
 void forward_kernel(T const *input_ptr,
-                               T *output_ptr,
-                               size_t num_elements,
-                               size_t num_replicas) {
+                    T *output_ptr,
+                    size_t num_elements,
+                    size_t num_replicas) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   size_t total_elements = num_elements * num_replicas;
@@ -55,8 +55,8 @@ void forward_kernel(T const *input_ptr,
 
 template <typename T>
 void backward_kernel(T const *output_grad_ptr,
-                                T *input_grad_ptr,
-                                size_t num_elements) {
+                     T *input_grad_ptr,
+                     size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(hipMemcpyAsync(input_grad_ptr,
@@ -67,16 +67,16 @@ void backward_kernel(T const *output_grad_ptr,
 }
 
 template void reduction_forward_kernel<float>(float const *input_ptr,
-                                                         float *output_ptr,
-                                                         size_t num_elements,
-                                                         size_t num_replicas);
+                                              float *output_ptr,
+                                              size_t num_elements,
+                                              size_t num_replicas);
 template void forward_kernel<float>(float const *input_ptr,
-                                               float *output_ptr,
-                                               size_t num_elements,
-                                               size_t num_replicas);
+                                    float *output_ptr,
+                                    size_t num_elements,
+                                    size_t num_replicas);
 template void backward_kernel<float>(float const *output_grad_ptr,
-                                                float *input_grad_ptr,
-                                                size_t num_elements);
+                                     float *input_grad_ptr,
+                                     size_t num_elements);
 } // namespace Reduction
 } // namespace Kernels
 } // namespace FlexFlow
