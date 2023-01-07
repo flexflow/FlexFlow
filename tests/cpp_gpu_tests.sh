@@ -32,7 +32,10 @@ if [[ -f "$FF_HOME/build/examples/cpp/AlexNet/alexnet" ]]; then
 	"$FF_HOME"/build/examples/cpp/split_test_2/split_test_2 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 else
 	python_packages=$(python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))")
+	OLD_PATH="$PATH"
+	OLD_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
 	export PATH="${python_packages}/flexflow/bin:${PATH}"
+	export LD_LIBRARY_PATH="${python_packages}/flexflow/lib:${LD_LIBRARY_PATH}"
 	IFS=:
 	found=false
 	for path in $PATH; do
@@ -58,6 +61,8 @@ else
 			split_test_2 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 		fi
 	done
+	export PATH="$OLD_PATH"
+	export LD_LIBRARY_PATH="$OLD_LD_LIBRARY_PATH"
 	if [ ! $found ]; then echo "C++ test binaries not found"; exit 1; fi
 fi
 
