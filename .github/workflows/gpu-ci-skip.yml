@@ -24,7 +24,7 @@ jobs:
       - run: 'echo "No gpu-ci required"'
 
   python-interface-check:
-    name: Single Machine, Multiple GPUs Tests
+    name: Check Python Interface
     runs-on: ubuntu-20.04
     needs: gpu-ci-concierge
     steps:
