@@ -2,7 +2,7 @@
 set -x
 set -e
 
-if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit; fi
+if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit 1; fi
 GPUS=$1
 BATCHSIZE=$((GPUS * 64))
 FSIZE=14048
@@ -34,9 +34,11 @@ else
 	python_packages=$(python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))")
 	export PATH="${python_packages}/flexflow/bin:${PATH}"
 	IFS=:
+	found=false
 	for path in $PATH; do
 		if [[ -f "$path/alexnet" ]]; then
 			echo "Running C++ tests from folder: $path"
+			found=true
 			alexnet -ll:gpu 1 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 			# TODO: fix DLRM test
 			# dlrm -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
@@ -56,6 +58,7 @@ else
 			split_test_2 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 		fi
 	done
+	if [ ! $found ]; then echo "C++ test binaries not found"; exit 1; fi
 fi
 
 
