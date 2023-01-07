@@ -23,9 +23,9 @@ void DataLoader::load_input(Task const *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs *meta = (SampleIdxs *)task->local_args;
-  TensorAccessorR<float, 2> acc_full_input(
+  TensorAccessorR<float, 3> acc_full_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_batch_input(regions[1],
+  TensorAccessorW<float, 3> acc_batch_input(regions[1],
                                             task->regions[1],
                                             FID_DATA,
                                             ctx,
@@ -56,9 +56,9 @@ void DataLoader::load_label(Task const *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs *meta = (SampleIdxs *)task->local_args;
-  TensorAccessorR<int, 2> acc_full_label(
+  TensorAccessorR<int, 3> acc_full_label(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<int, 2> acc_batch_label(regions[1],
+  TensorAccessorW<int, 3> acc_batch_label(regions[1],
                                           task->regions[1],
                                           FID_DATA,
                                           ctx,

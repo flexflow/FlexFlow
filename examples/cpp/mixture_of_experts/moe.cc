@@ -271,12 +271,15 @@ DataLoader::DataLoader(FFModel &ff,
   Runtime *runtime = ff.config.lg_hlr;
 
   // Create full input
-  {
+  { 
+    // Input has dimensions (batch_size, data_dims), which in legion ordering becomes
+    // (data_dims, batch_size). The corresponding parallel tensor will thus have dimensions
+    // (data_dims, batch_size, replica_dim). The dimensions of the full_input tensor can be
+    // obtained by replacing the batch_size with the num_samples: (data_dims, num_samples, replica_dim)
+    assert(input->num_dims == 3); // two dimensions + the replica dimension
     batch_input = input;
-    // int const dims[] = {NUM_SAMPLES, DATA_DIMS};
-    assert(input->num_dims == 2 + 1); // two dimensions + the replica dimension
-    batch_input = input;
-    ParallelDim dims[2 + 1];
+    
+    ParallelDim dims[3];
     for (int i = 0; i < 3; i++) {
       dims[i].size = input->dims[i].size;
       dims[i].degree = 1;
@@ -286,25 +289,29 @@ DataLoader::DataLoader(FFModel &ff,
       assert(i == 2 || (!dims[i].is_replica_dim));
     }
     dims[1].size = num_samples;
-    // full_input = ff.create_tensor<2>(dims, DT_FLOAT);
+
     full_input = ff.create_parallel_tensor_legion_ordering(3, dims, DT_FLOAT);
     ff.map_tensor(full_input, NULL /*parallel_op*/);
   }
+  
   // Create full label
-  assert(label->num_dims == 3);
-  batch_label = label;
-  ParallelDim dims[3];
-  for (int i = 0; i < 3; i++) {
-    dims[i].size = label->dims[i].size;
-    dims[i].degree = 1;
-    dims[i].parallel_idx = -1;
-    // Assume only the first dim can be the replica dim
-    assert(i == 2 || (!dims[i].is_replica_dim));
+  {
+    assert(label->num_dims == 3);
+    batch_label = label;
+
+    ParallelDim dims[3];
+    for (int i = 0; i < 3; i++) {
+      dims[i].size = label->dims[i].size;
+      dims[i].degree = 1;
+      dims[i].parallel_idx = -1;
+      // Assume only the first dim can be the replica dim
+      assert(i == 2 || (!dims[i].is_replica_dim));
+    }
+    dims[1].size = num_samples;
+
+    full_label = ff.create_parallel_tensor_legion_ordering(3, dims, DT_INT32);
+    ff.map_tensor(full_label, NULL /*parallel_op*/);
   }
-  dims[1].size = num_samples;
-  // int const dims[] = {num_samples, label->dims[0]};
-  full_label = ff.create_parallel_tensor_legion_ordering(3, dims, DT_INT32);
-  ff.map_tensor(full_label, NULL);
 
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
@@ -333,16 +340,10 @@ DataLoader::DataLoader(FFModel &ff,
   next_batch(ff);
 }
 
-__inline__ int calc_offset(int c, int y, int x, int yscale, int xscale) {
-  return (c * yscale * xscale + y * xscale + x);
-}
-
 // =================================================
 //                    Load data
 // =================================================
 
-/* NOTE: Download files from http://yann.lecun.com/exdb/mnist/, unpack to
-this directory (Flexflow/examples/cpp/mixture_of_experts) */
 
 void read_cifar100(float *input_ptr, int *label_ptr) {
   std::ifstream file;
@@ -380,6 +381,8 @@ int reverseInt(int i) {
   return ((int)c1 << 24) + ((int)c2 << 16) + ((int)c3 << 8) + c4;
 }
 
+/* NOTE: Download files from http://yann.lecun.com/exdb/mnist/, unpack to
+this file's compiled binary directory ($FF_HOME/build/examples/cpp/mixture_of_experts) */
 void read_mnist(float *input_ptr, int *label_ptr) {
   // read inputs
   std::ifstream input("train-images-idx3-ubyte", std::ios::binary);
@@ -452,9 +455,13 @@ void DataLoader::load_entire_dataset(Task const *task,
   assert(acc_label.accessor.is_dense_arbitrary(rect_label));
   float *input_ptr = acc_input.ptr(rect_input.lo);
   int *label_ptr = acc_label.ptr(rect_label.lo);
+  int num_samples = rect_label.hi[1] - rect_label.lo[1] + 1;
+  assert(rect_input.hi[1] - rect_input.lo[1] + 1 == num_samples);
 
+  // here, you can call `read_cifar100(input_ptr, label_ptr);` instead or load another
+  // dataset using the dataset_path from the MoeConfig object
   read_mnist(input_ptr, label_ptr);
-  log_app.print("finish loading data\n");
+  log_app.print("finish loading MNIST data\n");
 }
 
 void DataLoader::next_batch(FFModel &ff) {
@@ -500,7 +507,6 @@ void DataLoader::next_batch(FFModel &ff) {
   }
   // Load label
   {
-    // IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
     Domain domain =
         runtime->get_index_space_domain(ctx, batch_label->parallel_is);
     ArgumentMap argmap;
