@@ -271,14 +271,15 @@ DataLoader::DataLoader(FFModel &ff,
   Runtime *runtime = ff.config.lg_hlr;
 
   // Create full input
-  { 
-    // Input has dimensions (batch_size, data_dims), which in legion ordering becomes
-    // (data_dims, batch_size). The corresponding parallel tensor will thus have dimensions
-    // (data_dims, batch_size, replica_dim). The dimensions of the full_input tensor can be
-    // obtained by replacing the batch_size with the num_samples: (data_dims, num_samples, replica_dim)
+  {
+    // Input has dimensions (batch_size, data_dims), which in legion ordering
+    // becomes (data_dims, batch_size). The corresponding parallel tensor will
+    // thus have dimensions (data_dims, batch_size, replica_dim). The dimensions
+    // of the full_input tensor can be obtained by replacing the batch_size with
+    // the num_samples: (data_dims, num_samples, replica_dim)
     assert(input->num_dims == 3); // two dimensions + the replica dimension
     batch_input = input;
-    
+
     ParallelDim dims[3];
     for (int i = 0; i < 3; i++) {
       dims[i].size = input->dims[i].size;
@@ -293,7 +294,7 @@ DataLoader::DataLoader(FFModel &ff,
     full_input = ff.create_parallel_tensor_legion_ordering(3, dims, DT_FLOAT);
     ff.map_tensor(full_input, NULL /*parallel_op*/);
   }
-  
+
   // Create full label
   {
     assert(label->num_dims == 3);
@@ -344,7 +345,6 @@ DataLoader::DataLoader(FFModel &ff,
 //                    Load data
 // =================================================
 
-
 void read_cifar100(float *input_ptr, int *label_ptr) {
   std::ifstream file;
   file.open("train.bin", std::ios::in | std::ios::binary | std::ios::ate);
@@ -382,7 +382,8 @@ int reverseInt(int i) {
 }
 
 /* NOTE: Download files from http://yann.lecun.com/exdb/mnist/, unpack to
-this file's compiled binary directory ($FF_HOME/build/examples/cpp/mixture_of_experts) */
+this file's compiled binary directory
+($FF_HOME/build/examples/cpp/mixture_of_experts) */
 void read_mnist(float *input_ptr, int *label_ptr) {
   // read inputs
   std::ifstream input("train-images-idx3-ubyte", std::ios::binary);
@@ -458,8 +459,8 @@ void DataLoader::load_entire_dataset(Task const *task,
   int num_samples = rect_label.hi[1] - rect_label.lo[1] + 1;
   assert(rect_input.hi[1] - rect_input.lo[1] + 1 == num_samples);
 
-  // here, you can call `read_cifar100(input_ptr, label_ptr);` instead or load another
-  // dataset using the dataset_path from the MoeConfig object
+  // here, you can call `read_cifar100(input_ptr, label_ptr);` instead or load
+  // another dataset using the dataset_path from the MoeConfig object
   read_mnist(input_ptr, label_ptr);
   log_app.print("finish loading MNIST data\n");
 }
