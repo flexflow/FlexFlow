@@ -30,7 +30,6 @@ using Legion::Task;
 namespace Kernels {
 namespace Embedding {
 
-/*static*/
 void forward_kernel_wrapper(EmbeddingMeta const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorW const &output,
