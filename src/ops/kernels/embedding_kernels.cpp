@@ -211,7 +211,7 @@ void backward_kernel_wrapper(EmbeddingMeta const *m,
   }
 }
 
-void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p) const {
+void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   // Randomly initialize the intput tensor to avoid out of index range issues
@@ -225,7 +225,7 @@ void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p) const {
                      p);
 }
 
-void rand_generate_int32_wrapper(int32_t *ptr, size_t size, int32_t p) const {
+void rand_generate_int32_wrapper(int32_t *ptr, size_t size, int32_t p) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   // Randomly initialize the intput tensor to avoid out of index range issues
