@@ -170,3 +170,10 @@ docker/config
 node_modules/
 package.json
 yarn.lock
+package-lock.json
+
+# MNIST data files
+train-images-idx3-ubyte.gz
+train-labels-idx1-ubyte.gz
+train-images-idx3-ubyte
+train-labels-idx1-ubyte

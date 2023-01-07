@@ -1,6 +1,8 @@
 #! /usr/bin/env bash
-set -x
 set -e
+
+# Cd into directory holding this script
+cd "${BASH_SOURCE[0]%/*}"
 
 if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit 1; fi
 GPUS=$1
@@ -22,10 +24,13 @@ if [[ -f "$FF_HOME/build/examples/cpp/AlexNet/alexnet" ]]; then
 	"$FF_HOME"/build/examples/cpp/Transformer/transformer -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b $((GPUS * 8)) --only-data-parallel
 	"$FF_HOME"/build/examples/cpp/XDL/xdl -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	"$FF_HOME"/build/examples/cpp/candle_uno/candle_uno -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
-	wget -P "$FF_HOME"/build/examples/cpp/mixture_of_experts http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
-	wget -P "$FF_HOME"/build/examples/cpp/mixture_of_experts http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz
-	gzip -d "$FF_HOME"/build/examples/cpp/mixture_of_experts/train-images-idx3-ubyte.gz
-	gzip -d "$FF_HOME"/build/examples/cpp/mixture_of_experts/train-labels-idx1-ubyte.gz
+	if [[ ! -f train-images-idx3-ubyte || ! -f train-labels-idx1-ubyte ]]; then
+		rm -f train-images-idx3-ubyte.gz train-labels-idx1-ubyte.gz train-images-idx3-ubyte train-labels-idx1-ubyte
+		wget http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
+		wget http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz
+		gzip -d train-images-idx3-ubyte.gz
+		gzip -d train-labels-idx1-ubyte.gz
+	fi
 	"$FF_HOME"/build/examples/cpp/mixture_of_experts/moe -ll:gpu 1 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b 64 --only-data-parallel
 	"$FF_HOME"/build/examples/cpp/resnext50/resnext50 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	"$FF_HOME"/build/examples/cpp/split_test/split_test -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
@@ -51,10 +56,13 @@ else
 			transformer -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b $((GPUS * 8)) --only-data-parallel
 			xdl -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 			candle_uno -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
-			wget -P "$path" http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
-			wget -P "$path" http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz
-			gzip -d "$path"/train-images-idx3-ubyte.gz
-			gzip -d "$path"/train-labels-idx1-ubyte.gz
+			if [[ ! -f train-images-idx3-ubyte || ! -f train-labels-idx1-ubyte ]]; then
+				rm -f train-images-idx3-ubyte.gz train-labels-idx1-ubyte.gz train-images-idx3-ubyte train-labels-idx1-ubyte
+				wget http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
+				wget http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz
+				gzip -d train-images-idx3-ubyte.gz
+				gzip -d train-labels-idx1-ubyte.gz
+			fi
 			moe -ll:gpu 1 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b 64 --only-data-parallel
 			resnext50 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 			split_test -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
