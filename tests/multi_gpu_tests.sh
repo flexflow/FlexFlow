@@ -22,6 +22,9 @@ else
 fi
 
 echo "Running GPU tests with $NUM_NODES node(s) and $GPUS gpu(s)/node"
+GPU_AVAILABLE=$(nvidia-smi --query-gpu=name --format=csv,noheader | wc -l)
+GPU_REQUESTED=$(( GPUS * NUM_NODES))
+if [ $GPU_REQUESTED -gt $GPU_COUNT ]; then echo "The test requires $GPU_REQUESTED GPUs, but only $GPU_AVAILABLE are available. Try reducing the number of nodes, or the number of gpus/node." ; exit; fi
 
 #Sequential model tests
 $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
