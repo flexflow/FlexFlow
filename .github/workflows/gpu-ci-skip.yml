@@ -31,7 +31,7 @@ jobs:
       - run: 'echo "No gpu-ci required"'
 
   gpu-ci-flexflow:
-    name: Single Machine, Multiple GPUs Tests
+    name: Multi-GPUs Tests
     runs-on: ubuntu-20.04
     needs: gpu-ci-concierge
     steps:

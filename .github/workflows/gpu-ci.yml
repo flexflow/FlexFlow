@@ -89,7 +89,7 @@ jobs:
           ./tests/python_interface_test.sh after-installation
 
   gpu-ci-flexflow:
-    name: Single Machine, Multiple GPUs Tests
+    name: Multi-GPUs Tests
     runs-on: self-hosted
     needs: gpu-ci-concierge
     container:
