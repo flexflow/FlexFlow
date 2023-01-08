@@ -2,8 +2,8 @@
 set -x
 set -e
 
-# Cd into directory holding this script
-cd "${BASH_SOURCE[0]%/*}"
+# Cd into FF_HOME
+cd "${BASH_SOURCE[0]%/*}/../"
 
 ./align/add/gen_tensors.sh
 ./align/conv2d/gen_tensors.sh
