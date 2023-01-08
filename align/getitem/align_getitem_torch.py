@@ -6,8 +6,8 @@ import torch
 sys.path.append("./align/")
 from align_utils import gen_tensor, BATCH_SIZE
 
-assert torch.cuda.is_available(), "Expects at least one GPU"
-DEVICE = torch.device(0)
+#assert torch.cuda.is_available(), "Expects at least one GPU"
+DEVICE = torch.device(0) if torch.cuda.is_available() else "cpu"
 SEQ_LENGTH = 5
 OUT_DIR = os.path.join("align", "getitem", "out")
 

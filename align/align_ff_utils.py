@@ -80,7 +80,7 @@ def ensure_dir_exists(filepath: str):
 
 def save_tensor_ff(tensor_ff: Tensor, ffmodel: FFModel, filepath: str) -> None:
     """Saves the FlexFlow tensor ``tensor_ff`` to the filepath ``filepath``."""
-    tensor_np: np.ndarray = tensor_ff.get_tensor(ffmodel, ParameterSyncType.PS)
+    tensor_np: np.ndarray = tensor_ff.get_tensor(ffmodel)
     tensor_torch: torch.Tensor = torch.from_numpy(tensor_np)
     ensure_dir_exists(filepath)
     torch.save(tensor_torch, filepath)
