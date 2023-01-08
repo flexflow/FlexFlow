@@ -11,7 +11,7 @@ ZSIZE=12192
 
 if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit; fi
 
-if [[ $NUM_NODES > 1 ]]; then
+if [[ $NUM_NODES -gt 1 ]]; then
     FSIZE=$(( FSIZE / GPUS ))
     ZSIZE=$(( FSIZE / GPUS ))
     export GPUS
@@ -20,6 +20,8 @@ if [[ $NUM_NODES > 1 ]]; then
 else
     EXE="$FF_HOME"/python/flexflow_python
 fi
+
+echo "Running GPU tests with $NUM_NODES node(s) and $GPUS gpu(s)/node"
 
 #Sequential model tests
 $EXE "$FF_HOME"/examples/python/keras/seq_mnist_mlp.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
