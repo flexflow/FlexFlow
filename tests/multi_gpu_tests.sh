@@ -5,7 +5,7 @@ set -e
 # Default to single-node, single GPU
 GPUS=${1:-1} # number of GPUS per node
 NUM_NODES=${2:-1} # number of nodes
-BATCHSIZE=$((GPUS * 64))
+BATCHSIZE=$(( NUM_NODES * GPUS * 64))
 FSIZE=14048
 ZSIZE=12192
 
