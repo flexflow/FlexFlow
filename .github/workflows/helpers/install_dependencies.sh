@@ -42,5 +42,5 @@ sudo rm -rf /var/lib/apt/lists/*
 
 # Install conda packages
 echo "Installing conda packages..."
-/opt/conda/bin/conda install cmake make pillow
+/opt/conda/bin/conda install cmake make pillow pytest
 /opt/conda/bin/conda install -c conda-forge numpy keras-preprocessing pybind11 cmake-build-extension

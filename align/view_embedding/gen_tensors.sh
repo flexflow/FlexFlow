@@ -1,9 +1,11 @@
 #! /usr/bin/env bash
+set -e
+set -x
 
 #eval "$(conda shell.bash hook)";
-rm align/view/out/*.pt || true;
+rm align/view/out/*.pt || true
 #conda activate flexflow;
-./python/flexflow_python align/view_embedding/align_view_embedding_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 5000 -ll:zsize 4096 -b 16;
+./python/flexflow_python align/view_embedding/align_view_embedding_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 5000 -ll:zsize 4096 -b 16
 #conda activate pytorch;
-python align/view_embedding/align_view_embedding_torch.py;
+python align/view_embedding/align_view_embedding_torch.py
 

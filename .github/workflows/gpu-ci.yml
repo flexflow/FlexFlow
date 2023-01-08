@@ -115,6 +115,14 @@ jobs:
           export FF_HOME=$(pwd)
           ./tests/python_interface_test.sh after-installation
 
+      - name: Run alignment tests
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export CUDNN_DIR=/usr/local/cuda
+          export CUDA_DIR=/usr/local/cuda
+          export FF_HOME=$(pwd)
+          ./tests/align_test.sh
+
       - name: Run multi-gpu tests
         run: |
           export PATH=/opt/conda/bin:$PATH
