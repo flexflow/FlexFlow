@@ -385,13 +385,75 @@ void AggregateSpec::backward_task(Task const *task,
 bool AggregateSpec::measure_operator_cost(Simulator *sim,
                                           MachineView const &mv,
                                           CostMetrics &cost_metrics) const {
-  // TODO: implement
-  cost_metrics.forward_time = 0.0f;
-  cost_metrics.backward_time = 0.0f;
-  cost_metrics.inputs_memory = 0;
-  cost_metrics.outputs_memory = 0;
-  cost_metrics.weights_memory = 0;
-  return false;
+  assert(numInputs <= MAX_NUM_INPUTS);
+  ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_output;
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
+    return false;
+  }
+
+  for (int i=0; i<numInputs, ++i) {
+    if (!inputs[i]->get_sub_tensor(mv, sub_inputs[i])) {
+      return false;
+    }
+  }
+  AggregateSpecMeta *m = new AggregateSpecMeta(sim->handler, n);
+
+  // inputs memory
+  sim->free_all();
+  float *input_ptrs[MAX_NUM_INPUTS];
+  bool out_of_memory = false;
+  for (int i = 0; i < numInputs; i++) {
+    input_ptrs[i] =
+        (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
+    out_of_memory = out_of_memory || (input_ptrs[i] == NULL);
+  }
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  // outputs memory
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  out_of_memory = out_of_memory || (output_ptr == NULL);
+
+  if (out_of_memory) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
+
+  assert(m->profiling == false);
+
+  // time
+  std::function<void()> forward, backward;
+  // forward
+
+  /*forward = [&] {
+    forward_kernel_wrapper(m,);
+  };*/
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    // backward
+
+
+    /*backward = [&] {
+      backward_kernel_wrapper(m,);
+    };*/
+  }
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    log_measure.debug(
+      "[Measure Agg Spec] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name,
+      cost_metrics.forward_time,
+      cost_metrics.backward_time);
+  } else {
+    log_measure.debug(
+      "[Measure Agg Spec] name(%s) forward_time(%.4lf)\n",
+      name,
+      cost_metrics.forward_time);
+  }
+
+  delete m;
+  return true;
 }
 
 }; // namespace FlexFlow

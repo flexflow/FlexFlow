@@ -333,13 +333,78 @@ void Group_by::backward_task(Task const *task,
 bool Group_by::measure_operator_cost(Simulator *sim,
                                      MachineView const &mv,
                                      CostMetrics &cost_metrics) const {
-  // TODO: implement
-  cost_metrics.forward_time = 0.0f;
-  cost_metrics.backward_time = 0.0f;
-  cost_metrics.inputs_memory = 0;
-  cost_metrics.outputs_memory = 0;
-  cost_metrics.weights_memory = 0;
-  return false;
+  assert(numOutputs <= MAX_NUM_OUTPUTS);
+  ParallelTensorBase sub_input_0, sub_input_1;
+  ParallelTensorBase sub_outputs[MAX_NUM_OUTPUTS];
+  if (!inputs[0]->get_sub_tensor(mv, sub_input_0)) {
+    return false;
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_input_1)) {
+    return false;
+  }
+  for (int i=0; i<numOutputs, ++i) {
+    if (!outputs[i]->get_sub_tensor(mv, sub_outputs[i])) {
+      return false;
+    }
+  }
+
+  GroupByMeta *m = new GroupByMeta(sim->handler, n);
+
+  // memory
+  sim->free_all();
+  float *input_ptr_0 = (float *)sim->allocate(sub_input_0.get_volume(), DT_FLOAT);
+  float *input_ptr_1 = (float *)sim->allocate(sub_input_1.get_volume(), DT_FLOAT);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  float *output_ptrs[MAX_NUM_OUTPUTS];
+  bool out_of_memory = false;
+  for (int i = 0; i < numOutputs; i++) {
+    output_ptrs[i] =
+        (float *)sim->allocate(sub_outputs[i].get_volume(), DT_FLOAT);
+    out_of_memory = out_of_memory || (output_ptrs[i] == NULL);
+  }
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  if (out_of_memory || !input_ptr_0 || !input_ptr_1) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
+
+  assert(m->profiling == false);
+
+  // time
+  std::function<void()> forward, backward;
+  // forward
+
+  /*forward = [&] {
+    forward_kernel_wrapper(m,);
+  };*/
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    // backward
+
+
+    /*backward = [&] {
+      backward_kernel_wrapper(m,);
+    };*/
+  }
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    log_measure.debug(
+      "[Measure GroupBy] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name,
+      cost_metrics.forward_time,
+      cost_metrics.backward_time);
+  } else {
+    log_measure.debug(
+      "[Measure GroupBy] name(%s) forward_time(%.4lf)\n",
+      name,
+      cost_metrics.forward_time);
+  }
+
+  delete m;
+  return true;
 }
 
 }; // namespace FlexFlow

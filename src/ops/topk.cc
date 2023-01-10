@@ -276,9 +276,70 @@ void TopK::backward_task(Task const *task,
 bool TopK::measure_operator_cost(Simulator *sim,
                                  MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
-  // To be implemented
-  assert(false);
-  return false;
+  ParallelTensorBase sub_input, sub_output, sub_output_ind;
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
+    return false;
+  }
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
+    return false;
+  }
+  if (!outputs[1]->get_sub_tensor(mv, sub_output_ind)) {
+    return false;
+  }
+
+  TopKMeta *m = new TopKMeta(sim->handler);
+  m->sorted = sorted;
+
+  // memory
+  sim->free_all();
+  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  size_t *output_ind_ptr = (size_t *)sim->allocate(sub_output_ind.get_volume(), DT_INT32);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  if (!(input_ptr && output_ptr && output_ind_ptr)) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
+
+  assert(m->profiling == false);
+
+  // time
+  std::function<void()> forward, backward;
+  // forward
+
+  /*forward = [&] {
+    forward_kernel_wrapper(m,);
+  };*/
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    // backward
+
+
+    /*backward = [&] {
+      backward_kernel_wrapper(m,);
+    };*/
+  }
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    log_measure.debug(
+      "[Measure TopK] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
+      name,
+      cost_metrics.forward_time,
+      cost_metrics.backward_time);
+  } else {
+    log_measure.debug(
+      "[Measure TopK] name(%s) forward_time(%.4lf)\n",
+      name,
+      cost_metrics.forward_time);
+  }
+
+  delete m;
+  return true;
+
 }
 
 }; // namespace FlexFlow
