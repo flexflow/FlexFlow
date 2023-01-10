@@ -334,12 +334,12 @@ bool Group_by::measure_operator_cost(Simulator *sim,
                                      MachineView const &mv,
                                      CostMetrics &cost_metrics) const {
   assert(numOutputs <= MAX_NUM_OUTPUTS);
-  ParallelTensorBase sub_input_0, sub_input_1;
+  ParallelTensorBase sub_input, sub_assign;
   ParallelTensorBase sub_outputs[MAX_NUM_OUTPUTS];
-  if (!inputs[0]->get_sub_tensor(mv, sub_input_0)) {
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
   }
-  if (!inputs[0]->get_sub_tensor(mv, sub_input_1)) {
+  if (!inputs[0]->get_sub_tensor(mv, sub_assign)) {
     return false;
   }
   for (int i=0; i<numOutputs, ++i) {
@@ -350,10 +350,10 @@ bool Group_by::measure_operator_cost(Simulator *sim,
 
   GroupByMeta *m = new GroupByMeta(sim->handler, n);
 
-  // memory
+  // allocate
   sim->free_all();
-  float *input_ptr_0 = (float *)sim->allocate(sub_input_0.get_volume(), DT_FLOAT);
-  float *input_ptr_1 = (float *)sim->allocate(sub_input_1.get_volume(), DT_FLOAT);
+  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  int *assign_ptr = (int *)sim->allocate(sub_assign.get_volume(), DT_INT32);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   float *output_ptrs[MAX_NUM_OUTPUTS];
@@ -365,7 +365,7 @@ bool Group_by::measure_operator_cost(Simulator *sim,
   }
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
-  if (out_of_memory || !input_ptr_0 || !input_ptr_1) {
+  if (out_of_memory || !input_ptr || !assign_ptr) {
     cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
     cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
     return true;
@@ -373,36 +373,32 @@ bool Group_by::measure_operator_cost(Simulator *sim,
 
   assert(m->profiling == false);
 
-  // time
+  // compute
   std::function<void()> forward, backward;
-  // forward
 
-  /*forward = [&] {
-    forward_kernel_wrapper(m,);
-  };*/
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    // backward
+  int k = sub_assign.dims[0].size;
+  int batch_size = inputs[0]->dims[1].size;
+  int data_dim = inputs[0]->dims[0].size;
 
-
-    /*backward = [&] {
-      backward_kernel_wrapper(m,);
-    };*/
-  }
+  forward = [&] {
+    forward_kernel_wrapper(m,
+                           input_ptr,
+                           assign_ptr,
+                           output_ptrs,
+                           n,
+                           k,
+                           alpha,
+                           batch_size,
+                           data_dim);
+  };
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    log_measure.debug(
-      "[Measure GroupBy] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-      name,
-      cost_metrics.forward_time,
-      cost_metrics.backward_time);
-  } else {
-    log_measure.debug(
-      "[Measure GroupBy] name(%s) forward_time(%.4lf)\n",
-      name,
-      cost_metrics.forward_time);
-  }
+  log_measure.debug(
+    "[Measure GroupBy] name(%s) forward_time(%.4lf)\n",
+    name,
+    cost_metrics.forward_time);
 
+  cost_metrics.backward_time = 0.0f; // not implemented for backward
   delete m;
   return true;
 }
