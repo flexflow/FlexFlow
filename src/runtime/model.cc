@@ -35,6 +35,7 @@
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
+#include "flexflow/ops/experts.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
 #include "flexflow/ops/groupby.h"
@@ -3595,6 +3596,35 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<ElementBinary::backward_task>(
         registrar, "ElementWiseBinary Backward Task");
+  }
+  // Experts
+  {
+    TaskVariantRegistrar registrar(EXPERTS_INIT_TASK_ID, "Experts Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, Experts::init_task>(
+        registrar, "Experts Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(EXPERTS_FWD_TASK_ID, "Experts Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Experts::forward_task>(
+        registrar, "Experts Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(EXPERTS_BWD_TASK_ID, "Experts Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Experts::backward_task>(
+        registrar, "Experts Backward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(EXPERTS_INF_TASK_ID, "Experts Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Experts::inference_task>(
+        registrar, "Experts Inference Task");
   }
   // Cast
   {
