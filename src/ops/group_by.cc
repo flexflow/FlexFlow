@@ -47,13 +47,6 @@ void FFModel::group_by(const Tensor input,
                        int n,
                        float alpha,
                        char const *name) {
-  //   assert(false);
-  // #ifdef DEADCODE
-  //   Group_by *group_by = new Group_by(*this, input, assign, n, alpha, name);
-  //   layers.push_back(group_by);
-  //   for (int i = 0; i < n; i++)
-  //     outputs[i] = group_by->outputs[i];
-  // #endif
   Layer *li = new Layer(this,
                         OP_GROUP_BY,
                         DT_FLOAT,
@@ -65,11 +58,16 @@ void FFModel::group_by(const Tensor input,
                         assign);
   {
     int k = assign->dims[0];
-    int num_dims = 3;
+    int num_dims = input->num_dims;
     int dims[num_dims];
-    dims[0] = input->dims[0];
-    dims[1] = (int)ceil(alpha * k / n * input->dims[1]);
+    for (int i = 0; i < num_dims - 1; i++) {
+      dims[i] = input->dims[i];
+    }
+    // Batch dimension is replaced by max expert capacity
+    dims[num_dims - 1] = (int)ceil(alpha * k / n * input->dims[num_dims - 1]);
     for (int i = 0; i < n; i++) {
+      // Creating one tensor per expert, each with size (DATA_DIMS,
+      // max_expert_capacity)
       li->outputs[i] = create_tensor_legion_ordering(
           num_dims, dims, input->data_type, li, 0, true /*create_grad*/);
     }
@@ -82,7 +80,6 @@ void FFModel::group_by(const Tensor input,
     outputs[i] = li->outputs[i];
     assert(outputs[i] != nullptr);
   }
-  printf("Checked all outputs[i], none is nullptr!\n");
 }
 
 Op *Group_by::create_operator_from_layer(
@@ -137,7 +134,6 @@ Group_by::Group_by(FFModel &model,
   _assign->print("_assign");
   assert(_input->num_dims ==
          2 + 1); // NOTE: Is that a problem if you e.g. want to pass in images
-  assert(_input->num_dims == 2 + 1);
   assert(_input->dims[1] == _assign->dims[1]);
   assert(n > 0);
 
@@ -146,37 +142,31 @@ Group_by::Group_by(FFModel &model,
 
   int k = _assign->dims[0].size;
 
-  // ensure that batch size is not partitioned
-  assert(inputs[0]->dims[1].degree == 1 &&
-         "Batch size should not be partitioned for now");
+  int num_dims = _input->num_dims;
+
+  // ensure that batch size (second to last dimension) is not partitioned
+  assert(inputs[0]->dims[num_dims - 2].degree == 1 &&
+         !inputs[0]->dims[num_dims - 2].is_replica_dim &&
+         "Partitioned / replicated batch size not yet supported");
+  assert(!inputs[0]->dims[num_dims - 2].is_replica_dim);
+  // ensure that the number of replicas (last dimension) is set to 1
+  if (inputs[0]->dims[num_dims - 1].is_replica_dim) {
+    assert(inputs[0]->dims[num_dims - 1].size == 1 &&
+           inputs[0]->dims[num_dims - 1].degree == 1 &&
+           "Replica dimension of size/degree >1 not yet supported");
+  }
 
   ParallelDim dims[MAX_TENSOR_DIM];
-  // dims[0].size = inputs[0]->dims[0].size;
-  // dims[0].degree = inputs[0]->dims[0].degree;
-  // dims[0].parallel_idx = inputs[0]->dims[0].parallel_idx;
-  // dims[0].is_replica_dim = false;
-  dims[0] = inputs[0]->dims[0];
-  dims[1].size = (int)ceil(alpha * k / n * inputs[0]->dims[1].size);
-  // dims[1].degree = 1;
-  // dims[1].parallel_idx = -1;
-  // dims[1].is_replica_dim = false;
-  dims[1].degree = inputs[0]->dims[1].degree;
-  dims[1].parallel_idx = inputs[0]->dims[1].parallel_idx;
-  dims[1].is_replica_dim = inputs[0]->dims[1].is_replica_dim;
-  dims[2] = inputs[0]->dims[2];
+  for (int i = 0; i < num_dims; i++) {
+    dims[i] = inputs[0]->dims[i];
+  }
+  // replace batch size with max expert size
+  dims[num_dims - 2].size = (int)ceil(alpha * k / n * inputs[0]->dims[1].size);
 
   for (int i = 0; i < n; i++) {
     outputs[i] = model.create_parallel_tensor_legion_ordering(
-        3, dims, DT_FLOAT, this, i /*owner_idx*/);
-  }
-
-  // List of outputs
-  for (int i = 0; i < n; i++) {
+        num_dims, dims, DT_FLOAT, this, i /*owner_idx*/);
     assert(outputs[i] != nullptr);
-    outputs[i]->num_dims = 2;
-    outputs[i]->dims[0].size = inputs[0]->dims[0].size;
-    outputs[i]->dims[1].size =
-        (int)ceil(alpha * k / n * inputs[0]->dims[1].size);
   }
 
   numWeights = 0;
