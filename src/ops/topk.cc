@@ -290,13 +290,13 @@ bool TopK::measure_operator_cost(Simulator *sim,
   TopKMeta *m = new TopKMeta(sim->handler);
   m->sorted = sorted;
 
-  // memory
+  // allocate
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  size_t *output_ind_ptr = (size_t *)sim->allocate(sub_output_ind.get_volume(), DT_INT32);
+  int *output_ind_ptr = (int *)sim->allocate(sub_output_ind.get_volume(), DT_INT32);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   if (!(input_ptr && output_ptr && output_ind_ptr)) {
@@ -307,36 +307,30 @@ bool TopK::measure_operator_cost(Simulator *sim,
 
   assert(m->profiling == false);
 
-  // time
+  // compute
   std::function<void()> forward, backward;
-  // forward
 
-  /*forward = [&] {
-    forward_kernel_wrapper(m,);
-  };*/
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    // backward
+  int length = inputs[0]->dims[1].size;
+  size_t batch_size = sub_input.get_volume() / length;
 
-
-    /*backward = [&] {
-      backward_kernel_wrapper(m,);
-    };*/
-  }
+  forward = [&] {
+    forward_kernel_wrapper(m,
+                           input_ptr,
+                           output_ptr,
+                           output_ind_ptr,
+                           batch_size,
+                           length,
+                           k,
+                           sorted);
+  };
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    log_measure.debug(
-      "[Measure TopK] name(%s) forward_time(%.4lf) backward_time(%.4lf)\n",
-      name,
-      cost_metrics.forward_time,
-      cost_metrics.backward_time);
-  } else {
-    log_measure.debug(
-      "[Measure TopK] name(%s) forward_time(%.4lf)\n",
-      name,
-      cost_metrics.forward_time);
-  }
+  log_measure.debug(
+    "[Measure TopK] name(%s) forward_time(%.4lf)\n",
+    name,
+    cost_metrics.forward_time);
 
+  cost_metrics.backward_time = 0.0f; // not implemented for MOE
   delete m;
   return true;
 

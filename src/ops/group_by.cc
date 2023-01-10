@@ -398,7 +398,7 @@ bool Group_by::measure_operator_cost(Simulator *sim,
     name,
     cost_metrics.forward_time);
 
-  cost_metrics.backward_time = 0.0f; // not implemented for backward
+  cost_metrics.backward_time = 0.0f; // not implemented for MOE
   delete m;
   return true;
 }
