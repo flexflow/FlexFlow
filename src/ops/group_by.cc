@@ -201,6 +201,7 @@ void Group_by::init(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_init(ff, argmap);
   IndexLauncher launcher(GROUP_BY_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Group_by)),
@@ -233,7 +234,9 @@ void Group_by::init(FFModel const &ff) {
                                                       outputs[i]->region));
     launcher.add_field(i + 2, FID_DATA);
   }
-  runtime->execute_index_space(ctx, launcher);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
 }
 
 OpMeta *Group_by::init_task(Task const *task,

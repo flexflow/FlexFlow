@@ -194,7 +194,8 @@ void FlexFlow::top_level_task(Task const *task,
 
   //-----------------------------------------------------------------
 
-  Tensor t = create_moe_encoder(&ff, &moeConfig, input);
+  // Tensor t = create_moe_encoder(&ff, &moeConfig, input);
+  Tensor t = create_moe(&ff, &moeConfig, input);
   t = ff.dense(t, OUT_DIM, AC_MODE_RELU);
 
   //-----------------------------------------------------------------
@@ -297,20 +298,24 @@ DataLoader::DataLoader(FFModel &ff,
 
   // Create full label
   {
-    assert(label->num_dims == 3);
+    printf("label->num_dims: %i\n", label->num_dims);
+    assert(label->num_dims == LABEL_DIM + 1);
     batch_label = label;
 
-    ParallelDim dims[3];
-    for (int i = 0; i < 3; i++) {
+    ParallelDim dims[LABEL_DIM + 1];
+    for (int i = 0; i < LABEL_DIM + 1; i++) {
       dims[i].size = label->dims[i].size;
       dims[i].degree = 1;
       dims[i].parallel_idx = -1;
       // Assume only the first dim can be the replica dim
-      assert(i == 2 || (!dims[i].is_replica_dim));
+      assert(i == LABEL_DIM || (!dims[i].is_replica_dim));
     }
-    dims[1].size = num_samples;
+    if (LABEL_DIM > 1) {
+      dims[1].size = num_samples;
+    }
 
-    full_label = ff.create_parallel_tensor_legion_ordering(3, dims, DT_INT32);
+    full_label = ff.create_parallel_tensor_legion_ordering(
+        LABEL_DIM + 1, dims, DT_INT32);
     ff.map_tensor(full_label, NULL /*parallel_op*/);
   }
 
@@ -447,17 +452,19 @@ void DataLoader::load_entire_dataset(Task const *task,
 
   // get input and label pointer
   AccessorWO<float, 3> const acc_input(regions[0], FID_DATA);
-  AccessorWO<int, 3> const acc_label(regions[1], FID_DATA);
+  AccessorWO<int, LABEL_DIM + 1> const acc_label(regions[1], FID_DATA);
   Rect<3> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
-  Rect<3> rect_label = runtime->get_index_space_domain(
+  Rect<LABEL_DIM + 1> rect_label = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
   assert(acc_label.accessor.is_dense_arbitrary(rect_label));
   float *input_ptr = acc_input.ptr(rect_input.lo);
   int *label_ptr = acc_label.ptr(rect_label.lo);
-  int num_samples = rect_label.hi[1] - rect_label.lo[1] + 1;
-  assert(rect_input.hi[1] - rect_input.lo[1] + 1 == num_samples);
+  int num_samples = rect_input.hi[1] - rect_input.lo[1] + 1;
+  if (LABEL_DIM > 1) {
+    assert(rect_label.hi[1] - rect_label.lo[1] + 1 == num_samples);
+  }
 
   // here, you can call `read_cifar100(input_ptr, label_ptr);` instead or load
   // another dataset using the dataset_path from the MoeConfig object

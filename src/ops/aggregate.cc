@@ -176,11 +176,12 @@ Aggregate::Aggregate(FFModel &model,
     : Aggregate(model, inputs.data(), params.n, params.lambda_bal, name) {}
 
 void Aggregate::init(FFModel const &ff) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  parallel_is = outputs[0]->parallel_is;
   IndexLauncher launcher(AGGREGATE_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Aggregate)),

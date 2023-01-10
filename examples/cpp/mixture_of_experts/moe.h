@@ -22,6 +22,7 @@
 #define CIFAR_DIMS 3 * 32 * 32
 #define DATA_DIMS MNIST_DIMS
 #define OUT_DIM 10
+#define LABEL_DIM 1
 
 using namespace Legion;
 using namespace std;
