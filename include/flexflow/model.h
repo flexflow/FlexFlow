@@ -54,6 +54,10 @@ enum TaskIDs {
   ELEMENTUNARY_INIT_TASK_ID,
   ELEMENTUNARY_FWD_TASK_ID,
   ELEMENTUNARY_BWD_TASK_ID,
+  EXPERTS_INIT_TASK_ID,
+  EXPERTS_FWD_TASK_ID,
+  EXPERTS_BWD_TASK_ID,
+  EXPERTS_INF_TASK_ID,
   CONV2D_INIT_TASK_ID,
   CONV2D_INIT_PARA_TASK_ID,
   CONV2D_FWD_TASK_ID,
@@ -255,6 +259,7 @@ class Dropout;
 class ElementBinary;
 class ElementUnary;
 class Embedding;
+class Experts;
 class Flat;
 class Group_by;
 class LayerNorm;
@@ -448,7 +453,7 @@ public:
                 PoolType type = POOL_MAX,
                 ActiMode activation = AC_MODE_NONE,
                 char const *name = NULL);
-  // Add a batch_norm layer
+  // Add a layer_norm layer
   Tensor layer_norm(const Tensor input,
                     std::vector<int> const &axes,
                     bool elementwise_affine,
@@ -478,6 +483,15 @@ public:
   // Add a concat layer
   Tensor
       concat(int n, Tensor const *tensors, int axis, char const *name = NULL);
+  // Add an experts layer
+  Tensor experts(const Tensor input,
+                 const Tensor indices,
+                 int num_experts,
+                 int experts_start_idx,
+                 int experts_num_layers,
+                 int experts_output_dim_size,
+                 int experts_internal_dim_size,
+                 char const *name = nullptr);
   // Add a mean layer
   Tensor mean(const Tensor input,
               std::vector<int> const &dims,
@@ -849,6 +863,10 @@ public:
                          ElementUnary *>,
       std::unordered_map<std::pair<ParallelTensorShape, EmbeddingParams>,
                          Embedding *>,
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    ExpertsParams>,
+          Experts *>,
       std::unordered_map<std::pair<ParallelTensorShape, FlatParams>, Flat *>,
 
       std::unordered_map<
