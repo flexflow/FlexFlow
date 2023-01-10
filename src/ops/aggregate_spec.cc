@@ -402,7 +402,7 @@ bool AggregateSpec::measure_operator_cost(Simulator *sim,
 
   AggregateSpecMeta *m = new AggregateSpecMeta(sim->handler, n);
 
-  // allocate memory
+  // allocate
   sim->free_all();
   float *input_ptrs[MAX_NUM_INPUTS];
   bool out_of_memory = false;
@@ -427,10 +427,8 @@ bool AggregateSpec::measure_operator_cost(Simulator *sim,
 
   assert(m->profiling == false);
 
-  // time
+  // compute
   std::function<void()> forward, backward;
-
-  // forward
   coord_t k = inputs[0]->dims[0].size;
   coord_t batch_size = inputs[0]->dims[1].size;
   coord_t rows = inputs[4]->dims[0].size;
