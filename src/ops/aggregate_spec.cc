@@ -387,15 +387,15 @@ bool AggregateSpec::measure_operator_cost(Simulator *sim,
                                           CostMetrics &cost_metrics) const {
   assert(numInputs <= MAX_NUM_INPUTS);
   ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_assign, sub_output;
-  for (int i=0; i<numInputs; ++i) {
-    if (!inputs[i+4]->get_sub_tensor(mv, sub_inputs[i])) {
+  for (int i = 0; i < numInputs; ++i) {
+    if (!inputs[i + 4]->get_sub_tensor(mv, sub_inputs[i])) {
       return false;
     }
   }
   if (!inputs[1]->get_sub_tensor(mv, sub_assign)) {
     return false;
   }
-  
+
   if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
   }
@@ -406,7 +406,7 @@ bool AggregateSpec::measure_operator_cost(Simulator *sim,
   sim->free_all();
   float *input_ptrs[MAX_NUM_INPUTS];
   bool out_of_memory = false;
-  for (int i=0; i<numInputs; ++i) {
+  for (int i = 0; i < numInputs; ++i) {
     input_ptrs[i] =
         (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
     out_of_memory = out_of_memory || (input_ptrs[i] == NULL);
@@ -433,25 +433,16 @@ bool AggregateSpec::measure_operator_cost(Simulator *sim,
   coord_t batch_size = inputs[0]->dims[1].size;
   coord_t rows = inputs[4]->dims[0].size;
   coord_t out_dim = outputs[0]->dims[0].size;
-  
+
   forward = [&] {
-    forward_kernel_wrapper(m,
-                           input_ptrs,
-                           assign_ptr,
-                           output_ptr,
-                           n,
-                           k,
-                           rows,
-                           batch_size,
-                           out_dim
-                           );
+    forward_kernel_wrapper(
+        m, input_ptrs, assign_ptr, output_ptr, n, k, rows, batch_size, out_dim);
   };
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-  log_measure.debug(
-    "[Measure Agg Spec] name(%s) forward_time(%.4lf)\n",
-    name,
-    cost_metrics.forward_time);
+  log_measure.debug("[Measure Agg Spec] name(%s) forward_time(%.4lf)\n",
+                    name,
+                    cost_metrics.forward_time);
 
   cost_metrics.backward_time = 0.0f; // not implemented for backward
   delete m;

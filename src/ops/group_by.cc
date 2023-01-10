@@ -342,7 +342,7 @@ bool Group_by::measure_operator_cost(Simulator *sim,
   if (!inputs[0]->get_sub_tensor(mv, sub_assign)) {
     return false;
   }
-  for (int i=0; i<numOutputs, ++i) {
+  for (int i = 0; i < numOutputs; ++i) {
     if (!outputs[i]->get_sub_tensor(mv, sub_outputs[i])) {
       return false;
     }
@@ -393,10 +393,9 @@ bool Group_by::measure_operator_cost(Simulator *sim,
   };
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-  log_measure.debug(
-    "[Measure GroupBy] name(%s) forward_time(%.4lf)\n",
-    name,
-    cost_metrics.forward_time);
+  log_measure.debug("[Measure GroupBy] name(%s) forward_time(%.4lf)\n",
+                    name,
+                    cost_metrics.forward_time);
 
   cost_metrics.backward_time = 0.0f; // not implemented for MOE
   delete m;

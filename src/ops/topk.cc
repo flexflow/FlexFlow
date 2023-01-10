@@ -296,7 +296,8 @@ bool TopK::measure_operator_cost(Simulator *sim,
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  int *output_ind_ptr = (int *)sim->allocate(sub_output_ind.get_volume(), DT_INT32);
+  int *output_ind_ptr =
+      (int *)sim->allocate(sub_output_ind.get_volume(), DT_INT32);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   if (!(input_ptr && output_ptr && output_ind_ptr)) {
@@ -325,15 +326,13 @@ bool TopK::measure_operator_cost(Simulator *sim,
   };
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-  log_measure.debug(
-    "[Measure TopK] name(%s) forward_time(%.4lf)\n",
-    name,
-    cost_metrics.forward_time);
+  log_measure.debug("[Measure TopK] name(%s) forward_time(%.4lf)\n",
+                    name,
+                    cost_metrics.forward_time);
 
   cost_metrics.backward_time = 0.0f; // not implemented for MOE
   delete m;
   return true;
-
 }
 
 }; // namespace FlexFlow
