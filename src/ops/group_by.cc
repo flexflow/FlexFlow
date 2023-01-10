@@ -92,8 +92,6 @@ Op *Group_by::create_operator_from_layer(
   float value2;
   layer->get_float_property("alpha", value2);
   float alpha = value2;
-  // inputs[0]->print("inputs[0]");
-  // inputs[1]->print("inputs[1]");
   return new Group_by(model, inputs[0], inputs[1], n, alpha, layer->name);
 }
 
@@ -130,18 +128,11 @@ Group_by::Group_by(FFModel &model,
          _input,
          _assign),
       n(_n), alpha(_alpha) {
-  _input->print("_input");
-  _assign->print("_assign");
-  assert(_input->num_dims ==
-         2 + 1); // NOTE: Is that a problem if you e.g. want to pass in images
   assert(_input->dims[1] == _assign->dims[1]);
   assert(n > 0);
-
   assert(inputs[0] != nullptr);
-  inputs[0]->print("inputs[0]");
 
   int k = _assign->dims[0].size;
-
   int num_dims = _input->num_dims;
 
   // ensure that batch size (second to last dimension) is not partitioned

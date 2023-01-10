@@ -38,8 +38,8 @@ using Legion::TaskLauncher;
 using PCG::Node;
 
 Tensor FFModel::aggregate(
-    Tensor const
-        *inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
+    Tensor const *inputs, /* gate_preds, gate_assign, full_gate_pred,
+                             exp_pred_1, ... , exp_pred_n */
     int n,
     float lambda_bal,
     char const *name) {
@@ -52,19 +52,9 @@ Tensor FFModel::aggregate(
                         1 /*outputs*/,
                         inputs);
   {
-    // expert inputs
     int num_dim = inputs[4]->num_dims;
-    int out_dim = inputs[4]->dims[0];
-    for (int i = 1; i < n; i++) {
-      assert(inputs[i + 4]->num_dims == num_dim);
-      assert(inputs[i + 4]->dims[0] == out_dim);
-    }
     // Set output shape
     int dims[MAX_TENSOR_DIM];
-    // Ignore replica dimension for now
-    if (inputs[4]->dims[num_dim - 1] == 1) {
-      num_dim -= 1;
-    }
     for (int i = 0; i < num_dim - 1; i++) {
       dims[i] = inputs[4]->dims[i];
     }

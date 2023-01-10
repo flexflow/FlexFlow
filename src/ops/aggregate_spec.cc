@@ -42,7 +42,6 @@ Tensor FFModel::aggregate_spec(
     int n,
     float lambda_bal,
     char const *name) {
-  // assert(false);
   Layer *li = new Layer(this,
                         OP_AGG_SPEC,
                         DT_FLOAT,
@@ -52,13 +51,7 @@ Tensor FFModel::aggregate_spec(
                         1 /*outputs*/,
                         inputs);
   {
-    // expert inputs
     int num_dim = inputs[4]->num_dims;
-    int out_dim = inputs[4]->dims[0];
-    for (int i = 1; i < n; i++) {
-      assert(inputs[i + 4]->num_dims == num_dim);
-      assert(inputs[i + 4]->dims[0] == out_dim);
-    }
     // Set output shape
     int dims[MAX_TENSOR_DIM];
     for (int i = 0; i < num_dim - 1; i++) {

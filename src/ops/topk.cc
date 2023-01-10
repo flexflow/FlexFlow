@@ -44,14 +44,6 @@ using PCG::Node;
 // values.shape = indices.shape = input.shape[:-1] + [k]
 void FFModel::top_k(
     const Tensor input, Tensor *outputs, int k, bool sorted, char const *name) {
-  //   assert(false);
-  // #ifdef DEADCODE
-  //   TopK *topk = new TopK(*this, input, k, sorted, name);
-  //   layers.push_back(topk);
-  //   assert(topk->numOutputs == 2);
-  //   outputs[0] = topk->outputs[0];
-  //   outputs[1] = topk->outputs[1];
-  // #endif
   Layer *li = new Layer(this,
                         OP_TOPK,
                         input->data_type,
