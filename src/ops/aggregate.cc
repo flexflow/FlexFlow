@@ -210,8 +210,7 @@ void Aggregate::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
-  parallel_is = outputs[0]->parallel_is;
+  set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(AGGREGATE_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Aggregate)),
@@ -322,7 +321,6 @@ void Aggregate::backward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  parallel_is = outputs[0]->parallel_is;
   IndexLauncher launcher(AGGREGATE_BWD_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Aggregate)),

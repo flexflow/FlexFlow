@@ -121,8 +121,7 @@ Tensor create_moe(FFModel *model,
   Tensor exp_tensors[num_exp];
   model->group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
   for (int i = 0; i < num_exp; i++) {
-    exp_tensors[i]->dims[2] =
-        1; // temporary fix to replica dimension being undefined
+    //exp_tensors[i]->dims[2] = 1; // temporary fix to replica dimension being undefined
     exp_tensors[i]->print("exp_tensors[i]");
   }
   Tensor agg_inputs[num_exp + 4];
@@ -210,7 +209,7 @@ void FlexFlow::top_level_task(Task const *task,
   ParallelTensor input_pt, label_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
   ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
-  DataLoader data_loader(ff, moeConfig, input_pt, label_pt);
+  //DataLoader data_loader(ff, moeConfig, input_pt, label_pt);
   // RecompileState r(&moe_trigger, &moe_alter, &ff);
   ff.init_operators();
   // Start timer
@@ -222,12 +221,12 @@ void FlexFlow::top_level_task(Task const *task,
   }
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
-    data_loader.reset();
+    //data_loader.reset();
     ff.reset_metrics();
     int iterations = TRAIN_SAMPLES / ffConfig.batchSize;
 
     for (int iter = 0; iter < iterations; iter++) {
-      data_loader.next_batch(ff);
+      //data_loader.next_batch(ff);
       // if (epoch > 0)
       //    runtime->begin_trace(ctx, 111/*trace_id*/);
       ff.forward();
@@ -243,7 +242,7 @@ void FlexFlow::top_level_task(Task const *task,
     ff.reset_metrics();
     iterations = TEST_SAMPLES / ffConfig.batchSize;
     for (int iter = 0; iter < iterations; iter++) {
-      data_loader.next_batch(ff);
+      //data_loader.next_batch(ff);
       ff.forward();
       ff.backward();
     }

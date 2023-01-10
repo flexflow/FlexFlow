@@ -163,11 +163,12 @@ AggregateSpec::AggregateSpec(FFModel &model,
 }
 
 void AggregateSpec::init(FFModel const &ff) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  parallel_is = outputs[0]->parallel_is;
   IndexLauncher launcher(AGG_SPEC_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(AggregateSpec)),
@@ -193,11 +194,10 @@ OpMeta *AggregateSpec::init_task(Task const *task,
 }
 
 void AggregateSpec::forward(FFModel const &ff) {
-  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
+  set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(AGG_SPEC_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(AggregateSpec)),
@@ -305,7 +305,6 @@ void AggregateSpec::backward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  parallel_is = outputs[0]->parallel_is;
   IndexLauncher launcher(AGG_SPEC_BWD_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(AggregateSpec)),

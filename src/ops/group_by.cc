@@ -254,6 +254,7 @@ void Group_by::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(GROUP_BY_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Group_by)),
@@ -355,6 +356,7 @@ void Group_by::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_backward(ff, argmap);
   IndexLauncher launcher(GROUP_BY_BWD_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Group_by)),
