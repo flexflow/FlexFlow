@@ -70,6 +70,7 @@ set(BIN_DEST "bin")
 set(LIB_DEST "lib")
 install(TARGETS ${project_target} DESTINATION ${BIN_DEST})
 install(TARGETS flexflow_c DESTINATION ${LIB_DEST})
+install(TARGETS flexflow_native_python DESTINATION ${LIB_DEST})
 if(FF_BUILD_FROM_PYPI)
   set(PY_DEST "./")
 	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core/legion_cffi_header.py ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core/flexflow_cffi_header.py 
@@ -82,4 +83,3 @@ else()
 		FILES_MATCHING 
 		PATTERN "*.py")
 endif()
-install(TARGETS flexflow_native_python DESTINATION ${PY_DEST}/core)
