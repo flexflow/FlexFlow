@@ -58,19 +58,6 @@ ReplicateParams Replicate::get_params() const {
   return params;
 }
 
-ParallelTensor FFModel::replicate(const ParallelTensor input,
-                                  int replicate_legion_dim,
-                                  int replicate_degree,
-                                  char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  Replicate *repl =
-      new Replicate(*this, input, replicate_legion_dim, replicate_degree, name);
-  layers.push_back(repl);
-  return repl->outputs[0];
-#endif
-}
-
 Replicate::Replicate(FFModel &model,
                      const ParallelTensor _input,
                      int _replicate_legion_dim,
