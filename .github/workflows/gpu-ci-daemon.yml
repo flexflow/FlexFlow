@@ -12,6 +12,8 @@ concurrency:
 jobs:
   gpu-ci-daemon:
     name: GPU CI Daemon
+    # Prevent Github from running the workflow on forks
+    if: github.repository_owner == 'flexflow'
     runs-on: ubuntu-20.04
     env:
       FLEXFLOW_TOKEN: ${{ secrets.FLEXFLOW_TOKEN }}
