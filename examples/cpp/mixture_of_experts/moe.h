@@ -30,18 +30,30 @@ using namespace FlexFlow;
 
 struct MoeConfig {
   MoeConfig(void) {
-    // Set default configurations here
+    // MoE layer
+    num_exp = 5;
+    num_select = 2;
+    alpha = 2.0f;
+    lambda = 0.04f;
     hidden_size = DATA_DIMS;
+    // Encoder layer
     num_attention_heads = 16;
     attention_kdim = attention_vdim = hidden_size / num_attention_heads;
     num_encoder_layers = 6;
   }
-  std::string dataset_path;
+  // MoE layer
+  int num_exp;
+  int num_select;
+  float alpha;  // factor overhead tensor size for imbalance
+  float lambda; // multiplier for load balance term
   int hidden_size;
+  // Encoder layer
   int num_attention_heads;
   int attention_kdim;
   int attention_vdim;
   int num_encoder_layers;
+  // Dataset
+  std::string dataset_path;
 };
 
 class DataLoader {

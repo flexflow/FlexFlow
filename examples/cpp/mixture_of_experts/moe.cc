@@ -29,8 +29,6 @@
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("MoE");
-int num_exp = 5;
-int num_select = 2;
 
 void parse_input_args(char **argv, int argc, MoeConfig &config) {
   for (int i = 1; i < argc; i++) {
@@ -107,34 +105,6 @@ void moe_alter(FFModel *ff) {
 }
 #endif // DEADCODE
 
-Tensor create_moe(FFModel *model,
-                  MoeConfig const *moeConfig,
-                  Tensor const &input) {
-  float alpha = 2.0f;   // factor overhead tensor size for imbalance
-  float lambda = 0.04f; // multiplier for load balance term
-
-  // MoE model
-  Tensor gate_preds = model->dense(input, 64, AC_MODE_RELU);
-  gate_preds = model->dense(gate_preds, num_exp, AC_MODE_RELU);
-  Tensor topK_output[2];
-  model->top_k(gate_preds, topK_output, num_select, false);
-  Tensor exp_tensors[num_exp];
-  model->group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
-  Tensor agg_inputs[num_exp + 4];
-  agg_inputs[0] = model->softmax(topK_output[0]); // gate preds
-  agg_inputs[1] = topK_output[1];                 // gate assign
-  agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
-  agg_inputs[3] = gate_preds;     // full gate preds
-  for (int i = 0; i < num_exp; i++) {
-    Tensor exp_pred =
-        model->dense(exp_tensors[i], moeConfig->hidden_size, AC_MODE_RELU);
-    agg_inputs[i + 4] = model->softmax(exp_pred);
-  }
-  Tensor coop_output = model->aggregate(agg_inputs, num_exp, lambda);
-  // model->get_metrics();
-  return coop_output;
-}
-
 Tensor create_moe_encoder(FFModel *model,
                           MoeConfig const *moeConfig,
                           Tensor const &input) {
@@ -153,8 +123,16 @@ Tensor create_moe_encoder(FFModel *model,
         axes,
         true,
         1e-05);
-    x = model->layer_norm(
-        model->add(create_moe(model, moeConfig, x), x), axes, true, 1e-05);
+    x = model->layer_norm(model->add(model->moe(x,
+                                                moeConfig->num_exp,
+                                                moeConfig->num_select,
+                                                moeConfig->hidden_size,
+                                                moeConfig->alpha,
+                                                moeConfig->lambda),
+                                     x),
+                          axes,
+                          true,
+                          1e-05);
   }
   return x;
 }
@@ -186,7 +164,12 @@ void FlexFlow::top_level_task(Task const *task,
   //-----------------------------------------------------------------
 
   // Tensor t = create_moe_encoder(&ff, &moeConfig, input);
-  Tensor t = create_moe(&ff, &moeConfig, input);
+  Tensor t = ff.moe(input,
+                    moeConfig.num_exp,
+                    moeConfig.num_select,
+                    moeConfig.hidden_size,
+                    moeConfig.alpha,
+                    moeConfig.lambda);
   t = ff.dense(t, OUT_DIM, AC_MODE_RELU);
 
   //-----------------------------------------------------------------

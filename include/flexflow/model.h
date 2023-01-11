@@ -479,6 +479,13 @@ public:
               std::vector<int> const &dims,
               bool keepdims,
               char const *name);
+  // Add a moe layer (wrapping topk, group_by and aggregate operators)
+  Tensor moe(const Tensor input,
+             int num_exp,
+             int num_select,
+             int expert_hidden_size,
+             float alpha,
+             float lambda);
   // Add a split layer
   void split(const Tensor input,
              Tensor *outputs,
