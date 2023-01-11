@@ -60,10 +60,10 @@ void backward_kernel_wrapper(TransposeMeta const *m,
 namespace Internal {
 
 __global__ void transpose_simple_kernel(coord_t volume,
-                             float const *in_ptr,
-                             float *out_ptr,
-                             const TransposeStrides info,
-                             float const beta) {
+                                        float const *in_ptr,
+                                        float *out_ptr,
+                                        const TransposeStrides info,
+                                        float const beta) {
   CUDA_KERNEL_LOOP(o_idx, volume) {
     coord_t i_idx = 0;
     coord_t t = o_idx;
