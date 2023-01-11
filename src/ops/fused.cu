@@ -28,7 +28,7 @@
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
 #include "flexflow/ops/kernels/reshape_kernels.h"
-#include "flexflow/ops/transpose.h"
+#include "flexflow/ops/kernels/transpose_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -421,11 +421,12 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
         TransposeMeta *m = (TransposeMeta *)metas->meta[op];
-        Transpose::forward_kernel_wrapper(m,
-                                          my_input_accessor[0].get_float_ptr(),
-                                          my_output_accessor[0].get_float_ptr(),
-                                          my_input_accessor[0].domain,
-                                          my_output_accessor[0].domain);
+        Kernels::Transpose::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].domain,
+            my_output_accessor[0].domain);
         break;
       }
       default: {
@@ -884,7 +885,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(my_input_grad_accessor[0].domain.get_volume() ==
                my_output_grad_accessor[0].domain.get_volume());
         TransposeMeta *m = (TransposeMeta *)metas->meta[op];
-        Transpose::backward_kernel_wrapper(
+        Kernels::Transpose::backward_kernel_wrapper(
             m,
             my_input_grad_accessor[0].get_float_ptr(),
             my_output_grad_accessor[0].get_float_ptr(),
