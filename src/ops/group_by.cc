@@ -376,9 +376,10 @@ bool Group_by::measure_operator_cost(Simulator *sim,
   // compute
   std::function<void()> forward, backward;
 
+  Domain in_domain = sub_input.get_domain();
   int k = sub_assign.dims[0].size;
-  int batch_size = inputs[0]->dims[1].size;
-  int data_dim = inputs[0]->dims[0].size;
+  int batch_size = in_domain.hi()[1] - in_domain.lo()[1] + 1;
+  int data_dim = in_domain.hi()[0] - in_domain.lo()[0] + 1;
 
   forward = [&] {
     forward_kernel_wrapper(m,

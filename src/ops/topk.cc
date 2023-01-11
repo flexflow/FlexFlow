@@ -311,8 +311,9 @@ bool TopK::measure_operator_cost(Simulator *sim,
   // compute
   std::function<void()> forward, backward;
 
-  int length = inputs[0]->dims[1].size;
-  size_t batch_size = sub_input.get_volume() / length;
+  Domain in_domain = sub_input.get_domain();
+  int length = in_domain.hi()[0] - in_domain.lo()[0] + 1;
+  size_t batch_size = in_domain.get_volume() / length;
 
   forward = [&] {
     forward_kernel_wrapper(m,

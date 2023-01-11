@@ -459,10 +459,13 @@ bool Aggregate::measure_operator_cost(Simulator *sim,
 
   // compute
   std::function<void()> forward, backward;
-  int k = inputs[0]->dims[0].size;
-  int batch_size = inputs[0]->dims[1].size;
-  int rows = inputs[4]->dims[0].size;
-  int out_dim = outputs[0]->dims[0].size;
+  Domain assign_domain = sub_assign.get_domain();
+  Domain exp_domain = sub_inputs[0].get_domain();
+
+  int k = assign_domain.hi()[0] - assign_domain.lo()[0] + 1;
+  int batch_size = assign_domain.hi()[1] - assign_domain.lo()[1] + 1;
+  int rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
+  int out_dim = exp_domain.hi()[0] - exp_domain.lo()[0] + 1;
 
   forward = [&] {
     forward_kernel_wrapper(m,
