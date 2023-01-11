@@ -540,13 +540,86 @@ void Aggregate::serialize(Legion::Serializer &sez) const {
 bool Aggregate::measure_operator_cost(Simulator *sim,
                                       MachineView const &mv,
                                       CostMetrics &cost_metrics) const {
-  // TODO: implement
-  cost_metrics.forward_time = 0.0f;
-  cost_metrics.backward_time = 0.0f;
-  cost_metrics.inputs_memory = 0;
-  cost_metrics.outputs_memory = 0;
-  cost_metrics.weights_memory = 0;
-  return false;
+  assert(numInputs <= MAX_NUM_INPUTS);
+  ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_pred, sub_assign,
+      sub_output;
+
+  for (int i = 0; i < numInputs; ++i) {
+    if (!inputs[i + 4]->get_sub_tensor(mv, sub_inputs[i])) {
+      return false;
+    }
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_pred)) {
+    return false;
+  }
+  if (!inputs[1]->get_sub_tensor(mv, sub_assign)) {
+    return false;
+  }
+
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
+    return false;
+  }
+
+  AggregateMeta *m = new AggregateMeta(sim->handler, n);
+
+  // allocate
+  sim->free_all();
+  float *input_ptrs[MAX_NUM_INPUTS];
+  bool out_of_memory = false;
+  for (int i = 0; i < numInputs; ++i) {
+    input_ptrs[i] =
+        (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
+    out_of_memory = out_of_memory || (input_ptrs[i] == NULL);
+  }
+  int *assign_ptr = (int *)sim->allocate(sub_assign.get_volume(), DT_INT32);
+  out_of_memory = out_of_memory || (assign_ptr == NULL);
+  float *pred_ptr = (float *)sim->allocate(sub_pred.get_volume(), DT_FLOAT);
+  out_of_memory = out_of_memory || (pred_ptr == NULL);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  out_of_memory = out_of_memory || (output_ptr == NULL);
+
+  if (out_of_memory) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
+
+  assert(m->profiling == false);
+
+  // compute
+  std::function<void()> forward, backward;
+  Domain assign_domain = sub_assign.get_domain();
+  Domain exp_domain = sub_inputs[0].get_domain();
+
+  int k = assign_domain.hi()[0] - assign_domain.lo()[0] + 1;
+  int batch_size = assign_domain.hi()[1] - assign_domain.lo()[1] + 1;
+  int rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
+  int out_dim = exp_domain.hi()[0] - exp_domain.lo()[0] + 1;
+
+  forward = [&] {
+    forward_kernel_wrapper(m,
+                           input_ptrs,
+                           assign_ptr,
+                           pred_ptr,
+                           output_ptr,
+                           n,
+                           k,
+                           rows,
+                           batch_size,
+                           out_dim);
+  };
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+  log_measure.debug("[Measure Aggregate] name(%s) forward_time(%.4lf)\n",
+                    name,
+                    cost_metrics.forward_time);
+
+  cost_metrics.backward_time = 0.0f; // not implemented for backward
+  delete m;
+  return true;
 }
 
 }; // namespace FlexFlow

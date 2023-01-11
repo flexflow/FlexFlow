@@ -521,13 +521,73 @@ Op *Group_by::materialize(FFModel &ff,
 bool Group_by::measure_operator_cost(Simulator *sim,
                                      MachineView const &mv,
                                      CostMetrics &cost_metrics) const {
-  // TODO: implement
-  cost_metrics.forward_time = 0.0f;
-  cost_metrics.backward_time = 0.0f;
-  cost_metrics.inputs_memory = 0;
-  cost_metrics.outputs_memory = 0;
-  cost_metrics.weights_memory = 0;
-  // return false;
+  assert(numOutputs <= MAX_NUM_OUTPUTS);
+  ParallelTensorBase sub_input, sub_assign;
+  ParallelTensorBase sub_outputs[MAX_NUM_OUTPUTS];
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
+    return false;
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_assign)) {
+    return false;
+  }
+  for (int i = 0; i < numOutputs; ++i) {
+    if (!outputs[i]->get_sub_tensor(mv, sub_outputs[i])) {
+      return false;
+    }
+  }
+
+  GroupByMeta *m = new GroupByMeta(sim->handler, n);
+
+  // allocate
+  sim->free_all();
+  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  int *assign_ptr = (int *)sim->allocate(sub_assign.get_volume(), DT_INT32);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  float *output_ptrs[MAX_NUM_OUTPUTS];
+  bool out_of_memory = false;
+  for (int i = 0; i < numOutputs; i++) {
+    output_ptrs[i] =
+        (float *)sim->allocate(sub_outputs[i].get_volume(), DT_FLOAT);
+    out_of_memory = out_of_memory || (output_ptrs[i] == NULL);
+  }
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  if (out_of_memory || !input_ptr || !assign_ptr) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
+
+  assert(m->profiling == false);
+
+  // compute
+  std::function<void()> forward, backward;
+
+  Domain in_domain = sub_input.get_domain();
+  int k = sub_assign.dims[0].size;
+  int batch_size = in_domain.hi()[1] - in_domain.lo()[1] + 1;
+  int data_dim = in_domain.hi()[0] - in_domain.lo()[0] + 1;
+
+  forward = [&] {
+    forward_kernel_wrapper(m,
+                           input_ptr,
+                           assign_ptr,
+                           output_ptrs,
+                           n,
+                           k,
+                           alpha,
+                           batch_size,
+                           data_dim);
+  };
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+  log_measure.debug("[Measure GroupBy] name(%s) forward_time(%.4lf)\n",
+                    name,
+                    cost_metrics.forward_time);
+
+  cost_metrics.backward_time = 0.0f; // not implemented for MOE
+  delete m;
   return true;
 }
 
