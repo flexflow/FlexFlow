@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/transpose.h"
+#include "flexflow/ops/kernels/transpose_kernels.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -27,6 +27,37 @@ struct TransposeStrides {
   int in_strides[MAX_TENSOR_DIM], out_strides[MAX_TENSOR_DIM],
       perm[MAX_TENSOR_DIM];
 };
+
+namespace Kernels {
+namespace Transpose {
+
+void forward_kernel_wrapper(TransposeMeta const *m,
+                            float const *input_ptr,
+                            float *output_ptr,
+                            Domain in_domain,
+                            Domain out_domain) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::forward_kernel(
+      m, input_ptr, output_ptr, in_domain, out_domain, stream);
+}
+
+void backward_kernel_wrapper(TransposeMeta const *m,
+                             float *input_grad_ptr,
+                             float const *output_grad_ptr,
+                             Domain in_grad_domain,
+                             Domain out_grad_domain) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::backward_kernel(m,
+                            input_grad_ptr,
+                            output_grad_ptr,
+                            in_grad_domain,
+                            out_grad_domain,
+                            stream);
+}
+
+namespace Internal {
 
 __global__ void transpose_simple_kernel(coord_t volume,
                                         float const *in_ptr,
@@ -45,13 +76,12 @@ __global__ void transpose_simple_kernel(coord_t volume,
   }
 }
 
-/*static*/
-void Transpose::forward_kernel(TransposeMeta const *m,
-                               float const *input_ptr,
-                               float *output_ptr,
-                               Domain in_domain,
-                               Domain out_domain,
-                               hipStream_t stream) {
+void forward_kernel(TransposeMeta const *m,
+                    float const *input_ptr,
+                    float *output_ptr,
+                    Domain in_domain,
+                    Domain out_domain,
+                    hipStream_t stream) {
   TransposeStrides info;
   info.num_dim = out_domain.get_dim();
   assert(info.num_dim == m->num_dim);
@@ -74,25 +104,12 @@ void Transpose::forward_kernel(TransposeMeta const *m,
                      0.0f /*beta*/);
 }
 
-/*static*/
-void Transpose::forward_kernel_wrapper(TransposeMeta const *m,
-                                       float const *input_ptr,
-                                       float *output_ptr,
-                                       Domain in_domain,
-                                       Domain out_domain) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Transpose::forward_kernel(
-      m, input_ptr, output_ptr, in_domain, out_domain, stream);
-}
-
-/*static*/
-void Transpose::backward_kernel(TransposeMeta const *m,
-                                float *input_grad_ptr,
-                                float const *output_grad_ptr,
-                                Domain in_grad_domain,
-                                Domain out_grad_domain,
-                                hipStream_t stream) {
+void backward_kernel(TransposeMeta const *m,
+                     float *input_grad_ptr,
+                     float const *output_grad_ptr,
+                     Domain in_grad_domain,
+                     Domain out_grad_domain,
+                     hipStream_t stream) {
   TransposeStrides info;
   info.num_dim = in_grad_domain.get_dim();
   assert(info.num_dim == m->num_dim);
@@ -115,20 +132,7 @@ void Transpose::backward_kernel(TransposeMeta const *m,
                      1.0f /*beta*/);
 }
 
-/*static*/
-void Transpose::backward_kernel_wrapper(TransposeMeta const *m,
-                                        float *input_grad_ptr,
-                                        float const *output_grad_ptr,
-                                        Domain in_grad_domain,
-                                        Domain out_grad_domain) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Transpose::backward_kernel(m,
-                             input_grad_ptr,
-                             output_grad_ptr,
-                             in_grad_domain,
-                             out_grad_domain,
-                             stream);
-}
-
-}; // namespace FlexFlow
+} // namespace Internal
+} // namespace Transpose
+} // namespace Kernels
+} // namespace FlexFlow

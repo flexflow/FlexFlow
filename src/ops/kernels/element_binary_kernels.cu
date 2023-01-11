@@ -110,7 +110,7 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
       default:
         assert(false);
     }
-    printf("[%s] forward time (CF) = %.2fms\n", m->op_name, elapsed);
+    printf("[%s] forward time (CF) = %.2fms\n", opName, elapsed);
     // print_tensor<float>(in1_ptr, 32, "[EWB:forward:input1]");
     // print_tensor<float>(in2_ptr, 32, "[EWB:forward:input2]");
     // print_tensor<float>(out_ptr, 32, "[EWB:forward:output]");
