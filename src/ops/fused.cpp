@@ -15,11 +15,11 @@
 
 #include "flexflow/ops/fused.h"
 #include "flexflow/model.h"
-#include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/kernels/batch_matmul_kernels.h"
 #include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
@@ -256,7 +256,7 @@ __host__ void FusedOp::forward_task(Task const *task,
           batch *= dim_size;
         }
         BatchMatmulMeta *meta = (BatchMatmulMeta *)metas->meta[op];
-        BatchMatmul::forward_kernel_wrapper(
+        Kernels::BatchMatmul::forward_kernel_wrapper(
             meta,
             my_output_accessor[0].get_float_ptr(),
             my_input_accessor[0].get_float_ptr(),
@@ -647,7 +647,7 @@ __host__ void FusedOp::backward_task(Task const *task,
           batch *= dim_size;
         }
         BatchMatmulMeta *meta = (BatchMatmulMeta *)metas->meta[op];
-        BatchMatmul::backward_kernel_wrapper(
+        Kernels::BatchMatmul::backward_kernel_wrapper(
             meta,
             (float const *)my_output_accessor[0].get_float_ptr(),
             (float const *)my_output_grad_accessor[0].get_float_ptr(),
