@@ -86,9 +86,9 @@ Tensor FFModel::experts(const Tensor input,
                        1 /*outputs*/,
                        input,
                        indices);
-  assert(input->num_dims == indices->num_dims + 1);
-  for (int i = 0; i < indices->num_dims; i++)
-    assert(input->dims[i + 1] == indices->dims[i]);
+  assert(input->num_dims == indices->num_dims);
+  for (int i = 1; i < indices->num_dims; i++)
+    assert(input->dims[i] == indices->dims[i]);
   assert(indices->data_type == DT_INT32 || indices->data_type == DT_INT64);
   int dims[MAX_TENSOR_DIM];
   int numdim = input->num_dims;
@@ -168,12 +168,14 @@ Experts::Experts(FFModel &model,
       experts_num_layers(_experts_num_layers),
       experts_output_dim_size(_experts_output_dim_size),
       experts_internal_dim_size(_experts_internal_dim_size) {
-  assert(input->num_dims == indices->num_dims + 1);
+  assert(input->num_dims == indices->num_dims);
   assert(indices->data_type == DT_INT32 || indices->data_type == DT_INT64);
-  for (int i = 0; i < indices->num_dims; i++)
-    assert(input->dims[i + 1] == indices->dims[i]);
-  // Assume that we don't parallelize the channel dim
+  for (int i = 1; i < indices->num_dims; i++)
+    assert(input->dims[i] == indices->dims[i]);
+  // Assume that we don't parallelize the channel dim of input
+  // nor the expert_assigned dim of indices
   assert(input->dims[0].degree == 1);
+  assert(indices->dims[0].degree == 1);
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < input->num_dims; i++)
     dims[i] = input->dims[i];

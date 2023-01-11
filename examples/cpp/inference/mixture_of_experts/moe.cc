@@ -31,7 +31,7 @@
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("MoE");
-int num_exp = 5;
+int num_exp = 4;
 int num_select = 2;
 
 void parse_input_args(char **argv, int argc, MoeConfig &config) {
@@ -59,7 +59,7 @@ Tensor create_moe(FFModel *model,
   agg_inputs[1] = topK_output[1];                 // gate assign
   agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
   agg_inputs[3] = gate_preds;     // full gate preds
-  for (int i = 0; i < 4 /*number of experts layers*/; i++) {
+  for (int i = 0; i < num_exp /*number of experts layers*/; i++) {
     Tensor exp_pred = model->experts(gate_preds,
                                      topK_output[1],
                                      32 /*number of experts*/,
