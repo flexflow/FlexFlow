@@ -38,8 +38,8 @@ using Legion::TaskLauncher;
 using PCG::Node;
 
 Tensor FFModel::aggregate(
-    Tensor const *inputs, /* gate_preds, gate_assign, full_gate_pred,
-                             exp_pred_1, ... , exp_pred_n */
+    Tensor const *inputs, /* gate_preds, gate_assign, gate assign TopK,
+                             full_gate_pred, exp_pred_1, ... , exp_pred_n */
     int n,
     float lambda_bal,
     char const *name) {
@@ -146,6 +146,7 @@ Aggregate::Aggregate(FFModel &model,
   for (int i = 0; i < num_dim - 1; i++) {
     dims[i] = inputs[4]->dims[i];
   }
+  dims[num_dim - 2] = inputs[0]->dims[num_dim - 2];
   dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
   numOutputs = 1;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -254,15 +255,15 @@ void Aggregate::forward_task(Task const *task,
   AggregateMeta const *m = *((AggregateMeta **)task->local_args);
 
   // get gate_pred, gate_assign, output
-  AccessorRO<float, 2> const acc_gate_pred(regions[0], FID_DATA);
-  AccessorRO<int, 2> const acc_gate_assign(regions[1], FID_DATA);
-  AccessorWO<float, 2> const acc_output(regions[n + 2], FID_DATA);
+  AccessorRO<float, 3> const acc_gate_pred(regions[0], FID_DATA);
+  AccessorRO<int, 3> const acc_gate_assign(regions[1], FID_DATA);
+  AccessorWO<float, 3> const acc_output(regions[n + 2], FID_DATA);
 
-  Rect<2> rect_gate_pred = runtime->get_index_space_domain(
+  Rect<3> rect_gate_pred = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  Rect<2> rect_gate_assign = runtime->get_index_space_domain(
+  Rect<3> rect_gate_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  Rect<2> rect_output = runtime->get_index_space_domain(
+  Rect<3> rect_output = runtime->get_index_space_domain(
       ctx, task->regions[n + 2].region.get_index_space());
 
   coord_t batch_size = rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1;
@@ -390,21 +391,21 @@ void Aggregate::backward_task(Task const *task,
   assert((int)task->regions.size() == 2 * n + 5);
 
   // get gate_pred, gate_grad, gate_assign, output_grad
-  AccessorRO<float, 2> const acc_gate_pred(regions[0], FID_DATA);
-  AccessorRO<int, 2> const acc_gate_assign(regions[1], FID_DATA);
-  AccessorRO<int, 2> const acc_true_gate_assign(regions[2], FID_DATA);
-  AccessorWO<float, 2> const full_acc_gate_grad(regions[3], FID_DATA);
-  AccessorRO<float, 2> const acc_output_grad(regions[2 * n + 4], FID_DATA);
+  AccessorRO<float, 3> const acc_gate_pred(regions[0], FID_DATA);
+  AccessorRO<int, 3> const acc_gate_assign(regions[1], FID_DATA);
+  AccessorRO<int, 3> const acc_true_gate_assign(regions[2], FID_DATA);
+  AccessorWO<float, 3> const full_acc_gate_grad(regions[3], FID_DATA);
+  AccessorRO<float, 3> const acc_output_grad(regions[2 * n + 4], FID_DATA);
 
-  Rect<2> rect_gate_pred = runtime->get_index_space_domain(
+  Rect<3> rect_gate_pred = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  Rect<2> rect_gate_assign = runtime->get_index_space_domain(
+  Rect<3> rect_gate_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  Rect<2> rect_true_gate_assign = runtime->get_index_space_domain(
+  Rect<3> rect_true_gate_assign = runtime->get_index_space_domain(
       ctx, task->regions[2].region.get_index_space());
-  Rect<2> rect_full_gate_grad = runtime->get_index_space_domain(
+  Rect<3> rect_full_gate_grad = runtime->get_index_space_domain(
       ctx, task->regions[3].region.get_index_space());
-  Rect<2> rect_out_grad = runtime->get_index_space_domain(
+  Rect<3> rect_out_grad = runtime->get_index_space_domain(
       ctx, task->regions[2 * n + 4].region.get_index_space());
 
   coord_t batch_size = rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1;

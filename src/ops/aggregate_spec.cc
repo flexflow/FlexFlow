@@ -37,8 +37,8 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 Tensor FFModel::aggregate_spec(
-    Tensor const
-        *inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
+    Tensor const *inputs, /* gate_preds, gate_assign, gate assign TopK,
+                             full_gate_pred, exp_pred_1, ... , exp_pred_n */
     int n,
     float lambda_bal,
     char const *name) {
