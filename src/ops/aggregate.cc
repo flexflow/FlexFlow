@@ -67,13 +67,8 @@ Tensor FFModel::aggregate(
     }
     // Set output shape
     int dims[MAX_TENSOR_DIM];
-    // Ignore replica dimension for now
-    if (inputs[4]->dims[num_dim - 1] == 1) {
-      num_dim -= 1;
-    }
-    for (int i = 0; i < num_dim - 1; i++)
+    for (int i = 0; i < num_dim; i++)
       dims[i] = inputs[4]->dims[i];
-    dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
     li->outputs[0] = create_tensor_legion_ordering(
         num_dim, dims, DT_FLOAT, li, 0, true /*create_grad*/);
   }
@@ -158,9 +153,8 @@ Aggregate::Aggregate(FFModel &model,
   }
   // Set output shape
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < num_dim - 1; i++)
+  for (int i = 0; i < num_dim; i++)
     dims[i] = inputs[4]->dims[i];
-  dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
   numOutputs = 1;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       num_dim, dims, DT_FLOAT, this);
@@ -217,7 +211,7 @@ void Aggregate::forward(FFModel const &ff) {
   parallel_is = outputs[0]->parallel_is;
   IndexLauncher launcher(AGGREGATE_FWD_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(Aggregate)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -268,7 +262,7 @@ FutureMap Aggregate::inference(FFModel const &ff,
   size_t machine_view_hash = mv ? mv->hash() : outputs[0]->machine_view.hash();
   IndexLauncher launcher(AGGREGATE_FWD_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(Aggregate)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -312,10 +306,10 @@ void Aggregate::forward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
-  int n = ((Aggregate *)task->args)->n;
-
-  assert((int)regions.size() == n + 3);
-  assert((int)task->regions.size() == n + 3);
+  assert(regions.size() == task->regions.size());
+  int n = regions.size() - 3;
+  // FIXME: skip the aggregate computation for now
+  return;
 
   AggregateMeta const *m = *((AggregateMeta **)task->local_args);
 

@@ -54,23 +54,20 @@ Tensor create_moe(FFModel *model,
   gate_preds = model->dense(gate_preds, num_exp, AC_MODE_RELU);
   Tensor topK_output[2];
   model->top_k(gate_preds, topK_output, num_select, false);
-  Tensor exp_tensors[num_exp];
-  model->group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
-  for (int i = 0; i < num_exp; i++) {
-    exp_tensors[i]->dims[2] =
-        1; // temporary fix to replica dimension being undefined
-    exp_tensors[i]->print("exp_tensors[i]");
-  }
   Tensor agg_inputs[num_exp + 4];
   agg_inputs[0] = model->softmax(topK_output[0]); // gate preds
   agg_inputs[1] = topK_output[1];                 // gate assign
   agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
   agg_inputs[3] = gate_preds;     // full gate preds
-  for (int i = 0; i < num_exp; i++) {
-    Tensor exp_pred =
-        model->dense(exp_tensors[i], moeConfig->hidden_size, AC_MODE_RELU);
-    exp_pred->print("exp_pred");
-    agg_inputs[i + 4] = model->softmax(exp_pred);
+  for (int i = 0; i < 4 /*number of experts layers*/; i++) {
+    Tensor exp_pred = model->experts(gate_preds,
+                                     topK_output[1],
+                                     32 /*number of experts*/,
+                                     32 * i /*expert start index*/,
+                                     1 /*number of linear layers*/,
+                                     moeConfig->hidden_size /*output_size*/,
+                                     moeConfig->hidden_size /*internal_size*/);
+    agg_inputs[i + 4] = exp_pred;
   }
   for (int i = 0; i < num_exp + 4; i++) {
     agg_inputs[i]->print("agg_inputs[i]");
