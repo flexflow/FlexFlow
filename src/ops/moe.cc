@@ -31,12 +31,11 @@ Tensor FFModel::moe(const Tensor input,
   group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
   Tensor agg_inputs[num_exp + 4];
   agg_inputs[0] = softmax(topK_output[0]); // gate preds
-  agg_inputs[1] = topK_output[1];                 // gate assign
-  agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
-  agg_inputs[3] = gate_preds;     // full gate preds
+  agg_inputs[1] = topK_output[1];          // gate assign
+  agg_inputs[2] = topK_output[1];          // gate assign TopK (for cache)
+  agg_inputs[3] = gate_preds;              // full gate preds
   for (int i = 0; i < num_exp; i++) {
-    Tensor exp_pred =
-        dense(exp_tensors[i], expert_hidden_size, AC_MODE_RELU);
+    Tensor exp_pred = dense(exp_tensors[i], expert_hidden_size, AC_MODE_RELU);
     agg_inputs[i + 4] = softmax(exp_pred);
   }
   Tensor coop_output = aggregate(agg_inputs, num_exp, lambda);
