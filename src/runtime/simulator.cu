@@ -23,8 +23,8 @@
 #include "flexflow/ops/kernels/element_binary_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
+#include "flexflow/ops/kernels/transpose_kernels.h"
 #include "flexflow/ops/linear.h"
-#include "flexflow/ops/transpose.h"
 #include "flexflow/simulator.h"
 #include "flexflow/utils/cuda_helper.h"
 
