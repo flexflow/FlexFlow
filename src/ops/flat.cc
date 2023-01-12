@@ -1,6 +1,6 @@
+#include "flexflow/model.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/kernels/flat_kernels.h"
-#include "flexflow/model.h"
 
 namespace FlexFlow {
 
