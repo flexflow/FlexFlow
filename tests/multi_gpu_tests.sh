@@ -12,8 +12,6 @@ ZSIZE=12192
 if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit; fi
 
 if [[ $NUM_NODES -gt 1 ]]; then
-    FSIZE=$(( FSIZE / GPUS ))
-    ZSIZE=$(( FSIZE / GPUS ))
     export GPUS
     export NUM_NODES
     EXE="$FF_HOME"/tests/multinode_helpers/mpi_wrapper1.sh
