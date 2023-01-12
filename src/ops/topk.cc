@@ -54,6 +54,7 @@ TopK::TopK(FFModel &model,
            char const *name)
     : Op(model,
          OP_TOPK,
+         _input->data_type,
          name,
          1 /*inputs*/,
          0 /*weights*/,
@@ -62,8 +63,9 @@ TopK::TopK(FFModel &model,
       k(_k), sorted(_sorted) {
   int numdim = inputs[0]->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = inputs[0]->dims[i];
+  }
   dims[0].size = k;
   assert(inputs[0]->dims[0].degree == 1);
   assert(inputs[0]->dims[0].parallel_idx == -1);

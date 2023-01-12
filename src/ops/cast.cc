@@ -36,12 +36,19 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 Tensor FFModel::cast(const Tensor input, DataType dtype, char const *name) {
-  Layer *cast = new Layer(
-      this, OP_CAST, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, input);
+  Layer *cast = new Layer(this,
+                          OP_CAST,
+                          dtype,
+                          name,
+                          1 /*inputs*/,
+                          0 /*weights*/,
+                          1 /*outputs*/,
+                          input);
   int numdims = input->num_dims;
   int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdims; i++)
+  for (int i = 0; i < numdims; i++) {
     dims[i] = input->dims[i];
+  }
   cast->outputs[0] = create_tensor_legion_ordering(
       numdims, dims, dtype, cast, 0, true /*create_grad*/);
   cast->add_int_property("dtype", dtype);
@@ -81,6 +88,7 @@ Cast::Cast(FFModel &model,
            char const *name)
     : Op(model,
          OP_CAST,
+         _dtype,
          name,
          1 /*inputs*/,
          0 /*weights*/,
@@ -90,8 +98,9 @@ Cast::Cast(FFModel &model,
   numWeights = 0;
   int numdim = input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = input->dims[i];
+  }
   outputs[0] =
       model.create_parallel_tensor_legion_ordering(numdim, dims, _dtype, this);
 }

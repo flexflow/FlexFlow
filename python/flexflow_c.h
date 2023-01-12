@@ -109,6 +109,14 @@ flexflow_tensor_t flexflow_model_add_exp(flexflow_model_t handle,
                                          const flexflow_tensor_t x,
                                          char const *name);
 
+flexflow_tensor_t flexflow_model_add_sin(flexflow_model_t handle,
+                                         const flexflow_tensor_t x,
+                                         char const *name);
+
+flexflow_tensor_t flexflow_model_add_cos(flexflow_model_t handle,
+                                         const flexflow_tensor_t x,
+                                         char const *name);
+
 flexflow_tensor_t flexflow_model_add_add(flexflow_model_t handle,
                                          const flexflow_tensor_t x,
                                          const flexflow_tensor_t y,

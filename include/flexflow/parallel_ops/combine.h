@@ -1,22 +1,13 @@
 #ifndef _FLEXFLOW_COMBINE_H
 #define _FLEXFLOW_COMBINE_H
 
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
 #include "flexflow/layer.h"
 #include "flexflow/node.h"
-#include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/parallel_ops/combine_params.h"
 #include "parallel_op.h"
 
 namespace FlexFlow {
-
-class CombineMeta : public OpMeta {
-public:
-  CombineMeta(FFHandler handle);
-  DataType data_type;
-};
 
 class Combine : public ParallelOp {
 public:
@@ -63,13 +54,6 @@ public:
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
-  template <typename T>
-  static void
-      forward_kernel(const T *input_ptr, T *output_ptr, size_t num_elements);
-  template <typename T>
-  static void backward_kernel(const T *output_grad_ptr,
-                              T *input_grad_ptr,
-                              size_t num_elements);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;

@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/batch_matmul.h"
+#include "flexflow/ops/kernels/batch_matmul_kernels.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {
@@ -35,6 +36,8 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
 
+using namespace FlexFlow::Kernels::BatchMatmul;
+
 bool operator==(BatchMatmulParams const &lhs, BatchMatmulParams const &rhs) {
   return lhs.a_seq_length_dim == rhs.a_seq_length_dim &&
          lhs.a_seq_length_dim == rhs.a_seq_length_dim;
@@ -42,17 +45,23 @@ bool operator==(BatchMatmulParams const &lhs, BatchMatmulParams const &rhs) {
 
 bool BatchMatmulParams::is_valid(
     std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
-  if (!input.first.is_valid())
+  if (!input.first.is_valid()) {
     return false;
-  if (!input.second.is_valid())
+  }
+  if (!input.second.is_valid()) {
     return false;
-  if (input.first.num_dims != input.second.num_dims)
+  }
+  if (input.first.num_dims != input.second.num_dims) {
     return false;
-  for (int i = input.first.num_dims - 1; i >= 2; i--)
-    if (input.first.dims[i] != input.second.dims[i])
+  }
+  for (int i = input.first.num_dims - 1; i >= 2; i--) {
+    if (input.first.dims[i] != input.second.dims[i]) {
       return false;
-  if (input.first.dims[0] != input.second.dims[1])
+    }
+  }
+  if (input.first.dims[0] != input.second.dims[1]) {
     return false;
+  }
   return true;
 }
 
@@ -70,6 +79,7 @@ Tensor FFModel::batch_matmul(const Tensor A,
                              char const *name) {
   Layer *bmm = new Layer(this,
                          OP_BATCHMATMUL,
+                         DT_FLOAT,
                          name,
                          2 /*inputs*/,
                          0 /*weights*/,
@@ -83,13 +93,15 @@ Tensor FFModel::batch_matmul(const Tensor A,
          "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
          "Fortran ordering).");
   assert(A->num_dims == B->num_dims);
-  for (int i = A->num_dims - 1; i >= 2; i--)
+  for (int i = A->num_dims - 1; i >= 2; i--) {
     assert(A->dims[i] == B->dims[i]);
+  }
   assert(A->dims[0] == B->dims[1]);
   int dims[MAX_TENSOR_DIM];
   int numdim = A->num_dims;
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = A->dims[i];
+  }
   dims[0] = B->dims[0];
   bmm->outputs[0] = create_tensor_legion_ordering(
       numdim, dims, A->data_type, bmm, 0, true /*create_grad*/);
@@ -137,6 +149,7 @@ BatchMatmul::BatchMatmul(FFModel &model,
                          char const *name)
     : Op(model,
          OP_BATCHMATMUL,
+         DT_FLOAT,
          name,
          2 /*inputs*/,
          0 /*weights*/,
@@ -152,12 +165,14 @@ BatchMatmul::BatchMatmul(FFModel &model,
          "FlexFlow currently only supports seq_length_dim of 0 or 1 (in "
          "Fortran ordering).");
   assert(A->num_dims == B->num_dims);
-  for (int i = A->num_dims - 1; i >= 2; i--)
+  for (int i = A->num_dims - 1; i >= 2; i--) {
     assert(A->dims[i] == B->dims[i]);
+  }
   assert(A->dims[0] == B->dims[1]);
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < A->num_dims; i++)
+  for (int i = 0; i < A->num_dims; i++) {
     dims[i] = A->dims[i];
+  }
   dims[0] = B->dims[0];
   numOutputs = 1;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -363,18 +378,18 @@ void BatchMatmul::forward_task(Task const *task,
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
   }
 
-  BatchMatmul::forward_kernel_wrapper(meta,
-                                      out_ptr,
-                                      a_ptr,
-                                      b_ptr,
-                                      c_ptr,
-                                      m,
-                                      n,
-                                      k,
-                                      batch,
-                                      meta->a_seq_length_dim,
-                                      meta->b_seq_length_dim,
-                                      iter_config->seq_length);
+  forward_kernel_wrapper(meta,
+                         out_ptr,
+                         a_ptr,
+                         b_ptr,
+                         c_ptr,
+                         m,
+                         n,
+                         k,
+                         batch,
+                         meta->a_seq_length_dim,
+                         meta->b_seq_length_dim,
+                         iter_config->seq_length);
 }
 
 void BatchMatmul::backward(FFModel const &ff) {
@@ -538,18 +553,18 @@ __host__ void
   assert((meta->b_seq_length_dim >= b_domain.get_dim()) ||
          (iter_config->seq_length == 0));
 
-  BatchMatmul::backward_kernel_wrapper(meta,
-                                       out_ptr,
-                                       out_grad_ptr,
-                                       a_ptr,
-                                       a_grad_ptr,
-                                       b_ptr,
-                                       b_grad_ptr,
-                                       c_grad_ptr,
-                                       m,
-                                       n,
-                                       k,
-                                       batch);
+  backward_kernel_wrapper(meta,
+                          out_ptr,
+                          out_grad_ptr,
+                          a_ptr,
+                          a_grad_ptr,
+                          b_ptr,
+                          b_grad_ptr,
+                          c_grad_ptr,
+                          m,
+                          n,
+                          k,
+                          batch);
 }
 
 void BatchMatmul::print_layer(FFModel const &ff) {

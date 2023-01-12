@@ -15,7 +15,6 @@
 
 #include "flexflow/simulator.h"
 #include "flexflow/model.h"
-#include "flexflow/ops/pool_2d.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/reduction.h"
@@ -49,8 +48,9 @@ size_t CostMetrics::total_mem_diff_from(off_t sim_offset) const {
 
 int ParallelConfig::num_parts() const {
   int nparts = 1;
-  for (int i = 0; i < nDims; i++)
+  for (int i = 0; i < nDims; i++) {
     nparts *= dim[i];
+  }
   return nparts;
 }
 
@@ -58,12 +58,15 @@ bool ParallelConfig::is_data_parallel() const {
   int nparts = 1;
   for (int i = 0; i < nDims; i++) {
     nparts *= dim[i];
-    if ((i < nDims - 1) && (dim[i] > 1))
+    if ((i < nDims - 1) && (dim[i] > 1)) {
       return false;
+    }
   }
-  for (int i = 0; i < nparts; i++)
-    if (device_ids[i] != i)
+  for (int i = 0; i < nparts; i++) {
+    if (device_ids[i] != i) {
       return false;
+    }
+  }
   return true;
 }
 
@@ -72,42 +75,50 @@ bool MachineResource::is_valid_machine_view(MachineView const &view) const {
     // Currently assume start_gpu_id == view.start_device_id
     assert(view.start_device_id == start_gpu_id);
     int last_device_id = start_gpu_id;
-    for (int i = 0; i < view.ndims; i++)
+    for (int i = 0; i < view.ndims; i++) {
       last_device_id += (view.dim[i] - 1) * view.stride[i];
+    }
     // Check that last device id in range
     if (last_device_id >= start_gpu_id + (num_nodes - 1) * all_gpus_per_node +
-                              available_gpus_per_node)
+                              available_gpus_per_node) {
       return false;
+    }
     // in case all_gpus_per_node > available_gpus_per_node
     if (all_gpus_per_node > available_gpus_per_node) {
       int used_gpus_per_node = 1;
       for (int i = 0; i < view.ndims; i++) {
-        if (view.stride[i] < all_gpus_per_node)
+        if (view.stride[i] < all_gpus_per_node) {
           used_gpus_per_node += (view.dim[i] - 1) * view.stride[i];
+        }
       }
-      if (used_gpus_per_node > available_gpus_per_node)
+      if (used_gpus_per_node > available_gpus_per_node) {
         return false;
+      }
     }
     return true;
   } else if (view.device_type == MachineView::CPU) {
     // Currently assume start_cpu_id == view.start_device_id
     assert(view.start_device_id == start_cpu_id);
     int last_device_id = start_cpu_id;
-    for (int i = 0; i < view.ndims; i++)
+    for (int i = 0; i < view.ndims; i++) {
       last_device_id += (view.dim[i] - 1) * view.stride[i];
+    }
     // Check that last device id in range
     if (last_device_id >= start_cpu_id + (num_nodes - 1) * all_cpus_per_node +
-                              available_cpus_per_node)
+                              available_cpus_per_node) {
       return false;
+    }
     // in case all_cpus_per_node > available_cpus_per_node
     if (all_cpus_per_node > available_cpus_per_node) {
       int used_cpus_per_node = 1;
       for (int i = 0; i < view.ndims; i++) {
-        if (view.stride[i] < all_cpus_per_node)
+        if (view.stride[i] < all_cpus_per_node) {
           used_cpus_per_node += (view.dim[i] - 1) * view.stride[i];
+        }
       }
-      if (used_cpus_per_node > available_cpus_per_node)
+      if (used_cpus_per_node > available_cpus_per_node) {
         return false;
+      }
     }
     return true;
   } else {
@@ -170,8 +181,9 @@ void NominalCommDevice::reset() {
 
 Route NominalCommDevice::expand_to_physical() const {
   if (dirty) {
-    if (routing_strategy == nullptr)
+    if (routing_strategy == nullptr) {
       assert("don't know how to route!" && false);
+    }
     // std::cerr << name << " dirty... " << std::endl;
     *const_cast<EcmpRoutes *>(&routes) =
         routing_strategy->get_routes(device_id / nnode, device_id % nnode);
@@ -182,8 +194,9 @@ Route NominalCommDevice::expand_to_physical() const {
   size_t pick = 0;
   double choice = std_uniform(gen);
   for (size_t i = 0; i < routes.first.size(); i++) {
-    if (choice > routes.first[i])
+    if (choice > routes.first[i]) {
       break;
+    }
     pick = i;
   }
   Route ret = Route(routes.second[pick].begin(), routes.second[pick].end());
@@ -197,8 +210,9 @@ void NominalCommDevice::set_physical_paths(EcmpRoutes const &rs) {
 
 EcmpRoutes const &NominalCommDevice::get_all_routes() {
   if (dirty) {
-    if (routing_strategy == nullptr)
+    if (routing_strategy == nullptr) {
       assert("don't know how to route!" && false);
+    }
     // std::cerr << name << " dirty... " << std::endl;
     *const_cast<EcmpRoutes *>(&routes) =
         routing_strategy->get_routes(device_id / nnode, device_id % nnode);
@@ -332,6 +346,8 @@ void Simulator::free_all() {
 
 size_t data_type_size(DataType type) {
   switch (type) {
+    case DT_HALF:
+      return sizeof(half);
     case DT_FLOAT:
       return sizeof(float);
     case DT_DOUBLE:
@@ -472,8 +488,9 @@ CostMetrics Simulator::measure_operator_cost(Op const *op,
   size_t hash = 17 * 31 + op->get_untyped_params_hash();
   hash = hash * 31 + std::hash<int>()(config.device_type);
   hash = hash * 31 + std::hash<int>()(config.nDims);
-  for (int i = 0; i < config.nDims; i++)
+  for (int i = 0; i < config.nDims; i++) {
     hash = hash * 31 + std::hash<int>()(config.dim[i]);
+  }
   std::unordered_map<size_t, CostMetrics>::const_iterator iter =
       hash_to_operator_cost.find(hash);
   if (iter == hash_to_operator_cost.end()) {
@@ -534,8 +551,9 @@ CostMetrics Simulator::measure_operator_cost(Op const *op,
   size_t hash = 17 * 31 + op->get_untyped_params_hash();
   hash = hash * 31 + std::hash<int>()(mv.device_type);
   hash = hash * 31 + std::hash<int>()(mv.ndims);
-  for (int i = 0; i < mv.ndims; i++)
+  for (int i = 0; i < mv.ndims; i++) {
     hash = hash * 31 + std::hash<int>()(mv.dim[i]);
+  }
   std::unordered_map<size_t, CostMetrics>::const_iterator iter =
       hash_to_operator_cost.find(hash);
 
@@ -678,8 +696,9 @@ float Simulator::estimate_xfer_cost(Op const *op,
               break;
             }
           }
-          if (inter_node)
+          if (inter_node) {
             break;
+          }
         }
         float max_xfer_cost = 0.0f;
         if (inter_node) {
@@ -700,8 +719,9 @@ float Simulator::estimate_xfer_cost(Op const *op,
     }
   } else {
     // No cost if source_view == sink_view
-    if (source_view == sink_view)
+    if (source_view == sink_view) {
       return 0.0f;
+    }
     assert(source_view.ndims == sink_view.ndims);
     Domain d;
     d.dim = source_view.ndims;
@@ -712,8 +732,9 @@ float Simulator::estimate_xfer_cost(Op const *op,
     }
     const ParallelTensor input_tensor = op->inputs[input_idx];
     size_t total_size = data_type_size(input_tensor->data_type);
-    for (int i = 0; i < input_tensor->num_dims; i++)
+    for (int i = 0; i < input_tensor->num_dims; i++) {
       total_size *= input_tensor->dims[i].size / input_tensor->dims[i].degree;
+    }
     float max_xfer_cost = 0.0f;
     for (Domain::DomainPointIterator it(d); it; it++) {
       int source_device = source_view.get_device_id(*it);
@@ -826,8 +847,9 @@ float Simulator::simulate_runtime(
     for (int j = 0; j < op->numInputs; j++) {
       ParallelTensor t = op->inputs[j];
       Op const *pre_op = t->owner_op;
-      if (pre_op == NULL)
+      if (pre_op == NULL) {
         continue;
+      }
       ParallelConfig pre_config = global.find(pre_op)->second;
       size_t element_size = data_type_size(t->data_type);
       for (int dstId = 0; dstId < config.num_parts(); dstId++) {
@@ -958,7 +980,7 @@ float Simulator::simulate_runtime(
           data_type_size(DT_FLOAT); // assume all weights have float elements
       for (int j = 0; j < op->numWeights; j++) {
         std::set<int> synched;
-        for (int firstId = 0; firstId < pc.num_parts(); firstId++)
+        for (int firstId = 0; firstId < pc.num_parts(); firstId++) {
           if (synched.find(firstId) == synched.end()) {
             synched.insert(firstId);
             Domain firstR = op->get_weight_tensor_shape(pc, j, firstId);
@@ -989,6 +1011,7 @@ float Simulator::simulate_runtime(
               }
             }
           }
+        }
       }
     }
   } else {
@@ -998,9 +1021,11 @@ float Simulator::simulate_runtime(
   // Step 4: add ready tasks into ready_queue
   std::priority_queue<SimTask *, std::vector<SimTask *>, SimTaskCompare>
       ready_queue;
-  for (size_t i = 0; i < task_manager->global_task_id; i++)
-    if (task_manager->tasks[i]->counter == 0)
+  for (size_t i = 0; i < task_manager->global_task_id; i++) {
+    if (task_manager->tasks[i]->counter == 0) {
       ready_queue.push(task_manager->tasks[i]);
+    }
+  }
   // Step 5: perform simulation
   float sim_time = 0.0f;
   std::map<Device *, float> device_times;
@@ -1039,8 +1064,9 @@ float Simulator::simulate_runtime(
     // start_time(%.4lf) device(%s)\n",
     //       idx, cur_task->type, cur_task->run_time, ready_time, start_time,
     //       (cur_task->device->name).c_str());
-    if (end_time > sim_time)
+    if (end_time > sim_time) {
       sim_time = end_time;
+    }
     for (size_t i = 0; i < cur_task->next_tasks.size(); i++) {
       SimTask *next = cur_task->next_tasks[i];
       if (export_taskgraph) {
@@ -1208,8 +1234,9 @@ float Simulator::simulate_runtime(
   // Penalize the total runtiem by 1ms if we exceed the memory budget by 1MB
   for (int i = 0; i < machine->get_num_gpus(); i++) {
     MemDevice *gpu_fb_mem = machine->get_gpu_fb_mem(i);
-    if (gpu_mem_usage[i] > gpu_fb_mem->capacity and gpu_fb_mem->capacity >= 0)
+    if (gpu_mem_usage[i] > gpu_fb_mem->capacity and gpu_fb_mem->capacity >= 0) {
       memory_penalty += (gpu_mem_usage[i] - gpu_fb_mem->capacity) * 1e-6;
+    }
   }
   // if (memory_penalty > 0.0f)
   //   printf("Memory penalty = %.4lf ms\n", memory_penalty);
@@ -1299,8 +1326,9 @@ float LogicalTaskgraphBasedSimulator::simulate_runtime(
     for (int j = 0; j < op->numInputs; j++) {
       ParallelTensor t = op->inputs[j];
       Op const *pre_op = t->owner_op;
-      if (pre_op == NULL)
+      if (pre_op == NULL) {
         continue;
+      }
       ParallelConfig pre_config = global.find(pre_op)->second;
       size_t element_size = data_type_size(t->data_type);
       for (int dstId = 0; dstId < config.num_parts(); dstId++) {
@@ -1336,9 +1364,11 @@ float LogicalTaskgraphBasedSimulator::simulate_runtime(
   // Step 4: add ready tasks into ready_queue
   std::priority_queue<SimTask *, std::vector<SimTask *>, SimTaskCompare>
       ready_queue;
-  for (size_t i = 0; i < task_manager->global_task_id; i++)
-    if (task_manager->tasks[i]->counter == 0)
+  for (size_t i = 0; i < task_manager->global_task_id; i++) {
+    if (task_manager->tasks[i]->counter == 0) {
       ready_queue.push(task_manager->tasks[i]);
+    }
+  }
 
   // Step 5: perform simulation
 
@@ -1357,9 +1387,9 @@ float LogicalTaskgraphBasedSimulator::simulate_runtime(
     }
     float start_time = std::max(ready_time, cur_task->ready_time);
     if (cur_task->type == SimTask::TASK_NOMINAL_COMM) {
-      if (!segment_transfer)
+      if (!segment_transfer) {
         end_time = route_transfer(cur_task, start_time, device_times);
-      else {
+      } else {
         bool finished;
         end_time =
             route_transfer_seg(cur_task, start_time, device_times, finished);
@@ -1472,8 +1502,9 @@ float LogicalTaskgraphBasedSimulator::route_transfer(
 
   for (unsigned int i = 0; i < route.size(); i++) {
     CommDevice *latency_task_device = route[i];
-    if (device_times.find(latency_task_device) == device_times.end())
+    if (device_times.find(latency_task_device) == device_times.end()) {
       device_times[latency_task_device] = 0;
+    }
     float latency_task_run_time = machine->get_inter_node_gpu_latency();
     float latency_task_ready_time;
     float latency_task_start_time;
@@ -1572,8 +1603,9 @@ float LogicalTaskgraphBasedSimulator::route_transfer_seg(
 
   for (unsigned int i = 0; i < route.size(); i++) {
     CommDevice *latency_task_device = route[i];
-    if (device_times.find(latency_task_device) == device_times.end())
+    if (device_times.find(latency_task_device) == device_times.end()) {
       device_times[latency_task_device] = 0;
+    }
     float latency_task_run_time = machine->get_inter_node_gpu_latency();
     float latency_task_ready_time;
     float latency_task_start_time;
@@ -1657,8 +1689,9 @@ void LogicalTaskgraphBasedSimulator::expand_allreduce(
         &ready_queue) {
 
   int n_participants = allreduce_task->next_tasks.size();
-  if (n_participants == 1)
+  if (n_participants == 1) {
     return;
+  }
 
   SimTask *final_task = new_update_task_unrecorded();
 

@@ -92,18 +92,18 @@ FFHandler
     checkCUDA(cublasSetMathMode(handle.blas, CUBLAS_TENSOR_OP_MATH));
   }
   checkCUDNN(cudnnCreate(&handle.dnn));
-  //#ifdef FF_USE_NCCL
-  //  checkNCCL(ncclCommInitRank(&handle.nccl, info->allRanks, info->ncclId,
-  //  info->myRank)); fprintf(stderr, "handle.nccl(%p)\n", handle.nccl);
-  //#endif
-  // std::set<Memory> memFB;
-  // assert(memFB.size() == 1);
-  // assert(memFB.begin()->kind() == Memory::GPU_FB_MEM);
-  // Realm::MemoryImpl* memImpl =
-  //    Realm::get_runtime()->get_memory_impl(*memFB.begin());
-  // Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
-  // off_t offset = memFBImpl->alloc_bytes(workSpaceSize);
-  // handle.workSpace = memFBImpl->get_direct_ptr(offset, 0);
+  // #ifdef FF_USE_NCCL
+  //   checkNCCL(ncclCommInitRank(&handle.nccl, info->allRanks, info->ncclId,
+  //   info->myRank)); fprintf(stderr, "handle.nccl(%p)\n", handle.nccl);
+  // #endif
+  //  std::set<Memory> memFB;
+  //  assert(memFB.size() == 1);
+  //  assert(memFB.begin()->kind() == Memory::GPU_FB_MEM);
+  //  Realm::MemoryImpl* memImpl =
+  //     Realm::get_runtime()->get_memory_impl(*memFB.begin());
+  //  Realm::Cuda::GPUFBMemory* memFBImpl = (Realm::Cuda::GPUFBMemory*) memImpl;
+  //  off_t offset = memFBImpl->alloc_bytes(workSpaceSize);
+  //  handle.workSpace = memFBImpl->get_direct_ptr(offset, 0);
   {
     // allocate memory for workspace
     Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
@@ -344,8 +344,9 @@ void UtilityTasks::init_labels_task(Task const *task,
 }
 
 void FFModel::prefetch() {
-  for (size_t i = 0; i < operators.size(); i++)
+  for (size_t i = 0; i < operators.size(); i++) {
     operators[i]->prefetch(*this);
+  }
 }
 
 }; // namespace FlexFlow

@@ -78,8 +78,9 @@ FFMapper::FFMapper(MapperRuntime *rt,
     address_space_set.insert(it->address_space());
     if (it->kind() == Processor::TOC_PROC) {
       all_gpus.push_back(*it);
-      if (it->address_space() == node_id)
+      if (it->address_space() == node_id) {
         local_gpus.push_back(*it);
+      }
       Machine::MemoryQuery fb_query(machine);
       fb_query.only_kind(Memory::GPU_FB_MEM);
       fb_query.best_affinity_to(*it);
@@ -92,8 +93,9 @@ FFMapper::FFMapper(MapperRuntime *rt,
       proc_zcmems[*it] = *(zc_query.begin());
     } else if (it->kind() == Processor::LOC_PROC) {
       all_cpus.push_back(*it);
-      if (it->address_space() == node_id)
+      if (it->address_space() == node_id) {
         local_cpus.push_back(*it);
+      }
       Machine::MemoryQuery zc_query(machine);
       zc_query.only_kind(Memory::Z_COPY_MEM);
       zc_query.has_affinity_to(*it);
@@ -101,8 +103,9 @@ FFMapper::FFMapper(MapperRuntime *rt,
       proc_zcmems[*it] = *(zc_query.begin());
     } else if (it->kind() == Processor::PY_PROC) {
       all_pys.push_back(*it);
-      if (it->address_space() == node_id)
+      if (it->address_space() == node_id) {
         local_pys.push_back(*it);
+      }
       Machine::MemoryQuery zc_query(machine);
       zc_query.only_kind(Memory::Z_COPY_MEM);
       zc_query.has_affinity_to(*it);
@@ -111,8 +114,9 @@ FFMapper::FFMapper(MapperRuntime *rt,
     }
   }
   total_nodes = address_space_set.size();
-  if (enable_control_replication)
+  if (enable_control_replication) {
     log_ff_mapper.print("Enabled Control Replication Optimizations.");
+  }
   // if (strategyFile == "") {
   //   // No strategy file provided, use data parallelism
   //   log_ff_mapper.print("No strategy file provided. Use default data
@@ -302,8 +306,9 @@ void FFMapper::select_task_options(const MapperContext ctx,
   }
 
   // We don't set initla_proc for index_space tasks
-  if (task.is_index_space)
+  if (task.is_index_space) {
     return;
+  }
 
   if (is_parameter_server_update_task(task.task_id) ||
       is_initializer_task(task.task_id)) {
@@ -313,8 +318,9 @@ void FFMapper::select_task_options(const MapperContext ctx,
     if (machine_views.find(hash) != machine_views.end()) {
       view = machine_views[hash];
       int num_parts = 1;
-      for (int i = 0; i < view.ndims; i++)
+      for (int i = 0; i < view.ndims; i++) {
         num_parts *= view.dim[i];
+      }
       if (num_parts == 1) {
         output.initial_proc = all_gpus[view.start_device_id];
         // Current assert this sould be a local proc
@@ -503,20 +509,22 @@ void FFMapper::map_task(const MapperContext ctx,
     // Put any of our CPU procs here
     // If we're part of a must epoch launch, our
     // target proc will be sufficient
-    if (!task.must_epoch_task)
+    if (!task.must_epoch_task) {
       output.target_procs.insert(
           output.target_procs.end(), local_cpus.begin(), local_cpus.end());
-    else
+    } else {
       output.target_procs.push_back(task.target_proc);
+    }
   } else if (task.target_proc.kind() == Processor::PY_PROC) {
     // Put any of our Python procs here
     // If we're part of a must epoch launch, our
     // target proc will be sufficient
-    if (!task.must_epoch_task)
+    if (!task.must_epoch_task) {
       output.target_procs.insert(
           output.target_procs.end(), local_pys.begin(), local_pys.end());
-    else
+    } else {
       output.target_procs.push_back(task.target_proc);
+    }
   } else {
     // Unsupported proc kind
     assert(false);
@@ -527,8 +535,9 @@ void FFMapper::map_task(const MapperContext ctx,
   // overheads to Legion
   if (enable_control_replication) {
     assert(output.target_procs.size() > 0);
-    for (size_t i = 0; i < output.target_procs.size(); i++)
+    for (size_t i = 0; i < output.target_procs.size(); i++) {
       assert(output.target_procs[i].address_space() == node_id);
+    }
   }
   // Find instances that still need to be mapped
   std::vector<std::set<FieldID>> missing_fields(task.regions.size());
@@ -539,22 +548,26 @@ void FFMapper::map_task(const MapperContext ctx,
                             missing_fields);
   // Track which regions have already been mapped
   std::vector<bool> done_regions(task.regions.size(), false);
-  if (!input.premapped_regions.empty())
+  if (!input.premapped_regions.empty()) {
     for (std::vector<unsigned>::const_iterator it =
              input.premapped_regions.begin();
          it != input.premapped_regions.end();
-         it++)
+         it++) {
       done_regions[*it] = true;
+    }
+  }
   // Now we need to go through and make instances for any of our
   // regions which do not have space for certain fields
   for (unsigned idx = 0; idx < task.regions.size(); idx++) {
-    if (done_regions[idx])
+    if (done_regions[idx]) {
       continue;
+    }
     // Skip any empty regions
     if ((task.regions[idx].privilege == LEGION_NO_ACCESS) ||
         (task.regions[idx].privilege_fields.empty()) ||
-        missing_fields[idx].empty())
+        missing_fields[idx].empty()) {
       continue;
+    }
     // Select a memory for the req
     Memory target_mem =
         default_select_target_memory(ctx, task.target_proc, task.regions[idx]);
@@ -573,8 +586,9 @@ void FFMapper::map_task(const MapperContext ctx,
           Domain instance_domain = it->get_instance_domain();
           Domain region_domain = runtime->get_index_space_domain(
               ctx, task.regions[idx].region.get_index_space());
-          if (instance_domain.get_volume() == region_domain.get_volume())
+          if (instance_domain.get_volume() == region_domain.get_volume()) {
             valid_instances.push_back(*it);
+          }
         }
       }
 
@@ -588,8 +602,9 @@ void FFMapper::map_task(const MapperContext ctx,
       runtime->acquire_and_filter_instances(ctx, valid_instances);
       output.chosen_instances[idx] = valid_instances;
       missing_fields[idx] = valid_missing_fields;
-      if (missing_fields[idx].empty())
+      if (missing_fields[idx].empty()) {
         continue;
+      }
     }
     // Otherwise make nromal instances for the given region
     LayoutConstraintID layout_id = default_select_layout_constraints(
@@ -644,45 +659,6 @@ void FFMapper::map_task(const MapperContext ctx,
       created_instances.push_back(clog);
     }
   } // for idx
-#ifdef DEADCODE
-  if ((task.task_id == CONV2D_INIT_TASK_ID) ||
-      (task.task_id == CONV2D_FWD_TASK_ID) ||
-      (task.task_id == CONV2D_BWD_TASK_ID)) {
-    VariantInfo chosen =
-        default_find_preferred_variant(task,
-                                       ctx,
-                                       true /*needs tight bound*/,
-                                       true /*cache*/,
-                                       task.target_proc.kind());
-    output.chosen_variant = chosen.variant;
-    output.task_priority = 0;
-    output.postmap_task = false;
-    output.target_procs.push_back(task.target_proc);
-    assert(task.target_proc.kind() == Processor::TOC_PROC);
-    Memory fbmem = proc_fbmems[task.target_proc];
-    for (unsigned idx = 0; idx < task.regions.size(); idx++) {
-      if ((task.regions[idx].privilege == NO_ACCESS) ||
-          (task.regions[idx].privilege_fields.empty()))
-        continue;
-      TaskLayoutConstraintSet const &layout_constraints =
-          runtime->find_task_layout_constraints(
-              ctx, task.task_id, output.chosen_variant);
-      std::set<FieldID> fields(task.regions[idx].privilege_fields);
-      if (!default_create_custom_instances(ctx,
-                                           task.target_proc,
-                                           fbmem,
-                                           task.regions[idx],
-                                           idx,
-                                           fields,
-                                           layout_constraints,
-                                           true,
-                                           output.chosen_instances[idx])) {
-        default_report_failed_instance_creation(
-            task, idx, task.target_proc, fbmem);
-      }
-    }
-  } else
-#endif
 }
 
 void FFMapper::map_replicate_task(const MapperContext ctx,
@@ -798,8 +774,9 @@ void FFMapper::default_policy_select_sources(
         assert(affinity.size() == 1);
         memory_bandwidth = affinity[0].bandwidth;
         // Add 1000 points to the bandwidth to prioritize preferred_memory
-        if (preferred_memory == location)
+        if (preferred_memory == location) {
           memory_bandwidth += 1000;
+        }
       }
       source_memories[location] = memory_bandwidth;
       band_ranking[idx] =
@@ -896,12 +873,14 @@ void FFMapper::map_inline(const MapperContext ctx,
         assert(false);
       }
       target_memory = valid_mems.first(); // just take the first one
-    } else
+    } else {
       target_memory = default_select_target_memory(
           ctx, inline_op.parent_task->current_proc, inline_op.requirement);
-    if (creation_constraints.field_constraint.field_set.empty())
+    }
+    if (creation_constraints.field_constraint.field_set.empty()) {
       creation_constraints.add_constraint(FieldConstraint(
           inline_op.requirement.privilege_fields, false /*contig*/));
+    }
   } else {
     // No constraints so do what we want
     target_memory = default_select_target_memory(
@@ -913,11 +892,13 @@ void FFMapper::map_inline(const MapperContext ctx,
                input.valid_instances.begin();
            it != input.valid_instances.end();
            it++) {
-        if (it->get_location() == target_memory)
+        if (it->get_location() == target_memory) {
           output.chosen_instances.push_back(*it);
+        }
       }
-      if (!output.chosen_instances.empty())
+      if (!output.chosen_instances.empty()) {
         runtime->acquire_and_filter_instances(ctx, output.chosen_instances);
+      }
     }
     // Now see if we have any fields which we still make space for
     std::set<FieldID> missing_fields = inline_op.requirement.privilege_fields;
@@ -926,12 +907,14 @@ void FFMapper::map_inline(const MapperContext ctx,
          it != output.chosen_instances.end();
          it++) {
       it->remove_space_fields(missing_fields);
-      if (missing_fields.empty())
+      if (missing_fields.empty()) {
         break;
+      }
     }
     // If we've satisfied all our fields, then we are done
-    if (missing_fields.empty())
+    if (missing_fields.empty()) {
       return;
+    }
     // Otherwise, let's make an instance for our missing fields
     LayoutConstraintID our_layout_id = default_select_layout_constraints(
         ctx, target_memory, inline_op.requirement, true);
@@ -1243,8 +1226,9 @@ void FFMapper::select_tasks_to_map(const MapperContext ctx,
   // Just map all the ready tasks
   for (std::list<Task const *>::const_iterator it = input.ready_tasks.begin();
        it != input.ready_tasks.end();
-       it++)
+       it++) {
     output.map_tasks.insert(*it);
+  }
 }
 
 void FFMapper::select_steal_targets(const MapperContext ctx,
@@ -1284,41 +1268,15 @@ void FFMapper::permit_steal_request(const MapperContext ctx,
     }
     for (std::set<FieldID>::const_iterator it = req.privilege_fields.begin();
          it != req.privilege_fields.end();
-         it++)
+         it++) {
       result = result * c1 + c2 + *it;
+    }
     result = result * c1 + c2 + req.privilege;
     result = result * c1 + c2 + req.prop;
     result = result * c1 + c2 + req.redop;
   }
   return result;
 }
-
-#ifdef DEADCODE
-Memory
-    FFMapper::default_policy_select_target_memory(MapperContext ctx,
-                                                  Processor target_proc,
-                                                  RegionRequirement const &req,
-                                                  MemoryConstraint mc) {
-  if (target_proc.kind() == Processor::TOC_PROC) {
-    if (req.tag == MAP_TO_ZC_MEMORY) {
-      assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
-      return proc_zcmems[target_proc];
-    } else {
-      assert(req.tag == 0);
-      // return DefaultMapper::default_policy_select_target_memory(
-      //            ctx, target_proc, req, mc);
-      assert(proc_fbmems.find(target_proc) != proc_fbmems.end());
-      return proc_fbmems[target_proc];
-    }
-  } else if (target_proc.kind() == Processor::LOC_PROC) {
-    assert(proc_zcmems.find(target_proc) != proc_zcmems.end());
-    return proc_zcmems[target_proc];
-  } else {
-    return DefaultMapper::default_policy_select_target_memory(
-        ctx, target_proc, req, mc);
-  }
-}
-#endif
 
 std::vector<Processor> const &
     FFMapper::all_procs_by_kind(Processor::Kind kind) {
@@ -1381,12 +1339,14 @@ bool FFMapper::default_make_instance(MapperContext ctx,
                                                  true /*acquire*/,
                                                  0 /*priority*/,
                                                  tight_region_bounds,
-                                                 footprint))
+                                                 footprint)) {
     return false;
+  }
   if (created) {
     int priority = LEGION_GC_NEVER_PRIORITY;
-    if (priority != 0)
+    if (priority != 0) {
       runtime->set_garbage_collection_priority(ctx, result, priority);
+    }
   }
   return true;
 }
@@ -1404,8 +1364,9 @@ LayoutConstraintID FFMapper::default_select_layout_constraints(
       layout_constraint_cache.find(constraint_key);
   if (finder != layout_constraint_cache.end()) {
     // If we don't need a constraint check we are already good
-    if (!needs_field_constraint_check)
+    if (!needs_field_constraint_check) {
       return finder->second;
+    }
     // Check that the fields still are the same, if not, fall through
     // so that we make a new set of constraints
     LayoutConstraintSet const &old_constraints =
@@ -1425,8 +1386,9 @@ LayoutConstraintID FFMapper::default_select_layout_constraints(
           break;
         }
       }
-      if (still_equal)
+      if (still_equal) {
         return finder->second;
+      }
     }
     // Otherwise we fall through and make a new constraint which
     // will also update the cache
@@ -1471,9 +1433,10 @@ void FFMapper::default_select_constraints(MapperContext ctx,
     Domain domain = runtime->get_index_space_domain(ctx, is);
     int dim = domain.get_dim();
     std::vector<DimensionKind> dimension_ordering(dim + 1);
-    for (int i = 0; i < dim; ++i)
+    for (int i = 0; i < dim; ++i) {
       dimension_ordering[i] =
           static_cast<DimensionKind>(static_cast<int>(LEGION_DIM_X) + i);
+    }
     dimension_ordering[dim] = LEGION_DIM_F;
     constraints.add_constraint(
         OrderingConstraint(dimension_ordering, false /*contigous*/));

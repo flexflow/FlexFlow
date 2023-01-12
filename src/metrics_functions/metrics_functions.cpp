@@ -40,8 +40,9 @@ __global__ void update_metrics_sparse_label_kernel(float const *logits,
       }
       assert(my_label >= 0);
       atomicAdd(&(perf->train_all), 1);
-      if (labels[b] == my_label)
+      if (labels[b] == my_label) {
         atomicAdd(&(perf->train_correct), 1);
+      }
     }
     if (metrics.measure_sparse_categorical_crossentropy) {
       float my_logit = max(logits[b * num_classes + labels[b]], LOG_MIN_VALUE);
@@ -57,12 +58,15 @@ __global__ void update_metrics_sparse_label_kernel(float const *logits,
         mse += (my_logit - my_label) * (my_logit - my_label);
         mae += abs(my_logit - my_label);
       }
-      if (metrics.measure_mean_squared_error)
+      if (metrics.measure_mean_squared_error) {
         atomicAdd(&(perf->mse_loss), mse);
-      if (metrics.measure_root_mean_squared_error)
+      }
+      if (metrics.measure_root_mean_squared_error) {
         atomicAdd(&(perf->rmse_loss), sqrt(mse));
-      if (metrics.measure_mean_absolute_error)
+      }
+      if (metrics.measure_mean_absolute_error) {
         atomicAdd(&(perf->mae_loss), mae);
+      }
     }
   }
 }
@@ -96,8 +100,9 @@ __global__ void update_metrics_label_kernel(float const *logits,
         }
         assert(my_label >= 0);
         assert(true_label >= 0);
-        if (true_label == my_label)
+        if (true_label == my_label) {
           atomicAdd(&(perf->train_correct), 1);
+        }
       }
     }
     if (metrics.measure_categorical_crossentropy) {
@@ -119,12 +124,15 @@ __global__ void update_metrics_label_kernel(float const *logits,
         mse += diff * diff;
         mae += abs(diff);
       }
-      if (metrics.measure_mean_squared_error)
+      if (metrics.measure_mean_squared_error) {
         atomicAdd(&(perf->mse_loss), mse);
-      if (metrics.measure_root_mean_squared_error)
+      }
+      if (metrics.measure_root_mean_squared_error) {
         atomicAdd(&(perf->rmse_loss), sqrt(mse));
-      if (metrics.measure_mean_absolute_error)
+      }
+      if (metrics.measure_mean_absolute_error) {
         atomicAdd(&(perf->mae_loss), mae);
+      }
     }
   }
 }

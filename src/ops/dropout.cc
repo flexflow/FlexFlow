@@ -35,6 +35,7 @@ Tensor FFModel::dropout(const Tensor input,
   }
   Layer *dropout = new Layer(this,
                              OP_DROPOUT,
+                             DT_FLOAT,
                              name,
                              1 /*inputs*/,
                              0 /*weights*/,
@@ -42,8 +43,9 @@ Tensor FFModel::dropout(const Tensor input,
                              input);
   int numdims = input->num_dims;
   int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdims; i++)
+  for (int i = 0; i < numdims; i++) {
     dims[i] = input->dims[i];
+  }
   dropout->outputs[0] = create_tensor_legion_ordering(
       numdims, dims, DT_FLOAT, dropout, 0, true /*create_grad*/);
   dropout->add_float_property("rate", rate);
@@ -87,6 +89,7 @@ Dropout::Dropout(FFModel &model,
                  char const *name)
     : Op(model,
          OP_DROPOUT,
+         DT_FLOAT,
          name,
          1 /*inputs*/,
          0 /*weights*/,
@@ -95,8 +98,9 @@ Dropout::Dropout(FFModel &model,
       rate(_rate), seed(_seed) {
   // Set output shape
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < _input->num_dims; i++)
+  for (int i = 0; i < _input->num_dims; i++) {
     dims[i] = _input->dims[i];
+  }
   numOutputs = 1;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _input->num_dims, dims, DT_FLOAT, this);
@@ -112,50 +116,6 @@ Dropout::Dropout(FFModel &model,
                  const ParallelTensor input,
                  char const *name)
     : Dropout(model, input, params.rate, params.seed, name) {}
-
-#ifdef DEADCODE
-void Dropout::map_output_tensors(FFModel &model) {
-  int dim = inputs[0].num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM: {                                                                  \
-    task_is = model.get_or_create_task_is(DIM, name);                          \
-    map_output_tensors_with_dim<DIM>(model);                                   \
-    break;                                                                     \
-  }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default: {
-      assert(false && "Unsupported dim");
-    }
-  }
-}
-
-template <int NDIM>
-void Dropout::map_output_tensors_with_dim(FFModel &model) {
-  // Retrive the task indexspace for the op
-  task_is = IndexSpaceT<NDIM>(model.get_or_create_task_is(NDIM, name));
-  Context ctx = model.config.lg_ctx;
-  Runtime *runtime = model.config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  int dims[NDIM];
-  for (int i = 0; i < NDIM; i++)
-    dims[i] = inputs[0].adim[NDIM - 1 - i];
-  outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
-  outputs[0].owner_op = this;
-  outputs[0].owner_idx = 0;
-  Rect<NDIM> input_rect;
-  input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0]->part.get_index_partition());
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0]->part;
-    input_grad_lps[0] = inputs[0]->part_grad;
-  } else {
-    model.create_disjoint_partition<NDIM>(
-        inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
-  }
-}
-#endif
 
 void Dropout::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());

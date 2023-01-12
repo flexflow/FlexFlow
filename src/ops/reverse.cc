@@ -47,6 +47,7 @@ Reverse::Reverse(FFModel &model,
                  char const *name)
     : Op(model,
          OP_REVERSE,
+         input->data_type,
          name,
          1 /*inputs*/,
          0 /*weights*/,
@@ -56,59 +57,12 @@ Reverse::Reverse(FFModel &model,
   numOutputs = 1;
   int numdim = input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = input->dims[i];
+  }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, input->data_type, this);
 }
-
-#ifdef DEADCODE
-void Reverse::create_input_partition(FFModel &model) {
-  // Retrive the task indexspace
-  int dim = inputs[0]->num_dims;
-  switch (dim) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM: {                                                                  \
-    task_is = model.get_or_create_task_is(DIM, name);                          \
-    create_input_partition_with_dim<DIM>(model);                               \
-    break;                                                                     \
-  }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default: {
-      // Unsupported dim for Reverse operator
-      assert(false);
-    }
-  }
-}
-
-template <int NDIM>
-void Reverse::create_input_partition_with_dim(FFModel &model) {
-  Context ctx = model.config.lg_ctx;
-  Runtime *runtime = model.config.lg_hlr;
-  Rect<NDIM> part_rect = runtime->get_index_space_domain(ctx, task_is);
-  // the degree of parallelism along the reversed dimension must be 1
-  assert(part_rect.hi[NDIM - 1 - axis] == part_rect.lo[NDIM - 1 - axis]);
-  return Op::create_input_partition(model);
-#ifdef DEADCODE
-  int dims[NDIM];
-  for (int i = 0; i < NDIM; i++)
-    dims[i] = outputs[0].dims[NDIM - 1 - i].size;
-  outputs[0] = model.create_tensor<NDIM>(dims, DT_FLOAT, this);
-  outputs[0].owner_op = this;
-  outputs[0].owner_idx = 0;
-  Rect<NDIM> input_rect = runtime->get_index_partition_color_space(
-      ctx, inputs[0]->part.get_index_partition());
-  if (input_rect == part_rect) {
-    input_lps[0] = inputs[0]->part;
-    input_grad_lps[0] = inputs[0]->part_grad;
-  } else {
-    model.create_disjoint_partition<NDIM>(
-        inputs[0], IndexSpaceT<NDIM>(task_is), input_lps[0], input_grad_lps[0]);
-  }
-#endif
-}
-#endif
 
 void Reverse::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -192,12 +146,13 @@ void Reverse::forward_task(Task const *task,
   int axis = in_domain.get_dim() - reverse->axis - 1;
   coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < out_domain.get_dim(); i++) {
-    if (i < axis)
+    if (i < axis) {
       in_blk_size *= out_domain.hi()[i] - out_domain.lo()[i] + 1;
-    else if (i == axis)
+    } else if (i == axis) {
       reverse_dim_size = out_domain.hi()[i] - out_domain.lo()[i] + 1;
-    else
+    } else {
       num_out_blks *= out_domain.hi()[i] - out_domain.lo()[i] + 1;
+    }
   }
   int output_size = out_domain.get_volume();
 
@@ -258,12 +213,13 @@ void Reverse::backward_task(Task const *task,
   int axis = in_grad_domain.get_dim() - reverse->axis - 1;
   coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < in_grad_domain.get_dim(); i++) {
-    if (i < axis)
+    if (i < axis) {
       in_blk_size *= in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1;
-    else if (i == axis)
+    } else if (i == axis) {
       reverse_dim_size = in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1;
-    else
+    } else {
       num_out_blks *= in_grad_domain.hi()[i] - in_grad_domain.lo()[i] + 1;
+    }
   }
 
   Reverse::backward_kernel_wrapper(out_grad_ptr,

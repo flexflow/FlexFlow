@@ -88,8 +88,9 @@ void DataLoader::load_dense_input(Task const *task,
   assert(batch_size == meta->num_samples);
   for (int i = 0; i < batch_size; i++) {
     int base_offset = meta->idxs[i] * num_feats;
-    for (int j = 0; j < num_feats; j++)
+    for (int j = 0; j < num_feats; j++) {
       input_zc[i * num_feats + j] = acc_full_input.ptr[base_offset + j];
+    }
   }
   checkCUDA(cudaMemcpy(acc_batch_input.ptr,
                        input_zc,
@@ -125,8 +126,9 @@ void DataLoader::load_label(Task const *task,
   assert(batch_size == meta->num_samples);
   for (int i = 0; i < batch_size; i++) {
     int base_offset = meta->idxs[i] * num_label;
-    for (int j = 0; j < num_label; j++)
+    for (int j = 0; j < num_label; j++) {
       label_zc[i * num_label + j] = acc_full_label.ptr[base_offset + j];
+    }
     // printf("meta->idxs[%d]=%d label=%.2lf\n", i, meta->idxs[i], label_zc[i]);
   }
   checkCUDA(cudaMemcpy(acc_batch_label.ptr,
