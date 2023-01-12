@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/transpose.h"
+#include "flexflow/ops/kernels/transpose_kernels.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {
@@ -32,6 +33,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::Transpose;
 
 bool operator==(TransposeParams const &lhs, TransposeParams const &rhs) {
   return lhs.perm == rhs.perm;
@@ -242,7 +245,7 @@ void Transpose::forward_task(Task const *task,
   float *out_ptr = helperGetTensorPointerWO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  Transpose::forward_kernel_wrapper(m, in_ptr, out_ptr, in_domain, out_domain);
+  forward_kernel_wrapper(m, in_ptr, out_ptr, in_domain, out_domain);
 }
 
 void Transpose::backward(FFModel const &ff) {
@@ -296,7 +299,7 @@ void Transpose::backward_task(Task const *task,
   float *in_grad_ptr = helperGetTensorPointerRW<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  Transpose::backward_kernel_wrapper(
+  backward_kernel_wrapper(
       m, in_grad_ptr, out_grad_ptr, in_grad_domain, out_grad_domain);
 }
 

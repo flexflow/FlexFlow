@@ -13,11 +13,13 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/reduction.h"
+#include "flexflow/parallel_ops/kernels/reduction_kernels.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
+namespace Kernels {
+namespace Reduction {
 
 template <typename T>
 __global__ void reduction_forward_kernel(T const *input_ptr,
@@ -33,10 +35,10 @@ __global__ void reduction_forward_kernel(T const *input_ptr,
 }
 
 template <typename T>
-void Reduction::forward_kernel(T const *input_ptr,
-                               T *output_ptr,
-                               size_t num_elements,
-                               size_t num_replicas) {
+void forward_kernel(T const *input_ptr,
+                    T *output_ptr,
+                    size_t num_elements,
+                    size_t num_replicas) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   size_t total_elements = num_elements * num_replicas;
@@ -52,9 +54,9 @@ void Reduction::forward_kernel(T const *input_ptr,
 }
 
 template <typename T>
-void Reduction::backward_kernel(T const *output_grad_ptr,
-                                T *input_grad_ptr,
-                                size_t num_elements) {
+void backward_kernel(T const *output_grad_ptr,
+                     T *input_grad_ptr,
+                     size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDA(hipMemcpyAsync(input_grad_ptr,
@@ -68,12 +70,13 @@ template __global__ void reduction_forward_kernel<float>(float const *input_ptr,
                                                          float *output_ptr,
                                                          size_t num_elements,
                                                          size_t num_replicas);
-template void Reduction::forward_kernel<float>(float const *input_ptr,
-                                               float *output_ptr,
-                                               size_t num_elements,
-                                               size_t num_replicas);
-template void Reduction::backward_kernel<float>(float const *output_grad_ptr,
-                                                float *input_grad_ptr,
-                                                size_t num_elements);
-
-}; // namespace FlexFlow
+template void forward_kernel<float>(float const *input_ptr,
+                                    float *output_ptr,
+                                    size_t num_elements,
+                                    size_t num_replicas);
+template void backward_kernel<float>(float const *output_grad_ptr,
+                                     float *input_grad_ptr,
+                                     size_t num_elements);
+} // namespace Reduction
+} // namespace Kernels
+} // namespace FlexFlow
