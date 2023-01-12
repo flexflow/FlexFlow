@@ -15,6 +15,7 @@
 
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/model.h"
+#include "flexflow/parallel_ops/kernels/combine_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -37,6 +38,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::Combine;
 
 /* Params */
 bool operator==(CombineParams const &lhs, CombineParams const &rhs) {

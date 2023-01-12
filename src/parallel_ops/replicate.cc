@@ -15,6 +15,7 @@
 
 #include "flexflow/parallel_ops/replicate.h"
 #include "flexflow/model.h"
+#include "flexflow/parallel_ops/kernels/replicate_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -37,6 +38,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::Replicate;
 
 /* Params */
 bool operator==(ReplicateParams const &lhs, ReplicateParams const &rhs) {
