@@ -57,7 +57,11 @@ Tensor input;
 }
 ```  
 
-In the case of AlexNet, the input tensor has dimension `batch_size x 3 x 229 x 229`, so it is a 4-dimensional tensor. To initialize the tensor, we use the templated `create_tensor` function, which is part of `FFModel`.
+In the case of AlexNet, the input tensor has dimension `batch_size x 3 x 229 x 229`, so it is a 4-dimensional tensor. To initialize the tensor, we use the templated `create_tensor` function, which is part of `FFModel`. It may be useful to know that the `create_tensor` function lays out the tensor's dimensions in reverse order. For instance, in the snippet above, printing the `input` tensor (which can be done using the instruction below) will show dimensions: `[229, 229, 3, batch_size]`. 
+
+```c++
+input->print("input tensor")
+``` 
 
 There are two versions of the `create_tensor` function: one (used in the last snippet above) uses a template that takes the number of tensor dimensions as its parameter; the second is a wrapper around the first, and takes the number of tensor dimensions as a regular function parameter. Both versions are implemented in `model.cc`, and their signature is identical, except for the number of dimensions parameter. Below, we discuss the implementation of the `create_tensor` wrapper, since it illustrates a common pattern among FlexFlow functions:
 
@@ -97,7 +101,7 @@ switch (numdim) {
 }
 ```
 
-In addition to the two versions of `create_tensor` discuessed above, `model.cc` also offers a `create_tensor_legion_ordering` function, which simply creates a tensor with the specified dimensions in reverse order. The explicit template instantiations at the bottom of `model.cc` will ensure that functions such `create_tensor` are only instantiated for number of dimensions that are less or equal to `FF_MAX_DIM`.
+In addition to the two versions of `create_tensor` discussed above, `model.cc` also offers the `create_tensor_legion_ordering` function, which simply creates a tensor without reversing the order of the input dimensions. The explicit template instantiations at the bottom of `model.cc` will ensure that functions such `create_tensor` are only instantiated for number of dimensions that are less or equal to `FF_MAX_DIM`.
 
 #### Adding layers to a DNN model
 
@@ -115,10 +119,7 @@ After adding the DNN layers, the next step before compiling the model for traini
 
 #### Model compilation
 
-Compiling the model does the following:
-
-* call `create_operators_from_layers()`, which creates a list of operators from the list of layers created during DNN instantiation.
-* 
+TODO
 
 
 ## Continuous Integration
@@ -126,13 +127,15 @@ We currently implement CI testing using Github Workflows. Each workflow is defin
 
 - `build.yml`: checks that the build & installation of FlexFlow succeed, using both the CMake and Makefile systems
 - `clang-format-check.yml`: ensures that the source code is properly formatted.
-- `docker-build.yml`: checks that the Docker containers can build and run FlexFlow properly
+- `docker-build.yml`: checks that the Docker containers can build and run FlexFlow properly. It also publishes a new version of the FlexFlow containers to the repo's package register for each push to the master branch
+- `gpu-ci.yml`: runs all the tests that require a GPU to run
+- `gpu-ci-daemon.yml`: an helper workflow that turns on/off the GPU instance used by the test above
 - `pip-install.yml`: checks the build & installation of FlexFlow using `pip`
 - `shell-check.yml`: runs shellcheck on all bash scripts in the repo
 
-We also have three placeholder workflows: `build-skip.yml`, `docker-build-skip.yml`, and `pip-install-skip.yml`. These always pass and are used only in the case of skipped workflows whose status is required to merge a PR; we implement the "hack" officially recommended by Github ([see here](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks)).
+We also have three placeholder workflows: `build-skip.yml`, `docker-build-skip.yml`, `gpu-ci-skip` and `pip-install-skip.yml`. These always pass and are used only in the case of skipped workflows whose status is required to merge a PR; we implement the "hack" officially recommended by Github ([see here](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks)).
 
-In the next section, we walk through an example workflow. An important thing to note is that Github workflows do not run unless they are properly linted. If you encounter a formatting/linting error, you can lint your workflow file using `prettier` (installation instructions [here](https://prettier.io/docs/en/install.html)):
+In the next section, we walk through an example workflow, similar to the ones found in this repo. An important thing to note is that Github workflows do not run unless they are properly linted. If you encounter a formatting/linting error, you can lint your workflow file using `prettier` (installation instructions [here](https://prettier.io/docs/en/install.html)):
 
 ```bash
 yarn prettier --write <filename.yml>
@@ -205,8 +208,7 @@ Finally, we define the jobs that will run when the workflow is triggered. Each j
 Each step in a job will be executed sequentially, and if it fails, the remaining steps will be cancelled and the job will be marked as `failed`. Each step is specified by either reusing a Github action or running a shell command (or a script file). For instance, in the example above, the first step uses the Github Action `actions/checkout@v3` to check out the repository, the second step uses the `Jimver/cuda-toolkit@v0.2.8` action to install CUDA, whereas the third step runs a bash script stored in the repo at the path `.github/workflows/helpers/install_dependencies.sh`.
 
 ## Contributing to FlexFlow
-We want to make contributing to this project as easy and transparent as
-possible.
+We want to make contributing to this project as easy and transparent as possible.
 
 ### Formatting
 We use `clang-format` to format our C++ code. If you make changes to the code and the Clang format CI test is failing, you can lint your code by running: `./scripts/format.sh` from the main folder of this repo.
