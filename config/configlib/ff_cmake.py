@@ -9,7 +9,7 @@ from configlib.inspect_utils import get_definition_location
 from configlib.cmake_bool import CMakeBool
 import shutil
 
-_l = logging.getLogger(__file__)
+_l = logging.getLogger(__name__)
 
 SRC_LOCATION = os.environ.get(
   'FF_HOME',

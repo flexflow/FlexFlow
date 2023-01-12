@@ -1,6 +1,9 @@
 import argparse
 from configlib.cmake_bool import CMakeBool
 import os
+import logging
+
+_l = logging.getLogger(__name__)
 
 class EnvStore(argparse.Action):
     def __init__(self, *args, **kwargs):
