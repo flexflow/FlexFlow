@@ -21,7 +21,7 @@ The `src` folder is divided into the following subfolders:
 
 In many parts of the source code you will see triplets of files with the following three different extensions: `.cc`, `.cpp` and `.cu`. The `.cc` file contains the main, high-level C++ implementation, whereas the `.cpp` and `.cu` file contain, respectively, the HIP and CUDA kernels.
 
-The best way to familiarize with the FlexFlow codebase is to walk through one of the existing examples, then check out the relevant FlexFlow runtime functions that are used in the example.
+The best way to familiarize with the FlexFlow codebase is to walk through one of the existing examples, then check out the relevant FlexFlow runtime functions that are used in the example. We provide examples in both Python and C++. The Python interface is the most up-to-date, and the one that is intended to be used by users. To learn how to _run_ a DNN in FlexFlow, please refer to the scripts in the [examples/python](https://github.com/flexflow/FlexFlow/tree/master/examples/python) folder. The C++ interface is intended mostly for development purposes and may have some rough edges. Nevertheless, the C++ examples are the preferred ones to look at if you want to familiarize with the internals of the FlexFlow implementation. 
 
 ### AlexNet example (C++)
 
