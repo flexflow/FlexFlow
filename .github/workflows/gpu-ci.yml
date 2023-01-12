@@ -127,4 +127,5 @@ jobs:
           export FF_HOME=$(pwd)
           export OMPI_ALLOW_RUN_AS_ROOT=1
           export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+          export OMPI_MCA_btl_vader_single_copy_mechanism=none
           ./tests/multi_gpu_tests.sh 2 2
