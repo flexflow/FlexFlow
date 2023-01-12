@@ -20,7 +20,7 @@ if((FF_USE_PREBUILT_NCCL OR FF_USE_ALL_PREBUILT_LIBRARIES) AND CMAKE_HOST_SYSTEM
     elseif(CUDA_VERSION VERSION_EQUAL "11.6")
       set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-20.04_11.6.2.tar.gz")
     elseif(CUDA_VERSION VERSION_EQUAL "11.7")
-      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-20.04_11.7.0.tar.gz")
+      set(NCCL_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/nccl_ubuntu-20.04_11.7.tar.gz")
     endif()
   elseif(LINUX_VERSION MATCHES "18.04")
     if (CUDA_VERSION VERSION_EQUAL "10.1")
