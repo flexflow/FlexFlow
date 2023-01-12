@@ -45,6 +45,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
     case OP_EW_DIV:
       return ((ElementBinary *)op)->get_params();
     case OP_EXP:
+    case OP_SIN:
+    case OP_COS:
     case OP_SCALAR_MULTIPLY:
     case OP_SCALAR_ADD:
     case OP_SCALAR_SUB:

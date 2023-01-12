@@ -48,8 +48,9 @@ void SingleDataLoader::load_input(Task const *task,
   coord_t num_elements_per_batch = batch_input_domain.get_volume() / batch_size;
   // FIXME: currently assume continous indices
   assert(batch_size == meta->num_samples);
-  for (int i = 1; i < batch_size; i++)
+  for (int i = 1; i < batch_size; i++) {
     assert(meta->idxs[i] == meta->idxs[0] + i);
+  }
   coord_t start_idx = meta->idxs[0];
   const DT *input_zc = full_input_ptr + start_idx * num_elements_per_batch;
   // const int point = task->index_point.point_data[0];

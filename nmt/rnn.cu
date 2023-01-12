@@ -160,10 +160,11 @@ RnnModel::RnnModel(int batch_size,
             runtime->create_logical_region(ctx, hx_is, config.field_space);
         t.partition_grad =
             runtime->get_logical_partition(ctx, t.region_grad, hx_ip);
-        if (j == 0)
+        if (j == 0) {
           zero[i].hx = t;
-        else
+        } else {
           zero[i].cx = t;
+        }
       }
     }
   }
@@ -183,25 +184,30 @@ RnnModel::RnnModel(int batch_size,
       for (int j = 0; j < pc.dim[0]; j++) {
         int gpuId = pc.gpu[j];
         if (i < nodes_per_layer) {
-          if (srcEmbed.gradients[gpuId] == LogicalRegion::NO_REGION)
+          if (srcEmbed.gradients[gpuId] == LogicalRegion::NO_REGION) {
             srcEmbed.gradients[gpuId] = runtime->create_logical_region(
                 ctx, params_is, config.field_space);
+          }
         } else {
-          if (dstEmbed.gradients[gpuId] == LogicalRegion::NO_REGION)
+          if (dstEmbed.gradients[gpuId] == LogicalRegion::NO_REGION) {
             dstEmbed.gradients[gpuId] = runtime->create_logical_region(
                 ctx, params_is, config.field_space);
+          }
         }
       }
     }
     // Collect masterOnNode for srcEmbed/dstEmbed
-    for (int i = 0; i < config.numNodes; i++)
+    for (int i = 0; i < config.numNodes; i++) {
       for (int j = config.workersPerNode - 1; j >= 0; j--) {
         int gpuId = i * config.workersPerNode + j;
-        if (srcEmbed.gradients[gpuId] != LogicalRegion::NO_REGION)
+        if (srcEmbed.gradients[gpuId] != LogicalRegion::NO_REGION) {
           srcEmbed.masterOnNode[i] = gpuId;
-        if (dstEmbed.gradients[gpuId] != LogicalRegion::NO_REGION)
+        }
+        if (dstEmbed.gradients[gpuId] != LogicalRegion::NO_REGION) {
           dstEmbed.masterOnNode[i] = gpuId;
+        }
       }
+    }
   }
 
   // Encoders/decoders
@@ -222,25 +228,30 @@ RnnModel::RnnModel(int batch_size,
       for (int k = 0; k < pc.dim[0]; k++) {
         int gpuId = pc.gpu[k];
         if (j < nodes_per_layer) {
-          if (encoders[i].gradients[gpuId] == LogicalRegion::NO_REGION)
+          if (encoders[i].gradients[gpuId] == LogicalRegion::NO_REGION) {
             encoders[i].gradients[gpuId] = runtime->create_logical_region(
                 ctx, params_is, config.field_space);
+          }
         } else {
-          if (decoders[i].gradients[gpuId] == LogicalRegion::NO_REGION)
+          if (decoders[i].gradients[gpuId] == LogicalRegion::NO_REGION) {
             decoders[i].gradients[gpuId] = runtime->create_logical_region(
                 ctx, params_is, config.field_space);
+          }
         }
       }
     }
     // Collect masterOnNode for encoders[i]/decoders[i]
-    for (int j = 0; j < config.numNodes; j++)
+    for (int j = 0; j < config.numNodes; j++) {
       for (int k = config.workersPerNode - 1; k >= 0; k--) {
         int gpuId = j * config.workersPerNode + k;
-        if (encoders[i].gradients[gpuId] != LogicalRegion::NO_REGION)
+        if (encoders[i].gradients[gpuId] != LogicalRegion::NO_REGION) {
           encoders[i].masterOnNode[j] = gpuId;
-        if (decoders[i].gradients[gpuId] != LogicalRegion::NO_REGION)
+        }
+        if (decoders[i].gradients[gpuId] != LogicalRegion::NO_REGION) {
           decoders[i].masterOnNode[j] = gpuId;
+        }
       }
+    }
   }
   SharedVariable linear;
   {
@@ -270,42 +281,49 @@ RnnModel::RnnModel(int batch_size,
     for (int i = 0; i < nodes_per_layer; i++) {
       ParallelConfig pc = global.linear[i];
       assert(pc.nDims == 2);
-      for (int j = 0; j < pc.dim[1]; j++)
+      for (int j = 0; j < pc.dim[1]; j++) {
         for (int k = 0; k < pc.dim[0]; k++) {
           int gpuIdx = pc.gpu[j * pc.dim[0] + k];
           Rect<1> rect = runtime->get_index_space_domain(
               ctx, linear.subregions[pc.dim[0] + k].get_index_space());
-          if (bboxes.find(gpuIdx) == bboxes.end())
+          if (bboxes.find(gpuIdx) == bboxes.end()) {
             bboxes[gpuIdx] = rect;
-          else
+          } else {
             bboxes[gpuIdx] = bboxes[gpuIdx].union_bbox(rect);
+          }
           int nodeIdx = gpuIdx / config.workersPerNode;
-          if (linear.masterOnNode[nodeIdx] == MASTER_NOT_ASSIGNED)
+          if (linear.masterOnNode[nodeIdx] == MASTER_NOT_ASSIGNED) {
             linear.masterOnNode[nodeIdx] = gpuIdx;
-          else {
+          } else {
             int masterIdx = linear.masterOnNode[nodeIdx];
-            if (bboxes[gpuIdx].volume() > bboxes[masterIdx].volume())
+            if (bboxes[gpuIdx].volume() > bboxes[masterIdx].volume()) {
               linear.masterOnNode[nodeIdx] = gpuIdx;
+            }
           }
         }
+      }
     }
     // The first bbox on each node is a superset of all bboxes on that node
-    for (int n = 0; n < config.numNodes; n++)
+    for (int n = 0; n < config.numNodes; n++) {
       if (linear.masterOnNode[n] != MASTER_NOT_ASSIGNED) {
-        for (int j = 0; j < config.workersPerNode; j++)
+        for (int j = 0; j < config.workersPerNode; j++) {
           if (bboxes.find(n * config.workersPerNode + j) != bboxes.end()) {
             Rect<1> rect = bboxes[n * config.workersPerNode + j];
             bboxes[linear.masterOnNode[n]] =
                 bboxes[linear.masterOnNode[n]].union_bbox(rect);
           }
+        }
       }
-    for (int i = 0; i < config.numNodes * config.workersPerNode; i++)
+    }
+    for (int i = 0; i < config.numNodes * config.workersPerNode; i++) {
       if (bboxes.find(i) != bboxes.end()) {
         IndexSpaceT<1> params_is = runtime->create_index_space(ctx, bboxes[i]);
         linear.gradients[i] =
             runtime->create_logical_region(ctx, params_is, config.field_space);
-      } else
+      } else {
         linear.gradients[i] = LogicalRegion::NO_REGION;
+      }
+    }
   }
 
   Tensor embed[2 * MAX_SEQ_LENGTH];
@@ -364,8 +382,9 @@ void RnnModel::word_init_task(Task const *task,
   checkCUDA(cudaHostAlloc(&host_ptr,
                           sizeof(int) * rect0.volume(),
                           cudaHostAllocPortable | cudaHostAllocMapped));
-  for (int i = 0; i < rect0.volume(); i++)
+  for (int i = 0; i < rect0.volume(); i++) {
     host_ptr[i] = same ? 1 : i % 16;
+  }
   for (int i = 0; i < regions.size(); i++) {
     AccessorWO<int, 2> const acc(regions[i], FID_DATA);
     Rect<2> rect = runtime->get_index_space_domain(
@@ -486,10 +505,12 @@ void RnnModel::init() {
     f.get_void_result();
   }
   // Init shared variables
-  for (int i = 0; i < sharedVariables.size(); i++)
+  for (int i = 0; i < sharedVariables.size(); i++) {
     init_shared_variable(sharedVariables[i]);
-  for (size_t i = 0; i < layers.size(); i++)
+  }
+  for (size_t i = 0; i < layers.size(); i++) {
     layers[i]->init(*this);
+  }
 }
 
 void RnnModel::zero_3d_init_task(Task const *task,
@@ -548,7 +569,7 @@ void RnnModel::forward() {
   Runtime *runtime = config.lg_hlr;
   // Step 1: launch dummy tasks to prefetch shared variables
   for (size_t i = 0; i < sharedVariables.size(); i++) {
-    for (int n = 0; n < config.numNodes; n++)
+    for (int n = 0; n < config.numNodes; n++) {
       if (sharedVariables[i].masterOnNode[n] != MASTER_NOT_ASSIGNED) {
         int gpuId = sharedVariables[i].masterOnNode[n];
         TaskLauncher launcher(DUMMY_TASK_ID,
@@ -564,11 +585,12 @@ void RnnModel::forward() {
         launcher.add_field(0, FID_DATA);
         runtime->execute_task(ctx, launcher);
       }
+    }
   }
   runtime->issue_mapping_fence(ctx);
   // Step 2: zero gradients
-  for (size_t i = 0; i < sharedVariables.size(); i++)
-    for (int j = 0; j < config.workersPerNode * config.numNodes; j++)
+  for (size_t i = 0; i < sharedVariables.size(); i++) {
+    for (int j = 0; j < config.workersPerNode * config.numNodes; j++) {
       if (sharedVariables[i].gradients[j] != LogicalRegion::NO_REGION) {
         TaskLauncher launcher(ZERO_1D_INIT_TASK_ID,
                               TaskArgument(NULL, 0),
@@ -581,6 +603,8 @@ void RnnModel::forward() {
         launcher.add_field(0, FID_DATA);
         runtime->execute_task(ctx, launcher);
       }
+    }
+  }
   // Step 3: launch forward tasks
   for (size_t i = 0; i < layers.size(); i++) {
     layers[i]->forward(*this);
@@ -594,8 +618,9 @@ void RnnModel::backward() {
 }
 
 void RnnModel::update() {
-  for (int i = sharedVariables.size() - 1; i >= 0; i--)
+  for (int i = sharedVariables.size() - 1; i >= 0; i--) {
     update_shared_variable(sharedVariables[i]);
+  }
 }
 
 /*
@@ -689,7 +714,7 @@ void RnnModel::update_shared_variable(SharedVariable params) {
   //     printf("rect[%d]: lo(%d) hi(%d)\n", i, rect.lo[0], rect.hi[0]);
   //   }
   float rate = 1.0f;
-  for (int node = 0; node < config.numNodes; node++)
+  for (int node = 0; node < config.numNodes; node++) {
     if (params.masterOnNode[node] != MASTER_NOT_ASSIGNED) {
       TaskLauncher launcher(
           PARAMS_UPD_TASK_ID,
@@ -705,11 +730,13 @@ void RnnModel::update_shared_variable(SharedVariable params) {
       int cnt = 1;
       for (int idx = 0; idx < config.workersPerNode; idx++) {
         int gpuIdx = node * config.workersPerNode + idx;
-        if (gpuIdx == params.masterOnNode[node])
+        if (gpuIdx == params.masterOnNode[node]) {
           continue;
+        }
         LogicalRegion grad = params.gradients[gpuIdx];
-        if (grad == LogicalRegion::NO_REGION)
+        if (grad == LogicalRegion::NO_REGION) {
           continue;
+        }
         launcher.add_region_requirement(
             RegionRequirement(grad, READ_ONLY, EXCLUSIVE, grad));
         launcher.add_field(cnt++, FID_DATA);
@@ -717,6 +744,7 @@ void RnnModel::update_shared_variable(SharedVariable params) {
       // printf("Step 1: cnt = %d\n", cnt);
       runtime->execute_task(ctx, launcher);
     }
+  }
   rate = -0.1f;
   TaskLauncher launcher(PARAMS_UPD_TASK_ID,
                         TaskArgument(&rate, sizeof(rate)),
@@ -727,7 +755,7 @@ void RnnModel::update_shared_variable(SharedVariable params) {
       RegionRequirement(params.region, READ_WRITE, EXCLUSIVE, params.region));
   launcher.add_field(0, FID_DATA);
   int cnt = 1;
-  for (int node = 0; node < config.numNodes; node++)
+  for (int node = 0; node < config.numNodes; node++) {
     if (params.masterOnNode[node] != MASTER_NOT_ASSIGNED) {
       int gpuIdx = params.masterOnNode[node];
       LogicalRegion grad = params.gradients[gpuIdx];
@@ -736,6 +764,7 @@ void RnnModel::update_shared_variable(SharedVariable params) {
           RegionRequirement(grad, READ_ONLY, EXCLUSIVE, grad));
       launcher.add_field(cnt++, FID_DATA);
     }
+  }
   // printf("Step 2: cnt = %d\n", cnt);
   runtime->execute_task(ctx, launcher);
 }

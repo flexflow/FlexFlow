@@ -27,10 +27,12 @@ void parse_input_args(char **argv, int argc, CandleConfig &apConfig);
 
 CandleConfig::CandleConfig(void) {
   // Set default configurations here
-  for (int i = 0; i < 4; i++)
+  for (int i = 0; i < 4; i++) {
     dense_layers.push_back(4192);
-  for (int i = 0; i < 8; i++)
+  }
+  for (int i = 0; i < 8; i++) {
     dense_feature_layers.push_back(4192);
+  }
   feature_shapes["dose"] = 1;
   feature_shapes["cell.rnaseq"] = 942;
   feature_shapes["drug.descriptors"] = 5270;
@@ -56,10 +58,12 @@ Tensor build_feature_model(FFModel *model,
 
 void print_vector(std::string const &name, std::vector<int> const &vector) {
   std::ostringstream out;
-  for (size_t i = 0; i < vector.size() - 1; i++)
+  for (size_t i = 0; i < vector.size() - 1; i++) {
     out << vector[i] << " ";
-  if (vector.size() > 0)
+  }
+  if (vector.size() > 0) {
     out << vector[vector.size() - 1];
+  }
   log_app.print("%s: %s", name.c_str(), out.str().c_str());
 }
 
@@ -92,8 +96,9 @@ void FlexFlow::top_level_task(Task const *task,
     string fea_type = it->first;
     if (fea_type.find(".") != string::npos) {
       string base_type = fea_type.substr(0, fea_type.find("."));
-      if (base_type == "cell" || base_type == "drug")
+      if (base_type == "cell" || base_type == "drug") {
         input_models.insert(it->first);
+      }
     }
   }
   int n = 0;
@@ -151,8 +156,9 @@ void FlexFlow::top_level_task(Task const *task,
     for (int iter = 0; iter < iterations; iter++) {
       if (candle_config.dataset_path.length() == 0) {
         // Only load data once for random input
-        if (iter == 0 && epoch == 0)
+        if (iter == 0 && epoch == 0) {
           data_loader.next_batch(ff);
+        }
       } else {
         data_loader.next_batch(ff);
       }
@@ -298,8 +304,9 @@ void DataLoader::load_entire_dataset(Task const *task,
   int num_samples = rect_label.hi[1] - rect_label.lo[1] + 1;
   if (candle->dataset_path.length() == 0) {
     log_app.print("Start generating random input samples");
-    for (size_t i = 0; i < rect_label.volume(); i++)
+    for (size_t i = 0; i < rect_label.volume(); i++) {
       label_ptr[i] = ((float)std::rand()) / RAND_MAX - 0.5f;
+    }
   } else {
     string filename = candle->dataset_path + "/label";
     log_app.print("Start loading labels from %s", filename.c_str());
@@ -355,8 +362,9 @@ void DataLoader::next_batch(FFModel &ff) {
              batch_inputs[i]->parallel_tensor->dims[1].size);
       meta.num_samples = ff.config.batchSize /
                          batch_inputs[i]->parallel_tensor->dims[1].degree;
-      for (int i = 0; i < meta.num_samples; i++)
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(
@@ -396,8 +404,9 @@ void DataLoader::next_batch(FFModel &ff) {
       assert(ff.config.batchSize == batch_label->parallel_tensor->dims[1].size);
       meta.num_samples =
           ff.config.batchSize / batch_label->parallel_tensor->dims[1].degree;
-      for (int i = 0; i < meta.num_samples; i++)
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1,

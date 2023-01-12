@@ -621,10 +621,12 @@ OpMeta *Conv2D::init_task(Task const *task,
       ((output_h - 1) * conv->stride_h + conv->kernel_h - input_h + 1) / 2;
   int pad_w =
       ((output_w - 1) * conv->stride_w + conv->kernel_w - input_w + 1) / 2;
-  if (pad_h != conv->padding_h)
+  if (pad_h != conv->padding_h) {
     printf("Warning: changing conv_padding_h to satisfy output_h size\n");
-  if (pad_w != conv->padding_w)
+  }
+  if (pad_w != conv->padding_w) {
     printf("Warning: changing conv_padding_w to satisfy output_w size\n");
+  }
 
   init_kernel(m,
               input_w,
@@ -1087,10 +1089,12 @@ bool Conv2D::measure_operator_cost(Simulator *sim,
                                    MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
-  if (!outputs[0]->get_sub_tensor(mv, sub_output))
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
-  if (!inputs[0]->get_sub_tensor(mv, sub_input))
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
+  }
   int input_w = sub_input.dims[0].size;
   int input_h = sub_input.dims[1].size;
   int input_c = sub_input.dims[2].size;

@@ -49,9 +49,10 @@ static void parallel_for(unsigned nb_elements,
   functor(start, start + batch_remainder);
 
   // Wait for the other thread to finish their task
-  if (use_threads)
+  if (use_threads) {
     std::for_each(
         my_threads.begin(), my_threads.end(), std::mem_fn(&std::thread::join));
+  }
 }
 
 SimpleMachineModel::SimpleMachineModel(int num_nodes,
@@ -1156,9 +1157,9 @@ std::vector<CommDevice *>
       return ret;
     } else {
       int device_id = src_mem->node_id * total_devs + tar_mem->node_id;
-      if (pipelined)
+      if (pipelined) {
         ret.emplace_back(ids_to_nw_nominal_device.at(device_id));
-      else {
+      } else {
         std::vector<CommDevice *> physical_path =
             ids_to_nw_nominal_device.at(device_id)->expand_to_physical();
         ret.insert(ret.end(), physical_path.cbegin(), physical_path.cend());
@@ -1170,48 +1171,54 @@ std::vector<CommDevice *>
       int device_id = src_mem->device_id * num_gpus + tar_mem->device_id;
       ret.emplace_back(ids_to_inter_gpu_comm_device.at(device_id));
     } else {
-      if (pcie_on)
+      if (pcie_on) {
         ret.emplace_back(id_to_gputodram_comm_device.at(src_mem->device_id));
+      }
       int device_id = src_mem->node_id * total_devs + tar_mem->node_id;
-      if (pipelined)
+      if (pipelined) {
         ret.emplace_back(ids_to_nw_nominal_device.at(device_id));
-      else {
+      } else {
         std::vector<CommDevice *> physical_path =
             ids_to_nw_nominal_device.at(device_id)->expand_to_physical();
         ret.insert(ret.end(), physical_path.cbegin(), physical_path.cend());
       }
-      if (pcie_on)
+      if (pcie_on) {
         ret.emplace_back(id_to_dramtogpu_comm_device.at(tar_mem->device_id));
+      }
     }
   } else if (src_mem->mem_type == MemDevice::SYSTEM_MEM and
              tar_mem->mem_type == MemDevice::GPU_FB_MEM) {
     if (src_mem->node_id == tar_mem->node_id) {
-      if (pcie_on)
+      if (pcie_on) {
         ret.emplace_back(id_to_dramtogpu_comm_device.at(tar_mem->device_id));
+      }
     } else {
       int device_id = src_mem->node_id * total_devs + tar_mem->node_id;
-      if (pipelined)
+      if (pipelined) {
         ret.emplace_back(ids_to_nw_nominal_device.at(device_id));
-      else {
+      } else {
         std::vector<CommDevice *> physical_path =
             ids_to_nw_nominal_device.at(device_id)->expand_to_physical();
         ret.insert(ret.end(), physical_path.cbegin(), physical_path.cend());
       }
-      if (pcie_on)
+      if (pcie_on) {
         ret.emplace_back(id_to_dramtogpu_comm_device.at(tar_mem->device_id));
+      }
     }
   } else if (src_mem->mem_type == MemDevice::GPU_FB_MEM and
              tar_mem->mem_type == MemDevice::SYSTEM_MEM) {
     if (src_mem->node_id == tar_mem->node_id) {
-      if (pcie_on)
+      if (pcie_on) {
         ret.emplace_back(id_to_gputodram_comm_device.at(src_mem->device_id));
+      }
     } else {
-      if (pcie_on)
+      if (pcie_on) {
         ret.emplace_back(id_to_gputodram_comm_device.at(src_mem->device_id));
+      }
       int device_id = src_mem->node_id * total_devs + tar_mem->node_id;
-      if (pipelined)
+      if (pipelined) {
         ret.emplace_back(ids_to_nw_nominal_device.at(device_id));
-      else {
+      } else {
         std::vector<CommDevice *> physical_path =
             ids_to_nw_nominal_device.at(device_id)->expand_to_physical();
         ret.insert(ret.end(), physical_path.cbegin(), physical_path.cend());

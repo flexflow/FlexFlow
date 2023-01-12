@@ -32,16 +32,18 @@ void GlorotUniform::init(FFModel const *ff, const ParallelTensor p) {
   Context ctx = ff->config.lg_ctx;
   Runtime *runtime = ff->config.lg_hlr;
   int dim = p->num_dims - 1;
-  while (p->dims[dim].is_replica_dim)
+  while (p->dims[dim].is_replica_dim) {
     dim--;
+  }
   assert(dim >= 1);
   // reference: tensorflow code for computing fan_in/fan_out
   // https://github.com/tensorflow/tensorflow/blob/r2.0/tensorflow/python/ops/init_ops.py#L1415-L1439
   coord_t c_out = p->dims[dim--].size;
   coord_t c_in = p->dims[dim--].size;
   coord_t receptive_field_size = 1;
-  while (dim >= 0)
+  while (dim >= 0) {
     receptive_field_size *= p->dims[dim--].size;
+  }
   coord_t fan_in = c_in * receptive_field_size;
   coord_t fan_out = c_out * receptive_field_size;
   scale = sqrt(6.0f / (fan_in + fan_out));

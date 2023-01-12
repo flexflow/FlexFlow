@@ -64,8 +64,9 @@ float moe_score(float *cached_score,
       cached.insert(cast_input[i * num_select + j]);
       input.insert(cast_cached[i * num_select + j]);
     }
-    if (cached == input)
+    if (cached == input) {
       *cached_score += frac;
+    }
   }
   return *cached_score;
 }
@@ -80,8 +81,9 @@ bool moe_trigger(FFModel *ff) {
     if (ff->layers[i]->op_type == OP_CACHE) {
       int num_futures_i = ((Cache *)ff->layers[i])->score_futures.size();
       num_futures += num_futures_i;
-      for (int j = 0; j < num_futures_i; j++)
+      for (int j = 0; j < num_futures_i; j++) {
         score += ((Cache *)ff->layers[i])->score_futures[j].get_result<float>();
+      }
     }
   }
   return score >= thresh;
@@ -402,8 +404,9 @@ void DataLoader::next_batch(FFModel &ff) {
       SampleIdxs meta;
       assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
       meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
-      for (int i = 0; i < meta.num_samples; i++)
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1,
@@ -439,8 +442,9 @@ void DataLoader::next_batch(FFModel &ff) {
       SampleIdxs meta;
       assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
       meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
-      for (int i = 0; i < meta.num_samples; i++)
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2,

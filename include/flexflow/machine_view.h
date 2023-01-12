@@ -36,11 +36,14 @@ struct MachineView {
 
 struct MachineViewDimCompare {
   bool operator()(MachineView const &a, MachineView const &b) const {
-    if (a.ndims != b.ndims)
+    if (a.ndims != b.ndims) {
       return a.ndims < b.ndims;
-    for (int i = 0; i < a.ndims; i++)
-      if (a.dim[i] != b.dim[i])
+    }
+    for (int i = 0; i < a.ndims; i++) {
+      if (a.dim[i] != b.dim[i]) {
         return a.dim[i] < b.dim[i];
+      }
+    }
     return false;
   }
 };
@@ -62,16 +65,22 @@ struct ParallelConfig {
     CPU = 1,
   };
   bool operator==(ParallelConfig const &rhs) const {
-    if (nDims != rhs.nDims)
+    if (nDims != rhs.nDims) {
       return false;
-    if (device_type != rhs.device_type)
+    }
+    if (device_type != rhs.device_type) {
       return false;
-    for (int i = 0; i < nDims; i++)
-      if (dim[i] != rhs.dim[i])
+    }
+    for (int i = 0; i < nDims; i++) {
+      if (dim[i] != rhs.dim[i]) {
         return false;
-    for (int i = 0; i < num_parts(); i++)
-      if (device_ids[i] != rhs.device_ids[i])
+      }
+    }
+    for (int i = 0; i < num_parts(); i++) {
+      if (device_ids[i] != rhs.device_ids[i]) {
         return false;
+      }
+    }
     return true;
   }
   int num_parts() const;

@@ -110,7 +110,7 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
       default:
         assert(false);
     }
-    printf("[%s] forward time (CF) = %.2fms\n", m->op_name, elapsed);
+    printf("[%s] forward time (CF) = %.2fms\n", opName, elapsed);
     // print_tensor<float>(in1_ptr, 32, "[EWB:forward:input1]");
     // print_tensor<float>(in2_ptr, 32, "[EWB:forward:input2]");
     // print_tensor<float>(out_ptr, 32, "[EWB:forward:output]");
@@ -341,8 +341,9 @@ void backward_kernel(ElementBinaryMeta const *m,
                                   in1_grad_ptr));
       }
     }
-    if (m->op_type == OP_EW_SUB)
+    if (m->op_type == OP_EW_SUB) {
       alpha = -1.0f;
+    }
     if (in2_grad_ptr != nullptr) {
       if (m->broadcast_input2) {
         checkCUDNN(cudnnReduceTensor(m->handle.dnn,
