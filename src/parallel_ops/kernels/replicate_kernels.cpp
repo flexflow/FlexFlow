@@ -13,22 +13,23 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/replicate.h"
-#include "flexflow/utils/cuda_helper.h"
+#include "flexflow/parallel_ops/kernels/replicate_kernels.h"
+#include "flexflow/utils/hip_helper.h"
+#include <hip/hip_runtime.h>
 
 namespace FlexFlow {
+namespace Kernels {
+namespace Replicate {
 
 template <typename T>
-void Replicate::forward_kernel(T const *input_ptr,
-                               T *output_ptr,
-                               size_t num_elements) {
-  cudaStream_t stream;
+void forward_kernel(T const *input_ptr, T *output_ptr, size_t num_elements) {
+  hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  checkCUDA(cudaMemcpyAsync(output_ptr,
-                            input_ptr,
-                            num_elements * sizeof(T),
-                            cudaMemcpyDeviceToDevice,
-                            stream));
+  checkCUDA(hipMemcpyAsync(output_ptr,
+                           input_ptr,
+                           num_elements * sizeof(T),
+                           hipMemcpyDeviceToDevice,
+                           stream));
 }
 
 template <typename T>
@@ -44,29 +45,37 @@ __global__ void replicate_backward_kernel(T const *input_ptr,
 }
 
 template <typename T>
-void Replicate::backward_kernel(T const *output_grad_ptr,
-                                T *input_grad_ptr,
-                                size_t num_elements,
-                                size_t num_replicas) {
+void backward_kernel(T const *output_grad_ptr,
+                     T *input_grad_ptr,
+                     size_t num_elements,
+                     size_t num_replicas) {
   size_t total_elements = num_elements * num_replicas;
-  cudaStream_t stream;
+  hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  replicate_backward_kernel<T>
-      <<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS, 0, stream>>>(
-          output_grad_ptr, input_grad_ptr, num_elements, num_replicas);
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(replicate_backward_kernel<T>),
+                     GET_BLOCKS(total_elements),
+                     CUDA_NUM_THREADS,
+                     0,
+                     stream,
+                     output_grad_ptr,
+                     input_grad_ptr,
+                     num_elements,
+                     num_replicas);
 }
 
-template void Replicate::forward_kernel<float>(float const *input_ptr,
-                                               float *output_ptr,
-                                               size_t num_elements);
+template void forward_kernel<float>(float const *input_ptr,
+                                    float *output_ptr,
+                                    size_t num_elements);
 template __global__ void
     replicate_backward_kernel<float>(float const *input_ptr,
                                      float *output_ptr,
                                      size_t num_elements,
                                      size_t num_replicas);
-template void Replicate::backward_kernel<float>(float const *output_grad_ptr,
-                                                float *input_grad_ptr,
-                                                size_t num_elements,
-                                                size_t num_replicas);
+template void backward_kernel<float>(float const *output_grad_ptr,
+                                     float *input_grad_ptr,
+                                     size_t num_elements,
+                                     size_t num_replicas);
 
-}; // namespace FlexFlow
+} // namespace Replicate
+} // namespace Kernels
+} // namespace FlexFlow
