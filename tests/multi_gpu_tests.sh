@@ -51,4 +51,3 @@ $EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_concat.py -ll:py 1 -ll:gp
 $EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_concat_model.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 $EXE "$FF_HOME"/examples/python/keras/func_cifar10_cnn_concat_seq_model.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 $EXE "$FF_HOME"/examples/python/native/cifar10_cnn_concat.py -ll:py 1 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" --epochs 40 --only-data-parallel
-
