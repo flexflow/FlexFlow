@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 import os
 from typing import Optional, Dict, List, Callable, Tuple, Union
+from configlib.inspect_utils import get_definition_location
 from configlib.cmake_bool import CMakeBool
 import shutil
 
@@ -93,6 +94,18 @@ class BuildInvocation:
     env = {**self._env, **os.environ}
     _l.info('building (cmd=%s, env=%s)', cmd, self._env)
     subprocess.check_call(cmd, env=env)
+
+  def _env_show(self) -> str:
+    env_assignments = []
+    for k, v in self._env.items():
+      env_assignments.append(f'{k}={shlex.quote(v)}')
+    return ' '.join(env_assignments)
+
+  def _cmd_show(self) -> str:
+    return ' '.join(self._args)
+
+  def show(self) -> str:
+    return ' '.join([self._env_show(), shutil.which('cmake'), self._cmd_show()]).strip()
 
 class FFBuildConfig:
   def __init__(self,
@@ -229,6 +242,11 @@ class FFBuildConfig:
     b += self._get_cxx_compiler()
     b.add_arg(SRC_LOCATION)
     return b
+
+  def show(self):
+    b = self._get_build_invocation()
+    _l.warn(f'Note that this may not include any custom hooks defined via {get_definition_location(BuildInvocation.add_hook)}')
+    return b.show()
 
   def run(self):
     b = self._get_build_invocation()

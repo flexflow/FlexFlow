@@ -28,13 +28,15 @@ class EnvStore(argparse.Action):
     def default(self, value):
         self._env_store_default = value  # can't use self._default because it is used in the parent class
 
-    #@property
-    #def help(self):
-    #    return self._help
+    @property
+    def help(self):
+        help_base = f'{self._help} ' if self._help is not None else ''
+        help_suffix = f'(also via {", ".join(self.env_sources)})' if len(self.env_sources) > 0 else ''
+        return help_base + help_suffix
 
-    #@help.setter
-    #def help(self, value):
-    #    self._default = value
+    @help.setter
+    def help(self, value):
+        self._help = value
 
 class EnvStoreConst(EnvStore):
     def __init__(self, *args, **kwargs):
