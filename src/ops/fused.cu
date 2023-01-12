@@ -397,9 +397,10 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
-	Kernels::Flat::forward_kernel_wrapper(my_input_accessor[0].get_float_ptr(),
-                                     my_output_accessor[0].get_float_ptr(),
-                                     my_input_accessor[0].domain.get_volume());
+	      Kernels::Flat::forward_kernel_wrapper(
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].domain.get_volume());
         break;
       }
       case OP_RESHAPE: {
@@ -860,7 +861,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_grad_accessor[0].domain.get_volume() ==
                my_output_grad_accessor[0].domain.get_volume());
-	Kernels::Flat::backward_kernel_wrapper(
+      	Kernels::Flat::backward_kernel_wrapper(
             my_input_grad_accessor[0].get_float_ptr(),
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].domain.get_volume());
