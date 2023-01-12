@@ -89,7 +89,7 @@ jobs:
           ./tests/python_interface_test.sh after-installation
 
   gpu-ci-flexflow:
-    name: Multi-GPUs Tests
+    name: Single Machine, Multiple GPUs Tests
     runs-on: self-hosted
     needs: gpu-ci-concierge
     container:
@@ -102,19 +102,15 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Install MPI
-        run: sudo apt-get install -y --no-install-recommends openmpi-bin openmpi-common libopenmpi-dev
+
       - name: Build and Install FlexFlow
         run: |
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
-          export FF_USE_GASNET=ON
-          export FF_GASNET_CONDUIT=mpi
           pip install . --verbose
 
       - name: Check FlexFlow Python interface (pip)
         run: |
-          export FF_HOME=$(pwd)
           export PATH=/opt/conda/bin:$PATH
           export FF_HOME=$(pwd)
           ./tests/python_interface_test.sh after-installation
@@ -125,7 +121,4 @@ jobs:
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
-          export OMPI_ALLOW_RUN_AS_ROOT=1
-          export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
-          export OMPI_MCA_btl_vader_single_copy_mechanism=none
-          ./tests/multi_gpu_tests.sh 2 2
+          ./tests/multi_gpu_tests.sh 4
