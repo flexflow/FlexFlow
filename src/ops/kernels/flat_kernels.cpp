@@ -24,8 +24,8 @@ namespace Flat {
 
 /*static*/
 void forward_kernel_wrapper(float const *input_ptr,
-                                  float *output_ptr,
-                                  size_t num_elements) {
+                            float *output_ptr,
+                            size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Internal::forward_kernel(input_ptr, output_ptr, num_elements, stream);
@@ -33,8 +33,8 @@ void forward_kernel_wrapper(float const *input_ptr,
 }
 
 void backward_kernel_wrapper(float *input_grad_ptr,
-                                   float const *output_grad_ptr,
-                                   size_t num_elements) {
+                             float const *output_grad_ptr,
+                             size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   Internal::backward_kernel(input_grad_ptr, output_grad_ptr, num_elements, stream);
@@ -49,9 +49,9 @@ namespace Internal {
 
 /*static*/
 void forward_kernel(float const *input_ptr,
-                          float *output_ptr,
-                          size_t num_elements,
-                          hipStream_t stream) {
+                    float *output_ptr,
+                    size_t num_elements,
+                    hipStream_t stream) {
   checkCUDA(hipMemcpyAsync(output_ptr,
                            input_ptr,
                            num_elements * sizeof(float),
@@ -60,9 +60,9 @@ void forward_kernel(float const *input_ptr,
 }
 
 void backward_kernel(float *input_grad_ptr,
-                           float const *output_grad_ptr,
-                           size_t num_elements,
-                           hipStream_t stream) {
+                     float const *output_grad_ptr,
+                     size_t num_elements,
+                     hipStream_t stream) {
   float alpha = 1.0f;
   hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_add_with_scale<float>),
                      GET_BLOCKS(num_elements),
