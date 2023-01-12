@@ -498,6 +498,8 @@ class BaseModel(object):
         out_t = self._ffmodel.embedding(layer.input_tensors[0].ffhandle, layer.input_dim, layer.out_channels, ff.AggrMode.AGGR_MODE_SUM, None, layer.embeddings_initializer.ffhandle)
       elif isinstance(layer, Reshape) == True:
         out_t = self._ffmodel.reshape(layer.input_tensors[0].ffhandle, layer.output_shape)
+      elif isinstance(layer, Permute):
+        out_t = self._ffmodel.transpose(layer.input_tensors[0].ffhandle, layer.perm)
       elif isinstance(layer, BatchMatmul):
         out_t = self._ffmodel.batch_matmul(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       elif isinstance(layer, Sin):
