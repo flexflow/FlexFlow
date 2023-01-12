@@ -74,7 +74,15 @@ if(NCCL_URL)
   list(APPEND FLEXFLOW_EXT_LIBRARIES ${NCCL_LIB_DIR}/libnccl${LIBEXT})
   install(DIRECTORY ${NCCL_INCLUDE_DIR}/ DESTINATION include)
   install(DIRECTORY ${NCCL_LIB_DIR}/ DESTINATION lib PATTERN "pkgconfig" EXCLUDE)
-  
+endif() 
+
+find_package(NCCL)
+
+if (NCCL_FOUND)
+  list(APPEND FLEXFLOW_INCLUDE_DIRS ${NCCL_INCLUDE_DIRS})
+  list(APPEND FLEXFLOW_EXT_LIBRARIES ${NCCL_LIBRARIES})
+  add_library(nccl SHARED IMPORTED)
+  set_target_properties(nccl PROPERTIES IMPORTED_LOCATION ${NCCL_LIBRARIES})
 else()
   # Build NCCL from source
   message(STATUS "Building NCCL from source")

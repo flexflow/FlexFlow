@@ -5,106 +5,48 @@ import logging
 from pathlib import Path
 import os
 from typing import Optional, Dict, List, Callable, Tuple, Union
+from configlib.cmake_bool import CMakeBool
 import shutil
 
 _l = logging.getLogger(__file__)
 
-SRC_LOCATION = Path(__file__).parent.parent
+SRC_LOCATION = os.environ.get(
+  'FF_HOME',
+  Path(__file__).parent.parent.parent
+)
 
-class Choices:
-  def __repr__(self):
-    return '{}({})'.format(self.__class__.__name__, self._value)
-
-  def __str__(self):
-    return self._value
-
-class BuildType(Choices):
+class BuildType:
   release = 'Release'
   debug = 'Debug'
-
-  def __init__(self, value: str):
-    if value not in BuildType.get_valid_values():
-      raise ValueError(f'Invalid build type: {value}')
-    self._value = value
 
   @classmethod
   def get_valid_values(cls):
     return [cls.release, cls.debug]
 
-class CUDAArch(Choices):
+class CUDAArch:
   autodetect = 'autodetect'
   all = 'all'
-
-  def __init__(self, value: Union[str, int]):
-    if isinstance(value, int):
-      value = str(value)
-    if value not in self.get_valid_values():
-      raise ValueError(f'Invalid cuda arch: {value}')
-    self._value = value
 
   @classmethod
   def get_valid_values(cls):
     return [cls.autodetect, cls.all] + [str(n) for n in [60, 61, 62, 70, 72, 75, 80, 86, 87, 89, 90]]
 
-  def __str__(self):
-    return self._value
-
-class GasnetConduit(Choices):
+class GasnetConduit:
   ibv = 'ibv'
-
-  def __init__(self, value: str):
-    if value not in self.get_valid_values():
-      raise ValueError(f'Invalid gasnet conduit: {value}')
-    self._value = value
 
   @classmethod
   def get_valid_values(cls):
     return [cls.ibv]
 
-  def __str__(self):
-    return self._value
-
-class GPUBackend(Choices):
+class GPUBackend:
   hip_rocm = 'hip_rocm'
   hip_cuda = 'hip_cuda'
   cuda = 'cuda'
   intel = 'intel'
 
-  def __init__(self, value: str):
-    if value not in self.get_valid_values():
-      raise ValueError(f'Invalid gpu backend: {value}')
-    self._value = value
-
   @classmethod
   def get_valid_values(cls):
     return [cls.hip_rocm, cls.hip_cuda, cls.cuda, cls.intel]
-
-  def __str__(self):
-    return self._value
-
-class CMakeBool(Choices):
-  def __init__(self, value: bool):
-    if isinstance(value, str):
-      if value not in self.get_valid_values():
-        raise ValueError(f'Invalid cmake bool: {value}')
-      if value == 'ON':
-        value = True
-      elif value == 'OFF':
-        value = False
-    self._value = value
-
-  @classmethod
-  def get_valid_values(cls):
-    return ['ON', 'OFF']
-
-  def __str__(self):
-    if self._value:
-      return 'ON'
-    else:
-      return 'OFF'
-
-  def __bool__(self):
-    return self._value
 
 class BuildInvocation:
   def __init__(self,
@@ -160,7 +102,7 @@ class FFBuildConfig:
                nvcc_flags: List[str],
                ld_flags: List[str],
                install_dir: Optional[Path],
-               build_type: BuildType,
+               build_type: str,
                use_python: bool,
                build_all_examples: bool,
                build_unit_tests: bool,
@@ -168,12 +110,12 @@ class FFBuildConfig:
                use_prebuilt_legion: bool,
                cuda_dir: Optional[Path],
                cudnn_dir: Optional[Path],
-               cuda_arch: CUDAArch,
-               gasnet_conduit: Optional[GasnetConduit],
+               cuda_arch: str,
+               gasnet_conduit: Optional[str],
                rocm_path: Path,
                max_dim: int,
                use_avx2: bool,
-               gpu_backend: GPUBackend,
+               gpu_backend: str,
                use_ccache: bool,
              ):
     self._c_compiler = c_compiler
@@ -183,18 +125,18 @@ class FFBuildConfig:
     self._ld_flags = ld_flags
     self._install_dir = install_dir
     self._build_type = build_type
-    self._use_python = CMakeBool(use_python)
-    self._build_all_examples = CMakeBool(build_all_examples)
-    self._build_unit_tests = CMakeBool(build_unit_tests)
-    self._use_prebuilt_nccl = CMakeBool(use_prebuilt_nccl)
-    self._use_prebuilt_legion = CMakeBool(use_prebuilt_legion)
+    self._use_python = use_python
+    self._build_all_examples = build_all_examples
+    self._build_unit_tests = build_unit_tests
+    self._use_prebuilt_nccl = use_prebuilt_nccl
+    self._use_prebuilt_legion = use_prebuilt_legion
     self._cuda_dir = cuda_dir
     self._cudnn_dir = cudnn_dir
     self._cuda_arch = cuda_arch
     self._gasnet_conduit = gasnet_conduit
     self._rocm_path = rocm_path
     self._max_dim = max_dim
-    self._use_avx2 = CMakeBool(use_avx2)
+    self._use_avx2 = use_avx2
     self._gpu_backend = gpu_backend
     self._use_ccache = use_ccache
 
@@ -212,7 +154,7 @@ class FFBuildConfig:
 
   def _get_gasnet_flags(self):
     b = BuildInvocation()
-    use_gasnet = CMakeBool(self._gasnet_conduit is None)
+    use_gasnet = self._gasnet_conduit is None
     b.add_flag('-DFF_USE_GASNET', use_gasnet)
     if use_gasnet:
       b.add_flag(f'-DFF_GASNET_CONDUIT', self._gasnet_conduit)
