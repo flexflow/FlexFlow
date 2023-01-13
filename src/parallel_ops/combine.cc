@@ -15,6 +15,7 @@
 
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/model.h"
+#include "flexflow/parallel_ops/kernels/combine_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -37,6 +38,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::Combine;
 
 /* Params */
 bool operator==(CombineParams const &lhs, CombineParams const &rhs) {
@@ -67,19 +70,6 @@ Combine::Combine(FFModel &model,
               params.combine_legion_dim,
               params.combine_degree,
               name) {}
-
-ParallelTensor FFModel::combine(const ParallelTensor input,
-                                int combine_legion_dim,
-                                int combine_degree,
-                                char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  Combine *comb =
-      new Combine(*this, input, combine_legion_dim, combine_degree, name);
-  layers.push_back(comb);
-  return comb->outputs[0];
-#endif
-}
 
 Combine::Combine(FFModel &model,
                  const ParallelTensor _input,

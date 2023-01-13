@@ -15,6 +15,7 @@
 
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/model.h"
+#include "flexflow/parallel_ops/kernels/partition_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -38,6 +39,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
+using namespace FlexFlow::Kernels::Repartition;
+
 /* Params */
 bool operator==(RepartitionParams const &lhs, RepartitionParams const &rhs) {
   return lhs.repartition_legion_dim == rhs.repartition_legion_dim &&
@@ -58,19 +61,6 @@ RepartitionParams Repartition::get_params() const {
   params.repartition_legion_dim = this->repartition_dim;
   params.repartition_degree = this->repartition_degree;
   return params;
-}
-
-ParallelTensor FFModel::repartition(const ParallelTensor input,
-                                    int repartition_legion_dim,
-                                    int repartition_degree,
-                                    char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  Repartition *part = new Repartition(
-      *this, input, repartition_legion_dim, repartition_degree, name);
-  layers.push_back(part);
-  return part->outputs[0];
-#endif
 }
 
 Repartition::Repartition(FFModel &model,
