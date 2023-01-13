@@ -10,6 +10,20 @@ BATCHSIZE=$((GPUS * 64))
 FSIZE=14048
 ZSIZE=12192
 
+remove_mnist() {
+	rm -f train-images-idx3-ubyte.gz train-labels-idx1-ubyte.gz train-images-idx3-ubyte train-labels-idx1-ubyte
+}
+
+download_mnist() {
+	if [[ ! -f train-images-idx3-ubyte || ! -f train-labels-idx1-ubyte ]]; then
+		remove_mnist
+		wget http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
+		wget http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz
+		gzip -d train-images-idx3-ubyte.gz
+		gzip -d train-labels-idx1-ubyte.gz
+	fi
+}
+
 # Check if the AlexNet/alexnet example exists in the build folder. If so, run the tests out of the build folder
 # Otherwise, look for the example binaries in the folders in the PATH, plus in the subdirectory of the flexflow
 # Python package (if it exists)
@@ -24,14 +38,9 @@ if [[ -f "$FF_HOME/build/examples/cpp/AlexNet/alexnet" ]]; then
 	"$FF_HOME"/build/examples/cpp/Transformer/transformer -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b $((GPUS * 8)) --only-data-parallel
 	"$FF_HOME"/build/examples/cpp/XDL/xdl -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	"$FF_HOME"/build/examples/cpp/candle_uno/candle_uno -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
-	if [[ ! -f train-images-idx3-ubyte || ! -f train-labels-idx1-ubyte ]]; then
-		rm -f train-images-idx3-ubyte.gz train-labels-idx1-ubyte.gz train-images-idx3-ubyte train-labels-idx1-ubyte
-		wget http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
-		wget http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz
-		gzip -d train-images-idx3-ubyte.gz
-		gzip -d train-labels-idx1-ubyte.gz
-	fi
+	download_mnist
 	"$FF_HOME"/build/examples/cpp/mixture_of_experts/moe -ll:gpu 1 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b 64 --only-data-parallel
+	remove_mnist
 	"$FF_HOME"/build/examples/cpp/resnext50/resnext50 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 	# TODO: fix split tests
 	# "$FF_HOME"/build/examples/cpp/split_test/split_test -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
@@ -57,14 +66,9 @@ else
 			transformer -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b $((GPUS * 8)) --only-data-parallel
 			xdl -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 			candle_uno -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
-			if [[ ! -f train-images-idx3-ubyte || ! -f train-labels-idx1-ubyte ]]; then
-				rm -f train-images-idx3-ubyte.gz train-labels-idx1-ubyte.gz train-images-idx3-ubyte train-labels-idx1-ubyte
-				wget http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
-				wget http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz
-				gzip -d train-images-idx3-ubyte.gz
-				gzip -d train-labels-idx1-ubyte.gz
-			fi
+			download_mnist
 			moe -ll:gpu 1 -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b 64 --only-data-parallel
+			remove_mnist
 			resnext50 -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
 			# TODO: fix split tests 
 			# split_test -ll:gpu "$GPUS" -ll:fsize "$FSIZE" -ll:zsize "$ZSIZE" -b ${BATCHSIZE} --only-data-parallel
