@@ -71,19 +71,6 @@ Combine::Combine(FFModel &model,
               params.combine_degree,
               name) {}
 
-ParallelTensor FFModel::combine(const ParallelTensor input,
-                                int combine_legion_dim,
-                                int combine_degree,
-                                char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  Combine *comb =
-      new Combine(*this, input, combine_legion_dim, combine_degree, name);
-  layers.push_back(comb);
-  return comb->outputs[0];
-#endif
-}
-
 Combine::Combine(FFModel &model,
                  const ParallelTensor _input,
                  int _combine_legion_dim,
