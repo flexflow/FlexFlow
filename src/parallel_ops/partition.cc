@@ -63,19 +63,6 @@ RepartitionParams Repartition::get_params() const {
   return params;
 }
 
-ParallelTensor FFModel::repartition(const ParallelTensor input,
-                                    int repartition_legion_dim,
-                                    int repartition_degree,
-                                    char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  Repartition *part = new Repartition(
-      *this, input, repartition_legion_dim, repartition_degree, name);
-  layers.push_back(part);
-  return part->outputs[0];
-#endif
-}
-
 Repartition::Repartition(FFModel &model,
                          const ParallelTensor _input,
                          int _repartition_legion_dim,
