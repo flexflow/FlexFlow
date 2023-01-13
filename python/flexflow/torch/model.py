@@ -1421,7 +1421,8 @@ class GetItemNode(FunctionNode):
 
         def is_truncate(slice_elem, old_size):
             start = 0 if slice_elem.start == None else slice_elem.start
-            new_size = slice_elem.stop - start
+            stop = old_size if slice_elem.stop == None else slice_elem.stop
+            new_size = stop - start
             return new_size < old_size
         
         def is_single_element(slice_elem):
@@ -1458,25 +1459,27 @@ class GetItemNode(FunctionNode):
             elif is_truncate(slice_elem, shape[j]):
                 assert j >= 0
                 start = 0 if slice_elem.start == None else slice_elem.start
+                stop = shape[j] if slice_elem.stop == None else slice_elem.stop
                 splits = []
-                left_trunc, right_trunc = False, False
-                # create splits
-                if start != 0: # truncation from left 
+                # create splits    
+                if start > 0 and stop == shape[j]: # truncation from left
                     splits.append(start)
-                    left_trunc = True
-                splits.append(slice_elem.stop - start)
-                if slice_elem.stop < shape[j]: # truncation from right
-                    splits.append(shape[j] - slice_elem.stop)
-                    right_trunc = True
-                if left_trunc:
+                    splits.append(stop - start)
                     curr_tensor = ffmodel.split(input=curr_tensor, sizes=splits, axis=j, name=name)[1]
-                else:
+                elif start == 0 and stop < shape[j]: # truncation from right
+                    splits.append(stop)
+                    splits.append(shape[j] - stop)
                     curr_tensor = ffmodel.split(input=curr_tensor, sizes=splits, axis=j, name=name)[0]
-                new_shape.append(slice_elem.stop - start)
+                elif start > 0 and stop < shape[j]: # truncation from left and right
+                    splits.append(start)
+                    splits.append(stop - start)
+                    splits.append(shape[j] - stop)
+                    curr_tensor = ffmodel.split(input=curr_tensor, sizes=splits, axis=j, name=name)[1]
+                new_shape.append(stop - start)
                 j -= 1
             else:
                 assert 0, f"Unsupported slice element: {slice_elem}"
-                
+
         new_shape.reverse()
         return ffmodel.reshape(input=curr_tensor, shape=new_shape, name=name,)
             
@@ -1748,7 +1751,7 @@ class ScalarFloorDivNode(FunctionNode):
     def parse(self):
         s = [self.name]
         scalar = self.innodes[1]
-        if not isinstance(scalar, [int, float]):
+        if type(scalar) is not int or type(scalar) is not float:
             assert 0, "FlexFlow does not support tensor floor division"
         innodes = (self.innodes[0],)
         s.append(self.parse_inoutnodes(innodes))
