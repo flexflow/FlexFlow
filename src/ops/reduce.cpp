@@ -30,11 +30,11 @@ ReduceMeta::ReduceMeta(FFHandler handler,
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
   checkCUDNN(miopenSetReduceTensorDescriptor(reduceDesc,
-                                             CUDNN_REDUCE_TENSOR_ADD,
-                                             CUDNN_DATA_FLOAT,
-                                             CUDNN_PROPAGATE_NAN,
-                                             CUDNN_REDUCE_TENSOR_NO_INDICES,
-                                             CUDNN_32BIT_INDICES));
+                                             MIOPEN_REDUCE_TENSOR_ADD,
+                                             miopenFloat,
+                                             MIOPEN_PROPAGATE_NAN,
+                                             MIOPEN_REDUCE_TENSOR_NO_INDICES,
+                                             MIOPEN_32BIT_INDICES));
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
   Domain output_domain = input_domain;
   for (size_t i = 0; i < rd->num_axes; i++) {
@@ -54,7 +54,7 @@ ReduceMeta::~ReduceMeta(void) {
 void Reduce::forward_kernel(ReduceMeta const *m,
                             float const *input_ptr,
                             float *output_ptr,
-                            cudaStream_t stream) {
+                            hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(miopenReduceTensor(m->handle.dnn,
@@ -84,7 +84,7 @@ void Reduce::forward_kernel_wrapper(ReduceMeta const *m,
 void Reduce::backward_kernel(ReduceMeta const *m,
                              float const *output_grad_ptr,
                              float *input_grad_ptr,
-                             cudaStream_t stream) {
+                             hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
   float alpha = 1.0f;
   checkCUDNN(miopenAddTensor(m->handle.dnn,
