@@ -86,14 +86,18 @@ void Reduce::backward_kernel(ReduceMeta const *m,
                              float *input_grad_ptr,
                              hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
-  float alpha = 1.0f;
-  checkCUDNN(miopenAddTensor(m->handle.dnn,
-                             &alpha,
-                             m->outputTensor,
-                             output_grad_ptr,
-                             &alpha,
-                             m->inputTensor,
-                             input_grad_ptr));
+  float alpha = 1.0f, beta = 0.0f;
+  checkCUDNN(miopenOpTensor(m->handle.dnn,
+                            miopenAddTensor,
+                            &alpha,
+                            m->inputTensor,
+                            input_grad_ptr,
+                            &alpha,
+                            m->outputTensor,
+                            output_grad_ptr,
+                            &beta,
+                            m->inputTensor,
+                            input_grad_ptr));
 }
 
 void Reduce::backward_kernel_wrapper(ReduceMeta const *m,
