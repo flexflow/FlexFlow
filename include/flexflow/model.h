@@ -600,25 +600,6 @@ public:
   template <int NDIM>
   Tensor create_constant(int const dims[], float value, DataType date_type);
   // ========================================
-  // Parallel APIs
-  // ========================================
-  ParallelTensor repartition(const ParallelTensor input,
-                             int partition_legion_dim,
-                             int partition_degree,
-                             char const *name = NULL);
-  ParallelTensor combine(const ParallelTensor input,
-                         int combine_legion_dim,
-                         int combine_degree,
-                         char const *name = NULL);
-  ParallelTensor replicate(const ParallelTensor input,
-                           int replicate_legion_dim,
-                           int replicate_degree,
-                           char const *name = NULL);
-  ParallelTensor reduction(const ParallelTensor input,
-                           int reduction_legion_dim,
-                           int reduction_degree,
-                           char const *name = NULL);
-  // ========================================
   // Graph APIs
   // ========================================
   float graph_cost(const PCG::Graph *graph,
