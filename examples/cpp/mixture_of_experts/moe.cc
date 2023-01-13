@@ -193,7 +193,7 @@ void FlexFlow::top_level_task(Task const *task,
     int iterations = TRAIN_SAMPLES / ffConfig.batchSize;
 
     for (int iter = 0; iter < iterations; iter++) {
-      // data_loader.next_batch(ff);
+      data_loader.next_batch(ff);
       if (epoch > 0) {
         runtime->begin_trace(ctx, 111 /*trace_id*/);
       }
