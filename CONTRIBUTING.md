@@ -130,7 +130,7 @@ We currently implement CI testing using Github Workflows. Each workflow is defin
 3. `docker-build.yml`: checks that the Docker containers can build and run FlexFlow properly. It also publishes a new version of the FlexFlow containers to the repo's package register for each push to the master branch
 4. `gpu-ci.yml`: runs all the tests that require a GPU to run.
 5. `gpu-ci-daemon.yml`: an helper workflow that turns on/off the GPU instance used by the test above
-6. `multinode-test.yml`: runs the same GPU tests from the `gpu-ci.yml` workflow, but using multiple nodes. Compared to the single-node version, this test is much more time-consuming (about 4h instead 40mins at the time of writing), so we only run the test on the FlexFlow `master` branch every other day.
+6. `multinode-test.yml`: runs the same GPU tests from the `gpu-ci.yml` workflow, but using multiple (simulated) nodes. The test currently simulates two nodes, each with 2 GPUs. To run FlexFlow on multiple nodes, we compile Legion with GASNET enabled, and choose MPI as the GASNET conduit. Compared to the single-node version, this test is much more time-consuming (about 4h instead 40mins at the time of writing), so we only run the test on the FlexFlow `master` branch every other day.
 7. `pip-install.yml`: checks the build & installation of FlexFlow using `pip`
 8. `shell-check.yml`: runs shellcheck on all bash scripts in the repo
 
