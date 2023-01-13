@@ -15,9 +15,6 @@ configs_path = os.path.join(
 cmake_configure_options = subprocess.check_output([configs_path, "show"]).decode(
     "utf-8"
 ).strip().split()[1:-1] + ["-DFF_BUILD_FROM_PYPI=ON"]
-cuda_path = subprocess.check_output([configs_path, "CUDA_PATH"]).decode("utf-8").strip()
-
-os.environ["CUDA_PATH"] = cuda_path
 
 setup(
     name="flexflow",
