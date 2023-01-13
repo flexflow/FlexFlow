@@ -15,18 +15,19 @@
 
 #include "flexflow/ops/fused.h"
 #include "flexflow/model.h"
-#include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
-#include "flexflow/ops/concat.h"
-#include "flexflow/ops/conv_2d.h"
 #include "flexflow/ops/dropout.h"
-#include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/kernels/batch_matmul_kernels.h"
+#include "flexflow/ops/kernels/concat_kernels.h"
+#include "flexflow/ops/kernels/conv_2d_kernels.h"
+#include "flexflow/ops/kernels/element_binary_kernels.h"
+#include "flexflow/ops/kernels/linear_kernels.h"
+#include "flexflow/ops/kernels/pool_2d_kernels.h"
+#include "flexflow/ops/kernels/reshape_kernels.h"
+#include "flexflow/ops/kernels/transpose_kernels.h"
 #include "flexflow/ops/linear.h"
-#include "flexflow/ops/pool_2d.h"
-#include "flexflow/ops/reshape.h"
-#include "flexflow/ops/transpose.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -74,45 +75,54 @@ __host__ void FusedOp::forward_task(Task const *task,
   assert(regions.size() == task->regions.size());
   assert((int)regions.size() ==
          fused->numInputs + fused->numWeights + fused->numOutputs);
-  Domain input_domain[MAX_NUM_INPUTS];
-  Domain weight_domain[MAX_NUM_WEIGHTS];
-  Domain output_domain[MAX_NUM_OUTPUTS];
-  float const *input_ptr[MAX_NUM_INPUTS];
-  float const *weight_ptr[MAX_NUM_WEIGHTS];
-  float *output_ptr[MAX_NUM_OUTPUTS];
+  GenericTensorAccessorR input_accessor[MAX_NUM_INPUTS];
+  GenericTensorAccessorR weight_accessor[MAX_NUM_WEIGHTS];
+  GenericTensorAccessorW output_accessor[MAX_NUM_OUTPUTS];
   assert(fused->numInputs <= MAX_NUM_INPUTS);
   for (int i = 0; i < fused->numInputs; i++) {
-    input_domain[i] = runtime->get_index_space_domain(
-        ctx, task->regions[i].region.get_index_space());
-    input_ptr[i] = helperGetTensorPointerRO<float>(
-        regions[i], task->regions[i], FID_DATA, ctx, runtime);
+    input_accessor[i] =
+        helperGetGenericTensorAccessorRO(fused->input_data_types[i],
+                                         regions[i],
+                                         task->regions[i],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
   }
   int roff = fused->numInputs;
   assert(fused->numWeights <= MAX_NUM_WEIGHTS);
   for (int i = 0; i < fused->numWeights; i++) {
-    weight_domain[i] = runtime->get_index_space_domain(
-        ctx, task->regions[i + roff].region.get_index_space());
-    weight_ptr[i] = helperGetTensorPointerRO<float>(
-        regions[i + roff], task->regions[i + roff], FID_DATA, ctx, runtime);
+    weight_accessor[i] =
+        helperGetGenericTensorAccessorRO(fused->weight_data_types[i],
+                                         regions[i + roff],
+                                         task->regions[i + roff],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
   }
   roff += fused->numWeights;
   assert(fused->numOutputs <= MAX_NUM_OUTPUTS);
   for (int i = 0; i < fused->numOutputs; i++) {
-    output_domain[i] = runtime->get_index_space_domain(
-        ctx, task->regions[i + roff].region.get_index_space());
-    output_ptr[i] = helperGetTensorPointerWO<float>(
-        regions[i + roff], task->regions[i + roff], FID_DATA, ctx, runtime);
+    output_accessor[i] =
+        helperGetGenericTensorAccessorWO(fused->output_data_types[i],
+                                         regions[i + roff],
+                                         task->regions[i + roff],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
   }
   // Assert that all meta share the same dnn/blas handler
   int start = 0;
-  for (start = 0; start < fused->numOperators; start++)
-    if (metas->meta[start] != NULL)
+  for (start = 0; start < fused->numOperators; start++) {
+    if (metas->meta[start] != NULL) {
       break;
-  for (int op = start + 1; op < fused->numOperators; op++)
+    }
+  }
+  for (int op = start + 1; op < fused->numOperators; op++) {
     if (metas->meta[op] != NULL) {
       assert(metas->meta[start]->handle.blas == metas->meta[op]->handle.blas);
       assert(metas->meta[start]->handle.dnn == metas->meta[op]->handle.dnn);
     }
+  }
 
   hipStream_t stream;
   if (start < fused->numOperators) {
@@ -121,32 +131,26 @@ __host__ void FusedOp::forward_task(Task const *task,
 
   int ioff = 0, woff = 0, ooff = 0;
   for (int op = 0; op < fused->numOperators; op++) {
-    Domain my_id[MAX_NUM_INPUTS];
-    Domain my_wd[MAX_NUM_WEIGHTS];
-    Domain my_od[MAX_NUM_OUTPUTS];
-    float const *my_ip[MAX_NUM_INPUTS];
-    float const *my_wp[MAX_NUM_WEIGHTS];
-    float *my_op[MAX_NUM_OUTPUTS];
+    GenericTensorAccessorR my_input_accessor[MAX_NUM_INPUTS];
+    GenericTensorAccessorR my_weight_accessor[MAX_NUM_WEIGHTS];
+    GenericTensorAccessorW my_output_accessor[MAX_NUM_OUTPUTS];
     for (int i = 0; i < fused->op_num_inputs[op]; i++) {
       int my_off = fused->op_input_idx[i + ioff];
       if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
-        my_id[i] = input_domain[my_off];
-        my_ip[i] = input_ptr[my_off];
+        my_input_accessor[i] = input_accessor[my_off];
       } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
-        my_id[i] = output_domain[my_off];
-        my_ip[i] = output_ptr[my_off];
-      } else
+        my_input_accessor[i] = output_accessor[my_off];
+      } else {
         assert(false);
+      }
     }
     for (int i = 0; i < fused->op_num_weights[op]; i++) {
       assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
-      my_wd[i] = weight_domain[fused->op_weight_idx[i + woff]];
-      my_wp[i] = weight_ptr[fused->op_weight_idx[i + woff]];
+      my_weight_accessor[i] = weight_accessor[fused->op_weight_idx[i + woff]];
     }
     for (int i = 0; i < fused->op_num_outputs[op]; i++) {
       assert(fused->op_output_source[i + ooff] == SOURCE_OUTPUT);
-      my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
-      my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
+      my_output_accessor[i] = output_accessor[i + ooff];
     }
     switch (fused->op_op_type[op]) {
       case OP_CONCAT: {
@@ -154,75 +158,88 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         ConcatMeta *m = (ConcatMeta *)metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
-        Concat::forward_kernel(my_op[0],
-                               my_ip,
-                               num_inputs,
-                               m->legion_axis,
-                               my_od[0],
-                               my_id,
-                               stream);
+        Kernels::Concat::forward_kernel_wrapper(m,
+                                                my_output_accessor[0],
+                                                my_input_accessor,
+                                                num_inputs,
+                                                m->legion_axis);
         break;
       }
       case OP_CONV2D: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_id[0].get_dim() == 4);
-        assert(my_wd[0].get_dim() == 4);
-        assert(my_od[0].get_dim() == 4);
+        assert(my_input_accessor[0].domain.get_dim() == 5);
+        assert(my_weight_accessor[0].domain.get_dim() == 5);
+        assert(my_output_accessor[0].domain.get_dim() == 5);
         Conv2DMeta *m = (Conv2DMeta *)metas->meta[op];
-        Conv2D::forward_kernel(
-            m, my_ip[0], my_op[0], my_wp[0], my_wp[1], stream);
+        Kernels::Conv2D::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            my_weight_accessor[1].get_float_ptr());
         break;
       }
       case OP_BATCHNORM: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_id[0].get_dim() == 4);
-        assert(my_od[0].get_dim() == 4);
-        assert(my_wd[0].get_dim() == 1);
-        assert(my_wd[1].get_dim() == 1);
+        assert(my_input_accessor[0].domain.get_dim() == 5);
+        assert(my_output_accessor[0].domain.get_dim() == 5);
+        assert(my_weight_accessor[0].domain.get_dim() == 2);
+        assert(my_weight_accessor[1].domain.get_dim() == 2);
         BatchNormMeta *m = (BatchNormMeta *)metas->meta[op];
-        BatchNorm::forward_kernel(
-            m, my_ip[0], my_op[0], my_wp[0], my_wp[1] /*, stream*/);
+        BatchNorm::forward_kernel(m,
+                                  my_input_accessor[0].get_float_ptr(),
+                                  my_output_accessor[0].get_float_ptr(),
+                                  my_weight_accessor[0].get_float_ptr(),
+                                  my_weight_accessor[1].get_float_ptr());
         break;
       }
       case OP_DROPOUT: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta *m = (DropoutMeta *)metas->meta[op];
-        Dropout::forward_kernel(m, my_ip[0], my_op[0], stream);
+        Dropout::forward_kernel_wrapper(m,
+                                        my_input_accessor[0].get_float_ptr(),
+                                        my_output_accessor[0].get_float_ptr());
         break;
       }
       case OP_LINEAR: {
         assert(fused->op_num_inputs[op] == 1);
-        assert(fused->op_num_weights[op] == 2);
         assert(fused->op_num_outputs[op] == 1);
-        Rect<2> kernel_rect = my_wd[0];
-        int in_dim = kernel_rect.hi[0] - kernel_rect.lo[0] + 1;
-        int out_dim = kernel_rect.hi[1] - kernel_rect.lo[1] + 1;
-        int batch_size = my_id[0].get_volume() / in_dim;
-        assert(my_od[0].get_volume() == out_dim * batch_size);
-        assert(my_id[0].get_volume() == in_dim * batch_size);
-        assert(my_wd[1].get_volume() == out_dim);
+        Domain kernel_domain = my_weight_accessor[0].domain;
+        int in_dim = kernel_domain.hi()[0] - kernel_domain.lo()[0] + 1;
+        int out_dim = kernel_domain.hi()[1] - kernel_domain.lo()[1] + 1;
+        int batch_size = my_input_accessor[0].domain.get_volume() / in_dim;
+        assert(my_output_accessor[0].domain.get_volume() ==
+               out_dim * batch_size);
+        assert(my_input_accessor[0].domain.get_volume() == in_dim * batch_size);
+        float const *bias_ptr = nullptr;
+        if (fused->op_num_weights[op] == 2) {
+          assert(my_weight_accessor[1].domain.get_volume() == out_dim);
+          bias_ptr = my_weight_accessor[1].get_float_ptr();
+        } else {
+          assert(fused->op_num_weights[op] == 1);
+        }
         LinearMeta *m = (LinearMeta *)metas->meta[op];
-        Linear::forward_kernel(m,
-                               my_ip[0],
-                               my_op[0],
-                               my_wp[0],
-                               my_wp[1],
-                               in_dim,
-                               out_dim,
-                               batch_size,
-                               stream);
+        Kernels::Linear::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            bias_ptr,
+            in_dim,
+            out_dim,
+            batch_size);
         break;
       }
       case OP_BATCHMATMUL: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        Domain out_domain = my_od[0];
-        Domain a_domain = my_id[0];
-        Domain b_domain = my_id[1];
+        Domain out_domain = my_output_accessor[0].domain;
+        Domain a_domain = my_input_accessor[0].domain;
+        Domain b_domain = my_input_accessor[1].domain;
         int m = b_domain.hi()[0] - b_domain.lo()[0] + 1;
         assert(m == out_domain.hi()[0] - out_domain.lo()[0] + 1);
         int n = a_domain.hi()[1] - a_domain.lo()[1] + 1;
@@ -239,19 +256,19 @@ __host__ void FusedOp::forward_task(Task const *task,
           batch *= dim_size;
         }
         BatchMatmulMeta *meta = (BatchMatmulMeta *)metas->meta[op];
-        BatchMatmul::forward_kernel(meta,
-                                    my_op[0],
-                                    my_ip[0],
-                                    my_ip[1],
-                                    NULL,
-                                    m,
-                                    n,
-                                    k,
-                                    batch,
-                                    stream,
-                                    meta->a_seq_length_dim,
-                                    meta->b_seq_length_dim,
-                                    fused->iter_config.seq_length);
+        Kernels::BatchMatmul::forward_kernel_wrapper(
+            meta,
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].get_float_ptr(),
+            my_input_accessor[1].get_float_ptr(),
+            (float const *)nullptr,
+            m,
+            n,
+            k,
+            batch,
+            meta->a_seq_length_dim,
+            meta->b_seq_length_dim,
+            fused->iter_config.seq_length);
         break;
       }
       case OP_EW_ADD:
@@ -261,10 +278,15 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_id[0] == my_id[1]);
-        assert(my_id[0] == my_od[0]);
+        assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
+        assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
-        ElementBinary::forward_kernel(m, my_ip[0], my_ip[1], my_op[0], stream);
+        Kernels::ElementBinary::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_input_accessor[1].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr());
+        break;
         break;
       }
       case OP_RELU:
@@ -274,46 +296,62 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_id[0] == my_od[0]);
+        assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementUnaryMeta *m = (ElementUnaryMeta *)metas->meta[op];
-        ElementUnary::forward_kernel(
-            m, my_ip[0], my_op[0], my_id[0].get_volume(), stream);
+        ElementUnary::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].domain.get_volume());
         break;
       }
       case OP_POOL2D: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        // assert(my_id[0] == my_od[0]);
         Pool2DMeta *m = (Pool2DMeta *)metas->meta[op];
-        Pool2D::forward_kernel(m, my_ip[0], my_op[0], stream);
+        Kernels::Pool2D::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr());
         break;
       }
       case OP_FLAT: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_id[0].get_volume() == my_od[0].get_volume());
-        Flat::forward_kernel(my_ip[0], my_op[0], my_id[0].get_volume(), stream);
+        assert(my_input_accessor[0].domain.get_volume() ==
+               my_output_accessor[0].domain.get_volume());
+        Flat::forward_kernel_wrapper(my_input_accessor[0].get_float_ptr(),
+                                     my_output_accessor[0].get_float_ptr(),
+                                     my_input_accessor[0].domain.get_volume());
         break;
       }
       case OP_RESHAPE: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_id[0].get_volume() == my_od[0].get_volume());
-        Reshape::forward_kernel(
-            my_ip[0], my_op[0], my_id[0].get_volume(), stream);
+        assert(my_input_accessor[0].domain.get_volume() ==
+               my_output_accessor[0].domain.get_volume());
+        Kernels::Reshape::forward_kernel_wrapper(
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].domain.get_volume());
         break;
       }
       case OP_TRANSPOSE: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_id[0].get_volume() == my_od[0].get_volume());
+        assert(my_input_accessor[0].domain.get_volume() ==
+               my_output_accessor[0].domain.get_volume());
         TransposeMeta *m = (TransposeMeta *)metas->meta[op];
-        Transpose::forward_kernel(
-            m, my_ip[0], my_op[0], my_id[0], my_od[0], stream);
+        Kernels::Transpose::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].domain,
+            my_output_accessor[0].domain);
         break;
       }
       default: {
@@ -355,88 +393,104 @@ __host__ void FusedOp::backward_task(Task const *task,
     int sum = fused->numInputs + fused->numWeights + fused->numOutputs;
     assert(sum * 2 == (int)regions.size());
   }
-  Domain input_domain[MAX_NUM_INPUTS], input_grad_domain[MAX_NUM_INPUTS];
-  Domain weight_domain[MAX_NUM_WEIGHTS], weight_grad_domain[MAX_NUM_WEIGHTS];
-  Domain output_domain[MAX_NUM_OUTPUTS], output_grad_domain[MAX_NUM_OUTPUTS];
-  float const *input_ptr[MAX_NUM_INPUTS];
-  float *input_grad_ptr[MAX_NUM_INPUTS];
-  float const *weight_ptr[MAX_NUM_WEIGHTS];
-  float *weight_grad_ptr[MAX_NUM_WEIGHTS];
-  float const *output_ptr[MAX_NUM_OUTPUTS];
-  float *output_grad_ptr[MAX_NUM_OUTPUTS];
+  GenericTensorAccessorR input_accessor[MAX_NUM_INPUTS];
+  GenericTensorAccessorW input_grad_accessor[MAX_NUM_INPUTS];
+  GenericTensorAccessorR weight_accessor[MAX_NUM_WEIGHTS];
+  GenericTensorAccessorW weight_grad_accessor[MAX_NUM_WEIGHTS];
+  GenericTensorAccessorR output_accessor[MAX_NUM_OUTPUTS];
+  GenericTensorAccessorW output_grad_accessor[MAX_NUM_OUTPUTS];
   int roff = 0;
   assert(fused->numInputs <= MAX_NUM_INPUTS);
   for (int i = 0; i < fused->numInputs; i++) {
-    input_domain[i] = runtime->get_index_space_domain(
-        ctx, task->regions[i].region.get_index_space());
-    input_ptr[i] = helperGetTensorPointerRO<float>(
-        regions[i], task->regions[i], FID_DATA, ctx, runtime);
+    input_accessor[i] =
+        helperGetGenericTensorAccessorRO(fused->input_data_types[i],
+                                         regions[i],
+                                         task->regions[i],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
   }
   roff += fused->numInputs;
   assert(fused->numWeights <= MAX_NUM_WEIGHTS);
   for (int i = 0; i < fused->numWeights; i++) {
-    weight_domain[i] = runtime->get_index_space_domain(
-        ctx, task->regions[i + roff].region.get_index_space());
-    weight_ptr[i] = helperGetTensorPointerRO<float>(
-        regions[i + roff], task->regions[i + roff], FID_DATA, ctx, runtime);
+    weight_accessor[i] =
+        helperGetGenericTensorAccessorRO(fused->weight_data_types[i],
+                                         regions[i + roff],
+                                         task->regions[i + roff],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
   }
   roff += fused->numWeights;
   assert(fused->numOutputs <= MAX_NUM_OUTPUTS);
   for (int i = 0; i < fused->numOutputs; i++) {
-    output_domain[i] = runtime->get_index_space_domain(
-        ctx, task->regions[i + roff].region.get_index_space());
-    output_ptr[i] = helperGetTensorPointerRO<float>(
-        regions[i + roff], task->regions[i + roff], FID_DATA, ctx, runtime);
+    output_accessor[i] =
+        helperGetGenericTensorAccessorRO(fused->output_data_types[i],
+                                         regions[i + roff],
+                                         task->regions[i + roff],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
   }
   roff += fused->numOutputs;
   for (int i = 0; i < fused->numInputs; i++) {
-    input_grad_domain[i] = runtime->get_index_space_domain(
-        ctx, task->regions[i + roff].region.get_index_space());
-    input_grad_ptr[i] = helperGetTensorPointerRW<float>(
-        regions[i + roff], task->regions[i + roff], FID_DATA, ctx, runtime);
-    assert(input_grad_domain[i] == input_domain[i]);
+    input_grad_accessor[i] =
+        helperGetGenericTensorAccessorRW(fused->input_data_types[i],
+                                         regions[i + roff],
+                                         task->regions[i + roff],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
+    assert(input_grad_accessor[i].domain == input_accessor[i].domain);
   }
   roff += fused->numInputs;
   for (int i = 0; i < fused->numWeights; i++) {
-    weight_grad_domain[i] = runtime->get_index_space_domain(
-        ctx, task->regions[i + roff].region.get_index_space());
-    weight_grad_ptr[i] = helperGetTensorPointerRW<float>(
-        regions[i + roff], task->regions[i + roff], FID_DATA, ctx, runtime);
-    assert(weight_grad_domain[i].get_volume() == weight_domain[i].get_volume());
+    weight_grad_accessor[i] =
+        helperGetGenericTensorAccessorRW(fused->weight_data_types[i],
+                                         regions[i + roff],
+                                         task->regions[i + roff],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
+    assert(weight_grad_accessor[i].domain.get_volume() ==
+           weight_accessor[i].domain.get_volume());
   }
   roff += fused->numWeights;
   for (int i = 0; i < fused->numOutputs; i++) {
-    output_grad_domain[i] = runtime->get_index_space_domain(
-        ctx, task->regions[i + roff].region.get_index_space());
-    output_grad_ptr[i] = helperGetTensorPointerRW<float>(
-        regions[i + roff], task->regions[i + roff], FID_DATA, ctx, runtime);
-    assert(output_grad_domain[i] == output_domain[i]);
+    output_grad_accessor[i] =
+        helperGetGenericTensorAccessorRW(fused->output_data_types[i],
+                                         regions[i + roff],
+                                         task->regions[i + roff],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
+    assert(output_grad_accessor[i].domain == output_accessor[i].domain);
   }
   roff += fused->numOutputs;
   // Assert that all meta share the same dnn/blas handler
   int start = 0;
-  for (start = 0; start < fused->numOperators; start++)
-    if (metas->meta[start] != NULL)
+  for (start = 0; start < fused->numOperators; start++) {
+    if (metas->meta[start] != NULL) {
       break;
-  for (int op = start + 1; op < fused->numOperators; op++)
+    }
+  }
+  for (int op = start + 1; op < fused->numOperators; op++) {
     if (metas->meta[op] != NULL) {
       assert(metas->meta[start]->handle.blas == metas->meta[op]->handle.blas);
       assert(metas->meta[start]->handle.dnn == metas->meta[op]->handle.dnn);
     }
+  }
 
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
   int ioff = 0, woff = 0, ooff = 0;
-  Domain my_id[MAX_NUM_INPUTS], my_grad_id[MAX_NUM_INPUTS];
-  Domain my_wd[MAX_NUM_WEIGHTS], my_grad_wd[MAX_NUM_WEIGHTS];
-  Domain my_od[MAX_NUM_OUTPUTS], my_grad_od[MAX_NUM_OUTPUTS];
-  float const *my_ip[MAX_NUM_INPUTS];
-  float const *my_wp[MAX_NUM_WEIGHTS];
-  float const *my_op[MAX_NUM_OUTPUTS];
-  float *my_grad_ip[MAX_NUM_INPUTS];
-  float *my_grad_wp[MAX_NUM_WEIGHTS];
-  float *my_grad_op[MAX_NUM_OUTPUTS];
+  GenericTensorAccessorR my_input_accessor[MAX_NUM_INPUTS];
+  GenericTensorAccessorR my_weight_accessor[MAX_NUM_WEIGHTS];
+  GenericTensorAccessorR my_output_accessor[MAX_NUM_OUTPUTS];
+  GenericTensorAccessorW my_input_grad_accessor[MAX_NUM_INPUTS];
+  GenericTensorAccessorW my_weight_grad_accessor[MAX_NUM_WEIGHTS];
+  GenericTensorAccessorW my_output_grad_accessor[MAX_NUM_OUTPUTS];
   // Do backpropagation in the reverse ordering
   for (int op = 0; op < fused->numOperators; op++) {
     ioff += fused->op_num_inputs[op];
@@ -451,35 +505,30 @@ __host__ void FusedOp::backward_task(Task const *task,
     for (int i = 0; i < fused->op_num_inputs[op]; i++) {
       int my_off = fused->op_input_idx[i + ioff];
       if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
-        my_id[i] = input_domain[my_off];
-        my_ip[i] = input_ptr[my_off];
-        my_grad_id[i] = input_grad_domain[my_off];
-        my_grad_ip[i] = input_grad_ptr[my_off];
-        assert(my_grad_id[i] == my_id[i]);
+        my_input_accessor[i] = input_accessor[my_off];
+        my_input_grad_accessor[i] = input_grad_accessor[my_off];
       } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
-        my_id[i] = output_domain[my_off];
-        my_ip[i] = output_ptr[my_off];
-        my_grad_id[i] = output_grad_domain[my_off];
-        my_grad_ip[i] = output_grad_ptr[my_off];
-        assert(my_grad_id[i] == my_id[i]);
-      } else
+        my_input_accessor[i] = output_accessor[my_off];
+        my_input_grad_accessor[i] = output_grad_accessor[my_off];
+        assert(my_input_grad_accessor[i].domain == my_input_accessor[i].domain);
+      } else {
         assert(false);
+      }
     }
     for (int i = 0; i < fused->op_num_weights[op]; i++) {
       assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
-      my_wd[i] = weight_domain[fused->op_weight_idx[i + woff]];
-      my_wp[i] = weight_ptr[fused->op_weight_idx[i + woff]];
-      my_grad_wd[i] = weight_grad_domain[fused->op_weight_idx[i + woff]];
-      my_grad_wp[i] = weight_grad_ptr[fused->op_weight_idx[i + woff]];
-      assert(my_grad_wd[i].get_volume() == my_wd[i].get_volume());
+      my_weight_accessor[i] = weight_accessor[fused->op_weight_idx[i + woff]];
+      my_weight_grad_accessor[i] =
+          weight_grad_accessor[fused->op_weight_idx[i + woff]];
+      assert(my_weight_grad_accessor[i].domain.get_volume() ==
+             my_weight_accessor[i].domain.get_volume());
     }
     for (int i = 0; i < fused->op_num_outputs[op]; i++) {
       assert(fused->op_output_source[i + ooff] == SOURCE_OUTPUT);
-      my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
-      my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
-      my_grad_od[i] = output_grad_domain[fused->op_output_idx[i + ooff]];
-      my_grad_op[i] = output_grad_ptr[fused->op_output_idx[i + ooff]];
-      assert(my_grad_od[i] == my_od[i]);
+      my_output_accessor[i] = output_accessor[fused->op_output_idx[i + ooff]];
+      my_output_grad_accessor[i] =
+          output_grad_accessor[fused->op_output_idx[i + ooff]];
+      assert(my_output_grad_accessor[i].domain == my_output_accessor[i].domain);
     }
     switch (fused->op_op_type[op]) {
       case OP_CONCAT: {
@@ -487,92 +536,100 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         ConcatMeta *m = (ConcatMeta *)metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
-        Concat::backward_kernel(my_grad_op[0],
-                                my_grad_ip,
-                                num_inputs,
-                                m->legion_axis,
-                                my_grad_od[0],
-                                my_grad_id,
-                                stream);
+        Kernels::Concat::backward_kernel_wrapper(m,
+                                                 my_output_grad_accessor[0],
+                                                 my_input_grad_accessor,
+                                                 num_inputs,
+                                                 m->legion_axis);
         break;
       }
       case OP_CONV2D: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_id[0].get_dim() == 4);
-        assert(my_wd[0].get_dim() == 4);
-        assert(my_od[0].get_dim() == 4);
+        assert(my_input_accessor[0].domain.get_dim() == 5);
+        assert(my_weight_accessor[0].domain.get_dim() == 5);
+        assert(my_output_accessor[0].domain.get_dim() == 5);
         Conv2DMeta *m = (Conv2DMeta *)metas->meta[op];
-        Conv2D::backward_kernel(m,
-                                my_ip[0],
-                                my_grad_ip[0],
-                                my_op[0],
-                                my_grad_op[0],
-                                my_wp[0],
-                                my_grad_wp[0],
-                                my_grad_wp[1],
-                                stream);
+        Kernels::Conv2D::backward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            my_weight_grad_accessor[0].get_float_ptr(),
+            my_weight_grad_accessor[1].get_float_ptr());
         break;
       }
       case OP_BATCHNORM: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_id[0].get_dim() == 4);
-        assert(my_wd[0].get_dim() == 1);
-        assert(my_wd[1].get_dim() == 1);
-        assert(my_od[0].get_dim() == 4);
+        assert(my_input_accessor[0].domain.get_dim() == 5);
+        assert(my_weight_accessor[0].domain.get_dim() == 2);
+        assert(my_weight_accessor[1].domain.get_dim() == 2);
+        assert(my_output_accessor[0].domain.get_dim() == 5);
         BatchNormMeta *m = (BatchNormMeta *)metas->meta[op];
-        BatchNorm::backward_kernel(m,
-                                   my_ip[0],
-                                   my_grad_op[0],
-                                   my_op[0],
-                                   my_grad_ip[0],
-                                   my_wp[0],
-                                   my_grad_wp[0],
-                                   my_grad_wp[1],
-                                   my_od[0].get_volume() /*, stream*/);
+        BatchNorm::backward_kernel(
+            m,
+            (float const *)my_input_accessor[0].get_float_ptr(),
+            (float *)my_output_grad_accessor[0].get_float_ptr(),
+            (float const *)my_output_accessor[0].get_float_ptr(),
+            (float *)my_input_grad_accessor[0].get_float_ptr(),
+            (float const *)my_weight_accessor[0].get_float_ptr(),
+            (float *)my_weight_grad_accessor[0].get_float_ptr(),
+            (float *)my_weight_grad_accessor[1].get_float_ptr(),
+            my_output_accessor[0].domain.get_volume());
         break;
       }
       case OP_DROPOUT: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta *m = (DropoutMeta *)metas->meta[op];
-        Dropout::backward_kernel(m, my_grad_op[0], my_grad_ip[0], stream);
+        Dropout::backward_kernel_wrapper(
+            m,
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr());
         break;
       }
       case OP_LINEAR: {
         assert(fused->op_num_inputs[op] == 1);
-        assert(fused->op_num_weights[op] == 2);
         assert(fused->op_num_outputs[op] == 1);
-        Rect<2> kernel_rect = my_wd[0];
-        int in_dim = kernel_rect.hi[0] - kernel_rect.lo[0] + 1;
-        int out_dim = kernel_rect.hi[1] - kernel_rect.lo[1] + 1;
-        int batch_size = my_id[0].get_volume() / in_dim;
-        assert(my_od[0].get_volume() == out_dim * batch_size);
-        assert(my_id[0].get_volume() == in_dim * batch_size);
-        assert(my_wd[1].get_volume() == out_dim);
+        Domain kernel_domain = my_weight_accessor[0].domain;
+        int in_dim = kernel_domain.hi()[0] - kernel_domain.lo()[0] + 1;
+        int out_dim = kernel_domain.hi()[1] - kernel_domain.lo()[1] + 1;
+        int batch_size = my_input_accessor[0].domain.get_volume() / in_dim;
+        assert(my_output_accessor[0].domain.get_volume() ==
+               out_dim * batch_size);
+        assert(my_input_accessor[0].domain.get_volume() == in_dim * batch_size);
+        float *bias_grad_ptr = nullptr;
+        if (fused->op_num_weights[op] == 2) {
+          assert(my_weight_accessor[1].domain.get_volume() == out_dim);
+          bias_grad_ptr = my_weight_grad_accessor[1].get_float_ptr();
+        } else {
+          assert(fused->op_num_weights[op] == 1);
+        }
         LinearMeta *m = (LinearMeta *)metas->meta[op];
-        Linear::backward_kernel(m,
-                                my_ip[0],
-                                my_grad_ip[0],
-                                my_op[0],
-                                my_grad_op[0],
-                                my_wp[0],
-                                my_grad_wp[0],
-                                my_grad_wp[1],
-                                in_dim,
-                                out_dim,
-                                batch_size,
-                                stream);
+        Kernels::Linear::backward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_weight_accessor[0].get_float_ptr(),
+            my_weight_grad_accessor[0].get_float_ptr(),
+            bias_grad_ptr,
+            in_dim,
+            out_dim,
+            batch_size);
         break;
       }
       case OP_BATCHMATMUL: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        Domain out_domain = my_od[0];
-        Domain a_domain = my_id[0];
-        Domain b_domain = my_id[1];
+        Domain out_domain = my_output_accessor[0].domain;
+        Domain a_domain = my_input_accessor[0].domain;
+        Domain b_domain = my_input_accessor[1].domain;
         // check dims
         int m = b_domain.hi()[0] - b_domain.lo()[0] + 1;
         assert(m == out_domain.hi()[0] - out_domain.lo()[0] + 1);
@@ -590,19 +647,19 @@ __host__ void FusedOp::backward_task(Task const *task,
           batch *= dim_size;
         }
         BatchMatmulMeta *meta = (BatchMatmulMeta *)metas->meta[op];
-        BatchMatmul::backward_kernel(meta,
-                                     my_op[0],
-                                     my_grad_op[0],
-                                     my_ip[0],
-                                     my_grad_ip[0],
-                                     my_ip[1],
-                                     my_grad_ip[1],
-                                     NULL,
-                                     m,
-                                     n,
-                                     k,
-                                     batch,
-                                     stream);
+        Kernels::BatchMatmul::backward_kernel_wrapper(
+            meta,
+            (float const *)my_output_accessor[0].get_float_ptr(),
+            (float const *)my_output_grad_accessor[0].get_float_ptr(),
+            (float const *)my_input_accessor[0].get_float_ptr(),
+            (float *)my_input_grad_accessor[0].get_float_ptr(),
+            (float const *)my_input_accessor[1].get_float_ptr(),
+            (float *)my_input_grad_accessor[1].get_float_ptr(),
+            (float *)nullptr,
+            m,
+            n,
+            k,
+            batch);
         break;
       }
       case OP_EW_ADD:
@@ -612,16 +669,16 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_id[0] == my_id[1]);
-        assert(my_id[0] == my_od[0]);
+        assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
+        assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
-        ElementBinary::backward_kernel(m,
-                                       my_grad_op[0],
-                                       my_ip[0],
-                                       my_ip[1],
-                                       my_grad_ip[0],
-                                       my_grad_ip[1],
-                                       stream);
+        Kernels::ElementBinary::backward_kernel_wrapper(
+            m,
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_accessor[0].get_float_ptr(),
+            my_input_accessor[1].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[1].get_float_ptr());
         break;
       }
       case OP_RELU:
@@ -631,57 +688,68 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_id[0] == my_od[0]);
+        assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementUnaryMeta *m = (ElementUnaryMeta *)metas->meta[op];
-        ElementUnary::backward_kernel(m,
-                                      my_ip[0],
-                                      my_grad_ip[0],
-                                      my_op[0],
-                                      my_grad_op[0],
-                                      my_id[0].get_volume(),
-                                      stream);
+        ElementUnary::backward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_accessor[0].domain.get_volume());
         break;
       }
       case OP_POOL2D: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        // assert(my_id[0] == my_od[0]);
+        // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         Pool2DMeta *m = (Pool2DMeta *)metas->meta[op];
-        Pool2D::backward_kernel(
-            m, my_ip[0], my_grad_ip[0], my_op[0], my_grad_op[0], stream);
+        Kernels::Pool2D::backward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr());
         break;
       }
       case OP_FLAT: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_grad_id[0].get_volume() == my_grad_od[0].get_volume());
-        Flat::backward_kernel(
-            my_grad_ip[0], my_grad_op[0], my_grad_id[0].get_volume(), stream);
+        assert(my_input_grad_accessor[0].domain.get_volume() ==
+               my_output_grad_accessor[0].domain.get_volume());
+        Flat::backward_kernel_wrapper(
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].domain.get_volume());
         break;
       }
       case OP_RESHAPE: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_grad_id[0].get_volume() == my_grad_od[0].get_volume());
-        // Reshape::backward_kernel(my_grad_ip[0], my_grad_op[0],
-        //     my_grad_id[0].get_volume(), stream);
+        assert(my_input_grad_accessor[0].domain.get_volume() ==
+               my_output_grad_accessor[0].domain.get_volume());
+        Kernels::Reshape::backward_kernel_wrapper(
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].domain.get_volume());
         break;
       }
       case OP_TRANSPOSE: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        assert(my_grad_id[0].get_volume() == my_grad_od[0].get_volume());
+        assert(my_input_grad_accessor[0].domain.get_volume() ==
+               my_output_grad_accessor[0].domain.get_volume());
         TransposeMeta *m = (TransposeMeta *)metas->meta[op];
-        Transpose::backward_kernel(m,
-                                   my_grad_ip[0],
-                                   my_grad_op[0],
-                                   my_grad_id[0],
-                                   my_grad_od[0],
-                                   stream);
+        Kernels::Transpose::backward_kernel_wrapper(
+            m,
+            my_input_grad_accessor[0].get_float_ptr(),
+            my_output_grad_accessor[0].get_float_ptr(),
+            my_input_grad_accessor[0].domain,
+            my_output_grad_accessor[0].domain);
         break;
       }
       default:

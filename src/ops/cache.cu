@@ -57,7 +57,7 @@ float Cache::cache_update(Task const *task,
   int batch_ctr = ((Arg *)(task->args))->batch_ctr;
   CacheMeta *m = *((CacheMeta **)task->local_args);
 
-  const T *input_ptr = helperGetTensorPointerRW<T>(
+  T const *input_ptr = helperGetTensorPointerRW<T>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   T *host_input = (T *)c->batch_cmp;
   cudaMemcpy(host_input,

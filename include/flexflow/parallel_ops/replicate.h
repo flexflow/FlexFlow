@@ -1,8 +1,6 @@
 #ifndef _FLEXFLOW_REPLICATE_H
 #define _FLEXFLOW_REPLICATE_H
 
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
 #include "flexflow/layer.h"
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
@@ -41,14 +39,6 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  template <typename T>
-  static void
-      forward_kernel(const T *input_ptr, T *output_ptr, size_t num_elements);
-  template <typename T>
-  static void backward_kernel(const T *output_grad_ptr,
-                              T *input_grad_ptr,
-                              size_t num_elements,
-                              size_t num_replicas);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;

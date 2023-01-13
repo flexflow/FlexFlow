@@ -1,0 +1,124 @@
+name: "gpu-ci"
+on:
+  pull_request:
+    paths:
+      - "cmake/**"
+      - "config/**"
+      - "python/**"
+      - "setup.py"
+      - "include/**"
+      - "src/**"
+      - ".github/workflows/gpu-ci.yml"
+      - "tests/multi_gpu_tests.sh"
+  push:
+    branches:
+      - "master"
+    paths:
+      - "cmake/**"
+      - "config/**"
+      - "python/**"
+      - "setup.py"
+      - "include/**"
+      - "src/**"
+      - ".github/workflows/gpu-ci.yml"
+      - "tests/multi_gpu_tests.sh"
+  workflow_dispatch:
+
+concurrency:
+  group: gpu-ci-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  gpu-ci-concierge:
+    name: GPU CI Concierge
+    runs-on: ubuntu-20.04
+    env:
+      FLEXFLOW_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+
+      - name: Wait for daemon to be done
+        run: |
+          pip install pygithub
+          python3 .github/workflows/helpers/gpu_ci_helper.py
+
+  python-interface-check:
+    name: Check Python Interface
+    runs-on: self-hosted
+    needs: gpu-ci-concierge
+    container:
+      image: ghcr.io/flexflow/flexflow-environment-cuda:latest
+      options: --gpus all --shm-size=8192m
+    steps:
+      - name: Install updated git version
+        run: sudo add-apt-repository ppa:git-core/ppa -y && sudo apt update -y && sudo apt install -y --no-install-recommends git
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Build FlexFlow
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export FF_HOME=$(pwd)
+          mkdir build
+          cd build
+          ../config/config.linux
+          make -j
+
+      - name: Check FlexFlow Python interface (before installation)
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export FF_HOME=$(pwd)
+          ./tests/python_interface_test.sh before-installation
+
+      - name: Install FlexFlow
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export FF_HOME=$(pwd)
+          cd build
+          ../config/config.linux
+          make install
+          ldconfig
+
+      - name: Check FlexFlow Python interface (after installation)
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export FF_HOME=$(pwd)
+          ./tests/python_interface_test.sh after-installation
+
+  gpu-ci-flexflow:
+    name: Single Machine, Multiple GPUs Tests
+    runs-on: self-hosted
+    needs: gpu-ci-concierge
+    container:
+      image: ghcr.io/flexflow/flexflow-environment-cuda:latest
+      options: --gpus all --shm-size=8192m
+    steps:
+      - name: Install updated git version
+        run: sudo add-apt-repository ppa:git-core/ppa -y && sudo apt update -y && sudo apt install -y --no-install-recommends git
+      - name: Checkout Git Repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Build and Install FlexFlow
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export FF_HOME=$(pwd)
+          pip install . --verbose
+
+      - name: Check FlexFlow Python interface (pip)
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export FF_HOME=$(pwd)
+          ./tests/python_interface_test.sh after-installation
+
+      - name: Run multi-gpu tests
+        run: |
+          export PATH=/opt/conda/bin:$PATH
+          export CUDNN_DIR=/usr/local/cuda
+          export CUDA_DIR=/usr/local/cuda
+          export FF_HOME=$(pwd)
+          ./tests/multi_gpu_tests.sh 4

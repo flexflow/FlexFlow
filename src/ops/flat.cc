@@ -21,8 +21,14 @@ using Legion::TaskLauncher;
 
 Tensor FFModel::flat(const Tensor input, char const *name) {
   assert(input->num_dims == 4);
-  Layer *flat = new Layer(
-      this, OP_FLAT, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, input);
+  Layer *flat = new Layer(this,
+                          OP_FLAT,
+                          DT_FLOAT,
+                          name,
+                          1 /*inputs*/,
+                          0 /*weights*/,
+                          1 /*outputs*/,
+                          input);
   int dims[MAX_TENSOR_DIM];
   dims[1] = input->dims[3];
   dims[0] = input->dims[2] * input->dims[1] * input->dims[0];
@@ -30,13 +36,6 @@ Tensor FFModel::flat(const Tensor input, char const *name) {
       2, dims, DT_FLOAT, flat, 0, true /*create_grad*/);
   layers.push_back(flat);
   return flat->outputs[0];
-#ifdef DEADCODE
-  // assert(strategies.find(name) != strategies.end());
-  // ParallelConfig pc = strategies[name];
-  Flat *flat = new Flat(*this, input, name);
-  layers.push_back(flat);
-  return flat->outputs[0];
-#endif
 }
 
 Op *Flat::create_operator_from_layer(
@@ -105,6 +104,7 @@ void Flat::construct_output_mappings(
 Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
     : Op(model,
          OP_FLAT,
+         _input->data_type,
          name,
          1 /*inputs*/,
          0 /*weights*/,

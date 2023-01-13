@@ -6,6 +6,10 @@ GIT_ROOT="$(git rev-parse --show-toplevel)"
 cd "$GIT_ROOT"
 
 TOOLS_PATH="$GIT_ROOT/.tools"
+RELEASE="master-1d7ec53d"
+CLANG_FORMAT_VERSION="15"
+CLANG_FORMAT_PATH="$TOOLS_PATH/clang-format-$CLANG_FORMAT_VERSION-$RELEASE"
+
 mkdir -p "$TOOLS_PATH"
 
 error() {
@@ -34,7 +38,7 @@ download_clang_tool() {
   VERSION="$2"
   TARGET_PATH="$3"
 
-  BASE_URL="https://github.com/muttleyxd/clang-tools-static-binaries/releases/download/master-208096c1/"
+  BASE_URL="https://github.com/muttleyxd/clang-tools-static-binaries/releases/download/$RELEASE/"
 
   OS="$(get_os)"
   case "$OS" in
@@ -58,13 +62,10 @@ download_clang_tool() {
   fi
 }
 
-CLANG_FORMAT_VERSION="14"
-CLANG_FORMAT_PATH="$TOOLS_PATH/clang-format-$CLANG_FORMAT_VERSION"
-
 if [[ ! -e $CLANG_FORMAT_PATH ]]; then
   download_clang_tool format "$CLANG_FORMAT_VERSION" "$CLANG_FORMAT_PATH"
   chmod u+x "$CLANG_FORMAT_PATH"
 fi
 
-FILES=($(git ls-files | grep -E '\.(h|cc|cpp|cu)$'))
+mapfile -t FILES < <(git ls-files | grep -E '\.(h|cc|cpp|cu)$')
 "$CLANG_FORMAT_PATH" -i "${FILES[@]}"

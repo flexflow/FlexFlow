@@ -33,38 +33,47 @@ GenericTensorAccessorR::GenericTensorAccessorR()
     : data_type(DT_NONE), domain(Domain::NO_DOMAIN), ptr(nullptr) {}
 
 int32_t const *GenericTensorAccessorR::get_int32_ptr() const {
-  if (data_type == DT_INT32)
+  if (data_type == DT_INT32) {
     return static_cast<int32_t const *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<int32_t const *>(nullptr);
   }
 }
 
 int64_t const *GenericTensorAccessorR::get_int64_ptr() const {
-  if (data_type == DT_INT64)
+  if (data_type == DT_INT64) {
     return static_cast<int64_t const *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<int64_t const *>(nullptr);
   }
 }
 
 float const *GenericTensorAccessorR::get_float_ptr() const {
-  if (data_type == DT_FLOAT)
+  if (data_type == DT_FLOAT) {
     return static_cast<float const *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<float const *>(nullptr);
   }
 }
 
 double const *GenericTensorAccessorR::get_double_ptr() const {
-  if (data_type == DT_DOUBLE)
+  if (data_type == DT_DOUBLE) {
     return static_cast<double const *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<double const *>(nullptr);
+  }
+}
+
+half const *GenericTensorAccessorR::get_half_ptr() const {
+  if (data_type == DT_HALF) {
+    return static_cast<half const *>(ptr);
+  } else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<half const *>(nullptr);
   }
 }
 
@@ -103,38 +112,47 @@ GenericTensorAccessorW::GenericTensorAccessorW()
     : data_type(DT_NONE), domain(Domain::NO_DOMAIN), ptr(nullptr) {}
 
 int32_t *GenericTensorAccessorW::get_int32_ptr() const {
-  if (data_type == DT_INT32)
+  if (data_type == DT_INT32) {
     return static_cast<int32_t *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<int32_t *>(nullptr);
   }
 }
 
 int64_t *GenericTensorAccessorW::get_int64_ptr() const {
-  if (data_type == DT_INT64)
+  if (data_type == DT_INT64) {
     return static_cast<int64_t *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<int64_t *>(nullptr);
   }
 }
 
 float *GenericTensorAccessorW::get_float_ptr() const {
-  if (data_type == DT_FLOAT)
+  if (data_type == DT_FLOAT) {
     return static_cast<float *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<float *>(nullptr);
   }
 }
 
 double *GenericTensorAccessorW::get_double_ptr() const {
-  if (data_type == DT_DOUBLE)
+  if (data_type == DT_DOUBLE) {
     return static_cast<double *>(ptr);
-  else {
+  } else {
     assert(false && "Invalid Accessor Type");
     return static_cast<double *>(nullptr);
+  }
+}
+
+half *GenericTensorAccessorW::get_half_ptr() const {
+  if (data_type == DT_HALF) {
+    return static_cast<half *>(ptr);
+  } else {
+    assert(false && "Invalid Accessor Type");
+    return static_cast<half *>(nullptr);
   }
 }
 
@@ -231,6 +249,10 @@ GenericTensorAccessorR
       ptr = helperGetTensorPointerRO<int64_t>(region, req, fid, ctx, runtime);
       break;
     }
+    case DT_HALF: {
+      ptr = helperGetTensorPointerRO<half>(region, req, fid, ctx, runtime);
+      break;
+    }
     case DT_FLOAT: {
       ptr = helperGetTensorPointerRO<float>(region, req, fid, ctx, runtime);
       break;
@@ -263,6 +285,10 @@ GenericTensorAccessorW
     }
     case DT_INT64: {
       ptr = helperGetTensorPointerWO<int64_t>(region, req, fid, ctx, runtime);
+      break;
+    }
+    case DT_HALF: {
+      ptr = helperGetTensorPointerWO<half>(region, req, fid, ctx, runtime);
       break;
     }
     case DT_FLOAT: {
@@ -299,6 +325,10 @@ GenericTensorAccessorW
       ptr = helperGetTensorPointerRW<int64_t>(region, req, fid, ctx, runtime);
       break;
     }
+    case DT_HALF: {
+      ptr = helperGetTensorPointerRW<half>(region, req, fid, ctx, runtime);
+      break;
+    }
     case DT_FLOAT: {
       ptr = helperGetTensorPointerRW<float>(region, req, fid, ctx, runtime);
       break;
@@ -316,13 +346,30 @@ GenericTensorAccessorW
 
 #define DIMFUNC(DIM)                                                           \
   template class TensorAccessorR<float, DIM>;                                  \
+  template class TensorAccessorR<double, DIM>;                                 \
   template class TensorAccessorR<int32_t, DIM>;                                \
   template class TensorAccessorR<int64_t, DIM>;                                \
   template class TensorAccessorW<float, DIM>;                                  \
+  template class TensorAccessorW<double, DIM>;                                 \
   template class TensorAccessorW<int32_t, DIM>;                                \
   template class TensorAccessorW<int64_t, DIM>;
 LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
+template half const *helperGetTensorPointerRO(PhysicalRegion region,
+                                              RegionRequirement req,
+                                              FieldID fid,
+                                              Context ctx,
+                                              Runtime *runtime);
+template half *helperGetTensorPointerRW(PhysicalRegion region,
+                                        RegionRequirement req,
+                                        FieldID fid,
+                                        Context ctx,
+                                        Runtime *runtime);
+template half *helperGetTensorPointerWO(PhysicalRegion region,
+                                        RegionRequirement req,
+                                        FieldID fid,
+                                        Context ctx,
+                                        Runtime *runtime);
 
 template float const *helperGetTensorPointerRO(PhysicalRegion region,
                                                RegionRequirement req,

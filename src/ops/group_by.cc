@@ -44,8 +44,9 @@ void FFModel::group_by(const Tensor input,
 #ifdef DEADCODE
   Group_by *group_by = new Group_by(*this, input, assign, n, alpha, name);
   layers.push_back(group_by);
-  for (int i = 0; i < n; i++)
+  for (int i = 0; i < n; i++) {
     outputs[i] = group_by->outputs[i];
+  }
 #endif
 }
 
@@ -57,6 +58,7 @@ Group_by::Group_by(FFModel &model,
                    char const *name)
     : Op(model,
          OP_GROUP_BY,
+         _input->data_type,
          name,
          2 /*inputs*/,
          0 /*weights*/,

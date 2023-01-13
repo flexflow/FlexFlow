@@ -147,14 +147,14 @@ __global__ void
 
 template <typename T>
 __global__ void
-    apply_add_with_scale(T *data_ptr, const T *grad_ptr, size_t size, T scale) {
+    apply_add_with_scale(T *data_ptr, T const *grad_ptr, size_t size, T scale) {
   CUDA_KERNEL_LOOP(i, size) {
     data_ptr[i] += grad_ptr[i] * scale;
   }
 }
 
 template <typename T>
-__global__ void add_kernel(T *data_ptr, const T *grad_ptr, size_t size) {
+__global__ void add_kernel(T *data_ptr, T const *grad_ptr, size_t size) {
   CUDA_KERNEL_LOOP(i, size) {
     data_ptr[i] += grad_ptr[i];
   }
@@ -222,33 +222,9 @@ __host__ void updateGAS(float *para_ptr,
                      scale_factor);
 }
 
-#ifdef DEADCODE
-template <unsigned DIM, typename T>
-__host__ void print_tensor(const T *ptr, Rect<DIM> rect, char const *prefix) {
-  // device synchronize to make sure the data are ready
-  // checkCUDA(hipDeviceSynchronize());
-  T *host_ptr;
-  checkCUDA(hipHostMalloc(&host_ptr,
-                          sizeof(T) * rect.volume(),
-                          hipHostMallocPortable | hipHostMallocMapped));
-  checkCUDA(hipMemcpy(
-      host_ptr, ptr, sizeof(T) * rect.volume(), hipMemcpyDeviceToHost));
-  // checkCUDA(hipDeviceSynchronize());
-  int idx = 0;
-  printf("%s", prefix);
-  for (PointInRectIterator<DIM> it(rect); it(); it++, idx++) {
-    printf(" %.4lf", (float)host_ptr[idx]);
-    if (idx >= 16)
-      break;
-  }
-  printf("\n");
-  checkCUDA(hipHostFree(host_ptr));
-}
-#endif
-
 template <typename T>
 __host__ void
-    print_tensor(const T *ptr, size_t num_elements, char const *prefix) {
+    print_tensor(T const *ptr, size_t num_elements, char const *prefix) {
   // device synchronize to make sure the data are ready
   // checkCUDA(hipDeviceSynchronize());
   T *host_ptr;
@@ -262,8 +238,9 @@ __host__ void
   printf("%s", prefix);
   for (idx = 0; idx < num_elements; idx++) {
     printf(" %.4lf", (float)host_ptr[idx]);
-    if (idx >= 16)
+    if (idx >= 16) {
       break;
+    }
   }
   printf("\n");
   checkCUDA(hipHostFree(host_ptr));
@@ -348,9 +325,12 @@ hipblasDatatype_t ff_to_cuda_datatype(DataType type) {
   }
   return HIPBLAS_R_32F;
 }
-
+template __global__ void
+    assign_kernel<half>(half *ptr, coord_t size, half value);
 template __global__ void
     assign_kernel<float>(float *ptr, coord_t size, float value);
+template __global__ void
+    assign_kernel<double>(double *ptr, coord_t size, double value);
 template __global__ void
     assign_kernel<int32_t>(int32_t *ptr, coord_t size, int32_t value);
 template __global__ void
@@ -360,6 +340,9 @@ template __global__ void
     add_kernel<float>(float *dst, float const *src, size_t size);
 template __global__ void
     add_kernel<double>(double *dst, double const *src, size_t size);
+template __global__ void add_kernel<int>(int *dst, int const *src, size_t size);
+template __global__ void
+    add_kernel<long>(long *dst, long const *src, size_t size);
 
 template __global__ void
     copy_kernel<float>(float *dst, float const *src, coord_t size);

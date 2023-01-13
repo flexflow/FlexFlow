@@ -103,6 +103,20 @@ class Exp(Op):
     super(Exp, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# Sin
+# -----------------------------------------------------------------------
+class Sin(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Sin, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Cos
+# -----------------------------------------------------------------------
+class Cos(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Cos, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # Add
 # -----------------------------------------------------------------------
 class Add(Op):
@@ -405,6 +419,10 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Softmax(handle, idx, name)
   elif op_type == OpType.EXP:
     return Exp(handle, idx, name)
+  elif op_type == OpType.SIN:
+    return Sin(handle, idx, name)
+  elif op_type == OpType.COS:
+    return Cos(handle, idx, name)
   elif op_type == OpType.ADD:
     return Add(handle, idx, name)
   elif op_type == OpType.SUBTRACT:
@@ -720,8 +738,10 @@ class Tensor(object):
     elif (dtype == 42):
       self.data_type = DataType.DT_INT64
     elif (dtype == 43):
-      self.data_type = DataType.DT_FLOAT
+      self.data_type = DataType.DT_HALF
     elif (dtype == 44):
+      self.data_type = DataType.DT_FLOAT
+    elif (dtype == 45):
       self.data_type = DataType.DT_DOUBLE
     else:
       assert 0, "unknown data type {}".format(dtype)
@@ -863,6 +883,39 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_exp(self.handle, x.handle, c_name)
     self.add_layer(OpType.EXP, name)
     return Tensor(handle, owner_op_type=OpType.EXP)
+
+  def sin(self, x, name=None):
+    """Elementwise sine function.
+             
+    :param x: the input Tensor.
+    :type x: Tensor
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_sin(self.handle, x.handle, c_name)
+    self.add_layer(OpType.SIN, name)
+    return Tensor(handle, owner_op_type=OpType.SIN)
+
+  def cos(self, x, name=None):
+    """Elementwise cosine function.
+             
+    :param x: the input Tensor.
+    :type x: Tensor
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_cos(self.handle, x.handle, c_name)
+    self.add_layer(OpType.COS, name)
+    return Tensor(handle, owner_op_type=OpType.COS)
+
 
   def add(self, x, y, inplace_a=False, name=None):
     """Layer that adds two input Tensors, :attr:`output = x + y`.
@@ -2191,53 +2244,6 @@ class DLRMConfig(object):
     self.embedding_size = []
     for i in range(0, embedding_size_c[0]):
       self.embedding_size.append(embedding_size_c[i+1])
-
-# -----------------------------------------------------------------------
-# DataLoader
-# -----------------------------------------------------------------------
-
-class DataLoader4D(object):
-  __slots__ = ['handle', '_handle']
-  def __init__(self, ffmodel, input, label, full_input=0, full_label=0, num_samples=0, ffnetconfig=0):
-    if (ffnetconfig == 0):
-      self.handle = ffc.flexflow_dataloader_4d_create_v2(ffmodel.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
-    else:
-      self.handle = ffc.flexflow_dataloader_4d_create(ffmodel.handle, ffnetconfig.handle, input.handle, label.handle)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_4d_destroy)
-
-  @property
-  def num_samples(self):
-    return ffc.flexflow_dataloader_4d_get_num_samples(self.handle)
-
-  @num_samples.setter
-  def num_samples(self, samples):
-    ffc.flexflow_dataloader_4d_set_num_samples(self.handle, samples)
-
-  def next_batch(self, ffmodel):
-    ffc.flowflow_dataloader_4d_next_batch(self.handle, ffmodel.handle)
-
-  def reset(self):
-    ffc.flexflow_dataloader_4d_reset(self.handle)
-
-class DataLoader2D(object):
-  __slots__ = ['handle', '_handle']
-  def __init__(self, ffmodel, input, label, full_input=0, full_label=0, num_samples=0):
-    self.handle = ffc.flexflow_dataloader_2d_create_v2(ffmodel.handle, input.handle, label.handle, full_input.handle, full_label.handle, num_samples)
-    self._handle = ffi.gc(self.handle, ffc.flexflow_dataloader_2d_destroy)
-
-  @property
-  def num_samples(self):
-    return ffc.flexflow_dataloader_2d_get_num_samples(self.handle)
-
-  @num_samples.setter
-  def num_samples(self, samples):
-    ffc.flexflow_dataloader_2d_set_num_samples(self.handle, samples)
-
-  def next_batch(self, ffmodel):
-    ffc.flowflow_dataloader_2d_next_batch(self.handle, ffmodel.handle)
-
-  def reset(self):
-    ffc.flexflow_dataloader_2d_reset(self.handle)
 
 # -----------------------------------------------------------------------
 # Single DataLoader

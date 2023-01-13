@@ -24,8 +24,9 @@ enum DataType {
   DT_BOOLEAN = 40,
   DT_INT32 = 41,
   DT_INT64 = 42,
-  DT_FLOAT = 43,
-  DT_DOUBLE = 44,
+  DT_HALF = 43,
+  DT_FLOAT = 44,
+  DT_DOUBLE = 45,
   DT_NONE = 49,
 };
 
@@ -129,6 +130,8 @@ enum OperatorType {
   OP_LOG,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Log
   OP_LOGICAL_NOT, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Not
   OP_SQRT, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sqrt
+  OP_SIN,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Sin
+  OP_COS,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Cos
   OP_LEAKYRELU,
   OP_SLICE,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Slice
   OP_RESIZE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Resize

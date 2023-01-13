@@ -15,6 +15,7 @@
 
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/model.h"
+#include "flexflow/parallel_ops/kernels/partition_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -37,6 +38,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::Repartition;
 
 /* Params */
 bool operator==(RepartitionParams const &lhs, RepartitionParams const &rhs) {
@@ -185,8 +188,9 @@ void Repartition::forward(FFModel const &ff) {
 void Repartition::backward(FFModel const &ff) {
   // skip backpropagation for input
   if (inputs[0]->owner_op != nullptr &&
-      inputs[0]->owner_op->op_type == OP_INPUT)
+      inputs[0]->owner_op->op_type == OP_INPUT) {
     return;
+  }
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;

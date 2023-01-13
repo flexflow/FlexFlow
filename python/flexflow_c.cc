@@ -14,6 +14,7 @@
  */
 
 #include "flexflow_c.h"
+#include "flexflow/mapper.h"
 #include "flexflow_dataloader.h"
 
 using namespace Legion;
@@ -32,9 +33,7 @@ public:
     t_.impl = const_cast<void *>(static_cast<void const *>(t));                \
     return t_;                                                                 \
   }                                                                            \
-  static T unwrap(T_ t_) {                                                     \
-    return static_cast<T>(t_.impl);                                            \
-  }                                                                            \
+  static T unwrap(T_ t_) { return static_cast<T>(t_.impl); }                   \
   static const T unwrap_const(const T_ t_) {                                   \
     return static_cast<const T>(t_.impl);                                      \
   }
@@ -55,8 +54,6 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_perf_metrics_t, PerfMetrics *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_net_config_t, NetConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_dlrm_config_t, DLRMConfig *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_4d_t, ImgDataLoader4D *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_dataloader_2d_t, ImgDataLoader2D *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_single_dataloader_t, SingleDataLoader *);
 };
 
@@ -212,6 +209,26 @@ flexflow_tensor_t flexflow_model_add_exp(flexflow_model_t handle_,
   const Tensor x = FFCObjectWrapper::unwrap_const(x_);
   Tensor tensor = handle->exp(x, name);
   DEBUG_PRINT("[Exp] new Tensor %p, x %p, name %s", tensor, x, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_sin(flexflow_model_t handle_,
+                                         const flexflow_tensor_t x_,
+                                         char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor x = FFCObjectWrapper::unwrap_const(x_);
+  Tensor tensor = handle->sin(x, name);
+  DEBUG_PRINT("[Sin] new Tensor %p, x %p, name %s", tensor, x, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_cos(flexflow_model_t handle_,
+                                         const flexflow_tensor_t x_,
+                                         char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor x = FFCObjectWrapper::unwrap_const(x_);
+  Tensor tensor = handle->cos(x, name);
+  DEBUG_PRINT("[Cos] new Tensor %p, x %p, name %s", tensor, x, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -403,8 +420,16 @@ flexflow_tensor_t
   Layer *shared_op = FFCObjectWrapper::unwrap(shared_op_);
   Initializer *kernel_initializer =
       FFCObjectWrapper::unwrap(kernel_initializer_);
-  Tensor tensor = handle->embedding(
-      input, num_entires, out_dim, aggr, shared_op, kernel_initializer, name);
+  // TODO: update the flexflow_c and Python API to support other data types
+  // Currently we assume it's float
+  Tensor tensor = handle->embedding(input,
+                                    num_entires,
+                                    out_dim,
+                                    aggr,
+                                    DT_FLOAT,
+                                    shared_op,
+                                    kernel_initializer,
+                                    name);
   DEBUG_PRINT("[Embedding] new Tensor %p, input %p, num_entires %d, out_dim "
               "%d, aggr %d, shared_op %p, kernel_init %p, name %s",
               tensor,
@@ -1554,134 +1579,6 @@ int *flexflow_dlrm_config_get_embedding_size(flexflow_dlrm_config_t handle_) {
 }
 
 // -----------------------------------------------------------------------
-// DataLoader
-// -----------------------------------------------------------------------
-
-flexflow_dataloader_4d_t
-    flexflow_dataloader_4d_create(flexflow_model_t ffmodel_,
-                                  flexflow_net_config_t netconfig_,
-                                  flexflow_tensor_t input_,
-                                  flexflow_tensor_t label_) {
-  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  NetConfig *netconfig = FFCObjectWrapper::unwrap(netconfig_);
-  Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor label = FFCObjectWrapper::unwrap(label_);
-  assert(input->parallel_tensor != nullptr);
-  assert(label->parallel_tensor != nullptr);
-  ImgDataLoader4D *dataloader = new ImgDataLoader4D(
-      *ffmodel, *netconfig, input->parallel_tensor, label->parallel_tensor);
-  return FFCObjectWrapper::wrap(dataloader);
-}
-
-flexflow_dataloader_4d_t
-    flexflow_dataloader_4d_create_v2(flexflow_model_t ffmodel_,
-                                     flexflow_tensor_t input_,
-                                     flexflow_tensor_t label_,
-                                     flexflow_tensor_t full_input_,
-                                     flexflow_tensor_t full_label_,
-                                     int num_samples) {
-  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor label = FFCObjectWrapper::unwrap(label_);
-  Tensor full_input = FFCObjectWrapper::unwrap(full_input_);
-  Tensor full_label = FFCObjectWrapper::unwrap(full_label_);
-  assert(input->parallel_tensor != nullptr);
-  assert(label->parallel_tensor != nullptr);
-  assert(full_input->parallel_tensor != nullptr);
-  assert(full_label->parallel_tensor != nullptr);
-  ImgDataLoader4D *dataloader = new ImgDataLoader4D(*ffmodel,
-                                                    input->parallel_tensor,
-                                                    label->parallel_tensor,
-                                                    full_input->parallel_tensor,
-                                                    full_label->parallel_tensor,
-                                                    num_samples);
-  return FFCObjectWrapper::wrap(dataloader);
-}
-
-void flexflow_dataloader_4d_destroy(flexflow_dataloader_4d_t handle_) {
-  ImgDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
-  delete handle;
-}
-
-void flexflow_dataloader_4d_set_num_samples(flexflow_dataloader_4d_t handle_,
-                                            int samples) {
-  ImgDataLoader4D *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->num_samples = samples;
-  DEBUG_PRINT("[Dataloader4D] set number of samples %d", samples);
-}
-
-int flexflow_dataloader_4d_get_num_samples(flexflow_dataloader_4d_t handle_) {
-  ImgDataLoader4D *handle = FFCObjectWrapper::unwrap(handle_);
-  return handle->num_samples;
-}
-
-void flexflow_dataloader_4d_reset(flexflow_dataloader_4d_t handle_) {
-  ImgDataLoader4D *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->reset();
-}
-
-void flowflow_dataloader_4d_next_batch(flexflow_dataloader_4d_t handle_,
-                                       flexflow_model_t ffmodel_) {
-  ImgDataLoader4D *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  handle->next_batch(*ffmodel);
-}
-
-flexflow_dataloader_2d_t
-    flexflow_dataloader_2d_create_v2(flexflow_model_t ffmodel_,
-                                     flexflow_tensor_t input_,
-                                     flexflow_tensor_t label_,
-                                     flexflow_tensor_t full_input_,
-                                     flexflow_tensor_t full_label_,
-                                     int num_samples) {
-  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor label = FFCObjectWrapper::unwrap(label_);
-  Tensor full_input = FFCObjectWrapper::unwrap(full_input_);
-  Tensor full_label = FFCObjectWrapper::unwrap(full_label_);
-  assert(input->parallel_tensor != nullptr);
-  assert(label->parallel_tensor != nullptr);
-  assert(full_input->parallel_tensor != nullptr);
-  assert(full_label->parallel_tensor != nullptr);
-  ImgDataLoader2D *dataloader = new ImgDataLoader2D(*ffmodel,
-                                                    input->parallel_tensor,
-                                                    label->parallel_tensor,
-                                                    full_input->parallel_tensor,
-                                                    full_label->parallel_tensor,
-                                                    num_samples);
-  return FFCObjectWrapper::wrap(dataloader);
-}
-
-void flexflow_dataloader_2d_destroy(flexflow_dataloader_2d_t handle_) {
-  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
-  delete handle;
-}
-
-void flexflow_dataloader_2d_set_num_samples(flexflow_dataloader_2d_t handle_,
-                                            int samples) {
-  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->num_samples = samples;
-  DEBUG_PRINT("[Dataloader2D] set number of samples %d", samples);
-}
-
-int flexflow_dataloader_2d_get_num_samples(flexflow_dataloader_2d_t handle_) {
-  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
-  return handle->num_samples;
-}
-
-void flexflow_dataloader_2d_reset(flexflow_dataloader_2d_t handle_) {
-  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->reset();
-}
-
-void flowflow_dataloader_2d_next_batch(flexflow_dataloader_2d_t handle_,
-                                       flexflow_model_t ffmodel_) {
-  ImgDataLoader2D *handle = FFCObjectWrapper::unwrap(handle_);
-  FFModel *ffmodel = FFCObjectWrapper::unwrap(ffmodel_);
-  handle->next_batch(*ffmodel);
-}
-
-// -----------------------------------------------------------------------
 // Single Dataloader
 // -----------------------------------------------------------------------
 
@@ -1864,7 +1761,7 @@ DLRMConfig::DLRMConfig(void)
       continue;
     }
     if (!strcmp(argv[i], "--arch-embedding-size")) {
-      std::stringstream ss(std::string(argv[++i]));
+      std::stringstream ss((std::string(argv[++i])));
       std::string word;
       embedding_size.clear();
       while (std::getline(ss, word, '-')) {
@@ -1877,7 +1774,7 @@ DLRMConfig::DLRMConfig(void)
       continue;
     }
     if (!strcmp(argv[i], "--arch-mlp-bot")) {
-      std::stringstream ss(std::string(argv[++i]));
+      std::stringstream ss((std::string(argv[++i])));
       std::string word;
       mlp_bot.clear();
       while (std::getline(ss, word, '-')) {
@@ -1886,7 +1783,7 @@ DLRMConfig::DLRMConfig(void)
       continue;
     }
     if (!strcmp(argv[i], "--arch-mlp-top")) {
-      std::stringstream ss(std::string(argv[++i]));
+      std::stringstream ss((std::string(argv[++i])));
       std::string word;
       mlp_top.clear();
       while (std::getline(ss, word, '-')) {
@@ -1918,61 +1815,49 @@ DLRMConfig::DLRMConfig(void)
 }
 
 void register_c_custom_tasks() {
-  // 4D Load entire dataset
-  {
-    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_1,
-                                   "4D Load Entire Dataset");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<ImgDataLoader4D::load_entire_dataset>(
-        registrar, "4D Load Entire Dataset Task");
-  }
-  // 4D Load entire dataset from numpy
-  {
-    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_2,
-                                   "4D Load Entire Dataset Numpy");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        ImgDataLoader4D::load_entire_dataset_from_numpy>(
-        registrar, "4D Load Entire Dataset Task Numpy");
-  }
-  // 2D Load entire dataset from numpy
-  {
-    TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_3,
-                                   "2D Load Entire Dataset Numpy");
-    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<
-        ImgDataLoader2D::load_entire_dataset_from_numpy>(
-        registrar, "2D Load Entire Dataset Task Numpy");
-  }
-  // 4D Load input
-  {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_1, "4D Load Inputs");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<ImgDataLoader4D::load_input>(
-        registrar, "4D Load Input Task");
-  }
-  // Load label
-  {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_2, "Load Labels");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<ImgDataLoader::load_label>(
-        registrar, "Load Label Task");
-  }
-  // 2D Load input
-  {
-    TaskVariantRegistrar registrar(CUSTOM_GPU_TASK_ID_3, "2D Load Inputs");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<ImgDataLoader2D::load_input>(
-        registrar, "2D Load Input Task");
-  }
 
   SingleDataLoader::register_cpu_tasks();
 
   SingleDataLoader::register_gpu_tasks();
+}
+
+static Context ctx;
+
+void begin_flexflow_task(int argc, char **argv) {
+  // This needs to be set, otherwise NCCL will try to use group kernel launches,
+  // which are not compatible with the Realm CUDA hijack.
+  setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
+
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "-ll:py")) {
+      std::cerr << "-ll:py is not supported when using native python"
+                << std::endl;
+      abort();
+    }
+  }
+
+  register_flexflow_internal_tasks();
+
+  register_c_custom_tasks();
+
+  Runtime::add_registration_callback(FFMapper::update_mappers);
+
+  // Start the runtime in background mode
+  Runtime::start(argc, argv, true /*background*/);
+  // Get the runtime now that we've started it
+  Runtime *runtime = Runtime::get_runtime();
+  // Then we can bind make this thread into an implicit top-level task
+  ctx = runtime->begin_implicit_task(PYTHON_TOP_LEVEL_TASK_ID,
+                                     0 /*mapper id*/,
+                                     Processor::LOC_PROC,
+                                     "flexflow_top_level_task",
+                                     true /*control replicable*/);
+}
+
+void finish_flexflow_task() {
+  Runtime *runtime = Runtime::get_runtime();
+  runtime->finish_implicit_task(ctx);
+  // The previous call is asynchronous so we still need to
+  // wait for the shutdown of the runtime to complete
+  Runtime::wait_for_shutdown();
 }

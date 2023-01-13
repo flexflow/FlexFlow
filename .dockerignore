@@ -1,0 +1,13 @@
+# Ignore all folders which start with "build"
+/build*/
+
+# Ignore compiled files
+/.tools/
+/python/flexflow_python
+/python/flexflow/core/legion_cffi.py
+python/flexflow/core/flexflow_cffi_header.py
+python/flexflow/core/legion_cffi_header.py
+*.pb.cc
+*.pb.h
+*.o
+*.a

@@ -39,14 +39,18 @@ struct Edge {
 
 struct EdgeCompare {
   bool operator()(Edge const &a, Edge const &b) const {
-    if (!(a.srcOp == b.srcOp))
+    if (!(a.srcOp == b.srcOp)) {
       return a.srcOp < b.srcOp;
-    if (!(a.dstOp == b.dstOp))
+    }
+    if (!(a.dstOp == b.dstOp)) {
       return a.dstOp < b.dstOp;
-    if (a.srcIdx != b.srcIdx)
+    }
+    if (a.srcIdx != b.srcIdx) {
       return a.srcIdx < b.srcIdx;
-    if (a.dstIdx != b.dstIdx)
+    }
+    if (a.dstIdx != b.dstIdx) {
       return a.dstIdx < b.dstIdx;
+    }
     return false;
   };
 };
@@ -77,18 +81,19 @@ namespace FlexFlow::PCG {
 
 struct NodeCompare {
   bool operator()(Node const &a, Node const &b) const {
-    if (a.guid != b.guid)
+    if (a.guid != b.guid) {
       return a.guid < b.guid;
+    }
     return a.ptr < b.ptr;
   };
 };
 
 struct GraphOptimalViewSerialized {
-  //#ifdef LEGION_MAX_RETURN_SIZE
-  //  static const size_t buffer_size = LEGION_MAX_RETURN_SIZE - 8;
-  //#else
+#ifdef LEGION_MAX_RETURN_SIZE
+  static const size_t buffer_size = LEGION_MAX_RETURN_SIZE - 8;
+#else
   static const size_t buffer_size = 1024 * 1024 - 8;
-  //#endif
+#endif
   size_t total_bytes;
   char data[buffer_size];
 };
