@@ -364,9 +364,63 @@ Op *TopK::materialize(FFModel &ff,
 bool TopK::measure_operator_cost(Simulator *sim,
                                  MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
-  // To be implemented
-  // assert(false);
-  // return false;
+  ParallelTensorBase sub_input, sub_output, sub_output_ind;
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
+    return false;
+  }
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
+    return false;
+  }
+  if (!outputs[1]->get_sub_tensor(mv, sub_output_ind)) {
+    return false;
+  }
+
+  TopKMeta *m = new TopKMeta(sim->handler);
+  m->sorted = sorted;
+
+  // allocate
+  sim->free_all();
+  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  int *output_ind_ptr =
+      (int *)sim->allocate(sub_output_ind.get_volume(), DT_INT32);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  if (!(input_ptr && output_ptr && output_ind_ptr)) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
+
+  assert(m->profiling == false);
+
+  // compute
+  std::function<void()> forward, backward;
+
+  Domain in_domain = sub_input.get_domain();
+  int length = in_domain.hi()[0] - in_domain.lo()[0] + 1;
+  size_t batch_size = in_domain.get_volume() / length;
+
+  forward = [&] {
+    forward_kernel_wrapper(m,
+                           input_ptr,
+                           output_ptr,
+                           output_ind_ptr,
+                           batch_size,
+                           length,
+                           k,
+                           sorted);
+  };
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+  log_measure.debug("[Measure TopK] name(%s) forward_time(%.4lf)\n",
+                    name,
+                    cost_metrics.forward_time);
+
+  cost_metrics.backward_time = 0.0f; // not implemented for MOE
+  delete m;
   return true;
 }
 
