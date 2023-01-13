@@ -12,9 +12,9 @@ configs_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "config", "config.linux"
 )
 
-cmake_configure_options = subprocess.check_output([configs_path, "CMAKE_FLAGS"]).decode(
+cmake_configure_options = subprocess.check_output([configs_path, "show"]).decode(
     "utf-8"
-).strip().split() + ["-DFF_BUILD_FROM_PYPI=ON"]
+).strip().split()[1:-1] + ["-DFF_BUILD_FROM_PYPI=ON"]
 cuda_path = subprocess.check_output([configs_path, "CUDA_PATH"]).decode("utf-8").strip()
 
 os.environ["CUDA_PATH"] = cuda_path
@@ -40,14 +40,14 @@ setup(
         "ninja",
     ],
     entry_points={
-        "console_scripts": ["flexflow_python=flexflow.driver:flexflow_driver"],
+        "console_scripts": ["flexflow_python=flexflow.driver:flexflow_driver"]
     },
     ext_modules=[
         CMakeExtension(
             name="flexflow",
             install_prefix="flexflow",
             cmake_configure_options=cmake_configure_options,
-        ),
+        )
     ],
     cmdclass={"build_ext": BuildExtension},
     classifiers=[
