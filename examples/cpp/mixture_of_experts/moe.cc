@@ -18,14 +18,6 @@
 #include <sstream>
 #include <string>
 
-#define NUM_SAMPLES 60000
-#define TRAIN_SAMPLES 60000
-#define TEST_SAMPLES 00000
-#define MNIST_DIMS 28 * 28
-#define CIFAR_DIMS 3 * 32 * 32
-#define DATA_DIMS MNIST_DIMS
-#define OUT_DIM 10
-
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("MoE");
