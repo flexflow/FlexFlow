@@ -10,14 +10,14 @@ The bulk of the FlexFlow source code is stored in the following folders:
 
 The `src` folder is divided into the following subfolders:
 
-* `loss_functions`: contains the implementation of all the supported loss functions, as well as the backward function to be used during training.
-* `mapper`: contains the implentation of the Legion custom mapper for FlexFlow, `FFMapper`.
-* `metric_functions`: contains the implementation of all the metrics functions, such as accuracy, categorical crossentropy, or mean squared error.
-* `ops`: contains the implementation of all tensor operators.
-* `parallel_ops`: contains the operators used to represent parallelization on the Parallel Computation Graph (PCG) as described in the [Unity paper](https://www.usenix.org/system/files/osdi22-unger.pdf).
-* `recompile`: support for the dynamic recompilation functionality described in [this paper](https://arxiv.org/pdf/2205.01848.pdf)
-* `runtime`: contains the implementation of the high-level FlexFlow runtime
-* `utils`: only contains implementation of the RecordFormatter class.
+1. `loss_functions`: contains the implementation of all the supported loss functions, as well as the backward function to be used during training.
+2. `mapper`: contains the implentation of the Legion custom mapper for FlexFlow, `FFMapper`.
+3. `metric_functions`: contains the implementation of all the metrics functions, such as accuracy, categorical crossentropy, or mean squared error.
+4. `ops`: contains the implementation of all tensor operators.
+5. `parallel_ops`: contains the operators used to represent parallelization on the Parallel Computation Graph (PCG) as described in the [Unity paper](https://www.usenix.org/system/files/osdi22-unger.pdf).
+6. `recompile`: support for the dynamic recompilation functionality described in [this paper](https://arxiv.org/pdf/2205.01848.pdf)
+7. `runtime`: contains the implementation of the high-level FlexFlow runtime
+8. `utils`: only contains implementation of the RecordFormatter class.
 
 In many parts of the source code you will see triplets of files with the following three different extensions: `.cc`, `.cpp` and `.cu`. The `.cc` file contains the main, high-level C++ implementation, whereas the `.cpp` and `.cu` file contain, respectively, the HIP and CUDA kernels.
 
@@ -125,13 +125,14 @@ TODO
 ## Continuous Integration
 We currently implement CI testing using Github Workflows. Each workflow is defined by its corresponding YAML file in the [.github/workflows](.github/workflows) folder of the repo. We currently have the following workflows:
 
-- `build.yml`: checks that the build & installation of FlexFlow succeed, using both the CMake and Makefile systems
-- `clang-format-check.yml`: ensures that the source code is properly formatted.
-- `docker-build.yml`: checks that the Docker containers can build and run FlexFlow properly. It also publishes a new version of the FlexFlow containers to the repo's package register for each push to the master branch
-- `gpu-ci.yml`: runs all the tests that require a GPU to run
-- `gpu-ci-daemon.yml`: an helper workflow that turns on/off the GPU instance used by the test above
-- `pip-install.yml`: checks the build & installation of FlexFlow using `pip`
-- `shell-check.yml`: runs shellcheck on all bash scripts in the repo
+1. `build.yml`: checks that the build & installation of FlexFlow succeed, using both the CMake and Makefile systems
+2. `clang-format-check.yml`: ensures that the source code is properly formatted.
+3. `docker-build.yml`: checks that the Docker containers can build and run FlexFlow properly. It also publishes a new version of the FlexFlow containers to the repo's package register for each push to the master branch
+4. `gpu-ci.yml`: runs all the tests that require a GPU to run.
+5. `gpu-ci-daemon.yml`: an helper workflow that turns on/off the GPU instance used by the test above
+6. `multinode-test.yml`: runs the same GPU tests from the `gpu-ci.yml` workflow, but using multiple (simulated) nodes. The test currently simulates two nodes, each with 2 GPUs. To run FlexFlow on multiple nodes, we compile Legion with GASNET enabled, and choose MPI as the GASNET conduit. Compared to the single-node version, this test is much more time-consuming (about 4h instead 40mins at the time of writing), so we only run the test on the FlexFlow `master` branch every other day.
+7. `pip-install.yml`: checks the build & installation of FlexFlow using `pip`
+8. `shell-check.yml`: runs shellcheck on all bash scripts in the repo
 
 We also have three placeholder workflows: `build-skip.yml`, `docker-build-skip.yml`, `gpu-ci-skip` and `pip-install-skip.yml`. These always pass and are used only in the case of skipped workflows whose status is required to merge a PR; we implement the "hack" officially recommended by Github ([see here](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/defining-the-mergeability-of-pull-requests/troubleshooting-required-status-checks#handling-skipped-but-required-checks)).
 
@@ -194,10 +195,10 @@ The first instruction in a workflow file sets the workflow's name. The name is n
 
 Next, the `on:` section allows you to control what events trigger a workflow run. A full list of events that can trigger a workflow run is available [here](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows). Each trigger can take options that further filter out the scenarios where the workflow runs. In the example above, we have the following triggers: 
 
-* A `pull_request` trigger, triggering a workflow run when a PR is opened, and for each new commit to a branch associated with an open PR. The `paths` option allows you to choose which files in the repository need to be modified to make the workflow run. For instance, in the example, the `pull_request` trigger is only activated for PRs where either `.github/workflows/build.yml` or a file in the `src` folder is modified. 
-* A `push` trigger, triggering a run for each push, no matter if there is an open PR or not. Here, in addition to the `paths` option, we have a `branches` option, restricting the trigger to activate only for commits to the `master` branch, but not for commits to other branches.
-* A `schedule` trigger, triggering the workflow at specific times. The syntax for chron workflows is explained [here](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onschedule).
-* A `workflow_dispatch` trigger, enabling authorized users to manually run the workflow.
+1. A `pull_request` trigger, triggering a workflow run when a PR is opened, and for each new commit to a branch associated with an open PR. The `paths` option allows you to choose which files in the repository need to be modified to make the workflow run. For instance, in the example, the `pull_request` trigger is only activated for PRs where either `.github/workflows/build.yml` or a file in the `src` folder is modified. 
+2. A `push` trigger, triggering a run for each push, no matter if there is an open PR or not. Here, in addition to the `paths` option, we have a `branches` option, restricting the trigger to activate only for commits to the `master` branch, but not for commits to other branches.
+3. A `schedule` trigger, triggering the workflow at specific times. The syntax for chron workflows is explained [here](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#onschedule).
+4. A `workflow_dispatch` trigger, enabling authorized users to manually run the workflow.
 
 There are many additional options that are not discussed here. For example, there is a `paths-ignore` option that allows you to run the workflow in any case except if a file at the specified paths is modified.
 
