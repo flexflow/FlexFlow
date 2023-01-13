@@ -184,7 +184,7 @@ void FlexFlow::top_level_task(Task const *task,
   ParallelTensor input_pt, label_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
   ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
-  // DataLoader data_loader(ff, moeConfig, input_pt, label_pt);
+  DataLoader data_loader(ff, moeConfig, input_pt, label_pt);
   //  RecompileState r(&moe_trigger, &moe_alter, &ff);
   ff.init_operators();
   // Start timer
@@ -196,28 +196,30 @@ void FlexFlow::top_level_task(Task const *task,
   }
   double ts_start = Realm::Clock::current_time_in_microseconds();
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
-    // data_loader.reset();
+    data_loader.reset();
     ff.reset_metrics();
     int iterations = TRAIN_SAMPLES / ffConfig.batchSize;
 
     for (int iter = 0; iter < iterations; iter++) {
       // data_loader.next_batch(ff);
-      //  if (epoch > 0)
-      //     runtime->begin_trace(ctx, 111/*trace_id*/);
+      if (epoch > 0) {
+        runtime->begin_trace(ctx, 111 /*trace_id*/);
+      }
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
       // ff.recompile_on_condition(r);
-      //  if (epoch > 0)
-      //     runtime->end_trace(ctx, 111/*trace_id*/);
+      if (epoch > 0) {
+        runtime->end_trace(ctx, 111 /*trace_id*/);
+      }
     }
 
     // TODO: Do properly
     ff.reset_metrics();
     iterations = TEST_SAMPLES / ffConfig.batchSize;
     for (int iter = 0; iter < iterations; iter++) {
-      // data_loader.next_batch(ff);
+      data_loader.next_batch(ff);
       ff.forward();
       ff.backward();
     }
@@ -272,24 +274,23 @@ DataLoader::DataLoader(FFModel &ff,
 
   // Create full label
   {
-    printf("label->num_dims: %i\n", label->num_dims);
-    assert(label->num_dims == LABEL_DIM + 1);
+    assert(label->num_dims == LABEL_DIM + 2);
     batch_label = label;
 
-    ParallelDim dims[LABEL_DIM + 1];
-    for (int i = 0; i < LABEL_DIM + 1; i++) {
+    ParallelDim dims[LABEL_DIM + 2];
+    for (int i = 0; i < LABEL_DIM + 2; i++) {
       dims[i].size = label->dims[i].size;
       dims[i].degree = 1;
       dims[i].parallel_idx = -1;
-      // Assume only the first dim can be the replica dim
-      assert(i == LABEL_DIM || (!dims[i].is_replica_dim));
+      // Assume only the last dim can be the replica dim
+      assert(i == LABEL_DIM + 1 || (!dims[i].is_replica_dim));
     }
-    if (LABEL_DIM > 1) {
-      dims[1].size = num_samples;
-    }
+    assert(dims[LABEL_DIM].size == ff.config.batchSize);
+    // replace batch size with number of samples
+    dims[LABEL_DIM].size = num_samples;
 
     full_label = ff.create_parallel_tensor_legion_ordering(
-        LABEL_DIM + 1, dims, DT_INT32);
+        LABEL_DIM + 2, dims, DT_INT32);
     ff.map_tensor(full_label, NULL /*parallel_op*/);
   }
 
@@ -360,9 +361,8 @@ int reverseInt(int i) {
   return ((int)c1 << 24) + ((int)c2 << 16) + ((int)c3 << 8) + c4;
 }
 
-/* NOTE: Download files from http://yann.lecun.com/exdb/mnist/, unpack to
-this file's compiled binary directory
-($FF_HOME/build/examples/cpp/mixture_of_experts) */
+/* NOTE: Download files from http://yann.lecun.com/exdb/mnist/ and unpack to
+the current working directory */
 void read_mnist(float *input_ptr, int *label_ptr) {
   // read inputs
   std::ifstream input("train-images-idx3-ubyte", std::ios::binary);
@@ -426,19 +426,17 @@ void DataLoader::load_entire_dataset(Task const *task,
 
   // get input and label pointer
   AccessorWO<float, 3> const acc_input(regions[0], FID_DATA);
-  AccessorWO<int, LABEL_DIM + 1> const acc_label(regions[1], FID_DATA);
+  AccessorWO<int, LABEL_DIM + 2> const acc_label(regions[1], FID_DATA);
   Rect<3> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
-  Rect<LABEL_DIM + 1> rect_label = runtime->get_index_space_domain(
+  Rect<LABEL_DIM + 2> rect_label = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
   assert(acc_label.accessor.is_dense_arbitrary(rect_label));
   float *input_ptr = acc_input.ptr(rect_input.lo);
   int *label_ptr = acc_label.ptr(rect_label.lo);
   int num_samples = rect_input.hi[1] - rect_input.lo[1] + 1;
-  if (LABEL_DIM > 1) {
-    assert(rect_label.hi[1] - rect_label.lo[1] + 1 == num_samples);
-  }
+  assert(rect_label.hi[1] - rect_label.lo[1] + 1 == num_samples);
 
   // here, you can call `read_cifar100(input_ptr, label_ptr);` instead or load
   // another dataset using the dataset_path from the MoeConfig object

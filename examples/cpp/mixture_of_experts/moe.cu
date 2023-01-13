@@ -56,9 +56,9 @@ void DataLoader::load_label(Task const *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs *meta = (SampleIdxs *)task->local_args;
-  TensorAccessorR<int, LABEL_DIM + 1> acc_full_label(
+  TensorAccessorR<int, LABEL_DIM + 2> acc_full_label(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<int, LABEL_DIM + 1> acc_batch_label(regions[1],
+  TensorAccessorW<int, LABEL_DIM + 2> acc_batch_label(regions[1],
                                                       task->regions[1],
                                                       FID_DATA,
                                                       ctx,
