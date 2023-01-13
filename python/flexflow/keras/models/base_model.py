@@ -17,8 +17,8 @@ import flexflow.core as ff
 from flexflow.core.flexflow_logger import fflogger
 
 from .tensor import Tensor
-from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout, BatchNormalization, Embedding, Reshape
-from flexflow.keras.backend.internal import BatchMatmul, Sin, Cos
+from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout, BatchNormalization, Embedding, Reshape, Permute
+from flexflow.keras.backend.internal import BatchMatmul, Sin, Cos, Exp, Pow
 from flexflow.keras.optimizers import SGD, Adam
 from flexflow.keras.callbacks import Callback, LearningRateScheduler, VerifyMetrics, EpochVerifyMetrics
 from flexflow.keras import losses as keras_losses
@@ -506,8 +506,12 @@ class BaseModel(object):
         out_t = self._ffmodel.sin(layer.input_tensors[0].ffhandle)
       elif isinstance(layer, Cos):
         out_t = self._ffmodel.cos(layer.input_tensors[0].ffhandle)
+      elif isinstance(layer, Exp):
+        out_t = self._ffmodel.exp(layer.input_tensors[0].ffhandle)
+      elif isinstance(layer, Pow):
+        out_t = self._ffmodel.pow(layer.input_tensors[0].ffhandle, layer.a)
       else:
-        assert 0, "unknow layer"
+        assert 0, "unknown layer"
 
       layer.output_tensors[0].ffhandle = out_t
 
