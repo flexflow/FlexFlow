@@ -22,3 +22,6 @@
 [submodule "deps/spdlog"]
 	path = deps/spdlog
 	url = git@github.com:gabime/spdlog.git
+[submodule "deps/rapidcheck"]
+	path = deps/rapidcheck
+	url = git@github.com:emil-e/rapidcheck.git
