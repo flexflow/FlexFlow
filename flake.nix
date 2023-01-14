@@ -23,7 +23,7 @@
 
   # Nixpkgs / NixOS version to use.
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-22.11";
+    nixpkgs.url = "nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -39,6 +39,7 @@
           buildInputs = with pkgs; [
             cmake      
             clang
+            clangStdenv
             ccache
             cudatoolkit
             cudaPackages.cuda_nvcc

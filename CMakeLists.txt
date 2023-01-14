@@ -24,6 +24,10 @@ option(FF_BUILD_VISUALIZATION_TOOL "build substitution visualization tool" OFF)
 
 include(json)
 include(optional)
-#include(legion)
+include(spdlog)
+
+if(CMAKE_EXPORT_COMPILE_COMMANDS)
+    set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+endif()
 
 add_subdirectory(lib)
