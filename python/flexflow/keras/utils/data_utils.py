@@ -14,6 +14,8 @@ import threading
 import time
 import warnings
 import zipfile
+import uuid
+import atexit
 from abc import abstractmethod
 from contextlib import closing
 from multiprocessing.pool import ThreadPool
@@ -119,6 +121,10 @@ def _extract_archive(file_path, path='.', archive_format='auto'):
             return True
     return False
 
+def cleanup_keras_folder(fpath=os.path.join('/tmp', '.keras')):
+    """Deletes Keras temporary folder used for downloading datasets
+    """
+    shutil.rmtree(fpath, ignore_errors=True)
 
 def get_file(fname,
              origin,
@@ -179,7 +185,8 @@ def get_file(fname,
         hash_algorithm = 'md5'
     datadir_base = os.path.expanduser(cache_dir)
     if not os.access(datadir_base, os.W_OK):
-        datadir_base = os.path.join('/tmp', '.keras')
+        datadir_base = os.path.join('/tmp', '.keras', str(uuid.uuid4()))
+        atexit.register(cleanup_keras_folder, datadir_base)
     datadir = os.path.join(datadir_base, cache_subdir)
     if not os.path.exists(datadir):
         os.makedirs(datadir)
