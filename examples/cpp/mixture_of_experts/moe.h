@@ -14,9 +14,9 @@
  */
 
 #include "flexflow/model.h"
-#define MAX_NUM_SAMPLES 10000
-#define NUM_SAMPLES 10000
-#define TRAIN_SAMPLES 10000
+#define MAX_NUM_SAMPLES 1000
+#define NUM_SAMPLES 1000
+#define TRAIN_SAMPLES 1000
 #define TEST_SAMPLES 00000
 #define MNIST_DIMS 28 * 28
 #define CIFAR_DIMS 3 * 32 * 32
