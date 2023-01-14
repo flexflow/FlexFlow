@@ -309,16 +309,16 @@ void Group_by::forward_task(Task const *task,
   // Each entry in the "outputs" vector points to the Legion tensor that will
   // contain the tockens dispatched to the corresponding expert
   float *outputs[n];
-  // int exp_output_rows = (int)ceil(alpha*k/n*batch_size);
+  int exp_output_rows = (int)ceil(alpha * k / n * batch_size);
   for (int i = 0; i < n; i++) {
     Domain out_domain = runtime->get_index_space_domain(
         ctx, task->regions[i + 2].region.get_index_space());
     outputs[i] = helperGetTensorPointerWO<float>(
         regions[i + 2], task->regions[i + 2], FID_DATA, ctx, runtime);
 
-    // coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
+    coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
     coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
-    // assert((int)output_rows == exp_output_rows);
+    assert((int)output_rows == exp_output_rows);
     assert(output_cols == input_cols);
   }
 
@@ -408,16 +408,16 @@ void Group_by::backward_task(Task const *task,
 
   // get output
   float *output_grads[n];
-  // int exp_output_rows = (int)ceil(alpha*k/n*batch_size);
+  int exp_output_rows = (int)ceil(alpha * k / n * batch_size);
   for (int i = 0; i < n; i++) {
     Domain out_domain = runtime->get_index_space_domain(
         ctx, task->regions[i + 2].region.get_index_space());
     output_grads[i] = helperGetTensorPointerRW<float>(
         regions[i + 2], task->regions[i + 2], FID_DATA, ctx, runtime);
 
-    // coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
+    coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
     coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
-    // assert((int)output_rows == exp_output_rows);
+    assert((int)output_rows == exp_output_rows);
     assert(output_cols == input_cols);
   }
 

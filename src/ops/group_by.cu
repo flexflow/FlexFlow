@@ -73,9 +73,12 @@ __global__ void
                        int batch_size,
                        int data_dim) {
   __shared__ float *chosen_exp_grads[MAX_K * MAX_BATCH_SIZE];
+  assert(k <= MAX_K);
+  assert(batch_size <= MAX_BATCH_SIZE);
+  assert(n <= MAX_N);
 
   // Get pred pointers, single thread
-  if (blockIdx.x * blockDim.x + threadIdx.x == 0) {
+  if (threadIdx.x == 0) {
     int exp_tensor_rows = ceil(alpha * k / n * batch_size);
     int expert_idx[MAX_N] = {0};
     for (int i = 0; i < k * batch_size; i++) {
@@ -83,7 +86,7 @@ __global__ void
       int expert = exp_assign[i];
       if (expert_idx[expert] >= exp_tensor_rows) {
         // dropped sample
-        chosen_exp_grads[i] = 0;
+        chosen_exp_grads[i] = nullptr;
         continue;
       }
       chosen_exp_grads[i] =
@@ -93,10 +96,9 @@ __global__ void
   }
 
   __syncthreads();
-
   // compute output
   CUDA_KERNEL_LOOP(i, k * batch_size * data_dim) {
-    if (chosen_exp_grads[i / data_dim] != 0) {
+    if (chosen_exp_grads[i / data_dim] != nullptr) {
       input_grad[(i / (k * data_dim)) * data_dim + i % data_dim] =
           chosen_exp_grads[i / data_dim][i % data_dim];
     }
@@ -117,16 +119,33 @@ void Group_by::forward_kernel_wrapper(
   // TODO: why cublas/cudnn stream is needed here?
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
   // call forward kernel
-  cudaMemcpy(
-      m->dev_region_ptrs, outputs, n * sizeof(float *), cudaMemcpyHostToDevice);
+  cudaMemcpyAsync(m->dev_region_ptrs,
+                  outputs,
+                  n * sizeof(float *),
+                  cudaMemcpyHostToDevice,
+                  stream);
 
   gb_forward_kernel<<<GET_BLOCKS(batch_size * k * data_dim),
                       min(CUDA_NUM_THREADS, (int)(batch_size * k * data_dim)),
                       0,
                       stream>>>(
       input, exp_assign, m->dev_region_ptrs, n, k, alpha, batch_size, data_dim);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[GroupBy] forward time = %.2lfms\n", elapsed);
+  }
 }
 
 void Group_by::backward_kernel_wrapper(
@@ -142,13 +161,19 @@ void Group_by::backward_kernel_wrapper(
   // TODO: why cublas/cudnn stream is needed here
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
 
   // call forward kernel
-  cudaMemcpy(m->dev_region_ptrs,
-             output_grads,
-             n * sizeof(float *),
-             cudaMemcpyHostToDevice);
-
+  cudaMemcpyAsync(m->dev_region_ptrs,
+                  output_grads,
+                  n * sizeof(float *),
+                  cudaMemcpyHostToDevice,
+                  stream);
   gb_backward_kernel<<<GET_BLOCKS(batch_size * k * data_dim),
                        min(CUDA_NUM_THREADS, (int)(batch_size * k * data_dim)),
                        0,
@@ -160,6 +185,15 @@ void Group_by::backward_kernel_wrapper(
                                  alpha,
                                  batch_size,
                                  data_dim);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[GroupBy] backward time = %.2lfms\n", elapsed);
+  }
 }
 
 GroupByMeta::GroupByMeta(FFHandler handler, int n) : OpMeta(handler) {
