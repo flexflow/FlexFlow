@@ -111,6 +111,9 @@ enum TaskIDs {
   SPLIT_INIT_TASK_ID,
   SPLIT_FWD_TASK_ID,
   SPLIT_BWD_TASK_ID,
+  REDUCE_INIT_TASK_ID,
+  REDUCE_FWD_TASK_ID,
+  REDUCE_BWD_TASK_ID,
   RESHAPE_INIT_TASK_ID,
   RESHAPE_FWD_TASK_ID,
   RESHAPE_BWD_TASK_ID,
@@ -258,6 +261,7 @@ class LayerNorm;
 class Linear;
 class MultiHeadAttention;
 class Pool2D;
+class Reduce;
 class Reshape;
 class Softmax;
 class Split;
@@ -500,6 +504,10 @@ public:
   Tensor transpose(const Tensor input,
                    std::vector<int> const &perm,
                    char const *name = NULL);
+  Tensor reduce_sum(const Tensor input,
+                    std::vector<int> const &axes,
+                    bool keepdims = false,
+                    char const *name = nullptr);
   Tensor reshape(const Tensor input,
                  std::vector<int> const &shape,
                  char const *name = NULL);
@@ -858,6 +866,8 @@ public:
                                               ParallelTensorShape>,
                                    MultiHeadAttentionParams>,
                          MultiHeadAttention *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ReduceParams>,
+                         Reduce *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,
                          Reshape *>,
       std::unordered_map<std::pair<ParallelTensorShape, SplitParams>, Split *>,
