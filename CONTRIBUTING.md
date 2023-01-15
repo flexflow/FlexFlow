@@ -119,7 +119,26 @@ After adding the DNN layers, the next step before compiling the model for traini
 
 #### Model compilation
 
-TODO
+Model compilation consists of the following steps:
+
+1. `create_operators_from_layers()`
+2. Launch the graph optimize task (`GRAPH_OPTIMIZE_TASK_ID`), implemented by`PCG::Graph::graph_optimize_task`, which returns `PCG::GraphOptimalViewSerialized`
+	1. call `deserialize_graph_optimal_view(...)` to get `PCG::Graph *best_graph` and `std::unordered_map<PCG::Node, MachineView> optimal_views` from deserialized `PCG::GraphOptimalViewSerialized`
+	2. `convert_graph_to_operators()`
+	3. print the dot of the best graph obtained
+	4. map inputs to parallel tensor and weights to parallel tensor? -> strange for loop to understand better
+3. Init performance metrics via the `FFModel::update_metrics_task` 
+4. Perform inplace optimizations (if enabled)
+5. Loop through the operators to do the following (to be understood better):
+	1. `parameters.push_back(op->weights[i]);` for each weight in each operator
+	2. `op->map_output_tensors(*this);`
+	3. `((ParallelOp *)op)->create_input_partition(*this);` if the operator is a parallel operator
+6. Check correctness of the operator's input and output tensors' settings
+7. Perform fusion optimizations, if enabled
+8. Print all operators and their input and output regions
+9. Create the tensor for the label
+10. Initialize the optimizer
+11. In training mode, if NCCL is enabled, initialize all the communicators and other objects
 
 
 ## Continuous Integration

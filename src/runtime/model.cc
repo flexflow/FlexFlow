@@ -4540,11 +4540,11 @@ void register_flexflow_internal_tasks() {
 #endif
   // Search
   {
-    TaskVariantRegistrar registrar(STRATEGY_SEARCH_TASK_ID, "Stretegy Search");
+    TaskVariantRegistrar registrar(STRATEGY_SEARCH_TASK_ID, "Strategy Search");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<Simulator::strategy_search_task>(
-        registrar, "Stretegy Search Task");
+        registrar, "Strategy Search Task");
   }
   // Graph optimize
   {
