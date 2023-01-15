@@ -29,6 +29,7 @@
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
@@ -2048,6 +2049,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_POOL2D: {
         node = Pool2D::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_REDUCE_SUM: {
+        node = Reduce::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_RESHAPE: {

@@ -58,19 +58,6 @@ ReductionParams Reduction::get_params() const {
   return params;
 }
 
-ParallelTensor FFModel::reduction(const ParallelTensor input,
-                                  int reduction_legion_dim,
-                                  int reduction_degree,
-                                  char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  Reduction *reduce =
-      new Reduction(*this, input, reduction_legion_dim, reduction_degree, name);
-  layers.push_back(reduce);
-  return reduce->outputs[0];
-#endif
-}
-
 Reduction::Reduction(FFModel &model,
                      const ParallelTensor _input,
                      int _reduction_legion_dim,
