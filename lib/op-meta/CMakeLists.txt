@@ -20,6 +20,8 @@ target_include_directories(
 )
 target_link_libraries(
   ${project_target}
+  mpark_variant
+  optional
   utils
 )
 set_target_properties(

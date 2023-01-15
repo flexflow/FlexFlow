@@ -3,7 +3,10 @@
 
 #include "basic_graph.h"
 
-namespace FlexFlow::PCG::Utils {
+namespace FlexFlow {
+namespace PCG {
+namespace Utils {
+
 template <typename BaseStructure>
 struct ReverseStructure {
   using graph_type = typename BaseStructure::graph_type;
@@ -241,7 +244,9 @@ struct MultisourceGraphStructure {
 
   BaseStructure base;
 };
-} // namespace FlexFlow::PCG::Utils
+} 
+}
+}
 
 namespace std {
 using FlexFlow::PCG::Utils::UndirectedEdge;

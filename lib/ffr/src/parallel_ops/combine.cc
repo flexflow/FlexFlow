@@ -41,19 +41,6 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Combine;
 
-/* Params */
-bool operator==(CombineParams const &lhs, CombineParams const &rhs) {
-  return lhs.combine_legion_dim == rhs.combine_legion_dim &&
-         lhs.combine_degree == rhs.combine_degree;
-}
-
-bool CombineParams::is_valid(ParallelTensorShape const &input) const {
-  bool valid = input.is_valid();
-  valid &=
-      (input.dims[this->combine_legion_dim].degree % this->combine_degree == 0);
-  return valid;
-}
-
 CombineParams Combine::get_params() const {
   CombineParams params;
   params.combine_legion_dim = this->combine_dim;

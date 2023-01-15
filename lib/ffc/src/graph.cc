@@ -15,31 +15,7 @@
 #include "graph.h"
 #include "dominators.h"
 #include "op-meta/op-meta.h"
-#include "op-meta/ops/attention.h"
-#include "ops/batch_matmul.h"
-#include "ops/cast.h"
-#include "ops/concat.h"
-#include "ops/conv_2d.h"
-#include "ops/dropout.h"
-#include "ops/element_binary.h"
-#include "ops/element_unary.h"
-#include "ops/embedding.h"
-#include "ops/flat.h"
-#include "ops/layer_norm.h"
-#include "ops/linear.h"
-#include "ops/noop.h"
-#include "ops/pool_2d.h"
-#include "ops/reshape.h"
-#include "ops/softmax.h"
-#include "ops/split.h"
-#include "ops/transpose.h"
-#include "parallel_ops/combine.h"
-#include "parallel_ops/fused_parallel_op.h"
-#include "parallel_ops/partition.h"
-#include "parallel_ops/reduction.h"
-#include "parallel_ops/replicate.h"
 #include "utils/disjoint_set.h"
-#include "legion.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {
@@ -51,36 +27,6 @@ namespace PCG {
 /* LegionRuntime::Logger::Category log_graph("graph"); */
 /* LegionRuntime::Logger::Category log_simplify("graph_simplify"); */
 
-const Node Node::INVALID_NODE = Node();
-
-Node::Node(void) : guid(0), ptr(NULL) {}
-
-std::string Node::op_to_string(Op const *op) const {
-  return get_operator_type_name(op->op_type);
-}
-
-Edge::Edge(void)
-    : srcOp(Node::INVALID_NODE), dstOp(Node::INVALID_NODE), srcIdx(-1),
-      dstIdx(-1) {}
-
-Edge::Edge(Node const &_srcOp, Node const &_dstOp, int _srcIdx, int _dstIdx)
-    : srcOp(_srcOp), dstOp(_dstOp), srcIdx(_srcIdx), dstIdx(_dstIdx) {}
-
-bool Edge::operator==(Edge const &rhs) const {
-  if (srcOp != rhs.srcOp) {
-    return false;
-  }
-  if (dstOp != rhs.dstOp) {
-    return false;
-  }
-  if (srcIdx != rhs.srcIdx) {
-    return false;
-  }
-  if (dstIdx != rhs.dstIdx) {
-    return false;
-  }
-  return true;
-}
 
 SearchHelper::SearchHelper() {
   this->logger = std::unique_ptr<RecursiveLogger>(new RecursiveLogger("DP"));
@@ -611,15 +557,6 @@ Node Graph::find_bottleneck_node(Node const &sink_node,
   }
 
   return bn_node;
-}
-
-void Edge::replace_node(Node const &currentOp, Node const &replaceWith) {
-  if (this->srcOp == currentOp) {
-    this->srcOp = replaceWith;
-  }
-  if (this->dstOp == currentOp) {
-    this->dstOp = replaceWith;
-  }
 }
 
 Graph Graph::subgraph(std::unordered_set<Node> const &ns) const {

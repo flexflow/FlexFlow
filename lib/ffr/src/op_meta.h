@@ -1,8 +1,6 @@
 #ifndef _OP_META_H
 #define _OP_META_H
 
-#include "flexflow/config.h"
-
 namespace FlexFlow {
 
 class Op;

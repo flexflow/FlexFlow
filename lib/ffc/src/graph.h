@@ -20,58 +20,12 @@
 #include "graph_structures.h"
 #include "utils/dot_file.h"
 #include "pcg/machine_view.h"
-/* #include "utils/recursive_logger.h" */
-/* #include "legion/legion_utilities.h" */
+#include "utils/recursive_logger.h"
 #include <unordered_set>
 #include <memory>
 #include "op-meta/op-meta.h"
 
 //extern LegionRuntime::Logger::Category log_dp;
-
-namespace FlexFlow {
-namespace PCG {
-
-class RecursiveLogger;
-class Graph;
-
-struct Edge {
-  Edge(void);
-  Edge(Node const &_srcOp, Node const &_dstOp, int _srcIdx, int _dstIdx);
-  bool operator==(Edge const &rhs) const;
-  Node srcOp, dstOp;
-  int srcIdx, dstIdx;
-
-  void replace_node(Node const &currentOp, Node const &replaceWith);
-};
-
-struct EdgeCompare {
-  bool operator()(Edge const &a, Edge const &b) const {
-    if (!(a.srcOp == b.srcOp)) {
-      return a.srcOp < b.srcOp;
-    }
-    if (!(a.dstOp == b.dstOp)) {
-      return a.dstOp < b.dstOp;
-    }
-    if (a.srcIdx != b.srcIdx) {
-      return a.srcIdx < b.srcIdx;
-    }
-    if (a.dstIdx != b.dstIdx) {
-      return a.dstIdx < b.dstIdx;
-    }
-    return false;
-  };
-};
-
-struct NodeCompare {
-  bool operator()(Node const &a, Node const &b) const {
-    if (a.guid != b.guid) {
-      return a.guid < b.guid;
-    }
-    return a.ptr < b.ptr;
-  };
-};
-}
-}
 
 namespace std {
 

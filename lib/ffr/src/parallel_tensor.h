@@ -32,42 +32,6 @@ class Op;
 class FFModel;
 class Initializer;
 
-struct ParallelDim {
-  static constexpr int UNKNOWN_DEGREE = -1;
-  static constexpr int UNKNOWN_INDEX = -2;
-
-  bool operator==(ParallelDim const &rhs) const {
-    if (size != rhs.size) {
-      return false;
-    }
-    if (degree != rhs.degree) {
-      return false;
-    }
-    if (parallel_idx != rhs.parallel_idx) {
-      return false;
-    }
-    return true;
-  }
-
-  bool operator!=(ParallelDim const &rhs) const {
-    if (size != rhs.size) {
-      return true;
-    }
-    if (degree != rhs.degree) {
-      return true;
-    }
-    if (parallel_idx != rhs.parallel_idx) {
-      return true;
-    }
-    return false;
-  }
-
-  int size = 0;
-  int degree = UNKNOWN_DEGREE;
-  int parallel_idx = UNKNOWN_INDEX;
-  bool is_replica_dim = false;
-};
-
 class FFConfig;
 
 /**

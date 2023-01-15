@@ -1,5 +1,5 @@
 #include "pcg/machine_view.h"
-#include "hash-utils/hash-utils.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 

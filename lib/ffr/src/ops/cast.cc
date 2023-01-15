@@ -72,16 +72,6 @@ CastParams Cast::get_params() const {
   return params;
 }
 
-bool CastParams::is_valid(ParallelTensorShape const &input) const {
-  bool valid = input.is_valid();
-  valid &= (input.dims[input.num_dims - 1].degree == 1);
-  return valid;
-}
-
-bool operator==(CastParams const &lhs, CastParams const &rhs) {
-  return lhs.dtype == rhs.dtype;
-}
-
 Cast::Cast(FFModel &model,
            ParallelTensor const &input,
            DataType _dtype,
