@@ -1,23 +1,40 @@
-#ifndef _FLEXFLOW_TRANSPOSE_H_
-#define _FLEXFLOW_TRANSPOSE_H_
+#pragma once
 
 #include "flexflow/model.h"
-#include "flexflow/ops/transpose_params.h"
+#include "flexflow/ops/reduce_params.h"
 
 namespace FlexFlow {
 
-class Transpose : public Op {
+class Reduce;
+
+class ReduceMeta : public OpMeta {
 public:
-  using Params = TransposeParams;
+  ReduceMeta(FFHandler handler,
+             Reduce const *rd,
+             Legion::Domain const &input_domain);
+  ~ReduceMeta(void);
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+  cudnnTensorDescriptor_t inputTensor, outputTensor;
+  cudnnReduceTensorDescriptor_t reduceDesc;
+#else
+  miopenTensorDescriptor_t inputTensor, outputTensor;
+  miopenReduceTensorDescriptor_t reduceDesc;
+#endif
+};
+
+class Reduce : public Op {
+public:
+  using Params = ReduceParams;
   using Input = ParallelTensor;
-  Transpose(FFModel &model,
-            Params const &params,
-            const Input input,
-            char const *name = nullptr);
-  Transpose(FFModel &model,
-            const ParallelTensor input,
-            std::vector<int> const &perm,
-            char const *name = nullptr);
+  Reduce(FFModel &model,
+         Params const &params,
+         const Input input,
+         char const *name = nullptr);
+  Reduce(FFModel &model,
+         const ParallelTensor input,
+         std::vector<int> const &axes,
+         bool keepdims,
+         char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -34,9 +51,6 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  void init_meta(TransposeMeta *m,
-                 Legion::Domain const &in_domain,
-                 Legion::Domain const &out_domain) const;
   static void forward_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
@@ -45,6 +59,20 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
+  static void forward_kernel(ReduceMeta const *m,
+                             float const *input_ptr,
+                             float *output_ptr,
+                             ffStream_t stream);
+  static void forward_kernel_wrapper(ReduceMeta const *m,
+                                     GenericTensorAccessorR const &input,
+                                     GenericTensorAccessorW const &output);
+  static void backward_kernel(ReduceMeta const *m,
+                              float const *output_grad_ptr,
+                              float *input_grad_ptr,
+                              ffStream_t stream);
+  static void backward_kernel_wrapper(ReduceMeta const *m,
+                                      GenericTensorAccessorR const &output_grad,
+                                      GenericTensorAccessorW const &input_grad);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
@@ -59,9 +87,9 @@ public:
   Params get_params() const;
 
 public:
-  int perm[MAX_TENSOR_DIM];
+  int num_axes;
+  int axes[MAX_TENSOR_DIM];
+  bool keepdims;
 };
 
 }; // namespace FlexFlow
-
-#endif

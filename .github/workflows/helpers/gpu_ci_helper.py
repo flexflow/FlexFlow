@@ -4,17 +4,25 @@ from github import Github
 import os, sys, argparse, time
 
 
-def get_num_workflow_runs(repo, workflow_name, in_progress_only=False):
-    workflows = [w for w in repo.get_workflows() if w.path == workflow_name]
-    if len(workflows) != 1:
-        print(f"Found more than one workflow named {workflow_name}. Weird.")
-        sys.exit(1)
-    workflow = workflows[0]
-    running_states = ["in_progress"] if in_progress_only else ["queued", "in_progress"]
-    runs = [
-        run for status in running_states for run in workflow.get_runs(status=status)
+def get_num_workflow_runs(repo, workflow_names, in_progress_only=False):
+    workflows = [
+        w for w in repo.get_workflows() for w_name in workflow_names if w.path == w_name
     ]
-    return len(runs)
+    if len(workflows) != len(workflow_names):
+        print(
+            f"Found {len(workflows)} workflows instead of {len(workflow_names)}. Weird."
+        )
+        sys.exit(1)
+    count = 0
+    for workflow in workflows:
+        running_states = (
+            ["in_progress"] if in_progress_only else ["queued", "in_progress"]
+        )
+        runs = [
+            run for status in running_states for run in workflow.get_runs(status=status)
+        ]
+        count += len(runs)
+    return count
 
 
 if __name__ == "__main__":
@@ -40,9 +48,12 @@ if __name__ == "__main__":
 
     if args.daemon:
         # Check if there is any `gpu-ci` workflow in progress or queued
-        target_workflow = ".github/workflows/gpu-ci.yml"
-        n = get_num_workflow_runs(repo, target_workflow, in_progress_only=False)
-        print(f"Detected {n} `{target_workflow}` workflow runs in progress or queued")
+        target_workflows = [
+            ".github/workflows/gpu-ci.yml",
+            ".github/workflows/multinode-test.yml",
+        ]
+        n = get_num_workflow_runs(repo, target_workflows, in_progress_only=False)
+        print(f"Detected {n} GPU-related workflow runs in progress or queued")
 
         instance_id = os.getenv("FLEXFLOW_RUNNER_INSTANCE_ID") or ""
         if len(instance_id) != 19:
@@ -65,7 +76,7 @@ if __name__ == "__main__":
             )
     else:
         # Wait until the daemon has finished running
-        target_workflow = ".github/workflows/gpu-ci-daemon.yml"
+        target_workflow = [".github/workflows/gpu-ci-daemon.yml"]
         n = get_num_workflow_runs(repo, target_workflow, in_progress_only=True)
         while n > 0:
             time.sleep(30)
