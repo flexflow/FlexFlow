@@ -14,6 +14,7 @@
 #include "flexflow/ops/layer_norm_params.h"
 #include "flexflow/ops/linear_params.h"
 #include "flexflow/ops/pool_2d_params.h"
+#include "flexflow/ops/reduce_params.h"
 #include "flexflow/ops/reshape_params.h"
 #include "flexflow/ops/softmax_params.h"
 #include "flexflow/ops/split_params.h"
@@ -42,6 +43,7 @@ using OperatorParameters = mp::variant<BatchMatmulParams,
                                        LinearParams,
                                        MultiHeadAttentionParams,
                                        Pool2DParams,
+                                       ReduceParams,
                                        ReshapeParams,
                                        SplitParams,
                                        SoftmaxParams,
