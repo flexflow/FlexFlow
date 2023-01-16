@@ -1185,8 +1185,8 @@ void Embedding::backward_task_cpu(Task const *task,
 
 EmbeddingMeta::EmbeddingMeta(FFHandler _handle, Op const *op)
     : OpMeta(_handle, op) {}
-}
-; // namespace FlexFlow
+
+}; // namespace FlexFlow
 
 namespace std {
 size_t hash<FlexFlow::EmbeddingParams>::operator()(

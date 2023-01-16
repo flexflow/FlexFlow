@@ -25,6 +25,7 @@
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/gather.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -2006,6 +2007,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_FLAT: {
         node = Flat::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_GATHER: {
+        node = Gather::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_LAYERNORM: {
