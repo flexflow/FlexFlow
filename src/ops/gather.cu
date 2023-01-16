@@ -21,8 +21,8 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Domain;
 
-GatherMeta::GatherMeta(FFHandler handler, Gather const* gather)
-  : OpMeta(handler, gather) {
+GatherMeta::GatherMeta(FFHandler handler, Gather const *gather)
+    : OpMeta(handler, gather) {
   legion_dim = gather->legion_dim;
 }
 
@@ -33,33 +33,33 @@ void Gather::forward_kernel_wrapper(GatherMeta const *m,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   coord_t stride = 1;
-  for (int i = 0; i < m->legion_dim; i++)
+  for (int i = 0; i < m->legion_dim; i++) {
     stride *= (output.domain.hi()[i] - output.domain.lo()[i] + 1);
-  coord_t dim_size = output.domain.hi()[m->legion_dim] - output.domain.lo()[m->legion_dim] + 1;
+  }
+  coord_t dim_size =
+      output.domain.hi()[m->legion_dim] - output.domain.lo()[m->legion_dim] + 1;
   if (index.data_type == DT_INT32) {
-    Gather::forward_kernel(
-        input.get_float_ptr(),
-        index.get_int32_ptr(),
-        output.get_float_ptr(),
-        output.domain.get_volume(),
-        stride,
-        dim_size,
-        stream);
+    Gather::forward_kernel(input.get_float_ptr(),
+                           index.get_int32_ptr(),
+                           output.get_float_ptr(),
+                           output.domain.get_volume(),
+                           stride,
+                           dim_size,
+                           stream);
   } else {
     assert(index.data_type == DT_INT64);
-    Gather::forward_kernel(
-        input.get_float_ptr(),
-        index.get_int64_ptr(),
-        output.get_float_ptr(),
-        output.domain.get_volume(),
-        stride,
-        dim_size,
-        stream);
+    Gather::forward_kernel(input.get_float_ptr(),
+                           index.get_int64_ptr(),
+                           output.get_float_ptr(),
+                           output.domain.get_volume(),
+                           stride,
+                           dim_size,
+                           stream);
   }
 }
 
 template <typename TI>
-__global__ void gather_forward(float const* input,
+__global__ void gather_forward(float const *input,
                                TI const *index,
                                float *output,
                                coord_t output_size,
@@ -89,9 +89,8 @@ void Gather::forward_kernel(float const *input_ptr,
   assert(input_ptr != nullptr);
   assert(index_ptr != nullptr);
   assert(output_ptr != nullptr);
-  gather_forward<TI>
-      <<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
-          input_ptr, index_ptr, output_ptr, output_size, stride, dim_size);
+  gather_forward<TI><<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
+      input_ptr, index_ptr, output_ptr, output_size, stride, dim_size);
 }
 
 void Gather::backward_kernel_wrapper(GatherMeta const *m,
@@ -101,33 +100,33 @@ void Gather::backward_kernel_wrapper(GatherMeta const *m,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   coord_t stride = 1;
-  for (int i = 0; i < m->legion_dim; i++)
+  for (int i = 0; i < m->legion_dim; i++) {
     stride *= (output_grad.domain.hi()[i] - output_grad.domain.lo()[i] + 1);
-  coord_t dim_size = output_grad.domain.hi()[m->legion_dim] - output_grad.domain.lo()[m->legion_dim] + 1;
+  }
+  coord_t dim_size = output_grad.domain.hi()[m->legion_dim] -
+                     output_grad.domain.lo()[m->legion_dim] + 1;
   if (index.data_type == DT_INT32) {
-    Gather::backward_kernel(
-        output_grad.get_float_ptr(),
-        index.get_int32_ptr(),
-        input_grad.get_float_ptr(),
-        output_grad.domain.get_volume(),
-        stride,
-        dim_size,
-        stream);
+    Gather::backward_kernel(output_grad.get_float_ptr(),
+                            index.get_int32_ptr(),
+                            input_grad.get_float_ptr(),
+                            output_grad.domain.get_volume(),
+                            stride,
+                            dim_size,
+                            stream);
   } else {
     assert(index.data_type == DT_INT64);
-    Gather::backward_kernel(
-        output_grad.get_float_ptr(),
-        index.get_int64_ptr(),
-        input_grad.get_float_ptr(),
-        output_grad.domain.get_volume(),
-        stride,
-        dim_size,
-        stream);
+    Gather::backward_kernel(output_grad.get_float_ptr(),
+                            index.get_int64_ptr(),
+                            input_grad.get_float_ptr(),
+                            output_grad.domain.get_volume(),
+                            stride,
+                            dim_size,
+                            stream);
   }
 }
 
 template <typename TI>
-__global__ void gather_backward(float const* output_grad,
+__global__ void gather_backward(float const *output_grad,
                                 TI const *index,
                                 float *input_grad,
                                 coord_t output_size,
@@ -153,13 +152,17 @@ void Gather::backward_kernel(float const *output_grad_ptr,
                              coord_t output_size,
                              coord_t stride,
                              coord_t dim_size,
-                            cudaStream_t stream) {
+                             cudaStream_t stream) {
   assert(output_grad_ptr != nullptr);
   assert(input_grad_ptr != nullptr);
   assert(index_ptr != nullptr);
-  gather_backward<TI>
-      <<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
-          output_grad_ptr, index_ptr, input_grad_ptr, output_size, stride, dim_size);
+  gather_backward<TI><<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
+      output_grad_ptr,
+      index_ptr,
+      input_grad_ptr,
+      output_size,
+      stride,
+      dim_size);
 }
 
 }; // namespace FlexFlow

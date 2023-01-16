@@ -41,15 +41,21 @@ bool operator==(GatherParams const &lhs, GatherParams const &rhs) {
 
 bool GatherParams::is_valid(
     std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
-  if (!input.first.is_valid())
+  if (!input.first.is_valid()) {
     return false;
-  if (!input.second.is_valid())
+  }
+  if (!input.second.is_valid()) {
     return false;
-  if (input.first.num_dims != input.second.num_dims)
+  }
+  if (input.first.num_dims != input.second.num_dims) {
     return false;
-  for (int i = 0; i < input.first.num_dims; i++)
-    if (i != legion_dim && input.first.dims[i].size < input.second.dims[i].size)
+  }
+  for (int i = 0; i < input.first.num_dims; i++) {
+    if (i != legion_dim &&
+        input.first.dims[i].size < input.second.dims[i].size) {
       return false;
+    }
+  }
   return true;
 }
 
@@ -76,16 +82,19 @@ Tensor FFModel::gather(const Tensor input,
   assert(input->num_dims == index->num_dims);
   int legion_dim = input->num_dims - 1 - dim;
   // https://pytorch.org/docs/stable/generated/torch.gather.html
-  // Currently we assume index.size(d) == input.size(d) for all 
+  // Currently we assume index.size(d) == input.size(d) for all
   // dimensions d != dim, which is a stronger constraint that PyTorch's
-  for (int i = 0; i < input->num_dims; i++)
-    if (i != legion_dim)
+  for (int i = 0; i < input->num_dims; i++) {
+    if (i != legion_dim) {
       assert(input->dims[i] == index->dims[i]);
+    }
+  }
   int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < index->num_dims; i++)
+  for (int i = 0; i < index->num_dims; i++) {
     dims[i] = index->dims[i];
+  }
   gather->outputs[0] = create_tensor_legion_ordering(
-      index->num_dims, dims, input->data_type, gather, 0, true/*create_grad*/);
+      index->num_dims, dims, input->data_type, gather, 0, true /*create_grad*/);
   gather->add_int_property("legion_dim", legion_dim);
   layers.push_back(gather);
   return gather->outputs[0];
@@ -101,11 +110,10 @@ Op *Gather::create_operator_from_layer(
   return new Gather(model, inputs[0], inputs[1], legion_dim, layer->name);
 }
 
-Gather::Gather(
-    FFModel &model,
-    GatherParams const &params,
-    std::pair<ParallelTensor, ParallelTensor> const &inputs,
-    char const *name)
+Gather::Gather(FFModel &model,
+               GatherParams const &params,
+               std::pair<ParallelTensor, ParallelTensor> const &inputs,
+               char const *name)
     : Gather(model, inputs.first, inputs.second, params.legion_dim, name) {}
 
 Gather::Gather(FFModel &model,
@@ -124,16 +132,19 @@ Gather::Gather(FFModel &model,
          index),
       legion_dim(_legion_dim) {
   // Assume that input and index have the same paralleldim except
-  // for the legion_dim-th dim, which cannot be parallelized 
-  for (int i = 0; i < input->num_dims; i++)
-    if (i != legion_dim)
+  // for the legion_dim-th dim, which cannot be parallelized
+  for (int i = 0; i < input->num_dims; i++) {
+    if (i != legion_dim) {
       assert(input->dims[i] == index->dims[i]);
+    }
+  }
   assert(index->dims[legion_dim].degree == 1);
   assert(input->dims[legion_dim].degree == 1);
   // output has the same parallel dims as index
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < index->num_dims; i++)
+  for (int i = 0; i < index->num_dims; i++) {
     dims[i] = index->dims[i];
+  }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       index->num_dims, dims, input->data_type, this);
 }
@@ -155,7 +166,7 @@ Node Gather::deserialize(FFModel &ff,
   GatherParams params;
   params.legion_dim = legion_dim;
   return ff.get_or_create_node<Gather>({inputs[0], inputs[1]}, params);
-} 
+}
 
 Op *Gather::materialize(FFModel &ff,
                         ParallelTensor inputs[],
@@ -333,7 +344,7 @@ void Gather::backward_task(Task const *task,
 bool Gather::measure_operator_cost(Simulator *sim,
                                    MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
-  //TODO: to be implement
+  // TODO: to be implement
   return false;
 }
 

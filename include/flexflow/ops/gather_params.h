@@ -6,8 +6,8 @@ namespace FlexFlow {
 
 struct GatherParams {
   int legion_dim;
-  bool is_valid(std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const;
-
+  bool is_valid(
+      std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const;
 };
 
 bool operator==(GatherParams const &, GatherParams const &);

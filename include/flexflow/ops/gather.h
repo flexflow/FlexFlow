@@ -9,8 +9,8 @@ class Gather;
 
 class GatherMeta : public OpMeta {
 public:
-  GatherMeta(FFHandler handler,
-             Gather const *gather);
+  GatherMeta(FFHandler handler, Gather const *gather);
+
 public:
   int legion_dim;
 };
@@ -66,12 +66,12 @@ public:
                                      GenericTensorAccessorW const &output);
   template <typename TI>
   static void backward_kernel(float const *output_grad_ptr,
-                             TI const *index_ptr,
-                             float *input_grad_ptr,
-                             Legion::coord_t output_size,
-                             Legion::coord_t stride,
-                             Legion::coord_t dim_size,
-                             ffStream_t stream);
+                              TI const *index_ptr,
+                              float *input_grad_ptr,
+                              Legion::coord_t output_size,
+                              Legion::coord_t stride,
+                              Legion::coord_t dim_size,
+                              ffStream_t stream);
   static void backward_kernel_wrapper(GatherMeta const *m,
                                       GenericTensorAccessorR const &output_grad,
                                       GenericTensorAccessorR const &index,
@@ -93,5 +93,4 @@ public:
   int legion_dim;
 };
 
-
-};
+}; // namespace FlexFlow
