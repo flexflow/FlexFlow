@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "cuda_helper.h"
+#include "flexflow/utils/cuda_helper.h"
 #include "moe.h"
 
 void DataLoader::load_input(Task const *task,
@@ -23,9 +23,9 @@ void DataLoader::load_input(Task const *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs *meta = (SampleIdxs *)task->local_args;
-  TensorAccessorR<float, 2> acc_full_input(
+  TensorAccessorR<float, 3> acc_full_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 2> acc_batch_input(regions[1],
+  TensorAccessorW<float, 3> acc_batch_input(regions[1],
                                             task->regions[1],
                                             FID_DATA,
                                             ctx,
@@ -56,15 +56,16 @@ void DataLoader::load_label(Task const *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs *meta = (SampleIdxs *)task->local_args;
-  TensorAccessorR<int, 2> acc_full_label(
+  TensorAccessorR<int, LABEL_DIM + 2> acc_full_label(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<int, 2> acc_batch_label(regions[1],
-                                          task->regions[1],
-                                          FID_DATA,
-                                          ctx,
-                                          runtime,
-                                          false /*readOutput*/);
-  int batch_size = acc_batch_label.rect.hi[1] - acc_batch_label.rect.lo[1] + 1;
+  TensorAccessorW<int, LABEL_DIM + 2> acc_batch_label(regions[1],
+                                                      task->regions[1],
+                                                      FID_DATA,
+                                                      ctx,
+                                                      runtime,
+                                                      false /*readOutput*/);
+  coord_t batch_size =
+      acc_batch_label.rect.hi[1] - acc_batch_label.rect.lo[1] + 1;
   // FIXME: currently assume continous indices
   assert(batch_size == meta->num_samples);
   for (int i = 1; i < meta->num_samples; i++) {

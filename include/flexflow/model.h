@@ -248,6 +248,8 @@ class NoOp;
 
 ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
 
+class Aggregate;
+class AggregateSpec;
 class BatchMatmul;
 class Cast;
 class Concat;
@@ -258,6 +260,7 @@ class ElementUnary;
 class Embedding;
 class Flat;
 class Gather;
+class Group_by;
 class LayerNorm;
 class Linear;
 class MultiHeadAttention;
@@ -266,6 +269,7 @@ class Reduce;
 class Reshape;
 class Softmax;
 class Split;
+class TopK;
 class Transpose;
 class Combine;
 class Repartition;
@@ -488,6 +492,13 @@ public:
               std::vector<int> const &dims,
               bool keepdims,
               char const *name);
+  // Add a moe layer (wrapping topk, group_by and aggregate operators)
+  Tensor moe(const Tensor input,
+             int num_exp,
+             int num_select,
+             int expert_hidden_size,
+             float alpha,
+             float lambda);
   // Add a split layer
   void split(const Tensor input,
              Tensor *outputs,
@@ -823,6 +834,11 @@ public:
   // Cached operators: key: operator hash, value: operator pointer
   std::tuple<
       std::unordered_map<
+          std::pair<std::vector<ParallelTensorShape>, AggregateParams>,
+          Aggregate *>,
+      std::unordered_map<std::pair<ParallelTensorShape, AggregateSpecParams>,
+                         AggregateSpec *>,
+      std::unordered_map<
           std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
                     BatchMatmulParams>,
           BatchMatmul *>,
@@ -847,6 +863,10 @@ public:
           std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
                     GatherParams>,
           Gather *>,
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    Group_byParams>,
+          Group_by *>,
       std::unordered_map<std::pair<ParallelTensorShape, LayerNormParams>,
                          LayerNorm *>,
       std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
@@ -865,6 +885,7 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, SplitParams>, Split *>,
       std::unordered_map<std::pair<ParallelTensorShape, SoftmaxParams>,
                          Softmax *>,
+      std::unordered_map<std::pair<ParallelTensorShape, TopKParams>, TopK *>,
       std::unordered_map<std::pair<ParallelTensorShape, TransposeParams>,
                          Transpose *>,
       std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,

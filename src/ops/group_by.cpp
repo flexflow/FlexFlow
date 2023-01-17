@@ -20,7 +20,7 @@
 #include <stdio.h>
 
 #define MAX_K 4
-#define MAX_BATCH_SIZE 32
+#define MAX_BATCH_SIZE 64
 #define MAX_N 12
 
 namespace FlexFlow {
@@ -34,20 +34,32 @@ __global__ void
                       float alpha, // factor additional memory assigned
                       int batch_size,
                       int data_dim) {
-  __shared__ float *chosen_exp_preds[MAX_K * MAX_BATCH_SIZE];
+  __shared__ float
+      *chosen_exp_preds[MAX_K *
+                        MAX_BATCH_SIZE]; // one pointer for each exp_assign
+                                         // (TopK_output[1]) element
 
   // Get pred pointers, single thread per block
   if (threadIdx.x == 0) {
-    int exp_tensor_rows = ceil(alpha * k / n * batch_size);
-    int expert_idx[MAX_N] = {0};
+    int exp_tensor_rows =
+        ceil(alpha * k / n * batch_size); // This is the max expert capacity
+    int expert_idx[MAX_N] = {
+        0}; // This is the number of tokens assigned to each expert
+    // Iterate through flattened assign tensor, which has shape (k, batch_size)
     for (int i = 0; i < k * batch_size; i++) {
       // Get pointer to chosen expert predictions
-      int expert = exp_assign[i];
-      if (expert_idx[expert] >= exp_tensor_rows) {
+      int expert =
+          exp_assign[i]; // index of the expert that is to receive the token i
+      if (expert_idx[expert] >=
+          exp_tensor_rows) { // check if the expert is already at capacity
         // dropped sample
         chosen_exp_preds[i] = 0;
         continue;
       }
+      // chosen_exp_preds[i] is the pointer to the location in the outputs
+      // tensor's memory where we should copy the i-th tensor. outputs[expert]
+      // points us to the assigned expert's (DATA_DIM, expert capacity) tensor
+      // block expert_idx[expert] * data_dim is the offset within the block
       chosen_exp_preds[i] = outputs[expert] + expert_idx[expert] * data_dim;
       expert_idx[expert]++;
     }
@@ -55,7 +67,8 @@ __global__ void
 
   __syncthreads();
 
-  // compute output
+  // By this point we know exactly where to copy each tensor, so we can execute
+  // in parallel.
   CUDA_KERNEL_LOOP(i, k * batch_size * data_dim) {
     if (chosen_exp_preds[i / data_dim] != 0) {
       float a = input[(i / (k * data_dim)) * data_dim + i % data_dim];

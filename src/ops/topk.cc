@@ -14,6 +14,9 @@
  */
 
 #include "flexflow/ops/topk.h"
+#include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
+#include "legion/legion_utilities.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -23,6 +26,9 @@ using Legion::coord_t;
 using Legion::Domain;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
+using Legion::InlineLauncher;
+using Legion::Machine;
+using Legion::Memory;
 using Legion::PhysicalRegion;
 using Legion::Predicate;
 using Legion::Rect;
@@ -31,20 +37,66 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+using PCG::Node;
 
 // For an input tensor, computes the top k entries in each row
 // (resp. vector along the last dimension). Thus,
 // values.shape = indices.shape = input.shape[:-1] + [k]
 void FFModel::top_k(
     const Tensor input, Tensor *outputs, int k, bool sorted, char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  TopK *topk = new TopK(*this, input, k, sorted, name);
-  layers.push_back(topk);
-  assert(topk->numOutputs == 2);
-  outputs[0] = topk->outputs[0];
-  outputs[1] = topk->outputs[1];
-#endif
+  Layer *li = new Layer(this,
+                        OP_TOPK,
+                        input->data_type,
+                        name,
+                        1 /*inputs*/,
+                        0 /*weights*/,
+                        2 /*outputs*/,
+                        input);
+  {
+    int numdims = input->num_dims;
+    int dims[MAX_TENSOR_DIM];
+    for (int i = 0; i < numdims; i++) {
+      dims[i] = input->dims[i];
+    }
+    dims[0] = k;
+    li->outputs[0] = create_tensor_legion_ordering(
+        numdims, dims, input->data_type, li, 0, true /*create_grad*/);
+    li->outputs[1] = create_tensor_legion_ordering(
+        numdims, dims, DT_INT32, li, 0, true /*create_grad*/);
+  }
+  li->add_int_property("k", k);
+  li->add_int_property("sorted", sorted);
+  layers.push_back(li);
+  outputs[0] = li->outputs[0];
+  outputs[1] = li->outputs[1];
+}
+
+Op *TopK::create_operator_from_layer(
+    FFModel &model,
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
+  long long value;
+  layer->get_int_property("k", value);
+  int k = value;
+  layer->get_int_property("sorted", value);
+  bool sorted = (bool)value;
+  return new TopK(model, inputs[0], k, sorted, layer->name);
+}
+
+TopKParams TopK::get_params() const {
+  TopKParams params;
+  params.k = this->k;
+  params.sorted = this->sorted;
+  return params;
+}
+
+bool TopKParams::is_valid(ParallelTensorShape const &) const {
+  // topk is always valid
+  return true;
+}
+
+bool operator==(TopKParams const &lhs, TopKParams const &rhs) {
+  return lhs.k == rhs.k && lhs.sorted == rhs.sorted;
 }
 
 TopK::TopK(FFModel &model,
@@ -74,6 +126,15 @@ TopK::TopK(FFModel &model,
   outputs[1] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, DT_INT32, this, 1 /*owner_idx*/);
 }
+
+TopK::TopK(FFModel &model, TopK const &other, const ParallelTensor input)
+    : TopK(model, input, other.k, other.sorted, other.name) {}
+
+TopK::TopK(FFModel &model,
+           TopKParams const &params,
+           const ParallelTensor input,
+           char const *name)
+    : TopK(model, input, params.k, params.sorted, name) {}
 
 void TopK::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
@@ -273,12 +334,104 @@ void TopK::backward_task(Task const *task,
       m, value_grad_ptr, indices_ptr, in_grad_ptr, batch_size, length, k);
 }
 
+void TopK::serialize(Legion::Serializer &sez) const {
+  sez.serialize(this->k);
+  sez.serialize(this->sorted);
+}
+
+Node TopK::deserialize(FFModel &ff,
+                       Legion::Deserializer &dez,
+                       ParallelTensor inputs[],
+                       int num_inputs) {
+  assert(num_inputs == 1);
+  int k;
+  bool sorted;
+  dez.deserialize(k);
+  dez.deserialize(sorted);
+  TopKParams params;
+  params.k = k;
+  params.sorted = sorted;
+  return ff.get_or_create_node<TopK>(inputs[0], params);
+}
+
+Op *TopK::materialize(FFModel &ff,
+                      ParallelTensor inputs[],
+                      int num_inputs) const {
+  TopKParams params = get_params();
+  return new TopK(ff, params, inputs[0], this->name);
+}
+
 bool TopK::measure_operator_cost(Simulator *sim,
                                  MachineView const &mv,
                                  CostMetrics &cost_metrics) const {
-  // To be implemented
-  assert(false);
-  return false;
+  ParallelTensorBase sub_input, sub_output, sub_output_ind;
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
+    return false;
+  }
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
+    return false;
+  }
+  if (!outputs[1]->get_sub_tensor(mv, sub_output_ind)) {
+    return false;
+  }
+
+  TopKMeta *m = new TopKMeta(sim->handler);
+  m->sorted = sorted;
+
+  // allocate
+  sim->free_all();
+  float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  int *output_ind_ptr =
+      (int *)sim->allocate(sub_output_ind.get_volume(), DT_INT32);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  if (!(input_ptr && output_ptr && output_ind_ptr)) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
+
+  assert(m->profiling == false);
+
+  // compute
+  std::function<void()> forward, backward;
+
+  Domain in_domain = sub_input.get_domain();
+  int length = in_domain.hi()[0] - in_domain.lo()[0] + 1;
+  size_t batch_size = in_domain.get_volume() / length;
+
+  forward = [&] {
+    forward_kernel_wrapper(m,
+                           input_ptr,
+                           output_ptr,
+                           output_ind_ptr,
+                           batch_size,
+                           length,
+                           k,
+                           sorted);
+  };
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+  log_measure.debug("[Measure TopK] name(%s) forward_time(%.4lf)\n",
+                    name,
+                    cost_metrics.forward_time);
+
+  cost_metrics.backward_time = 0.0f; // not implemented for MOE
+  delete m;
+  return true;
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::TopKParams>::operator()(
+    FlexFlow::TopKParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.k);
+  hash_combine(key, params.sorted);
+  return key;
+}
+}; // namespace std
