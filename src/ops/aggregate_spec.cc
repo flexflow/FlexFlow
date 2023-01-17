@@ -14,6 +14,9 @@
  */
 
 #include "flexflow/ops/aggregate_spec.h"
+#include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
+#include "legion/legion_utilities.h"
 
 namespace FlexFlow {
 
@@ -34,12 +37,64 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 Tensor FFModel::aggregate_spec(
-    Tensor const
-        *inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
+    Tensor const *inputs, /* gate_preds, gate_assign, gate assign TopK,
+                             full_gate_pred, exp_pred_1, ... , exp_pred_n */
     int n,
     float lambda_bal,
     char const *name) {
-  assert(false);
+  Layer *li = new Layer(this,
+                        OP_AGG_SPEC,
+                        DT_FLOAT,
+                        name,
+                        n + 4 /*inputs*/,
+                        0 /*weights*/,
+                        1 /*outputs*/,
+                        inputs);
+  {
+    int num_dim = inputs[4]->num_dims;
+    // Set output shape
+    int dims[MAX_TENSOR_DIM];
+    for (int i = 0; i < num_dim - 1; i++) {
+      dims[i] = inputs[4]->dims[i];
+    }
+    dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
+    li->outputs[0] = create_tensor_legion_ordering(
+        num_dim, dims, DT_FLOAT, li, 0, true /*create_grad*/);
+  }
+  li->add_int_property("n", n);
+  li->add_float_property("lambda_bal", lambda_bal);
+  layers.push_back(li);
+  return li->outputs[0];
+}
+
+Op *AggregateSpec::create_operator_from_layer(
+    FFModel &model,
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
+  long long value1;
+  layer->get_int_property("n", value1);
+  int n = value1;
+  float value2;
+  layer->get_float_property("lambda_bal", value2);
+  float lambda_bal = value2;
+  return new AggregateSpec(model, inputs.data(), n, lambda_bal, layer->name);
+}
+
+AggregateSpecParams AggregateSpec::get_params() const {
+  AggregateSpecParams params;
+  params.n = this->n;
+  params.lambda_bal = this->lambda_bal;
+  return params;
+}
+
+bool AggregateSpecParams::is_valid(ParallelTensorShape const &) const {
+  // AggregateSpec is always valid
+  return true;
+}
+
+bool operator==(AggregateSpecParams const &lhs,
+                AggregateSpecParams const &rhs) {
+  return lhs.n == rhs.n && lhs.lambda_bal == rhs.lambda_bal;
 }
 
 AggregateSpec::AggregateSpec(FFModel &model,
@@ -101,11 +156,12 @@ AggregateSpec::AggregateSpec(FFModel &model,
 }
 
 void AggregateSpec::init(FFModel const &ff) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  parallel_is = outputs[0]->parallel_is;
   IndexLauncher launcher(AGG_SPEC_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(AggregateSpec)),
@@ -134,8 +190,7 @@ void AggregateSpec::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
-  parallel_is = outputs[0]->parallel_is;
+  set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(AGG_SPEC_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(AggregateSpec)),
@@ -243,7 +298,6 @@ void AggregateSpec::backward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  parallel_is = outputs[0]->parallel_is;
   IndexLauncher launcher(AGG_SPEC_BWD_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(AggregateSpec)),
@@ -385,13 +439,81 @@ void AggregateSpec::backward_task(Task const *task,
 bool AggregateSpec::measure_operator_cost(Simulator *sim,
                                           MachineView const &mv,
                                           CostMetrics &cost_metrics) const {
-  // TODO: implement
-  cost_metrics.forward_time = 0.0f;
-  cost_metrics.backward_time = 0.0f;
-  cost_metrics.inputs_memory = 0;
-  cost_metrics.outputs_memory = 0;
-  cost_metrics.weights_memory = 0;
-  return false;
+  assert(numInputs <= MAX_NUM_INPUTS);
+  ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_assign, sub_output;
+  for (int i = 0; i < numInputs; ++i) {
+    if (!inputs[i + 4]->get_sub_tensor(mv, sub_inputs[i])) {
+      return false;
+    }
+  }
+  if (!inputs[1]->get_sub_tensor(mv, sub_assign)) {
+    return false;
+  }
+
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
+    return false;
+  }
+
+  AggregateSpecMeta *m = new AggregateSpecMeta(sim->handler, n);
+
+  // allocate
+  sim->free_all();
+  float *input_ptrs[MAX_NUM_INPUTS];
+  bool out_of_memory = false;
+  for (int i = 0; i < numInputs; ++i) {
+    input_ptrs[i] =
+        (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
+    out_of_memory = out_of_memory || (input_ptrs[i] == NULL);
+  }
+  int *assign_ptr = (int *)sim->allocate(sub_assign.get_volume(), DT_INT32);
+  out_of_memory = out_of_memory || (assign_ptr == NULL);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  out_of_memory = out_of_memory || (output_ptr == NULL);
+
+  if (out_of_memory) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
+
+  assert(m->profiling == false);
+
+  // compute
+  std::function<void()> forward, backward;
+  Domain assign_domain = sub_assign.get_domain();
+  Domain exp_domain = sub_inputs[0].get_domain();
+
+  int k = assign_domain.hi()[0] - assign_domain.lo()[0] + 1;
+  int batch_size = assign_domain.hi()[1] - assign_domain.lo()[1] + 1;
+  int rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
+  int out_dim = exp_domain.hi()[0] - exp_domain.lo()[0] + 1;
+
+  forward = [&] {
+    forward_kernel_wrapper(
+        m, input_ptrs, assign_ptr, output_ptr, n, k, rows, batch_size, out_dim);
+  };
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+  log_measure.debug("[Measure Agg Spec] name(%s) forward_time(%.4lf)\n",
+                    name,
+                    cost_metrics.forward_time);
+
+  cost_metrics.backward_time = 0.0f; // not implemented for backward
+  delete m;
+  return true;
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::AggregateSpecParams>::operator()(
+    FlexFlow::AggregateSpecParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.n);
+  hash_combine(key, params.lambda_bal);
+  return key;
+}
+}; // namespace std
