@@ -135,18 +135,6 @@ Group_by::Group_by(FFModel &model,
   int k = _assign->dims[0].size;
   int num_dims = _input->num_dims;
 
-  // ensure that batch size (second to last dimension) is not partitioned
-  assert(inputs[0]->dims[num_dims - 2].degree == 1 &&
-         !inputs[0]->dims[num_dims - 2].is_replica_dim &&
-         "Partitioned / replicated batch size not yet supported");
-  assert(!inputs[0]->dims[num_dims - 2].is_replica_dim);
-  // ensure that the number of replicas (last dimension) is set to 1
-  if (inputs[0]->dims[num_dims - 1].is_replica_dim) {
-    assert(inputs[0]->dims[num_dims - 1].size == 1 &&
-           inputs[0]->dims[num_dims - 1].degree == 1 &&
-           "Replica dimension of size/degree >1 not yet supported");
-  }
-
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < num_dims; i++) {
     dims[i] = inputs[0]->dims[i];

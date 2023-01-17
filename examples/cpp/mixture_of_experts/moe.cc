@@ -274,6 +274,7 @@ DataLoader::DataLoader(FFModel &ff,
       dims[i].size = label->dims[i].size;
       dims[i].degree = 1;
       dims[i].parallel_idx = -1;
+      dims[i].is_replica_dim = label->dims[i].is_replica_dim;
       // Assume only the last dim can be the replica dim
       assert(i == LABEL_DIM + 1 || (!dims[i].is_replica_dim));
     }
@@ -445,10 +446,22 @@ void DataLoader::next_batch(FFModel &ff) {
         runtime->get_index_space_domain(ctx, batch_input->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
+    // current limitation of the dataloader: only the batch dimension can be
+    // partitioned
+    int input_dims = batch_input->num_dims;
+    for (int i = 0; i < input_dims; i++) {
+      if (i != input_dims - 2) {
+        assert(batch_input->dims[i].degree == 1 &&
+               "Dataloader only supports batch size partitions");
+      }
+    }
+    int batch_size = batch_input->dims[input_dims - 2].size;
+    int n_partitions = batch_input->dims[input_dims - 2].degree;
+    assert(ff.config.batchSize % batch_size == 0);
+    assert(batch_size % n_partitions == 0);
     for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % batch_input->dims[1].size == 0);
-      meta.num_samples = batch_input->dims[1].size;
+      meta.num_samples = batch_size / n_partitions;
       for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
       }
@@ -483,10 +496,21 @@ void DataLoader::next_batch(FFModel &ff) {
         runtime->get_index_space_domain(ctx, batch_label->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
+    // current limitation of the dataloader: only the batch dimension can be
+    // partitioned
+    int label_dims = batch_label->num_dims;
+    assert(batch_label->dims[label_dims - 1].degree == 1);
+    for (int i = 0; i < LABEL_DIM; i++) {
+      assert(batch_label->dims[i].degree == 1 &&
+             "Dataloader only supports batch size partitions");
+    }
+    int batch_size = batch_label->dims[label_dims - 2].size;
+    int n_partitions = batch_label->dims[label_dims - 2].degree;
+    assert(ff.config.batchSize % batch_size == 0);
+    assert(batch_size % n_partitions == 0);
     for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % batch_label->dims[1].size == 0);
-      meta.num_samples = batch_label->dims[1].size;
+      meta.num_samples = batch_size / n_partitions;
       for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
       }

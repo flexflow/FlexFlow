@@ -64,7 +64,8 @@ void DataLoader::load_label(Task const *task,
                                                       ctx,
                                                       runtime,
                                                       false /*readOutput*/);
-  int batch_size = acc_batch_label.rect.hi[1] - acc_batch_label.rect.lo[1] + 1;
+  coord_t batch_size =
+      acc_batch_label.rect.hi[1] - acc_batch_label.rect.lo[1] + 1;
   // FIXME: currently assume continous indices
   assert(batch_size == meta->num_samples);
   for (int i = 1; i < meta->num_samples; i++) {
