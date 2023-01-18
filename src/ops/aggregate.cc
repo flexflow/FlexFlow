@@ -55,8 +55,10 @@ Tensor FFModel::aggregate(
     int num_dim = inputs[4]->num_dims;
     // Set output shape
     int dims[MAX_TENSOR_DIM];
-    for (int i = 0; i < num_dim; i++)
+    for (int i = 0; i < num_dim - 1; i++) {
       dims[i] = inputs[4]->dims[i];
+    }
+    dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
     li->outputs[0] = create_tensor_legion_ordering(
         num_dim, dims, DT_FLOAT, li, 0, true /*create_grad*/);
   }
@@ -141,16 +143,11 @@ Aggregate::Aggregate(FFModel &model,
   }
   // Set output shape
   ParallelDim dims[MAX_TENSOR_DIM];
-<<<<<<< HEAD
   for (int i = 0; i < num_dim - 1; i++) {
     dims[i] = inputs[4]->dims[i];
   }
   dims[num_dim - 2] = inputs[0]->dims[num_dim - 2];
   dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
-=======
-  for (int i = 0; i < num_dim; i++)
-    dims[i] = inputs[4]->dims[i];
->>>>>>> 99a89a9b... [MOE] update moe cpp example and aggregate implementation (#555)
   numOutputs = 1;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       num_dim, dims, DT_FLOAT, this);

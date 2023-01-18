@@ -316,7 +316,6 @@ void Group_by::forward_task(Task const *task,
   int n = gb->n;
   float alpha = gb->alpha;
 
-  // Check that the number of regions is n+2: n outputs and 2 inputs
   assert((int)regions.size() == n + 2);
   assert((int)task->regions.size() == n + 2);
 
@@ -334,16 +333,13 @@ void Group_by::forward_task(Task const *task,
 
   coord_t input_rows = rect_input.hi[1] - rect_input.lo[1] + 1;
   coord_t input_cols = rect_input.hi[0] - rect_input.lo[0] + 1;
-  coord_t input_replicas = rect_input.hi[2] - rect_input.lo[2] + 1;
-  // Check that dimensions match in the input and assign tensors
   assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
-  assert(input_replicas == rect_assign.hi[2] - rect_assign.lo[2] + 1); // does this need to be true?
+
   int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
   int batch_size = input_rows;
   int data_dim = input_cols;
-  int n_replicas = input_replicas;
 
-  // Create a vector of n outputs, where n is the number of experts. 
+  // Create a vector of n outputs, where n is the number of experts.
   // Each entry in the "outputs" vector points to the Legion tensor that will
   // contain the tockens dispatched to the corresponding expert
   float *outputs[n];
@@ -360,9 +356,6 @@ void Group_by::forward_task(Task const *task,
     assert(output_cols == input_cols);
   }
 
-  // Launch the kernel responsible from copying the data from the input tensor
-  // to each output tensor, according to the input to expert assignments from
-  // the assign tensor.
   Group_by::forward_kernel_wrapper(m,
                                    acc_input.ptr(rect_input),
                                    acc_assign.ptr(rect_assign),
@@ -371,8 +364,7 @@ void Group_by::forward_task(Task const *task,
                                    k,
                                    alpha,
                                    batch_size,
-                                   data_dim,
-                                   n_replicas);
+                                   data_dim);
 }
 
 void Group_by::backward(FFModel const &ff) {
@@ -442,13 +434,11 @@ void Group_by::backward_task(Task const *task,
 
   coord_t input_rows = rect_input_grad.hi[1] - rect_input_grad.lo[1] + 1;
   coord_t input_cols = rect_input_grad.hi[0] - rect_input_grad.lo[0] + 1;
-  coord_t input_replicas = rect_input_grad.hi[2] - rect_input_grad.lo[2] + 1;
   assert(input_rows == rect_assign.hi[1] - rect_assign.lo[1] + 1);
-  assert(input_replicas == rect_assign.hi[2] - rect_assign.lo[2] + 1); // does this need to be true?
+
   int k = rect_assign.hi[0] - rect_assign.lo[0] + 1;
   int batch_size = input_rows;
   int data_dim = input_cols;
-  int n_replicas = input_replicas;
 
   // get output
   float *output_grads[n];
@@ -473,8 +463,7 @@ void Group_by::backward_task(Task const *task,
                                     k,
                                     alpha,
                                     batch_size,
-                                    data_dim,
-                                    n_replicas);
+                                    data_dim);
 }
 
 void Group_by::serialize(Legion::Serializer &sez) const {
