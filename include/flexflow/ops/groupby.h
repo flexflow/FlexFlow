@@ -6,7 +6,6 @@
 #include "flexflow/ops/groupby_params.h"
 
 namespace FlexFlow {
-using Legion::FutureMap;
 
 class GroupByMeta : public OpMeta {
 public:
@@ -36,10 +35,10 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  FutureMap inference(FFModel const &,
-                      std::vector<ParallelTensor> const &,
-                      std::vector<ParallelTensor> const &,
-                      MachineView const *mv = nullptr) override;
+  void inference(FFModel const &,
+                 std::vector<ParallelTensor> const &,
+                 std::vector<ParallelTensor> const &,
+                 MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) override {
     assert(0);
   }

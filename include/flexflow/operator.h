@@ -8,7 +8,7 @@
 #include <vector>
 
 namespace FlexFlow {
-using Legion::FutureMap;
+
 extern LegionRuntime::Logger::Category log_measure;
 
 class OpMeta;
@@ -188,10 +188,10 @@ public:
   virtual void forward(FFModel const &) = 0;
   virtual void backward(FFModel const &) = 0;
   // Pure virtual functions for inference
-  virtual FutureMap inference(FFModel const &,
-                              std::vector<ParallelTensor> const &,
-                              std::vector<ParallelTensor> const &,
-                              MachineView const *mv = nullptr) {
+  virtual void inference(FFModel const &,
+                         std::vector<ParallelTensor> const &,
+                         std::vector<ParallelTensor> const &,
+                         MachineView const *mv = nullptr) {
     assert(false);
   };
   virtual void print_layer(FFModel const &model) = 0;

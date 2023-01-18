@@ -3,7 +3,7 @@
 #include "flexflow/model.h"
 
 namespace FlexFlow {
-using Legion::FutureMap;
+
 class LayerNormMeta;
 
 class LayerNorm : public Op {
@@ -26,10 +26,10 @@ public:
   void init(FFModel const &);
   void forward(FFModel const &);
   void backward(FFModel const &);
-  FutureMap inference(FFModel const &,
-                      std::vector<ParallelTensor> const &,
-                      std::vector<ParallelTensor> const &,
-                      MachineView const *mv = nullptr) override;
+  void inference(FFModel const &,
+                 std::vector<ParallelTensor> const &,
+                 std::vector<ParallelTensor> const &,
+                 MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) {
     assert(0);
   }

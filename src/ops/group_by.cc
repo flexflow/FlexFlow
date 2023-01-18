@@ -261,10 +261,10 @@ void Group_by::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-FutureMap Group_by::inference(FFModel const &ff,
-                              std::vector<ParallelTensor> const &batch_inputs,
-                              std::vector<ParallelTensor> const &batch_outputs,
-                              MachineView const *mv) {
+void Group_by::inference(FFModel const &ff,
+                         std::vector<ParallelTensor> const &batch_inputs,
+                         std::vector<ParallelTensor> const &batch_outputs,
+                         MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -304,7 +304,7 @@ FutureMap Group_by::inference(FFModel const &ff,
     launcher.add_field(i + 2, FID_DATA);
   }
 
-  return runtime->execute_index_space(ctx, launcher);
+  runtime->execute_index_space(ctx, launcher);
 }
 
 void Group_by::forward_task(Task const *task,
