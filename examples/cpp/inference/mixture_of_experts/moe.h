@@ -31,7 +31,11 @@ using namespace FlexFlow;
 struct MoeConfig {
   MoeConfig(void) {
     // MoE layer
-    num_exp = 5;
+    // total number of experts
+    num_exp = 128;
+    // number of experts in each block of fused experts
+    fused_exp_block_size = 32;
+    // number of experts to route each token to
     num_select = 2;
     alpha = 2.0f;
     lambda = 0.04f;
@@ -44,6 +48,7 @@ struct MoeConfig {
   // MoE layer
   int num_exp;
   int num_select;
+  int fused_exp_block_size;
   float alpha;  // factor overhead tensor size for imbalance
   float lambda; // multiplier for load balance term
   int hidden_size;
