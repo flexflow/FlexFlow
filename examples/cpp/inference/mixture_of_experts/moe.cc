@@ -37,28 +37,29 @@ Tensor create_moe(FFModel *model,
                   MoeConfig const *moeConfig,
                   Tensor const &input) {
   // MoE model
-  Tensor gate_preds = model->dense(input, num_exp, AC_MODE_RELU);
+  Tensor gate_preds = model->dense(input, moeConfig->num_exp, AC_MODE_RELU);
   Tensor topK_output[2];
-  model->top_k(gate_preds, topK_output, num_select, false);
-  Tensor agg_inputs[num_exp + 4];
+  model->top_k(gate_preds, topK_output, moeConfig->num_select, false);
+  Tensor agg_inputs[moeConfig->num_exp + 4];
   agg_inputs[0] = model->softmax(topK_output[0]); // gate preds
   agg_inputs[1] = topK_output[1];                 // gate assign
   agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
   agg_inputs[3] = gate_preds;     // full gate preds
-  for (int i = 0; i < num_exp /*number of experts layers*/; i++) {
+  assert(moeConfig->num_exp % moeConfig->fused_exp_block_size == 0);
+  for (int i = 0; i < moeConfig->num_exp /*number of experts layers*/; i++) {
     Tensor exp_pred = model->experts(gate_preds,
                                      topK_output[1],
-                                     32 /*number of experts*/,
-                                     32 * i /*expert start index*/,
+                                     moeConfig->fused_exp_block_size /*number of experts*/,
+                                     moeConfig->fused_exp_block_size * i /*expert start index*/,
                                      1 /*number of linear layers*/,
                                      moeConfig->hidden_size /*output_size*/,
                                      moeConfig->hidden_size /*internal_size*/);
     agg_inputs[i + 4] = exp_pred;
   }
-  for (int i = 0; i < num_exp + 4; i++) {
+  for (int i = 0; i < moeConfig->num_exp + 4; i++) {
     agg_inputs[i]->print("agg_inputs[i]");
   }
-  Tensor coop_output = model->aggregate(agg_inputs, num_exp, moeConfig->lambda);
+  Tensor coop_output = model->aggregate(agg_inputs, moeConfig->num_exp, moeConfig->lambda);
   // model->get_metrics();
   return coop_output;
 }
