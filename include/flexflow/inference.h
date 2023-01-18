@@ -23,16 +23,17 @@ class FFModel;
 
 class InferenceManager {
 public:
-  InferenceManager(FFModel* _model,
+  InferenceManager(FFModel *_model,
                    int max_num_requests_per_batch,
                    int max_num_inflight_batches);
   void compile_model_and_allocate_buffer(void);
   void inference(int index);
+
 public:
-  std::unordered_map<ParallelTensor, std::vector<ParallelTensor> > tensor_buffer;
-  FFModel* model;
+  std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
+  FFModel *model;
   int max_num_requests_per_batch;
   int max_num_inflight_batches;
 };
 
-}
+} // namespace FlexFlow

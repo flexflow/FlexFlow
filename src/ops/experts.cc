@@ -45,17 +45,24 @@ bool operator==(ExpertsParams const &lhs, ExpertsParams const &rhs) {
 
 bool ExpertsParams::is_valid(
     std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
-  if (!input.first.is_valid())
+  if (!input.first.is_valid()) {
     return false;
-  if (!input.second.is_valid())
+  }
+  if (!input.second.is_valid()) {
     return false;
-  if (input.first.num_dims != input.second.num_dims + 1)
+  }
+  if (input.first.num_dims != input.second.num_dims + 1) {
     return false;
-  if (input.second.data_type != DT_INT32 && input.second.data_type != DT_INT64)
+  }
+  if (input.second.data_type != DT_INT32 &&
+      input.second.data_type != DT_INT64) {
     return false;
-  for (int i = 0; i < input.second.num_dims; i++)
-    if (input.second.dims[i] != input.first.dims[i + 1])
+  }
+  for (int i = 0; i < input.second.num_dims; i++) {
+    if (input.second.dims[i] != input.first.dims[i + 1]) {
       return false;
+    }
+  }
   return true;
 }
 
@@ -87,13 +94,15 @@ Tensor FFModel::experts(const Tensor input,
                        input,
                        indices);
   assert(input->num_dims == indices->num_dims);
-  for (int i = 1; i < indices->num_dims; i++)
+  for (int i = 1; i < indices->num_dims; i++) {
     assert(input->dims[i] == indices->dims[i]);
+  }
   assert(indices->data_type == DT_INT32 || indices->data_type == DT_INT64);
   int dims[MAX_TENSOR_DIM];
   int numdim = input->num_dims;
-  for (int i = 1; i < input->num_dims; i++)
+  for (int i = 1; i < input->num_dims; i++) {
     dims[i] = input->dims[i];
+  }
   dims[0] = experts_output_dim_size;
   e->outputs[0] = create_tensor_legion_ordering(
       numdim, dims, input->data_type, e, 0, true /*create_grad*/);
@@ -170,15 +179,17 @@ Experts::Experts(FFModel &model,
       experts_internal_dim_size(_experts_internal_dim_size) {
   assert(input->num_dims == indices->num_dims);
   assert(indices->data_type == DT_INT32 || indices->data_type == DT_INT64);
-  for (int i = 1; i < indices->num_dims; i++)
+  for (int i = 1; i < indices->num_dims; i++) {
     assert(input->dims[i] == indices->dims[i]);
+  }
   // Assume that we don't parallelize the channel dim of input
   // nor the expert_assigned dim of indices
   assert(input->dims[0].degree == 1);
   assert(indices->dims[0].degree == 1);
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < input->num_dims; i++)
+  for (int i = 0; i < input->num_dims; i++) {
     dims[i] = input->dims[i];
+  }
   dims[0].size = experts_output_dim_size;
   numOutputs = 1;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -295,9 +306,9 @@ void Experts::backward_task(Task const *task,
 }
 
 void Experts::inference(FFModel const &ff,
-                             std::vector<ParallelTensor> const &batch_inputs,
-                             std::vector<ParallelTensor> const &batch_outputs,
-                             MachineView const *mv) {
+                        std::vector<ParallelTensor> const &batch_inputs,
+                        std::vector<ParallelTensor> const &batch_outputs,
+                        MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;

@@ -35,9 +35,9 @@ public:
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   void inference(FFModel const &,
-                      std::vector<ParallelTensor> const &,
-                      std::vector<ParallelTensor> const &,
-                      MachineView const *mv = nullptr) override;
+                 std::vector<ParallelTensor> const &,
+                 std::vector<ParallelTensor> const &,
+                 MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) override;
   void serialize(Legion::Serializer &) const override;
   static PCG::Node deserialize(FFModel &ff,
