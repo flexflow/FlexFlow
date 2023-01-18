@@ -33,19 +33,25 @@ __global__ void
                       int k,       // chosen experts
                       float alpha, // factor additional memory assigned
                       int batch_size,
-                      int data_dim,
-                      int n_replicas) {
-  __shared__ float *chosen_exp_preds[MAX_K * MAX_BATCH_SIZE]; // one pointer for each exp_assign (TopK_output[1]) element 
+                      int data_dim) {
+  __shared__ float
+      *chosen_exp_preds[MAX_K *
+                        MAX_BATCH_SIZE]; // one pointer for each exp_assign
+                                         // (TopK_output[1]) element
 
   // Get pred pointers, single thread per block
   if (threadIdx.x == 0) {
-    int exp_tensor_rows = ceil(alpha * k / n * batch_size); // This is the max expert capacity
-    int expert_idx[MAX_N] = {0};  // This is the number of tokens assigned to each expert
+    int exp_tensor_rows =
+        ceil(alpha * k / n * batch_size); // This is the max expert capacity
+    int expert_idx[MAX_N] = {
+        0}; // This is the number of tokens assigned to each expert
     // Iterate through flattened assign tensor, which has shape (k, batch_size)
     for (int i = 0; i < k * batch_size; i++) {
       // Get pointer to chosen expert predictions
-      int expert = exp_assign[i]; // index of the expert that is to receive the token i
-      if (expert_idx[expert] >= exp_tensor_rows) { // check if the expert is already at capacity
+      int expert =
+          exp_assign[i]; // index of the expert that is to receive the token i
+      if (expert_idx[expert] >=
+          exp_tensor_rows) { // check if the expert is already at capacity
         // dropped sample
         chosen_exp_preds[i] = 0;
         continue;
@@ -79,8 +85,7 @@ __global__ void
                        int k,       // chosen experts
                        float alpha, // factor additional memory assigned
                        int batch_size,
-                       int data_dim,
-                       int n_replicas) {
+                       int data_dim) {
   __shared__ float *chosen_exp_grads[MAX_K * MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread
@@ -122,8 +127,7 @@ void Group_by::forward_kernel_wrapper(
     int k,       // chosen experts
     float alpha, // factor additional memory assigned
     int batch_size,
-    int data_dim,
-    int n_replicas) {
+    int data_dim) {
   // TODO: why cublas/cudnn stream is needed here?
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -144,8 +148,7 @@ void Group_by::forward_kernel_wrapper(
                      k,
                      alpha,
                      batch_size,
-                     data_dim,
-                     n_replicas);
+                     data_dim);
 }
 
 void Group_by::backward_kernel_wrapper(
@@ -157,8 +160,7 @@ void Group_by::backward_kernel_wrapper(
     int k,       // chosen experts
     float alpha, // factor additional memory assigned
     int batch_size,
-    int data_dim,
-    int n_replicas) {
+    int data_dim) {
   // TODO: why cublas/cudnn stream is needed here
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -181,8 +183,7 @@ void Group_by::backward_kernel_wrapper(
                      k,
                      alpha,
                      batch_size,
-                     data_dim,
-                     n_replicas);
+                     data_dim);
 }
 
 GroupByMeta::GroupByMeta(FFHandler handler, int n) : OpMeta(handler) {

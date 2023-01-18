@@ -32,8 +32,7 @@ __global__ void
                       int k,       // chosen experts
                       float alpha, // factor additional memory assigned
                       int batch_size,
-                      int data_dim,
-                      int n_replicas) {
+                      int data_dim) {
   __shared__ float *chosen_exp_preds[MAX_K * MAX_BATCH_SIZE];
 
   // Get pred pointers, single thread per block
@@ -72,8 +71,7 @@ __global__ void
                        int k,       // chosen experts
                        float alpha, // factor additional memory assigned
                        int batch_size,
-                       int data_dim,
-                       int n_replicas) {
+                       int data_dim) {
   __shared__ float *chosen_exp_grads[MAX_K * MAX_BATCH_SIZE];
   assert(k <= MAX_K);
   assert(batch_size <= MAX_BATCH_SIZE);
@@ -117,8 +115,7 @@ void Group_by::forward_kernel_wrapper(
     int k,       // chosen experts
     float alpha, // factor additional memory assigned
     int batch_size,
-    int data_dim,
-    int n_replicas) {
+    int data_dim) {
   // TODO: why cublas/cudnn stream is needed here?
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -139,7 +136,7 @@ void Group_by::forward_kernel_wrapper(
                       min(CUDA_NUM_THREADS, (int)(batch_size * k * data_dim)),
                       0,
                       stream>>>(
-      input, exp_assign, m->dev_region_ptrs, n, k, alpha, batch_size, data_dim, n_replicas);
+      input, exp_assign, m->dev_region_ptrs, n, k, alpha, batch_size, data_dim);
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -160,8 +157,7 @@ void Group_by::backward_kernel_wrapper(
     int k,       // chosen experts
     float alpha, // factor additional memory assigned
     int batch_size,
-    int data_dim,
-    int n_replicas) {
+    int data_dim) {
   // TODO: why cublas/cudnn stream is needed here
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -188,8 +184,7 @@ void Group_by::backward_kernel_wrapper(
                                  k,
                                  alpha,
                                  batch_size,
-                                 data_dim,
-                                 n_replicas);
+                                 data_dim);
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));

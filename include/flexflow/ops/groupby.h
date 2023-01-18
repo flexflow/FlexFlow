@@ -75,8 +75,7 @@ public:
                              int k,       // chosen experts
                              float alpha, // factor additional memory assigned
                              int batch_size,
-                             int data_dim,
-                             int n_replicas);
+                             int data_dim);
   static void
       backward_kernel_wrapper(GroupByMeta const *m,
                               float *input_grad,
@@ -86,8 +85,7 @@ public:
                               int k,       // chosen experts
                               float alpha, // factor additional memory assigned
                               int batch_size,
-                              int data_dim, 
-                              int n_replicas);
+                              int data_dim);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
