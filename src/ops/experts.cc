@@ -294,7 +294,7 @@ void Experts::backward_task(Task const *task,
   assert(false && "Experts is designed for inference only");
 }
 
-FutureMap Experts::inference(FFModel const &ff,
+void Experts::inference(FFModel const &ff,
                              std::vector<ParallelTensor> const &batch_inputs,
                              std::vector<ParallelTensor> const &batch_outputs,
                              MachineView const *mv) {
@@ -329,7 +329,7 @@ FutureMap Experts::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(2, FID_DATA);
-  return runtime->execute_index_space(ctx, launcher);
+  runtime->execute_index_space(ctx, launcher);
 }
 
 void Experts::inference_task(Task const *task,
