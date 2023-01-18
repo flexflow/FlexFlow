@@ -23,7 +23,6 @@
 using namespace Legion;
 using namespace FlexFlow;
 
-
 Tensor create_mlp(FFModel *model,
                   MLPConfig const *mlpConfig,
                   Tensor const &input1,
@@ -44,7 +43,7 @@ void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
-  
+
   // Inference parameters
   int total_requests =
       256; // total number of requests processed as part of the simulation
@@ -61,13 +60,13 @@ void FlexFlow::top_level_task(Task const *task,
       8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192};
 
   FFConfig ffConfig;
-  ffConfig.batchSize=1;
+  ffConfig.batchSize = 1;
   {
-    fprintf(stderr, "batchSize(%d) workersPerNodes(%d) numNodes(%d)\n",
-      ffConfig.batchSize,
-      ffConfig.workersPerNode,
-      ffConfig.numNodes
-    );
+    fprintf(stderr,
+            "batchSize(%d) workersPerNodes(%d) numNodes(%d)\n",
+            ffConfig.batchSize,
+            ffConfig.workersPerNode,
+            ffConfig.numNodes);
   }
   FFModel ff(ffConfig);
   MLPConfig mlpConfig(embedding_size, sequence_length, hidden_dims);
@@ -81,21 +80,26 @@ void FlexFlow::top_level_task(Task const *task,
       hd << hidden_dims[i];
     }
     hd << '}';
-    fprintf(stderr, "embedding_size(%d) sequence_length(%d) hidden_dims(%s)\n", mlpConfig.embedding_size, mlpConfig.sequence_length, hd.str().c_str());
+    fprintf(stderr,
+            "embedding_size(%d) sequence_length(%d) hidden_dims(%s)\n",
+            mlpConfig.embedding_size,
+            mlpConfig.sequence_length,
+            hd.str().c_str());
   }
-  
+
   Tensor input1, input2;
   {
-    int const dims[] = {total_requests, mlpConfig.sequence_length * mlpConfig.embedding_size};
+    int const dims[] = {total_requests,
+                        mlpConfig.sequence_length * mlpConfig.embedding_size};
     input1 = ff.create_tensor<2>(dims, DT_FLOAT);
     input2 = ff.create_tensor<2>(dims, DT_FLOAT);
   }
   Tensor t = create_mlp(&ff, &mlpConfig, input1, input2);
-  
+
   InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);
   // im.compile_model_and_allocate_buffer();
   ff.init_operators();
-  
+
   // Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -104,10 +108,9 @@ void FlexFlow::top_level_task(Task const *task,
     future.get_void_result();
   }
   double ts_start = Realm::Clock::current_time_in_microseconds();
-  
-  
+
   ///////////////////////////////////////////////////////////////////////////////////
-  
+
   // Main loop, processing requests as they come (from the generator)
   int index = 0;
   int processed_requests = 0;
@@ -121,12 +124,11 @@ void FlexFlow::top_level_task(Task const *task,
       im.inference((index++) % num_inflight_batches);
       runtime->end_trace(ctx, 111 /*trace_id*/);
     }
-    processed_requests+= iterations;
+    processed_requests += iterations;
   }
 
   ///////////////////////////////////////////////////////////////////////////////////
-  
-  
+
   // End timer
   {
     runtime->issue_execution_fence(ctx);

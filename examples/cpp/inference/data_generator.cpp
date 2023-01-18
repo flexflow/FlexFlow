@@ -5,11 +5,11 @@
 //  Created by User on 11/15/22.
 //
 
-#include <iostream>
+#include "data_generator.h"
 #include <ctime>
+#include <iostream>
 #include <random>
 #include <unistd.h>
-#include "data_generator.h"
 using namespace std;
 
 // This is for running the dataloader standalone

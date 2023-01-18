@@ -47,19 +47,21 @@ Tensor create_moe(FFModel *model,
   agg_inputs[3] = gate_preds;     // full gate preds
   assert(moeConfig->num_exp % moeConfig->fused_exp_block_size == 0);
   for (int i = 0; i < moeConfig->num_exp /*number of experts layers*/; i++) {
-    Tensor exp_pred = model->experts(gate_preds,
-                                     topK_output[1],
-                                     moeConfig->fused_exp_block_size /*number of experts*/,
-                                     moeConfig->fused_exp_block_size * i /*expert start index*/,
-                                     1 /*number of linear layers*/,
-                                     moeConfig->hidden_size /*output_size*/,
-                                     moeConfig->hidden_size /*internal_size*/);
+    Tensor exp_pred = model->experts(
+        gate_preds,
+        topK_output[1],
+        moeConfig->fused_exp_block_size /*number of experts*/,
+        moeConfig->fused_exp_block_size * i /*expert start index*/,
+        1 /*number of linear layers*/,
+        moeConfig->hidden_size /*output_size*/,
+        moeConfig->hidden_size /*internal_size*/);
     agg_inputs[i + 4] = exp_pred;
   }
   for (int i = 0; i < moeConfig->num_exp + 4; i++) {
     agg_inputs[i]->print("agg_inputs[i]");
   }
-  Tensor coop_output = model->aggregate(agg_inputs, moeConfig->num_exp, moeConfig->lambda);
+  Tensor coop_output =
+      model->aggregate(agg_inputs, moeConfig->num_exp, moeConfig->lambda);
   // model->get_metrics();
   return coop_output;
 }
@@ -125,7 +127,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   //-----------------------------------------------------------------
 
-  //Tensor t = create_moe_encoder(&ff, &moeConfig, input);
+  // Tensor t = create_moe_encoder(&ff, &moeConfig, input);
   Tensor t = create_moe(&ff, &moeConfig, input);
   t = ff.dense(t, OUT_DIM, AC_MODE_RELU);
   InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);
