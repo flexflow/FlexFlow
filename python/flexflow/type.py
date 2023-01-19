@@ -103,6 +103,7 @@ class OpType(Enum):
   UNSQUEEZE = 2103
   TYPE_AS = 2104
   VIEW = 2105
+  GATHER = 2106
   ATTRIBUTE = 2200
 def enum_to_int(enum, enum_item):
   for item in enum:

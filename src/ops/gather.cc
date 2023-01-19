@@ -217,8 +217,8 @@ OpMeta *Gather::init_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3);
   Gather const *gather = (Gather const *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   GatherMeta *m = new GatherMeta(handle, gather);
@@ -285,7 +285,7 @@ void Gather::forward_task(Task const *task,
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR index = helperGetGenericTensorAccessorRO(
-      m->input_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+      m->input_type[1], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   forward_kernel_wrapper(m, input, index, output);
