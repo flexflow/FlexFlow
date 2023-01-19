@@ -25,6 +25,7 @@
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
+#include "flexflow/ops/experts.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/layer_norm.h"
@@ -2070,6 +2071,10 @@ void FFModel::deserialize_graph_optimal_view(
         params.lambda_bal = lambda_bal;
         node = get_or_create_node<Aggregate>(
             {std::begin(inputs), std::begin(inputs) + num_inputs}, params);
+        break;
+      }
+      case OP_EXPERTS: {
+        node = Experts::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_POOL2D: {
