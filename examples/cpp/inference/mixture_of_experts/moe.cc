@@ -57,9 +57,9 @@ Tensor create_moe(FFModel *model,
         moeConfig->hidden_size /*internal_size*/);
     agg_inputs[i + 4] = exp_pred;
   }
-  for (int i = 0; i < moeConfig->num_exp + 4; i++) {
-    agg_inputs[i]->print("agg_inputs[i]");
-  }
+  // for (int i = 0; i < moeConfig->num_exp + 4; i++) {
+  //   agg_inputs[i]->print("agg_inputs[i]");
+  // }
   Tensor coop_output =
       model->aggregate(agg_inputs, moeConfig->num_exp, moeConfig->lambda);
   // model->get_metrics();
@@ -131,7 +131,7 @@ void FlexFlow::top_level_task(Task const *task,
   Tensor t = create_moe(&ff, &moeConfig, input);
   t = ff.dense(t, OUT_DIM, AC_MODE_RELU);
   InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);
-  // im.compile_model_and_allocate_buffer();
+  im.compile_model_and_allocate_buffer();
   ff.init_operators();
 
   // Data Loader

@@ -51,15 +51,15 @@ bool ExpertsParams::is_valid(
   if (!input.second.is_valid()) {
     return false;
   }
-  if (input.first.num_dims != input.second.num_dims + 1) {
+  if (input.first.num_dims != input.second.num_dims) {
     return false;
   }
   if (input.second.data_type != DT_INT32 &&
       input.second.data_type != DT_INT64) {
     return false;
   }
-  for (int i = 0; i < input.second.num_dims; i++) {
-    if (input.second.dims[i] != input.first.dims[i + 1]) {
+  for (int i = 1; i < input.second.num_dims; i++) {
+    if (input.second.dims[i] != input.first.dims[i]) {
       return false;
     }
   }
@@ -89,7 +89,7 @@ Tensor FFModel::experts(const Tensor input,
                        DT_FLOAT,
                        name,
                        2 /*inputs*/,
-                       1 /*weights*/,
+                       0 /*weights*/, // to be changed back to 1
                        1 /*outputs*/,
                        input,
                        indices);
@@ -169,7 +169,7 @@ Experts::Experts(FFModel &model,
          DT_FLOAT,
          name,
          2 /*inputs*/,
-         1 /*weights*/,
+         0 /*weights*/, // to be changed back to 1
          1 /*outputs*/,
          input,
          indices),

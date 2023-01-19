@@ -675,6 +675,7 @@ public:
     auto input_shapes = get_input_shape<typename T::Input>(input);
 
     if (!params.is_valid(input_shapes)) {
+      printf("!params.is_valid(input_shapes)\n");
       return PCG::Node::INVALID_NODE;
     }
 
