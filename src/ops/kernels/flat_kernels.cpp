@@ -22,7 +22,6 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Flat {
 
-/*static*/
 void forward_kernel_wrapper(float const *input_ptr,
                             float *output_ptr,
                             size_t num_elements) {
@@ -47,7 +46,6 @@ void backward_kernel_wrapper(float *input_grad_ptr,
 
 namespace Internal {
 
-/*static*/
 void forward_kernel(float const *input_ptr,
                     float *output_ptr,
                     size_t num_elements,
