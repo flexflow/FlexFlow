@@ -1,4 +1,4 @@
-/* Copyright 2021 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -225,7 +225,7 @@ void Op::serialize(Legion::Serializer &serializer) const {
   fprintf(stderr,
           "The following operator type is currently not supported"
           " for graph serialization: %s\n"
-          "Report the issue to the FlexFlow developers",
+          "Report the issue to the FlexFlow developers\n",
           get_operator_type_name(this->op_type).c_str());
   assert(false && "This op does not support serialization");
 }
@@ -236,7 +236,7 @@ Op *Op::materialize(FFModel &ff,
   fprintf(stderr,
           "The following operator type is currently not supported"
           " for layer materialization: %s\n"
-          "Report the issue to the FlexFlow developers",
+          "Report the issue to the FlexFlow developers\n",
           get_operator_type_name(this->op_type).c_str());
   assert(false && "This op does not support materialization");
 }
@@ -2740,6 +2740,26 @@ Op *FFModel::create_operator_from_layer(
     }
     case OP_TRANSPOSE: {
       Op *op = Transpose::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_TOPK: {
+      Op *op = TopK::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_GROUP_BY: {
+      Op *op = Group_by::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_AGGREGATE: {
+      Op *op = Aggregate::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_AGG_SPEC: {
+      Op *op = Aggregate::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }
