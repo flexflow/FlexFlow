@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _FLEXFLOW_OPS_GATHER_H
+#define _FLEXFLOW_OPS_GATHER_H
 
 #include "flexflow/model.h"
 #include "flexflow/ops/gather_params.h"
@@ -52,9 +53,9 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  template <typename TI>
+  template <typename IndexType>
   static void forward_kernel(float const *input_ptr,
-                             TI const *index_ptr,
+                             IndexType const *index_ptr,
                              float *output_ptr,
                              Legion::coord_t output_size,
                              Legion::coord_t stride,
@@ -64,9 +65,9 @@ public:
                                      GenericTensorAccessorR const &input,
                                      GenericTensorAccessorR const &index,
                                      GenericTensorAccessorW const &output);
-  template <typename TI>
+  template <typename IndexType>
   static void backward_kernel(float const *output_grad_ptr,
-                              TI const *index_ptr,
+                              IndexType const *index_ptr,
                               float *input_grad_ptr,
                               Legion::coord_t output_size,
                               Legion::coord_t stride,
@@ -94,3 +95,5 @@ public:
 };
 
 }; // namespace FlexFlow
+
+#endif // _FLEXFLOW_OPS_GATHER_H

@@ -325,6 +325,12 @@ hipblasDatatype_t ff_to_cuda_datatype(DataType type) {
   }
   return HIPBLAS_R_32F;
 }
+
+void handle_unimplemented_hip_kernel() {
+  assert(false && "hip kernel not implemented");
+  std::abort();
+}
+
 template __global__ void
     assign_kernel<half>(half *ptr, coord_t size, half value);
 template __global__ void

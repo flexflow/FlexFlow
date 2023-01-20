@@ -59,9 +59,9 @@ void Gather::forward_kernel_wrapper(GatherMeta const *m,
   }
 }
 
-template <typename TI>
+template <typename IndexType>
 void Gather::forward_kernel(float const *input_ptr,
-                            TI const *index_ptr,
+                            IndeType const *index_ptr,
                             float *output_ptr,
                             coord_t output_size,
                             coord_t stride,
@@ -70,7 +70,7 @@ void Gather::forward_kernel(float const *input_ptr,
   assert(input_ptr != nullptr);
   assert(index_ptr != nullptr);
   assert(output_ptr != nullptr);
-  assert(false && "hip kernel to be implemented");
+  handle_unimplemented_hip_kernel();
 }
 
 void Gather::backward_kernel_wrapper(GatherMeta const *m,
@@ -105,9 +105,9 @@ void Gather::backward_kernel_wrapper(GatherMeta const *m,
   }
 }
 
-template <typename TI>
+template <typename IndexType>
 void Gather::backward_kernel(float const *output_grad_ptr,
-                             TI const *index_ptr,
+                             IndexType const *index_ptr,
                              float *input_grad_ptr,
                              coord_t output_size,
                              coord_t stride,
@@ -116,7 +116,7 @@ void Gather::backward_kernel(float const *output_grad_ptr,
   assert(output_grad_ptr != nullptr);
   assert(input_grad_ptr != nullptr);
   assert(index_ptr != nullptr);
-  assert(false && "hip kernel to be implemented");
+  handle_unimplemented_hip_kernel();
 }
 
 }; // namespace FlexFlow

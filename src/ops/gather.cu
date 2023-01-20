@@ -58,9 +58,9 @@ void Gather::forward_kernel_wrapper(GatherMeta const *m,
   }
 }
 
-template <typename TI>
+template <typename IndexType>
 __global__ void gather_forward(float const *input,
-                               TI const *index,
+                               IndexType const *index,
                                float *output,
                                coord_t output_size,
                                coord_t stride,
@@ -78,9 +78,9 @@ __global__ void gather_forward(float const *input,
   }
 }
 
-template <typename TI>
+template <typename IndexType>
 void Gather::forward_kernel(float const *input_ptr,
-                            TI const *index_ptr,
+                            IndexType const *index_ptr,
                             float *output_ptr,
                             coord_t output_size,
                             coord_t stride,
@@ -89,8 +89,9 @@ void Gather::forward_kernel(float const *input_ptr,
   assert(input_ptr != nullptr);
   assert(index_ptr != nullptr);
   assert(output_ptr != nullptr);
-  gather_forward<TI><<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
-      input_ptr, index_ptr, output_ptr, output_size, stride, dim_size);
+  gather_forward<IndexType>
+      <<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
+          input_ptr, index_ptr, output_ptr, output_size, stride, dim_size);
 }
 
 void Gather::backward_kernel_wrapper(GatherMeta const *m,
@@ -125,9 +126,9 @@ void Gather::backward_kernel_wrapper(GatherMeta const *m,
   }
 }
 
-template <typename TI>
+template <typename IndexType>
 __global__ void gather_backward(float const *output_grad,
-                                TI const *index,
+                                IndexType const *index,
                                 float *input_grad,
                                 coord_t output_size,
                                 coord_t stride,
@@ -145,9 +146,9 @@ __global__ void gather_backward(float const *output_grad,
   }
 }
 
-template <typename TI>
+template <typename IndexType>
 void Gather::backward_kernel(float const *output_grad_ptr,
-                             TI const *index_ptr,
+                             IndexType const *index_ptr,
                              float *input_grad_ptr,
                              coord_t output_size,
                              coord_t stride,
@@ -156,13 +157,14 @@ void Gather::backward_kernel(float const *output_grad_ptr,
   assert(output_grad_ptr != nullptr);
   assert(input_grad_ptr != nullptr);
   assert(index_ptr != nullptr);
-  gather_backward<TI><<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
-      output_grad_ptr,
-      index_ptr,
-      input_grad_ptr,
-      output_size,
-      stride,
-      dim_size);
+  gather_backward<IndexType>
+      <<<GET_BLOCKS(output_size), CUDA_NUM_THREADS, 0, stream>>>(
+          output_grad_ptr,
+          index_ptr,
+          input_grad_ptr,
+          output_size,
+          stride,
+          dim_size);
 }
 
 }; // namespace FlexFlow
