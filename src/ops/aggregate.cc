@@ -301,8 +301,6 @@ void Aggregate::forward_task(Task const *task,
                              Runtime *runtime) {
   assert(regions.size() == task->regions.size());
   int n = regions.size() - 3;
-  // FIXME: skip the aggregate computation for now
-  return;
 
   AggregateMeta const *m = *((AggregateMeta **)task->local_args);
 
