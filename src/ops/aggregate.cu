@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -214,6 +214,13 @@ void Aggregate::forward_kernel_wrapper(AggregateMeta const *m,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+
   // call forward_kernel
   cudaMemcpy(
       m->dev_exp_preds, exp_preds, n * sizeof(float *), cudaMemcpyHostToDevice);
@@ -230,6 +237,15 @@ void Aggregate::forward_kernel_wrapper(AggregateMeta const *m,
                                  rows,
                                  batch_size,
                                  out_dim);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[Aggregate] forward time = %.2lfms\n", elapsed);
+  }
 }
 
 /*static*/
@@ -252,6 +268,12 @@ void Aggregate::backward_kernel_wrapper(AggregateMeta const *m,
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
   // call backward kernel
   cudaMemcpy(
       m->dev_exp_preds, exp_preds, n * sizeof(float *), cudaMemcpyHostToDevice);
@@ -274,6 +296,15 @@ void Aggregate::backward_kernel_wrapper(AggregateMeta const *m,
                                   lambda_bal,
                                   batch_size,
                                   out_dim);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[Aggregate] backward time = %.2lfms\n", elapsed);
+  }
 }
 
 AggregateMeta::AggregateMeta(FFHandler handler, int n) : OpMeta(handler) {

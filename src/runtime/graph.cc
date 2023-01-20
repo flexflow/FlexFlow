@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 #include "flexflow/graph.h"
 #include "flexflow/dominators.h"
 #include "flexflow/ffconst_utils.h"
+#include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/cast.h"
@@ -25,13 +26,16 @@
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/groupby.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
+#include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
@@ -2046,8 +2050,34 @@ void FFModel::deserialize_graph_optimal_view(
             {inputs[0], inputs[1], inputs[2]}, params);
         break;
       }
+      case OP_TOPK: {
+        node = TopK::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_GROUP_BY: {
+        node = Group_by::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_AGGREGATE: {
+        // node = Aggregate::deserialize(*this, dez, inputs, num_inputs);
+        int n;
+        float lambda_bal;
+        dez.deserialize(n);
+        dez.deserialize(lambda_bal);
+        assert(num_inputs == n + 4);
+        AggregateParams params;
+        params.n = n;
+        params.lambda_bal = lambda_bal;
+        node = get_or_create_node<Aggregate>(
+            {std::begin(inputs), std::begin(inputs) + num_inputs}, params);
+        break;
+      }
       case OP_POOL2D: {
         node = Pool2D::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_REDUCE_SUM: {
+        node = Reduce::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_RESHAPE: {
@@ -2118,7 +2148,7 @@ void FFModel::deserialize_graph_optimal_view(
         fprintf(stderr,
                 "The following operator type is currently not supported"
                 " for graph deserialization: %s\n"
-                "Report the issue to the FlexFlow developers",
+                "Report the issue to the FlexFlow developers\n",
                 get_operator_type_name(op_type).c_str());
         assert(false && "Unsupported operator type");
       }
