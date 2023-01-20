@@ -12,19 +12,20 @@ public:
 class Experts : public Op {
 public:
   using Params = ExpertsParams;
-  using Input = std::pair<ParallelTensor, ParallelTensor>;
+  using Input = std::vector<ParallelTensor>;
   Experts(FFModel &model,
           Params const &params,
           Input const &inputs,
           char const *name = nullptr);
   Experts(FFModel &model,
-          const ParallelTensor input,
-          const ParallelTensor indices,
+          ParallelTensor const *inputs,
           int _num_experts,
           int _experts_start_idx,
           int _experts_num_layers,
           int _experts_output_dim_size,
           int _experts_internal_dim_size,
+          bool _use_bias,
+          ActiMode _activation;
           char const *name = nullptr);
   static Op *
       create_operator_from_layer(FFModel &model,
@@ -74,6 +75,8 @@ public:
   int experts_num_layers;
   int experts_output_dim_size;
   int experts_internal_dim_size;
+  bool use_bias;
+  ActiMode activation;
 };
 
 }; // namespace FlexFlow

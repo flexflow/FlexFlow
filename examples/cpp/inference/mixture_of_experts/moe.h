@@ -34,7 +34,7 @@ struct MoeConfig {
     // total number of experts
     num_exp = 128;
     // number of experts in each block of fused experts
-    fused_exp_block_size = 32;
+    experts_per_block = 32;
     // number of experts to route each token to
     num_select = 2;
     alpha = 2.0f;
@@ -48,7 +48,7 @@ struct MoeConfig {
   // MoE layer
   int num_exp;
   int num_select;
-  int fused_exp_block_size;
+  int experts_per_block;
   float alpha;  // factor overhead tensor size for imbalance
   float lambda; // multiplier for load balance term
   int hidden_size;

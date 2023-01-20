@@ -40,26 +40,34 @@ Tensor create_moe(FFModel *model,
   Tensor gate_preds = model->dense(input, moeConfig->num_exp, AC_MODE_RELU);
   Tensor topK_output[2];
   model->top_k(gate_preds, topK_output, moeConfig->num_select, false);
+  Tensor exp_tensors[moeConfig->num_exp];
+  model->group_by(input, topK_output[1], exp_tensors, moeConfig->num_exp, moeConfig->alpha);
   Tensor agg_inputs[moeConfig->num_exp + 4];
   agg_inputs[0] = model->softmax(topK_output[0]); // gate preds
   agg_inputs[1] = topK_output[1];                 // gate assign
   agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
   agg_inputs[3] = gate_preds;     // full gate preds
-  assert(moeConfig->num_exp % moeConfig->fused_exp_block_size == 0);
-  for (int i = 0; i < moeConfig->num_exp /*number of experts layers*/; i++) {
-    Tensor exp_pred = model->experts(
-        gate_preds,
-        topK_output[1],
-        moeConfig->fused_exp_block_size /*number of experts*/,
-        moeConfig->fused_exp_block_size * i /*expert start index*/,
-        1 /*number of linear layers*/,
-        moeConfig->hidden_size /*output_size*/,
-        moeConfig->hidden_size /*internal_size*/);
-    agg_inputs[i + 4] = exp_pred;
+  
+  assert(moeConfig->num_exp % moeConfig->experts_per_block == 0);
+  int nblocks = moeConfig->num_exp / moeConfig->experts_per_block;
+  
+  for (int i = 0; i < nblocks /*number of experts layers*/; i++) {
+    Tensor exp_preds[moeConfig->experts_per_block];
+    model->experts(
+      gate_preds,
+      topK_output[1],
+      exp_preds,
+      moeConfig->experts_per_block /*number of experts*/,
+      moeConfig->experts_per_block * i /*expert start index*/,
+      1 /*number of linear layers*/,
+      moeConfig->hidden_size /*output_size*/,
+      moeConfig->hidden_size /*internal_size*/);
+    for (int j=0; j < moeConfig->experts_per_block; j++) {
+      assert(exp_preds[j] != nullptr);
+      agg_inputs[j + i + 4] = exp_preds[j];
+    }
   }
-  // for (int i = 0; i < moeConfig->num_exp + 4; i++) {
-  //   agg_inputs[i]->print("agg_inputs[i]");
-  // }
+  
   Tensor coop_output =
       model->aggregate(agg_inputs, moeConfig->num_exp, moeConfig->lambda);
   // model->get_metrics();
@@ -94,14 +102,14 @@ void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
-  // Inference parameters
+  /* // Inference parameters
   int total_requests =
       256; // total number of requests processed as part of the simulation
   int request_tensor_size = 4; // request tensor dimensions
   bool poisson_distribution = true;
   double lambda = 25; // average number of request arrivals per second
   int num_requests_per_batch = 5;
-  int num_inflight_batches = 10;
+  int num_inflight_batches = 10; */
 
   //-----------------------------------------------------------------
 
@@ -130,15 +138,23 @@ void FlexFlow::top_level_task(Task const *task,
   // Tensor t = create_moe_encoder(&ff, &moeConfig, input);
   Tensor t = create_moe(&ff, &moeConfig, input);
   t = ff.dense(t, OUT_DIM, AC_MODE_RELU);
-  InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);
-  im.compile_model_and_allocate_buffer();
-  ff.init_operators();
+  
+  /* InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);
+  im.compile_model_and_allocate_buffer(); */
+
+  Optimizer *optimizer = new SGDOptimizer(&ff, 0.001f);
+  std::vector<MetricsType> metrics;
+  metrics.push_back(METRICS_ACCURACY);
+  metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
+  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
 
   // Data Loader
   ParallelTensor input_pt, label_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
   ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
   DataLoader data_loader(ff, moeConfig, input_pt, label_pt);
+
+  ff.init_operators();
 
   //-----------------------------------------------------------------
 
@@ -153,20 +169,50 @@ void FlexFlow::top_level_task(Task const *task,
 
   ///////////////////////////////////////////////////////////////////////////////////
 
-  int index = 0;
-  int processed_requests = 0;
-  Generator data_generator(
-      total_requests, request_tensor_size, poisson_distribution, lambda);
-  while (processed_requests < total_requests) {
-    vector<vector<double>> req = data_generator.get_requests();
-    int iterations = req.size();
+  // int index = 0;
+  // int processed_requests = 0;
+  // Generator data_generator(
+  //     total_requests, request_tensor_size, poisson_distribution, lambda);
+  // while (processed_requests < total_requests) {
+  //   vector<vector<double>> req = data_generator.get_requests();
+  //   int iterations = req.size();
+  //   for (int iter = 0; iter < iterations; iter++) {
+  //     // data_loader.next_batch(ff);
+  //     runtime->begin_trace(ctx, 111 /*trace_id*/);
+  //     im.inference((index++) % num_inflight_batches);
+  //     runtime->end_trace(ctx, 111 /*trace_id*/);
+  //   }
+  //   processed_requests += iterations;
+  // }
+
+  for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
+    data_loader.reset();
+    ff.reset_metrics();
+    int iterations = TRAIN_SAMPLES / ffConfig.batchSize;
+
     for (int iter = 0; iter < iterations; iter++) {
-      // data_loader.next_batch(ff);
-      runtime->begin_trace(ctx, 111 /*trace_id*/);
-      im.inference((index++) % num_inflight_batches);
-      runtime->end_trace(ctx, 111 /*trace_id*/);
+      data_loader.next_batch(ff);
+      if (epoch > 0) {
+        runtime->begin_trace(ctx, 111 /*trace_id*/);
+      }
+      ff.forward();
+      ff.zero_gradients();
+      //ff.backward();
+      ff.update();
+      // ff.recompile_on_condition(r);
+      if (epoch > 0) {
+        runtime->end_trace(ctx, 111 /*trace_id*/);
+      }
     }
-    processed_requests += iterations;
+
+    // TODO: Do properly
+    ff.reset_metrics();
+    // iterations = TEST_SAMPLES / ffConfig.batchSize;
+    // for (int iter = 0; iter < iterations; iter++) {
+    //   data_loader.next_batch(ff);
+    //   ff.forward();
+    //   ff.backward();
+    // }
   }
 
   ///////////////////////////////////////////////////////////////////////////////////

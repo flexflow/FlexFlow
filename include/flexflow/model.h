@@ -484,13 +484,19 @@ public:
   Tensor
       concat(int n, Tensor const *tensors, int axis, char const *name = NULL);
   // Add an experts layer
-  Tensor experts(const Tensor input,
-                 const Tensor indices,
+  void experts(Tensor const *inputs,
+                 Tensor *outputs,
                  int num_experts,
                  int experts_start_idx,
                  int experts_num_layers,
                  int experts_output_dim_size,
                  int experts_internal_dim_size,
+                 ActiMode activation = AC_MODE_NONE,
+                 bool use_bias = true,
+                 DataType data_type = DT_FLOAT,
+                 Layer const *shared_op = NULL,
+                 Initializer *kernel_initializer = NULL,
+                 Initializer *bias_initializer = NULL,
                  char const *name = nullptr);
   // Add a mean layer
   Tensor mean(const Tensor input,
