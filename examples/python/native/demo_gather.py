@@ -31,5 +31,5 @@ def top_level_task():
     ffmodel.update()
 
 if __name__ == "__main__":
-  print("test reduce")
+  print("Demo Gather")
   top_level_task()
