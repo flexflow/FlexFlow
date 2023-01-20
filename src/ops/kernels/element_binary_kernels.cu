@@ -266,29 +266,68 @@ void forward_kernel(ElementBinaryMeta const *m,
   // cudnnOpTensor
   if (m->broadcast_input1) {
     // currently only handle add and sub
-    assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD);
-    checkCUDNN(cudnnOpTensor(m->handle.dnn,
-                             m->opDesc,
-                             &beta,
-                             m->outputTensor,
-                             out_ptr,
-                             &alpha1,
-                             m->input1Tensor,
-                             in1_ptr,
-                             &beta,
-                             m->outputTensor,
-                             out_ptr));
-    checkCUDNN(cudnnOpTensor(m->handle.dnn,
-                             m->opDesc,
-                             &beta,
-                             m->outputTensor,
-                             out_ptr,
-                             &alpha2,
-                             m->input2Tensor,
-                             in2_ptr,
-                             &alpha1,
-                             m->outputTensor,
-                             out_ptr));
+    assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD ||
+           m->op_type == OP_EW_MUL);
+    if(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD){
+      // output = (beta*output + alpha1*input1) + beta*output = input1
+      checkCUDNN(cudnnOpTensor(m->handle.dnn,
+                              m->opDesc,
+                              &beta,
+                              m->outputTensor,
+                              out_ptr,
+                              &alpha1,
+                              m->input1Tensor,
+                              in1_ptr,
+                              &beta,
+                              m->outputTensor,
+                              out_ptr));
+      // output = (beta*output + alpha2*input2) + alpha1*output = alpha2*input2 
+      // + alpha1*input1 
+      checkCUDNN(cudnnOpTensor(m->handle.dnn,
+                               m->opDesc,
+                               &beta,
+                               m->outputTensor,
+                               out_ptr,
+                               &alpha2,
+                               m->input2Tensor,
+                               in2_ptr,
+                               &alpha1,
+                               m->outputTensor,
+                               out_ptr));
+    } else if(m->op_type == OP_EW_MUL) {
+      checkCUDNN(cudnnSetOpTensorDescriptor(m->opDesc,
+                                            CUDNN_OP_TENSOR_ADD,
+                                            CUDNN_DATA_FLOAT,
+                                            CUDNN_PROPAGATE_NAN));
+      // output = (beta*output + alpha1*input1) + beta*output = input1
+      checkCUDNN(cudnnOpTensor(m->handle.dnn,
+                               m->opDesc,
+                               &beta,
+                               m->outputTensor,
+                               out_ptr,
+                               &alpha1,
+                               m->input1Tensor,
+                               in1_ptr,
+                               &beta,
+                               m->outputTensor,
+                               out_ptr));
+      checkCUDNN(cudnnSetOpTensorDescriptor(m->opDesc,
+                                            CUDNN_OP_TENSOR_MUL,
+                                            CUDNN_DATA_FLOAT,
+                                            CUDNN_PROPAGATE_NAN));
+      // output = (alpha1*output * alpha2*input2) + beta*output
+      checkCUDNN(cudnnOpTensor(m->handle.dnn,
+                               m->opDesc,
+                               &alpha1,
+                               m->outputTensor,
+                               in1_ptr,
+                               &alpha2,
+                               m->input2Tensor,
+                               in2_ptr,
+                               &beta,
+                               m->outputTensor,
+                               out_ptr));
+    }
   } else {
     checkCUDNN(cudnnOpTensor(m->handle.dnn,
                              m->opDesc,
