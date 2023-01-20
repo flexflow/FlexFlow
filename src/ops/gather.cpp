@@ -61,7 +61,7 @@ void Gather::forward_kernel_wrapper(GatherMeta const *m,
 
 template <typename IndexType>
 void Gather::forward_kernel(float const *input_ptr,
-                            IndeType const *index_ptr,
+                            IndexType const *index_ptr,
                             float *output_ptr,
                             coord_t output_size,
                             coord_t stride,
