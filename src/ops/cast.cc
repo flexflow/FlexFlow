@@ -1,4 +1,4 @@
-/* Copyright 2022 CMU
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,11 @@
 
 #include "flexflow/ops/cast.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/cast_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
+
+using namespace FlexFlow::Kernels::Cast;
 
 namespace FlexFlow {
 // declare Legion names
@@ -207,6 +210,7 @@ void Cast::forward_task_with_2_type(Task const *task,
                                     Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
+  CastMeta const *m = *((CastMeta **)task->local_args);
   // Domain input_domain = runtime->get_index_space_domain(
   //   ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
@@ -215,8 +219,8 @@ void Cast::forward_task_with_2_type(Task const *task,
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   ODT *output_ptr = helperGetTensorPointerWO<ODT>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  Cast::forward_kernel_wrapper<IDT, ODT>(
-      input_ptr, output_ptr, output_domain.get_volume());
+  forward_kernel_wrapper<IDT, ODT>(
+      m, input_ptr, output_ptr, output_domain.get_volume());
 }
 
 void Cast::forward_task(Task const *task,
@@ -295,7 +299,7 @@ void Cast::backward_task_with_2_type(Task const *task,
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   ODT *output_ptr = helperGetTensorPointerRW<ODT>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  Cast::backward_kernel_wrapper<IDT, ODT>(
+  backward_kernel_wrapper<IDT, ODT>(
       input_ptr, output_ptr, output_domain.get_volume());
 }
 

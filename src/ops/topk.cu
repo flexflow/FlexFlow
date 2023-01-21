@@ -1,4 +1,4 @@
-/* Copyright 2021 Facebook
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -437,6 +437,7 @@ void TopK::forward_kernel_wrapper(TopKMeta const *m,
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
+    printf("[TopK] forward time = %.2lfms\n", elapsed);
   }
 }
 
@@ -497,8 +498,15 @@ void TopK::backward_kernel_wrapper(TopKMeta const *m,
                         length,
                         k,
                         stream);
-
-  // TODO: missing profiling here
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[TopK] backward time = %.2lfms\n", elapsed);
+  }
 }
 
 TopKMeta::TopKMeta(FFHandler handler) : OpMeta(handler) {}
