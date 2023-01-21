@@ -32,9 +32,8 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'FlexFlow'
-copyright = '2020, Stanford, LANL, CMU, Facebook'
-author = 'Stanford, LANL, CMU, Facebook'
-
+copyright = '2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)'
+author = 'CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)'
 
 # -- General configuration ---------------------------------------------------
 
