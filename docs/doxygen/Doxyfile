@@ -906,8 +906,8 @@ INPUT_ENCODING         = UTF-8
 
 FILE_PATTERNS          = *.c \
                          *.cc \
-                         *.cpp \
                          *.cu \
+                         *.cpp \
                          *.h \
                          *.hpp
 
