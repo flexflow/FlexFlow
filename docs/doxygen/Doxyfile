@@ -874,12 +874,7 @@ WARN_LOGFILE           =
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = $(FF_HOME)/align
-INPUT                 += $(FF_HOME)/bootcamp_demo
-INPUT                 += $(FF_HOME)/examples
 INPUT                 += $(FF_HOME)/include
-INPUT                 += $(FF_HOME)/nmt
-INPUT                 += $(FF_HOME)/python
 INPUT                 += $(FF_HOME)/src
 
 # This tag can be used to specify the character encoding of the source files
@@ -914,9 +909,7 @@ FILE_PATTERNS          = *.c \
                          *.cpp \
                          *.cu \
                          *.h \
-                         *.hpp \
-                         *.md \
-                         *.py
+                         *.hpp
 
 # The RECURSIVE tag can be used to specify whether or not subdirectories should
 # be searched for input files as well.
