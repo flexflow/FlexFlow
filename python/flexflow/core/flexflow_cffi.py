@@ -438,7 +438,7 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Multiply(handle, idx, name)
   elif op_type == OpType.DIVIDE:
     return Divide(handle, idx, name)
-  elif op_type == OpType.REDUCESUM:
+  elif op_type == OpType.REDUCE_SUM:
     return ReduceSum(handle, idx, name)
   elif op_type == OpType.MSELOSS:
     return MSELoss(handle, idx, name)
@@ -1002,14 +1002,14 @@ class FFModel(object):
     self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
 
-  def reduce_sum(self, input, axes=None, keepdims=False, name=None):
+  def reduce_sum(self, input, axes, keepdims=False, name=None):
     """Layer that computes the sum of the input Tensor along given axes.
              
     :param input: the input Tensor.
     :type input: Tensor
     
     :param axes: the axes along which reduction is applied
-    :type axes: int or List[int]
+    :type axes: List[int]
              
     :param name: the name of the layer. Default is None.
     :type name: string
@@ -1017,13 +1017,10 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    if isinstance(axes, int):
-      axes = [axes]
-    elif axes is None:
-      axes = [0, 1, 2] # TODO: all axes
-    handle = ffc.flexflow_model_reduce_sum(self.handle, input.handle, axes, len(axes), keepdims, c_name)
-    self.add_layer(OpType.REDUCESUM, name)
-    return Tensor(handle, owner_op_type=OpType.REDUCESUM)
+    c_axes = ffi.new("int[]", axes)
+    handle = ffc.flexflow_model_add_reduce_sum(self.handle, input.handle, c_axes, len(axes), keepdims, c_name)
+    self.add_layer(OpType.REDUCE_SUM, name)
+    return Tensor(handle, owner_op_type=OpType.REDUCE_SUM)
 
   def rsqrt(self, input, name=None):
     """Layer that computes the element-wise reciprocal square-root.

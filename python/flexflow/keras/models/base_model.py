@@ -511,7 +511,7 @@ class BaseModel(object):
       elif isinstance(layer, Pow):
         out_t = self._ffmodel.pow(layer.input_tensors[0].ffhandle, layer.a)
       elif isinstance(layer, ReduceSum):
-        out_t = self._ffmodel.reduce_sum(layer.input_tensors[0], layer.axis, layer.keepdims)
+        out_t = self._ffmodel.reduce_sum(layer.input_tensors[0].ffhandle, layer.axis, layer.keepdims)
       else:
         assert 0, "unknown layer"
 

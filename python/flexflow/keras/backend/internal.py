@@ -190,19 +190,29 @@ class Pow(Layer):
 class ReduceSum(Layer):
   def __init__(self, axis, keepdims, **kwargs):
     super(ReduceSum, self).__init__("reduce_sum", "ReduceSum", **kwargs) 
-    self.axis = axis
     self.keepdims = keepdims
+    if isinstance(axis, int):
+      axis = [axis]
+    elif axis is None:
+      axis = None
+    else:
+      axis = [a for a in axis]
+    self.axis = axis
 
   def verify_meta_data(self):
    pass
 
   def _calculate_inout_shape(self, input_tensor):
+    if self.axis is None:
+      self.axis = list(range(0, len(input_tensor.batch_shape)))
     self.input_shape = input_tensor.batch_shape
-    self.output_shape = [input_tensor.batch_shape]
-    for i in input_tensor.batch_shape[1:]:
+    self.output_shape = []
+    for i, sh in enumerate(input_tensor.batch_shape):
       if i in self.axis:
         if self.keepdims:
           self.output_shape.append(1)
+      else:
+        self.output_shape.append(sh)
     self.output_shape = tuple(self.output_shape)
     fflogger.debug("add output %s" %( str(self.output_shape)))
 
