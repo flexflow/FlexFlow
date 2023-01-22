@@ -408,32 +408,88 @@ void backward_kernel(ElementBinaryMeta const *m,
       }
     }
   } else if (m->op_type == OP_EW_MUL) {
-    float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f;
+    float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f, zero = 0.0f;
     if (in1_grad_ptr != nullptr) {
-      checkCUDNN(cudnnOpTensor(m->handle.dnn,
-                               m->opDesc,
-                               &alpha1,
-                               m->outputTensor,
-                               out_grad_ptr,
-                               &alpha2,
-                               m->input2Tensor,
-                               in2_ptr,
-                               &beta,
-                               m->input1Tensor,
-                               in1_grad_ptr));
+      if (m->broadcast_input1) {
+        float *temp_ptr = (float *)malloc(sizeof(*out_grad_ptr));
+        checkCUDA(cudaMalloc(&temp_ptr, sizeof(*out_grad_ptr)));
+        checkCUDNN(cudnnOpTensor(m->handle.dnn,
+                                 m->opDesc,
+                                 &alpha1,
+                                 m->outputTensor,
+                                 out_grad_ptr,
+                                 &alpha2,
+                                 m->input2Tensor,
+                                 in2_ptr,
+                                 &zero,
+                                 m->outputTensor,
+                                 temp_ptr));
+        checkCUDNN(cudnnReduceTensor(m->handle.dnn,
+                                     m->reduceAddDesc,
+                                     nullptr /*indices*/,
+                                     0 /*indicesSizeInBytes*/,
+                                     m->handle.workSpace,
+                                     m->handle.workSpaceSize,
+                                     &alpha1,
+                                     m->outputTensor,
+                                     temp_ptr,
+                                     &beta,
+                                     m->input1Tensor,
+                                     in1_grad_ptr));
+      } else {
+        checkCUDNN(cudnnOpTensor(m->handle.dnn,
+                                m->opDesc,
+                                &alpha1,
+                                m->outputTensor,
+                                out_grad_ptr,
+                                &alpha2,
+                                m->input2Tensor,
+                                in2_ptr,
+                                &beta,
+                                m->input1Tensor,
+                                in1_grad_ptr));
+      }
     }
     if (in2_grad_ptr != nullptr) {
-      checkCUDNN(cudnnOpTensor(m->handle.dnn,
-                               m->opDesc,
-                               &alpha1,
-                               m->outputTensor,
-                               out_grad_ptr,
-                               &alpha2,
-                               m->input2Tensor,
-                               in1_ptr,
-                               &beta,
-                               m->input1Tensor,
-                               in2_grad_ptr));
+      if (m->broadcast_input2) {
+        float *temp_ptr = (float *)malloc(sizeof(*out_grad_ptr));
+        checkCUDA(cudaMalloc(&temp_ptr, sizeof(*out_grad_ptr)));
+        checkCUDNN(cudnnOpTensor(m->handle.dnn,
+                                 m->opDesc,
+                                 &alpha1,
+                                 m->outputTensor,
+                                 out_grad_ptr,
+                                 &alpha2,
+                                 m->input1Tensor,
+                                 in1_ptr,
+                                 &zero,
+                                 m->outputTensor,
+                                 temp_ptr));
+        checkCUDNN(cudnnReduceTensor(m->handle.dnn,
+                                     m->reduceAddDesc,
+                                     nullptr /*indices*/,
+                                     0 /*indicesSizeInBytes*/,
+                                     m->handle.workSpace,
+                                     m->handle.workSpaceSize,
+                                     &alpha1,
+                                     m->outputTensor,
+                                     temp_ptr,
+                                     &beta,
+                                     m->input2Tensor,
+                                     in2_grad_ptr));
+      } else {
+        checkCUDNN(cudnnOpTensor(m->handle.dnn,
+                                m->opDesc,
+                                &alpha1,
+                                m->outputTensor,
+                                out_grad_ptr,
+                                &alpha2,
+                                m->input1Tensor,
+                                in1_ptr,
+                                &beta,
+                                m->input2Tensor,
+                                in2_grad_ptr));
+      }
     }
   } else {
     assert(false && "Unsupported ElementWise Binary Type");
