@@ -16,6 +16,7 @@
 from collections import OrderedDict
 from enum import Enum
 from typing import List
+import copy
 
 import numpy as np
 from flexflow.core.flexflow_cffi import Tensor, NormInitializer
@@ -1417,10 +1418,31 @@ class GetItemNode(FunctionNode):
             """Returns if the slice is equivalent to unsqueezing that
             dimension."""
             return slice_elem is None
+
+        def is_truncate(slice_elem, old_size):
+            start = 0 if slice_elem.start == None else slice_elem.start
+            stop = old_size if slice_elem.stop == None else slice_elem.stop
+            new_size = stop - start
+            return new_size < old_size
+        
+        def is_single_element(slice_elem):
+            return isinstance(slice_elem, int)
+
         shape = tensor.dims
-        # Match dimensions from right to left
-        new_shape = []  # append then reverse
+
+        # Fewer slices than input dimensions
+        diff = len(shape) - len(slices)
+        if diff > 0:
+            slices_lst = list(slices)
+            for i in range(diff):
+                slices_lst.append(slice(None, None, None))
+            slices = tuple(slices_lst)
+
+        # Match dimensions from right to left                                                                  
+        new_shape = []  # append then reverse                                                                  
         j = len(shape) - 1
+        curr_tensor = copy.copy(tensor)
+
         for slice_elem in reversed(slices):
             if is_colon(slice_elem):
                 assert j >= 0
@@ -1428,13 +1450,39 @@ class GetItemNode(FunctionNode):
                 j -= 1
             elif is_unsqueeze(slice_elem):
                 new_shape.append(1)
+            elif is_single_element(slice_elem):
+                assert j >= 0
+                splits = [1, shape[j] - 1]
+                curr_tensor = ffmodel.split(input=curr_tensor, sizes=splits, axis=j, name=name)[0]
+                new_shape.append(1)
+                j -= 1
+            elif is_truncate(slice_elem, shape[j]):
+                assert j >= 0
+                start = 0 if slice_elem.start == None else slice_elem.start
+                stop = shape[j] if slice_elem.stop == None else slice_elem.stop
+                splits = []
+                # create splits    
+                if start > 0 and stop == shape[j]: # truncation from left
+                    splits.append(start)
+                    splits.append(stop - start)
+                    curr_tensor = ffmodel.split(input=curr_tensor, sizes=splits, axis=j, name=name)[1]
+                elif start == 0 and stop < shape[j]: # truncation from right
+                    splits.append(stop)
+                    splits.append(shape[j] - stop)
+                    curr_tensor = ffmodel.split(input=curr_tensor, sizes=splits, axis=j, name=name)[0]
+                elif start > 0 and stop < shape[j]: # truncation from left and right
+                    splits.append(start)
+                    splits.append(stop - start)
+                    splits.append(shape[j] - stop)
+                    curr_tensor = ffmodel.split(input=curr_tensor, sizes=splits, axis=j, name=name)[1]
+                new_shape.append(stop - start)
+                j -= 1
             else:
                 assert 0, f"Unsupported slice element: {slice_elem}"
-        new_shape.reverse()
-        return ffmodel.reshape(
-            input=tensor, shape=new_shape, name=name,
-        )
 
+        new_shape.reverse()
+        return ffmodel.reshape(input=curr_tensor, shape=new_shape, name=name,)
+            
     @staticmethod
     def strings_to_slices(strings: List[str]):
         # Extract slice elements
@@ -1703,7 +1751,7 @@ class ScalarFloorDivNode(FunctionNode):
     def parse(self):
         s = [self.name]
         scalar = self.innodes[1]
-        if not isinstance(scalar, [int, float]):
+        if type(scalar) is not int or type(scalar) is not float:
             assert 0, "FlexFlow does not support tensor floor division"
         innodes = (self.innodes[0],)
         s.append(self.parse_inoutnodes(innodes))

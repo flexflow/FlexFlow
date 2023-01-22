@@ -1,11 +1,8 @@
 #ifndef _FLEXFLOW_FLAT_H
 #define _FLEXFLOW_FLAT_H
 
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
 #include "flexflow/layer.h"
 #include "flexflow/node.h"
-#include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/flat_params.h"
 
@@ -19,11 +16,6 @@ constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
 namespace FlatOutput {
 constexpr int NUMDIM = 3, CHANNEL = 0, SAMPLE = 1, REPLICA = 2;
 }
-
-class FlatMeta : public OpMeta {
-public:
-  FlatMeta(FFHandler handle) : OpMeta(handle){};
-};
 
 class Flat : public Op {
 public:
@@ -59,20 +51,6 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  static void forward_kernel(float const *input_ptr,
-                             float *output_ptr,
-                             size_t num_elements,
-                             ffStream_t stream);
-  static void forward_kernel_wrapper(float const *input_ptr,
-                                     float *output_ptr,
-                                     size_t num_elements);
-  static void backward_kernel(float *input_grad_ptr,
-                              float const *output_grad_ptr,
-                              size_t num_elements,
-                              ffStream_t stream);
-  static void backward_kernel_wrapper(float *input_grad_ptr,
-                                      float const *output_grad_ptr,
-                                      size_t num_elements);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
