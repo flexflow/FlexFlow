@@ -411,8 +411,6 @@ void backward_kernel(ElementBinaryMeta const *m,
     float alpha1 = 1.0f, alpha2 = 1.0f, beta = 1.0f, zero = 0.0f;
     if (in1_grad_ptr != nullptr) {
       if (m->broadcast_input1) {
-        float *temp_ptr = (float *)malloc(sizeof(*out_grad_ptr));
-        checkCUDA(cudaMalloc(&temp_ptr, sizeof(*out_grad_ptr)));
         checkCUDNN(cudnnOpTensor(m->handle.dnn,
                                  m->opDesc,
                                  &alpha1,
@@ -423,19 +421,20 @@ void backward_kernel(ElementBinaryMeta const *m,
                                  in2_ptr,
                                  &zero,
                                  m->outputTensor,
-                                 temp_ptr));
-        checkCUDNN(cudnnReduceTensor(m->handle.dnn,
-                                     m->reduceAddDesc,
-                                     nullptr /*indices*/,
-                                     0 /*indicesSizeInBytes*/,
-                                     m->handle.workSpace,
-                                     m->handle.workSpaceSize,
-                                     &alpha1,
-                                     m->outputTensor,
-                                     temp_ptr,
-                                     &beta,
-                                     m->input1Tensor,
-                                     in1_grad_ptr));
+                                 m->handle.workSpace));
+        checkCUDNN(cudnnReduceTensor(
+            m->handle.dnn,
+            m->reduceAddDesc,
+            nullptr /*indices*/,
+            0 /*indicesSizeInBytes*/,
+            (void *)((char *)m->handle.workSpace + sizeof(*out_grad_ptr)),
+            m->handle.workSpaceSize - sizeof(*out_grad_ptr),
+            &alpha1,
+            m->outputTensor,
+            m->handle.workSpace,
+            &beta,
+            m->input1Tensor,
+            in1_grad_ptr));
       } else {
         checkCUDNN(cudnnOpTensor(m->handle.dnn,
                                 m->opDesc,
@@ -452,8 +451,6 @@ void backward_kernel(ElementBinaryMeta const *m,
     }
     if (in2_grad_ptr != nullptr) {
       if (m->broadcast_input2) {
-        float *temp_ptr = (float *)malloc(sizeof(*out_grad_ptr));
-        checkCUDA(cudaMalloc(&temp_ptr, sizeof(*out_grad_ptr)));
         checkCUDNN(cudnnOpTensor(m->handle.dnn,
                                  m->opDesc,
                                  &alpha1,
@@ -464,19 +461,20 @@ void backward_kernel(ElementBinaryMeta const *m,
                                  in1_ptr,
                                  &zero,
                                  m->outputTensor,
-                                 temp_ptr));
-        checkCUDNN(cudnnReduceTensor(m->handle.dnn,
-                                     m->reduceAddDesc,
-                                     nullptr /*indices*/,
-                                     0 /*indicesSizeInBytes*/,
-                                     m->handle.workSpace,
-                                     m->handle.workSpaceSize,
-                                     &alpha1,
-                                     m->outputTensor,
-                                     temp_ptr,
-                                     &beta,
-                                     m->input2Tensor,
-                                     in2_grad_ptr));
+                                 m->handle.workSpace));
+        checkCUDNN(cudnnReduceTensor(
+            m->handle.dnn,
+            m->reduceAddDesc,
+            nullptr /*indices*/,
+            0 /*indicesSizeInBytes*/,
+            (void *)((char *)m->handle.workSpace + sizeof(*out_grad_ptr)),
+            m->handle.workSpaceSize - sizeof(*out_grad_ptr),
+            &alpha1,
+            m->outputTensor,
+            m->handle.workSpace,
+            &beta,
+            m->input2Tensor,
+            in2_grad_ptr));
       } else {
         checkCUDNN(cudnnOpTensor(m->handle.dnn,
                                 m->opDesc,
