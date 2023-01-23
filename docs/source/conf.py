@@ -25,7 +25,7 @@ python_package_path = os.path.join(FF_HOME, "python")
 sys.path.insert(0, os.path.abspath(python_package_path))
 
 # Build the Doxygen docs
-#subprocess.call(f'cd {doxygen_path}; FF_HOME={FF_HOME} doxygen', shell=True)
+subprocess.call(f'cd {doxygen_path}; FF_HOME={FF_HOME} doxygen', shell=True)
 
 import sphinx_rtd_theme
 
@@ -44,8 +44,6 @@ extensions = [
     'sphinx_rtd_theme',
     'sphinx.ext.autodoc',
     'm2r2',
-    'breathe',
-    'exhale',
 ]
 
 # Theme options are theme-specific and customize the look and feel of a theme
@@ -85,27 +83,9 @@ html_theme = 'sphinx_rtd_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = ['_static']
 
-# Breathe + Exhale configuration
 
 # Setup the breathe extension
 breathe_projects = {
-    "FlexFlow": "./_doxygen/xml"
+    "FlexFlow": os.path.join(doxygen_path, "output", "xml")
 }
 breathe_default_project = "FlexFlow"
-
-c_plus_plus_src_dirs = " ".join([f"\"{os.path.join(FF_HOME, 'src', dirname)}\"" for dirname in ("loss_functions", "mapper", "metrics_functions", "ops", "parallel_ops", "recompile", "runtime", "utils")])
-# Setup the exhale extension
-exhale_args = {
-    # These arguments are required
-    "containmentFolder":     "./c++_api",
-    "rootFileName":          "c++_api_root.rst",
-    "doxygenStripFromPath":  "..",
-    # Heavily encouraged optional argument (see docs)
-    #"rootFileTitle":         "Library API",
-    # Suggested optional arguments
-    "createTreeView":        True,
-    # TIP: if using the sphinx-bootstrap-theme, you need
-    # "treeViewIsBootstrap": True,
-    "exhaleExecutesDoxygen": True,
-    "exhaleDoxygenStdin":    f'INPUT = {c_plus_plus_src_dirs}'
-}
