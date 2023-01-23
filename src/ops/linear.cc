@@ -966,7 +966,7 @@ bool LinearParams::is_valid(ParallelTensorShape const &input_shape) const {
   return is_valid;
 }
 
-/** @brief  This is a wrapper around the main version of the solve_dims function. 
+/** @brief  A wrapper around the main version of the solve_dims function.
  * 
  * It takes a the input tensor as a parameter, instead of the input's ParallelTensorShape.
  */
@@ -986,7 +986,7 @@ void LinearParams::solve_dims(const ParallelTensor input,
                    bias_ndims);
 }
 
-/** @brief  This is a wrapper around the main version of the solve_dims function. 
+/** @brief  A wrapper around the main version of the solve_dims function.
  * 
  * For each of the output, weights, and bias tensors, it takes a ParallelTensorShape argument, 
  * instead of a pointer to an integer variable to record the number of dimensions, plus a 
