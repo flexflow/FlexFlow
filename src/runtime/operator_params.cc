@@ -19,6 +19,7 @@
 #include "flexflow/ops/mean.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/reverse.h"
 #include "flexflow/ops/softmax.h"
@@ -74,6 +75,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((MultiHeadAttention *)op)->get_params();
     case OP_LAYERNORM:
       return ((LayerNorm *)op)->get_params();
+    case OP_REDUCE_SUM:
+      return ((Reduce *)op)->get_params();
     case OP_RESHAPE:
       return ((Reshape *)op)->get_params();
     case OP_SOFTMAX:
@@ -94,24 +97,24 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((BatchMatmul *)op)->get_params();
     case OP_SPLIT:
       return ((Split *)op)->get_params();
+    case OP_TOPK:
+      return ((TopK *)op)->get_params();
+    case OP_GROUP_BY:
+      return ((Group_by *)op)->get_params();
+    case OP_AGGREGATE:
+      return ((Aggregate *)op)->get_params();
+    case OP_AGG_SPEC:
+      return ((AggregateSpec *)op)->get_params();
 
       // TODO: implement the get_params() function for the operators below and
       // uncomment the lines below
 
       // case OP_NOOP:
       //   return ((NoOp *)op)->get_params();
-      // case OP_TOPK:
-      //   return ((TopK *)op)->get_params();
       // case OP_MEAN:
       //   return ((Mean *)op)->get_params();
-      // case OP_GROUP_BY:
-      //   return ((Group_by *)op)->get_params();
       // case OP_CACHE:
       //   return ((Cache *)op)->get_params();
-      // case OP_AGGREGATE:
-      //   return ((Aggregate *)op)->get_params();
-      // case OP_AGG_SPEC:
-      //   return ((AggregateSpec *)op)->get_params();
       // case OP_REVERSE:
       //   return ((Reverse *)op)->get_params();
       // case OP_BATCHNORM:

@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,19 +56,6 @@ ReductionParams Reduction::get_params() const {
   params.reduction_legion_dim = this->reduction_dim;
   params.reduction_degree = this->reduction_degree;
   return params;
-}
-
-ParallelTensor FFModel::reduction(const ParallelTensor input,
-                                  int reduction_legion_dim,
-                                  int reduction_degree,
-                                  char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  Reduction *reduce =
-      new Reduction(*this, input, reduction_legion_dim, reduction_degree, name);
-  layers.push_back(reduce);
-  return reduce->outputs[0];
-#endif
 }
 
 Reduction::Reduction(FFModel &model,

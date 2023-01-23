@@ -1,4 +1,4 @@
-# Copyright 2020 Stanford University, Los Alamos National Laboratory
+# Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 
-from .internal import BatchMatmul, Sin, Cos
+from .internal import BatchMatmul, Sin, Cos, Exp, Pow
 
 
 def batch_dot(x, y):
@@ -26,3 +26,11 @@ def sin(x):
 
 def cos(x):
     return Cos()(x)
+
+
+def exp(x):
+    return Exp()(x)
+
+
+def pow(x, a):
+    return Pow(a)(x)

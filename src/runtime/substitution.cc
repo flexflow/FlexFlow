@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/graph.h"
 #include "flexflow/graph_structures.h"
+#include "flexflow/ops/aggregate.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/concat.h"
@@ -3655,6 +3656,11 @@ bool FFModel::convert_graph_to_operators(
         Concat *concat = (Concat *)node.ptr;
         new_op = new Concat(
             *this, (int)inList.size(), inputs, concat->legion_axis, NULL);
+        break;
+      }
+      case OP_AGGREGATE: {
+        Aggregate *aggr = (Aggregate *)node.ptr;
+        new_op = new Aggregate(*this, inputs, aggr->n, aggr->lambda_bal, NULL);
         break;
       }
       case OP_SPLIT: {

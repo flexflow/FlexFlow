@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,19 +70,6 @@ Combine::Combine(FFModel &model,
               params.combine_legion_dim,
               params.combine_degree,
               name) {}
-
-ParallelTensor FFModel::combine(const ParallelTensor input,
-                                int combine_legion_dim,
-                                int combine_degree,
-                                char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  Combine *comb =
-      new Combine(*this, input, combine_legion_dim, combine_degree, name);
-  layers.push_back(comb);
-  return comb->outputs[0];
-#endif
-}
 
 Combine::Combine(FFModel &model,
                  const ParallelTensor _input,

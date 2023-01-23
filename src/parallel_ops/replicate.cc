@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,19 +56,6 @@ ReplicateParams Replicate::get_params() const {
   params.replicate_legion_dim = this->replicate_dim;
   params.replicate_degree = this->replicate_degree;
   return params;
-}
-
-ParallelTensor FFModel::replicate(const ParallelTensor input,
-                                  int replicate_legion_dim,
-                                  int replicate_degree,
-                                  char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  Replicate *repl =
-      new Replicate(*this, input, replicate_legion_dim, replicate_degree, name);
-  layers.push_back(repl);
-  return repl->outputs[0];
-#endif
 }
 
 Replicate::Replicate(FFModel &model,
