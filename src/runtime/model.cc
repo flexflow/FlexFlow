@@ -590,11 +590,28 @@ ncclComm_t Op::init_nccl_comms_task(Task const *task,
 }
 #endif
 
+/**
+ * @brief The ParallelDimMappingRecord class's constructor. It sets the object's type field equal to
+ *        the value passed as the constructor's argument, and initializes all other fields to -1.
+ * 
+ * @param[in]   type  The MappingRecordType to use to initialize the ParallelDimMappingRecord. 
+ */
 ParallelDimMappingRecord::ParallelDimMappingRecord(MappingRecordType type)
     : type(type), output_dim(-1), input_dim(-1), weight_dim(-1), output_idx(-1),
       input_idx(-1), weight_idx(-1) {}
 
 /*static*/
+/**
+ * @brief Builds and initializes a ParallelDimMappingRecord object of INPUT_OUTPUT MappingRecordType. 
+ * 
+ * This function should be used to create a ParallelDimMappingRecord to track an operator's dimension 
+ * relation between the input and the output tensor
+ * 
+ * @param[in]   input_idx   The index of the input tensor dimension
+ * @param[in]   input_dim
+ * @param[in]   output_idx  The index of the output tensor dimension
+ * @param[in]   output_dim
+ */
 ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
     int input_idx,
     int input_dim,
@@ -618,6 +635,17 @@ ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
 }
 
 /*static*/
+/**
+ * @brief Builds and initializes a ParallelDimMappingRecord object of INPUT_WEIGHT MappingRecordType. 
+ * 
+ * This function should be used to create a ParallelDimMappingRecord to track an operator's dimension 
+ * relation between the input and the weights tensor
+ * 
+ * @param[in]   input_idx   The index of the input tensor dimension
+ * @param[in]   input_dim
+ * @param[in]   weight_idx  The index of the weights tensor dimension
+ * @param[in]   weight_dim
+ */
 ParallelDimMappingRecord ParallelDimMappingRecord::input_weight_record(
     int input_idx,
     int input_dim,
