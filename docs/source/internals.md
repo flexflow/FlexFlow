@@ -8,6 +8,8 @@ FlexFlow uses a _Parallel Computation Graph (PCG)_ to simultaneously represent t
 
 There are two types of tensor representations in FlexFlow: a `Tensor` and a `ParallelTensor`. The first variant is used when writing a FlexFlow DNN program, whereas the second is used by the runtime to run all the computations in a distributed fashion. `Tensor`s and `ParallelTensor`s are implemented as typedef-ed pointers to, respectively, the `TensorBase` (defined in `include/flexflow/tensor.h`) and `ParallelTensorBase` (defined in `include/flexflow/parallel_tensor.h`) structs. The `ParallelTensor` struct contains all the information that a `Tensor` also stores, but in addition, it also codifies how the tensor should be parallelized. For instance, a ParallelTensor records how each dimension is partitioned, how many replicas of the tensors have been created, and the mapping between the partitions of the tensors and the physical machines that will store them. 
 
+TODO: add links to Doxygen
+
 ## Transformation generation
 
 ## Joint optimization
