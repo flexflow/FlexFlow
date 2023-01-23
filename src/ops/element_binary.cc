@@ -443,7 +443,8 @@ __host__ void
         ctx, task->regions[1].region.get_index_space());
     // Currently only support broadcast for add and sub
     if (in1_domain != in2_domain) {
-      assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD);
+      assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD ||
+             m->op_type == OP_EW_MUL);
     }
   }
   float const *in1_ptr = NULL, *in2_ptr = NULL;
