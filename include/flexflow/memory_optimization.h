@@ -18,7 +18,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef _FLEXFLOW_MEMORY_OPTIMIZATION_H_
+#define _FLEXFLOW_MEMORY_OPTIMIZATION_H_
 
 #include <cassert>
 #include <string>
@@ -57,6 +58,7 @@ public:
   float run_time_cost_factor; ///< The weight factor of run time cost in the
                               ///< overall cost function; used in
                               ///< MULTI_OBJECTIVE algorithm
+                              ///< Valid between and including 0 and 1
 
   MemoryOptimConfig()
       : mem_usage_type{MemoryUsageType::GLOBAL},
@@ -78,7 +80,7 @@ public:
   float memory_cost{};
   float search_time{};
   ///< The max of per-device memory usage among all devices
-  float max_per_device_mem_all_deivces{0.0};
+  float max_per_device_mem_all_deivces = 0.0;
 };
 
 namespace PCG {
@@ -91,12 +93,6 @@ public:
   MemoryUsageType usage_type; ///< What "num" means
   float num;                  ///< The numerical number of memory usage
 
-  // May need this in the future, but not for now.
-  // std::vector<float> nums;     ///< Detailed number of usage for all devices
-
-  ///
-  /// Public APIs
-  ///
   MemoryUsage() : usage_type{MemoryUsageType::GLOBAL}, num{0.0} {}
   MemoryUsage(MemoryUsageType _usage_type, float _num)
       : usage_type{_usage_type}, num{_num} {}
@@ -154,13 +150,7 @@ public:
   }
 };
 
-/**
- * @brief The choice of memory optimizations applied to a Graph.
- */
-class MemOptDecision {
-public:
-private:
-};
-
 } // namespace PCG
 } // namespace FlexFlow
+
+#endif // _FLEXFLOW_MEMORY_OPTIMIZATION_H_

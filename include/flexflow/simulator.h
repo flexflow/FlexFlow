@@ -63,7 +63,7 @@ struct CostMetrics {
    * @brief Return the sum of memory recorded in this CostMetrics, but in MB,
    * instead of Bytes.
    */
-  float total_memory_as_mb() const;
+  float total_memory_in_mb() const;
 
   /**
    * @brief Get the incremental difference between the total memory in
@@ -84,8 +84,8 @@ public:
   // 2. we call Simulator::free_all before measuring an operator
   // Therefore, the current memory usage of an operator is (size_t)sim->offset
   size_t inputs_memory = 0, outputs_memory = 0, weights_memory = 0;
-  ///< Real memory usage of Op* considering parallelization over devices
-  size_t op_total_mem;
+  ///< Memory usage of Op* considering parallelization over devices
+  size_t op_total_mem = 0;
 };
 
 class Device {

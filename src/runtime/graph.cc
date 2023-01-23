@@ -90,7 +90,7 @@ SearchHelper::SearchHelper(FFModel *model) : model(model) {
 }
 
 /**
- * @brief Combine results from sub-problems.
+ * @brief Combine results from sequential sub-problems.
  */
 template <typename T>
 T SearchHelper::execute_sequence_split(std::unique_ptr<Graph> const &pre_graph,
@@ -262,12 +262,6 @@ NonsequenceSplit NonsequenceSplit::horizontal(int param, bool flip_graphs) {
   return s;
 }
 
-/**
- * @brief Starting point to get parallel split time cost.
- *
- * @tparam T float or GraphCostResult (or GraphCostResultWithMemory in memory
- * optimization)
- */
 template <typename T>
 T SearchHelper::find_optimal_nonsequence_graph_time(
     Graph const *g,
@@ -1206,7 +1200,7 @@ template <>
 GraphCostResultWithMemory sequence_cost<GraphCostResultWithMemory>(
     GraphCostResultWithMemory const &first,
     GraphCostResultWithMemory const &second) {
-  GraphCostResultWithMemory result(first);
+  GraphCostResultWithMemory result{first};
   result.cost += second.cost;
   result.mem_cost += second.mem_cost;
   result.views.insert(second.views.cbegin(), second.views.cend());
@@ -1470,7 +1464,7 @@ T SearchHelper::estimate_xfer_cost(Graph const *graph,
 }
 
 /**
- * @brief Specialization to avoid changing many calls. Should be refactored.
+ * @brief Specialization to avoid changing many calls.
  * @details Note that this function is only called when the graph has no more
  * than 2 nodes
  */
@@ -1525,7 +1519,6 @@ void SearchHelper::add_operator_cost<GraphCostResult>(
 
 /**
  * @brief Add an operator's run time and memory cost to the graph cost.
- * This is ugly. The whole procedure to propagate costs should be refactored.
  * "cost" is updated within this function.
  */
 void SearchHelper::add_operator_cost_with_memory(
@@ -1742,8 +1735,8 @@ T SearchHelper::graph_cost(Graph const *graph,
 
 /**
  * @brief Get the optimal run time cost of a PCG.
- * @details This is the current single metric used to decide which PCG is better
- * in the Unity's search algorithm.
+ * @details This is the current metric used to decide which PCG is better
+ * in Unity's search algorithm.
  */
 float Graph::optimal_cost() const {
   return this->generic_optimal_cost<float>();
@@ -1753,7 +1746,7 @@ float Graph::optimal_cost() const {
  * @brief Experimental. Get a single number to represent the multi-objective
  * cost of a PCG. To be merged with Graph::optimal_cost().
  */
-float Graph::optimal_cost_with_memory(float const run_time_cost_factor) const {
+float Graph::optimal_cost_with_memory(float run_time_cost_factor) const {
   auto optimal = this->generic_optimal_cost<GraphCostResultWithMemory>();
   float run_time_cost = optimal.cost;
   float mem_cost = optimal.mem_cost.num;
@@ -1900,11 +1893,9 @@ GraphOptimalViewSerialized
   bool perform_memory_search = model_config.perform_memory_search;
   float memory_threshold = model_config.device_mem;
 
-  // Binary search of the best lambda such that the PCG can be placed on the
-  // devices but the run time cost is minimized
   std::vector<std::pair<float, MemorySearchResult>> lambdas{};
 
-  Simulator *cached_sim = nullptr; // Cached simulator
+  Simulator *cached_simulator = nullptr;
 
   // Optimized graph from the search
   std::unique_ptr<Graph> best_graph;
@@ -1947,15 +1938,16 @@ GraphOptimalViewSerialized
              "machine-model-file should not be empty.");
     }
     // Assume this task is running on GPU0
-    if (cached_sim == nullptr) {
-      cached_sim = new Simulator(model, model->handlers[0], gpu_mem, machine);
+    if (cached_simulator == nullptr) {
+      cached_simulator =
+          new Simulator(model, model->handlers[0], gpu_mem, machine);
     } else {
       // Update simulator with the new stuff
-      cached_sim->handler = model->handlers[0];
-      cached_sim->memory = gpu_mem;
-      cached_sim->machine = machine;
+      cached_simulator->handler = model->handlers[0];
+      cached_simulator->memory = gpu_mem;
+      cached_simulator->machine = machine;
     }
-    model->simulator = cached_sim;
+    model->simulator = cached_simulator;
 
     // Perform the search
     std::unique_ptr<Graph> curr_best_graph;
@@ -2015,10 +2007,10 @@ GraphOptimalViewSerialized
         // Analyze the strategy and update max_per_device_mem_all_deivces in the
         // lambda_result.
         std::unordered_map<int, float> device_to_mem{};
-        for (const auto &view : curr_views) {
-          CostMetrics op_cost =
-              cached_sim->measure_operator_cost(view.first.ptr, view.second);
-          float node_mem_as_mb = op_cost.total_memory_as_mb();
+        for (auto const &view : curr_views) {
+          CostMetrics op_cost = cached_simulator->measure_operator_cost(
+              view.first.ptr, view.second);
+          float node_mem_as_mb = op_cost.total_memory_in_mb();
 
           for (const auto d_id : view.second.device_ids()) {
             if (device_to_mem.find(d_id) == device_to_mem.end()) {

@@ -116,7 +116,7 @@ struct GraphCostResult {
 };
 
 /**
- * @brief Experimental. Hold the cost information of a PCG. To be merged with
+ * @brief Experimental. Holds the cost information of a PCG. To be merged with
  * GraphCostResult.
  */
 struct GraphCostResultWithMemory {
@@ -184,6 +184,12 @@ public:
                                      NodeAssignment const &source,
                                      NodeAssignment const &sink,
                                      MachineResource const &resources) const;
+  /**
+   * @brief Starting point to get parallel split time cost.
+   *
+   * @tparam T float or GraphCostResult (or GraphCostResultWithMemory in memory
+   * optimization)
+   */
   template <typename T>
   T find_optimal_nonsequence_graph_time(Graph const *g,
                                         NodeAssignment const &source,
@@ -303,8 +309,7 @@ public:
   Graph subgraph(std::unordered_set<Node> const &nodes) const;
   void contract_out_node(Node const &);
   float optimal_cost() const;
-  // Experimental. To be merged with optimal_cost().
-  float optimal_cost_with_memory(float const run_time_cost_factor) const;
+  float optimal_cost_with_memory(float run_time_cost_factor) const;
   std::unordered_map<Node, MachineView> optimal_views() const;
   void remove_input_nodes();
   void duplicate_input_node(Node const &);

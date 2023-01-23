@@ -18,8 +18,8 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/graph.h"
 #include "flexflow/graph_structures.h"
-#include "flexflow/ops/aggregate.h"
 #include "flexflow/operator.h"
+#include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/concat.h"
 #include "flexflow/ops/conv_2d.h"
@@ -593,11 +593,12 @@ void GraphXfer::find_matches(int depth,
   }
 }
 
-template <typename GraphComp>
+template <typename GraphComparator>
 void GraphXfer::run(
     int depth,
     Graph *graph,
-    std::priority_queue<Graph *, std::vector<Graph *>, GraphComp> &candidates,
+    std::priority_queue<Graph *, std::vector<Graph *>, GraphComparator>
+        &candidates,
     std::unordered_set<size_t> &hashmap,
     float threshold,
     int maxNumOps,
@@ -1706,7 +1707,6 @@ std::vector<GraphXfer *> create_xfers(FFModel *model,
   return xfers;
 }
 
-// Experimental
 GraphSearchHelper::GraphSearchHelper(FFModel *model)
     : model(model), config(model->config), mem_config(1.0) {
   this->logger = std::unique_ptr<RecursiveLogger>(new RecursiveLogger("gs"));
@@ -2007,21 +2007,11 @@ void GraphSearchHelper::graph_optimize_with_memory(
   // graph and more accurate cost.
   best_graph = std::unique_ptr<Graph>(new Graph(optimal.graph.value()));
   SimplificationSettings settings;
-  // Temp disable parallel_op fusion to observe the strategy in dot graph.
-  // TODO(eric): reverse this back
-  settings.fuse_parallel_ops = false;
+  // Simplify to consider parallel op fusion
+  settings.fuse_parallel_ops = true;
   settings.remove_noops = true;
   settings.remove_trailing_parallel_ops = true;
   settings.simplify_parallel_ops = true;
-  best_graph->simplify(settings);
-
-  std::cout << "Dot graph without parallel op fusion:" << std::endl;
-  best_graph->print_strategy_computation_graph(optimal.views);
-  std::cout << std::endl;
-
-  // Simplify to consider parallel op fusion
-  settings.fuse_parallel_ops = true;
-  best_graph = std::unique_ptr<Graph>(new Graph(optimal.graph.value()));
   best_graph->simplify(settings);
 
   // Get the real optimal machine views.
@@ -2037,7 +2027,7 @@ void GraphSearchHelper::graph_optimize_with_memory(
       real_optimal_views[kv.first] = kv.second;
     }
   }
-  std::cout << "Dot graph with parallel op fusion:" << std::endl;
+  std::cout << "Dot graph of searched strategy:" << std::endl;
   best_graph->print_strategy_computation_graph(optimal.views);
   std::cout << std::endl;
 
@@ -2229,7 +2219,7 @@ tl::optional<Node>
 }
 
 /**
- * @brief Smallest sub-problem of Unity's DP search algorithm.
+ * @brief Base case of Unity's DP search algorithm.
  *
  * @param r_graph Graph to be optimized
  * @param simplification_settings Settings to simplify the PCG
@@ -2320,11 +2310,11 @@ std::unique_ptr<Graph> GraphSearchHelper::base_optimize(
 }
 
 /**
- * @brief Experimental. Smallest sub-problem of Unity's DP search algorithm with
+ * @brief Experimental. Base case of Unity's DP search algorithm with
  * memory consideration.
  *
  * @param r_graph Graph to be optimized
- * @param simplification_settings Settings to simplify the PCG
+ * @param simplification_settings Settings to simplify the resulting PCG
  * @return std::unique_ptr<Graph> Optimized PCG
  */
 std::unique_ptr<Graph> GraphSearchHelper::base_optimize_with_memory(

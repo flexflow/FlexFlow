@@ -129,14 +129,15 @@ public:
 };
 
 class GraphCompareWithMemory {
-  float run_time_cost_factor;
-
 public:
   GraphCompareWithMemory(float factor) : run_time_cost_factor{factor} {}
   bool operator()(Graph *lhs, Graph *rhs) {
     return lhs->optimal_cost_with_memory(run_time_cost_factor) >
            rhs->optimal_cost_with_memory(run_time_cost_factor);
   }
+
+private:
+  float run_time_cost_factor;
 };
 
 class GraphXferMatch {
@@ -214,16 +215,17 @@ public:
 
   std::string get_name() const;
 
-  template <typename GraphComp>
-  void run(int depth,
-           Graph *graph,
-           std::priority_queue<Graph *, std::vector<Graph *>, GraphComp> &,
-           std::unordered_set<size_t> &,
-           float threshold,
-           int maxNumOps,
-           SimplificationSettings const &simplification_settings,
-           int &num_matches_found,
-           int &num_matches_rejected);
+  template <typename GraphComparator>
+  void
+      run(int depth,
+          Graph *graph,
+          std::priority_queue<Graph *, std::vector<Graph *>, GraphComparator> &,
+          std::unordered_set<size_t> &,
+          float threshold,
+          int maxNumOps,
+          SimplificationSettings const &simplification_settings,
+          int &num_matches_found,
+          int &num_matches_rejected);
 
   void find_matches(Graph const *, std::vector<GraphXferMatch> &matches);
   GraphXferMatch get_match_record(Graph const *) const;
@@ -251,7 +253,6 @@ public:
                       bool only_data_parallel,
                       std::unique_ptr<Graph> &best_graph,
                       std::unordered_map<Node, MachineView> &optimal_views);
-  // Experimental. To be merged with graph_optimize eventually.
   void graph_optimize_with_memory(
       size_t budget,
       bool only_data_parallel,
@@ -263,6 +264,9 @@ public:
       bool only_data_parallel,
       std::unique_ptr<Graph> &best_graph,
       std::unordered_map<Node, MachineView> &optimal_views);
+  /**
+   * @brief Substitute the mem_config with new_config.
+   */
   void update_mem_optim_config(MemoryOptimConfig const &new_config);
 
   /**
