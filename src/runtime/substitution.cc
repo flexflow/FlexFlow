@@ -18,7 +18,6 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/graph.h"
 #include "flexflow/graph_structures.h"
-#include "flexflow/operator.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/concat.h"
