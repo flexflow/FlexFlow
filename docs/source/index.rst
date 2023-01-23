@@ -44,10 +44,11 @@ Welcome to FlexFlow's documentation!
    cpp_api
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Developers Guide
 
-   developers_guide
+   developers_guide/developers_guide.rst
+   developers_guide/ff_internals.rst
 
 
 .. Indices and tables
