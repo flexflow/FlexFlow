@@ -1022,24 +1022,25 @@ void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
                                        bias_ndims);
 }
 
-/** @brief Create a map between each of a tensor's dimension name and its corresponding index
+/** @brief  Create a map between each of a tensor's dimension name and its corresponding index
  *
- * function   The tensor dimension names are defined as follows. For the input tensor, the first
- *            dimension is called INPUT_CHANNEL, and generally corresponds to number of floats
- *            needed to store a single element from the input dataset. For example, when each element
- *            in the dataset is a flattened MNIST image, the INPUT_CHANNEL dimension will have
- *            a size of 28x28=784. The second to last and last dimensions in the input tensor are,
- *            respectively, the INPUT_SAMPLE and INPUT_REPLICA dimensions. The size of the INPUT_SAMPLE
- *            dimension generally corresponds to the batch size used for training. The size of the
- *            INPUT_REPLICA tells us how many replicas of the tensors have been created.
- *            The dimensions of the output tensor are named analogously: the first dimension is
- *            OUTPUT_CHANNEL, the second to last is OUTPUT_SAMPLE, and the last one is OUTPUT_REPLICA.
- *            Both the input and output tensor may have additional dimensions, without a name, between
- *            {INPUT,OUTPUT}_CHANNEL and {INPUT,OUTPUT}_SAMPLE. For instance, when the input data comes
- *            in textual form, it is common to have an additional dimension representing the sequence length.
- *            When it comes to the weights, the dimensions are named simply as KERNEL_CHANNEL_IN (first
- *            dimension of a weight's tensor), KERNEL_CHANNEL_OUT (second dimension) and BIAS_CHANNEL_OUT
- *            (first dimension of the bias tensor)
+ *          The tensor dimension names are defined as follows. For the input tensor, the first
+ *          dimension is called INPUT_CHANNEL, and generally corresponds to number of floats
+ *          needed to store a single element from the input dataset. For example, when each element
+ *          in the dataset is a flattened MNIST image, the INPUT_CHANNEL dimension will have
+ *          a size of 28x28=784. The second to last and last dimensions in the input tensor are,
+ *          respectively, the INPUT_SAMPLE and INPUT_REPLICA dimensions. The size of the INPUT_SAMPLE
+ *          dimension generally corresponds to the batch size used for training. The size of the
+ *          INPUT_REPLICA tells us how many replicas of the tensors have been created.
+ *          The dimensions of the output tensor are named analogously: the first dimension is
+ *          OUTPUT_CHANNEL, the second to last is OUTPUT_SAMPLE, and the last one is OUTPUT_REPLICA.
+ *          Both the input and output tensor may have additional dimensions, without a name, between
+ *          {INPUT,OUTPUT}_CHANNEL and {INPUT,OUTPUT}_SAMPLE. For instance, when the input data comes
+ *          in textual form, it is common to have an additional dimension representing the sequence length.
+ *          When it comes to the weights, the dimensions are named simply as KERNEL_CHANNEL_IN (first
+ *          dimension of a weight's tensor), KERNEL_CHANNEL_OUT (second dimension) and BIAS_CHANNEL_OUT
+ *          (first dimension of the bias tensor)
+ * 
  * @param[in] input_shape   A ParallelTensorShape object representing the shape of the ParallelTensor
  *                          used for the input to the operator
  * @return dimension_names  A map from each LinearParams::NamedDimensions to the index corresponding to
@@ -1066,16 +1067,17 @@ std::unordered_map<LinearParams::NamedDimensions, int>
  *          bias_ndims variables to the number of dimensions (including the replica dimensions) of, respectively,
  *          the ouput, weights, and bias tensors.
  *
- * function   The number of dimensions, and dimension sizes of the output, weights, and bias dimensions are set as follows.
- *            The number of dimensions of all three tensors are copied from the dimensions of the input tensor. The replica
- *            dimensions are not subtracted or otherwise excluded. The size of the output tensor dimensions are also copied
- *            from the input tensor, with the exception of the last dimension (replica dimension), which is not set, and the
- *            first dimension, whose size is set equal to the out_channels member of the LinearParams struct, which in turn
- *            is set by the outDim parameter of the FModel::dense function. When it comes to the size of the weights dimensions,
- *            the first dimension is set to have size equal to the quotient of the size of the INPUT_CHANNEL dimension of the input
- *            (first dimension) and the degree (number of partitions) of the same input dimension. The second dimension of the
- *            the weights tensor is set equal to out_channels, just like the first dimension of the output tensor. Finally,
- *            the size of the first dimension of the bias tensor is also set equal to the value of out_channels.
+ *          The number of dimensions, and dimension sizes of the output, weights, and bias dimensions are set as follows.
+ *          The number of dimensions of all three tensors are copied from the dimensions of the input tensor. The replica
+ *          dimensions are not subtracted or otherwise excluded. The size of the output tensor dimensions are also copied
+ *          from the input tensor, with the exception of the last dimension (replica dimension), which is not set, and the
+ *          first dimension, whose size is set equal to the out_channels member of the LinearParams struct, which in turn
+ *          is set by the outDim parameter of the FModel::dense function. When it comes to the size of the weights dimensions,
+ *          the first dimension is set to have size equal to the quotient of the size of the INPUT_CHANNEL dimension of the input
+ *          (first dimension) and the degree (number of partitions) of the same input dimension. The second dimension of the
+ *          the weights tensor is set equal to out_channels, just like the first dimension of the output tensor. Finally,
+ *          the size of the first dimension of the bias tensor is also set equal to the value of out_channels.
+ * 
  * @param[in]   input_shape   A required argument recording the dimensions of the input tensor
  * @param[out]  output_dims   An array of ParallelDim objects representing the dimensions of the output tensor
  * @param[out]  output_ndims  The number of dimensions (including the replica dimension(s)) of the output tensor
@@ -1116,7 +1118,7 @@ void LinearParams::calculate_nonreplica_dim_sizes(
   }
 }
 
-/** @brief Switch the `is_replica_dim` field to true in each ParallelDim of
+/** @brief Switch the is_replica_dim field to true in each ParallelDim of
  *         the output, weight and bias tensor, if the corresponding dimension
  *         is used to keep track of the number of replicas
  *
