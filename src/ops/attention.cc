@@ -1,4 +1,4 @@
-/* Copyright 2022 CMU, Facebook
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,6 +63,7 @@ Tensor FFModel::multihead_attention(const Tensor query,
                                     char const *name) {
   Layer *li = new Layer(this,
                         OP_MULTIHEAD_ATTENTION,
+                        DT_FLOAT,
                         name,
                         3 /*inputs*/,
                         1 /*weights*/,
@@ -73,8 +74,9 @@ Tensor FFModel::multihead_attention(const Tensor query,
   {
     int numdims = query->num_dims;
     int dims[MAX_TENSOR_DIM];
-    for (int i = 0; i < numdims; i++)
+    for (int i = 0; i < numdims; i++) {
       dims[i] = query->dims[i];
+    }
     dims[0] = embed_dim;
     li->outputs[0] = create_tensor_legion_ordering(
         numdims, dims, DT_FLOAT, li, 0, true /*create_grad*/);
@@ -166,6 +168,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
     // Initializer* _bias_initializer)
     : Op(model,
          OP_MULTIHEAD_ATTENTION,
+         DT_FLOAT,
          name,
          3 /*inputs*/,
          1 /*weights*/,
@@ -189,8 +192,9 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
   numOutputs = 1;
   int numdim = _query->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = _query->dims[i];
+  }
   dims[0].size = _embed_dim;
   // Currently require no parallelism along this dim
   assert(dims[0].degree == 1);
@@ -253,6 +257,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
     // Initializer* _bias_initializer)
     : Op(model,
          OP_MULTIHEAD_ATTENTION,
+         DT_FLOAT,
          name,
          3 /*inputs*/,
          1 /*weights*/,
@@ -274,8 +279,9 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
   numOutputs = 1;
   int numdim = _query->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = _query->dims[i];
+  }
   // assert key and value have the same sequence length
   assert(_key->dims[1] == _value->dims[1]);
   dims[0].size = _embed_dim;
@@ -744,14 +750,18 @@ bool MultiHeadAttention::get_int_parameter(PMParameter para, int *value) const {
 bool MultiHeadAttention::measure_operator_cost(
     Simulator *sim, MachineView const &mv, CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_query, sub_key, sub_value;
-  if (!inputs[0]->get_sub_tensor(mv, sub_query))
+  if (!inputs[0]->get_sub_tensor(mv, sub_query)) {
     return false;
-  if (!inputs[1]->get_sub_tensor(mv, sub_key))
+  }
+  if (!inputs[1]->get_sub_tensor(mv, sub_key)) {
     return false;
-  if (!inputs[2]->get_sub_tensor(mv, sub_value))
+  }
+  if (!inputs[2]->get_sub_tensor(mv, sub_value)) {
     return false;
-  if (!outputs[0]->get_sub_tensor(mv, sub_output))
+  }
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
+  }
   // Currently assume only data parallel
   size_t num_weights = 0;
   {

@@ -1,4 +1,4 @@
-/* Copyright 2020 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,8 +92,9 @@ void FlexFlow::top_level_task(Task const *task,
   // t = ff.batch_norm(t);
   t = ff.pool2d(t, 3, 3, 2, 2, 1, 1);
 
-  for (int i = 0; i < 3; i++)
+  for (int i = 0; i < 3; i++) {
     t = BottleneckBlock(ff, t, 64, 1);
+  }
   for (int i = 0; i < 4; i++) {
     int stride = (i == 0) ? 2 : 1;
     t = BottleneckBlock(ff, t, 128, stride);

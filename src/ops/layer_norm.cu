@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,7 +78,7 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 
 template <typename T>
 __global__ void
-    RowwiseMomentsCUDAKernel(int64_t N, T eps, const T *X, T *mean, T *rstd) {
+    RowwiseMomentsCUDAKernel(int64_t N, T eps, T const *X, T *mean, T *rstd) {
   __shared__ T m_shared[C10_WARP_SIZE];
   __shared__ T v_shared[C10_WARP_SIZE];
   const int64_t i = blockIdx.x;
@@ -102,11 +102,11 @@ __global__ void
 
 template <typename T>
 __global__ void LayerNormForwardCUDAKernel(int64_t N,
-                                           const T *X,
-                                           const T *mean,
-                                           const T *rstd,
-                                           const T *gamma,
-                                           const T *beta,
+                                           T const *X,
+                                           T const *mean,
+                                           T const *rstd,
+                                           T const *gamma,
+                                           T const *beta,
                                            T *Y) {
   using T_ACC = T;
   const int64_t i = blockIdx.x;
@@ -125,7 +125,7 @@ __global__ void LayerNormForwardCUDAKernel(int64_t N,
 /*static*/
 template <typename T>
 void LayerNorm::forward_kernel(LayerNormMeta const *m,
-                               const T *in_ptr,
+                               T const *in_ptr,
                                T *out_ptr,
                                T *gamma_ptr,
                                T *beta_ptr,
@@ -147,7 +147,7 @@ void LayerNorm::forward_kernel(LayerNormMeta const *m,
 /*static*/
 template <typename T>
 void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
-                                       const T *in_ptr,
+                                       T const *in_ptr,
                                        T *out_ptr,
                                        T *gamma_ptr,
                                        T *beta_ptr) {
@@ -177,7 +177,7 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
 
 template <typename T>
 __global__ void ComputeInternalGradientsCUDAKernel(
-    int64_t N, const T *dY, const T *X, const T *gamma, T *ds, T *db) {
+    int64_t N, T const *dY, T const *X, T const *gamma, T *ds, T *db) {
   using T_ACC = T;
   __shared__ T_ACC ds_shared[C10_WARP_SIZE];
   __shared__ T_ACC db_shared[C10_WARP_SIZE];
@@ -203,10 +203,10 @@ __global__ void ComputeInternalGradientsCUDAKernel(
 template <typename T>
 __global__ void ComputeGradientFusedParamsCUDAKernel(int64_t M,
                                                      int64_t N,
-                                                     const T *mean,
-                                                     const T *rstd,
-                                                     const T *ds,
-                                                     const T *db,
+                                                     T const *mean,
+                                                     T const *rstd,
+                                                     T const *ds,
+                                                     T const *db,
                                                      T *c1,
                                                      T *c2) {
   using T_ACC = T;
@@ -225,12 +225,12 @@ __global__ void ComputeGradientFusedParamsCUDAKernel(int64_t M,
 
 template <typename T>
 __global__ void LayerNormBackwardCUDAKenrel(int64_t N,
-                                            const T *dY,
-                                            const T *X,
-                                            const T *gamma,
-                                            const T *a,
-                                            const T *b,
-                                            const T *c,
+                                            T const *dY,
+                                            T const *X,
+                                            T const *gamma,
+                                            T const *a,
+                                            T const *b,
+                                            T const *c,
                                             T *dX) {
   using T_ACC = T;
   const int64_t i = blockIdx.x;
@@ -247,10 +247,10 @@ __global__ void LayerNormBackwardCUDAKenrel(int64_t N,
 template <typename T>
 __global__ void GammaBetaBackwardSimpleCUDAKernel(int64_t M,
                                                   int64_t N,
-                                                  const T *dY,
-                                                  const T *X,
-                                                  const T *mean,
-                                                  const T *rstd,
+                                                  T const *dY,
+                                                  T const *X,
+                                                  T const *mean,
+                                                  T const *rstd,
                                                   T *dg,
                                                   T *db) {
   using T_ACC = T;
@@ -279,10 +279,10 @@ __global__ void GammaBetaBackwardSimpleCUDAKernel(int64_t M,
 template <typename T>
 __global__ void GammaBetaBackwardCUDAKernel(int64_t M,
                                             int64_t N,
-                                            const T *dY,
-                                            const T *X,
-                                            const T *mean,
-                                            const T *rstd,
+                                            T const *dY,
+                                            T const *X,
+                                            T const *mean,
+                                            T const *rstd,
                                             T *dg,
                                             T *db) {
   using T_ACC = T;
@@ -355,10 +355,10 @@ __global__ void GammaBetaBackwardCUDAKernel(int64_t M,
 /*static*/
 template <typename T>
 void LayerNorm::backward_kernel(LayerNormMeta const *m,
-                                const T *output_grad_ptr,
-                                const T *input_ptr,
+                                T const *output_grad_ptr,
+                                T const *input_ptr,
                                 T *input_grad_ptr,
-                                const T *gamma_ptr,
+                                T const *gamma_ptr,
                                 T *gamma_grad_ptr,
                                 T *beta_grad_ptr,
                                 cudaStream_t stream) {
@@ -411,10 +411,10 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
 /*static*/
 template <typename T>
 void LayerNorm::backward_kernel_wrapper(LayerNormMeta const *m,
-                                        const T *output_grad_ptr,
-                                        const T *input_ptr,
+                                        T const *output_grad_ptr,
+                                        T const *input_ptr,
                                         T *input_grad_ptr,
-                                        const T *gamma_ptr,
+                                        T const *gamma_ptr,
                                         T *gamma_grad_ptr,
                                         T *beta_grad_ptr) {
   cudaStream_t stream;

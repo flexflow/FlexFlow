@@ -1,7 +1,13 @@
-git submodule update --init --recursive
-source FC_env_setup.sh
+#! /usr/bin/env bash
+set -euo pipefail
 
-cd $PROTOBUF
+# Cd into FF_HOME
+cd "${BASH_SOURCE[0]%/*}/../"
+
+git submodule update --init --recursive
+./scripts/FC_env_setup.sh
+
+cd "$PROTOBUF"
 git submodule update --init --recursive
 ##git checkout 6d4e7fd #still cannot get the strategy compile to use the local runtime. So need to checkout v 3.10.0
 ./autogen.sh
@@ -9,7 +15,7 @@ git submodule update --init --recursive
 make -j
 cd ..
 
-cd $GASNET
+cd "$GASNET"
 ./FC.build_script.sh
 cd ..
 
@@ -18,7 +24,7 @@ cd src/runtime
 ./gen_strategy.sh 8 8 1 # for 8 gpu per node,  and 8 embeddings per node, and 1 node
 cd ../..
 
-cd $LEGION
+cd "$LEGION"
 git checkout control_replication
 cd ../
 

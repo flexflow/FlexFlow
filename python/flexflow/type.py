@@ -22,8 +22,9 @@ class DataType(Enum):
   DT_BOOLEAN = 40
   DT_INT32 = 41
   DT_INT64 = 42
-  DT_FLOAT = 43
-  DT_DOUBLE = 44
+  DT_HALF = 43
+  DT_FLOAT = 44
+  DT_DOUBLE = 45
   DT_NONE = 49
 
 class LossType(Enum):
@@ -77,8 +78,11 @@ class OpType(Enum):
   POW = 2045
   MEAN = 2046
   RSQRT = 2047
+  SIN = 2048
+  COS = 2049
   INPUT = 2050
   OUTPUT = 2051
+  REDUCE_SUM = 2052
   MULTIHEAD_ATTENTION = 2060
   GETITEM = 2070
   GETATTR = 2080

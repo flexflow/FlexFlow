@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,8 +37,9 @@ void DataLoader::load_input(Task const *task,
   assert(acc_batch_input.rect.lo[0] == acc_full_input.rect.lo[0]);
   // FIXME: currently assume continous indices
   assert(batch_size == meta->num_samples);
-  for (int i = 1; i < batch_size; i++)
+  for (int i = 1; i < batch_size; i++) {
     assert(meta->idxs[i] == meta->idxs[0] + i);
+  }
   float const *input_zc = acc_full_input.ptr + meta->idxs[0] * num_feats;
   copy_kernel<<<GET_BLOCKS(acc_batch_input.rect.volume()), CUDA_NUM_THREADS>>>(
       acc_batch_input.ptr, input_zc, acc_batch_input.rect.volume());

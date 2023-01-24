@@ -6,6 +6,10 @@ include(ExternalProject)
 # Set policy CMP0074 to eliminate cmake warnings
 cmake_policy(SET CMP0074 NEW)
 cmake_policy(SET CMP0077 NEW)
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+  # Fix DOWNLOAD_EXTRACT_TIMESTAMP warnings
+  cmake_policy(SET CMP0135 NEW)
+endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -UNDEBUG")
@@ -50,7 +54,10 @@ set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")
 set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
 
 # option for cuda arch
-set(FF_CUDA_ARCH "" CACHE STRING "Target CUDA Arch")
+set(FF_CUDA_ARCH "autodetect" CACHE STRING "Target CUDA Arch")
+if (FF_CUDA_ARCH STREQUAL "")
+  message(FATAL_ERROR "FF_CUDA_ARCH cannot be an empty string. Set it to `autodetect`, `all`, or pass one or multiple valid CUDA archs.")
+endif()
 
 # option for nccl
 option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)
@@ -228,6 +235,8 @@ if (FF_GPU_BACKEND STREQUAL "cuda")
     LIST_DIRECTORIES False
     ${FLEXFLOW_ROOT}/src/*.cu)
 
+  add_compile_definitions(FF_USE_CUDA)
+
   if(BUILD_SHARED_LIBS)
     cuda_add_library(flexflow SHARED ${FLEXFLOW_GPU_SRC} ${FLEXFLOW_SRC} OPTIONS ${CUDA_GENCODE})
   else()
@@ -261,6 +270,8 @@ elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
     target_include_directories(hip_device_nvidia SYSTEM INTERFACE ${HIP_INCLUDE_DIRS} ${ROCM_PATH}/include)
     target_include_directories(hip_device_nvidia INTERFACE ${HIP_INCLUDE_DIRS} ${ROCM_PATH}/include)
 
+    add_compile_definitions(FF_USE_HIP_CUDA)
+
     # Linking cuda: 
     # We do not explicitly link cuda. hipcc when targeting nvidia will 
     # use nvcc under the hood. nvcc when used for linking will handle 
@@ -271,6 +282,8 @@ elseif(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
     find_package(miopen REQUIRED)
     # find_package(rocrand REQUIRED)
     find_library(HIP_RAND_LIBRARY hiprand REQUIRED)
+
+    add_compile_definitions(FF_USE_HIP_ROCM)
 
     # The hip cmake config module defines three targets, 
     # hip::amdhip64, hip::host, and hip::device.
@@ -317,6 +330,7 @@ option(FF_BUILD_XDL "build XDL example" OFF)
 option(FF_BUILD_INCEPTION "build inception example" OFF)
 option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
 option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
+option(FF_BUILD_MOE "build mixture of experts example" OFF)
 option(FF_BUILD_MLP_UNIFY "build mlp unify example" OFF)
 option(FF_BUILD_SPLIT_TEST "build split test example" OFF)
 option(FF_BUILD_SPLIT_TEST_2 "build split test 2 example" OFF)
@@ -395,6 +409,10 @@ endif()
 
 if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/Transformer)
+endif()
+
+if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/mixture_of_experts)
 endif()
 
 # installation

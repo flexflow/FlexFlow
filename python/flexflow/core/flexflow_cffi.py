@@ -1,4 +1,4 @@
-# Copyright 2020 Stanford University, Los Alamos National Laboratory
+# Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -103,6 +103,20 @@ class Exp(Op):
     super(Exp, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# Sin
+# -----------------------------------------------------------------------
+class Sin(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Sin, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Cos
+# -----------------------------------------------------------------------
+class Cos(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Cos, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # Add
 # -----------------------------------------------------------------------
 class Add(Op):
@@ -129,6 +143,13 @@ class Multiply(Op):
 class Divide(Op):
   def __init__(self, handle, idx=None, name=None):
     super(Divide, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# ReduceSum
+# -----------------------------------------------------------------------
+class ReduceSum(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ReduceSum, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Conv2D
@@ -405,6 +426,10 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Softmax(handle, idx, name)
   elif op_type == OpType.EXP:
     return Exp(handle, idx, name)
+  elif op_type == OpType.SIN:
+    return Sin(handle, idx, name)
+  elif op_type == OpType.COS:
+    return Cos(handle, idx, name)
   elif op_type == OpType.ADD:
     return Add(handle, idx, name)
   elif op_type == OpType.SUBTRACT:
@@ -413,6 +438,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Multiply(handle, idx, name)
   elif op_type == OpType.DIVIDE:
     return Divide(handle, idx, name)
+  elif op_type == OpType.REDUCE_SUM:
+    return ReduceSum(handle, idx, name)
   elif op_type == OpType.MSELOSS:
     return MSELoss(handle, idx, name)
   elif op_type == OpType.SCALAR_MULTIPLY:
@@ -720,8 +747,10 @@ class Tensor(object):
     elif (dtype == 42):
       self.data_type = DataType.DT_INT64
     elif (dtype == 43):
-      self.data_type = DataType.DT_FLOAT
+      self.data_type = DataType.DT_HALF
     elif (dtype == 44):
+      self.data_type = DataType.DT_FLOAT
+    elif (dtype == 45):
       self.data_type = DataType.DT_DOUBLE
     else:
       assert 0, "unknown data type {}".format(dtype)
@@ -864,6 +893,39 @@ class FFModel(object):
     self.add_layer(OpType.EXP, name)
     return Tensor(handle, owner_op_type=OpType.EXP)
 
+  def sin(self, x, name=None):
+    """Elementwise sine function.
+             
+    :param x: the input Tensor.
+    :type x: Tensor
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_sin(self.handle, x.handle, c_name)
+    self.add_layer(OpType.SIN, name)
+    return Tensor(handle, owner_op_type=OpType.SIN)
+
+  def cos(self, x, name=None):
+    """Elementwise cosine function.
+             
+    :param x: the input Tensor.
+    :type x: Tensor
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_cos(self.handle, x.handle, c_name)
+    self.add_layer(OpType.COS, name)
+    return Tensor(handle, owner_op_type=OpType.COS)
+
+
   def add(self, x, y, inplace_a=False, name=None):
     """Layer that adds two input Tensors, :attr:`output = x + y`.
              
@@ -939,6 +1001,26 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
+
+  def reduce_sum(self, input, axes, keepdims=False, name=None):
+    """Layer that computes the sum of the input Tensor along given axes.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param axes: the axes along which reduction is applied
+    :type axes: List[int]
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    c_axes = ffi.new("int[]", axes)
+    handle = ffc.flexflow_model_add_reduce_sum(self.handle, input.handle, c_axes, len(axes), keepdims, c_name)
+    self.add_layer(OpType.REDUCE_SUM, name)
+    return Tensor(handle, owner_op_type=OpType.REDUCE_SUM)
 
   def rsqrt(self, input, name=None):
     """Layer that computes the element-wise reciprocal square-root.

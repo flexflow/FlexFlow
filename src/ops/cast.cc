@@ -1,4 +1,4 @@
-/* Copyright 2022 CMU
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,11 @@
 
 #include "flexflow/ops/cast.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/cast_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
+
+using namespace FlexFlow::Kernels::Cast;
 
 namespace FlexFlow {
 // declare Legion names
@@ -36,12 +39,19 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 Tensor FFModel::cast(const Tensor input, DataType dtype, char const *name) {
-  Layer *cast = new Layer(
-      this, OP_CAST, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, input);
+  Layer *cast = new Layer(this,
+                          OP_CAST,
+                          dtype,
+                          name,
+                          1 /*inputs*/,
+                          0 /*weights*/,
+                          1 /*outputs*/,
+                          input);
   int numdims = input->num_dims;
   int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdims; i++)
+  for (int i = 0; i < numdims; i++) {
     dims[i] = input->dims[i];
+  }
   cast->outputs[0] = create_tensor_legion_ordering(
       numdims, dims, dtype, cast, 0, true /*create_grad*/);
   cast->add_int_property("dtype", dtype);
@@ -81,6 +91,7 @@ Cast::Cast(FFModel &model,
            char const *name)
     : Op(model,
          OP_CAST,
+         _dtype,
          name,
          1 /*inputs*/,
          0 /*weights*/,
@@ -90,8 +101,9 @@ Cast::Cast(FFModel &model,
   numWeights = 0;
   int numdim = input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = input->dims[i];
+  }
   outputs[0] =
       model.create_parallel_tensor_legion_ordering(numdim, dims, _dtype, this);
 }
@@ -198,6 +210,7 @@ void Cast::forward_task_with_2_type(Task const *task,
                                     Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
+  CastMeta const *m = *((CastMeta **)task->local_args);
   // Domain input_domain = runtime->get_index_space_domain(
   //   ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
@@ -206,8 +219,8 @@ void Cast::forward_task_with_2_type(Task const *task,
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   ODT *output_ptr = helperGetTensorPointerWO<ODT>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  Cast::forward_kernel_wrapper<IDT, ODT>(
-      input_ptr, output_ptr, output_domain.get_volume());
+  forward_kernel_wrapper<IDT, ODT>(
+      m, input_ptr, output_ptr, output_domain.get_volume());
 }
 
 void Cast::forward_task(Task const *task,
@@ -286,7 +299,7 @@ void Cast::backward_task_with_2_type(Task const *task,
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   ODT *output_ptr = helperGetTensorPointerRW<ODT>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  Cast::backward_kernel_wrapper<IDT, ODT>(
+  backward_kernel_wrapper<IDT, ODT>(
       input_ptr, output_ptr, output_domain.get_volume());
 }
 

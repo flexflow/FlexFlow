@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,10 +35,11 @@ __global__ void sgd_update(size_t count,
     float gt = WGrad[i] + weight_decay * W[i];
     if (momentum > 0.0f) {
       V[i] = V[i] * momentum + gt;
-      if (nesterov)
+      if (nesterov) {
         gt = gt + momentum * V[i];
-      else
+      } else {
         gt = V[i];
+      }
     }
     W[i] -= lr * gt;
   }

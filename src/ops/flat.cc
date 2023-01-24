@@ -1,5 +1,21 @@
+/* Copyright 2018 Stanford
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "flexflow/ops/flat.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/flat_kernels.h"
 
 namespace FlexFlow {
 
@@ -19,10 +35,18 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
+using namespace FlexFlow::Kernels::Flat;
+
 Tensor FFModel::flat(const Tensor input, char const *name) {
   assert(input->num_dims == 4);
-  Layer *flat = new Layer(
-      this, OP_FLAT, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, input);
+  Layer *flat = new Layer(this,
+                          OP_FLAT,
+                          DT_FLOAT,
+                          name,
+                          1 /*inputs*/,
+                          0 /*weights*/,
+                          1 /*outputs*/,
+                          input);
   int dims[MAX_TENSOR_DIM];
   dims[1] = input->dims[3];
   dims[0] = input->dims[2] * input->dims[1] * input->dims[0];
@@ -30,13 +54,6 @@ Tensor FFModel::flat(const Tensor input, char const *name) {
       2, dims, DT_FLOAT, flat, 0, true /*create_grad*/);
   layers.push_back(flat);
   return flat->outputs[0];
-#ifdef DEADCODE
-  // assert(strategies.find(name) != strategies.end());
-  // ParallelConfig pc = strategies[name];
-  Flat *flat = new Flat(*this, input, name);
-  layers.push_back(flat);
-  return flat->outputs[0];
-#endif
 }
 
 Op *Flat::create_operator_from_layer(
@@ -105,6 +122,7 @@ void Flat::construct_output_mappings(
 Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
     : Op(model,
          OP_FLAT,
+         _input->data_type,
          name,
          1 /*inputs*/,
          0 /*weights*/,
@@ -220,7 +238,7 @@ void Flat::forward_task(Task const *task,
                                                         false /*readOutput*/);
   assert(acc_input.rect.volume() == acc_output.rect.volume());
 
-  Flat::forward_kernel_wrapper(
+  forward_kernel_wrapper(
       acc_input.ptr, acc_output.ptr, acc_input.rect.volume());
   // checkCUDA(cudaDeviceSynchronize());
 }
@@ -273,7 +291,7 @@ void Flat::backward_task(Task const *task,
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());
 
-  Flat::backward_kernel_wrapper(
+  backward_kernel_wrapper(
       acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
 }
 

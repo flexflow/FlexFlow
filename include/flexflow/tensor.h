@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,7 @@ struct TensorBase {
   template <typename T>
   bool set_tensor(FFModel const *model,
                   std::vector<int> const &dims,
-                  const T *data);
+                  T const *data);
   template <typename T>
   bool get_tensor(FFModel const *model, T *data, bool get_gradients);
   // TensorShape get_shape() const;

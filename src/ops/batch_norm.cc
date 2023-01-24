@@ -1,4 +1,4 @@
-/* Copyright 2017 Stanford, NVIDIA
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ Tensor FFModel::batch_norm(const Tensor input, bool relu, char const *name) {
   assert(input->num_dims == 4); /*NCHW*/
   Layer *bm = new Layer(this,
                         OP_BATCHNORM,
+                        DT_FLOAT,
                         name,
                         1 /*inputs*/,
                         2 /*weights*/,
@@ -59,6 +60,7 @@ BatchNorm::BatchNorm(FFModel &model,
                      char const *name)
     : Op(model,
          OP_BATCHNORM,
+         DT_FLOAT,
          name,
          1 /*inputs*/,
          2 /*weights*/,
@@ -70,8 +72,9 @@ BatchNorm::BatchNorm(FFModel &model,
   assert(_input->num_dims == 4);
   numOutputs = 1;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < _input->num_dims; i++)
+  for (int i = 0; i < _input->num_dims; i++) {
     dims[i] = _input->dims[_input->num_dims - 1 - i];
+  }
   outputs[0] =
       model.create_parallel_tensor(_input->num_dims, dims, DT_FLOAT, this);
   return;

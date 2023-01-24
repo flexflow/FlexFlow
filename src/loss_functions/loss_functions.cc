@@ -1,4 +1,4 @@
-/* Copyright 2022 CMU, Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,15 +21,16 @@ using namespace Legion;
 
 Loss::Loss(std::string const &loss, bool _repl_labels) {
   repl_labels = _repl_labels;
-  if (loss == "categorical_crossentropy")
+  if (loss == "categorical_crossentropy") {
     loss_type = LOSS_CATEGORICAL_CROSSENTROPY;
-  else if (loss == "sparse_categorical_crossentropy")
+  } else if (loss == "sparse_categorical_crossentropy") {
     loss_type = LOSS_SPARSE_CATEGORICAL_CROSSENTROPY;
-  else if (loss == "mean_squared_error")
+  } else if (loss == "mean_squared_error") {
     loss_type = LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE;
-  else
+  } else {
     // Unrecognized loss type
     assert(false);
+  }
 }
 
 Loss::Loss(LossType _loss_type, bool _repl_labels)
@@ -39,8 +40,9 @@ void Loss::backward(FFModel *model,
                     const ParallelTensor logit,
                     const ParallelTensor label) {
   int last_non_replica_dim = logit->num_dims - 1;
-  while (logit->dims[last_non_replica_dim].is_replica_dim)
+  while (logit->dims[last_non_replica_dim].is_replica_dim) {
     last_non_replica_dim -= 1;
+  }
   // Compute scale factor for loss backpropagation
   if (loss_type == LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE) {
     assert(logit->get_volume() == label->get_volume());
@@ -155,8 +157,9 @@ void Loss::backward_task_with_dim(Task const *task,
         k,
         loss->scale_factor);
   } else {
-    if (loss->repl_labels)
+    if (loss->repl_labels) {
       assert(false && "Loss not yet supported for aggr_spec.");
+    }
     TensorAccessorW<float, NDIM> acc_logit_grad(regions[0],
                                                 task->regions[0],
                                                 FID_DATA,

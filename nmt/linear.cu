@@ -1,4 +1,4 @@
-/* Copyright 2018 Stanford, NVIDIA
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -180,8 +180,9 @@ OpMeta *Linear::init_task(Task const *task,
 #ifndef DISABLE_COMPUTATION
   int batch_size = linear->batchSize * LSTM_PER_NODE_LENGTH;
   float *dram_one_ptr = (float *)malloc(sizeof(float) * batch_size);
-  for (int i = 0; i < batch_size; i++)
+  for (int i = 0; i < batch_size; i++) {
     dram_one_ptr[i] = 1.0f;
+  }
   checkCUDA(cudaMalloc(&m->one_ptr, sizeof(float) * batch_size));
   checkCUDA(cudaMemcpy(m->one_ptr,
                        dram_one_ptr,
@@ -505,10 +506,10 @@ void Linear::backward2_task(Task const *task,
     assert(rect_replica.volume() == rect_input.volume());
     assert(acc_replica.accessor.is_dense_arbitrary(rect_replica));
     float const *replica_ptr = acc_replica.ptr(rect_replica.lo);
-    if (i == 1)
+    if (i == 1) {
       checkCUDA(cublasScopy(
           m->handle.blas, rect_input.volume(), replica_ptr, 1, input_ptr, 1));
-    else
+    } else {
       checkCUDA(cublasSaxpy(m->handle.blas,
                             rect_input.volume(),
                             &alpha,
@@ -516,6 +517,7 @@ void Linear::backward2_task(Task const *task,
                             1,
                             input_ptr,
                             1));
+    }
   }
 #endif
 }

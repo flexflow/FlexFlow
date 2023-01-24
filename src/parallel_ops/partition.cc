@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/model.h"
+#include "flexflow/parallel_ops/kernels/partition_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -38,6 +39,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
+using namespace FlexFlow::Kernels::Repartition;
+
 /* Params */
 bool operator==(RepartitionParams const &lhs, RepartitionParams const &rhs) {
   return lhs.repartition_legion_dim == rhs.repartition_legion_dim &&
@@ -58,19 +61,6 @@ RepartitionParams Repartition::get_params() const {
   params.repartition_legion_dim = this->repartition_dim;
   params.repartition_degree = this->repartition_degree;
   return params;
-}
-
-ParallelTensor FFModel::repartition(const ParallelTensor input,
-                                    int repartition_legion_dim,
-                                    int repartition_degree,
-                                    char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  Repartition *part = new Repartition(
-      *this, input, repartition_legion_dim, repartition_degree, name);
-  layers.push_back(part);
-  return part->outputs[0];
-#endif
 }
 
 Repartition::Repartition(FFModel &model,
@@ -185,8 +175,9 @@ void Repartition::forward(FFModel const &ff) {
 void Repartition::backward(FFModel const &ff) {
   // skip backpropagation for input
   if (inputs[0]->owner_op != nullptr &&
-      inputs[0]->owner_op->op_type == OP_INPUT)
+      inputs[0]->owner_op->op_type == OP_INPUT) {
     return;
+  }
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;

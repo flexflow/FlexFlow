@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ float Cache::cache_update(Task const *task,
   int batch_ctr = ((Arg *)(task->args))->batch_ctr;
   CacheMeta *m = *((CacheMeta **)task->local_args);
 
-  const T *input_ptr = helperGetTensorPointerRW<T>(
+  T const *input_ptr = helperGetTensorPointerRW<T>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   T *host_input = (T *)c->batch_cmp;
   hipMemcpy(host_input,

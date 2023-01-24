@@ -1,4 +1,4 @@
-/* Copyright 2022 CMU, Stanford, Facebook
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 
 #include "flexflow/ops/reshape.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/reshape_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
@@ -35,6 +36,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
+using namespace FlexFlow::Kernels::Reshape;
+
 /* Params */
 bool operator==(ReshapeParams const &lhs, ReshapeParams const &rhs) {
   return lhs.shape == rhs.shape;
@@ -49,6 +52,7 @@ Tensor FFModel::reshape(const Tensor input,
                         char const *name) {
   Layer *reshape = new Layer(this,
                              OP_RESHAPE,
+                             DT_FLOAT,
                              name,
                              1 /*inputs*/,
                              0 /*weights*/,
@@ -82,6 +86,7 @@ Reshape::Reshape(FFModel &model,
                  char const *name)
     : Op(model,
          OP_RESHAPE,
+         input->data_type,
          name,
          1 /*inputs*/,
          0 /*weights*/,
@@ -89,17 +94,21 @@ Reshape::Reshape(FFModel &model,
          input) {
   shape_length = _shape.size();
   assert(shape_length <= MAX_TENSOR_DIM);
-  for (int i = 0; i < shape_length; i++)
+  for (int i = 0; i < shape_length; i++) {
     shape_array[i] = _shape[i];
+  }
   numOutputs = 1;
   numWeights = 0;
   int num_replica_dims = 0;
-  for (int i = 0; i < input->num_dims; i++)
-    if (input->dims[i].is_replica_dim)
+  for (int i = 0; i < input->num_dims; i++) {
+    if (input->dims[i].is_replica_dim) {
       num_replica_dims++;
+    }
+  }
   // assert that all replica dims are leading dims
-  for (int i = 0; i < num_replica_dims; i++)
+  for (int i = 0; i < num_replica_dims; i++) {
     assert(input->dims[input->num_dims - 1 - i].is_replica_dim);
+  }
   int numdim = (int)_shape.size();
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
@@ -109,12 +118,15 @@ Reshape::Reshape(FFModel &model,
     dims[i].is_replica_dim = false;
   }
   // copy all replica dims
-  for (int i = 0; i < num_replica_dims; i++)
+  for (int i = 0; i < num_replica_dims; i++) {
     dims[i + numdim] = input->dims[input->num_dims - 1 - i];
+  }
   numdim += num_replica_dims;
   for (int i = num_replica_dims; i < numdim && i < input->num_dims; i++) {
-    if (dims[numdim - 1 - i].size != input->dims[input->num_dims - 1 - i].size)
+    if (dims[numdim - 1 - i].size !=
+        input->dims[input->num_dims - 1 - i].size) {
       break;
+    }
     dims[numdim - 1 - i] = input->dims[input->num_dims - 1 - i];
   }
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -218,29 +230,25 @@ void Reshape::forward_task(Task const *task,
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     float *out_ptr = helperGetTensorPointerWO<float>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    Reshape::forward_kernel_wrapper<float>(
-        in_ptr, out_ptr, in_domain.get_volume());
+    forward_kernel_wrapper<float>(in_ptr, out_ptr, in_domain.get_volume());
   } else if (m->data_type == DT_DOUBLE) {
     double const *in_ptr = helperGetTensorPointerRO<double>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     double *out_ptr = helperGetTensorPointerWO<double>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    Reshape::forward_kernel_wrapper<double>(
-        in_ptr, out_ptr, in_domain.get_volume());
+    forward_kernel_wrapper<double>(in_ptr, out_ptr, in_domain.get_volume());
   } else if (m->data_type == DT_INT32) {
     int32_t const *in_ptr = helperGetTensorPointerRO<int32_t>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int32_t *out_ptr = helperGetTensorPointerWO<int32_t>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    Reshape::forward_kernel_wrapper<int32_t>(
-        in_ptr, out_ptr, in_domain.get_volume());
+    forward_kernel_wrapper<int32_t>(in_ptr, out_ptr, in_domain.get_volume());
   } else if (m->data_type == DT_INT64) {
     int64_t const *in_ptr = helperGetTensorPointerRO<int64_t>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int64_t *out_ptr = helperGetTensorPointerWO<int64_t>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    Reshape::forward_kernel_wrapper<int64_t>(
-        in_ptr, out_ptr, in_domain.get_volume());
+    forward_kernel_wrapper<int64_t>(in_ptr, out_ptr, in_domain.get_volume());
   } else {
     assert(false && "Unsupported data type in Reshape forward");
   }
@@ -278,8 +286,9 @@ void Reshape::backward(FFModel const &ff) {
 
 ReshapeParams Reshape::get_params() const {
   std::vector<int> shape_vec;
-  for (size_t i = 0; i < shape_length; i++)
+  for (size_t i = 0; i < shape_length; i++) {
     shape_vec.push_back(shape_array[i]);
+  }
   ReshapeParams params;
   params.shape = shape_vec;
   return params;
@@ -304,28 +313,28 @@ void Reshape::backward_task(Task const *task,
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     float *in_grad_ptr = helperGetTensorPointerRW<float>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    Reshape::backward_kernel_wrapper<float>(
+    backward_kernel_wrapper<float>(
         in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume());
   } else if (m->data_type == DT_DOUBLE) {
     double const *out_grad_ptr = helperGetTensorPointerRO<double>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     double *in_grad_ptr = helperGetTensorPointerRW<double>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    Reshape::backward_kernel_wrapper<double>(
+    backward_kernel_wrapper<double>(
         in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume());
   } else if (m->data_type == DT_INT32) {
     int32_t const *out_grad_ptr = helperGetTensorPointerRO<int32_t>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int32_t *in_grad_ptr = helperGetTensorPointerRW<int32_t>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    Reshape::backward_kernel_wrapper<int32_t>(
+    backward_kernel_wrapper<int32_t>(
         in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume());
   } else if (m->data_type == DT_INT64) {
     int64_t const *out_grad_ptr = helperGetTensorPointerRO<int64_t>(
         regions[0], task->regions[0], FID_DATA, ctx, runtime);
     int64_t *in_grad_ptr = helperGetTensorPointerRW<int64_t>(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    Reshape::backward_kernel_wrapper<int64_t>(
+    backward_kernel_wrapper<int64_t>(
         in_grad_ptr, out_grad_ptr, in_grad_domain.get_volume());
   } else {
     assert(false && "Unsupported data type in Reshape backward");
@@ -394,8 +403,9 @@ bool Reshape::measure_operator_cost(Simulator *sim,
 
 void Reshape::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->shape_length);
-  for (size_t i = 0; i < this->shape_length; i++)
+  for (size_t i = 0; i < this->shape_length; i++) {
     sez.serialize(this->shape_array[i]);
+  }
 }
 
 using PCG::Node;
@@ -421,8 +431,9 @@ Op *Reshape::materialize(FFModel &ff,
                          int num_inputs) const {
   assert(num_inputs == 1);
   std::vector<int> shape;
-  for (size_t i = 0; i < this->shape_length; i++)
+  for (size_t i = 0; i < this->shape_length; i++) {
     shape.push_back(shape_array[i]);
+  }
   return new Reshape(ff, inputs[0], shape, this->name);
 }
 

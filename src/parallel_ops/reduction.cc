@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/model.h"
+#include "flexflow/parallel_ops/kernels/reduction_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -38,6 +39,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
+using namespace FlexFlow::Kernels::Reduction;
+
 /* Params */
 bool operator==(ReductionParams const &lhs, ReductionParams const &rhs) {
   return lhs.reduction_legion_dim == rhs.reduction_legion_dim &&
@@ -53,19 +56,6 @@ ReductionParams Reduction::get_params() const {
   params.reduction_legion_dim = this->reduction_dim;
   params.reduction_degree = this->reduction_degree;
   return params;
-}
-
-ParallelTensor FFModel::reduction(const ParallelTensor input,
-                                  int reduction_legion_dim,
-                                  int reduction_degree,
-                                  char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  Reduction *reduce =
-      new Reduction(*this, input, reduction_legion_dim, reduction_degree, name);
-  layers.push_back(reduce);
-  return reduce->outputs[0];
-#endif
 }
 
 Reduction::Reduction(FFModel &model,

@@ -12,11 +12,13 @@ if (FF_GPU_BACKEND STREQUAL "cuda")
     flexflow_dataloader.cu)
 
   cuda_add_library(flexflow_c SHARED ${GPU_SRC} ${CPU_SRC} OPTIONS ${CUDA_GENCODE})
+  cuda_add_library(flexflow_native_python SHARED ${GPU_SRC} ${CPU_SRC} OPTIONS ${CUDA_GENCODE})
 elseif (FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "hip_rocm")
   set(GPU_SRC
     flexflow_dataloader.cpp)
 
   add_library(flexflow_c SHARED ${GPU_SRC} ${CPU_SRC})
+  add_library(flexflow_native_python SHARED ${GPU_SRC} ${CPU_SRC})
 else()
   message(FATAL_ERROR "Unsupported FF_GPU_BACKEND for cmake: ${FF_GPU_BACKEND}")
 endif()
@@ -24,6 +26,10 @@ endif()
 target_include_directories(flexflow_c PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
 target_link_libraries(flexflow_c ${LEGION_LIBRARY})
 add_dependencies(flexflow_c flexflow)
+
+target_include_directories(flexflow_native_python PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
+target_link_libraries(flexflow_native_python flexflow ${LEGION_LIBRARY} ${FLEXFLOW_EXT_LIBRARIES})
+add_dependencies(flexflow_native_python flexflow)
 
 if (FF_GPU_BACKEND STREQUAL "cuda")
   cuda_add_executable(${project_target} main.cc)
@@ -36,11 +42,6 @@ endif()
 set_target_properties(${project_target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR})
 target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})
 target_link_libraries(${project_target} -Wl,--whole-archive flexflow -Wl,--no-whole-archive flexflow_c ${FLEXFLOW_EXT_LIBRARIES})
-
-# create pybind bindings
-pybind11_add_module(flexflow_pybind11_internal bindings.cc)
-set_target_properties(flexflow_pybind11_internal PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/flexflow/core)
-target_link_libraries(flexflow_pybind11_internal PRIVATE flexflow flexflow_c ${FLEXFLOW_EXT_LIBRARIES})
 
 # create legion_cffi_header.py
 if(FF_USE_EXTERNAL_LEGION)
@@ -60,7 +61,7 @@ add_custom_command(TARGET ${project_target}
 # create flexflow_cffi_header.py
 add_custom_command(TARGET ${project_target} 
   PRE_BUILD	
-  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/flexflow_cffi_build.py --ffhome-dir ${FLEXFLOW_ROOT} --libname $<TARGET_FILE_NAME:flexflow_pybind11_internal> --output-dir ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core
+  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/flexflow_cffi_build.py --ffhome-dir ${FLEXFLOW_ROOT} --libname libflexflow_native_python.so --output-dir ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMENT "Creating flexflow_cffi_header.py..."
 )
@@ -69,6 +70,7 @@ set(BIN_DEST "bin")
 set(LIB_DEST "lib")
 install(TARGETS ${project_target} DESTINATION ${BIN_DEST})
 install(TARGETS flexflow_c DESTINATION ${LIB_DEST})
+install(TARGETS flexflow_native_python DESTINATION ${LIB_DEST})
 if(FF_BUILD_FROM_PYPI)
   set(PY_DEST "./")
 	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core/legion_cffi_header.py ${CMAKE_CURRENT_SOURCE_DIR}/flexflow/core/flexflow_cffi_header.py 
@@ -81,4 +83,3 @@ else()
 		FILES_MATCHING 
 		PATTERN "*.py")
 endif()
- install(TARGETS flexflow_pybind11_internal DESTINATION ${PY_DEST}/core)

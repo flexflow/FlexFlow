@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -148,17 +148,20 @@ __global__ void agg_backward_kernel(float **exp_preds,
   // Get pred pointers, single thread per block
   if (threadIdx.x == 0) {
     // init arrays
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++) {
       expert_bal[i] = 0;
-    for (int i = 0; i < batch_size; i++)
+    }
+    for (int i = 0; i < batch_size; i++) {
       cache_corr[i] = true;
+    }
 
     // Get pointer to chosen expert predictions and expert counts
     for (int i = 0; i < batch_size; i++) {
       for (int j = 0; j < k; j++) {
         int expert = true_exp_assign[k * i + j];
-        if (expert != exp_assign[k * i + j])
+        if (expert != exp_assign[k * i + j]) {
           cache_corr[i] = false;
+        }
         if (expert_bal[expert] >= exp_samples) {
           // dropped sample
           chosen_exp_preds[i * k + j] = 0;

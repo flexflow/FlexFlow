@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,14 +39,18 @@ struct Edge {
 
 struct EdgeCompare {
   bool operator()(Edge const &a, Edge const &b) const {
-    if (!(a.srcOp == b.srcOp))
+    if (!(a.srcOp == b.srcOp)) {
       return a.srcOp < b.srcOp;
-    if (!(a.dstOp == b.dstOp))
+    }
+    if (!(a.dstOp == b.dstOp)) {
       return a.dstOp < b.dstOp;
-    if (a.srcIdx != b.srcIdx)
+    }
+    if (a.srcIdx != b.srcIdx) {
       return a.srcIdx < b.srcIdx;
-    if (a.dstIdx != b.dstIdx)
+    }
+    if (a.dstIdx != b.dstIdx) {
       return a.dstIdx < b.dstIdx;
+    }
     return false;
   };
 };
@@ -77,8 +81,9 @@ namespace FlexFlow::PCG {
 
 struct NodeCompare {
   bool operator()(Node const &a, Node const &b) const {
-    if (a.guid != b.guid)
+    if (a.guid != b.guid) {
       return a.guid < b.guid;
+    }
     return a.ptr < b.ptr;
   };
 };

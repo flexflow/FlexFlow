@@ -1,4 +1,4 @@
-/* Copyright 2020 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,13 @@
  */
 
 #include "moe.h"
-#include "model.h"
 #include <fstream>
 #include <sstream>
 #include <string>
 
-#define NUM_SAMPLES 60000
-#define TRAIN_SAMPLES 60000
-#define TEST_SAMPLES 00000
-#define MNIST_DIMS 28 * 28
-#define CIFAR_DIMS 3 * 32 * 32
-#define DATA_DIMS MNIST_DIMS
-#define OUT_DIM 10
-
 using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("MoE");
-int num_exp = 5;
-int num_select = 2;
 
 void parse_input_args(char **argv, int argc, MoeConfig &config) {
   for (int i = 1; i < argc; i++) {
@@ -42,6 +31,7 @@ void parse_input_args(char **argv, int argc, MoeConfig &config) {
   }
 }
 
+#ifdef DEADCODE
 // =============================================================================
 //  User-defined functions on using cached expert assignments
 // =============================================================================
@@ -64,8 +54,9 @@ float moe_score(float *cached_score,
       cached.insert(cast_input[i * num_select + j]);
       input.insert(cast_cached[i * num_select + j]);
     }
-    if (cached == input)
+    if (cached == input) {
       *cached_score += frac;
+    }
   }
   return *cached_score;
 }
@@ -80,8 +71,9 @@ bool moe_trigger(FFModel *ff) {
     if (ff->layers[i]->op_type == OP_CACHE) {
       int num_futures_i = ((Cache *)ff->layers[i])->score_futures.size();
       num_futures += num_futures_i;
-      for (int j = 0; j < num_futures_i; j++)
+      for (int j = 0; j < num_futures_i; j++) {
         score += ((Cache *)ff->layers[i])->score_futures[j].get_result<float>();
+      }
     }
   }
   return score >= thresh;
@@ -103,11 +95,44 @@ void moe_alter(FFModel *ff) {
   ff->layers[17]->input_lps[1] = ff->layers[3]->outputs[0].part;
   ff->layers[17]->input_grad_lps[1] = ff->layers[3]->outputs[0].part_grad;
 }
+#endif // DEADCODE
 
-void top_level_task(Task const *task,
-                    std::vector<PhysicalRegion> const &regions,
-                    Context ctx,
-                    Runtime *runtime) {
+Tensor create_moe_encoder(FFModel *model,
+                          MoeConfig const *moeConfig,
+                          Tensor const &input) {
+  std::vector<int> axes = {0, 1};
+  Tensor x = input;
+  for (int i = 0; i < moeConfig->num_encoder_layers; i++) {
+    x = model->layer_norm(
+        model->add(model->multihead_attention(x,
+                                              x,
+                                              x,
+                                              moeConfig->hidden_size,
+                                              moeConfig->num_attention_heads,
+                                              moeConfig->attention_kdim,
+                                              moeConfig->attention_vdim),
+                   x),
+        axes,
+        true,
+        1e-05);
+    x = model->layer_norm(model->add(model->moe(x,
+                                                moeConfig->num_exp,
+                                                moeConfig->num_select,
+                                                moeConfig->hidden_size,
+                                                moeConfig->alpha,
+                                                moeConfig->lambda),
+                                     x),
+                          axes,
+                          true,
+                          1e-05);
+  }
+  return x;
+}
+
+void FlexFlow::top_level_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
   FFConfig ffConfig;
   MoeConfig moeConfig;
   {
@@ -130,32 +155,14 @@ void top_level_task(Task const *task,
 
   //-----------------------------------------------------------------
 
-  float alpha = 2.0f;   // factor overhead tensor size for imbalance
-  float lambda = 0.04f; // multiplier for load balance term
-
-  // MoE model
-  Tensor gate_preds = ff.dense(input, 64, AC_MODE_RELU);
-  gate_preds = ff.dense(gate_preds, num_exp, AC_MODE_RELU);
-  Tensor topK_output[2];
-  ff.top_k(gate_preds, topK_output, num_select, false);
-  ff.cache(topK_output[1], TRAIN_SAMPLES / ffConfig.batchSize, moe_score);
-
-  Tensor exp_tensors[num_exp];
-  ff.group_by(input, topK_output[1], exp_tensors, num_exp, alpha);
-
-  Tensor agg_inputs[num_exp + 4];
-  agg_inputs[0] = ff.softmax(topK_output[0]); // gate preds
-  agg_inputs[1] = topK_output[1];             // gate assign
-  agg_inputs[2] = topK_output[1];             // gate assign TopK (for cache)
-  agg_inputs[3] = gate_preds;                 // full gate preds
-  for (int i = 0; i < num_exp; i++) {
-    Tensor exp_pred = ff.dense(exp_tensors[i], OUT_DIM, AC_MODE_RELU);
-    agg_inputs[i + 4] = ff.softmax(exp_pred);
-  }
-
-  Tensor coop_output = ff.aggregate(agg_inputs, num_exp, lambda);
-  ff.get_metrics();
-  Tensor final_pred = ff.aggregate_spec(agg_inputs, num_exp, lambda);
+  // Tensor t = create_moe_encoder(&ff, &moeConfig, input);
+  Tensor t = ff.moe(input,
+                    moeConfig.num_exp,
+                    moeConfig.num_select,
+                    moeConfig.hidden_size,
+                    moeConfig.alpha,
+                    moeConfig.lambda);
+  t = ff.dense(t, OUT_DIM, AC_MODE_RELU);
 
   //-----------------------------------------------------------------
 
@@ -166,9 +173,12 @@ void top_level_task(Task const *task,
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
 
   // Data Loader
-  DataLoader data_loader(ff, moeConfig, input, ff.label_tensor);
-  RecompileState r(&moe_trigger, &moe_alter, &ff);
-  ff.init_layers();
+  ParallelTensor input_pt, label_pt;
+  ff.get_parallel_tensor_from_tensor(input, input_pt);
+  ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
+  DataLoader data_loader(ff, moeConfig, input_pt, label_pt);
+  //  RecompileState r(&moe_trigger, &moe_alter, &ff);
+  ff.init_operators();
   // Start timer
   {
     runtime->issue_execution_fence(ctx);
@@ -184,15 +194,17 @@ void top_level_task(Task const *task,
 
     for (int iter = 0; iter < iterations; iter++) {
       data_loader.next_batch(ff);
-      // if (epoch > 0)
-      //    runtime->begin_trace(ctx, 111/*trace_id*/);
+      if (epoch > 0) {
+        runtime->begin_trace(ctx, 111 /*trace_id*/);
+      }
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      ff.recompile_on_condition(r);
-      // if (epoch > 0)
-      //    runtime->end_trace(ctx, 111/*trace_id*/);
+      // ff.recompile_on_condition(r);
+      if (epoch > 0) {
+        runtime->end_trace(ctx, 111 /*trace_id*/);
+      }
     }
 
     // TODO: Do properly
@@ -220,8 +232,8 @@ void top_level_task(Task const *task,
 
 DataLoader::DataLoader(FFModel &ff,
                        MoeConfig const &moe,
-                       Tensor input,
-                       Tensor label) {
+                       ParallelTensor input,
+                       ParallelTensor label) {
   num_samples = NUM_SAMPLES;
 
   Context ctx = ff.config.lg_ctx;
@@ -229,34 +241,71 @@ DataLoader::DataLoader(FFModel &ff,
 
   // Create full input
   {
+    // Input has dimensions (batch_size, data_dims), which in legion ordering
+    // becomes (data_dims, batch_size). The corresponding parallel tensor will
+    // thus have dimensions (data_dims, batch_size, replica_dim). The dimensions
+    // of the full_input tensor can be obtained by replacing the batch_size with
+    // the num_samples: (data_dims, num_samples, replica_dim)
+    assert(input->num_dims == 3); // two dimensions + the replica dimension
     batch_input = input;
-    int const dims[] = {NUM_SAMPLES, input.adim[0]};
-    full_input = ff.create_tensor<2>(dims, DT_FLOAT);
+
+    ParallelDim dims[3];
+    for (int i = 0; i < 3; i++) {
+      dims[i].size = input->dims[i].size;
+      dims[i].degree = 1;
+      dims[i].parallel_idx = -1;
+      dims[i].is_replica_dim = input->dims[i].is_replica_dim;
+      // Assume only the first dim can be the replica dim
+      assert(i == 2 || (!dims[i].is_replica_dim));
+    }
+    dims[1].size = num_samples;
+
+    full_input = ff.create_parallel_tensor_legion_ordering(3, dims, DT_FLOAT);
+    ff.map_tensor(full_input, NULL /*parallel_op*/);
   }
+
   // Create full label
   {
+    assert(label->num_dims == LABEL_DIM + 2);
     batch_label = label;
-    int const dims[] = {NUM_SAMPLES, label.adim[0]};
-    full_label = ff.create_tensor<2>(dims, DT_INT32);
+
+    ParallelDim dims[LABEL_DIM + 2];
+    for (int i = 0; i < LABEL_DIM + 2; i++) {
+      dims[i].size = label->dims[i].size;
+      dims[i].degree = 1;
+      dims[i].parallel_idx = -1;
+      dims[i].is_replica_dim = label->dims[i].is_replica_dim;
+      // Assume only the last dim can be the replica dim
+      assert(i == LABEL_DIM + 1 || (!dims[i].is_replica_dim));
+    }
+    assert(dims[LABEL_DIM].size == ff.config.batchSize);
+    // replace batch size with number of samples
+    dims[LABEL_DIM].size = num_samples;
+
+    full_label = ff.create_parallel_tensor_legion_ordering(
+        LABEL_DIM + 2, dims, DT_INT32);
+    ff.map_tensor(full_label, NULL /*parallel_op*/);
   }
 
   // Load entire dataset
   // TODO: Use index launcher instead of task launcher
+  assert(full_input != nullptr && "full_input is nullptr");
+
   MoeConfig const *ptr = &moe;
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
                         TaskArgument(&ptr, sizeof(MoeConfig *)));
   // regions[0]: full_input
-  launcher.add_region_requirement(RegionRequirement(full_input.region,
+  launcher.add_region_requirement(RegionRequirement(full_input->region,
                                                     WRITE_ONLY,
                                                     EXCLUSIVE,
-                                                    full_input.region,
+                                                    full_input->region,
                                                     MAP_TO_ZC_MEMORY));
   launcher.add_field(0, FID_DATA);
   // regions[1]: full_label
-  launcher.add_region_requirement(RegionRequirement(full_label.region,
+  launcher.add_region_requirement(RegionRequirement(full_label->region,
                                                     WRITE_ONLY,
                                                     EXCLUSIVE,
-                                                    full_label.region,
+                                                    full_label->region,
                                                     MAP_TO_ZC_MEMORY));
   launcher.add_field(1, FID_DATA);
 
@@ -265,16 +314,9 @@ DataLoader::DataLoader(FFModel &ff,
   next_batch(ff);
 }
 
-__inline__ int calc_offset(int c, int y, int x, int yscale, int xscale) {
-  return (c * yscale * xscale + y * xscale + x);
-}
-
 // =================================================
 //                    Load data
 // =================================================
-
-/* NOTE: Download files from http://yann.lecun.com/exdb/mnist/, unpack to
-this directory (Flexflow/examples/cpp/mixture_of_experts) */
 
 void read_cifar100(float *input_ptr, int *label_ptr) {
   std::ifstream file;
@@ -312,6 +354,8 @@ int reverseInt(int i) {
   return ((int)c1 << 24) + ((int)c2 << 16) + ((int)c3 << 8) + c4;
 }
 
+/* NOTE: Download files from http://yann.lecun.com/exdb/mnist/ and unpack to
+the current working directory */
 void read_mnist(float *input_ptr, int *label_ptr) {
   // read inputs
   std::ifstream input("train-images-idx3-ubyte", std::ios::binary);
@@ -374,19 +418,23 @@ void DataLoader::load_entire_dataset(Task const *task,
   assert(task->regions.size() == regions.size());
 
   // get input and label pointer
-  AccessorWO<float, 2> const acc_input(regions[0], FID_DATA);
-  AccessorWO<int, 2> const acc_label(regions[1], FID_DATA);
-  Rect<2> rect_input = runtime->get_index_space_domain(
+  AccessorWO<float, 3> const acc_input(regions[0], FID_DATA);
+  AccessorWO<int, LABEL_DIM + 2> const acc_label(regions[1], FID_DATA);
+  Rect<3> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   assert(acc_input.accessor.is_dense_arbitrary(rect_input));
-  Rect<2> rect_label = runtime->get_index_space_domain(
+  Rect<LABEL_DIM + 2> rect_label = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
   assert(acc_label.accessor.is_dense_arbitrary(rect_label));
   float *input_ptr = acc_input.ptr(rect_input.lo);
   int *label_ptr = acc_label.ptr(rect_label.lo);
+  int num_samples = rect_input.hi[1] - rect_input.lo[1] + 1;
+  assert(rect_label.hi[1] - rect_label.lo[1] + 1 == num_samples);
 
+  // here, you can call `read_cifar100(input_ptr, label_ptr);` instead or load
+  // another dataset using the dataset_path from the MoeConfig object
   read_mnist(input_ptr, label_ptr);
-  log_app.print("finish loading data\n");
+  log_app.print("finish loading MNIST data\n");
 }
 
 void DataLoader::next_batch(FFModel &ff) {
@@ -394,75 +442,100 @@ void DataLoader::next_batch(FFModel &ff) {
   Runtime *runtime = ff.config.lg_hlr;
   // Load input
   {
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
-    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain =
+        runtime->get_index_space_domain(ctx, batch_input->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<2> it(rect); it(); it++) {
+    // current limitation of the dataloader: only the batch dimension can be
+    // partitioned
+    int input_dims = batch_input->num_dims;
+    for (int i = 0; i < input_dims; i++) {
+      if (i != input_dims - 2) {
+        assert(batch_input->dims[i].degree == 1 &&
+               "Dataloader only supports batch size partitions");
+      }
+    }
+    int batch_size = batch_input->dims[input_dims - 2].size;
+    int n_partitions = batch_input->dims[input_dims - 2].degree;
+    assert(ff.config.batchSize % batch_size == 0);
+    assert(batch_size % n_partitions == 0);
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
-      for (int i = 0; i < meta.num_samples; i++)
+      meta.num_samples = batch_size / n_partitions;
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1,
-                           task_is,
+                           batch_input->parallel_is,
                            TaskArgument(NULL, 0),
                            argmap,
                            Predicate::TRUE_PRED,
                            false /*must*/,
                            0 /*mapper_id*/,
-                           FFConfig::get_hash_id(""));
-    launcher.add_region_requirement(RegionRequirement(full_input.region,
+                           batch_input->machine_view.hash());
+    launcher.add_region_requirement(RegionRequirement(full_input->region,
                                                       0 /*projection id*/,
                                                       READ_ONLY,
                                                       EXCLUSIVE,
-                                                      full_input.region,
+                                                      full_input->region,
                                                       MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(batch_input.part,
+    launcher.add_region_requirement(RegionRequirement(batch_input->part,
                                                       0 /*projection id*/,
                                                       WRITE_ONLY,
                                                       EXCLUSIVE,
-                                                      batch_input.region));
+                                                      batch_input->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
   // Load label
   {
-    IndexSpaceT<2> task_is = IndexSpaceT<2>(ff.get_or_create_task_is(2, ""));
-    Rect<2> rect = runtime->get_index_space_domain(ctx, task_is);
+    Domain domain =
+        runtime->get_index_space_domain(ctx, batch_label->parallel_is);
     ArgumentMap argmap;
     int idx = next_index;
-    for (PointInRectIterator<2> it(rect); it(); it++) {
+    // current limitation of the dataloader: only the batch dimension can be
+    // partitioned
+    int label_dims = batch_label->num_dims;
+    assert(batch_label->dims[label_dims - 1].degree == 1);
+    for (int i = 0; i < LABEL_DIM; i++) {
+      assert(batch_label->dims[i].degree == 1 &&
+             "Dataloader only supports batch size partitions");
+    }
+    int batch_size = batch_label->dims[label_dims - 2].size;
+    int n_partitions = batch_label->dims[label_dims - 2].degree;
+    assert(ff.config.batchSize % batch_size == 0);
+    assert(batch_size % n_partitions == 0);
+    for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % (rect.hi[1] - rect.lo[1] + 1) == 0);
-      meta.num_samples = ff.config.batchSize / (rect.hi[1] - rect.lo[1] + 1);
-      for (int i = 0; i < meta.num_samples; i++)
+      meta.num_samples = batch_size / n_partitions;
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_2,
-                           task_is,
+                           batch_label->parallel_is,
                            TaskArgument(NULL, 0),
                            argmap,
                            Predicate::TRUE_PRED,
                            false /*must*/,
                            0 /*mapper_id*/,
-                           FFConfig::get_hash_id(""));
-    launcher.add_region_requirement(RegionRequirement(full_label.region,
+                           batch_label->machine_view.hash());
+    launcher.add_region_requirement(RegionRequirement(full_label->region,
                                                       0 /*projection id*/,
                                                       READ_ONLY,
                                                       EXCLUSIVE,
-                                                      full_label.region,
+                                                      full_label->region,
                                                       MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(batch_label.part,
+    launcher.add_region_requirement(RegionRequirement(batch_label->part,
                                                       0 /*projection id*/,
                                                       WRITE_ONLY,
                                                       EXCLUSIVE,
-                                                      batch_label.region));
+                                                      batch_label->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
@@ -473,7 +546,7 @@ void DataLoader::reset() {
   next_index = 0;
 }
 
-void register_custom_tasks() {
+void FlexFlow::register_custom_tasks() {
   // Load entire dataset
   {
     TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_1, "Load Entire Dataset");

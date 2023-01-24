@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,6 +51,7 @@ Mean::Mean(FFModel &model,
            char const *name)
     : Op(model,
          OP_REDUCE_MEAN,
+         input->data_type,
          name,
          1 /*inputs*/,
          0 /*weights*/,
@@ -61,9 +62,11 @@ Mean::Mean(FFModel &model,
   int num_dim = 0;
   for (int i = 0; i < inputs[0]->num_dims; i++) {
     bool reduce_this_dim = false;
-    for (auto const &dim : reduce_dims)
-      if (inputs[0]->num_dims - 1 - dim == i)
+    for (auto const &dim : reduce_dims) {
+      if (inputs[0]->num_dims - 1 - dim == i) {
         reduce_this_dim = true;
+      }
+    }
     if (!reduce_this_dim) {
       dims[num_dim++] = inputs[0]->dims[i];
     } else if (keepdims) {

@@ -1,4 +1,4 @@
-/* Copyright 2017 Stanford, NVIDIA
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -342,8 +342,9 @@ void SoftmaxDP::backward_task(Task const *task,
   int idx = 0;
   float loss = 0.0f;
   for (PointInRectIterator<3> it(rect_x_grad); it(); it++, idx++) {
-    if (host_ptr[idx] < 0)
+    if (host_ptr[idx] < 0) {
       loss += -std::log(host_ptr[idx] + 1);
+    }
   }
   printf("lost = %.4lf\n", loss);
   checkCUDA(cudaFreeHost(host_ptr));

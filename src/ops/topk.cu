@@ -1,4 +1,4 @@
-/* Copyright 2021 Facebook
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -209,7 +209,7 @@ __device__ IndexedHeap<heapType, preferIndices, Data, T>
 // access elements in `heap_entries`. If sorted=true, the elements will be
 // sorted at the end.
 template <typename T, template <typename> class Data = LinearData>
-__device__ void heapTopK(const T *__restrict__ input,
+__device__ void heapTopK(T const *__restrict__ input,
                          int length,
                          int k,
                          Entry<T> *__restrict__ heap_entries,
@@ -333,7 +333,7 @@ __device__ void mergeShards(int num_shards,
 }
 
 template <typename T>
-__global__ void topk_forward_kernel(const T *__restrict__ input,
+__global__ void topk_forward_kernel(T const *__restrict__ input,
                                     size_t shared_memory_size,
                                     int length,
                                     int k,
@@ -342,7 +342,7 @@ __global__ void topk_forward_kernel(const T *__restrict__ input,
                                     int *__restrict__ indices) {
   __shared__ char shared_memory[48 << 10];
   int const batch_index = blockIdx.x;
-  const T *batch_input = input + batch_index * length;
+  T const *batch_input = input + batch_index * length;
   int const thread_index = threadIdx.x;
   int const thread_count = blockDim.x;
   Entry<T> *shared_entries = (Entry<T> *)shared_memory;
@@ -382,8 +382,9 @@ void TopK::forward_kernel(TopKMeta const *m,
     // shared_memory_size = (num_shards + 1) * heap_size <=>
     num_shards = shared_memory_size / heap_size - 1;
     assert(num_shards > 0);
-    if (num_shards > CUDA_NUM_THREADS)
+    if (num_shards > CUDA_NUM_THREADS) {
       num_shards = CUDA_NUM_THREADS;
+    }
   }
   // We are limited by the amount of shared memory we have per block.
   size_t shared_memory_size = (num_shards + 1) * k * sizeof(Entry<float>);
@@ -436,11 +437,12 @@ void TopK::forward_kernel_wrapper(TopKMeta const *m,
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
+    printf("[TopK] forward time = %.2lfms\n", elapsed);
   }
 }
 
 template <typename T>
-__global__ void topk_backward_kernel(const T *__restrict__ value_grad_ptr,
+__global__ void topk_backward_kernel(T const *__restrict__ value_grad_ptr,
                                      int const *__restrict__ indices_ptr,
                                      T *__restrict__ in_grad_ptr,
                                      size_t batch_size,
@@ -496,8 +498,15 @@ void TopK::backward_kernel_wrapper(TopKMeta const *m,
                         length,
                         k,
                         stream);
-
-  // TODO: missing profiling here
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[TopK] backward time = %.2lfms\n", elapsed);
+  }
 }
 
 TopKMeta::TopKMeta(FFHandler handler) : OpMeta(handler) {}

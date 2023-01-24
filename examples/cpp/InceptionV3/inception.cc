@@ -1,4 +1,4 @@
-/* Copyright 2020 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -204,14 +204,16 @@ void FlexFlow::top_level_task(Task const *task,
       /* } else { */
       /*   data_loader.next_batch(ff); */
       /* } */
-      if (epoch > 0)
+      if (epoch > 0) {
         runtime->begin_trace(ctx, 111 /*trace_id*/);
+      }
       ff.forward();
       ff.zero_gradients();
       ff.backward();
       ff.update();
-      if (epoch > 0)
+      if (epoch > 0) {
         runtime->end_trace(ctx, 111 /*trace_id*/);
+      }
     }
   }
   // End timer

@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,9 @@
  */
 
 #include "flexflow/ops/aggregate.h"
+#include "flexflow/model.h"
+#include "flexflow/utils/hash_utils.h"
+#include "legion/legion_utilities.h"
 
 namespace FlexFlow {
 
@@ -32,19 +35,66 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+using PCG::Node;
 
 Tensor FFModel::aggregate(
-    Tensor const
-        *inputs, /* gate_preds, gate_assign, full_gate_pred, n * exp_pred */
+    Tensor const *inputs, /* gate_preds, gate_assign, gate assign TopK,
+                             full_gate_pred, exp_pred_1, ... , exp_pred_n */
     int n,
     float lambda_bal,
     char const *name) {
-#ifdef DEADCODE
-  Aggregate *aggr = new Aggregate(*this, inputs, n, lambda_bal, name);
-  layers.push_back(aggr);
-  return aggr->outputs[0];
-#endif
-  return nullptr;
+  Layer *li = new Layer(this,
+                        OP_AGGREGATE,
+                        DT_FLOAT,
+                        name,
+                        n + 4 /*inputs*/,
+                        0 /*weights*/,
+                        1 /*outputs*/,
+                        inputs);
+  {
+    int num_dim = inputs[4]->num_dims;
+    // Set output shape
+    int dims[MAX_TENSOR_DIM];
+    for (int i = 0; i < num_dim - 1; i++) {
+      dims[i] = inputs[4]->dims[i];
+    }
+    dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
+    li->outputs[0] = create_tensor_legion_ordering(
+        num_dim, dims, DT_FLOAT, li, 0, true /*create_grad*/);
+  }
+  li->add_int_property("n", n);
+  li->add_float_property("lambda_bal", lambda_bal);
+  layers.push_back(li);
+  return li->outputs[0];
+}
+
+Op *Aggregate::create_operator_from_layer(
+    FFModel &model,
+    Layer const *layer,
+    std::vector<ParallelTensor> const &inputs) {
+  long long value1;
+  layer->get_int_property("n", value1);
+  int n = value1;
+  float value2;
+  layer->get_float_property("lambda_bal", value2);
+  float lambda_bal = value2;
+  return new Aggregate(model, inputs.data(), n, lambda_bal, layer->name);
+}
+
+AggregateParams Aggregate::get_params() const {
+  AggregateParams params;
+  params.n = this->n;
+  params.lambda_bal = this->lambda_bal;
+  return params;
+}
+
+bool AggregateParams::is_valid(std::vector<ParallelTensorShape> const &) const {
+  // Aggregate is always valid
+  return true;
+}
+
+bool operator==(AggregateParams const &lhs, AggregateParams const &rhs) {
+  return lhs.n == rhs.n && lhs.lambda_bal == rhs.lambda_bal;
 }
 
 Aggregate::Aggregate(FFModel &model,
@@ -54,6 +104,7 @@ Aggregate::Aggregate(FFModel &model,
                      char const *name)
     : Op(model,
          OP_AGGREGATE,
+         DT_FLOAT,
          name,
          _n + 4 /*inputs*/,
          0 /*weights*/,
@@ -71,10 +122,10 @@ Aggregate::Aggregate(FFModel &model,
 
   assert(n + 4 == numInputs);
   assert(n > 0);
-  assert(inputs[0]->num_dims == 2);
-  assert(inputs[1]->num_dims == 2);
-  assert(inputs[2]->num_dims == 2);
-  assert(inputs[3]->num_dims == 2);
+  assert(inputs[0]->num_dims == 2 + 1);
+  assert(inputs[1]->num_dims == 2 + 1);
+  assert(inputs[2]->num_dims == 2 + 1);
+  assert(inputs[3]->num_dims == 2 + 1);
 
   for (int i = 0; i < inputs[0]->num_dims; i++) {
     assert(inputs[0]->dims[i] == inputs[1]->dims[i]);
@@ -92,8 +143,10 @@ Aggregate::Aggregate(FFModel &model,
   }
   // Set output shape
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < num_dim - 1; i++)
+  for (int i = 0; i < num_dim - 1; i++) {
     dims[i] = inputs[4]->dims[i];
+  }
+  dims[num_dim - 2] = inputs[0]->dims[num_dim - 2];
   dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
   numOutputs = 1;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -102,12 +155,24 @@ Aggregate::Aggregate(FFModel &model,
   numWeights = 0;
 }
 
+Aggregate::Aggregate(FFModel &model,
+                     Aggregate const &other,
+                     std::vector<ParallelTensor> const &inputs)
+    : Aggregate(model, inputs.data(), other.n, other.lambda_bal, other.name) {}
+
+Aggregate::Aggregate(FFModel &model,
+                     AggregateParams const &params,
+                     std::vector<ParallelTensor> const &inputs,
+                     char const *name)
+    : Aggregate(model, inputs.data(), params.n, params.lambda_bal, name) {}
+
 void Aggregate::init(FFModel const &ff) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
-  parallel_is = outputs[0]->parallel_is;
   IndexLauncher launcher(AGGREGATE_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Aggregate)),
@@ -136,8 +201,7 @@ void Aggregate::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
-  parallel_is = outputs[0]->parallel_is;
+  set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(AGGREGATE_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Aggregate)),
@@ -191,15 +255,15 @@ void Aggregate::forward_task(Task const *task,
   AggregateMeta const *m = *((AggregateMeta **)task->local_args);
 
   // get gate_pred, gate_assign, output
-  AccessorRO<float, 2> const acc_gate_pred(regions[0], FID_DATA);
-  AccessorRO<int, 2> const acc_gate_assign(regions[1], FID_DATA);
-  AccessorWO<float, 2> const acc_output(regions[n + 2], FID_DATA);
+  AccessorRO<float, 3> const acc_gate_pred(regions[0], FID_DATA);
+  AccessorRO<int, 3> const acc_gate_assign(regions[1], FID_DATA);
+  AccessorWO<float, 3> const acc_output(regions[n + 2], FID_DATA);
 
-  Rect<2> rect_gate_pred = runtime->get_index_space_domain(
+  Rect<3> rect_gate_pred = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  Rect<2> rect_gate_assign = runtime->get_index_space_domain(
+  Rect<3> rect_gate_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  Rect<2> rect_output = runtime->get_index_space_domain(
+  Rect<3> rect_output = runtime->get_index_space_domain(
       ctx, task->regions[n + 2].region.get_index_space());
 
   coord_t batch_size = rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1;
@@ -248,7 +312,6 @@ void Aggregate::backward(FFModel const &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_backward(ff, argmap);
-  parallel_is = outputs[0]->parallel_is;
   IndexLauncher launcher(AGGREGATE_BWD_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Aggregate)),
@@ -328,21 +391,21 @@ void Aggregate::backward_task(Task const *task,
   assert((int)task->regions.size() == 2 * n + 5);
 
   // get gate_pred, gate_grad, gate_assign, output_grad
-  AccessorRO<float, 2> const acc_gate_pred(regions[0], FID_DATA);
-  AccessorRO<int, 2> const acc_gate_assign(regions[1], FID_DATA);
-  AccessorRO<int, 2> const acc_true_gate_assign(regions[2], FID_DATA);
-  AccessorWO<float, 2> const full_acc_gate_grad(regions[3], FID_DATA);
-  AccessorRO<float, 2> const acc_output_grad(regions[2 * n + 4], FID_DATA);
+  AccessorRO<float, 3> const acc_gate_pred(regions[0], FID_DATA);
+  AccessorRO<int, 3> const acc_gate_assign(regions[1], FID_DATA);
+  AccessorRO<int, 3> const acc_true_gate_assign(regions[2], FID_DATA);
+  AccessorWO<float, 3> const full_acc_gate_grad(regions[3], FID_DATA);
+  AccessorRO<float, 3> const acc_output_grad(regions[2 * n + 4], FID_DATA);
 
-  Rect<2> rect_gate_pred = runtime->get_index_space_domain(
+  Rect<3> rect_gate_pred = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  Rect<2> rect_gate_assign = runtime->get_index_space_domain(
+  Rect<3> rect_gate_assign = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  Rect<2> rect_true_gate_assign = runtime->get_index_space_domain(
+  Rect<3> rect_true_gate_assign = runtime->get_index_space_domain(
       ctx, task->regions[2].region.get_index_space());
-  Rect<2> rect_full_gate_grad = runtime->get_index_space_domain(
+  Rect<3> rect_full_gate_grad = runtime->get_index_space_domain(
       ctx, task->regions[3].region.get_index_space());
-  Rect<2> rect_out_grad = runtime->get_index_space_domain(
+  Rect<3> rect_out_grad = runtime->get_index_space_domain(
       ctx, task->regions[2 * n + 4].region.get_index_space());
 
   coord_t batch_size = rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1;
@@ -403,16 +466,104 @@ void Aggregate::backward_task(Task const *task,
       out_dim);
 }
 
+void Aggregate::serialize(Legion::Serializer &sez) const {
+  sez.serialize(this->n);
+  sez.serialize(this->lambda_bal);
+}
+
 bool Aggregate::measure_operator_cost(Simulator *sim,
                                       MachineView const &mv,
                                       CostMetrics &cost_metrics) const {
-  // TODO: implement
-  cost_metrics.forward_time = 0.0f;
-  cost_metrics.backward_time = 0.0f;
-  cost_metrics.inputs_memory = 0;
-  cost_metrics.outputs_memory = 0;
-  cost_metrics.weights_memory = 0;
-  return false;
+  assert(numInputs <= MAX_NUM_INPUTS);
+  ParallelTensorBase sub_inputs[MAX_NUM_INPUTS], sub_pred, sub_assign,
+      sub_output;
+
+  for (int i = 0; i < numInputs; ++i) {
+    if (!inputs[i + 4]->get_sub_tensor(mv, sub_inputs[i])) {
+      return false;
+    }
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_pred)) {
+    return false;
+  }
+  if (!inputs[1]->get_sub_tensor(mv, sub_assign)) {
+    return false;
+  }
+
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
+    return false;
+  }
+
+  AggregateMeta *m = new AggregateMeta(sim->handler, n);
+
+  // allocate
+  sim->free_all();
+  float *input_ptrs[MAX_NUM_INPUTS];
+  bool out_of_memory = false;
+  for (int i = 0; i < numInputs; ++i) {
+    input_ptrs[i] =
+        (float *)sim->allocate(sub_inputs[i].get_volume(), DT_FLOAT);
+    out_of_memory = out_of_memory || (input_ptrs[i] == NULL);
+  }
+  int *assign_ptr = (int *)sim->allocate(sub_assign.get_volume(), DT_INT32);
+  out_of_memory = out_of_memory || (assign_ptr == NULL);
+  float *pred_ptr = (float *)sim->allocate(sub_pred.get_volume(), DT_FLOAT);
+  out_of_memory = out_of_memory || (pred_ptr == NULL);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  out_of_memory = out_of_memory || (output_ptr == NULL);
+
+  if (out_of_memory) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
+
+  assert(m->profiling == false);
+
+  // compute
+  std::function<void()> forward, backward;
+  Domain assign_domain = sub_assign.get_domain();
+  Domain exp_domain = sub_inputs[0].get_domain();
+
+  int k = assign_domain.hi()[0] - assign_domain.lo()[0] + 1;
+  int batch_size = assign_domain.hi()[1] - assign_domain.lo()[1] + 1;
+  int rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
+  int out_dim = exp_domain.hi()[0] - exp_domain.lo()[0] + 1;
+
+  forward = [&] {
+    forward_kernel_wrapper(m,
+                           input_ptrs,
+                           assign_ptr,
+                           pred_ptr,
+                           output_ptr,
+                           n,
+                           k,
+                           rows,
+                           batch_size,
+                           out_dim);
+  };
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+  log_measure.debug("[Measure Aggregate] name(%s) forward_time(%.4lf)\n",
+                    name,
+                    cost_metrics.forward_time);
+
+  cost_metrics.backward_time = 0.0f; // not implemented for backward
+  delete m;
+  return true;
 }
 
 }; // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::AggregateParams>::operator()(
+    FlexFlow::AggregateParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.n);
+  hash_combine(key, params.lambda_bal);
+  return key;
+}
+}; // namespace std

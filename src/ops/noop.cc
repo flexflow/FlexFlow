@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,13 @@ NoOp::NoOp(FFModel &model,
            OperatorType _type,
            const ParallelTensor _output,
            char const *_name)
-    : Op(model, _type, _name, 0 /*inputs*/, 0 /*weights*/, 1 /*outputs*/),
+    : Op(model,
+         _type,
+         DT_NONE,
+         _name,
+         0 /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/),
       input_tensor_guid(0) {
   // NOOP takes one input and has one output
   // both of them are _output
@@ -60,7 +66,13 @@ NoOp::NoOp(FFModel &model,
            size_t _input_tensor_guid,
            const ParallelTensor _output,
            char const *_name)
-    : Op(model, _type, _name, 0 /*inputs*/, 0 /*weights*/, 1 /*outputs*/),
+    : Op(model,
+         _type,
+         DT_NONE,
+         _name,
+         0 /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/),
       input_tensor_guid(_input_tensor_guid) {
   // NOOP takes one input and has one output
   // both of them are _output
@@ -109,8 +121,9 @@ void NoOp::init(FFModel const &ff) {
   } else if (op_type == OP_INPUT) {
     // For OP_INPUT, initialize tensor to zero
     assert(outputs[0]->region != LogicalRegion::NO_REGION);
-    if (outputs[0]->part == LogicalPartition::NO_PART)
+    if (outputs[0]->part == LogicalPartition::NO_PART) {
       return;
+    }
     ConstantInitializer *initializer = NULL;
     if (outputs[0]->data_type == DT_FLOAT) {
       initializer = new ConstantInitializer(0.0f);

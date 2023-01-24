@@ -8,14 +8,6 @@ on:
       - "setup.py"
       - ".github/workflows/helpers/install_dependencies.sh"
       - ".github/workflows/pip-install.yml"
-  push:
-    paths-ignore:
-      - "cmake/**"
-      - "config/**"
-      - "python/**"
-      - "setup.py"
-      - ".github/workflows/helpers/install_dependencies.sh"
-      - ".github/workflows/pip-install.yml"
   workflow_dispatch:
 concurrency:
   group: pip-install-skip-${{ github.head_ref || github.run_id }}

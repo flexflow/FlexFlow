@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,6 +48,8 @@ void UniformInitializer::init_task(Task const *task,
 
   assert(regions.size() == task->regions.size());
   UniformInitializer *initializer = (UniformInitializer *)task->args;
+  // Assume the data type is float
+  assert(initializer->data_type == DT_FLOAT);
   hiprandGenerator_t gen;
   hiprandCreateGenerator(&gen, HIPRAND_RNG_PSEUDO_DEFAULT);
   hipStream_t stream;
@@ -118,8 +120,9 @@ void init_task_inner(Task const *task,
   // https://github.com/tensorflow/tensorflow/blob/r2.0/tensorflow/python/ops/init_ops.py#L1415-L1439
   int num_dim = domain.get_dim();
   coord_t receptive_field_size = 1;
-  for (int i = 2; i < num_dim; i++)
+  for (int i = 2; i < num_dim; i++) {
     receptive_field_size *= (accW.rect.hi[i] - accW.rect.lo[i] + 1);
+  }
   coord_t c_in = accW.rect.hi[1] - accW.rect.lo[1] + 1;
   coord_t c_out = accW.rect.hi[0] - accW.rect.lo[0] + 1;
   coord_t fan_in = c_in * receptive_field_size;
@@ -134,6 +137,7 @@ void GlorotUniform::init_task(Task const *task,
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
   GlorotUniform const *gu = (GlorotUniform const *)task->args;
+  assert(gu->data_type == DT_FLOAT);
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   float *w = helperGetTensorPointerWO<float>(
@@ -206,8 +210,9 @@ void NormInitializer::init_task(Task const *task,
     std::normal_distribution<float> distribution(initializer->mean,
                                                  initializer->stddev);
     float *w_dram = (float *)malloc(domain.get_volume() * sizeof(float));
-    for (size_t i = 0; i < domain.get_volume(); i++)
+    for (size_t i = 0; i < domain.get_volume(); i++) {
       w_dram[i] = distribution(generator);
+    }
     checkCUDA(hipMemcpy(
         w, w_dram, sizeof(float) * domain.get_volume(), hipMemcpyHostToDevice));
     checkCUDA(hipDeviceSynchronize());
@@ -232,7 +237,18 @@ void ZeroInitializer::init_task(Task const *task,
   for (size_t i = 0; i < regions.size(); i++) {
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[i].region.get_index_space());
-    if (meta->data_types[i] == DT_FLOAT) {
+    if (meta->data_types[i] == DT_HALF) {
+      half *w = helperGetTensorPointerWO<half>(
+          regions[i], task->regions[i], FID_DATA, ctx, runtime);
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<half>),
+                         GET_BLOCKS(domain.get_volume()),
+                         CUDA_NUM_THREADS,
+                         0,
+                         stream,
+                         w,
+                         domain.get_volume(),
+                         0.0f);
+    } else if (meta->data_types[i] == DT_FLOAT) {
       float *w = helperGetTensorPointerWO<float>(
           regions[i], task->regions[i], FID_DATA, ctx, runtime);
       hipLaunchKernelGGL(HIP_KERNEL_NAME(assign_kernel<float>),

@@ -2,7 +2,8 @@
  * @file parallel_tensor.h
  * @brief Parallel Tensor Representation
  *
- * @copyright Copyright 2020 Facebook
+ * @copyright Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford
+ * (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,22 +38,28 @@ struct ParallelDim {
   static constexpr int UNKNOWN_INDEX = -2;
 
   bool operator==(ParallelDim const &rhs) const {
-    if (size != rhs.size)
+    if (size != rhs.size) {
       return false;
-    if (degree != rhs.degree)
+    }
+    if (degree != rhs.degree) {
       return false;
-    if (parallel_idx != rhs.parallel_idx)
+    }
+    if (parallel_idx != rhs.parallel_idx) {
       return false;
+    }
     return true;
   }
 
   bool operator!=(ParallelDim const &rhs) const {
-    if (size != rhs.size)
+    if (size != rhs.size) {
       return true;
-    if (degree != rhs.degree)
+    }
+    if (degree != rhs.degree) {
       return true;
-    if (parallel_idx != rhs.parallel_idx)
+    }
+    if (parallel_idx != rhs.parallel_idx) {
       return true;
+    }
     return false;
   }
 
@@ -156,7 +163,7 @@ struct ParallelTensorBase {
   template <typename T>
   bool set_tensor(FFModel const *model,
                   std::vector<int> const &dims,
-                  const T *data);
+                  T const *data);
   template <typename T>
   bool get_tensor(FFModel const *model, T *data, bool get_parameters);
   ParallelTensorShape get_shape() const;

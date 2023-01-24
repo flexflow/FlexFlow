@@ -1,4 +1,4 @@
-/* Copyright 2020 Stanford, Los Alamos National Laboratory
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
  */
 
 #include "flexflow_c.h"
+#include "flexflow/mapper.h"
 #include "flexflow_dataloader.h"
 
 using namespace Legion;
@@ -32,9 +33,7 @@ public:
     t_.impl = const_cast<void *>(static_cast<void const *>(t));                \
     return t_;                                                                 \
   }                                                                            \
-  static T unwrap(T_ t_) {                                                     \
-    return static_cast<T>(t_.impl);                                            \
-  }                                                                            \
+  static T unwrap(T_ t_) { return static_cast<T>(t_.impl); }                   \
   static const T unwrap_const(const T_ t_) {                                   \
     return static_cast<const T>(t_.impl);                                      \
   }
@@ -213,6 +212,26 @@ flexflow_tensor_t flexflow_model_add_exp(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
+flexflow_tensor_t flexflow_model_add_sin(flexflow_model_t handle_,
+                                         const flexflow_tensor_t x_,
+                                         char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor x = FFCObjectWrapper::unwrap_const(x_);
+  Tensor tensor = handle->sin(x, name);
+  DEBUG_PRINT("[Sin] new Tensor %p, x %p, name %s", tensor, x, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_cos(flexflow_model_t handle_,
+                                         const flexflow_tensor_t x_,
+                                         char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor x = FFCObjectWrapper::unwrap_const(x_);
+  Tensor tensor = handle->cos(x, name);
+  DEBUG_PRINT("[Cos] new Tensor %p, x %p, name %s", tensor, x, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
 flexflow_tensor_t flexflow_model_add_add(flexflow_model_t handle_,
                                          const flexflow_tensor_t x_,
                                          const flexflow_tensor_t y_,
@@ -265,6 +284,27 @@ flexflow_tensor_t flexflow_model_add_divide(flexflow_model_t handle_,
   Tensor tensor = handle->divide(x, y, inplace_a, name);
   DEBUG_PRINT(
       "[Divide] new Tensor %p, x %p, y %p, name %s", tensor, x, y, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_reduce_sum(flexflow_model_t handle_,
+                                                const flexflow_tensor_t input_,
+                                                int *axes,
+                                                int n,
+                                                bool keepdims,
+                                                char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  std::vector<int> axes_vec;
+  for (int i = 0; i < n; i++) {
+    axes_vec.push_back(axes[i]);
+  }
+  Tensor tensor = handle->reduce_sum(input, axes_vec, keepdims, name);
+  DEBUG_PRINT("[ReduceSum] new Tensor %p, input %p, n %d, name %s",
+              tensor,
+              input,
+              n,
+              name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -401,8 +441,16 @@ flexflow_tensor_t
   Layer *shared_op = FFCObjectWrapper::unwrap(shared_op_);
   Initializer *kernel_initializer =
       FFCObjectWrapper::unwrap(kernel_initializer_);
-  Tensor tensor = handle->embedding(
-      input, num_entires, out_dim, aggr, shared_op, kernel_initializer, name);
+  // TODO: update the flexflow_c and Python API to support other data types
+  // Currently we assume it's float
+  Tensor tensor = handle->embedding(input,
+                                    num_entires,
+                                    out_dim,
+                                    aggr,
+                                    DT_FLOAT,
+                                    shared_op,
+                                    kernel_initializer,
+                                    name);
   DEBUG_PRINT("[Embedding] new Tensor %p, input %p, num_entires %d, out_dim "
               "%d, aggr %d, shared_op %p, kernel_init %p, name %s",
               tensor,
@@ -1792,4 +1840,45 @@ void register_c_custom_tasks() {
   SingleDataLoader::register_cpu_tasks();
 
   SingleDataLoader::register_gpu_tasks();
+}
+
+static Context ctx;
+
+void begin_flexflow_task(int argc, char **argv) {
+  // This needs to be set, otherwise NCCL will try to use group kernel launches,
+  // which are not compatible with the Realm CUDA hijack.
+  setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
+
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "-ll:py")) {
+      std::cerr << "-ll:py is not supported when using native python"
+                << std::endl;
+      abort();
+    }
+  }
+
+  register_flexflow_internal_tasks();
+
+  register_c_custom_tasks();
+
+  Runtime::add_registration_callback(FFMapper::update_mappers);
+
+  // Start the runtime in background mode
+  Runtime::start(argc, argv, true /*background*/);
+  // Get the runtime now that we've started it
+  Runtime *runtime = Runtime::get_runtime();
+  // Then we can bind make this thread into an implicit top-level task
+  ctx = runtime->begin_implicit_task(PYTHON_TOP_LEVEL_TASK_ID,
+                                     0 /*mapper id*/,
+                                     Processor::LOC_PROC,
+                                     "flexflow_top_level_task",
+                                     true /*control replicable*/);
+}
+
+void finish_flexflow_task() {
+  Runtime *runtime = Runtime::get_runtime();
+  runtime->finish_implicit_task(ctx);
+  // The previous call is asynchronous so we still need to
+  // wait for the shutdown of the runtime to complete
+  Runtime::wait_for_shutdown();
 }

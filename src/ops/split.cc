@@ -1,4 +1,4 @@
-/* Copyright 2020 Facebook
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 
 #include "flexflow/ops/split.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/split_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -34,6 +35,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
+
+using namespace FlexFlow::Kernels::Split;
 
 bool operator==(SplitParams const &lhs, SplitParams const &rhs) {
   return lhs.splits == rhs.splits && lhs.legion_axis == rhs.legion_axis;
@@ -57,6 +60,7 @@ void FFModel::split(const Tensor input,
                     char const *name) {
   Layer *split = new Layer(this,
                            OP_SPLIT,
+                           DT_FLOAT,
                            name,
                            1 /*inputs*/,
                            0 /*weights*/,
@@ -64,8 +68,9 @@ void FFModel::split(const Tensor input,
                            input);
   int numdim = input->num_dims;
   int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = input->dims[i];
+  }
   for (size_t i = 0; i < splits.size(); i++) {
     dims[numdim - axis - 1] = splits[i];
     split->outputs[i] = create_tensor_legion_ordering(
@@ -74,12 +79,6 @@ void FFModel::split(const Tensor input,
   }
   split->add_int_property("legion_axis", numdim - axis - 1);
   layers.push_back(split);
-#ifdef DEADCODE
-  Split *split = new Split(*this, input, splits, axis, name);
-  layers.push_back(split);
-  for (size_t i = 0; i < splits.size(); i++)
-    outputs[i] = split->outputs[i];
-#endif
 }
 
 Op *Split::create_operator_from_layer(
@@ -90,8 +89,9 @@ Op *Split::create_operator_from_layer(
   layer->get_int_property("legion_axis", value);
   int legion_axis = value;
   std::vector<int> splits;
-  for (int i = 0; i < layer->numOutputs; i++)
+  for (int i = 0; i < layer->numOutputs; i++) {
     splits.push_back(layer->outputs[i]->dims[legion_axis]);
+  }
   assert(inputs.size() == 1);
   return new Split(model, inputs[0], splits, legion_axis, layer->name);
 }
@@ -103,6 +103,7 @@ Split::Split(FFModel &model,
              char const *name)
     : Op(model,
          OP_SPLIT,
+         input->data_type,
          name,
          1 /*inputs*/,
          0 /*weights*/,
@@ -118,8 +119,9 @@ Split::Split(FFModel &model,
     split_size += splits[i];
     int numdim = input->num_dims;
     ParallelDim dims[MAX_TENSOR_DIM];
-    for (int j = 0; j < numdim; j++)
+    for (int j = 0; j < numdim; j++) {
       dims[j] = input->dims[j];
+    }
     dims[legion_axis].size = splits[i];
     // Assert the _axis dim cannot be parallelized
     assert(dims[legion_axis].degree == 1);
@@ -211,10 +213,11 @@ void calc_block_size(coord_t &num_blks,
   num_blks = 1;
   blk_size = 1;
   for (int d = 0; d < domain.get_dim(); d++) {
-    if (d <= axis)
+    if (d <= axis) {
       blk_size *= (domain.hi()[d] - domain.lo()[d] + 1);
-    else
+    } else {
       num_blks *= (domain.hi()[d] - domain.lo()[d] + 1);
+    }
   }
 }
 
@@ -242,16 +245,17 @@ void Split::forward_task(Task const *task,
     calc_block_size(
         out_num_blks, out_blk_size[i], out_domain, split->legion_axis);
     assert(out_num_blks == num_blks);
-    for (int j = 0; j < out_domain.get_dim(); j++)
+    for (int j = 0; j < out_domain.get_dim(); j++) {
       if (j != split->legion_axis) {
         assert(out_domain.hi()[j] == in_domain.hi()[j]);
         assert(out_domain.lo()[j] == in_domain.lo()[j]);
       }
+    }
     total_volume += out_domain.get_volume();
   }
   assert(total_volume == in_domain.get_volume());
 
-  Split::forward_kernel_wrapper(
+  forward_kernel_wrapper(
       out_ptr, in_ptr, out_blk_size, in_blk_size, num_blks, split->numOutputs);
 }
 
@@ -308,32 +312,36 @@ void Split::backward_task(Task const *task,
     calc_block_size(
         out_num_blks, out_blk_size[i], out_grad_domain, split->legion_axis);
     assert(out_num_blks == num_blks);
-    for (int j = 0; j < out_grad_domain.get_dim(); j++)
+    for (int j = 0; j < out_grad_domain.get_dim(); j++) {
       if (j != split->legion_axis) {
         assert(out_grad_domain.hi()[j] == in_grad_domain.hi()[j]);
         assert(out_grad_domain.lo()[j] == in_grad_domain.lo()[j]);
       }
+    }
     total_volume += out_grad_domain.get_volume();
   }
   assert(total_volume == in_grad_domain.get_volume());
 
-  Split::backward_kernel_wrapper(in_grad_ptr,
-                                 out_grad_ptr,
-                                 out_blk_size,
-                                 in_blk_size,
-                                 num_blks,
-                                 split->numOutputs);
+  backward_kernel_wrapper(in_grad_ptr,
+                          out_grad_ptr,
+                          out_blk_size,
+                          in_blk_size,
+                          num_blks,
+                          split->numOutputs);
 }
 
 bool Split::measure_operator_cost(Simulator *sim,
                                   MachineView const &mv,
                                   CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output[MAX_NUM_OUTPUTS], sub_input;
-  for (int i = 0; i < numOutputs; i++)
-    if (!outputs[i]->get_sub_tensor(mv, sub_output[i]))
+  for (int i = 0; i < numOutputs; i++) {
+    if (!outputs[i]->get_sub_tensor(mv, sub_output[i])) {
       return false;
-  if (!inputs[0]->get_sub_tensor(mv, sub_input))
+    }
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
+  }
   Domain in_domain = sub_input.get_domain();
   sim->free_all();
   float *output_ptr[MAX_NUM_OUTPUTS];
@@ -349,11 +357,12 @@ bool Split::measure_operator_cost(Simulator *sim,
     coord_t out_num_blks;
     calc_block_size(out_num_blks, out_blk_size[i], out_domain, legion_axis);
     assert(out_num_blks == num_blks);
-    for (int j = 0; j < out_domain.get_dim(); j++)
+    for (int j = 0; j < out_domain.get_dim(); j++) {
       if (j != legion_axis) {
         assert(out_domain.hi()[j] == in_domain.hi()[j]);
         assert(out_domain.lo()[j] == in_domain.lo()[j]);
       }
+    }
     total_volume += out_domain.get_volume();
   }
   assert(total_volume == in_domain.get_volume());

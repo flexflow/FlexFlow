@@ -1,4 +1,4 @@
-/* Copyright 2020 Stanford, Los Alamos National Laboratory
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -109,6 +109,14 @@ flexflow_tensor_t flexflow_model_add_exp(flexflow_model_t handle,
                                          const flexflow_tensor_t x,
                                          char const *name);
 
+flexflow_tensor_t flexflow_model_add_sin(flexflow_model_t handle,
+                                         const flexflow_tensor_t x,
+                                         char const *name);
+
+flexflow_tensor_t flexflow_model_add_cos(flexflow_model_t handle,
+                                         const flexflow_tensor_t x,
+                                         char const *name);
+
 flexflow_tensor_t flexflow_model_add_add(flexflow_model_t handle,
                                          const flexflow_tensor_t x,
                                          const flexflow_tensor_t y,
@@ -132,6 +140,13 @@ flexflow_tensor_t flexflow_model_add_divide(flexflow_model_t handle,
                                             const flexflow_tensor_t y,
                                             bool inplace_a,
                                             char const *name);
+
+flexflow_tensor_t flexflow_model_add_reduce_sum(flexflow_model_t handle_,
+                                                const flexflow_tensor_t input_,
+                                                int *axes,
+                                                int n,
+                                                bool keepdims,
+                                                char const *name);
 
 flexflow_tensor_t flexflow_model_add_rsqrt(flexflow_model_t handle_,
                                            const flexflow_tensor_t input_,
@@ -654,6 +669,10 @@ void flexflow_op_init(flexflow_op_t handle, flexflow_model_t model);
 void flexflow_op_forward(flexflow_op_t handle, flexflow_model_t model);
 
 void register_c_custom_tasks();
+
+void begin_flexflow_task(int argc, char **argv);
+
+void finish_flexflow_task();
 
 #ifdef __cplusplus
 }

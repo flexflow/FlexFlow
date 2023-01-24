@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,8 +71,9 @@ FusedParallelOp::FusedParallelOp(
   assert(check_no_redundant_parallel_ops());
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdim; i++)
+  for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[i];
+  }
   for (int i = 0; i < num_parallel_ops; i++) {
     ParallelOpInfo info = parallel_ops[i];
     switch (info.op_type) {
@@ -114,8 +115,9 @@ FusedParallelOp::FusedParallelOp(FFModel &model,
 
 void FusedParallelOp::set_parallel_ops(
     std::vector<ParallelOpInfo> const &_parallel_ops) {
-  for (size_t i = 0; i < _parallel_ops.size(); i++)
+  for (size_t i = 0; i < _parallel_ops.size(); i++) {
     parallel_ops[num_parallel_ops++] = _parallel_ops[i];
+  }
 }
 
 bool FusedParallelOp::check_no_redundant_parallel_ops(void) const {
@@ -126,19 +128,22 @@ bool FusedParallelOp::check_no_redundant_parallel_ops(void) const {
   for (int i = 1; i < num_parallel_ops; i++) {
     if (parallel_ops[i].op_type == OP_COMBINE) {
       if (parallel_ops[i - 1].op_type == OP_REPARTITION) {
-        if (parallel_ops[i].parallel_dim == parallel_ops[i - 1].parallel_dim)
+        if (parallel_ops[i].parallel_dim == parallel_ops[i - 1].parallel_dim) {
           return false;
+        }
       }
     }
     if (parallel_ops[i].op_type == OP_REPARTITION) {
       if (parallel_ops[i - 1].op_type == OP_COMBINE) {
-        if (parallel_ops[i].parallel_dim == parallel_ops[i - 1].parallel_dim)
+        if (parallel_ops[i].parallel_dim == parallel_ops[i - 1].parallel_dim) {
           return false;
+        }
       }
     }
     if (parallel_ops[i].op_type == parallel_ops[i - 1].op_type) {
-      if (parallel_ops[i].parallel_dim == parallel_ops[i - 1].parallel_dim)
+      if (parallel_ops[i].parallel_dim == parallel_ops[i - 1].parallel_dim) {
         return false;
+      }
     }
   }
   return true;

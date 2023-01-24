@@ -1,4 +1,4 @@
-/* Copyright 2017 Stanford, NVIDIA
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,77 +69,6 @@ __host__ OpMeta *
       handle, bm, gpu_mem, output_n, output_c, output_h, output_w);
   return m;
 }
-
-#ifdef DEADCODE
-/*
-  regions[0](O): scale, initilized to ones
-  regions[1](O): bias, initilized to zeros
-*/
-__host__ void
-    BatchNorm::init_para_task(Task const *task,
-                              std::vector<PhysicalRegion> const &regions,
-                              Context ctx,
-                              Runtime *runtime) {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  // const BatchNorm* bm = (BatchNorm*) task->args;
-  AccessorWO<float, 1> const acc_scale(regions[0], FID_DATA);
-  AccessorWO<float, 1> const acc_bias(regions[1], FID_DATA);
-  Rect<1> rect_scale, rect_bias;
-  rect_scale = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  rect_bias = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  assert(acc_scale.accessor.is_dense_arbitrary(rect_scale));
-  assert(acc_bias.accessor.is_dense_arbitrary(rect_bias));
-  float *scale_ptr = acc_scale.ptr(rect_scale.lo);
-  float *bias_ptr = acc_bias.ptr(rect_bias.lo);
-  // init kernel and bias
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-#ifdef PARAMETER_ALL_ONES
-  hipLaunchKernelGGL(ones_kernel,
-                     GET_BLOCKS(rect_scale.volume()),
-                     CUDA_NUM_THREADS,
-                     0,
-                     stream,
-                     scale_ptr,
-                     rect_scale.volume());
-  hipLaunchKernelGGL(ones_kernel,
-                     GET_BLOCKS(rect_bias.volume()),
-                     CUDA_NUM_THREADS,
-                     0,
-                     stream,
-                     bias_ptr,
-                     rect_bias.volume());
-#else
-  // hipStream_t stream;
-  // checkCUDA(hipStreamCreate(&stream));
-  // hiprandGenerator_t genGPU;
-  // hiprandCreateGenerator(&genGPU, HIPRAND_RNG_PSEUDO_DEFAULT);
-  // hiprandSetStream(genGPU, stream);
-  // hiprandSetPseudoRandomGeneratorSeed(genGPU, 1234ULL);
-  // hiprandGenerateUniform(genGPU, scale_ptr, rect_scale.volume());
-  hipLaunchKernelGGL(assign_kernel,
-                     GET_BLOCKS(rect_scale.volume()),
-                     CUDA_NUM_THREADS,
-                     0,
-                     stream,
-                     scale_ptr,
-                     rect_scale.volume(),
-                     1.0f);
-  hipLaunchKernelGGL(assign_kernel,
-                     GET_BLOCKS(rect_bias.volume()),
-                     CUDA_NUM_THREADS,
-                     0,
-                     stream,
-                     bias_ptr,
-                     rect_bias.volume(),
-                     0.0f);
-  // hiprandDestroyGenerator(genGPU);
-#endif
-}
-#endif
 
 /*static*/
 void BatchNorm::forward_kernel(BatchNormMeta *m,

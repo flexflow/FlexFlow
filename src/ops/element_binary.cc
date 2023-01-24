@@ -1,5 +1,6 @@
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/element_binary_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
@@ -21,11 +22,15 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
+using namespace FlexFlow::Kernels::ElementBinary;
+
 bool broadcastable(const Tensor t1, const Tensor t2) {
   int dim = std::min(t1->num_dims, t2->num_dims);
   for (int i = 0; i < dim; i++) {
-    if ((t1->dims[i] != t2->dims[i]) && (t1->dims[i] > 1) && (t2->dims[i] > 1))
+    if ((t1->dims[i] != t2->dims[i]) && (t1->dims[i] > 1) &&
+        (t2->dims[i] > 1)) {
       return false;
+    }
   }
   return true;
 }
@@ -44,6 +49,7 @@ Tensor FFModel::binary(OperatorType op,
     Tensor new_in1 = cast(in1, dtype, (str + "input1_pre_cast").c_str());
     ele = new Layer(this,
                     op,
+                    dtype,
                     name,
                     2 /*inputs*/,
                     0 /*weights*/,
@@ -56,6 +62,7 @@ Tensor FFModel::binary(OperatorType op,
     Tensor new_in2 = cast(in2, dtype, (str + "input2_pre_cast").c_str());
     ele = new Layer(this,
                     op,
+                    dtype,
                     name,
                     2 /*inputs*/,
                     0 /*weights*/,
@@ -64,13 +71,20 @@ Tensor FFModel::binary(OperatorType op,
                     new_in2);
   } else {
     dtype = in1->data_type;
-    ele = new Layer(
-        this, op, name, 2 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, in1, in2);
+    ele = new Layer(this,
+                    op,
+                    dtype,
+                    name,
+                    2 /*inputs*/,
+                    0 /*weights*/,
+                    1 /*outputs*/,
+                    in1,
+                    in2);
   }
   // Assert type match after broadcast
   assert(ele->inputs[0]->data_type == ele->inputs[1]->data_type);
   ele->outputs[0] = create_tensor_legion_ordering(
-      in1->num_dims, in1->dims, dtype, ele, 0, true /*create_grad*/);
+      in1->num_dims, in1->dims, ele->data_type, ele, 0, true /*create_grad*/);
   ele->add_int_property("inplace_a", inplace_a);
   layers.push_back(ele);
   return ele->outputs[0];
@@ -119,16 +133,18 @@ bool ElementBinaryParams::is_valid(
     std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
   bool is_valid = true;
   is_valid &= (input.first.is_valid() & input.second.is_valid());
-  if (!is_valid)
+  if (!is_valid) {
     return false;
+  }
   // is_valid &= (input.first == input.second);
   ParallelTensorShape A = input.first;
   ParallelTensorShape B = input.second;
   int numdim = std::min(A.num_dims, B.num_dims);
   for (int i = 0; i < numdim; i++) {
     if (A.dims[i].size > 1 && B.dims[i].size > 1) {
-      if (A.dims[i] != B.dims[i])
+      if (A.dims[i] != B.dims[i]) {
         return false;
+      }
     }
   }
   return is_valid;
@@ -147,6 +163,7 @@ ElementBinary::ElementBinary(FFModel &model,
                              char const *name)
     : Op(model,
          _op_type,
+         in1->data_type,
          name,
          2 /*inputs*/,
          0 /*weights*/,
@@ -208,11 +225,13 @@ void ElementBinary::map_output_tensors(FFModel &ff) {
 bool ElementBinary::can_inplace_output(void) {
   if (op_type == OP_EW_ADD || op_type == OP_EW_MUL) {
     // TODO: Currently assume that we always inplace_a
-    if (outputs[0]->num_dims != inputs[0]->num_dims)
+    if (outputs[0]->num_dims != inputs[0]->num_dims) {
       return false;
+    }
     for (int i = 0; i < inputs[0]->num_dims; i++) {
-      if (inputs[0]->dims[i] != outputs[0]->dims[i])
+      if (inputs[0]->dims[i] != outputs[0]->dims[i]) {
         return false;
+      }
     }
     return outputs[0]->get_shape() == inputs[0]->get_shape();
   }
@@ -295,8 +314,9 @@ OpMeta *ElementBinary::init_task(Task const *task,
   ElementBinary *eb = (ElementBinary *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   ElementBinaryMeta *m = new ElementBinaryMeta(handle);
-  for (int i = 0; i < eb->numInputs; i++)
+  for (int i = 0; i < eb->numInputs; i++) {
     m->trainableInputs[i] = eb->trainableInputs[i];
+  }
   m->op_type = eb->op_type;
   m->profiling = eb->profiling;
   m->inplace_a = eb->inplace_a;
@@ -336,7 +356,7 @@ OpMeta *ElementBinary::init_task(Task const *task,
   }
   assert(task->regions.size() == regions.size());
   assert(regions.size() == num_regions);
-  ElementBinary::init_kernel(m, input1_domain, input2_domain, output_domain);
+  init_kernel(m, input1_domain, input2_domain, output_domain);
   return m;
 }
 
@@ -423,7 +443,8 @@ __host__ void
         ctx, task->regions[1].region.get_index_space());
     // Currently only support broadcast for add and sub
     if (in1_domain != in2_domain) {
-      assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD);
+      assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD ||
+             m->op_type == OP_EW_MUL);
     }
   }
   float const *in1_ptr = NULL, *in2_ptr = NULL;
@@ -472,7 +493,7 @@ __host__ void
     }
   }
 
-  ElementBinary::forward_kernel_wrapper(m, in1_ptr, in2_ptr, out_ptr);
+  forward_kernel_wrapper(m, in1_ptr, in2_ptr, out_ptr);
 }
 
 void ElementBinary::backward(FFModel const &ff) {
@@ -657,7 +678,7 @@ void ElementBinary::backward_task(Task const *task,
     assert(task->regions.size() == regions.size());
   }
 
-  ElementBinary::backward_kernel_wrapper(
+  backward_kernel_wrapper(
       m, out_grad_ptr, in0_ptr, in1_ptr, in0_grad_ptr, in1_grad_ptr);
 }
 
@@ -665,12 +686,15 @@ bool ElementBinary::measure_operator_cost(Simulator *sim,
                                           MachineView const &mv,
                                           CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input1, sub_input2;
-  if (!outputs[0]->get_sub_tensor(mv, sub_output))
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
-  if (!inputs[0]->get_sub_tensor(mv, sub_input1))
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_input1)) {
     return false;
-  if (!inputs[1]->get_sub_tensor(mv, sub_input2))
+  }
+  if (!inputs[1]->get_sub_tensor(mv, sub_input2)) {
     return false;
+  }
   ElementBinaryMeta *m = sim->ele_binary_meta;
   m->op_type = op_type;
   m->profiling = this->profiling;

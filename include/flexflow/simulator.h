@@ -1,4 +1,4 @@
-/* Copyright 2020 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ class LinearMeta;
 class Pool2DMeta;
 class ElementUnaryMeta;
 class ElementBinaryMeta;
-class EmbeddingMeta;
+// class EmbeddingMeta;
 // class SoftmaxMeta;
 class BatchMatmulMeta;
 // class BatchNormMeta;
@@ -416,11 +416,13 @@ public:
       print_conn_matrix(ConnectionMatrix const &conn, int nnode, int nswitch) {
     int nnwdevs = nnode + nswitch;
     for (int i = 0; i < nnwdevs; i++) {
-      if (i == nnode)
+      if (i == nnode) {
         std::cout << std::endl;
+      }
       for (int j = 0; j < nnwdevs; j++) {
-        if (j == nnode)
+        if (j == nnode) {
           std::cout << "\t";
+        }
         std::cout << conn[i * nnwdevs + j] << "\t";
       }
       std::cout << std::endl;
@@ -477,8 +479,9 @@ public:
   FCTopologyGenerator(int num_nodes) : num_nodes(num_nodes) {}
   virtual ConnectionMatrix generate_topology() const {
     ConnectionMatrix result = ConnectionMatrix(num_nodes * num_nodes, 1);
-    for (int i = 0; i < num_nodes; i++)
+    for (int i = 0; i < num_nodes; i++) {
       result[i + i * num_nodes] = 0;
+    }
     return result;
   }
 
@@ -745,7 +748,7 @@ public:
   Pool2DMeta *pool2d_meta;
   ElementUnaryMeta *ele_unary_meta;
   ElementBinaryMeta *ele_binary_meta;
-  EmbeddingMeta *embedding_meta;
+  // EmbeddingMeta *embedding_meta;
   // SoftmaxMeta *softmax_meta;
   BatchMatmulMeta *batch_matmul_meta;
   // BatchNormMeta *batch_norm_meta;

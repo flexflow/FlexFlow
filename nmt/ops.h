@@ -1,4 +1,4 @@
-/* Copyright 2017 Stanford, NVIDIA
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 #ifndef _LEGION_CNN_OPS_H_
 #define _LEGION_CNN_OPS_H_
 
-//#define DISABLE_COMPUTATION
+// #define DISABLE_COMPUTATION
 #include "legion.h"
 #include <cublas_v2.h>
 #include <cuda_runtime.h>

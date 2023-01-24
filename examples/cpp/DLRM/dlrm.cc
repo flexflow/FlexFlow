@@ -1,4 +1,4 @@
-/* Copyright 2020 Stanford, Facebook
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,12 +71,14 @@ Tensor create_emb(FFModel *model,
                   int idx) {
   float range = sqrt(1.0f / input_dim);
   Initializer *embed_init = new UniformInitializer(std::rand(), -range, range);
-  return model->embedding(input,
-                          input_dim,
-                          output_dim,
-                          AGGR_MODE_SUM,
-                          NULL /*weight_sharing*/,
-                          embed_init);
+  Tensor t = model->embedding(input,
+                              input_dim,
+                              output_dim,
+                              AGGR_MODE_SUM,
+                              DT_HALF /*dtype*/,
+                              NULL /*weight_sharing*/,
+                              embed_init);
+  return model->cast(t, DT_FLOAT);
 }
 
 Tensor interact_features(FFModel *model,
@@ -88,8 +90,9 @@ Tensor interact_features(FFModel *model,
   if (interaction == "cat") {
     Tensor *inputs = (Tensor *)malloc(sizeof(Tensor) * (1 + ly.size()));
     inputs[0] = x;
-    for (size_t i = 0; i < ly.size(); i++)
+    for (size_t i = 0; i < ly.size(); i++) {
       inputs[i + 1] = ly[i];
+    }
     return model->concat(ly.size() + 1, inputs, -1 /*axis*/);
     free(inputs);
   } else {
@@ -99,10 +102,12 @@ Tensor interact_features(FFModel *model,
 
 void print_vector(std::string const &name, std::vector<int> const &vector) {
   std::ostringstream out;
-  for (size_t i = 0; i < vector.size() - 1; i++)
+  for (size_t i = 0; i < vector.size() - 1; i++) {
     out << vector[i] << " ";
-  if (vector.size() > 0)
+  }
+  if (vector.size() > 0) {
     out << vector[vector.size() - 1];
+  }
   log_app.print("%s: %s", name.c_str(), out.str().c_str());
 }
 
@@ -181,7 +186,7 @@ void FlexFlow::top_level_task(Task const *task,
     ff.forward();
     ff.zero_gradients();
     ff.backward();
-    ff.update();
+    // ff.update();
   }
 
   // Start timer
@@ -209,14 +214,16 @@ void FlexFlow::top_level_task(Task const *task,
       } else {
         data_loader.next_batch(ff);
       }
-      if (epoch > 0)
+      if (epoch > 0) {
         runtime->begin_trace(ctx, 111 /*trace_id*/);
+      }
       ff.forward();
-      // ff.zero_gradients();
+      ff.zero_gradients();
       ff.backward();
-      ff.update();
-      if (epoch > 0)
+      // ff.update();
+      if (epoch > 0) {
         runtime->end_trace(ctx, 111 /*trace_id*/);
+      }
     }
   }
   // End timer
@@ -394,8 +401,9 @@ DataLoader::DataLoader(FFModel &ff,
   assert(dlrm.embedding_size.size() <= MAX_NUM_EMB);
   assert(dlrm.dataset_path.length() <= MAX_DATASET_PATH_LEN);
   auto prev_s = dlrm.embedding_size[0];
-  for (auto s : dlrm.embedding_size)
+  for (auto s : dlrm.embedding_size) {
     assert(s == prev_s);
+  }
   dlrm_args.embedding_size = prev_s;
   strcpy(dlrm_args.dataset_path, dlrm.dataset_path.c_str());
   //
@@ -462,12 +470,15 @@ void DataLoader::load_entire_dataset(Task const *task,
   std::string file_name((char const *)dlrm.dataset_path);
   if (file_name.length() == 0) {
     log_app.print("Start generating random input samples");
-    for (size_t i = 0; i < rect_sparse_input.volume(); i++)
+    for (size_t i = 0; i < rect_sparse_input.volume(); i++) {
       sparse_input_ptr[i] = std::rand() % emb_size;
-    for (size_t i = 0; i < rect_dense_input.volume(); i++)
+    }
+    for (size_t i = 0; i < rect_dense_input.volume(); i++) {
       dense_input_ptr[i] = ((float)std::rand()) / RAND_MAX;
-    for (size_t i = 0; i < rect_label_input.volume(); i++)
+    }
+    for (size_t i = 0; i < rect_label_input.volume(); i++) {
       label_input_ptr[i] = std::rand() % 2;
+    }
   } else {
     hid_t file_id = H5Fopen(file_name.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
     // Load X_cat
@@ -567,8 +578,9 @@ void DataLoader::next_batch(FFModel &ff) {
           batch_sparse_inputs[i]->parallel_tensor->dims[1].degree;
       // Assert that we have enough slots to save the indices
       assert(meta.num_samples <= MAX_NUM_SAMPLES);
-      for (int i = 0; i < meta.num_samples; i++)
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(
@@ -610,8 +622,9 @@ void DataLoader::next_batch(FFModel &ff) {
              batch_dense_input->parallel_tensor->dims[1].size);
       meta.num_samples = ff.config.batchSize /
                          batch_dense_input->parallel_tensor->dims[1].degree;
-      for (int i = 0; i < meta.num_samples; i++)
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(
@@ -652,8 +665,9 @@ void DataLoader::next_batch(FFModel &ff) {
       assert(ff.config.batchSize % batch_label->parallel_tensor->dims[1].size);
       meta.num_samples =
           ff.config.batchSize / batch_label->parallel_tensor->dims[1].degree;
-      for (int i = 0; i < meta.num_samples; i++)
+      for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+      }
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_3,

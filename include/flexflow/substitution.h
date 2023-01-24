@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -75,8 +75,9 @@ struct TensorX {
 
 struct TensorXCompare {
   bool operator()(TensorX const &a, TensorX const &b) const {
-    if (a.op != b.op)
+    if (a.op != b.op) {
       return a.op < b.op;
+    }
     return a.idx < b.idx;
   };
 };

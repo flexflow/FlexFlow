@@ -1,4 +1,4 @@
-/* Copyright 2018 Stanford, NVIDIA
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -320,35 +320,40 @@ void set_global_config(GlobalConfig &global,
     ParallelConfig pc;
     pc.nDims = 1;
     pc.dim[0] = num_parts;
-    for (int j = 0; j < num_parts; j++)
+    for (int j = 0; j < num_parts; j++) {
       pc.gpu[j] = i * LSTM_PER_NODE_LENGTH < seq_length ? 0 : 1;
+    }
     // pc.gpu[j] = j;
     global.embed[i] = pc;
   }
-  for (int i = 0; i < num_layers; i++)
+  for (int i = 0; i < num_layers; i++) {
     for (int j = 0; j * LSTM_PER_NODE_LENGTH < 2 * seq_length; j++) {
       ParallelConfig pc;
       pc.nDims = 1;
       pc.dim[0] = num_parts;
-      for (int k = 0; k < num_parts; k++)
+      for (int k = 0; k < num_parts; k++) {
         pc.gpu[k] = k;
+      }
       global.lstm[i][j] = pc;
     }
+  }
   for (int i = 0; i * LSTM_PER_NODE_LENGTH < seq_length; i++) {
     ParallelConfig pc;
     pc.nDims = 2;
     pc.dim[0] = 1;
     pc.dim[1] = num_parts;
-    for (int j = 0; j < num_parts; j++)
+    for (int j = 0; j < num_parts; j++) {
       pc.gpu[j] = j;
+    }
     global.linear[i] = pc;
   }
   for (int i = 0; i * LSTM_PER_NODE_LENGTH < seq_length; i++) {
     ParallelConfig pc;
     pc.nDims = 1;
     pc.dim[0] = num_parts;
-    for (int j = 0; j < num_parts; j++)
+    for (int j = 0; j < num_parts; j++) {
       pc.gpu[j] = j;
+    }
     global.softmax[i] = pc;
   }
 }

@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 
 #include "flexflow/parallel_ops/replicate.h"
 #include "flexflow/model.h"
+#include "flexflow/parallel_ops/kernels/replicate_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -38,6 +39,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
+using namespace FlexFlow::Kernels::Replicate;
+
 /* Params */
 bool operator==(ReplicateParams const &lhs, ReplicateParams const &rhs) {
   return lhs.replicate_legion_dim == rhs.replicate_legion_dim &&
@@ -53,19 +56,6 @@ ReplicateParams Replicate::get_params() const {
   params.replicate_legion_dim = this->replicate_dim;
   params.replicate_degree = this->replicate_degree;
   return params;
-}
-
-ParallelTensor FFModel::replicate(const ParallelTensor input,
-                                  int replicate_legion_dim,
-                                  int replicate_degree,
-                                  char const *name) {
-  assert(false);
-#ifdef DEADCODE
-  Replicate *repl =
-      new Replicate(*this, input, replicate_legion_dim, replicate_degree, name);
-  layers.push_back(repl);
-  return repl->outputs[0];
-#endif
 }
 
 Replicate::Replicate(FFModel &model,

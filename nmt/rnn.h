@@ -1,4 +1,4 @@
-/* Copyright 2018 Stanford, NVIDIA
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 #define MAX_NUM_LAYERS 4
 #define LSTM_PER_NODE_LENGTH 10
 #define MASTER_NOT_ASSIGNED -1
-//#define PRINT_INTERMEDIATE_RESULT
+// #define PRINT_INTERMEDIATE_RESULT
 
 struct RnnConfig {
   Context lg_ctx;
@@ -41,12 +41,15 @@ struct SharedVariable {
   int masterOnNode[MAX_NUM_WORKERS];
   SharedVariable() {
     region = LogicalRegion::NO_REGION;
-    for (int i = 0; i < MAX_NUM_WORKERS; i++)
+    for (int i = 0; i < MAX_NUM_WORKERS; i++) {
       gradients[i] = LogicalRegion::NO_REGION;
-    for (int i = 0; i < 2 * MAX_NUM_PARTS; i++)
+    }
+    for (int i = 0; i < 2 * MAX_NUM_PARTS; i++) {
       subregions[i] = LogicalRegion::NO_REGION;
-    for (int i = 0; i < MAX_NUM_WORKERS; i++)
+    }
+    for (int i = 0; i < MAX_NUM_WORKERS; i++) {
       masterOnNode[i] = MASTER_NOT_ASSIGNED;
+    }
   }
 };
 

@@ -1,4 +1,4 @@
-/* Copyright 2019 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ public:
                         Legion::Runtime *runtime);
   int seed;
   float scale;
+  DataType data_type;
 };
 
 class Op;
@@ -77,6 +78,7 @@ public:
                         Legion::Runtime *runtime);
   int seed;
   float min_val, max_val;
+  DataType data_type;
 };
 
 class NormInitializer : public Initializer {
@@ -90,6 +92,7 @@ public:
                         Legion::Runtime *runtime);
   int seed;
   float mean, stddev;
+  DataType data_type;
 };
 
 class ConstantInitializer : public Initializer {
