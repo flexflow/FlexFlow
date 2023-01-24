@@ -26,6 +26,7 @@
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
+#include "flexflow/ops/experts.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -3162,6 +3163,14 @@ bool FFModel::convert_graph_to_operators(
       case OP_AGGREGATE: {
         Aggregate *aggr = (Aggregate *)node.ptr;
         new_op = new Aggregate(*this, inputs, aggr->n, aggr->lambda_bal, NULL);
+        break;
+      }
+      case OP_EXPERTS: {
+        Experts *exp = (Experts *)node.ptr;
+        ExpertsParams params = exp->get_params();
+        std::vector<ParallelTensor> inputs_vec(std::begin(inputs),
+                                               std::end(inputs));
+        new_op = new Experts(*this, params, inputs_vec, NULL);
         break;
       }
       case OP_SPLIT: {

@@ -3783,13 +3783,6 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<Experts::backward_task>(
         registrar, "Experts Backward Task");
   }
-  {
-    TaskVariantRegistrar registrar(EXPERTS_INF_TASK_ID, "Experts Inference");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<Experts::inference_task>(
-        registrar, "Experts Inference Task");
-  }
   // Cast
   {
     TaskVariantRegistrar registrar(CAST_INIT_TASK_ID, "Cast Init");

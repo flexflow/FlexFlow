@@ -40,38 +40,29 @@ Tensor create_moe(FFModel *model,
   Tensor gate_preds = model->dense(input, moeConfig->num_exp, AC_MODE_RELU);
   Tensor topK_output[2];
   model->top_k(gate_preds, topK_output, moeConfig->num_select, false);
-  Tensor exp_tensors[moeConfig->num_exp];
-  model->group_by(input, topK_output[1], exp_tensors, moeConfig->num_exp, moeConfig->alpha);
-  Tensor agg_inputs[moeConfig->num_exp + 4];
-  agg_inputs[0] = model->softmax(topK_output[0]); // gate preds
-  agg_inputs[1] = topK_output[1];                 // gate assign
-  agg_inputs[2] = topK_output[1]; // gate assign TopK (for cache)
-  agg_inputs[3] = gate_preds;     // full gate preds
-  
+
   assert(moeConfig->num_exp % moeConfig->experts_per_block == 0);
   int nblocks = moeConfig->num_exp / moeConfig->experts_per_block;
-  
+
+  Tensor exp_preds;
   for (int i = 0; i < nblocks /*number of experts layers*/; i++) {
-    Tensor exp_preds[moeConfig->experts_per_block];
-    model->experts(
-      gate_preds,
-      topK_output[1],
-      exp_preds,
-      moeConfig->experts_per_block /*number of experts*/,
-      moeConfig->experts_per_block * i /*expert start index*/,
-      1 /*number of linear layers*/,
-      moeConfig->hidden_size /*output_size*/,
-      moeConfig->hidden_size /*internal_size*/);
-    for (int j=0; j < moeConfig->experts_per_block; j++) {
-      assert(exp_preds[j] != nullptr);
-      agg_inputs[j + i + 4] = exp_preds[j];
+    Tensor block_preds =
+        model->experts({input, topK_output[1], gate_preds},
+                       moeConfig->experts_per_block /*number of experts*/,
+                       moeConfig->experts_per_block * i /*expert start index*/,
+                       moeConfig->hidden_size /*output_size*/
+        );
+    assert(block_preds != nullptr);
+    if (i == 0) {
+      exp_preds == block_preds;
+    } else {
+      assert(exp_preds != nullptr);
+      model->add(exp_preds, block_preds, /*inplace_a*/ true);
     }
   }
-  
-  Tensor coop_output =
-      model->aggregate(agg_inputs, moeConfig->num_exp, moeConfig->lambda);
+
   // model->get_metrics();
-  return coop_output;
+  return exp_preds;
 }
 
 Tensor create_moe_encoder(FFModel *model,
@@ -138,7 +129,7 @@ void FlexFlow::top_level_task(Task const *task,
   // Tensor t = create_moe_encoder(&ff, &moeConfig, input);
   Tensor t = create_moe(&ff, &moeConfig, input);
   t = ff.dense(t, OUT_DIM, AC_MODE_RELU);
-  
+
   /* InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);
   im.compile_model_and_allocate_buffer(); */
 
@@ -197,7 +188,7 @@ void FlexFlow::top_level_task(Task const *task,
       }
       ff.forward();
       ff.zero_gradients();
-      //ff.backward();
+      // ff.backward();
       ff.update();
       // ff.recompile_on_condition(r);
       if (epoch > 0) {

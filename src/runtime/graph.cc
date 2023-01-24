@@ -2074,7 +2074,27 @@ void FFModel::deserialize_graph_optimal_view(
         break;
       }
       case OP_EXPERTS: {
-        node = Experts::deserialize(*this, dez, inputs, num_inputs);
+        // node = Experts::deserialize(*this, dez, inputs, num_inputs);
+        int num_experts, experts_start_idx, experts_output_dim_size,
+            experts_num_layers, experts_internal_dim_size;
+        dez.deserialize(num_experts);
+        dez.deserialize(experts_start_idx);
+        dez.deserialize(experts_output_dim_size);
+        dez.deserialize(experts_num_layers);
+        dez.deserialize(experts_internal_dim_size);
+
+        assert(num_inputs == 3);
+
+        ExpertsParams params;
+        params.num_experts = num_experts;
+        params.experts_start_idx = experts_start_idx;
+        params.experts_output_dim_size = experts_output_dim_size;
+        params.experts_num_layers = experts_num_layers;
+        params.experts_internal_dim_size = experts_internal_dim_size;
+
+        node = get_or_create_node<Experts>(
+            {std::begin(inputs), std::begin(inputs) + num_inputs}, params);
+
         break;
       }
       case OP_POOL2D: {

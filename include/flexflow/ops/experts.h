@@ -1,6 +1,7 @@
 #pragma once
 
 #include "flexflow/model.h"
+#include "flexflow/ops/experts_params.h"
 
 namespace FlexFlow {
 
@@ -21,11 +22,9 @@ public:
           ParallelTensor const *inputs,
           int _num_experts,
           int _experts_start_idx,
-          int _experts_num_layers,
           int _experts_output_dim_size,
+          int _experts_num_layers,
           int _experts_internal_dim_size,
-          bool _use_bias,
-          ActiMode _activation;
           char const *name = nullptr);
   static Op *
       create_operator_from_layer(FFModel &model,
@@ -41,13 +40,13 @@ public:
                  MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) override;
   void serialize(Legion::Serializer &) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
-  Op *materialize(FFModel &ff,
-                  ParallelTensor inputs[],
-                  int num_inputs) const override;
+  // static PCG::Node deserialize(FFModel &ff,
+  //                              Legion::Deserializer &d,
+  //                              ParallelTensor inputs[],
+  //                              int num_inputs);
+  // Op *materialize(FFModel &ff,
+  //                 ParallelTensor inputs[],
+  //                 int num_inputs) const override;
   Params get_params() const;
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
@@ -72,11 +71,9 @@ public:
 public:
   int num_experts;
   int experts_start_idx;
-  int experts_num_layers;
   int experts_output_dim_size;
+  int experts_num_layers;
   int experts_internal_dim_size;
-  bool use_bias;
-  ActiMode activation;
 };
 
 }; // namespace FlexFlow
