@@ -141,6 +141,13 @@ flexflow_tensor_t flexflow_model_add_divide(flexflow_model_t handle,
                                             bool inplace_a,
                                             char const *name);
 
+flexflow_tensor_t flexflow_model_add_reduce_sum(flexflow_model_t handle_,
+                                                const flexflow_tensor_t input_,
+                                                int *axes,
+                                                int n,
+                                                bool keepdims,
+                                                char const *name);
+
 flexflow_tensor_t flexflow_model_add_rsqrt(flexflow_model_t handle_,
                                            const flexflow_tensor_t input_,
                                            char const *name);

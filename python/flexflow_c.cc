@@ -287,6 +287,27 @@ flexflow_tensor_t flexflow_model_add_divide(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
+flexflow_tensor_t flexflow_model_add_reduce_sum(flexflow_model_t handle_,
+                                                const flexflow_tensor_t input_,
+                                                int *axes,
+                                                int n,
+                                                bool keepdims,
+                                                char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  std::vector<int> axes_vec;
+  for (int i = 0; i < n; i++) {
+    axes_vec.push_back(axes[i]);
+  }
+  Tensor tensor = handle->reduce_sum(input, axes_vec, keepdims, name);
+  DEBUG_PRINT("[ReduceSum] new Tensor %p, input %p, n %d, name %s",
+              tensor,
+              input,
+              n,
+              name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
 flexflow_tensor_t flexflow_model_add_rsqrt(flexflow_model_t handle_,
                                            const flexflow_tensor_t input_,
                                            char const *name) {
