@@ -14,4 +14,3 @@
 #
 
 from .config import flexflow_dir
-from .driver import flexflow_driver
