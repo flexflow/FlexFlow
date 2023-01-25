@@ -146,7 +146,7 @@ else()
 				set(Legion_HIP_TARGET "ROCM" CACHE STRING "Legion HIP_TARGET ROCM" FORCE)
 			endif()
 		endif()
-		# set(Legion_REDOP_COMPLEX OFF CACHE BOOL "disable complex")
+		set(Legion_REDOP_COMPLEX OFF CACHE BOOL "disable complex")
 		add_subdirectory(deps/legion)
 		set(LEGION_LIBRARY Legion)
     

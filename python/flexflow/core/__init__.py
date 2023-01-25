@@ -24,8 +24,25 @@ import sys
 from flexflow.config import *
 
 if flexflow_init_import():
-  from legion_cffi import ffi, lib as legion
+  from legion_cffi import ffi, is_legion_python
   from .flexflowlib import flexflow_library
+  
+  # Default python mode
+  if is_legion_python == False:
+    print("Using Default Python")
+    from legion_top import (
+        legion_canonical_python_main,
+        legion_canonical_python_cleanup,
+    )
+    import atexit, sys, os
+    sys_argv = [
+      "python",
+    ] + sys.argv
+    legion_canonical_python_main(sys_argv)
+    atexit.register(legion_canonical_python_cleanup)
+  else:
+    print("Using Legion Python")
+
   flexflow_library.initialize()
 
   # check which python binding to use
