@@ -43,18 +43,18 @@ Tensor create_moe(FFModel *model,
 
   assert(moeConfig->num_exp % moeConfig->experts_per_block == 0);
   int nblocks = moeConfig->num_exp / moeConfig->experts_per_block;
-
   Tensor exp_preds;
+  Tensor expert_block_inputs[3] = {input, topK_output[1], topK_output[0]};
   for (int i = 0; i < nblocks /*number of experts layers*/; i++) {
     Tensor block_preds =
-        model->experts({input, topK_output[1], gate_preds},
+        model->experts(expert_block_inputs,
                        moeConfig->experts_per_block /*number of experts*/,
                        moeConfig->experts_per_block * i /*expert start index*/,
                        moeConfig->hidden_size /*output_size*/
         );
     assert(block_preds != nullptr);
     if (i == 0) {
-      exp_preds == block_preds;
+      exp_preds = block_preds;
     } else {
       assert(exp_preds != nullptr);
       model->add(exp_preds, block_preds, /*inplace_a*/ true);

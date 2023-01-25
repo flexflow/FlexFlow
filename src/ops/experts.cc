@@ -78,7 +78,7 @@ Tensor FFModel::experts(Tensor const *inputs,
                        3 /*inputs*/,
                        0 /*weights*/,
                        num_experts /*outputs*/,
-                       inputs);
+                       layer_inputs);
 
   {
     int dims[MAX_TENSOR_DIM];
@@ -288,7 +288,7 @@ Experts::Experts(FFModel &model,
   // numWeights = 0;
   for (int i = 0; i < num_experts; i++) {
     outputs[i] = model.create_parallel_tensor_legion_ordering(
-        num_dims, dims, inputs[0]->data_type, this);
+        num_dims, dims, inputs[0]->data_type, this, i /*owner_idx*/);
     assert(outputs[i] != nullptr);
   }
 }
@@ -461,7 +461,39 @@ void Experts::forward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
-  return;
+  assert(regions.size() == task->regions.size());
+  int num_experts = regions.size() - 3;
+
+  ExpertsMeta const *m = *((ExpertsMeta **)task->local_args);
+
+  // get input, indices, gate_preds
+  AccessorRO<float, 3> const acc_input(regions[0], FID_DATA);
+  AccessorRO<int, 3> const acc_indices(regions[0], FID_DATA);
+  AccessorRO<float, 3> const acc_gate_pred(regions[1], FID_DATA);
+  Rect<3> rect_input = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  Rect<3> rect_indices = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  Rect<3> rect_gate_pred = runtime->get_index_space_domain(
+      ctx, task->regions[2].region.get_index_space());
+
+  coord_t batch_size = rect_input.hi[1] - rect_input.lo[1] + 1;
+  assert(batch_size == rect_indices.hi[1] - rect_indices.lo[1] + 1);
+  assert(batch_size == rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1);
+  coord_t chosen_experts = rect_indices.hi[0] - rect_indices.lo[0];
+  assert(chosen_experts == rect_gate_pred.hi[0] - rect_gate_pred.lo[0]);
+  coord_t out_dim = (rect_input.hi[0] - rect_input.lo[0] + 1) / num_experts;
+
+  float *outputs[num_experts];
+  for (int i = 0; i < num_experts; i++) {
+    Rect<3> rect_output = runtime->get_index_space_domain(
+        ctx, task->regions[3 + i].region.get_index_space());
+    assert((rect_output.hi[0] - rect_output.lo[0] + 1) == out_dim);
+    assert((rect_output.hi[1] - rect_output.lo[1] + 1) == batch_size);
+    outputs[i] = helperGetTensorPointerWO<float>(
+        regions[3 + i], task->regions[3 + i], FID_DATA, ctx, runtime);
+    assert(outputs[i] != nullptr);
+  }
 }
 
 void Experts::backward(FFModel const &ff) {
