@@ -359,7 +359,7 @@ OpMeta *Experts::init_task(Task const *task,
 }
 
 void Experts::forward(FFModel const &ff) {
-  assert(false && "Experts is designed for inference only");
+  //assert(false && "Experts is designed for inference only");
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
