@@ -302,20 +302,30 @@ void Experts::serialize(Legion::Serializer &sez) const {
   sez.serialize(params.experts_internal_dim_size);
 }
 
-// using PCG::Node;
-// Node Experts::deserialize(FFModel &ff,
-//                           Legion::Deserializer &dez,
-//                           ParallelTensor inputs[],
-//                           int num_inputs) {
-// }
+using PCG::Node;
+Node Experts::deserialize(FFModel &ff,
+                          Legion::Deserializer &dez,
+                          std::vector<ParallelTensor> const &inputs,
+                          int num_inputs) {
+  int num_experts, experts_start_idx, experts_output_dim_size,
+      experts_num_layers, experts_internal_dim_size;
+  dez.deserialize(num_experts);
+  dez.deserialize(experts_start_idx);
+  dez.deserialize(experts_output_dim_size);
+  dez.deserialize(experts_num_layers);
+  dez.deserialize(experts_internal_dim_size);
 
-// Op *Experts::materialize(FFModel &ff,
-//                          ParallelTensor inputs[],
-//                          int num_inputs) const {
-//   ExpertsParams params = get_params();
-//   std::vector<ParallelTensor> inputs_vec (std::begin(inputs),
-//   std::end(inputs)); return new Experts(ff, params, inputs_vec, this->name);
-// }
+  assert(num_inputs == 3);
+
+  ExpertsParams params;
+  params.num_experts = num_experts;
+  params.experts_start_idx = experts_start_idx;
+  params.experts_output_dim_size = experts_output_dim_size;
+  params.experts_num_layers = experts_num_layers;
+  params.experts_internal_dim_size = experts_internal_dim_size;
+
+  return ff.get_or_create_node<Experts>(inputs, params);
+}
 
 void Experts::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());

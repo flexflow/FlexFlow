@@ -40,13 +40,10 @@ public:
                  MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) override;
   void serialize(Legion::Serializer &) const override;
-  // static PCG::Node deserialize(FFModel &ff,
-  //                              Legion::Deserializer &d,
-  //                              ParallelTensor inputs[],
-  //                              int num_inputs);
-  // Op *materialize(FFModel &ff,
-  //                 ParallelTensor inputs[],
-  //                 int num_inputs) const override;
+  static PCG::Node deserialize(FFModel &ff,
+                               Legion::Deserializer &d,
+                               Input const &inputs,
+                               int num_inputs);
   Params get_params() const;
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,

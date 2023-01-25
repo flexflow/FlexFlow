@@ -3168,9 +3168,8 @@ bool FFModel::convert_graph_to_operators(
       case OP_EXPERTS: {
         Experts *exp = (Experts *)node.ptr;
         ExpertsParams params = exp->get_params();
-        std::vector<ParallelTensor> inputs_vec(std::begin(inputs),
-                                               std::end(inputs));
-        new_op = new Experts(*this, params, inputs_vec, NULL);
+        new_op = new Experts(
+            *this, params, {std::begin(inputs), std::end(inputs)}, NULL);
         break;
       }
       case OP_SPLIT: {

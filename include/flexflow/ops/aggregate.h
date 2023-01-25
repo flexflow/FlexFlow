@@ -26,7 +26,7 @@ public:
             ParallelTensor const *inputs,
             int _n,
             float _lambda_bal,
-            char const *name);
+            char const *name = nullptr);
   Aggregate(FFModel &model,
             Aggregate const &other,
             std::vector<ParallelTensor> const &inputs);
@@ -85,6 +85,10 @@ public:
                                       int const batch_size,
                                       int out_dim);
   void serialize(Legion::Serializer &s) const override;
+  static PCG::Node deserialize(FFModel &ff,
+                               Legion::Deserializer &d,
+                               Input const &inputs,
+                               int num_inputs);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
