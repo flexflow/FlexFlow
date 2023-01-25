@@ -1,9 +1,4 @@
-/**
- * @file memory_optimization.h
- * @brief Memory optimization related stuff
- *
- * @copyright Copyright 2022 CMU, Facebook, LANL, MIT, and Stanford
- * (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,10 +29,6 @@ enum class MemoryUsageType {
   // Use the max of peak per-device memory usage among devices as the measure.
   // Need associated device mapping views.
   PER_DEVICE_MAX,
-
-  // Use detailed per-device memory usage as the measure. Need associated device
-  // mapping views.
-  PER_DEVICE_ALL,
 };
 
 enum class MemorySearchAlgo {
@@ -97,57 +88,17 @@ public:
   MemoryUsage(MemoryUsageType _usage_type, float _num)
       : usage_type{_usage_type}, num{_num} {}
 
-  std::string to_string() const {
-    std::string type_name;
-    switch (usage_type) {
-      case MemoryUsageType::GLOBAL:
-        type_name = "GLOBAL";
-        break;
-      case MemoryUsageType::PER_DEVICE_MAX:
-        type_name = "PER_DEVICE_MAX";
-        break;
-      case MemoryUsageType::PER_DEVICE_ALL:
-        // Not supporting detailed per-device memory usage now.
-        assert(false);
-        break;
-    }
-    return "(MemoryUsageType:" + type_name + ", Usage:" + std::to_string(num) +
-           ")";
-  }
+  std::string to_string() const;
 
-  MemoryUsage &operator+=(MemoryUsage const &rhs) {
-    assert(usage_type == rhs.usage_type);
-
-    // Handle the merge of memory usage differently here.
-    switch (usage_type) {
-      case MemoryUsageType::GLOBAL:
-        num += rhs.num;
-        break;
-      case MemoryUsageType::PER_DEVICE_MAX:
-        num = std::max(num, rhs.num);
-        break;
-      case MemoryUsageType::PER_DEVICE_ALL:
-        // Not supporting detailed per-device memory usage now.
-        assert(false);
-        break;
-    }
-
-    return *this;
-  }
+  MemoryUsage &operator+=(MemoryUsage const &rhs);
 
   /**
    * @brief Combine the memory usage of two PCGs flexibly based on
    * MemoryUsageType.
    */
-  friend MemoryUsage operator+(MemoryUsage lhs, MemoryUsage const &rhs) {
-    lhs += rhs;
-    return lhs;
-  }
+  friend MemoryUsage operator+(MemoryUsage lhs, MemoryUsage const &rhs);
 
-  friend std::ostream &operator<<(std::ostream &s, MemoryUsage const &usage) {
-    s << usage.to_string();
-    return s;
-  }
+  friend std::ostream &operator<<(std::ostream &s, MemoryUsage const &usage);
 };
 
 } // namespace PCG
