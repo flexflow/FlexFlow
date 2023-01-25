@@ -963,7 +963,7 @@ void data_load_task(Legion::Task const *task,
                     Legion::Context ctx,
                     Legion::Runtime *runtime);
 
-void register_flexflow_internal_tasks();
+void register_flexflow_internal_tasks(Legion::Runtime *runtime=NULL, bool pre_register=true);
 
 void register_custom_tasks();
 

@@ -173,7 +173,7 @@ void FFMapper::register_sharding_functor(Runtime *runtime,
                                          int argc,
                                          char **argv) {
   // std::string strategyFile = "";
-  int gpus_per_node = 0, cpus_per_node = 1;
+  int gpus_per_node = 1, cpus_per_node = 1;
   int num_nodes = machine.get_address_space_count();
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "-ll:gpu")) {
@@ -291,14 +291,6 @@ void FFMapper::select_task_options(const MapperContext ctx,
   if (task.task_id == TOP_LEVEL_TASK_ID) {
     output.initial_proc = all_cpus[0];
     // control replicate top level task
-    if (enable_control_replication) {
-      output.replicate = true;
-    }
-    return;
-  }
-  if (task.task_id == PYTHON_TOP_LEVEL_TASK_ID) {
-    output.initial_proc = local_pys[0];
-    // control replicate python top level task
     if (enable_control_replication) {
       output.replicate = true;
     }

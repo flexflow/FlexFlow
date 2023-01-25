@@ -127,7 +127,7 @@ flexflow/core/legion_cffi_header.py: legion_cffi_header.py.in legion_cffi_build.
 	$(PYTHON_EXE) legion_cffi_build.py --runtime-dir $(LG_RT_DIR) --defines-dir $(DEFINE_HEADERS_DIR) --output-dir flexflow/core
 	
 flexflow/core/flexflow_cffi_header.py: flexflow_cffi_header.py.in flexflow_cffi_build.py flexflow_c.h
-	$(PYTHON_EXE) flexflow_cffi_build.py --ffhome-dir $(FF_HOME) --libname $(FF_NATIVE_LIB_NAME) --output-dir flexflow/core
+	$(PYTHON_EXE) flexflow_cffi_build.py --ffhome-dir $(FF_HOME) --output-dir flexflow/core
 
 # build the .so for native python
 # hack: we do not need main.cc anymore

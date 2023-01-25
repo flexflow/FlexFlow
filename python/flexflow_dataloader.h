@@ -49,9 +49,9 @@ public:
 
   void reset(void);
 
-  static void register_cpu_tasks(void);
+  static void register_cpu_tasks(Legion::Runtime *runtime=NULL, bool pre_register=true);
 
-  static void register_gpu_tasks(void);
+  static void register_gpu_tasks(Legion::Runtime *runtime=NULL, bool pre_register=true);
 
   template <typename DT>
   static void load_input(Legion::Task const *task,

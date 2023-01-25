@@ -24,6 +24,10 @@ import sys
 from flexflow.config import *
 
 if flexflow_init_import():
+  from legion_cffi import ffi, lib as legion
+  from .flexflowlib import flexflow_library
+  flexflow_library.initialize()
+
   # check which python binding to use
   if flexflow_python_binding() == 'pybind11':
     print("Using pybind11 flexflow bindings.")
@@ -31,26 +35,6 @@ if flexflow_init_import():
   else:
     print("Using cffi flexflow bindings.")
     from .flexflow_cffi import *
-
-  # check if use native python interpreter
-  if flexflow_python_interpreter() == 'native': 
-    print("Using native python")
-    if flexflow_python_binding() == 'pybind11':
-      from .flexflow_pybind11_internal import begin_flexflow_task, finish_flexflow_task
-      print("Using native python")
-      begin_flexflow_task(sys.argv)
-      atexit.register(finish_flexflow_task)
-    else:
-      from .flexflow_cffi_header import ffc, ffi
-      argv = []
-      for arg in sys.argv:
-        argv.append(ffi.new("char[]", arg.encode('ascii')))
-      ffc.begin_flexflow_task(len(sys.argv), argv)
-      atexit.register(ffc.finish_flexflow_task)
-  else:
-    print("Using flexflow python")
-    
-  from .flexflow_top import flexflow_top_level_task, get_legion_runtime, get_legion_context
 
 else:
   pass
