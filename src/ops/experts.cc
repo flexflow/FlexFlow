@@ -46,7 +46,7 @@ Tensor FFModel::experts(Tensor const *inputs,
                         char const *name) {
 
   // Check that there are three inputs: the input tensor, the indices and the
-  // gate_preds
+  // topk_gate_preds
   assert(inputs[0] != nullptr);
   int num_dims = inputs[0]->num_dims;
   assert(inputs[1]->num_dims == num_dims);
@@ -190,8 +190,9 @@ bool ExpertsParams::is_valid(
     return false;
   }
   if (inputs[1].dims[0] != inputs[2].dims[0]) {
-    printf("Dimension mismatch between indices and gate_preds tensors passed "
-           "to the Experts layer.\n");
+    printf(
+        "Dimension mismatch between indices and topk_gate_preds tensors passed "
+        "to the Experts layer.\n");
     return false;
   }
   for (int i = 1; i < inputs[0].num_dims; i++) {
@@ -400,7 +401,7 @@ void Experts::forward(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     inputs[1]->region));
   launcher.add_field(1, FID_DATA);
-  // gate_preds
+  // topk_gate_preds
   launcher.add_region_requirement(RegionRequirement(inputs[2]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -451,7 +452,7 @@ void Experts::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     inputs[1]->region));
   launcher.add_field(1, FID_DATA);
-  // gate_preds
+  // topk_gate_preds
   launcher.add_region_requirement(RegionRequirement(inputs[2]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -486,22 +487,24 @@ void Experts::forward_task(Task const *task,
 
   ExpertsMeta const *m = *((ExpertsMeta **)task->local_args);
 
-  // get input, indices, gate_preds
+  // get input, indices, topk_gate_preds
   AccessorRO<float, 3> const acc_input(regions[0], FID_DATA);
   AccessorRO<int, 3> const acc_indices(regions[1], FID_DATA);
-  AccessorRO<float, 3> const acc_gate_pred(regions[2], FID_DATA);
+  AccessorRO<float, 3> const acc_topk_gate_pred(regions[2], FID_DATA);
   Rect<3> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<3> rect_indices = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  Rect<3> rect_gate_pred = runtime->get_index_space_domain(
+  Rect<3> rect_topk_gate_pred = runtime->get_index_space_domain(
       ctx, task->regions[2].region.get_index_space());
 
   coord_t batch_size = rect_input.hi[1] - rect_input.lo[1] + 1;
   assert(batch_size == rect_indices.hi[1] - rect_indices.lo[1] + 1);
-  assert(batch_size == rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1);
+  assert(batch_size ==
+         rect_topk_gate_pred.hi[1] - rect_topk_gate_pred.lo[1] + 1);
   coord_t chosen_experts = rect_indices.hi[0] - rect_indices.lo[0];
-  assert(chosen_experts == rect_gate_pred.hi[0] - rect_gate_pred.lo[0]);
+  assert(chosen_experts ==
+         rect_topk_gate_pred.hi[0] - rect_topk_gate_pred.lo[0]);
   coord_t out_dim = (rect_input.hi[0] - rect_input.lo[0] + 1) / num_experts;
 
   int expert_capacity =
@@ -527,7 +530,7 @@ void Experts::forward_task(Task const *task,
   Experts::forward_kernel_wrapper(m,
                                   acc_input.ptr(rect_input),
                                   acc_indices.ptr(rect_indices),
-                                  acc_gate_pred.ptr(rect_gate_pred),
+                                  acc_topk_gate_pred.ptr(rect_topk_gate_pred),
                                   outputs,
                                   num_experts,
                                   experts_start_idx,

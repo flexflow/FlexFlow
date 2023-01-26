@@ -21,7 +21,7 @@ namespace FlexFlow {
 
 __global__ void experts_forward_kernel(float const *input,
                                        int const *indices,
-                                       float const *gate_preds,
+                                       float const *topk_gate_preds,
                                        float **outputs,
                                        int num_experts,
                                        int experts_start_idx,
@@ -57,7 +57,7 @@ __global__ void experts_forward_kernel(float const *input,
       // locally
       if (expert_index >= 0 && expert_index < num_experts &&
           token_count[expert_index] < expert_capacity) {
-        token_assigned[token_index][expert_index] = gate_preds[i];
+        token_assigned[token_index][expert_index] = topk_gate_preds[i];
         token_count[expert_index]++;
       } else {
       }
@@ -88,7 +88,7 @@ __global__ void experts_forward_kernel(float const *input,
 void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      float const *input,
                                      int const *indices,
-                                     float const *gate_preds,
+                                     float const *topk_gate_preds,
                                      float **outputs,
                                      int num_experts,
                                      int experts_start_idx,
@@ -126,7 +126,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
       stream,
       input,
       indices,
-      gate_preds,
+      topk_gate_preds,
       m->dev_region_ptrs,
       num_experts,
       experts_start_idx,

@@ -63,7 +63,7 @@ public:
   static void forward_kernel_wrapper(ExpertsMeta const *m,
                                      float const *acc_input_ptr,
                                      int const *acc_indices_ptr,
-                                     float const *acc_gate_preds_ptr,
+                                     float const *acc_topk_gate_preds_ptr,
                                      float **outputs,
                                      int num_experts,
                                      int experts_start_idx,
