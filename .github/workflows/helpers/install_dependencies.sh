@@ -44,4 +44,5 @@ sudo rm -rf /var/lib/apt/lists/*
 export PATH=/opt/conda/bin:$PATH
 echo "Installing conda packages..."
 conda env create -f ../../../environment.yml
+conda init bash
 conda activate flexflow
