@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/dropout.h"
+#include "flexflow/ops/kernels/dropout_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -22,56 +22,6 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Domain;
 using Legion::Memory;
-
-void Dropout::forward_kernel(DropoutMeta *m,
-                             float const *input_ptr,
-                             float *output_ptr,
-                             cudaStream_t stream) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-
-  checkCUDNN(cudnnDropoutForward(m->handle.dnn,
-                                 m->dropoutDesc,
-                                 m->inputTensor,
-                                 input_ptr,
-                                 m->outputTensor,
-                                 output_ptr,
-                                 m->reserveSpace,
-                                 m->reserveSpaceSize));
-}
-
-/*static*/
-void Dropout::forward_kernel_wrapper(DropoutMeta *m,
-                                     float const *input_ptr,
-                                     float *output_ptr) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Dropout::forward_kernel(m, input_ptr, output_ptr, stream);
-}
-
-void Dropout::backward_kernel(DropoutMeta *m,
-                              float const *output_grad_ptr,
-                              float *input_grad_ptr,
-                              cudaStream_t stream) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-
-  checkCUDNN(cudnnDropoutBackward(m->handle.dnn,
-                                  m->dropoutDesc,
-                                  m->outputTensor,
-                                  output_grad_ptr,
-                                  m->inputTensor,
-                                  input_grad_ptr,
-                                  m->reserveSpace,
-                                  m->reserveSpaceSize));
-}
-
-/*static*/
-void Dropout::backward_kernel_wrapper(DropoutMeta *m,
-                                      float const *output_grad_ptr,
-                                      float *input_grad_ptr) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Dropout::backward_kernel(m, output_grad_ptr, input_grad_ptr, stream);
-}
 
 DropoutMeta::DropoutMeta(FFHandler handler,
                          Dropout const *dropout,
@@ -121,4 +71,60 @@ DropoutMeta::~DropoutMeta(void) {
   checkCUDNN(cudnnDestroyDropoutDescriptor(dropoutDesc));
 }
 
-}; // namespace FlexFlow
+namespace Kernels {
+namespace Dropout {
+
+void forward_kernel_wrapper(DropoutMeta *m,
+                            float const *input_ptr,
+                            float *output_ptr) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::forward_kernel(m, input_ptr, output_ptr, stream);
+}
+
+void backward_kernel_wrapper(DropoutMeta *m,
+                             float const *output_grad_ptr,
+                             float *input_grad_ptr) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::backward_kernel(m, output_grad_ptr, input_grad_ptr, stream);
+}
+
+namespace Internal {
+
+void forward_kernel(DropoutMeta *m,
+                    float const *input_ptr,
+                    float *output_ptr,
+                    cudaStream_t stream) {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
+  checkCUDNN(cudnnDropoutForward(m->handle.dnn,
+                                 m->dropoutDesc,
+                                 m->inputTensor,
+                                 input_ptr,
+                                 m->outputTensor,
+                                 output_ptr,
+                                 m->reserveSpace,
+                                 m->reserveSpaceSize));
+}
+
+void backward_kernel(DropoutMeta *m,
+                     float const *output_grad_ptr,
+                     float *input_grad_ptr,
+                     cudaStream_t stream) {
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
+  checkCUDNN(cudnnDropoutBackward(m->handle.dnn,
+                                  m->dropoutDesc,
+                                  m->outputTensor,
+                                  output_grad_ptr,
+                                  m->inputTensor,
+                                  input_grad_ptr,
+                                  m->reserveSpace,
+                                  m->reserveSpaceSize));
+}
+
+} // namespace Internal
+} // namespace Dropout
+} // namespace Kernels
+} // namespace FlexFlow
