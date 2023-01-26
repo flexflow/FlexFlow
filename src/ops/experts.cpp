@@ -105,14 +105,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   //     cudaEventCreate(&t_end);
   //     cudaEventRecord(t_start, stream);
   //   }
-
-  // call forward_kernel
-  cudaMemcpyAsync(m->dev_region_ptrs,
-                  outputs,
-                  num_experts * sizeof(float *),
-                  cudaMemcpyHostToDevice,
-                  stream);
-
   hipMemcpy(m->dev_region_ptrs,
             outputs,
             num_experts * sizeof(float *),
