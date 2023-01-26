@@ -233,6 +233,10 @@ We want to make contributing to this project as easy and transparent as possible
 ### Formatting
 We use `clang-format` to format our C++ code. If you make changes to the code and the Clang format CI test is failing, you can lint your code by running: `./scripts/format.sh` from the main folder of this repo.
 
+### Documenting the code
+We follow the Python Docstring conventions for documenting the Python code. We document the C++ code using comments in any of the conventioned supported by Doxygen [see here](https://doxygen.nl/manual/docblocks.html).
+
+
 ### Pull Requests
 We actively welcome your pull requests.
 
