@@ -488,6 +488,7 @@ public:
       int num_experts,
       int experts_start_idx,
       int experts_output_dim_size,
+      float alpha,
       int experts_num_layers = 1,        // number of linear layers per expert
       int experts_internal_dim_size = 0, // hidden dimension for internal layers
       char const *name = NULL);

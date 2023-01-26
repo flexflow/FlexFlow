@@ -40,6 +40,7 @@ Tensor FFModel::experts(Tensor const *inputs,
                         int num_experts,
                         int experts_start_idx,
                         int experts_output_dim_size,
+                        float alpha,
                         int experts_num_layers,
                         int experts_internal_dim_size,
                         char const *name) {
@@ -96,6 +97,7 @@ Tensor FFModel::experts(Tensor const *inputs,
   e->add_int_property("num_experts", num_experts);
   e->add_int_property("experts_start_idx", experts_start_idx);
   e->add_int_property("experts_output_dim_size", experts_output_dim_size);
+  e->add_float_property("alpha", alpha);
   e->add_int_property("experts_num_layers", experts_num_layers);
   e->add_int_property("experts_internal_dim_size", experts_internal_dim_size);
   layers.push_back(e);
@@ -118,6 +120,9 @@ Op *Experts::create_operator_from_layer(
   int experts_start_idx = value;
   layer->get_int_property("experts_output_dim_size", value);
   int experts_output_dim_size = value;
+  float value2;
+  layer->get_float_property("alpha", value2);
+  float alpha = value2;
   layer->get_int_property("experts_num_layers", value);
   int experts_num_layers = value;
   layer->get_int_property("experts_internal_dim_size", value);
@@ -127,6 +132,7 @@ Op *Experts::create_operator_from_layer(
                      num_experts,
                      experts_start_idx,
                      experts_output_dim_size,
+                     alpha,
                      experts_num_layers,
                      experts_internal_dim_size,
                      layer->name);
@@ -137,6 +143,7 @@ ExpertsParams Experts::get_params() const {
   params.num_experts = num_experts;
   params.experts_start_idx = experts_start_idx;
   params.experts_output_dim_size = experts_output_dim_size;
+  params.alpha = alpha;
   params.experts_num_layers = experts_num_layers;
   params.experts_internal_dim_size = experts_internal_dim_size;
   return params;
@@ -202,6 +209,7 @@ bool operator==(ExpertsParams const &lhs, ExpertsParams const &rhs) {
   return lhs.num_experts == rhs.num_experts &&
          lhs.experts_start_idx == rhs.experts_start_idx &&
          lhs.experts_output_dim_size == rhs.experts_output_dim_size &&
+         lhs.alpha == rhs.alpha &&
          lhs.experts_num_layers == rhs.experts_num_layers &&
          lhs.experts_internal_dim_size == rhs.experts_internal_dim_size;
 }
@@ -216,6 +224,7 @@ Experts::Experts(FFModel &model,
               params.num_experts,
               params.experts_start_idx,
               params.experts_output_dim_size,
+              params.alpha,
               params.experts_num_layers,
               params.experts_internal_dim_size,
               name) {}
@@ -225,6 +234,7 @@ Experts::Experts(FFModel &model,
                  int _num_experts,
                  int _experts_start_idx,
                  int _experts_output_dim_size,
+                 float _alpha,
                  int _experts_num_layers,
                  int _experts_internal_dim_size,
                  char const *name)
@@ -237,7 +247,7 @@ Experts::Experts(FFModel &model,
          _num_experts /*outputs*/,
          inputs),
       num_experts(_num_experts), experts_start_idx(_experts_start_idx),
-      experts_output_dim_size(_experts_output_dim_size),
+      experts_output_dim_size(_experts_output_dim_size), alpha(_alpha),
       experts_num_layers(_experts_num_layers),
       experts_internal_dim_size(_experts_internal_dim_size) {
 
@@ -298,6 +308,7 @@ void Experts::serialize(Legion::Serializer &sez) const {
   sez.serialize(params.num_experts);
   sez.serialize(params.experts_start_idx);
   sez.serialize(params.experts_output_dim_size);
+  sez.serialize(params.alpha);
   sez.serialize(params.experts_num_layers);
   sez.serialize(params.experts_internal_dim_size);
 }
@@ -309,9 +320,11 @@ Node Experts::deserialize(FFModel &ff,
                           int num_inputs) {
   int num_experts, experts_start_idx, experts_output_dim_size,
       experts_num_layers, experts_internal_dim_size;
+  float alpha;
   dez.deserialize(num_experts);
   dez.deserialize(experts_start_idx);
   dez.deserialize(experts_output_dim_size);
+  dez.deserialize(alpha);
   dez.deserialize(experts_num_layers);
   dez.deserialize(experts_internal_dim_size);
 
@@ -321,6 +334,7 @@ Node Experts::deserialize(FFModel &ff,
   params.num_experts = num_experts;
   params.experts_start_idx = experts_start_idx;
   params.experts_output_dim_size = experts_output_dim_size;
+  params.alpha = alpha;
   params.experts_num_layers = experts_num_layers;
   params.experts_internal_dim_size = experts_internal_dim_size;
 
@@ -353,20 +367,20 @@ OpMeta *Experts::init_task(Task const *task,
                            Runtime *runtime) {
   Experts const *exp = (Experts *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  ExpertsMeta *m = new ExpertsMeta(handle);
+  ExpertsMeta *m = new ExpertsMeta(handle, exp->num_experts);
   m->profiling = exp->profiling;
   return m;
 }
 
 void Experts::forward(FFModel const &ff) {
-  //assert(false && "Experts is designed for inference only");
+  // assert(false && "Experts is designed for inference only");
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(EXPERTS_FWD_TASK_ID,
                          parallel_is,
-                         TaskArgument(nullptr, 0),
+                         TaskArgument(this, sizeof(Experts)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -417,7 +431,7 @@ void Experts::inference(FFModel const &ff,
   size_t machine_view_hash = mv ? mv->hash() : outputs[0]->machine_view.hash();
   IndexLauncher launcher(EXPERTS_FWD_TASK_ID,
                          parallel_is,
-                         TaskArgument(nullptr, 0),
+                         TaskArgument(this, sizeof(Experts)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -464,12 +478,18 @@ void Experts::forward_task(Task const *task,
   assert(regions.size() == task->regions.size());
   int num_experts = regions.size() - 3;
 
+  Experts const *exp = (Experts *)task->args;
+  assert(exp != nullptr);
+  assert(exp->num_experts == num_experts);
+  float alpha = exp->alpha;
+  int experts_start_idx = exp->experts_start_idx;
+
   ExpertsMeta const *m = *((ExpertsMeta **)task->local_args);
 
   // get input, indices, gate_preds
   AccessorRO<float, 3> const acc_input(regions[0], FID_DATA);
-  AccessorRO<int, 3> const acc_indices(regions[0], FID_DATA);
-  AccessorRO<float, 3> const acc_gate_pred(regions[1], FID_DATA);
+  AccessorRO<int, 3> const acc_indices(regions[1], FID_DATA);
+  AccessorRO<float, 3> const acc_gate_pred(regions[2], FID_DATA);
   Rect<3> rect_input = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Rect<3> rect_indices = runtime->get_index_space_domain(
@@ -484,6 +504,15 @@ void Experts::forward_task(Task const *task,
   assert(chosen_experts == rect_gate_pred.hi[0] - rect_gate_pred.lo[0]);
   coord_t out_dim = (rect_input.hi[0] - rect_input.lo[0] + 1) / num_experts;
 
+  int expert_capacity =
+      ceil(alpha * (int)chosen_experts / num_experts * (int)batch_size);
+
+  assert(batch_size <= MAX_BATCH_SIZE &&
+         "batch size exceeds MAX_BATCH_SIZE defined in experts.h");
+  assert(
+      num_experts <= MAX_EXPERTS_PER_BLOCK &&
+      "number of experts exceeds MAX_EXPERTS_PER_BLOCK defined in experts.h");
+
   float *outputs[num_experts];
   for (int i = 0; i < num_experts; i++) {
     Rect<3> rect_output = runtime->get_index_space_domain(
@@ -494,6 +523,18 @@ void Experts::forward_task(Task const *task,
         regions[3 + i], task->regions[3 + i], FID_DATA, ctx, runtime);
     assert(outputs[i] != nullptr);
   }
+
+  Experts::forward_kernel_wrapper(m,
+                                  acc_input.ptr(rect_input),
+                                  acc_indices.ptr(rect_indices),
+                                  acc_gate_pred.ptr(rect_gate_pred),
+                                  outputs,
+                                  num_experts,
+                                  experts_start_idx,
+                                  expert_capacity,
+                                  chosen_experts,
+                                  batch_size,
+                                  out_dim);
 }
 
 void Experts::backward(FFModel const &ff) {
@@ -528,6 +569,7 @@ size_t hash<FlexFlow::ExpertsParams>::operator()(
   hash_combine(key, params.num_experts);
   hash_combine(key, params.experts_start_idx);
   hash_combine(key, params.experts_output_dim_size);
+  hash_combine(key, params.alpha);
   hash_combine(key, params.experts_num_layers);
   hash_combine(key, params.experts_internal_dim_size);
   return key;

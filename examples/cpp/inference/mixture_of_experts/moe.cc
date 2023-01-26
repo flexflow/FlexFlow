@@ -48,10 +48,10 @@ Tensor create_moe(FFModel *model,
   for (int i = 0; i < nblocks /*number of experts layers*/; i++) {
     Tensor block_preds =
         model->experts(expert_block_inputs,
-                       moeConfig->experts_per_block /*number of experts*/,
-                       moeConfig->experts_per_block * i /*expert start index*/,
-                       moeConfig->hidden_size /*output_size*/
-        );
+                       moeConfig->experts_per_block,     /*number of experts*/
+                       moeConfig->experts_per_block * i, /*expert start index*/
+                       moeConfig->hidden_size,           /*output_size*/
+                       moeConfig->alpha);
     assert(block_preds != nullptr);
     if (i == 0) {
       exp_preds = block_preds;
