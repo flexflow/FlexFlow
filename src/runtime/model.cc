@@ -591,10 +591,12 @@ ncclComm_t Op::init_nccl_comms_task(Task const *task,
 #endif
 
 /**
- * @brief The ParallelDimMappingRecord class's constructor. It sets the object's type field equal to
- *        the value passed as the constructor's argument, and initializes all other fields to -1.
- * 
- * @param[in]   type  The MappingRecordType to use to initialize the ParallelDimMappingRecord. 
+ * @brief The ParallelDimMappingRecord class's constructor. It sets the object's
+ * type field equal to the value passed as the constructor's argument, and
+ * initializes all other fields to -1.
+ *
+ * @param[in]   type  The MappingRecordType to use to initialize the
+ * ParallelDimMappingRecord.
  */
 ParallelDimMappingRecord::ParallelDimMappingRecord(MappingRecordType type)
     : type(type), output_dim(-1), input_dim(-1), weight_dim(-1), output_idx(-1),
@@ -602,15 +604,20 @@ ParallelDimMappingRecord::ParallelDimMappingRecord(MappingRecordType type)
 
 /*static*/
 /**
- * @brief Builds and initializes a ParallelDimMappingRecord object of INPUT_OUTPUT MappingRecordType. 
- * 
- * This function should be used to create a ParallelDimMappingRecord to track an operator's dimension 
- * relation between the input and the output tensor
- * 
- * @param[in]   input_idx   The index of the input tensor (nonzero if there are multiple inputs)
- * @param[in]   input_dim   The index of the input dimension part of the dimension relation
- * @param[in]   output_idx  The index of the output tensor (nonzero if there are multiple outputs)
- * @param[in]   output_dim  The index of the output dimension part of the dimension relation
+ * @brief Builds and initializes a ParallelDimMappingRecord object of
+ * INPUT_OUTPUT MappingRecordType.
+ *
+ * This function should be used to create a ParallelDimMappingRecord to track an
+ * operator's dimension relation between the input and the output tensor
+ *
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   input_dim   The index of the input dimension part of the
+ * dimension relation
+ * @param[in]   output_idx  The index of the output tensor (nonzero if there are
+ * multiple outputs)
+ * @param[in]   output_dim  The index of the output dimension part of the
+ * dimension relation
  */
 ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
     int input_idx,
@@ -636,15 +643,20 @@ ParallelDimMappingRecord ParallelDimMappingRecord::input_output_record(
 
 /*static*/
 /**
- * @brief Builds and initializes a ParallelDimMappingRecord object of INPUT_WEIGHT MappingRecordType. 
- * 
- * This function should be used to create a ParallelDimMappingRecord to track an operator's dimension 
- * relation between the input and the weights tensor
- * 
- * @param[in]   input_idx   The index of the input tensor (nonzero if there are multiple inputs)
- * @param[in]   input_dim   The index of the input dimension part of the dimension relation
- * @param[in]   weight_idx  The index of the weight tensor (nonzero if there are multiple weights)
- * @param[in]   weight_dim  The index of the weight dimension part of the dimension relation
+ * @brief Builds and initializes a ParallelDimMappingRecord object of
+ * INPUT_WEIGHT MappingRecordType.
+ *
+ * This function should be used to create a ParallelDimMappingRecord to track an
+ * operator's dimension relation between the input and the weights tensor
+ *
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   input_dim   The index of the input dimension part of the
+ * dimension relation
+ * @param[in]   weight_idx  The index of the weight tensor (nonzero if there are
+ * multiple weights)
+ * @param[in]   weight_dim  The index of the weight dimension part of the
+ * dimension relation
  */
 ParallelDimMappingRecord ParallelDimMappingRecord::input_weight_record(
     int input_idx,
@@ -673,30 +685,38 @@ MappingRecordType ParallelDimMappingRecord::get_type() const {
 }
 
 /*static*/
-/** @brief A wrapper around the main version of the construct_weight_parallel_dims function.
- * 
- * This wrapper allows you to append multiple dimension relations at once to a vector of 
- * ParallelDimMappingRecord entries. The relations must be between dimensions of the same pair
- * of input and weight tensors. Unlike the other construct_weight_parallel_dims wrapper below, 
- * this function allows you to specify the MappingOperation for each pair of dimensions for which
- * you will be creating a new ParallelDimMappingRecord. 
- * 
- * The function takes a vector of (int, MappingOperation, int) tuples, where the int members represent
- * the indexes of the two dimensions in a relation, and the MappingOperation member specifies the type
- * of mapping operation. Just like the other wrapper, this function simply calls the main version of 
- * construct_weight_parallel_dims for each pair, using the same values across all calls for all other 
- * parameters.
- * 
- * This function should NOT be used to track dimension relations between the input and weights tensors; 
- * construct_weight_parallel_dims should be used instead.
- * 
- * @param[out]  records     The (potentially empty) vector of existing ParallelDimMappingRecord entries
- * @param[in]   mappings    A vector of tuples, each including a pair of integers (representing the indexes
- *                          of the input and weight dimensions in a relation), and a MappingOperation,
- *                          specifying the mapping operation for the pair of dimensions.
- * @param[in]   input_idx   The index of the input tensor (nonzero if there are multiple inputs)
- * @param[in]   weight_idx  The index of the weight tensor (nonzero if there are multiple weights)
- * 
+/** @brief A wrapper around the main version of the
+ * construct_weight_parallel_dims function.
+ *
+ * This wrapper allows you to append multiple dimension relations at once to a
+ * vector of ParallelDimMappingRecord entries. The relations must be between
+ * dimensions of the same pair of input and weight tensors. Unlike the other
+ * construct_weight_parallel_dims wrapper below, this function allows you to
+ * specify the MappingOperation for each pair of dimensions for which you will
+ * be creating a new ParallelDimMappingRecord.
+ *
+ * The function takes a vector of (int, MappingOperation, int) tuples, where the
+ * int members represent the indexes of the two dimensions in a relation, and
+ * the MappingOperation member specifies the type of mapping operation. Just
+ * like the other wrapper, this function simply calls the main version of
+ * construct_weight_parallel_dims for each pair, using the same values across
+ * all calls for all other parameters.
+ *
+ * This function should NOT be used to track dimension relations between the
+ * input and weights tensors; construct_weight_parallel_dims should be used
+ * instead.
+ *
+ * @param[out]  records     The (potentially empty) vector of existing
+ * ParallelDimMappingRecord entries
+ * @param[in]   mappings    A vector of tuples, each including a pair of
+ * integers (representing the indexes of the input and weight dimensions in a
+ * relation), and a MappingOperation, specifying the mapping operation for the
+ * pair of dimensions.
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   weight_idx  The index of the weight tensor (nonzero if there are
+ * multiple weights)
+ *
  */
 void Op::construct_weight_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
@@ -714,23 +734,29 @@ void Op::construct_weight_parallel_dims(
 }
 
 /*static*/
-/** @brief A wrapper around the main version of the construct_weight_parallel_dims function.
- * 
- * This wrapper allows you to append multiple dimension relations at once to a vector of 
- * ParallelDimMappingRecord entries. The relations must be between dimensions of the same pair
- * of input and weight tensors. The function takes a vector of (input, weight) dimension index pairs
- * and simply calls the main version of construct_weight_parallel_dims for each such pair, using the
- * same values across all calls for all other parameters.
- * 
- * This function should NOT be used to track dimension relations between the input and weights tensors; 
- * construct_weight_parallel_dims should be used instead.
- * 
- * @param[out]  records     The (potentially empty) vector of existing ParallelDimMappingRecord entries
- * @param[in]   mappings    A vector of integer pairs, each representing the indexes of the input and
- *                          weight dimensions in a relation.
- * @param[in]   input_idx   The index of the input tensor (nonzero if there are multiple inputs)
- * @param[in]   weight_idx  The index of the weight tensor (nonzero if there are multiple weights)
- * 
+/** @brief A wrapper around the main version of the
+ * construct_weight_parallel_dims function.
+ *
+ * This wrapper allows you to append multiple dimension relations at once to a
+ * vector of ParallelDimMappingRecord entries. The relations must be between
+ * dimensions of the same pair of input and weight tensors. The function takes a
+ * vector of (input, weight) dimension index pairs and simply calls the main
+ * version of construct_weight_parallel_dims for each such pair, using the same
+ * values across all calls for all other parameters.
+ *
+ * This function should NOT be used to track dimension relations between the
+ * input and weights tensors; construct_weight_parallel_dims should be used
+ * instead.
+ *
+ * @param[out]  records     The (potentially empty) vector of existing
+ * ParallelDimMappingRecord entries
+ * @param[in]   mappings    A vector of integer pairs, each representing the
+ * indexes of the input and weight dimensions in a relation.
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   weight_idx  The index of the weight tensor (nonzero if there are
+ * multiple weights)
+ *
  */
 void Op::construct_weight_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
@@ -745,21 +771,28 @@ void Op::construct_weight_parallel_dims(
 
 /*static*/
 /**
- * @brief Creates a new ParallelDimMappingRecord (of the INPUT_WEIGHT MappingRecordType flavor)
- *        and appends it to an existing vector of ParallelDimMappingRecord entries.
- * 
- * This function creates a new ParallelDimMappingRecord to track a dimension relation between a
- * dimension from the input tensor and a dimension from the weight tensor. This function should
- * NOT be used to track dimension relations between the input and output tensors; construct_output_parallel_dims
- * should be used instead.
- * 
- * @param[out]  records     The (potentially empty) vector of existing ParallelDimMappingRecord entries
- * @param[in]   input_dim   The index of the input dimension part of the dimension relation
- * @param[in]   weight_dim  The index of the weight dimension part of the dimension relation
- * @param[in]   input_idx   The index of the input tensor (nonzero if there are multiple inputs)
- * @param[in]   weight_idx  The index of the weight tensor (nonzero if there are multiple weights)
- * @param[in]   operation   The parallelization operation (partition or replication) associated with 
- *                          the dimension relation
+ * @brief Creates a new ParallelDimMappingRecord (of the INPUT_WEIGHT
+ * MappingRecordType flavor) and appends it to an existing vector of
+ * ParallelDimMappingRecord entries.
+ *
+ * This function creates a new ParallelDimMappingRecord to track a dimension
+ * relation between a dimension from the input tensor and a dimension from the
+ * weight tensor. This function should NOT be used to track dimension relations
+ * between the input and output tensors; construct_output_parallel_dims should
+ * be used instead.
+ *
+ * @param[out]  records     The (potentially empty) vector of existing
+ * ParallelDimMappingRecord entries
+ * @param[in]   input_dim   The index of the input dimension part of the
+ * dimension relation
+ * @param[in]   weight_dim  The index of the weight dimension part of the
+ * dimension relation
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   weight_idx  The index of the weight tensor (nonzero if there are
+ * multiple weights)
+ * @param[in]   operation   The parallelization operation (partition or
+ * replication) associated with the dimension relation
  */
 void Op::construct_weight_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
@@ -772,8 +805,9 @@ void Op::construct_weight_parallel_dims(
       input_idx, input_dim, weight_idx, weight_dim, operation));
 }
 
-/** @brief  Calls the corresponding version of construct_weight_parallel_dims, and passes the Op class's
- *          parallel_dims_mapping vector, so that the resulting ParallelDimMappingRecord are appended to it
+/** @brief  Calls the corresponding version of construct_weight_parallel_dims,
+ * and passes the Op class's parallel_dims_mapping vector, so that the resulting
+ * ParallelDimMappingRecord are appended to it
  */
 void Op::register_weight_parallel_dims(
     std::vector<std::pair<int, int>> mappings, int input_idx, int weight_idx) {
@@ -781,8 +815,9 @@ void Op::register_weight_parallel_dims(
       *this->parallel_dims_mapping, mappings, input_idx, weight_idx);
 }
 
-/** @brief  Calls the corresponding version of construct_weight_parallel_dims, and passes the Op class's
- *          parallel_dims_mapping vector, so that the resulting ParallelDimMappingRecord are appended to it
+/** @brief  Calls the corresponding version of construct_weight_parallel_dims,
+ * and passes the Op class's parallel_dims_mapping vector, so that the resulting
+ * ParallelDimMappingRecord are appended to it
  */
 void Op::register_weight_parallel_dims(
     std::vector<std::tuple<int, MappingOperation, int>> mappings,
@@ -792,8 +827,9 @@ void Op::register_weight_parallel_dims(
       *this->parallel_dims_mapping, mappings, input_idx, weight_idx);
 }
 
-/** @brief  Calls the corresponding version of construct_weight_parallel_dims, and passes the Op class's
- *          parallel_dims_mapping vector, so that the resulting ParallelDimMappingRecord are appended to it
+/** @brief  Calls the corresponding version of construct_weight_parallel_dims,
+ * and passes the Op class's parallel_dims_mapping vector, so that the resulting
+ * ParallelDimMappingRecord are appended to it
  */
 void Op::register_weight_parallel_dims(
     int input_dim,
@@ -810,30 +846,38 @@ void Op::register_weight_parallel_dims(
 }
 
 /*static*/
-/** @brief A wrapper around the main version of the construct_output_parallel_dims function.
- * 
- * This wrapper allows you to append multiple dimension relations at once to a vector of 
- * ParallelDimMappingRecord entries. The relations must be between dimensions of the same pair
- * of input and output tensors. Unlike the other construct_output_parallel_dims wrapper below, 
- * this function allows you to specify the MappingOperation for each pair of dimensions for which
- * you will be creating a new ParallelDimMappingRecord. 
- * 
- * The function takes a vector of (int, MappingOperation, int) tuples, where the int members represent
- * the indexes of the two dimensions in a relation, and the MappingOperation member specifies the type
- * of mapping operation. Just like the other wrapper, this function simply calls the main version of 
- * construct_output_parallel_dims for each pair, using the same values across all calls for all other 
- * parameters.
- * 
- * This function should NOT be used to track dimension relations between the input and weights tensors; 
- * construct_weight_parallel_dims should be used instead.
- * 
- * @param[out]  records     The (potentially empty) vector of existing ParallelDimMappingRecord entries
- * @param[in]   mappings    A vector of tuples, each including a pair of integers (representing the indexes
- *                          of the input and output dimensions in a relation), and a MappingOperation,
- *                          specifying the mapping operation for the pair of dimensions.
- * @param[in]   input_idx   The index of the input tensor (nonzero if there are multiple inputs)
- * @param[in]   output_idx  The index of the output tensor (nonzero if there are multiple outputs)
- * 
+/** @brief A wrapper around the main version of the
+ * construct_output_parallel_dims function.
+ *
+ * This wrapper allows you to append multiple dimension relations at once to a
+ * vector of ParallelDimMappingRecord entries. The relations must be between
+ * dimensions of the same pair of input and output tensors. Unlike the other
+ * construct_output_parallel_dims wrapper below, this function allows you to
+ * specify the MappingOperation for each pair of dimensions for which you will
+ * be creating a new ParallelDimMappingRecord.
+ *
+ * The function takes a vector of (int, MappingOperation, int) tuples, where the
+ * int members represent the indexes of the two dimensions in a relation, and
+ * the MappingOperation member specifies the type of mapping operation. Just
+ * like the other wrapper, this function simply calls the main version of
+ * construct_output_parallel_dims for each pair, using the same values across
+ * all calls for all other parameters.
+ *
+ * This function should NOT be used to track dimension relations between the
+ * input and weights tensors; construct_weight_parallel_dims should be used
+ * instead.
+ *
+ * @param[out]  records     The (potentially empty) vector of existing
+ * ParallelDimMappingRecord entries
+ * @param[in]   mappings    A vector of tuples, each including a pair of
+ * integers (representing the indexes of the input and output dimensions in a
+ * relation), and a MappingOperation, specifying the mapping operation for the
+ * pair of dimensions.
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   output_idx  The index of the output tensor (nonzero if there are
+ * multiple outputs)
+ *
  */
 void Op::construct_output_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
@@ -851,23 +895,29 @@ void Op::construct_output_parallel_dims(
 }
 
 /*static*/
-/** @brief A wrapper around the main version of the construct_output_parallel_dims function.
- * 
- * This wrapper allows you to append multiple dimension relations at once to a vector of 
- * ParallelDimMappingRecord entries. The relations must be between dimensions of the same pair
- * of input and output tensors. The function takes a vector of (input, output) dimension index pairs
- * and simply calls the main version of construct_output_parallel_dims for each such pair, using the
- * same values across all calls for all other parameters.
- * 
- * This function should NOT be used to track dimension relations between the input and weights tensors; 
- * construct_weight_parallel_dims should be used instead.
- * 
- * @param[out]  records     The (potentially empty) vector of existing ParallelDimMappingRecord entries
- * @param[in]   mappings    A vector of integer pairs, each representing the indexes of the input and
- *                          output dimensions in a relation.
- * @param[in]   input_idx   The index of the input tensor (nonzero if there are multiple inputs)
- * @param[in]   output_idx  The index of the output tensor (nonzero if there are multiple outputs)
- * 
+/** @brief A wrapper around the main version of the
+ * construct_output_parallel_dims function.
+ *
+ * This wrapper allows you to append multiple dimension relations at once to a
+ * vector of ParallelDimMappingRecord entries. The relations must be between
+ * dimensions of the same pair of input and output tensors. The function takes a
+ * vector of (input, output) dimension index pairs and simply calls the main
+ * version of construct_output_parallel_dims for each such pair, using the same
+ * values across all calls for all other parameters.
+ *
+ * This function should NOT be used to track dimension relations between the
+ * input and weights tensors; construct_weight_parallel_dims should be used
+ * instead.
+ *
+ * @param[out]  records     The (potentially empty) vector of existing
+ * ParallelDimMappingRecord entries
+ * @param[in]   mappings    A vector of integer pairs, each representing the
+ * indexes of the input and output dimensions in a relation.
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   output_idx  The index of the output tensor (nonzero if there are
+ * multiple outputs)
+ *
  */
 void Op::construct_output_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
@@ -882,21 +932,28 @@ void Op::construct_output_parallel_dims(
 
 /*static*/
 /**
- * @brief Creates a new ParallelDimMappingRecord (of the INPUT_OUTPUT MappingRecordType flavor)
- *        and appends it to an existing vector of ParallelDimMappingRecord entries.
- * 
- * This function creates a new ParallelDimMappingRecord to track a dimension relation between a
- * dimension from the input tensor and a dimension from the output tensor. This function should
- * NOT be used to track dimension relations between the input and weights tensors; construct_weight_parallel_dims
- * should be used instead.
- * 
- * @param[out]  records     The (potentially empty) vector of existing ParallelDimMappingRecord entries
- * @param[in]   input_dim   The index of the input dimension part of the dimension relation
- * @param[in]   output_dim  The index of the output dimension part of the dimension relation
- * @param[in]   input_idx   The index of the input tensor (nonzero if there are multiple inputs)
- * @param[in]   output_idx  The index of the output tensor (nonzero if there are multiple outputs)
- * @param[in]   operation   The parallelization operation (partition or replication) associated with 
- *                          the dimension relation
+ * @brief Creates a new ParallelDimMappingRecord (of the INPUT_OUTPUT
+ * MappingRecordType flavor) and appends it to an existing vector of
+ * ParallelDimMappingRecord entries.
+ *
+ * This function creates a new ParallelDimMappingRecord to track a dimension
+ * relation between a dimension from the input tensor and a dimension from the
+ * output tensor. This function should NOT be used to track dimension relations
+ * between the input and weights tensors; construct_weight_parallel_dims should
+ * be used instead.
+ *
+ * @param[out]  records     The (potentially empty) vector of existing
+ * ParallelDimMappingRecord entries
+ * @param[in]   input_dim   The index of the input dimension part of the
+ * dimension relation
+ * @param[in]   output_dim  The index of the output dimension part of the
+ * dimension relation
+ * @param[in]   input_idx   The index of the input tensor (nonzero if there are
+ * multiple inputs)
+ * @param[in]   output_idx  The index of the output tensor (nonzero if there are
+ * multiple outputs)
+ * @param[in]   operation   The parallelization operation (partition or
+ * replication) associated with the dimension relation
  */
 void Op::construct_output_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
@@ -909,8 +966,9 @@ void Op::construct_output_parallel_dims(
       input_idx, input_dim, output_idx, output_dim, operation));
 }
 
-/** @brief  Calls the corresponding version of construct_output_parallel_dims, and passes the Op class's
- *          parallel_dims_mapping vector, so that the resulting ParallelDimMappingRecord are appended to it
+/** @brief  Calls the corresponding version of construct_output_parallel_dims,
+ * and passes the Op class's parallel_dims_mapping vector, so that the resulting
+ * ParallelDimMappingRecord are appended to it
  */
 void Op::register_output_parallel_dims(
     std::vector<std::pair<int, int>> mappings, int input_idx, int output_idx) {
@@ -918,8 +976,9 @@ void Op::register_output_parallel_dims(
       *this->parallel_dims_mapping, mappings, input_idx, output_idx);
 }
 
-/** @brief  Calls the corresponding version of construct_output_parallel_dims, and passes the Op class's
- *          parallel_dims_mapping vector, so that the resulting ParallelDimMappingRecord are appended to it
+/** @brief  Calls the corresponding version of construct_output_parallel_dims,
+ * and passes the Op class's parallel_dims_mapping vector, so that the resulting
+ * ParallelDimMappingRecord are appended to it
  */
 void Op::register_output_parallel_dims(
     std::vector<std::tuple<int, MappingOperation, int>> mappings,
@@ -929,8 +988,9 @@ void Op::register_output_parallel_dims(
       *this->parallel_dims_mapping, mappings, input_idx, output_idx);
 }
 
-/** @brief  Calls the corresponding version of construct_output_parallel_dims, and passes the Op class's
- *          parallel_dims_mapping vector, so that the resulting ParallelDimMappingRecord are appended to it
+/** @brief  Calls the corresponding version of construct_output_parallel_dims,
+ * and passes the Op class's parallel_dims_mapping vector, so that the resulting
+ * ParallelDimMappingRecord are appended to it
  */
 void Op::register_output_parallel_dims(
     int input_dim,
