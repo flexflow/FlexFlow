@@ -96,51 +96,54 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      int chosen_experts,
                                      int batch_size,
                                      int out_dim) {
-    hipStream_t stream;
-    checkCUDA(get_legion_stream(&stream));
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
 
-    //   cudaEvent_t t_start, t_end;
-    //   if (m->profiling) {
-    //     cudaEventCreate(&t_start);
-    //     cudaEventCreate(&t_end);
-    //     cudaEventRecord(t_start, stream);
-    //   }
+  //   cudaEvent_t t_start, t_end;
+  //   if (m->profiling) {
+  //     cudaEventCreate(&t_start);
+  //     cudaEventCreate(&t_end);
+  //     cudaEventRecord(t_start, stream);
+  //   }
 
-    // call forward_kernel
-    cudaMemcpyAsync(m->dev_region_ptrs,
-                    outputs,
-                    num_experts * sizeof(float *),
-                    cudaMemcpyHostToDevice,
-                    stream);
-    
-    hipMemcpy(
-      m->dev_region_ptrs, outputs, num_experts * sizeof(float *), hipMemcpyHostToDevice);
+  // call forward_kernel
+  cudaMemcpyAsync(m->dev_region_ptrs,
+                  outputs,
+                  num_experts * sizeof(float *),
+                  cudaMemcpyHostToDevice,
+                  stream);
 
-    hipLaunchKernelGGL( experts_forward_kernel,
-                        GET_BLOCKS(batch_size * num_experts * out_dim),
-                        min(CUDA_NUM_THREADS, (int)(batch_size * num_experts * out_dim)),
-                        0,
-                        stream,
-                        input,
-                        indices,
-                        gate_preds,
-                        m->dev_region_ptrs,
-                        num_experts,
-                        experts_start_idx,
-                        chosen_experts,
-                        expert_capacity,
-                        batch_size,
-                        out_dim);
+  hipMemcpy(m->dev_region_ptrs,
+            outputs,
+            num_experts * sizeof(float *),
+            hipMemcpyHostToDevice);
 
-    // if (m->profiling) {
-    //     cudaEventRecord(t_end, stream);
-    //     checkCUDA(cudaEventSynchronize(t_end));
-    //     float elapsed = 0;
-    //     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    //     cudaEventDestroy(t_start);
-    //     cudaEventDestroy(t_end);
-    //     printf("[Experts] forward time = %.2lfms\n", elapsed);
-    // }
+  hipLaunchKernelGGL(
+      experts_forward_kernel,
+      GET_BLOCKS(batch_size * num_experts * out_dim),
+      min(CUDA_NUM_THREADS, (int)(batch_size * num_experts * out_dim)),
+      0,
+      stream,
+      input,
+      indices,
+      gate_preds,
+      m->dev_region_ptrs,
+      num_experts,
+      experts_start_idx,
+      chosen_experts,
+      expert_capacity,
+      batch_size,
+      out_dim);
+
+  // if (m->profiling) {
+  //     cudaEventRecord(t_end, stream);
+  //     checkCUDA(cudaEventSynchronize(t_end));
+  //     float elapsed = 0;
+  //     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //     cudaEventDestroy(t_start);
+  //     cudaEventDestroy(t_end);
+  //     printf("[Experts] forward time = %.2lfms\n", elapsed);
+  // }
 }
 
 ExpertsMeta::ExpertsMeta(FFHandler handler, int num_experts) : OpMeta(handler) {
