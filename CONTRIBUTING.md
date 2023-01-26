@@ -121,7 +121,7 @@ After adding the DNN layers, the next step before compiling the model for traini
 
 Model compilation consists of the following steps:
 
-1. `create_operators_from_layers()`
+1. We initialize an operator for each layer in the model, via the function `create_operators_from_layers()`. Layers work with `Tensor` input/weights/outputs, and are created directly by the user when writing a FlexFlow program. Operators work with `ParallelTensor` objects and they are responsible for running computations by launching kernels on GPUs.  
 2. Launch the graph optimize task (`GRAPH_OPTIMIZE_TASK_ID`), implemented by`PCG::Graph::graph_optimize_task`, which returns `PCG::GraphOptimalViewSerialized`
 	1. call `deserialize_graph_optimal_view(...)` to get `PCG::Graph *best_graph` and `std::unordered_map<PCG::Node, MachineView> optimal_views` from deserialized `PCG::GraphOptimalViewSerialized`
 	2. `convert_graph_to_operators()`
