@@ -3027,7 +3027,7 @@ void FFModel::compile(LossType loss_type,
              operators[i]->op_guid);
       for (int j = 0; j < op->numInputs; j++) {
         LogicalRegion handle = op->inputs[j]->region;
-        printf("inputs[%d] region(%d,%d,%d)\n",
+        printf("\tinputs[%d] region(%d,%d,%d)\n",
                j,
                handle.get_index_space().get_id(),
                handle.get_field_space().get_id(),
@@ -3035,7 +3035,7 @@ void FFModel::compile(LossType loss_type,
       }
       for (int j = 0; j < op->numOutputs; j++) {
         LogicalRegion handle = op->outputs[j]->region;
-        printf("outputs[%d] region(%d,%d,%d)\n",
+        printf("\toutputs[%d] region(%d,%d,%d)\n",
                j,
                handle.get_index_space().get_id(),
                handle.get_field_space().get_id(),
@@ -3043,7 +3043,7 @@ void FFModel::compile(LossType loss_type,
       }
       for (int j = 0; j < op->numWeights; j++) {
         LogicalRegion handle = op->weights[j]->region;
-        printf("weights[%d] region(%d,%d,%d)\n",
+        printf("\tweights[%d] region(%d,%d,%d)\n",
                j,
                handle.get_index_space().get_id(),
                handle.get_field_space().get_id(),
@@ -3059,7 +3059,7 @@ void FFModel::compile(LossType loss_type,
     printf("operator[%zu]: type(%d)\n", i, operators[i]->op_type);
     for (int j = 0; j < op->numInputs; j++) {
       LogicalRegion handle = op->inputs[j]->region;
-      printf("inputs[%d] region(%d,%d,%d)\n",
+      printf("\tinputs[%d] region(%d,%d,%d)\n",
              j,
              handle.get_index_space().get_id(),
              handle.get_field_space().get_id(),
@@ -3067,7 +3067,7 @@ void FFModel::compile(LossType loss_type,
     }
     for (int j = 0; j < op->numOutputs; j++) {
       LogicalRegion handle = op->outputs[j]->region;
-      printf("outputs[%d] region(%d,%d,%d)\n",
+      printf("\toutputs[%d] region(%d,%d,%d)\n",
              j,
              handle.get_index_space().get_id(),
              handle.get_field_space().get_id(),
@@ -3782,13 +3782,6 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<Experts::backward_task>(
         registrar, "Experts Backward Task");
-  }
-  {
-    TaskVariantRegistrar registrar(EXPERTS_INF_TASK_ID, "Experts Inference");
-    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
-    registrar.set_leaf();
-    Runtime::preregister_task_variant<Experts::inference_task>(
-        registrar, "Experts Inference Task");
   }
   // Cast
   {

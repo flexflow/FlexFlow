@@ -166,6 +166,22 @@ Aggregate::Aggregate(FFModel &model,
                      char const *name)
     : Aggregate(model, inputs.data(), params.n, params.lambda_bal, name) {}
 
+using PCG::Node;
+Node Aggregate::deserialize(FFModel &ff,
+                            Legion::Deserializer &dez,
+                            std::vector<ParallelTensor> const &inputs,
+                            int num_inputs) {
+  int n;
+  float lambda_bal;
+  dez.deserialize(n);
+  dez.deserialize(lambda_bal);
+  assert(num_inputs == n + 4);
+  AggregateParams params;
+  params.n = n;
+  params.lambda_bal = lambda_bal;
+  return ff.get_or_create_node<Aggregate>(inputs, params);
+}
+
 void Aggregate::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;

@@ -1,29 +1,36 @@
 #pragma once
 
 #include "flexflow/model.h"
+#include "flexflow/ops/experts_params.h"
 
 namespace FlexFlow {
 
 class ExpertsMeta : public OpMeta {
 public:
-  ExpertsMeta(FFHandler handler) : OpMeta(handler){};
+  ExpertsMeta(FFHandler handler, int num_experts);
+  ~ExpertsMeta(void);
+  float **dev_region_ptrs;
 };
+
+// definitions for the CUDA kernel
+#define MAX_BATCH_SIZE 64
+#define MAX_EXPERTS_PER_BLOCK 32
 
 class Experts : public Op {
 public:
   using Params = ExpertsParams;
-  using Input = std::pair<ParallelTensor, ParallelTensor>;
+  using Input = std::vector<ParallelTensor>;
   Experts(FFModel &model,
           Params const &params,
           Input const &inputs,
           char const *name = nullptr);
   Experts(FFModel &model,
-          const ParallelTensor input,
-          const ParallelTensor indices,
+          ParallelTensor const *inputs,
           int _num_experts,
           int _experts_start_idx,
-          int _experts_num_layers,
           int _experts_output_dim_size,
+          float _alpha,
+          int _experts_num_layers,
           int _experts_internal_dim_size,
           char const *name = nullptr);
   static Op *
@@ -42,11 +49,8 @@ public:
   void serialize(Legion::Serializer &) const override;
   static PCG::Node deserialize(FFModel &ff,
                                Legion::Deserializer &d,
-                               ParallelTensor inputs[],
+                               Input const &inputs,
                                int num_inputs);
-  Op *materialize(FFModel &ff,
-                  ParallelTensor inputs[],
-                  int num_inputs) const override;
   Params get_params() const;
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
@@ -56,6 +60,17 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
+  static void forward_kernel_wrapper(ExpertsMeta const *m,
+                                     float const *acc_input_ptr,
+                                     int const *acc_indices_ptr,
+                                     float const *acc_topk_gate_preds_ptr,
+                                     float **outputs,
+                                     int num_experts,
+                                     int experts_start_idx,
+                                     int expert_capacity,
+                                     int chosen_experts,
+                                     int batch_size,
+                                     int out_dim);
   static void backward_task(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
@@ -71,8 +86,9 @@ public:
 public:
   int num_experts;
   int experts_start_idx;
-  int experts_num_layers;
   int experts_output_dim_size;
+  float alpha;
+  int experts_num_layers;
   int experts_internal_dim_size;
 };
 

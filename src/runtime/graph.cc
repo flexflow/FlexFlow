@@ -2060,21 +2060,19 @@ void FFModel::deserialize_graph_optimal_view(
         break;
       }
       case OP_AGGREGATE: {
-        // node = Aggregate::deserialize(*this, dez, inputs, num_inputs);
-        int n;
-        float lambda_bal;
-        dez.deserialize(n);
-        dez.deserialize(lambda_bal);
-        assert(num_inputs == n + 4);
-        AggregateParams params;
-        params.n = n;
-        params.lambda_bal = lambda_bal;
-        node = get_or_create_node<Aggregate>(
-            {std::begin(inputs), std::begin(inputs) + num_inputs}, params);
+        node = Aggregate::deserialize(
+            *this,
+            dez,
+            {std::begin(inputs), std::begin(inputs) + num_inputs},
+            num_inputs);
         break;
       }
       case OP_EXPERTS: {
-        node = Experts::deserialize(*this, dez, inputs, num_inputs);
+        node = Experts::deserialize(
+            *this,
+            dez,
+            {std::begin(inputs), std::begin(inputs) + num_inputs},
+            num_inputs);
         break;
       }
       case OP_POOL2D: {
