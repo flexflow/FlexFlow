@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/softmax.h"
+#include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
@@ -33,29 +33,12 @@ SoftmaxMeta::SoftmaxMeta(FFHandler handler,
   std::strcpy(op_name, softmax->name);
 }
 
-/* static */
-void Softmax::forward_kernel(SoftmaxMeta const *m,
-                             float const *input_ptr,
-                             float *output_ptr,
-                             hipStream_t stream) {
-  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+namespace Kernels {
+namespace Softmax {
 
-  float alpha = 1.0f, beta = 0.0f;
-  checkCUDNN(miopenSoftmaxForward_V2(m->handle.dnn,
-                                     &alpha,
-                                     m->inputTensor,
-                                     input_ptr,
-                                     &beta,
-                                     m->inputTensor,
-                                     output_ptr,
-                                     MIOPEN_SOFTMAX_ACCURATE,
-                                     MIOPEN_SOFTMAX_MODE_CHANNEL));
-}
-
-/* static */
-void Softmax::forward_kernel_wrapper(SoftmaxMeta const *m,
-                                     float const *input_ptr,
-                                     float *output_ptr) {
+void forward_kernel_wrapper(SoftmaxMeta const *m,
+                            float const *input_ptr,
+                            float *output_ptr) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -65,7 +48,7 @@ void Softmax::forward_kernel_wrapper(SoftmaxMeta const *m,
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  Softmax::forward_kernel(m, input_ptr, output_ptr, stream);
+  Internal::forward_kernel(m, input_ptr, output_ptr, stream);
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
@@ -81,23 +64,10 @@ void Softmax::forward_kernel_wrapper(SoftmaxMeta const *m,
   }
 }
 
-/* static */
-void Softmax::backward_kernel(float *input_grad_ptr,
-                              float const *output_grad_ptr,
-                              size_t num_elements,
-                              hipStream_t stream) {
-  checkCUDA(hipMemcpyAsync(input_grad_ptr,
-                           output_grad_ptr,
-                           num_elements * sizeof(float),
-                           hipMemcpyDeviceToDevice,
-                           stream));
-}
-
-/* static */
-void Softmax::backward_kernel_wrapper(SoftmaxMeta const *m,
-                                      float *input_grad_ptr,
-                                      float const *output_grad_ptr,
-                                      size_t num_elements) {
+void backward_kernel_wrapper(SoftmaxMeta const *m,
+                             float *input_grad_ptr,
+                             float const *output_grad_ptr,
+                             size_t num_elements) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -107,7 +77,7 @@ void Softmax::backward_kernel_wrapper(SoftmaxMeta const *m,
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  Softmax::backward_kernel(
+  Internal::backward_kernel(
       input_grad_ptr, output_grad_ptr, num_elements, stream);
   if (m->profiling) {
     hipEventRecord(t_end, stream);
@@ -124,4 +94,38 @@ void Softmax::backward_kernel_wrapper(SoftmaxMeta const *m,
   }
 }
 
-}; // namespace FlexFlow
+namespace Internal {
+
+void forward_kernel(SoftmaxMeta const *m,
+                    float const *input_ptr,
+                    float *output_ptr,
+                    hipStream_t stream) {
+  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+
+  float alpha = 1.0f, beta = 0.0f;
+  checkCUDNN(miopenSoftmaxForward_V2(m->handle.dnn,
+                                     &alpha,
+                                     m->inputTensor,
+                                     input_ptr,
+                                     &beta,
+                                     m->inputTensor,
+                                     output_ptr,
+                                     MIOPEN_SOFTMAX_ACCURATE,
+                                     MIOPEN_SOFTMAX_MODE_CHANNEL));
+}
+
+void backward_kernel(float *input_grad_ptr,
+                     float const *output_grad_ptr,
+                     size_t num_elements,
+                     hipStream_t stream) {
+  checkCUDA(hipMemcpyAsync(input_grad_ptr,
+                           output_grad_ptr,
+                           num_elements * sizeof(float),
+                           hipMemcpyDeviceToDevice,
+                           stream));
+}
+
+} // namespace Internal
+} // namespace Softmax
+} // namespace Kernels
+} // namespace FlexFlow
