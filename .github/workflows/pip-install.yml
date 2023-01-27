@@ -64,5 +64,4 @@ jobs:
       - name: Check availability of Python flexflow.core module
         shell: bash -l {0} # required to use an activated conda environment
         run: |
-          conda activate flexflow
           python -c "import flexflow.core; exit()"
