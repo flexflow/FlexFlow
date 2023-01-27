@@ -24,7 +24,9 @@ else()
 		# is stored at the path `/opt/conda/lib/libpython3.10.so`. Here, we check if this is the case.
 		find_package(PythonInterp)
   		find_package(PythonLibs)
-		if(PYTHON_LIBRARIES STREQUAL "/opt/conda/lib/libpython3.10.so")
+  		# move python version into url when pre-building for multiple linux versions
+  		get_filename_component(PYTHON_LIBNAME "${PYTHON_LIBRARIES}" NAME)
+		if(PYTHON_LIBNAME STREQUAL "libpython3.10.so")
 			if(LINUX_VERSION MATCHES "20.04" OR LINUX_VERSION MATCHES "18.04")
 				if (FF_GPU_BACKEND STREQUAL "cuda")
 					set(LEGION_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/legion_ubuntu-${LINUX_VERSION}_cuda-${CUDA_VERSION}.tar.gz")
