@@ -147,13 +147,6 @@ include(variant)
 # optional
 include(optional)
 
-if(FF_USE_PYTHON)
-  list(APPEND FF_CC_FLAGS
-    -DBINDINGS_AUGMENT_PYTHONPATH)
-  list(APPEND FF_NVCC_FLAGS
-    -DBINDINGS_AUGMENT_PYTHONPATH)
-endif()
-
 if (FF_GPU_BACKEND STREQUAL "cuda")
   list(APPEND FF_CC_FLAGS
     -DFF_USE_CUDA)
@@ -303,23 +296,32 @@ else()
   message(FATAL_ERROR "Unsupported FF_GPU_BACKEND for cmake: ${FF_GPU_BACKEND}")
 endif()
 
+if(FF_USE_NCCL)
+  add_dependencies(flexflow ${NCCL_NAME})
+endif()
+
 target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
 # LEGION_URL is defined if we found a precompiled Legion library to download
 if(LEGION_URL)
   # Legion builds produce two library files: one for the Legion runtime and one for the Realm runtime. 
   # When linking FlexFlow to a precompiled version of Legion, we need to manually link to both library files.
-  target_link_libraries(flexflow ${LEGION_LIBRARY} ${REALM_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
+  target_link_libraries(flexflow ${LEGION_LIBRARY} ${REALM_LIBRARY} ${FLEXFLOW_EXT_LIBRARIES} nlohmann_json::nlohmann_json mpark_variant optional)
   add_dependencies(flexflow ${LEGION_NAME})
 else()
   # When building Legion from source, we do so by calling add_subdirectory(), and obtain a library with both the
   # Legion and Realm runtimes. The library's name is saved into the LEGION_LIBRARY variable. Hence, we only need
   # to link FlexFlow to ${LEGION_LIBRARY}
-  target_link_libraries(flexflow ${LEGION_LIBRARY} nlohmann_json::nlohmann_json mpark_variant optional)
+  target_link_libraries(flexflow ${LEGION_LIBRARY} ${FLEXFLOW_EXT_LIBRARIES} nlohmann_json::nlohmann_json mpark_variant optional)
 endif()
 
-if(FF_USE_NCCL)
-  add_dependencies(flexflow ${NCCL_NAME})
-endif()
+# python related
+# create flexflow_cffi_header.py
+add_custom_command(TARGET flexflow
+  PRE_BUILD	
+  COMMAND ${FLEXFLOW_ROOT}/python/flexflow_cffi_build.py --ffhome-dir ${FLEXFLOW_ROOT} --output-dir ${FLEXFLOW_ROOT}/python/flexflow/core
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  COMMENT "Creating flexflow_cffi_header.py..."
+)
 
 # build binary
 option(FF_BUILD_RESNET "build resnet example" OFF)
@@ -352,12 +354,6 @@ endif()
 
 if(FF_BUILD_VISUALIZATION_TOOL)
   add_subdirectory(tools/substitutions_to_dot)
-endif()
-
-# Python
-if(FF_USE_PYTHON)
-  add_subdirectory(deps/pybind11)
-  add_subdirectory(python)
 endif()
 
 if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
@@ -420,3 +416,10 @@ set(INCLUDE_DEST "include")
 set(LIB_DEST "lib")
 install(FILES ${FLEXFLOW_HDR} DESTINATION ${INCLUDE_DEST})
 install(TARGETS flexflow DESTINATION ${LIB_DEST})
+# install python
+execute_process(COMMAND python -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=False,standard_lib=False))" OUTPUT_VARIABLE PY_DEST OUTPUT_STRIP_TRAILING_WHITESPACE)
+install(
+  DIRECTORY ${FLEXFLOW_ROOT}/python/flexflow/
+  DESTINATION ${PY_DEST}/flexflow
+  FILES_MATCHING 
+  PATTERN "*.py")

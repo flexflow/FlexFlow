@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "flexflow_c.h"
+#include "flexflow/flexflow_c.h"
 #include "flexflow/mapper.h"
-#include "flexflow_dataloader.h"
+#include "flexflow/dataloader.h"
 
 using namespace Legion;
 using namespace FlexFlow;

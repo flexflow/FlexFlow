@@ -21,7 +21,7 @@ import subprocess
 
 def find_flexflow_header(ffhome_dir):
     def try_prefix(prefix_dir):
-        flexflow_ch_path = os.path.join(prefix_dir, 'python', 'flexflow_c.h')
+        flexflow_ch_path = os.path.join(prefix_dir, 'include/flexflow', 'flexflow_c.h')
         flexflow_cxxh_path = os.path.join(prefix_dir, 'include/flexflow', 'model.h')
         if os.path.exists(flexflow_ch_path) and os.path.exists(flexflow_cxxh_path):
             flexflow_cxxh_dir = os.path.join(prefix_dir, 'include')

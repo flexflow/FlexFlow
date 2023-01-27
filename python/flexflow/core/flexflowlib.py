@@ -43,7 +43,7 @@ class FlexFlowLib(object):
             assert 0, "unknown platform"
 
     def get_shared_library(self) -> str:
-        libname = "libflexflow_c" + self.get_library_extension()
+        libname = "libflexflow" + self.get_library_extension()
         return os.path.join(libname)
 
     def get_c_header(self) -> str:

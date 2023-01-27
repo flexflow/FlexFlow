@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow_dataloader.h"
+#include "flexflow/dataloader.h"
 #include <fstream>
 #include <sstream>
 #include <string>
