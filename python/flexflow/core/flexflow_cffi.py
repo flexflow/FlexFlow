@@ -1,4 +1,4 @@
-# Copyright 2020 Stanford University, Los Alamos National Laboratory
+# Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -143,6 +143,13 @@ class Multiply(Op):
 class Divide(Op):
   def __init__(self, handle, idx=None, name=None):
     super(Divide, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# ReduceSum
+# -----------------------------------------------------------------------
+class ReduceSum(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ReduceSum, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Conv2D
@@ -431,6 +438,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Multiply(handle, idx, name)
   elif op_type == OpType.DIVIDE:
     return Divide(handle, idx, name)
+  elif op_type == OpType.REDUCE_SUM:
+    return ReduceSum(handle, idx, name)
   elif op_type == OpType.MSELOSS:
     return MSELoss(handle, idx, name)
   elif op_type == OpType.SCALAR_MULTIPLY:
@@ -992,6 +1001,26 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
+
+  def reduce_sum(self, input, axes, keepdims=False, name=None):
+    """Layer that computes the sum of the input Tensor along given axes.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param axes: the axes along which reduction is applied
+    :type axes: List[int]
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    c_axes = ffi.new("int[]", axes)
+    handle = ffc.flexflow_model_add_reduce_sum(self.handle, input.handle, c_axes, len(axes), keepdims, c_name)
+    self.add_layer(OpType.REDUCE_SUM, name)
+    return Tensor(handle, owner_op_type=OpType.REDUCE_SUM)
 
   def rsqrt(self, input, name=None):
     """Layer that computes the element-wise reciprocal square-root.

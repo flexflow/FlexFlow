@@ -1,4 +1,4 @@
-/* Copyright 2020 Stanford, Los Alamos National Laboratory
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -284,6 +284,27 @@ flexflow_tensor_t flexflow_model_add_divide(flexflow_model_t handle_,
   Tensor tensor = handle->divide(x, y, inplace_a, name);
   DEBUG_PRINT(
       "[Divide] new Tensor %p, x %p, y %p, name %s", tensor, x, y, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_reduce_sum(flexflow_model_t handle_,
+                                                const flexflow_tensor_t input_,
+                                                int *axes,
+                                                int n,
+                                                bool keepdims,
+                                                char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  std::vector<int> axes_vec;
+  for (int i = 0; i < n; i++) {
+    axes_vec.push_back(axes[i]);
+  }
+  Tensor tensor = handle->reduce_sum(input, axes_vec, keepdims, name);
+  DEBUG_PRINT("[ReduceSum] new Tensor %p, input %p, n %d, name %s",
+              tensor,
+              input,
+              n,
+              name);
   return FFCObjectWrapper::wrap(tensor);
 }
 

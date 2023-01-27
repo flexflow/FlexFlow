@@ -1,4 +1,4 @@
-/* Copyright 2020 Facebook
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,15 @@
 #include "flexflow/accessor.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/batch_norm.h"
-#include "flexflow/ops/dropout.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
-#include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
 #include "flexflow/ops/kernels/batch_matmul_kernels.h"
 #include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
+#include "flexflow/ops/kernels/dropout_kernels.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
+#include "flexflow/ops/kernels/flat_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
 #include "flexflow/ops/kernels/reshape_kernels.h"
@@ -210,9 +210,10 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta *m = (DropoutMeta *)metas->meta[op];
-        Dropout::forward_kernel_wrapper(m,
-                                        my_input_accessor[0].get_float_ptr(),
-                                        my_output_accessor[0].get_float_ptr());
+        Kernels::Dropout::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr());
         break;
       }
       case OP_LINEAR: {
@@ -397,9 +398,10 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
-        Flat::forward_kernel_wrapper(my_input_accessor[0].get_float_ptr(),
-                                     my_output_accessor[0].get_float_ptr(),
-                                     my_input_accessor[0].domain.get_volume());
+        Kernels::Flat::forward_kernel_wrapper(
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].domain.get_volume());
         break;
       }
       case OP_RESHAPE: {
@@ -731,7 +733,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta *m = (DropoutMeta *)metas->meta[op];
-        Dropout::backward_kernel_wrapper(
+        Kernels::Dropout::backward_kernel_wrapper(
             m,
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr());
@@ -860,7 +862,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_grad_accessor[0].domain.get_volume() ==
                my_output_grad_accessor[0].domain.get_volume());
-        Flat::backward_kernel_wrapper(
+        Kernels::Flat::backward_kernel_wrapper(
             my_input_grad_accessor[0].get_float_ptr(),
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].domain.get_volume());

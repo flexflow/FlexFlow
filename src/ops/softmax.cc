@@ -1,4 +1,4 @@
-/* Copyright 2017 Stanford, NVIDIA
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 
 #include "flexflow/ops/softmax.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -33,6 +34,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::Softmax;
 
 /* Params */
 bool operator==(SoftmaxParams const &lhs, SoftmaxParams const &rhs) {
@@ -252,7 +255,7 @@ void Softmax::forward_task_with_dim(Task const *task,
                                           runtime,
                                           false /*readOutput*/);
 
-  Softmax::forward_kernel_wrapper(m, acc_input.ptr, acc_output.ptr);
+  forward_kernel_wrapper(m, acc_input.ptr, acc_output.ptr);
 }
 
 void Softmax::backward(FFModel const &ff) {
@@ -327,7 +330,7 @@ void Softmax::backward_task_with_dim(Task const *task,
   // make sure the image indices match!
   assert(acc_input_grad.rect == acc_output_grad.rect);
 
-  Softmax::backward_kernel_wrapper(
+  backward_kernel_wrapper(
       m, acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
 }
 
