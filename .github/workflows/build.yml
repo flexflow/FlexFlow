@@ -50,12 +50,20 @@ jobs:
           # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
           use-github-cache: "false"
 
-      - name: Install FlexFlow Dependencies
+      - name: Install System Dependencies
         run: FF_GPU_BACKEND=${{ matrix.gpu_backend }} .github/workflows/helpers/install_dependencies.sh
 
+      - name: Install Conda and FlexFlow dependencies
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: flexflow
+          environment-file: environment.yml
+          python-version: latest
+          auto-activate-base: false
+
       - name: Build FlexFlow
+        shell: bash -l {0} # required to use an activated conda environment
         run: |
-          conda activate flexflow
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
@@ -74,8 +82,8 @@ jobs:
           make -j $n_build_cores
 
       - name: Install FlexFlow
+        shell: bash -l {0} # required to use an activated conda environment
         run: |
-          conda activate flexflow
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
