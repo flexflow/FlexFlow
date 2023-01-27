@@ -55,7 +55,7 @@ jobs:
 
       - name: Build FlexFlow
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          conda activate flexflow
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
@@ -75,7 +75,7 @@ jobs:
 
       - name: Install FlexFlow
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          conda activate flexflow
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
@@ -93,13 +93,13 @@ jobs:
       - name: Check availability of Python flexflow.core module
         if: ${{ matrix.gpu_backend == 'cuda' }}
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          conda activate flexflow
           python -c "import flexflow.core; exit()"
 
       - name: Run C++ unit tests
         if: ${{ matrix.gpu_backend == 'cuda' }}
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          conda activate flexflow
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
@@ -132,7 +132,7 @@ jobs:
 
       - name: Build FlexFlow
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          conda activate flexflow
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)

@@ -49,12 +49,12 @@ jobs:
 
       - name: Build and Install FlexFlow
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          conda activate flexflow
           export FF_HOME=$(pwd)
           export FF_CUDA_ARCH=70
           pip install . --verbose
 
       - name: Check availability of Python flexflow.core module
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          conda activate flexflow
           python -c "import flexflow.core; exit()"
