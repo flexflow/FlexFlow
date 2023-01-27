@@ -3461,8 +3461,8 @@ struct DefaultConfig {
   constexpr static float weightDecay = 0.0001f;
   const static size_t workSpaceSize = (size_t)1 * 1024 * 1024 * 1024; // 2GB
   const static int numNodes = 1;
-  const static int workersPerNode = 1;
-  const static int cpusPerNode = 1;
+  const static int workersPerNode = 0;
+  const static int cpusPerNode = 0;
   const static size_t searchBudget = -1;
   const static size_t simulatorWorkSpaceSize =
       (size_t)2 * 1024 * 1024 * 1024; // 2GB
@@ -3529,8 +3529,11 @@ FFConfig::FFConfig() {
     int argc = command_args.argc;
     parse_args(argv, argc);
   }
-  // Use Real::Machine::get_address_space_count() to obtain the number of nodes
-  numNodes = Realm::Machine::get_machine().get_address_space_count();
+  // Use Real::Machine to obtain resource information
+  Realm::Machine machine = Realm::Machine::get_machine();
+  numNodes = machine.get_address_space_count();
+  workersPerNode = Machine::ProcessorQuery(machine).local_address_space().only_kind(Processor::TOC_PROC).count();
+  cpusPerNode = Machine::ProcessorQuery(machine).local_address_space().only_kind(Processor::LOC_PROC).count();
 
   Runtime *runtime = Runtime::get_runtime();
   lg_hlr = runtime;
@@ -3601,21 +3604,6 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if ((!strcmp(argv[i], "--enable-attribute-parallel"))) {
       enable_parameter_parallel = true;
-      continue;
-    }
-    if (!strcmp(argv[i], "-ll:gpu")) {
-      workersPerNode = atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "--nodes")) {
-      fprintf(stderr,
-              "[Warning] --nodes is deprecated. "
-              "FlexFlow will automatically detect the number of nodes.\n");
-      numNodes = atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "-ll:cpu")) {
-      cpusPerNode = atoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--profiling")) {

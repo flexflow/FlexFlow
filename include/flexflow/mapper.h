@@ -68,9 +68,7 @@ public:
                              Runtime *rt,
                              std::set<Processor> const &local_procs);
   static void register_sharding_functor(Runtime *runtime,
-                                        Machine machine,
-                                        int argv,
-                                        char **argc);
+                                        Machine machine);
   virtual void select_task_options(const MapperContext ctx,
                                    Task const &task,
                                    TaskOptions &output);

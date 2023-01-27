@@ -169,22 +169,12 @@ FFMapper::FFMapper(MapperRuntime *rt,
 }
 
 void FFMapper::register_sharding_functor(Runtime *runtime,
-                                         Machine machine,
-                                         int argc,
-                                         char **argv) {
+                                         Machine machine) {
   // std::string strategyFile = "";
-  int gpus_per_node = 1, cpus_per_node = 1;
+  int gpus_per_node = 0, cpus_per_node = 0;
   int num_nodes = machine.get_address_space_count();
-  for (int i = 1; i < argc; i++) {
-    if (!strcmp(argv[i], "-ll:gpu")) {
-      gpus_per_node = atoi(argv[++i]);
-      continue;
-    }
-    if (!strcmp(argv[i], "-ll:cpu")) {
-      cpus_per_node = atoi(argv[++i]);
-      continue;
-    }
-  }
+  gpus_per_node = Machine::ProcessorQuery(machine).local_address_space().only_kind(Processor::TOC_PROC).count();
+  cpus_per_node = Machine::ProcessorQuery(machine).local_address_space().only_kind(Processor::LOC_PROC).count();
   {
     MachineView view;
     view.device_type = MachineView::GPU;
@@ -1461,7 +1451,7 @@ void FFMapper::update_mappers(Machine machine,
   char **argv = command_args.argv;
   int argc = command_args.argc;
 
-  FFMapper::register_sharding_functor(runtime, machine, argc, argv);
+  FFMapper::register_sharding_functor(runtime, machine);
 
   bool enable_control_replication = true;
   bool log_instance_creation = false;
