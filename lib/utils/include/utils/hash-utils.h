@@ -6,6 +6,12 @@
 #include <tuple>
 #include <type_traits>
 
+template <class T>
+std::size_t get_std_hash(T const &v) {
+  std::hash<T> hasher;
+  return hasher(v);
+}
+
 // tuple hashing pulled from
 // https://www.variadic.xyz/2018/01/15/hashing-stdpair-and-stdtuple/
 template <class T>

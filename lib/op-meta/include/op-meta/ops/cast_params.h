@@ -7,11 +7,13 @@
 namespace FlexFlow {
 
 struct CastParams {
-  DataType dtype;
   bool is_valid(ParallelTensorShape const &) const;
 
   using AsConstTuple = std::tuple<DataType>;
   AsConstTuple as_tuple() const;
+
+public:
+  DataType dtype;
 };
 
 bool operator==(CastParams const &, CastParams const &);

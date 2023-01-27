@@ -17,6 +17,7 @@
 #define _FLEXFLOW_GRAPH_H_
 #include "basic_graph.h"
 #include "node.h"
+#include "edge.h"
 #include "graph_structures.h"
 #include "utils/dot_file.h"
 #include "pcg/machine_view.h"

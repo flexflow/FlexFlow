@@ -222,10 +222,6 @@ void Embedding::register_mappings() {
 
 /* Params */
 
-bool EmbeddingParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
 bool operator==(EmbeddingParams const &lhs, EmbeddingParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid &&
          lhs.out_channels == rhs.out_channels &&

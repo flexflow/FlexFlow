@@ -894,12 +894,6 @@ bool Linear::measure_operator_cost(Simulator *sim,
   return true;
 }
 
-bool operator==(LinearParams const &lhs, LinearParams const &rhs) {
-  return lhs.layer_guid == rhs.layer_guid &&
-         lhs.out_channels == rhs.out_channels && lhs.use_bias == rhs.use_bias &&
-         lhs.data_type == rhs.data_type && lhs.activation == rhs.activation;
-}
-
 void Linear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->out_channels);
@@ -947,191 +941,133 @@ LinearParams Linear::get_params() const {
   return params;
 }
 
-bool LinearParams::is_valid(ParallelTensorShape const &input_shape) const {
-  ParallelTensorShape output_shape, kernel_shape, bias_shape;
-  this->solve_dims(input_shape,
-                   output_shape.dims,
-                   &output_shape.num_dims,
-                   kernel_shape.dims,
-                   &kernel_shape.num_dims,
-                   bias_shape.dims,
-                   &bias_shape.num_dims);
-  bool is_valid = true;
-  is_valid &= input_shape.is_valid();
-  is_valid &= output_shape.is_valid();
-  is_valid &= kernel_shape.is_valid();
-  if (use_bias) {
-    is_valid &= bias_shape.is_valid();
-  }
-  return is_valid;
-}
 
-void LinearParams::solve_dims(const ParallelTensor input,
-                              ParallelDim output_dims[MAX_TENSOR_DIM],
-                              int *output_ndims,
-                              ParallelDim kernel_dims[MAX_TENSOR_DIM],
-                              int *kernel_ndims,
-                              ParallelDim bias_dims[MAX_TENSOR_DIM],
-                              int *bias_ndims) const {
-  this->solve_dims(input->get_shape(),
-                   output_dims,
-                   output_ndims,
-                   kernel_dims,
-                   kernel_ndims,
-                   bias_dims,
-                   bias_ndims);
-}
+/* void LinearParams::solve_dims(const ParallelTensor input, */
+/*                               ParallelDim output_dims[MAX_TENSOR_DIM], */
+/*                               int *output_ndims, */
+/*                               ParallelDim kernel_dims[MAX_TENSOR_DIM], */
+/*                               int *kernel_ndims, */
+/*                               ParallelDim bias_dims[MAX_TENSOR_DIM], */
+/*                               int *bias_ndims) const { */
+/*   this->solve_dims(input->get_shape(), */
+/*                    output_dims, */
+/*                    output_ndims, */
+/*                    kernel_dims, */
+/*                    kernel_ndims, */
+/*                    bias_dims, */
+/*                    bias_ndims); */
+/* } */
 
-void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
-                              ParallelTensorShape &output_shape,
-                              ParallelTensorShape &kernel_shape,
-                              ParallelTensorShape &bias_shape) const {
-  this->solve_dims(input_shape,
-                   output_shape.dims,
-                   &output_shape.num_dims,
-                   kernel_shape.dims,
-                   &kernel_shape.num_dims,
-                   bias_shape.dims,
-                   &bias_shape.num_dims);
-}
+/* void LinearParams::solve_dims(ParallelTensorShape const &input_shape, */
+/*                               ParallelTensorShape &output_shape, */
+/*                               ParallelTensorShape &kernel_shape, */
+/*                               ParallelTensorShape &bias_shape) const { */
+/*   this->solve_dims(input_shape, */
+/*                    output_shape.dims, */
+/*                    &output_shape.num_dims, */
+/*                    kernel_shape.dims, */
+/*                    &kernel_shape.num_dims, */
+/*                    bias_shape.dims, */
+/*                    &bias_shape.num_dims); */
+/* } */
 
-void LinearParams::solve_dims(ParallelTensorShape const &input_shape,
-                              ParallelDim output_dims[MAX_TENSOR_DIM],
-                              int *output_ndims,
-                              ParallelDim kernel_dims[MAX_TENSOR_DIM],
-                              int *kernel_ndims,
-                              ParallelDim bias_dims[MAX_TENSOR_DIM],
-                              int *bias_ndims) const {
-  assert((output_dims == nullptr) == (output_ndims == nullptr));
-  assert((kernel_dims == nullptr) == (kernel_ndims == nullptr));
-  assert((bias_dims == nullptr) == (bias_ndims == nullptr));
+/* void LinearParams::solve_dims(ParallelTensorShape const &input_shape, */
+/*                               ParallelDim output_dims[MAX_TENSOR_DIM], */
+/*                               int *output_ndims, */
+/*                               ParallelDim kernel_dims[MAX_TENSOR_DIM], */
+/*                               int *kernel_ndims, */
+/*                               ParallelDim bias_dims[MAX_TENSOR_DIM], */
+/*                               int *bias_ndims) const { */
+/*   assert((output_dims == nullptr) == (output_ndims == nullptr)); */
+/*   assert((kernel_dims == nullptr) == (kernel_ndims == nullptr)); */
+/*   assert((bias_dims == nullptr) == (bias_ndims == nullptr)); */
 
-  std::vector<ParallelDimMappingRecord> mapping;
-  this->construct_mappings(mapping, input_shape);
-  this->mark_replica_dims(input_shape, output_dims, kernel_dims, bias_dims);
+/*   std::vector<ParallelDimMappingRecord> mapping; */
+/*   this->construct_mappings(mapping, input_shape); */
+/*   this->mark_replica_dims(input_shape, output_dims, kernel_dims, bias_dims); */
 
-  solve_parallel_dim_mappings(
-      mapping, {input_shape.dims}, {kernel_dims, bias_dims}, {output_dims});
+/*   solve_parallel_dim_mappings( */
+/*       mapping, {input_shape.dims}, {kernel_dims, bias_dims}, {output_dims}); */
 
-  this->calculate_nonreplica_dim_sizes(input_shape,
-                                       output_dims,
-                                       output_ndims,
-                                       kernel_dims,
-                                       kernel_ndims,
-                                       bias_dims,
-                                       bias_ndims);
-}
+/*   this->calculate_nonreplica_dim_sizes(input_shape, */
+/*                                        output_dims, */
+/*                                        output_ndims, */
+/*                                        kernel_dims, */
+/*                                        kernel_ndims, */
+/*                                        bias_dims, */
+/*                                        bias_ndims); */
+/* } */
 
-std::unordered_map<LinearParams::NamedDimensions, int>
-    LinearParams::get_dimension_names(
-        ParallelTensorShape const &input_shape) const {
-  int num_dims = input_shape.num_dims;
+/* std::unordered_map<LinearParams::NamedDimensions, int> */
+/*     LinearParams::get_dimension_names( */
+/*         ParallelTensorShape const &input_shape) const { */
+/*   int num_dims = input_shape.num_dims; */
 
-  return {{INPUT_CHANNEL, 0},
-          {INPUT_SAMPLE, num_dims - 2},
-          {INPUT_REPLICA, num_dims - 1},
-          {OUTPUT_CHANNEL, 0},
-          {OUTPUT_SAMPLE, num_dims - 2},
-          {OUTPUT_REPLICA, num_dims - 1},
-          {KERNEL_CHANNEL_IN, 0},
-          {KERNEL_CHANNEL_OUT, 1},
-          {BIAS_CHANNEL_OUT, 0}};
-}
+/*   return {{INPUT_CHANNEL, 0}, */
+/*           {INPUT_SAMPLE, num_dims - 2}, */
+/*           {INPUT_REPLICA, num_dims - 1}, */
+/*           {OUTPUT_CHANNEL, 0}, */
+/*           {OUTPUT_SAMPLE, num_dims - 2}, */
+/*           {OUTPUT_REPLICA, num_dims - 1}, */
+/*           {KERNEL_CHANNEL_IN, 0}, */
+/*           {KERNEL_CHANNEL_OUT, 1}, */
+/*           {BIAS_CHANNEL_OUT, 0}}; */
+/* } */
 
-void LinearParams::calculate_nonreplica_dim_sizes(
-    ParallelTensorShape const &input_shape,
-    ParallelDim output_dims[MAX_TENSOR_DIM],
-    int *output_ndims,
-    ParallelDim kernel_dims[MAX_TENSOR_DIM],
-    int *kernel_ndims,
-    ParallelDim bias_dims[MAX_TENSOR_DIM],
-    int *bias_ndims) const {
-  auto dimension_names = this->get_dimension_names(input_shape);
-  int num_dims = input_shape.num_dims;
+/* void LinearParams::calculate_nonreplica_dim_sizes( */
+/*     ParallelTensorShape const &input_shape, */
+/*     ParallelDim output_dims[MAX_TENSOR_DIM], */
+/*     int *output_ndims, */
+/*     ParallelDim kernel_dims[MAX_TENSOR_DIM], */
+/*     int *kernel_ndims, */
+/*     ParallelDim bias_dims[MAX_TENSOR_DIM], */
+/*     int *bias_ndims) const { */
+/*   auto dimension_names = this->get_dimension_names(input_shape); */
+/*   int num_dims = input_shape.num_dims; */
 
-  if (output_dims != nullptr) {
-    for (int i = 1; i < input_shape.num_dims - 1; i++) {
-      output_dims[i].size = input_shape.dims[i].size;
-    }
-    output_dims[dimension_names.at(OUTPUT_CHANNEL)].size = this->out_channels;
-    *output_ndims = num_dims;
-  }
-  if (kernel_dims != nullptr) {
-    kernel_dims[dimension_names.at(KERNEL_CHANNEL_IN)].size =
-        input_shape.dims[INPUT_CHANNEL].size /
-        input_shape.dims[INPUT_CHANNEL].degree;
-    kernel_dims[dimension_names.at(KERNEL_CHANNEL_OUT)].size =
-        this->out_channels;
-    *kernel_ndims = num_dims;
-  }
-  if (bias_dims != nullptr) {
-    bias_dims[dimension_names.at(BIAS_CHANNEL_OUT)].size = this->out_channels;
-    *bias_ndims = num_dims;
-  }
-}
+/*   if (output_dims != nullptr) { */
+/*     for (int i = 1; i < input_shape.num_dims - 1; i++) { */
+/*       output_dims[i].size = input_shape.dims[i].size; */
+/*     } */
+/*     output_dims[dimension_names.at(OUTPUT_CHANNEL)].size = this->out_channels; */
+/*     *output_ndims = num_dims; */
+/*   } */
+/*   if (kernel_dims != nullptr) { */
+/*     kernel_dims[dimension_names.at(KERNEL_CHANNEL_IN)].size = */
+/*         input_shape.dims[INPUT_CHANNEL].size / */
+/*         input_shape.dims[INPUT_CHANNEL].degree; */
+/*     kernel_dims[dimension_names.at(KERNEL_CHANNEL_OUT)].size = */
+/*         this->out_channels; */
+/*     *kernel_ndims = num_dims; */
+/*   } */
+/*   if (bias_dims != nullptr) { */
+/*     bias_dims[dimension_names.at(BIAS_CHANNEL_OUT)].size = this->out_channels; */
+/*     *bias_ndims = num_dims; */
+/*   } */
+/* } */
 
-void LinearParams::mark_replica_dims(
-    ParallelTensorShape const &input_shape,
-    ParallelDim output_dims[MAX_TENSOR_DIM],
-    ParallelDim kernel_dims[MAX_TENSOR_DIM],
-    ParallelDim bias_dims[MAX_TENSOR_DIM]) const {
-  int num_dims = input_shape.num_dims;
-  auto dimension_names = this->get_dimension_names(input_shape);
-  if (output_dims != nullptr) {
-    output_dims[dimension_names.at(OUTPUT_REPLICA)].is_replica_dim = true;
-  }
-  if (kernel_dims != nullptr) {
-    for (int i = 2; i < num_dims; i++) {
-      kernel_dims[i].is_replica_dim = true;
-    }
-  }
-  if (bias_dims != nullptr) {
-    for (int i = 1; i < num_dims; i++) {
-      bias_dims[i].is_replica_dim = true;
-    }
-  }
-}
+/* void LinearParams::mark_replica_dims( */
+/*     ParallelTensorShape const &input_shape, */
+/*     ParallelDim output_dims[MAX_TENSOR_DIM], */
+/*     ParallelDim kernel_dims[MAX_TENSOR_DIM], */
+/*     ParallelDim bias_dims[MAX_TENSOR_DIM]) const { */
+/*   int num_dims = input_shape.num_dims; */
+/*   auto dimension_names = this->get_dimension_names(input_shape); */
+/*   if (output_dims != nullptr) { */
+/*     output_dims[dimension_names.at(OUTPUT_REPLICA)].is_replica_dim = true; */
+/*   } */
+/*   if (kernel_dims != nullptr) { */
+/*     for (int i = 2; i < num_dims; i++) { */
+/*       kernel_dims[i].is_replica_dim = true; */
+/*     } */
+/*   } */
+/*   if (bias_dims != nullptr) { */
+/*     for (int i = 1; i < num_dims; i++) { */
+/*       bias_dims[i].is_replica_dim = true; */
+/*     } */
+/*   } */
+/* } */
 
-void LinearParams::construct_mappings(
-    std::vector<ParallelDimMappingRecord> &mappings,
-    ParallelTensorShape const &input_shape) const {
-  std::unordered_map<NamedDimensions, int> dimension_names =
-      this->get_dimension_names(input_shape);
-
-  Op::construct_output_parallel_dims(
-      mappings,
-      {{dimension_names.at(INPUT_CHANNEL), dimension_names.at(OUTPUT_REPLICA)},
-       {dimension_names.at(INPUT_REPLICA),
-        dimension_names.at(OUTPUT_CHANNEL)}});
-  for (int i = 1; i < input_shape.num_dims - 1; i++) {
-    Op::construct_output_parallel_dims(mappings, i, i);
-  }
-
-  Op::construct_weight_parallel_dims(mappings,
-                                     {{dimension_names.at(INPUT_CHANNEL),
-                                       dimension_names.at(KERNEL_CHANNEL_IN)},
-                                      {dimension_names.at(INPUT_REPLICA),
-                                       dimension_names.at(KERNEL_CHANNEL_OUT)}},
-                                     0 /*input_idx*/,
-                                     KERNEL_IDX);
-  // map a bunch of replica dimensions for the unnamed dimensions in the input
-  for (int i = 1; i < input_shape.num_dims - 1; i++) {
-    Op::construct_weight_parallel_dims(
-        mappings, i, i + 1, 0 /*input_idx*/, KERNEL_IDX);
-  }
-
-  Op::construct_weight_parallel_dims(mappings,
-                                     {
-                                         {dimension_names.at(INPUT_REPLICA),
-                                          dimension_names.at(BIAS_CHANNEL_OUT)},
-                                     },
-                                     0 /*input_idx*/,
-                                     BIAS_IDX);
-  for (int i = 0; i < input_shape.num_dims - 1; i++) {
-    Op::construct_weight_parallel_dims(
-        mappings, i, i + 1, 0 /*input_idx*/, BIAS_IDX);
-  }
-}
 
 }; // namespace FlexFlow
 

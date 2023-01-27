@@ -16,23 +16,24 @@ bool operator<(BatchMatmulParams const &lhs, BatchMatmulParams const &rhs) {
 
 bool BatchMatmulParams::is_valid(
     std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
-  if (!input.first.is_valid()) {
+  ParallelTensorShape lhs = input.first;
+  ParallelTensorShape rhs = input.second;
+
+  if (!lhs.is_valid() || !rhs.is_valid()) {
     return false;
   }
-  if (!input.second.is_valid()) {
+  if (lhs.num_dims() != rhs.num_dims()) {
     return false;
   }
-  if (input.first.num_dims != input.second.num_dims) {
-    return false;
-  }
-  for (int i = input.first.num_dims - 1; i >= 2; i--) {
-    if (input.first.dims[i] != input.second.dims[i]) {
+  for (int i = lhs.num_dims() - 1; i >= 2; i--) {
+    if (lhs.at(i) != rhs.at(i)) {
       return false;
     }
   }
-  if (input.first.dims[0] != input.second.dims[1]) {
+  if (lhs.at(0) != rhs.at(1)) {
     return false;
   }
+
   return true;
 }
 

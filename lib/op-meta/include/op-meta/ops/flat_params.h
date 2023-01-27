@@ -7,15 +7,15 @@ namespace FlexFlow {
 
 struct FlatParams {
   bool is_valid(ParallelTensorShape const &) const;
-  void solve_dims(ParallelTensorShape const &input,
-                  ParallelTensorShape &output) const;
-
   using AsConstTuple = std::tuple<>;
   AsConstTuple as_tuple() const;
 
 private:
   int output_size(ParallelTensorShape const &input,
                   ParallelTensorShape &output) const;
+
+  ParallelTensorShape calculate_output_shape(ParallelTensorShape const &input) const;
+
 };
 
 bool operator==(FlatParams const &, FlatParams const &);

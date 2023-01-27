@@ -58,17 +58,11 @@ struct ParallelTensorShape {
   /**
    * @brief Construct a new ParallelTensorShape object.
    *
-   * @param num_dims Number of dimensions
    * @param dims Details of each dimension
    * @param data_type The data type
    */
-  ParallelTensorShape(int num_dims,
-                      std::vector<ParallelDim> const &dims,
+  ParallelTensorShape(std::vector<ParallelDim> const &dims,
                       DataType data_type);
-
-  int num_dims;                     ///< Number of dimensions
-  std::vector<ParallelDim> dims; ///< Details of each dimension
-  DataType data_type;               ///< Data type
 
   bool operator==(ParallelTensorShape const &other) const;
   bool operator!=(ParallelTensorShape const &other) const;
@@ -83,6 +77,27 @@ struct ParallelTensorShape {
 
   std::unordered_map<int, int> get_mv_dim_to_tensor_dim_mapping() const;
   std::unordered_map<int, int> get_tensor_dim_to_mv_dim_mapping() const;
+
+  ParallelDim const &at(int index) const;
+  ParallelDim &at(int index);
+
+  size_t size() const;
+  size_t num_dims() const;
+
+  using iterator = std::vector<ParallelDim>::iterator;
+  using const_iterator = std::vector<ParallelDim>::const_iterator;
+
+  iterator begin();
+  const_iterator begin() const;
+  const_iterator cbegin() const;
+  iterator end();
+  const_iterator end() const;
+  const_iterator cend() const;
+
+public:
+  DataType data_type;               ///< Data type
+private:
+  std::vector<ParallelDim> dims; ///< Details of each dimension
 };
 
 std::ostream &operator<<(std::ostream &, ParallelTensorShape const &);

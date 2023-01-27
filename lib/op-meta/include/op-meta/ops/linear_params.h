@@ -6,46 +6,26 @@
 
 namespace FlexFlow {
 
-class LinearParams {
+struct LinearParams {
+public:
+  bool is_valid(ParallelTensorShape const &input_shape) const;
+
+  ParallelTensorShape calculate_output_shape(ParallelTensorShape const &input_shape) const;
+  ParallelTensorShape calculate_kernel_shape(ParallelTensorShape const &input_shape) const;
+  ParallelTensorShape calculate_bias_shape(ParallelTensorShape const &input_shape) const;
+
+  using AsConstTuple = std::tuple<int, bool, DataType, ActiMode>;
+  AsConstTuple as_tuple() const;
+
 public:
   int out_channels;
   bool use_bias;
   DataType data_type;
   ActiMode activation;
-
-  bool is_valid(ParallelTensorShape const &input_shape) const;
-  void solve_dims(ParallelTensorShape const &input_shape,
-                  ParallelTensorShape &output_shape,
-                  ParallelTensorShape &kernel_shape,
-                  ParallelTensorShape &bias_shape) const;
-
-  enum NamedDimensions {
-    INPUT_CHANNEL,
-    INPUT_SAMPLE,
-    INPUT_REPLICA,
-    OUTPUT_CHANNEL,
-    OUTPUT_SAMPLE,
-    OUTPUT_REPLICA,
-    KERNEL_CHANNEL_IN,
-    KERNEL_CHANNEL_OUT,
-    BIAS_CHANNEL_OUT
-  };
-
-  std::unordered_map<NamedDimensions, int>
-      get_dimension_names(ParallelTensorShape const &input_name) const;
-
-  friend bool operator==(LinearParams const &lhs, LinearParams const &rhs);
-
-private:
-  void mark_replica_dims(ParallelTensorShape const &input_shape,
-                         ParallelTensorShape &output_shape,
-                         ParallelTensorShape &kernel_shape,
-                         ParallelTensorShape &bias_shape) const;
-  void calculate_nonreplica_dim_sizes(ParallelTensorShape const &input_shape,
-                                      ParallelTensorShape &output_shape,
-                                      ParallelTensorShape &kernel_shape,
-                                      ParallelTensorShape &bias_shape) const;
 };
+
+bool operator==(LinearParams const &, LinearParams const &);
+bool operator<(LinearParams const &, LinearParams const &);
 
 } // namespace FlexFlow
 

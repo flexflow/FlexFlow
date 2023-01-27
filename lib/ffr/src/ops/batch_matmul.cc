@@ -38,32 +38,6 @@ using PCG::Node;
 
 using namespace FlexFlow::Kernels::BatchMatmul;
 
-bool operator==(BatchMatmulParams const &lhs, BatchMatmulParams const &rhs) {
-  return lhs.a_seq_length_dim == rhs.a_seq_length_dim &&
-         lhs.a_seq_length_dim == rhs.a_seq_length_dim;
-}
-
-bool BatchMatmulParams::is_valid(
-    std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
-  if (!input.first.is_valid()) {
-    return false;
-  }
-  if (!input.second.is_valid()) {
-    return false;
-  }
-  if (input.first.num_dims != input.second.num_dims) {
-    return false;
-  }
-  for (int i = input.first.num_dims - 1; i >= 2; i--) {
-    if (input.first.dims[i] != input.second.dims[i]) {
-      return false;
-    }
-  }
-  if (input.first.dims[0] != input.second.dims[1]) {
-    return false;
-  }
-  return true;
-}
 
 BatchMatmulParams BatchMatmul::get_params() const {
   BatchMatmulParams params;

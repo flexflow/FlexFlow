@@ -56,50 +56,12 @@ int FlatParams::output_size(ParallelTensorShape const &input,
   return FlatOutput::NUMDIM;
 }
 
-void FlatParams::solve_dims(ParallelTensorShape const &input,
-                            ParallelDim output_dims[MAX_TENSOR_DIM],
-                            int *output_ndims) const {
-  assert((output_dims == nullptr) == (output_ndims == nullptr));
-
-  std::vector<ParallelDimMappingRecord> mapping;
-  Flat::construct_output_mappings(mapping);
-
-  std::vector<ParallelDim *> output_dim_sets;
-  if (output_dims != nullptr) {
-    *output_ndims = this->output_size(input, output_dims);
-    output_dim_sets.push_back(output_dims);
-  }
-
-  solve_parallel_dim_mappings(mapping, {input.dims}, {}, output_dim_sets);
-}
-
-bool FlatParams::is_valid(ParallelTensorShape const &input) const {
-  ParallelTensorShape output_shape;
-
-  this->solve_dims(input, output_shape.dims, &output_shape.num_dims);
-
-  bool is_valid = true;
-  is_valid &= input.is_valid();
-  is_valid &= output_shape.is_valid();
-  is_valid &= (input.dims[FlatInput::WIDTH].degree == 1);
-
-  return is_valid;
-}
 
 bool operator==(FlatParams const &, FlatParams const &) {
   // flat doesn't have params to compare
   return true;
 }
 
-/*static*/
-void Flat::construct_output_mappings(
-    std::vector<ParallelDimMappingRecord> &mappings) {
-  Op::construct_output_parallel_dims(
-      mappings,
-      {{FlatInput::REPLICA, MappingOperation::PARTITION, FlatOutput::REPLICA},
-       {FlatInput::SAMPLE, MappingOperation::PARTITION, FlatOutput::SAMPLE},
-       {FlatInput::CHANNEL, MappingOperation::PARTITION, FlatOutput::CHANNEL}});
-}
 
 Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
     : Op(model,

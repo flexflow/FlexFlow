@@ -17,7 +17,7 @@ bool operator<(CombineParams const &lhs, CombineParams const &rhs) {
 bool CombineParams::is_valid(ParallelTensorShape const &input) const {
   bool valid = input.is_valid();
   valid &=
-      (input.dims[this->combine_legion_dim].degree % this->combine_degree == 0);
+      (input.at(this->combine_legion_dim).degree % this->combine_degree == 0);
   return valid;
 }
 

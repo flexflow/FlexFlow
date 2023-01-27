@@ -22,12 +22,12 @@ bool ElementBinaryParams::is_valid(
     return false;
   }
   // is_valid &= (input.first == input.second);
-  ParallelTensorShape A = input.first;
-  ParallelTensorShape B = input.second;
-  int numdim = std::min(A.num_dims, B.num_dims);
+  ParallelTensorShape lhs = input.first;
+  ParallelTensorShape rhs = input.second;
+  size_t numdim = std::min(lhs.num_dims(), rhs.num_dims());
   for (int i = 0; i < numdim; i++) {
-    if (A.dims[i].size > 1 && B.dims[i].size > 1) {
-      if (A.dims[i] != B.dims[i]) {
+    if (lhs.at(i).size > 1 && rhs.at(i).size > 1) {
+      if (lhs.at(i) != rhs.at(i)) {
         return false;
       }
     }

@@ -129,26 +129,6 @@ Tensor FFModel::divide(const Tensor in1,
   return this->binary(OP_EW_DIV, in1, in2, inplace_a, name);
 }
 
-bool ElementBinaryParams::is_valid(
-    std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
-  bool is_valid = true;
-  is_valid &= (input.first.is_valid() & input.second.is_valid());
-  if (!is_valid) {
-    return false;
-  }
-  // is_valid &= (input.first == input.second);
-  ParallelTensorShape A = input.first;
-  ParallelTensorShape B = input.second;
-  int numdim = std::min(A.num_dims, B.num_dims);
-  for (int i = 0; i < numdim; i++) {
-    if (A.dims[i].size > 1 && B.dims[i].size > 1) {
-      if (A.dims[i] != B.dims[i]) {
-        return false;
-      }
-    }
-  }
-  return is_valid;
-}
 
 bool operator==(ElementBinaryParams const &lhs,
                 ElementBinaryParams const &rhs) {

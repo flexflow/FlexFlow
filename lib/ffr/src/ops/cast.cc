@@ -342,11 +342,4 @@ Op *Cast::materialize(FFModel &ff,
 
 }; // namespace FlexFlow
 
-namespace std {
-size_t hash<FlexFlow::CastParams>::operator()(
-    FlexFlow::CastParams const &params) const {
-  size_t key = 0;
-  hash_combine(key, params.dtype);
-  return key;
-}
 }; // namespace std

@@ -15,76 +15,8 @@ class OpMeta;
 class Simulator;
 class CostMetrics;
 
-enum class MappingRecordType { INPUT_OUTPUT, INPUT_WEIGHT };
-
-enum class MappingOperation { PARTITION, REPLICATE };
-
-class ParallelDimMappingRecord {
-private:
-  ParallelDimMappingRecord(MappingRecordType);
-
-public:
-  ParallelDimMappingRecord() = delete;
-
-  static ParallelDimMappingRecord input_output_record(
-      int input_idx,
-      int input_dim,
-      int output_idx,
-      int output_dim,
-      tl::optional<MappingOperation> operation = tl::nullopt);
-  static ParallelDimMappingRecord input_weight_record(
-      int input_idx,
-      int input_dim,
-      int weight_idx,
-      int weight_dim,
-      tl::optional<MappingOperation> operation = tl::nullopt);
-  MappingRecordType get_type() const;
-
-public:
-  MappingRecordType type;
-  tl::optional<MappingOperation> operation;
-
-  int output_dim, input_dim, weight_dim;
-  int output_idx, input_idx, weight_idx;
-};
-
 class Op {
 public:
-  static void construct_weight_parallel_dims(
-      std::vector<ParallelDimMappingRecord> &records,
-      std::vector<std::pair<int, int>> mappings,
-      int input_idx = 0,
-      int weight_idx = 0);
-  static void construct_weight_parallel_dims(
-      std::vector<ParallelDimMappingRecord> &records,
-      std::vector<std::tuple<int, MappingOperation, int>> mappings,
-      int input_idx = 0,
-      int weight_idx = 0);
-  static void construct_weight_parallel_dims(
-      std::vector<ParallelDimMappingRecord> &records,
-      int input_dim,
-      int weight_dim,
-      int input_idx = 0,
-      int weight_idx = 0,
-      tl::optional<MappingOperation> operation = tl::nullopt);
-
-  static void construct_output_parallel_dims(
-      std::vector<ParallelDimMappingRecord> &records,
-      std::vector<std::pair<int, int>> mappings,
-      int input_idx = 0,
-      int output_idx = 0);
-  static void construct_output_parallel_dims(
-      std::vector<ParallelDimMappingRecord> &records,
-      std::vector<std::tuple<int, MappingOperation, int>> mappings,
-      int input_idx = 0,
-      int output_idx = 0);
-  static void construct_output_parallel_dims(
-      std::vector<ParallelDimMappingRecord> &records,
-      int input_dim,
-      int output_dim,
-      int input_idx = 0,
-      int output_idx = 0,
-      tl::optional<MappingOperation> operation = tl::nullopt);
 
   ParallelConfig view_to_pc(MachineView const &view) const;
 
@@ -92,30 +24,10 @@ protected:
   void register_weight_parallel_dims(std::vector<std::pair<int, int>> mappings,
                                      int input_idx = 0,
                                      int weight_idx = 0);
-  void register_weight_parallel_dims(
-      std::vector<std::tuple<int, MappingOperation, int>> mappings,
-      int input_idx = 0,
-      int weight_idx = 0);
-  void register_weight_parallel_dims(
-      int input_dim,
-      int weight_dim,
-      int input_idx = 0,
-      int weight_idx = 0,
-      tl::optional<MappingOperation> operation = tl::nullopt);
 
   void register_output_parallel_dims(std::vector<std::pair<int, int>> mappings,
                                      int input_idx = 0,
                                      int output_idx = 0);
-  void register_output_parallel_dims(
-      std::vector<std::tuple<int, MappingOperation, int>> mappings,
-      int input_idx = 0,
-      int output_idx = 0);
-  void register_output_parallel_dims(
-      int input_dim,
-      int output_dim,
-      int input_idx = 0,
-      int output_idx = 0,
-      tl::optional<MappingOperation> operation = tl::nullopt);
 
   int get_output_to_input_dim_mapping(const ParallelTensor output,
                                       int output_dim,
@@ -248,10 +160,6 @@ protected:
                                     Legion::ArgumentMap &argmap);
   void set_opmeta_from_futuremap(FFModel const &ff,
                                  Legion::FutureMap const &fm);
-  void solve_parallel_dim_mappings(
-      std::vector<ParallelDim const *> const &inputs,
-      std::vector<ParallelDim *> const &weights,
-      std::vector<ParallelDim *> const &outputs) const;
 
 public:
   OperatorType op_type;
