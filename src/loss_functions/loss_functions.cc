@@ -27,6 +27,8 @@ Loss::Loss(std::string const &loss, bool _repl_labels) {
     loss_type = LOSS_SPARSE_CATEGORICAL_CROSSENTROPY;
   } else if (loss == "mean_squared_error") {
     loss_type = LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE;
+  } else if (loss == "identity") {
+    loss_type = LOSS_IDENTITY;
   } else {
     // Unrecognized loss type
     assert(false);
@@ -191,6 +193,13 @@ void Loss::backward_task_with_dim(Task const *task,
           acc_logit_grad.ptr,
           acc_logit.ptr,
           acc_label.ptr,
+          acc_logit.rect.volume(),
+          acc_logit_grad.rect.volume(),
+          loss->scale_factor);
+    } else if (loss->loss_type == LOSS_IDENTITY) {
+      Loss::identity_loss_backward_kernel_wrapper(
+          acc_logit_grad.ptr,
+          acc_logit.ptr,
           acc_logit.rect.volume(),
           acc_logit_grad.rect.volume(),
           loss->scale_factor);

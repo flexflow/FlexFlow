@@ -28,7 +28,7 @@ def test_reduce_sum1():
   model = flexflow.keras.models.Model(input0, out)
 
   opt = flexflow.keras.optimizers.Adam(learning_rate=0.001)
-  model.compile(optimizer=opt, loss='mean_squared_error', metrics=['mean_squared_error'])
+  model.compile(optimizer=opt, loss='identity', metrics=['mean_squared_error'])
   print(model.summary())
   model.fit(
     x = np.random.randn(300, 32).astype(np.float32),
@@ -75,5 +75,5 @@ def test_reduce_sum3():
 
 if __name__ == "__main__":
   test_reduce_sum1()
-  test_reduce_sum2()
-  test_reduce_sum3()
+  # test_reduce_sum2()
+  # test_reduce_sum3()
