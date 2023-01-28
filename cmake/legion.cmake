@@ -20,18 +20,15 @@ else()
 	set(LEGION_URL "")
 	if((FF_USE_PREBUILT_LEGION OR FF_USE_ALL_PREBUILT_LIBRARIES) AND CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x86_64" AND 
 		FF_USE_PYTHON AND NOT FF_USE_GASNET AND FF_MAX_DIM EQUAL 5)
-		# For now, reusing pre-compiled Legion library only works when the Python library on the target machine 
-		# is stored at the path `/opt/conda/lib/libpython3.10.so`. Here, we check if this is the case.
-		find_package(PythonInterp)
-  		find_package(PythonLibs)
-  		# move python version into url when pre-building for multiple linux versions
-  		get_filename_component(PYTHON_LIBNAME "${PYTHON_LIBRARIES}" NAME)
-		if(PYTHON_LIBNAME STREQUAL "libpython3.10.so")
-			if(LINUX_VERSION MATCHES "20.04" OR LINUX_VERSION MATCHES "18.04")
+		find_package (Python COMPONENTS Interpreter Development)
+  		message(STATUS "Python version: ${Python_VERSION}")
+		if(LINUX_VERSION MATCHES "20.04" OR LINUX_VERSION MATCHES "18.04")
+			# Precompiled Legion is currently only available for Python 3.7, 3.8, 3.9, 3.10
+			if (Python_VERSION VERSION_GREATER_EQUAL "3.7" AND Python_VERSION VERSION_LESS_EQUAL "3.10")
 				if (FF_GPU_BACKEND STREQUAL "cuda")
-					set(LEGION_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/legion_ubuntu-${LINUX_VERSION}_cuda-${CUDA_VERSION}.tar.gz")
+					set(LEGION_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/legion_ubuntu-${LINUX_VERSION}_cuda-${CUDA_VERSION}_python${Python_VERSION}.tar.gz")
 				elseif (LINUX_VERSION MATCHES "20.04" AND FF_GPU_BACKEND STREQUAL "hip_rocm")
-					set(LEGION_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/legion_ubuntu-20.04_hip_rocm.tar.gz")
+					set(LEGION_URL "https://github.com/flexflow/flexflow-third-party/releases/latest/download/legion_ubuntu-20.04_hip_rocm_python${Python_VERSION}.tar.gz")
 				endif()
 			endif()
 		endif()
