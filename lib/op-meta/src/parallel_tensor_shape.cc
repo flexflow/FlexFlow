@@ -3,8 +3,7 @@
 
 namespace FlexFlow {
 
-ParallelTensorShape::ParallelTensorShape(int num_dims,
-                                         std::vector<ParallelDim> const &dims,
+ParallelTensorShape::ParallelTensorShape(std::vector<ParallelDim> const &dims,
                                          DataType data_type)
     : dims(dims), data_type(data_type) { }
 
@@ -32,7 +31,7 @@ int ParallelTensorShape::get_num_replicas() const {
 
 std::ostream &operator<<(std::ostream &s, ParallelTensorShape const &shape) {
   s << "[ ";
-  for (ParallelDim const &dim : shape.dims) {
+  for (ParallelDim const &dim : shape) {
     s << dim.size << "/" << dim.degree << " ";
   };
   s << "]";
@@ -67,6 +66,10 @@ ParallelTensorShape::const_iterator ParallelTensorShape::cend() const { return t
 }
 
 namespace std {
+size_t hash<FlexFlow::ParallelDim>::operator()(FlexFlow::ParallelDim const &dim) const {
+  return get_std_hash(dim.as_tuple()); 
+}
+
 size_t hash<FlexFlow::ParallelTensorShape>::operator()(
     FlexFlow::ParallelTensorShape const &shape) const {
   size_t key = 0;

@@ -1,22 +1,28 @@
 #include "parallel_dim_mapping_record_solver.h"
 #include "op-meta/parallel_tensor_shape.h"
 #include <cassert>
+#include <algorithm>
 
 namespace FlexFlow {
 
-void construct_weight_parallel_dims(
+std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
     std::vector<std::tuple<int, MappingOperation, int>> mappings,
     int input_idx,
     int weight_idx) {
-  for (std::tuple<int, MappingOperation, int> const &mapping : mappings) {
-    construct_weight_parallel_dims(records,
-                                       std::get<0>(mapping),
-                                       std::get<2>(mapping),
-                                       input_idx,
-                                       weight_idx,
-                                       std::get<1>(mapping));
-  }
+  
+  std::vector<ParallelDimMappingRecord> output;
+  std::transform(
+    mappings.cbegin(), mappings.cend(), output.begin(),
+    [&](std::tuple<int, MappingOperation, int> const &mapping){
+      return construct_weight_parallel_dims(std::get<0>(mapping),
+                                    std::get<2>(mapping),
+                                    input_idx,
+                                    weight_idx,
+                                    std::get<1>(mapping));
+    }
+  );
+  return output;
 }
 
 /* int get_output_to_input_dim_mapping(ParallelTensorShape const &output, */
@@ -170,15 +176,19 @@ void construct_weight_parallel_dims(
 /*   return true; */
 /* } */
 
-void construct_weight_parallel_dims(
-    std::vector<ParallelDimMappingRecord> &records,
+std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
     std::vector<std::pair<int, int>> mappings,
     int input_idx,
     int weight_idx) {
-  for (std::pair<int, int> const &mapping : mappings) {
-    construct_weight_parallel_dims(
-        records, mapping.first, mapping.second, input_idx, weight_idx);
-  }
+  std::vector<ParallelDimMappingRecord> output;
+  std::transform(
+    mappings.cbegin(), mappings.cend(), output.begin(),
+    [&](std::pair<int, int> const &mapping) {
+      return construct_weight_parallel_dims(
+        mapping.first, mapping.second, input_idx, weight_idx);
+    }
+  );
+  return output;
 }
 
 
@@ -227,8 +237,7 @@ void construct_output_parallel_dims(
     int input_idx,
     int output_idx) {
   for (std::tuple<int, MappingOperation, int> const &mapping : mappings) {
-    construct_output_parallel_dims(records,
-                                       std::get<0>(mapping),
+    construct_output_parallel_dims( std::get<0>(mapping),
                                        std::get<2>(mapping),
                                        input_idx,
                                        output_idx,
@@ -243,7 +252,7 @@ void construct_output_parallel_dims(
     int output_idx) {
   for (std::pair<int, int> const &mapping : mappings) {
     construct_output_parallel_dims(
-        records, mapping.first, mapping.second, input_idx, output_idx);
+        mapping.first, mapping.second, input_idx, output_idx);
   }
 }
 

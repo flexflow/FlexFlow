@@ -73,14 +73,6 @@ DropoutParams Dropout::get_params() const {
   return params;
 }
 
-bool DropoutParams::is_valid(ParallelTensorShape const &) const {
-  // dropout is always valid
-  return true;
-}
-
-bool operator==(DropoutParams const &lhs, DropoutParams const &rhs) {
-  return lhs.rate == rhs.rate && lhs.seed == rhs.seed;
-}
 
 Dropout::Dropout(FFModel &model,
                  const ParallelTensor _input,

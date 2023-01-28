@@ -37,16 +37,6 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-bool MultiHeadAttentionParams::is_valid(
-    std::tuple<ParallelTensorShape,
-               ParallelTensorShape,
-               ParallelTensorShape> const &input) const {
-  bool is_valid = true;
-  is_valid &= std::get<0>(input).is_valid();
-  is_valid &= std::get<1>(input).is_valid();
-  is_valid &= std::get<2>(input).is_valid();
-  return is_valid;
-}
 
 Tensor FFModel::multihead_attention(const Tensor query,
                                     const Tensor key,
@@ -882,15 +872,6 @@ bool MultiHeadAttention::measure_operator_cost(
 }
 
 using PCG::Node;
-
-bool operator==(MultiHeadAttentionParams const &lhs,
-                MultiHeadAttentionParams const &rhs) {
-  return lhs.layer_guid == rhs.layer_guid && lhs.embed_dim == rhs.embed_dim &&
-         lhs.num_heads == rhs.num_heads && lhs.kdim == rhs.kdim &&
-         lhs.vdim == rhs.vdim && lhs.dropout == rhs.dropout &&
-         lhs.bias == rhs.bias && lhs.add_bias_kv == rhs.add_bias_kv &&
-         lhs.add_zero_attn == rhs.add_zero_attn;
-}
 
 MultiHeadAttentionParams MultiHeadAttention::get_params() const {
   MultiHeadAttentionParams params;

@@ -38,6 +38,11 @@ struct ParallelDim {
     return false;
   }
 
+
+  using AsConstTuple = std::tuple<int, int, int, bool>;
+  AsConstTuple as_tuple() const;
+
+public:
   int size = 0;
   int degree = UNKNOWN_DEGREE;
   int parallel_idx = UNKNOWN_INDEX;
@@ -105,6 +110,11 @@ std::ostream &operator<<(std::ostream &, ParallelTensorShape const &);
 }; // namespace FlexFlow
 
 namespace std {
+template <>
+struct hash<FlexFlow::ParallelDim> {
+  size_t operator()(FlexFlow::ParallelDim const &) const;
+};
+
 template <>
 struct hash<FlexFlow::ParallelTensorShape> {
   size_t operator()(FlexFlow::ParallelTensorShape const &) const;

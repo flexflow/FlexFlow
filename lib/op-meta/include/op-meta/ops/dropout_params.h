@@ -6,9 +6,13 @@
 namespace FlexFlow {
 
 struct DropoutParams {
+  bool is_valid(ParallelTensorShape const &) const;
+
+  using AsConstTuple = std::tuple<float, unsigned long long>;
+  AsConstTuple as_tuple() const;
+public:
   float rate;
   unsigned long long seed;
-  bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(DropoutParams const &, DropoutParams const &);
 

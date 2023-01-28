@@ -36,16 +36,6 @@ enum {
 namespace Conv2DBias {
 static constexpr int INDEX = 1;
 
-enum {
-  CHANNEL = 0,
-  REPLICA_1 = 1,
-  REPLICA_2 = 2,
-  REPLICA_3 = 3,
-  REPLICA_4 = 4,
-  NUMDIM
-};
-} // namespace Conv2DBias
-
 class Conv2D : public Op {
 public:
   using Params = Conv2DParams;
