@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/flexflow_c.h"
-#include "flexflow/mapper.h"
 #include "flexflow/dataloader.h"
+#include "flexflow/mapper.h"
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -1840,22 +1840,22 @@ DLRMConfig::DLRMConfig(void)
 // -----------------------------------------------------------------------
 
 void flexflow_registration_callback(Machine machine,
-                                    Runtime* runtime,
-                                    const std::set<Processor>& local_procs)
-{
+                                    Runtime *runtime,
+                                    std::set<Processor> const &local_procs) {
   register_flexflow_internal_tasks(runtime, false);
   SingleDataLoader::register_cpu_tasks(runtime, false);
   SingleDataLoader::register_gpu_tasks(runtime, false);
 }
 
-void flexflow_perform_registration(void)
-{
+void flexflow_perform_registration(void) {
 #ifdef FF_USE_NCCL
   // Set NCCL environment
   // This needs to be set, otherwise NCCL will try to use group kernel launches,
   // which are not compatible with the Realm CUDA hijack.
   setenv("NCCL_LAUNCH_MODE", "PARALLEL", true);
 #endif
-  Runtime::perform_registration_callback(flexflow_registration_callback, true /*global*/);
-  Runtime::perform_registration_callback(FFMapper::update_mappers, true /*global*/);
+  Runtime::perform_registration_callback(flexflow_registration_callback,
+                                         true /*global*/);
+  Runtime::perform_registration_callback(FFMapper::update_mappers,
+                                         true /*global*/);
 }

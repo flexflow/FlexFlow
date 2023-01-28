@@ -168,13 +168,18 @@ FFMapper::FFMapper(MapperRuntime *rt,
   }
 }
 
-void FFMapper::register_sharding_functor(Runtime *runtime,
-                                         Machine machine) {
+void FFMapper::register_sharding_functor(Runtime *runtime, Machine machine) {
   // std::string strategyFile = "";
   int gpus_per_node = 0, cpus_per_node = 0;
   int num_nodes = machine.get_address_space_count();
-  gpus_per_node = Machine::ProcessorQuery(machine).local_address_space().only_kind(Processor::TOC_PROC).count();
-  cpus_per_node = Machine::ProcessorQuery(machine).local_address_space().only_kind(Processor::LOC_PROC).count();
+  gpus_per_node = Machine::ProcessorQuery(machine)
+                      .local_address_space()
+                      .only_kind(Processor::TOC_PROC)
+                      .count();
+  cpus_per_node = Machine::ProcessorQuery(machine)
+                      .local_address_space()
+                      .only_kind(Processor::LOC_PROC)
+                      .count();
   {
     MachineView view;
     view.device_type = MachineView::GPU;

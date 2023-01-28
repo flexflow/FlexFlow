@@ -457,8 +457,7 @@ void SingleDataLoader::register_cpu_tasks(Runtime *runtime, bool pre_register) {
           registrar, "Float Load Entire Dataset Task Numpy");
     } else {
       runtime->register_task_variant<
-          SingleDataLoader::load_entire_dataset_from_numpy<float>>(
-          registrar);
+          SingleDataLoader::load_entire_dataset_from_numpy<float>>(registrar);
     }
   }
   // int32 Load entire dataset from numpy
@@ -473,8 +472,7 @@ void SingleDataLoader::register_cpu_tasks(Runtime *runtime, bool pre_register) {
           registrar, "Int32 Load Entire Dataset Task Numpy");
     } else {
       runtime->register_task_variant<
-          SingleDataLoader::load_entire_dataset_from_numpy<int32_t>>(
-          registrar);
+          SingleDataLoader::load_entire_dataset_from_numpy<int32_t>>(registrar);
     }
   }
   // int64 Load entire dataset from numpy
@@ -489,8 +487,7 @@ void SingleDataLoader::register_cpu_tasks(Runtime *runtime, bool pre_register) {
           registrar, "Int64 Load Entire Dataset Task Numpy");
     } else {
       runtime->register_task_variant<
-          SingleDataLoader::load_entire_dataset_from_numpy<int64_t>>(
-          registrar);
+          SingleDataLoader::load_entire_dataset_from_numpy<int64_t>>(registrar);
     }
   }
   // float Index load entire dataset from numpy
@@ -558,7 +555,7 @@ void SingleDataLoader::register_gpu_tasks(Runtime *runtime, bool pre_register) {
           registrar, "Float Load Input Task");
     } else {
       runtime->register_task_variant<SingleDataLoader::load_input<float>>(
-        registrar);
+          registrar);
     }
   }
   // int32 load input
