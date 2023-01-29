@@ -6,11 +6,18 @@
 namespace FlexFlow {
 
 struct RepartitionParams {
+public:
+  bool is_valid(ParallelTensorShape const &) const;
+
+  using AsConstTuple = std::tuple<int, int>;
+  AsConstTuple as_tuple() const;
+
+public:
   int repartition_legion_dim;
   int repartition_degree;
-  bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(RepartitionParams const &, RepartitionParams const &);
+bool operator<(RepartitionParams const &, RepartitionParams const &);
 
 } // namespace FlexFlow
 

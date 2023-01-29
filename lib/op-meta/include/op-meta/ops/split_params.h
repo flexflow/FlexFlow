@@ -6,12 +6,18 @@
 namespace FlexFlow {
 
 struct SplitParams {
+public:
+  bool is_valid(ParallelTensorShape const &) const;
+
+  using AsConstTuple = std::tuple<std::vector<int>, int>;
+  AsConstTuple as_tuple() const;
+public:
   std::vector<int> splits;
   int legion_axis;
-  bool is_valid(ParallelTensorShape const &) const;
 };
 
 bool operator==(SplitParams const &, SplitParams const &);
+bool operator<(SplitParams const &, SplitParams const &);
 
 } // namespace FlexFlow
 

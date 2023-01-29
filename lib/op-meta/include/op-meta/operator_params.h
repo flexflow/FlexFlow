@@ -20,7 +20,7 @@
 #include "op-meta/ops/transpose_params.h"
 #include "op-meta/ops/combine_params.h"
 #include "op-meta/ops/fused_parallel_op_params.h"
-#include "op-meta/ops/partition_params.h"
+#include "op-meta/ops/repartition_params.h"
 #include "op-meta/ops/reduction_params.h"
 #include "op-meta/ops/replicate_params.h"
 #include "mpark/variant.hpp"

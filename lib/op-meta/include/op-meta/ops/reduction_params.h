@@ -6,13 +6,19 @@
 namespace FlexFlow {
 
 struct ReductionParams {
+public:
+  bool is_valid(ParallelTensorShape const &) const;
+
+  using AsConstTuple = std::tuple<int, int>;
+  AsConstTuple as_tuple() const;
+public:
   int reduction_legion_dim;
   int reduction_degree;
-  bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(ReductionParams const &, ReductionParams const &);
+bool operator<(ReductionParams const &, ReductionParams const &);
 
-} // namespace FlexFlow
+} 
 
 namespace std {
 template <>

@@ -6,10 +6,17 @@
 namespace FlexFlow {
 
 struct ReshapeParams {
-  std::vector<int> shape;
+public:
   bool is_valid(ParallelTensorShape const &) const;
+
+  using AsConstTuple = std::tuple<std::vector<int>>;
+  AsConstTuple as_tuple() const;
+public:
+  std::vector<int> shape;
 };
+
 bool operator==(ReshapeParams const &, ReshapeParams const &);
+bool operator<(ReshapeParams const &, ReshapeParams const &);
 
 } // namespace FlexFlow
 

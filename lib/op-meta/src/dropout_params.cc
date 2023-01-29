@@ -3,9 +3,8 @@
 
 namespace FlexFlow {
 
-bool DropoutParams::is_valid(ParallelTensorShape const &) const {
-  // dropout is always valid
-  return true;
+bool DropoutParams::is_valid(ParallelTensorShape const &input) const {
+  return input.is_valid();
 }
 
 typename DropoutParams::AsConstTuple DropoutParams::as_tuple() const {

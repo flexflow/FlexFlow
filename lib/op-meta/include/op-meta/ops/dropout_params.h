@@ -14,7 +14,9 @@ public:
   float rate;
   unsigned long long seed;
 };
+
 bool operator==(DropoutParams const &, DropoutParams const &);
+bool operator<(DropoutParams const &, DropoutParams const &);
 
 } // namespace FlexFlow
 

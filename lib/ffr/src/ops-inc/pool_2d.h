@@ -11,16 +11,6 @@
 
 namespace FlexFlow {
 
-namespace Pool2DInput {
-constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
-              REPLICA = 4;
-};
-
-namespace Pool2DOutput {
-constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
-              REPLICA = 4;
-};
-
 class Pool2D : public Op {
 public:
   using Params = Pool2DParams;

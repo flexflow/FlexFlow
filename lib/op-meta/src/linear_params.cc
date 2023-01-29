@@ -2,6 +2,7 @@
 #include "utils/hash-utils.h"
 #include "parallel_dim_mapping_record.h"
 #include "parallel_dim_mapping_record_solver.h"
+#include "utils/vector.h"
 
 namespace FlexFlow {
 
@@ -38,54 +39,52 @@ bool LinearParams::is_valid(ParallelTensorShape const &input_shape) const {
   return is_valid;
 };
 
+std::vector<ParallelDimMappingRecord> construct_output_mappings(ParallelTensorShape const &input_shape) {
+  std::vector<ParallelDimMappingRecord> m = construct_output_parallel_dims(
+      {{Input::CHANNEL, Output::REPLICA},
+       {Input::REPLICA, Output::CHANNEL}});
+  
+  for (int i = 1; i < input_shape.num_dims() - 1; i++) {
+    m.push_back(construct_output_parallel_dims(i, i));
+  }
+
+  return m;
+}
+
+std::vector<ParallelDimMappingRecord> construct_kernel_mappings(ParallelTensorShape const &input_shape) {
+  std::vector<ParallelDimMappingRecord> kernel_mappings = construct_weight_parallel_dims(
+                                     {{Input::CHANNEL,
+        Kernel::CHANNEL_IN},
+                                      {Input::REPLICA,
+          Kernel::CHANNEL_OUT}},
+                                     0 /*input_idx*/,
+                                     Kernel::WEIGHT_IDX);
+  // map a bunch of replica dimensions for the unnamed dimensions in the input
+  for (int i = 1; i < input_shape.num_dims() - 1; i++) {
+    kernel_mappings.push_back(construct_weight_parallel_dims(i, i + 1, 0 /*input_idx*/, Kernel::WEIGHT_IDX));
+  }
+
+  return kernel_mappings;
+}
+
+std::vector<ParallelDimMappingRecord> construct_bias_mappings(ParallelTensorShape const &input_shape) {
+  std::vector<ParallelDimMappingRecord> bias_mappings = construct_weight_parallel_dims(
+                                   { {Input::REPLICA, Bias::CHANNEL_OUT}, },
+                                   0 /*input_idx*/,
+                                   Bias::WEIGHT_IDX);
+  for (int i = 0; i < input_shape.num_dims() - 1; i++) {
+    bias_mappings.push_back(construct_weight_parallel_dims(i, i + 1, 0 /*input_idx*/, Bias::WEIGHT_IDX));
+  }
+  return bias_mappings;
+}
+
 std::vector<ParallelDimMappingRecord> construct_mappings(
     ParallelTensorShape const &input_shape) {
-
-  auto const outputMappings = [&]() -> std::vector<ParallelDimMappingRecord> {
-    std::vector<ParallelDimMappingRecord> m = construct_output_parallel_dims(
-        {{Input::CHANNEL, Output::REPLICA},
-         {Input::REPLICA, Output::CHANNEL}});
-    
-    for (int i = 1; i < input_shape.num_dims() - 1; i++) {
-      m.push_back(construct_output_parallel_dims(i, i));
-    }
-
-    return m;
-  }();
-
-  auto const kernelMappings = [&]() -> std::vector<ParallelDimMappingRecord> {
-    std::vector<ParallelDimMappingRecord> m = construct_weight_parallel_dims(
-                                       {{Input::CHANNEL,
-          Kernel::CHANNEL_IN},
-                                        {Input::REPLICA,
-            Kernel::CHANNEL_OUT}},
-                                       0 /*input_idx*/,
-                                       Kernel::WEIGHT_IDX);
-    // map a bunch of replica dimensions for the unnamed dimensions in the input
-    for (int i = 1; i < input_shape.num_dims() - 1; i++) {
-      m.push_back(construct_weight_parallel_dims(i, i + 1, 0 /*input_idx*/, Kernel::WEIGHT_IDX));
-    }
-
-    return m;
-  }();
-
-  auto const biasMappings = [&]() -> std::vector<ParallelDimMappingRecord> {
-    std::vector<ParallelDimMappingRecord> m = construct_weight_parallel_dims(
-                                     { {Input::REPLICA, Bias::CHANNEL_OUT}, },
-                                     0 /*input_idx*/,
-                                     Bias::WEIGHT_IDX);
-    for (int i = 0; i < input_shape.num_dims() - 1; i++) {
-      m.push_back(construct_weight_parallel_dims(i, i + 1, 0 /*input_idx*/, Bias::WEIGHT_IDX));
-    }
-    return m;
-  }();
-
-  std::vector<ParallelDimMappingRecord> allMappings;
-  allMappings.insert(allMappings.end(), outputMappings.begin(), outputMappings.end());
-  allMappings.insert(allMappings.end(), kernelMappings.begin(), kernelMappings.end());
-  allMappings.insert(allMappings.end(), biasMappings.begin(), biasMappings.end());
-
-  return allMappings;
+  return concat(
+    construct_output_mappings(input_shape),
+    construct_kernel_mappings(input_shape),
+    construct_bias_mappings(input_shape)
+  );
 }
 
 ParallelDimMappingSolution solve_mappings(ParallelTensorShape const &input) {

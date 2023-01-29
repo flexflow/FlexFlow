@@ -41,16 +41,6 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Reduction;
 
-/* Params */
-bool operator==(ReductionParams const &lhs, ReductionParams const &rhs) {
-  return lhs.reduction_legion_dim == rhs.reduction_legion_dim &&
-         lhs.reduction_degree == rhs.reduction_degree;
-}
-
-bool ReductionParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
 ReductionParams Reduction::get_params() const {
   ReductionParams params;
   params.reduction_legion_dim = this->reduction_dim;

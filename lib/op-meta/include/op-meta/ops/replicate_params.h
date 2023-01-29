@@ -6,11 +6,18 @@
 namespace FlexFlow {
 
 struct ReplicateParams {
+public:
+  bool is_valid(ParallelTensorShape const &) const;
+
+  using AsConstTuple = std::tuple<int, int>;
+  AsConstTuple as_tuple() const;
+public:
   int replicate_legion_dim;
   int replicate_degree;
-  bool is_valid(ParallelTensorShape const &) const;
 };
+
 bool operator==(ReplicateParams const &, ReplicateParams const &);
+bool operator<(ReplicateParams const &, ReplicateParams const &);
 
 } // namespace FlexFlow
 

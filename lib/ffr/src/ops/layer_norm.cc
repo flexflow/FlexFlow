@@ -39,15 +39,6 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-bool operator==(LayerNormParams const &lhs, LayerNormParams const &rhs) {
-  return lhs.layer_guid == rhs.layer_guid && lhs.axes == rhs.axes &&
-         lhs.elementwise_affine == rhs.elementwise_affine;
-}
-
-bool LayerNormParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
 LayerNormParams LayerNorm::get_params() const {
   LayerNormParams params;
   params.layer_guid = this->layer_guid;
@@ -500,16 +491,3 @@ Op *LayerNorm::materialize(FFModel &ff,
 }
 
 }; // namespace FlexFlow
-
-namespace std {
-size_t hash<FlexFlow::LayerNormParams>::operator()(
-    FlexFlow::LayerNormParams const &params) const {
-  size_t key = 0;
-  hash_combine(key, params.axes.size());
-  for (int n : params.axes) {
-    hash_combine(key, n);
-  }
-  hash_combine(key, params.elementwise_affine);
-  return key;
-}
-}; // namespace std

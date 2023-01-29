@@ -128,19 +128,6 @@ Pool2DParams Pool2D::get_params() const {
   return params;
 }
 
-bool Pool2DParams::is_valid(ParallelTensorShape const &input) const {
-  ParallelTensorShape output_shape;
-
-  this->solve_dims(input, output_shape.dims, &output_shape.num_dims);
-
-  bool is_valid = true;
-  is_valid &= input.is_valid();
-  is_valid &= output_shape.is_valid();
-  is_valid &= (input.dims[Pool2DInput::REPLICA].degree == 1);
-
-  return is_valid;
-}
-
 using PCG::Node;
 bool operator==(Pool2DParams const &lhs, Pool2DParams const &rhs) {
   return lhs.kernel_h == rhs.kernel_h && lhs.kernel_w == rhs.kernel_w &&
@@ -167,45 +154,6 @@ int Pool2DParams::output_size(ParallelTensorShape const &input,
   return Pool2DOutput::NUMDIM;
 }
 
-void Pool2DParams::solve_dims(ParallelTensorShape const &input,
-                              ParallelDim output_dims[MAX_TENSOR_DIM],
-                              int *output_ndims) const {
-  assert((output_dims == nullptr) == (output_ndims == nullptr));
-
-  std::vector<ParallelDimMappingRecord> mapping;
-  Pool2D::construct_output_mappings(mapping);
-
-  std::vector<ParallelDim *> output_dim_sets;
-  if (output_dims != nullptr) {
-    *output_ndims = this->output_size(input, output_dims);
-    output_dim_sets.push_back(output_dims);
-  }
-
-  solve_parallel_dim_mappings(mapping, {input.dims}, {}, output_dim_sets);
-}
-
-/*static*/
-void Pool2D::construct_output_mappings(
-    std::vector<ParallelDimMappingRecord> &mappings) {
-  Op::construct_output_parallel_dims(mappings,
-                                     {
-                                         {Pool2DInput::REPLICA,
-                                          MappingOperation::PARTITION,
-                                          Pool2DOutput::REPLICA},
-                                         {Pool2DInput::SAMPLE,
-                                          MappingOperation::PARTITION,
-                                          Pool2DOutput::SAMPLE},
-                                         {Pool2DInput::CHANNEL,
-                                          MappingOperation::PARTITION,
-                                          Pool2DOutput::CHANNEL},
-                                         {Pool2DInput::HEIGHT,
-                                          MappingOperation::PARTITION,
-                                          Pool2DOutput::HEIGHT},
-                                         {Pool2DInput::WIDTH,
-                                          MappingOperation::PARTITION,
-                                          Pool2DOutput::WIDTH},
-                                     });
-}
 
 Pool2D::Pool2D(FFModel &model, Pool2D const &other, ParallelTensor const input)
     : Pool2D(model,

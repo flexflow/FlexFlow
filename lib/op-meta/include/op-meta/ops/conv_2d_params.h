@@ -6,26 +6,15 @@
 namespace FlexFlow {
 
 struct Conv2DParams {
+public:
   bool is_valid(ParallelTensorShape const &input) const;
-  void solve_dims(ParallelTensorShape const &input,
-                  ParallelTensorShape &output_shape,
-                  ParallelTensorShape &kernel_shape,
-                  ParallelTensorShape &bias_shape) const;
+
+  ParallelTensorShape calculate_output_shape(ParallelTensorShape const &input_shape) const;
+  ParallelTensorShape calculate_kernel_shape(ParallelTensorShape const &input_shape) const;
+  ParallelTensorShape calculate_bias_shape(ParallelTensorShape const &input_shape) const;
 
   using AsConstTuple = std::tuple<int, int, int, int, int, int, int, int, ActiMode, bool>;
   AsConstTuple as_tuple() const;
-
-private:
-  void mark_replica_dims(ParallelTensorShape const &input,
-                         ParallelTensorShape &output_shape,
-                         ParallelTensorShape &kernel_shape,
-                         ParallelTensorShape &bias_shape) const;
-  int output_size(ParallelTensorShape const &input,
-                  ParallelTensorShape &output_shape) const;
-  int kernel_size(ParallelTensorShape const &input_shape,
-                  ParallelTensorShape &kernel_shape) const;
-  int bias_size(ParallelTensorShape const &input,
-                ParallelTensorShape &bias_shape) const;
 public:
   int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h,
       padding_w, groups;

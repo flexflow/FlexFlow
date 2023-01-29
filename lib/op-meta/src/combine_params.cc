@@ -1,4 +1,5 @@
 #include "op-meta/ops/combine_params.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
@@ -20,5 +21,11 @@ bool CombineParams::is_valid(ParallelTensorShape const &input) const {
       (input.at(this->combine_legion_dim).degree % this->combine_degree == 0);
   return valid;
 }
+}
 
+namespace std {
+size_t hash<FlexFlow::CombineParams>::operator()(
+    FlexFlow::CombineParams const &params) const {
+  return get_std_hash(params.as_tuple());
+} 
 }

@@ -6,10 +6,16 @@
 namespace FlexFlow {
 
 struct SoftmaxParams {
-  int dim;
+public:
   bool is_valid(ParallelTensorShape const &) const;
+
+  using AsConstTuple = std::tuple<int>;
+  AsConstTuple as_tuple() const;
+public:
+  int dim;
 };
 bool operator==(SoftmaxParams const &, SoftmaxParams const &);
+bool operator<(SoftmaxParams const &, SoftmaxParams const &);
 
 } // namespace FlexFlow
 

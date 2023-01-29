@@ -7,33 +7,29 @@ namespace FlexFlow {
 namespace PCG {
 
 struct Edge {
-  Edge(Node const &_srcOp, Node const &_dstOp, int _srcIdx, int _dstIdx);
-  bool operator==(Edge const &rhs) const;
-  Node srcOp, dstOp;
-  int srcIdx, dstIdx;
+public:
+  Edge(Node const &srcOp, Node const &dstOp, int srcIdx, int dstIdx);
 
   void replace_node(Node const &currentOp, Node const &replaceWith);
+
+  using AsConstTuple = std::tuple<Node, Node, int, int>;
+  AsConstTuple as_tuple() const;
+public:
+  Node srcOp, dstOp;
+  int srcIdx, dstIdx;
 };
 
-struct EdgeCompare {
-  bool operator()(Edge const &a, Edge const &b) const {
-    if (!(a.srcOp == b.srcOp)) {
-      return a.srcOp < b.srcOp;
-    }
-    if (!(a.dstOp == b.dstOp)) {
-      return a.dstOp < b.dstOp;
-    }
-    if (a.srcIdx != b.srcIdx) {
-      return a.srcIdx < b.srcIdx;
-    }
-    if (a.dstIdx != b.dstIdx) {
-      return a.dstIdx < b.dstIdx;
-    }
-    return false;
-  };
-};
+bool operator==(Edge const &lhs, Edge const &rhs);
+bool operator<(Edge const &lhs, Edge const &rhs);
 
 }
+}
+
+namespace std {
+template <>
+struct hash<FlexFlow::PCG::Edge> {
+  size_t operator()(FlexFlow::PCG::Edge const &e) const;
+};
 }
 
 #endif

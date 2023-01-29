@@ -6,20 +6,16 @@ namespace PCG {
 Edge::Edge(Node const &srcOp, Node const &dstOp, int srcIdx, int dstIdx)
     : srcOp(srcOp), dstOp(dstOp), srcIdx(srcIdx), dstIdx(dstIdx) {}
 
-bool Edge::operator==(Edge const &rhs) const {
-  if (srcOp != rhs.srcOp) {
-    return false;
-  }
-  if (dstOp != rhs.dstOp) {
-    return false;
-  }
-  if (srcIdx != rhs.srcIdx) {
-    return false;
-  }
-  if (dstIdx != rhs.dstIdx) {
-    return false;
-  }
-  return true;
+typename Edge::AsConstTuple Edge::as_tuple() const {
+  return { this->srcOp, this->dstOp, this->srcIdx, this->dstIdx };
+}
+
+bool operator==(Edge const &lhs, Edge const &rhs) {
+  return lhs.as_tuple() == rhs.as_tuple();
+}
+
+bool operator<(Edge const &lhs, Edge const &rhs) {
+  return lhs.as_tuple() < rhs.as_tuple();
 }
 
 void Edge::replace_node(Node const &currentOp, Node const &replaceWith) {

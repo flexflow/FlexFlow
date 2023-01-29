@@ -7,20 +7,23 @@
 namespace FlexFlow {
 
 struct Pool2DParams {
-  int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
-  PoolType pool_type;
-  ActiMode activation;
-
+public:
   bool is_valid(ParallelTensorShape const &input) const;
   void solve_dims(ParallelTensorShape const &input,
                   ParallelTensorShape &output) const;
 
-private:
-  int output_size(ParallelTensorShape const &input,
-                  ParallelTensorShape &output) const;
+  ParallelTensorShape calculate_output_shape(ParallelTensorShape const &input) const;
+  
+  using AsConstTuple = std::tuple<int, int, int, int, int, int, PoolType, ActiMode>;
+  AsConstTuple as_tuple() const;
+public:
+  int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
+  PoolType pool_type;
+  ActiMode activation;
 };
 
 bool operator==(Pool2DParams const &, Pool2DParams const &);
+bool operator<(Pool2DParams const &, Pool2DParams const &);
 
 } // namespace FlexFlow
 
