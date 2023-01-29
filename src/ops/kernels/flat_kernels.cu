@@ -35,7 +35,8 @@ void backward_kernel_wrapper(float *input_grad_ptr,
                              size_t num_elements) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  Internal::backward_kernel(input_grad_ptr, output_grad_ptr, num_elements, stream);
+  Internal::backward_kernel(
+      input_grad_ptr, output_grad_ptr, num_elements, stream);
   // checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
   //                           acc_input_grad.rect.volume() * sizeof(float),
   //                           cudaMemcpyDeviceToDevice));
