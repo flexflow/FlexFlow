@@ -83,7 +83,7 @@ public:
   // scale factor for computing the logit gradients
   // normally 1.0f / global_batch_size
   float scale_factor;
-  };
+};
 
 }; // namespace FlexFlow
 
