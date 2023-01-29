@@ -197,12 +197,11 @@ void Loss::backward_task_with_dim(Task const *task,
           acc_logit_grad.rect.volume(),
           loss->scale_factor);
     } else if (loss->loss_type == LOSS_IDENTITY) {
-      Loss::identity_loss_backward_kernel_wrapper(
-          acc_logit_grad.ptr,
-          acc_logit.ptr,
-          acc_logit.rect.volume(),
-          acc_logit_grad.rect.volume(),
-          loss->scale_factor);
+      Loss::identity_loss_backward_kernel_wrapper(acc_logit_grad.ptr,
+                                                  acc_logit.ptr,
+                                                  acc_logit.rect.volume(),
+                                                  acc_logit_grad.rect.volume(),
+                                                  loss->scale_factor);
     } else {
       fprintf(stderr,
               "Unsupported loss --- report this error to the FlexFlow "
