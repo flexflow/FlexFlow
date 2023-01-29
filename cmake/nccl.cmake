@@ -25,7 +25,7 @@ if(NCCL_URL)
     FetchContent_Populate(${NCCL_NAME})
   endif()
   
-  set(NCCL_FOLDER_PATH ${${NCCL_NAME}_SOURCE_DIR}/deps/${NCCL_NAME})
+  set(NCCL_FOLDER_PATH ${${NCCL_NAME}_SOURCE_DIR})
   set(NCCL_INCLUDE_DIR ${NCCL_FOLDER_PATH}/include)
   set(NCCL_LIB_DIR ${NCCL_FOLDER_PATH}/lib)
   message(STATUS "NCCL library path: ${NCCL_FOLDER_PATH}")
