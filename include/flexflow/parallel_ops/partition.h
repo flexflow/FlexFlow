@@ -26,6 +26,10 @@ public:
   void create_input_partition(FFModel &model) override;
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
+  void inference(FFModel const &,
+                 std::vector<ParallelTensor> const &,
+                 std::vector<ParallelTensor> const &,
+                 MachineView const *mv = nullptr) override;
   void backward(FFModel const &) override;
   bool get_int_parameter(PMParameter, int *) const override;
   bool append_parallel_op_info(

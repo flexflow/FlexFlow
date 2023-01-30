@@ -137,11 +137,45 @@ void Repartition::create_input_partition(FFModel &ff) {
                                outputs[0]->parallel_is,
                                inputs[0]->region,
                                input_lp);
-  ff.create_disjoint_partition(inputs[0]->num_dims,
-                               inputs[0]->dims,
-                               inputs[0]->parallel_is,
-                               outputs[0]->region_grad,
-                               output_grad_lp);
+  if (ff.config.computationMode == COMP_MODE_TRAINING) {
+    ff.create_disjoint_partition(inputs[0]->num_dims,
+                                 inputs[0]->dims,
+                                 inputs[0]->parallel_is,
+                                 outputs[0]->region_grad,
+                                 output_grad_lp);
+  }
+}
+
+void Repartition::inference(FFModel const &ff,
+                            std::vector<ParallelTensor> const &batch_inputs,
+                            std::vector<ParallelTensor> const &batch_outputs,
+                            MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  assert(inputs[0]->data_type == outputs[0]->data_type);
+  DataType data_type = inputs[0]->data_type;
+  size_t machine_view_hash = mv ? mv->hash() : outputs[0]->machine_view.hash();
+  IndexLauncher launcher(REPARTITION_FWD_TASK_ID,
+                         outputs[0]->parallel_is,
+                         TaskArgument(&data_type, sizeof(DataType)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(
+      input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
 }
 
 void Repartition::forward(FFModel const &ff) {

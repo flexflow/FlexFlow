@@ -3114,9 +3114,11 @@ void FFModel::compile(LossType loss_type,
       assert(false && "Unsupported dim");
     }
   }
-  // init optimizer
-  assert(optimizer != NULL);
-  optimizer->init();
+  if (config.computationMode == COMP_MODE_TRAINING) {
+    // init optimizer
+    assert(optimizer != NULL);
+    optimizer->init();
+  }
 
 #ifdef FF_USE_NCCL
   if (config.computationMode == COMP_MODE_TRAINING) {

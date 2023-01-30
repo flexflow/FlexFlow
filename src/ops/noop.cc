@@ -172,6 +172,11 @@ void NoOp::init(FFModel const &ff) {
 
 void NoOp::forward(FFModel const &ff) {}
 
+void NoOp::inference(FFModel const &ff,
+                     std::vector<ParallelTensor> const &batch_inputs,
+                     std::vector<ParallelTensor> const &batch_outputs,
+                     MachineView const *mv) {}
+
 void NoOp::backward(FFModel const &ff) {}
 
 bool NoOp::measure_operator_cost(Simulator *sim,
