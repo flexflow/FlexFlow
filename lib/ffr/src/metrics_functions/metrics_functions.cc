@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/metrics_functions.h"
-#include "flexflow/model.h"
+#include "metrics_functions.h"
+#include "model.h"
 
 namespace FlexFlow {
 
