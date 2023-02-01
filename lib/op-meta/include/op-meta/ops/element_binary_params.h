@@ -3,17 +3,19 @@
 
 #include "op-meta/ffconst.h"
 #include "op-meta/parallel_tensor_shape.h"
+#include "op-meta/ops/op_params.h"
 
 namespace FlexFlow {
 
 struct ElementBinaryParams {
-  OperatorType type;
-
+public:
   bool is_valid(
       std::pair<ParallelTensorShape, ParallelTensorShape> const &) const;
 
   using AsConstTuple = std::tuple<OperatorType>;
   AsConstTuple as_tuple() const;
+public:
+  OperatorType type;
 };
 
 bool operator==(ElementBinaryParams const &, ElementBinaryParams const &);

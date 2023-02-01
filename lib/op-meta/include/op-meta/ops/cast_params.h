@@ -3,10 +3,11 @@
 
 #include "op-meta/ffconst.h"
 #include "op-meta/parallel_tensor_shape.h"
+#include "op-meta/ops/op_params.h"
 
 namespace FlexFlow {
 
-struct CastParams {
+struct CastParams : public OpParamsInterface {
   bool is_valid(ParallelTensorShape const &) const;
 
   using AsConstTuple = std::tuple<DataType>;

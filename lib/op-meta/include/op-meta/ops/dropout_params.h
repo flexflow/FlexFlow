@@ -2,10 +2,11 @@
 #define _FLEXFLOW_DROPOUT_PARAMS_H
 
 #include "op-meta/parallel_tensor_shape.h"
+#include "op-meta/ops/op_params.h"
 
 namespace FlexFlow {
 
-struct DropoutParams {
+struct DropoutParams : public OpParamsInterface {
   bool is_valid(ParallelTensorShape const &) const;
 
   using AsConstTuple = std::tuple<float, unsigned long long>;

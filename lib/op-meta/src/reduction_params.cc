@@ -15,8 +15,9 @@ bool operator<(ReductionParams const &lhs, ReductionParams const &rhs) {
   return lhs.as_tuple() < rhs.as_tuple();
 }
 
-bool ReductionParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+bool ReductionParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return inputs.size() == 1
+    && inputs.at(0).is_valid();
 }
 
 }

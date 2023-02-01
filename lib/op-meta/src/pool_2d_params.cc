@@ -16,7 +16,12 @@ constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
 };
 
 
-bool Pool2DParams::is_valid(ParallelTensorShape const &input) const {
+bool Pool2DParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  if (inputs.size() != 1) {
+    return false;
+  }
+
+  ParallelTensorShape input = inputs.at(0);
   ParallelTensorShape output_shape = this->calculate_output_shape(input);
 
   bool is_valid = true;

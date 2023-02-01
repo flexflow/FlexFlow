@@ -1,4 +1,5 @@
-#include "flexflow/ffconst_utils.h"
+#include "op-meta/ffconst_utils.h"
+#include "op-meta/ffconst.h"
 #include <stdexcept>
 
 namespace FlexFlow {
@@ -180,6 +181,21 @@ std::ostream &operator<<(std::ostream &s, OperatorType op_type) {
   s << get_operator_type_name(op_type);
 
   return s;
+}
+
+bool is_parallel_op(OperatorType const &t) {
+  switch (t) {
+    case OP_REPARTITION:
+    case OP_COMBINE:
+    case OP_REPLICATE:
+    case OP_REDUCTION:
+    case OP_BATCH:
+    case OP_PIPELINE:
+    case OP_FUSED_PARALLEL:
+      return true;
+    default:
+      return false;
+  }
 }
 
 }; // namespace FlexFlow

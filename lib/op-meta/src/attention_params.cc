@@ -1,16 +1,12 @@
 #include "op-meta/ops/attention_params.h"
 #include "utils/hash-utils.h"
+#include <algorithm>
 
 namespace FlexFlow {
 
-bool MultiHeadAttentionParams::is_valid(
-    std::tuple<ParallelTensorShape,
-               ParallelTensorShape,
-               ParallelTensorShape> const &input) const {
+bool MultiHeadAttentionParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return (inputs.size() == 3 && std::all_of(inputs.begin(), inputs.end(), [](ParallelTensorShape const &s) { return s.is_valid(); }));
   bool is_valid = true;
-  is_valid &= std::get<0>(input).is_valid();
-  is_valid &= std::get<1>(input).is_valid();
-  is_valid &= std::get<2>(input).is_valid();
   return is_valid;
 }
 

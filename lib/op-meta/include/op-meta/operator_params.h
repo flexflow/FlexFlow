@@ -86,6 +86,8 @@ OperatorType get_op_type(T const &t) {
 template <>
 OperatorType get_op_type(OperatorParameters const &);
 
+bool is_parallel_op(OperatorParameters const &);
+
 }; // namespace FlexFlow
 
 #endif // _OPERATOR_PARAMS_H

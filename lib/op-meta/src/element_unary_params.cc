@@ -3,7 +3,7 @@
 namespace FlexFlow {
 
 typename ElementUnaryParams::AsConstTuple ElementUnaryParams::as_tuple() const {
-  return {op_type, inplace, scalar};
+  return {this->op, this->inplace, this->scalar};
 }
 
 bool operator==(ElementUnaryParams const &lhs, ElementUnaryParams const &rhs) {

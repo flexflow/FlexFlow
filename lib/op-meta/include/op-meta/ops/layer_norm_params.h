@@ -2,10 +2,11 @@
 #define _FLEXFLOW_OP_META_OPS_LAYER_NORM_PARAMS_H
 
 #include "op-meta/parallel_tensor_shape.h"
+#include "op-meta/ops/op_params.h"
 
 namespace FlexFlow {
 
-struct LayerNormParams {
+struct LayerNormParams : public OpParamsInterface {
 public:
   bool is_valid(ParallelTensorShape const &) const;
 

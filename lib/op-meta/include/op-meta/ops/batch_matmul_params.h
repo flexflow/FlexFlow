@@ -2,10 +2,11 @@
 #define _FF_OP_META_BATCH_MATMUL_PARAMS_H
 
 #include "op-meta/parallel_tensor_shape.h"
+#include "op-meta/ops/op_params.h"
 
 namespace FlexFlow {
 
-struct BatchMatmulParams {
+struct BatchMatmulParams : public OpParamsInterface {
   int a_seq_length_dim, b_seq_length_dim;
   bool is_valid(
       std::pair<ParallelTensorShape, ParallelTensorShape> const &) const;

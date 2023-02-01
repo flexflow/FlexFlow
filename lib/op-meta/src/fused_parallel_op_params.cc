@@ -3,8 +3,8 @@
 
 namespace FlexFlow {
 
-bool FusedParallelOpParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+bool FusedParallelOpParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return (inputs.size() == 1 && inputs.at(0).is_valid());
 }
 
 typename FusedParallelOpParams::AsConstTuple FusedParallelOpParams::as_tuple() const {

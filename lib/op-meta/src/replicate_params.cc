@@ -3,8 +3,8 @@
 
 namespace FlexFlow {
 
-bool ReplicateParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+bool ReplicateParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return inputs.size() == 1 && inputs.at(0).is_valid();
 }
 
 typename ReplicateParams::AsConstTuple ReplicateParams::as_tuple() const {

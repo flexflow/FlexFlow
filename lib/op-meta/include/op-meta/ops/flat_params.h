@@ -2,10 +2,11 @@
 #define _FLEXFLOW_FLAT_PARAMS_H
 
 #include "op-meta/parallel_tensor_shape.h"
+#include "op-meta/ops/op_params.h"
 
 namespace FlexFlow {
 
-struct FlatParams {
+struct FlatParams : public OpParamsInterface {
   bool is_valid(ParallelTensorShape const &) const;
   using AsConstTuple = std::tuple<>;
   AsConstTuple as_tuple() const;
@@ -15,7 +16,6 @@ private:
                   ParallelTensorShape &output) const;
 
   ParallelTensorShape calculate_output_shape(ParallelTensorShape const &input) const;
-
 };
 
 bool operator==(FlatParams const &, FlatParams const &);

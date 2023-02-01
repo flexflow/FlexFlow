@@ -2,10 +2,11 @@
 #define _FLEXFLOW_CONV_2D_PARAMS_H
 
 #include "op-meta/parallel_tensor_shape.h"
+#include "op-meta/ops/op_params.h"
 
 namespace FlexFlow {
 
-struct Conv2DParams {
+struct Conv2DParams : OpParamsInterface {
 public:
   bool is_valid(ParallelTensorShape const &input) const;
 

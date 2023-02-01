@@ -1,4 +1,5 @@
 #include "op-meta/operator_params.h"
+#include "op-meta/ffconst_utils.h"
 
 namespace FlexFlow {
 
@@ -28,6 +29,16 @@ OperatorType GetOpType::operator()(FusedParallelOpParams const &p) const { retur
 template <>
 OperatorType get_op_type(OperatorParameters const &o) { 
   return mpark::visit(GetOpType{}, o);
+}
+
+bool is_parallel_op(OperatorParameters const &o) {
+  return is_parallel_op(get_op_type(o));
+}
+
+int num_outputs(OperatorParameters const &o) {
+  switch (get_op_type(o)) {
+    case OP_SPLIT:
+  }
 }
 
 //tl::optional<OperatorParameters> get_op_parameters(Op const *op) {

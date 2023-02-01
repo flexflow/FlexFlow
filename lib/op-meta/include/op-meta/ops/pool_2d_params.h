@@ -3,12 +3,12 @@
 
 #include "op-meta/ffconst.h"
 #include "op-meta/parallel_tensor_shape.h"
+#include "op-meta/ops/op_params.h"
 
 namespace FlexFlow {
 
-struct Pool2DParams {
+struct Pool2DParams : public OpParamsInterface {
 public:
-  bool is_valid(ParallelTensorShape const &input) const;
   void solve_dims(ParallelTensorShape const &input,
                   ParallelTensorShape &output) const;
 
@@ -16,6 +16,10 @@ public:
   
   using AsConstTuple = std::tuple<int, int, int, int, int, int, PoolType, ActiMode>;
   AsConstTuple as_tuple() const;
+
+  int num_outputs(std::vector<ParallelTensorShape> const &inputs) const override;
+  bool is_valid(std::vector<ParallelTensorShape> const &input) const override;
+  OperatorType op_type() const override;
 public:
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
