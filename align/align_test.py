@@ -179,6 +179,23 @@ def test_add():
             ),
         ]
     )
+def test_concat():
+    out_dir = os.path.join(BASE_DIR, "concat", "out")
+    expand = prepend_dirname_fn(out_dir)
+    align_tensors(
+        [
+            TensorAlignmentData(
+                "concat_out",
+                expand("ff_out.pt"),
+                expand("torch_out.pt"),
+            ),
+            TensorAlignmentData(
+                "concat_out_grad",
+                expand("ff_out_grad.pt"),
+                expand("torch_out_grad.pt"),
+            ),
+        ]
+    )
 
 def test_subtract():
     out_dir = os.path.join(BASE_DIR, "subtract", "out")

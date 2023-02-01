@@ -1,7 +1,3 @@
-from align_utils import BATCH_SIZE, gen_tensor
-from align_ff_utils import (compile_ffmodel, init_ffmodel, run_fwd_bwd,
-                            save_param_ff, save_param_grad_ff, save_tensor_ff,
-                            save_tensor_grad_ff)
 import os
 import sys
 
@@ -11,6 +7,11 @@ from flexflow.core.flexflow_cffi import Linear, Op, Parameter
 from flexflow.type import AggrMode
 
 sys.path.append("./align/")
+
+from align_utils import BATCH_SIZE, gen_tensor
+from align_ff_utils import (compile_ffmodel, init_ffmodel, run_fwd_bwd,
+                            save_param_ff, save_param_grad_ff, save_tensor_ff,
+                            save_tensor_grad_ff)
 
 OUT_DIR = os.path.join("align", "concat", "out")
 
@@ -31,7 +32,7 @@ def run():
         dtype="float32"
     )
     label: torch.Tensor = gen_tensor(
-        (BATCH_SIZE, SEQ_LENGTH, INPUT_SIZE),
+        (BATCH_SIZE, SEQ_LENGTH * 3, INPUT_SIZE),
         dtype="float32"
     )
 
@@ -42,7 +43,7 @@ def run():
     input_tensor_3 = ffmodel.create_tensor(inp3.shape, DataType.DT_FLOAT)
 
     output_tensor = ffmodel.concat(
-        tensors=(input_tensor_1, input_tensor_2),
+        tensors=[input_tensor_1, input_tensor_2,input_tensor_3],
         axis=1,
         name="concat"
     )

@@ -8,7 +8,7 @@ from align_utils import gen_tensor, BATCH_SIZE
 
 assert torch.cuda.is_available(), "Expects at least one GPU"
 DEVICE = torch.device(0)
-OUT_DIR = os.path.join("align", "add", "out")
+OUT_DIR = os.path.join("align", "concat", "out")
 
 def run():
   INPUT_SIZE = 512
@@ -27,7 +27,7 @@ def run():
       dtype="float32"
   ).to(DEVICE)
   label: torch.Tensor = gen_tensor(
-      (BATCH_SIZE, SEQ_LENGTH, INPUT_SIZE),
+      (BATCH_SIZE, SEQ_LENGTH * 3, INPUT_SIZE),
       dtype="float32"
   ).to(DEVICE)
   output = torch.cat(
@@ -40,8 +40,10 @@ def run():
   loss_fn = torch.nn.MSELoss(reduction="mean")
   loss = loss_fn(output, label)
   loss.backward()
+  
   torch.save(output.cpu(), os.path.join(OUT_DIR, "torch_out.pt"))
   torch.save(output.grad.cpu(), os.path.join(OUT_DIR, "torch_out_grad.pt"))
+
 
 
 if __name__ == "__main__":
