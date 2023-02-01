@@ -1,4 +1,4 @@
-set(project_target utils)
+set(project_target utils-test)
 project(${project_target})
 
 file(GLOB_RECURSE SRC
@@ -6,22 +6,13 @@ file(GLOB_RECURSE SRC
      LIST_DIRECTORIES False
      src/*.cc)
 
-add_library(
+add_executable(
   ${project_target}
-  SHARED
-  ${SRC}
-)
-target_include_directories(
-  ${project_target}
-  PUBLIC
-    include/
-  PRIVATE
-    src/
-)
+  ${SRC})
 target_link_libraries(
   ${project_target}
-  optional
-)
+  utils
+  doctest::doctest)
 set_target_properties(
   ${project_target} 
   PROPERTIES 
@@ -29,5 +20,4 @@ set_target_properties(
     CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS NO
 )
-
-add_subdirectory(test)
+doctest_discover_tests(${project_target})

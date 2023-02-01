@@ -17,6 +17,9 @@ public:
 
   bool operator==(Node const &) const;
   bool operator<(Node const &) const;
+
+  using AsConstTuple = std::tuple<size_t>;
+  AsConstTuple as_tuple() const;
 public:
   std::size_t idx;
 };

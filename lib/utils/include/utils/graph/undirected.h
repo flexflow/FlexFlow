@@ -15,6 +15,9 @@ public:
   Edge() = delete;
   Edge(Node src, Node dst);
 
+  bool operator==(Edge const &) const;
+  bool operator<(Edge const &) const;
+
   using AsConstTuple = std::tuple<Node, Node>;
   AsConstTuple as_tuple() const;
 public:
@@ -43,8 +46,8 @@ struct EdgeQuery {
 };
 
 struct IUndirectedGraphView {
-  using Edge = Edge;
-  using EdgeQuery = EdgeQuery;
+  using Edge = undirected::Edge;
+  using EdgeQuery = undirected::EdgeQuery;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
   virtual std::unordered_set<Node> query_nodes(NodeQuery const &) const = 0;

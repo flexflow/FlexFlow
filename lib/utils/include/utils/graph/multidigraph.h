@@ -15,6 +15,9 @@ public:
   Edge() = delete;
   Edge(Node src, Node dst, size_t srcIdx, size_t dstIdx);
 
+  bool operator==(Edge const &) const;
+  bool operator<(Edge const &) const;
+
   using AsConstTuple = std::tuple<Node, Node, std::size_t, std::size_t>;
   AsConstTuple as_tuple() const;
 public:

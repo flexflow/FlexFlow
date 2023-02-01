@@ -1,7 +1,7 @@
-#include "utils/graph/adjacency_graph.h"
+#include "utils/graph/adjacency_multidigraph.h"
 
-namespace FlexFlow {
-namespace utils {
+using Node = FlexFlow::utils::graph::Node;
+using namespace FlexFlow::utils::graph::multidigraph;
 
 Node AdjacencyMultiDiGraph::add_node() {
   Node node{this->next_node_idx};
@@ -39,5 +39,10 @@ std::unordered_set<Edge> AdjacencyMultiDiGraph::query_edges(EdgeQuery const &q) 
   return result;
 }
 
-}
+std::unordered_set<Node> AdjacencyMultiDiGraph::query_nodes(NodeQuery const &query) const {
+  std::unordered_set<Node> result;
+  for (auto const &kv : this->adjacency) {
+    result.insert(kv.first);
+  }
+  return result;
 }

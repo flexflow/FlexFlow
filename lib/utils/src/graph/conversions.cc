@@ -2,7 +2,13 @@
 #include <algorithm>
 #include <iterator>
 
-using namespace FlexFlow::utils::graph;
+namespace FlexFlow {
+namespace utils {
+namespace graph {
+
+undirected::Edge to_undirected_edge(digraph::Edge const &e) {
+  return {e.src, e.dst};
+}
 
 UndirectedGraphViewFromDirected::UndirectedGraphViewFromDirected(std::shared_ptr<IDiGraphView> const &directed) 
   : directed(directed)
@@ -15,8 +21,8 @@ std::unordered_set<undirected::Edge> UndirectedGraphViewFromDirected::query_edge
   return [&] {
     std::unordered_set<undirected::Edge> result;
     std::transform(directed_edges.cbegin(), directed_edges.cend(), 
-                   std::back_inserter(result),
-                   to_undirected_edge);
+                   std::inserter(result, result.begin()),
+                   [](digraph::Edge const &e) { return to_undirected_edge(e); });
     return result;
   }();
 }
@@ -29,3 +35,6 @@ UndirectedGraphViewFromDirected view_undirected(std::shared_ptr<IDiGraph> const 
   return UndirectedGraphViewFromDirected{directed};
 }
 
+}
+}
+}

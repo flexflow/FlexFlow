@@ -6,6 +6,6 @@ std::unordered_set<Node> get_nodes(IMultiDiGraph const &g) {
   return g.query_nodes({});
 }
 
-std::vector<Node> topo_sort(IMultiDiGraph const &g) {
-  return 
-}
+/* std::vector<Node> topo_sort(IMultiDiGraph const &g) { */
+/*   return */ 
+/* } */
