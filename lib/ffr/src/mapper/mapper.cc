@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/mapper.h"
+#include "mapper.h"
 
 namespace FlexFlow {
 
