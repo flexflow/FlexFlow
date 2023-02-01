@@ -26,23 +26,38 @@ private:
 
 class RecursiveLogger {
 public:
-  RecursiveLogger(std::string const &category_name);
+  RecursiveLogger(std::shared_ptr<spdlog::logger> const &logger);
+  RecursiveLogger(std::string const &logger_name);
 
-  std::ostream &info();
-  std::ostream &debug();
-  std::ostream &spew();
+  RecursiveLogger(RecursiveLogger const &) = delete;
+
+  template<typename... Args>
+  void info(std::string const &fmt, Args &&... args)
+  {
+    this->logger->info(this->get_prefix() + fmt, std::forward<Args>(args)...);
+  }
+
+  template<typename... Args>
+  void debug(std::string const &fmt, Args &&... args)
+  {
+    this->logger->debug(this->get_prefix() + fmt, std::forward<Args>(args)...);
+  }
+
+  template<typename... Args>
+  void spew(std::string const &fmt, Args &&... args)
+  {
+    this->logger->trace(this->get_prefix() + fmt, std::forward<Args>(args)...);
+  }
 
   void enter();
   void leave();
 
   std::unique_ptr<DepthTag> enter_tag();
-
+private:
+  std::string get_prefix() const;
 private:
   int depth = 0;
-
-  void print_prefix(std::ostream &) const;
-
-  //LegionRuntime::Logger::Category logger;
+  std::shared_ptr<spdlog::logger> logger;
 };
 
 };     // namespace FlexFlow

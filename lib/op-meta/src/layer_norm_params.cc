@@ -2,8 +2,8 @@
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
-bool LayerNormParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
+bool LayerNormParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
+  return inputs.size() == 1 && inputs.at(0).is_valid();
 }
 
 typename LayerNormParams::AsConstTuple LayerNormParams::as_tuple() const {

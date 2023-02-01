@@ -8,10 +8,12 @@ namespace FlexFlow {
 
 struct LayerNormParams : public OpParamsInterface {
 public:
-  bool is_valid(ParallelTensorShape const &) const;
-
   using AsConstTuple = std::tuple<std::vector<int>, bool, float>;
   AsConstTuple as_tuple() const;
+
+  int num_outputs(std::vector<ParallelTensorShape> const &inputs) const override;
+  bool is_valid(std::vector<ParallelTensorShape> const &inputs) const override;
+  OperatorType op_type() const override;
 public:
   std::vector<int> axes;
   bool elementwise_affine;

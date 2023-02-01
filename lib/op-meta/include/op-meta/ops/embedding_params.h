@@ -3,16 +3,17 @@
 
 #include "op-meta/ffconst.h"
 #include "op-meta/parallel_tensor_shape.h"
-#include "op-meta/ops/op_params.h"
+#include "op-meta/ops/unary_op.h"
 
 namespace FlexFlow {
 
-struct EmbeddingParams : public OpParamsInterface {
+struct EmbeddingParams : public UnaryOpParams {
 public:
-  bool is_valid(ParallelTensorShape const &) const;
-
   using AsConstTuple = std::tuple<int, int, AggrMode, DataType>;
   AsConstTuple as_tuple() const;
+
+  bool is_valid(ParallelTensorShape const &) const;
+  OperatorType op_type() const;
 public:
   int num_entries, out_channels;
   AggrMode aggr;

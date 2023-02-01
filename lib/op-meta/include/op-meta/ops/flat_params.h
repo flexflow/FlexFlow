@@ -2,15 +2,16 @@
 #define _FLEXFLOW_FLAT_PARAMS_H
 
 #include "op-meta/parallel_tensor_shape.h"
-#include "op-meta/ops/op_params.h"
+#include "op-meta/ops/unary_op.h"
 
 namespace FlexFlow {
 
-struct FlatParams : public OpParamsInterface {
-  bool is_valid(ParallelTensorShape const &) const;
+struct FlatParams : public UnaryOpParams {
   using AsConstTuple = std::tuple<>;
   AsConstTuple as_tuple() const;
 
+  bool is_valid(ParallelTensorShape const &) const override;
+  OperatorType op_type() const override;
 private:
   int output_size(ParallelTensorShape const &input,
                   ParallelTensorShape &output) const;

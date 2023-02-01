@@ -14,8 +14,4 @@ bool operator<(ElementUnaryParams const &lhs, ElementUnaryParams const &rhs) {
   return lhs.as_tuple() < rhs.as_tuple();
 }
 
-bool ElementUnaryParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
 }

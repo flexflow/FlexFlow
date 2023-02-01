@@ -25,7 +25,6 @@
 #include <unordered_set>
 #include <memory>
 #include "op-meta/op-meta.h"
-#include "simplification.h"
 
 //extern LegionRuntime::Logger::Category log_dp;
 
@@ -43,42 +42,6 @@ struct GraphOptimalViewSerialized {
   size_t total_bytes;
   char data[buffer_size];
 };
-
-struct NodeAssignment {
-  Node node;
-  MachineView view;
-};
-
-struct GraphCostResult {
-  float cost;
-  std::unordered_map<Node, MachineView> views;
-
-  static GraphCostResult invalid();
-
-  bool operator<(GraphCostResult const &other) const;
-
-  friend std::ostream &operator<<(std::ostream &, GraphCostResult const &);
-};
-
-template <typename T>
-T sequence_cost(T const &first, T const &second);
-
-template <typename T>
-T parallel_cost(T const &first, T const &second);
-
-enum class SplitType { SEQUENTIAL, VERTICAL, HORIZONTAL };
-
-struct NonsequenceSplit {
-  SplitType type;
-  int param;
-  bool flip_graphs;
-
-  static NonsequenceSplit sequential();
-  static NonsequenceSplit vertical(int param, bool flip_graphs);
-  static NonsequenceSplit horizontal(int param, bool flip_graphs);
-};
-
-using SequenceSplit = NodeAssignment;
 
 class Graph {
 public:
@@ -145,8 +108,6 @@ public:
   std::unique_ptr<Graph>
       with_output_tensor_reshaped_to(ParallelTensorShape const &shape) const;
 
-  void simplify(SimplificationSettings const &);
-  void simplify_parallel_ops();
 
   static Graph singleton(Node const &);
   bool empty() const;
@@ -154,14 +115,13 @@ public:
   template <typename T>
   T generic_optimal_cost() const;
 
-public:
-  SearchHelper *search;
-  std::unordered_map<Node, std::unordered_set<Edge>> inEdges, outEdges;
-
 private:
   void remove_inverse_parallel_ops();
   void replace_subgraph_with_nonempty(
       std::unordered_set<Node> const &currentNodes, Graph const &replaceWith);
+private:
+  std::unordered_map<Node, std::unordered_set<Edge>> inEdges, outEdges;
+
 };
 
 struct GraphOptimizeResult {

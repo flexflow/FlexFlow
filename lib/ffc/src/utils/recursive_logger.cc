@@ -3,35 +3,16 @@
 
 namespace FlexFlow {
 
-RecursiveLogger::RecursiveLogger(std::string const &category_name) {}
+RecursiveLogger::RecursiveLogger(std::shared_ptr<spdlog::logger> const &logger) 
+  : logger(logger)
+{}
 
-std::ostream &RecursiveLogger::info() {
-  throw NotImplemented();
-  /* Realm::LoggerMessage msg = this->logger.info(); */
-  /* this->print_prefix(msg); */
-  /* return msg; */
+RecursiveLogger::RecursiveLogger(std::string const &logger_name) {
+  this->logger = spdlog::get(logger_name);
 }
 
-std::ostream &RecursiveLogger::debug() {
-  throw NotImplemented();
-  /* Realm::LoggerMessage msg = this->logger.debug(); */
-  /* this->print_prefix(msg); */
-  /* return msg; */
-}
-
-std::ostream &RecursiveLogger::spew() {
-  throw NotImplemented();
-  /* Realm::LoggerMessage msg = this->logger.spew(); */
-  /* this->print_prefix(msg); */
-  /* return msg; */
-}
-
-void RecursiveLogger::print_prefix(std::ostream &msg) const {
-  throw NotImplemented();
-  /* msg << this->depth << " "; */
-  /* for (int i = 0; i < this->depth; i++) { */
-  /*   msg << " "; */
-  /* } */
+std::string RecursiveLogger::get_prefix() const {
+  return std::string(this->depth * 2, ' ');
 }
 
 void RecursiveLogger::enter() {

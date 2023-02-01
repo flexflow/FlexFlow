@@ -3,43 +3,53 @@
 
 namespace FlexFlow {
 
-OperatorType GetOpType::operator()(BatchMatmulParams const &p) const { return OP_BATCHMATMUL; }
-OperatorType GetOpType::operator()(Conv2DParams const &p) const { return OP_CONV2D; }
-OperatorType GetOpType::operator()(ConcatParams const &p) const { return OP_CONCAT; }
-OperatorType GetOpType::operator()(CastParams const &p) const { return OP_CAST; }
-OperatorType GetOpType::operator()(ElementBinaryParams const &p) const { return p.type; }
-OperatorType GetOpType::operator()(ElementUnaryParams const &p) const { return p.op_type; }
-OperatorType GetOpType::operator()(DropoutParams const &p) const { return OP_DROPOUT; }
-OperatorType GetOpType::operator()(EmbeddingParams const &p) const { return OP_EMBEDDING; }
-OperatorType GetOpType::operator()(FlatParams const &p) const { return OP_FLAT; }
-OperatorType GetOpType::operator()(LayerNormParams const &p) const { return OP_LAYERNORM; }
-OperatorType GetOpType::operator()(LinearParams const &p) const { return OP_LINEAR; }
-OperatorType GetOpType::operator()(MultiHeadAttentionParams const &p) const { return OP_DROPOUT; }
-OperatorType GetOpType::operator()(Pool2DParams const &p) const { return OP_POOL2D; }
-OperatorType GetOpType::operator()(ReshapeParams const &p) const { return OP_RESHAPE; }
-OperatorType GetOpType::operator()(SplitParams const &p) const { return OP_SPLIT; }
-OperatorType GetOpType::operator()(SoftmaxParams const &p) const { return OP_SOFTMAX; }
-OperatorType GetOpType::operator()(TransposeParams const &p) const { return OP_TRANSPOSE; }
-OperatorType GetOpType::operator()(RepartitionParams const &p) const { return OP_REPARTITION; }
-OperatorType GetOpType::operator()(ReplicateParams const &p) const { return OP_REPLICATE; }
-OperatorType GetOpType::operator()(ReductionParams const &p) const { return OP_REDUCTION; }
-OperatorType GetOpType::operator()(CombineParams const &p) const { return OP_COMBINE; }
-OperatorType GetOpType::operator()(FusedParallelOpParams const &p) const { return OP_FUSED_PARALLEL; }
+/* OperatorType GetOpType::operator()(BatchMatmulParams const &p) const { return OP_BATCHMATMUL; } */
+/* OperatorType GetOpType::operator()(Conv2DParams const &p) const { return OP_CONV2D; } */
+/* OperatorType GetOpType::operator()(ConcatParams const &p) const { return OP_CONCAT; } */
+/* OperatorType GetOpType::operator()(CastParams const &p) const { return OP_CAST; } */
+/* OperatorType GetOpType::operator()(ElementBinaryParams const &p) const { return p.type; } */
+/* OperatorType GetOpType::operator()(ElementUnaryParams const &p) const { return p.op_type; } */
+/* OperatorType GetOpType::operator()(DropoutParams const &p) const { return OP_DROPOUT; } */
+/* OperatorType GetOpType::operator()(EmbeddingParams const &p) const { return OP_EMBEDDING; } */
+/* OperatorType GetOpType::operator()(FlatParams const &p) const { return OP_FLAT; } */
+/* OperatorType GetOpType::operator()(LayerNormParams const &p) const { return OP_LAYERNORM; } */
+/* OperatorType GetOpType::operator()(LinearParams const &p) const { return OP_LINEAR; } */
+/* OperatorType GetOpType::operator()(MultiHeadAttentionParams const &p) const { return OP_DROPOUT; } */
+/* OperatorType GetOpType::operator()(Pool2DParams const &p) const { return OP_POOL2D; } */
+/* OperatorType GetOpType::operator()(ReshapeParams const &p) const { return OP_RESHAPE; } */
+/* OperatorType GetOpType::operator()(SplitParams const &p) const { return OP_SPLIT; } */
+/* OperatorType GetOpType::operator()(SoftmaxParams const &p) const { return OP_SOFTMAX; } */
+/* OperatorType GetOpType::operator()(TransposeParams const &p) const { return OP_TRANSPOSE; } */
+/* OperatorType GetOpType::operator()(RepartitionParams const &p) const { return OP_REPARTITION; } */
+/* OperatorType GetOpType::operator()(ReplicateParams const &p) const { return OP_REPLICATE; } */
+/* OperatorType GetOpType::operator()(ReductionParams const &p) const { return OP_REDUCTION; } */
+/* OperatorType GetOpType::operator()(CombineParams const &p) const { return OP_COMBINE; } */
+/* OperatorType GetOpType::operator()(FusedParallelOpParams const &p) const { return OP_FUSED_PARALLEL; } */
+
+struct AsOpParams {
+  template <typename T>
+  OpParamsInterface const &operator()(T const &p) {
+    return p;
+  }
+};
                                                           //
-template <>
 OperatorType get_op_type(OperatorParameters const &o) { 
-  return mpark::visit(GetOpType{}, o);
+  return get_op_type(mpark::visit(AsOpParams{}, o));
+}
+
+OperatorType get_op_type(OpParamsInterface const &o) {
+  return o.op_type();
 }
 
 bool is_parallel_op(OperatorParameters const &o) {
   return is_parallel_op(get_op_type(o));
 }
 
-int num_outputs(OperatorParameters const &o) {
-  switch (get_op_type(o)) {
-    case OP_SPLIT:
-  }
-}
+/* int num_outputs(OperatorParameters const &o) { */
+/*   switch (get_op_type(o)) { */
+/*     case OP_SPLIT: */
+/*   } */
+/* } */
 
 //tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
 //  switch (op->op_type) {

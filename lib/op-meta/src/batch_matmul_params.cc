@@ -15,10 +15,7 @@ bool operator<(BatchMatmulParams const &lhs, BatchMatmulParams const &rhs) {
 }
 
 bool BatchMatmulParams::is_valid(
-    std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
-  ParallelTensorShape lhs = input.first;
-  ParallelTensorShape rhs = input.second;
-
+    ParallelTensorShape const &lhs, ParallelTensorShape const &rhs) const {
   if (!lhs.is_valid() || !rhs.is_valid()) {
     return false;
   }

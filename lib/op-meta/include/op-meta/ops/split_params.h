@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-struct SplitParams : private OpParamsInterface {
+struct SplitParams : public OpParamsInterface {
 public:
   bool is_valid(ParallelTensorShape const &) const;
 

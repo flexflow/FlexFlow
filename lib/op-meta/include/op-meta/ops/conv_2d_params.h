@@ -2,20 +2,21 @@
 #define _FLEXFLOW_CONV_2D_PARAMS_H
 
 #include "op-meta/parallel_tensor_shape.h"
-#include "op-meta/ops/op_params.h"
+#include "op-meta/ops/unary_op.h"
 
 namespace FlexFlow {
 
-struct Conv2DParams : OpParamsInterface {
+struct Conv2DParams : public UnaryOpParams {
 public:
-  bool is_valid(ParallelTensorShape const &input) const;
-
   ParallelTensorShape calculate_output_shape(ParallelTensorShape const &input_shape) const;
   ParallelTensorShape calculate_kernel_shape(ParallelTensorShape const &input_shape) const;
   ParallelTensorShape calculate_bias_shape(ParallelTensorShape const &input_shape) const;
 
   using AsConstTuple = std::tuple<int, int, int, int, int, int, int, int, ActiMode, bool>;
   AsConstTuple as_tuple() const;
+
+  bool is_valid(ParallelTensorShape const &input) const;
+  OperatorType op_type() const;
 public:
   int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h,
       padding_w, groups;

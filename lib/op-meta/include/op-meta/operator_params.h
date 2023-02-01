@@ -52,39 +52,8 @@ using OperatorParameters = mp::variant<BatchMatmulParams,
                                        CombineParams,
                                        FusedParallelOpParams>;
 
-struct GetOpType {
-  OperatorType operator()(BatchMatmulParams const &p) const;
-  OperatorType operator()(Conv2DParams const &p) const;
-  OperatorType operator()(ConcatParams const &p) const;
-  OperatorType operator()(CastParams const &p) const;
-  OperatorType operator()(ElementBinaryParams const &p) const;
-  OperatorType operator()(ElementUnaryParams const &p) const;
-  OperatorType operator()(DropoutParams const &p) const;
-  OperatorType operator()(EmbeddingParams const &p) const;
-  OperatorType operator()(FlatParams const &p) const;
-  OperatorType operator()(LayerNormParams const &p) const;
-  OperatorType operator()(LinearParams const &p) const;
-  OperatorType operator()(MultiHeadAttentionParams const &p) const;
-  OperatorType operator()(Pool2DParams const &p) const;
-  OperatorType operator()(ReshapeParams const &p) const;
-  OperatorType operator()(SplitParams const &p) const;
-  OperatorType operator()(SoftmaxParams const &p) const;
-  OperatorType operator()(TransposeParams const &p) const;
-  OperatorType operator()(RepartitionParams const &p) const;
-  OperatorType operator()(ReplicateParams const &p) const;
-  OperatorType operator()(ReductionParams const &p) const;
-  OperatorType operator()(CombineParams const &p) const;
-  OperatorType operator()(FusedParallelOpParams const &p) const;
-};
-
-
-template <typename T>
-OperatorType get_op_type(T const &t) {
-  return GetOpType{}(t);
-};
-
-template <>
 OperatorType get_op_type(OperatorParameters const &);
+OperatorType get_op_type(OpParamsInterface const &);
 
 bool is_parallel_op(OperatorParameters const &);
 

@@ -2,9 +2,28 @@
 #define _FLEXFLOW_FFC_SRC_SEARCH_HELPER_H
 
 #include "graph.h"
+#include "split_types.h"
 
 namespace FlexFlow {
 namespace PCG {
+
+struct GraphCostResult {
+  float cost;
+  std::unordered_map<Node, MachineView> views;
+
+  static GraphCostResult invalid();
+
+  bool operator<(GraphCostResult const &other) const;
+
+  friend std::ostream &operator<<(std::ostream &, GraphCostResult const &);
+};
+
+template <typename T>
+T sequence_cost(T const &first, T const &second);
+
+template <typename T>
+T parallel_cost(T const &first, T const &second);
+
 
 class SearchHelper {
 public:

@@ -8,10 +8,12 @@ namespace FlexFlow {
 
 struct ConcatParams : public OpParamsInterface {
 public:
-  bool is_valid(std::vector<ParallelTensorShape> const &) const;
-
   using AsConstTuple = std::tuple<int>;
   AsConstTuple as_tuple() const;
+
+  int num_outputs(std::vector<ParallelTensorShape> const &) const override;
+  bool is_valid(std::vector<ParallelTensorShape> const &) const override;
+  OperatorType op_type() const override;
 public:
   int axis;
 

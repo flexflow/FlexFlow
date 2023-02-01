@@ -2,15 +2,17 @@
 #define _FLEXFLOW_RESHAPE_PARAMS_H
 
 #include "op-meta/parallel_tensor_shape.h"
+#include "op-meta/ops/unary_op.h"
 
 namespace FlexFlow {
 
-struct ReshapeParams {
+struct ReshapeParams : public UnaryOpParams {
 public:
-  bool is_valid(ParallelTensorShape const &) const;
-
   using AsConstTuple = std::tuple<std::vector<int>>;
   AsConstTuple as_tuple() const;
+
+  bool is_valid(ParallelTensorShape const &) const override;
+  OperatorType op_type() const override;
 public:
   std::vector<int> shape;
 };
