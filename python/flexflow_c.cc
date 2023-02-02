@@ -1314,9 +1314,9 @@ bool flexflow_tensor_get_tensor_int64(flexflow_tensor_t handle_,
 }
 
 bool flexflow_model_get_output_tensor_float(flexflow_model_t model_,
-                                                  flexflow_tensor_t handle_,
-                                                  float *data,
-                                                  bool get_gradients) {
+                                            flexflow_tensor_t handle_,
+                                            float *data,
+                                            bool get_gradients) {
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   return handle->get_output_parallel_tensor<float>(model, data, get_gradients);

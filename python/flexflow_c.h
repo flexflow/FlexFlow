@@ -463,11 +463,11 @@ bool flexflow_tensor_get_tensor_int64(flexflow_tensor_t handle,
                                       flexflow_model_t model,
                                       int64_t *data,
                                       bool get_gradients);
-                                      
+
 bool flexflow_model_get_output_tensor_float(flexflow_model_t model_,
                                             flexflow_tensor_t handle_,
                                             float *data,
-                                            bool get_gradients);                                   
+                                            bool get_gradients);
 
 // -----------------------------------------------------------------------
 // Parameter
