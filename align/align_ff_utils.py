@@ -83,7 +83,6 @@ def save_tensor_ff(tensor_ff: Tensor, ffmodel: FFModel, filepath: str) -> None:
     tensor_np: np.ndarray = tensor_ff.get_model_output_tensor(ffmodel)
     tensor_torch: torch.Tensor = torch.from_numpy(tensor_np)
     ensure_dir_exists(filepath)
-    print(tensor_torch.abs)
     torch.save(tensor_torch, filepath)
 
 

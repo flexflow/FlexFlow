@@ -16,7 +16,7 @@ def run():
     """Checks the ``getitem()`` code path for tensor slicing."""
     attention_mask = gen_tensor(
         (BATCH_SIZE, SEQ_LENGTH),
-        dtype="int64",
+        dtype="float32",
         low=0,
         high=2,
     ).to(DEVICE)

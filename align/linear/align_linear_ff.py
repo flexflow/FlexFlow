@@ -58,14 +58,14 @@ def run():
   linear_bias: Parameter = linear_layer.get_bias_tensor()
 
   # save output data
-  save_tensor_ff(output_tensor, ffmodel, os.path.join(OUT_DIR, "ff_out.pt"))
-  save_tensor_grad_ff(output_tensor, ffmodel, os.path.join(OUT_DIR, "ff_out_grad.pt"))
+#   save_tensor_ff(output_tensor, ffmodel, os.path.join(OUT_DIR, "ff_out.pt"))
+#   save_tensor_grad_ff(output_tensor, ffmodel, os.path.join(OUT_DIR, "ff_out_grad.pt"))
   
-  # save layer data
-  save_param_ff(linear_weight, ffmodel, os.path.join(OUT_DIR, "ff_weight.pt"))
-  save_param_ff(linear_bias, ffmodel, os.path.join(OUT_DIR, "ff_bias.pt"))
-  save_param_grad_ff(linear_weight, ffmodel, os.path.join(OUT_DIR, "ff_weight_grad.pt"))
-  save_param_grad_ff(linear_bias, ffmodel, os.path.join(OUT_DIR, "ff_bias_grad.pt"))
+#   # save layer data
+#   save_param_ff(linear_weight, ffmodel, os.path.join(OUT_DIR, "ff_weight.pt"))
+#   save_param_ff(linear_bias, ffmodel, os.path.join(OUT_DIR, "ff_bias.pt"))
+#   save_param_grad_ff(linear_weight, ffmodel, os.path.join(OUT_DIR, "ff_weight_grad.pt"))
+#   save_param_grad_ff(linear_bias, ffmodel, os.path.join(OUT_DIR, "ff_bias_grad.pt"))
 
 if __name__ == "__main__":
     run()

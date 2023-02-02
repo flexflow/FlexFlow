@@ -17,7 +17,7 @@ def run():
     """Checks the ``getitem()`` code path for tensor slicing."""
     attention_mask = gen_tensor(
         (BATCH_SIZE, SEQ_LENGTH),
-        dtype="int64",
+        dtype="float32",
         low=0,
         high=2,
     )
@@ -30,7 +30,7 @@ def run():
     ffmodel = FFModel(ffconfig)
     attention_mask_tensor = ffmodel.create_tensor(
         attention_mask.shape,
-        DataType.DT_INT64,
+        DataType.DT_FLOAT,
     )
     extended_attention_mask = GetItemNode.slice_tensor(
         ffmodel,

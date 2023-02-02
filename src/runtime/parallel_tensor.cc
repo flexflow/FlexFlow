@@ -74,8 +74,6 @@ bool TensorBase::get_output_parallel_tensor(FFModel const *ff, T *data, bool get
   Op *final_operator = ff->get_final_operator();
   assert(final_operator->numOutputs == 1);
   parallel_tensor = final_operator->outputs[0];
-  fprintf(stderr, "last operator is \n");
-  fprintf(stderr, final_operator->name);
   parallel_tensor->get_tensor<T>(ff, data, get_gradients);
   return true;
 }

@@ -18,3 +18,10 @@ cd FlexFlow
 python -m pytest align/align_test.py::test_embedding
 ```
 to check the alignment between FlexFlow and PyTorch for the `embedding` operator.
+
+For all operator tests, please run
+```
+cd FlexFlow
+./tests/pytorch_alignment.sh
+```
+

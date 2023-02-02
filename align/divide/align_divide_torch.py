@@ -8,7 +8,7 @@ from align_utils import gen_tensor, BATCH_SIZE
 
 assert torch.cuda.is_available(), "Expects at least one GPU"
 DEVICE = torch.device(0)
-OUT_DIR = os.path.join("align", "add", "out")
+OUT_DIR = os.path.join("align", "divide", "out")
 
 def run():
   INPUT_SIZE = 512
@@ -26,13 +26,13 @@ def run():
       (BATCH_SIZE, SEQ_LENGTH, INPUT_SIZE),
       dtype="float32"
   ).to(DEVICE)
-  output = torch.add(
+  output = torch.div(
       input=inp1,
       other=inp2
   ).to(DEVICE)
   output.requires_grad = True
   output.retain_grad()
-  
+
   loss_fn = torch.nn.MSELoss(reduction="mean")
   loss = loss_fn(output, label)
   loss.backward()
