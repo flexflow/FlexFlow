@@ -36,5 +36,6 @@ jobs:
     steps:
       - name: Run Tests
         run: |
+          cd $FF_HOME
           pip3 install pytest
           ../tests/pytorch_alignment.sh

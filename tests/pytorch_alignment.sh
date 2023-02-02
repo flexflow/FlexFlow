@@ -1,5 +1,4 @@
-
-cd "$FF_HOME"
+#! /usr/bin/env bash
 
 #Run operators
 ./align/add/gen_tensors.sh
