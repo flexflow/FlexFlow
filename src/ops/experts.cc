@@ -357,6 +357,35 @@ void Experts::init(FFModel const &ff) {
                          false /*must*/,
                          0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
+  // expert predictions
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  // expert assignment indices
+  launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[1]->region));
+  launcher.add_field(1, FID_DATA);
+  // topk_gate_preds
+  launcher.add_region_requirement(RegionRequirement(inputs[2]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[2]->region));
+  launcher.add_field(2, FID_DATA);
+  for (int i = 0; i < num_experts; i++) {
+    launcher.add_region_requirement(RegionRequirement(outputs[i]->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      outputs[i]->region));
+    launcher.add_field(i + 3, FID_DATA);
+  }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
