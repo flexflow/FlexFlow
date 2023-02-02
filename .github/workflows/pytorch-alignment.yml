@@ -38,4 +38,4 @@ jobs:
         run: |
           cd $FF_HOME
           pip3 install pytest
-          ../tests/pytorch_alignment.sh
+          ./tests/pytorch_alignment.sh
