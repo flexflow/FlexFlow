@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_ELEMENT_BINARY_H
 #define _FLEXFLOW_ELEMENT_BINARY_H
 
-#include "flexflow/layer.h"
+#include "layer.h"
 #include "flexflow/node.h"
-#include "flexflow/operator.h"
-#include "flexflow/ops/element_binary_params.h"
+#include "operator.h"
+#include "op-meta/element_binary_params.h"
 
 namespace FlexFlow {
 

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/batch_matmul.h"
-#include "flexflow/ops/kernels/batch_matmul_kernels.h"
+#include "ops-inc/batch_matmul.h"
+#include "op-impl/batch_matmul_kernels.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {

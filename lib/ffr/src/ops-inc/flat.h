@@ -1,13 +1,13 @@
 #ifndef _FLEXFLOW_FLAT_H
 #define _FLEXFLOW_FLAT_H
 
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
-#include "flexflow/layer.h"
+#include "device.h"
+#include "fftype.h"
+#include "layer.h"
 #include "flexflow/node.h"
-#include "flexflow/op_meta.h"
-#include "flexflow/operator.h"
-#include "flexflow/ops/flat_params.h"
+#include "op_meta.h"
+#include "operator.h"
+#include "op-meta/flat_params.h"
 
 namespace FlexFlow {
 

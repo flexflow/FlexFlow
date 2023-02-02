@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/cache.h"
+#include "ops-inc/cache.h"
 
 namespace FlexFlow {
 

@@ -1,7 +1,7 @@
-#include "flexflow/ops/element_binary.h"
-#include "flexflow/model.h"
-#include "flexflow/ops/kernels/element_binary_kernels.h"
-#include "flexflow/utils/hash_utils.h"
+#include "ops-inc/element_binary.h"
+#include "model.h"
+#include "ops-impl/element_binary_kernels.h"
+#include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {

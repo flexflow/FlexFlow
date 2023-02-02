@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_TRANSPOSE_H_
 #define _FLEXFLOW_TRANSPOSE_H_
 
-#include "flexflow/model.h"
-#include "flexflow/ops/transpose_params.h"
+#include "model.h"
+#include "op-meta/transpose_params.h"
 
 namespace FlexFlow {
 

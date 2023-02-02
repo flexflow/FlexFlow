@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_CONCAT_H
 #define _FLEXFLOW_CONCAT_H
 
-#include "flexflow/layer.h"
+#include "layer.h"
 #include "flexflow/node.h"
-#include "flexflow/operator.h"
-#include "flexflow/ops/concat_params.h"
+#include "operator.h"
+#include "op-meta/concat_params.h"
 
 namespace FlexFlow {
 

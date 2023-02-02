@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_SPLIT_H
 #define _FLEXFLOW_SPLIT_H
 
-#include "flexflow/layer.h"
+#include "layer.h"
 #include "flexflow/node.h"
-#include "flexflow/operator.h"
-#include "flexflow/ops/split_params.h"
+#include "operator.h"
+#include "op-meta/split_params.h"
 
 namespace FlexFlow {
 

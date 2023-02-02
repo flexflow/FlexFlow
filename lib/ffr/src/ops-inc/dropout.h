@@ -1,13 +1,13 @@
 #ifndef _FLEXFLOW_DROPOUT_H
 #define _FLEXFLOW_DROPOUT_H
 
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
-#include "flexflow/layer.h"
+#include "device.h"
+#include "fftype.h"
+#include "layer.h"
 #include "flexflow/node.h"
-#include "flexflow/op_meta.h"
-#include "flexflow/operator.h"
-#include "flexflow/ops/dropout_params.h"
+#include "op_meta.h"
+#include "operator.h"
+#include "op-meta/dropout_params.h"
 
 namespace FlexFlow {
 

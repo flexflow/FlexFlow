@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_AGGREGATE_SPEC_H_
 #define _FLEXFLOW_AGGREGATE_SPEC_H_
 
-#include "flexflow/model.h"
+#include "model.h"
 
 namespace FlexFlow {
 

@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_CACHE_H_
 #define _FLEXFLOW_CACHE_H_
 
-#include "flexflow/model.h"
+#include "model.h"
 
 namespace FlexFlow {
 

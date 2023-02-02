@@ -1,7 +1,7 @@
-#include "flexflow/ops/pool_2d.h"
-#include "flexflow/model.h"
-#include "flexflow/ops/kernels/pool_2d_kernels.h"
-#include "flexflow/utils/hash_utils.h"
+#include "ops-inc/pool_2d.h"
+#include "model.h"
+#include "ops/pool_2d_kernels.h"
+#include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
 using namespace FlexFlow::Kernels::Pool2D;

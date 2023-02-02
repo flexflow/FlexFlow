@@ -1,8 +1,8 @@
-#include "flexflow/ops/conv_2d.h"
-#include "flexflow/layer.h"
-#include "flexflow/model.h"
-#include "flexflow/ops/kernels/conv_2d_kernels.h"
-#include "flexflow/utils/hash_utils.h"
+#include "ops-inc/conv_2d.h"
+#include "layer.h"
+#include "model.h"
+#include "ops-impl/conv_2d_kernels.h"
+#include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 #include "mpark/variant.hpp"
 

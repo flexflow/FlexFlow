@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_BATCH_NORM_H
 #define _FLEXFLOW_BATCH_NORM_H
 
-#include "flexflow/model.h"
+#include "model.h"
 
 namespace FlexFlow {
 

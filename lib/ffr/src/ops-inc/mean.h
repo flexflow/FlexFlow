@@ -1,6 +1,6 @@
 #pragma once
 
-#include "flexflow/model.h"
+#include "model.h"
 
 namespace FlexFlow {
 

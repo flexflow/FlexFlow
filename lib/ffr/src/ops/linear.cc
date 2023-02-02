@@ -1,8 +1,8 @@
-#include "flexflow/ops/linear.h"
-#include "flexflow/layer.h"
-#include "flexflow/model.h"
-#include "flexflow/ops/kernels/linear_kernels.h"
-#include "flexflow/utils/hash_utils.h"
+#include "ops-inc/linear.h"
+#include "layer.h"
+#include "model.h"
+#include "ops-impl/linear_kernels.h"
+#include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {

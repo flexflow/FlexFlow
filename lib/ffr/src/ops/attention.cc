@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/attention.h"
-#include "flexflow/model.h"
+#include "ops-inc/attention.h"
+#include "model.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {

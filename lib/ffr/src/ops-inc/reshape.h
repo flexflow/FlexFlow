@@ -1,13 +1,13 @@
 #ifndef _FLEXFLOW_RESHAPE_H
 #define _FLEXFLOW_RESHAPE_H
 
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
-#include "flexflow/layer.h"
+#include "device.h"
+#include "fftype.h"
+#include "layer.h"
 #include "flexflow/node.h"
-#include "flexflow/op_meta.h"
-#include "flexflow/operator.h"
-#include "flexflow/ops/reshape_params.h"
+#include "op_meta.h"
+#include "operator.h"
+#include "op-meta/reshape_params.h"
 
 namespace FlexFlow {
 

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/mean.h"
+#include "ops-inc/mean.h"
 
 namespace FlexFlow {
 // declare Legion names

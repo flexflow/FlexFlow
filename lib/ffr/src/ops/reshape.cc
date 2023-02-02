@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/reshape.h"
-#include "flexflow/model.h"
-#include "flexflow/ops/kernels/reshape_kernels.h"
-#include "flexflow/utils/hash_utils.h"
+#include "ops-inc/reshape.h"
+#include "model.h"
+#include "ops/reshape_kernels.h"
+#include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/batch_norm.h"
+#include "ops-inc/batch_norm.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {

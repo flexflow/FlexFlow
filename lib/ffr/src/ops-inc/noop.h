@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_NOOP_H
 #define _FLEXFLOW_NOOP_H
 
-#include "flexflow/model.h"
+#include "model.h"
 
 namespace FlexFlow {
 

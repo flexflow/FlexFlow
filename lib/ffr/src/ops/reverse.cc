@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/reverse.h"
+#include "ops-inc/reverse.h"
 
 namespace FlexFlow {
 // declare Legion names
