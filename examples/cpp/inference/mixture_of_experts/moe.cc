@@ -19,6 +19,9 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <iostream>
+#include <cstdlib>
+#include <unistd.h>
 
 using namespace Legion;
 
@@ -100,7 +103,7 @@ void FlexFlow::top_level_task(Task const *task,
   bool poisson_distribution = true;
   double lambda = 25; // average number of request arrivals per second
   int num_requests_per_batch = 5;
-  int num_inflight_batches = 10;
+  int num_inflight_batches = 1;
 
   //-----------------------------------------------------------------
 
@@ -145,7 +148,10 @@ void FlexFlow::top_level_task(Task const *task,
   ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
   DataLoader data_loader(ff, moeConfig, input_pt, label_pt); */
 
-  ff.init_operators();
+  //ff.init_operators();
+  for (int i=0; i< num_inflight_batches; i++) {
+    im.init_operators_inference(i);
+  }
 
   //-----------------------------------------------------------------
 
@@ -164,16 +170,25 @@ void FlexFlow::top_level_task(Task const *task,
   int processed_requests = 0;
   Generator data_generator(
       total_requests, request_tensor_size, poisson_distribution, lambda);
-  while (processed_requests < total_requests) {
-    vector<vector<double>> req = data_generator.get_requests();
-    int iterations = req.size();
-    for (int iter = 0; iter < iterations; iter++) {
-      // data_loader.next_batch(ff);
-      runtime->begin_trace(ctx, 111 /*trace_id*/);
-      im.inference((index++) % num_inflight_batches);
-      runtime->end_trace(ctx, 111 /*trace_id*/);
-    }
-    processed_requests += iterations;
+  // while (processed_requests < total_requests) {
+  //   vector<vector<double>> req = data_generator.get_requests();
+  //   int iterations = req.size();
+  //   for (int iter = 0; iter < iterations; iter++) {
+  //     // data_loader.next_batch(ff);
+  //     runtime->begin_trace(ctx, 111 /*trace_id*/);
+  //     im.inference((index++) % num_inflight_batches);
+  //     runtime->end_trace(ctx, 111 /*trace_id*/);
+  //     printf("just called im.inference((index++) MOD num_inflight_batches)= im.inference(%i)\n", index % num_inflight_batches);
+  //   }
+  //   processed_requests += iterations;
+  // }
+
+  int iterations = 1;
+  for (int iter = 0; iter < iterations; iter++) {
+    runtime->begin_trace(ctx, 111 /*trace_id*/);
+    im.inference((index++) % num_inflight_batches);
+    runtime->end_trace(ctx, 111 /*trace_id*/);
+    printf("just called im.inference((index++) MOD num_inflight_batches)= im.inference(%i)\n", index % num_inflight_batches);
   }
 
   // for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {

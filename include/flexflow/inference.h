@@ -26,6 +26,7 @@ public:
   InferenceManager(FFModel *_model,
                    int max_num_requests_per_batch,
                    int max_num_inflight_batches);
+  void init_operators_inference(int index);
   void compile_model_and_allocate_buffer(void);
   void inference(int index);
 

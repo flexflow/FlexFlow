@@ -39,6 +39,9 @@ public:
                                  std::vector<ParallelTensor> const &inputs);
 
   void init(FFModel const &) override;
+  void init_inference(FFModel const &,
+                     std::vector<ParallelTensor> const &,
+                     std::vector<ParallelTensor> const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   void inference(FFModel const &,

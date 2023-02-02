@@ -32,9 +32,9 @@ struct MoeConfig {
   MoeConfig(void) {
     // MoE layer
     // total number of experts
-    num_exp = 128;
+    num_exp = 4;
     // number of experts in each block of fused experts
-    experts_per_block = 32;
+    experts_per_block = 2;
     // number of experts to route each token to
     num_select = 2;
     alpha = 2.0f;

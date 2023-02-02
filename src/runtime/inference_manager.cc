@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/inference.h"
+#include "flexflow/parallel_ops/parallel_op.h"
 
 namespace FlexFlow {
 
@@ -57,10 +58,12 @@ void InferenceManager::compile_model_and_allocate_buffer(void) {
   }
 }
 
-void InferenceManager::inference(int index) {
+void InferenceManager::init_operators_inference(int index) {
+  printf("init_operators_inference %i\n", index);
   assert(index < max_num_inflight_batches);
   for (size_t o = 0; o < model->operators.size(); o++) {
     Op *op = model->operators[o];
+    printf("operator: %s, num_inputs: %i, num_outputs: %i\n", op->name, op->numInputs, op->numOutputs);
     if (op->op_type == OP_WEIGHT) {
       continue;
     }
@@ -76,6 +79,35 @@ void InferenceManager::inference(int index) {
       assert(tensor_buffer[op->outputs[i]].size() > index);
       outputs[i] = tensor_buffer[op->outputs[i]][index];
     }
+    printf("inputs.size(): %li, outputs.size(): %li\n", inputs.size(), outputs.size());
+    if (op->is_parallel_op()) {
+      ((ParallelOp *)op)->create_input_partition_inference(*model, inputs, outputs);
+    }
+    op->init_inference(*model, inputs, outputs);
+  }
+}
+
+void InferenceManager::inference(int index) {
+  assert(index < max_num_inflight_batches);
+  for (size_t o = 0; o < model->operators.size(); o++) {
+    Op *op = model->operators[o];
+    printf("operator: %s, num_inputs: %i, num_outputs: %i\n", op->name, op->numInputs, op->numOutputs);
+    if (op->op_type == OP_WEIGHT) {
+      continue;
+    }
+    std::vector<ParallelTensor> inputs(op->numInputs);
+    std::vector<ParallelTensor> outputs(op->numOutputs);
+    for (int i = 0; i < op->numInputs; i++) {
+      assert(op->inputs[i] != nullptr);
+      assert(tensor_buffer[op->inputs[i]].size() > index);
+      inputs[i] = tensor_buffer[op->inputs[i]][index];
+    }
+    for (int i = 0; i < op->numOutputs; i++) {
+      assert(op->outputs[i] != nullptr);
+      assert(tensor_buffer[op->outputs[i]].size() > index);
+      outputs[i] = tensor_buffer[op->outputs[i]][index];
+    }
+    printf("calling inference on operator: %s\n", op->name);
     op->inference(*model, inputs, outputs);
   }
 };

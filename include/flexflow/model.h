@@ -760,6 +760,8 @@ public:
                           Legion::Runtime *runtime);
   void reset_metrics();
   void init_operators();
+  void init_operators_inference(std::vector<ParallelTensor> const &batch_inputs,
+                                std::vector<ParallelTensor> const &batch_outputs);
   void prefetch();
   void forward(int seq_length = -1);
   void compute_metrics();

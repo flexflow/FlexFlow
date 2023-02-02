@@ -246,6 +246,69 @@ void ElementBinary::do_inplace_output(void) {
   inplace_a = true;
 }
 
+void ElementBinary::init_inference(FFModel const &ff,
+                                  std::vector<ParallelTensor> const &batch_inputs,
+                                  std::vector<ParallelTensor> const &batch_outputs) {
+  // Check if we have the same oprands
+  has_same_operands = (batch_inputs[0]->region == batch_inputs[1]->region);
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = batch_outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_init(ff, argmap);
+  IndexLauncher launcher(ELEMENTBINARY_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(ElementBinary)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         batch_outputs[0]->machine_view.hash());
+  int rid = 0;
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(rid++, FID_DATA);
+  if (!has_same_operands) {
+    launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      batch_inputs[1]->region));
+    launcher.add_field(rid++, FID_DATA);
+  } else {
+    assert(batch_inputs[0]->part == batch_inputs[1]->part);
+  }
+  if (!inplace_a) {
+    launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      batch_outputs[0]->region));
+    launcher.add_field(rid++, FID_DATA);
+  } else {
+    assert(batch_outputs[0]->part == batch_inputs[0]->part);
+    assert(batch_outputs[0]->region == batch_inputs[0]->region);
+  }
+  // launcher.add_region_requirement(
+  //   RegionRequirement(input_grad_lps[0], 0/*projection id*/,
+  //     WRITE_ONLY, EXCLUSIVE, inputs[0]->region_grad));
+  // launcher.add_field(3, FID_DATA);
+  // if (inputs[0]->region_grad != inputs[1]->region_grad) {
+  //  regions[4](I/O): input1_grad
+  //  launcher.add_region_requirement(
+  //    RegionRequirement(input_grad_lps[1], 0/*projection id*/,
+  //                      WRITE_ONLY, EXCLUSIVE, inputs[1]->region_grad));
+  //  launcher.add_field(4, FID_DATA);
+  //}
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
+}
+
 void ElementBinary::init(FFModel const &ff) {
   // Check if we have the same oprands
   has_same_operands = (inputs[0]->region == inputs[1]->region);

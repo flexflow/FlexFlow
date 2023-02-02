@@ -164,6 +164,52 @@ Group_by::Group_by(FFModel &model,
     : Group_by(
           model, inputs.first, inputs.second, params.n, params.alpha, name) {}
 
+void Group_by::init_inference(FFModel const &ff,
+                            std::vector<ParallelTensor> const &batch_inputs,
+                            std::vector<ParallelTensor> const &batch_outputs) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = batch_outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_init(ff, argmap);
+  IndexLauncher launcher(GROUP_BY_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Group_by)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         batch_outputs[0]->machine_view.hash());
+  // data
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  // assign
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[1]->region));
+  launcher.add_field(1, FID_DATA);
+
+  // output
+  for (int i = 0; i < n; i++) {
+    launcher.add_region_requirement(RegionRequirement(batch_outputs[i]->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      batch_outputs[i]->region));
+    launcher.add_field(i + 2, FID_DATA);
+  }
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
+}  
+
 void Group_by::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;

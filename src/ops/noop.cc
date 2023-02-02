@@ -94,6 +94,84 @@ OpMeta *NoOp::init_task(Task const *task,
   return m;
 }
 
+void NoOp::init_inference(FFModel const &ff,
+                          std::vector<ParallelTensor> const &batch_inputs,
+                          std::vector<ParallelTensor> const &batch_outputs) {
+  parallel_is = batch_outputs[0]->parallel_is;
+  if (op_type == OP_INPUT && batch_outputs[0]->initializer != nullptr) {
+    ConstantInitializer *initializer =
+        (ConstantInitializer *)batch_outputs[0]->initializer;
+    Runtime *runtime = ff.config.lg_hlr;
+    Context ctx = ff.config.lg_ctx;
+    ArgumentMap argmap;
+    IndexLauncher launcher(
+        CONSTANT_INIT_TASK_ID,
+        parallel_is,
+        TaskArgument(initializer, sizeof(ConstantInitializer)),
+        argmap,
+        Predicate::TRUE_PRED,
+        false /*must*/,
+        0 /*mapper_id*/,
+        batch_outputs[0]->machine_view.hash());
+    launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      batch_outputs[0]->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  } else if (op_type == OP_INPUT) {
+    // For OP_INPUT, initialize tensor to zero
+    assert(batch_outputs[0]->region != LogicalRegion::NO_REGION);
+    if (batch_outputs[0]->part == LogicalPartition::NO_PART) {
+      return;
+    }
+    ConstantInitializer *initializer = NULL;
+    if (batch_outputs[0]->data_type == DT_FLOAT) {
+      initializer = new ConstantInitializer(0.0f);
+    } else if (batch_outputs[0]->data_type == DT_INT64) {
+      initializer = new ConstantInitializer((int64_t)0);
+    } else if (batch_outputs[0]->data_type == DT_INT32) {
+      initializer = new ConstantInitializer((int)0);
+    }
+    Runtime *runtime = ff.config.lg_hlr;
+    Context ctx = ff.config.lg_ctx;
+    ArgumentMap argmap;
+    IndexLauncher launcher(
+        CONSTANT_INIT_TASK_ID,
+        parallel_is,
+        TaskArgument(initializer, sizeof(ConstantInitializer)),
+        argmap,
+        Predicate::TRUE_PRED,
+        false /*must*/,
+        0 /*mapper_id*/,
+        batch_outputs[0]->machine_view.hash());
+    launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      batch_outputs[0]->region));
+    launcher.add_field(0, FID_DATA);
+    runtime->execute_index_space(ctx, launcher);
+  } else if (op_type == OP_WEIGHT) {
+    ArgumentMap argmap;
+    Context ctx = ff.config.lg_ctx;
+    Runtime *runtime = ff.config.lg_hlr;
+    set_argumentmap_for_init(ff, argmap);
+    IndexLauncher launcher(NOOP_INIT_TASK_ID,
+                           parallel_is,
+                           TaskArgument(NULL, 0),
+                           argmap,
+                           Predicate::TRUE_PRED,
+                           false /*must*/,
+                           0 /*mapper_id*/,
+                           batch_outputs[0]->machine_view.hash());
+    FutureMap fm = runtime->execute_index_space(ctx, launcher);
+    fm.wait_all_results();
+    set_opmeta_from_futuremap(ff, fm);
+  }
+}
+
 void NoOp::init(FFModel const &ff) {
   parallel_is = outputs[0]->parallel_is;
   if (op_type == OP_INPUT && outputs[0]->initializer != nullptr) {
@@ -175,7 +253,9 @@ void NoOp::forward(FFModel const &ff) {}
 void NoOp::inference(FFModel const &ff,
                      std::vector<ParallelTensor> const &batch_inputs,
                      std::vector<ParallelTensor> const &batch_outputs,
-                     MachineView const *mv) {}
+                     MachineView const *mv) {
+  printf("entering inference()\n");
+                     }
 
 void NoOp::backward(FFModel const &ff) {}
 

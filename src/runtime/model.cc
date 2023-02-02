@@ -2407,6 +2407,14 @@ void FFModel::init_operators() {
   }
 }
 
+void FFModel::init_operators_inference(std::vector<ParallelTensor> const &batch_inputs,
+                                      std::vector<ParallelTensor> const &batch_outputs) {
+  assert(config.computationMode == COMP_MODE_INFERENCE);
+  for (size_t i = 0; i < operators.size(); i++) {
+    operators[i]->init_inference(*this, batch_inputs, batch_outputs);
+  }
+}
+
 void FFModel::forward(int seq_length) {
   iter_config.seq_length = seq_length;
   for (size_t i = 0; i < operators.size(); i++) {
@@ -2925,8 +2933,10 @@ void FFModel::compile(LossType loss_type,
     //   // Output tensor
     //   map_tensor(op->outputs[i], op);
     // }
-    if (op->is_parallel_op()) {
-      ((ParallelOp *)op)->create_input_partition(*this);
+    if (config.computationMode == COMP_MODE_TRAINING) {
+      if (op->is_parallel_op()) {
+        ((ParallelOp *)op)->create_input_partition(*this);
+      }
     }
     // op->map_output_tensors(*this);
   }
