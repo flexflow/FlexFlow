@@ -56,7 +56,9 @@ struct TensorBase {
   template <typename T>
   bool get_tensor(FFModel const *model, T *data, bool get_gradients);
   template <typename T>
-  bool get_output_parallel_tensor(FFModel const *ff, T *data, bool get_gradients);
+  bool get_output_parallel_tensor(FFModel const *ff,
+                                  T *data,
+                                  bool get_gradients);
   // TensorShape get_shape() const;
 private:
   // template <typename T>

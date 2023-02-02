@@ -69,7 +69,9 @@ bool TensorBase::get_tensor(FFModel const *ff, T *data, bool get_gradients) {
 }
 
 template <typename T>
-bool TensorBase::get_output_parallel_tensor(FFModel const *ff, T *data, bool get_gradients) {
+bool TensorBase::get_output_parallel_tensor(FFModel const *ff,
+                                            T *data,
+                                            bool get_gradients) {
   ParallelTensor parallel_tensor = nullptr;
   Op *final_operator = ff->get_final_operator();
   assert(final_operator->numOutputs == 1);
@@ -794,8 +796,8 @@ template bool ParallelTensorBase::get_tensor<int64_t>(FFModel const *ff,
                                                       int64_t *data,
                                                       bool get_gradients);
 
-template bool TensorBase::get_output_parallel_tensor<float>(FFModel const *ff, 
-                                                            float *data, 
-                                                            bool get_gradients);                                                      
+template bool TensorBase::get_output_parallel_tensor<float>(FFModel const *ff,
+                                                            float *data,
+                                                            bool get_gradients);
 
 }; // namespace FlexFlow
