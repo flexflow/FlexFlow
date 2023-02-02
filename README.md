@@ -34,7 +34,7 @@ def top_level_task():
 **More FlexFlow PyTorch examples**: see the [pytorch examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/pytorch).
 
 ## TensorFlow Keras Support
-FlexFlow prioritizes PyTorch compatibility, but also includes frontends for [Tensorflow Keras](https://github.com/flexflow/docs/source/keras.rst) and [ONNX](...) models.
+FlexFlow prioritizes PyTorch compatibility, but also includes frontends for [Tensorflow Keras](./docs/source/keras.rst) and [ONNX](...) models.
 
 ## ONNX Support
 Similar to the PyTorch front-end, FlexFlow also supports training existing ONNX models by loading the models using `flexflow.onnx.model.ONNXModel`.
