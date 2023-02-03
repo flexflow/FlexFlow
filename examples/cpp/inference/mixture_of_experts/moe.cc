@@ -68,7 +68,7 @@ Tensor create_moe(FFModel *model,
 Tensor create_moe_encoder(FFModel *model,
                           MoeConfig const *moeConfig,
                           Tensor const &input) {
-  std::vector<int> axes = {0, 1};
+  std::vector<int> axes = {0, 1, 2};
   Tensor x = input;
   for (int i = 0; i < moeConfig->num_encoder_layers; i++) {
     x = model->layer_norm(
@@ -104,8 +104,9 @@ void FlexFlow::top_level_task(Task const *task,
 
   //-----------------------------------------------------------------
 
-  FFConfig ffConfig;
   MoeConfig moeConfig;
+  FFConfig ffConfig;
+  ffConfig.batchSize = moeConfig.batch_size;
   {
     InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
@@ -120,14 +121,15 @@ void FlexFlow::top_level_task(Task const *task,
 
   Tensor input;
   {
-    int const dims[] = {ffConfig.batchSize, DATA_DIMS};
-    input = ff.create_tensor<2>(dims, DT_FLOAT);
+    int const dims[] = {
+        ffConfig.batchSize, moeConfig.sequence_length, DATA_DIMS};
+    input = ff.create_tensor<3>(dims, DT_FLOAT);
   }
 
   //-----------------------------------------------------------------
 
-  // Tensor t = create_moe_encoder(&ff, &moeConfig, input);
-  Tensor t = create_moe(&ff, &moeConfig, input);
+  Tensor t = create_moe_encoder(&ff, &moeConfig, input);
+  // Tensor t = create_moe(&ff, &moeConfig, input);
   t = ff.dense(t, OUT_DIM, AC_MODE_RELU);
 
   /* InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);
@@ -140,10 +142,10 @@ void FlexFlow::top_level_task(Task const *task,
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
 
   // Data Loader
-  ParallelTensor input_pt, label_pt;
-  ff.get_parallel_tensor_from_tensor(input, input_pt);
-  ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
-  DataLoader data_loader(ff, moeConfig, input_pt, label_pt);
+  // ParallelTensor input_pt, label_pt;
+  // ff.get_parallel_tensor_from_tensor(input, input_pt);
+  // ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
+  // DataLoader data_loader(ff, moeConfig, input_pt, label_pt);
 
   ff.init_operators();
 
@@ -177,12 +179,12 @@ void FlexFlow::top_level_task(Task const *task,
   // }
 
   for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
-    data_loader.reset();
+    // data_loader.reset();
     ff.reset_metrics();
     int iterations = TRAIN_SAMPLES / ffConfig.batchSize;
 
     for (int iter = 0; iter < iterations; iter++) {
-      data_loader.next_batch(ff);
+      // data_loader.next_batch(ff);
       if (epoch > 0) {
         runtime->begin_trace(ctx, 111 /*trace_id*/);
       }
