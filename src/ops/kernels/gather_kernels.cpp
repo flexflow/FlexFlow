@@ -95,6 +95,8 @@ void backward_kernel_wrapper(GatherMeta const *m,
   }
 }
 
+namespace Internal {
+
 template <typename IndexType>
 void forward_kernel(float const *input_ptr,
                     IndexType const *index_ptr,
@@ -126,5 +128,5 @@ void backward_kernel(float const *output_grad_ptr,
 } // namespace Internal
 } // namespace Gather
 } // namespace Kernels
-}
-; // namespace FlexFlow
+
+}; // namespace FlexFlow
