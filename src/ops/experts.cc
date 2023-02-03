@@ -517,16 +517,16 @@ void Experts::forward_task(Task const *task,
   ExpertsMeta const *m = *((ExpertsMeta **)task->local_args);
 
   // get input, indices, topk_gate_preds
-  //AccessorRO<float, 3> const acc_input(regions[0], FID_DATA);
-  //AccessorRO<int, 3> const acc_indices(regions[1], FID_DATA);
-  //AccessorRO<float, 3> const acc_topk_gate_pred(regions[2], FID_DATA);
+  // AccessorRO<float, 3> const acc_input(regions[0], FID_DATA);
+  // AccessorRO<int, 3> const acc_indices(regions[1], FID_DATA);
+  // AccessorRO<float, 3> const acc_topk_gate_pred(regions[2], FID_DATA);
   float const *input_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   int const *indices_ptr = helperGetTensorPointerRO<int>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   float const *topk_gate_pred_ptr = helperGetTensorPointerRO<float>(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  
+
   // Rect<3> rect_input = runtime->get_index_space_domain(
   //     ctx, task->regions[0].region.get_index_space());
   // Rect<3> rect_indices = runtime->get_index_space_domain(
@@ -539,30 +539,34 @@ void Experts::forward_task(Task const *task,
       ctx, task->regions[1].region.get_index_space());
   Domain topk_gate_pred_domain = runtime->get_index_space_domain(
       ctx, task->regions[2].region.get_index_space());
-  
-  int input_dims=input_domain.get_dim();
-  int indices_dims=indices_domain.get_dim();
+
+  int input_dims = input_domain.get_dim();
+  int indices_dims = indices_domain.get_dim();
   int topk_gate_pred_dims = topk_gate_pred_domain.get_dim();
   assert(input_dims == indices_dims);
   assert(indices_dims == topk_gate_pred_dims);
 
-  int replica_dim = input_dims-1;
-  int samples_index = input_dims-2;
+  int replica_dim = input_dims - 1;
+  int samples_index = input_dims - 2;
 
-  coord_t out_dim = (input_domain.hi()[0] - input_domain.lo()[0] + 1) / num_experts;
-  coord_t batch_size = input_domain.hi()[samples_index] - input_domain.lo()[samples_index] + 1;
+  coord_t out_dim =
+      (input_domain.hi()[0] - input_domain.lo()[0] + 1) / num_experts;
+  coord_t batch_size =
+      input_domain.hi()[samples_index] - input_domain.lo()[samples_index] + 1;
   coord_t chosen_experts = indices_domain.hi()[0] - indices_domain.lo()[0];
-  assert(chosen_experts == topk_gate_pred_domain.hi()[0] - topk_gate_pred_domain.lo()[0]);
-  
-  for (int i=1; i<input_dims; i++) {
+  assert(chosen_experts ==
+         topk_gate_pred_domain.hi()[0] - topk_gate_pred_domain.lo()[0]);
+
+  for (int i = 1; i < input_dims; i++) {
     int a = input_domain.hi()[i] - input_domain.lo()[i] + 1;
     int b = indices_domain.hi()[i] - indices_domain.lo()[i] + 1;
     int c = topk_gate_pred_domain.hi()[i] - topk_gate_pred_domain.lo()[i] + 1;
-    assert(a==b && b==c);
+    assert(a == b && b == c);
   }
-  // assert(batch_size == indices_domain.hi[samples_index] - indices_domain.lo[samples_index] + 1);
-  // assert(batch_size ==
-  //        topk_gate_pred_domain.hi[samples_index] - topk_gate_pred_domain.lo[samples_index] + 1);
+  // assert(batch_size == indices_domain.hi[samples_index] -
+  // indices_domain.lo[samples_index] + 1); assert(batch_size ==
+  //        topk_gate_pred_domain.hi[samples_index] -
+  //        topk_gate_pred_domain.lo[samples_index] + 1);
 
   int expert_capacity =
       ceil(alpha * (int)chosen_experts / num_experts * (int)batch_size);
@@ -580,31 +584,33 @@ void Experts::forward_task(Task const *task,
     Domain output_domain = runtime->get_index_space_domain(
         ctx, task->regions[3 + i].region.get_index_space());
     assert((output_domain.hi()[0] - output_domain.lo()[0] + 1) == out_dim);
-    //assert((output_domain.hi[samples_index] - output_domain.lo[samples_index] + 1) == batch_size);
-    for (int j=1; j<input_dims; j++){
+    // assert((output_domain.hi[samples_index] - output_domain.lo[samples_index]
+    // + 1) == batch_size);
+    for (int j = 1; j < input_dims; j++) {
       int a = input_domain.hi()[j] - input_domain.lo()[j] + 1;
       int b = output_domain.hi()[j] - output_domain.lo()[j] + 1;
-      assert(a==b);
+      assert(a == b);
     }
     outputs[i] = helperGetTensorPointerWO<float>(
         regions[3 + i], task->regions[3 + i], FID_DATA, ctx, runtime);
     assert(outputs[i] != nullptr);
   }
 
-  Experts::forward_kernel_wrapper(m,
-                                  //acc_input.ptr(rect_input),
-                                  //acc_indices.ptr(rect_indices),
-                                  //acc_topk_gate_pred.ptr(rect_topk_gate_pred),
-                                  input_ptr,
-                                  indices_ptr,
-                                  topk_gate_pred_ptr,
-                                  outputs,
-                                  num_experts,
-                                  experts_start_idx,
-                                  expert_capacity,
-                                  chosen_experts,
-                                  batch_size,
-                                  out_dim);
+  Experts::forward_kernel_wrapper(
+      m,
+      // acc_input.ptr(rect_input),
+      // acc_indices.ptr(rect_indices),
+      // acc_topk_gate_pred.ptr(rect_topk_gate_pred),
+      input_ptr,
+      indices_ptr,
+      topk_gate_pred_ptr,
+      outputs,
+      num_experts,
+      experts_start_idx,
+      expert_capacity,
+      chosen_experts,
+      batch_size,
+      out_dim);
 }
 
 void Experts::backward(FFModel const &ff) {
