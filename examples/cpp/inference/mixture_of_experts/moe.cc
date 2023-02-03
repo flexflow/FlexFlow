@@ -104,8 +104,9 @@ void FlexFlow::top_level_task(Task const *task,
 
   //-----------------------------------------------------------------
 
-  FFConfig ffConfig;
   MoeConfig moeConfig;
+  FFConfig ffConfig;
+  ffConfig.batchSize = moeConfig.batch_size;
   {
     InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;

@@ -541,6 +541,9 @@ void Experts::forward_task(Task const *task,
     int b = indices_domain.hi()[i] - indices_domain.lo()[i] + 1;
     int c = topk_gate_pred_domain.hi()[i] - topk_gate_pred_domain.lo()[i] + 1;
     assert(a == b && b == c);
+    if (i >= 1 && i < samples_index) {
+      batch_size *= a;
+    }
   }
 
   int expert_capacity =
