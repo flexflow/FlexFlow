@@ -1,14 +1,14 @@
 #ifndef _FLEXFLOW_EMBEDDING_H
 #define _FLEXFLOW_EMBEDDING_H
 
-#include "flexflow/accessor.h"
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
-#include "flexflow/layer.h"
+#include "accessor.h"
+#include "device.h"
+#include "fftype.h"
+#include "layer.h"
 #include "flexflow/node.h"
-#include "flexflow/op_meta.h"
-#include "flexflow/operator.h"
-#include "flexflow/ops/embedding_params.h"
+#include "op_meta.h"
+#include "operator.h"
+#include "op-meta/embedding_params.h"
 
 namespace FlexFlow {
 

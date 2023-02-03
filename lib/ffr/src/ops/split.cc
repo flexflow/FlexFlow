@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/split.h"
-#include "flexflow/model.h"
-#include "flexflow/ops/kernels/split_kernels.h"
-#include "flexflow/utils/hash_utils.h"
+#include "ops-inc/split.h"
+#include "model.h"
+#include "ops-impl/split_kernels.h"
+#include "utils/hash_utils.h"
 
 namespace FlexFlow {
 // declare Legion names

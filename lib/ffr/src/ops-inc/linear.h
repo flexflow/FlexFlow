@@ -2,8 +2,8 @@
 #define _FLEXFLOW_LINEAR_H
 
 #include "flexflow/node.h"
-#include "flexflow/operator.h"
-#include "flexflow/ops/linear_params.h"
+#include "operator.h"
+#include "op-meta/linear_params.h"
 
 namespace FlexFlow {
 

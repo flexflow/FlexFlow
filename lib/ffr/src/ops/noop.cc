@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/noop.h"
-#include "flexflow/utils/hash_utils.h"
+#include "ops-inc/noop.h"
+#include "utils/hash_utils.h"
 
 namespace FlexFlow {
 // declare Legion names

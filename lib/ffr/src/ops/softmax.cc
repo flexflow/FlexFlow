@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/softmax.h"
-#include "flexflow/model.h"
-#include "flexflow/utils/hash_utils.h"
+#include "ops-inc/softmax.h"
+#include "model.h"
+#include "utils/hash_utils.h"
 
 namespace FlexFlow {
 // declare Legion names

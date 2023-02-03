@@ -1,5 +1,5 @@
-#include "flexflow/ops/flat.h"
-#include "flexflow/model.h"
+#include "ops-inc/flat.h"
+#include "model.h"
 
 namespace FlexFlow {
 

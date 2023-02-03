@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/embedding.h"
-#include "flexflow/model.h"
-#include "flexflow/utils/hash_utils.h"
+#include "ops-inc/embedding.h"
+#include "model.h"
+#include "utils/hash_utils.h"
 
 namespace FlexFlow {
 

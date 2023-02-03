@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/groupby.h"
+#include "ops-inc/groupby.h"
 #include <math.h>
 #include <stdio.h>
 
