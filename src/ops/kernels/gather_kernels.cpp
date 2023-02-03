@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/gather.h"
 #include "flexflow/ops/kernels/gather_kernels.h"
+#include "flexflow/ops/gather.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 

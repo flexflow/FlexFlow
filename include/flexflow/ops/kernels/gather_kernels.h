@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_GATHER_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_GATHER_KERNELS_H
 
+#include "flexflow/accessor.h"
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/op_meta.h"
-#include "flexflow/accessor.h"
 
 namespace FlexFlow {
 
