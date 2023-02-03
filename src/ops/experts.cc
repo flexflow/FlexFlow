@@ -57,10 +57,7 @@ Tensor FFModel::experts(Tensor const *inputs,
     assert(inputs[0]->dims[i] == inputs[1]->dims[i]);
     assert(inputs[1]->dims[i] == inputs[2]->dims[i]);
   }
-  // assert(input->num_dims == indices->num_dims);
-  // for (int i = 1; i < indices->num_dims; i++) {
-  //   assert(input->dims[i] == indices->dims[i]);
-  // }
+
   assert(inputs[1]->data_type == DT_INT32 || inputs[1]->data_type == DT_INT64);
 
   assert(experts_num_layers == 1 && "Multi-layer experts not implemented yet.");
@@ -270,19 +267,10 @@ Experts::Experts(FFModel &model,
     assert(inputs[0]->dims[i] == inputs[1]->dims[i]);
     assert(inputs[1]->dims[i] == inputs[2]->dims[i]);
   }
-  // assert(input->num_dims == indices->num_dims);
-  // for (int i = 1; i < indices->num_dims; i++) {
-  //   assert(input->dims[i] == indices->dims[i]);
-  // }
+
   assert(inputs[1]->data_type == DT_INT32 || inputs[1]->data_type == DT_INT64);
   assert(experts_num_layers == 1 && "Multi-layer experts not implemented yet.");
   assert(experts_num_layers == 1 || experts_internal_dim_size > 0);
-
-  // assert(input->num_dims == indices->num_dims);
-  // assert(indices->data_type == DT_INT32 || indices->data_type == DT_INT64);
-  // for (int i = 1; i < indices->num_dims; i++) {
-  //   assert(input->dims[i] == indices->dims[i]);
-  // }
 
   // Assume that we don't parallelize the channel dim of input
   // nor the expert_assigned dim of indices
@@ -517,9 +505,6 @@ void Experts::forward_task(Task const *task,
   ExpertsMeta const *m = *((ExpertsMeta **)task->local_args);
 
   // get input, indices, topk_gate_preds
-  // AccessorRO<float, 3> const acc_input(regions[0], FID_DATA);
-  // AccessorRO<int, 3> const acc_indices(regions[1], FID_DATA);
-  // AccessorRO<float, 3> const acc_topk_gate_pred(regions[2], FID_DATA);
   float const *input_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   int const *indices_ptr = helperGetTensorPointerRO<int>(
@@ -527,12 +512,6 @@ void Experts::forward_task(Task const *task,
   float const *topk_gate_pred_ptr = helperGetTensorPointerRO<float>(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
-  // Rect<3> rect_input = runtime->get_index_space_domain(
-  //     ctx, task->regions[0].region.get_index_space());
-  // Rect<3> rect_indices = runtime->get_index_space_domain(
-  //     ctx, task->regions[1].region.get_index_space());
-  // Rect<3> rect_topk_gate_pred = runtime->get_index_space_domain(
-  //     ctx, task->regions[2].region.get_index_space());
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain indices_domain = runtime->get_index_space_domain(
@@ -563,10 +542,6 @@ void Experts::forward_task(Task const *task,
     int c = topk_gate_pred_domain.hi()[i] - topk_gate_pred_domain.lo()[i] + 1;
     assert(a == b && b == c);
   }
-  // assert(batch_size == indices_domain.hi[samples_index] -
-  // indices_domain.lo[samples_index] + 1); assert(batch_size ==
-  //        topk_gate_pred_domain.hi[samples_index] -
-  //        topk_gate_pred_domain.lo[samples_index] + 1);
 
   int expert_capacity =
       ceil(alpha * (int)chosen_experts / num_experts * (int)batch_size);
@@ -579,13 +554,9 @@ void Experts::forward_task(Task const *task,
 
   float *outputs[num_experts];
   for (int i = 0; i < num_experts; i++) {
-    // Rect<3> rect_output = runtime->get_index_space_domain(
-    //     ctx, task->regions[3 + i].region.get_index_space());
     Domain output_domain = runtime->get_index_space_domain(
         ctx, task->regions[3 + i].region.get_index_space());
     assert((output_domain.hi()[0] - output_domain.lo()[0] + 1) == out_dim);
-    // assert((output_domain.hi[samples_index] - output_domain.lo[samples_index]
-    // + 1) == batch_size);
     for (int j = 1; j < input_dims; j++) {
       int a = input_domain.hi()[j] - input_domain.lo()[j] + 1;
       int b = output_domain.hi()[j] - output_domain.lo()[j] + 1;
@@ -596,21 +567,17 @@ void Experts::forward_task(Task const *task,
     assert(outputs[i] != nullptr);
   }
 
-  Experts::forward_kernel_wrapper(
-      m,
-      // acc_input.ptr(rect_input),
-      // acc_indices.ptr(rect_indices),
-      // acc_topk_gate_pred.ptr(rect_topk_gate_pred),
-      input_ptr,
-      indices_ptr,
-      topk_gate_pred_ptr,
-      outputs,
-      num_experts,
-      experts_start_idx,
-      expert_capacity,
-      chosen_experts,
-      batch_size,
-      out_dim);
+  Experts::forward_kernel_wrapper(m,
+                                  input_ptr,
+                                  indices_ptr,
+                                  topk_gate_pred_ptr,
+                                  outputs,
+                                  num_experts,
+                                  experts_start_idx,
+                                  expert_capacity,
+                                  chosen_experts,
+                                  batch_size,
+                                  out_dim);
 }
 
 void Experts::backward(FFModel const &ff) {
