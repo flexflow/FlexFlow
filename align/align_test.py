@@ -39,35 +39,6 @@ def test_embedding():
     )
 
 
-# def test_layernorm():
-#     out_dir = os.path.join(BASE_DIR, "layernorm", "out")
-#     expand = prepend_dirname_fn(out_dir)
-#     align_tensors(
-#         [
-#             TensorAlignmentData(
-#                 "layernorm_out",
-#                 expand("ff_out.pt"),
-#                 expand("torch_out.pt"),
-#             ),
-#             TensorAlignmentData(
-#                 "layernorm_out_grad",
-#                 expand("ff_out_grad.pt"),
-#                 expand("torch_out_grad.pt"),
-#             ),
-#             TensorAlignmentData(
-#                 "layernorm_weight_grad",
-#                 expand("ff_weight_grad.pt"),
-#                 expand("torch_weight_grad.pt"),
-#             ),
-#             TensorAlignmentData(
-#                 "layernorm_bias_grad",
-#                 expand("ff_bias_grad.pt"),
-#                 expand("torch_bias_grad.pt")
-#             )
-#         ]
-#     )
-
-
 def test_view_embedding():
     out_dir = os.path.join(BASE_DIR, "view_embedding", "out")
     expand = prepend_dirname_fn(out_dir)
@@ -105,33 +76,6 @@ def test_getitem():
         ]
     )
 
-# def test_linear():
-#     out_dir = os.path.join(BASE_DIR, "linear", "out")
-#     expand = prepend_dirname_fn(out_dir)
-#     align_tensors(
-#         [
-#             TensorAlignmentData(
-#                 "linear_out",
-#                 expand("ff_out.pt"),
-#                 expand("torch_out.pt"),
-#             ),
-#             TensorAlignmentData(
-#                 "linear_out_grad",
-#                 expand("ff_out_grad.pt"),
-#                 expand("torch_out_grad.pt"),
-#             ),
-#             TensorAlignmentData(
-#                 "linear_weight_grad",
-#                 expand("ff_weight_grad.pt"),
-#                 expand("torch_weight_grad.pt"),
-#             ),
-#             TensorAlignmentData(
-#                 "linear_bias_grad",
-#                 expand("ff_bias_grad.pt"),
-#                 expand("torch_bias_grad.pt")
-#             )
-#           ]
-#     )
 
 def test_conv2d():
     out_dir = os.path.join(BASE_DIR, "conv2d", "out")
@@ -232,25 +176,6 @@ def test_multiply():
             ),
         ]
     )
-
-# comment because of the probability of dropout
-# def test_dropout():
-#     out_dir = os.path.join(BASE_DIR, "dropout", "out")
-#     expand = prepend_dirname_fn(out_dir)
-#     align_tensors(
-#         [
-#             TensorAlignmentData(
-#                 "dropout_out",
-#                 expand("ff_out.pt"),
-#                 expand("torch_out.pt"),
-#             ),
-#             TensorAlignmentData(
-#                 "dropout_out_grad",
-#                 expand("ff_out_grad.pt"),
-#                 expand("torch_out_grad.pt"),
-#             ),
-#         ]
-#     )
     
 def test_pool2d():
     out_dir = os.path.join(BASE_DIR, "pool2d", "out")
