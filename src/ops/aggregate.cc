@@ -182,9 +182,10 @@ Node Aggregate::deserialize(FFModel &ff,
   return ff.get_or_create_node<Aggregate>(inputs, params);
 }
 
-void Aggregate::init_inference(FFModel const &ff,
-                    std::vector<ParallelTensor> const &batch_inputs,
-                    std::vector<ParallelTensor> const &batch_outputs) {
+void Aggregate::init_inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = batch_outputs[0]->parallel_is;
   ArgumentMap argmap;

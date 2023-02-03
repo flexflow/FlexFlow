@@ -254,7 +254,7 @@ void Linear::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-void Linear::init_inference(FFModel const &ff, 
+void Linear::init_inference(FFModel const &ff,
                             std::vector<ParallelTensor> const &batch_inputs,
                             std::vector<ParallelTensor> const &batch_outputs) {
   assert(check_output_input_weight_same_parallel_is());

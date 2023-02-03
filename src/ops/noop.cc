@@ -24,6 +24,7 @@ using Legion::coord_t;
 using Legion::Domain;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
+using Legion::IndexSpace;
 using Legion::InlineLauncher;
 using Legion::LogicalPartition;
 using Legion::LogicalRegion;
@@ -98,6 +99,7 @@ void NoOp::init_inference(FFModel const &ff,
                           std::vector<ParallelTensor> const &batch_inputs,
                           std::vector<ParallelTensor> const &batch_outputs) {
   parallel_is = batch_outputs[0]->parallel_is;
+  assert(parallel_is != IndexSpace::NO_SPACE);
   if (op_type == OP_INPUT && batch_outputs[0]->initializer != nullptr) {
     ConstantInitializer *initializer =
         (ConstantInitializer *)batch_outputs[0]->initializer;
@@ -113,11 +115,12 @@ void NoOp::init_inference(FFModel const &ff,
         false /*must*/,
         0 /*mapper_id*/,
         batch_outputs[0]->machine_view.hash());
-    launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_outputs[0]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   } else if (op_type == OP_INPUT) {
@@ -146,11 +149,12 @@ void NoOp::init_inference(FFModel const &ff,
         false /*must*/,
         0 /*mapper_id*/,
         batch_outputs[0]->machine_view.hash());
-    launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_outputs[0]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region));
     launcher.add_field(0, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   } else if (op_type == OP_WEIGHT) {
@@ -174,6 +178,7 @@ void NoOp::init_inference(FFModel const &ff,
 
 void NoOp::init(FFModel const &ff) {
   parallel_is = outputs[0]->parallel_is;
+  assert(parallel_is != IndexSpace::NO_SPACE);
   if (op_type == OP_INPUT && outputs[0]->initializer != nullptr) {
     ConstantInitializer *initializer =
         (ConstantInitializer *)outputs[0]->initializer;
@@ -255,7 +260,7 @@ void NoOp::inference(FFModel const &ff,
                      std::vector<ParallelTensor> const &batch_outputs,
                      MachineView const *mv) {
   printf("entering inference()\n");
-                     }
+}
 
 void NoOp::backward(FFModel const &ff) {}
 

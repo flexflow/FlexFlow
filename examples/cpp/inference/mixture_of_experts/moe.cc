@@ -16,11 +16,11 @@
 #include "moe.h"
 #include "data_generator.h"
 #include "flexflow/inference.h"
+#include <cstdlib>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <string>
-#include <iostream>
-#include <cstdlib>
 #include <unistd.h>
 
 using namespace Legion;
@@ -148,8 +148,8 @@ void FlexFlow::top_level_task(Task const *task,
   ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
   DataLoader data_loader(ff, moeConfig, input_pt, label_pt); */
 
-  //ff.init_operators();
-  for (int i=0; i< num_inflight_batches; i++) {
+  // ff.init_operators();
+  for (int i = 0; i < num_inflight_batches; i++) {
     im.init_operators_inference(i);
   }
 
@@ -178,7 +178,8 @@ void FlexFlow::top_level_task(Task const *task,
   //     runtime->begin_trace(ctx, 111 /*trace_id*/);
   //     im.inference((index++) % num_inflight_batches);
   //     runtime->end_trace(ctx, 111 /*trace_id*/);
-  //     printf("just called im.inference((index++) MOD num_inflight_batches)= im.inference(%i)\n", index % num_inflight_batches);
+  //     printf("just called im.inference((index++) MOD num_inflight_batches)=
+  //     im.inference(%i)\n", index % num_inflight_batches);
   //   }
   //   processed_requests += iterations;
   // }
@@ -188,7 +189,9 @@ void FlexFlow::top_level_task(Task const *task,
     runtime->begin_trace(ctx, 111 /*trace_id*/);
     im.inference((index++) % num_inflight_batches);
     runtime->end_trace(ctx, 111 /*trace_id*/);
-    printf("just called im.inference((index++) MOD num_inflight_batches)= im.inference(%i)\n", index % num_inflight_batches);
+    printf("just called im.inference((index++) MOD num_inflight_batches)= "
+           "im.inference(%i)\n",
+           index % num_inflight_batches);
   }
 
   // for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {

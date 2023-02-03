@@ -164,9 +164,10 @@ Group_by::Group_by(FFModel &model,
     : Group_by(
           model, inputs.first, inputs.second, params.n, params.alpha, name) {}
 
-void Group_by::init_inference(FFModel const &ff,
-                            std::vector<ParallelTensor> const &batch_inputs,
-                            std::vector<ParallelTensor> const &batch_outputs) {
+void Group_by::init_inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = batch_outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -198,17 +199,18 @@ void Group_by::init_inference(FFModel const &ff,
 
   // output
   for (int i = 0; i < n; i++) {
-    launcher.add_region_requirement(RegionRequirement(batch_outputs[i]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_outputs[i]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[i]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[i]->region));
     launcher.add_field(i + 2, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
-}  
+}
 
 void Group_by::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());

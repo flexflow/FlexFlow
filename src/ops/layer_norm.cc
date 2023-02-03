@@ -194,9 +194,10 @@ LayerNorm::LayerNorm(FFModel &model,
   return;
 }
 
-void LayerNorm::init_inference(FFModel const &ff,
-                              std::vector<ParallelTensor> const &batch_inputs,
-                              std::vector<ParallelTensor> const &batch_outputs) {
+void LayerNorm::init_inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = batch_outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -226,7 +227,7 @@ void LayerNorm::init_inference(FFModel const &ff,
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
-}  
+}
 
 void LayerNorm::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());

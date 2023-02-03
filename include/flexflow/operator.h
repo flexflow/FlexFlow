@@ -186,8 +186,8 @@ public:
   // Pure virtual functions that must be implemented
   virtual void init(FFModel const &) = 0;
   virtual void init_inference(FFModel const &,
-                     std::vector<ParallelTensor> const &,
-                     std::vector<ParallelTensor> const &) {
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &) {
     assert(false);
   };
   virtual void forward(FFModel const &) = 0;

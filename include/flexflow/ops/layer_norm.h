@@ -25,8 +25,8 @@ public:
             char const *name);
   void init(FFModel const &);
   void init_inference(FFModel const &,
-                     std::vector<ParallelTensor> const &,
-                     std::vector<ParallelTensor> const &) override;
+                      std::vector<ParallelTensor> const &,
+                      std::vector<ParallelTensor> const &) override;
   void forward(FFModel const &);
   void backward(FFModel const &);
   void inference(FFModel const &,

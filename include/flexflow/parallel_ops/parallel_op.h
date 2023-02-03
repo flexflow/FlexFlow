@@ -24,9 +24,10 @@ public:
   virtual void forward(FFModel const &) = 0;
   virtual void backward(FFModel const &) = 0;
   virtual void create_input_partition(FFModel &model) = 0;
-  virtual void create_input_partition_inference(FFModel &model,
-                                                std::vector<ParallelTensor> const &batch_inputs,
-                                                std::vector<ParallelTensor> const &batch_outputs) {
+  virtual void create_input_partition_inference(
+      FFModel &model,
+      std::vector<ParallelTensor> const &batch_inputs,
+      std::vector<ParallelTensor> const &batch_outputs) {
     assert(false);
   }
   void print_layer(FFModel const &model){};
@@ -39,7 +40,8 @@ public:
 
 public:
   Legion::LogicalPartition input_lp, output_grad_lp;
-  std::unordered_map<ParallelTensor, Legion::LogicalPartition> inference_input_lps;
+  std::unordered_map<ParallelTensor, Legion::LogicalPartition>
+      inference_input_lps;
 };
 
 }; // namespace FlexFlow

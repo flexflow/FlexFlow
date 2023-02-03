@@ -24,13 +24,14 @@ public:
               Input const input,
               char const *name = nullptr);
   void create_input_partition(FFModel &model) override;
-  void create_input_partition_inference(FFModel &model,
-                                        std::vector<ParallelTensor> const &batch_inputs,
-                                        std::vector<ParallelTensor> const &batch_outputs) override;
+  void create_input_partition_inference(
+      FFModel &model,
+      std::vector<ParallelTensor> const &batch_inputs,
+      std::vector<ParallelTensor> const &batch_outputs) override;
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
-                     std::vector<ParallelTensor> const &,
-                     std::vector<ParallelTensor> const &) override;
+                      std::vector<ParallelTensor> const &,
+                      std::vector<ParallelTensor> const &) override;
   void forward(FFModel const &) override;
   void inference(FFModel const &,
                  std::vector<ParallelTensor> const &,

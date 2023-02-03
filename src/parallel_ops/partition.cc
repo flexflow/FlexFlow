@@ -101,9 +101,10 @@ OpMeta *Repartition::init_task(Task const *task,
   return nullptr;
 }
 
-void Repartition::init_inference(FFModel const &ff,
-                                std::vector<ParallelTensor> const &batch_inputs,
-                                std::vector<ParallelTensor> const &batch_outputs) {
+void Repartition::init_inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs) {
   printf("Entering Repartition::init_inference\n");
   ArgumentMap argmap;
   parallel_is = batch_outputs[0]->parallel_is;
@@ -119,9 +120,14 @@ void Repartition::init_inference(FFModel const &ff,
                          false /*must*/,
                          0 /*mapper_id*/,
                          batch_outputs[0]->machine_view.hash());
-  assert(inference_input_lps.find(batch_inputs[0]) != inference_input_lps.end());
-  launcher.add_region_requirement(RegionRequirement(
-      inference_input_lps[batch_inputs[0]], 0 /*projection id*/, READ_ONLY, EXCLUSIVE, batch_inputs[0]->region));
+  assert(inference_input_lps.find(batch_inputs[0]) !=
+         inference_input_lps.end());
+  launcher.add_region_requirement(
+      RegionRequirement(inference_input_lps[batch_inputs[0]],
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
@@ -171,16 +177,16 @@ void Repartition::create_input_partition(FFModel &ff) {
                                inputs[0]->region,
                                input_lp);
   ff.create_disjoint_partition(inputs[0]->num_dims,
-                                inputs[0]->dims,
-                                inputs[0]->parallel_is,
-                                outputs[0]->region_grad,
-                                output_grad_lp);
-  
+                               inputs[0]->dims,
+                               inputs[0]->parallel_is,
+                               outputs[0]->region_grad,
+                               output_grad_lp);
 }
 
-void Repartition::create_input_partition_inference( FFModel &ff,
-                                                    std::vector<ParallelTensor> const &batch_inputs,
-                                                    std::vector<ParallelTensor> const &batch_outputs) {
+void Repartition::create_input_partition_inference(
+    FFModel &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs) {
   assert(ff.config.computationMode == COMP_MODE_INFERENCE);
   assert(batch_outputs[0]->part != LogicalPartition::NO_PART);
   assert(batch_inputs[0]->part != LogicalPartition::NO_PART);

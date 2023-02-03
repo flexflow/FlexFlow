@@ -246,9 +246,10 @@ void ElementBinary::do_inplace_output(void) {
   inplace_a = true;
 }
 
-void ElementBinary::init_inference(FFModel const &ff,
-                                  std::vector<ParallelTensor> const &batch_inputs,
-                                  std::vector<ParallelTensor> const &batch_outputs) {
+void ElementBinary::init_inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs) {
   // Check if we have the same oprands
   has_same_operands = (batch_inputs[0]->region == batch_inputs[1]->region);
   assert(check_output_input_weight_same_parallel_is());
@@ -283,11 +284,12 @@ void ElementBinary::init_inference(FFModel const &ff,
     assert(batch_inputs[0]->part == batch_inputs[1]->part);
   }
   if (!inplace_a) {
-    launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_outputs[0]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region));
     launcher.add_field(rid++, FID_DATA);
   } else {
     assert(batch_outputs[0]->part == batch_inputs[0]->part);

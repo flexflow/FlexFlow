@@ -116,8 +116,8 @@ Softmax::Softmax(FFModel &model,
     : Softmax(model, input, params.dim, name) {}
 
 void Softmax::init_inference(FFModel const &ff,
-                            std::vector<ParallelTensor> const &batch_inputs,
-                            std::vector<ParallelTensor> const &batch_outputs) {
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = batch_outputs[0]->parallel_is;
   ArgumentMap argmap;
