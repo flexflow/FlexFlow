@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/gather.h"
+#include "flexflow/ops/kernels/gather_kernels.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {
@@ -34,6 +35,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
+
+using namespace FlexFlow::Kernels::Gather;
 
 bool operator==(GatherParams const &lhs, GatherParams const &rhs) {
   return lhs.legion_dim == rhs.legion_dim;

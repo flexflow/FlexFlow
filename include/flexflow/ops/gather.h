@@ -6,16 +6,6 @@
 
 namespace FlexFlow {
 
-class Gather;
-
-class GatherMeta : public OpMeta {
-public:
-  GatherMeta(FFHandler handler, Gather const *gather);
-
-public:
-  int legion_dim;
-};
-
 class Gather : public Op {
 public:
   using Params = GatherParams;
@@ -53,30 +43,6 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  template <typename IndexType>
-  static void forward_kernel(float const *input_ptr,
-                             IndexType const *index_ptr,
-                             float *output_ptr,
-                             Legion::coord_t output_size,
-                             Legion::coord_t stride,
-                             Legion::coord_t dim_size,
-                             ffStream_t stream);
-  static void forward_kernel_wrapper(GatherMeta const *m,
-                                     GenericTensorAccessorR const &input,
-                                     GenericTensorAccessorR const &index,
-                                     GenericTensorAccessorW const &output);
-  template <typename IndexType>
-  static void backward_kernel(float const *output_grad_ptr,
-                              IndexType const *index_ptr,
-                              float *input_grad_ptr,
-                              Legion::coord_t output_size,
-                              Legion::coord_t stride,
-                              Legion::coord_t dim_size,
-                              ffStream_t stream);
-  static void backward_kernel_wrapper(GatherMeta const *m,
-                                      GenericTensorAccessorR const &output_grad,
-                                      GenericTensorAccessorR const &index,
-                                      GenericTensorAccessorW const &input_grad);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
