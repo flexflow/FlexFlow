@@ -45,7 +45,7 @@ struct MoeConfig {
     // Encoder layer
     num_attention_heads = 16;
     attention_kdim = attention_vdim = hidden_size / num_attention_heads;
-    num_encoder_layers = 1; // 
+    num_encoder_layers = 1; //
   }
   // MoE layer
   int num_exp;
