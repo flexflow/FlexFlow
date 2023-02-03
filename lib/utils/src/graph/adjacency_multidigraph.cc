@@ -11,7 +11,8 @@ Node AdjacencyMultiDiGraph::add_node() {
 }
 
 void AdjacencyMultiDiGraph::add_edge(Edge const &e) {
-  this->adjacency.at(e.src).at(e.dst)[e.srcIdx].insert(e.dstIdx);
+  this->adjacency.at(e.dst);
+  this->adjacency.at(e.src)[e.dst][e.srcIdx].insert(e.dstIdx);
 }
 
 std::unordered_set<Edge> AdjacencyMultiDiGraph::query_edges(EdgeQuery const &q) const {
@@ -42,7 +43,9 @@ std::unordered_set<Edge> AdjacencyMultiDiGraph::query_edges(EdgeQuery const &q) 
 std::unordered_set<Node> AdjacencyMultiDiGraph::query_nodes(NodeQuery const &query) const {
   std::unordered_set<Node> result;
   for (auto const &kv : this->adjacency) {
-    result.insert(kv.first);
+    if (!query.nodes.has_value() || query.nodes->find(kv.first) != query.nodes->end()) {
+      result.insert(kv.first);
+    }
   }
   return result;
 }

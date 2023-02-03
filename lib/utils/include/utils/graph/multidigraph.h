@@ -10,6 +10,9 @@ namespace utils {
 namespace graph {
 namespace multidigraph {
 
+using Node = graph::Node;
+using NodeQuery = graph::NodeQuery;
+
 struct Edge {
 public:
   Edge() = delete;
@@ -20,10 +23,14 @@ public:
 
   using AsConstTuple = std::tuple<Node, Node, std::size_t, std::size_t>;
   AsConstTuple as_tuple() const;
+
+  std::string to_string() const;
 public:
   Node src, dst;
   std::size_t srcIdx, dstIdx;
 };
+std::ostream &operator<<(std::ostream &, Edge const &);
+
 }
 }
 }
@@ -45,18 +52,36 @@ namespace multidigraph {
 struct EdgeQuery {
   tl::optional<std::unordered_set<Node>> srcs, dsts;
   tl::optional<std::unordered_set<std::size_t>> srcIdxs, dstIdxs;
+
+  EdgeQuery with_src_nodes(std::unordered_set<Node> const &) const;
+  EdgeQuery with_src_node(Node const &) const;
+  EdgeQuery with_dst_nodes(std::unordered_set<Node> const &) const;
+  EdgeQuery with_dst_node(Node const &) const;
+  EdgeQuery with_src_idxs(std::unordered_set<std::size_t> const &) const;
+  EdgeQuery with_src_idx(std::size_t) const;
+  EdgeQuery with_dst_idxs(std::unordered_set<std::size_t> const &) const;
+  EdgeQuery with_dst_idx(std::size_t) const;
+
+  static EdgeQuery all();
 };
 
-struct IMultiDiGraph {
-  virtual Node add_node() = 0;
-  virtual void add_edge(Edge const &) = 0;
+struct IMultiDiGraphView {
+  using Edge = multidigraph::Edge;
+  using EdgeQuery = multidigraph::EdgeQuery;
+
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
   virtual std::unordered_set<Node> query_nodes(NodeQuery const &) const = 0;
+};
+
+struct IMultiDiGraph : public IMultiDiGraphView {
+  virtual Node add_node() = 0;
+  virtual void add_edge(Edge const &) = 0;
 };
 
 }
 
 using IMultiDiGraph = multidigraph::IMultiDiGraph;
+using IMultiDiGraphView = multidigraph::IMultiDiGraphView;
 
 }
 }

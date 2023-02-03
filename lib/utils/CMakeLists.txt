@@ -21,6 +21,7 @@ target_include_directories(
 target_link_libraries(
   ${project_target}
   optional
+  mpark_variant
 )
 set_target_properties(
   ${project_target} 

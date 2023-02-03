@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_UTILS_ADJACENCY_GRAPH_H
-#define _FLEXFLOW_UTILS_ADJACENCY_GRAPH_H 
+#ifndef _FLEXFLOW_UTILS_ADJACENCY_MULTIGRAPH_H
+#define _FLEXFLOW_UTILS_ADJACENCY_MULTIGRAPH_H 
 
 #include "multidigraph.h"
 #include <unordered_map>

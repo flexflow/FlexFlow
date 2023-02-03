@@ -11,22 +11,26 @@ namespace FlexFlow {
 namespace utils {
 namespace graph {
 
-std::unordered_set<Node> get_nodes(IMultiDiGraph const &);
-std::unordered_set<multidigraph::Edge> get_edges(IMultiDiGraph const &);
-std::unordered_set<digraph::Edge> get_edge(IDiGraph const &);
-std::unordered_set<undirected::Edge> get_edge(IUndirectedGraph const &);
+std::unordered_set<Node> get_nodes(IMultiDiGraphView const &);
 
-std::unordered_set<multidigraph::Edge> get_incoming_edges(IMultiDiGraph const &);
-std::unordered_set<digraph::Edge> get_incoming_edges(IDiGraph const &);
-std::unordered_set<undirected::Edge> get_incoming_edges(IUndirectedGraph const &);
+std::unordered_set<multidigraph::Edge> get_edges(IMultiDiGraphView const &);
+std::unordered_set<digraph::Edge> get_edges(IDiGraphView const &);
+std::unordered_set<undirected::Edge> get_edges(IUndirectedGraphView const &);
 
-std::unordered_set<Node> get_predecessors(IMultiDiGraph const &);
-std::unordered_set<Node> get_predecessors(IDiGraph const &);
+std::unordered_set<multidigraph::Edge> get_incoming_edges(IMultiDiGraphView const &, std::unordered_set<Node> const &);
+std::unordered_set<digraph::Edge> get_incoming_edges(IDiGraphView const &, std::unordered_set<Node> const &);
+std::unordered_set<undirected::Edge> get_incoming_edges(IUndirectedGraphView const &, std::unordered_set<Node> const &);
 
-std::vector<Node> topo_sort(IMultiDiGraph const &);
-std::vector<Node> topo_sort(IDiGraph const &);
+std::unordered_map<Node, std::unordered_set<Node>> get_predecessors(IMultiDiGraphView const &, std::unordered_set<Node> const &);
+std::unordered_set<Node, std::unordered_set<Node>> get_predecessors(IDiGraphView const &);
 
-std::unordered_map<Node, std::unordered_set<std::size_t>> dominators(IMultiDiGraph const &);
+bool is_acyclic(IMultiDiGraphView const &, std::unordered_set<Node> const &);
+bool is_acyclic(IDiGraphView const &);
+
+std::vector<Node> topo_sort(IMultiDiGraphView const &);
+std::vector<Node> topo_sort(IDiGraphView const &);
+
+std::unordered_map<Node, std::unordered_set<std::size_t>> dominators(IMultiDiGraphView const &);
 
 }
 }

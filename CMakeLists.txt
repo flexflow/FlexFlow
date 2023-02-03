@@ -28,6 +28,7 @@ include(spdlog)
 include(variant)
 include(doctest)
 include(CTest)
+#include(gtest)
 #include(fmt)
 
 # TODO @lockshaw remove me

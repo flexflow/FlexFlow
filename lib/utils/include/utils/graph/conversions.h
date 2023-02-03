@@ -7,6 +7,7 @@
 #include <memory>
 #include <type_traits>
 #include <unordered_map>
+#include "mpark/variant.hpp"
 
 namespace FlexFlow {
 namespace utils {
@@ -44,9 +45,10 @@ Undirected to_undirected(IDiGraph const &directed) {
   return undirected;
 }
 
-struct UndirectedGraphViewFromDirected : public IUndirectedGraphView {
+struct ViewDiGraphAsUndirectedGraph : public IUndirectedGraphView {
 public:
-  explicit UndirectedGraphViewFromDirected(std::shared_ptr<IDiGraphView> const &);
+  explicit ViewDiGraphAsUndirectedGraph(IDiGraphView const &);
+  explicit ViewDiGraphAsUndirectedGraph(std::shared_ptr<IDiGraphView> const &);
 
   std::unordered_set<undirected::Edge> query_edges(undirected::EdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
@@ -54,7 +56,34 @@ private:
   std::shared_ptr<IDiGraphView> directed;
 };
 
-UndirectedGraphViewFromDirected view_undirected(std::shared_ptr<IDiGraph> const &directed);
+struct ViewDiGraphAsMultiDiGraph : public IMultiDiGraphView {
+public:
+  explicit ViewDiGraphAsMultiDiGraph(IDiGraphView const &);
+  explicit ViewDiGraphAsMultiDiGraph(std::shared_ptr<IDiGraphView> const &);
+
+  std::unordered_set<multidigraph::Edge> query_edges(multidigraph::EdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+private:
+  std::shared_ptr<IDiGraphView> directed;
+};
+
+struct ViewMultiDiGraphAsDiGraph : public IDiGraphView {
+public:
+  explicit ViewMultiDiGraphAsDiGraph(IMultiDiGraphView const &);
+  explicit ViewMultiDiGraphAsDiGraph(std::shared_ptr<IMultiDiGraphView> const &);
+
+  std::unordered_set<digraph::Edge> query_edges(digraph::EdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+private:
+  mpark::variant<std::shared_ptr<IDiGraphView>, IDiGraphView const *> directed;
+};
+
+ViewDiGraphAsUndirectedGraph unsafe_view_as_undirected(IDiGraphView const &directed);
+ViewDiGraphAsUndirectedGraph view_as_undirected(std::shared_ptr<IDiGraph> const &directed);
+ViewDiGraphAsMultiDiGraph unsafe_view_as_multidigraph(IDiGraphView const &directed);
+ViewDiGraphAsMultiDiGraph view_as_multidigraph(std::shared_ptr<IDiGraph> const &directed);
+ViewMultiDiGraphAsDiGraph unsafe_view_as_digraph(IMultiDiGraph const &multidigraph);
+ViewMultiDiGraphAsDiGraph view_as_digraph(std::shared_ptr<IMultiDiGraph> const &multidigraph);
 
 }
 }
