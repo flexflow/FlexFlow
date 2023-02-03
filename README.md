@@ -33,13 +33,8 @@ def top_level_task():
 
 **More FlexFlow PyTorch examples**: see the [pytorch examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/pytorch).
 
-## TensorFlow Keras Support
+## TensorFlow Keras and ONNX Support
 FlexFlow prioritizes PyTorch compatibility, but also includes frontends for [Tensorflow Keras](./docs/source/keras.rst) and [ONNX](./docs/source/onnx.rst) models.
-
-## ONNX Support
-Similar to the PyTorch front-end, FlexFlow also supports training existing ONNX models by loading the models using `flexflow.onnx.model.ONNXModel`.
-
-**More FlexFlow ONNX examples**: see the [ONNX examples folder](https://github.com/flexflow/FlexFlow/tree/master/examples/python/onnx).
 
 ## C++ Interface
 For users that prefer to program in C/C++. FlexFlow supports a C++ program inference that is equivalent to its Python APIs.
