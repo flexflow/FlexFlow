@@ -29,6 +29,7 @@ jobs:
   cmake-build:
     name: Build FlexFlow with CMake
     runs-on: ubuntu-20.04
+    shell: bash -l {0} # required to use an activated conda environment
     strategy:
       matrix:
         gpu_backend: ["cuda", "hip_rocm"]
@@ -61,7 +62,6 @@ jobs:
           auto-activate-base: false
 
       - name: Build FlexFlow
-        shell: bash -l {0} # required to use an activated conda environment
         run: |
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
@@ -81,7 +81,6 @@ jobs:
           make -j $n_build_cores
 
       - name: Install FlexFlow
-        shell: bash -l {0} # required to use an activated conda environment
         run: |
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
