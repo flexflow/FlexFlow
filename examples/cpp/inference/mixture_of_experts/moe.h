@@ -40,10 +40,12 @@ struct MoeConfig {
     alpha = 2.0f;
     lambda = 0.04f;
     hidden_size = DATA_DIMS;
+    batch_size = 32;
+    sequence_length = 10;
     // Encoder layer
     num_attention_heads = 16;
     attention_kdim = attention_vdim = hidden_size / num_attention_heads;
-    num_encoder_layers = 6;
+    num_encoder_layers = 1; //
   }
   // MoE layer
   int num_exp;
@@ -52,6 +54,8 @@ struct MoeConfig {
   float alpha;  // factor overhead tensor size for imbalance
   float lambda; // multiplier for load balance term
   int hidden_size;
+  int batch_size;
+  int sequence_length;
   // Encoder layer
   int num_attention_heads;
   int attention_kdim;

@@ -71,7 +71,7 @@ Tensor create_moe(FFModel *model,
 Tensor create_moe_encoder(FFModel *model,
                           MoeConfig const *moeConfig,
                           Tensor const &input) {
-  std::vector<int> axes = {0, 1};
+  std::vector<int> axes = {0, 1, 2};
   Tensor x = input;
   for (int i = 0; i < moeConfig->num_encoder_layers; i++) {
     x = model->layer_norm(
@@ -107,8 +107,9 @@ void FlexFlow::top_level_task(Task const *task,
 
   //-----------------------------------------------------------------
 
-  FFConfig ffConfig;
   MoeConfig moeConfig;
+  FFConfig ffConfig;
+  ffConfig.batchSize = moeConfig.batch_size;
   {
     InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
@@ -123,14 +124,15 @@ void FlexFlow::top_level_task(Task const *task,
 
   Tensor input;
   {
-    int const dims[] = {ffConfig.batchSize, DATA_DIMS};
-    input = ff.create_tensor<2>(dims, DT_FLOAT);
+    int const dims[] = {
+        ffConfig.batchSize, moeConfig.sequence_length, DATA_DIMS};
+    input = ff.create_tensor<3>(dims, DT_FLOAT);
   }
 
   //-----------------------------------------------------------------
 
-  // Tensor t = create_moe_encoder(&ff, &moeConfig, input);
-  Tensor t = create_moe(&ff, &moeConfig, input);
+  Tensor t = create_moe_encoder(&ff, &moeConfig, input);
+  // Tensor t = create_moe(&ff, &moeConfig, input);
   t = ff.dense(t, OUT_DIM, AC_MODE_RELU);
 
   InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);
@@ -160,6 +162,7 @@ void FlexFlow::top_level_task(Task const *task,
   int processed_requests = 0;
   Generator data_generator(
       total_requests, request_tensor_size, poisson_distribution, lambda);
+  data_loader.reset();
   while (processed_requests < total_requests) {
     vector<vector<double>> req = data_generator.get_requests();
     int iterations = req.size();
