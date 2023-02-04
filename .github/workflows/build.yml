@@ -29,7 +29,9 @@ jobs:
   cmake-build:
     name: Build FlexFlow with CMake
     runs-on: ubuntu-20.04
-    shell: bash -l {0} # required to use an activated conda environment
+    defaults:
+      run:
+        shell: bash -l {0} # required to use an activated conda environment
     strategy:
       matrix:
         gpu_backend: ["cuda", "hip_rocm"]
@@ -115,7 +117,9 @@ jobs:
   makefile-build:
     name: Build FlexFlow with the Makefile
     runs-on: ubuntu-20.04
-    shell: bash -l {0} # required to use an activated conda environment
+    defaults:
+      run:
+        shell: bash -l {0} # required to use an activated conda environment
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
