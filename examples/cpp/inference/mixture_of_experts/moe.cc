@@ -162,7 +162,7 @@ void FlexFlow::top_level_task(Task const *task,
   int processed_requests = 0;
   Generator data_generator(
       total_requests, request_tensor_size, poisson_distribution, lambda);
-  //data_loader.reset();
+  // data_loader.reset();
   while (processed_requests < total_requests) {
     vector<vector<double>> req = data_generator.get_requests();
     int iterations = req.size();
