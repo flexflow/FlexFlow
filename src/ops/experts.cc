@@ -437,7 +437,8 @@ OpMeta *Experts::init_task(Task const *task,
                            Runtime *runtime) {
   Experts const *exp = (Experts *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  ExpertsMeta *m = new ExpertsMeta(handle, exp->num_experts);
+  ExpertsMeta *m = new ExpertsMeta(
+      handle, exp->num_experts, exp->experts_start_idx, exp->alpha);
   m->profiling = exp->profiling;
   return m;
 }
@@ -450,7 +451,7 @@ void Experts::forward(FFModel const &ff) {
   set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(EXPERTS_FWD_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(Experts)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -502,7 +503,7 @@ void Experts::inference(FFModel const &ff,
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   IndexLauncher launcher(EXPERTS_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(Experts)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -550,12 +551,6 @@ void Experts::inference_task(Task const *task,
   assert(regions.size() == task->regions.size());
   int num_experts = regions.size() - 3;
 
-  Experts const *exp = (Experts *)task->args;
-  assert(exp != nullptr);
-  assert(exp->num_experts == num_experts);
-  float alpha = exp->alpha;
-  int experts_start_idx = exp->experts_start_idx;
-
   ExpertsMeta const *m = *((ExpertsMeta **)task->local_args);
 
   // get input, indices, topk_gate_preds
@@ -600,9 +595,6 @@ void Experts::inference_task(Task const *task,
     }
   }
 
-  int expert_capacity =
-      ceil(alpha * (int)chosen_experts / num_experts * (int)batch_size);
-
   assert(batch_size <= MAX_BATCH_SIZE &&
          "batch size exceeds MAX_BATCH_SIZE defined in experts.h");
   assert(
@@ -629,9 +621,6 @@ void Experts::inference_task(Task const *task,
                                   indices_ptr,
                                   topk_gate_pred_ptr,
                                   outputs,
-                                  num_experts,
-                                  experts_start_idx,
-                                  expert_capacity,
                                   chosen_experts,
                                   batch_size,
                                   out_dim);
