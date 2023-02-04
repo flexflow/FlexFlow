@@ -27,6 +27,7 @@ jobs:
   pip-install-flexflow:
     name: Install FlexFlow with pip
     runs-on: ubuntu-20.04
+    shell: bash -l {0} # required to use an activated conda environment
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
@@ -55,13 +56,11 @@ jobs:
           auto-activate-base: false
 
       - name: Build and Install FlexFlow
-        shell: bash -l {0} # required to use an activated conda environment
         run: |
           export FF_HOME=$(pwd)
           export FF_CUDA_ARCH=70
           pip install . --verbose
 
       - name: Check availability of Python flexflow.core module
-        shell: bash -l {0} # required to use an activated conda environment
         run: |
           python -c "import flexflow.core; exit()"
