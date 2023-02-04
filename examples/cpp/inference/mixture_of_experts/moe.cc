@@ -170,28 +170,16 @@ void FlexFlow::top_level_task(Task const *task,
   int processed_requests = 0;
   Generator data_generator(
       total_requests, request_tensor_size, poisson_distribution, lambda);
-  // while (processed_requests < total_requests) {
-  //   vector<vector<double>> req = data_generator.get_requests();
-  //   int iterations = req.size();
-  //   for (int iter = 0; iter < iterations; iter++) {
-  //     // data_loader.next_batch(ff);
-  //     runtime->begin_trace(ctx, 111 /*trace_id*/);
-  //     im.inference((index++) % num_inflight_batches);
-  //     runtime->end_trace(ctx, 111 /*trace_id*/);
-  //     printf("just called im.inference((index++) MOD num_inflight_batches)=
-  //     im.inference(%i)\n", index % num_inflight_batches);
-  //   }
-  //   processed_requests += iterations;
-  // }
-
-  int iterations = 1;
-  for (int iter = 0; iter < iterations; iter++) {
-    runtime->begin_trace(ctx, 111 /*trace_id*/);
-    im.inference((index++) % num_inflight_batches);
-    runtime->end_trace(ctx, 111 /*trace_id*/);
-    printf("just called im.inference((index++) MOD num_inflight_batches)= "
-           "im.inference(%i)\n",
-           index % num_inflight_batches);
+  while (processed_requests < total_requests) {
+    vector<vector<double>> req = data_generator.get_requests();
+    int iterations = req.size();
+    for (int iter = 0; iter < iterations; iter++) {
+      // data_loader.next_batch(ff);
+      runtime->begin_trace(ctx, 111 /*trace_id*/);
+      im.inference((index++) % num_inflight_batches);
+      runtime->end_trace(ctx, 111 /*trace_id*/);
+    }
+    processed_requests += iterations;
   }
 
   // for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {

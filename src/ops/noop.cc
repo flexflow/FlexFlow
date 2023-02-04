@@ -258,9 +258,7 @@ void NoOp::forward(FFModel const &ff) {}
 void NoOp::inference(FFModel const &ff,
                      std::vector<ParallelTensor> const &batch_inputs,
                      std::vector<ParallelTensor> const &batch_outputs,
-                     MachineView const *mv) {
-  printf("entering inference()\n");
-}
+                     MachineView const *mv) {}
 
 void NoOp::backward(FFModel const &ff) {}
 

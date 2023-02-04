@@ -105,7 +105,6 @@ void Repartition::init_inference(
     FFModel const &ff,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs) {
-  printf("Entering Repartition::init_inference\n");
   ArgumentMap argmap;
   parallel_is = batch_outputs[0]->parallel_is;
   Context ctx = ff.config.lg_ctx;
@@ -190,13 +189,11 @@ void Repartition::create_input_partition_inference(
   assert(ff.config.computationMode == COMP_MODE_INFERENCE);
   assert(batch_outputs[0]->part != LogicalPartition::NO_PART);
   assert(batch_inputs[0]->part != LogicalPartition::NO_PART);
-  printf("about to enter\n");
   ff.create_disjoint_partition(batch_outputs[0]->num_dims,
                                batch_outputs[0]->dims,
                                batch_outputs[0]->parallel_is,
                                batch_inputs[0]->region,
                                inference_input_lps[batch_inputs[0]]);
-  printf("done!\n");
 }
 
 void Repartition::inference(FFModel const &ff,
@@ -208,25 +205,30 @@ void Repartition::inference(FFModel const &ff,
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  assert(inputs[0]->data_type == outputs[0]->data_type);
-  DataType data_type = inputs[0]->data_type;
-  size_t machine_view_hash = mv ? mv->hash() : outputs[0]->machine_view.hash();
+  assert(batch_inputs[0]->data_type == batch_outputs[0]->data_type);
+  DataType data_type = batch_inputs[0]->data_type;
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   IndexLauncher launcher(REPARTITION_FWD_TASK_ID,
-                         outputs[0]->parallel_is,
+                         batch_outputs[0]->parallel_is,
                          TaskArgument(&data_type, sizeof(DataType)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
-  launcher.add_region_requirement(RegionRequirement(
-      input_lp, 0 /*projection id*/, READ_ONLY, EXCLUSIVE, inputs[0]->region));
+  launcher.add_region_requirement(
+      RegionRequirement(inference_input_lps[batch_inputs[0]],
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
                                                     WRITE_ONLY,
                                                     EXCLUSIVE,
-                                                    outputs[0]->region));
+                                                    batch_outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }

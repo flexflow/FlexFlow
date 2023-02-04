@@ -510,7 +510,8 @@ void Experts::inference(FFModel const &ff,
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  size_t machine_view_hash = mv ? mv->hash() : outputs[0]->machine_view.hash();
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   IndexLauncher launcher(EXPERTS_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Experts)),
@@ -520,34 +521,35 @@ void Experts::inference(FFModel const &ff,
                          0 /*mapper_id*/,
                          machine_view_hash);
   // expert predictions
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
-                                                    inputs[0]->region));
+                                                    batch_inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // expert assignment indices
-  launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
-                                                    inputs[1]->region));
+                                                    batch_inputs[1]->region));
   launcher.add_field(1, FID_DATA);
   // topk_gate_preds
-  launcher.add_region_requirement(RegionRequirement(inputs[2]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[2]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
-                                                    inputs[2]->region));
+                                                    batch_inputs[2]->region));
   launcher.add_field(2, FID_DATA);
   for (int i = 0; i < num_experts; i++) {
     // expert output per token (only the chosen experts have non-zero
     // contributions)
-    launcher.add_region_requirement(RegionRequirement(outputs[i]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      outputs[i]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[i]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[i]->region));
     launcher.add_field(i + 3, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);

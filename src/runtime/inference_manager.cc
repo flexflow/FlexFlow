@@ -59,14 +59,9 @@ void InferenceManager::compile_model_and_allocate_buffer(void) {
 }
 
 void InferenceManager::init_operators_inference(int index) {
-  printf("init_operators_inference %i\n", index);
   assert(index < max_num_inflight_batches);
   for (size_t o = 0; o < model->operators.size(); o++) {
     Op *op = model->operators[o];
-    printf("operator: %s, num_inputs: %i, num_outputs: %i\n",
-           op->name,
-           op->numInputs,
-           op->numOutputs);
     if (op->op_type == OP_WEIGHT) {
       continue;
     }
@@ -86,9 +81,6 @@ void InferenceManager::init_operators_inference(int index) {
       outputs[i] = tensor_buffer[op->outputs[i]][index];
       assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
     }
-    printf("inputs.size(): %li, outputs.size(): %li\n",
-           inputs.size(),
-           outputs.size());
     if (op->is_parallel_op()) {
       ((ParallelOp *)op)
           ->create_input_partition_inference(*model, inputs, outputs);
@@ -101,10 +93,6 @@ void InferenceManager::inference(int index) {
   assert(index < max_num_inflight_batches);
   for (size_t o = 0; o < model->operators.size(); o++) {
     Op *op = model->operators[o];
-    printf("operator: %s, num_inputs: %i, num_outputs: %i\n",
-           op->name,
-           op->numInputs,
-           op->numOutputs);
     if (op->op_type == OP_WEIGHT) {
       continue;
     }
@@ -124,7 +112,6 @@ void InferenceManager::inference(int index) {
       outputs[i] = tensor_buffer[op->outputs[i]][index];
       assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
     }
-    printf("calling inference on operator: %s\n", op->name);
     op->inference(*model, inputs, outputs);
   }
 };

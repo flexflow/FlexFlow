@@ -586,7 +586,8 @@ void MultiHeadAttention::inference(
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
   int idx = 0;
-  size_t machine_view_hash = mv ? mv->hash() : outputs[0]->machine_view.hash();
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   IndexLauncher launcher(ATTENTION_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),

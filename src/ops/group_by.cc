@@ -316,7 +316,8 @@ void Group_by::inference(FFModel const &ff,
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  size_t machine_view_hash = mv ? mv->hash() : outputs[0]->machine_view.hash();
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   IndexLauncher launcher(GROUP_BY_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Group_by)),
