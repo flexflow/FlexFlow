@@ -9,8 +9,9 @@ namespace FlexFlow {
 
 class GroupByMeta : public OpMeta {
 public:
-  GroupByMeta(FFHandler handle, int n);
+  GroupByMeta(FFHandler handle, int n, float _alpha);
   ~GroupByMeta(void);
+  float alpha;
   float **dev_region_ptrs;
 };
 
@@ -69,26 +70,22 @@ public:
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;
-  static void
-      forward_kernel_wrapper(GroupByMeta const *m,
-                             float const *input,
-                             int const *exp_assign,
-                             float **outputs,
-                             int n,       // num experts
-                             int k,       // chosen experts
-                             float alpha, // factor additional memory assigned
-                             int batch_size,
-                             int data_dim);
-  static void
-      backward_kernel_wrapper(GroupByMeta const *m,
-                              float *input_grad,
-                              int const *exp_assign,
-                              float **output_grads,
-                              int n,       // num experts
-                              int k,       // chosen experts
-                              float alpha, // factor additional memory assigned
-                              int batch_size,
-                              int data_dim);
+  static void forward_kernel_wrapper(GroupByMeta const *m,
+                                     float const *input,
+                                     int const *exp_assign,
+                                     float **outputs,
+                                     int n, // num experts
+                                     int k, // chosen experts
+                                     int batch_size,
+                                     int data_dim);
+  static void backward_kernel_wrapper(GroupByMeta const *m,
+                                      float *input_grad,
+                                      int const *exp_assign,
+                                      float **output_grads,
+                                      int n, // num experts
+                                      int k, // chosen experts
+                                      int batch_size,
+                                      int data_dim);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;

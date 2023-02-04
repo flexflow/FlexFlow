@@ -216,7 +216,7 @@ void AggregateSpec::forward(FFModel const &ff) {
   set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(AGG_SPEC_FWD_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(AggregateSpec)),
+                         TaskArgument(NULL, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -267,7 +267,7 @@ void AggregateSpec::inference(FFModel const &ff,
   size_t machine_view_hash = mv ? mv->hash() : outputs[0]->machine_view.hash();
   IndexLauncher launcher(AGG_SPEC_FWD_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(AggregateSpec)),
+                         TaskArgument(NULL, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -311,9 +311,9 @@ void AggregateSpec::forward_task(Task const *task,
                                  std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  Runtime *runtime) {
-  int n = ((AggregateSpec *)task->args)->n;
+  assert(regions.size() == task->regions.size());
+  int n = regions.size() - 3;
 
-  assert((int)regions.size() == n + 3);
   assert((int)task->regions.size() == n + 3);
 
   AggregateSpecMeta const *m = *((AggregateSpecMeta **)task->local_args);

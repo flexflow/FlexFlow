@@ -262,7 +262,7 @@ OpMeta *Group_by::init_task(Task const *task,
                             Runtime *runtime) {
   Group_by *gb = (Group_by *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  GroupByMeta *m = new GroupByMeta(handle, gb->n);
+  GroupByMeta *m = new GroupByMeta(handle, gb->n, gb->alpha);
   m->profiling = gb->profiling;
   return m;
 }
@@ -274,7 +274,7 @@ void Group_by::forward(FFModel const &ff) {
   set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(GROUP_BY_FWD_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(Group_by)),
+                         TaskArgument(NULL, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -320,7 +320,7 @@ void Group_by::inference(FFModel const &ff,
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   IndexLauncher launcher(GROUP_BY_FWD_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(Group_by)),
+                         TaskArgument(NULL, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -360,12 +360,7 @@ void Group_by::forward_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
-  // Get n, alpha
-  Group_by const *gb = (Group_by *)task->args;
-  int n = gb->n;
-  float alpha = gb->alpha;
-
-  assert((int)regions.size() == n + 2);
+  int n = (int)regions.size() - 2;
   assert((int)task->regions.size() == n + 2);
 
   GroupByMeta const *m = *((GroupByMeta **)task->local_args);
@@ -392,7 +387,6 @@ void Group_by::forward_task(Task const *task,
   // Each entry in the "outputs" vector points to the Legion tensor that will
   // contain the tockens dispatched to the corresponding expert
   float *outputs[n];
-  int exp_output_rows = (int)ceil(alpha * k / n * batch_size);
   for (int i = 0; i < n; i++) {
     Domain out_domain = runtime->get_index_space_domain(
         ctx, task->regions[i + 2].region.get_index_space());
@@ -401,7 +395,6 @@ void Group_by::forward_task(Task const *task,
 
     coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
     coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
-    assert((int)output_rows == exp_output_rows);
     assert(output_cols == input_cols);
   }
 
@@ -411,7 +404,6 @@ void Group_by::forward_task(Task const *task,
                                    outputs,
                                    n,
                                    k,
-                                   alpha,
                                    batch_size,
                                    data_dim);
 }
@@ -423,7 +415,7 @@ void Group_by::backward(FFModel const &ff) {
   set_argumentmap_for_backward(ff, argmap);
   IndexLauncher launcher(GROUP_BY_BWD_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(Group_by)),
+                         TaskArgument(NULL, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -463,13 +455,9 @@ void Group_by::backward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
-  // Get n, alpha
   GroupByMeta const *m = *((GroupByMeta **)task->local_args);
-  Group_by const *gb = (Group_by *)task->args;
-  int n = gb->n;
-  float alpha = gb->alpha;
 
-  assert((int)regions.size() == n + 2);
+  int n = (int)regions.size() - 2;
   assert((int)task->regions.size() == n + 2);
 
   // get input and assign regions
@@ -491,7 +479,6 @@ void Group_by::backward_task(Task const *task,
 
   // get output
   float *output_grads[n];
-  int exp_output_rows = (int)ceil(alpha * k / n * batch_size);
   for (int i = 0; i < n; i++) {
     Domain out_domain = runtime->get_index_space_domain(
         ctx, task->regions[i + 2].region.get_index_space());
@@ -500,7 +487,6 @@ void Group_by::backward_task(Task const *task,
 
     coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
     coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
-    assert((int)output_rows == exp_output_rows);
     assert(output_cols == input_cols);
   }
 
@@ -510,7 +496,6 @@ void Group_by::backward_task(Task const *task,
                                     output_grads,
                                     n,
                                     k,
-                                    alpha,
                                     batch_size,
                                     data_dim);
 }
@@ -561,7 +546,7 @@ bool Group_by::measure_operator_cost(Simulator *sim,
     }
   }
 
-  GroupByMeta *m = new GroupByMeta(sim->handler, n);
+  GroupByMeta *m = new GroupByMeta(sim->handler, n, alpha);
 
   // allocate
   sim->free_all();
@@ -595,15 +580,8 @@ bool Group_by::measure_operator_cost(Simulator *sim,
   int data_dim = in_domain.hi()[0] - in_domain.lo()[0] + 1;
 
   forward = [&] {
-    forward_kernel_wrapper(m,
-                           input_ptr,
-                           assign_ptr,
-                           output_ptrs,
-                           n,
-                           k,
-                           alpha,
-                           batch_size,
-                           data_dim);
+    forward_kernel_wrapper(
+        m, input_ptr, assign_ptr, output_ptrs, n, k, batch_size, data_dim);
   };
 
   inner_measure_operator_cost(sim, forward, backward, cost_metrics);
