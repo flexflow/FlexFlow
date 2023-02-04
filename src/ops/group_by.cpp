@@ -118,16 +118,17 @@ __global__ void
 }
 
 /*static*/
-void Group_by::forward_kernel_wrapper(
-    GroupByMeta const *m,
-    float const *input,
-    int const *exp_assign,
-    float **outputs,
-    int n,       // num experts
-    int k,       // chosen experts
-    float alpha, // factor additional memory assigned
-    int batch_size,
-    int data_dim) {
+void Group_by::forward_kernel_wrapper(GroupByMeta const *m,
+                                      float const *input,
+                                      int const *exp_assign,
+                                      float **outputs,
+                                      int n, // num experts
+                                      int k, // chosen experts
+                                      int batch_size,
+                                      int data_dim) {
+
+  float alpha = m->alpha;
+
   // TODO: why cublas/cudnn stream is needed here?
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -151,16 +152,17 @@ void Group_by::forward_kernel_wrapper(
                      data_dim);
 }
 
-void Group_by::backward_kernel_wrapper(
-    GroupByMeta const *m,
-    float *input_grad,
-    int const *exp_assign,
-    float **output_grads,
-    int n,       // num experts
-    int k,       // chosen experts
-    float alpha, // factor additional memory assigned
-    int batch_size,
-    int data_dim) {
+void Group_by::backward_kernel_wrapper(GroupByMeta const *m,
+                                       float *input_grad,
+                                       int const *exp_assign,
+                                       float **output_grads,
+                                       int n, // num experts
+                                       int k, // chosen experts
+                                       int batch_size,
+                                       int data_dim) {
+
+  float alpha = m->alpha;
+
   // TODO: why cublas/cudnn stream is needed here
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -186,7 +188,8 @@ void Group_by::backward_kernel_wrapper(
                      data_dim);
 }
 
-GroupByMeta::GroupByMeta(FFHandler handler, int n) : OpMeta(handler) {
+GroupByMeta::GroupByMeta(FFHandler handler, int n, float _alpha)
+    : OpMeta(handler), alpha(_alpha) {
   checkCUDA(hipMalloc(&dev_region_ptrs, n * sizeof(float *)));
 }
 GroupByMeta::~GroupByMeta(void) {

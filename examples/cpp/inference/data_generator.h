@@ -78,7 +78,7 @@ vector<vector<double>> Generator::get_requests(void) {
       chrono::duration_cast<milliseconds>(cur_time - start_time);
   while (arrivals_ptr < arrivals.end() &&
          ms_from_start.count() >= *arrivals_ptr) {
-    cout << "output request at arrival time +" << *arrivals_ptr << "\n";
+    cout << "request at arrival time +" << *arrivals_ptr << "\n";
     requests.push_back(get_random_tensor());
     arrivals_ptr++;
   }

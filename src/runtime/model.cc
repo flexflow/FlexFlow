@@ -2925,8 +2925,10 @@ void FFModel::compile(LossType loss_type,
     //   // Output tensor
     //   map_tensor(op->outputs[i], op);
     // }
-    if (op->is_parallel_op()) {
-      ((ParallelOp *)op)->create_input_partition(*this);
+    if (config.computationMode == COMP_MODE_TRAINING) {
+      if (op->is_parallel_op()) {
+        ((ParallelOp *)op)->create_input_partition(*this);
+      }
     }
     // op->map_output_tensors(*this);
   }
@@ -3114,9 +3116,11 @@ void FFModel::compile(LossType loss_type,
       assert(false && "Unsupported dim");
     }
   }
-  // init optimizer
-  assert(optimizer != NULL);
-  optimizer->init();
+  if (config.computationMode == COMP_MODE_TRAINING) {
+    // init optimizer
+    assert(optimizer != NULL);
+    optimizer->init();
+  }
 
 #ifdef FF_USE_NCCL
   if (config.computationMode == COMP_MODE_TRAINING) {
@@ -3782,6 +3786,13 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<Experts::backward_task>(
         registrar, "Experts Backward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(EXPERTS_INF_TASK_ID, "Experts Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Experts::inference_task>(
+        registrar, "Experts Inference Task");
   }
   // Cast
   {

@@ -57,6 +57,7 @@ enum TaskIDs {
   EXPERTS_INIT_TASK_ID,
   EXPERTS_FWD_TASK_ID,
   EXPERTS_BWD_TASK_ID,
+  EXPERTS_INF_TASK_ID,
   CONV2D_INIT_TASK_ID,
   CONV2D_INIT_PARA_TASK_ID,
   CONV2D_FWD_TASK_ID,
@@ -760,6 +761,9 @@ public:
                           Legion::Runtime *runtime);
   void reset_metrics();
   void init_operators();
+  void init_operators_inference(
+      std::vector<ParallelTensor> const &batch_inputs,
+      std::vector<ParallelTensor> const &batch_outputs);
   void prefetch();
   void forward(int seq_length = -1);
   void compute_metrics();

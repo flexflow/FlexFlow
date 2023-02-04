@@ -115,6 +115,40 @@ Softmax::Softmax(FFModel &model,
                  char const *name)
     : Softmax(model, input, params.dim, name) {}
 
+void Softmax::init_inference(FFModel const &ff,
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = batch_outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_init(ff, argmap);
+  IndexLauncher launcher(SOFTMAX_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Softmax)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         batch_outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_DISCARD,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
+}
+
 void Softmax::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
@@ -186,6 +220,39 @@ OpMeta *Softmax::init_task(Task const *task,
   SoftmaxMeta *m = new SoftmaxMeta(handle, softmax, domain);
   // checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
   return m;
+}
+
+void Softmax::inference(FFModel const &ff,
+                        std::vector<ParallelTensor> const &batch_inputs,
+                        std::vector<ParallelTensor> const &batch_outputs,
+                        MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_forward(ff, argmap);
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  IndexLauncher launcher(SOFTMAX_FWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
 }
 
 void Softmax::forward(FFModel const &ff) {

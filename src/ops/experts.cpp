@@ -90,14 +90,14 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      int const *indices,
                                      float const *topk_gate_preds,
                                      float **outputs,
-                                     int num_experts,
-                                     int experts_start_idx,
-                                     int expert_capacity,
                                      int chosen_experts,
                                      int batch_size,
                                      int out_dim) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+
+  int expert_capacity =
+      ceil(m->alpha * chosen_experts / m->num_experts * batch_size);
 
   //   cudaEvent_t t_start, t_end;
   //   if (m->profiling) {
@@ -107,21 +107,21 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   //   }
   hipMemcpy(m->dev_region_ptrs,
             outputs,
-            num_experts * sizeof(float *),
+            m->num_experts * sizeof(float *),
             hipMemcpyHostToDevice);
 
   hipLaunchKernelGGL(
       experts_forward_kernel,
-      GET_BLOCKS(batch_size * num_experts * out_dim),
-      min(CUDA_NUM_THREADS, (int)(batch_size * num_experts * out_dim)),
+      GET_BLOCKS(batch_size * m->num_experts * out_dim),
+      min(CUDA_NUM_THREADS, (int)(batch_size * m->num_experts * out_dim)),
       0,
       stream,
       input,
       indices,
       topk_gate_preds,
       m->dev_region_ptrs,
-      num_experts,
-      experts_start_idx,
+      m->num_experts,
+      m->experts_start_idx,
       chosen_experts,
       expert_capacity,
       batch_size,
@@ -138,7 +138,12 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   // }
 }
 
-ExpertsMeta::ExpertsMeta(FFHandler handler, int num_experts) : OpMeta(handler) {
+ExpertsMeta::ExpertsMeta(FFHandler handler,
+                         int _num_experts,
+                         int _experts_start_idx,
+                         float _alpha)
+    : OpMeta(handler), num_experts(_num_experts),
+      experts_start_idx(_experts_start_idx), alpha(_alpha) {
   checkCUDA(hipMalloc(&dev_region_ptrs, num_experts * sizeof(float *)));
 }
 ExpertsMeta::~ExpertsMeta(void) {

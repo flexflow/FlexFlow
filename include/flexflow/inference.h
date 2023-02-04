@@ -27,6 +27,7 @@ public:
                    int max_num_requests_per_batch,
                    int max_num_inflight_batches);
   void compile_model_and_allocate_buffer(void);
+  void init_operators_inference();
   void inference(int index);
 
 public:

@@ -16,9 +16,12 @@
 #include "moe.h"
 #include "data_generator.h"
 #include "flexflow/inference.h"
+#include <cstdlib>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <string>
+#include <unistd.h>
 
 using namespace Legion;
 
@@ -93,14 +96,14 @@ void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
-  /* // Inference parameters
+  // Inference parameters
   int total_requests =
       256; // total number of requests processed as part of the simulation
   int request_tensor_size = 4; // request tensor dimensions
   bool poisson_distribution = true;
   double lambda = 25; // average number of request arrivals per second
   int num_requests_per_batch = 5;
-  int num_inflight_batches = 10; */
+  int num_inflight_batches = 10;
 
   //-----------------------------------------------------------------
 
@@ -132,22 +135,15 @@ void FlexFlow::top_level_task(Task const *task,
   // Tensor t = create_moe(&ff, &moeConfig, input);
   t = ff.dense(t, OUT_DIM, AC_MODE_RELU);
 
-  /* InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);
-  im.compile_model_and_allocate_buffer(); */
-
-  Optimizer *optimizer = new SGDOptimizer(&ff, 0.001f);
-  std::vector<MetricsType> metrics;
-  metrics.push_back(METRICS_ACCURACY);
-  metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
-  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
+  InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);
+  im.compile_model_and_allocate_buffer();
+  im.init_operators_inference();
 
   // Data Loader
-  // ParallelTensor input_pt, label_pt;
-  // ff.get_parallel_tensor_from_tensor(input, input_pt);
-  // ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
-  // DataLoader data_loader(ff, moeConfig, input_pt, label_pt);
-
-  ff.init_operators();
+  /* ParallelTensor input_pt, label_pt;
+  ff.get_parallel_tensor_from_tensor(input, input_pt);
+  ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
+  DataLoader data_loader(ff, moeConfig, input_pt, label_pt); */
 
   //-----------------------------------------------------------------
 
@@ -162,50 +158,21 @@ void FlexFlow::top_level_task(Task const *task,
 
   ///////////////////////////////////////////////////////////////////////////////////
 
-  // int index = 0;
-  // int processed_requests = 0;
-  // Generator data_generator(
-  //     total_requests, request_tensor_size, poisson_distribution, lambda);
-  // while (processed_requests < total_requests) {
-  //   vector<vector<double>> req = data_generator.get_requests();
-  //   int iterations = req.size();
-  //   for (int iter = 0; iter < iterations; iter++) {
-  //     // data_loader.next_batch(ff);
-  //     runtime->begin_trace(ctx, 111 /*trace_id*/);
-  //     im.inference((index++) % num_inflight_batches);
-  //     runtime->end_trace(ctx, 111 /*trace_id*/);
-  //   }
-  //   processed_requests += iterations;
-  // }
-
-  for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
-    // data_loader.reset();
-    ff.reset_metrics();
-    int iterations = TRAIN_SAMPLES / ffConfig.batchSize;
-
+  int index = 0;
+  int processed_requests = 0;
+  Generator data_generator(
+      total_requests, request_tensor_size, poisson_distribution, lambda);
+  // data_loader.reset();
+  while (processed_requests < total_requests) {
+    vector<vector<double>> req = data_generator.get_requests();
+    int iterations = req.size();
     for (int iter = 0; iter < iterations; iter++) {
       // data_loader.next_batch(ff);
-      if (epoch > 0) {
-        runtime->begin_trace(ctx, 111 /*trace_id*/);
-      }
-      ff.forward();
-      ff.zero_gradients();
-      // ff.backward();
-      ff.update();
-      // ff.recompile_on_condition(r);
-      if (epoch > 0) {
-        runtime->end_trace(ctx, 111 /*trace_id*/);
-      }
+      runtime->begin_trace(ctx, 111 /*trace_id*/);
+      im.inference((index++) % num_inflight_batches);
+      runtime->end_trace(ctx, 111 /*trace_id*/);
     }
-
-    // TODO: Do properly
-    ff.reset_metrics();
-    // iterations = TEST_SAMPLES / ffConfig.batchSize;
-    // for (int iter = 0; iter < iterations; iter++) {
-    //   data_loader.next_batch(ff);
-    //   ff.forward();
-    //   ff.backward();
-    // }
+    processed_requests += iterations;
   }
 
   ///////////////////////////////////////////////////////////////////////////////////

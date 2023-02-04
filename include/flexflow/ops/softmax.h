@@ -21,7 +21,14 @@ public:
           const Input input,
           char const *name = nullptr);
   void init(FFModel const &) override;
+  void init_inference(FFModel const &,
+                      std::vector<ParallelTensor> const &,
+                      std::vector<ParallelTensor> const &) override;
   void forward(FFModel const &) override;
+  void inference(FFModel const &,
+                 std::vector<ParallelTensor> const &,
+                 std::vector<ParallelTensor> const &,
+                 MachineView const *mv = nullptr) override;
   void backward(FFModel const &) override;
   bool get_int_parameter(PMParameter, int *) const override;
   void print_layer(FFModel const &model) override {

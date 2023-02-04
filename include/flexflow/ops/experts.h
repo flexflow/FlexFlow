@@ -7,8 +7,14 @@ namespace FlexFlow {
 
 class ExpertsMeta : public OpMeta {
 public:
-  ExpertsMeta(FFHandler handler, int num_experts);
+  ExpertsMeta(FFHandler handler,
+              int _num_experts,
+              int _experts_start_idx,
+              float _alpha);
   ~ExpertsMeta(void);
+  int num_experts;
+  int experts_start_idx;
+  float alpha;
   float **dev_region_ptrs;
 };
 
@@ -39,6 +45,9 @@ public:
                                  std::vector<ParallelTensor> const &inputs);
 
   void init(FFModel const &) override;
+  void init_inference(FFModel const &,
+                      std::vector<ParallelTensor> const &,
+                      std::vector<ParallelTensor> const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   void inference(FFModel const &,
@@ -65,9 +74,6 @@ public:
                                      int const *acc_indices_ptr,
                                      float const *acc_topk_gate_preds_ptr,
                                      float **outputs,
-                                     int num_experts,
-                                     int experts_start_idx,
-                                     int expert_capacity,
                                      int chosen_experts,
                                      int batch_size,
                                      int out_dim);

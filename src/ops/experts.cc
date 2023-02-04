@@ -330,6 +330,58 @@ Node Experts::deserialize(FFModel &ff,
   return ff.get_or_create_node<Experts>(inputs, params);
 }
 
+void Experts::init_inference(FFModel const &ff,
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs) {
+  assert(check_output_input_weight_same_parallel_is());
+  parallel_is = batch_outputs[0]->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_init(ff, argmap);
+  IndexLauncher launcher(EXPERTS_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(Experts)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         batch_outputs[0]->machine_view.hash());
+  // expert predictions
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  // expert assignment indices
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[1]->region));
+  launcher.add_field(1, FID_DATA);
+  // topk_gate_preds
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[2]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[2]->region));
+  launcher.add_field(2, FID_DATA);
+  for (int i = 0; i < num_experts; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[i]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[i]->region));
+    launcher.add_field(i + 3, FID_DATA);
+  }
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+  set_opmeta_from_futuremap(ff, fm);
+}
+
 void Experts::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
@@ -385,7 +437,8 @@ OpMeta *Experts::init_task(Task const *task,
                            Runtime *runtime) {
   Experts const *exp = (Experts *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  ExpertsMeta *m = new ExpertsMeta(handle, exp->num_experts);
+  ExpertsMeta *m = new ExpertsMeta(
+      handle, exp->num_experts, exp->experts_start_idx, exp->alpha);
   m->profiling = exp->profiling;
   return m;
 }
@@ -398,7 +451,7 @@ void Experts::forward(FFModel const &ff) {
   set_argumentmap_for_forward(ff, argmap);
   IndexLauncher launcher(EXPERTS_FWD_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(Experts)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -446,61 +499,57 @@ void Experts::inference(FFModel const &ff,
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_forward(ff, argmap);
-  size_t machine_view_hash = mv ? mv->hash() : outputs[0]->machine_view.hash();
-  IndexLauncher launcher(EXPERTS_FWD_TASK_ID,
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  IndexLauncher launcher(EXPERTS_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(Experts)),
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
   // expert predictions
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
-                                                    inputs[0]->region));
+                                                    batch_inputs[0]->region));
   launcher.add_field(0, FID_DATA);
   // expert assignment indices
-  launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
-                                                    inputs[1]->region));
+                                                    batch_inputs[1]->region));
   launcher.add_field(1, FID_DATA);
   // topk_gate_preds
-  launcher.add_region_requirement(RegionRequirement(inputs[2]->part,
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[2]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
                                                     EXCLUSIVE,
-                                                    inputs[2]->region));
+                                                    batch_inputs[2]->region));
   launcher.add_field(2, FID_DATA);
   for (int i = 0; i < num_experts; i++) {
     // expert output per token (only the chosen experts have non-zero
     // contributions)
-    launcher.add_region_requirement(RegionRequirement(outputs[i]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      outputs[i]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[i]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[i]->region));
     launcher.add_field(i + 3, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Experts::forward_task(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+void Experts::inference_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
   assert(regions.size() == task->regions.size());
   int num_experts = regions.size() - 3;
-
-  Experts const *exp = (Experts *)task->args;
-  assert(exp != nullptr);
-  assert(exp->num_experts == num_experts);
-  float alpha = exp->alpha;
-  int experts_start_idx = exp->experts_start_idx;
 
   ExpertsMeta const *m = *((ExpertsMeta **)task->local_args);
 
@@ -546,9 +595,6 @@ void Experts::forward_task(Task const *task,
     }
   }
 
-  int expert_capacity =
-      ceil(alpha * (int)chosen_experts / num_experts * (int)batch_size);
-
   assert(batch_size <= MAX_BATCH_SIZE &&
          "batch size exceeds MAX_BATCH_SIZE defined in experts.h");
   assert(
@@ -575,12 +621,16 @@ void Experts::forward_task(Task const *task,
                                   indices_ptr,
                                   topk_gate_pred_ptr,
                                   outputs,
-                                  num_experts,
-                                  experts_start_idx,
-                                  expert_capacity,
                                   chosen_experts,
                                   batch_size,
                                   out_dim);
+}
+
+void Experts::forward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
+                           Context ctx,
+                           Runtime *runtime) {
+  assert(false && "Experts is designed for inference only");
 }
 
 void Experts::backward(FFModel const &ff) {
