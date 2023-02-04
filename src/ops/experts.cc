@@ -500,7 +500,7 @@ void Experts::inference(FFModel const &ff,
   set_argumentmap_for_forward(ff, argmap);
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
-  IndexLauncher launcher(EXPERTS_FWD_TASK_ID,
+  IndexLauncher launcher(EXPERTS_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Experts)),
                          argmap,
@@ -543,10 +543,10 @@ void Experts::inference(FFModel const &ff,
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Experts::forward_task(Task const *task,
-                           std::vector<PhysicalRegion> const &regions,
-                           Context ctx,
-                           Runtime *runtime) {
+void Experts::inference_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
   assert(regions.size() == task->regions.size());
   int num_experts = regions.size() - 3;
 
@@ -635,6 +635,13 @@ void Experts::forward_task(Task const *task,
                                   chosen_experts,
                                   batch_size,
                                   out_dim);
+}
+
+void Experts::forward_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
+                           Context ctx,
+                           Runtime *runtime) {
+  assert(false && "Experts is designed for inference only");
 }
 
 void Experts::backward(FFModel const &ff) {
