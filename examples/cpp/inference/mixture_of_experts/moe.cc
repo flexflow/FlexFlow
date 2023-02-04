@@ -103,7 +103,7 @@ void FlexFlow::top_level_task(Task const *task,
   bool poisson_distribution = true;
   double lambda = 25; // average number of request arrivals per second
   int num_requests_per_batch = 5;
-  int num_inflight_batches = 1;
+  int num_inflight_batches = 10;
 
   //-----------------------------------------------------------------
 
@@ -135,23 +135,13 @@ void FlexFlow::top_level_task(Task const *task,
 
   InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);
   im.compile_model_and_allocate_buffer();
-
-  /* Optimizer *optimizer = new SGDOptimizer(&ff, 0.001f);
-  std::vector<MetricsType> metrics;
-  metrics.push_back(METRICS_ACCURACY);
-  metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
-  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics); */
+  im.init_operators_inference();
 
   // Data Loader
   /* ParallelTensor input_pt, label_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
   ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
   DataLoader data_loader(ff, moeConfig, input_pt, label_pt); */
-
-  // ff.init_operators();
-  for (int i = 0; i < num_inflight_batches; i++) {
-    im.init_operators_inference(i);
-  }
 
   //-----------------------------------------------------------------
 
@@ -181,36 +171,6 @@ void FlexFlow::top_level_task(Task const *task,
     }
     processed_requests += iterations;
   }
-
-  // for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
-  //   data_loader.reset();
-  //   ff.reset_metrics();
-  //   int iterations = TRAIN_SAMPLES / ffConfig.batchSize;
-
-  //   for (int iter = 0; iter < iterations; iter++) {
-  //     data_loader.next_batch(ff);
-  //     if (epoch > 0) {
-  //       runtime->begin_trace(ctx, 111 /*trace_id*/);
-  //     }
-  //     ff.forward();
-  //     ff.zero_gradients();
-  //     // ff.backward();
-  //     ff.update();
-  //     // ff.recompile_on_condition(r);
-  //     if (epoch > 0) {
-  //       runtime->end_trace(ctx, 111 /*trace_id*/);
-  //     }
-  //   }
-
-  //   // TODO: Do properly
-  //   ff.reset_metrics();
-  //   // iterations = TEST_SAMPLES / ffConfig.batchSize;
-  //   // for (int iter = 0; iter < iterations; iter++) {
-  //   //   data_loader.next_batch(ff);
-  //   //   ff.forward();
-  //   //   ff.backward();
-  //   // }
-  // }
 
   ///////////////////////////////////////////////////////////////////////////////////
 

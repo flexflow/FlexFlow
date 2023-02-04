@@ -58,34 +58,35 @@ void InferenceManager::compile_model_and_allocate_buffer(void) {
   }
 }
 
-void InferenceManager::init_operators_inference(int index) {
-  assert(index < max_num_inflight_batches);
-  for (size_t o = 0; o < model->operators.size(); o++) {
-    Op *op = model->operators[o];
-    if (op->op_type == OP_WEIGHT) {
-      continue;
+void InferenceManager::init_operators_inference() {
+  for (int index = 0; index < max_num_inflight_batches; index++) {
+    for (size_t o = 0; o < model->operators.size(); o++) {
+      Op *op = model->operators[o];
+      if (op->op_type == OP_WEIGHT) {
+        continue;
+      }
+      std::vector<ParallelTensor> inputs(op->numInputs);
+      std::vector<ParallelTensor> outputs(op->numOutputs);
+      for (int i = 0; i < op->numInputs; i++) {
+        assert(op->inputs[i] != nullptr);
+        assert(op->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+        assert(tensor_buffer[op->inputs[i]].size() > index);
+        inputs[i] = tensor_buffer[op->inputs[i]][index];
+        assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+      }
+      for (int i = 0; i < op->numOutputs; i++) {
+        assert(op->outputs[i] != nullptr);
+        assert(op->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+        assert(tensor_buffer[op->outputs[i]].size() > index);
+        outputs[i] = tensor_buffer[op->outputs[i]][index];
+        assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+      }
+      if (op->is_parallel_op()) {
+        ((ParallelOp *)op)
+            ->create_input_partition_inference(*model, inputs, outputs);
+      }
+      op->init_inference(*model, inputs, outputs);
     }
-    std::vector<ParallelTensor> inputs(op->numInputs);
-    std::vector<ParallelTensor> outputs(op->numOutputs);
-    for (int i = 0; i < op->numInputs; i++) {
-      assert(op->inputs[i] != nullptr);
-      assert(op->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
-      assert(tensor_buffer[op->inputs[i]].size() > index);
-      inputs[i] = tensor_buffer[op->inputs[i]][index];
-      assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
-    }
-    for (int i = 0; i < op->numOutputs; i++) {
-      assert(op->outputs[i] != nullptr);
-      assert(op->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
-      assert(tensor_buffer[op->outputs[i]].size() > index);
-      outputs[i] = tensor_buffer[op->outputs[i]][index];
-      assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
-    }
-    if (op->is_parallel_op()) {
-      ((ParallelOp *)op)
-          ->create_input_partition_inference(*model, inputs, outputs);
-    }
-    op->init_inference(*model, inputs, outputs);
   }
 }
 
