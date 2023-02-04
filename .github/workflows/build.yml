@@ -115,7 +115,7 @@ jobs:
   makefile-build:
     name: Build FlexFlow with the Makefile
     runs-on: ubuntu-20.04
-     shell: bash -l {0} # required to use an activated conda environment
+    shell: bash -l {0} # required to use an activated conda environment
     steps:
       - name: Checkout Git Repository
         uses: actions/checkout@v3
