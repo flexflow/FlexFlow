@@ -177,28 +177,12 @@ LayerNorm::LayerNorm(FFModel &model,
       _input->num_dims, _input->dims, _input->data_type, this);
   assert(check_output_input_weight_parallel_dims(allocate_weights));
   ParallelDim output_dims[MAX_TENSOR_DIM];
-  int degree_product = 1;
-  effective_num_elements = 1;
-  effective_batch_size = 1;
-  for (int i = 0; i < inputs[0]->num_dims; i++) {
-    degree_product *= inputs[0]->dims[i].degree;
-    bool found = false;
-    for (int j = 0; j < axes.size(); j++) {
-      if (i == inputs[0]->num_dims - 1 - axes[j]) {
-        found = true;
-        break;
-      }
-    }
-    if (found) {
-      effective_num_elements *=
-          inputs[0]->dims[i].size / inputs[0]->dims[i].degree;
-    } else {
-      effective_batch_size *=
-          inputs[0]->dims[i].size / inputs[0]->dims[i].degree;
-    }
+  int M = 1;
+  for (int i = 0; i < axes.size(); i++) {
+    M *= inputs[0]->dims[inputs[0]->num_dims - 1 - axes[i]].size;
   }
-  assert(effective_num_elements * effective_batch_size * degree_product ==
-         inputs[0]->get_volume());
+  effective_num_elements = M;
+  effective_batch_size = inputs[0]->get_volume() / M;
   if (numWeights > 0 && allocate_weights) {
     int kernel_dims = 2;
     assert(false);
