@@ -18,84 +18,17 @@
 
 namespace FlexFlow {
 
-__global__ void experts_forward_kernel(float const *input,
-                                       int const *indices,
-                                       float const *topk_gate_preds,
-                                       float **outputs,
-                                       int num_experts,
-                                       int experts_start_idx,
-                                       int chosen_experts,
-                                       int expert_capacity,
-                                       int batch_size,
-                                       int out_dim) {
-  // shared at the block level
-  __shared__ float token_assigned[MAX_BATCH_SIZE][MAX_EXPERTS_PER_BLOCK];
-
-  // initialize the token assignments to 0
-  CUDA_KERNEL_LOOP(i, MAX_BATCH_SIZE * MAX_EXPERTS_PER_BLOCK) {
-    int token_index = i / MAX_EXPERTS_PER_BLOCK;
-    int expert_index = i % MAX_EXPERTS_PER_BLOCK;
-    token_assigned[token_index][expert_index] = 0.0f;
-  }
-
-  __syncthreads();
-
-  // Compute token assignments, single thread per block
-  if (threadIdx.x == 0) {
-    int token_count[MAX_EXPERTS_PER_BLOCK] = {0};
-    for (int i = 0; i < chosen_experts * batch_size; i++) {
-      // Get the token index, between 0 and batch_size
-      int token_index = i / chosen_experts;
-      // Get global index (indices[i]) of expert to which the token is assigned,
-      // and compute the local index (expert_index) of the expert within the
-      // block of fused experts
-      int expert_index = indices[i] - experts_start_idx;
-      // check if the token is assigned to an expert in this block, and if so,
-      // whether the expert still has capacity not that since each expert is
-      // assigned to only one block, it is safe to reason about expert capacity
-      // locally
-      if (expert_index >= 0 && expert_index < num_experts &&
-          token_count[expert_index] < expert_capacity) {
-        token_assigned[token_index][expert_index] = topk_gate_preds[i];
-        token_count[expert_index]++;
-      } else {
-      }
-    }
-  }
-
-  __syncthreads();
-
-  // compute output
-  CUDA_KERNEL_LOOP(i, num_experts * batch_size * out_dim) {
-    // output indexing:
-    // i = expert_index*(batch_size*out_dim) + token_index*out_dim + dim_index
-    // input indexing:
-    // i = token_index * (num_experts * out_dim) + expert_index * out_dim +
-    // dim_index
-    int expert_index = i / (batch_size * out_dim);
-    // int token_index = (i - expert_index*(batch_size*out_dim)) / out_dim;
-    int token_index = (i % (batch_size * out_dim)) / out_dim;
-    // int dim_index = i - expert_index*(batch_size*out_dim) -
-    // token_index*out_dim;
-    int dim_index = i % out_dim;
-    outputs[expert_index][token_index * out_dim + dim_index] =
-        input[i] * token_assigned[token_index][expert_index];
-  }
-}
-
 /*static*/
 void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      float const *input,
                                      int const *indices,
                                      float const *topk_gate_preds,
-                                     float **outputs,
+                                     float *output,
                                      int chosen_experts,
                                      int batch_size,
                                      int out_dim) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  // checkCUDA(cublasSetStream(m->handle.blas, stream));
-  // checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   int expert_capacity =
       ceil(m->alpha * chosen_experts / m->num_experts * batch_size);
@@ -107,27 +40,18 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     cudaEventRecord(t_start, stream);
   }
 
-  // call forward_kernel
-  cudaMemcpyAsync(m->dev_region_ptrs,
-                  outputs,
-                  m->num_experts * sizeof(float *),
-                  cudaMemcpyHostToDevice,
-                  stream);
-
-  experts_forward_kernel<<<GET_BLOCKS(batch_size * m->num_experts * out_dim),
-                           min(CUDA_NUM_THREADS,
-                               (int)(batch_size * m->num_experts * out_dim)),
-                           0,
-                           stream>>>(input,
-                                     indices,
-                                     topk_gate_preds,
-                                     m->dev_region_ptrs,
-                                     m->num_experts,
-                                     m->experts_start_idx,
-                                     chosen_experts,
-                                     expert_capacity,
-                                     batch_size,
-                                     out_dim);
+  /** TODO
+   * 1. sort the tokens by expert to which they are assigned. This will require
+   * replicating tokens when chosen_experts > 1
+   * 2. matrix multiply (you can use cublasGemmEx) each slice of tokens with the
+   * corresponding expert's weights tensor. Add the bias.
+   *      - you can obtain the slice by selecting the tokens between the index
+   * where the expert i starts and min(i+expert_capacity, index where expert i+1
+   * starts)
+   * 3. reorder the outputs by token, and aggregate the outputs of multiple
+   * experts for the same token by computing an average weighted by the
+   * appropriate coefficient from the topk_gate_preds matrix.
+   */
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
@@ -145,11 +69,7 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
                          int _experts_start_idx,
                          float _alpha)
     : OpMeta(handler), num_experts(_num_experts),
-      experts_start_idx(_experts_start_idx), alpha(_alpha) {
-  checkCUDA(cudaMalloc(&dev_region_ptrs, num_experts * sizeof(float *)));
-}
-ExpertsMeta::~ExpertsMeta(void) {
-  checkCUDA(cudaFree(&dev_region_ptrs));
-}
+      experts_start_idx(_experts_start_idx), alpha(_alpha) {}
+ExpertsMeta::~ExpertsMeta(void) {}
 
 }; // namespace FlexFlow

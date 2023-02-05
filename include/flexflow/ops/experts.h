@@ -15,7 +15,6 @@ public:
   int num_experts;
   int experts_start_idx;
   float alpha;
-  float **dev_region_ptrs;
 };
 
 // definitions for the CUDA kernel
@@ -73,7 +72,7 @@ public:
                                      float const *acc_input_ptr,
                                      int const *acc_indices_ptr,
                                      float const *acc_topk_gate_preds_ptr,
-                                     float **outputs,
+                                     float *acc_output_ptr,
                                      int chosen_experts,
                                      int batch_size,
                                      int out_dim);

@@ -63,32 +63,23 @@ Tensor FFModel::experts(Tensor const *inputs,
   assert(experts_num_layers == 1 && "Multi-layer experts not implemented yet.");
   assert(experts_num_layers == 1 || experts_internal_dim_size > 0);
 
-  Tensor fused_experts = this->dense(
-      inputs[0], num_experts * experts_output_dim_size, AC_MODE_RELU);
-  fused_experts = this->softmax(fused_experts);
-
-  Tensor const layer_inputs[3] = {fused_experts, inputs[1], inputs[2]};
-
   Layer *e = new Layer(this,
                        OP_EXPERTS,
                        DT_FLOAT,
                        name,
                        3 /*inputs*/,
                        0 /*weights*/,
-                       num_experts /*outputs*/,
-                       layer_inputs);
-
+                       1 /*outputs*/,
+                       inputs);
   {
     int dims[MAX_TENSOR_DIM];
     for (int i = 1; i < num_dims; i++) {
       dims[i] = inputs[0]->dims[i];
     }
     dims[0] = experts_output_dim_size;
-    for (int i = 0; i < num_experts; i++) {
-      e->outputs[i] = create_tensor_legion_ordering(
-          num_dims, dims, DT_FLOAT, e, 0, true /*create_grad*/);
-      assert(e->outputs[i] != nullptr);
-    }
+    e->outputs[0] = create_tensor_legion_ordering(
+        num_dims, dims, DT_FLOAT, e, 0, true /*create_grad*/);
+    assert(e->outputs[0] != nullptr);
   }
 
   e->add_int_property("num_experts", num_experts);
@@ -99,11 +90,7 @@ Tensor FFModel::experts(Tensor const *inputs,
   e->add_int_property("experts_internal_dim_size", experts_internal_dim_size);
   layers.push_back(e);
 
-  Tensor ret = e->outputs[0];
-  for (int i = 1; i < num_experts; i++) {
-    this->add(ret, e->outputs[i], /*inplace_a*/ true);
-  }
-  return ret;
+  return e->outputs[0];
 }
 
 Op *Experts::create_operator_from_layer(
@@ -182,10 +169,6 @@ bool ExpertsParams::is_valid(
     printf("Data type of the third input to the Experts layer is wrong!\n");
     return false;
   }
-  if (inputs[0].dims[0].size != num_experts * experts_output_dim_size) {
-    printf("Dimension 0 of input tensor 1 to the Experts layer is wrong.\n");
-    return false;
-  }
   if (inputs[1].dims[0] != inputs[2].dims[0]) {
     printf(
         "Dimension mismatch between indices and topk_gate_preds tensors passed "
@@ -242,7 +225,7 @@ Experts::Experts(FFModel &model,
          name,
          3 /*inputs*/,
          0 /*weights*/,
-         _num_experts /*outputs*/,
+         1 /*outputs*/,
          inputs),
       num_experts(_num_experts), experts_start_idx(_experts_start_idx),
       experts_output_dim_size(_experts_output_dim_size), alpha(_alpha),
@@ -251,15 +234,13 @@ Experts::Experts(FFModel &model,
 
   assert(num_experts > 0);
   assert(numInputs == 3);
-  assert(numOutputs == num_experts);
+  assert(numOutputs == 1);
 
   assert(inputs[0] != nullptr);
   int num_dims = inputs[0]->num_dims;
   assert(inputs[1]->num_dims == num_dims);
   assert(inputs[2]->num_dims == num_dims);
 
-  int out_dim = num_experts * experts_output_dim_size;
-  assert(inputs[0]->dims[0].size == out_dim);
   int topk = inputs[1]->dims[0].size;
   assert(inputs[2]->dims[0].size == topk);
 
@@ -368,15 +349,12 @@ void Experts::init_inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_inputs[2]->region));
   launcher.add_field(2, FID_DATA);
-  for (int i = 0; i < num_experts; i++) {
-    launcher.add_region_requirement(
-        RegionRequirement(batch_outputs[i]->part,
-                          0 /*projection id*/,
-                          WRITE_ONLY,
-                          EXCLUSIVE,
-                          batch_outputs[i]->region));
-    launcher.add_field(i + 3, FID_DATA);
-  }
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(3, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
@@ -418,14 +396,12 @@ void Experts::init(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     inputs[2]->region));
   launcher.add_field(2, FID_DATA);
-  for (int i = 0; i < num_experts; i++) {
-    launcher.add_region_requirement(RegionRequirement(outputs[i]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      outputs[i]->region));
-    launcher.add_field(i + 3, FID_DATA);
-  }
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
+  launcher.add_field(3, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
@@ -478,16 +454,14 @@ void Experts::forward(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     inputs[2]->region));
   launcher.add_field(2, FID_DATA);
-  for (int i = 0; i < num_experts; i++) {
-    // expert output per token (only the chosen experts have non-zero
-    // contributions)
-    launcher.add_region_requirement(RegionRequirement(outputs[i]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      outputs[i]->region));
-    launcher.add_field(i + 3, FID_DATA);
-  }
+  // expert output per token (only the chosen experts have non-zero
+  // contributions)
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
+  launcher.add_field(3, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -530,17 +504,14 @@ void Experts::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_inputs[2]->region));
   launcher.add_field(2, FID_DATA);
-  for (int i = 0; i < num_experts; i++) {
-    // expert output per token (only the chosen experts have non-zero
-    // contributions)
-    launcher.add_region_requirement(
-        RegionRequirement(batch_outputs[i]->part,
-                          0 /*projection id*/,
-                          WRITE_ONLY,
-                          EXCLUSIVE,
-                          batch_outputs[i]->region));
-    launcher.add_field(i + 3, FID_DATA);
-  }
+  // expert output per token (only the chosen experts have non-zero
+  // contributions)
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(3, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -560,6 +531,10 @@ void Experts::inference_task(Task const *task,
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   float const *topk_gate_pred_ptr = helperGetTensorPointerRO<float>(
       regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  float *output_ptr = helperGetTensorPointerWO<float>(
+      regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  assert(input_ptr != nullptr && indices_ptr != nullptr &&
+         topk_gate_pred_ptr != nullptr && output_ptr != nullptr);
 
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -567,6 +542,8 @@ void Experts::inference_task(Task const *task,
       ctx, task->regions[1].region.get_index_space());
   Domain topk_gate_pred_domain = runtime->get_index_space_domain(
       ctx, task->regions[2].region.get_index_space());
+  Domain output_domain = runtime->get_index_space_domain(
+      ctx, task->regions[3].region.get_index_space());
 
   int input_dims = input_domain.get_dim();
   int indices_dims = indices_domain.get_dim();
@@ -577,11 +554,10 @@ void Experts::inference_task(Task const *task,
   int replica_dim = input_dims - 1;
   int samples_index = input_dims - 2;
 
-  coord_t out_dim =
-      (input_domain.hi()[0] - input_domain.lo()[0] + 1) / num_experts;
   coord_t batch_size =
       input_domain.hi()[samples_index] - input_domain.lo()[samples_index] + 1;
   coord_t chosen_experts = indices_domain.hi()[0] - indices_domain.lo()[0];
+  coord_t out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
   assert(chosen_experts ==
          topk_gate_pred_domain.hi()[0] - topk_gate_pred_domain.lo()[0]);
 
@@ -601,26 +577,17 @@ void Experts::inference_task(Task const *task,
       num_experts <= MAX_EXPERTS_PER_BLOCK &&
       "number of experts exceeds MAX_EXPERTS_PER_BLOCK defined in experts.h");
 
-  float *outputs[num_experts];
-  for (int i = 0; i < num_experts; i++) {
-    Domain output_domain = runtime->get_index_space_domain(
-        ctx, task->regions[3 + i].region.get_index_space());
-    assert((output_domain.hi()[0] - output_domain.lo()[0] + 1) == out_dim);
-    for (int j = 1; j < input_dims; j++) {
-      int a = input_domain.hi()[j] - input_domain.lo()[j] + 1;
-      int b = output_domain.hi()[j] - output_domain.lo()[j] + 1;
-      assert(a == b);
-    }
-    outputs[i] = helperGetTensorPointerWO<float>(
-        regions[3 + i], task->regions[3 + i], FID_DATA, ctx, runtime);
-    assert(outputs[i] != nullptr);
+  for (int j = 1; j < input_dims; j++) {
+    int a = input_domain.hi()[j] - input_domain.lo()[j] + 1;
+    int b = output_domain.hi()[j] - output_domain.lo()[j] + 1;
+    assert(a == b);
   }
 
   Experts::forward_kernel_wrapper(m,
                                   input_ptr,
                                   indices_ptr,
                                   topk_gate_pred_ptr,
-                                  outputs,
+                                  output_ptr,
                                   chosen_experts,
                                   batch_size,
                                   out_dim);
