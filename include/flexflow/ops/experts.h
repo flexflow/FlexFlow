@@ -33,8 +33,8 @@ public:
   Experts(FFModel &model,
           Params const &params,
           Input const &inputs,
-          char const *name = nullptr,
-          bool allocate_weights = false);
+          bool allocate_weights = false,
+          char const *name = nullptr);
   Experts(FFModel &model,
           ParallelTensor const *inputs,
           int _num_experts,

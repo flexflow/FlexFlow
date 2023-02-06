@@ -227,8 +227,8 @@ bool operator==(ExpertsParams const &lhs, ExpertsParams const &rhs) {
 Experts::Experts(FFModel &model,
                  ExpertsParams const &params,
                  std::vector<ParallelTensor> const &inputs,
-                 char const *name,
-                 bool allocate_weights)
+                 bool allocate_weights,
+                 char const *name)
     : Experts(model,
               inputs.data(),
               params.num_experts,
