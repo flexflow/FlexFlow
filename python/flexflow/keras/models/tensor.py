@@ -140,8 +140,5 @@ class Tensor(object):
   def __matmul__(self, other):
     return keras.backend.batch_dot(self, other)
 
-  def __div__(self, other):
-    return keras.layers.Multiply(self, other**-1)
-
   def __pow__(self, other):
     return keras.backend.pow(self, a=other)
