@@ -463,7 +463,7 @@ void Experts::init_inference(FFModel const &ff,
                           0 /*projection id*/,
                           READ_ONLY,
                           EXCLUSIVE,
-                          weights[0]->region));
+                          weights[i * (1 + use_bias)]->region));
     launcher.add_field(4 + i * (1 + use_bias), FID_DATA);
     if (use_bias) {
       launcher.add_region_requirement(
@@ -528,7 +528,7 @@ void Experts::init(FFModel const &ff) {
                           0 /*projection id*/,
                           READ_ONLY,
                           EXCLUSIVE,
-                          weights[0]->region));
+                          weights[i * (1 + use_bias)]->region));
     launcher.add_field(4 + i * (1 + use_bias), FID_DATA);
     if (use_bias) {
       launcher.add_region_requirement(
@@ -610,7 +610,7 @@ void Experts::forward(FFModel const &ff) {
                           0 /*projection id*/,
                           READ_ONLY,
                           EXCLUSIVE,
-                          weights[0]->region));
+                          weights[i * (1 + use_bias)]->region));
     launcher.add_field(4 + i * (1 + use_bias), FID_DATA);
     if (use_bias) {
       launcher.add_region_requirement(
@@ -678,7 +678,7 @@ void Experts::inference(FFModel const &ff,
                           0 /*projection id*/,
                           READ_ONLY,
                           EXCLUSIVE,
-                          weights[0]->region));
+                          weights[i * (1 + use_bias)]->region));
     launcher.add_field(4 + i * (1 + use_bias), FID_DATA);
     if (use_bias) {
       launcher.add_region_requirement(
@@ -766,9 +766,9 @@ void Experts::inference_task(Task const *task,
   }
 
   // get weights
-  float const *weights[num_experts * (1 + use_bias)];
+  float const *weights_ptrs[num_experts * (1 + use_bias)];
   for (int i = 0; i < num_experts; i++) {
-    weights[i * (1 + use_bias)] =
+    weights_ptrs[i * (1 + use_bias)] =
         helperGetTensorPointerRO<float>(regions[4 + i * (1 + use_bias)],
                                         task->regions[4 + i * (1 + use_bias)],
                                         FID_DATA,
@@ -781,12 +781,13 @@ void Experts::inference_task(Task const *task,
     assert(weights_domain.hi()[0] - weights_domain.lo()[0] + 1 == data_dim);
     assert(weights_domain.hi()[1] - weights_domain.lo()[1] + 1 == out_dim);
     if (use_bias) {
-      weights[i * (1 + use_bias) + use_bias] = helperGetTensorPointerRO<float>(
-          regions[4 + i * (1 + use_bias) + use_bias],
-          task->regions[4 + i * (1 + use_bias) + use_bias],
-          FID_DATA,
-          ctx,
-          runtime);
+      weights_ptrs[i * (1 + use_bias) + use_bias] =
+          helperGetTensorPointerRO<float>(
+              regions[4 + i * (1 + use_bias) + use_bias],
+              task->regions[4 + i * (1 + use_bias) + use_bias],
+              FID_DATA,
+              ctx,
+              runtime);
       Domain bias_domain = runtime->get_index_space_domain(
           ctx,
           task->regions[4 + i * (1 + use_bias) + use_bias]
@@ -802,7 +803,7 @@ void Experts::inference_task(Task const *task,
                                   indices_ptr,
                                   topk_gate_pred_ptr,
                                   output_ptr,
-                                  weights,
+                                  weights_ptrs,
                                   chosen_experts,
                                   batch_size,
                                   out_dim);
