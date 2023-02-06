@@ -61,10 +61,10 @@ void StopGrad::forward_kernel_wrapper(StopGradMeta const *m,
 
 template <typename T>
 __global__ void stop_grad_backward_kernel(coord_t volume,
-                                T const *output,
-                                T const *output_grad,
-                                T const *input,
-                                T *input_grad) {
+                                          T const *output,
+                                          T const *output_grad,
+                                          T const *input,
+                                          T *input_grad) {
   CUDA_KERNEL_LOOP(i, volume) {
     input_grad[i] = 0;
   }
