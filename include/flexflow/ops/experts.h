@@ -36,6 +36,7 @@ public:
           bool allocate_weights = false,
           char const *name = nullptr);
   Experts(FFModel &model,
+          LayerID const &layer_guid,
           ParallelTensor const *inputs,
           int _num_experts,
           int _experts_start_idx,

@@ -6,6 +6,7 @@ namespace FlexFlow {
 
 struct ExpertsParams {
   bool is_valid(std::vector<ParallelTensorShape> const &) const;
+  LayerID layer_guid;
   int num_experts;
   int experts_start_idx;
   int experts_output_dim_size;

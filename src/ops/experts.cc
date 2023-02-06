@@ -89,13 +89,25 @@ Tensor FFModel::experts(Tensor const *inputs,
   for (int i = 0; i < num_experts; i++) {
     {
       int dims[2] = {inputs[0]->dims[0], experts_output_dim_size};
-      e->weights[i * (1 + use_bias)] = create_weight_legion_ordering(
-          2, dims, DT_FLOAT, e, true /*create_grad*/);
+      e->weights[i * (1 + use_bias)] =
+          create_weight_legion_ordering(2,
+                                        dims,
+                                        DT_FLOAT,
+                                        e,
+                                        true /*create_grad*/,
+                                        nullptr,
+                                        CHOSEN_SYNC_TYPE);
     }
     if (use_bias) {
       int dims[1] = {experts_output_dim_size};
-      e->weights[i * (1 + use_bias) + use_bias] = create_weight_legion_ordering(
-          1, dims, DT_FLOAT, e, true /*create_grad*/);
+      e->weights[i * (1 + use_bias) + use_bias] =
+          create_weight_legion_ordering(1,
+                                        dims,
+                                        DT_FLOAT,
+                                        e,
+                                        true /*create_grad*/,
+                                        nullptr,
+                                        CHOSEN_SYNC_TYPE);
     }
   }
 
@@ -135,6 +147,7 @@ Op *Experts::create_operator_from_layer(
   layer->get_int_property("activation", value);
   ActiMode activation = (ActiMode)value;
   return new Experts(model,
+                     layer->layer_guid,
                      inputs.data(),
                      num_experts,
                      experts_start_idx,
@@ -150,6 +163,7 @@ Op *Experts::create_operator_from_layer(
 
 ExpertsParams Experts::get_params() const {
   ExpertsParams params;
+  params.layer_guid = this->layer_guid;
   params.num_experts = num_experts;
   params.experts_start_idx = experts_start_idx;
   params.experts_output_dim_size = experts_output_dim_size;
@@ -215,7 +229,8 @@ bool ExpertsParams::is_valid(
 }
 
 bool operator==(ExpertsParams const &lhs, ExpertsParams const &rhs) {
-  return lhs.num_experts == rhs.num_experts &&
+  return lhs.layer_guid == rhs.layer_guid &&
+         lhs.num_experts == rhs.num_experts &&
          lhs.experts_start_idx == rhs.experts_start_idx &&
          lhs.experts_output_dim_size == rhs.experts_output_dim_size &&
          lhs.alpha == rhs.alpha &&
@@ -230,6 +245,7 @@ Experts::Experts(FFModel &model,
                  bool allocate_weights,
                  char const *name)
     : Experts(model,
+              params.layer_guid,
               inputs.data(),
               params.num_experts,
               params.experts_start_idx,
@@ -243,6 +259,7 @@ Experts::Experts(FFModel &model,
               name) {}
 
 Experts::Experts(FFModel &model,
+                 LayerID const &_layer_guid,
                  ParallelTensor const *inputs,
                  int _num_experts,
                  int _experts_start_idx,
@@ -267,6 +284,9 @@ Experts::Experts(FFModel &model,
       experts_num_layers(_experts_num_layers),
       experts_internal_dim_size(_experts_internal_dim_size),
       use_bias(_use_bias), activation(_activation) {
+
+  // overwrite layer_guid
+  layer_guid = _layer_guid;
 
   assert(num_experts > 0);
   assert(numInputs == 3);
@@ -306,6 +326,11 @@ Experts::Experts(FFModel &model,
   assert(outputs[0] != nullptr);
 
   if (allocate_weights) {
+#ifdef USE_NCCL
+    ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+    ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
     for (int i = 0; i < num_experts; i++) {
       Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
       {
@@ -316,7 +341,8 @@ Experts::Experts(FFModel &model,
                                                          DT_FLOAT,
                                                          NULL /*owner_op*/,
                                                          true /*create_grad*/,
-                                                         kernel_initializer);
+                                                         kernel_initializer,
+                                                         comm_type);
         assert(weights[i * (1 + use_bias)] != nullptr);
       }
       if (use_bias) {
@@ -328,7 +354,8 @@ Experts::Experts(FFModel &model,
                                                          DT_FLOAT,
                                                          NULL /*owner_op*/,
                                                          true /*create_grad*/,
-                                                         bias_initializer);
+                                                         bias_initializer,
+                                                         comm_type);
         assert(weights[i * (1 + use_bias) + use_bias] != nullptr);
       }
     }
@@ -337,6 +364,7 @@ Experts::Experts(FFModel &model,
 
 void Experts::serialize(Legion::Serializer &sez) const {
   ExpertsParams params = get_params();
+  sez.serialize(params.layer_guid.id);
   sez.serialize(params.num_experts);
   sez.serialize(params.experts_start_idx);
   sez.serialize(params.experts_output_dim_size);
@@ -357,6 +385,9 @@ Node Experts::deserialize(FFModel &ff,
   float alpha;
   ActiMode activation;
   bool use_bias;
+  size_t id;
+  dez.deserialize(id);
+  LayerID layer_guid(id);
   dez.deserialize(num_experts);
   dez.deserialize(experts_start_idx);
   dez.deserialize(experts_output_dim_size);
@@ -369,6 +400,7 @@ Node Experts::deserialize(FFModel &ff,
   assert(num_inputs == 3);
 
   ExpertsParams params;
+  params.layer_guid = layer_guid;
   params.num_experts = num_experts;
   params.experts_start_idx = experts_start_idx;
   params.experts_output_dim_size = experts_output_dim_size;
@@ -812,6 +844,7 @@ namespace std {
 size_t hash<FlexFlow::ExpertsParams>::operator()(
     FlexFlow::ExpertsParams const &params) const {
   size_t key = 0;
+  hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.num_experts);
   hash_combine(key, params.experts_start_idx);
   hash_combine(key, params.experts_output_dim_size);
