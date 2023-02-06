@@ -768,15 +768,13 @@ flexflow_tensor_t
 }
 
 flexflow_tensor_t flexflow_model_add_stopgrad(flexflow_model_t handle_,
-                                                const flexflow_tensor_t input_,
-                                                char const *name) {
+                                              const flexflow_tensor_t input_,
+                                              char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->stopgrad(input, name);
-  DEBUG_PRINT("[Stop Gradient] new Tensor %p, input %p, name %s",
-              tensor,
-              input,
-              name);
+  DEBUG_PRINT(
+      "[Stop Gradient] new Tensor %p, input %p, name %s", tensor, input, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 

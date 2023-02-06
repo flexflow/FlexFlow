@@ -657,10 +657,7 @@ PYBIND11_MODULE(flexflow_pybind11_internal, m) {
            "add_zero_attn"_a = false,
            "kernel_initializer"_a = nullptr,
            "name"_a = nullptr)
-      .def("stopgrad",
-           &FFModel::stopgrad,
-           "x"_a,
-           "name"_a = nullptr)
+      .def("stopgrad", &FFModel::stopgrad, "x"_a, "name"_a = nullptr)
       .def("concat", &concat, "tensors"_a, "axis"_a, "name"_a = nullptr)
       .def("split", &split, "input"_a, "split"_a, "axis"_a, "name"_a = nullptr)
       // Others

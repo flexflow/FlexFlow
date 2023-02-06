@@ -21,15 +21,15 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-Tensor FFModel::stopgrad(const Tensor x,
-                      char const *name) {
+Tensor FFModel::stopgrad(const Tensor x, char const *name) {
   Layer *ele = new Layer(
-        this, OP_STOPGRAD, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
+      this, OP_STOPGRAD, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
   DataType dtype = x->data_type;
   int numdims = x->num_dims;
   int dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < numdims; i++)
+  for (int i = 0; i < numdims; i++) {
     dims[i] = x->dims[i];
+  }
   ele->outputs[0] = create_tensor_legion_ordering(
       numdims, dims, dtype, ele, 0, false /*create_grad*/);
   layers.push_back(ele);
@@ -40,8 +40,7 @@ Op *StopGrad::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
-  return new StopGrad(
-      model, inputs[0], layer->name);
+  return new StopGrad(model, inputs[0], layer->name);
 }
 
 StopGradParams StopGrad::get_params() const {
@@ -57,10 +56,14 @@ bool operator==(StopGradParams const &lhs, StopGradParams const &rhs) {
   return true;
 }
 
-StopGrad::StopGrad(FFModel &model,
-                           const ParallelTensor x,
-                           char const *name)
-    : Op(model, OP_STOPGRAD, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x) {
+StopGrad::StopGrad(FFModel &model, const ParallelTensor x, char const *name)
+    : Op(model,
+         OP_STOPGRAD,
+         name,
+         1 /*inputs*/,
+         0 /*weights*/,
+         1 /*outputs*/,
+         x) {
   numOutputs = 1;
   int numdim = x->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
@@ -72,9 +75,9 @@ StopGrad::StopGrad(FFModel &model,
 }
 
 StopGrad::StopGrad(FFModel &model,
-                           StopGradParams const &params,
-                           const ParallelTensor input,
-                           char const *name)
+                   StopGradParams const &params,
+                   const ParallelTensor input,
+                   char const *name)
     : StopGrad(model, input, name) {}
 
 void StopGrad::map_output_tensors(FFModel &ff) {
@@ -97,10 +100,10 @@ void StopGrad::init(FFModel const &ff) {
                               0 /*mapper_id*/,
                               outputs[0]->machine_view.hash());
   init_launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                          0 /*projection id*/,
-                                                          READ_WRITE,
-                                                          EXCLUSIVE,
-                                                          inputs[0]->region));
+                                                         0 /*projection id*/,
+                                                         READ_WRITE,
+                                                         EXCLUSIVE,
+                                                         inputs[0]->region));
   init_launcher.add_field(0, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
   fm.wait_all_results();
@@ -108,9 +111,9 @@ void StopGrad::init(FFModel const &ff) {
 }
 
 OpMeta *StopGrad::init_task(Task const *task,
-                                std::vector<PhysicalRegion> const &regions,
-                                Context ctx,
-                                Runtime *runtime) {
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
   StopGrad *eu = (StopGrad *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
   StopGradMeta *m = new StopGradMeta(handle);
@@ -147,9 +150,9 @@ void StopGrad::forward(FFModel const &ff) {
 }
 
 void StopGrad::forward_task(Task const *task,
-                                std::vector<PhysicalRegion> const &regions,
-                                Context ctx,
-                                Runtime *runtime) {
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
   StopGradMeta const *m = *((StopGradMeta **)task->local_args);
   if (m->data_type == DT_FLOAT) {
     forward_task_with_type<float>(task, regions, ctx, runtime);
@@ -223,9 +226,9 @@ void StopGrad::backward(FFModel const &ff) {
 }
 
 void StopGrad::backward_task(Task const *task,
-                                 std::vector<PhysicalRegion> const &regions,
-                                 Context ctx,
-                                 Runtime *runtime) {
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
   StopGradMeta const *m = *((StopGradMeta **)task->local_args);
   if (m->data_type == DT_FLOAT) {
     backward_task_with_type<float>(task, regions, ctx, runtime);
@@ -277,17 +280,18 @@ void StopGrad::backward_task_with_type(
                                         input_domain.get_volume());
 }
 
-void StopGrad::serialize(Legion::Serializer &sez) const {
-}
+void StopGrad::serialize(Legion::Serializer &sez) const {}
 
 bool StopGrad::measure_operator_cost(Simulator *sim,
-                                         MachineView const &mv,
-                                         CostMetrics &cost_metrics) const {
+                                     MachineView const &mv,
+                                     CostMetrics &cost_metrics) const {
   ParallelTensorBase sub_output, sub_input;
-  if (!outputs[0]->get_sub_tensor(mv, sub_output))
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
     return false;
-  if (!inputs[0]->get_sub_tensor(mv, sub_input))
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
     return false;
+  }
   StopGradMeta *m = sim->stop_grad_meta;
   sim->free_all();
   float *input_ptr =
@@ -313,8 +317,8 @@ bool StopGrad::measure_operator_cost(Simulator *sim,
     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
     float *output_grad_ptr = NULL;
-    output_grad_ptr = (float *)sim->allocate(sub_output.get_volume(),
-                                              outputs[0]->data_type);
+    output_grad_ptr =
+        (float *)sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
     assert(output_grad_ptr != NULL);
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
@@ -351,9 +355,9 @@ bool StopGrad::measure_operator_cost(Simulator *sim,
 using PCG::Node;
 /*static*/
 Node StopGrad::deserialize(FFModel &ff,
-                               Legion::Deserializer &dez,
-                               ParallelTensor inputs[],
-                               int num_inputs) {
+                           Legion::Deserializer &dez,
+                           ParallelTensor inputs[],
+                           int num_inputs) {
   assert(num_inputs == 1);
 
   StopGradParams params;
@@ -361,11 +365,10 @@ Node StopGrad::deserialize(FFModel &ff,
 }
 
 Op *StopGrad::materialize(FFModel &ff,
-                              ParallelTensor inputs[],
-                              int num_inputs) const {
+                          ParallelTensor inputs[],
+                          int num_inputs) const {
   assert(num_inputs == 1);
-  return new StopGrad(
-      ff, inputs[0], this->name);
+  return new StopGrad(ff, inputs[0], this->name);
 }
 
 }; // namespace FlexFlow

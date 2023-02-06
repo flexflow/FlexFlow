@@ -516,8 +516,7 @@ public:
                  std::vector<int> const &shape,
                  char const *name = NULL);
   Tensor reverse(const Tensor input, int axis, char const *name = NULL);
-  Tensor stopgrad(Tensor const x,
-               char const *name = NULL);
+  Tensor stopgrad(Tensor const x, char const *name = NULL);
   void top_k(const Tensor input,
              Tensor *outputs,
              int k,

@@ -34,7 +34,6 @@
 #include "flexflow/ops/dropout.h"
 #include "flexflow/ops/element_binary.h"
 #include "flexflow/ops/element_unary.h"
-#include "flexflow/ops/stop_grad.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
@@ -48,6 +47,7 @@
 #include "flexflow/ops/reverse.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
+#include "flexflow/ops/stop_grad.h"
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/parallel_ops/combine.h"
@@ -4338,24 +4338,21 @@ void register_flexflow_internal_tasks() {
   }
   // StopGrad task
   {
-    TaskVariantRegistrar registrar(STOPGRAD_INIT_TASK_ID,
-                                   "StopGrad Init");
+    TaskVariantRegistrar registrar(STOPGRAD_INIT_TASK_ID, "StopGrad Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta *, StopGrad::init_task>(
         registrar, "StopGrad Init Task");
   }
   {
-    TaskVariantRegistrar registrar(STOPGRAD_FWD_TASK_ID,
-                                   "StopGrad Forward");
+    TaskVariantRegistrar registrar(STOPGRAD_FWD_TASK_ID, "StopGrad Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<StopGrad::forward_task>(
         registrar, "StopGrad Forward Task");
   }
   {
-    TaskVariantRegistrar registrar(STOPGRAD_BWD_TASK_ID,
-                                   "StopGrad Backward");
+    TaskVariantRegistrar registrar(STOPGRAD_BWD_TASK_ID, "StopGrad Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<StopGrad::backward_task>(

@@ -290,8 +290,8 @@ flexflow_tensor_t
                                        char const *name);
 
 flexflow_tensor_t flexflow_model_add_stopgrad(flexflow_model_t handle,
-                                                const flexflow_tensor_t input,
-                                                char const *name);
+                                              const flexflow_tensor_t input,
+                                              char const *name);
 
 flexflow_tensor_t flexflow_model_add_scalar_add(flexflow_model_t handle,
                                                 const flexflow_tensor_t input,

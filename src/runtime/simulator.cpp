@@ -17,9 +17,8 @@
 #include "flexflow/model.h"
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/element_unary.h"
-#include "flexflow/ops/kernels/batch_matmul_kernels.h"
-#include "flexflow/ops/stop_grad.h"
 #include "flexflow/ops/embedding.h"
+#include "flexflow/ops/kernels/batch_matmul_kernels.h"
 #include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
@@ -28,6 +27,7 @@
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
 #include "flexflow/ops/kernels/transpose_kernels.h"
 #include "flexflow/ops/linear.h"
+#include "flexflow/ops/stop_grad.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
