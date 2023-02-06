@@ -22,8 +22,14 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 Tensor FFModel::stopgrad(const Tensor x, char const *name) {
-  Layer *ele = new Layer(
-      this, OP_STOPGRAD, DT_FLOAT, name, 1 /*inputs*/, 0 /*weights*/, 1 /*outputs*/, x);
+  Layer *ele = new Layer(this,
+                         OP_STOPGRAD,
+                         DT_FLOAT,
+                         name,
+                         1 /*inputs*/,
+                         0 /*weights*/,
+                         1 /*outputs*/,
+                         x);
   DataType dtype = x->data_type;
   int numdims = x->num_dims;
   int dims[MAX_TENSOR_DIM];
