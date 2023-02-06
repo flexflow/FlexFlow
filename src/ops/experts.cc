@@ -63,12 +63,17 @@ Tensor FFModel::experts(Tensor const *inputs,
   assert(experts_num_layers == 1 && "Multi-layer experts not implemented yet.");
   assert(experts_num_layers == 1 || experts_internal_dim_size > 0);
 
+  // parameters for the FFN implementing the experts. We can make these
+  // FFModel::experts(...) function parameters if needed.
+  bool use_bias = false;
+  ActiMode activation = AC_MODE_RELU;
+
   Layer *e = new Layer(this,
                        OP_EXPERTS,
                        DT_FLOAT,
                        name,
                        3 /*inputs*/,
-                       0 /*weights*/,
+                       num_experts * (1 + use_bias) /*weights*/,
                        1 /*outputs*/,
                        inputs);
   {
@@ -81,6 +86,18 @@ Tensor FFModel::experts(Tensor const *inputs,
         num_dims, dims, DT_FLOAT, e, 0, true /*create_grad*/);
     assert(e->outputs[0] != nullptr);
   }
+  for (int i = 0; i < num_experts; i++) {
+    {
+      int dims[2] = {inputs[0]->dims[0], experts_output_dim_size};
+      e->weights[i * (1 + use_bias)] = create_weight_legion_ordering(
+          2, dims, DT_FLOAT, e, true /*create_grad*/);
+    }
+    if (use_bias) {
+      int dims[1] = {experts_output_dim_size};
+      e->weights[i * (1 + use_bias) + use_bias] = create_weight_legion_ordering(
+          1, dims, DT_FLOAT, e, true /*create_grad*/);
+    }
+  }
 
   e->add_int_property("num_experts", num_experts);
   e->add_int_property("experts_start_idx", experts_start_idx);
@@ -88,6 +105,8 @@ Tensor FFModel::experts(Tensor const *inputs,
   e->add_float_property("alpha", alpha);
   e->add_int_property("experts_num_layers", experts_num_layers);
   e->add_int_property("experts_internal_dim_size", experts_internal_dim_size);
+  e->add_int_property("use_bias", use_bias);
+  e->add_int_property("activation", activation);
   layers.push_back(e);
 
   return e->outputs[0];
@@ -111,6 +130,10 @@ Op *Experts::create_operator_from_layer(
   int experts_num_layers = value;
   layer->get_int_property("experts_internal_dim_size", value);
   int experts_internal_dim_size = value;
+  layer->get_int_property("use_bias", value);
+  bool use_bias = (bool)value;
+  layer->get_int_property("activation", value);
+  ActiMode activation = (ActiMode)value;
   return new Experts(model,
                      inputs.data(),
                      num_experts,
@@ -119,6 +142,9 @@ Op *Experts::create_operator_from_layer(
                      alpha,
                      experts_num_layers,
                      experts_internal_dim_size,
+                     use_bias,
+                     activation,
+                     false /*allocate_weights*/,
                      layer->name);
 }
 
@@ -130,6 +156,8 @@ ExpertsParams Experts::get_params() const {
   params.alpha = alpha;
   params.experts_num_layers = experts_num_layers;
   params.experts_internal_dim_size = experts_internal_dim_size;
+  params.use_bias = use_bias;
+  params.activation = activation;
   return params;
 }
 
@@ -192,14 +220,15 @@ bool operator==(ExpertsParams const &lhs, ExpertsParams const &rhs) {
          lhs.experts_output_dim_size == rhs.experts_output_dim_size &&
          lhs.alpha == rhs.alpha &&
          lhs.experts_num_layers == rhs.experts_num_layers &&
-         lhs.experts_internal_dim_size == rhs.experts_internal_dim_size;
+         lhs.experts_internal_dim_size == rhs.experts_internal_dim_size &&
+         lhs.use_bias == rhs.use_bias && lhs.activation == rhs.activation;
 }
 
 Experts::Experts(FFModel &model,
                  ExpertsParams const &params,
-                 // std::pair<ParallelTensor, ParallelTensor> const &inputs,
                  std::vector<ParallelTensor> const &inputs,
-                 char const *name)
+                 char const *name,
+                 bool allocate_weights)
     : Experts(model,
               inputs.data(),
               params.num_experts,
@@ -208,6 +237,9 @@ Experts::Experts(FFModel &model,
               params.alpha,
               params.experts_num_layers,
               params.experts_internal_dim_size,
+              params.use_bias,
+              params.activation,
+              allocate_weights,
               name) {}
 
 Experts::Experts(FFModel &model,
@@ -218,23 +250,28 @@ Experts::Experts(FFModel &model,
                  float _alpha,
                  int _experts_num_layers,
                  int _experts_internal_dim_size,
+                 bool _use_bias,
+                 ActiMode _activation,
+                 bool allocate_weights,
                  char const *name)
     : Op(model,
          OP_EXPERTS,
          DT_FLOAT,
          name,
          3 /*inputs*/,
-         0 /*weights*/,
+         _num_experts * (1 + _use_bias) /*weights*/,
          1 /*outputs*/,
          inputs),
       num_experts(_num_experts), experts_start_idx(_experts_start_idx),
       experts_output_dim_size(_experts_output_dim_size), alpha(_alpha),
       experts_num_layers(_experts_num_layers),
-      experts_internal_dim_size(_experts_internal_dim_size) {
+      experts_internal_dim_size(_experts_internal_dim_size),
+      use_bias(_use_bias), activation(_activation) {
 
   assert(num_experts > 0);
   assert(numInputs == 3);
   assert(numOutputs == 1);
+  assert(numWeights == num_experts * (1 + use_bias));
 
   assert(inputs[0] != nullptr);
   int num_dims = inputs[0]->num_dims;
@@ -259,17 +296,42 @@ Experts::Experts(FFModel &model,
   assert(inputs[1]->dims[0].degree == 1);
   assert(inputs[2]->dims[0].degree == 1);
 
-  ParallelDim dims[MAX_TENSOR_DIM];
+  ParallelDim out_dims[MAX_TENSOR_DIM];
   for (int i = 0; i < num_dims; i++) {
-    dims[i] = inputs[0]->dims[i];
+    out_dims[i] = inputs[0]->dims[i];
   }
-  dims[0].size = experts_output_dim_size;
-  // numOutputs = num_experts;
-  // numWeights = 0;
-  for (int i = 0; i < num_experts; i++) {
-    outputs[i] = model.create_parallel_tensor_legion_ordering(
-        num_dims, dims, inputs[0]->data_type, this, i /*owner_idx*/);
-    assert(outputs[i] != nullptr);
+  out_dims[0].size = experts_output_dim_size;
+  outputs[0] = model.create_parallel_tensor_legion_ordering(
+      num_dims, out_dims, inputs[0]->data_type, this, 0 /*owner_idx*/);
+  assert(outputs[0] != nullptr);
+
+  if (allocate_weights) {
+    for (int i = 0; i < num_experts; i++) {
+      Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
+      {
+        ParallelDim dims[2] = {inputs[0]->dims[0], out_dims[0]};
+        weights[i * (1 + use_bias)] =
+            model.create_parallel_weight_legion_ordering(2,
+                                                         dims,
+                                                         DT_FLOAT,
+                                                         NULL /*owner_op*/,
+                                                         true /*create_grad*/,
+                                                         kernel_initializer);
+        assert(weights[i * (1 + use_bias)] != nullptr);
+      }
+      if (use_bias) {
+        Initializer *bias_initializer = new ZeroInitializer();
+        ParallelDim dims[1] = {out_dims[0]};
+        weights[i * (1 + use_bias) + use_bias] =
+            model.create_parallel_weight_legion_ordering(1,
+                                                         dims,
+                                                         DT_FLOAT,
+                                                         NULL /*owner_op*/,
+                                                         true /*create_grad*/,
+                                                         bias_initializer);
+        assert(weights[i * (1 + use_bias) + use_bias] != nullptr);
+      }
+    }
   }
 }
 
@@ -281,6 +343,8 @@ void Experts::serialize(Legion::Serializer &sez) const {
   sez.serialize(params.alpha);
   sez.serialize(params.experts_num_layers);
   sez.serialize(params.experts_internal_dim_size);
+  sez.serialize(params.use_bias);
+  sez.serialize(params.activation);
 }
 
 using PCG::Node;
@@ -291,12 +355,16 @@ Node Experts::deserialize(FFModel &ff,
   int num_experts, experts_start_idx, experts_output_dim_size,
       experts_num_layers, experts_internal_dim_size;
   float alpha;
+  ActiMode activation;
+  bool use_bias;
   dez.deserialize(num_experts);
   dez.deserialize(experts_start_idx);
   dez.deserialize(experts_output_dim_size);
   dez.deserialize(alpha);
   dez.deserialize(experts_num_layers);
   dez.deserialize(experts_internal_dim_size);
+  dez.deserialize(use_bias);
+  dez.deserialize(activation);
 
   assert(num_inputs == 3);
 
@@ -307,6 +375,8 @@ Node Experts::deserialize(FFModel &ff,
   params.alpha = alpha;
   params.experts_num_layers = experts_num_layers;
   params.experts_internal_dim_size = experts_internal_dim_size;
+  params.use_bias = use_bias;
+  params.activation = activation;
 
   return ff.get_or_create_node<Experts>(inputs, params);
 }
@@ -355,6 +425,24 @@ void Experts::init_inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(3, FID_DATA);
+  for (int i = 0; i < num_experts; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(weights[i * (1 + use_bias)]->part,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          weights[0]->region));
+    launcher.add_field(4 + i * (1 + use_bias), FID_DATA);
+    if (use_bias) {
+      launcher.add_region_requirement(
+          RegionRequirement(weights[i * (1 + use_bias) + use_bias]->part,
+                            0 /*projection id*/,
+                            READ_ONLY,
+                            EXCLUSIVE,
+                            weights[i * (1 + use_bias) + use_bias]->region));
+      launcher.add_field(4 + i * (1 + use_bias) + use_bias, FID_DATA);
+    }
+  }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
@@ -402,6 +490,24 @@ void Experts::init(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     outputs[0]->region));
   launcher.add_field(3, FID_DATA);
+  for (int i = 0; i < num_experts; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(weights[i * (1 + use_bias)]->part,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          weights[0]->region));
+    launcher.add_field(4 + i * (1 + use_bias), FID_DATA);
+    if (use_bias) {
+      launcher.add_region_requirement(
+          RegionRequirement(weights[i * (1 + use_bias) + use_bias]->part,
+                            0 /*projection id*/,
+                            READ_ONLY,
+                            EXCLUSIVE,
+                            weights[i * (1 + use_bias) + use_bias]->region));
+      launcher.add_field(4 + i * (1 + use_bias) + use_bias, FID_DATA);
+    }
+  }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
@@ -413,8 +519,12 @@ OpMeta *Experts::init_task(Task const *task,
                            Runtime *runtime) {
   Experts const *exp = (Experts *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  ExpertsMeta *m = new ExpertsMeta(
-      handle, exp->num_experts, exp->experts_start_idx, exp->alpha);
+  ExpertsMeta *m = new ExpertsMeta(handle,
+                                   exp->num_experts,
+                                   exp->experts_start_idx,
+                                   exp->alpha,
+                                   exp->use_bias,
+                                   exp->activation);
   m->profiling = exp->profiling;
   return m;
 }
@@ -462,6 +572,24 @@ void Experts::forward(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     outputs[0]->region));
   launcher.add_field(3, FID_DATA);
+  for (int i = 0; i < num_experts; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(weights[i * (1 + use_bias)]->part,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          weights[0]->region));
+    launcher.add_field(4 + i * (1 + use_bias), FID_DATA);
+    if (use_bias) {
+      launcher.add_region_requirement(
+          RegionRequirement(weights[i * (1 + use_bias) + use_bias]->part,
+                            0 /*projection id*/,
+                            READ_ONLY,
+                            EXCLUSIVE,
+                            weights[i * (1 + use_bias) + use_bias]->region));
+      launcher.add_field(4 + i * (1 + use_bias) + use_bias, FID_DATA);
+    }
+  }
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -512,6 +640,24 @@ void Experts::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(3, FID_DATA);
+  for (int i = 0; i < num_experts; i++) {
+    launcher.add_region_requirement(
+        RegionRequirement(weights[i * (1 + use_bias)]->part,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          weights[0]->region));
+    launcher.add_field(4 + i * (1 + use_bias), FID_DATA);
+    if (use_bias) {
+      launcher.add_region_requirement(
+          RegionRequirement(weights[i * (1 + use_bias) + use_bias]->part,
+                            0 /*projection id*/,
+                            READ_ONLY,
+                            EXCLUSIVE,
+                            weights[i * (1 + use_bias) + use_bias]->region));
+      launcher.add_field(4 + i * (1 + use_bias) + use_bias, FID_DATA);
+    }
+  }
   runtime->execute_index_space(ctx, launcher);
 }
 
@@ -520,11 +666,14 @@ void Experts::inference_task(Task const *task,
                              Context ctx,
                              Runtime *runtime) {
   assert(regions.size() == task->regions.size());
-  int num_experts = regions.size() - 3;
 
   ExpertsMeta const *m = *((ExpertsMeta **)task->local_args);
 
-  // get input, indices, topk_gate_preds
+  int num_experts = m->num_experts;
+  bool use_bias = m->use_bias;
+  assert(regions.size() - 4 == num_experts * (1 + use_bias));
+
+  // get input, indices, topk_gate_preds, outputs
   float const *input_ptr = helperGetTensorPointerRO<float>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   int const *indices_ptr = helperGetTensorPointerRO<int>(
@@ -554,6 +703,7 @@ void Experts::inference_task(Task const *task,
   int replica_dim = input_dims - 1;
   int samples_index = input_dims - 2;
 
+  coord_t data_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
   coord_t batch_size =
       input_domain.hi()[samples_index] - input_domain.lo()[samples_index] + 1;
   coord_t chosen_experts = indices_domain.hi()[0] - indices_domain.lo()[0];
@@ -583,11 +733,44 @@ void Experts::inference_task(Task const *task,
     assert(a == b);
   }
 
+  // get weights
+  float const *weights[num_experts * (1 + use_bias)];
+  for (int i = 0; i < num_experts; i++) {
+    weights[i * (1 + use_bias)] =
+        helperGetTensorPointerRO<float>(regions[4 + i * (1 + use_bias)],
+                                        task->regions[4 + i * (1 + use_bias)],
+                                        FID_DATA,
+                                        ctx,
+                                        runtime);
+    Domain weights_domain = runtime->get_index_space_domain(
+        ctx, task->regions[4 + i * (1 + use_bias)].region.get_index_space());
+    int weights_dims = weights_domain.get_dim();
+    assert(weights_dims == 2);
+    assert(weights_domain.hi()[0] - weights_domain.lo()[0] + 1 == data_dim);
+    assert(weights_domain.hi()[1] - weights_domain.lo()[1] + 1 == out_dim);
+    if (use_bias) {
+      weights[i * (1 + use_bias) + use_bias] = helperGetTensorPointerRO<float>(
+          regions[4 + i * (1 + use_bias) + use_bias],
+          task->regions[4 + i * (1 + use_bias) + use_bias],
+          FID_DATA,
+          ctx,
+          runtime);
+      Domain bias_domain = runtime->get_index_space_domain(
+          ctx,
+          task->regions[4 + i * (1 + use_bias) + use_bias]
+              .region.get_index_space());
+      int bias_dims = bias_domain.get_dim();
+      assert(bias_dims == 1);
+      assert(bias_domain.hi()[0] - bias_domain.lo()[0] + 1 == out_dim);
+    }
+  }
+
   Experts::forward_kernel_wrapper(m,
                                   input_ptr,
                                   indices_ptr,
                                   topk_gate_pred_ptr,
                                   output_ptr,
+                                  weights,
                                   chosen_experts,
                                   batch_size,
                                   out_dim);
@@ -635,6 +818,8 @@ size_t hash<FlexFlow::ExpertsParams>::operator()(
   hash_combine(key, params.alpha);
   hash_combine(key, params.experts_num_layers);
   hash_combine(key, params.experts_internal_dim_size);
+  hash_combine(key, params.use_bias);
+  hash_combine(key, params.activation);
   return key;
 }
 }; // namespace std

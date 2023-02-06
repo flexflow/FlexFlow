@@ -12,6 +12,8 @@ struct ExpertsParams {
   float alpha;
   int experts_num_layers;
   int experts_internal_dim_size;
+  bool use_bias;
+  ActiMode activation;
 };
 
 bool operator==(ExpertsParams const &, ExpertsParams const &);

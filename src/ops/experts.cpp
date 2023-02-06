@@ -25,6 +25,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      int const *indices,
                                      float const *topk_gate_preds,
                                      float *output,
+                                     float const **weights,
                                      int chosen_experts,
                                      int batch_size,
                                      int out_dim) {
@@ -34,15 +35,33 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   int expert_capacity =
       ceil(m->alpha * chosen_experts / m->num_experts * batch_size);
 
+  int num_experts = m->num_experts;
+  // int expert_start_index = experts_start_idx;
+  bool use_bias = m->use_bias;
+  // ActiMode activation = m->activation;
+
+  hipMemcpy(m->dev_weights,
+            weights,
+            num_experts * (1 + use_bias) * sizeof(float *),
+            hipMemcpyHostToDevice);
+
   // TODO: write the HIP version of the kernel after finishing the CUDA kernel
 }
 
 ExpertsMeta::ExpertsMeta(FFHandler handler,
                          int _num_experts,
                          int _experts_start_idx,
-                         float _alpha)
+                         float _alpha,
+                         bool _use_bias,
+                         ActiMode _activation)
     : OpMeta(handler), num_experts(_num_experts),
-      experts_start_idx(_experts_start_idx), alpha(_alpha) {}
-ExpertsMeta::~ExpertsMeta(void) {}
+      experts_start_idx(_experts_start_idx), alpha(_alpha), use_bias(_use_bias),
+      activation(_activation) {
+  checkCUDA(
+      hipMalloc(&dev_weights, num_experts * (1 + use_bias) * sizeof(float *)));
+}
+ExpertsMeta::~ExpertsMeta(void) {
+  checkCUDA(hipFree(&dev_weights));
+}
 
 }; // namespace FlexFlow

@@ -24,6 +24,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      int const *indices,
                                      float const *topk_gate_preds,
                                      float *output,
+                                     float const **weights,
                                      int chosen_experts,
                                      int batch_size,
                                      int out_dim) {
@@ -33,6 +34,11 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   int expert_capacity =
       ceil(m->alpha * chosen_experts / m->num_experts * batch_size);
 
+  int num_experts = m->num_experts;
+  // int expert_start_index = experts_start_idx;
+  bool use_bias = m->use_bias;
+  // ActiMode activation = m->activation;
+
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
@@ -40,7 +46,12 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     cudaEventRecord(t_start, stream);
   }
 
-  /** TODO
+  cudaMemcpy(m->dev_weights,
+             weights,
+             num_experts * (1 + use_bias) * sizeof(float *),
+             cudaMemcpyHostToDevice);
+
+  /** TODO: launch one or more kernel(s) to do the following:
    * 1. sort the tokens by expert to which they are assigned. This will require
    * replicating tokens when chosen_experts > 1
    * 2. matrix multiply (you can use cublasGemmEx) each slice of tokens with the
@@ -67,9 +78,17 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 ExpertsMeta::ExpertsMeta(FFHandler handler,
                          int _num_experts,
                          int _experts_start_idx,
-                         float _alpha)
+                         float _alpha,
+                         bool _use_bias,
+                         ActiMode _activation)
     : OpMeta(handler), num_experts(_num_experts),
-      experts_start_idx(_experts_start_idx), alpha(_alpha) {}
-ExpertsMeta::~ExpertsMeta(void) {}
+      experts_start_idx(_experts_start_idx), alpha(_alpha), use_bias(_use_bias),
+      activation(_activation) {
+  checkCUDA(
+      cudaMalloc(&dev_weights, num_experts * (1 + use_bias) * sizeof(float *)));
+}
+ExpertsMeta::~ExpertsMeta(void) {
+  checkCUDA(cudaFree(&dev_weights));
+}
 
 }; // namespace FlexFlow
