@@ -60,7 +60,7 @@ void StopGrad::forward_kernel_wrapper(StopGradMeta const *m,
 }
 
 template <typename T>
-__global__ void backward_kernel(coord_t volume,
+__global__ void stop_grad_backward_kernel(coord_t volume,
                                 T const *output,
                                 T const *output_grad,
                                 T const *input,
@@ -81,7 +81,7 @@ void StopGrad::backward_kernel(StopGradMeta const *m,
                                hipStream_t stream) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(backward_kernel<T>),
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(stop_grad_backward_kernel<T>),
                      GET_BLOCKS(num_elements),
                      CUDA_NUM_THREADS,
                      0,
