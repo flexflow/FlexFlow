@@ -1,6 +1,8 @@
 #ifndef _OPERATOR_PARAMS_H
 #define _OPERATOR_PARAMS_H
 
+#include "flexflow/ops/aggregate_params.h"
+#include "flexflow/ops/aggregate_spec_params.h"
 #include "flexflow/ops/attention_params.h"
 #include "flexflow/ops/batch_matmul_params.h"
 #include "flexflow/ops/cast_params.h"
@@ -11,6 +13,7 @@
 #include "flexflow/ops/element_unary_params.h"
 #include "flexflow/ops/embedding_params.h"
 #include "flexflow/ops/flat_params.h"
+#include "flexflow/ops/groupby_params.h"
 #include "flexflow/ops/layer_norm_params.h"
 #include "flexflow/ops/linear_params.h"
 #include "flexflow/ops/pool_2d_params.h"
@@ -18,6 +21,7 @@
 #include "flexflow/ops/reshape_params.h"
 #include "flexflow/ops/softmax_params.h"
 #include "flexflow/ops/split_params.h"
+#include "flexflow/ops/topk_params.h"
 #include "flexflow/ops/transpose_params.h"
 #include "flexflow/parallel_ops/combine_params.h"
 #include "flexflow/parallel_ops/fused_parallel_op_params.h"
@@ -30,7 +34,9 @@ namespace mp = mpark;
 
 namespace FlexFlow {
 
-using OperatorParameters = mp::variant<BatchMatmulParams,
+using OperatorParameters = mp::variant<AggregateParams,
+                                       AggregateSpecParams,
+                                       BatchMatmulParams,
                                        Conv2DParams,
                                        ConcatParams,
                                        CastParams,
@@ -39,6 +45,7 @@ using OperatorParameters = mp::variant<BatchMatmulParams,
                                        DropoutParams,
                                        EmbeddingParams,
                                        FlatParams,
+                                       Group_byParams,
                                        LayerNormParams,
                                        LinearParams,
                                        MultiHeadAttentionParams,
@@ -46,6 +53,7 @@ using OperatorParameters = mp::variant<BatchMatmulParams,
                                        ReduceParams,
                                        ReshapeParams,
                                        SplitParams,
+                                       TopKParams,
                                        SoftmaxParams,
                                        TransposeParams,
                                        RepartitionParams,

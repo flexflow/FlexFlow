@@ -1,5 +1,21 @@
+/* Copyright 2018 Stanford
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "flexflow/ops/flat.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/flat_kernels.h"
 
 namespace FlexFlow {
 
@@ -18,6 +34,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::Flat;
 
 Tensor FFModel::flat(const Tensor input, char const *name) {
   assert(input->num_dims == 4);
@@ -220,7 +238,7 @@ void Flat::forward_task(Task const *task,
                                                         false /*readOutput*/);
   assert(acc_input.rect.volume() == acc_output.rect.volume());
 
-  Flat::forward_kernel_wrapper(
+  forward_kernel_wrapper(
       acc_input.ptr, acc_output.ptr, acc_input.rect.volume());
   // checkCUDA(cudaDeviceSynchronize());
 }
@@ -273,7 +291,7 @@ void Flat::backward_task(Task const *task,
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(acc_input_grad.rect.volume() == acc_output_grad.rect.volume());
 
-  Flat::backward_kernel_wrapper(
+  backward_kernel_wrapper(
       acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
 }
 
