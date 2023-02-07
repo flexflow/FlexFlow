@@ -330,7 +330,7 @@ hipblasDatatype_t ff_to_cuda_datatype(DataType type) {
 
 void handle_unimplemented_hip_kernel(OperatorType op_type) {
   throw std::runtime_error("Unimplemented hip kernel for Operator: " +
-                           get_operator_type_name(op_type));
+                           FlexFlow::get_operator_type_name(op_type));
 }
 
 template __global__ void
