@@ -174,6 +174,11 @@ struct ParallelTensorBase {
                                 const std::vector<Legion::PhysicalRegion> &regions,
                                 Legion::Context ctx,
                                 Legion::Runtime *runtime);
+  template <int NDIM>
+  static bool tensor_equal_task_with_dim(const Legion::Task *task,
+                                         const std::vector<Legion::PhysicalRegion> &regions,
+                                         Legion::Context ctx,
+                                         Legion::Runtime *runtime);
 
 private:
   template <typename T>

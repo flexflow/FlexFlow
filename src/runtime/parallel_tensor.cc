@@ -740,7 +740,7 @@ bool ParallelTensorBase::tensor_equal(FFConfig &config,
                                       ParallelTensorBase &tensor) {
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
-  TaskLauncher launcher(TENSOR_EQUAL_TASK_ID, TaskArgument(NULL, 0));
+  TaskLauncher launcher(TENSOR_EQUAL_TASK_ID, TaskArgument(&num_dims, sizeof(num_dims)));
   launcher.add_region_requirement(RegionRequirement(region, READ_ONLY, EXCLUSIVE, region));
   launcher.add_field(0, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(tensor.region, READ_ONLY, EXCLUSIVE, tensor.region));
@@ -754,8 +754,38 @@ bool ParallelTensorBase::tensor_equal_task(const Task *task,
                                            Context ctx,
 					   Runtime *runtime) {
   assert(regions.size() == 2);
+  int dim = *(const int*)task->args;
+  switch (dim) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM:                                                                    \
+    return tensor_equal_task_with_dim<DIM>(task, regions, ctx, runtime);
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
   assert(false);
-  return false;
+}
+
+template <int NDIM>
+bool ParallelTensorBase::tensor_equal_task_with_dim(const Task *task,
+                                                    const std::vector<PhysicalRegion> &regions,
+                                                    Context ctx,
+                                                    Runtime *runtime) {
+  TensorAccessorR<float, NDIM> acc1(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, NDIM> acc2(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  const float *data1 = acc1.ptr;
+  const float *data2 = acc2.ptr;
+  bool equal = true;
+  for (int i = 0; i < acc1.rect.volume(); i++) {
+    if (data1[i] != data2[i]) {
+      equal = false;
+      break;
+    }
+  }
+  return equal;
 }
 
 template float *ParallelTensorBase::get_raw_ptr<float>(FFConfig &config);
