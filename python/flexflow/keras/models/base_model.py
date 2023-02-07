@@ -152,6 +152,8 @@ class BaseModel(object):
       self._label_type = ff.DataType.DT_INT32
     elif loss == 'mean_squared_error':
       self._loss = keras_losses.MeanSquaredError()
+    elif loss == 'identity':
+      self._loss = keras_losses.Identity()
     else:
       assert 0, 'Unsupported loss'
 
