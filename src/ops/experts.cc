@@ -501,6 +501,7 @@ void Experts::inference(FFModel const &ff,
   set_argumentmap_for_forward(ff, argmap);
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  std::cout << "Experts op machine_view: " <<  batch_outputs[0]->machine_view << std::endl;
   IndexLauncher launcher(EXPERTS_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(nullptr, 0),

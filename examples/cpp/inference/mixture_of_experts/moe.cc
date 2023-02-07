@@ -109,6 +109,8 @@ void FlexFlow::top_level_task(Task const *task,
 
   MoeConfig moeConfig;
   FFConfig ffConfig;
+  ffConfig.realWorkersPerNode = ffConfig.workersPerNode;
+  ffConfig.workersPerNode = 1;
   ffConfig.batchSize = moeConfig.batch_size;
   {
     InputArgs const &command_args = HighLevelRuntime::get_input_args();
@@ -121,7 +123,6 @@ void FlexFlow::top_level_task(Task const *task,
                   ffConfig.numNodes);
   }
   FFModel ff(ffConfig);
-
   Tensor input;
   {
     int const dims[] = {
@@ -131,8 +132,8 @@ void FlexFlow::top_level_task(Task const *task,
 
   //-----------------------------------------------------------------
 
-  Tensor t = create_moe_encoder(&ff, &moeConfig, input);
-  // Tensor t = create_moe(&ff, &moeConfig, input);
+  // Tensor t = create_moe_encoder(&ff, &moeConfig, input);
+  Tensor t = create_moe(&ff, &moeConfig, input);
   t = ff.dense(t, OUT_DIM, AC_MODE_RELU);
 
   InferenceManager im(&ff, num_requests_per_batch, num_inflight_batches);

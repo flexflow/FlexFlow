@@ -116,7 +116,7 @@ public:
 public:
   int epochs, batchSize, printFreq;
   // int inputHeight, inputWidth;
-  int numNodes, cpusPerNode, workersPerNode;
+  int numNodes, cpusPerNode, workersPerNode, realWorkersPerNode;
   float learningRate, weightDecay;
   size_t workSpaceSize;
   Legion::Context lg_ctx;
