@@ -1035,7 +1035,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle, inplace_a, c_name)
+    handle = ffc.flexflow_model_add_max(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.MAX, name)
     return Tensor(handle, owner_op_type=OpType.MAX)
 
@@ -1054,7 +1054,7 @@ class FFModel(object):
     :returns:  Tensor -- the output tensor.
     """
     c_name = get_c_name(name)
-    handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle, inplace_a, c_name)
+    handle = ffc.flexflow_model_add_min(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.MIN, name)
     return Tensor(handle, owner_op_type=OpType.MIN)
 
