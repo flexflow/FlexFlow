@@ -18,7 +18,7 @@ from flexflow.core.flexflow_logger import fflogger
 
 from .tensor import Tensor
 from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout, BatchNormalization, Embedding, Reshape, Permute
-from flexflow.keras.backend.internal import BatchMatmul, Sin, Cos, Exp, Pow, ReduceSum
+from flexflow.keras.backend.internal import BatchMatmul, Sin, Cos, Exp, Pow, ReduceSum, Rsqrt
 from flexflow.keras.optimizers import SGD, Adam
 from flexflow.keras.callbacks import Callback, LearningRateScheduler, VerifyMetrics, EpochVerifyMetrics
 from flexflow.keras import losses as keras_losses
@@ -514,6 +514,8 @@ class BaseModel(object):
         out_t = self._ffmodel.pow(layer.input_tensors[0].ffhandle, layer.a)
       elif isinstance(layer, ReduceSum):
         out_t = self._ffmodel.reduce_sum(layer.input_tensors[0].ffhandle, layer.axis, layer.keepdims)
+      elif isinstance(layer, Rsqrt):
+        out_t = self._ffmodel.rsqrt(layer.input_tensors[0].ffhandle)
       else:
         assert 0, "unknown layer"
 
