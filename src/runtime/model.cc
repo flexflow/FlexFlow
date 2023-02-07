@@ -2630,7 +2630,8 @@ Op *FFModel::create_operator_from_layer(
       assert(tensor->parallel_tensor == nullptr);
       tensor->parallel_tensor = pt;
       // start from data parllel tensor
-      if (config.only_data_parallel && config.computationMode == COMP_MODE_TRAINING) {
+      if (config.only_data_parallel &&
+          config.computationMode == COMP_MODE_TRAINING) {
         Repartition *part = new Repartition(
             *this, pt, num_dims - 1, config.numNodes * config.workersPerNode);
         operators.push_back(part);
