@@ -141,5 +141,5 @@ hipblasDatatype_t ff_to_cuda_datatype(DataType type);
 
 miopenDataType_t ff_to_cudnn_datatype(DataType type);
 
-void handle_unimplemented_hip_kernel();
+void handle_unimplemented_hip_kernel(OperatorType op_type);
 #endif

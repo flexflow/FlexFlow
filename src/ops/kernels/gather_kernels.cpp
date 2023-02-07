@@ -108,7 +108,7 @@ void forward_kernel(float const *input_ptr,
   assert(input_ptr != nullptr);
   assert(index_ptr != nullptr);
   assert(output_ptr != nullptr);
-  handle_unimplemented_hip_kernel();
+  handle_unimplemented_hip_kernel(OP_GATHER);
 }
 
 template <typename IndexType>
@@ -122,7 +122,7 @@ void backward_kernel(float const *output_grad_ptr,
   assert(output_grad_ptr != nullptr);
   assert(input_grad_ptr != nullptr);
   assert(index_ptr != nullptr);
-  handle_unimplemented_hip_kernel();
+  handle_unimplemented_hip_kernel(OP_GATHER);
 }
 
 } // namespace Internal
