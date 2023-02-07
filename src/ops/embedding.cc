@@ -15,6 +15,7 @@
 
 #include "flexflow/ops/embedding.h"
 #include "flexflow/model.h"
+#include "flexflow/ops/kernels/embedding_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -35,6 +36,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::Embedding;
 
 Tensor FFModel::embedding(const Tensor input,
                           int num_entries,
@@ -470,7 +473,7 @@ void Embedding::forward_task(Task const *task,
     effective_batch_size = output.domain.get_volume() / out_dim;
     assert(effective_batch_size * in_dim == input.domain.get_volume());
   }
-  Embedding::forward_kernel_wrapper(
+  forward_kernel_wrapper(
       m, input, output, kernel, in_dim, out_dim, effective_batch_size);
 }
 
@@ -530,15 +533,15 @@ void Embedding::forward_task_with_type(
     assert(effective_batch_size * in_dim == input_domain.get_volume());
   }
 
-  Embedding::forward_kernel_wrapper<TI>(m,
-                                        input_ptr,
-                                        output_ptr,
-                                        kernel_ptr,
-                                        in_dim,
-                                        out_dim,
-                                        effective_batch_size,
-                                        m->aggr,
-                                        output_domain.get_volume());
+  forward_kernel_wrapper<TI>(m,
+                             input_ptr,
+                             output_ptr,
+                             kernel_ptr,
+                             in_dim,
+                             out_dim,
+                             effective_batch_size,
+                             m->aggr,
+                             output_domain.get_volume());
 }
 #endif
 
@@ -627,13 +630,13 @@ void Embedding::backward_task(Task const *task,
     effective_batch_size = output_grad.domain.get_volume() / out_dim;
     assert(effective_batch_size * in_dim == input.domain.get_volume());
   }
-  Embedding::backward_kernel_wrapper(m,
-                                     input,
-                                     output_grad,
-                                     kernel_grad,
-                                     in_dim,
-                                     out_dim,
-                                     effective_batch_size);
+  backward_kernel_wrapper(m,
+                          input,
+                          output_grad,
+                          kernel_grad,
+                          in_dim,
+                          out_dim,
+                          effective_batch_size);
 }
 
 #ifdef DEADCODE
@@ -691,15 +694,15 @@ void Embedding::backward_task_with_type(
     effective_batch_size = output_grad_domain.get_volume() / out_dim;
     assert(effective_batch_size * in_dim == input_domain.get_volume());
   }
-  Embedding::backward_kernel_wrapper<TI>(m,
-                                         input_ptr,
-                                         output_grad_ptr,
-                                         kernel_grad_ptr,
-                                         in_dim,
-                                         out_dim,
-                                         effective_batch_size,
-                                         m->aggr,
-                                         output_grad_domain.get_volume());
+  backward_kernel_wrapper<TI>(m,
+                              input_ptr,
+                              output_grad_ptr,
+                              kernel_grad_ptr,
+                              in_dim,
+                              out_dim,
+                              effective_batch_size,
+                              m->aggr,
+                              output_grad_domain.get_volume());
 }
 #endif
 
