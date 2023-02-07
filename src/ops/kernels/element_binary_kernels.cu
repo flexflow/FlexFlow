@@ -52,6 +52,12 @@ void init_kernel(ElementBinaryMeta *m,
     case OP_EW_MUL:
       mode = CUDNN_OP_TENSOR_MUL;
       break;
+    case OP_EW_MAX:
+      mode = CUDNN_OP_TENSOR_MAX;
+      break;
+    case OP_EW_MIN:
+      mode = CUDNN_OP_TENSOR_MIN;
+      break;
     default:
       assert(false);
   }
@@ -107,6 +113,12 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
       case OP_EW_DIV:
         opName = "Div";
         break;
+      case OP_EW_MAX:
+        opName = "Max";
+        break;
+      case OP_EW_MIN:
+        opName = "Min";
+        break;
       default:
         assert(false);
     }
@@ -159,6 +171,12 @@ void backward_kernel_wrapper(ElementBinaryMeta const *m,
       case OP_EW_DIV:
         opName = "Div";
         break;
+      case OP_EW_MAX:
+        opName = "Max";
+        break;
+      case OP_EW_MIN:
+        opName = "Min";
+        break;
       default:
         assert(false);
     }
@@ -200,6 +218,18 @@ __global__ void elewise_binary_forward_kernel(coord_t volume,
       }
       break;
     }
+    case OP_EW_MAX: {
+      CUDA_KERNEL_LOOP(i, volume) {
+        out[i] = alpha * max(in1[i], in2[i]) + beta * out[i];
+      }
+      break;
+    }
+    case OP_EW_MIN: {
+      CUDA_KERNEL_LOOP(i, volume) {
+        out[i] = alpha * min(in1[i], in2[i]) + beta * out[i];
+      }
+      break;
+    }
     default:
       assert(false);
   }
@@ -235,6 +265,24 @@ __global__ void elewise_binary_backward_kernel(coord_t volume,
         in1_grad[i] = alpha * out_grad[i] / in2[i] + beta * in1_grad[i];
         in2_grad[i] = -alpha * out_grad[i] * in1[i] / (in2[i] * in2[i]) +
                       beta * in2_grad[i];
+        break;
+      }
+      case OP_EW_MAX: {
+        in1_grad[i] = (in1[i] >= in2[i])
+                          ? alpha * out_grad[i] + beta * in1_grad[i]
+                          : beta * in1_grad[i];
+        in2_grad[i] = (in2[i] >= in1[i])
+                          ? alpha * out_grad[i] + beta * in2_grad[i]
+                          : beta * in2_grad[i];
+        break;
+      }
+      case OP_EW_MIN: {
+        in1_grad[i] = (in1[i] <= in2[i])
+                          ? alpha * out_grad[i] + beta * in1_grad[i]
+                          : beta * in1_grad[i];
+        in2_grad[i] = (in2[i] <= in1[i])
+                          ? alpha * out_grad[i] + beta * in2_grad[i]
+                          : beta * in2_grad[i];
         break;
       }
       default:

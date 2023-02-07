@@ -349,6 +349,16 @@ public:
                 const Tensor y,
                 bool inplace_a = false,
                 char const *name = NULL);
+  // Add a max layer
+  Tensor max(const Tensor x,
+             const Tensor y,
+             bool inplace_a = false,
+             char const *name = NULL);
+  // Add a min layer
+  Tensor min(const Tensor x,
+             const Tensor y,
+             bool inplace_a = false,
+             char const *name = NULL);
   // Add a rsqrt layer
   Tensor rsqrt(const Tensor x, bool inplace = true, char const *name = NULL);
   // Add a pow layer

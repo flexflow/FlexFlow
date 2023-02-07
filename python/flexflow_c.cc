@@ -287,6 +287,32 @@ flexflow_tensor_t flexflow_model_add_divide(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
+flexflow_tensor_t flexflow_model_add_max(flexflow_model_t handle_,
+                                         const flexflow_tensor_t x_,
+                                         const flexflow_tensor_t y_,
+                                         bool inplace_a,
+                                         char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor x = FFCObjectWrapper::unwrap_const(x_);
+  const Tensor y = FFCObjectWrapper::unwrap_const(y_);
+  Tensor tensor = handle->max(x, y, inplace_a, name);
+  DEBUG_PRINT("[Max] new Tensor %p, x %p, y %p, name %s", tensor, x, y, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_min(flexflow_model_t handle_,
+                                         const flexflow_tensor_t x_,
+                                         const flexflow_tensor_t y_,
+                                         bool inplace_a,
+                                         char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor x = FFCObjectWrapper::unwrap_const(x_);
+  const Tensor y = FFCObjectWrapper::unwrap_const(y_);
+  Tensor tensor = handle->min(x, y, inplace_a, name);
+  DEBUG_PRINT("[Min] new Tensor %p, x %p, y %p, name %s", tensor, x, y, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
 flexflow_tensor_t flexflow_model_add_reduce_sum(flexflow_model_t handle_,
                                                 const flexflow_tensor_t input_,
                                                 int *axes,
