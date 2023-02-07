@@ -55,6 +55,5 @@ python tests/align/align_create_tensor_torch.py -o subtract;
 python tests/align/align_create_tensor_torch.py -o tanh;
 python tests/align/align_create_tensor_torch.py -o transpose;
 
-sleep 2
 conda activate flexflow;
 python -m pytest tests/align/align_test.py
