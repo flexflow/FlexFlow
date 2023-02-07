@@ -14,6 +14,7 @@
 #
 
 import flexflow.core as ff
+import flexflow.keras as keras
 
 class Tensor(object):
   __slots__ = ['_ffhandle', 'to_layers', 'from_layer', 'dtype', \
@@ -73,6 +74,10 @@ class Tensor(object):
       self.__verify_ffhandle_dtype()
 
   @property
+  def shape(self):
+    return list(self.batch_shape)
+
+  @property
   def ffhandle(self):
     return self._ffhandle
 
@@ -99,10 +104,7 @@ class Tensor(object):
 
   def create_ff_tensor(self, ffmodel):
     assert self.batch_shape[0] != 0, "[Tensor]: batch size is not set"
-    if (self.num_dims == 2 or self.num_dims == 4):
-      self._ffhandle = ffmodel.create_tensor(self.batch_shape, self.dtype);
-    else:
-      assert 0, "un-supported dims"
+    self._ffhandle = ffmodel.create_tensor(self.batch_shape, self.dtype)
     self.__verify_ffhandle_shape()
     self.__verify_ffhandle_dtype()
 
@@ -125,3 +127,18 @@ class Tensor(object):
 
   def __verify_ffhandle_dtype(self):
     assert self.dtype == self._ffhandle.data_type
+
+  def __add__(self, other):
+    return keras.layers.Add()([self, other])
+
+  def __sub__(self, other):
+    return keras.layers.Subtract()([self, other])
+
+  def __mul__(self, other):
+    return keras.layers.Multiply()([self, other])
+
+  def __matmul__(self, other):
+    return keras.backend.batch_dot(self, other)
+
+  def __pow__(self, other):
+    return keras.backend.pow(self, a=other)
