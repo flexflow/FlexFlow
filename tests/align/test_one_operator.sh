@@ -1,4 +1,3 @@
-#! /usr/bin/env bash
 eval "$(conda shell.bash hook)";
 operator=$1
 rm tests/align/out/"$operator"/*.pt;
