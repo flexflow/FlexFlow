@@ -306,6 +306,8 @@ void forward_kernel(ElementBinaryMeta const *m,
       break;
     case OP_EW_ADD:
     case OP_EW_MUL:
+    case OP_EW_MAX:
+    case OP_EW_MIN:
       break;
     default:
       assert(false);
@@ -537,6 +539,8 @@ void backward_kernel(ElementBinaryMeta const *m,
                                  in2_grad_ptr));
       }
     }
+  } else if (m->op_type == OP_EW_MIN || m->op_type == OP_EW_MAX) {
+    // TODO: Implement backward pass
   } else {
     assert(false && "Unsupported ElementWise Binary Type");
   }

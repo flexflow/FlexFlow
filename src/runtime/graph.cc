@@ -1693,7 +1693,9 @@ GraphOptimalViewSerialized
       }
       case OP_EW_ADD:
       case OP_EW_SUB:
-      case OP_EW_MUL: {
+      case OP_EW_MUL:
+      case OP_EW_MAX:
+      case OP_EW_MIN: {
         sez.serialize(op->op_type);
         break;
       }

@@ -889,7 +889,9 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     }
     case OP_EW_ADD:
     case OP_EW_SUB:
-    case OP_EW_MUL: {
+    case OP_EW_MUL:
+    case OP_EW_MAX:
+    case OP_EW_MIN: {
       op = model->get_or_create_node<ElementBinary>({inputs[0], inputs[1]},
                                                     {opx->type});
       break;
@@ -3179,7 +3181,9 @@ bool FFModel::convert_graph_to_operators(
       }
       case OP_EW_ADD:
       case OP_EW_SUB:
-      case OP_EW_MUL: {
+      case OP_EW_MUL:
+      case OP_EW_MAX:
+      case OP_EW_MIN: {
         assert(inList.size() == 2);
         ElementBinary *eb = (ElementBinary *)node.ptr;
         new_op = new ElementBinary(
