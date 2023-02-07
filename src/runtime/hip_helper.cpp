@@ -1,6 +1,8 @@
 #include "flexflow/utils/hip_helper.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #include <hip/hip_runtime.h>
+#include <stdexcept>
 
 using Legion::coord_t;
 using Legion::Domain;
@@ -327,8 +329,8 @@ hipblasDatatype_t ff_to_cuda_datatype(DataType type) {
 }
 
 void handle_unimplemented_hip_kernel() {
-  assert(false && "hip kernel not implemented");
-  std::abort();
+  throw std::runtime_error("Unimplemented hip kernel for Operator: " +
+                           get_operator_type_name(op_type));
 }
 
 template __global__ void

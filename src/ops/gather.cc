@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/gather.h"
+#include "flexflow/ops/embedding.h"
 #include "flexflow/ops/kernels/gather_kernels.h"
 #include "legion/legion_utilities.h"
 
@@ -347,8 +348,68 @@ void Gather::backward_task(Task const *task,
 bool Gather::measure_operator_cost(Simulator *sim,
                                    MachineView const &mv,
                                    CostMetrics &cost_metrics) const {
-  // TODO: to be implement
-  return false;
+  ParallelTensorBase sub_input, sub_index, sub_output;
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
+    return false;
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
+    return false;
+  }
+  if (!inputs[1]->get_sub_tensor(mv, sub_index)) {
+    return false;
+  }
+  GatherMeta *m = new GatherMeta(sim->handler, this);
+  sim->free_all();
+  bool out_of_memory = false;
+  Domain input_domain = sub_input.get_domain();
+  void *input_ptr = sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  GenericTensorAccessorW input_acc(
+      inputs[0]->data_type, input_domain, input_ptr);
+  Domain index_domain = sub_index.get_domain();
+  void *index_ptr = sim->allocate(sub_index.get_volume(), inputs[1]->data_type);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  GenericTensorAccessorW index_acc(
+      inputs[1]->data_type, index_domain, index_ptr);
+  out_of_memory = out_of_memory || (input_ptr == NULL) || (index_ptr == NULL);
+  Domain out_domain = sub_output.get_domain();
+  void *output_ptr =
+      sim->allocate(sub_output.get_volume(), outputs[0]->data_type);
+  out_of_memory = out_of_memory || (output_ptr == NULL);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+  GenericTensorAccessorW output_acc(
+      outputs[0]->data_type, out_domain, output_ptr);
+  if (out_of_memory) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
+
+  std::function<void()> forward, backward;
+  forward = [&] {
+    forward_kernel_wrapper(m, input_acc, index_acc, output_acc);
+  };
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    backward = [&] {
+      backward_kernel_wrapper(m, output_acc, index_acc, input_acc);
+    };
+  }
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    printf("[Measure Gather] name(%s) forward_time(%.4lf) "
+           "backward_time(%.4lf)\n",
+           name,
+           cost_metrics.forward_time,
+           cost_metrics.backward_time);
+  } else {
+    printf("[Measure Gather] name(%s) forward_time(%.4lf)\n",
+           name,
+           cost_metrics.forward_time);
+  }
+  delete m;
+  return true;
 }
 
 }; // namespace FlexFlow
