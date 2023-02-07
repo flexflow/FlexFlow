@@ -540,7 +540,29 @@ void backward_kernel(ElementBinaryMeta const *m,
       }
     }
   } else if (m->op_type == OP_EW_MIN || m->op_type == OP_EW_MAX) {
-    // TODO: Implement backward pass
+    float alpha = 1.0f, beta = 1.0f;
+    cudnnDataType_t dataType;
+    int n;
+    int dims[MAX_TENSOR_DIM];
+    int strides[MAX_TENSOR_DIM];
+    checkCUDNN(cudnnGetTensorNdDescriptor(
+        m->outputTensor, MAX_TENSOR_DIM, &dataType, &n, dims, strides));
+    size_t volume = 1;
+    for (int i = 0; i < n; i++) {
+      volume *= dims[i];
+    }
+    elewise_binary_backward_kernel<<<GET_BLOCKS(volume),
+                                     CUDA_NUM_THREADS,
+                                     0,
+                                     stream>>>(volume,
+                                               alpha,
+                                               beta,
+                                               m->op_type,
+                                               out_grad_ptr,
+                                               in1_ptr,
+                                               in2_ptr,
+                                               in1_grad_ptr,
+                                               in2_grad_ptr);
   } else {
     assert(false && "Unsupported ElementWise Binary Type");
   }
