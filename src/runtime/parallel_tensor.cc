@@ -735,6 +735,29 @@ bool ParallelTensorBase::get_tensor(FFModel const *ff,
   return true;
 }
 
+template <typename T>
+bool ParallelTensorBase::tensor_equal(FFConfig &config,
+                                      ParallelTensorBase &tensor) {
+  Context ctx = config.lg_ctx;
+  Runtime *runtime = config.lg_hlr;
+  TaskLauncher launcher(TENSOR_EQUAL_TASK_ID, TaskArgument(NULL, 0));
+  launcher.add_region_requirement(RegionRequirement(region, READ_ONLY, EXCLUSIVE, region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(tensor.region, READ_ONLY, EXCLUSIVE, tensor.region));
+  launcher.add_field(1, FID_DATA);
+  Future result = runtime->execute_task(ctx, launcher);
+  bool equals = result.get_result<bool>();
+}
+
+bool ParallelTensorBase::tensor_equal_task(const Task *task,
+                                           const std::vector<PhysicalRegion> &regions,
+                                           Context ctx,
+					   Runtime *runtime) {
+  assert(regions.size() == 2);
+  assert(false);
+  return false;
+}
+
 template float *ParallelTensorBase::get_raw_ptr<float>(FFConfig &config);
 template int32_t *ParallelTensorBase::get_raw_ptr<int32_t>(FFConfig &config);
 
@@ -783,5 +806,7 @@ template bool ParallelTensorBase::set_tensor<int64_t>(
 template bool ParallelTensorBase::get_tensor<int64_t>(FFModel const *ff,
                                                       int64_t *data,
                                                       bool get_gradients);
+
+template bool ParallelTensorBase::tensor_equal<float>(FFConfig &config, ParallelTensorBase &tensor);
 
 }; // namespace FlexFlow

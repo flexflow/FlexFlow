@@ -362,6 +362,11 @@ void FFMapper::select_task_options(const MapperContext ctx,
     }
   }
 
+  if (task.task_id == TENSOR_EQUAL_TASK_ID) {
+    output.initial_proc = all_cpus[0];
+    return;
+  }
+
   // Assert that all single tasks should be handled and returned before
   // So task must be an indextask
   if (!task.is_index_space) {

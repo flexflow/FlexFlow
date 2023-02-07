@@ -216,6 +216,8 @@ enum TaskIDs {
   // Make sure PYTHON_TOP_LEVEL_TASK_ID is
   // consistent with python/main.cc
   PYTHON_TOP_LEVEL_TASK_ID = 11111,
+  //Tensor Equal Task
+  TENSOR_EQUAL_TASK_ID,
 };
 
 enum ShardingID {

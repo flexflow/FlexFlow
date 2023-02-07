@@ -168,6 +168,13 @@ struct ParallelTensorBase {
   bool get_tensor(FFModel const *model, T *data, bool get_parameters);
   ParallelTensorShape get_shape() const;
 
+  template <typename T>
+  bool tensor_equal(FFConfig &config, ParallelTensorBase &tensor);
+  static bool tensor_equal_task(const Legion::Task *task,
+                                const std::vector<Legion::PhysicalRegion> &regions,
+                                Legion::Context ctx,
+                                Legion::Runtime *runtime);
+
 private:
   template <typename T>
   bool get_input_sub_tensor_via_mappings(ParallelConfig const &pc,

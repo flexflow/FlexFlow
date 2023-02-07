@@ -4622,6 +4622,14 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<UtilityTasks::dummy_task>(
         registrar, "Weights Prefetch Task");
   }
+  // Tensor Equal task
+  {
+    TaskVariantRegistrar registrar(TENSOR_EQUAL_TASK_ID, "Tensor Equal");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<bool, ParallelTensorBase::tensor_equal_task>(
+        registrar, "Tensor Equal Task");
+  }
 }
 
 // template instantiations
