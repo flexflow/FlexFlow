@@ -14,13 +14,6 @@ respectively).
 Assuming those two `conda` environments, we may run
 ```
 cd FlexFlow
-./tests/align/test_one_operator.sh embedding
-```
-to check the alignment between FlexFlow and PyTorch for the `embedding` operator.
-
-For all operator tests, please run
-```
-cd FlexFlow
 ./tests/align/test_all_operators.sh
 ```
 
