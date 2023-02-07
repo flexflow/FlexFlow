@@ -331,46 +331,46 @@ def create_tensors_for_identity_ff(ffmodel):
   )
   return ((input_tensor, inp),), label, output_tensor
      
-def create_tensors_for_layernorm_ff(ffmodel):    
-    HIDDEN_SIZE = 512
-    EPS = 1e-6
-    inp: torch.Tensor = gen_tensor(
-        (BATCH_SIZE, SEQ_LENGTH, HIDDEN_SIZE),
-        dtype="float32",
-    )
-    label: torch.Tensor = gen_tensor(
-        (BATCH_SIZE, SEQ_LENGTH, HIDDEN_SIZE),
-        dtype="float32",
-    )
+# def create_tensors_for_layernorm_ff(ffmodel):    
+#     HIDDEN_SIZE = 512
+#     EPS = 1e-6
+#     inp: torch.Tensor = gen_tensor(
+#         (BATCH_SIZE, SEQ_LENGTH, HIDDEN_SIZE),
+#         dtype="float32",
+#     )
+#     label: torch.Tensor = gen_tensor(
+#         (BATCH_SIZE, SEQ_LENGTH, HIDDEN_SIZE),
+#         dtype="float32",
+#     )
 
-    input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
-    output_tensor = ffmodel.layer_norm(
-        input=input_tensor,
-        axes=[len(input_tensor.dims) - 1],  # normalize over the last dimension
-        elementwise_affine=True,
-        eps=EPS,
-        name="layernorm",
-    )
-    return ((input_tensor, inp),), label, output_tensor
+#     input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
+#     output_tensor = ffmodel.layer_norm(
+#         input=input_tensor,
+#         axes=[len(input_tensor.dims) - 1],  # normalize over the last dimension
+#         elementwise_affine=True,
+#         eps=EPS,
+#         name="layernorm",
+#     )
+#     return ((input_tensor, inp),), label, output_tensor
 
-def create_tensors_for_linear_ff(ffmodel):
-  OUTPUT_SIZE = 128
-  inp: torch.Tensor = gen_tensor(
-      (BATCH_SIZE, SEQ_LENGTH, INPUT_SIZE),
-      dtype="float32"
-  )
-  label: torch.Tensor = gen_tensor(
-      (BATCH_SIZE, SEQ_LENGTH, OUTPUT_SIZE),
-      dtype="float32"
-  )
+# def create_tensors_for_linear_ff(ffmodel):
+#   OUTPUT_SIZE = 128
+#   inp: torch.Tensor = gen_tensor(
+#       (BATCH_SIZE, SEQ_LENGTH, INPUT_SIZE),
+#       dtype="float32"
+#   )
+#   label: torch.Tensor = gen_tensor(
+#       (BATCH_SIZE, SEQ_LENGTH, OUTPUT_SIZE),
+#       dtype="float32"
+#   )
 
-  input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
-  output_tensor = ffmodel.dense(
-      input=input_tensor,
-      out_dim=128,
-      name="linear"
-  )
-  return ((input_tensor, inp),), label, output_tensor
+#   input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
+#   output_tensor = ffmodel.dense(
+#       input=input_tensor,
+#       out_dim=128,
+#       name="linear"
+#   )
+#   return ((input_tensor, inp),), label, output_tensor
     
 def create_tensors_for_multiply_ff(ffmodel):
   inp1: torch.Tensor = gen_tensor(

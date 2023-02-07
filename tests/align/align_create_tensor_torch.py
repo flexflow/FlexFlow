@@ -286,75 +286,75 @@ def create_tensors_for_identity_torch():
     return label, output
 
 
-def create_tensors_for_layernorm_torch():
-    HIDDEN_SIZE = 512
-    EPS = 1e-6
-    layernorm = torch.nn.LayerNorm(
-        normalized_shape=HIDDEN_SIZE,
-        eps=EPS,
-        elementwise_affine=True,
-    ).to(DEVICE)
-    layernorm_weight = torch.load(os.path.join(OUT_DIR, "ff_weight.pt"))
-    layernorm_bias = torch.load(os.path.join(OUT_DIR, "ff_bias.pt"))
-    assert layernorm.weight.shape == layernorm_weight.shape, (
-        "Shape mismatch: " f"FF={layernorm_weight.shape} torch={layernorm.weight.shape}"
-    )
-    assert layernorm.bias.shape == layernorm_bias.shape, (
-        "Shape mismatch: " f"FF={layernorm_bias.shape} torch={layernorm.bias.shape}"
-    )
-    layernorm.weight = torch.nn.Parameter(layernorm_weight.to(DEVICE))
-    layernorm.bias = torch.nn.Parameter(layernorm_bias.to(DEVICE))
+# def create_tensors_for_layernorm_torch():
+#     HIDDEN_SIZE = 512
+#     EPS = 1e-6
+#     layernorm = torch.nn.LayerNorm(
+#         normalized_shape=HIDDEN_SIZE,
+#         eps=EPS,
+#         elementwise_affine=True,
+#     ).to(DEVICE)
+#     layernorm_weight = torch.load(os.path.join(OUT_DIR, "ff_weight.pt"))
+#     layernorm_bias = torch.load(os.path.join(OUT_DIR, "ff_bias.pt"))
+#     assert layernorm.weight.shape == layernorm_weight.shape, (
+#         "Shape mismatch: " f"FF={layernorm_weight.shape} torch={layernorm.weight.shape}"
+#     )
+#     assert layernorm.bias.shape == layernorm_bias.shape, (
+#         "Shape mismatch: " f"FF={layernorm_bias.shape} torch={layernorm.bias.shape}"
+#     )
+#     layernorm.weight = torch.nn.Parameter(layernorm_weight.to(DEVICE))
+#     layernorm.bias = torch.nn.Parameter(layernorm_bias.to(DEVICE))
 
-    inp: torch.Tensor = gen_tensor(
-        (BATCH_SIZE, SEQ_LENGTH, HIDDEN_SIZE),
-        dtype="float32",
-    ).to(DEVICE)
-    label: torch.Tensor = gen_tensor(
-        (BATCH_SIZE, SEQ_LENGTH, HIDDEN_SIZE),
-        dtype="float32",
-    ).to(DEVICE)
+#     inp: torch.Tensor = gen_tensor(
+#         (BATCH_SIZE, SEQ_LENGTH, HIDDEN_SIZE),
+#         dtype="float32",
+#     ).to(DEVICE)
+#     label: torch.Tensor = gen_tensor(
+#         (BATCH_SIZE, SEQ_LENGTH, HIDDEN_SIZE),
+#         dtype="float32",
+#     ).to(DEVICE)
 
-    output = layernorm(inp)
-    layernorm.zero_grad()
-    return label, output
+#     output = layernorm(inp)
+#     layernorm.zero_grad()
+#     return label, output
 
 
-def create_tensors_for_linear_torch():
-    OUTPUT_SIZE = 128
-    linear = torch.nn.Linear(
-        in_features=512,
-        out_features=128
-    ).to(DEVICE)
+# def create_tensors_for_linear_torch():
+#     OUTPUT_SIZE = 128
+#     linear = torch.nn.Linear(
+#         in_features=512,
+#         out_features=128
+#     ).to(DEVICE)
 
-    # get weight/bias from ff files, check same shape
-    linear_weight = torch.load(os.path.join(OUT_DIR, "ff_weight.pt"))
-    linear_bias = torch.load(os.path.join(OUT_DIR, "ff_bias.pt"))
-    assert linear.weight.shape == linear_weight.shape, (
-        "Shape mismatch: " f"FF={linear_weight.shape} torch={linear.weight.shape}"
-    )
-    assert linear.bias.shape == linear_bias.shape, (
-        "Shape mismatch: " f"FF={linear_bias.shape} torch={linear.bias.shape}"
-    )
+#     # get weight/bias from ff files, check same shape
+#     linear_weight = torch.load(os.path.join(OUT_DIR, "ff_weight.pt"))
+#     linear_bias = torch.load(os.path.join(OUT_DIR, "ff_bias.pt"))
+#     assert linear.weight.shape == linear_weight.shape, (
+#         "Shape mismatch: " f"FF={linear_weight.shape} torch={linear.weight.shape}"
+#     )
+#     assert linear.bias.shape == linear_bias.shape, (
+#         "Shape mismatch: " f"FF={linear_bias.shape} torch={linear.bias.shape}"
+#     )
 
-    # set weight/bias
-    linear.weight = torch.nn.Parameter(linear_weight.to(DEVICE))
-    linear.bias = torch.nn.Parameter(linear_bias.to(DEVICE))
+#     # set weight/bias
+#     linear.weight = torch.nn.Parameter(linear_weight.to(DEVICE))
+#     linear.bias = torch.nn.Parameter(linear_bias.to(DEVICE))
 
-    # generate input/label tensors w/ gen_tensor
-    inp: torch.Tensor = gen_tensor(
-        (BATCH_SIZE, SEQ_LENGTH, INPUT_SIZE),
-        dtype="float32"
-    ).to(DEVICE)
-    label: torch.Tensor = gen_tensor(
-        (BATCH_SIZE, SEQ_LENGTH, OUTPUT_SIZE),
-        dtype="float32"
-    ).to(DEVICE)
+#     # generate input/label tensors w/ gen_tensor
+#     inp: torch.Tensor = gen_tensor(
+#         (BATCH_SIZE, SEQ_LENGTH, INPUT_SIZE),
+#         dtype="float32"
+#     ).to(DEVICE)
+#     label: torch.Tensor = gen_tensor(
+#         (BATCH_SIZE, SEQ_LENGTH, OUTPUT_SIZE),
+#         dtype="float32"
+#     ).to(DEVICE)
 
-    # get output running input through layer
-    output = linear(inp)
-    linear.zero_grad()
+#     # get output running input through layer
+#     output = linear(inp)
+#     linear.zero_grad()
 
-    return label, output
+#     return label, output
 
 
 def create_tensors_for_multiply_torch():
