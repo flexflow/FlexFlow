@@ -42,6 +42,12 @@ class MeanSquaredError(Loss):
                reduction='auto',
                name='mean_squared_error'):
     super(MeanSquaredError, self).__init__(name=name)
-    self.type = ff.LossType.LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE           
-    
-  
+    self.type = ff.LossType.LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE
+
+
+class Identity(Loss):
+  def __init__(self,
+               reduction='auto',
+               name='identity'):
+    super(Identity, self).__init__(name=name)
+    self.type = ff.LossType.LOSS_IDENTITY
