@@ -2468,9 +2468,6 @@ GraphOptimizeResult GraphSearchHelper::get_optimal_cost<GraphOptimizeResult>(
   return result;
 }
 
-/**
- * @brief Experimental. To be merged with other versions eventually.
- */
 template <>
 GraphOptimizeResultWithMemory
     GraphSearchHelper::get_optimal_cost<GraphOptimizeResultWithMemory>(
@@ -2752,8 +2749,8 @@ T GraphSearchHelper::generic_sequence_optimize(
 }
 
 /**
- * @brief Experimental. To be merged into generic_sequence_optimize(). Top level
- * DP search procedure for Unity with the consideration of memory usage.
+ * @brief Top level DP search procedure for Unity with the consideration of
+ * memory usage.
  *
  * @tparam T Returned type
  * @param graph Pre-optimization PCG

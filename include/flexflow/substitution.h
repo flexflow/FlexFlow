@@ -282,7 +282,6 @@ private:
       tl::optional<ParallelTensorShape> const &output_shape,
       tl::optional<ParallelTensorShape> const &input_shape);
 
-  // Experimental. To be merged with generic_sequence_optimize eventually.
   template <typename T>
   T generic_sequence_optimize_with_memory(
       Graph const *graph,
@@ -304,7 +303,6 @@ private:
       Node const &sink_node,
       Node const &bottleneck,
       ParallelTensorShape const &bottleneck_output_shape);
-  // Experimental. To be merged with execute_sequence_split().
   template <typename T>
   T execute_sequence_split_with_memory(
       std::unique_ptr<Graph> const &pre_graph,
@@ -324,7 +322,6 @@ private:
       base_optimize(Graph const *,
                     SimplificationSettings const &simplification_settings);
 
-  // Experimental. To be merged with base_optimize().
   std::unique_ptr<Graph> base_optimize_with_memory(
       Graph const *, SimplificationSettings const &simplification_settings);
 

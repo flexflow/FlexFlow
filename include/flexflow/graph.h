@@ -116,8 +116,7 @@ struct GraphCostResult {
 };
 
 /**
- * @brief Experimental. Holds the cost information of a PCG. To be merged with
- * GraphCostResult.
+ * @brief Holds the cost information of a PCG.
  */
 struct GraphCostResultWithMemory {
   float cost;           ///< Run time cost
@@ -386,8 +385,7 @@ struct GraphOptimizeResult {
 };
 
 /**
- * @brief Experimental. Hold the optimization results with memory information.
- * To be merged with GraphOptimizeResult.
+ * @brief Hold the optimization results with memory information.
  */
 struct GraphOptimizeResultWithMemory {
   tl::optional<Graph> graph; ///< Optimized PCG

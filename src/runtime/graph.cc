@@ -1744,8 +1744,7 @@ float Graph::optimal_cost() const {
 }
 
 /**
- * @brief Experimental. Get a single number to represent the multi-objective
- * cost of a PCG. To be merged with Graph::optimal_cost().
+ * @brief Get a single number to represent the multi-objective cost of a PCG.
  */
 float Graph::optimal_cost_with_memory(float run_time_cost_factor) const {
   auto optimal = this->generic_optimal_cost<GraphCostResultWithMemory>();

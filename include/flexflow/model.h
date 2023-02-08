@@ -17,6 +17,7 @@
 #include "accessor.h"
 #include "config.h"
 #include "device.h"
+#include "flexflow/memory_optimization.h"
 #include "flexflow/node.h"
 #include "flexflow/operator_params.h"
 #include "flexflow/utils/hash_utils.h"

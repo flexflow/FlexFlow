@@ -17,7 +17,6 @@
 
 #include "config.h"
 #include "ffconst.h"
-#include "flexflow/memory_optimization.h"
 #include "flexflow/operator_params.h"
 #include "flexflow/utils/hash_utils.h"
 #include "mpark/variant.hpp"
