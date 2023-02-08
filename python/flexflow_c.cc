@@ -709,6 +709,24 @@ flexflow_tensor_t flexflow_model_add_flat(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
+flexflow_tensor_t flexflow_model_add_gather(flexflow_model_t handle_,
+                                            const flexflow_tensor_t input_,
+                                            const flexflow_tensor_t index_,
+                                            int dim,
+                                            char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor index = FFCObjectWrapper::unwrap(index_);
+  Tensor tensor = handle->gather(input, index, dim, name);
+  DEBUG_PRINT("[Gather] new Tensor %p, input %p, index %p, dim %d name %s",
+              tensor,
+              input,
+              index,
+              dim,
+              name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
 flexflow_tensor_t flexflow_model_add_softmax(flexflow_model_t handle_,
                                              const flexflow_tensor_t input_,
                                              int dim,
