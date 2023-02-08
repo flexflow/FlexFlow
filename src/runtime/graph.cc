@@ -1874,6 +1874,163 @@ size_t dp_state_hash(Graph const *graph,
   return key;
 }
 
+namespace {
+
+/**
+ * @brief Given a lambda value, perform the search and return the optimized PCG
+ * and corresponding MachineView.
+ */
+std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
+    try_one_lambda(std::pair<float, MemorySearchResult> &lambda,
+                   Task const *task,
+                   Simulator *cached_simulator,
+                   bool perform_memory_search) {
+  // Create a new fresh model
+  FFModel *model = *((FFModel **)task->args);
+  model->clear_graph_search_cache();
+
+  if (model->config.search_num_nodes.has_value()) {
+    model->config.numNodes = model->config.search_num_nodes.value();
+  }
+  if (model->config.search_num_workers.has_value()) {
+    model->config.workersPerNode = model->config.search_num_workers.value();
+  }
+  model->all_valid_views.clear();
+  model->register_all_machine_views(model->config.numNodes,
+                                    model->config.workersPerNode,
+                                    model->config.cpusPerNode,
+                                    model->all_valid_views);
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                       .only_kind(Memory::GPU_FB_MEM)
+                       .best_affinity_to(task->target_proc)
+                       .first();
+  MachineModel *machine;
+  if (model->config.machine_model_version == 0) {
+    machine =
+        (MachineModel *)new SimpleMachineModel(model->config.numNodes,
+                                               model->config.workersPerNode,
+                                               gpu_mem.capacity());
+  } else if (model->config.machine_model_version == 1 and
+             !model->config.machine_model_file.empty()) {
+    machine = (MachineModel *)new EnhancedMachineModel(
+        model->config.machine_model_file, gpu_mem.capacity());
+  } else {
+    assert(false &&
+           "machine model creation error: currently only support "
+           "machine-model-version = 0 or 1. When machine-model-version = 1, "
+           "machine-model-file should not be empty.");
+  }
+  // Assume this task is running on GPU0
+  if (cached_simulator == nullptr) {
+    cached_simulator =
+        new Simulator(model, model->handlers[0], gpu_mem, machine);
+  } else {
+    // Update simulator with the new stuff
+    cached_simulator->handler = model->handlers[0];
+    cached_simulator->memory = gpu_mem;
+    cached_simulator->machine = machine;
+  }
+  model->simulator = cached_simulator;
+
+  // Perform the search
+  std::unique_ptr<Graph> curr_best_graph;
+  std::unordered_map<Node, MachineView> curr_optimal_views;
+
+  if (model->config.only_data_parallel) {
+    Graph *graph = new Graph(model);
+    std::unordered_map<FlexFlow::Op const *, Node> op_to_node_map;
+    for (FlexFlow::Op const *dstOp : model->operators) {
+      Node dstNode;
+      dstNode.ptr = dstOp;
+      dstNode.guid = model->node_global_guid++;
+      op_to_node_map[dstOp] = dstNode;
+      for (int j = 0; j < dstOp->numInputs; j++) {
+        FlexFlow::Op const *srcOp = dstOp->inputs[j]->owner_op;
+        assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
+        Node srcNode = op_to_node_map[srcOp];
+        graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
+      }
+    }
+    curr_best_graph = std::unique_ptr<Graph>(graph);
+    MachineView data_parallel_view;
+    data_parallel_view.device_type = MachineView::GPU;
+    data_parallel_view.ndims = 1;
+    data_parallel_view.dim[0] =
+        model->config.numNodes * model->config.workersPerNode;
+    data_parallel_view.stride[0] = 1;
+    data_parallel_view.start_device_id = 0;
+    for (auto const &node : curr_best_graph->inEdges) {
+      curr_optimal_views[node.first] = data_parallel_view;
+    }
+  } else {
+    // Main step to optimize the PCG of an FFModel
+    model->graph_optimize(model->config.search_budget,
+                          model->config.only_data_parallel,
+                          curr_best_graph,
+                          curr_optimal_views,
+                          perform_memory_search,
+                          MemoryOptimConfig{lambda.first},
+                          lambda.second);
+  }
+  // Return the best result of the current search
+  return std::make_pair(std::move(curr_best_graph), curr_optimal_views);
+};
+
+/**
+ * @brief Analyze the per-device memory cost and compare with the memory
+ * threshold of each device.
+ */
+bool is_valid_strategy(
+    std::vector<std::pair<float, MemorySearchResult>> &lambdas_results,
+    Graph *curr_graph,
+    std::unordered_map<Node, MachineView> &curr_views,
+    Simulator *cached_simulator,
+    float memory_threshold) {
+  std::cout << "try to check valid for lambda " << lambdas_results.back().first
+            << std::endl;
+
+  // Analyze the strategy and update max_per_device_mem_all_deivces in the
+  // lambda_result.
+  std::unordered_map<int, float> device_to_mem{};
+  for (auto const &view : curr_views) {
+    CostMetrics op_cost =
+        cached_simulator->measure_operator_cost(view.first.ptr, view.second);
+    float node_mem_as_mb = op_cost.total_memory_in_mb();
+
+    for (auto const d_id : view.second.device_ids()) {
+      if (device_to_mem.find(d_id) == device_to_mem.end()) {
+        device_to_mem.emplace(std::make_pair(d_id, node_mem_as_mb));
+      } else {
+        device_to_mem[d_id] += node_mem_as_mb;
+      }
+    }
+  }
+
+  float max_per_device_mem = 0.0;
+  float total_device_mem = 0.0;
+  for (auto const &d : device_to_mem) {
+    std::cout << "d_id: " << d.first << ", mem: " << d.second << std::endl;
+    total_device_mem += d.second;
+    if (d.second > max_per_device_mem) {
+      max_per_device_mem = d.second;
+    }
+  }
+
+  lambdas_results.back().second.max_per_device_mem_all_deivces =
+      max_per_device_mem;
+
+  std::cout << "max_per_device_mem: "
+            << lambdas_results.back().second.max_per_device_mem_all_deivces
+            << ", total_device_mem: " << total_device_mem << std::endl;
+
+  if (max_per_device_mem >= memory_threshold) {
+    return false;
+  }
+  return true;
+};
+
+}; // namespace
+
 /**
  * @brief Starting point of Unity search procedure. Registered on Legion
  * runtime. Legion task to launch as one step of model.compile().
@@ -1901,154 +2058,10 @@ GraphOptimalViewSerialized
   std::unique_ptr<Graph> best_graph;
   std::unordered_map<Node, MachineView> optimal_views;
 
-  auto try_one_lambda = [&](std::pair<float, MemorySearchResult> &lambda) {
-    // Create a new fresh model
-    FFModel *model = *((FFModel **)task->args);
-    model->clear_graph_search_cache();
-
-    if (model->config.search_num_nodes.has_value()) {
-      model->config.numNodes = model->config.search_num_nodes.value();
-    }
-    if (model->config.search_num_workers.has_value()) {
-      model->config.workersPerNode = model->config.search_num_workers.value();
-    }
-    model->all_valid_views.clear();
-    model->register_all_machine_views(model->config.numNodes,
-                                      model->config.workersPerNode,
-                                      model->config.cpusPerNode,
-                                      model->all_valid_views);
-    Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-                         .only_kind(Memory::GPU_FB_MEM)
-                         .best_affinity_to(task->target_proc)
-                         .first();
-    MachineModel *machine;
-    if (model->config.machine_model_version == 0) {
-      machine =
-          (MachineModel *)new SimpleMachineModel(model->config.numNodes,
-                                                 model->config.workersPerNode,
-                                                 gpu_mem.capacity());
-    } else if (model->config.machine_model_version == 1 and
-               !model->config.machine_model_file.empty()) {
-      machine = (MachineModel *)new EnhancedMachineModel(
-          model->config.machine_model_file, gpu_mem.capacity());
-    } else {
-      assert(false &&
-             "machine model creation error: currently only support "
-             "machine-model-version = 0 or 1. When machine-model-version = 1, "
-             "machine-model-file should not be empty.");
-    }
-    // Assume this task is running on GPU0
-    if (cached_simulator == nullptr) {
-      cached_simulator =
-          new Simulator(model, model->handlers[0], gpu_mem, machine);
-    } else {
-      // Update simulator with the new stuff
-      cached_simulator->handler = model->handlers[0];
-      cached_simulator->memory = gpu_mem;
-      cached_simulator->machine = machine;
-    }
-    model->simulator = cached_simulator;
-
-    // Perform the search
-    std::unique_ptr<Graph> curr_best_graph;
-    std::unordered_map<Node, MachineView> curr_optimal_views;
-
-    if (model->config.only_data_parallel) {
-      Graph *graph = new Graph(model);
-      std::unordered_map<FlexFlow::Op const *, Node> op_to_node_map;
-      for (FlexFlow::Op const *dstOp : model->operators) {
-        Node dstNode;
-        dstNode.ptr = dstOp;
-        dstNode.guid = model->node_global_guid++;
-        op_to_node_map[dstOp] = dstNode;
-        for (int j = 0; j < dstOp->numInputs; j++) {
-          FlexFlow::Op const *srcOp = dstOp->inputs[j]->owner_op;
-          assert(op_to_node_map.find(srcOp) != op_to_node_map.end());
-          Node srcNode = op_to_node_map[srcOp];
-          graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
-        }
-      }
-      curr_best_graph = std::unique_ptr<Graph>(graph);
-      MachineView data_parallel_view;
-      data_parallel_view.device_type = MachineView::GPU;
-      data_parallel_view.ndims = 1;
-      data_parallel_view.dim[0] =
-          model->config.numNodes * model->config.workersPerNode;
-      data_parallel_view.stride[0] = 1;
-      data_parallel_view.start_device_id = 0;
-      for (auto const &node : curr_best_graph->inEdges) {
-        curr_optimal_views[node.first] = data_parallel_view;
-      }
-    } else {
-      // Main step to optimize the PCG of an FFModel
-      model->graph_optimize(model->config.search_budget,
-                            model->config.only_data_parallel,
-                            curr_best_graph,
-                            curr_optimal_views,
-                            perform_memory_search,
-                            MemoryOptimConfig{lambda.first},
-                            lambda.second);
-    }
-    // Return the best result of the current search
-    return std::make_pair(std::move(curr_best_graph), curr_optimal_views);
-  };
-
-  /**
-   * @brief Analyze the per-device memory cost and compare with the memory
-   * threshold of each device.
-   */
-  auto is_valid_strategy =
-      [&](std::vector<std::pair<float, MemorySearchResult>> &lambdas_results,
-          Graph *curr_graph,
-          std::unordered_map<Node, MachineView> &curr_views) {
-        std::cout << "try to check valid for lambda "
-                  << lambdas_results.back().first << std::endl;
-
-        // Analyze the strategy and update max_per_device_mem_all_deivces in the
-        // lambda_result.
-        std::unordered_map<int, float> device_to_mem{};
-        for (auto const &view : curr_views) {
-          CostMetrics op_cost = cached_simulator->measure_operator_cost(
-              view.first.ptr, view.second);
-          float node_mem_as_mb = op_cost.total_memory_in_mb();
-
-          for (const auto d_id : view.second.device_ids()) {
-            if (device_to_mem.find(d_id) == device_to_mem.end()) {
-              device_to_mem.emplace(std::make_pair(d_id, node_mem_as_mb));
-            } else {
-              device_to_mem[d_id] += node_mem_as_mb;
-            }
-          }
-        }
-
-        float max_per_device_mem = 0.0;
-        float total_device_mem = 0.0;
-        for (const auto &d : device_to_mem) {
-          std::cout << "d_id: " << d.first << ", mem: " << d.second
-                    << std::endl;
-          total_device_mem += d.second;
-          if (d.second > max_per_device_mem) {
-            max_per_device_mem = d.second;
-          }
-        }
-
-        lambdas_results.back().second.max_per_device_mem_all_deivces =
-            max_per_device_mem;
-
-        std::cout
-            << "max_per_device_mem: "
-            << lambdas_results.back().second.max_per_device_mem_all_deivces
-            << ", total_device_mem: " << total_device_mem << std::endl;
-
-        if (max_per_device_mem >= memory_threshold) {
-          return false;
-        }
-        return true;
-      };
-
   // Be optimistic
   lambdas.emplace_back(std::make_pair(1.0, MemorySearchResult{}));
-  auto try_result = try_one_lambda(lambdas.back());
+  auto try_result = try_one_lambda(
+      lambdas.back(), task, cached_simulator, perform_memory_search);
   best_graph = std::move(try_result.first);
   optimal_views = try_result.second;
 
@@ -2056,15 +2069,23 @@ GraphOptimalViewSerialized
   int best_lambda_index = -1;
   int binary_search_budget = 10;
 
-  if (perform_memory_search &&
-      !is_valid_strategy(lambdas, best_graph.get(), optimal_views)) {
+  if (perform_memory_search && !is_valid_strategy(lambdas,
+                                                  best_graph.get(),
+                                                  optimal_views,
+                                                  cached_simulator,
+                                                  memory_threshold)) {
     // Not found the strategy; need to do binary search
     lambdas.emplace_back(std::make_pair(0.0, MemorySearchResult{}));
-    try_result = try_one_lambda(lambdas.back());
+    try_result = try_one_lambda(
+        lambdas.back(), task, cached_simulator, perform_memory_search);
     best_graph = std::move(try_result.first);
     optimal_views = try_result.second;
 
-    if (!is_valid_strategy(lambdas, best_graph.get(), optimal_views)) {
+    if (!is_valid_strategy(lambdas,
+                           best_graph.get(),
+                           optimal_views,
+                           cached_simulator,
+                           memory_threshold)) {
       // Cannot find a valid strategy
       has_valid_strategy = false;
     } else {
@@ -2082,10 +2103,14 @@ GraphOptimalViewSerialized
         float mid = (lower + upper) * 0.5;
 
         lambdas.emplace_back(std::make_pair(mid, MemorySearchResult{}));
-        try_result = try_one_lambda(lambdas.back());
+        try_result = try_one_lambda(
+            lambdas.back(), task, cached_simulator, perform_memory_search);
 
-        if (!is_valid_strategy(
-                lambdas, try_result.first.get(), try_result.second)) {
+        if (!is_valid_strategy(lambdas,
+                               try_result.first.get(),
+                               try_result.second,
+                               cached_simulator,
+                               memory_threshold)) {
           upper = mid;
         } else {
           // Found a better and valid strategy
