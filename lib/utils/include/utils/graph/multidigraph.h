@@ -65,16 +65,14 @@ struct EdgeQuery {
   static EdgeQuery all();
 };
 
-struct IMultiDiGraphView {
+struct IMultiDiGraphView : public IGraphView {
   using Edge = multidigraph::Edge;
   using EdgeQuery = multidigraph::EdgeQuery;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
-  virtual std::unordered_set<Node> query_nodes(NodeQuery const &) const = 0;
 };
 
-struct IMultiDiGraph : public IMultiDiGraphView {
-  virtual Node add_node() = 0;
+struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;
 };
 

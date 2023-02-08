@@ -23,6 +23,7 @@ public:
 public:
   Node src, dst;
 };
+std::ostream &operator<<(std::ostream &, Edge const &);
 
 }
 }
@@ -48,16 +49,14 @@ struct EdgeQuery {
                                          dsts = tl::nullopt;
 };
 
-struct IDiGraphView {
+struct IDiGraphView : public IGraphView {
   using Edge = digraph::Edge;
   using EdgeQuery = digraph::EdgeQuery;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
-  virtual std::unordered_set<Node> query_nodes(NodeQuery const &) const = 0;
 };
 
-struct IDiGraph : public IDiGraphView {
-  virtual Node add_node() = 0;
+struct IDiGraph : public IDiGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;
 };
 

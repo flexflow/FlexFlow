@@ -1,7 +1,9 @@
 #include "utils/graph/adjacency_multidigraph.h"
 
-using Node = FlexFlow::utils::graph::Node;
-using namespace FlexFlow::utils::graph::multidigraph;
+namespace FlexFlow {
+namespace utils {
+namespace graph {
+namespace multidigraph {
 
 Node AdjacencyMultiDiGraph::add_node() {
   Node node{this->next_node_idx};
@@ -48,4 +50,9 @@ std::unordered_set<Node> AdjacencyMultiDiGraph::query_nodes(NodeQuery const &que
     }
   }
   return result;
+}
+
+}
+}
+}
 }

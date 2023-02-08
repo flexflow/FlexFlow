@@ -52,6 +52,13 @@ struct NodeQuery {
   tl::optional<std::unordered_set<Node>> nodes = tl::nullopt;
 };
 
+struct IGraphView {
+  virtual std::unordered_set<Node> query_nodes(NodeQuery const &) const = 0;
+};
+
+struct IGraph {
+  virtual Node add_node() = 0;
+};
 }
 }
 }

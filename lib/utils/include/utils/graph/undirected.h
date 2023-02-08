@@ -45,16 +45,14 @@ struct EdgeQuery {
   tl::optional<std::unordered_set<Node>> nodes = tl::nullopt;
 };
 
-struct IUndirectedGraphView {
+struct IUndirectedGraphView : public IGraphView {
   using Edge = undirected::Edge;
   using EdgeQuery = undirected::EdgeQuery;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
-  virtual std::unordered_set<Node> query_nodes(NodeQuery const &) const = 0;
 };
 
-struct IUndirectedGraph : public IUndirectedGraphView {
-  virtual Node add_node() = 0;
+struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;
 };
 
