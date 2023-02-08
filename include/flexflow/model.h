@@ -65,6 +65,9 @@ enum TaskIDs {
   EMBED_INIT_TASK_ID,
   EMBED_FWD_TASK_ID,
   EMBED_BWD_TASK_ID,
+  GATHER_INIT_TASK_ID,
+  GATHER_FWD_TASK_ID,
+  GATHER_BWD_TASK_ID,
   GROUP_BY_INIT_TASK_ID,
   GROUP_BY_FWD_TASK_ID,
   GROUP_BY_BWD_TASK_ID,
@@ -256,6 +259,7 @@ class ElementBinary;
 class ElementUnary;
 class Embedding;
 class Flat;
+class Gather;
 class Group_by;
 class LayerNorm;
 class Linear;
@@ -414,6 +418,11 @@ public:
                    Layer const *shared_op = NULL,
                    Initializer *kernel_initializer = NULL,
                    char const *name = NULL);
+  // Add a gather layer
+  Tensor gather(const Tensor input,
+                const Tensor index,
+                int dim,
+                char const *name = NULL);
   // Add a group_by layer
   void group_by(const Tensor data,
                 const Tensor assign,
@@ -862,7 +871,10 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, EmbeddingParams>,
                          Embedding *>,
       std::unordered_map<std::pair<ParallelTensorShape, FlatParams>, Flat *>,
-
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    GatherParams>,
+          Gather *>,
       std::unordered_map<
           std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
                     Group_byParams>,

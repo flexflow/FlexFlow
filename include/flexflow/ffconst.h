@@ -35,6 +35,7 @@ enum LossType {
   LOSS_SPARSE_CATEGORICAL_CROSSENTROPY = 51,
   LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE = 52,
   LOSS_MEAN_SQUARED_ERROR_SUM_REDUCE = 53,
+  LOSS_IDENTITY = 54,
 };
 
 enum CompMode {
@@ -143,6 +144,7 @@ enum OperatorType {
   OP_POW,   // https://pytorch.org/docs/stable/generated/torch.pow.html
   OP_MEAN,  // https://pytorch.org/docs/stable/generated/torch.mean.html
   OP_LAYERNORM,
+  OP_GATHER, // https://pytorch.org/docs/stable/generated/torch.gather.html
   // Parallel Ops
   OP_REPARTITION,
   OP_COMBINE,

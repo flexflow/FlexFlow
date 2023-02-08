@@ -379,6 +379,13 @@ class Reshape(Op):
     super(Reshape, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# Gather
+# -----------------------------------------------------------------------
+class Gather(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Gather, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # Identity
 # -----------------------------------------------------------------------
 class Identity(Op):
@@ -488,6 +495,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Pow(handle, idx, name)
   elif op_type == OpType.MEAN:
     return Mean(handle, idx, name)
+  elif op_type == OpType.GATHER:
+    return Gather(handle, idx, name)
   else:
     assert 0, "unknown layer type {}".format(op_type)
     return None
@@ -612,7 +621,7 @@ class Tensor(object):
     array = np.asarray(initializer)
     return array
 
-  def attach_numpy_array(self, ffconfig, np_array):
+  def attach_numpy_array(self, ffmodel, ffconfig, np_array):
     assert np_array.__array_interface__['strides'] == None, "numpy array strides is not None"
     np_shape = np_array.shape
     num_dims = len(np_shape)
@@ -622,7 +631,7 @@ class Tensor(object):
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("void*", np_raw_ptr[0])
     fflogger.debug("attach numpy array: %s, %s, %s" %( str(np_raw_ptr), str(raw_ptr), hex(np_raw_ptr[0])))
-    self.__attach_raw_ptr(ffconfig, raw_ptr)
+    self.__attach_raw_ptr(ffmodel, ffconfig, raw_ptr)
 
   def detach_numpy_array(self, ffconfig):
     self.__detach_raw_ptr(ffconfig)
@@ -762,9 +771,9 @@ class Tensor(object):
     else:
       self.owner_op = convert_op_handle_to_op(op_type, op_handle)
 
-  def __attach_raw_ptr(self, ffconfig, raw_ptr, column_major=True):
+  def __attach_raw_ptr(self, ffmodel, ffconfig, raw_ptr, column_major=True):
     assert self.mapped == False, "Tensor is already mapped."
-    ffc.flexflow_tensor_attach_raw_ptr(self.handle, ffconfig.handle, raw_ptr, column_major)
+    ffc.flexflow_tensor_attach_raw_ptr(self.handle, ffmodel.handle, ffconfig.handle, raw_ptr, column_major)
     self.mapped = True
 
   def __detach_raw_ptr(self, ffconfig):
@@ -1527,6 +1536,28 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_reshape(self.handle, input.handle, len(shape), c_shape, c_name)
     self.add_layer(OpType.RESHAPE, name)
     return Tensor(handle, owner_op_type=OpType.RESHAPE)
+
+  def gather(self, input, index, dim, name=None):
+    """Layer that gathers values along the dim axis.
+    
+    :param input: the input tensor
+    :type input: Tensor
+
+    :param index: the index tensor, which specifies the indices of elements to gather
+    :type index: Tensor
+
+    :param dim: the axis along which to index
+    :type dim: int
+
+    :param name: the name of the layer. Default is None
+    :type name: string
+
+    :returns: Tensor -- the output tensor
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_gather(self.handle, input.handle, index.handle, dim, c_name)
+    self.add_layer(OpType.GATHER, name)
+    return Tensor(handle, owner_op_type=OpType.GATHER)
 
   def transpose(self, input, perm, name=None):
     """Transposes the :attr:`input` tensor. Permutes the dimensions according to perm
