@@ -28,7 +28,7 @@ public:
                    int max_num_inflight_batches);
   void compile_model_and_allocate_buffer(void);
   void init_operators_inference();
-  void inference(int index);
+  void inference(int index, int device_index);
 
 public:
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;

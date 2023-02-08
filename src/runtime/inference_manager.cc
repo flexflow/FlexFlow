@@ -90,13 +90,26 @@ void InferenceManager::init_operators_inference() {
   }
 }
 
-void InferenceManager::inference(int index) {
+void InferenceManager::inference(int index, int device_index) {
   assert(index < max_num_inflight_batches);
+  int expert_device_index = 0;
   for (size_t o = 0; o < model->operators.size(); o++) {
     Op *op = model->operators[o];
     if (op->op_type == OP_WEIGHT) {
       continue;
     }
+    //create mv w startdeviceid = device_index
+    MachineView view;
+    view.device_type = MachineView::GPU;
+    view.ndims = 1;
+    view.dim[0] = 1;
+    view.stride[0] = 0;
+    view.start_device_id = device_index;
+    // if (op->op_type == OP_EXPERTS) {
+    //   view.start_device_id = expert_device_index;
+    //   expert_device_index = (expert_device_index + 1) % (model->config.workersPerNode * model->config.numNodes);
+    // }
+
     std::vector<ParallelTensor> inputs(op->numInputs);
     std::vector<ParallelTensor> outputs(op->numOutputs);
     for (int i = 0; i < op->numInputs; i++) {
@@ -113,7 +126,7 @@ void InferenceManager::inference(int index) {
       outputs[i] = tensor_buffer[op->outputs[i]][index];
       assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
     }
-    op->inference(*model, inputs, outputs);
+    op->inference(*model, inputs, outputs, &view);
   }
 };
 
