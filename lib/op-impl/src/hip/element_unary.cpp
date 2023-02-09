@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/element_unary.h"
+#include "op-impl/element_unary_kernels.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -23,8 +24,16 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Domain;
 
-/*static*/
-void ElementUnary::init_kernel(ElementUnaryMeta *m,
+ElementUnaryMeta::ElementUnaryMeta(FFHandler handler) : OpMeta(handler) {
+  checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
+}
+
+namespace Kernels {
+namespace ElementUnary {
+
+void init_kernel(ElementUnaryMeta *m,
                                Domain const &input_domain,
                                Domain const &output_domain) {
   miopenActivationMode_t mode;
@@ -50,6 +59,88 @@ void ElementUnary::init_kernel(ElementUnaryMeta *m,
   checkCUDNN(
       cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
 }
+
+template <typename T>
+void forward_kernel_wrapper(ElementUnaryMeta const *m,
+                                          T const *input_ptr,
+                                          T *output_ptr,
+                                          size_t num_elements) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::forward_kernel<T>(
+      m, input_ptr, output_ptr, num_elements, stream);
+}
+
+template <typename T>
+void backward_kernel_wrapper(ElementUnaryMeta const *m,
+                                           T const *input_ptr,
+                                           T *input_grad_ptr,
+                                           T const *output_ptr,
+                                           T const *output_grad_ptr,
+                                           size_t num_elements) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::backward_kernel<T>(m,
+                                   input_ptr,
+                                   input_grad_ptr,
+                                   output_ptr,
+                                   output_grad_ptr,
+                                   num_elements,
+                                   stream);
+}
+
+
+template void
+    forward_kernel_wrapper<float>(ElementUnaryMeta const *m,
+                                                float const *input_ptr,
+                                                float *output_ptr,
+                                                size_t num_elements);
+template void
+    forward_kernel_wrapper<double>(ElementUnaryMeta const *m,
+                                                 double const *input_ptr,
+                                                 double *output_ptr,
+                                                 size_t num_elements);
+template void
+    forward_kernel_wrapper<int32_t>(ElementUnaryMeta const *m,
+                                                  int32_t const *input_ptr,
+                                                  int32_t *output_ptr,
+                                                  size_t num_elements);
+template void
+    forward_kernel_wrapper<int64_t>(ElementUnaryMeta const *m,
+                                                  int64_t const *input_ptr,
+                                                  int64_t *output_ptr,
+                                                  size_t num_elements);
+
+template void
+    backward_kernel_wrapper<float>(ElementUnaryMeta const *m,
+                                                 float const *input_ptr,
+                                                 float *input_grad_ptr,
+                                                 float const *output_ptr,
+                                                 float const *output_grad_ptr,
+                                                 size_t num_elements);
+template void
+    backward_kernel_wrapper<double>(ElementUnaryMeta const *m,
+                                                  double const *input_ptr,
+                                                  double *input_grad_ptr,
+                                                  double const *output_ptr,
+                                                  double const *output_grad_ptr,
+                                                  size_t num_elements);
+template void backward_kernel_wrapper<int32_t>(
+    ElementUnaryMeta const *m,
+    int32_t const *input_ptr,
+    int32_t *input_grad_ptr,
+    int32_t const *output_ptr,
+    int32_t const *output_grad_ptr,
+    size_t num_elements);
+template void backward_kernel_wrapper<int64_t>(
+    ElementUnaryMeta const *m,
+    int64_t const *input_ptr,
+    int64_t *input_grad_ptr,
+    int64_t const *output_ptr,
+    int64_t const *output_grad_ptr,
+    size_t num_elements);
+
+namespace Internal {
 
 template <typename T>
 __global__ void elewise_unary_forward_kernel(
@@ -106,9 +197,8 @@ __global__ void elewise_unary_forward_kernel(
   }
 }
 
-/*static*/
 template <typename T>
-void ElementUnary::forward_kernel(ElementUnaryMeta const *m,
+void forward_kernel(ElementUnaryMeta const *m,
                                   T const *input_ptr,
                                   T *output_ptr,
                                   size_t num_elements,
@@ -137,18 +227,6 @@ void ElementUnary::forward_kernel(ElementUnaryMeta const *m,
                        input_ptr,
                        output_ptr);
   }
-}
-
-/*static*/
-template <typename T>
-void ElementUnary::forward_kernel_wrapper(ElementUnaryMeta const *m,
-                                          T const *input_ptr,
-                                          T *output_ptr,
-                                          size_t num_elements) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  ElementUnary::forward_kernel<T>(
-      m, input_ptr, output_ptr, num_elements, stream);
 }
 
 template <typename T>
@@ -217,9 +295,8 @@ __global__ void elewise_unary_backward_kernel(coord_t volume,
   }
 }
 
-/*static*/
 template <typename T>
-void ElementUnary::backward_kernel(ElementUnaryMeta const *m,
+void backward_kernel(ElementUnaryMeta const *m,
                                    T const *input_ptr,
                                    T *input_grad_ptr,
                                    T const *output_ptr,
@@ -259,79 +336,7 @@ void ElementUnary::backward_kernel(ElementUnaryMeta const *m,
   }
 }
 
-/*static*/
-template <typename T>
-void ElementUnary::backward_kernel_wrapper(ElementUnaryMeta const *m,
-                                           T const *input_ptr,
-                                           T *input_grad_ptr,
-                                           T const *output_ptr,
-                                           T const *output_grad_ptr,
-                                           size_t num_elements) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  ElementUnary::backward_kernel<T>(m,
-                                   input_ptr,
-                                   input_grad_ptr,
-                                   output_ptr,
-                                   output_grad_ptr,
-                                   num_elements,
-                                   stream);
-}
-
-ElementUnaryMeta::ElementUnaryMeta(FFHandler handler) : OpMeta(handler) {
-  checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
-  checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
-}
-
-template void
-    ElementUnary::forward_kernel_wrapper<float>(ElementUnaryMeta const *m,
-                                                float const *input_ptr,
-                                                float *output_ptr,
-                                                size_t num_elements);
-template void
-    ElementUnary::forward_kernel_wrapper<double>(ElementUnaryMeta const *m,
-                                                 double const *input_ptr,
-                                                 double *output_ptr,
-                                                 size_t num_elements);
-template void
-    ElementUnary::forward_kernel_wrapper<int32_t>(ElementUnaryMeta const *m,
-                                                  int32_t const *input_ptr,
-                                                  int32_t *output_ptr,
-                                                  size_t num_elements);
-template void
-    ElementUnary::forward_kernel_wrapper<int64_t>(ElementUnaryMeta const *m,
-                                                  int64_t const *input_ptr,
-                                                  int64_t *output_ptr,
-                                                  size_t num_elements);
-
-template void
-    ElementUnary::backward_kernel_wrapper<float>(ElementUnaryMeta const *m,
-                                                 float const *input_ptr,
-                                                 float *input_grad_ptr,
-                                                 float const *output_ptr,
-                                                 float const *output_grad_ptr,
-                                                 size_t num_elements);
-template void
-    ElementUnary::backward_kernel_wrapper<double>(ElementUnaryMeta const *m,
-                                                  double const *input_ptr,
-                                                  double *input_grad_ptr,
-                                                  double const *output_ptr,
-                                                  double const *output_grad_ptr,
-                                                  size_t num_elements);
-template void ElementUnary::backward_kernel_wrapper<int32_t>(
-    ElementUnaryMeta const *m,
-    int32_t const *input_ptr,
-    int32_t *input_grad_ptr,
-    int32_t const *output_ptr,
-    int32_t const *output_grad_ptr,
-    size_t num_elements);
-template void ElementUnary::backward_kernel_wrapper<int64_t>(
-    ElementUnaryMeta const *m,
-    int64_t const *input_ptr,
-    int64_t *input_grad_ptr,
-    int64_t const *output_ptr,
-    int64_t const *output_grad_ptr,
-    size_t num_elements);
-
-}; // namespace FlexFlow
+} // namespace Internal
+} // namespace ElementUnary
+} // namespace Kernels
+} // namespace FlexFlow
