@@ -3953,22 +3953,34 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
     TaskVariantRegistrar registrar(GATHER_INIT_TASK_ID, "Gather Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Gather::init_task>(
-        registrar, "Gather Init Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, Gather::init_task>(
+          registrar, "Gather Init Task");
+    } else {
+      runtime->register_task_variant<OpMeta *, Gather::init_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(GATHER_FWD_TASK_ID, "Gather Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Gather::forward_task>(
-        registrar, "Gather Forward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Gather::forward_task>(
+          registrar, "Gather Forward Task");
+    } else {
+      runtime->register_task_variant<Gather::forward_task>(registrar);
+    }
   }
   {
     TaskVariantRegistrar registrar(GATHER_BWD_TASK_ID, "Gather Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<Gather::backward_task>(
-        registrar, "Gather Backward Task");
+    if (pre_register) {
+      Runtime::preregister_task_variant<Gather::backward_task>(
+          registrar, "Gather Backward Task");
+    } else {
+      runtime->register_task_variant<Gather::backward_task>(registrar);
+    }
   }
 
   // Cache task CPU
