@@ -54,7 +54,9 @@ GEN_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/parallel_ops/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/recompile/ -name '*.cc')\
 		$(shell find $(FF_HOME)/src/runtime/ -name '*.cc')\
-		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cc')
+		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cc')\
+		$(shell find $(FF_HOME)/src/dataloader/ -name '*.cc')\
+		$(shell find $(FF_HOME)/src/c/ -name '*.cc')
 GEN_SRC := $(filter-out $(FF_HOME)/src/runtime/cpp_driver.cc, $(GEN_SRC))
 
 FF_CUDA_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cu')\
@@ -64,7 +66,8 @@ FF_CUDA_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cu')\
 		$(shell find $(FF_HOME)/src/parallel_ops/ -name '*.cu')\
 		$(shell find $(FF_HOME)/src/recompile/ -name '*.cu')\
 		$(shell find $(FF_HOME)/src/runtime/ -name '*.cu')\
-		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cu')
+		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cu')\
+		$(shell find $(FF_HOME)/src/dataloader/ -name '*.cu')
 
 FF_HIP_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cpp')\
 		$(shell find $(FF_HOME)/src/mapper/ -name '*.cpp')\
@@ -73,7 +76,8 @@ FF_HIP_SRC += $(shell find $(FF_HOME)/src/loss_functions/ -name '*.cpp')\
 		$(shell find $(FF_HOME)/src/parallel_ops/ -name '*.cpp')\
 		$(shell find $(FF_HOME)/src/recompile/ -name '*.cpp')\
 		$(shell find $(FF_HOME)/src/runtime/ -name '*.cpp')\
-		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cpp')
+		$(shell find $(FF_HOME)/src/utils/dot/ -name '*.cpp')\
+		$(shell find $(FF_HOME)/src/dataloader/ -name '*.cpp')
 		
 GEN_GPU_SRC += $(FF_CUDA_SRC)
 ifeq ($(strip $(HIP_TARGET)),CUDA)
