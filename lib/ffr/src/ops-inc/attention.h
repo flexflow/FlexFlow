@@ -3,10 +3,10 @@
 
 #include "device.h"
 #include "fftype.h"
-#include "layer.h"
 #include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
+#include "layer.h"
 #include "op-meta/attention_params.h"
 
 namespace FlexFlow {
@@ -130,26 +130,6 @@ public:
   bool add_bias_kv, add_zero_attn;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
-};
-
-class MultiHeadAttentionMeta : public OpMeta {
-public:
-  MultiHeadAttentionMeta(FFHandler handler,
-                         MultiHeadAttention const *attn,
-                         Legion::Memory gpu_mem,
-                         int num_samples,
-                         int num_heads);
-  ~MultiHeadAttentionMeta(void);
-
-public:
-  Realm::RegionInstance reserveInst;
-  size_t weightSize, reserveSpaceSize;
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnAttnDescriptor_t attnDesc;
-  cudnnSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
-#endif
-  int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx;
-  void *reserveSpace;
 };
 
 }; // namespace FlexFlow
