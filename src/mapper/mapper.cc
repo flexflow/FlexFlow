@@ -378,6 +378,7 @@ void FFMapper::slice_task(const MapperContext ctx,
                           Task const &task,
                           SliceTaskInput const &input,
                           SliceTaskOutput &output) {
+  printf("Slicing task %s task id %d\n", task.get_task_name(), task.task_id);
   output.slices.resize(input.domain.get_volume());
   std::vector<Processor> const *devices;
   MachineView view;

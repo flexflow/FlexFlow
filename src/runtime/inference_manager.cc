@@ -98,17 +98,19 @@ void InferenceManager::inference(int index, int device_index) {
     if (op->op_type == OP_WEIGHT) {
       continue;
     }
-    //create mv w startdeviceid = device_index
+    // create mv w startdeviceid = device_index
     MachineView view;
     view.device_type = MachineView::GPU;
     view.ndims = 1;
     view.dim[0] = 1;
     view.stride[0] = 0;
     view.start_device_id = device_index;
-    // if (op->op_type == OP_EXPERTS) {
-    //   view.start_device_id = expert_device_index;
-    //   expert_device_index = (expert_device_index + 1) % (model->config.workersPerNode * model->config.numNodes);
-    // }
+    if (op->op_type == OP_EXPERTS) {
+      view.start_device_id = expert_device_index;
+      expert_device_index =
+          (expert_device_index + 1) %
+          (model->config.workersPerNode * model->config.numNodes);
+    }
 
     std::vector<ParallelTensor> inputs(op->numInputs);
     std::vector<ParallelTensor> outputs(op->numOutputs);

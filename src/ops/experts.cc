@@ -503,7 +503,8 @@ void Experts::inference(FFModel const &ff,
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   std::cout << "Experts op machine_view: " << *(MachineView const *)mv
             << std::endl;
-  // std::cout << "machine_view hash passed: " << mv->hash() << " machine view gotten: " << machine_view_hash
+  // std::cout << "machine_view hash passed: " << mv->hash() << " machine view
+  // gotten: " << machine_view_hash
   //           << std::endl;
   IndexLauncher launcher(EXPERTS_INF_TASK_ID,
                          parallel_is,
@@ -619,7 +620,7 @@ void Experts::inference_task(Task const *task,
         regions[3 + i], task->regions[3 + i], FID_DATA, ctx, runtime);
     assert(outputs[i] != nullptr);
   }
-
+  return;
   Experts::forward_kernel_wrapper(m,
                                   input_ptr,
                                   indices_ptr,

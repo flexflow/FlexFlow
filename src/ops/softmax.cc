@@ -232,6 +232,8 @@ void Softmax::inference(FFModel const &ff,
   set_argumentmap_for_forward(ff, argmap);
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  std::cout << "Softmax op machine_view: " << *(MachineView const *)mv
+            << std::endl;
   IndexLauncher launcher(SOFTMAX_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),

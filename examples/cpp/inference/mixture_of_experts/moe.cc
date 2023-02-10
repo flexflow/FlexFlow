@@ -98,7 +98,7 @@ void FlexFlow::top_level_task(Task const *task,
                               Runtime *runtime) {
   // Inference parameters
   int total_requests =
-      256; // total number of requests processed as part of the simulation
+      5; // total number of requests processed as part of the simulation
   int request_tensor_size = 4; // request tensor dimensions
   bool poisson_distribution = true;
   double lambda = 25; // average number of request arrivals per second
@@ -164,18 +164,30 @@ void FlexFlow::top_level_task(Task const *task,
   int device_index = 0;
   Generator data_generator(
       total_requests, request_tensor_size, poisson_distribution, lambda);
-  // data_loader.reset();
-  while (processed_requests < total_requests) {
-    vector<vector<double>> req = data_generator.get_requests();
-    int iterations = req.size();
-    for (int iter = 0; iter < iterations; iter++) {
-      // data_loader.next_batch(ff);
-      runtime->begin_trace(ctx, 111 /*trace_id*/);
-      im.inference((index++) % num_inflight_batches, (device_index++) % num_devices);
-      runtime->end_trace(ctx, 111 /*trace_id*/);
-    }
-    processed_requests += iterations;
+  int iterations = 2;
+
+  for (int iter = 0; iter < iterations; iter++) {
+    // data_loader.next_batch(ff);
+    runtime->begin_trace(ctx, 111 /*trace_id*/);
+    printf("Calling inference now!\n");
+    im.inference((index++) % num_inflight_batches,
+                 (device_index++) % num_devices);
+    runtime->end_trace(ctx, 111 /*trace_id*/);
   }
+
+  // data_loader.reset();
+  // while (processed_requests < total_requests) {
+  //   vector<vector<double>> req = data_generator.get_requests();
+  //   int iterations = req.size() / num_requests_per_batch;
+  //   for (int iter = 0; iter < iterations; iter++) {
+  //     // data_loader.next_batch(ff);
+  //     runtime->begin_trace(ctx, 111 /*trace_id*/);
+  //     printf("Calling inference now!\n");
+  //     im.inference((index++) % num_inflight_batches, (device_index++) %
+  //     num_devices); runtime->end_trace(ctx, 111 /*trace_id*/);
+  //   }
+  //   processed_requests += iterations;
+  // }
 
   ///////////////////////////////////////////////////////////////////////////////////
 

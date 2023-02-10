@@ -588,6 +588,8 @@ void MultiHeadAttention::inference(
   int idx = 0;
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  std::cout << "Attention op machine_view: " << *(MachineView const *)mv
+            << std::endl;
   IndexLauncher launcher(ATTENTION_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),

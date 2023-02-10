@@ -209,6 +209,8 @@ void Repartition::inference(FFModel const &ff,
   DataType data_type = batch_inputs[0]->data_type;
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  std::cout << "Partition op machine_view: " << *(MachineView const *)mv
+            << std::endl;
   IndexLauncher launcher(REPARTITION_FWD_TASK_ID,
                          batch_outputs[0]->parallel_is,
                          TaskArgument(&data_type, sizeof(DataType)),
