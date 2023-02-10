@@ -28,6 +28,10 @@ conda activate flexflow;
 ./python/flexflow_python tests/align/align_create_tensor_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 5000 -ll:zsize 4096 -b 16 -o subtract;
 ./python/flexflow_python tests/align/align_create_tensor_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 5000 -ll:zsize 4096 -b 16 -o tanh;
 ./python/flexflow_python tests/align/align_create_tensor_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 5000 -ll:zsize 4096 -b 16 -o transpose;
+./python/flexflow_python tests/align/align_create_tensor_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 5000 -ll:zsize 4096 -b 16 -o view_embedding;
+./python/flexflow_python tests/align/align_create_tensor_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 5000 -ll:zsize 4096 -b 16 -o max;
+./python/flexflow_python tests/align/align_create_tensor_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 5000 -ll:zsize 4096 -b 16 -o min;
+./python/flexflow_python tests/align/align_create_tensor_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 5000 -ll:zsize 4096 -b 16 -o linear;
 
 #create torch tensorss
 conda activate pytorch;
@@ -54,6 +58,10 @@ python tests/align/align_create_tensor_torch.py -o sin;
 python tests/align/align_create_tensor_torch.py -o subtract;
 python tests/align/align_create_tensor_torch.py -o tanh;
 python tests/align/align_create_tensor_torch.py -o transpose;
+python tests/align/align_create_tensor_torch.py -o view_embedding;
+python tests/align/align_create_tensor_torch.py -o max;
+python tests/align/align_create_tensor_torch.py -o min;
+python tests/align/align_create_tensor_torch.py -o linear;
 
 conda activate flexflow;
 python -m pytest tests/align/align_test.py

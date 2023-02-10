@@ -8,6 +8,8 @@ from typing import Iterable, NamedTuple
 from argparse import ArgumentParser
 
 BATCH_SIZE = 16
+INPUT_SIZE = 512
+SEQ_LENGTH = 5
 
 def make_deterministic(seed: int = 42) -> None:
     """Makes ensuing runs determinstic by setting seeds and using deterministic
@@ -113,3 +115,13 @@ def parse_create_tensor_args():
 
     args, unknown = parser.parse_known_args()
     return args
+
+def create_general_test_tensors_torch() -> torch.Tensor:
+    """
+    generate general input size of alignment tests
+    """
+    tensor: torch.Tensor = gen_tensor(
+        (BATCH_SIZE, SEQ_LENGTH, INPUT_SIZE),
+        dtype="float32"
+    )
+    return tensor

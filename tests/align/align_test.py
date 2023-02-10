@@ -7,8 +7,8 @@ sys.path.append("./align/")
 
 
 BASE_DIR = "tests/align/out"
-param_weight_op = {'conv2d', 'embedding', 'view_embedding'}
-param_bias_op = {'conv2d'}
+param_weight_op = {'conv2d', 'embedding', 'view_embedding', 'linear'}
+param_bias_op = {'conv2d', 'linear'}
 no_grad_op = {"getitem"}
 
 
@@ -112,6 +112,18 @@ def test_tanh():
 
 def test_identity():
     _test_operator('identity')
+    
+    
+def test_linear():
+    _test_operator('linear')
+    
+    
+def test_max():
+    _test_operator('max')
+    
+    
+def test_min():
+    _test_operator('min')
 
 
 def _test_operator(operater_name):
