@@ -8,7 +8,7 @@ function generate_ff_tensor(){
 }
 
 function generate_torch_tensor(){
-    generate_torch_tensor "$1";
+    python -m pytest tests/align/align_test.py::test_"$1";
 }
 
 #create flexflow tensors
