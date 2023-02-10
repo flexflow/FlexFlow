@@ -3,44 +3,40 @@
 
 namespace FlexFlow {
 namespace utils {
-namespace graph {
-namespace digraph {
 
-Edge::Edge(Node src, Node dst) 
+DirectedEdge::DirectedEdge(Node src, Node dst) 
   : src(src), dst(dst)
 { }
 
-bool Edge::operator==(Edge const &other) const {
+bool DirectedEdge::operator==(DirectedEdge const &other) const {
   return this->as_tuple() == other.as_tuple();
 }
 
-bool Edge::operator<(Edge const &other) const {
+bool DirectedEdge::operator<(DirectedEdge const &other) const {
   return this->as_tuple() < other.as_tuple();
 }
 
-typename Edge::AsConstTuple Edge::as_tuple() const {
+typename DirectedEdge::AsConstTuple DirectedEdge::as_tuple() const {
   return {this->src, this->dst};
 }
 
-std::ostream &operator<<(std::ostream &s, Edge const &e) {
+std::ostream &operator<<(std::ostream &s, DirectedEdge const &e) {
   return (
-    s << "Edge{" << e.src.idx << " -> " << e.dst.idx << "}"
+    s << "DirectedEdge{" << e.src.idx << " -> " << e.dst.idx << "}"
   );
 }
 
-EdgeQuery::EdgeQuery(tl::optional<std::unordered_set<Node>> const &srcs, tl::optional<std::unordered_set<Node>> const &dsts) 
+DirectedEdgeQuery::DirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &srcs, tl::optional<std::unordered_set<Node>> const &dsts) 
   : srcs(srcs), dsts(dsts)
 { }
 
 }
 }
-}
-}
 
 namespace std {
-using ::FlexFlow::utils::graph::digraph::Edge;
+using ::FlexFlow::utils::DirectedEdge;
 
-size_t std::hash<Edge>::operator()(Edge const &e) const {
+size_t std::hash<DirectedEdge>::operator()(DirectedEdge const &e) const {
   return get_std_hash(e.as_tuple());
 }
 }

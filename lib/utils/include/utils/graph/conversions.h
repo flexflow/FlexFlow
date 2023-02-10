@@ -11,31 +11,30 @@
 
 namespace FlexFlow {
 namespace utils {
-namespace graph {
 
-undirected::Edge to_undirected_edge(digraph::Edge const &);
-std::unordered_set<undirected::Edge> to_undirected_edges(std::unordered_set<digraph::Edge> const &);
-undirected::Edge to_undirected_edge(multidigraph::Edge const &);
-std::unordered_set<undirected::Edge> to_undirected_edges(std::unordered_set<multidigraph::Edge> const &);
+UndirectedEdge to_undirected_edge(DirectedEdge const &);
+std::unordered_set<UndirectedEdge> to_undirected_edges(std::unordered_set<DirectedEdge> const &);
+UndirectedEdge to_undirected_edge(MultiDiEdge const &);
+std::unordered_set<UndirectedEdge> to_undirected_edges(std::unordered_set<MultiDiEdge> const &);
 
-std::unordered_set<digraph::Edge> to_directed_edges(undirected::Edge const &);
-std::unordered_set<digraph::Edge> to_directed_edges(std::unordered_set<undirected::Edge> const &);
-digraph::Edge to_directed_edge(multidigraph::Edge const &);
-std::unordered_set<digraph::Edge> to_directed_edges(std::unordered_set<multidigraph::Edge> const &);
+std::unordered_set<DirectedEdge> to_directed_edges(UndirectedEdge const &);
+std::unordered_set<DirectedEdge> to_directed_edges(std::unordered_set<UndirectedEdge> const &);
+DirectedEdge to_directed_edge(MultiDiEdge const &);
+std::unordered_set<DirectedEdge> to_directed_edges(std::unordered_set<MultiDiEdge> const &);
 
-std::unordered_set<multidigraph::Edge> to_multidigraph_edges(undirected::Edge const &);
-std::unordered_set<multidigraph::Edge> to_multidigraph_edges(std::unordered_set<undirected::Edge> const &);
-multidigraph::Edge to_multidigraph_edge(digraph::Edge const &);
-std::unordered_set<multidigraph::Edge> to_multidigraph_edges(std::unordered_set<digraph::Edge> const &);
+std::unordered_set<MultiDiEdge> to_multidigraph_edges(UndirectedEdge const &);
+std::unordered_set<MultiDiEdge> to_multidigraph_edges(std::unordered_set<UndirectedEdge> const &);
+MultiDiEdge to_multidigraph_edge(DirectedEdge const &);
+std::unordered_set<MultiDiEdge> to_multidigraph_edges(std::unordered_set<DirectedEdge> const &);
 
 template <typename Undirected>
 Undirected to_undirected(IDiGraph const &directed) {
   static_assert(std::is_base_of<IUndirectedGraph, Undirected>::value, "Error");
   Undirected undirected;
-  digraph::EdgeQuery edge_query_all;
+  DirectedEdgeQuery edge_query_all;
   NodeQuery node_query_all;
   
-  std::unordered_set<digraph::Edge> directed_edges = directed.query_edges(edge_query_all);
+  std::unordered_set<DirectedEdge> directed_edges = directed.query_edges(edge_query_all);
   std::unordered_set<Node> directed_nodes = directed.query_nodes(node_query_all);
 
   auto directed_node_to_undirected_node = [&]() -> std::unordered_map<Node, Node> {
@@ -46,7 +45,7 @@ Undirected to_undirected(IDiGraph const &directed) {
     return result;
   };
 
-  for (digraph::Edge const &directed_edge : directed_edges) {
+  for (DirectedEdge const &directed_edge : directed_edges) {
     undirected.add_edge(to_undirected_edge(directed_edge));
   }
 
@@ -59,7 +58,7 @@ public:
   explicit ViewDiGraphAsUndirectedGraph(IDiGraphView const &);
   explicit ViewDiGraphAsUndirectedGraph(std::shared_ptr<IDiGraphView> const &);
 
-  std::unordered_set<undirected::Edge> query_edges(undirected::EdgeQuery const &) const override;
+  std::unordered_set<UndirectedEdge> query_edges(UndirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 private:
   std::shared_ptr<IDiGraphView> const shared;
@@ -72,7 +71,7 @@ public:
   explicit ViewDiGraphAsMultiDiGraph(IDiGraphView const &);
   explicit ViewDiGraphAsMultiDiGraph(std::shared_ptr<IDiGraphView> const &);
 
-  std::unordered_set<multidigraph::Edge> query_edges(multidigraph::EdgeQuery const &) const override;
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 private:
   std::shared_ptr<IDiGraphView> const shared = nullptr;
@@ -85,7 +84,7 @@ public:
   explicit ViewMultiDiGraphAsDiGraph(IMultiDiGraphView const &);
   explicit ViewMultiDiGraphAsDiGraph(std::shared_ptr<IMultiDiGraphView> const &);
 
-  std::unordered_set<digraph::Edge> query_edges(digraph::EdgeQuery const &) const override;
+  std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 private:
   std::shared_ptr<IMultiDiGraphView> const shared;
@@ -99,7 +98,6 @@ ViewDiGraphAsMultiDiGraph view_as_multidigraph(std::shared_ptr<IDiGraphView> con
 ViewMultiDiGraphAsDiGraph unsafe_view_as_digraph(IMultiDiGraphView const &);
 ViewMultiDiGraphAsDiGraph view_as_digraph(std::shared_ptr<IMultiDiGraphView> const &);
 
-}
 }
 }
 

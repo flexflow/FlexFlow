@@ -7,51 +7,45 @@
 
 namespace FlexFlow {
 namespace utils {
-namespace graph {
-namespace digraph {
 
-struct Edge {
+struct DirectedEdge {
 public:
-  Edge() = delete;
-  Edge(Node src, Node dst);
+  DirectedEdge() = delete;
+  DirectedEdge(Node src, Node dst);
 
-  bool operator==(Edge const &) const;
-  bool operator<(Edge const &) const;
+  bool operator==(DirectedEdge const &) const;
+  bool operator<(DirectedEdge const &) const;
 
   using AsConstTuple = std::tuple<Node, Node>;
   AsConstTuple as_tuple() const;
 public:
   Node src, dst;
 };
-std::ostream &operator<<(std::ostream &, Edge const &);
+std::ostream &operator<<(std::ostream &, DirectedEdge const &);
 
-}
-}
 }
 }
 
 namespace std {
 template <>
-struct hash<::FlexFlow::utils::graph::digraph::Edge> {
-  std::size_t operator()(::FlexFlow::utils::graph::digraph::Edge const &) const;
+struct hash<::FlexFlow::utils::DirectedEdge> {
+  std::size_t operator()(::FlexFlow::utils::DirectedEdge const &) const;
 };
 }
 
 namespace FlexFlow {
 namespace utils {
-namespace graph {
-namespace digraph {
 
-struct EdgeQuery {
-  EdgeQuery() = default;
-  EdgeQuery(tl::optional<std::unordered_set<Node>> const &srcs, tl::optional<std::unordered_set<Node>> const &dsts);
+struct DirectedEdgeQuery {
+  DirectedEdgeQuery() = default;
+  DirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &srcs, tl::optional<std::unordered_set<Node>> const &dsts);
   tl::optional<std::unordered_set<Node>> srcs = tl::nullopt, 
                                          dsts = tl::nullopt;
 };
 
 struct IDiGraphView : public IGraphView {
-  using Edge = digraph::Edge;
-  using EdgeQuery = digraph::EdgeQuery;
+  using Edge = DirectedEdge;
+  using EdgeQuery = DirectedEdgeQuery;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
 };
@@ -60,12 +54,6 @@ struct IDiGraph : public IDiGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;
 };
 
-}
-
-using IDiGraph = digraph::IDiGraph;
-using IDiGraphView = digraph::IDiGraphView;
-
-}
 }
 }
 

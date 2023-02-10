@@ -2,8 +2,6 @@
 
 namespace FlexFlow {
 namespace utils {
-namespace graph {
-namespace digraph {
 
 Node AdjacencyDiGraph::add_node() {
   Node node{this->next_node_idx};
@@ -12,13 +10,13 @@ Node AdjacencyDiGraph::add_node() {
   return node;
 }
 
-void AdjacencyDiGraph::add_edge(Edge const &e) {
+void AdjacencyDiGraph::add_edge(DirectedEdge const &e) {
   this->adjacency.at(e.dst);
   this->adjacency.at(e.src).insert(e.dst);
 }
 
-std::unordered_set<Edge> AdjacencyDiGraph::query_edges(EdgeQuery const &query) const {
-  std::unordered_set<Edge> result;
+std::unordered_set<DirectedEdge> AdjacencyDiGraph::query_edges(DirectedEdgeQuery const &query) const {
+  std::unordered_set<DirectedEdge> result;
   for (auto const &kv : this->adjacency) {
     Node src = kv.first;
     if (!query.srcs.has_value() || query.srcs->find(src) != query.srcs->end()) {
@@ -42,7 +40,5 @@ std::unordered_set<Node> AdjacencyDiGraph::query_nodes(NodeQuery const &query) c
   return result;
 }
 
-}
-}
 }
 }

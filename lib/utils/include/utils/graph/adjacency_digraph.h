@@ -7,8 +7,6 @@
 
 namespace FlexFlow {
 namespace utils {
-namespace graph {
-namespace digraph {
 
 class AdjacencyDiGraph : public IDiGraph {
 public:
@@ -21,8 +19,6 @@ private:
   std::unordered_map<Node, std::unordered_set<Node>> adjacency;
 };
 
-}
-}
 }
 }
 

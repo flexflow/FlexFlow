@@ -1,0 +1,130 @@
+#ifndef _FLEXFLOW_UTILS_GRAPH_TRAVERSAL_H
+#define _FLEXFLOW_UTILS_GRAPH_TRAVERSAL_H
+
+#include <iterator>
+#include "node.h"
+#include "digraph.h"
+#include <vector>
+
+namespace FlexFlow {
+namespace utils {
+
+struct unchecked_dfs_iterator {
+  using iterator_category = std::forward_iterator_tag;
+  using difference_type = std::size_t;
+  using value_type = Node;
+  using pointer = Node const *;
+  using reference = Node const &;
+
+  unchecked_dfs_iterator(IDiGraphView const &g, std::vector<Node> const &);
+  unchecked_dfs_iterator(IDiGraphView const &g, std::unordered_set<Node> const &);
+  
+  reference operator*() const;
+  pointer operator->();
+
+  // Prefix increment
+  unchecked_dfs_iterator& operator++();
+
+  // Postfix increment
+  unchecked_dfs_iterator operator++(int);
+
+  bool operator==(unchecked_dfs_iterator const &other) const;
+  bool operator!=(unchecked_dfs_iterator const &other) const;   
+
+private:
+  void skip();
+
+  std::vector<Node> stack;
+  IDiGraphView const *graph;
+
+  friend struct checked_dfs_iterator;
+};
+
+struct checked_dfs_iterator {
+  using iterator_category = std::forward_iterator_tag;
+  using difference_type = std::size_t;
+  using value_type = Node;
+  using pointer = Node const *;
+  using reference = Node const &;
+
+  checked_dfs_iterator(IDiGraphView const &g, std::vector<Node> const &, std::unordered_set<Node> const &);
+  checked_dfs_iterator(IDiGraphView const &g, std::unordered_set<Node> const &starting_points);
+
+  reference operator*() const;
+  pointer operator->();
+  checked_dfs_iterator& operator++(); // prefix increment
+  checked_dfs_iterator operator++(int); // postfix increment
+
+  bool operator==(checked_dfs_iterator const &) const;    
+  bool operator!=(checked_dfs_iterator const &) const;    
+private:
+  unchecked_dfs_iterator iter;
+  std::unordered_set<Node> seen;
+};
+
+struct CheckedDFSView {
+  CheckedDFSView() = delete;
+  explicit CheckedDFSView(IDiGraphView const *, std::unordered_set<Node> const &starting_points);
+
+  checked_dfs_iterator begin() const;
+  checked_dfs_iterator end() const;
+  checked_dfs_iterator cbegin() const;
+  checked_dfs_iterator cend() const;
+private:
+  IDiGraphView const *graph;
+  std::unordered_set<Node> starting_points;
+};
+
+
+struct UncheckedDFSView {
+  UncheckedDFSView() = delete;
+  explicit UncheckedDFSView(IDiGraphView const *, std::unordered_set<Node> const &starting_points);
+
+  unchecked_dfs_iterator begin() const;
+  unchecked_dfs_iterator end() const;
+  unchecked_dfs_iterator cbegin() const;
+  unchecked_dfs_iterator cend() const;
+private:
+  IDiGraphView const *graph;
+  std::unordered_set<Node> starting_points;
+};
+
+/* struct BoundaryDFSView { */
+/*   BoundaryDFSView() = delete; */
+/*   explicit BoundaryDFSView(IDiGraphView const *); */
+
+/*   struct boundary_dfs_iterator { */
+/*     using iterator_category = std::forward_iterator_tag; */
+/*     using difference_type = std::size_t; */
+/*     using value_type = Node; */
+/*     using pointer = Node const *; */
+/*     using reference = Node const &; */
+
+/*     boundary_dfs_iterator(IDiGraphView const &g, std::vector<Node> const &, std::unordered_set<Node> const &); */
+
+/*     reference operator*() const; */
+/*     pointer operator->(); */
+
+/*     bool operator==(boundary_dfs_iterator const &other) const; */
+/*     bool operator!=(boundary_dfs_iterator const &other) const; */   
+/*   private: */
+/*     std::vector<Node> stack; */
+/*     IDiGraphView const *graph; */
+/*   }; */
+
+/*   boundary_dfs_iterator begin() const; */
+/*   boundary_dfs_iterator end() const; */
+/*   boundary_dfs_iterator cbegin() const; */
+/*   boundary_dfs_iterator cend() const; */
+/* private: */
+/*   IDiGraphView const *graph; */
+/* }; */
+
+UncheckedDFSView unchecked_dfs(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
+/* BoundaryDFSView boundary_dfs(IDiGraphView const &, std::unordered_set<Node> const &starting_points); */
+CheckedDFSView dfs(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
+
+} 
+}
+
+#endif 

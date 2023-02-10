@@ -4,7 +4,6 @@
 
 namespace FlexFlow {
 namespace utils {
-namespace graph {
 
 Node::Node(std::size_t idx) 
   : idx(idx) 
@@ -47,10 +46,9 @@ NodeQuery::NodeQuery(tl::optional<std::unordered_set<Node>> const &nodes)
 
 }
 }
-}
 
 namespace std {
-using ::FlexFlow::utils::graph::Node;
+using ::FlexFlow::utils::Node;
 
 std::size_t hash<Node>::operator()(Node const &n) const {
   return get_std_hash(n.as_tuple());

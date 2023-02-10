@@ -7,16 +7,14 @@
 
 namespace FlexFlow {
 namespace utils {
-namespace graph {
-namespace undirected {
 
-struct Edge {
+struct UndirectedEdge {
 public:
-  Edge() = delete;
-  Edge(Node src, Node dst);
+  UndirectedEdge() = delete;
+  UndirectedEdge(Node src, Node dst);
 
-  bool operator==(Edge const &) const;
-  bool operator<(Edge const &) const;
+  bool operator==(UndirectedEdge const &) const;
+  bool operator<(UndirectedEdge const &) const;
 
   using AsConstTuple = std::tuple<Node, Node>;
   AsConstTuple as_tuple() const;
@@ -26,43 +24,34 @@ public:
 
 }
 }
-}
-}
 
 namespace std {
 template <>
-struct hash<::FlexFlow::utils::graph::undirected::Edge> {
-  std::size_t operator()(::FlexFlow::utils::graph::undirected::Edge const &) const;
+struct hash<::FlexFlow::utils::UndirectedEdge> {
+  std::size_t operator()(::FlexFlow::utils::UndirectedEdge const &) const;
 };
 }
 
 namespace FlexFlow {
 namespace utils {
-namespace graph {
-namespace undirected {
 
-struct EdgeQuery {
+struct UndirectedEdgeQuery {
   tl::optional<std::unordered_set<Node>> nodes = tl::nullopt;
 };
 
 struct IUndirectedGraphView : public IGraphView {
-  using Edge = undirected::Edge;
-  using EdgeQuery = undirected::EdgeQuery;
+  using Edge = UndirectedEdge;
+  using EdgeQuery = UndirectedEdgeQuery;
 
-  virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
+  virtual std::unordered_set<Edge> query_edges(UndirectedEdgeQuery const &) const = 0;
 };
 
 struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
-  virtual void add_edge(Edge const &) = 0;
+  virtual void add_edge(UndirectedEdge const &) = 0;
 };
 
 }
 
-using IUndirectedGraph = undirected::IUndirectedGraph;
-using IUndirectedGraphView = undirected::IUndirectedGraphView;
-
-}
-}
 }
 
 #endif

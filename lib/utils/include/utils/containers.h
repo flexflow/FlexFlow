@@ -30,4 +30,9 @@ std::string join_strings(InputIt first, InputIt last, std::string const &delimit
   return join_strings<InputIt, typename InputIt::reference>(first, last, delimiter, [](Ref r){ return r; });
 }
 
+template <typename Container, typename Element>
+bool contains(Container const &c, Element const &e) {
+  return c.find(e) != c.end();
+}
+
 #endif
