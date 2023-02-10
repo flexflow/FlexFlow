@@ -15,12 +15,6 @@
 
 #include "accessor.h"
 #include "model.h"
-#include "ops-inc/batch_norm.h"
-#include "ops-inc/dropout.h"
-#include "ops-impl/element_unary_kernels.h"
-#include "ops-inc/embedding.h"
-#include "ops-inc/flat.h"
-#include "ops-inc/fused.h"
 #include "op-impl/batch_matmul_kernels.h"
 #include "op-impl/concat_kernels.h"
 #include "op-impl/conv_2d_kernels.h"
@@ -29,6 +23,12 @@
 #include "op-impl/pool_2d_kernels.h"
 #include "op-impl/reshape_kernels.h"
 #include "op-impl/transpose_kernels.h"
+#include "ops-impl/element_unary_kernels.h"
+#include "ops-inc/batch_norm.h"
+#include "ops-inc/dropout.h"
+#include "ops-inc/embedding.h"
+#include "ops-inc/flat.h"
+#include "ops-inc/fused.h"
 #include "utils/cuda_helper.h"
 
 namespace FlexFlow {
