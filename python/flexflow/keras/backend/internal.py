@@ -276,16 +276,17 @@ class Gather(Layer):
 
   def _calculate_inout_shape(self, input_tensors):
     self.input_shape = input_tensors[0].batch_shape
-    self.output_shape = input_tensors[0].batch_shape
-    self.output_shape[self.axis] = len(input_tensors[1])
+    self.output_shape = input_tensors[1].batch_shape
+    # self.output_shape = input_tensors[0].batch_shape
+    # self.output_shape[self.axis] = len(input_tensors[1])
     fflogger.debug("add output %s" %( str(self.output_shape)))
 
   def get_summary(self):
     summary = "%s%s%s\n"%(self._get_summary_name(), self.output_shape, self._get_summary_connected_to())
     return summary
 
-  def __call__(self, input_tensor):
-    return self._connect_layer_n_input_1_output(input_tensor)
+  def __call__(self, input_tensors):
+    return self._connect_layer_n_input_1_output(input_tensors)
 
   def _verify_inout_tensor_shape(self, input_tensors, output_tensor):
     assert input_tensors[0].num_dims == len(self.input_shape), "[Gather]: check input tensor dims"
@@ -298,4 +299,4 @@ class Gather(Layer):
 
 
 def gather(x, indices, axis):
-    return Gather(axis)(x, indices)
+    return Gather(axis)([x, indices])
