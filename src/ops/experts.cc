@@ -35,6 +35,9 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
 
+static constexpr int KERNEL_IDX = 0;
+static constexpr int BIAS_IDX = 1;
+
 // For now, we use one input and one output per expert
 Tensor FFModel::experts(Tensor const *inputs,
                         int num_experts,
@@ -325,7 +328,8 @@ Experts::Experts(FFModel &model,
       num_dims, out_dims, inputs[0]->data_type, this, 0 /*owner_idx*/);
   assert(outputs[0] != nullptr);
 
-  //auto dimension_names = this->get_params().get_dimension_names(inputs[0]->get_shape());
+  // auto dimension_names =
+  // this->get_params().get_dimension_names(inputs[0]->get_shape());
   ParallelTensorShape input_shape = inputs[0]->get_shape();
   ParallelTensorShape output_shape, kernel_shape, bias_shape;
   ExpertsParams params = this->get_params();
@@ -341,28 +345,30 @@ Experts::Experts(FFModel &model,
     for (int i = 0; i < num_experts; i++) {
       Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
       {
-        //ParallelDim dims[2] = {inputs[0]->dims[0], out_dims[0]};
+        // ParallelDim dims[2] = {inputs[0]->dims[0], out_dims[0]};
         weights[i * (1 + use_bias)] =
-            model.create_parallel_weight_legion_ordering(kernel_shape.num_dims, //2,
-                                                         kernel_shape.dims, //dims,
-                                                         DT_FLOAT,
-                                                         NULL /*owner_op*/,
-                                                         true /*create_grad*/,
-                                                         kernel_initializer,
-                                                         comm_type);
+            model.create_parallel_weight_legion_ordering(
+                kernel_shape.num_dims, // 2,
+                kernel_shape.dims,     // dims,
+                DT_FLOAT,
+                NULL /*owner_op*/,
+                true /*create_grad*/,
+                kernel_initializer,
+                comm_type);
         assert(weights[i * (1 + use_bias)] != nullptr);
       }
       if (use_bias) {
         Initializer *bias_initializer = new ZeroInitializer();
         ParallelDim dims[1] = {out_dims[0]};
         weights[i * (1 + use_bias) + use_bias] =
-            model.create_parallel_weight_legion_ordering(bias_shape.num_dims, //1,
-                                                         bias_shape.dims, //dims,
-                                                         DT_FLOAT,
-                                                         NULL /*owner_op*/,
-                                                         true /*create_grad*/,
-                                                         bias_initializer,
-                                                         comm_type);
+            model.create_parallel_weight_legion_ordering(
+                bias_shape.num_dims, // 1,
+                bias_shape.dims,     // dims,
+                DT_FLOAT,
+                NULL /*owner_op*/,
+                true /*create_grad*/,
+                bias_initializer,
+                comm_type);
         assert(weights[i * (1 + use_bias) + use_bias] != nullptr);
       }
     }
@@ -737,8 +743,10 @@ void Experts::inference_task(Task const *task,
   int input_dims = input_domain.get_dim();
   int indices_dims = indices_domain.get_dim();
   int topk_gate_pred_dims = topk_gate_pred_domain.get_dim();
+  int output_dims = output_domain.get_dim();
   assert(input_dims == indices_dims);
   assert(indices_dims == topk_gate_pred_dims);
+  assert(input_dims == output_dims);
 
   int replica_dim = input_dims - 1;
   int samples_index = input_dims - 2;
@@ -785,7 +793,7 @@ void Experts::inference_task(Task const *task,
     Domain weights_domain = runtime->get_index_space_domain(
         ctx, task->regions[4 + i * (1 + use_bias)].region.get_index_space());
     int weights_dims = weights_domain.get_dim();
-    assert(weights_dims == 2);
+    assert(weights_dims == input_dims);
     assert(weights_domain.hi()[0] - weights_domain.lo()[0] + 1 == data_dim);
     assert(weights_domain.hi()[1] - weights_domain.lo()[1] + 1 == out_dim);
     if (use_bias) {
@@ -848,12 +856,12 @@ bool Experts::measure_operator_cost(Simulator *sim,
 }
 
 void ExpertsParams::solve_dims(const ParallelTensor input,
-                              ParallelDim output_dims[MAX_TENSOR_DIM],
-                              int *output_ndims,
-                              ParallelDim kernel_dims[MAX_TENSOR_DIM],
-                              int *kernel_ndims,
-                              ParallelDim bias_dims[MAX_TENSOR_DIM],
-                              int *bias_ndims) const {
+                               ParallelDim output_dims[MAX_TENSOR_DIM],
+                               int *output_ndims,
+                               ParallelDim kernel_dims[MAX_TENSOR_DIM],
+                               int *kernel_ndims,
+                               ParallelDim bias_dims[MAX_TENSOR_DIM],
+                               int *bias_ndims) const {
   this->solve_dims(input->get_shape(),
                    output_dims,
                    output_ndims,
@@ -864,9 +872,9 @@ void ExpertsParams::solve_dims(const ParallelTensor input,
 }
 
 void ExpertsParams::solve_dims(ParallelTensorShape const &input_shape,
-                              ParallelTensorShape &output_shape,
-                              ParallelTensorShape &kernel_shape,
-                              ParallelTensorShape &bias_shape) const {
+                               ParallelTensorShape &output_shape,
+                               ParallelTensorShape &kernel_shape,
+                               ParallelTensorShape &bias_shape) const {
   this->solve_dims(input_shape,
                    output_shape.dims,
                    &output_shape.num_dims,
@@ -877,12 +885,12 @@ void ExpertsParams::solve_dims(ParallelTensorShape const &input_shape,
 }
 
 void ExpertsParams::solve_dims(ParallelTensorShape const &input_shape,
-                              ParallelDim output_dims[MAX_TENSOR_DIM],
-                              int *output_ndims,
-                              ParallelDim kernel_dims[MAX_TENSOR_DIM],
-                              int *kernel_ndims,
-                              ParallelDim bias_dims[MAX_TENSOR_DIM],
-                              int *bias_ndims) const {
+                               ParallelDim output_dims[MAX_TENSOR_DIM],
+                               int *output_ndims,
+                               ParallelDim kernel_dims[MAX_TENSOR_DIM],
+                               int *kernel_ndims,
+                               ParallelDim bias_dims[MAX_TENSOR_DIM],
+                               int *bias_ndims) const {
   assert((output_dims == nullptr) == (output_ndims == nullptr));
   assert((kernel_dims == nullptr) == (kernel_ndims == nullptr));
   assert((bias_dims == nullptr) == (bias_ndims == nullptr));
@@ -934,7 +942,8 @@ void ExpertsParams::calculate_nonreplica_dim_sizes(
     for (int i = 1; i < input_shape.num_dims - 1; i++) {
       output_dims[i].size = input_shape.dims[i].size;
     }
-    output_dims[dimension_names.at(OUTPUT_CHANNEL)].size = this->out_channels;
+    output_dims[dimension_names.at(OUTPUT_CHANNEL)].size =
+        experts_output_dim_size;
     *output_ndims = num_dims;
   }
   if (kernel_dims != nullptr) {
@@ -942,11 +951,12 @@ void ExpertsParams::calculate_nonreplica_dim_sizes(
         input_shape.dims[INPUT_CHANNEL].size /
         input_shape.dims[INPUT_CHANNEL].degree;
     kernel_dims[dimension_names.at(KERNEL_CHANNEL_OUT)].size =
-        this->out_channels;
+        experts_output_dim_size;
     *kernel_ndims = num_dims;
   }
   if (bias_dims != nullptr) {
-    bias_dims[dimension_names.at(BIAS_CHANNEL_OUT)].size = this->out_channels;
+    bias_dims[dimension_names.at(BIAS_CHANNEL_OUT)].size =
+        experts_output_dim_size;
     *bias_ndims = num_dims;
   }
 }

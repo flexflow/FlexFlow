@@ -1,5 +1,6 @@
 #pragma once
 
+#include "flexflow/operator.h"
 #include "flexflow/parallel_tensor.h"
 
 namespace FlexFlow {
@@ -37,6 +38,18 @@ struct ExpertsParams {
   void construct_mappings(std::vector<ParallelDimMappingRecord> &,
                           ParallelTensorShape const &) const;
 
+  enum NamedDimensions {
+    INPUT_CHANNEL,
+    INPUT_SAMPLE,
+    INPUT_REPLICA,
+    OUTPUT_CHANNEL,
+    OUTPUT_SAMPLE,
+    OUTPUT_REPLICA,
+    KERNEL_CHANNEL_IN,
+    KERNEL_CHANNEL_OUT,
+    BIAS_CHANNEL_OUT
+  };
+
   std::unordered_map<NamedDimensions, int>
       get_dimension_names(ParallelTensorShape const &input_name) const;
 
@@ -51,8 +64,7 @@ private:
                                       ParallelDim kernel_dims[MAX_TENSOR_DIM],
                                       int *kernel_ndims,
                                       ParallelDim bias_dims[MAX_TENSOR_DIM],
-                                      int *bias_ndims) const; 
-
+                                      int *bias_ndims) const;
 };
 
 bool operator==(ExpertsParams const &, ExpertsParams const &);
