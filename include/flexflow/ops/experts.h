@@ -10,12 +10,16 @@ public:
   ExpertsMeta(FFHandler handler,
               int _num_experts,
               int _experts_start_idx,
-              float _alpha);
+              float _alpha,
+              bool _use_bias,
+              ActiMode _activation);
   ~ExpertsMeta(void);
+  float const **dev_weights;
   int num_experts;
   int experts_start_idx;
   float alpha;
-  float **dev_region_ptrs;
+  bool use_bias;
+  ActiMode activation;
 };
 
 // definitions for the CUDA kernel
@@ -29,8 +33,10 @@ public:
   Experts(FFModel &model,
           Params const &params,
           Input const &inputs,
+          bool allocate_weights = false,
           char const *name = nullptr);
   Experts(FFModel &model,
+          LayerID const &layer_guid,
           ParallelTensor const *inputs,
           int _num_experts,
           int _experts_start_idx,
@@ -38,6 +44,9 @@ public:
           float _alpha,
           int _experts_num_layers,
           int _experts_internal_dim_size,
+          bool _use_bias,
+          ActiMode _activation,
+          bool allocate_weights,
           char const *name = nullptr);
   static Op *
       create_operator_from_layer(FFModel &model,
@@ -70,10 +79,11 @@ public:
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
   static void forward_kernel_wrapper(ExpertsMeta const *m,
-                                     float const *acc_input_ptr,
-                                     int const *acc_indices_ptr,
-                                     float const *acc_topk_gate_preds_ptr,
-                                     float **outputs,
+                                     float const *input,
+                                     int const *indices,
+                                     float const *topk_gate_preds,
+                                     float *output,
+                                     float const **weights,
                                      int chosen_experts,
                                      int batch_size,
                                      int out_dim);
@@ -96,6 +106,8 @@ public:
   float alpha;
   int experts_num_layers;
   int experts_internal_dim_size;
+  bool use_bias;
+  ActiMode activation;
 };
 
 }; // namespace FlexFlow

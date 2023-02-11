@@ -1682,6 +1682,7 @@ void FFModel::map_weight_with_dim(ParallelTensor weight,
   switch (parallel_op->op_type) {
     case OP_LINEAR:
     case OP_EMBEDDING:
+    case OP_EXPERTS:
     case OP_MULTIHEAD_ATTENTION: {
       switch (tdim) {
 #define DIMFUNC(TDIM)                                                          \

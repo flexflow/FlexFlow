@@ -3169,7 +3169,7 @@ bool FFModel::convert_graph_to_operators(
         Experts *exp = (Experts *)node.ptr;
         ExpertsParams params = exp->get_params();
         new_op = new Experts(
-            *this, params, {std::begin(inputs), std::end(inputs)}, NULL);
+            *this, params, {std::begin(inputs), std::end(inputs)}, true);
         break;
       }
       case OP_SPLIT: {
