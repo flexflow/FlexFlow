@@ -187,7 +187,8 @@ public:
   virtual void init(FFModel const &) = 0;
   virtual void init_inference(FFModel const &,
                               std::vector<ParallelTensor> const &,
-                              std::vector<ParallelTensor> const &) {
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) {
     assert(false);
   };
   virtual void forward(FFModel const &) = 0;

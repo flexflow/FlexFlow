@@ -158,13 +158,16 @@ AggregateSpec::AggregateSpec(FFModel &model,
 void AggregateSpec::init_inference(
     FFModel const &ff,
     std::vector<ParallelTensor> const &batch_inputs,
-    std::vector<ParallelTensor> const &batch_outputs) {
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = batch_outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   IndexLauncher launcher(AGG_SPEC_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(AggregateSpec)),
@@ -172,7 +175,7 @@ void AggregateSpec::init_inference(
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         batch_outputs[0]->machine_view.hash());
+                         machine_view_hash);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);

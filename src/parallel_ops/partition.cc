@@ -104,13 +104,16 @@ OpMeta *Repartition::init_task(Task const *task,
 void Repartition::init_inference(
     FFModel const &ff,
     std::vector<ParallelTensor> const &batch_inputs,
-    std::vector<ParallelTensor> const &batch_outputs) {
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   ArgumentMap argmap;
   parallel_is = batch_outputs[0]->parallel_is;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   IndexLauncher launcher(REPARTITION_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(nullptr, 0),
@@ -118,7 +121,7 @@ void Repartition::init_inference(
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         batch_outputs[0]->machine_view.hash());
+                         machine_view_hash);
   assert(inference_input_lps.find(batch_inputs[0]) !=
          inference_input_lps.end());
   launcher.add_region_requirement(

@@ -256,7 +256,8 @@ void Linear::init(FFModel const &ff) {
 
 void Linear::init_inference(FFModel const &ff,
                             std::vector<ParallelTensor> const &batch_inputs,
-                            std::vector<ParallelTensor> const &batch_outputs) {
+                            std::vector<ParallelTensor> const &batch_outputs,
+                            MachineView const *mv) {
   assert(check_output_input_weight_same_parallel_is());
   // assert(check_output_input_weight_same_machine_view());
   parallel_is = batch_outputs[0]->parallel_is;
@@ -264,6 +265,8 @@ void Linear::init_inference(FFModel const &ff,
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   set_argumentmap_for_init(ff, argmap);
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   IndexLauncher launcher(LINEAR_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Linear)),
@@ -271,7 +274,7 @@ void Linear::init_inference(FFModel const &ff,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         batch_outputs[0]->machine_view.hash());
+                         machine_view_hash);
   // launcher.add_region_requirement(
   //     RegionRequirement(input_lps[0], 0/*projection id*/,
   //                       READ_ONLY, EXCLUSIVE, inputs[0]->region));

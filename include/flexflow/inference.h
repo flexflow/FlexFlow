@@ -28,13 +28,15 @@ public:
                    int max_num_inflight_batches);
   void compile_model_and_allocate_buffer(void);
   void init_operators_inference();
-  void inference(int index, int device_index);
+  void inference(int index);
 
 public:
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
   FFModel *model;
   int max_num_requests_per_batch;
   int max_num_inflight_batches;
+  int num_devices;
+  std::vector<MachineView> machine_views;
 };
 
 } // namespace FlexFlow

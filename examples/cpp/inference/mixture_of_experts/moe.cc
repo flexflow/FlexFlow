@@ -161,19 +161,17 @@ void FlexFlow::top_level_task(Task const *task,
   int index = 0;
   int processed_requests = 0;
   int num_devices = ffConfig.workersPerNode * ffConfig.numNodes;
-  int device_index = 0;
   Generator data_generator(
       total_requests, request_tensor_size, poisson_distribution, lambda);
   int iterations = 2;
 
   for (int iter = 0; iter < iterations; iter++) {
     // data_loader.next_batch(ff);
-    runtime->begin_trace(ctx, 111 + index % num_inflight_batches /*trace_id*/);
+    runtime->begin_trace(ctx, 111 + index % num_devices /*trace_id*/);
     printf("Calling inference now!\n");
-    im.inference(index % num_inflight_batches, device_index % num_devices);
-    runtime->end_trace(ctx, 111 + index % num_inflight_batches /*trace_id*/);
+    im.inference(index);
+    runtime->end_trace(ctx, 111 + index % num_devices /*trace_id*/);
     index++;
-    device_index++;
   }
 
   // data_loader.reset();
