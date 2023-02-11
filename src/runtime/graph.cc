@@ -1756,7 +1756,7 @@ GraphOptimalViewSerialized
   }
   assert(node_idx == best_graph->inEdges.size());
   // Second, serialize optimal machine view
-  printf("opotimal_views.size = %zu\n", optimal_views.size());
+  printf("optimal_views.size = %zu\n", optimal_views.size());
   sez.serialize(optimal_views.size());
   for (auto const &it : optimal_views) {
     sez.serialize((size_t)98765432); // safe guard
