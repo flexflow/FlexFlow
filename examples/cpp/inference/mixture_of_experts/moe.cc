@@ -168,11 +168,12 @@ void FlexFlow::top_level_task(Task const *task,
 
   for (int iter = 0; iter < iterations; iter++) {
     // data_loader.next_batch(ff);
-    runtime->begin_trace(ctx, 111 /*trace_id*/);
+    runtime->begin_trace(ctx, 111 + index % num_inflight_batches /*trace_id*/);
     printf("Calling inference now!\n");
-    im.inference((index++) % num_inflight_batches,
-                 (device_index++) % num_devices);
-    runtime->end_trace(ctx, 111 /*trace_id*/);
+    im.inference(index % num_inflight_batches, device_index % num_devices);
+    runtime->end_trace(ctx, 111 + index % num_inflight_batches /*trace_id*/);
+    index++;
+    device_index++;
   }
 
   // data_loader.reset();
