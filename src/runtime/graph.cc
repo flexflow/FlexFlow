@@ -1883,7 +1883,7 @@ namespace {
 std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
     try_one_lambda(std::pair<float, MemorySearchResult> &lambda,
                    Task const *task,
-                   Simulator *cached_simulator,
+                   Simulator *&cached_simulator,
                    bool perform_memory_search) {
   // Create a new fresh model
   FFModel *model = *((FFModel **)task->args);
@@ -1984,7 +1984,7 @@ bool is_valid_strategy(
     std::vector<std::pair<float, MemorySearchResult>> &lambdas_results,
     Graph *curr_graph,
     std::unordered_map<Node, MachineView> &curr_views,
-    Simulator *cached_simulator,
+    Simulator * const cached_simulator,
     float memory_threshold) {
   std::cout << "try to check valid for lambda " << lambdas_results.back().first
             << std::endl;
@@ -2049,6 +2049,7 @@ GraphOptimalViewSerialized
   auto model_config = (*((FFModel **)task->args))->config;
   bool perform_memory_search = model_config.perform_memory_search;
   float memory_threshold = model_config.device_mem;
+  bool only_data_parallel = model_config.only_data_parallel;
 
   std::vector<std::pair<float, MemorySearchResult>> lambdas{};
 
@@ -2152,7 +2153,7 @@ GraphOptimalViewSerialized
                 << ", per-device max memory: "
                 << l.second.max_per_device_mem_all_deivces << std::endl;
     }
-  } else {
+  } else if (!only_data_parallel) {
     std::cout << "\nNot doing memory search" << std::endl;
   }
 
