@@ -255,6 +255,9 @@ public:
 #endif
 protected:
   void set_argumentmap_for_init(FFModel const &ff, Legion::ArgumentMap &argmap);
+  void set_argumentmap_for_init_inference(FFModel const &ff,
+                                          Legion::ArgumentMap &argmap,
+                                          MachineView const *view);
   void set_argumentmap_for_forward(FFModel const &ff,
                                    Legion::ArgumentMap &argmap);
   void set_argumentmap_for_backward(FFModel const &ff,

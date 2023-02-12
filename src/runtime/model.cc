@@ -975,6 +975,49 @@ void Op::set_argumentmap_for_init(FFModel const &ff, ArgumentMap &argmap) {
   }
 }
 
+void Op::set_argumentmap_for_init_inference(FFModel const &ff,
+                                            ArgumentMap &argmap,
+                                            MachineView const *view) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, this->parallel_is);
+  switch (domain.get_dim()) {
+#ifdef FF_USE_NCCL
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      FFHandler handle = ff.handlers[view->get_device_id(*it)];                \
+      if (ff.config.computationMode == COMP_MODE_TRAINING &&                   \
+          op_type == OP_WEIGHT) {                                              \
+        ncclComm_t *nccl_comms = ff.find_nccl_comms(*view);                    \
+        handle.ncclComm = nccl_comms[idx++];                                   \
+      }                                                                        \
+      argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));         \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+#else
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      FFHandler handle = ff.handlers[view->get_device_id(*it)];                \
+      argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));         \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+#endif
+    default:
+      assert(false);
+  }
+}
+
 void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;

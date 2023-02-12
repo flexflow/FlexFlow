@@ -191,9 +191,9 @@ void Aggregate::init_inference(FFModel const &ff,
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
-  size_t machine_view_hash =
-      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_init_inference(ff, argmap, view);
   IndexLauncher launcher(AGGREGATE_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Aggregate)),
@@ -291,7 +291,7 @@ void Aggregate::inference(FFModel const &ff,
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
+  set_argumentmap_for_forward(ff, argmap);
   parallel_is = outputs[0]->parallel_is;
   size_t machine_view_hash = mv ? mv->hash() : outputs[0]->machine_view.hash();
   std::cout << "Aggregate op machine_view: " << *(MachineView const *)mv

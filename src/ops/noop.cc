@@ -101,8 +101,8 @@ void NoOp::init_inference(FFModel const &ff,
                           MachineView const *mv) {
   parallel_is = batch_outputs[0]->parallel_is;
   assert(parallel_is != IndexSpace::NO_SPACE);
-  size_t machine_view_hash =
-      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
   if (op_type == OP_INPUT && batch_outputs[0]->initializer != nullptr) {
     ConstantInitializer *initializer =
         (ConstantInitializer *)batch_outputs[0]->initializer;
@@ -164,7 +164,7 @@ void NoOp::init_inference(FFModel const &ff,
     ArgumentMap argmap;
     Context ctx = ff.config.lg_ctx;
     Runtime *runtime = ff.config.lg_hlr;
-    set_argumentmap_for_init(ff, argmap);
+    set_argumentmap_for_init_inference(ff, argmap, view);
     IndexLauncher launcher(NOOP_INIT_TASK_ID,
                            parallel_is,
                            TaskArgument(NULL, 0),
