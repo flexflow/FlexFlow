@@ -141,6 +141,18 @@ flexflow_tensor_t flexflow_model_add_divide(flexflow_model_t handle,
                                             bool inplace_a,
                                             char const *name);
 
+flexflow_tensor_t flexflow_model_add_max(flexflow_model_t handle,
+                                         const flexflow_tensor_t x,
+                                         const flexflow_tensor_t y,
+                                         bool inplace_a,
+                                         char const *name);
+
+flexflow_tensor_t flexflow_model_add_min(flexflow_model_t handle,
+                                         const flexflow_tensor_t x,
+                                         const flexflow_tensor_t y,
+                                         bool inplace_a,
+                                         char const *name);
+
 flexflow_tensor_t flexflow_model_add_reduce_sum(flexflow_model_t handle_,
                                                 const flexflow_tensor_t input_,
                                                 int *axes,
@@ -254,6 +266,12 @@ void flexflow_model_add_split(flexflow_model_t handle,
 flexflow_tensor_t flexflow_model_add_flat(flexflow_model_t handle,
                                           flexflow_tensor_t input,
                                           char const *name);
+
+flexflow_tensor_t flexflow_model_add_gather(flexflow_model_t handle,
+                                            const flexflow_tensor_t input,
+                                            const flexflow_tensor_t index,
+                                            int dim,
+                                            char const *name);
 
 flexflow_tensor_t flexflow_model_add_softmax(flexflow_model_t handle,
                                              const flexflow_tensor_t input,

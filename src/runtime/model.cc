@@ -37,6 +37,7 @@
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
+#include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
@@ -2675,7 +2676,9 @@ Op *FFModel::create_operator_from_layer(
     case OP_EW_ADD:
     case OP_EW_SUB:
     case OP_EW_MUL:
-    case OP_EW_DIV: {
+    case OP_EW_DIV:
+    case OP_EW_MAX:
+    case OP_EW_MIN: {
       Op *op = ElementBinary::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
@@ -2700,6 +2703,11 @@ Op *FFModel::create_operator_from_layer(
     }
     case OP_FLAT: {
       Op *op = Flat::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_GATHER: {
+      Op *op = Gather::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -3865,6 +3873,28 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<Embedding::backward_task_cpu>(
         registrar, "Embedding Backward Task");
   }*/
+  // Gather task
+  {
+    TaskVariantRegistrar registrar(GATHER_INIT_TASK_ID, "Gather Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, Gather::init_task>(
+        registrar, "Gather Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(GATHER_FWD_TASK_ID, "Gather Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Gather::forward_task>(
+        registrar, "Gather Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(GATHER_BWD_TASK_ID, "Gather Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Gather::backward_task>(
+        registrar, "Gather Backward Task");
+  }
 
   // Cache task CPU
   {
