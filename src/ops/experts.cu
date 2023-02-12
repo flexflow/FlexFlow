@@ -15,8 +15,27 @@
 
 #include "flexflow/ops/experts.h"
 #include "flexflow/utils/cuda_helper.h"
+#include <thrust/device_vector.h>
 
 namespace FlexFlow {
+
+  struct divide_functor
+  {
+    __host__ __device__
+    float operator()(const int &x, const int &y) const
+    {
+      return x / y;
+    }
+  };
+
+  struct multiply_functor
+  {
+    __host__ __device__
+    float operator()(const int &x, const int &y) const
+    {
+      return x * y;
+    }
+  };
 
 /*static*/
 void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
@@ -40,7 +59,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   // ActiMode activation = m->activation;
 
   size_t input_volume = sizeof(input) / sizeof(input[0]);
-  size_t num_tokens = input_volume / data_dim;
+  size_t num_tokens = input_volume / data_dim; // FIX: data_dim undefined, is it the same as input_dim?
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -70,31 +89,37 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
    */
 
   // 1. port the 2d matrix into Thrust
+  int k = chosen_experts == 2 ? chosen_experts : 2;
   thrust::device_vector< float > input_tokens1(input, input + input_volume);
   thrust::device_vector< float > input_tokens2(input, input + input_volume);
   thrust::device_vector< float > replicated_tokens(k*input_volume);
+
   // 2. replicate the tokens (assuming k=2 here)
   thrust::device_vector< int > sorting_keys1(input_volume);
   thrust::sequence(sorting_keys1.begin(), sorting_keys1.end());
+
   // divide sorting_keys1 by data_dim and then multiply by k
-  thrust::transform(sorting_keys1.begin(), sorting_keys1.end(), thrust::make_constant_iterator(data_dim), sorting_keys1.begin(), thrust::divide<int>());
-  thrust::transform(sorting_keys1.begin(), sorting_keys1.end(), thrust::make_constant_iterator(k), sorting_keys1.begin(), thrust::multiply<int>());
+  thrust::transform(sorting_keys1.begin(), sorting_keys1.end(), thrust::make_constant_iterator(data_dim), sorting_keys1.begin(), divide_functor());
+  thrust::transform(sorting_keys1.begin(), sorting_keys1.end(), thrust::make_constant_iterator(k), sorting_keys1.begin(), multiply_functor());
+  
   // obtain the i-th sorting keys by adding +1 to the i-1 sorting keys 
   thrust::device_vector< int > sorting_keys2(input_volume);
   thrust::copy(sorting_keys1.begin(), sorting_keys1.end(), sorting_keys2.begin());
   thrust::transform(sorting_keys1.begin(), sorting_keys1.end(), thrust::make_constant_iterator(1), sorting_keys1.begin(), thrust::plus<int>());
+  
   // populate the replicated_tokens vector with k side-by-side copies of each token
   thrust::device_vector< int > merged_keys(2*input_volume);
-  thrust::merge_by_key(sorting_keys1.begin(), sorting_keys1.end(), sorting_keys2.begin(), sorting_keys2.end(), input_tokens1, input_tokens2, merged_keys, replicated_tokens, thrust::less<int>())
+  thrust::merge_by_key(sorting_keys1.begin(), sorting_keys1.end(), sorting_keys2.begin(), sorting_keys2.end(), input_tokens1, input_tokens2, merged_keys, replicated_tokens, thrust::less<int>());
+  
   // 3. sort the tokens by expert index to which they are assigned
   thrust::device_vector< int > expert_assignments(indices, indices + k*num_tokens);
-  thrust::sort_by_key(expert_assignments, expert_assignments + k*num_tokens, replicated_tokens);
+  thrust::sort_by_key(expert_assignments, expert_assignments + k*num_tokens, replicated_tokens); // FIX: no operator "+" matches these operands
 
   // 4. matrix multiply each slice of min(expert_capacity, end_of_expert_slice) tokens by the corresponding weight
   
   // get list of experts (in this block) receiving non-zero tokens
   thrust::device_vector< int > experts_in_use(k*num_tokens);
-  int tot_exps = thrust::unique_copy(expert_assignments.begin(), expert_assignments.end(), experts_in_use) - experts_in_use.begin();
+  int tot_exps = thrust::unique_copy(expert_assignments.begin(), expert_assignments.end(), experts_in_use) - experts_in_use.begin(); // FIX: no operator "-" matches these operands
   struct is_expert_in_block {
     __host__ __device__
     bool operator()(const int x)
