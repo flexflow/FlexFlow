@@ -2235,7 +2235,9 @@ GraphOptimalViewSerialized
       }
       case OP_EW_ADD:
       case OP_EW_SUB:
-      case OP_EW_MUL: {
+      case OP_EW_MUL:
+      case OP_EW_MAX:
+      case OP_EW_MIN: {
         sez.serialize(op->op_type);
         break;
       }
@@ -2515,7 +2517,9 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_EW_ADD:
       case OP_EW_SUB:
-      case OP_EW_MUL: {
+      case OP_EW_MUL:
+      case OP_EW_MAX:
+      case OP_EW_MIN: {
         assert(num_inputs == 2);
         OperatorType op_type;
         dez.deserialize(op_type);
