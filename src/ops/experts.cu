@@ -19,23 +19,17 @@
 
 namespace FlexFlow {
 
-  struct divide_functor
-  {
-    __host__ __device__
-    float operator()(const int &x, const int &y) const
-    {
-      return x / y;
-    }
-  };
+struct divide_functor {
+  __host__ __device__ float operator()(int const &x, int const &y) const {
+    return x / y;
+  }
+};
 
-  struct multiply_functor
-  {
-    __host__ __device__
-    float operator()(const int &x, const int &y) const
-    {
-      return x * y;
-    }
-  };
+struct multiply_functor {
+  __host__ __device__ float operator()(int const &x, int const &y) const {
+    return x * y;
+  }
+};
 
 /*static*/
 void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
@@ -50,16 +44,18 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
-  int expert_capacity =
-      ceil(m->alpha * chosen_experts / m->num_experts * batch_size);
-
   int num_experts = m->num_experts;
-  // int expert_start_index = experts_start_idx;
+  int expert_start_index = m->experts_start_idx;
   bool use_bias = m->use_bias;
-  // ActiMode activation = m->activation;
+  ActiMode activation = m->activation;
+  int data_dim = m->data_dim;
+  int num_chosen_experts = m->num_chosen_experts;
+  int num_tokens = m->effective_batch_size;
 
   size_t input_volume = sizeof(input) / sizeof(input[0]);
-  size_t num_tokens = input_volume / data_dim; // FIX: data_dim undefined, is it the same as input_dim?
+  assert(chosen_experts == num_chosen_experts);
+  assert(num_tokens == batch_size);
+  assert(num_tokens == input_volume / data_dim);
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -67,11 +63,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-
-  // cudaMemcpy(m->dev_weights,
-  //            weights,
-  //            num_experts * (1 + use_bias) * sizeof(float *),
-  //            cudaMemcpyHostToDevice);
 
   // ##########################################################################################################################
 
@@ -88,53 +79,68 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
    * appropriate coefficient from the topk_gate_preds matrix.
    */
 
-  // 1. port the 2d matrix into Thrust
-  int k = chosen_experts == 2 ? chosen_experts : 2;
-  thrust::device_vector< float > input_tokens1(input, input + input_volume);
-  thrust::device_vector< float > input_tokens2(input, input + input_volume);
-  thrust::device_vector< float > replicated_tokens(k*input_volume);
+  // // 1. port the 2d matrix into Thrust
+  // int k = chosen_experts == 2 ? chosen_experts : 2;
+  // thrust::device_vector< float > input_tokens1(input, input + input_volume);
+  // thrust::device_vector< float > input_tokens2(input, input + input_volume);
+  // thrust::device_vector< float > replicated_tokens(k*input_volume);
 
-  // 2. replicate the tokens (assuming k=2 here)
-  thrust::device_vector< int > sorting_keys1(input_volume);
-  thrust::sequence(sorting_keys1.begin(), sorting_keys1.end());
+  // // 2. replicate the tokens (assuming k=2 here)
+  // thrust::device_vector< int > sorting_keys1(input_volume);
+  // thrust::sequence(sorting_keys1.begin(), sorting_keys1.end());
 
-  // divide sorting_keys1 by data_dim and then multiply by k
-  thrust::transform(sorting_keys1.begin(), sorting_keys1.end(), thrust::make_constant_iterator(data_dim), sorting_keys1.begin(), divide_functor());
-  thrust::transform(sorting_keys1.begin(), sorting_keys1.end(), thrust::make_constant_iterator(k), sorting_keys1.begin(), multiply_functor());
-  
-  // obtain the i-th sorting keys by adding +1 to the i-1 sorting keys 
-  thrust::device_vector< int > sorting_keys2(input_volume);
-  thrust::copy(sorting_keys1.begin(), sorting_keys1.end(), sorting_keys2.begin());
-  thrust::transform(sorting_keys1.begin(), sorting_keys1.end(), thrust::make_constant_iterator(1), sorting_keys1.begin(), thrust::plus<int>());
-  
-  // populate the replicated_tokens vector with k side-by-side copies of each token
-  thrust::device_vector< int > merged_keys(2*input_volume);
-  thrust::merge_by_key(sorting_keys1.begin(), sorting_keys1.end(), sorting_keys2.begin(), sorting_keys2.end(), input_tokens1, input_tokens2, merged_keys, replicated_tokens, thrust::less<int>());
-  
-  // 3. sort the tokens by expert index to which they are assigned
-  thrust::device_vector< int > expert_assignments(indices, indices + k*num_tokens);
-  thrust::sort_by_key(expert_assignments, expert_assignments + k*num_tokens, replicated_tokens); // FIX: no operator "+" matches these operands
+  // // divide sorting_keys1 by data_dim and then multiply by k
+  // thrust::transform(sorting_keys1.begin(), sorting_keys1.end(),
+  // thrust::make_constant_iterator(data_dim), sorting_keys1.begin(),
+  // divide_functor()); thrust::transform(sorting_keys1.begin(),
+  // sorting_keys1.end(), thrust::make_constant_iterator(k),
+  // sorting_keys1.begin(), multiply_functor());
 
-  // 4. matrix multiply each slice of min(expert_capacity, end_of_expert_slice) tokens by the corresponding weight
-  
-  // get list of experts (in this block) receiving non-zero tokens
-  thrust::device_vector< int > experts_in_use(k*num_tokens);
-  int tot_exps = thrust::unique_copy(expert_assignments.begin(), expert_assignments.end(), experts_in_use) - experts_in_use.begin(); // FIX: no operator "-" matches these operands
-  struct is_expert_in_block {
-    __host__ __device__
-    bool operator()(const int x)
-    {
-      return x >= experts_start_idx && x < experts_start_idx+num_experts;
-    }
-  };
-  int n_used_experts = thrust::remove_if(experts_in_use.begin(), experts_in_use.begin() + tot_exps, is_expert_in_block()) - experts_in_use.begin();
+  // // obtain the i-th sorting keys by adding +1 to the i-1 sorting keys
+  // thrust::device_vector< int > sorting_keys2(input_volume);
+  // thrust::copy(sorting_keys1.begin(), sorting_keys1.end(),
+  // sorting_keys2.begin()); thrust::transform(sorting_keys1.begin(),
+  // sorting_keys1.end(), thrust::make_constant_iterator(1),
+  // sorting_keys1.begin(), thrust::plus<int>());
 
-  // TODO: pad replicated tokens array:
+  // // populate the replicated_tokens vector with k side-by-side copies of each
+  // token thrust::device_vector< int > merged_keys(2*input_volume);
+  // thrust::merge_by_key(sorting_keys1.begin(), sorting_keys1.end(),
+  // sorting_keys2.begin(), sorting_keys2.end(), input_tokens1, input_tokens2,
+  // merged_keys, replicated_tokens, thrust::less<int>());
 
-  // get the indexes of each slice of tokens
-  thrust::device_vector< int > slice_indices(k*num_tokens);
-  thrust::sequence(slice_indices.begin(), slice_indices.end());
-  int num_slices = (thrust::unique_by_key(expert_assignments.begin(), expert_assignments.end(), slice_indices.begin())).first - expert_assignments.begin();
+  // // 3. sort the tokens by expert index to which they are assigned
+  // thrust::device_vector< int > expert_assignments(indices, indices +
+  // k*num_tokens); thrust::sort_by_key(expert_assignments, expert_assignments +
+  // k*num_tokens, replicated_tokens); // FIX: no operator "+" matches these
+  // operands
+
+  // // 4. matrix multiply each slice of min(expert_capacity,
+  // end_of_expert_slice) tokens by the corresponding weight
+
+  // // get list of experts (in this block) receiving non-zero tokens
+  // thrust::device_vector< int > experts_in_use(k*num_tokens);
+  // int tot_exps = thrust::unique_copy(expert_assignments.begin(),
+  // expert_assignments.end(), experts_in_use) - experts_in_use.begin(); // FIX:
+  // no operator "-" matches these operands struct is_expert_in_block {
+  //   __host__ __device__
+  //   bool operator()(const int x)
+  //   {
+  //     return x >= experts_start_idx && x < experts_start_idx+num_experts;
+  //   }
+  // };
+  // int n_used_experts = thrust::remove_if(experts_in_use.begin(),
+  // experts_in_use.begin() + tot_exps, is_expert_in_block()) -
+  // experts_in_use.begin();
+
+  // // TODO: pad replicated tokens array:
+
+  // // get the indexes of each slice of tokens
+  // thrust::device_vector< int > slice_indices(k*num_tokens);
+  // thrust::sequence(slice_indices.begin(), slice_indices.end());
+  // int num_slices = (thrust::unique_by_key(expert_assignments.begin(),
+  // expert_assignments.end(), slice_indices.begin())).first -
+  // expert_assignments.begin();
 
   // ##########################################################################################################################
 
@@ -152,17 +158,25 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 ExpertsMeta::ExpertsMeta(FFHandler handler,
                          int _num_experts,
                          int _experts_start_idx,
+                         int _data_dim,
+                         int _effective_batch_size,
+                         int _num_chosen_experts,
                          float _alpha,
                          bool _use_bias,
                          ActiMode _activation)
     : OpMeta(handler), num_experts(_num_experts),
-      experts_start_idx(_experts_start_idx), alpha(_alpha), use_bias(_use_bias),
-      activation(_activation) {
-  //checkCUDA(
-  //    cudaMalloc(&dev_weights, num_experts * (1 + use_bias) * sizeof(float *)));
+      experts_start_idx(_experts_start_idx), data_dim(_data_dim),
+      effective_batch_size(_effective_batch_size),
+      num_chosen_experts(_num_chosen_experts), alpha(_alpha),
+      use_bias(_use_bias), activation(_activation) {
+  expert_capacity =
+      ceil(alpha * num_chosen_experts / num_experts * effective_batch_size);
+  checkCUDA(
+      cudaMalloc(&dev_sorted_tokens,
+                 data_dim * expert_capacity * num_experts * sizeof(float)));
 }
 ExpertsMeta::~ExpertsMeta(void) {
-  //checkCUDA(cudaFree(&dev_weights));
+  checkCUDA(cudaFree(&dev_sorted_tokens));
 }
 
 }; // namespace FlexFlow

@@ -291,34 +291,42 @@ Experts::Experts(FFModel &model,
   // overwrite layer_guid
   layer_guid = _layer_guid;
 
+  // Check number of inputs, output, weights
   assert(num_experts > 0);
   assert(numInputs == 3);
   assert(numOutputs == 1);
   assert(numWeights == num_experts * (1 + use_bias));
 
-  assert(inputs[0] != nullptr);
+  // Check input dimensions
   int num_dims = inputs[0]->num_dims;
+  int topk = inputs[1]->dims[0].size;
+  assert(inputs[0] != nullptr);
   assert(inputs[1]->num_dims == num_dims);
   assert(inputs[2]->num_dims == num_dims);
-
-  int topk = inputs[1]->dims[0].size;
   assert(inputs[2]->dims[0].size == topk);
-
   for (int i = 1; i < num_dims; i++) {
     assert(inputs[0]->dims[i] == inputs[1]->dims[i]);
     assert(inputs[1]->dims[i] == inputs[2]->dims[i]);
   }
-
-  assert(inputs[1]->data_type == DT_INT32 || inputs[1]->data_type == DT_INT64);
-  assert(experts_num_layers == 1 && "Multi-layer experts not implemented yet.");
-  assert(experts_num_layers == 1 || experts_internal_dim_size > 0);
-
   // Assume that we don't parallelize the channel dim of input
   // nor the expert_assigned dim of indices
   assert(inputs[0]->dims[0].degree == 1);
   assert(inputs[1]->dims[0].degree == 1);
   assert(inputs[2]->dims[0].degree == 1);
+  // check data type of indices input
+  assert(inputs[1]->data_type == DT_INT32 || inputs[1]->data_type == DT_INT64);
+  assert(experts_num_layers == 1 && "Multi-layer experts not implemented yet.");
+  assert(experts_num_layers == 1 || experts_internal_dim_size > 0);
 
+  // save the token embedding dimension (data_dim) and the effective batch size
+  data_dim = inputs[0]->dims[0].size;
+  effective_batch_size = 1;
+  for (int i = 1; i <= num_dims - 2; i++) {
+    effective_batch_size *= inputs[0]->dims[i].size;
+  }
+  num_chosen_experts = topk;
+
+  // Create the parallel tensor for the output
   ParallelDim out_dims[MAX_TENSOR_DIM];
   for (int i = 0; i < num_dims; i++) {
     out_dims[i] = inputs[0]->dims[i];
@@ -571,6 +579,9 @@ OpMeta *Experts::init_task(Task const *task,
   ExpertsMeta *m = new ExpertsMeta(handle,
                                    exp->num_experts,
                                    exp->experts_start_idx,
+                                   exp->data_dim,
+                                   exp->effective_batch_size,
+                                   exp->num_chosen_experts,
                                    exp->alpha,
                                    exp->use_bias,
                                    exp->activation);
@@ -760,10 +771,12 @@ void Experts::inference_task(Task const *task,
   coord_t data_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
   coord_t batch_size =
       input_domain.hi()[samples_index] - input_domain.lo()[samples_index] + 1;
-  coord_t chosen_experts = indices_domain.hi()[0] - indices_domain.lo()[0];
+  coord_t chosen_experts = indices_domain.hi()[0] - indices_domain.lo()[0] + 1;
   coord_t out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
+  assert(data_dim == m->data_dim);
+  assert(chosen_experts == m->num_chosen_experts);
   assert(chosen_experts ==
-         topk_gate_pred_domain.hi()[0] - topk_gate_pred_domain.lo()[0]);
+         topk_gate_pred_domain.hi()[0] - topk_gate_pred_domain.lo()[0] + 1);
 
   for (int i = 1; i < input_dims; i++) {
     int a = input_domain.hi()[i] - input_domain.lo()[i] + 1;
@@ -774,6 +787,7 @@ void Experts::inference_task(Task const *task,
       batch_size *= a;
     }
   }
+  assert(batch_size == m->effective_batch_size);
 
   assert(batch_size <= MAX_BATCH_SIZE &&
          "batch size exceeds MAX_BATCH_SIZE defined in experts.h");

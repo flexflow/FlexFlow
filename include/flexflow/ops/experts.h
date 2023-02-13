@@ -10,13 +10,20 @@ public:
   ExpertsMeta(FFHandler handler,
               int _num_experts,
               int _experts_start_idx,
+              int _data_dim,
+              int _effective_batch_size,
+              int _num_chosen_experts,
               float _alpha,
               bool _use_bias,
               ActiMode _activation);
   ~ExpertsMeta(void);
-  float const **dev_weights;
+  float *dev_sorted_tokens;
   int num_experts;
   int experts_start_idx;
+  int data_dim;
+  int effective_batch_size;
+  int num_chosen_experts;
+  int expert_capacity;
   float alpha;
   bool use_bias;
   ActiMode activation;
@@ -104,6 +111,9 @@ public:
   int num_experts;
   int experts_start_idx;
   int experts_output_dim_size;
+  int data_dim;
+  int effective_batch_size;
+  int num_chosen_experts;
   float alpha;
   int experts_num_layers;
   int experts_internal_dim_size;
