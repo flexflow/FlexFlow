@@ -211,7 +211,7 @@ void Group_by::init_inference(FFModel const &ff,
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  set_opmeta_from_futuremap(ff, fm);
+  set_opmeta_from_futuremap_inference(ff, fm, view);
 }
 
 void Group_by::init(FFModel const &ff) {
@@ -320,8 +320,8 @@ void Group_by::inference(FFModel const &ff,
   Runtime *runtime = ff.config.lg_hlr;
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
-  std::cout << "GroupBy op machine_view: " << *(MachineView const *)mv
-            << std::endl;
+  /* std::cout << "GroupBy op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
   IndexLauncher launcher(GROUP_BY_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),

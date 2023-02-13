@@ -175,7 +175,7 @@ void NoOp::init_inference(FFModel const &ff,
                            machine_view_hash);
     FutureMap fm = runtime->execute_index_space(ctx, launcher);
     fm.wait_all_results();
-    set_opmeta_from_futuremap(ff, fm);
+    set_opmeta_from_futuremap_inference(ff, fm, view);
   }
 }
 

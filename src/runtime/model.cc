@@ -1039,6 +1039,29 @@ void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
   }
 }
 
+void Op::set_opmeta_from_futuremap_inference(FFModel const &ff,
+                                             FutureMap const &fm,
+                                             MachineView const *view) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      inference_meta[view->hash()][idx++] = fm.get_result<OpMeta *>(*it);      \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
 void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -1050,6 +1073,30 @@ void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) {
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
       OpMeta *mp = meta[idx++];                                                \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+void Op::set_argumentmap_for_inference(FFModel const &ff,
+                                       ArgumentMap &argmap,
+                                       MachineView const *view) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      OpMeta *mp = inference_meta[view->hash()][idx++];                        \
       argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
     }                                                                          \
     break;                                                                     \

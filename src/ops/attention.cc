@@ -425,7 +425,7 @@ void MultiHeadAttention::init_inference(
   launcher.add_field(4, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  set_opmeta_from_futuremap(ff, fm);
+  set_opmeta_from_futuremap_inference(ff, fm, view);
 }
 
 void MultiHeadAttention::init(FFModel const &ff) {
@@ -587,12 +587,14 @@ void MultiHeadAttention::inference(
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_forward(ff, argmap);
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, view);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "MultiHeadAttention op machine_view: " << *(MachineView const
+     *)mv
+            << std::endl; */
   int idx = 0;
-  size_t machine_view_hash =
-      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
-  std::cout << "Attention op machine_view: " << *(MachineView const *)mv
-            << std::endl;
   IndexLauncher launcher(ATTENTION_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),

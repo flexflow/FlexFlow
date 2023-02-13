@@ -71,44 +71,48 @@ void InferenceManager::compile_model_and_allocate_buffer(void) {
 }
 
 void InferenceManager::init_operators_inference() {
-  for (int index = 0; index < max_num_inflight_batches; index++) {
-    int batch_index = index % max_num_inflight_batches;
-    int device_index = index % num_devices;
-    int expert_device_index = 0;
-    for (size_t o = 0; o < model->operators.size(); o++) {
-      Op *op = model->operators[o];
-      if (op->op_type == OP_WEIGHT) {
-        continue;
-      }
-      MachineView *view;
-      if (op->op_type == OP_EXPERTS) {
-        view = &machine_views[expert_device_index];
-        expert_device_index = (expert_device_index + 1) % num_devices;
-      } else {
-        // pick mv w startdeviceid = device_index
+  for (int batch_index = 0; batch_index < max_num_inflight_batches;
+       batch_index++) {
+    for (int device_index = 0; device_index < num_devices; device_index++) {
+      // int fused_experts_index = 0;
+      for (size_t o = 0; o < model->operators.size(); o++) {
+        Op *op = model->operators[o];
+        if (op->op_type == OP_WEIGHT) {
+          continue;
+        }
+        MachineView *view;
+        // if (op->op_type == OP_EXPERTS) {
+        //   if (fused_experts_index != device_index) {
+        //     fused_experts_index++;
+        //     continue;
+        //   }
+        //   view = &machine_views[fused_experts_index];
+        //   fused_experts_index++;
+        // } else {
         view = &machine_views[device_index];
+        //}
+        std::vector<ParallelTensor> inputs(op->numInputs);
+        std::vector<ParallelTensor> outputs(op->numOutputs);
+        for (int i = 0; i < op->numInputs; i++) {
+          assert(op->inputs[i] != nullptr);
+          assert(op->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+          assert(tensor_buffer[op->inputs[i]].size() > batch_index);
+          inputs[i] = tensor_buffer[op->inputs[i]][batch_index];
+          assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+        }
+        for (int i = 0; i < op->numOutputs; i++) {
+          assert(op->outputs[i] != nullptr);
+          assert(op->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+          assert(tensor_buffer[op->outputs[i]].size() > batch_index);
+          outputs[i] = tensor_buffer[op->outputs[i]][batch_index];
+          assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+        }
+        if (op->is_parallel_op()) {
+          ((ParallelOp *)op)
+              ->create_input_partition_inference(*model, inputs, outputs);
+        }
+        op->init_inference(*model, inputs, outputs, view);
       }
-      std::vector<ParallelTensor> inputs(op->numInputs);
-      std::vector<ParallelTensor> outputs(op->numOutputs);
-      for (int i = 0; i < op->numInputs; i++) {
-        assert(op->inputs[i] != nullptr);
-        assert(op->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
-        assert(tensor_buffer[op->inputs[i]].size() > batch_index);
-        inputs[i] = tensor_buffer[op->inputs[i]][batch_index];
-        assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
-      }
-      for (int i = 0; i < op->numOutputs; i++) {
-        assert(op->outputs[i] != nullptr);
-        assert(op->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
-        assert(tensor_buffer[op->outputs[i]].size() > batch_index);
-        outputs[i] = tensor_buffer[op->outputs[i]][batch_index];
-        assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
-      }
-      if (op->is_parallel_op()) {
-        ((ParallelOp *)op)
-            ->create_input_partition_inference(*model, inputs, outputs);
-      }
-      op->init_inference(*model, inputs, outputs, view);
     }
   }
 }

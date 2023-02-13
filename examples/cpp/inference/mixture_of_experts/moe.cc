@@ -98,7 +98,7 @@ void FlexFlow::top_level_task(Task const *task,
                               Runtime *runtime) {
   // Inference parameters
   int total_requests =
-      5; // total number of requests processed as part of the simulation
+      256; // total number of requests processed as part of the simulation
   int request_tensor_size = 4; // request tensor dimensions
   bool poisson_distribution = true;
   double lambda = 25; // average number of request arrivals per second
@@ -163,30 +163,23 @@ void FlexFlow::top_level_task(Task const *task,
   int num_devices = ffConfig.workersPerNode * ffConfig.numNodes;
   Generator data_generator(
       total_requests, request_tensor_size, poisson_distribution, lambda);
-  int iterations = 2;
-
-  for (int iter = 0; iter < iterations; iter++) {
-    // data_loader.next_batch(ff);
-    runtime->begin_trace(ctx, 111 + index % num_devices /*trace_id*/);
-    printf("Calling inference now!\n");
-    im.inference(index);
-    runtime->end_trace(ctx, 111 + index % num_devices /*trace_id*/);
-    index++;
-  }
 
   // data_loader.reset();
-  // while (processed_requests < total_requests) {
-  //   vector<vector<double>> req = data_generator.get_requests();
-  //   int iterations = req.size() / num_requests_per_batch;
-  //   for (int iter = 0; iter < iterations; iter++) {
-  //     // data_loader.next_batch(ff);
-  //     runtime->begin_trace(ctx, 111 /*trace_id*/);
-  //     printf("Calling inference now!\n");
-  //     im.inference((index++) % num_inflight_batches, (device_index++) %
-  //     num_devices); runtime->end_trace(ctx, 111 /*trace_id*/);
-  //   }
-  //   processed_requests += iterations;
-  // }
+  while (processed_requests < total_requests) {
+    vector<vector<double>> req = data_generator.get_requests();
+    int nreqs = req.size();
+    int iterations = (nreqs % num_requests_per_batch == 0)
+                         ? (nreqs / num_requests_per_batch)
+                         : (nreqs / num_requests_per_batch) + 1;
+    for (int iter = 0; iter < iterations; iter++) {
+      // data_loader.next_batch(ff);
+      runtime->begin_trace(ctx, 111 + index % num_devices /*trace_id*/);
+      im.inference(index);
+      runtime->end_trace(ctx, 111 + index % num_devices /*trace_id*/);
+      index++;
+    }
+    processed_requests += nreqs;
+  }
 
   ///////////////////////////////////////////////////////////////////////////////////
 
