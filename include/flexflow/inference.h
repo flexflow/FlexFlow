@@ -35,6 +35,8 @@ public:
   FFModel *model;
   int max_num_requests_per_batch;
   int max_num_inflight_batches;
+  int num_devices;
+  std::vector<MachineView> machine_views;
 };
 
 } // namespace FlexFlow

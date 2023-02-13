@@ -375,13 +375,16 @@ MultiHeadAttention::MultiHeadAttention(
 void MultiHeadAttention::init_inference(
     FFModel const &ff,
     std::vector<ParallelTensor> const &batch_inputs,
-    std::vector<ParallelTensor> const &batch_outputs) {
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = batch_outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_init_inference(ff, argmap, view);
   IndexLauncher launcher(ATTENTION_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(MultiHeadAttention)),
@@ -389,7 +392,7 @@ void MultiHeadAttention::init_inference(
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         batch_outputs[0]->machine_view.hash());
+                         machine_view_hash);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -422,7 +425,7 @@ void MultiHeadAttention::init_inference(
   launcher.add_field(4, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  set_opmeta_from_futuremap(ff, fm);
+  set_opmeta_from_futuremap_inference(ff, fm, view);
 }
 
 void MultiHeadAttention::init(FFModel const &ff) {
@@ -584,10 +587,14 @@ void MultiHeadAttention::inference(
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_forward(ff, argmap);
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, view);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "MultiHeadAttention op machine_view: " << *(MachineView const
+     *)mv
+            << std::endl; */
   int idx = 0;
-  size_t machine_view_hash =
-      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   IndexLauncher launcher(ATTENTION_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),

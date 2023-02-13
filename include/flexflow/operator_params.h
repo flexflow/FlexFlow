@@ -14,6 +14,7 @@
 #include "flexflow/ops/embedding_params.h"
 #include "flexflow/ops/experts_params.h"
 #include "flexflow/ops/flat_params.h"
+#include "flexflow/ops/gather_params.h"
 #include "flexflow/ops/groupby_params.h"
 #include "flexflow/ops/layer_norm_params.h"
 #include "flexflow/ops/linear_params.h"
@@ -46,6 +47,7 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        DropoutParams,
                                        EmbeddingParams,
                                        FlatParams,
+                                       GatherParams,
                                        Group_byParams,
                                        LayerNormParams,
                                        LinearParams,

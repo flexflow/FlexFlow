@@ -129,3 +129,23 @@ class Multiply(_Merge):
     self.input_shape = input_tensors[0].batch_shape
     self.output_shape = input_tensors[0].batch_shape
     fflogger.debug("multiply output %s" %( str(self.output_shape)))
+
+class Maximum(_Merge):
+  def __init__(self, **kwargs):
+    super(Maximum, self).__init__("maximum", "Maximum", **kwargs) 
+    
+  def _calculate_inout_shape(self, input_tensors): 
+    assert len(input_tensors) == 2, "check input_tensors"   
+    self.input_shape = input_tensors[0].batch_shape
+    self.output_shape = input_tensors[0].batch_shape
+    fflogger.debug("maximum output %s" %( str(self.output_shape)))
+
+class Minimum(_Merge):
+  def __init__(self, **kwargs):
+    super(Minimum, self).__init__("minimum", "Minimum", **kwargs) 
+    
+  def _calculate_inout_shape(self, input_tensors): 
+    assert len(input_tensors) == 2, "check input_tensors"   
+    self.input_shape = input_tensors[0].batch_shape
+    self.output_shape = input_tensors[0].batch_shape
+    fflogger.debug("minimum output %s" %( str(self.output_shape)))
