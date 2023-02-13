@@ -14,8 +14,8 @@
  */
 
 #include "ops-inc/attention.h"
-#include "model.h"
 #include "flexflow/utils/hash_utils.h"
+#include "model.h"
 
 namespace FlexFlow {
 
@@ -37,6 +37,7 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
+using namespace FlexFlow::Kernels::MultiHeadAttention;
 
 Tensor FFModel::multihead_attention(const Tensor query,
                                     const Tensor key,
@@ -545,12 +546,12 @@ void MultiHeadAttention::forward_task(
                                        runtime,
                                        false /*readOutput*/);
 
-  MultiHeadAttention::forward_kernel_wrapper(m,
-                                             acc_query.ptr,
-                                             acc_key.ptr,
-                                             acc_value.ptr,
-                                             acc_weight.ptr,
-                                             acc_output.ptr);
+  forward_kernel_wrapper(m,
+                         acc_query.ptr,
+                         acc_key.ptr,
+                         acc_value.ptr,
+                         acc_weight.ptr,
+                         acc_output.ptr);
 }
 
 void MultiHeadAttention::backward(FFModel const &ff) {
@@ -715,16 +716,16 @@ void MultiHeadAttention::backward_task(
     key_grad_ptr = acc_key_grad.ptr;
   }
 
-  MultiHeadAttention::backward_kernel_wrapper(m,
-                                              acc_query.ptr,
-                                              acc_query_grad.ptr,
-                                              acc_key.ptr,
-                                              key_grad_ptr,
-                                              acc_value.ptr,
-                                              value_grad_ptr,
-                                              acc_weight.ptr,
-                                              acc_weight_grad.ptr,
-                                              acc_output_grad.ptr);
+  backward_kernel_wrapper(m,
+                          acc_query.ptr,
+                          acc_query_grad.ptr,
+                          acc_key.ptr,
+                          key_grad_ptr,
+                          acc_value.ptr,
+                          value_grad_ptr,
+                          acc_weight.ptr,
+                          acc_weight_grad.ptr,
+                          acc_output_grad.ptr);
 }
 
 bool MultiHeadAttention::get_int_parameter(PMParameter para, int *value) const {

@@ -13,22 +13,22 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/fused.h"
-#include "flexflow/model.h"
-#include "flexflow/ops/batch_norm.h"
-#include "flexflow/ops/dropout.h"
-#include "flexflow/ops/element_unary.h"
-#include "flexflow/ops/flat.h"
-#include "flexflow/ops/kernels/batch_matmul_kernels.h"
-#include "flexflow/ops/kernels/concat_kernels.h"
-#include "flexflow/ops/kernels/conv_2d_kernels.h"
-#include "flexflow/ops/kernels/element_binary_kernels.h"
-#include "flexflow/ops/kernels/linear_kernels.h"
-#include "flexflow/ops/kernels/pool_2d_kernels.h"
-#include "flexflow/ops/kernels/reshape_kernels.h"
-#include "flexflow/ops/kernels/transpose_kernels.h"
-#include "flexflow/ops/linear.h"
-#include "flexflow/utils/hip_helper.h"
+#include "ops-inc/fused.h"
+#include "model.h"
+#include "ops-impl/batch_matmul_kernels.h"
+#include "ops-impl/concat_kernels.h"
+#include "ops-impl/conv_2d_kernels.h"
+#include "ops-impl/element_binary_kernels.h"
+#include "ops-impl/element_unary_kernels.h"
+#include "ops-impl/linear_kernels.h"
+#include "ops-impl/pool_2d_kernels.h"
+#include "ops-impl/reshape_kernels.h"
+#include "ops-impl/transpose_kernels.h"
+#include "ops-inc/batch_norm.h"
+#include "ops-inc/dropout.h"
+#include "ops-inc/flat.h"
+#include "ops-inc/linear.h"
+#include "utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
@@ -298,7 +298,7 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementUnaryMeta *m = (ElementUnaryMeta *)metas->meta[op];
-        ElementUnary::forward_kernel_wrapper(
+        Kernels::ElementUnary::forward_kernel_wrapper(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_output_accessor[0].get_float_ptr(),
@@ -690,7 +690,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         ElementUnaryMeta *m = (ElementUnaryMeta *)metas->meta[op];
-        ElementUnary::backward_kernel_wrapper(
+        Kernels::ElementUnary::backward_kernel_wrapper(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr(),

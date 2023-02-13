@@ -1,4 +1,5 @@
 #include "ops-inc/element_unary.h"
+#include "op-impl/element_unary_kernels.h"
 #include "model.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
@@ -20,6 +21,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::ElementUnary;
 
 Tensor FFModel::unary(OperatorType op,
                       const Tensor x,
@@ -311,7 +314,7 @@ OpMeta *ElementUnary::init_task(Task const *task,
   if (use_cudnn(m->op_type)) {
     Domain input_domain = runtime->get_index_space_domain(
         ctx, task->regions[0].region.get_index_space());
-    ElementUnary::init_kernel(m, input_domain, input_domain);
+    init_kernel(m, input_domain, input_domain);
   }
   return m;
 }
@@ -407,7 +410,7 @@ void ElementUnary::forward_task_with_type(
         regions[1], task->regions[1], FID_DATA, ctx, runtime);
   }
 
-  ElementUnary::forward_kernel_wrapper<DT>(
+  forward_kernel_wrapper<DT>(
       m, input_ptr, output_ptr, input_domain.get_volume());
 }
 
@@ -544,7 +547,7 @@ void ElementUnary::backward_task_with_type(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
   }
 
-  ElementUnary::backward_kernel_wrapper<DT>(m,
+  backward_kernel_wrapper<DT>(m,
                                             input_ptr,
                                             input_grad_ptr,
                                             output_ptr,

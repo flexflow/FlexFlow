@@ -1,32 +1,12 @@
 #ifndef _ELEMENT_UNARY_H
 #define _ELEMENT_UNARY_H
 
-#include "device.h"
-#include "fftype.h"
 #include "layer.h"
 #include "flexflow/node.h"
-#include "op_meta.h"
 #include "operator.h"
 #include "op-meta/element_unary_params.h"
 
 namespace FlexFlow {
-
-class ElementUnaryMeta : public OpMeta {
-public:
-  ElementUnaryMeta(FFHandler handle);
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
-  cudnnActivationDescriptor_t actiDesc;
-#else
-  miopenTensorDescriptor_t inputTensor, outputTensor;
-  miopenActivationDescriptor_t actiDesc;
-#endif
-  OperatorType op_type;
-  DataType data_type;
-  bool inplace;
-  float scalar;
-  char op_name[MAX_OPNAME];
-};
 
 class ElementUnary : public Op {
 public:
@@ -82,35 +62,6 @@ public:
       std::vector<Legion::PhysicalRegion> const &regions,
       Legion::Context ctx,
       Legion::Runtime *runtime);
-  static void init_kernel(ElementUnaryMeta *m,
-                          Legion::Domain const &input_domain,
-                          Legion::Domain const &output_domain);
-  template <typename T>
-  static void forward_kernel(ElementUnaryMeta const *m,
-                             T const *in_ptr,
-                             T *out_ptr,
-                             size_t num_elements,
-                             ffStream_t stream);
-  template <typename T>
-  static void forward_kernel_wrapper(ElementUnaryMeta const *m,
-                                     T const *in_ptr,
-                                     T *out_ptr,
-                                     size_t num_elements);
-  template <typename T>
-  static void backward_kernel(ElementUnaryMeta const *m,
-                              T const *in_ptr,
-                              T *in_grad_ptr,
-                              T const *out_ptr,
-                              T const *out_grad_ptr,
-                              size_t num_elements,
-                              ffStream_t stream);
-  template <typename T>
-  static void backward_kernel_wrapper(ElementUnaryMeta const *m,
-                                      T const *in_ptr,
-                                      T *in_grad_ptr,
-                                      T const *out_ptr,
-                                      T const *out_grad_ptr,
-                                      size_t num_elements);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
