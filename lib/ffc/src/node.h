@@ -7,14 +7,13 @@
 #include "op-meta/op-meta.h"
 
 namespace FlexFlow {
-namespace PCG {
+namespace ffc {
 
 struct Node {
   Node() = delete;
   Node(size_t guid, OperatorParameters const &op_params);
 
   std::string to_string(void) const;
-
 
   using AsTuple = std::tuple<size_t &, OperatorParameters &, tl::optional<size_t> &>;
   using AsConstTuple = std::tuple<size_t const &, OperatorParameters const &, tl::optional<size_t> const &>;
@@ -37,8 +36,8 @@ bool operator<(Node const &, Node const &);
 
 namespace std {
 template <>
-struct hash<FlexFlow::PCG::Node> {
-  size_t operator()(FlexFlow::PCG::Node const &n) const;
+struct hash<::FlexFlow::ffc::Node> {
+  size_t operator()(::FlexFlow::ffc::Node const &n) const;
 };
 }
 

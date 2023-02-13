@@ -7,6 +7,7 @@ namespace utils {
 
 using cdi = checked_dfs_iterator;
 using udi = unchecked_dfs_iterator;
+using bfi = bfs_iterator;
 /* using bdi = BoundaryDFSView::boundary_dfs_iterator; */
 
 udi::unchecked_dfs_iterator(IDiGraphView const &g, std::vector<Node> const &stack)
@@ -88,6 +89,55 @@ bool cdi::operator!=(cdi const &other) const {
  return this->iter != other.iter && this->seen != other.seen; 
 }
 
+bfi::bfs_iterator(IDiGraphView const &g, std::queue<Node> const &q, std::unordered_set<Node> const &seen) 
+  : graph(&g), q(q), seen(seen)
+{ }
+
+bfi::bfs_iterator(IDiGraphView const &g, std::unordered_set<Node> const &starting_points)
+  : graph(&g)
+{ 
+  for (Node const &n : starting_points) {
+    this->q.push(n);
+  }
+}
+
+bfi::reference bfi::operator*() const { return this->q.front(); }
+
+bfi::pointer bfi::operator->() { return &this->operator*(); }
+
+bfi& bfi::operator++() {
+  Node const &current = this->operator*();
+  this->seen.insert(current);
+  this->q.pop();
+
+  std::unordered_set<DirectedEdge> outgoing = get_outgoing_edges(*graph, {current});
+  for (DirectedEdge const &e : outgoing) {
+    if (!contains(this->seen, e.dst)) {
+      this->q.push(e.dst);
+    }
+  }
+
+  while (!this->q.empty() && contains(this->seen, this->q.front())) {
+    this->q.pop();
+  }
+
+  return *this;
+}
+
+bfi bfi::operator++(int) {
+  auto tmp = *this; 
+  ++(*this); 
+  return tmp; 
+}
+
+bool bfi::operator==(bfi const &other) const {
+  return this->q == other.q && this->seen == other.seen && this->graph == other.graph;
+}
+
+bool bfi::operator!=(bfi const &other) const {
+  return this->q != other.q || this->seen != other.seen && this->graph != other.graph;
+}
+
 CheckedDFSView::CheckedDFSView(IDiGraphView const *g, std::unordered_set<Node> const &starting_points) 
   : graph(g), starting_points(starting_points)
 { }
@@ -135,6 +185,31 @@ unchecked_dfs_iterator UncheckedDFSView::end() const {
 UncheckedDFSView unchecked_dfs(IDiGraphView const &g, std::unordered_set<Node> const &starting_points) {
   return UncheckedDFSView(&g, starting_points);
 }
+
+BFSView::BFSView(IDiGraphView const &g, std::unordered_set<Node> const &starting_points)
+  : graph(&g), starting_points(starting_points)
+{ }
+
+bfs_iterator BFSView::cbegin() const {
+  return bfs_iterator(*this->graph, this->starting_points);
+}
+
+bfs_iterator BFSView::cend() const {
+  return bfs_iterator(*this->graph, std::queue<Node>{}, get_nodes(*this->graph));
+}
+
+bfs_iterator BFSView::begin() const {
+  return this->cbegin();
+}
+
+bfs_iterator BFSView::end() const {
+  return this->cend();
+}
+
+BFSView bfs(IDiGraphView const &g, std::unordered_set<Node> const &starting_points) {
+  return BFSView(g, starting_points);
+}
+
 
 }
 }

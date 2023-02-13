@@ -5,6 +5,7 @@
 #include "node.h"
 #include "digraph.h"
 #include <vector>
+#include <queue>
 
 namespace FlexFlow {
 namespace utils {
@@ -31,9 +32,8 @@ struct unchecked_dfs_iterator {
   bool operator==(unchecked_dfs_iterator const &other) const;
   bool operator!=(unchecked_dfs_iterator const &other) const;   
 
-private:
   void skip();
-
+private:
   std::vector<Node> stack;
   IDiGraphView const *graph;
 
@@ -62,6 +62,29 @@ private:
   std::unordered_set<Node> seen;
 };
 
+struct bfs_iterator {
+  using iterator_category = std::forward_iterator_tag;
+  using difference_type = std::size_t;
+  using value_type = Node;
+  using pointer = Node const *;
+  using reference = Node const &;
+
+  bfs_iterator(IDiGraphView const &, std::queue<Node> const &, std::unordered_set<Node> const &);
+  bfs_iterator(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
+
+  reference operator*() const;
+  pointer operator->();
+  bfs_iterator& operator++();
+  bfs_iterator operator++(int);
+
+  bool operator==(bfs_iterator const &) const;
+  bool operator!=(bfs_iterator const &) const;
+private:
+  IDiGraphView const *graph;
+  std::queue<Node> q; 
+  std::unordered_set<Node> seen;
+};
+
 struct CheckedDFSView {
   CheckedDFSView() = delete;
   explicit CheckedDFSView(IDiGraphView const *, std::unordered_set<Node> const &starting_points);
@@ -84,6 +107,19 @@ struct UncheckedDFSView {
   unchecked_dfs_iterator end() const;
   unchecked_dfs_iterator cbegin() const;
   unchecked_dfs_iterator cend() const;
+private:
+  IDiGraphView const *graph;
+  std::unordered_set<Node> starting_points;
+};
+
+struct BFSView {
+  BFSView() = delete;
+  explicit BFSView(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
+
+  bfs_iterator begin() const;
+  bfs_iterator end() const;
+  bfs_iterator cbegin() const;
+  bfs_iterator cend() const;
 private:
   IDiGraphView const *graph;
   std::unordered_set<Node> starting_points;
@@ -123,6 +159,7 @@ private:
 UncheckedDFSView unchecked_dfs(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
 /* BoundaryDFSView boundary_dfs(IDiGraphView const &, std::unordered_set<Node> const &starting_points); */
 CheckedDFSView dfs(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
+BFSView bfs(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
 
 } 
 }

@@ -1,21 +1,21 @@
 #ifndef _FLEXFLOW_FFC_EDGE_H
 #define _FLEXFLOW_FFC_EDGE_H
 
-#include "node.h"
+#include "op-meta/operator_params.h"
 
 namespace FlexFlow {
-namespace PCG {
+namespace ffc {
 
 struct Edge {
 public:
-  Edge(Node const &srcOp, Node const &dstOp, int srcIdx, int dstIdx);
+  Edge(opmeta::OperatorParameters const &srcOp, opmeta::OperatorParameters const &dstOp, int srcIdx, int dstIdx);
 
-  void replace_node(Node const &currentOp, Node const &replaceWith);
+  void replace_node(opmeta::OperatorParameters const &currentOp, opmeta::OperatorParameters const &replaceWith);
 
-  using AsConstTuple = std::tuple<Node, Node, int, int>;
+  using AsConstTuple = std::tuple<opmeta::OperatorParameters, opmeta::OperatorParameters, int, int>;
   AsConstTuple as_tuple() const;
 public:
-  Node srcOp, dstOp;
+  opmeta::OperatorParameters srcOp, dstOp;
   int srcIdx, dstIdx;
 };
 
@@ -27,8 +27,8 @@ bool operator<(Edge const &lhs, Edge const &rhs);
 
 namespace std {
 template <>
-struct hash<FlexFlow::PCG::Edge> {
-  size_t operator()(FlexFlow::PCG::Edge const &e) const;
+struct hash<::FlexFlow::ffc::Edge> {
+  size_t operator()(::FlexFlow::ffc::Edge const &e) const;
 };
 }
 

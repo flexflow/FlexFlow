@@ -28,6 +28,7 @@
 namespace mp = mpark;
 
 namespace FlexFlow {
+namespace opmeta {
 
 using OperatorParameters = mp::variant<BatchMatmulParams,
                                        Conv2DParams,
@@ -58,5 +59,6 @@ OperatorType get_op_type(OpParamsInterface const &);
 bool is_parallel_op(OperatorParameters const &);
 
 }; // namespace FlexFlow
+};
 
 #endif // _OPERATOR_PARAMS_H

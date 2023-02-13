@@ -1,4 +1,5 @@
 #include "utils/graph/adjacency_digraph.h"
+#include <cassert>
 
 namespace FlexFlow {
 namespace utils {
@@ -38,6 +39,18 @@ std::unordered_set<Node> AdjacencyDiGraph::query_nodes(NodeQuery const &query) c
     }
   }
   return result;
+}
+
+bool AdjacencyDiGraph::operator==(AdjacencyDiGraph const &other) const {
+  bool result = this->adjacency == other.adjacency;
+  if (result) {
+    assert(this->next_node_idx == other.next_node_idx);
+  }
+  return result;
+}
+
+bool AdjacencyDiGraph::operator!=(AdjacencyDiGraph const &other) const {
+  return (this->adjacency != other.adjacency);
 }
 
 }

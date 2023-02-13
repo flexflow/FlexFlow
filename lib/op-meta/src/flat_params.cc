@@ -40,7 +40,7 @@ bool FlatParams::is_valid(ParallelTensorShape const &input) const {
 }
 
 ParallelTensorShape FlatParams::calculate_output_shape(ParallelTensorShape const &input) const {
-  assert (input.dims.size() == Input::NUMDIM);
+  assert (input.num_dims() == Input::NUMDIM);
   std::vector<ParallelDim> output_dims(Output::NUMDIM);
 
   output_dims.at(Output::REPLICA) = input.at(Input::REPLICA);

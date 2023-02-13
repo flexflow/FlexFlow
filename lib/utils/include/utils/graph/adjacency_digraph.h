@@ -14,6 +14,9 @@ public:
   void add_edge(Edge const &) override;
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+  bool operator==(AdjacencyDiGraph const &) const;
+  bool operator!=(AdjacencyDiGraph const &) const;
 private:
   std::size_t next_node_idx = 0;
   std::unordered_map<Node, std::unordered_set<Node>> adjacency;

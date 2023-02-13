@@ -28,7 +28,7 @@ MultiDiEdge to_multidigraph_edge(DirectedEdge const &);
 std::unordered_set<MultiDiEdge> to_multidigraph_edges(std::unordered_set<DirectedEdge> const &);
 
 template <typename Undirected>
-Undirected to_undirected(IDiGraph const &directed) {
+Undirected to_undirected(IDiGraphView const &directed) {
   static_assert(std::is_base_of<IUndirectedGraph, Undirected>::value, "Error");
   Undirected undirected;
   DirectedEdgeQuery edge_query_all;
