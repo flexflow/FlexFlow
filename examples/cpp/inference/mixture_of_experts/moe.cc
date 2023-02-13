@@ -160,19 +160,25 @@ void FlexFlow::top_level_task(Task const *task,
 
   int index = 0;
   int processed_requests = 0;
+  int num_devices = ffConfig.workersPerNode * ffConfig.numNodes;
   Generator data_generator(
       total_requests, request_tensor_size, poisson_distribution, lambda);
+
   // data_loader.reset();
   while (processed_requests < total_requests) {
     vector<vector<double>> req = data_generator.get_requests();
-    int iterations = req.size();
+    int nreqs = req.size();
+    int iterations = (nreqs % num_requests_per_batch == 0)
+                         ? (nreqs / num_requests_per_batch)
+                         : (nreqs / num_requests_per_batch) + 1;
     for (int iter = 0; iter < iterations; iter++) {
       // data_loader.next_batch(ff);
-      runtime->begin_trace(ctx, 111 /*trace_id*/);
-      im.inference((index++) % num_inflight_batches);
-      runtime->end_trace(ctx, 111 /*trace_id*/);
+      runtime->begin_trace(ctx, 111 + index % num_devices /*trace_id*/);
+      im.inference(index);
+      runtime->end_trace(ctx, 111 + index % num_devices /*trace_id*/);
+      index++;
     }
-    processed_requests += iterations;
+    processed_requests += nreqs;
   }
 
   ///////////////////////////////////////////////////////////////////////////////////

@@ -1798,6 +1798,18 @@ void FFModel::register_all_machine_views(
       valid_views.push_back(view);
     }
   }
+  // No-parallelism views
+  for (int i = 1; i <= num_nodes * gpus_per_node; i++) {
+    if (num_nodes * gpus_per_node % i == 0) {
+      MachineView view;
+      view.device_type = MachineView::GPU;
+      view.ndims = 1;
+      view.dim[0] = i;
+      view.stride[0] = 0;
+      view.start_device_id = 0;
+      valid_views.push_back(view);
+    }
+  }
   // Two-dimensional views
   /* for (int i = 1; i <= num_nodes; i++) { */
   /*   for (int j = 1; j <= gpus_per_node; j++) { */

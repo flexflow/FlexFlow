@@ -975,6 +975,49 @@ void Op::set_argumentmap_for_init(FFModel const &ff, ArgumentMap &argmap) {
   }
 }
 
+void Op::set_argumentmap_for_init_inference(FFModel const &ff,
+                                            ArgumentMap &argmap,
+                                            MachineView const *view) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, this->parallel_is);
+  switch (domain.get_dim()) {
+#ifdef FF_USE_NCCL
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      FFHandler handle = ff.handlers[view->get_device_id(*it)];                \
+      if (ff.config.computationMode == COMP_MODE_TRAINING &&                   \
+          op_type == OP_WEIGHT) {                                              \
+        ncclComm_t *nccl_comms = ff.find_nccl_comms(*view);                    \
+        handle.ncclComm = nccl_comms[idx++];                                   \
+      }                                                                        \
+      argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));         \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+#else
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      FFHandler handle = ff.handlers[view->get_device_id(*it)];                \
+      argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));         \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+#endif
+    default:
+      assert(false);
+  }
+}
+
 void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -996,6 +1039,29 @@ void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
   }
 }
 
+void Op::set_opmeta_from_futuremap_inference(FFModel const &ff,
+                                             FutureMap const &fm,
+                                             MachineView const *view) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      inference_meta[view->hash()][idx++] = fm.get_result<OpMeta *>(*it);      \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
 void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -1007,6 +1073,30 @@ void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) {
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
       OpMeta *mp = meta[idx++];                                                \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+void Op::set_argumentmap_for_inference(FFModel const &ff,
+                                       ArgumentMap &argmap,
+                                       MachineView const *view) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      OpMeta *mp = inference_meta[view->hash()][idx++];                        \
       argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
     }                                                                          \
     break;                                                                     \
@@ -2631,7 +2721,8 @@ Op *FFModel::create_operator_from_layer(
       assert(tensor->parallel_tensor == nullptr);
       tensor->parallel_tensor = pt;
       // start from data parllel tensor
-      if (config.only_data_parallel) {
+      if (config.only_data_parallel &&
+          config.computationMode == COMP_MODE_TRAINING) {
         Repartition *part = new Repartition(
             *this, pt, num_dims - 1, config.numNodes * config.workersPerNode);
         operators.push_back(part);
