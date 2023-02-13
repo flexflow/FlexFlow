@@ -27,6 +27,7 @@
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/experts.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
@@ -1694,7 +1695,9 @@ GraphOptimalViewSerialized
       }
       case OP_EW_ADD:
       case OP_EW_SUB:
-      case OP_EW_MUL: {
+      case OP_EW_MUL:
+      case OP_EW_MAX:
+      case OP_EW_MIN: {
         sez.serialize(op->op_type);
         break;
       }
@@ -1986,7 +1989,9 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_EW_ADD:
       case OP_EW_SUB:
-      case OP_EW_MUL: {
+      case OP_EW_MUL:
+      case OP_EW_MAX:
+      case OP_EW_MIN: {
         assert(num_inputs == 2);
         OperatorType op_type;
         dez.deserialize(op_type);
@@ -2022,6 +2027,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_FLAT: {
         node = Flat::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_GATHER: {
+        node = Gather::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_LAYERNORM: {

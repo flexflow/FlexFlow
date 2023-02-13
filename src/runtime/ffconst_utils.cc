@@ -47,6 +47,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "Embedding";
     case OP_EXPERTS:
       return "Experts";
+    case OP_GATHER:
+      return "Gather";
     case OP_GROUP_BY:
       return "Group_by";
     case OP_CACHE:

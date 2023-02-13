@@ -129,6 +129,20 @@ Tensor FFModel::divide(const Tensor in1,
   return this->binary(OP_EW_DIV, in1, in2, inplace_a, name);
 }
 
+Tensor FFModel::max(const Tensor in1,
+                    const Tensor in2,
+                    bool inplace_a,
+                    char const *name) {
+  return this->binary(OP_EW_MAX, in1, in2, inplace_a, name);
+}
+
+Tensor FFModel::min(const Tensor in1,
+                    const Tensor in2,
+                    bool inplace_a,
+                    char const *name) {
+  return this->binary(OP_EW_MIN, in1, in2, inplace_a, name);
+}
+
 bool ElementBinaryParams::is_valid(
     std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
   bool is_valid = true;
