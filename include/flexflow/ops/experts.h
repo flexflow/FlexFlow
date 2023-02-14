@@ -18,6 +18,9 @@ public:
               ActiMode _activation);
   ~ExpertsMeta(void);
   float *dev_sorted_tokens;
+  int *dev_replicated_indices;
+  int *dev_exp_slice_indices;
+  float *dev_tokens_in_use;
   int num_experts;
   int experts_start_idx;
   int data_dim;

@@ -833,7 +833,7 @@ void Experts::inference_task(Task const *task,
       assert(bias_domain.hi()[0] - bias_domain.lo()[0] + 1 == out_dim);
     }
   }
-  
+
   Experts::forward_kernel_wrapper(m,
                                   input_ptr,
                                   indices_ptr,
