@@ -60,18 +60,16 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
-  int num_experts = m->num_experts;
-  int expert_start_index = m->experts_start_idx;
-  bool use_bias = m->use_bias;
-  ActiMode activation = m->activation;
+  // int num_experts = m->num_experts;
+  // int expert_start_index = m->experts_start_idx;
+  // bool use_bias = m->use_bias;
+  // ActiMode activation = m->activation;
   int data_dim = m->data_dim;
   int num_chosen_experts = m->num_chosen_experts;
   int num_tokens = m->effective_batch_size;
 
-  size_t input_volume = sizeof(input) / sizeof(input[0]);
   assert(chosen_experts == num_chosen_experts);
   assert(num_tokens == batch_size);
-  assert(num_tokens == input_volume / data_dim);
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
