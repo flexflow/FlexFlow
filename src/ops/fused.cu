@@ -288,7 +288,9 @@ __host__ void FusedOp::forward_task(Task const *task,
       case OP_EW_ADD:
       case OP_EW_SUB:
       case OP_EW_MUL:
-      case OP_EW_DIV: {
+      case OP_EW_DIV:
+      case OP_EW_MAX:
+      case OP_EW_MIN: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -744,7 +746,9 @@ __host__ void FusedOp::backward_task(Task const *task,
       case OP_EW_ADD:
       case OP_EW_SUB:
       case OP_EW_MUL:
-      case OP_EW_DIV: {
+      case OP_EW_DIV:
+      case OP_EW_MAX:
+      case OP_EW_MIN: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);

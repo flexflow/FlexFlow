@@ -141,6 +141,18 @@ flexflow_tensor_t flexflow_model_add_divide(flexflow_model_t handle,
                                             bool inplace_a,
                                             char const *name);
 
+flexflow_tensor_t flexflow_model_add_max(flexflow_model_t handle,
+                                         const flexflow_tensor_t x,
+                                         const flexflow_tensor_t y,
+                                         bool inplace_a,
+                                         char const *name);
+
+flexflow_tensor_t flexflow_model_add_min(flexflow_model_t handle,
+                                         const flexflow_tensor_t x,
+                                         const flexflow_tensor_t y,
+                                         bool inplace_a,
+                                         char const *name);
+
 flexflow_tensor_t flexflow_model_add_reduce_sum(flexflow_model_t handle_,
                                                 const flexflow_tensor_t input_,
                                                 int *axes,
@@ -469,6 +481,11 @@ bool flexflow_tensor_get_tensor_int64(flexflow_tensor_t handle,
                                       flexflow_model_t model,
                                       int64_t *data,
                                       bool get_gradients);
+
+bool flexflow_model_get_output_tensor_float(flexflow_model_t model_,
+                                            flexflow_tensor_t handle_,
+                                            float *data,
+                                            bool get_gradients);
 
 // -----------------------------------------------------------------------
 // Parameter
