@@ -1,4 +1,4 @@
-from align_utils import parse_create_tensor_args, gen_tensor, create_general_test_tensors_torch, BATCH_SIZE, INPUT_SIZE, SEQ_LENGTH
+from align_utils import parse_create_tensor_args, gen_tensor, create_general_test_tensor_torch, BATCH_SIZE, INPUT_SIZE, SEQ_LENGTH
 from align_ff_utils import (compile_ffmodel, init_ffmodel, run_fwd_bwd,
                             save_param_ff, save_param_grad_ff, save_tensor_ff,
                             save_tensor_grad_ff)
@@ -149,9 +149,9 @@ def create_single_operator_ff():
 
 
 def create_tensors_for_add_ff(ffmodel):
-    inp1 = create_general_test_tensors_torch()
-    inp2 = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp1 = create_general_test_tensor_torch()
+    inp2 = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
     input_tensor_1 = ffmodel.create_tensor(inp1.shape, DataType.DT_FLOAT)
     input_tensor_2 = ffmodel.create_tensor(inp2.shape, DataType.DT_FLOAT)
     output_tensor = ffmodel.add(
@@ -163,9 +163,9 @@ def create_tensors_for_add_ff(ffmodel):
 
 
 def create_tensors_for_concat_ff(ffmodel):
-    inp1 = create_general_test_tensors_torch()
-    inp2 = create_general_test_tensors_torch()
-    inp3 = create_general_test_tensors_torch()
+    inp1 = create_general_test_tensor_torch()
+    inp2 = create_general_test_tensor_torch()
+    inp3 = create_general_test_tensor_torch()
     label: torch.Tensor = gen_tensor(
         (BATCH_SIZE, SEQ_LENGTH * 3, INPUT_SIZE),
         dtype="float32"
@@ -214,8 +214,8 @@ def create_tensors_for_conv2d_ff(ffmodel):
 
 
 def create_tensors_for_cos_ff(ffmodel):
-    inp = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
 
     input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
     output_tensor = ffmodel.cos(
@@ -226,9 +226,9 @@ def create_tensors_for_cos_ff(ffmodel):
 
 
 def create_tensors_for_divide_ff(ffmodel):
-    inp1 = create_general_test_tensors_torch()
-    inp2 = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp1 = create_general_test_tensor_torch()
+    inp2 = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
     input_tensor_1 = ffmodel.create_tensor(inp1.shape, DataType.DT_FLOAT)
     input_tensor_2 = ffmodel.create_tensor(inp2.shape, DataType.DT_FLOAT)
     output_tensor = ffmodel.divide(
@@ -266,8 +266,8 @@ def create_tensors_for_embedding_ff(ffmodel):
 
 
 def create_tensors_for_exp_ff(ffmodel):
-    inp = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
 
     input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
     output_tensor = ffmodel.exp(
@@ -323,8 +323,8 @@ def create_tensors_for_getitem_ff(ffmodel):
 
 
 def create_tensors_for_identity_ff(ffmodel):
-    inp = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
 
     input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
     output_tensor = ffmodel.identity(
@@ -376,9 +376,9 @@ def create_tensors_for_linear_ff(ffmodel):
 
 
 def create_tensors_for_multiply_ff(ffmodel):
-    inp1 = create_general_test_tensors_torch()
-    inp2 = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp1 = create_general_test_tensor_torch()
+    inp2 = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
 
     input_tensor_1 = ffmodel.create_tensor(inp1.shape, DataType.DT_FLOAT)
     input_tensor_2 = ffmodel.create_tensor(inp2.shape, DataType.DT_FLOAT)
@@ -419,7 +419,7 @@ def create_tensors_for_pool2d_ff(ffmodel):
 
 
 def create_tensors_for_reducesum_ff(ffmodel):
-    inp = create_general_test_tensors_torch()
+    inp = create_general_test_tensor_torch()
     label: torch.Tensor = gen_tensor(
         (BATCH_SIZE, INPUT_SIZE),
         dtype="float32"
@@ -436,8 +436,8 @@ def create_tensors_for_reducesum_ff(ffmodel):
 
 
 def create_tensors_for_relu_ff(ffmodel):
-    inp = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
 
     input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
     output_tensor = ffmodel.relu(
@@ -448,7 +448,7 @@ def create_tensors_for_relu_ff(ffmodel):
 
 
 def create_tensors_for_reshape_ff(ffmodel):
-    inp = create_general_test_tensors_torch()
+    inp = create_general_test_tensor_torch()
     label: torch.Tensor = gen_tensor(
         (BATCH_SIZE, INPUT_SIZE, SEQ_LENGTH),
         dtype="float32"
@@ -464,8 +464,8 @@ def create_tensors_for_reshape_ff(ffmodel):
 
 
 def create_tensors_for_scalar_add_ff(ffmodel):
-    inp = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
 
     input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
     output_tensor = ffmodel.scalar_add(
@@ -478,8 +478,8 @@ def create_tensors_for_scalar_add_ff(ffmodel):
 
 
 def create_tensors_for_scalar_multiply_ff(ffmodel):
-    inp = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
 
     input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
     output_tensor = ffmodel.scalar_multiply(
@@ -492,8 +492,8 @@ def create_tensors_for_scalar_multiply_ff(ffmodel):
 
 
 def create_tensors_for_scalar_sub_ff(ffmodel):
-    inp = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
 
     input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
     output_tensor = ffmodel.scalar_sub(
@@ -506,8 +506,8 @@ def create_tensors_for_scalar_sub_ff(ffmodel):
 
 
 def create_tensors_for_scalar_truediv_ff(ffmodel):
-    inp = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
     input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
     output_tensor = ffmodel.scalar_true_divide(
         input=input_tensor,
@@ -519,8 +519,8 @@ def create_tensors_for_scalar_truediv_ff(ffmodel):
 
 
 def create_tensors_for_sigmoid_ff(ffmodel):
-    inp = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
 
     input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
     output_tensor = ffmodel.sigmoid(
@@ -531,8 +531,8 @@ def create_tensors_for_sigmoid_ff(ffmodel):
 
 
 def create_tensors_for_sin_ff(ffmodel):
-    inp = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
     input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
     output_tensor = ffmodel.sin(
         x=input_tensor,
@@ -542,9 +542,9 @@ def create_tensors_for_sin_ff(ffmodel):
 
 
 def create_tensors_for_subtract_ff(ffmodel):
-    inp1 = create_general_test_tensors_torch()
-    inp2 = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp1 = create_general_test_tensor_torch()
+    inp2 = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
 
     input_tensor_1 = ffmodel.create_tensor(inp1.shape, DataType.DT_FLOAT)
     input_tensor_2 = ffmodel.create_tensor(inp2.shape, DataType.DT_FLOAT)
@@ -557,8 +557,8 @@ def create_tensors_for_subtract_ff(ffmodel):
 
 
 def create_tensors_for_tanh_ff(ffmodel):
-    inp = create_general_test_tensors_torch()
-    label = create_general_test_tensors_torch()
+    inp = create_general_test_tensor_torch()
+    label = create_general_test_tensor_torch()
 
     input_tensor = ffmodel.create_tensor(inp.shape, DataType.DT_FLOAT)
     output_tensor = ffmodel.tanh(
@@ -569,7 +569,7 @@ def create_tensors_for_tanh_ff(ffmodel):
 
 
 def create_tensors_for_transpose_ff(ffmodel):
-    inp = create_general_test_tensors_torch()
+    inp = create_general_test_tensor_torch()
     label: torch.Tensor = gen_tensor(
         (BATCH_SIZE, INPUT_SIZE, SEQ_LENGTH),
         dtype="float32"
@@ -616,10 +616,10 @@ def create_tensors_for_view_embedding_ff(ffmodel):
     return ((input_tensor, inp),), label, output_tensor
 
 def create_tensors_for_max_ff(ffmodel):
-    inp1 = create_general_test_tensors_torch()
-    inp2 = create_general_test_tensors_torch().add(1)
+    inp1 = create_general_test_tensor_torch()
+    inp2 = create_general_test_tensor_torch().add(1)
     
-    label = create_general_test_tensors_torch()
+    label = create_general_test_tensor_torch()
 
     input_tensor_1 = ffmodel.create_tensor(inp1.shape, DataType.DT_FLOAT)
     input_tensor_2 = ffmodel.create_tensor(inp2.shape, DataType.DT_FLOAT)
@@ -632,10 +632,10 @@ def create_tensors_for_max_ff(ffmodel):
     return ((input_tensor_1, inp1),(input_tensor_2, inp2)), label, output_tensor
 
 def create_tensors_for_min_ff(ffmodel):
-    inp1 = create_general_test_tensors_torch()
-    inp2 = create_general_test_tensors_torch().add(1)
+    inp1 = create_general_test_tensor_torch()
+    inp2 = create_general_test_tensor_torch().add(1)
     
-    label = create_general_test_tensors_torch()
+    label = create_general_test_tensor_torch()
 
     input_tensor_1 = ffmodel.create_tensor(inp1.shape, DataType.DT_FLOAT)
     input_tensor_2 = ffmodel.create_tensor(inp2.shape, DataType.DT_FLOAT)

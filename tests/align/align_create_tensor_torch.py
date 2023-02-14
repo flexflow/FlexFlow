@@ -1,4 +1,4 @@
-from align_utils import gen_tensor, parse_create_tensor_args, create_general_test_tensors_torch, BATCH_SIZE, INPUT_SIZE, SEQ_LENGTH
+from align_utils import gen_tensor, parse_create_tensor_args, create_general_test_tensor_torch, BATCH_SIZE, INPUT_SIZE, SEQ_LENGTH
 import os
 import sys
 
@@ -97,9 +97,9 @@ def create_single_operator_torch():
 
 
 def create_tensors_for_add_torch():
-    inp1 = create_general_test_tensors_torch().to(DEVICE)
-    inp2 = create_general_test_tensors_torch().to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp1 = create_general_test_tensor_torch().to(DEVICE)
+    inp2 = create_general_test_tensor_torch().to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
     output = torch.add(
         input=inp1,
         other=inp2
@@ -109,9 +109,9 @@ def create_tensors_for_add_torch():
 
 
 def create_tensors_for_concat_torch():
-    inp1 = create_general_test_tensors_torch().to(DEVICE)
-    inp2 = create_general_test_tensors_torch().to(DEVICE)
-    inp3 = create_general_test_tensors_torch().to(DEVICE)
+    inp1 = create_general_test_tensor_torch().to(DEVICE)
+    inp2 = create_general_test_tensor_torch().to(DEVICE)
+    inp3 = create_general_test_tensor_torch().to(DEVICE)
     label: torch.Tensor = gen_tensor(
         (BATCH_SIZE, SEQ_LENGTH * 3, INPUT_SIZE),
         dtype="float32"
@@ -166,8 +166,8 @@ def create_tensors_for_conv2d_torch(param_dir):
 
 
 def create_tensors_for_cos_torch():
-    inp = create_general_test_tensors_torch().to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
     output = torch.cos(
         input=inp,
     ).to(DEVICE)
@@ -206,8 +206,8 @@ def create_tensors_for_embedding_torch(param_dir):
 
 
 def create_tensors_for_exp_torch():
-    inp = create_general_test_tensors_torch().to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
     output = torch.exp(
         input=inp,
     ).to(DEVICE)
@@ -247,8 +247,8 @@ def create_tensors_for_getitem_torch(param_dir):
 def create_tensors_for_identity_torch():
     identity = torch.nn.Identity()
 
-    inp = create_general_test_tensors_torch().to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
 
     output = identity(input=inp).to(DEVICE)
     identity.zero_grad()
@@ -329,9 +329,9 @@ def create_tensors_for_linear_torch(param_dir):
 
 
 def create_tensors_for_multiply_torch():
-    inp1 = create_general_test_tensors_torch().to(DEVICE)
-    inp2 = create_general_test_tensors_torch().to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp1 = create_general_test_tensor_torch().to(DEVICE)
+    inp2 = create_general_test_tensor_torch().to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
     output = torch.mul(
         input=inp1,
         other=inp2
@@ -363,7 +363,7 @@ def create_tensors_for_pool2d_torch():
 
 
 def create_tensors_for_reducesum_torch():
-    inp = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
     label: torch.Tensor = gen_tensor(
         (BATCH_SIZE, INPUT_SIZE),
         dtype="float32"
@@ -381,8 +381,8 @@ def create_tensors_for_reducesum_torch():
 def create_tensors_for_relu_torch():
     relu = torch.nn.ReLU(inplace=True)
 
-    inp = create_general_test_tensors_torch().to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
 
     output = relu(input=inp).to(DEVICE)
     relu.zero_grad()
@@ -391,7 +391,7 @@ def create_tensors_for_relu_torch():
 
 
 def create_tensors_for_reshape_torch():
-    inp = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
     label: torch.Tensor = gen_tensor(
         (BATCH_SIZE, INPUT_SIZE, SEQ_LENGTH),
         dtype="float32"
@@ -405,8 +405,8 @@ def create_tensors_for_reshape_torch():
 
 
 def create_tensors_for_scalar_add_torch():
-    inp = create_general_test_tensors_torch().to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
     output = torch.add(
         input=inp,
         other=1,
@@ -417,8 +417,8 @@ def create_tensors_for_scalar_add_torch():
 
 
 def create_tensors_for_scalar_multiply_torch():
-    inp = create_general_test_tensors_torch().to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
     output = torch.mul(
         input=inp,
         other=2
@@ -428,8 +428,8 @@ def create_tensors_for_scalar_multiply_torch():
 
 
 def create_tensors_for_scalar_sub_torch():
-    inp = create_general_test_tensors_torch().to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
     output = torch.sub(
         input=inp,
         other=1
@@ -439,8 +439,8 @@ def create_tensors_for_scalar_sub_torch():
 
 
 def create_tensors_for_scalar_truediv_torch():
-    inp = create_general_test_tensors_torch().to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
     output = torch.div(
         input=inp,
         other=2
@@ -452,8 +452,8 @@ def create_tensors_for_scalar_truediv_torch():
 def create_tensors_for_sigmoid_torch():
     sigmoid = torch.nn.Sigmoid()
 
-    inp = create_general_test_tensors_torch().to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
 
     output = sigmoid(input=inp).to(DEVICE)
     sigmoid.zero_grad()
@@ -462,8 +462,8 @@ def create_tensors_for_sigmoid_torch():
 
 
 def create_tensors_for_sin_torch():
-    inp = create_general_test_tensors_torch().to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
     output = torch.sin(
         input=inp,
     ).to(DEVICE)
@@ -472,9 +472,9 @@ def create_tensors_for_sin_torch():
 
 
 def create_tensors_for_subtract_torch():
-    inp1 = create_general_test_tensors_torch().to(DEVICE)
-    inp2 = create_general_test_tensors_torch().to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp1 = create_general_test_tensor_torch().to(DEVICE)
+    inp2 = create_general_test_tensor_torch().to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
     output = torch.sub(
         input=inp1,
         other=inp2
@@ -484,8 +484,8 @@ def create_tensors_for_subtract_torch():
 
 
 def create_tensors_for_tanh_torch():
-    inp = create_general_test_tensors_torch().to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
     output = torch.tanh(
         input=inp,
     ).to(DEVICE)
@@ -494,7 +494,7 @@ def create_tensors_for_tanh_torch():
 
 
 def create_tensors_for_transpose_torch():
-    inp = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
     label: torch.Tensor = gen_tensor(
         (BATCH_SIZE, INPUT_SIZE, SEQ_LENGTH),
         dtype="float32"
@@ -538,9 +538,9 @@ def create_tensors_for_scalar_view_embedding_torch(param_dir):
     return label, output, embedding.weight
 
 def create_tensors_for_max_torch():
-    inp = create_general_test_tensors_torch().to(DEVICE)
-    oth = create_general_test_tensors_torch().add(1).to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
+    oth = create_general_test_tensor_torch().add(1).to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
     output = torch.maximum(
         input=inp,
         other=oth
@@ -551,9 +551,9 @@ def create_tensors_for_max_torch():
     
 
 def create_tensors_for_min_torch():
-    inp = create_general_test_tensors_torch().to(DEVICE)
-    oth = create_general_test_tensors_torch().add(1).to(DEVICE)
-    label = create_general_test_tensors_torch().to(DEVICE)
+    inp = create_general_test_tensor_torch().to(DEVICE)
+    oth = create_general_test_tensor_torch().add(1).to(DEVICE)
+    label = create_general_test_tensor_torch().to(DEVICE)
     output = torch.minimum(
         input=inp,
         other=oth

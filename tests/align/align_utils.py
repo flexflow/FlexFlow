@@ -116,7 +116,7 @@ def parse_create_tensor_args():
     args, unknown = parser.parse_known_args()
     return args
 
-def create_general_test_tensors_torch() -> torch.Tensor:
+def create_general_test_tensor_torch() -> torch.Tensor:
     """
     generate general input size of alignment tests
     """
