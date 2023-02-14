@@ -15,21 +15,38 @@
 
 #include "flexflow/ops/experts.h"
 #include "flexflow/utils/cuda_helper.h"
-#include <thrust/device_vector.h>
+// #include <thrust/device_vector.h>
 
 namespace FlexFlow {
 
-struct divide_functor {
-  __host__ __device__ float operator()(int const &x, int const &y) const {
-    return x / y;
-  }
-};
+// struct divide_functor {
+//   __host__ __device__ float operator()(int const &x, int const &y) const {
+//     return x / y;
+//   }
+// };
 
-struct multiply_functor {
-  __host__ __device__ float operator()(int const &x, int const &y) const {
-    return x * y;
+// struct multiply_functor {
+//   __host__ __device__ float operator()(int const &x, int const &y) const {
+//     return x * y;
+//   }
+// };
+
+__global__ void experts_forward_kernel1(int data_dim,
+                                        int num_chosen_experts,
+                                        int num_tokens,
+                                        float *tokens_array,
+                                        float const *input) {
+  // initialize tokens_array with replicated tokens
+  CUDA_KERNEL_LOOP(i, data_dim * num_tokens * num_chosen_experts) {
+    int token_index = i / (data_dim * num_chosen_experts);
+    int chosen_exp_index = (i % (data_dim * num_chosen_experts)) / data_dim;
+    int data_dim_index = (i % (data_dim * num_chosen_experts)) % data_dim;
+    assert(i == data_dim * num_chosen_experts * token_index +
+                    data_dim * chosen_exp_index + data_dim_index);
+    int j = data_dim * token_index + data_dim_index;
+    tokens_array[i] = input[j];
   }
-};
+}
 
 /*static*/
 void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
@@ -142,6 +159,15 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   // expert_assignments.end(), slice_indices.begin())).first -
   // expert_assignments.begin();
 
+  int kernel1_parallelism = data_dim * num_tokens * num_chosen_experts;
+  experts_forward_kernel1<<<GET_BLOCKS(kernel1_parallelism),
+                            min(CUDA_NUM_THREADS, (int)kernel1_parallelism),
+                            0,
+                            stream>>>(
+      data_dim, num_chosen_experts, num_tokens, m->dev_sorted_tokens, input);
+
+  // sort by key
+
   // ##########################################################################################################################
 
   if (m->profiling) {
@@ -171,9 +197,9 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
       use_bias(_use_bias), activation(_activation) {
   expert_capacity =
       ceil(alpha * num_chosen_experts / num_experts * effective_batch_size);
-  checkCUDA(
-      cudaMalloc(&dev_sorted_tokens,
-                 data_dim * expert_capacity * num_experts * sizeof(float)));
+  checkCUDA(cudaMalloc(&dev_sorted_tokens,
+                       data_dim * effective_batch_size * num_chosen_experts *
+                           sizeof(float)));
 }
 ExpertsMeta::~ExpertsMeta(void) {
   checkCUDA(cudaFree(&dev_sorted_tokens));
