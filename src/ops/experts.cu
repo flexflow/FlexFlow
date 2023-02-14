@@ -15,7 +15,7 @@
 
 #include "flexflow/ops/experts.h"
 #include "flexflow/utils/cuda_helper.h"
-// #include <thrust/device_vector.h>
+//#include <thrust/device_vector.h>
 
 namespace FlexFlow {
 
@@ -41,8 +41,7 @@ __global__ void experts_forward_kernel1(int data_dim,
     int token_index = i / (data_dim * num_chosen_experts);
     int chosen_exp_index = (i % (data_dim * num_chosen_experts)) / data_dim;
     int data_dim_index = (i % (data_dim * num_chosen_experts)) % data_dim;
-    assert(i == data_dim * num_chosen_experts * token_index +
-                    data_dim * chosen_exp_index + data_dim_index);
+    assert(i == data_dim * num_chosen_experts * token_index + data_dim * chosen_exp_index + data_dim_index);
     int j = data_dim * token_index + data_dim_index;
     tokens_array[i] = input[j];
   }
@@ -128,8 +127,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 
   // // 3. sort the tokens by expert index to which they are assigned
   // thrust::device_vector< int > expert_assignments(indices, indices +
-  // k*num_tokens); thrust::sort_by_key(expert_assignments, expert_assignments +
-  // k*num_tokens, replicated_tokens); // FIX: no operator "+" matches these
+  // k*num_tokens); 
+  //thrust::sort_by_key(expert_assignments, expert_assignments + k*num_tokens, replicated_tokens); // FIX: no operator "+" matches these
   // operands
 
   // // 4. matrix multiply each slice of min(expert_capacity,
@@ -160,13 +159,32 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   // expert_assignments.begin();
 
   int kernel1_parallelism = data_dim * num_tokens * num_chosen_experts;
-  experts_forward_kernel1<<<GET_BLOCKS(kernel1_parallelism),
-                            min(CUDA_NUM_THREADS, (int)kernel1_parallelism),
-                            0,
-                            stream>>>(
-      data_dim, num_chosen_experts, num_tokens, m->dev_sorted_tokens, input);
+  experts_forward_kernel1<<<GET_BLOCKS(kernel1_parallelism), min(CUDA_NUM_THREADS, (int)kernel1_parallelism), 0, stream>>>(data_dim, num_chosen_experts, num_tokens, m->dev_sorted_tokens, input);
 
-  // sort by key
+  // sort tokens by key (where key is the indices with the assignment)
+  // * create a vector of sequential indices (range (1... total_num_tokens)) : original_order
+  // * sort the original_order vector by key, using the same key (indices) used to sort the tokens
+  // -> sorting the tokens vector by the keys in original_order allows us to recover the original order
+
+  
+  // detecting indexes of slices (each slice is the group of tokens assigned to an expert)
+  // -> compute number of tokens assigned to each expert : max_tokens
+  // -> min(max_tokens, expert_capacity)
+  // compute number of experts in block receiving non-zero number of tokens (non_zero_num_experts)
+  
+  // create new array, of size min(max_tokens, expert_capacity) * non_zero_num_experts. Initialize everything to 0.
+  // - copy data from each slice's start_index to min(start_index+expert_capacity, slice end_index) to new array at location non_zero_expert_index * min(max_tokens, expert_capacity).
+  // - create a new original_order_shortened vector where you delete the entries corresponding to tokens that are dropped because the expert capacity has been exceeded. 
+
+  // cublas gemm batched <- pass to the operator the list of weights for non-zero experts
+  
+  // left todo:
+  // remove padding
+  //  -> keep track of how much padding was added to each slice. After gemm batched matmul, remove out_dim*padding_size from each slice to obtain end_index of each slice. Copy each slice of output to an array where you have sequential data
+  // multiply by coefficients
+    //  -> use original_order_shortened vector to reorder the output values according to the original token order 
+    // figure out how to either remove coefficients that map to tokens that have been dropped, or how to add padding to the tokens (in the new order), so that the number of tokens matches the original batch size
+  // using CUBLAS, multiply each output by the corresponding coefficient (now that outputs are in the same order as the coefficients) and sum the outputs for the same token
 
   // ##########################################################################################################################
 
@@ -197,9 +215,9 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
       use_bias(_use_bias), activation(_activation) {
   expert_capacity =
       ceil(alpha * num_chosen_experts / num_experts * effective_batch_size);
-  checkCUDA(cudaMalloc(&dev_sorted_tokens,
-                       data_dim * effective_batch_size * num_chosen_experts *
-                           sizeof(float)));
+  checkCUDA(
+      cudaMalloc(&dev_sorted_tokens,
+                 data_dim * effective_batch_size * num_chosen_experts * sizeof(float)));
 }
 ExpertsMeta::~ExpertsMeta(void) {
   checkCUDA(cudaFree(&dev_sorted_tokens));
