@@ -57,20 +57,6 @@ jobs:
           environment-file: environment.yml
           auto-activate-base: false
 
-      - name: Install conda and Pytorch dependencies for pytorch alignment
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          activate-environment: pytorch
-          environment-file: tests/align/pytorch-alignment.yml
-          auto-activate-base: false
-
-      - name: Install conda and Pytorch dependencies for pytorch alignment
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          activate-environment: pytorch
-          environment-file: tests/align/pytorch-alignment.yml
-          auto-activate-base: false
-
       - name: Build and Install FlexFlow
         run: |
           export FF_HOME=$(pwd)
