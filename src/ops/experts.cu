@@ -21,18 +21,6 @@
 
 namespace FlexFlow {
 
-// struct divide_functor {
-//   __host__ __device__ float operator()(int const &x, int const &y) const {
-//     return x / y;
-//   }
-// };
-
-// struct multiply_functor {
-//   __host__ __device__ float operator()(int const &x, int const &y) const {
-//     return x * y;
-//   }
-// };
-
 __global__ void experts_forward_kernel1(int data_dim,
                                         int num_chosen_experts,
                                         int num_tokens,
@@ -116,12 +104,19 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                  num_chosen_experts * num_tokens * data_dim,
                              thrust_tokens_ptr,
                              thrust::greater<int>());
+
   // get index of each expert block (containing all tokens assigned to the same expert)
   thrust::device_ptr< int > thrust_exp_slice_ptr = thrust::device_pointer_cast(m->dev_exp_slice_indices);
-  thrust::sequence(thrust_exp_slice_ptr.begin(), thrust_exp_slice_ptr.end());
-  int non_zero_tokens_experts  = (thrust::unique_by_key(thrust_indices_ptr.begin(), thrust_indices_ptr.end(), thrust_exp_slice_ptr.begin())).first - thrust_exp_slice_ptr.begin();
-  thrust::device_ptr< int > thrust_dev_tokens_in_use_ptr = thrust::device_pointer_cast(m->dev_tokens_in_use);
-  thrust::copy_n(thrust_exp_slice_ptr.begin(), non_zero_tokens_experts, thrust_dev_tokens_in_use_ptr);
+  thrust::device_ptr< int > thrust_exp_slice_ptr_end = thrust_exp_slice_ptr + num_chosen_experts * num_tokens * data_dim;
+  thrust::sequence(thrust_exp_slice_ptr, thrust_exp_slice_ptr_end);
+  int non_zero_tokens_experts  = (thrust::unique_by_key(thrust_indices_ptr, thrust_indices_ptr + num_chosen_experts * num_tokens * data_dim, thrust_exp_slice_ptr)).first - thrust_exp_slice_ptr;
+
+  thrust::device_ptr< float > thrust_dev_tokens_in_use_ptr = thrust::device_pointer_cast(m->dev_tokens_in_use);
+
+
+  thrust::copy_n(thrust_exp_slice_ptr, non_zero_tokens_experts, thrust_dev_tokens_in_use_ptr);
+
+
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
