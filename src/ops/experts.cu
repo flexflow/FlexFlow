@@ -94,9 +94,9 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                       m->dev_replicated_indices);
 
   // sort the tokens by expert
-  thrust::device_ptr< float > thrust_tokens_ptr =
+  thrust::device_ptr<float> thrust_tokens_ptr =
       thrust::device_pointer_cast(m->dev_sorted_tokens);
-  thrust::device_ptr< int > thrust_indices_ptr =
+  thrust::device_ptr<int> thrust_indices_ptr =
       thrust::device_pointer_cast(m->dev_replicated_indices);
   thrust::stable_sort_by_key(thrust::device,
                              thrust_indices_ptr,
@@ -105,15 +105,26 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                              thrust_tokens_ptr,
                              thrust::greater<int>());
 
-  // get index of each expert block (containing all tokens assigned to the same expert)
-  thrust::device_ptr< int > thrust_exp_slice_ptr = thrust::device_pointer_cast(m->dev_exp_slice_indices);
-  thrust::device_ptr< int > thrust_exp_slice_ptr_end = thrust_exp_slice_ptr + num_chosen_experts * num_tokens * data_dim;
+  // get index of each expert block (containing all tokens assigned to the same
+  // expert)
+  thrust::device_ptr<int> thrust_exp_slice_ptr =
+      thrust::device_pointer_cast(m->dev_exp_slice_indices);
+  thrust::device_ptr<int> thrust_exp_slice_ptr_end =
+      thrust_exp_slice_ptr + num_chosen_experts * num_tokens * data_dim;
   thrust::sequence(thrust_exp_slice_ptr, thrust_exp_slice_ptr_end);
-  int non_zero_tokens_experts  = (thrust::unique_by_key(thrust_indices_ptr, thrust_indices_ptr + num_chosen_experts * num_tokens * data_dim, thrust_exp_slice_ptr)).first - thrust_indices_ptr;
-  thrust::device_ptr< float > thrust_dev_tokens_in_use_ptr = thrust::device_pointer_cast(m->dev_tokens_in_use);
+  int non_zero_tokens_experts =
+      (thrust::unique_by_key(thrust_indices_ptr,
+                             thrust_indices_ptr +
+                                 num_chosen_experts * num_tokens * data_dim,
+                             thrust_exp_slice_ptr))
+          .first -
+      thrust_indices_ptr;
+  thrust::device_ptr<float> thrust_dev_tokens_in_use_ptr =
+      thrust::device_pointer_cast(m->dev_tokens_in_use);
 
-  thrust::copy_n(thrust_exp_slice_ptr, non_zero_tokens_experts, thrust_dev_tokens_in_use_ptr);
-
+  thrust::copy_n(thrust_exp_slice_ptr,
+                 non_zero_tokens_experts,
+                 thrust_dev_tokens_in_use_ptr);
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
@@ -149,7 +160,9 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
                        data_dim * effective_batch_size * num_chosen_experts *
                            sizeof(int)));
   checkCUDA(cudaMalloc(&dev_exp_slice_indices, num_experts * sizeof(int)));
-  checkCUDA(cudaMalloc(&dev_tokens_in_use, data_dim * expert_capacity * num_experts * sizeof(float)));
+  checkCUDA(
+      cudaMalloc(&dev_tokens_in_use,
+                 data_dim * expert_capacity * num_experts * sizeof(float)));
 }
 ExpertsMeta::~ExpertsMeta(void) {
   checkCUDA(cudaFree(&dev_sorted_tokens));
