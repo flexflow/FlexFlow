@@ -109,13 +109,10 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   thrust::device_ptr< int > thrust_exp_slice_ptr = thrust::device_pointer_cast(m->dev_exp_slice_indices);
   thrust::device_ptr< int > thrust_exp_slice_ptr_end = thrust_exp_slice_ptr + num_chosen_experts * num_tokens * data_dim;
   thrust::sequence(thrust_exp_slice_ptr, thrust_exp_slice_ptr_end);
-  int non_zero_tokens_experts  = (thrust::unique_by_key(thrust_indices_ptr, thrust_indices_ptr + num_chosen_experts * num_tokens * data_dim, thrust_exp_slice_ptr)).first - thrust_exp_slice_ptr;
-
+  int non_zero_tokens_experts  = (thrust::unique_by_key(thrust_indices_ptr, thrust_indices_ptr + num_chosen_experts * num_tokens * data_dim, thrust_exp_slice_ptr)).first - thrust_indices_ptr;
   thrust::device_ptr< float > thrust_dev_tokens_in_use_ptr = thrust::device_pointer_cast(m->dev_tokens_in_use);
 
-
   thrust::copy_n(thrust_exp_slice_ptr, non_zero_tokens_experts, thrust_dev_tokens_in_use_ptr);
-
 
 
   if (m->profiling) {
