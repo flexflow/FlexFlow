@@ -1883,7 +1883,7 @@ namespace {
 std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
     try_one_lambda(std::pair<float, MemorySearchResult> &lambda,
                    Task const *task,
-                   Simulator *&cached_simulator,
+                   std::shared_ptr<Simulator> &cached_simulator,
                    bool perform_memory_search) {
   // Create a new fresh model
   FFModel *model = *((FFModel **)task->args);
@@ -1921,16 +1921,16 @@ std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
            "machine-model-file should not be empty.");
   }
   // Assume this task is running on GPU0
-  if (cached_simulator == nullptr) {
-    cached_simulator =
-        new Simulator(model, model->handlers[0], gpu_mem, machine);
+  if (!cached_simulator) {
+    cached_simulator = std::make_shared<Simulator>(
+        model, model->handlers[0], gpu_mem, machine);
   } else {
     // Update simulator with the new stuff
     cached_simulator->handler = model->handlers[0];
     cached_simulator->memory = gpu_mem;
     cached_simulator->machine = machine;
   }
-  model->simulator = cached_simulator;
+  model->simulator = cached_simulator.get();
 
   // Perform the search
   std::unique_ptr<Graph> curr_best_graph;
@@ -1984,10 +1984,12 @@ bool is_valid_strategy(
     std::vector<std::pair<float, MemorySearchResult>> &lambdas_results,
     Graph *curr_graph,
     std::unordered_map<Node, MachineView> &curr_views,
-    Simulator * const cached_simulator,
+    std::shared_ptr<Simulator> const cached_simulator,
     float memory_threshold) {
   std::cout << "try to check valid for lambda " << lambdas_results.back().first
             << std::endl;
+  assert(cached_simulator.get() != nullptr &&
+         "cached_simulator cannot be nullptr");
 
   // Analyze the strategy and update max_per_device_mem_all_deivces in the
   // lambda_result.
@@ -2053,7 +2055,7 @@ GraphOptimalViewSerialized
 
   std::vector<std::pair<float, MemorySearchResult>> lambdas{};
 
-  Simulator *cached_simulator = nullptr;
+  std::shared_ptr<Simulator> cached_simulator{};
 
   // Optimized graph from the search
   std::unique_ptr<Graph> best_graph;
