@@ -126,3 +126,8 @@ jobs:
           ./tests/cpp_gpu_tests.sh 4
           # Python tests
           ./tests/multi_gpu_tests.sh 4
+
+      - name: Run flexflow alignment with pytorch
+        run: |
+          # run alingment tests
+          ./tests/align/test_all_operators.sh

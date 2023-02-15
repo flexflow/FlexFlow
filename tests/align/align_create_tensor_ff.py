@@ -1,10 +1,5 @@
-from align_utils import parse_create_tensor_args, gen_tensor, create_general_test_tensor_torch, BATCH_SIZE, INPUT_SIZE, SEQ_LENGTH
-from align_ff_utils import (compile_ffmodel, init_ffmodel, run_fwd_bwd,
-                            save_param_ff, save_param_grad_ff, save_tensor_ff,
-                            save_tensor_grad_ff)
 import os
 import sys
-
 import torch
 import argparse
 from flexflow.core import *
@@ -12,6 +7,11 @@ from flexflow.core.flexflow_cffi import Linear, Op, Parameter
 from flexflow.type import AggrMode
 from flexflow.torch.model import GetItemNode, FunctionNode
 sys.path.append("./align/")
+
+from align_utils import parse_create_tensor_args, gen_tensor, create_general_test_tensor_torch, BATCH_SIZE, INPUT_SIZE, SEQ_LENGTH
+from align_ff_utils import (compile_ffmodel, init_ffmodel, run_fwd_bwd,
+                            save_param_ff, save_param_grad_ff, save_tensor_ff,
+                            save_tensor_grad_ff)
 
 
 # set of operaters that have weight/bias
