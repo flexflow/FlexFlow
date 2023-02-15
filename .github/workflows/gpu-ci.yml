@@ -46,6 +46,9 @@ jobs:
   python-interface-check:
     name: Check Python Interface
     runs-on: self-hosted
+    defaults:
+      run:
+        shell: bash -l {0} # required to use an activated conda environment
     needs: gpu-ci-concierge
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
@@ -102,6 +105,11 @@ jobs:
           export FF_HOME=$(pwd)
           ./tests/python_interface_test.sh after-installation
 
+      - name: Run flexflow alignment with pytorch
+        run: |
+          # run alingment tests
+          ./tests/align/test_all_operators.sh
+
   gpu-ci-flexflow:
     name: Single Machine, Multiple GPUs Tests
     runs-on: self-hosted
@@ -141,7 +149,3 @@ jobs:
           # Python tests
           ./tests/multi_gpu_tests.sh 4
 
-      - name: Run flexflow alignment with pytorch
-        run: |
-          # run alingment tests
-          ./tests/align/test_all_operators.sh
