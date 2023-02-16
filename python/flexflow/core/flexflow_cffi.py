@@ -145,6 +145,20 @@ class Divide(Op):
     super(Divide, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# Max
+# -----------------------------------------------------------------------
+class Max(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Max, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Min
+# -----------------------------------------------------------------------
+class Min(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Min, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # ReduceSum
 # -----------------------------------------------------------------------
 class ReduceSum(Op):
@@ -445,6 +459,10 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Multiply(handle, idx, name)
   elif op_type == OpType.DIVIDE:
     return Divide(handle, idx, name)
+  elif op_type == OpType.MAX:
+    return Max(handle, idx, name)
+  elif op_type == OpType.MIN:
+    return Min(handle, idx, name)
   elif op_type == OpType.REDUCE_SUM:
     return ReduceSum(handle, idx, name)
   elif op_type == OpType.MSELOSS:
@@ -706,6 +724,47 @@ class Tensor(object):
     elif np_array.dtype == np.int64:
       raw_ptr = ffi.cast("int64_t*", np_raw_ptr[0])
       ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, True)
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    assert ret_val == True
+    return np_array
+  
+  def get_model_output_gradients(self, ffmodel, comm_type):
+    shape = self.dims
+    if self.data_type == DataType.DT_FLOAT:
+      np_array = np.empty(shape, dtype=np.float32)
+    elif self.data_type == DataType.DT_INT32:
+      np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
+    else:
+      assert 0, f"Unsupported datatype: {self.data_type}"
+    np_raw_ptr = np_array.__array_interface__['data']
+    c_comm_type = enum_to_int(ParameterSyncType, comm_type)
+    if np_array.dtype == np.float32:
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_model_get_output_tensor_float(ffmodel.handle, self.handle, raw_ptr, True)
+    else:
+      assert 0, "unknown data type"
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    assert ret_val == True
+    return np_array
+  
+  def get_model_output_tensor(self, ffmodel):
+    shape = self.dims
+    if self.data_type == DataType.DT_FLOAT:
+      np_array = np.empty(shape, dtype=np.float32)
+    elif self.data_type == DataType.DT_INT32:
+      np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
+    else:
+      assert 0, f"Unsupported datatype: {self.data_type}"
+    np_raw_ptr = np_array.__array_interface__['data']
+    if np_array.dtype == np.float32:
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_model_get_output_tensor_float(ffmodel.handle, self.handle, raw_ptr, False)
+    else:
+      assert 0, "unknown data type"
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
     assert ret_val == True
     return np_array
@@ -1010,6 +1069,44 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
+
+  def max(self, x, y, inplace_a=False, name=None):
+    """Layer that computes the max (element-wise) two input Tensors, :attr:`output = max(x,y)`.
+             
+    :param x: the first input Tensor.
+    :type x: Tensor
+    
+    :param y: the second input Tensor.
+    :type y: Tensor
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_max(self.handle, x.handle, y.handle, inplace_a, c_name)
+    self.add_layer(OpType.MAX, name)
+    return Tensor(handle, owner_op_type=OpType.MAX)
+
+  def min(self, x, y, inplace_a=False, name=None):
+    """Layer that computes the min (element-wise) two input Tensors, :attr:`output = min(x,y)`.
+             
+    :param x: the first input Tensor.
+    :type x: Tensor
+    
+    :param y: the second input Tensor.
+    :type y: Tensor
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_min(self.handle, x.handle, y.handle, inplace_a, c_name)
+    self.add_layer(OpType.MIN, name)
+    return Tensor(handle, owner_op_type=OpType.MIN)
 
   def reduce_sum(self, input, axes, keepdims=False, name=None):
     """Layer that computes the sum of the input Tensor along given axes.
@@ -2160,6 +2257,30 @@ class FFModel(object):
     else:
       op = shared_op
     return op.handle
+  
+  def get_output_tensor(self, ffmodel, data_type):
+    shape = self.dims
+    if data_type == DataType.DT_FLOAT:
+      np_array = np.empty(shape, dtype=np.float32)
+    elif self.data_type == DataType.DT_INT32:
+      np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
+    else:
+      assert 0, f"Unsupported datatype: {self.data_type}"
+    np_raw_ptr = np_array.__array_interface__['data']
+    if np_array.dtype == np.float32:
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, False)
+    elif np_array.dtype == np.int32:
+      raw_ptr = ffi.cast("int*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, False)
+    elif np_array.dtype == np.int64:
+      raw_ptr = ffi.cast("int64_t*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, False)
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    assert ret_val == True
+    return np_array   
 
 # -----------------------------------------------------------------------
 # SGDOptimizer
