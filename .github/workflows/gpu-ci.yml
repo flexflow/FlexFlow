@@ -32,9 +32,6 @@ jobs:
   gpu-ci-concierge:
     name: GPU CI Concierge
     runs-on: ubuntu-20.04
-    defaults:
-      run:
-        shell: bash -l {0} # required to use an activated conda environment
     env:
       FLEXFLOW_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -49,6 +46,9 @@ jobs:
   python-interface-check:
     name: Check Python Interface
     runs-on: self-hosted
+    defaults:
+      run:
+        shell: bash -l {0} # required to use an activated conda environment
     needs: gpu-ci-concierge
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
@@ -62,13 +62,16 @@ jobs:
         with:
           submodules: recursive
           
-      - name: Install flexflow and pytorch conda environments
+      - name: Install conda and FlexFlow dependencies
         uses: conda-incubator/setup-miniconda@v2
         with:
           miniconda-version: "latest"
           activate-environment: flexflow
           environment-file: conda/flexflow-cpu.yml
           auto-activate-base: false
+
+      - name: Install conda and Pytorch dependencies for pytorch alignment test
+        uses: conda-incubator/setup-miniconda@v2
         with:
           miniconda-version: "latest"
           activate-environment: pytorch
