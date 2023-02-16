@@ -73,5 +73,6 @@ generate_torch_tensor max
 generate_torch_tensor min
 generate_torch_tensor linear
 
+conda info --envs
 conda activate flexflow
 python -m pytest tests/align/align_test.py
