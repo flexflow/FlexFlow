@@ -32,6 +32,9 @@ jobs:
   gpu-ci-concierge:
     name: GPU CI Concierge
     runs-on: ubuntu-20.04
+    defaults:
+      run:
+        shell: bash -l {0} # required to use an activated conda environment
     env:
       FLEXFLOW_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
