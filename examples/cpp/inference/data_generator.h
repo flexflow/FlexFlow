@@ -1,6 +1,8 @@
+#include <cassert>
 #include <chrono>
 #include <ctime>
 #include <iostream>
+#include <iterator>
 #include <math.h>
 #include <random>
 #include <thread>
@@ -9,38 +11,85 @@ using namespace std;
 typedef std::chrono::high_resolution_clock Clock;
 typedef std::chrono::milliseconds milliseconds;
 
-class Generator {
+class DataGenerator {
 public:
-  size_t num_requests; // total number of requests
-  size_t tensor_size;  // dimension of one request tensor
-  bool poisson;        // false implied uniform distribution
-  double lambda;       // mean #num of arrivals per sec
-
-  Generator(size_t req, size_t tensor, bool poi, double lamb) {
-    num_requests = req;
-    tensor_size = tensor;
-    poisson = poi;
-    lambda = lamb;
-    compute_distribution();
-    arrivals_ptr = arrivals.begin();
-    timer_started = false;
+  DataGenerator(size_t _num_requests,
+                size_t _token_dim,
+                size_t _sequence_length,
+                bool _poisson_distr,
+                double _lambda)
+      : num_requests(_num_requests), token_dim(_token_dim),
+        sequence_length(_sequence_length), poisson_distr(_poisson_distr),
+        lambda(_lambda), timer_started(false) {
+    generate_arrival_times();
   }
 
-  vector<vector<double>> get_requests(void); // function to retrieve requests
+  // Generate random requests by filling each token with random data. For now,
+  // assume all requests have the same sequence length. Also generate random
+  // labels (if label_ptr != nullptr and num_labels >0).
+  void generate_requests(float *req_ptr,
+                         int *label_ptr = nullptr,
+                         int num_labels = 0);
+  void start_timer(void);
+  // Get number of requests that have arrived since the last time this function
+  // was called
+  size_t get_requests(void);
 
 private:
-  bool timer_started; // tracks if start time has been initiated
-  Clock::time_point
-      start_time; // time when get_requests() is called for the first time
-  vector<double> arrivals; // arrival times (ms) generated based on distribution
-  vector<double>::iterator arrivals_ptr; // next request to output
+  // Compute the arrival times of each request and save them in the arrivals
+  // vector.
+  void generate_arrival_times(void);
 
-  void compute_distribution(void);        // populate arrivals
-  vector<double> get_random_tensor(void); // generate a random tensor
+  size_t num_requests;    // total number of requests
+  size_t token_dim;       // embedding dim of each token
+  size_t sequence_length; // dimension of one request tensor
+  bool poisson_distr;     // false implies uniform distribution
+  double lambda;          // mean #num of arrivals per sec
+  bool timer_started;     // whether timer was initiated
+  // time when get_requests() is called for the first time
+  Clock::time_point start_time;
+  // arrival times (ms) generated based on distribution
+  vector<double> arrivals;
+  vector<double>::iterator arrivals_ptr;
 };
 
-void Generator::compute_distribution(void) {
-  // set up uniform number generator [0,1)
+void DataGenerator::generate_requests(float *req_ptr,
+                                      int *label_ptr,
+                                      int num_labels) {
+  assert(req_ptr != nullptr);
+  /* for (size_t i=0; i<num_requests; i++) {
+    for (size_t j=0; j<sequence_length; j++) {
+      for (size_t k=0; k<token_dim; k++) {
+        req_ptr[i * sequence_length + j] = (float)std::rand()/RAND_MAX;
+      }
+    }
+  } */
+  random_device rnd_device;
+  mt19937 mersenne_engine{rnd_device()};
+
+  uniform_real_distribution<float> float_dist{0, 1.0};
+  auto gen = [&float_dist, &mersenne_engine]() {
+    return float_dist(mersenne_engine);
+  };
+  generate(req_ptr, req_ptr + token_dim * sequence_length * num_requests, gen);
+
+  if (label_ptr != nullptr) {
+    assert(num_labels > 0);
+    /* for (size_t i=0; i<num_requests; i++) {
+      for (size_t j=0; j<sequence_length; j++) {
+        label_ptr[i * sequence_length + j] = std::rand() % num_labels;
+      }
+    } */
+    uniform_int_distribution<int> int_dist{0, num_labels};
+    auto gen_label = [&int_dist, &mersenne_engine]() {
+      return int_dist(mersenne_engine);
+    };
+    generate(label_ptr, label_ptr + sequence_length * num_requests, gen_label);
+  }
+};
+
+void DataGenerator::generate_arrival_times(void) {
+  // set up a uniform number generator with range [0,1)
   random_device rnd;
   mt19937 gen(rnd());
   uniform_real_distribution<double> dist{0, 1.0};
@@ -48,9 +97,7 @@ void Generator::compute_distribution(void) {
 
   for (size_t i = 0; i < num_requests; i++) {
     arrivals.push_back(cur_arrival);
-    cout << "arrival time " << i << ": +" << cur_arrival << "ms \n";
-
-    if (poisson) {
+    if (poisson_distr) {
       double u = dist(gen);
       double interval = -(1 / lambda) * log(1 - u) * 1000;
       cur_arrival += interval;
@@ -58,60 +105,30 @@ void Generator::compute_distribution(void) {
       cur_arrival += (1000 / lambda);
     }
   }
-  return;
+  cout << "Arrivals : [";
+  copy(arrivals.begin(), arrivals.end(), ostream_iterator<int>(cout, " "));
+  cout << "]" << endl;
 };
 
-vector<vector<double>> Generator::get_requests(void) {
-  Clock::time_point cur_time = Clock::now();
-  vector<vector<double>> requests;
+void DataGenerator::start_timer(void) {
+  arrivals_ptr = arrivals.begin();
+  start_time = Clock::now();
+  timer_started = true;
+};
+
+size_t DataGenerator::get_requests(void) {
   if (!timer_started) {
-    // simply return one request and start timer for the first call
-    start_time = Clock::now();
-    timer_started = true;
-    arrivals_ptr++;
-    requests.push_back(get_random_tensor());
-    return requests;
+    std::cout << "Warning: tried to get number of requests before the timer "
+                 "was started."
+              << std::endl;
+    return 0;
   }
-
-  // output requests till we reach current timestamp
-  milliseconds ms_from_start =
-      chrono::duration_cast<milliseconds>(cur_time - start_time);
-  while (arrivals_ptr < arrivals.end() &&
-         ms_from_start.count() >= *arrivals_ptr) {
-    cout << "request at arrival time +" << *arrivals_ptr << "\n";
-    requests.push_back(get_random_tensor());
-    arrivals_ptr++;
-  }
-  return requests;
-};
-
-// template <class ForwardIt, class Generator>
-// void generate(ForwardIt first, ForwardIt last, Generator gen) {
-//   while (first != last) {
-//     *first++ = gen();
-//   }
-// }
-
-vector<double> Generator::get_random_tensor(void) {
-  random_device rnd_device;
-  mt19937 mersenne_engine{rnd_device()};
-  uniform_real_distribution<double> dist{0, 1.0}; // state distribution
-
-  auto gen = [&dist, &mersenne_engine]() { return dist(mersenne_engine); };
-
-  vector<double> vec(tensor_size);
-  generate(begin(vec), end(vec), gen);
-  return vec;
-};
-
-// for debugging
-void print_requests(vector<vector<double>> req) {
-  cout << "printing requests\n";
-  for (vector<double> v : req) {
-    for (double e : v) {
-      cout << e << ",";
-    }
-    cout << "\n";
-  }
-  cout << "\n";
-};
+  Clock::time_point cur_time = Clock::now();
+  size_t ms_from_start =
+      chrono::duration_cast<milliseconds>(cur_time - start_time).count();
+  vector<double>::iterator new_arrivals_ptr =
+      upper_bound(arrivals_ptr, arrivals.end(), ms_from_start);
+  size_t received_requests = new_arrivals_ptr - arrivals_ptr;
+  arrivals_ptr = new_arrivals_ptr;
+  return received_requests;
+}
