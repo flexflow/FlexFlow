@@ -49,6 +49,7 @@ jobs:
     defaults:
       run:
         shell: bash -l {0} # required to use an activated conda environment
+    env: CONDA="3"
     needs: gpu-ci-concierge
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
