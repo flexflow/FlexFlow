@@ -62,16 +62,13 @@ jobs:
         with:
           submodules: recursive
           
-      - name: Install conda and FlexFlow dependencies
+      - name: Install flexflow and pytorch conda environments
         uses: conda-incubator/setup-miniconda@v2
         with:
           miniconda-version: "latest"
           activate-environment: flexflow
           environment-file: conda/flexflow-cpu.yml
           auto-activate-base: false
-
-      - name: Install conda and Pytorch dependencies for pytorch alignment test
-        uses: conda-incubator/setup-miniconda@v2
         with:
           miniconda-version: "latest"
           activate-environment: pytorch
