@@ -21,6 +21,7 @@ public:
   int *dev_replicated_indices;
   int *dev_exp_slice_indices;
   float *dev_tokens_in_use;
+  float *dev_gemm_result;
   int num_experts;
   int experts_start_idx;
   int data_dim;

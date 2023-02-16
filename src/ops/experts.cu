@@ -18,6 +18,8 @@
 #define THRUST_IGNORE_DEPRECATED_CPP_DIALECT 1
 #include <thrust/device_ptr.h>
 #include <thrust/sort.h>
+#include <cuda_runtime.h>
+#include <cublas_v2.h>
 
 namespace FlexFlow {
 
@@ -44,6 +46,42 @@ __global__ void experts_forward_kernel1(int data_dim,
     int k = token_index * num_chosen_experts + chosen_exp_index;
     replicated_indices[i] = indices[k];
   }
+}
+
+__global__ void experts_forward_GemmBatched_kernel(cublasHandle_t const handle,
+                                                   void const *input_ptr,
+                                                   void *output_ptr,
+                                                   void const *weight_ptr,
+                                                  //  void const *bias_ptr,
+                                                   int in_dim,
+                                                   int out_dim,
+                                                   int batch_size,
+                                                   int experts_capacity,
+                                                   int experts_num,
+                                                   ffStream_t stream) {
+  // checkCUDA(cublasSetStream(handle, stream));
+  // checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  float alpha = 1.0f, beta = 0.0f;
+  // cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type);
+  // cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type);
+  // cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type);
+  cudaDataType_t input_type = CUDA_R_32F;
+  cudaDataType_t weight_type = CUDA_R_32F;
+  cudaDataType_t output_type = CUDA_R_32F;
+
+
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+
+  cublasGemmBatchedEx(handle, CUBLAS_OP_T, CUBLAS_OP_N, 
+                      out_dim, batch_size, in_dim, // Update this
+                      &alpha, 
+                      weight_ptr, weight_type, in_dim, // Update
+                      input_ptr, input_type, in_dim, // Update
+                      &beta,
+                      output_ptr, output_type, out_dim, // Update
+                      experts_capacity * experts_num, // Update: batch_count
+                      compute_type, 
+                      CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 }
 
 /*static*/
@@ -126,6 +164,23 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                  non_zero_tokens_experts,
                  thrust_dev_tokens_in_use_ptr);
 
+  cublasHandle_t handle;
+  cublasCreate(&handle);
+
+  int total_matrix = expert_capacity * num_experts;
+
+  experts_forward_GemmBatched_kernel(handle,
+                                     thrust::raw_pointer_cast(thrust_dev_tokens_in_use_ptr), // tokens
+                                     m->dev_gemm_result,
+                                     thrust::raw_pointer_cast(thrust_exp_slice_ptr), // experts
+                                    //  bias_ptr,
+                                     data_dim,
+                                     out_dim,
+                                     batch_size,
+                                     expert_capacity,
+                                     num_experts,
+                                     stream);
+
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -163,12 +218,16 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
   checkCUDA(
       cudaMalloc(&dev_tokens_in_use,
                  data_dim * expert_capacity * num_experts * sizeof(float)));
+  checkCUDA(
+      cudaMalloc(&dev_gemm_result,
+                 data_dim * expert_capacity * num_experts * sizeof(float)));
 }
 ExpertsMeta::~ExpertsMeta(void) {
   checkCUDA(cudaFree(&dev_sorted_tokens));
   checkCUDA(cudaFree(&dev_replicated_indices));
   checkCUDA(cudaFree(&dev_exp_slice_indices));
   checkCUDA(cudaFree(&dev_tokens_in_use));
+  checkCUDA(cudaFree(&dev_gemm_result));
 }
 
 }; // namespace FlexFlow
