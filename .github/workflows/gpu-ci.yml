@@ -46,9 +46,6 @@ jobs:
   python-interface-check:
     name: Check Python Interface
     runs-on: self-hosted
-    defaults:
-      run:
-        shell: bash -l {0} # required to use an activated conda environment
     needs: gpu-ci-concierge
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
@@ -56,6 +53,7 @@ jobs:
     steps:
       - name: Install updated git version
         run: sudo add-apt-repository ppa:git-core/ppa -y && sudo apt update -y && sudo apt install -y --no-install-recommends git
+
       - name: Checkout Git Repository
         uses: actions/checkout@v3
         with:
@@ -64,15 +62,17 @@ jobs:
       - name: Install conda and FlexFlow dependencies
         uses: conda-incubator/setup-miniconda@v2
         with:
+          miniconda-version: "latest"
           activate-environment: flexflow
-          environment-file: environment.yml
+          environment-file: conda/flexflow-cpu.yml
           auto-activate-base: false
 
       - name: Install conda and Pytorch dependencies for pytorch alignment test
         uses: conda-incubator/setup-miniconda@v2
         with:
+          miniconda-version: "latest"
           activate-environment: pytorch
-          environment-file: tests/align/pytorch-alignment.yml
+          environment-file: conda/pytorch-gpu.yml
           auto-activate-base: false
 
       - name: Build FlexFlow
