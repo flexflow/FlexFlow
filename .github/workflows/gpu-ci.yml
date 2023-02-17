@@ -73,12 +73,8 @@ jobs:
           auto-activate-base: false
 
       - name: Install conda and Pytorch dependencies for pytorch alignment test
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          miniconda-version: "latest"
-          activate-environment: pytorch
-          environment-file: conda/pytorch-gpu.yml
-          auto-activate-base: false
+        run: |
+          conda env create -f conda/pytorch-gpu.yml
 
       - name: Build FlexFlow
         run: |
