@@ -16,10 +16,10 @@
 #include "flexflow/ops/experts.h"
 #include "flexflow/utils/cuda_helper.h"
 #define THRUST_IGNORE_DEPRECATED_CPP_DIALECT 1
+#include <cublas_v2.h>
+#include <cuda_runtime.h>
 #include <thrust/device_ptr.h>
 #include <thrust/sort.h>
-#include <cuda_runtime.h>
-#include <cublas_v2.h>
 
 namespace FlexFlow {
 
@@ -52,7 +52,7 @@ __global__ void experts_forward_GemmBatched_kernel(cublasHandle_t const handle,
                                                    void const *input_ptr,
                                                    void *output_ptr,
                                                    void const *weight_ptr,
-                                                  //  void const *bias_ptr,
+                                                   //  void const *bias_ptr,
                                                    int in_dim,
                                                    int out_dim,
                                                    int batch_size,
@@ -69,18 +69,27 @@ __global__ void experts_forward_GemmBatched_kernel(cublasHandle_t const handle,
   cudaDataType_t weight_type = CUDA_R_32F;
   cudaDataType_t output_type = CUDA_R_32F;
 
-
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
 
-  cublasGemmBatchedEx(handle, CUBLAS_OP_T, CUBLAS_OP_N, 
-                      out_dim, batch_size, in_dim, // Update this
-                      &alpha, 
-                      weight_ptr, weight_type, in_dim, // Update
-                      input_ptr, input_type, in_dim, // Update
+  cublasGemmBatchedEx(handle,
+                      CUBLAS_OP_T,
+                      CUBLAS_OP_N,
+                      out_dim,
+                      batch_size,
+                      in_dim, // Update this
+                      &alpha,
+                      weight_ptr,
+                      weight_type,
+                      in_dim, // Update
+                      input_ptr,
+                      input_type,
+                      in_dim, // Update
                       &beta,
-                      output_ptr, output_type, out_dim, // Update
+                      output_ptr,
+                      output_type,
+                      out_dim,                        // Update
                       experts_capacity * experts_num, // Update: batch_count
-                      compute_type, 
+                      compute_type,
                       CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 }
 
@@ -131,11 +140,18 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                       indices,
                                       m->dev_replicated_indices);
 
-  // sort the tokens by expert
+  // thrust_tokens_ptr will contain the input tokens replicated k times and
+  // sorted by expert assignment
   thrust::device_ptr<float> thrust_tokens_ptr =
       thrust::device_pointer_cast(m->dev_sorted_tokens);
+  // thrust_indices_ptr contain the expert assignment indices, each replicated
+  // data_dim times
   thrust::device_ptr<int> thrust_indices_ptr =
       thrust::device_pointer_cast(m->dev_replicated_indices);
+  // sort thrust_tokens_ptr by key (expert assignments). Use stable sort to
+  // avoid sorting values that don't have an order (we assign the same index to
+  // all the data_dim floats that represent the same token and we want to make
+  // sure that their order does not change during sorting)
   thrust::stable_sort_by_key(thrust::device,
                              thrust_indices_ptr,
                              thrust_indices_ptr +
@@ -143,13 +159,20 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                              thrust_tokens_ptr,
                              thrust::greater<int>());
 
-  // get index of each expert block (containing all tokens assigned to the same
-  // expert)
+  // given the list of indices (representing the token -> expert assignment) in
+  // thrust_indices_ptr, which have been sorted together with the tokens in the
+  // step above, get the index (i.e. the slot) in the sorted thrust_indices_ptr
+  // where each distinct expert index appears for the first time. Save the
+  // result in thrust_exp_slice_ptr. The result will consist of experts_num
+  // integers, or less if some experts don't receive any token, so their indices
+  // don't appear in the assignments
   thrust::device_ptr<int> thrust_exp_slice_ptr =
       thrust::device_pointer_cast(m->dev_exp_slice_indices);
-  thrust::device_ptr<int> thrust_exp_slice_ptr_end =
-      thrust_exp_slice_ptr + num_chosen_experts * num_tokens * data_dim;
-  thrust::sequence(thrust_exp_slice_ptr, thrust_exp_slice_ptr_end);
+  thrust::sequence(thrust_exp_slice_ptr,
+                   thrust_exp_slice_ptr +
+                       num_chosen_experts * num_tokens * data_dim);
+  // non_zero_tokens_experts holds the number of experts receiving at least one
+  // token
   int non_zero_tokens_experts =
       (thrust::unique_by_key(thrust_indices_ptr,
                              thrust_indices_ptr +
@@ -169,17 +192,18 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 
   int total_matrix = expert_capacity * num_experts;
 
-  experts_forward_GemmBatched_kernel(handle,
-                                     thrust::raw_pointer_cast(thrust_dev_tokens_in_use_ptr), // tokens
-                                     m->dev_gemm_result,
-                                     thrust::raw_pointer_cast(thrust_exp_slice_ptr), // experts
-                                    //  bias_ptr,
-                                     data_dim,
-                                     out_dim,
-                                     batch_size,
-                                     expert_capacity,
-                                     num_experts,
-                                     stream);
+  experts_forward_GemmBatched_kernel(
+      handle,
+      thrust::raw_pointer_cast(thrust_dev_tokens_in_use_ptr), // tokens
+      m->dev_gemm_result,
+      thrust::raw_pointer_cast(thrust_exp_slice_ptr), // experts
+                                                      //  bias_ptr,
+      data_dim,
+      out_dim,
+      batch_size,
+      expert_capacity,
+      num_experts,
+      stream);
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
