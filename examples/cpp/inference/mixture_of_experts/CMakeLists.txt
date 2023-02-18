@@ -7,8 +7,7 @@ set(CPU_SRC
   ${FLEXFLOW_CPP_DRV_SRC}
   moe.cc
   dataloader.cc
-  moe.h
-  ../data_generator.h)
+  ../data_generator.cc)
 
 set(GPU_SRC
   dataloader.cu)

@@ -14,7 +14,6 @@
  */
 
 #include "moe.h"
-#include "data_generator.h"
 #include "flexflow/inference.h"
 #include <cstdlib>
 #include <fstream>
@@ -140,6 +139,7 @@ void FlexFlow::top_level_task(Task const *task,
   ParallelTensor input_pt, label_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
   ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
+  label_pt->print("label_pt");
   DataLoader data_loader(ff, moeConfig, data_generator, input_pt, label_pt);
 
   //----------------------- Start timer -----------------------------------

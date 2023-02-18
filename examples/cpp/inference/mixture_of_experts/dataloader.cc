@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include "data_generator.h"
 #include "flexflow/inference.h"
 #include "moe.h"
 #include <cstdlib>
@@ -25,7 +24,6 @@
 #include <unistd.h>
 
 using namespace Legion;
-LegionRuntime::Logger::Category log_app("MoE");
 
 DataLoader::DataLoader(FFModel &ff,
                        MoeConfig const &moeConfig,
@@ -110,7 +108,7 @@ DataLoader::DataLoader(FFModel &ff,
 
   runtime->execute_task(ctx, launcher);
   reset();
-  next_batch(ff);
+  // next_batch(ff);
 }
 
 // =================================================
@@ -128,7 +126,7 @@ void read_cifar100(float *input_ptr, int *label_ptr) {
   file.seekg(0, std::ios::beg);
 
   // each sample: <1 x coarse label><1 x fine label><3072 x pixel>
-  for (std::size_t i = 0; i < NUM_SAMPLES; i++) {
+  for (std::size_t i = 0; i < MAX_NUM_SAMPLES; i++) {
     unsigned char temp = 0;
     file.read((char *)&temp, sizeof(temp)); // coarse label, skip
     file.read((char *)&temp, sizeof(temp));
@@ -236,7 +234,7 @@ void DataLoader::load_entire_dataset(Task const *task,
   }
 
   if (conf->dataset_path.length() == 0) {
-    log_app.print("Input dataset path is empty, using random input samples\n");
+    printf("Input dataset path is empty, using random input samples\n");
     datagen->generate_requests(input_ptr, label_ptr, conf->num_labels);
   } else {
     // here, you can call `read_cifar100(input_ptr, label_ptr);` instead or load

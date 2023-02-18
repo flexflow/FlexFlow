@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "data_generator.h"
 #include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 1000
 #define MNIST_DIMS 28 * 28
@@ -28,15 +29,15 @@ struct MoeConfig {
     token_dim = DATA_DIM;
     sequence_length = 10;
     batch_size = 32;
-    out_dim = 10;
-    num_labels = 10;
+    out_dim = 15;
+    num_labels = out_dim;
     //----------------------- Inference parameters ---------------------
     // total number of requests processed as part of the simulation
-    int total_requests = 256;
-    bool poisson_distribution = true;
+    total_requests = 256;
+    poisson_distribution = true;
     // average number of request arrivals per second
-    double arrival_rate = 25;
-    int num_inflight_batches = 10;
+    arrival_rate = 25;
+    num_inflight_batches = 10;
     //----------------------- MoE layer --------------------------------
     // total number of experts
     num_exp = 128;

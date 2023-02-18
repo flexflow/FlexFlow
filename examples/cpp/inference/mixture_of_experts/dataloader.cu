@@ -107,7 +107,8 @@ void DataLoader::load_label(Task const *task,
   coord_t start_idx = meta->idxs[0];
   size_t size_to_copy =
       (batch_label_domain.get_volume() / batch_size) * meta->num_samples;
-  int const *input_zc = acc_full_label.ptr + meta->idxs[0];
+  int const *input_zc =
+      full_label_ptr + start_idx * label_dim * sequence_length;
   copy_kernel<<<GET_BLOCKS(size_to_copy), CUDA_NUM_THREADS>>>(
       batch_label_ptr, input_zc, size_to_copy);
   checkCUDA(cudaDeviceSynchronize());
