@@ -129,6 +129,40 @@ Tensor FFModel::divide(const Tensor in1,
   return this->binary(OP_EW_DIV, in1, in2, inplace_a, name);
 }
 
+Tensor FFModel::max(const Tensor in1,
+                    const Tensor in2,
+                    bool inplace_a,
+                    char const *name) {
+  return this->binary(OP_EW_MAX, in1, in2, inplace_a, name);
+}
+
+Tensor FFModel::min(const Tensor in1,
+                    const Tensor in2,
+                    bool inplace_a,
+                    char const *name) {
+  return this->binary(OP_EW_MIN, in1, in2, inplace_a, name);
+}
+
+bool ElementBinaryParams::is_valid(
+    std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
+  bool is_valid = true;
+  is_valid &= (input.first.is_valid() & input.second.is_valid());
+  if (!is_valid) {
+    return false;
+  }
+  // is_valid &= (input.first == input.second);
+  ParallelTensorShape A = input.first;
+  ParallelTensorShape B = input.second;
+  int numdim = std::min(A.num_dims, B.num_dims);
+  for (int i = 0; i < numdim; i++) {
+    if (A.dims[i].size > 1 && B.dims[i].size > 1) {
+      if (A.dims[i] != B.dims[i]) {
+        return false;
+      }
+    }
+  }
+  return is_valid;
+}
 
 bool operator==(ElementBinaryParams const &lhs,
                 ElementBinaryParams const &rhs) {
@@ -423,7 +457,8 @@ __host__ void
         ctx, task->regions[1].region.get_index_space());
     // Currently only support broadcast for add and sub
     if (in1_domain != in2_domain) {
-      assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD);
+      assert(m->op_type == OP_EW_SUB || m->op_type == OP_EW_ADD ||
+             m->op_type == OP_EW_MUL);
     }
   }
   float const *in1_ptr = NULL, *in2_ptr = NULL;

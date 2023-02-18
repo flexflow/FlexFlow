@@ -11,10 +11,14 @@
 
 namespace FlexFlow {
 
-class FlatMeta : public OpMeta {
-public:
-  FlatMeta(FFHandler handle) : OpMeta(handle){};
-};
+namespace FlatInput {
+constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
+              REPLICA = 4;
+}
+
+namespace FlatOutput {
+constexpr int NUMDIM = 3, CHANNEL = 0, SAMPLE = 1, REPLICA = 2;
+}
 
 class Flat : public Op {
 public:
@@ -50,20 +54,6 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  static void forward_kernel(float const *input_ptr,
-                             float *output_ptr,
-                             size_t num_elements,
-                             ffStream_t stream);
-  static void forward_kernel_wrapper(float const *input_ptr,
-                                     float *output_ptr,
-                                     size_t num_elements);
-  static void backward_kernel(float *input_grad_ptr,
-                              float const *output_grad_ptr,
-                              size_t num_elements,
-                              ffStream_t stream);
-  static void backward_kernel_wrapper(float *input_grad_ptr,
-                                      float const *output_grad_ptr,
-                                      size_t num_elements);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;

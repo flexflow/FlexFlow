@@ -1,4 +1,4 @@
-/* Copyright 2020 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,14 @@ __global__ void mean_squared_error_avg_loss_backward(float *logit_grad,
                                                      coord_t num_elements) {
   CUDA_KERNEL_LOOP(i, num_elements) {
     logit_grad[i] = logit[i] - label[i];
+  }
+}
+
+__global__ void identity_loss_backward(float *loss_grad,
+                                       float const *loss,
+                                       coord_t num_elements) {
+  CUDA_KERNEL_LOOP(i, num_elements) {
+    loss_grad[i] = 1.0f;
   }
 }
 
@@ -112,6 +120,24 @@ void Loss::mean_squared_error_avg_loss_backward_kernel_wrapper(
   // Scale logit gradients by loss->scale_factor
   scale_kernel<<<GET_BLOCKS(logit_grad_volume), CUDA_NUM_THREADS, 0, stream>>>(
       logit_grad_ptr, logit_grad_volume, 0, scale_factor);
+}
+
+void Loss::identity_loss_backward_kernel_wrapper(
+    float *loss_grad_ptr,
+    float const *loss_ptr,
+    size_t loss_volume,
+    size_t loss_grad_volume,
+    float scale_factor) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  identity_loss_backward<<<GET_BLOCKS(loss_volume),
+                           CUDA_NUM_THREADS,
+                           0,
+                           stream>>>(
+      loss_grad_ptr, loss_ptr, loss_volume);
+  // Scale logit gradients by loss->scale_factor
+  scale_kernel<<<GET_BLOCKS(loss_grad_volume), CUDA_NUM_THREADS, 0, stream>>>(
+      loss_grad_ptr, loss_grad_volume, 0, scale_factor);
 }
 
 }; // namespace FlexFlow

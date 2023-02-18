@@ -13,17 +13,28 @@ public:
 
 class TopK : public Op {
 public:
+  using Params = TopKParams;
+  using Input = ParallelTensor;
   TopK(FFModel &model,
        const ParallelTensor input,
        int k,
        bool sorted,
        char const *name);
+  TopK(FFModel &model, TopK const &other, const ParallelTensor input);
+  TopK(FFModel &model,
+       Params const &params,
+       Input const input,
+       char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   void print_layer(FFModel const &model) override {
     assert(0);
   }
+  static Op *
+      create_operator_from_layer(FFModel &model,
+                                 Layer const *layer,
+                                 std::vector<ParallelTensor> const &inputs);
 
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
@@ -37,6 +48,14 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
+  void serialize(Legion::Serializer &s) const override;
+  static PCG::Node deserialize(FFModel &ff,
+                               Legion::Deserializer &d,
+                               ParallelTensor inputs[],
+                               int num_inputs);
+  Op *materialize(FFModel &ff,
+                  ParallelTensor inputs[],
+                  int num_inputs) const override;
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
@@ -72,6 +91,7 @@ public:
                                       size_t batch_size,
                                       int length,
                                       int k);
+  Params get_params() const;
 
 public:
   int k;

@@ -1,4 +1,4 @@
-/* Copyright 2020 Facebook
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -199,9 +199,10 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta *m = (DropoutMeta *)metas->meta[op];
-        Dropout::forward_kernel_wrapper(m,
-                                        my_input_accessor[0].get_float_ptr(),
-                                        my_output_accessor[0].get_float_ptr());
+        Kernels::Dropout::forward_kernel_wrapper(
+            m,
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr());
         break;
       }
       case OP_LINEAR: {
@@ -274,7 +275,9 @@ __host__ void FusedOp::forward_task(Task const *task,
       case OP_EW_ADD:
       case OP_EW_SUB:
       case OP_EW_MUL:
-      case OP_EW_DIV: {
+      case OP_EW_DIV:
+      case OP_EW_MAX:
+      case OP_EW_MIN: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -322,9 +325,10 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
-        Flat::forward_kernel_wrapper(my_input_accessor[0].get_float_ptr(),
-                                     my_output_accessor[0].get_float_ptr(),
-                                     my_input_accessor[0].domain.get_volume());
+        Kernels::Flat::forward_kernel_wrapper(
+            my_input_accessor[0].get_float_ptr(),
+            my_output_accessor[0].get_float_ptr(),
+            my_input_accessor[0].domain.get_volume());
         break;
       }
       case OP_RESHAPE: {
@@ -585,7 +589,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta *m = (DropoutMeta *)metas->meta[op];
-        Dropout::backward_kernel_wrapper(
+        Kernels::Dropout::backward_kernel_wrapper(
             m,
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr());
@@ -665,7 +669,9 @@ __host__ void FusedOp::backward_task(Task const *task,
       case OP_EW_ADD:
       case OP_EW_SUB:
       case OP_EW_MUL:
-      case OP_EW_DIV: {
+      case OP_EW_DIV:
+      case OP_EW_MAX:
+      case OP_EW_MIN: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -719,7 +725,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_grad_accessor[0].domain.get_volume() ==
                my_output_grad_accessor[0].domain.get_volume());
-        Flat::backward_kernel_wrapper(
+        Kernels::Flat::backward_kernel_wrapper(
             my_input_grad_accessor[0].get_float_ptr(),
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].domain.get_volume());

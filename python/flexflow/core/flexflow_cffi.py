@@ -1,4 +1,4 @@
-# Copyright 2020 Stanford University, Los Alamos National Laboratory
+# Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -143,6 +143,27 @@ class Multiply(Op):
 class Divide(Op):
   def __init__(self, handle, idx=None, name=None):
     super(Divide, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Max
+# -----------------------------------------------------------------------
+class Max(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Max, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Min
+# -----------------------------------------------------------------------
+class Min(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Min, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# ReduceSum
+# -----------------------------------------------------------------------
+class ReduceSum(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(ReduceSum, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
 # Conv2D
@@ -372,6 +393,13 @@ class Reshape(Op):
     super(Reshape, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# Gather
+# -----------------------------------------------------------------------
+class Gather(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(Gather, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # Identity
 # -----------------------------------------------------------------------
 class Identity(Op):
@@ -431,6 +459,12 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Multiply(handle, idx, name)
   elif op_type == OpType.DIVIDE:
     return Divide(handle, idx, name)
+  elif op_type == OpType.MAX:
+    return Max(handle, idx, name)
+  elif op_type == OpType.MIN:
+    return Min(handle, idx, name)
+  elif op_type == OpType.REDUCE_SUM:
+    return ReduceSum(handle, idx, name)
   elif op_type == OpType.MSELOSS:
     return MSELoss(handle, idx, name)
   elif op_type == OpType.SCALAR_MULTIPLY:
@@ -479,6 +513,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
     return Pow(handle, idx, name)
   elif op_type == OpType.MEAN:
     return Mean(handle, idx, name)
+  elif op_type == OpType.GATHER:
+    return Gather(handle, idx, name)
   else:
     assert 0, "unknown layer type {}".format(op_type)
     return None
@@ -603,7 +639,7 @@ class Tensor(object):
     array = np.asarray(initializer)
     return array
 
-  def attach_numpy_array(self, ffconfig, np_array):
+  def attach_numpy_array(self, ffmodel, ffconfig, np_array):
     assert np_array.__array_interface__['strides'] == None, "numpy array strides is not None"
     np_shape = np_array.shape
     num_dims = len(np_shape)
@@ -613,7 +649,7 @@ class Tensor(object):
     np_raw_ptr = np_array.__array_interface__['data']
     raw_ptr = ffi.cast("void*", np_raw_ptr[0])
     fflogger.debug("attach numpy array: %s, %s, %s" %( str(np_raw_ptr), str(raw_ptr), hex(np_raw_ptr[0])))
-    self.__attach_raw_ptr(ffconfig, raw_ptr)
+    self.__attach_raw_ptr(ffmodel, ffconfig, raw_ptr)
 
   def detach_numpy_array(self, ffconfig):
     self.__detach_raw_ptr(ffconfig)
@@ -691,6 +727,47 @@ class Tensor(object):
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
     assert ret_val == True
     return np_array
+  
+  def get_model_output_gradients(self, ffmodel, comm_type):
+    shape = self.dims
+    if self.data_type == DataType.DT_FLOAT:
+      np_array = np.empty(shape, dtype=np.float32)
+    elif self.data_type == DataType.DT_INT32:
+      np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
+    else:
+      assert 0, f"Unsupported datatype: {self.data_type}"
+    np_raw_ptr = np_array.__array_interface__['data']
+    c_comm_type = enum_to_int(ParameterSyncType, comm_type)
+    if np_array.dtype == np.float32:
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_model_get_output_tensor_float(ffmodel.handle, self.handle, raw_ptr, True)
+    else:
+      assert 0, "unknown data type"
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    assert ret_val == True
+    return np_array
+  
+  def get_model_output_tensor(self, ffmodel):
+    shape = self.dims
+    if self.data_type == DataType.DT_FLOAT:
+      np_array = np.empty(shape, dtype=np.float32)
+    elif self.data_type == DataType.DT_INT32:
+      np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
+    else:
+      assert 0, f"Unsupported datatype: {self.data_type}"
+    np_raw_ptr = np_array.__array_interface__['data']
+    if np_array.dtype == np.float32:
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_model_get_output_tensor_float(ffmodel.handle, self.handle, raw_ptr, False)
+    else:
+      assert 0, "unknown data type"
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    assert ret_val == True
+    return np_array
 
   def __get_raw_ptr(self, ffmodel, ffconfig, data_type):
     assert data_type == self.data_type, "Tensor check data type"
@@ -753,9 +830,9 @@ class Tensor(object):
     else:
       self.owner_op = convert_op_handle_to_op(op_type, op_handle)
 
-  def __attach_raw_ptr(self, ffconfig, raw_ptr, column_major=True):
+  def __attach_raw_ptr(self, ffmodel, ffconfig, raw_ptr, column_major=True):
     assert self.mapped == False, "Tensor is already mapped."
-    ffc.flexflow_tensor_attach_raw_ptr(self.handle, ffconfig.handle, raw_ptr, column_major)
+    ffc.flexflow_tensor_attach_raw_ptr(self.handle, ffmodel.handle, ffconfig.handle, raw_ptr, column_major)
     self.mapped = True
 
   def __detach_raw_ptr(self, ffconfig):
@@ -992,6 +1069,64 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_divide(self.handle, x.handle, y.handle, inplace_a, c_name)
     self.add_layer(OpType.DIVIDE, name)
     return Tensor(handle, owner_op_type=OpType.DIVIDE)
+
+  def max(self, x, y, inplace_a=False, name=None):
+    """Layer that computes the max (element-wise) two input Tensors, :attr:`output = max(x,y)`.
+             
+    :param x: the first input Tensor.
+    :type x: Tensor
+    
+    :param y: the second input Tensor.
+    :type y: Tensor
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_max(self.handle, x.handle, y.handle, inplace_a, c_name)
+    self.add_layer(OpType.MAX, name)
+    return Tensor(handle, owner_op_type=OpType.MAX)
+
+  def min(self, x, y, inplace_a=False, name=None):
+    """Layer that computes the min (element-wise) two input Tensors, :attr:`output = min(x,y)`.
+             
+    :param x: the first input Tensor.
+    :type x: Tensor
+    
+    :param y: the second input Tensor.
+    :type y: Tensor
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_min(self.handle, x.handle, y.handle, inplace_a, c_name)
+    self.add_layer(OpType.MIN, name)
+    return Tensor(handle, owner_op_type=OpType.MIN)
+
+  def reduce_sum(self, input, axes, keepdims=False, name=None):
+    """Layer that computes the sum of the input Tensor along given axes.
+             
+    :param input: the input Tensor.
+    :type input: Tensor
+    
+    :param axes: the axes along which reduction is applied
+    :type axes: List[int]
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """
+    c_name = get_c_name(name)
+    c_axes = ffi.new("int[]", axes)
+    handle = ffc.flexflow_model_add_reduce_sum(self.handle, input.handle, c_axes, len(axes), keepdims, c_name)
+    self.add_layer(OpType.REDUCE_SUM, name)
+    return Tensor(handle, owner_op_type=OpType.REDUCE_SUM)
 
   def rsqrt(self, input, name=None):
     """Layer that computes the element-wise reciprocal square-root.
@@ -1498,6 +1633,28 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_reshape(self.handle, input.handle, len(shape), c_shape, c_name)
     self.add_layer(OpType.RESHAPE, name)
     return Tensor(handle, owner_op_type=OpType.RESHAPE)
+
+  def gather(self, input, index, dim, name=None):
+    """Layer that gathers values along the dim axis.
+    
+    :param input: the input tensor
+    :type input: Tensor
+
+    :param index: the index tensor, which specifies the indices of elements to gather
+    :type index: Tensor
+
+    :param dim: the axis along which to index
+    :type dim: int
+
+    :param name: the name of the layer. Default is None
+    :type name: string
+
+    :returns: Tensor -- the output tensor
+    """
+    c_name = get_c_name(name)
+    handle = ffc.flexflow_model_add_gather(self.handle, input.handle, index.handle, dim, c_name)
+    self.add_layer(OpType.GATHER, name)
+    return Tensor(handle, owner_op_type=OpType.GATHER)
 
   def transpose(self, input, perm, name=None):
     """Transposes the :attr:`input` tensor. Permutes the dimensions according to perm
@@ -2100,6 +2257,30 @@ class FFModel(object):
     else:
       op = shared_op
     return op.handle
+  
+  def get_output_tensor(self, ffmodel, data_type):
+    shape = self.dims
+    if data_type == DataType.DT_FLOAT:
+      np_array = np.empty(shape, dtype=np.float32)
+    elif self.data_type == DataType.DT_INT32:
+      np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
+    else:
+      assert 0, f"Unsupported datatype: {self.data_type}"
+    np_raw_ptr = np_array.__array_interface__['data']
+    if np_array.dtype == np.float32:
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, False)
+    elif np_array.dtype == np.int32:
+      raw_ptr = ffi.cast("int*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, False)
+    elif np_array.dtype == np.int64:
+      raw_ptr = ffi.cast("int64_t*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, False)
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    assert ret_val == True
+    return np_array   
 
 # -----------------------------------------------------------------------
 # SGDOptimizer

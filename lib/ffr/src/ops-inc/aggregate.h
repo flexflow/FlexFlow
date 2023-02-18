@@ -6,7 +6,7 @@
 namespace FlexFlow {
 
 #define AGGREGATE_MAX_K 4
-#define AGGREGATE_MAX_BATCH_SIZE 32
+#define AGGREGATE_MAX_BATCH_SIZE 64
 #define AGGREGATE_MAX_N 12
 
 class AggregateMeta : public OpMeta {
@@ -19,17 +19,30 @@ public:
 
 class Aggregate : public Op {
 public:
+  using Params = AggregateParams;
+  using Input = std::vector<ParallelTensor>;
   Aggregate(FFModel &model,
             ParallelTensor const *inputs,
             int _n,
             float _lambda_bal,
             char const *name);
+  Aggregate(FFModel &model,
+            Aggregate const &other,
+            std::vector<ParallelTensor> const &inputs);
+  Aggregate(FFModel &model,
+            Params const &params,
+            Input const &inputs,
+            char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   void print_layer(FFModel const &model) override {
     assert(0);
   }
+  static Op *
+      create_operator_from_layer(FFModel &model,
+                                 Layer const *layer,
+                                 std::vector<ParallelTensor> const &inputs);
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
@@ -66,9 +79,11 @@ public:
                                       float lambda_bal,
                                       int const batch_size,
                                       int out_dim);
+  void serialize(Legion::Serializer &s) const override;
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
+  Params get_params() const;
 
 public:
   int n;

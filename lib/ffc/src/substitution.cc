@@ -1,4 +1,4 @@
-/* Copyright 2021 CMU, Facebook, LANL, MIT, and Stanford (alphabetical)
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -876,7 +876,9 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     }
     case OP_EW_ADD:
     case OP_EW_SUB:
-    case OP_EW_MUL: {
+    case OP_EW_MUL:
+    case OP_EW_MAX:
+    case OP_EW_MIN: {
       op = model->get_or_create_node<ElementBinary>({inputs[0], inputs[1]},
                                                     {opx->type});
       break;
@@ -3144,6 +3146,11 @@ bool FFModel::convert_graph_to_operators(
             *this, (int)inList.size(), inputs, concat->legion_axis, NULL);
         break;
       }
+      case OP_AGGREGATE: {
+        Aggregate *aggr = (Aggregate *)node.ptr;
+        new_op = new Aggregate(*this, inputs, aggr->n, aggr->lambda_bal, NULL);
+        break;
+      }
       case OP_SPLIT: {
         Split *split = (Split *)node.ptr;
         std::vector<int> splits;
@@ -3159,7 +3166,9 @@ bool FFModel::convert_graph_to_operators(
       }
       case OP_EW_ADD:
       case OP_EW_SUB:
-      case OP_EW_MUL: {
+      case OP_EW_MUL:
+      case OP_EW_MAX:
+      case OP_EW_MIN: {
         assert(inList.size() == 2);
         ElementBinary *eb = (ElementBinary *)node.ptr;
         new_op = new ElementBinary(
