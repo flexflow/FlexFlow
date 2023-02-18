@@ -139,7 +139,6 @@ void FlexFlow::top_level_task(Task const *task,
   ParallelTensor input_pt, label_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
   ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
-  label_pt->print("label_pt");
   DataLoader data_loader(ff, moeConfig, data_generator, input_pt, label_pt);
 
   //----------------------- Start timer -----------------------------------
@@ -156,6 +155,7 @@ void FlexFlow::top_level_task(Task const *task,
   int processed_requests = 0;
   int num_devices = ffConfig.workersPerNode * ffConfig.numNodes;
   data_loader.reset();
+  data_generator.start_timer();
   while (processed_requests < moeConfig.total_requests) {
     size_t received_requests = data_generator.get_requests();
     int iterations = (received_requests % moeConfig.batch_size == 0)
@@ -183,5 +183,5 @@ void FlexFlow::top_level_task(Task const *task,
   double run_time = 1e-6 * (ts_end - ts_start);
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f requests/s\n",
          run_time,
-         moeConfig.total_requests * ffConfig.epochs / run_time);
+         moeConfig.total_requests / run_time);
 }

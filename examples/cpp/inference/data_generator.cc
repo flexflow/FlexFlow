@@ -69,9 +69,9 @@ void DataGenerator::generate_arrival_times(void) {
       cur_arrival += (1000 / lambda);
     }
   }
-  cout << "Arrivals : [";
-  copy(arrivals.begin(), arrivals.end(), ostream_iterator<int>(cout, " "));
-  cout << "]" << endl;
+  // cout << "Arrivals : [";
+  // copy(arrivals.begin(), arrivals.end(), ostream_iterator<int>(cout, " "));
+  // cout << "]" << endl;
 };
 
 void DataGenerator::start_timer(void) {
@@ -94,5 +94,10 @@ size_t DataGenerator::get_requests(void) {
       upper_bound(arrivals_ptr, arrivals.end(), ms_from_start);
   size_t received_requests = new_arrivals_ptr - arrivals_ptr;
   arrivals_ptr = new_arrivals_ptr;
+  if (received_requests > 0) {
+    std::cout << "received " << received_requests
+              << " request(s) by arrival time +" << ms_from_start << "ms"
+              << "\n";
+  }
   return received_requests;
 }

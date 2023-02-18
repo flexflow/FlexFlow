@@ -1,4 +1,3 @@
-
 /* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +34,7 @@ DataLoader::DataLoader(FFModel &ff,
 
   int numdims = input->num_dims;
   int replica_idx = numdims - 1;
-  int batch_idx = numdims - 1;
+  int batch_idx = numdims - 2;
   num_samples = moeConfig.total_requests;
 
   // Create full input
@@ -51,7 +50,8 @@ DataLoader::DataLoader(FFModel &ff,
       // Assume only the first dim can be the replica dim
       assert(i == replica_idx || (!dims[i].is_replica_dim));
     }
-    dims[1].size = num_samples;
+    assert(dims[batch_idx].size == ff.config.batchSize);
+    dims[batch_idx].size = num_samples;
 
     full_input =
         ff.create_parallel_tensor_legion_ordering(numdims, dims, DT_FLOAT);
@@ -90,7 +90,7 @@ DataLoader::DataLoader(FFModel &ff,
   DataLoaderInput const *ptr = &dataloader_input;
 
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
-                        TaskArgument(&ptr, sizeof(DataLoaderInput *)));
+                        TaskArgument(ptr, sizeof(DataLoaderInput)));
   // regions[0]: full_input
   launcher.add_region_requirement(RegionRequirement(full_input->region,
                                                     WRITE_ONLY,
@@ -108,7 +108,6 @@ DataLoader::DataLoader(FFModel &ff,
 
   runtime->execute_task(ctx, launcher);
   reset();
-  // next_batch(ff);
 }
 
 // =================================================
@@ -210,10 +209,9 @@ void DataLoader::load_entire_dataset(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
                                      Context ctx,
                                      Runtime *runtime) {
-  DataLoaderInput const *input_struct = *((DataLoaderInput **)task->args);
-
-  MoeConfig const *conf = &input_struct->_moeConfig;
-  DataGenerator *datagen = &input_struct->_data_generator;
+  DataLoaderInput const input_struct = *((DataLoaderInput *)task->args);
+  MoeConfig const &conf = input_struct._moeConfig;
+  DataGenerator &datagen = input_struct._data_generator;
   assert(regions.size() == 2);
   assert(task->regions.size() == regions.size());
 
@@ -233,9 +231,9 @@ void DataLoader::load_entire_dataset(Task const *task,
     assert(i == 0 || input_dim == label_dim);
   }
 
-  if (conf->dataset_path.length() == 0) {
+  if (conf.dataset_path.length() == 0) {
     printf("Input dataset path is empty, using random input samples\n");
-    datagen->generate_requests(input_ptr, label_ptr, conf->num_labels);
+    datagen.generate_requests(input_ptr, label_ptr, conf.num_labels);
   } else {
     // here, you can call `read_cifar100(input_ptr, label_ptr);` instead or load
     // another dataset using the dataset_path from the MoeConfig object
