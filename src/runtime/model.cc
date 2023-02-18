@@ -584,7 +584,6 @@ ncclComm_t Op::init_nccl_comms_task(Task const *task,
     }
   }
   ncclComm_t ncclComm;
-  printf("all ranks %d, my rank %d, nccl id %d\n", allRanks, myRank, ncclId);
   checkNCCL(ncclCommInitRank(&ncclComm, allRanks, ncclId, myRank));
   // fprintf(stderr, "ncclComm(%p) allRanks(%d) myRank(%d) ncclId(%p)\n",
   //     ncclComm, allRanks, myRank, ncclId);
@@ -3137,7 +3136,6 @@ void FFModel::compile(LossType loss_type,
         ncclUniqueId ncclId = future.get_result<ncclUniqueId>();
         IndexSpace task_is = get_or_create_task_is(view);
         ArgumentMap argmap;
-        printf("unique id %d\n", ncclId);
         IndexLauncher index_launcher(
             NCCL_INIT_COMMS_TASK_ID,
             task_is,
