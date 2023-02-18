@@ -976,7 +976,8 @@ void data_load_task(Legion::Task const *task,
                     Legion::Runtime *runtime);
 
 void register_flexflow_internal_tasks(Legion::Runtime *runtime = NULL,
-                                      bool pre_register = true);
+                                      bool pre_register = true,
+                                      bool enable_control_replication = true);
 
 void register_custom_tasks();
 

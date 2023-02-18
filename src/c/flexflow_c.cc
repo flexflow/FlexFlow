@@ -1859,10 +1859,21 @@ DLRMConfig::DLRMConfig(void)
 
 void flexflow_registration_callback(Machine machine,
                                     Runtime *runtime,
-                                    std::set<Processor> const &local_procs) {
-  register_flexflow_internal_tasks(runtime, false);
-  SingleDataLoader::register_cpu_tasks(runtime, false);
-  SingleDataLoader::register_gpu_tasks(runtime, false);
+                                    std::set<Processor> const &local_procs) 
+{
+  InputArgs const &command_args = Runtime::get_input_args();
+  char **argv = command_args.argv;
+  int argc = command_args.argc;
+  bool enable_control_replication = true;
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "--disable-control-replication")) {
+      enable_control_replication = false;
+      continue;
+    }
+  }
+  register_flexflow_internal_tasks(runtime, false, enable_control_replication);
+  SingleDataLoader::register_cpu_tasks(runtime, false, enable_control_replication);
+  SingleDataLoader::register_gpu_tasks(runtime, false, enable_control_replication);
 }
 
 void flexflow_perform_registration(void) {
