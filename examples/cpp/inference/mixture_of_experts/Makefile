@@ -25,7 +25,7 @@ ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 # Put the binary file name here
 OUTFILE		?= inference_moe
 # List all the application source files here
-GEN_SRC		= moe.cc dataloader.cc ../data_generator.h
+GEN_SRC		= moe.cc dataloader.cc ../data_generator.cc
 GEN_GPU_SRC	= dataloader.cu
 
 ifndef FF_HOME
