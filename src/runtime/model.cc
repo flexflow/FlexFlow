@@ -3698,7 +3698,9 @@ void FFConfig::parse_args(char **argv, int argc) {
   }
 }
 
-void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register, bool enable_control_replication) {
+void register_flexflow_internal_tasks(Runtime *runtime,
+                                      bool pre_register,
+                                      bool enable_control_replication) {
   if (!pre_register) {
     assert(runtime != NULL);
   }

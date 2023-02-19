@@ -441,7 +441,9 @@ void SingleDataLoader::index_load_entire_dataset_from_numpy_with_dim(
   std::cout << std::endl;
 }
 
-void SingleDataLoader::register_cpu_tasks(Runtime *runtime, bool pre_register, bool enable_control_replication) {
+void SingleDataLoader::register_cpu_tasks(Runtime *runtime,
+                                          bool pre_register,
+                                          bool enable_control_replication) {
   if (!pre_register) {
     assert(runtime != NULL);
   }
@@ -567,7 +569,9 @@ void SingleDataLoader::register_cpu_tasks(Runtime *runtime, bool pre_register, b
   }
 }
 
-void SingleDataLoader::register_gpu_tasks(Runtime *runtime, bool pre_register, bool enable_control_replication) {
+void SingleDataLoader::register_gpu_tasks(Runtime *runtime,
+                                          bool pre_register,
+                                          bool enable_control_replication) {
   if (!pre_register) {
     assert(runtime != NULL);
   }
