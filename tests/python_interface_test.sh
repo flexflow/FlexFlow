@@ -26,7 +26,8 @@ check_python_interface() {
 }
 
 
-if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit; fi
+FF_HOME="$(realpath "${BASH_SOURCE[0]%/*}/..")"
+export FF_HOME
 
 installation_status=${1:-"before-installation"}
 echo "Running Python interface tests (installation status: ${installation_status})"

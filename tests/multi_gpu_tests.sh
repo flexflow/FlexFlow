@@ -9,14 +9,15 @@ BATCHSIZE=$(( NUM_NODES * GPUS * 64))
 FSIZE=14048
 ZSIZE=12192
 
-if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit; fi
+FF_HOME="$(realpath "${BASH_SOURCE[0]%/*}/..")"
+export FF_HOME
 
 if [[ $NUM_NODES -gt 1 ]]; then
     export GPUS
     export NUM_NODES
     EXE="$FF_HOME"/tests/multinode_helpers/mpi_wrapper1.sh
 else
-    EXE="$FF_HOME"/python/flexflow_python
+    EXE="$FF_HOME"/python/legion_python
 fi
 
 echo "Running GPU tests with $NUM_NODES node(s) and $GPUS gpu(s)/node"

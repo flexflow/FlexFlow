@@ -4,7 +4,9 @@ set -e
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"
 
-if [ -z "$FF_HOME" ]; then echo "FF_HOME variable is not defined, aborting tests"; exit 1; fi
+FF_HOME="$(realpath "${BASH_SOURCE[0]%/*}/..")"
+export FF_HOME
+
 GPUS=$1
 BATCHSIZE=$((GPUS * 64))
 FSIZE=14048
