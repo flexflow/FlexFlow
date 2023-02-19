@@ -1,10 +1,11 @@
 #! /usr/bin/env bash
 set -e
+set -x
 
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}"
 
-FF_HOME="$(realpath "${BASH_SOURCE[0]%/*}/..")"
+FF_HOME="$(realpath ..)"
 export FF_HOME
 
 GPUS=$1
