@@ -31,7 +31,9 @@ installation_status=${1:-"before-installation"}
 echo "Running Python interface tests (installation status: ${installation_status})"
 if [[ "$installation_status" == "before-installation" ]]; then
 	# Import flexflow.core module in Python
+	export PYTHONPATH="${FF_HOME}/python:${PYTHONPATH}"
 	python -c "import flexflow.core; exit()"
+	unset PYTHONPATH
 	# Run a single-gpu test using the legion_python interpreter
 	check_python_interface legion_python
 	# Run a single-gpu test using the native python interpreter
