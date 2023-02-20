@@ -37,7 +37,7 @@ def rerun_if_needed():
   if os.path.isdir(ff_lib_path) and ff_lib_path not in ld_lib_path.split(":"):
     os.environ["LD_LIBRARY_PATH"] = ff_lib_path + ":" + ld_lib_path
     rerun=True
-  # # if running with the native python interpreter, we may have to add the path to the 
+  # # if running with the native python interpreter, we may have to add the path to the
   # # shared python library file to LD_LIBRARY_PATH
   # pythonlib_folder = os.path.dirname(find_libpython() or "")
   # if os.path.isdir(pythonlib_folder) and pythonlib_folder not in ld_lib_path.split(":"):
@@ -45,7 +45,7 @@ def rerun_if_needed():
   #   rerun=True
   if rerun:
     run_from_python_c = ((sys.argv or [''])[0] == '-c')
-    # re-running with os.execv only works with 'python -c' for python >= 3.10 
+    # re-running with os.execv only works with 'python -c' for python >= 3.10
     # (see https://bugs.python.org/issue23427)
     if not run_from_python_c:
       os.execv(sys.executable, ["python"] + sys.argv)
