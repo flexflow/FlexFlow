@@ -45,9 +45,9 @@ def rerun_if_needed():
     # (see https://bugs.python.org/issue23427)
     if not run_from_python_c:
       os.execv(sys.executable, ["python"] + sys.argv)
-    elif hasattr(sys, 'orig_argv') and len(sys.argv) >= 3:
-      py_args = sys.argv[2:]
-      os.execv(sys.executable, ["python"] + py_args)
+    elif hasattr(sys, 'orig_argv'):
+      if len(sys.orig_argv) >= 3:
+        os.execv(sys.executable, ["python"] + sys.orig_argv[2:])
 
 if flexflow_init_import():
   from legion_cffi import ffi, is_legion_python
