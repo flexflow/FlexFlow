@@ -40,7 +40,7 @@ lines = [
     f'BUILD_FOLDER="{build_dir}"',
     'PYLIB_PATH="$("$PYTHON_FOLDER"/flexflow/findpylib.py)"',
     'PYLIB_DIR="$(dirname "$PYLIB_PATH")"',
-    'export LD_LIBRARY_PATH="$BUILD_FOLDER:$BUILD_FOLDER/deps/legion/lib:$LD_LIBRARY_PATH"',
+    'export LD_LIBRARY_PATH="$BUILD_FOLDER:$BUILD_FOLDER/deps/legion/lib:$PYLIB_DIR:$LD_LIBRARY_PATH"',
     'export PYTHONPATH="$PYTHON_FOLDER:$BUILD_FOLDER/deps/legion/bindings/python:$PYTHONPATH"',
     '$BUILD_FOLDER/deps/legion/bin/legion_python "$@"',
 ]
