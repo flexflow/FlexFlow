@@ -48,7 +48,7 @@ def rerun_if_needed():
     else:
       if hasattr(sys, 'orig_argv'):
         assert(len(sys.orig_argv) >= 3)
-        os.execv(sys.executable, ["python"] + sys.orig_argv[2:])
+        os.execv(sys.executable, ["python"] + sys.orig_argv[1:])
       else:
         print(f'Error: Please export LD_LIBRARY_PATH={os.environ.get("LD_LIBRARY_PATH")} and rerun')
         sys.exit(1)
