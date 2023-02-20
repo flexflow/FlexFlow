@@ -45,9 +45,13 @@ def rerun_if_needed():
     # (see https://bugs.python.org/issue23427)
     if not run_from_python_c:
       os.execv(sys.executable, ["python"] + sys.argv)
-    elif hasattr(sys, 'orig_argv'):
-      if len(sys.orig_argv) >= 3:
+    else:
+      if hasattr(sys, 'orig_argv'):
+        assert(len(sys.orig_argv) >= 3)
         os.execv(sys.executable, ["python"] + sys.orig_argv[2:])
+      else:
+        print(f'Error: Please export LD_LIBRARY_PATH={os.environ.get("LD_LIBRARY_PATH")} and rerun')
+        sys.exit(1)
 
 if flexflow_init_import():
   from legion_cffi import ffi, is_legion_python
