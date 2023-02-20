@@ -33,11 +33,9 @@ if [[ "$installation_status" == "before-installation" ]]; then
 	# Import flexflow.core module in Python
 	export PYTHONPATH="${FF_HOME}/python:${FF_HOME}/build/deps/legion/bindings/python:${PYTHONPATH}"
 	export LD_LIBRARY_PATH="${FF_HOME}/build:${LD_LIBRARY_PATH}"
-	export REALM_DEFAULT_ARGS="-ll:gpu 1"
 	python -c "import flexflow.core; exit()"
 	unset PYTHONPATH
 	unset LD_LIBRARY_PATH
-	unset REALM_DEFAULT_ARGS
 	# Run a single-gpu test using the legion_python interpreter
 	check_python_interface legion_python
 	# Run a single-gpu test using the native python interpreter
