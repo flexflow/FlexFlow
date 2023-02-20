@@ -22,6 +22,25 @@ import os
 import sys
 
 from flexflow.config import *
+from distutils import sysconfig
+from flexflow.findpylib import find_libpython
+
+# When installing FlexFlow with pip, the library files are installed within
+# the pip package folder, instead of at /usr/local/lib
+packages_dir = sysconfig.get_python_lib(plat_specific=False, standard_lib=False)
+ff_lib_path = os.path.join(packages_dir, "flexflow", "lib")
+ld_lib_path = os.environ.get("LD_LIBRARY_PATH") or ""
+# If the library exists at the ff_lib_path, rerun with the ff_lib_path in the LD_LIBRARY_PATH
+rerun=False
+if os.path.isdir(ff_lib_path) and ff_lib_path not in ld_lib_path.split(":"):
+  os.environ["LD_LIBRARY_PATH"] = ff_lib_path + ":" + ld_lib_path
+  rerun=True
+pythonlib_folder = os.path.dirname(find_libpython() or "")
+if os.path.isdir(pythonlib_folder) and pythonlib_folder not in ld_lib_path.split(":"):
+  os.environ["LD_LIBRARY_PATH"] = pythonlib_folder + ":" + ld_lib_path
+  rerun=True
+if rerun:
+  os.execv(sys.executable, ["python"] + sys.argv)
 
 if flexflow_init_import():
   from legion_cffi import ffi, is_legion_python
