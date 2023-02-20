@@ -24,17 +24,21 @@ import sys
 from flexflow.config import *
 
 def rerun_if_needed():
+  def update_ld_library_path_if_needed(path):
+    ld_lib_path = os.environ.get("LD_LIBRARY_PATH") or ""
+    if path not in ld_lib_path.split(":"):
+      os.environ["LD_LIBRARY_PATH"] = path + ":" + ld_lib_path
+      return True
+    return False
   from distutils import sysconfig
   # When installing FlexFlow with pip, the library files are installed within
   # the pip package folder, instead of at /usr/local/lib
   packages_dir = sysconfig.get_python_lib(plat_specific=False, standard_lib=False)
   ff_lib_path = os.path.join(packages_dir, "flexflow", "lib")
-  ld_lib_path = os.environ.get("LD_LIBRARY_PATH") or ""
   # If the library exists at the ff_lib_path, rerun with the ff_lib_path in the LD_LIBRARY_PATH
   rerun=False
-  if os.path.isdir(ff_lib_path) and ff_lib_path not in ld_lib_path.split(":"):
-    os.environ["LD_LIBRARY_PATH"] = ff_lib_path + ":" + ld_lib_path
-    rerun=True
+  if os.path.isdir(ff_lib_path):
+    rerun = update_ld_library_path_if_needed(ff_lib_path)
   if rerun:
     run_from_python_c = ((sys.argv or [''])[0] == '-c')
     # re-running with os.execv only works with 'python -c' for python >= 3.10
@@ -51,6 +55,7 @@ if flexflow_init_import():
   
   # Default python mode
   if is_legion_python == False:
+    os.environ["REALM_DEFAULT_ARGS"] = "-ll:gpu 1"
     rerun_if_needed()
     print("Using Default Python")
     from legion_top import (
