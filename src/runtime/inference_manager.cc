@@ -148,6 +148,10 @@ void InferenceManager::inference(int index) {
     for (int i = 0; i < op->numOutputs; i++) {
       assert(op->outputs[i] != nullptr);
       assert(op->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+      if (op->op_type == OP_INPUT &&
+          tensor_buffer[op->outputs[i]].size() == 0) {
+        continue;
+      }
       assert(tensor_buffer[op->outputs[i]].size() > batch_index);
       outputs[i] = tensor_buffer[op->outputs[i]][batch_index];
       assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);

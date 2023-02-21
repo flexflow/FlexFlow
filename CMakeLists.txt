@@ -378,10 +378,6 @@ if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/MLP_Unify)
 endif()
 
-# if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_INFERENCE_EXAMPLES)
-#   add_subdirectory(examples/cpp/inference/MLP_Unify)
-# endif()
-
 if(FF_BUILD_SPLIT_TEST OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/split_test)
 endif()
@@ -421,7 +417,7 @@ if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/mixture_of_experts)
 endif()
 
-if(FF_BUILD_MOE OR FF_BUILD_ALL_INFERENCE_EXAMPLES)
+if(FF_BUILD_MOE OR FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/inference/mixture_of_experts)
 endif()
 
