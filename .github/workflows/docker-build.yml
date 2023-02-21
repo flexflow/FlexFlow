@@ -8,10 +8,6 @@ on:
   push:
     branches:
       - "master"
-    paths:
-      - "docker/**"
-      - "!docker/README.md"
-      - ".github/workflows/docker-build.yml"
   workflow_dispatch:
 
 # Cancel outdated workflows if they are still running
@@ -59,7 +55,7 @@ jobs:
           FLEXFLOW_CONTAINER_TOKEN: ${{ secrets.FLEXFLOW_CONTAINER_TOKEN }}
           FF_GPU_BACKEND: ${{ matrix.gpu_backend }}
         run: |
-          if [[ ${{ github.event_name }} == 'push' && ${GITHUB_REF#refs/heads/} == "master" ]]; then
+          if [[ ${{ github.event_name }} == 'push' && ${GITHUB_REF#refs/heads/} == "master" && ${{ github.repository_owner }} == 'flexflow' ]]; then
             ./docker/publish.sh "flexflow-environment-${FF_GPU_BACKEND}"
             ./docker/publish.sh "flexflow-${FF_GPU_BACKEND}"
           else

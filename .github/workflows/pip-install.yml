@@ -4,6 +4,7 @@ on:
     paths:
       - "cmake/**"
       - "config/**"
+      - "deps/**"
       - "python/**"
       - "setup.py"
       - ".github/workflows/helpers/install_dependencies.sh"
@@ -14,6 +15,7 @@ on:
     paths:
       - "cmake/**"
       - "config/**"
+      - "deps/**"
       - "python/**"
       - "setup.py"
       - ".github/workflows/helpers/install_dependencies.sh"

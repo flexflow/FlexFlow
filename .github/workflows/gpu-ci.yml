@@ -4,6 +4,7 @@ on:
     paths:
       - "cmake/**"
       - "config/**"
+      - "deps/**"
       - "python/**"
       - "setup.py"
       - "include/**"
@@ -16,6 +17,7 @@ on:
     paths:
       - "cmake/**"
       - "config/**"
+      - "deps/**"
       - "python/**"
       - "setup.py"
       - "include/**"
