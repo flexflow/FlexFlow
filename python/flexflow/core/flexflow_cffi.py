@@ -727,6 +727,47 @@ class Tensor(object):
     fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
     assert ret_val == True
     return np_array
+  
+  def get_model_output_gradients(self, ffmodel, comm_type):
+    shape = self.dims
+    if self.data_type == DataType.DT_FLOAT:
+      np_array = np.empty(shape, dtype=np.float32)
+    elif self.data_type == DataType.DT_INT32:
+      np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
+    else:
+      assert 0, f"Unsupported datatype: {self.data_type}"
+    np_raw_ptr = np_array.__array_interface__['data']
+    c_comm_type = enum_to_int(ParameterSyncType, comm_type)
+    if np_array.dtype == np.float32:
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_model_get_output_tensor_float(ffmodel.handle, self.handle, raw_ptr, True)
+    else:
+      assert 0, "unknown data type"
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    assert ret_val == True
+    return np_array
+  
+  def get_model_output_tensor(self, ffmodel):
+    shape = self.dims
+    if self.data_type == DataType.DT_FLOAT:
+      np_array = np.empty(shape, dtype=np.float32)
+    elif self.data_type == DataType.DT_INT32:
+      np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
+    else:
+      assert 0, f"Unsupported datatype: {self.data_type}"
+    np_raw_ptr = np_array.__array_interface__['data']
+    if np_array.dtype == np.float32:
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_model_get_output_tensor_float(ffmodel.handle, self.handle, raw_ptr, False)
+    else:
+      assert 0, "unknown data type"
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    assert ret_val == True
+    return np_array
 
   def __get_raw_ptr(self, ffmodel, ffconfig, data_type):
     assert data_type == self.data_type, "Tensor check data type"
@@ -2216,6 +2257,30 @@ class FFModel(object):
     else:
       op = shared_op
     return op.handle
+  
+  def get_output_tensor(self, ffmodel, data_type):
+    shape = self.dims
+    if data_type == DataType.DT_FLOAT:
+      np_array = np.empty(shape, dtype=np.float32)
+    elif self.data_type == DataType.DT_INT32:
+      np_array = np.empty(shape, dtype=np.int32)
+    elif self.data_type == DataType.DT_INT64:
+      np_array = np.empty(shape, dtype=np.int64)
+    else:
+      assert 0, f"Unsupported datatype: {self.data_type}"
+    np_raw_ptr = np_array.__array_interface__['data']
+    if np_array.dtype == np.float32:
+      raw_ptr = ffi.cast("float*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_float(self.handle, ffmodel.handle, raw_ptr, False)
+    elif np_array.dtype == np.int32:
+      raw_ptr = ffi.cast("int*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_int(self.handle, ffmodel.handle, raw_ptr, False)
+    elif np_array.dtype == np.int64:
+      raw_ptr = ffi.cast("int64_t*", np_raw_ptr[0])
+      ret_val = ffc.flexflow_tensor_get_tensor_int64(self.handle, ffmodel.handle, raw_ptr, False)
+    fflogger.debug("get weights raw_ptr: %s, %s, %s, %s" %( str(raw_ptr), str(np_raw_ptr[0]), hex(np_raw_ptr[0]), str(shape)))
+    assert ret_val == True
+    return np_array   
 
 # -----------------------------------------------------------------------
 # SGDOptimizer
