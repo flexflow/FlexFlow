@@ -62,16 +62,19 @@ if flexflow_init_import():
     os.environ["REALM_DEFAULT_ARGS"] = "-ll:gpu 1"
     rerun_if_needed()
     print("Using Default Python")
-    from legion_top import (
-        legion_canonical_python_main,
-        legion_canonical_python_cleanup,
-    )
-    import atexit, sys, os
-    sys_argv = [
-      "python",
-    ] + sys.argv
-    legion_canonical_python_main(sys_argv)
-    atexit.register(legion_canonical_python_cleanup)
+    _FF_BUILD_DOCS = bool(os.environ.get('READTHEDOCS') or os.environ.get("FF_BUILD_DOCS"))
+    _CPU_ONLY = bool(os.environ.get('CPU_ONLY_TEST'))
+    if not _FF_BUILD_DOCS and not _CPU_ONLY:
+      from legion_top import (
+          legion_canonical_python_main,
+          legion_canonical_python_cleanup,
+      )
+      import atexit, sys, os
+      sys_argv = [
+        "python",
+      ] + sys.argv
+      legion_canonical_python_main(sys_argv)
+      atexit.register(legion_canonical_python_cleanup)
   else:
     print("Using Legion Python")
 
