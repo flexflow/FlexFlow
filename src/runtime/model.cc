@@ -2676,7 +2676,9 @@ Op *FFModel::create_operator_from_layer(
     case OP_EW_ADD:
     case OP_EW_SUB:
     case OP_EW_MUL:
-    case OP_EW_DIV: {
+    case OP_EW_DIV:
+    case OP_EW_MAX:
+    case OP_EW_MIN: {
       Op *op = ElementBinary::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
@@ -3696,7 +3698,9 @@ void FFConfig::parse_args(char **argv, int argc) {
   }
 }
 
-void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
+void register_flexflow_internal_tasks(Runtime *runtime,
+                                      bool pre_register,
+                                      bool enable_control_replication) {
   if (!pre_register) {
     assert(runtime != NULL);
   }
@@ -3710,6 +3714,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
                                         UtilityTasks::init_cuda_task>(
           registrar, "cuda_init_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<FFHandler, UtilityTasks::init_cuda_task>(
           registrar);
     }
@@ -3724,6 +3731,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, ElementUnary::init_task>(
           registrar, "ElementWiseUnary Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, ElementUnary::init_task>(
           registrar);
     }
@@ -3737,6 +3747,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<ElementUnary::forward_task>(
           registrar, "ElementWiseUnary Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<ElementUnary::forward_task>(registrar);
     }
   }
@@ -3749,6 +3762,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<ElementUnary::backward_task>(
           registrar, "ElementWiseUnary Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<ElementUnary::backward_task>(registrar);
     }
   }
@@ -3762,6 +3778,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, ElementBinary::init_task>(
           registrar, "ElementWiseBinary Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, ElementBinary::init_task>(
           registrar);
     }
@@ -3775,6 +3794,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<ElementBinary::forward_task>(
           registrar, "ElementWiseBinary Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<ElementBinary::forward_task>(registrar);
     }
   }
@@ -3787,6 +3809,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<ElementBinary::backward_task>(
           registrar, "ElementWiseBinary Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<ElementBinary::backward_task>(registrar);
     }
   }
@@ -3799,6 +3824,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Cast::init_task>(
           registrar, "Cast Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Cast::init_task>(registrar);
     }
   }
@@ -3810,6 +3838,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Cast::forward_task>(
           registrar, "Cast Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Cast::forward_task>(registrar);
     }
   }
@@ -3821,6 +3852,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Cast::backward_task>(
           registrar, "Cast Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Cast::backward_task>(registrar);
     }
   }
@@ -3833,6 +3867,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Conv2D::init_task>(
           registrar, "Conv2D Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Conv2D::init_task>(registrar);
     }
   }
@@ -3844,6 +3881,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Conv2D::forward_task>(
           registrar, "Conv2D Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Conv2D::forward_task>(registrar);
     }
   }
@@ -3855,6 +3895,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Conv2D::backward_task>(
           registrar, "Conv2D Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Conv2D::backward_task>(registrar);
     }
   }
@@ -3874,6 +3917,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Dropout::init_task>(
           registrar, "Dropout Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Dropout::init_task>(registrar);
     }
   }
@@ -3885,6 +3931,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Dropout::forward_task>(
           registrar, "Dropout Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Dropout::forward_task>(registrar);
     }
   }
@@ -3896,6 +3945,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Dropout::backward_task>(
           registrar, "Dropout Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Dropout::backward_task>(registrar);
     }
   }
@@ -3908,6 +3960,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Embedding::init_task>(
           registrar, "Embedding Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Embedding::init_task>(registrar);
     }
   }
@@ -3919,6 +3974,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Embedding::forward_task>(
           registrar, "Embedding Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Embedding::forward_task>(registrar);
     }
   }
@@ -3930,6 +3988,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Embedding::backward_task>(
           registrar, "Embedding Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Embedding::backward_task>(registrar);
     }
   }
@@ -3957,6 +4018,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Gather::init_task>(
           registrar, "Gather Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Gather::init_task>(registrar);
     }
   }
@@ -3968,6 +4032,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Gather::forward_task>(
           registrar, "Gather Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Gather::forward_task>(registrar);
     }
   }
@@ -3979,6 +4046,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Gather::backward_task>(
           registrar, "Gather Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Gather::backward_task>(registrar);
     }
   }
@@ -3992,6 +4062,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Cache::init_task>(
           registrar, "Cache Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Cache::init_task>(registrar);
     }
   }
@@ -4003,6 +4076,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Cache::forward_task>(
           registrar, "Cache Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Cache::forward_task>(registrar);
     }
   }
@@ -4014,6 +4090,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<float, Cache::update_task>(
           registrar, "Cache Update Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<float, Cache::update_task>(registrar);
     }
   }
@@ -4026,6 +4105,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Group_by::init_task>(
           registrar, "Group_by Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Group_by::init_task>(registrar);
     }
   }
@@ -4037,6 +4119,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Group_by::forward_task>(
           registrar, "Group_by Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Group_by::forward_task>(registrar);
     }
   }
@@ -4048,6 +4133,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Group_by::backward_task>(
           registrar, "Group_by Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Group_by::backward_task>(registrar);
     }
   }
@@ -4061,6 +4149,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Aggregate::init_task>(
           registrar, "Aggregate Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Aggregate::init_task>(registrar);
     }
   }
@@ -4072,6 +4163,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Aggregate::forward_task>(
           registrar, "Aggregate Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Aggregate::forward_task>(registrar);
     }
   }
@@ -4083,6 +4177,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Aggregate::backward_task>(
           registrar, "Aggregate Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Aggregate::backward_task>(registrar);
     }
   }
@@ -4097,6 +4194,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, AggregateSpec::init_task>(
           registrar, "Aggregate specification Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, AggregateSpec::init_task>(
           registrar);
     }
@@ -4110,6 +4210,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<AggregateSpec::forward_task>(
           registrar, "Aggregate specification Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<AggregateSpec::forward_task>(registrar);
     }
   }
@@ -4122,6 +4225,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<AggregateSpec::backward_task>(
           registrar, "Aggregate specification Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<AggregateSpec::backward_task>(registrar);
     }
   }
@@ -4135,6 +4241,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Pool2D::init_task>(
           registrar, "pool2d_init_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Pool2D::init_task>(registrar);
     }
   }
@@ -4146,6 +4255,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Pool2D::forward_task>(
           registrar, "pool2d_fwd_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Pool2D::forward_task>(registrar);
     }
   }
@@ -4157,6 +4269,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Pool2D::backward_task>(
           registrar, "pool2d_bwd_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Pool2D::backward_task>(registrar);
     }
   }
@@ -4169,6 +4284,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, BatchNorm::init_task>(
           registrar, "bn_init_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, BatchNorm::init_task>(registrar);
     }
   }
@@ -4180,6 +4298,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<BatchNorm::forward_task>(registrar,
                                                                  "bn_fwd_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<BatchNorm::forward_task>(registrar);
     }
   }
@@ -4191,6 +4312,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<BatchNorm::backward_task>(
           registrar, "bn_bwd_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<BatchNorm::backward_task>(registrar);
     }
   }
@@ -4204,6 +4328,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, BatchMatmul::init_task>(
           registrar, "BatchMatmul Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, BatchMatmul::init_task>(
           registrar);
     }
@@ -4217,6 +4344,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<BatchMatmul::forward_task>(
           registrar, "BatchMatmul Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<BatchMatmul::forward_task>(registrar);
     }
   }
@@ -4229,6 +4359,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<BatchMatmul::backward_task>(
           registrar, "BatchMatmul Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<BatchMatmul::backward_task>(registrar);
     }
   }
@@ -4242,6 +4375,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, LayerNorm::init_task>(
           registrar, "layernorm_init_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, LayerNorm::init_task>(registrar);
     }
   }
@@ -4253,6 +4389,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<LayerNorm::forward_task>(
           registrar, "layernorm_fwd_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<LayerNorm::forward_task>(registrar);
     }
   }
@@ -4264,6 +4403,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<LayerNorm::backward_task>(
           registrar, "layernorm_bwd_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<LayerNorm::backward_task>(registrar);
     }
   }
@@ -4276,6 +4418,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Linear::init_task>(
           registrar, "Linear Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Linear::init_task>(registrar);
     }
   }
@@ -4287,6 +4432,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Linear::forward_task>(
           registrar, "Linear Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Linear::forward_task>(registrar);
     }
   }
@@ -4298,6 +4446,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Linear::backward_task>(
           registrar, "Linear Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Linear::backward_task>(registrar);
     }
   }
@@ -4310,6 +4461,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Flat::init_task>(
           registrar, "flat_init_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Flat::init_task>(registrar);
     }
   }
@@ -4321,6 +4475,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Flat::forward_task>(registrar,
                                                             "flat_fwd_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Flat::forward_task>(registrar);
     }
   }
@@ -4332,6 +4489,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Flat::backward_task>(registrar,
                                                              "flat_bwd_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Flat::backward_task>(registrar);
     }
   }
@@ -4344,6 +4504,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Softmax::init_task>(
           registrar, "softmax_init_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Softmax::init_task>(registrar);
     }
   }
@@ -4355,6 +4518,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Softmax::forward_task>(
           registrar, "softmax_fwd_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Softmax::forward_task>(registrar);
     }
   }
@@ -4366,6 +4532,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Softmax::backward_task>(
           registrar, "softmax_bwd_task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Softmax::backward_task>(registrar);
     }
   }
@@ -4378,6 +4547,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Loss::backward_task>(
           registrar, "Loss Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Loss::backward_task>(registrar);
     }
   }
@@ -4390,6 +4562,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<PerfMetrics, Metrics::compute_task>(
           registrar, "Metrics Compute Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<PerfMetrics, Metrics::compute_task>(
           registrar);
     }
@@ -4412,6 +4587,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
                                         FFModel::update_metrics_task>(
           registrar, "Update Metrics Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<PerfMetrics, FFModel::update_metrics_task>(
           registrar);
     }
@@ -4425,6 +4603,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Concat::init_task>(
           registrar, "Concat Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Concat::init_task>(registrar);
     }
   }
@@ -4436,6 +4617,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Concat::forward_task>(
           registrar, "Concat Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Concat::forward_task>(registrar);
     }
   }
@@ -4447,6 +4631,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Concat::backward_task>(
           registrar, "Concat Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Concat::backward_task>(registrar);
     }
   }
@@ -4459,6 +4646,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Split::init_task>(
           registrar, "Split Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Split::init_task>(registrar);
     }
   }
@@ -4470,6 +4660,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Split::forward_task>(
           registrar, "Split Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Split::forward_task>(registrar);
     }
   }
@@ -4481,6 +4674,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Split::backward_task>(
           registrar, "Split Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Split::backward_task>(registrar);
     }
   }
@@ -4493,6 +4689,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Reduce::init_task>(
           registrar, "Reduce Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Reduce::init_task>(registrar);
     }
   }
@@ -4504,6 +4703,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Reduce::forward_task>(
           registrar, "Reduce Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Reduce::forward_task>(registrar);
     }
   }
@@ -4515,6 +4717,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Reduce::backward_task>(
           registrar, "Reduce Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Reduce::backward_task>(registrar);
     }
   }
@@ -4527,6 +4732,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Reshape::init_task>(
           registrar, "Reshape Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Reshape::init_task>(registrar);
     }
   }
@@ -4538,6 +4746,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Reshape::forward_task>(
           registrar, "Reshape Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Reshape::forward_task>(registrar);
     }
   }
@@ -4549,6 +4760,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Reshape::backward_task>(
           registrar, "Reshape Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Reshape::backward_task>(registrar);
     }
   }
@@ -4561,6 +4775,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Reverse::init_task>(
           registrar, "Reverse Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Reverse::init_task>(registrar);
     }
   }
@@ -4572,6 +4789,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Reverse::forward_task>(
           registrar, "Reverse Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Reverse::forward_task>(registrar);
     }
   }
@@ -4583,6 +4803,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Reverse::backward_task>(
           registrar, "Reverse Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Reverse::backward_task>(registrar);
     }
   }
@@ -4595,6 +4818,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, TopK::init_task>(
           registrar, "TopK Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, TopK::init_task>(registrar);
     }
   }
@@ -4606,6 +4832,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<TopK::forward_task>(
           registrar, "TopK Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<TopK::forward_task>(registrar);
     }
   }
@@ -4617,6 +4846,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<TopK::backward_task>(
           registrar, "TopK Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<TopK::backward_task>(registrar);
     }
   }
@@ -4629,6 +4861,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Transpose::init_task>(
           registrar, "Transpose Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Transpose::init_task>(registrar);
     }
   }
@@ -4640,6 +4875,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Transpose::forward_task>(
           registrar, "Transpose Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Transpose::forward_task>(registrar);
     }
   }
@@ -4651,6 +4889,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Transpose::backward_task>(
           registrar, "Transpose Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Transpose::backward_task>(registrar);
     }
   }
@@ -4665,6 +4906,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
                                         MultiHeadAttention::init_task>(
           registrar, "MultiHeadAttention Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, MultiHeadAttention::init_task>(
           registrar);
     }
@@ -4678,6 +4922,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<MultiHeadAttention::forward_task>(
           registrar, "MultiHeadAttention Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<MultiHeadAttention::forward_task>(
           registrar);
     }
@@ -4691,6 +4938,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<MultiHeadAttention::backward_task>(
           registrar, "MultiHeadAttention Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<MultiHeadAttention::backward_task>(
           registrar);
     }
@@ -4704,6 +4954,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, NoOp::init_task>(
           registrar, "Weight NCCL Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, NoOp::init_task>(registrar);
     }
   }
@@ -4716,6 +4969,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, FusedOp::init_task>(
           registrar, "FusedOp Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, FusedOp::init_task>(registrar);
     }
   }
@@ -4727,6 +4983,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<FusedOp::forward_task>(
           registrar, "FusedOp Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<FusedOp::forward_task>(registrar);
     }
   }
@@ -4738,6 +4997,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<FusedOp::backward_task>(
           registrar, "FusedOp Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<FusedOp::backward_task>(registrar);
     }
   }
@@ -4752,6 +5014,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Repartition::init_task>(
           registrar, "Repartition init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Repartition::init_task>(
           registrar);
     }
@@ -4765,6 +5030,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Repartition::forward_task>(
           registrar, "Repartition Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Repartition::forward_task>(registrar);
     }
   }
@@ -4777,6 +5045,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Repartition::backward_task>(
           registrar, "Repartition Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Repartition::backward_task>(registrar);
     }
   }
@@ -4789,6 +5060,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<OpMeta *, Combine::init_task>(
           registrar, "Combine init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<OpMeta *, Combine::init_task>(registrar);
     }
   }
@@ -4800,6 +5074,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Combine::forward_task>(
           registrar, "Combine Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Combine::forward_task>(registrar);
     }
   }
@@ -4811,6 +5088,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Combine::backward_task>(
           registrar, "Combine Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Combine::backward_task>(registrar);
     }
   }
@@ -4823,6 +5103,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Replicate::forward_task>(
           registrar, "Replicate Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Replicate::forward_task>(registrar);
     }
   }
@@ -4834,6 +5117,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Replicate::backward_task>(
           registrar, "Replicate Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Replicate::backward_task>(registrar);
     }
   }
@@ -4846,6 +5132,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Reduction::forward_task>(
           registrar, "Reduction Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Reduction::forward_task>(registrar);
     }
   }
@@ -4857,6 +5146,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Reduction::backward_task>(
           registrar, "Reduction Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Reduction::backward_task>(registrar);
     }
   }
@@ -4870,6 +5162,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<FusedParallelOp::forward_task>(
           registrar, "FusedParallel Forward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<FusedParallelOp::forward_task>(registrar);
     }
   }
@@ -4882,6 +5177,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<FusedParallelOp::backward_task>(
           registrar, "FusedParallel Backward Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<FusedParallelOp::backward_task>(registrar);
     }
   }
@@ -4895,6 +5193,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<SGDOptimizer::ps_update_task>(
           registrar, "SGD Parameter Server Update Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<SGDOptimizer::ps_update_task>(registrar);
     }
   }
@@ -4907,6 +5208,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<AdamOptimizer::ps_update_task>(
           registrar, "Adam Parameter Server Update Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<AdamOptimizer::ps_update_task>(registrar);
     }
   }
@@ -4919,6 +5223,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<SGDOptimizer::nccl_update_task>(
           registrar, "SGD NCCL Update Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<SGDOptimizer::nccl_update_task>(registrar);
     }
   }
@@ -4930,6 +5237,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<AdamOptimizer::nccl_update_task>(
           registrar, "Adam NCCL Update Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<AdamOptimizer::nccl_update_task>(
           registrar);
     }
@@ -4944,6 +5254,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<ZeroInitializer::init_task_cpu>(
           registrar, "Zero Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<ZeroInitializer::init_task_cpu>(registrar);
     }
   }
@@ -4955,6 +5268,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<ZeroInitializer::init_task>(
           registrar, "Zero Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<ZeroInitializer::init_task>(registrar);
     }
   }
@@ -4966,6 +5282,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<ConstantInitializer::init_task_cpu>(
           registrar, "Constant Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<ConstantInitializer::init_task_cpu>(
           registrar);
     }
@@ -4978,6 +5297,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<ConstantInitializer::init_task>(
           registrar, "Constant Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<ConstantInitializer::init_task>(registrar);
     }
   }
@@ -4989,6 +5311,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<UniformInitializer::init_task>(
           registrar, "Uniform Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<UniformInitializer::init_task>(registrar);
     }
   }
@@ -5000,6 +5325,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<GlorotUniform::init_task>(
           registrar, "Glorot Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<GlorotUniform::init_task>(registrar);
     }
   }
@@ -5011,6 +5339,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<NormInitializer::init_task>(
           registrar, "Normalize Init Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<NormInitializer::init_task>(registrar);
     }
   }
@@ -5026,6 +5357,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
                                         Op::get_nccl_unique_id_task>(
           registrar, "NCCL GetUniqueId Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<ncclUniqueId, Op::get_nccl_unique_id_task>(
           registrar);
     }
@@ -5039,6 +5373,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<ncclComm_t, Op::init_nccl_comms_task>(
           registrar, "NCCL Init Communicators Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<ncclComm_t, Op::init_nccl_comms_task>(
           registrar);
     }
@@ -5053,6 +5390,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<Simulator::strategy_search_task>(
           registrar, "Stretegy Search Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<Simulator::strategy_search_task>(
           registrar);
     }
@@ -5067,6 +5407,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
                                         PCG::Graph::graph_optimize_task>(
           registrar, "Graph Optimize Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<PCG::GraphOptimalViewSerialized,
                                      PCG::Graph::graph_optimize_task>(
           registrar);
@@ -5081,6 +5424,9 @@ void register_flexflow_internal_tasks(Runtime *runtime, bool pre_register) {
       Runtime::preregister_task_variant<UtilityTasks::dummy_task>(
           registrar, "Weights Prefetch Task");
     } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
       runtime->register_task_variant<UtilityTasks::dummy_task>(registrar);
     }
   }

@@ -1,6 +1,6 @@
 [submodule "deps/legion"]
 	path = deps/legion
-	url = https://gitlab.com/StanfordLegion/legion.git
+	url = https://gitlab.com/gabrieleoliaro/legion.git
 [submodule "deps/nccl"]
 	path = deps/nccl
 	url = https://github.com/NVIDIA/nccl.git

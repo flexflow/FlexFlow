@@ -353,6 +353,16 @@ public:
                 const Tensor y,
                 bool inplace_a = false,
                 char const *name = NULL);
+  // Add a max layer
+  Tensor max(const Tensor x,
+             const Tensor y,
+             bool inplace_a = false,
+             char const *name = NULL);
+  // Add a min layer
+  Tensor min(const Tensor x,
+             const Tensor y,
+             bool inplace_a = false,
+             char const *name = NULL);
   // Add a rsqrt layer
   Tensor rsqrt(const Tensor x, bool inplace = true, char const *name = NULL);
   // Add a pow layer
@@ -976,7 +986,8 @@ void data_load_task(Legion::Task const *task,
                     Legion::Runtime *runtime);
 
 void register_flexflow_internal_tasks(Legion::Runtime *runtime = NULL,
-                                      bool pre_register = true);
+                                      bool pre_register = true,
+                                      bool enable_control_replication = true);
 
 void register_custom_tasks();
 

@@ -19,4 +19,4 @@ from .convolutional import Conv2D
 from .normalization import BatchNormalization
 from .pool import Pooling2D, MaxPooling2D, AveragePooling2D 
 from .core import Dense, Embedding, Flatten, Activation, Dropout, Reshape, Permute
-from .merge import Concatenate, Add, Subtract, Multiply, concatenate, add, subtract, multiply
+from .merge import Concatenate, Add, Subtract, Multiply, concatenate, add, subtract, multiply, Maximum, Minimum
