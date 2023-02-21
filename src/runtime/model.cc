@@ -1221,6 +1221,11 @@ FFModel::FFModel(FFConfig &_config)
   }
 }
 
+void FFModel::clear_graph_search_cache() {
+  this->graph_search->clear_cache();
+  this->search->clear_cache();
+}
+
 #ifdef FF_USE_NCCL
 ncclComm_t *FFModel::find_nccl_comms(MachineView const &view) const {
   auto const &it = view_hash_to_nccl_comms.find(view.hash());
@@ -3529,6 +3534,7 @@ FFConfig::FFConfig() {
   syntheticInput = false;
   perform_fusion = false;
   base_optimize_threshold = DefaultConfig::base_optimize_threshold;
+  perform_memory_search = false;
 
   // Parse input arguments
   {
@@ -3615,6 +3621,10 @@ void FFConfig::parse_args(char **argv, int argc) {
       workersPerNode = atoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "-ll:fsize")) {
+      device_mem = atoi(argv[++i]);
+      continue;
+    }
     if (!strcmp(argv[i], "--nodes")) {
       fprintf(stderr,
               "[Warning] --nodes is deprecated. "
@@ -3699,6 +3709,10 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if (!strcmp(argv[i], "--substitution-json")) {
       substitution_json_path = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--memory-search")) {
+      perform_memory_search = true;
       continue;
     }
   }

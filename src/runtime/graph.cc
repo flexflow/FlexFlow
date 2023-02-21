@@ -90,6 +90,9 @@ SearchHelper::SearchHelper(FFModel *model) : model(model) {
   this->logger = std::unique_ptr<RecursiveLogger>(new RecursiveLogger("DP"));
 }
 
+/**
+ * @brief Combine results from sequential sub-problems.
+ */
 template <typename T>
 T SearchHelper::execute_sequence_split(std::unique_ptr<Graph> const &pre_graph,
                                        std::unique_ptr<Graph> const &post_graph,
@@ -102,6 +105,12 @@ T SearchHelper::execute_sequence_split(std::unique_ptr<Graph> const &pre_graph,
       this->graph_cost<T>(post_graph.get(), bn, sink, resources, false));
 }
 
+/**
+ * @brief Starting point to get sequential split time cost.
+ *
+ * @tparam T float or GraphCostResult (or GraphCostResultWithMemory in memory
+ * optimization)
+ */
 template <typename T>
 T SearchHelper::find_optimal_sequence_graph_time(
     Graph const *g,
@@ -168,6 +177,11 @@ T SearchHelper::find_optimal_sequence_graph_time(
   check_matches_graph<T>(g, optimal, sink.node);
 
   return optimal;
+}
+
+void SearchHelper::clear_cache() {
+  cached_graph_costs.clear();
+  cached_operator_valid_views.clear();
 }
 
 template <typename T>
@@ -1134,12 +1148,31 @@ GraphCostResult GraphCostResult::invalid() {
   return {std::numeric_limits<float>::infinity(), {}};
 }
 
+GraphCostResultWithMemory GraphCostResultWithMemory::invalid() {
+  return {std::numeric_limits<float>::infinity(), MemoryUsage{}, {}};
+}
+
+float GraphCostResultWithMemory::get_multi_obj_cost() const {
+  return this->cost;
+}
+
 bool GraphCostResult::operator<(GraphCostResult const &other) const {
   return this->cost < other.cost;
 }
 
+bool GraphCostResultWithMemory::operator<(
+    GraphCostResultWithMemory const &other) const {
+  return this->get_multi_obj_cost() < other.get_multi_obj_cost();
+}
+
 std::ostream &operator<<(std::ostream &s, GraphCostResult const &r) {
   s << "GraphCostResult{cost=" << r.cost << "}";
+  return s;
+}
+
+std::ostream &operator<<(std::ostream &s, GraphCostResultWithMemory const &r) {
+  s << "GraphCostResultWithMemory{run_time_cost=" << r.cost
+    << ", memory_cost=" << r.mem_cost << "}";
   return s;
 }
 
@@ -1148,11 +1181,29 @@ std::ostream &operator<<(std::ostream &s, GraphOptimizeResult const &r) {
   return s;
 }
 
+std::ostream &operator<<(std::ostream &s,
+                         GraphOptimizeResultWithMemory const &r) {
+  s << "GraphOptimizeResultWithMemory{run_time_cost=" << r.cost
+    << ", memory_cost=" << r.mem_cost << "}";
+  return s;
+}
+
 template <>
 GraphCostResult sequence_cost<GraphCostResult>(GraphCostResult const &first,
                                                GraphCostResult const &second) {
   GraphCostResult result(first);
   result.cost += second.cost;
+  result.views.insert(second.views.cbegin(), second.views.cend());
+  return result;
+}
+
+template <>
+GraphCostResultWithMemory sequence_cost<GraphCostResultWithMemory>(
+    GraphCostResultWithMemory const &first,
+    GraphCostResultWithMemory const &second) {
+  GraphCostResultWithMemory result{first};
+  result.cost += second.cost;
+  result.mem_cost += second.mem_cost;
   result.views.insert(second.views.cbegin(), second.views.cend());
   return result;
 }
@@ -1177,11 +1228,48 @@ GraphOptimizeResult
   return result;
 }
 
+/**
+ * @brief Specialization of sequence_cost<T> to combine two
+ * GraphOptimizeResultWithMemory. This reuses the parts of combining run time
+ * costs. This should be merged with other versions of sequence_cost<T>.
+ */
+template <>
+GraphOptimizeResultWithMemory sequence_cost<GraphOptimizeResultWithMemory>(
+    GraphOptimizeResultWithMemory const &first,
+    GraphOptimizeResultWithMemory const &second) {
+  GraphOptimizeResultWithMemory result;
+  result.cost = first.cost + second.cost;
+  result.views.insert(first.views.cbegin(), first.views.cend());
+  result.views.insert(second.views.cbegin(), second.views.cend());
+
+  result.graph = second.graph;
+  Node second_src = result.graph.value().find_source_node();
+  result.graph.value().replace_subgraph({second_src}, first.graph.value());
+
+  // New: Combine memory cost
+  result.mem_cost = first.mem_cost + second.mem_cost;
+
+  return result;
+}
+
 template <>
 GraphCostResult parallel_cost<GraphCostResult>(GraphCostResult const &first,
                                                GraphCostResult const &second) {
   GraphCostResult result;
   result.cost = std::max(first.cost, second.cost);
+  result.views.insert(first.views.cbegin(), first.views.cend());
+  result.views.insert(second.views.cbegin(), second.views.cend());
+
+  return result;
+}
+
+template <>
+GraphCostResultWithMemory parallel_cost<GraphCostResultWithMemory>(
+    GraphCostResultWithMemory const &first,
+    GraphCostResultWithMemory const &second) {
+  GraphCostResultWithMemory result;
+  result.cost = std::max(first.cost, second.cost);
+  result.mem_cost = first.mem_cost + second.mem_cost;
   result.views.insert(first.views.cbegin(), first.views.cend());
   result.views.insert(second.views.cbegin(), second.views.cend());
 
@@ -1204,6 +1292,12 @@ bool SearchHelper::is_invalid<GraphCostResult>(
   return cost.cost == std::numeric_limits<float>::infinity();
 }
 
+template <>
+bool SearchHelper::is_invalid<GraphCostResultWithMemory>(
+    GraphCostResultWithMemory const &cost) const {
+  return cost.cost == std::numeric_limits<float>::infinity();
+}
+
 /**
  * @brief Asserts that the results of graph optimization are valid for the graph
  *
@@ -1215,6 +1309,28 @@ bool SearchHelper::is_invalid<GraphCostResult>(
 template <>
 void SearchHelper::check_matches_graph<GraphCostResult>(
     Graph const *g, GraphCostResult const &r, Node const &sink) const {
+  using FlexFlow::PCG::Utils::nodes;
+
+  if (this->is_invalid(r)) {
+    return;
+  }
+
+  std::unordered_set<Node> g_nodes = nodes(*g);
+  g_nodes.erase(sink);
+
+  std::unordered_set<Node> r_nodes;
+  for (auto const &kv : r.views) {
+    r_nodes.insert(kv.first);
+  }
+
+  assert(g_nodes == r_nodes);
+}
+
+template <>
+void SearchHelper::check_matches_graph<GraphCostResultWithMemory>(
+    Graph const *g,
+    GraphCostResultWithMemory const &r,
+    Node const &sink) const {
   using FlexFlow::PCG::Utils::nodes;
 
   if (this->is_invalid(r)) {
@@ -1254,6 +1370,13 @@ std::pair<bool, GraphCostResult>
 }
 
 template <>
+std::pair<bool, GraphCostResultWithMemory>
+    SearchHelper::try_get_cost_from_cache<GraphCostResultWithMemory>(
+        size_t hash) const {
+  return {false, GraphCostResultWithMemory::invalid()};
+}
+
+template <>
 void SearchHelper::try_cache_result<float>(size_t hash,
                                            float const &value) const {
   this->logger->debug() << "cached_graph_costs[" << hash << "] = " << value;
@@ -1269,6 +1392,14 @@ void SearchHelper::try_cache_result<GraphCostResult>(
 }
 
 template <>
+void SearchHelper::try_cache_result<GraphCostResultWithMemory>(
+    size_t hash, GraphCostResultWithMemory const &value) const {
+  this->logger->debug() << "cached_graph_costs[" << hash << "="
+                        << value.get_multi_obj_cost() << "]";
+  this->cached_graph_costs[hash] = value.get_multi_obj_cost();
+}
+
+template <>
 float SearchHelper::infinity<float>() const {
   return std::numeric_limits<float>::infinity();
 }
@@ -1279,6 +1410,15 @@ GraphCostResult SearchHelper::infinity<GraphCostResult>() const {
 }
 
 template <>
+GraphCostResultWithMemory
+    SearchHelper::infinity<GraphCostResultWithMemory>() const {
+  return {std::numeric_limits<float>::infinity(),
+          MemoryUsage(MemoryUsageType::GLOBAL,
+                      std::numeric_limits<float>::infinity()),
+          {}};
+}
+
+template <>
 float SearchHelper::empty<float>() const {
   return 0.0f;
 }
@@ -1286,6 +1426,12 @@ float SearchHelper::empty<float>() const {
 template <>
 GraphCostResult SearchHelper::empty<GraphCostResult>() const {
   return {0.0f, {}};
+}
+
+template <>
+GraphCostResultWithMemory
+    SearchHelper::empty<GraphCostResultWithMemory>() const {
+  return {0.0f, MemoryUsage{}, {}};
 }
 
 template <typename T>
@@ -1318,6 +1464,46 @@ T SearchHelper::estimate_xfer_cost(Graph const *graph,
   return result;
 }
 
+/**
+ * @brief Specialization to avoid changing many calls.
+ * @details Note that this function is only called when the graph has no more
+ * than 2 nodes
+ */
+template <>
+GraphCostResultWithMemory
+    SearchHelper::estimate_xfer_cost<GraphCostResultWithMemory>(
+        Graph const *graph,
+        NodeAssignment const &source,
+        NodeAssignment const &sink) const {
+  GraphCostResultWithMemory result = this->empty<GraphCostResultWithMemory>();
+
+  if (source.node != Node::INVALID_NODE) {
+    // Get the in-edges of the sink node
+    auto const &inList = graph->inEdges.find(sink.node)->second;
+    float op_cost = 0.0f; // run time cost
+    for (auto const &it2 : inList) {
+      // For all edges between source node and sink node
+      assert(it2.srcOp == source.node);
+      assert(sink.node.ptr->inputs[it2.dstIdx]->is_valid_machine_view(
+          source.view));
+
+      float estimated_xfer_cost = this->model->simulator->estimate_xfer_cost(
+          sink.node.ptr, it2.dstIdx, source.view, sink.view);
+      op_cost += estimated_xfer_cost;
+    }
+    this->add_operator_cost_with_memory(
+        source, op_cost, MemoryUsage{}, &result);
+  } else {
+    // The real source must be an input operator
+    Node real_source = graph->find_source_node();
+    assert(real_source.ptr->op_type == OP_INPUT);
+    this->add_operator_cost_with_memory(
+        {real_source, MachineView::NO_VIEW}, 0.0f, MemoryUsage{}, &result);
+  }
+
+  return result;
+}
+
 template <>
 void SearchHelper::add_operator_cost<float>(NodeAssignment const &node,
                                             float node_cost,
@@ -1332,6 +1518,20 @@ void SearchHelper::add_operator_cost<GraphCostResult>(
   cost->views[node.node] = node.view;
 }
 
+/**
+ * @brief Add an operator's run time and memory cost to the graph cost.
+ * "cost" is updated within this function.
+ */
+void SearchHelper::add_operator_cost_with_memory(
+    NodeAssignment const &node,
+    float node_run_time_cost,
+    MemoryUsage node_mem_cost,
+    GraphCostResultWithMemory *cost) const {
+  cost->cost += node_run_time_cost;
+  cost->mem_cost += node_mem_cost;
+  cost->views[node.node] = node.view;
+}
+
 template <>
 float SearchHelper::get_cost<float>(float const &f) const {
   return f;
@@ -1343,6 +1543,45 @@ float SearchHelper::get_cost<GraphCostResult>(
   return gcr.cost;
 }
 
+template <>
+float SearchHelper::get_cost<GraphCostResultWithMemory>(
+    GraphCostResultWithMemory const &gcr) const {
+  return gcr.get_multi_obj_cost();
+}
+
+template <typename T>
+void SearchHelper::add_sink_node_costs(NodeAssignment const &sink,
+                                       CostMetrics metrics,
+                                       T *result) const {
+  this->add_operator_cost<T>(sink,
+                             metrics.forward_time + metrics.backward_time +
+                                 metrics.sync_time,
+                             result);
+}
+
+/**
+ * @brief Specialization of add_sink_node_costs to handle
+ * GraphCostResultWithMemory
+ */
+template <>
+void SearchHelper::add_sink_node_costs<GraphCostResultWithMemory>(
+    NodeAssignment const &sink,
+    CostMetrics metrics,
+    GraphCostResultWithMemory *result) const {
+  float op_total_mem_mb = ((float)(metrics.op_total_mem / 1e4)) / 1e2;
+  this->add_operator_cost_with_memory(
+      sink,
+      metrics.forward_time + metrics.backward_time + metrics.sync_time,
+      MemoryUsage{MemoryUsageType::GLOBAL, op_total_mem_mb},
+      result);
+}
+
+/**
+ * @brief Core function to analyze the cost of a graph.
+ *
+ * @tparam T float or GraphCostResult (or GraphCostResultWithMemory in memory
+ * optimization)
+ */
 template <typename T>
 T SearchHelper::graph_cost(Graph const *graph,
                            NodeAssignment const &source,
@@ -1350,7 +1589,8 @@ T SearchHelper::graph_cost(Graph const *graph,
                            MachineResource const &resources,
                            bool include_sink_compute_time) const {
   TAG_ENTER(this->logger);
-  this->logger->debug() << "sink(" << sink.node.guid << ") "
+  this->logger->debug() << "PCG::SearchHelper::graph_cost: sink("
+                        << sink.node.guid << ") "
                         << "sink.view(" << sink.view.ndims << " "
                         << sink.view.start_device_id << " " << sink.view.dim[0]
                         << ") "
@@ -1382,9 +1622,11 @@ T SearchHelper::graph_cost(Graph const *graph,
     result = from_cache.second;
   } else {
     if (graph->inEdges.size() <= 2) {
+      // When there are no more than 2 nodes in the graph
       result = this->estimate_xfer_cost<T>(graph, source, sink);
       this->logger->debug()
-          << "Estimated xfer cost is " << this->get_cost(result);
+          << "[PCG::SearchHelper::graph_cost] Estimated xfer cost is "
+          << this->get_cost(result);
     } else {
       Node bn_node = graph->find_bottleneck_node(sink.node, source.node);
       if (bn_node != Node::INVALID_NODE) {
@@ -1415,24 +1657,112 @@ T SearchHelper::graph_cost(Graph const *graph,
 
   check_matches_graph<T>(graph, result, sink.node);
 
+  // This is where we really add the costs of an operator
   if (include_sink_compute_time) {
+    // Sink node costs
     CostMetrics metrics =
         this->model->simulator->measure_operator_cost(sink.node.ptr, sink.view);
-    this->logger->debug() << "Sink node cost: "
+
+    // Adjust operator memory usage
+    this->logger->spew()
+        << "[PCG::SearchHelper::graph_cost] Analyzing sink op memory cost ["
+        << sink.node.to_string() << "]:";
+
+    int input_num_parts = 0;
+    int output_num_parts = 0;
+    int weight_num_parts = 0;
+    auto op = sink.node.ptr;
+    this->logger->spew() << "  input ParallelTensor shape|num_replicas:";
+    for (int i = 0; i < op->numInputs; i++) {
+      auto shape = op->inputs[i]->get_shape();
+      this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
+      if (input_num_parts == 0) {
+        input_num_parts = op->inputs[i]->get_total_num_parts();
+      }
+    }
+    this->logger->spew() << "  output ParallelTensor shape|num_replicas:";
+    for (int i = 0; i < op->numOutputs; i++) {
+      auto shape = op->outputs[i]->get_shape();
+      this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
+      if (output_num_parts == 0) {
+        output_num_parts = op->outputs[i]->get_total_num_parts();
+      }
+    }
+    this->logger->spew() << "  weight ParallelTensor shape|num_replicas:";
+    for (int i = 0; i < op->numWeights; i++) {
+      if (op->weights[i] == nullptr) {
+        continue;
+      }
+      auto shape = op->weights[i]->get_shape();
+      this->logger->spew() << shape << "|" << shape.get_num_replicas() << "; ";
+      if (weight_num_parts == 0) {
+        weight_num_parts = op->weights[i]->get_total_num_parts();
+      }
+    }
+    input_num_parts = std::max(input_num_parts, 1);
+    output_num_parts = std::max(output_num_parts, 1);
+    weight_num_parts = std::max(weight_num_parts, 1);
+    if (input_num_parts > weight_num_parts) {
+      weight_num_parts = input_num_parts;
+    }
+    this->logger->spew()
+        << "  Total number of parts of inputs|outputs|weights: "
+        << input_num_parts << "|" << output_num_parts << "|"
+        << weight_num_parts;
+
+    // Real memory usage of this Op* considering parallelization over devices
+    this->logger->spew() << "  cost_metrics input|output|weight memory: "
+                         << metrics.inputs_memory << "|"
+                         << metrics.outputs_memory << "|"
+                         << metrics.weights_memory;
+
+    metrics.op_total_mem = input_num_parts * metrics.inputs_memory +
+                           output_num_parts * metrics.outputs_memory +
+                           weight_num_parts * metrics.weights_memory;
+
+    this->logger->spew() << "  op_total_mem: " << metrics.op_total_mem;
+    float op_total_mem_mb = (float)((metrics.op_total_mem) / 1e4) / 1e2;
+    this->logger->debug() << "[PCG::SearchHelper::graph_cost] Sink node cost ["
+                          << sink.node.to_string() << "]: "
                           << "forward(" << metrics.forward_time << ") "
                           << "backward(" << metrics.backward_time << ") "
-                          << "sync(" << metrics.sync_time << ")";
-    this->add_operator_cost<T>(sink,
-                               metrics.forward_time + metrics.backward_time +
-                                   metrics.sync_time,
-                               &result);
+                          << "sync(" << metrics.sync_time << ") "
+                          << "memory(" << op_total_mem_mb << " MB)";
+    this->add_sink_node_costs<T>(sink, metrics, &result);
   }
 
   return result;
 }
 
+/**
+ * @brief Get the optimal run time cost of a PCG.
+ * @details This is the current metric used to decide which PCG is better
+ * in Unity's search algorithm.
+ */
 float Graph::optimal_cost() const {
   return this->generic_optimal_cost<float>();
+}
+
+/**
+ * @brief Get a single number to represent the multi-objective cost of a PCG.
+ */
+float Graph::optimal_cost_with_memory(float run_time_cost_factor) const {
+  auto optimal = this->generic_optimal_cost<GraphCostResultWithMemory>();
+  float run_time_cost = optimal.cost;
+  float mem_cost = optimal.mem_cost.num;
+  // This is where we combine two costs to get the multi-objective cost
+  auto combined_cost = (run_time_cost_factor * run_time_cost +
+                        (1 - run_time_cost_factor) * mem_cost);
+  std::string output_str =
+      "Multi-objective cost in Graph::optimal_cost_with_memory:"
+      "run time cost: " +
+      std::to_string(run_time_cost) +
+      ", mem cost: " + std::to_string(mem_cost) +
+      ", combined cost: " + std::to_string(combined_cost) +
+      " (with run time cost factor: " + std::to_string(run_time_cost_factor) +
+      ")";
+  this->search->logger->spew() << output_str;
+  return combined_cost;
 }
 
 std::unordered_map<Node, MachineView> Graph::optimal_views() const {
@@ -1466,9 +1796,8 @@ Graph Graph::reduced() const {
  * two versions is almost identical. By using a few template specializations we
  * can avoid duplicating all this code.
  *
- * @tparam T the result type (can be either float or GraphCostResult)
- * @return T the cost of the graph (along with any additional data in the return
- * type)
+ * @tparam T Result type (float, GraphCostResult, or GraphCostResultWithMemory)
+ * @return T Cost of the graph (along with any additional data)
  */
 template <typename T>
 T Graph::generic_optimal_cost() const {
@@ -1484,7 +1813,9 @@ T Graph::generic_optimal_cost() const {
   // }
 
   Node sink_node = reduced_graph.find_sink_node();
-  this->search->logger->info() << "Found sink node: " << sink_node.to_string();
+  this->search->logger->info()
+      << "Graph::generic_optimal_cost: Found sink node: "
+      << sink_node.to_string();
 
   MachineResource resource(model->config);
 
@@ -1543,12 +1874,21 @@ size_t dp_state_hash(Graph const *graph,
   return key;
 }
 
-GraphOptimalViewSerialized
-    Graph::graph_optimize_task(Task const *task,
-                               std::vector<PhysicalRegion> const &regions,
-                               Context ctx,
-                               Runtime *runtime) {
+namespace {
+
+/**
+ * @brief Given a lambda value, perform the search and return the optimized PCG
+ * and corresponding MachineView.
+ */
+std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
+    try_one_lambda(std::pair<float, MemorySearchResult> &lambda,
+                   Task const *task,
+                   std::shared_ptr<Simulator> &cached_simulator,
+                   bool perform_memory_search) {
+  // Create a new fresh model
   FFModel *model = *((FFModel **)task->args);
+  model->clear_graph_search_cache();
+
   if (model->config.search_num_nodes.has_value()) {
     model->config.numNodes = model->config.search_num_nodes.value();
   }
@@ -1581,11 +1921,21 @@ GraphOptimalViewSerialized
            "machine-model-file should not be empty.");
   }
   // Assume this task is running on GPU0
-  std::shared_ptr<Simulator> simulator(
-      new Simulator(model, model->handlers[0], gpu_mem, machine));
-  model->simulator = simulator.get();
-  std::unique_ptr<Graph> best_graph;
-  std::unordered_map<Node, MachineView> optimal_views;
+  if (!cached_simulator) {
+    cached_simulator = std::make_shared<Simulator>(
+        model, model->handlers[0], gpu_mem, machine);
+  } else {
+    // Update simulator with the new stuff
+    cached_simulator->handler = model->handlers[0];
+    cached_simulator->memory = gpu_mem;
+    cached_simulator->machine = machine;
+  }
+  model->simulator = cached_simulator.get();
+
+  // Perform the search
+  std::unique_ptr<Graph> curr_best_graph;
+  std::unordered_map<Node, MachineView> curr_optimal_views;
+
   if (model->config.only_data_parallel) {
     Graph *graph = new Graph(model);
     std::unordered_map<FlexFlow::Op const *, Node> op_to_node_map;
@@ -1601,7 +1951,7 @@ GraphOptimalViewSerialized
         graph->add_edge(srcNode, dstNode, dstOp->inputs[j]->owner_idx, j);
       }
     }
-    best_graph = std::unique_ptr<Graph>(graph);
+    curr_best_graph = std::unique_ptr<Graph>(graph);
     MachineView data_parallel_view;
     data_parallel_view.device_type = MachineView::GPU;
     data_parallel_view.ndims = 1;
@@ -1609,15 +1959,208 @@ GraphOptimalViewSerialized
         model->config.numNodes * model->config.workersPerNode;
     data_parallel_view.stride[0] = 1;
     data_parallel_view.start_device_id = 0;
-    for (auto const &node : best_graph->inEdges) {
-      optimal_views[node.first] = data_parallel_view;
+    for (auto const &node : curr_best_graph->inEdges) {
+      curr_optimal_views[node.first] = data_parallel_view;
     }
   } else {
+    // Main step to optimize the PCG of an FFModel
     model->graph_optimize(model->config.search_budget,
                           model->config.only_data_parallel,
-                          best_graph,
-                          optimal_views);
+                          curr_best_graph,
+                          curr_optimal_views,
+                          perform_memory_search,
+                          MemoryOptimConfig{lambda.first},
+                          lambda.second);
   }
+  // Return the best result of the current search
+  return std::make_pair(std::move(curr_best_graph), curr_optimal_views);
+};
+
+/**
+ * @brief Analyze the per-device memory cost and compare with the memory
+ * threshold of each device.
+ */
+bool is_valid_strategy(
+    std::vector<std::pair<float, MemorySearchResult>> &lambdas_results,
+    Graph *curr_graph,
+    std::unordered_map<Node, MachineView> &curr_views,
+    std::shared_ptr<Simulator> const cached_simulator,
+    float memory_threshold) {
+  std::cout << "try to check valid for lambda " << lambdas_results.back().first
+            << std::endl;
+  assert(cached_simulator.get() != nullptr &&
+         "cached_simulator cannot be nullptr");
+
+  // Analyze the strategy and update max_per_device_mem_all_deivces in the
+  // lambda_result.
+  std::unordered_map<int, float> device_to_mem{};
+  for (auto const &view : curr_views) {
+    CostMetrics op_cost =
+        cached_simulator->measure_operator_cost(view.first.ptr, view.second);
+    float node_mem_as_mb = op_cost.total_memory_in_mb();
+
+    for (auto const d_id : view.second.device_ids()) {
+      if (device_to_mem.find(d_id) == device_to_mem.end()) {
+        device_to_mem.emplace(std::make_pair(d_id, node_mem_as_mb));
+      } else {
+        device_to_mem[d_id] += node_mem_as_mb;
+      }
+    }
+  }
+
+  float max_per_device_mem = 0.0;
+  float total_device_mem = 0.0;
+  for (auto const &d : device_to_mem) {
+    std::cout << "d_id: " << d.first << ", mem: " << d.second << std::endl;
+    total_device_mem += d.second;
+    if (d.second > max_per_device_mem) {
+      max_per_device_mem = d.second;
+    }
+  }
+
+  lambdas_results.back().second.max_per_device_mem_all_deivces =
+      max_per_device_mem;
+
+  std::cout << "max_per_device_mem: "
+            << lambdas_results.back().second.max_per_device_mem_all_deivces
+            << ", total_device_mem: " << total_device_mem << std::endl;
+
+  if (max_per_device_mem >= memory_threshold) {
+    return false;
+  }
+  return true;
+};
+
+}; // namespace
+
+/**
+ * @brief Starting point of Unity search procedure. Registered on Legion
+ * runtime. Legion task to launch as one step of model.compile().
+ *
+ * @param task Legion task to get FFModel and other configs
+ * @param regions Not used
+ * @param ctx Not used
+ * @param runtime Not used
+ * @return GraphOptimalViewSerialized Serialized optimal PCG
+ */
+GraphOptimalViewSerialized
+    Graph::graph_optimize_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
+  auto model_config = (*((FFModel **)task->args))->config;
+  bool perform_memory_search = model_config.perform_memory_search;
+  float memory_threshold = model_config.device_mem;
+  bool only_data_parallel = model_config.only_data_parallel;
+
+  std::vector<std::pair<float, MemorySearchResult>> lambdas{};
+
+  std::shared_ptr<Simulator> cached_simulator{};
+
+  // Optimized graph from the search
+  std::unique_ptr<Graph> best_graph;
+  std::unordered_map<Node, MachineView> optimal_views;
+
+  // Be optimistic
+  lambdas.emplace_back(std::make_pair(1.0, MemorySearchResult{}));
+  auto try_result = try_one_lambda(
+      lambdas.back(), task, cached_simulator, perform_memory_search);
+  best_graph = std::move(try_result.first);
+  optimal_views = try_result.second;
+
+  bool has_valid_strategy = false;
+  int best_lambda_index = -1;
+  int binary_search_budget = 10;
+
+  if (perform_memory_search && !is_valid_strategy(lambdas,
+                                                  best_graph.get(),
+                                                  optimal_views,
+                                                  cached_simulator,
+                                                  memory_threshold)) {
+    // Not found the strategy; need to do binary search
+    lambdas.emplace_back(std::make_pair(0.0, MemorySearchResult{}));
+    try_result = try_one_lambda(
+        lambdas.back(), task, cached_simulator, perform_memory_search);
+    best_graph = std::move(try_result.first);
+    optimal_views = try_result.second;
+
+    if (!is_valid_strategy(lambdas,
+                           best_graph.get(),
+                           optimal_views,
+                           cached_simulator,
+                           memory_threshold)) {
+      // Cannot find a valid strategy
+      has_valid_strategy = false;
+    } else {
+      has_valid_strategy = true;
+      best_lambda_index = 1;
+
+      // Do a binary search between 0 and 1 for the best lambda
+      int bianry_search_num = 0;
+      float lower = 0.0;
+      float upper = 1.0;
+
+      while (bianry_search_num < binary_search_budget) {
+        bianry_search_num++;
+
+        float mid = (lower + upper) * 0.5;
+
+        lambdas.emplace_back(std::make_pair(mid, MemorySearchResult{}));
+        try_result = try_one_lambda(
+            lambdas.back(), task, cached_simulator, perform_memory_search);
+
+        if (!is_valid_strategy(lambdas,
+                               try_result.first.get(),
+                               try_result.second,
+                               cached_simulator,
+                               memory_threshold)) {
+          upper = mid;
+        } else {
+          // Found a better and valid strategy
+          best_graph = std::move(try_result.first);
+          optimal_views = try_result.second;
+
+          lower = mid;
+          best_lambda_index = 1 + bianry_search_num;
+        }
+      }
+    }
+  } else {
+    has_valid_strategy = true;
+    best_lambda_index = 0;
+  }
+
+  // Print out the results
+  if (perform_memory_search) {
+    if (has_valid_strategy) {
+      auto &best_l = lambdas[best_lambda_index];
+      std::cout << "Found valid strategy with memory_threshold: "
+                << memory_threshold << " | lambda index: " << best_lambda_index
+                << ", lambda value: " << best_l.first
+                << ", result: run time cost: " << best_l.second.run_time_cost
+                << ", memory cost: " << best_l.second.memory_cost
+                << ", search time: " << best_l.second.search_time
+                << ", per-device max memory: "
+                << best_l.second.max_per_device_mem_all_deivces << std::endl;
+    } else {
+      std::cout << "Failed to find a valid strategy" << std::endl;
+    }
+
+    std::cout << "All lambda results:" << std::endl;
+    for (auto l : lambdas) {
+      std::cout << "lambda: " << l.first
+                << ", run time cost: " << l.second.run_time_cost
+                << ", memory cost: " << l.second.memory_cost
+                << ", search time: " << l.second.search_time
+                << ", per-device max memory: "
+                << l.second.max_per_device_mem_all_deivces << std::endl;
+    }
+  } else if (!only_data_parallel) {
+    std::cout << "\nNot doing memory search" << std::endl;
+  }
+
+  // Following lines are to serialize the optimized PCG.
+  // Only need best_graph and optimal_views below.
   Serializer sez;
   // First serialize graph
   sez.serialize(best_graph->inEdges.size());
@@ -1758,7 +2301,7 @@ GraphOptimalViewSerialized
   }
   assert(node_idx == best_graph->inEdges.size());
   // Second, serialize optimal machine view
-  printf("opotimal_views.size = %zu\n", optimal_views.size());
+  printf("optimal_views.size = %zu\n", optimal_views.size());
   sez.serialize(optimal_views.size());
   for (auto const &it : optimal_views) {
     sez.serialize((size_t)98765432); // safe guard
