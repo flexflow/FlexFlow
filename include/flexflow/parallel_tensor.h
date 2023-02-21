@@ -63,9 +63,10 @@ struct ParallelDim {
     return false;
   }
 
-  int size = 0;
-  int degree = UNKNOWN_DEGREE;
-  int parallel_idx = UNKNOWN_INDEX;
+  int size = 0;                     // Actual size of tensor
+  int degree = UNKNOWN_DEGREE;      // Degree of sharding
+  int parallel_idx = UNKNOWN_INDEX; // Runtime information, unique id of each
+                                    // degree of sharding
   bool is_replica_dim = false;
 };
 
