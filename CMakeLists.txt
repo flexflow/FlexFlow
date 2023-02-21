@@ -43,8 +43,3 @@ if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/mixture_of_experts)
 endif()
 
-# installation
-set(INCLUDE_DEST "include")
-set(LIB_DEST "lib")
-install(FILES ${FLEXFLOW_HDR} DESTINATION ${INCLUDE_DEST})
-install(TARGETS flexflow DESTINATION ${LIB_DEST})

@@ -32,16 +32,16 @@ struct AsOpParams {
     return p;
   }
 };
-                                                          //
-OperatorType get_op_type(OperatorParameters const &o) { 
-  return get_op_type(mpark::visit(AsOpParams{}, o));
-}
 
 OperatorType get_op_type(OpParamsInterface const &o) {
   return o.op_type();
 }
+                                                          //
+OperatorType get_op_type(opmeta::OperatorParameters const &o) { 
+  return get_op_type(mpark::visit(AsOpParams{}, o));
+}
 
-bool is_parallel_op(OperatorParameters const &o) {
+bool is_parallel_op(opmeta::OperatorParameters const &o) {
   return is_parallel_op(get_op_type(o));
 }
 
