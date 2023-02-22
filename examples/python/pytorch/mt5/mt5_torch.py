@@ -16,6 +16,7 @@ BASE_DIR = "examples/python/pytorch/mt5"
 DATA_DIR = os.path.join(BASE_DIR, "data")
 OUTPUT_DIR = os.path.join(BASE_DIR, "output")
 
+
 class DataPreparer():
     """
     This class prepares the data -- :meth:`data_to_tsv` should only be called
