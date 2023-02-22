@@ -29,8 +29,8 @@ include(spdlog)
 include(variant)
 include(doctest)
 include(CTest)
+include(fmt)
 #include(gtest)
-#include(fmt)
 
 # TODO @lockshaw remove me
 # https://discourse.nixos.org/t/get-clangd-to-find-standard-headers-in-nix-shell/11268/6

@@ -25,8 +25,8 @@
 [submodule "deps/rapidcheck"]
 	path = deps/rapidcheck
 	url = https://github.com/emil-e/rapidcheck.git
-[submodule "lib/fmt"]
-	path = lib/fmt
+[submodule "deps/fmt"]
+	path = deps/fmt
 	url = https://github.com/fmtlib/fmt.git
 [submodule "deps/doctest"]
 	path = deps/doctest
