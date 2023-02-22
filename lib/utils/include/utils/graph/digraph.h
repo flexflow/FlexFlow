@@ -52,6 +52,7 @@ struct IDiGraphView : public IGraphView {
 
 struct IDiGraph : public IDiGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;
+  virtual void remove_edge(Edge const &) = 0;
 };
 
 }

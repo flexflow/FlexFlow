@@ -11,9 +11,24 @@ Node AdjacencyDiGraph::add_node() {
   return node;
 }
 
+void AdjacencyDiGraph::remove_node_unsafe(Node const &n) {
+  auto iter = this->adjacency.find(n);
+  if (iter != this->adjacency.end()) {
+    this->adjacency.erase(iter);
+  }
+}
+
 void AdjacencyDiGraph::add_edge(DirectedEdge const &e) {
   this->adjacency.at(e.dst);
   this->adjacency.at(e.src).insert(e.dst);
+}
+
+void AdjacencyDiGraph::remove_edge(DirectedEdge const &e) {
+  std::unordered_set<Node> &m = this->adjacency.at(e.src);
+  auto iter = m.find(e.dst);
+  if (iter != m.end()) {
+    m.erase(iter);
+  }
 }
 
 std::unordered_set<DirectedEdge> AdjacencyDiGraph::query_edges(DirectedEdgeQuery const &query) const {

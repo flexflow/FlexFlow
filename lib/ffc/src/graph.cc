@@ -18,7 +18,10 @@
 #include "utils/disjoint_set.h"
 
 namespace FlexFlow {
-namespace PCG {
+namespace ffc {
+
+using utils::Node;
+using opmeta::OperatorParameters;
 
 /* using namespace Legion; */
 /* using FlexFlow::MachineView; */
@@ -30,30 +33,17 @@ void Graph::add_edge(Node const &srcOp,
                      Node const &dstOp,
                      int srcIdx,
                      int dstIdx) {
-  if (inEdges.find(dstOp) == inEdges.end()) {
-    inEdges[dstOp];
-  }
-  if (outEdges.find(srcOp) == outEdges.end()) {
-    outEdges[srcOp];
-  }
-  Edge e(srcOp, dstOp, srcIdx, dstIdx);
-  inEdges[srcOp];
-  outEdges[dstOp];
-  inEdges[dstOp].insert(e);
-  outEdges[srcOp].insert(e);
+  this->g.add_edge({srcOp, dstOp, (std::size_t)srcIdx, (std::size_t)dstIdx});
 }
 
-void Graph::add_node(Node const &node) {
-  inEdges[node];
-  outEdges[node];
+Node Graph::add_node(OperatorParameters const &params) {
+  Node n = this->g.add_node();
+  this->nodeMap.equate(n, params);
+  return n;
 }
 
-void Graph::add_edge(Edge const &e) {
-  inEdges[e.srcOp];
-  outEdges[e.dstOp];
-
-  inEdges[e.dstOp].insert(e);
-  outEdges[e.srcOp].insert(e);
+void Graph::add_edge(utils::MultiDiEdge const &e) {
+  this->g.add_edge(e);
 }
 
 void Graph::remove_edge(Edge const &e, bool remove_node_if_unused) {

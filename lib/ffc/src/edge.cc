@@ -1,31 +1,34 @@
 #include "edge.h"
+#include "op-meta/operator_params.h"
 
 namespace FlexFlow {
-namespace PCG {
+namespace ffc {
 
-Edge::Edge(Node const &srcOp, Node const &dstOp, int srcIdx, int dstIdx)
-    : srcOp(srcOp), dstOp(dstOp), srcIdx(srcIdx), dstIdx(dstIdx) {}
+/* using opmeta::OperatorParameters; */
 
-typename Edge::AsConstTuple Edge::as_tuple() const {
-  return { this->srcOp, this->dstOp, this->srcIdx, this->dstIdx };
-}
+/* Edge::Edge(const &srcOp, OperatorParameters const &dstOp, int srcIdx, int dstIdx) */
+/*     : srcOp(srcOp), dstOp(dstOp), srcIdx(srcIdx), dstIdx(dstIdx) {} */
 
-bool operator==(Edge const &lhs, Edge const &rhs) {
-  return lhs.as_tuple() == rhs.as_tuple();
-}
+/* typename Edge::AsConstTuple Edge::as_tuple() const { */
+/*   return { this->srcOp, this->dstOp, this->srcIdx, this->dstIdx }; */
+/* } */
 
-bool operator<(Edge const &lhs, Edge const &rhs) {
-  return lhs.as_tuple() < rhs.as_tuple();
-}
+/* bool operator==(Edge const &lhs, Edge const &rhs) { */
+/*   return lhs.as_tuple() == rhs.as_tuple(); */
+/* } */
 
-void Edge::replace_node(Node const &currentOp, Node const &replaceWith) {
-  if (this->srcOp == currentOp) {
-    this->srcOp = replaceWith;
-  }
-  if (this->dstOp == currentOp) {
-    this->dstOp = replaceWith;
-  }
-}
+/* bool operator<(Edge const &lhs, Edge const &rhs) { */
+/*   return lhs.as_tuple() < rhs.as_tuple(); */
+/* } */
+
+/* void Edge::replace_node(OperatorParameters const &currentOp, OperatorParameters const &replaceWith) { */
+/*   if (this->srcOp == currentOp) { */
+/*     this->srcOp = replaceWith; */
+/*   } */
+/*   if (this->dstOp == currentOp) { */
+/*     this->dstOp = replaceWith; */
+/*   } */
+/* } */
 
 
 }

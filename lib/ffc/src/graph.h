@@ -17,7 +17,6 @@
 #define _FLEXFLOW_GRAPH_H_
 #include "basic_graph.h"
 /* #include "node.h" */
-#include "edge.h"
 #include "graph_structures.h"
 #include "utils/dot_file.h"
 #include "pcg/machine_view.h"
@@ -48,16 +47,16 @@ struct GraphOptimalViewSerialized {
 class Graph {
 public:
   Graph();
-  void add_edge(opmeta::OperatorParameters const &srcOp, opmeta::OperatorParameters const &dstOp, int srcIdx, int dstIdx);
-  void add_node(opmeta::OperatorParameters const &);
-  void add_edge(Edge const &e);
-  void remove_node(opmeta::OperatorParameters const &, bool purge_edges = false);
-  void remove_edge(Edge const &e, bool remove_node_if_unused = true);
+  void add_edge(utils::Node const &srcOp, utils::Node const &dstOp, int srcIdx, int dstIdx);
+  utils::Node add_node(opmeta::OperatorParameters const &);
+  void add_edge(utils::MultiDiEdge const &e);
+  void remove_node(utils::Node, bool purge_edges = false);
+  void remove_edge(utils::MultiDiEdge const &e, bool remove_node_if_unused = true);
   bool has_edge(opmeta::OperatorParameters const &srcOp,
                 opmeta::OperatorParameters const &dstOp,
                 int srcIdx,
                 int dstIdx) const;
-  bool has_edge(Edge const &e) const;
+  bool has_edge(utils::MultiDiEdge const &e) const;
   void replace_subgraph(std::unordered_set<opmeta::OperatorParameters> const &currentNodes,
                         Graph const &replaceWith);
   Graph subgraph(std::unordered_set<opmeta::OperatorParameters> const &nodes) const;
@@ -190,9 +189,9 @@ struct GraphOptimizeResult {
 /* }; */
 
 size_t dp_state_hash(Graph const *graph,
-                     Node const &sink_node,
+                     opmeta::OperatorParameters const &sink_node,
                      MachineView const &sink_view,
-                     Node const &source_node,
+                     opmeta::OperatorParameters const &source_node,
                      MachineView const &source_view,
                      MachineResource const &resource);
 

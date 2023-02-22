@@ -55,6 +55,7 @@ struct IGraphView {
 
 struct IGraph {
   virtual Node add_node() = 0;
+  virtual void remove_node_unsafe(Node const &) = 0;
 };
 }
 }

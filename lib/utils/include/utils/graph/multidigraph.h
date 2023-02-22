@@ -65,6 +65,7 @@ struct IMultiDiGraphView : public IGraphView {
 
 struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;
+  virtual void remove_edge(Edge const &) = 0;
 };
 
 }

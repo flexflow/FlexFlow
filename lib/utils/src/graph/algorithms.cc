@@ -21,6 +21,34 @@ std::unordered_set<Node> get_nodes(IGraphView const &g) {
   return g.query_nodes({});
 }
 
+void remove_node(IMultiDiGraph &g, Node const &n) {
+  for (MultiDiEdge const &e : get_incoming_edges(g, n)) {
+    g.remove_edge(e);
+  }
+  for (MultiDiEdge const &e : get_outgoing_edges(g, n)) {
+    g.remove_edge(e);
+  }
+  g.remove_node_unsafe(n);
+   
+}
+
+void remove_node(IDiGraph &g, Node const &n) {
+  for (DirectedEdge const &e : get_incoming_edges(g, n)) {
+    g.remove_edge(e);
+  }
+  for (DirectedEdge const &e : get_outgoing_edges(g, n)) {
+    g.remove_edge(e);
+  }
+  g.remove_node_unsafe(n);
+}
+
+void remove_node(IUndirectedGraph &g, Node const &n) {
+  for (UndirectedEdge const &e : get_node_edges(g, n)) {
+    g.remove_edge(e);
+  }
+  g.remove_node_unsafe(n);
+}
+
 std::size_t num_nodes(IGraphView const &g) {
   return get_nodes(g).size();
 }
@@ -40,6 +68,27 @@ void add_edges(IDiGraph &g, std::vector<DirectedEdge> const &edges) {
 void add_edges(IUndirectedGraph &g, std::vector<UndirectedEdge> const &edges) {
   for (UndirectedEdge const &e : edges) {
     g.add_edge(e);
+  }
+}
+
+void remove_edges(IMultiDiGraph &g, std::unordered_set<MultiDiEdge> const &edges) {
+  for (MultiDiEdge const &e : edges) {
+    assert (contains_edge(g, e));
+    g.remove_edge(e);
+  }
+}
+
+void remove_edges(IDiGraph &g, std::unordered_set<DirectedEdge> const &edges) {
+  for (DirectedEdge const &e : edges) {
+    assert (contains_edge(g, e));
+    g.remove_edge(e);
+  }
+}
+
+void remove_edges(IUndirectedGraph &g, std::unordered_set<UndirectedEdge> const &edges) {
+  for (UndirectedEdge const &e : edges) {
+    assert (contains_edge(g, e));
+    g.remove_edge(e);
   }
 }
 

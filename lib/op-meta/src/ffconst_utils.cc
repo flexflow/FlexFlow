@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 namespace FlexFlow {
+namespace opmeta {
 
 std::string get_operator_type_name(OperatorType type) {
   switch (type) {
@@ -198,4 +199,5 @@ bool is_parallel_op(OperatorType const &t) {
   }
 }
 
-}; // namespace FlexFlow
+}
+}

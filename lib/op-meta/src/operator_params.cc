@@ -2,6 +2,7 @@
 #include "op-meta/ffconst_utils.h"
 
 namespace FlexFlow {
+namespace opmeta {
 
 /* OperatorType GetOpType::operator()(BatchMatmulParams const &p) const { return OP_BATCHMATMUL; } */
 /* OperatorType GetOpType::operator()(Conv2DParams const &p) const { return OP_CONV2D; } */
@@ -140,4 +141,6 @@ bool is_parallel_op(OperatorParameters const &o) {
 //  }
 //}
 
-}; // namespace FlexFlow
+}
+}
+

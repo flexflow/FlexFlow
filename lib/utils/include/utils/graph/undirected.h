@@ -48,6 +48,7 @@ struct IUndirectedGraphView : public IGraphView {
 
 struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
   virtual void add_edge(UndirectedEdge const &) = 0;
+  virtual void remove_edge(UndirectedEdge const &) = 0;
 };
 
 }

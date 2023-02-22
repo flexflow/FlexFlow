@@ -14,11 +14,23 @@ namespace utils {
 std::vector<Node> add_nodes(IGraph &, int);
 std::unordered_set<Node> get_nodes(IGraphView const &);
 
+void remove_node(IMultiDiGraph &, Node const &);
+void remove_node(IDiGraph &, Node const &);
+void remove_node(IUndirectedGraph &, Node const &);
+
 std::size_t num_nodes(IGraphView const &);
 
 void add_edges(IMultiDiGraph &, std::vector<MultiDiEdge> const &);
 void add_edges(IDiGraph &, std::vector<DirectedEdge> const &);
 void add_edges(IUndirectedGraph &, std::vector<UndirectedEdge> const &);
+
+bool contains_edge(IMultiDiGraph const &, MultiDiEdge const &);
+bool contains_edge(IDiGraph const &, DirectedEdge const &);
+bool contains_edge(IUndirectedGraph const &, UndirectedEdge const &);
+
+void remove_edges(IMultiDiGraph &, std::unordered_set<MultiDiEdge> const &);
+void remove_edges(IDiGraph &, std::unordered_set<DirectedEdge> const &);
+void remove_edges(IUndirectedGraph &, std::vector<UndirectedEdge> const &);
 
 std::unordered_set<MultiDiEdge> get_edges(IMultiDiGraphView const &);
 std::unordered_set<DirectedEdge> get_edges(IDiGraphView const &);
@@ -29,9 +41,14 @@ std::unordered_set<DirectedEdge> get_incoming_edges(IDiGraphView const &, Node c
 std::unordered_set<MultiDiEdge> get_incoming_edges(IMultiDiGraphView const &, std::unordered_set<Node>);
 std::unordered_set<DirectedEdge> get_incoming_edges(IDiGraphView const &, std::unordered_set<Node> const &);
 
+std::unordered_set<MultiDiEdge> get_outgoing_edges(IMultiDiGraphView const &, Node const &);
 std::unordered_set<MultiDiEdge> get_outgoing_edges(IMultiDiGraphView const &, std::unordered_set<Node> const &);
+
+std::unordered_set<DirectedEdge> get_outgoing_edges(IDiGraphView const &, Node const &);
 std::unordered_set<DirectedEdge> get_outgoing_edges(IDiGraphView const &, std::unordered_set<Node> const &);
-std::unordered_set<UndirectedEdge> get_outgoing_edges(IUndirectedGraphView const &, std::unordered_set<Node> const &);
+
+std::unordered_set<UndirectedEdge> get_node_edges(IUndirectedGraphView const &, Node const &);
+std::unordered_set<UndirectedEdge> get_node_edges(IUndirectedGraphView const &, std::unordered_set<Node> const &);
 
 std::unordered_set<Node> get_predecessors(IMultiDiGraphView const &, Node const &);
 std::unordered_set<Node> get_predecessors(IDiGraphView const &, Node const &);
