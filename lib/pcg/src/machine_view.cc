@@ -1,12 +1,15 @@
 #include "pcg/machine_view.h"
 #include "utils/hash-utils.h"
 
+#include "spdlog/spdlog.h"
+
 namespace FlexFlow {
 
 const MachineView MachineView::NO_VIEW = MachineView();
 
 MachineView::MachineView()
     : device_type(MachineView::GPU), ndims(0), start_device_id(0) {
+  spdlog::debug("Creating MachineView");
   for (int i = 0; i < MAX_TENSOR_DIM; i++) {
     dim[i] = stride[i] = 0;
   }

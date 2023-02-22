@@ -24,6 +24,7 @@ target_link_libraries(
   utils
   nlohmann_json::nlohmann_json
   optional
+  spdlog::spdlog
 )
 set_target_properties(
   ${project_target} 
