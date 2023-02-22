@@ -106,6 +106,7 @@ jobs:
           export LD_LIBRARY_PATH="$CUDA_PATH/lib64/stubs:$LD_LIBRARY_PATH"
           sudo ln -s "$CUDA_PATH/lib64/stubs/libcuda.so" "$CUDA_PATH/lib64/stubs/libcuda.so.1"
           export CPU_ONLY_TEST=1
+          python --version # for debugging
           python -c "import flexflow.core; exit()"
 
       - name: Run C++ unit tests

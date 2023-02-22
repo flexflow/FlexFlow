@@ -48,7 +48,7 @@ jobs:
 
       - name: Check availability of Python flexflow.core module
         if: ${{ matrix.gpu_backend == 'cuda' }}
-        run: docker run --env CPU_ONLY_TEST=1 --entrypoint python flexflow-cuda:latest -c "import flexflow.core; exit()"
+        run: docker run --env CPU_ONLY_TEST=1 --entrypoint /bin/bash flexflow-cuda:latest -c "export LD_LIBRARY_PATH=/usr/local/cuda/lib64/stubs:$LD_LIBRARY_PATH; sudo ln -s /usr/local/cuda/lib64/stubs/libcuda.so /usr/local/cuda/lib64/stubs/libcuda.so.1; python -c 'import flexflow.core; exit()'"
 
       - name: Publish Docker environment image (on push to master)
         env:
