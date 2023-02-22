@@ -30,7 +30,10 @@ namespace mp = mpark;
 namespace FlexFlow {
 namespace opmeta {
 
-using OperatorParameters = mp::variant<BatchMatmulParams,
+// TODO: Inherit these operators from OpParamsInterface. Comment out temporarily to avoid compile error.
+using OperatorParameters = mp::variant<// AggregateParams,
+                                       // AggregateSpecParams,
+                                       BatchMatmulParams,
                                        Conv2DParams,
                                        ConcatParams,
                                        CastParams,
@@ -39,12 +42,16 @@ using OperatorParameters = mp::variant<BatchMatmulParams,
                                        DropoutParams,
                                        EmbeddingParams,
                                        FlatParams,
+                                       // GatherParams,
+                                       // Group_byParams,
                                        LayerNormParams,
                                        LinearParams,
                                        MultiHeadAttentionParams,
                                        Pool2DParams,
+                                       // ReduceParams,
                                        ReshapeParams,
                                        SplitParams,
+                                       // TopKParams,
                                        SoftmaxParams,
                                        TransposeParams,
                                        RepartitionParams,

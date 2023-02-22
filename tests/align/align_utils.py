@@ -5,9 +5,11 @@ import torch
 import os
 
 from typing import Iterable, NamedTuple
+from argparse import ArgumentParser
 
 BATCH_SIZE = 16
-
+INPUT_SIZE = 512
+SEQ_LENGTH = 5
 
 def make_deterministic(seed: int = 42) -> None:
     """Makes ensuing runs determinstic by setting seeds and using deterministic
@@ -101,3 +103,25 @@ def align_tensors(tensor_alignment_data_iter: Iterable[TensorAlignmentData]):
         torch_tensor = torch.load(torch_filepath).cpu()
         print(f"Checking {tensor_alignment_data.tensor_name} alignment...")
         torch.testing.assert_close(ff_tensor, torch_tensor)
+
+
+def parse_create_tensor_args():
+    """
+    get operator name from command line for creating tensors
+    """
+    parser = ArgumentParser(description='Pytorch Aligment Test Suite')
+    parser.add_argument("-o", "--operator", dest="operator",
+                        required=False, metavar="", help="operator needs to be test")
+
+    args, unknown = parser.parse_known_args()
+    return args
+
+def create_general_test_tensor_torch() -> torch.Tensor:
+    """
+    generate general input size of alignment tests
+    """
+    tensor: torch.Tensor = gen_tensor(
+        (BATCH_SIZE, SEQ_LENGTH, INPUT_SIZE),
+        dtype="float32"
+    )
+    return tensor

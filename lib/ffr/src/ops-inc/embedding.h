@@ -25,13 +25,6 @@ enum { OUT_CHANNELS = 0 };
 
 class Embedding;
 
-class EmbeddingMeta : public OpMeta {
-public:
-  EmbeddingMeta(FFHandler handle, Op const *op);
-  DataType input_data_type;
-  AggrMode aggr;
-};
-
 class Embedding : public Op {
 public:
   using Params = EmbeddingParams;
@@ -92,42 +85,7 @@ public:
                         std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,
                         Legion::Runtime *runtime);
-  template <typename TI, typename TD>
-  static void forward_kernel(TI const *input_ptr,
-                             TD *output_ptr,
-                             TD const *weight_ptr,
-                             int in_dim,
-                             int out_dim,
-                             int batch_size,
-                             AggrMode aggr,
-                             int outputSize,
-                             ffStream_t stream);
-  static void forward_kernel_wrapper(EmbeddingMeta const *m,
-                                     GenericTensorAccessorR const &input,
-                                     GenericTensorAccessorW const &output,
-                                     GenericTensorAccessorR const &weight,
-                                     int in_dim,
-                                     int out_dim,
-                                     int batch_size);
-  template <typename TI, typename TD>
-  static void backward_kernel(TI const *input_ptr,
-                              TD const *output_ptr,
-                              TD *weight_grad_ptr,
-                              int in_dim,
-                              int out_dim,
-                              int batch_size,
-                              AggrMode aggr,
-                              int outputSize,
-                              ffStream_t stream);
-  static void backward_kernel_wrapper(EmbeddingMeta const *m,
-                                      GenericTensorAccessorR const &input,
-                                      GenericTensorAccessorR const &output,
-                                      GenericTensorAccessorW const &weight_grad,
-                                      int in_dim,
-                                      int out_dim,
-                                      int batch_size);
-  void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p) const;
-  void rand_generate_int32_wrapper(int32_t *ptr, size_t size, int32_t p) const;
+
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;

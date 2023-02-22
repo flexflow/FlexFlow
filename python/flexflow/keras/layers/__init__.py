@@ -1,4 +1,4 @@
-# Copyright 2020 Stanford University, Los Alamos National Laboratory
+# Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,5 +18,5 @@ from .input_layer import InputLayer, Input
 from .convolutional import Conv2D
 from .normalization import BatchNormalization
 from .pool import Pooling2D, MaxPooling2D, AveragePooling2D 
-from .core import Dense, Embedding, Flatten, Activation, Dropout, Reshape
-from .merge import Concatenate, Add, Subtract, Multiply, concatenate, add, subtract, multiply
+from .core import Dense, Embedding, Flatten, Activation, Dropout, Reshape, Permute
+from .merge import Concatenate, Add, Subtract, Multiply, concatenate, add, subtract, multiply, Maximum, Minimum

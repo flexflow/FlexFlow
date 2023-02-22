@@ -1,4 +1,4 @@
-/* Copyright 2021 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,11 +37,13 @@
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
+#include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/reverse.h"
 #include "flexflow/ops/softmax.h"
@@ -224,7 +226,7 @@ void Op::serialize(Legion::Serializer &serializer) const {
   fprintf(stderr,
           "The following operator type is currently not supported"
           " for graph serialization: %s\n"
-          "Report the issue to the FlexFlow developers",
+          "Report the issue to the FlexFlow developers\n",
           get_operator_type_name(this->op_type).c_str());
   assert(false && "This op does not support serialization");
 }
@@ -235,7 +237,7 @@ Op *Op::materialize(FFModel &ff,
   fprintf(stderr,
           "The following operator type is currently not supported"
           " for layer materialization: %s\n"
-          "Report the issue to the FlexFlow developers",
+          "Report the issue to the FlexFlow developers\n",
           get_operator_type_name(this->op_type).c_str());
   assert(false && "This op does not support materialization");
 }
@@ -2527,7 +2529,9 @@ Op *FFModel::create_operator_from_layer(
     case OP_EW_ADD:
     case OP_EW_SUB:
     case OP_EW_MUL:
-    case OP_EW_DIV: {
+    case OP_EW_DIV:
+    case OP_EW_MAX:
+    case OP_EW_MIN: {
       Op *op = ElementBinary::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
@@ -2555,6 +2559,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_GATHER: {
+      Op *op = Gather::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_LAYERNORM: {
       Op *op = LayerNorm::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -2567,6 +2576,11 @@ Op *FFModel::create_operator_from_layer(
     }
     case OP_POOL2D: {
       Op *op = Pool2D::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_REDUCE_SUM: {
+      Op *op = Reduce::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -2587,6 +2601,26 @@ Op *FFModel::create_operator_from_layer(
     }
     case OP_TRANSPOSE: {
       Op *op = Transpose::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_TOPK: {
+      Op *op = TopK::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_GROUP_BY: {
+      Op *op = Group_by::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_AGGREGATE: {
+      Op *op = Aggregate::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_AGG_SPEC: {
+      Op *op = Aggregate::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -3692,6 +3726,28 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<Embedding::backward_task_cpu>(
         registrar, "Embedding Backward Task");
   }*/
+  // Gather task
+  {
+    TaskVariantRegistrar registrar(GATHER_INIT_TASK_ID, "Gather Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, Gather::init_task>(
+        registrar, "Gather Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(GATHER_FWD_TASK_ID, "Gather Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Gather::forward_task>(
+        registrar, "Gather Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(GATHER_BWD_TASK_ID, "Gather Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Gather::backward_task>(
+        registrar, "Gather Backward Task");
+  }
 
   // Cache task CPU
   {
@@ -4022,6 +4078,28 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<Split::backward_task>(
         registrar, "Split Backward Task");
   }
+  // Reduce task
+  {
+    TaskVariantRegistrar registrar(REDUCE_INIT_TASK_ID, "Reduce Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, Reduce::init_task>(
+        registrar, "Reduce Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(REDUCE_FWD_TASK_ID, "Reduce Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Reduce::forward_task>(
+        registrar, "Reduce Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(REDUCE_BWD_TASK_ID, "Reduce Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Reduce::backward_task>(
+        registrar, "Reduce Backward Task");
+  }
   // Reshape task
   {
     TaskVariantRegistrar registrar(RESHAPE_INIT_TASK_ID, "Reshape Init");
@@ -4066,7 +4144,7 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<Reverse::backward_task>(
         registrar, "Reverse Backward Task");
   }
-  // Reverse task
+  // Topk task
   {
     TaskVariantRegistrar registrar(TOPK_INIT_TASK_ID, "TopK Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));

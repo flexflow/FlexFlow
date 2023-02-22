@@ -1,4 +1,4 @@
-/* Copyright 2020 Stanford
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,6 +70,11 @@ public:
       size_t logit_volume,
       size_t logit_grad_volume,
       float scale_factor);
+  static void identity_loss_backward_kernel_wrapper(float *loss_grad_ptr,
+                                                    float const *loss_ptr,
+                                                    size_t loss_volume,
+                                                    size_t loss_grad_volume,
+                                                    float scale_factor);
 
 public:
   FFModel *model;

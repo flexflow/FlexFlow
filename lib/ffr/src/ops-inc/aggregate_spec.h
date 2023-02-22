@@ -18,6 +18,8 @@ public:
 
 class AggregateSpec : public Op {
 public:
+  using Params = AggregateSpecParams;
+  using Input = ParallelTensor;
   AggregateSpec(FFModel &model,
                 ParallelTensor const *inputs,
                 int _n,
@@ -29,6 +31,10 @@ public:
   void print_layer(FFModel const &model) override {
     assert(0);
   }
+  static Op *
+      create_operator_from_layer(FFModel &model,
+                                 Layer const *layer,
+                                 std::vector<ParallelTensor> const &inputs);
   static OpMeta *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
@@ -66,6 +72,7 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
+  Params get_params() const;
 
 public:
   int n;

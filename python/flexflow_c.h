@@ -1,4 +1,4 @@
-/* Copyright 2020 Stanford, Los Alamos National Laboratory
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -141,6 +141,25 @@ flexflow_tensor_t flexflow_model_add_divide(flexflow_model_t handle,
                                             bool inplace_a,
                                             char const *name);
 
+flexflow_tensor_t flexflow_model_add_max(flexflow_model_t handle,
+                                         const flexflow_tensor_t x,
+                                         const flexflow_tensor_t y,
+                                         bool inplace_a,
+                                         char const *name);
+
+flexflow_tensor_t flexflow_model_add_min(flexflow_model_t handle,
+                                         const flexflow_tensor_t x,
+                                         const flexflow_tensor_t y,
+                                         bool inplace_a,
+                                         char const *name);
+
+flexflow_tensor_t flexflow_model_add_reduce_sum(flexflow_model_t handle_,
+                                                const flexflow_tensor_t input_,
+                                                int *axes,
+                                                int n,
+                                                bool keepdims,
+                                                char const *name);
+
 flexflow_tensor_t flexflow_model_add_rsqrt(flexflow_model_t handle_,
                                            const flexflow_tensor_t input_,
                                            char const *name);
@@ -247,6 +266,12 @@ void flexflow_model_add_split(flexflow_model_t handle,
 flexflow_tensor_t flexflow_model_add_flat(flexflow_model_t handle,
                                           flexflow_tensor_t input,
                                           char const *name);
+
+flexflow_tensor_t flexflow_model_add_gather(flexflow_model_t handle,
+                                            const flexflow_tensor_t input,
+                                            const flexflow_tensor_t index,
+                                            int dim,
+                                            char const *name);
 
 flexflow_tensor_t flexflow_model_add_softmax(flexflow_model_t handle,
                                              const flexflow_tensor_t input,
@@ -456,6 +481,11 @@ bool flexflow_tensor_get_tensor_int64(flexflow_tensor_t handle,
                                       flexflow_model_t model,
                                       int64_t *data,
                                       bool get_gradients);
+
+bool flexflow_model_get_output_tensor_float(flexflow_model_t model_,
+                                            flexflow_tensor_t handle_,
+                                            float *data,
+                                            bool get_gradients);
 
 // -----------------------------------------------------------------------
 // Parameter

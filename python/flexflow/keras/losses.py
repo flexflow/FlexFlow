@@ -1,4 +1,4 @@
-# Copyright 2020 Stanford University, Los Alamos National Laboratory
+# Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,6 +42,12 @@ class MeanSquaredError(Loss):
                reduction='auto',
                name='mean_squared_error'):
     super(MeanSquaredError, self).__init__(name=name)
-    self.type = ff.LossType.LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE           
-    
-  
+    self.type = ff.LossType.LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE
+
+
+class Identity(Loss):
+  def __init__(self,
+               reduction='auto',
+               name='identity'):
+    super(Identity, self).__init__(name=name)
+    self.type = ff.LossType.LOSS_IDENTITY

@@ -1,4 +1,4 @@
-/* Copyright 2020 Facebook, Stanford University
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -368,7 +368,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
     fprintf(stderr,
             "The following task is currently not captured by the "
             "FlexFlow Mapper: %s\n"
-            "Report the issue to the FlexFlow developers",
+            "Report the issue to the FlexFlow developers\n",
             task.get_task_name());
   }
   assert(task.is_index_space);

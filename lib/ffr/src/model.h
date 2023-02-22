@@ -1,4 +1,4 @@
-/* Copyright 2021 Stanford, Facebook, LANL
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,6 +65,9 @@ enum TaskIDs {
   EMBED_INIT_TASK_ID,
   EMBED_FWD_TASK_ID,
   EMBED_BWD_TASK_ID,
+  GATHER_INIT_TASK_ID,
+  GATHER_FWD_TASK_ID,
+  GATHER_BWD_TASK_ID,
   GROUP_BY_INIT_TASK_ID,
   GROUP_BY_FWD_TASK_ID,
   GROUP_BY_BWD_TASK_ID,
@@ -111,6 +114,9 @@ enum TaskIDs {
   SPLIT_INIT_TASK_ID,
   SPLIT_FWD_TASK_ID,
   SPLIT_BWD_TASK_ID,
+  REDUCE_INIT_TASK_ID,
+  REDUCE_FWD_TASK_ID,
+  REDUCE_BWD_TASK_ID,
   RESHAPE_INIT_TASK_ID,
   RESHAPE_FWD_TASK_ID,
   RESHAPE_BWD_TASK_ID,
@@ -242,6 +248,8 @@ class NoOp;
 
 ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
 
+class Aggregate;
+class AggregateSpec;
 class BatchMatmul;
 class Cast;
 class Concat;
@@ -251,13 +259,17 @@ class ElementBinary;
 class ElementUnary;
 class Embedding;
 class Flat;
+class Gather;
+class Group_by;
 class LayerNorm;
 class Linear;
 class MultiHeadAttention;
 class Pool2D;
+class Reduce;
 class Reshape;
 class Softmax;
 class Split;
+class TopK;
 class Transpose;
 class Combine;
 class Repartition;
@@ -341,6 +353,16 @@ public:
                 const Tensor y,
                 bool inplace_a = false,
                 char const *name = NULL);
+  // Add a max layer
+  Tensor max(const Tensor x,
+             const Tensor y,
+             bool inplace_a = false,
+             char const *name = NULL);
+  // Add a min layer
+  Tensor min(const Tensor x,
+             const Tensor y,
+             bool inplace_a = false,
+             char const *name = NULL);
   // Add a rsqrt layer
   Tensor rsqrt(const Tensor x, bool inplace = true, char const *name = NULL);
   // Add a pow layer
@@ -406,6 +428,11 @@ public:
                    Layer const *shared_op = NULL,
                    Initializer *kernel_initializer = NULL,
                    char const *name = NULL);
+  // Add a gather layer
+  Tensor gather(const Tensor input,
+                const Tensor index,
+                int dim,
+                char const *name = NULL);
   // Add a group_by layer
   void group_by(const Tensor data,
                 const Tensor assign,
@@ -475,6 +502,13 @@ public:
               std::vector<int> const &dims,
               bool keepdims,
               char const *name);
+  // Add a moe layer (wrapping topk, group_by and aggregate operators)
+  Tensor moe(const Tensor input,
+             int num_exp,
+             int num_select,
+             int expert_hidden_size,
+             float alpha,
+             float lambda);
   // Add a split layer
   void split(const Tensor input,
              Tensor *outputs,
@@ -489,6 +523,10 @@ public:
   Tensor transpose(const Tensor input,
                    std::vector<int> const &perm,
                    char const *name = NULL);
+  Tensor reduce_sum(const Tensor input,
+                    std::vector<int> const &axes,
+                    bool keepdims = false,
+                    char const *name = nullptr);
   Tensor reshape(const Tensor input,
                  std::vector<int> const &shape,
                  char const *name = NULL);
@@ -599,25 +637,6 @@ public:
 
   template <int NDIM>
   Tensor create_constant(int const dims[], float value, DataType date_type);
-  // ========================================
-  // Parallel APIs
-  // ========================================
-  ParallelTensor repartition(const ParallelTensor input,
-                             int partition_legion_dim,
-                             int partition_degree,
-                             char const *name = NULL);
-  ParallelTensor combine(const ParallelTensor input,
-                         int combine_legion_dim,
-                         int combine_degree,
-                         char const *name = NULL);
-  ParallelTensor replicate(const ParallelTensor input,
-                           int replicate_legion_dim,
-                           int replicate_degree,
-                           char const *name = NULL);
-  ParallelTensor reduction(const ParallelTensor input,
-                           int reduction_legion_dim,
-                           int reduction_degree,
-                           char const *name = NULL);
   // ========================================
   // Graph APIs
   // ========================================
@@ -825,6 +844,11 @@ public:
   // Cached operators: key: operator hash, value: operator pointer
   std::tuple<
       std::unordered_map<
+          std::pair<std::vector<ParallelTensorShape>, AggregateParams>,
+          Aggregate *>,
+      std::unordered_map<std::pair<ParallelTensorShape, AggregateSpecParams>,
+                         AggregateSpec *>,
+      std::unordered_map<
           std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
                     BatchMatmulParams>,
           BatchMatmul *>,
@@ -845,6 +869,14 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, EmbeddingParams>,
                          Embedding *>,
       std::unordered_map<std::pair<ParallelTensorShape, FlatParams>, Flat *>,
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    GatherParams>,
+          Gather *>,
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    Group_byParams>,
+          Group_by *>,
       std::unordered_map<std::pair<ParallelTensorShape, LayerNormParams>,
                          LayerNorm *>,
       std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
@@ -856,11 +888,14 @@ public:
                                               ParallelTensorShape>,
                                    MultiHeadAttentionParams>,
                          MultiHeadAttention *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ReduceParams>,
+                         Reduce *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,
                          Reshape *>,
       std::unordered_map<std::pair<ParallelTensorShape, SplitParams>, Split *>,
       std::unordered_map<std::pair<ParallelTensorShape, SoftmaxParams>,
                          Softmax *>,
+      std::unordered_map<std::pair<ParallelTensorShape, TopKParams>, TopK *>,
       std::unordered_map<std::pair<ParallelTensorShape, TransposeParams>,
                          Transpose *>,
       std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
