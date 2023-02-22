@@ -22,6 +22,10 @@ option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
 option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
 option(FF_BUILD_SUBSTITUTION_TOOL "build substitution conversion tool" OFF)
 option(FF_BUILD_VISUALIZATION_TOOL "build substitution visualization tool" OFF)
+option(FF_BUILD_ARG_PARSER "build command line argument parser" OFF)
+
+set(FLEXFLOW_LIBS "")
+set(FLEXFLOW_INCLUDE_DIRS "")
 
 include(json)
 include(optional)
@@ -32,6 +36,10 @@ include(CTest)
 #include(gtest)
 #include(fmt)
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  set(LIBEXT ".so")
+endif()
+
 # TODO @lockshaw remove me
 # https://discourse.nixos.org/t/get-clangd-to-find-standard-headers-in-nix-shell/11268/6
 if(CMAKE_EXPORT_COMPILE_COMMANDS)
@@ -39,7 +47,24 @@ if(CMAKE_EXPORT_COMPILE_COMMANDS)
 endif()
 
 add_subdirectory(lib)
+
+add_library(substitution_loader SHARED
+  ${CMAKE_SOURCE_DIR}/lib/ffc/src/substitution_loader.cc)
+target_include_directories(substitution_loader PRIVATE ${FLEXFLOW_INCLUDE_DIRS})
+target_link_libraries(substitution_loader nlohmann_json::nlohmann_json)
+
 if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/mixture_of_experts)
 endif()
 
+if(FF_BUILD_SUBSTITUTION_TOOL)
+  add_subdirectory(bin/protobuf_to_json)
+endif()
+
+if(FF_BUILD_VISUALIZATION_TOOL)
+  add_subdirectory(bin/substitutions_to_dot)
+endif()
+
+if(FF_BUILD_ARG_PARSER)
+  add_subdirectory(bin/arg_parser)
+endif()

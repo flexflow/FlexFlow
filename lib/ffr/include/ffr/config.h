@@ -15,7 +15,7 @@
 
 #ifndef _FLEXFLOW_CONFIG_H_
 #define _FLEXFLOW_CONFIG_H_
-#include "ffconst.h"
+#include "op-meta/ffconst.h"
 #include "legion.h"
 #include <cstring>
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
@@ -108,7 +108,6 @@ public:
   FFConfig();
   // bool load_strategy_file(std::string filename);
   // bool save_strategy_file(std::string filename);
-  void parse_args(char **argv, int argc);
   static Legion::MappingTagID get_hash_id(std::string const &pcname);
   // bool find_parallel_config(int ndims,
   //                           const std::string& pcname,

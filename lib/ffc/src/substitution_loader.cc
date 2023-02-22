@@ -1,4 +1,4 @@
-#include "substitution_loader.h"
+#include "ffc/substitution_loader.h"
 #include <cassert>
 #include <functional>
 #include <sstream>
