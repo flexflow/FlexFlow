@@ -1,12 +1,12 @@
-#include "flexflow/ffconst_utils.h"
-#include "flexflow/substitution_loader.h"
-#include "flexflow/utils/dot/dot_file.h"
+#include "op-meta/ffconst_utils.h"
+#include "ffc/substitution_loader.h"
+#include "utils/dot_file.h"
 #include "tl/optional.hpp"
 #include <cassert>
 #include <iostream>
 
 using namespace FlexFlow::substitution_loader;
-using FlexFlow::get_operator_type_name;
+using FlexFlow::opmeta::get_operator_type_name;
 
 enum class NodeType {
   SRC,
@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
     Node srcOpNode = {NodeType::SRC, i, 0};
     {
       dot.add_node(srcOpNode,
-                   label_map(get_operator_type_name(o.op_type), srcOpNode));
+                   label_map(FlexFlow::opmeta::get_operator_type_name(o.op_type), srcOpNode));
       dot.add_node_to_subgraph(srcOpNode, src_body_subgraph);
     }
 
@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
     Node dstOpNode = {NodeType::DST, j, 0};
     {
       dot.add_node(dstOpNode,
-                   label_map(get_operator_type_name(o.op_type), dstOpNode));
+                   label_map(FlexFlow::opmeta::get_operator_type_name(o.op_type), dstOpNode));
       dot.add_node_to_subgraph(dstOpNode, dst_body_subgraph);
     }
 
