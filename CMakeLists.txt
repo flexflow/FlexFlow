@@ -325,7 +325,7 @@ add_custom_command(TARGET flexflow
 # create python/legion_python wrapper to be able to run legion_python without installing
 add_custom_command(TARGET flexflow
   PRE_BUILD	
-  COMMAND ${FLEXFLOW_ROOT}/python/legion_python_build.py --build-dir ${CMAKE_BINARY_DIR}
+  COMMAND ${PYTHON_EXECUTABLE} ${FLEXFLOW_ROOT}/python/legion_python_build.py --build-dir ${CMAKE_BINARY_DIR}
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   COMMENT "Creating python/legion_python wrapper..."
 )

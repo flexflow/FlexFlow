@@ -19,6 +19,8 @@ import argparse
 import os
 import sys
 import stat
+print("legion_python_build.py using python version below:")
+print(sys.version)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--build-dir', required=True)
@@ -51,6 +53,3 @@ with open(script_path, "w+") as script_file:
 
 cur_stat = os.stat(script_path)
 os.chmod(script_path, cur_stat.st_mode | stat.S_IEXEC)
-
-
-

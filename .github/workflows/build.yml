@@ -96,7 +96,6 @@ jobs:
             export FF_BUILD_ALL_EXAMPLES=ON 
             export FF_BUILD_UNIT_TESTS=ON
           fi
-          python --version # for debugging
           ../config/config.linux
           sudo make install
           sudo ldconfig

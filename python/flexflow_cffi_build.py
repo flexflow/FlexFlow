@@ -18,6 +18,9 @@
 import argparse
 import os
 import subprocess
+import sys
+print("flexflow_cffi_build.py using python version below:")
+print(sys.version)
 
 def find_flexflow_header(ffhome_dir):
     def try_prefix(prefix_dir):
