@@ -63,7 +63,7 @@ __global__ void experts_forward_prepare_kernel(int num_experts,
                                        float const *input,       // @In: Tokens' values
                                        float **token_idx_arrary, // @Out: Barray for GemmBatchedEx 
 
-                                       float const *output,       // @In: GemmBatchedEx's result tensor (out_dim, batch_size)
+                                       float const *gemm_results,       // @In: GemmBatchedEx's result tensor (out_dim, batch_size)
                                        float **result_idx_arrary // @Out: Carray for GemmBatchedEx
                                        ) {
     // Initialize Aarray and Barray for Cublas GemmBatchedEx
@@ -73,7 +73,7 @@ __global__ void experts_forward_prepare_kernel(int num_experts,
         if (expert_index && expert_index < num_experts) {
             weight_idx_array[i] = const_cast<float*>(weights[expert_index]);
             token_idx_arrary[i] = const_cast<float*>(input + i * token_index * sizeof(float));
-            result_idx_arrary[i] = const_cast<float*>(output + i * out_dim * sizeof(float));
+            result_idx_arrary[i] = const_cast<float*>(gemm_results + i * out_dim * sizeof(float));
         }
     }
 }

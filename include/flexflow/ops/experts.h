@@ -11,6 +11,7 @@ public:
               int _num_experts,
               int _experts_start_idx,
               int _data_dim,
+              int _out_dim,
               int _effective_batch_size,
               int _num_chosen_experts,
               float _alpha,
@@ -124,6 +125,7 @@ public:
   int experts_start_idx;
   int experts_output_dim_size;
   int data_dim;
+  int out_dim;
   int effective_batch_size;
   int num_chosen_experts;
   float alpha;

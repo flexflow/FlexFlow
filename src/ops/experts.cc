@@ -326,6 +326,8 @@ Experts::Experts(FFModel &model,
   }
   num_chosen_experts = topk;
 
+  out_dim = _experts_output_dim_size;
+
   // Create the parallel tensor for the output
   ParallelDim out_dims[MAX_TENSOR_DIM];
   for (int i = 0; i < num_dims; i++) {
@@ -580,6 +582,7 @@ OpMeta *Experts::init_task(Task const *task,
                                    exp->num_experts,
                                    exp->experts_start_idx,
                                    exp->data_dim,
+                                   exp->out_dim,
                                    exp->effective_batch_size,
                                    exp->num_chosen_experts,
                                    exp->alpha,
@@ -774,6 +777,7 @@ void Experts::inference_task(Task const *task,
   coord_t chosen_experts = indices_domain.hi()[0] - indices_domain.lo()[0] + 1;
   coord_t out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
   assert(data_dim == m->data_dim);
+  assert(out_dim == m->out_dim);
   assert(chosen_experts == m->num_chosen_experts);
   assert(chosen_experts ==
          topk_gate_pred_domain.hi()[0] - topk_gate_pred_domain.lo()[0] + 1);
