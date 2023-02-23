@@ -105,6 +105,13 @@ public:
                              float const *weight_ptr,
                              float *output_ptr,
                              ffStream_t stream);
+  static void inference_kernel(MultiHeadAttentionMeta const *m,
+                               float const *query_ptr,
+                               float const *key_ptr,
+                               float const *value_ptr,
+                               float const *weight_ptr,
+                               float *output_ptr,
+                               ffStream_t stream);
   static void forward_kernel_wrapper(MultiHeadAttentionMeta const *m,
                                      float const *query_ptr,
                                      float const *key_ptr,

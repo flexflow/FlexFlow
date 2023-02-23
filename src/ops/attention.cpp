@@ -45,6 +45,27 @@ void MultiHeadAttention::forward_kernel(MultiHeadAttentionMeta const *m,
 }
 
 /*static*/
+void MultiHeadAttention::inference_kernel(MultiHeadAttentionMeta const *m,
+                                          float const *query_ptr,
+                                          float const *key_ptr,
+                                          float const *value_ptr,
+                                          float const *weight_ptr,
+                                          float *output_ptr,
+                                          hipStream_t stream) {
+#if 0
+  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+
+  checkCUDNN(cudnnMultiHeadAttnForward(m->handle.dnn,
+                                       m->attnDesc, -1, m->loWinIdx, m->hiWinIdx,
+                                       m->devQoSeqArray, m->devKvSeqArray, m->qDesc,
+                                       query_ptr, NULL/*residual*/, m->kDesc, key_ptr,
+                                       m->vDesc, value_ptr, m->oDesc, output_ptr, m->weightSize,
+                                       weight_ptr, m->handle.workSpaceSize, m->handle.workSpace,
+                                       m->reserveSpaceSize, m->reserveSpace));
+#endif
+}
+
+/*static*/
 void MultiHeadAttention::forward_kernel_wrapper(MultiHeadAttentionMeta const *m,
                                                 float const *query_ptr,
                                                 float const *key_ptr,
@@ -93,7 +114,7 @@ void MultiHeadAttention::inference_kernel_wrapper(
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  MultiHeadAttention::forward_kernel(
+  MultiHeadAttention::inference_kernel(
       m, query_ptr, key_ptr, value_ptr, weight_ptr, output_ptr, stream);
   if (m->profiling) {
     hipEventRecord(t_end, stream);
