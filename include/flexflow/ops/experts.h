@@ -17,14 +17,22 @@ public:
               bool _use_bias,
               ActiMode _activation);
   ~ExpertsMeta(void);
-  float *dev_sorted_tokens;
-  int *dev_replicated_indices;
-  int *dev_exp_slice_indices;
-  float *dev_tokens_in_use;
+
+  // float *dev_sorted_tokens;
+  // int *dev_replicated_indices;
+  // int *dev_exp_slice_indices;
+  // float *dev_tokens_in_use;
+
   float *dev_gemm_result;
+  
+  float **dev_token_idx_arrary;
+  float **dev_weight_idx_array;
+  float **dev_result_idx_array;
+
   int num_experts;
   int experts_start_idx;
   int data_dim;
+  int out_dim;
   int effective_batch_size;
   int num_chosen_experts;
   int expert_capacity;
