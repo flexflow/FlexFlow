@@ -77,6 +77,39 @@ void MultiHeadAttention::forward_kernel_wrapper(MultiHeadAttentionMeta const *m,
 }
 
 /*static*/
+void MultiHeadAttention::inference_kernel_wrapper(
+    MultiHeadAttentionMeta const *m,
+    float const *query_ptr,
+    float const *key_ptr,
+    float const *value_ptr,
+    float const *weight_ptr,
+    float *output_ptr) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  hipEvent_t t_start, t_end;
+  if (m->profiling) {
+    hipEventCreate(&t_start);
+    hipEventCreate(&t_end);
+    hipEventRecord(t_start, stream);
+  }
+  MultiHeadAttention::forward_kernel(
+      m, query_ptr, key_ptr, value_ptr, weight_ptr, output_ptr, stream);
+  if (m->profiling) {
+    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
+    hipEventDestroy(t_start);
+    hipEventDestroy(t_end);
+    printf("MultiHeadAttention forward time = %.2fms\n", elapsed);
+    // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
+    // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
+    // acc_output.rect, "[Attention:forward:output]");
+  }
+}
+
+/*static*/
 void MultiHeadAttention::backward_kernel(MultiHeadAttentionMeta const *m,
                                          float const *query_ptr,
                                          float *query_grad_ptr,

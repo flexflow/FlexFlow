@@ -595,7 +595,7 @@ void MultiHeadAttention::inference(
      *)mv
             << std::endl; */
   int idx = 0;
-  IndexLauncher launcher(ATTENTION_FWD_TASK_ID,
+  IndexLauncher launcher(ATTENTION_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -634,6 +634,46 @@ void MultiHeadAttention::inference(
                                                     batch_outputs[0]->region));
   launcher.add_field(4, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I): query
+  regions[1](I): key
+  regions[2](I): value
+  regions[3](I): weight
+  regions[4](O): output
+*/
+void MultiHeadAttention::inference_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  assert(regions.size() == 5);
+  assert(task->regions.size() == regions.size());
+  // const MultiHeadAttention* attn = (MultiHeadAttention*) task->args;
+  MultiHeadAttentionMeta const *m =
+      *((MultiHeadAttentionMeta **)task->local_args);
+  TensorAccessorR<float, 4> acc_query(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, 4> acc_key(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, 4> acc_value(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, 3> acc_weight(
+      regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 4> acc_output(regions[4],
+                                       task->regions[4],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime,
+                                       false /*readOutput*/);
+
+  MultiHeadAttention::inference_kernel_wrapper(m,
+                                               acc_query.ptr,
+                                               acc_key.ptr,
+                                               acc_value.ptr,
+                                               acc_weight.ptr,
+                                               acc_output.ptr);
 }
 
 /*

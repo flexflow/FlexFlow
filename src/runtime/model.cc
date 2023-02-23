@@ -4484,6 +4484,14 @@ void register_flexflow_internal_tasks() {
         registrar, "MultiHeadAttention Forward Task");
   }
   {
+    TaskVariantRegistrar registrar(ATTENTION_INF_TASK_ID,
+                                   "MultiHeadAttention Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<MultiHeadAttention::inference_task>(
+        registrar, "MultiHeadAttention Inference Task");
+  }
+  {
     TaskVariantRegistrar registrar(ATTENTION_BWD_TASK_ID,
                                    "MultiHeadAttention Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));

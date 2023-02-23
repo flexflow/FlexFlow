@@ -87,6 +87,10 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
+  static void inference_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   static void backward_task(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
@@ -107,6 +111,12 @@ public:
                                      float const *value_ptr,
                                      float const *weight_ptr,
                                      float *output_ptr);
+  static void inference_kernel_wrapper(MultiHeadAttentionMeta const *m,
+                                       float const *query_ptr,
+                                       float const *key_ptr,
+                                       float const *value_ptr,
+                                       float const *weight_ptr,
+                                       float *output_ptr);
   static void backward_kernel(MultiHeadAttentionMeta const *m,
                               float const *query_ptr,
                               float *query_grad_ptr,
