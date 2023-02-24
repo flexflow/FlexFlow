@@ -4,7 +4,7 @@ set(project_target ffc)
 file(GLOB_RECURSE ffc_SRC
      CONFIGURE_DEPENDS
      LIST_DIRECTORIES False
-     src/*.cc)
+     src/substitution_loader.cc)
 
 add_library(
   ${project_target}
@@ -15,7 +15,7 @@ target_include_directories(
   ${project_target}
   PRIVATE
     src/
-  INTERFACE
+  PUBLIC
     include/
 )
 target_link_libraries(
@@ -34,3 +34,9 @@ set_target_properties(
     CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS NO
 )
+
+list(APPEND FLEXFLOW_LIBS ${PROJECT_SOURCE_DIR}/lib${project_target}${LIBEXT})
+list(APPEND FLEXFLOW_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/include)
+
+set(FLEXFLOW_LIBS ${FLEXFLOW_LIBS} PARENT_SCOPE)
+set(FLEXFLOW_INCLUDE_DIRS ${FLEXFLOW_INCLUDE_DIRS} PARENT_SCOPE)
