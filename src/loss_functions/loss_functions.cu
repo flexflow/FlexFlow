@@ -122,19 +122,17 @@ void Loss::mean_squared_error_avg_loss_backward_kernel_wrapper(
       logit_grad_ptr, logit_grad_volume, 0, scale_factor);
 }
 
-void Loss::identity_loss_backward_kernel_wrapper(
-    float *loss_grad_ptr,
-    float const *loss_ptr,
-    size_t loss_volume,
-    size_t loss_grad_volume,
-    float scale_factor) {
+void Loss::identity_loss_backward_kernel_wrapper(float *loss_grad_ptr,
+                                                 float const *loss_ptr,
+                                                 size_t loss_volume,
+                                                 size_t loss_grad_volume,
+                                                 float scale_factor) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   identity_loss_backward<<<GET_BLOCKS(loss_volume),
                            CUDA_NUM_THREADS,
                            0,
-                           stream>>>(
-      loss_grad_ptr, loss_ptr, loss_volume);
+                           stream>>>(loss_grad_ptr, loss_ptr, loss_volume);
   // Scale logit gradients by loss->scale_factor
   scale_kernel<<<GET_BLOCKS(loss_grad_volume), CUDA_NUM_THREADS, 0, stream>>>(
       loss_grad_ptr, loss_grad_volume, 0, scale_factor);
