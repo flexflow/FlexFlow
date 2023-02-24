@@ -1,9 +1,10 @@
 #include "op-meta/ops/pool_2d_params.h"
-#include "utils/hash-utils.h"
 #include "parallel_dim_mapping_record.h"
 #include "parallel_dim_mapping_record_solver.h"
+#include "op-meta/visit_struct.h"
 
 namespace FlexFlow {
+namespace opmeta {
 
 namespace Input {
 constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
@@ -16,20 +17,10 @@ constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
 };
 
 
-bool Pool2DParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
-  if (inputs.size() != 1) {
-    return false;
-  }
-
-  ParallelTensorShape input = inputs.at(0);
+bool Pool2DParams::is_valid(ParallelTensorShape const &input) const {
   ParallelTensorShape output_shape = this->calculate_output_shape(input);
 
-  bool is_valid = true;
-  is_valid &= input.is_valid();
-  is_valid &= output_shape.is_valid();
-  is_valid &= (input.at(Input::REPLICA).degree == 1);
-
-  return is_valid;
+  return output_shape.is_valid() && (input.at(Input::REPLICA).degree == 1);
 }
 
 static std::vector<ParallelDimMappingRecord> construct_mappings(ParallelTensorShape const &input_shape) {
@@ -61,22 +52,21 @@ ParallelTensorShape Pool2DParams::calculate_output_shape(ParallelTensorShape con
   return solve_mappings(input).output_shapes.at(0);
 }
 
-typename Pool2DParams::AsConstTuple Pool2DParams::as_tuple() const {
-  return {this->kernel_h, this->kernel_w, this->stride_h, this->stride_w, this->padding_h, this->padding_w, this->pool_type, this->activation};
-}
-
 bool operator==(Pool2DParams const &lhs, Pool2DParams const &rhs) {
-  return lhs.as_tuple() == rhs.as_tuple();
+  return visit_eq(lhs, rhs);
 }
 
 bool operator<(Pool2DParams const &lhs, Pool2DParams const &rhs) {
-  return lhs.as_tuple() < rhs.as_tuple();
+  return visit_lt(lhs, rhs);
+}
 }
 }
 
 namespace std {
-size_t hash<FlexFlow::Pool2DParams>::operator()(
-    FlexFlow::Pool2DParams const &params) const {
-  return get_std_hash(params.as_tuple()); 
+using ::FlexFlow::opmeta::Pool2DParams;
+
+size_t hash<Pool2DParams>::operator()(
+    Pool2DParams const &params) const {
+  return visit_hash(params);
 }
 }

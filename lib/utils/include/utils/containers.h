@@ -10,6 +10,9 @@
 #include <algorithm>
 #include <unordered_set>
 
+namespace FlexFlow {
+namespace utils {
+
 template <typename InputIt, typename Stringifiable>
 std::string join_strings(InputIt first, InputIt last, std::string const &delimiter, std::function<Stringifiable(InputIt)> const &f) {
   std::ostringstream oss;
@@ -59,11 +62,21 @@ std::unordered_set<T> intersection(std::unordered_set<T> const &l, std::unordere
   return result;
 }
 
+template <typename T> 
+std::unordered_set<T> set_union(std::unordered_set<T> const &l, std::unordered_set<T> const &r) {
+  std::unordered_set<T> result = l;
+  result.insert(r.cbegin(), r.cend());
+  return result;
+}
+
 template <typename S, typename D>
 std::unordered_set<D> map_over_unordered_set(std::function<D(S const &)> const &f, std::unordered_set<S> const &input) {
   std::unordered_set<D> result;
   std::transform(input.cbegin(), input.cend(), std::inserter(result, result.begin()), f);
   return result;
+}
+
+}
 }
 
 #endif

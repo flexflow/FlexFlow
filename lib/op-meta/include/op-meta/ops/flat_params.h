@@ -3,14 +3,14 @@
 
 #include "op-meta/parallel_tensor_shape.h"
 #include "op-meta/ops/unary_op.h"
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
+namespace opmeta {
 
 struct FlatParams : public UnaryOpParams {
-  using AsConstTuple = std::tuple<>;
-  AsConstTuple as_tuple() const;
-
-  bool is_valid(ParallelTensorShape const &) const override;
+  bool is_valid(ParallelTensorShape const &input_shape) const override;
+  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
   OperatorType op_type() const override;
 private:
   int output_size(ParallelTensorShape const &input,
@@ -22,13 +22,14 @@ private:
 bool operator==(FlatParams const &, FlatParams const &);
 bool operator<(FlatParams const &, FlatParams const &);
 
-} // namespace FlexFlow
+}
+}
 
 namespace std {
 template <>
-struct hash<FlexFlow::FlatParams> {
-  size_t operator()(FlexFlow::FlatParams const &) const;
+struct hash<::FlexFlow::opmeta::FlatParams> {
+  size_t operator()(::FlexFlow::opmeta::FlatParams const &) const;
 };
-} // namespace std
+}
 
 #endif // _FLEXFLOW_FLAT_PARAMS_H

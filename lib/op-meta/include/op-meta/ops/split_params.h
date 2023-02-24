@@ -3,17 +3,15 @@
 
 #include "op-meta/parallel_tensor_shape.h"
 #include "op-meta/ops/op_params.h"
+#include "op-meta/visit_struct.h"
 
 namespace FlexFlow {
+namespace opmeta {
 
 struct SplitParams : public OpParamsInterface {
 public:
-  bool is_valid(ParallelTensorShape const &) const;
-
-  using AsConstTuple = std::tuple<std::vector<int>, int>;
-  AsConstTuple as_tuple() const;
-
   int num_outputs(std::vector<ParallelTensorShape> const &inputs) const override; 
+  std::vector<ParallelTensorShape> output_shapes(std::vector<ParallelTensorShape> const &input_shapes) const override;
   bool is_valid(std::vector<ParallelTensorShape> const &inputs) const override;
   OperatorType op_type() const override;
 public:
@@ -24,13 +22,16 @@ public:
 bool operator==(SplitParams const &, SplitParams const &);
 bool operator<(SplitParams const &, SplitParams const &);
 
-} // namespace FlexFlow
+}
+}
+
+VISITABLE_STRUCT(::FlexFlow::opmeta::SplitParams, splits, legion_axis);
 
 namespace std {
 template <>
-struct hash<FlexFlow::SplitParams> {
-  size_t operator()(FlexFlow::SplitParams const &) const;
+struct hash<::FlexFlow::opmeta::SplitParams> {
+  size_t operator()(::FlexFlow::opmeta::SplitParams const &) const;
 };
-} // namespace std
+} 
 
 #endif // _FLEXFLOW_SPLIT_PARAMS_H

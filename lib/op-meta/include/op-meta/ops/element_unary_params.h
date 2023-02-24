@@ -4,14 +4,14 @@
 #include "op-meta/ffconst.h"
 #include "op-meta/parallel_tensor_shape.h"
 #include "op-meta/ops/unary_op.h"
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
+namespace opmeta {
 
 struct ElementUnaryParams : public UnaryOpParams {
 public:
-  using AsConstTuple = std::tuple<OperatorType, bool, float>;
-  AsConstTuple as_tuple() const;
-
+  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
   OperatorType op_type() const override;
 public:
   OperatorType op;
@@ -22,13 +22,16 @@ public:
 bool operator==(ElementUnaryParams const &, ElementUnaryParams const &);
 bool operator<(ElementUnaryParams const &, ElementUnaryParams const &);
 
-} // namespace FlexFlow
+}
+}
+
+VISITABLE_STRUCT(::FlexFlow::opmeta::ElementUnaryParams, op, inplace, scalar);
 
 namespace std {
 template <>
-struct hash<FlexFlow::ElementUnaryParams> {
-  size_t operator()(FlexFlow::ElementUnaryParams const &) const;
+struct hash<::FlexFlow::opmeta::ElementUnaryParams> {
+  size_t operator()(::FlexFlow::opmeta::ElementUnaryParams const &) const;
 };
-} // namespace std
+} 
 
 #endif // _FLEXFLOW_ELEMENTARY_UNARY_PARAMS_H

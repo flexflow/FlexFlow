@@ -43,12 +43,15 @@ struct DirectedEdgeQuery {
                                          dsts = tl::nullopt;
 };
 
+DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &, DirectedEdgeQuery const &);
+
 struct IDiGraphView : public IGraphView {
   using Edge = DirectedEdge;
   using EdgeQuery = DirectedEdgeQuery;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
 };
+
 
 struct IDiGraph : public IDiGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;

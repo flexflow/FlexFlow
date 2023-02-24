@@ -3,16 +3,18 @@
 
 #include "op-meta/parallel_tensor_shape.h"
 #include "op-meta/ops/op_params.h"
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
+namespace opmeta {
 
 struct ConcatParams : public OpParamsInterface {
 public:
   using AsConstTuple = std::tuple<int>;
   AsConstTuple as_tuple() const;
 
-  int num_outputs(std::vector<ParallelTensorShape> const &) const override;
-  bool is_valid(std::vector<ParallelTensorShape> const &) const override;
+  bool is_valid(std::vector<ParallelTensorShape> const &input_shapes) const override;
+  std::vector<ParallelTensorShape> output_shapes(std::vector<ParallelTensorShape> const &input_shapes) const override;
   OperatorType op_type() const override;
 public:
   int axis;
@@ -22,13 +24,16 @@ public:
 bool operator==(ConcatParams const &, ConcatParams const &);
 bool operator<(ConcatParams const &, ConcatParams const &);
 
-} // namespace FlexFlow
+} 
+}
+
+VISITABLE_STRUCT(::FlexFlow::opmeta::ConcatParams, axis);
 
 namespace std {
 template <>
-struct hash<FlexFlow::ConcatParams> {
-  size_t operator()(FlexFlow::ConcatParams const &) const;
+struct hash<::FlexFlow::opmeta::ConcatParams> {
+  size_t operator()(::FlexFlow::opmeta::ConcatParams const &) const;
 };
-} // namespace std
+} 
 
 #endif // _FLEXFLOW_CONCAT_PARAMS_H

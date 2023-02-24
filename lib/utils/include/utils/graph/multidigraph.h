@@ -56,6 +56,8 @@ struct MultiDiEdgeQuery {
   static MultiDiEdgeQuery all();
 };
 
+MultiDiEdgeQuery query_intersection(MultiDiEdgeQuery const &, MultiDiEdgeQuery const &);
+
 struct IMultiDiGraphView : public IGraphView {
   using Edge = MultiDiEdge;
   using EdgeQuery = MultiDiEdgeQuery;

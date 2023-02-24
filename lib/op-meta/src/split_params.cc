@@ -1,14 +1,11 @@
 #include "op-meta/ops/split_params.h"
-#include "utils/hash-utils.h"
+#include "op-meta/visit_struct.h"
 
 namespace FlexFlow {
+namespace opmeta {
 
 bool SplitParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
   return inputs.size() == 1 && inputs.at(0).is_valid();
-}
-
-typename SplitParams::AsConstTuple SplitParams::as_tuple() const {
-  return {this->splits, this->legion_axis};
 }
 
 int SplitParams::num_outputs(std::vector<ParallelTensorShape> const &inputs) const {
@@ -20,17 +17,20 @@ OperatorType SplitParams::op_type() const {
 }
 
 bool operator==(SplitParams const &lhs, SplitParams const &rhs) {
-  return lhs.as_tuple() == rhs.as_tuple();
+  return visit_eq(lhs, rhs);
 }
 
 bool operator<(SplitParams const &lhs, SplitParams const &rhs) {
-  return lhs.as_tuple() < rhs.as_tuple();
+  return visit_lt(lhs, rhs);
 }
 
+}
 }
 
 namespace std {
-size_t hash<FlexFlow::SplitParams>::operator()(FlexFlow::SplitParams const &p) const {
-  return get_std_hash(p);
+using ::FlexFlow::opmeta::SplitParams;
+
+size_t hash<SplitParams>::operator()(SplitParams const &p) const {
+  return visit_hash(p);
 }
 }

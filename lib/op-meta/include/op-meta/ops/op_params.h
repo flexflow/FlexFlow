@@ -4,13 +4,16 @@
 #include "op-meta/parallel_tensor_shape.h"
 
 namespace FlexFlow {
+namespace opmeta {
 
 struct OpParamsInterface {
-  virtual int num_outputs(std::vector<ParallelTensorShape> const &inputs) const = 0;
+  virtual int num_outputs(std::vector<ParallelTensorShape> const &inputs) const;
+  virtual std::vector<ParallelTensorShape> output_shapes(std::vector<ParallelTensorShape> const &inputs) const = 0;
   virtual bool is_valid(std::vector<ParallelTensorShape> const &inputs) const = 0;
   virtual OperatorType op_type() const = 0;
 };
 
+}
 }
 
 #endif

@@ -1,8 +1,10 @@
 #include "op-meta/ops/attention_params.h"
 #include "utils/hash-utils.h"
 #include <algorithm>
+#include "op-meta/visit_struct.h"
 
 namespace FlexFlow {
+namespace opmeta {
 
 bool MultiHeadAttentionParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
   return (inputs.size() == 3 && std::all_of(inputs.begin(), inputs.end(), [](ParallelTensorShape const &s) { return s.is_valid(); }));
@@ -10,22 +12,22 @@ bool MultiHeadAttentionParams::is_valid(std::vector<ParallelTensorShape> const &
   return is_valid;
 }
 
-typename MultiHeadAttentionParams::AsConstTuple MultiHeadAttentionParams::as_tuple() const {
-  return {this->embed_dim, this->num_heads, this->kdim, this->vdim, this->dropout, this->bias, this->add_bias_kv, this->add_zero_attn};
-}
-
 bool operator==(MultiHeadAttentionParams const &lhs, MultiHeadAttentionParams const &rhs) {
-  return lhs.as_tuple() == rhs.as_tuple();
+  return visit_eq(lhs, rhs);
 }
 
 bool operator<(MultiHeadAttentionParams const &lhs, MultiHeadAttentionParams const &rhs) {
-  return lhs.as_tuple() < rhs.as_tuple();
+  return visit_lt(lhs, rhs);
+}
+
 }
 }
 
 namespace std {
-size_t hash<FlexFlow::MultiHeadAttentionParams>::operator()(
-    FlexFlow::MultiHeadAttentionParams const &params) const {
-  return get_std_hash(params.as_tuple());
+using ::FlexFlow::opmeta::MultiHeadAttentionParams;
+
+size_t hash<MultiHeadAttentionParams>::operator()(
+    MultiHeadAttentionParams const &params) const {
+  return visit_hash(params);
 } 
 }

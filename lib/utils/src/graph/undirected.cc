@@ -20,6 +20,10 @@ typename UndirectedEdge::AsConstTuple UndirectedEdge::as_tuple() const {
   return {this->smaller, this->bigger};
 }
 
+UndirectedEdgeQuery::UndirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &nodes) 
+  : nodes(nodes)
+{ }
+
 }
 }
 

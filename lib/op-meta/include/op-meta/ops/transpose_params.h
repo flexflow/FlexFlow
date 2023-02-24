@@ -3,16 +3,15 @@
 
 #include "op-meta/parallel_tensor_shape.h"
 #include "op-meta/ops/unary_op.h"
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
+namespace opmeta {
 
 struct TransposeParams : public UnaryOpParams {
 public:
-  using AsConstTuple = std::tuple<std::vector<int>>;
-  AsConstTuple as_tuple() const;
-
-  bool is_valid(ParallelTensorShape const &) const;
-  OperatorType op_type() const;
+  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
+  OperatorType op_type() const override;
 public:
   std::vector<int> perm;
 };
@@ -21,11 +20,14 @@ bool operator==(TransposeParams const &, TransposeParams const &);
 bool operator<(TransposeParams const &, TransposeParams const &);
 
 } 
+}
+
+VISITABLE_STRUCT(::FlexFlow::opmeta::TransposeParams, perm);
 
 namespace std {
 template <>
-struct hash<FlexFlow::TransposeParams> {
-  size_t operator()(FlexFlow::TransposeParams const &) const;
+struct hash<::FlexFlow::opmeta::TransposeParams> {
+  size_t operator()(::FlexFlow::opmeta::TransposeParams const &) const;
 };
 } 
 

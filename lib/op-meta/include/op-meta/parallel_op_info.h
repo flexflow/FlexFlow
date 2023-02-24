@@ -4,14 +4,12 @@
 #include "op-meta/ffconst.h"
 #include <tuple>
 #include <functional>
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
+namespace opmeta {
 
 struct ParallelOpInfo {
-public:
-  using AsConstTuple = std::tuple<OperatorType, int, int>;
-  AsConstTuple as_tuple() const;
-public:
   OperatorType op_type;
   int parallel_dim;
   int parallel_degree;
@@ -19,14 +17,16 @@ public:
 
 bool operator==(ParallelOpInfo const &, ParallelOpInfo const &);
 bool operator<(ParallelOpInfo const &, ParallelOpInfo const &);
-void swap(ParallelOpInfo &, ParallelOpInfo &);
 
 }
+}
+
+VISITABLE_STRUCT(::FlexFlow::opmeta::ParallelOpInfo, op_type, parallel_dim, parallel_degree);
 
 namespace std {
 template <>
-struct hash<FlexFlow::ParallelOpInfo> {
-  size_t operator()(FlexFlow::ParallelOpInfo const &) const;
+struct hash<::FlexFlow::opmeta::ParallelOpInfo> {
+  size_t operator()(::FlexFlow::opmeta::ParallelOpInfo const &) const;
 };
 }
 

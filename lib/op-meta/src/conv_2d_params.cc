@@ -1,10 +1,11 @@
 #include "op-meta/ops/conv_2d_params.h"
-#include "utils/hash-utils.h"
 #include "parallel_dim_mapping_record.h"
 #include "parallel_dim_mapping_record_solver.h"
 #include "utils/vector.h"
+#include "op-meta/visit_struct.h"
 
 namespace FlexFlow {
+namespace opmeta {
 
 namespace Input {
   constexpr int WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3, REPLICA = 4, NUMDIM = 5;
@@ -82,20 +83,43 @@ std::vector<ParallelDimMappingRecord> construct_mappings(ParallelTensorShape con
   return mappings;
 }
 
-typename Conv2DParams::AsConstTuple Conv2DParams::as_tuple() const {
-  return { this->out_channels, this->kernel_h, this->kernel_w, this->stride_h, this->stride_w, this->padding_h, this->padding_w, this->groups, this->activation, this->use_bias };
-};
+bool Conv2DParams::is_valid(ParallelTensorShape const &input_shape) const {
+  bool is_valid = true;
+  is_valid &= input_shape.is_valid();
+  is_valid &= this->calculate_output_shape(input_shape).is_valid();
+  is_valid &= this->calculate_kernel_shape(input_shape).is_valid();
+  if (use_bias) {
+    is_valid &= this->calculate_bias_shape(input_shape).is_valid();
+  }
+
+  // TODO FIXME: Currently disable parallelizing the height and width dimension
+  if (input_shape.at(0).degree > 1 || input_shape.at(1).degree > 1) {
+    return false;
+  }
+
+  return is_valid;
+  
+}
+
+OperatorType Conv2DParams::op_type() const {
+  return OP_CONV2D;
+}
 
 bool operator==(Conv2DParams const &lhs, Conv2DParams const &rhs) {
-  return lhs.as_tuple() == rhs.as_tuple();
+  return visit_eq(lhs, rhs);
 }
 
 bool operator<(Conv2DParams const &lhs, Conv2DParams const &rhs) {
-  return lhs.as_tuple() < rhs.as_tuple();
+  return visit_lt(lhs, rhs);
 }
 
+}
 }
 
 namespace std {
+using Conv2DParams = ::FlexFlow::opmeta::Conv2DParams;
 
+size_t hash<Conv2DParams>::operator()(Conv2DParams const &p) const {
+  return visit_hash(p);
+}
 }

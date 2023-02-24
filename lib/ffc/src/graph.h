@@ -46,20 +46,19 @@ struct GraphOptimalViewSerialized {
 
 class Graph {
 public:
-  Graph();
+  Graph() = default;
+  Graph(std::string const &logger_name);
+  Graph(std::shared_ptr<spdlog::logger> const &logger);
+
   void add_edge(utils::Node const &srcOp, utils::Node const &dstOp, int srcIdx, int dstIdx);
   utils::Node add_node(opmeta::OperatorParameters const &);
   void add_edge(utils::MultiDiEdge const &e);
-  void remove_node(utils::Node, bool purge_edges = false);
+  void remove_node(utils::Node const &, bool purge_edges = false);
   void remove_edge(utils::MultiDiEdge const &e, bool remove_node_if_unused = true);
-  bool has_edge(opmeta::OperatorParameters const &srcOp,
-                opmeta::OperatorParameters const &dstOp,
-                int srcIdx,
-                int dstIdx) const;
   bool has_edge(utils::MultiDiEdge const &e) const;
   void replace_subgraph(std::unordered_set<opmeta::OperatorParameters> const &currentNodes,
                         Graph const &replaceWith);
-  Graph subgraph(std::unordered_set<opmeta::OperatorParameters> const &nodes) const;
+  Graph subgraph(std::unordered_set<utils::Node> const &nodes) const;
   void contract_out_node(opmeta::OperatorParameters const &);
   float optimal_cost() const;
   std::unordered_map<opmeta::OperatorParameters, MachineView> optimal_views() const;
@@ -105,9 +104,9 @@ public:
 
   opmeta::OperatorParameters find_sink_node() const;
   opmeta::OperatorParameters find_source_node() const;
-  void reshape_output_tensor(ParallelTensorShape const &shape);
+  void reshape_output_tensor(opmeta::ParallelTensorShape const &shape);
   std::unique_ptr<Graph>
-      with_output_tensor_reshaped_to(ParallelTensorShape const &shape) const;
+      with_output_tensor_reshaped_to(opmeta::ParallelTensorShape const &shape) const;
 
 
   static Graph singleton(opmeta::OperatorParameters const &);
@@ -121,8 +120,11 @@ private:
   void replace_subgraph_with_nonempty(
       std::unordered_set<opmeta::OperatorParameters> const &currentNodes, Graph const &replaceWith);
 private:
+  Graph(utils::AdjacencyMultiDiGraph const &, utils::bidict<utils::Node, opmeta::OperatorParameters> const &, std::shared_ptr<spdlog::logger> const &);
+
   utils::AdjacencyMultiDiGraph g;
   utils::bidict<utils::Node, opmeta::OperatorParameters> nodeMap;
+  std::shared_ptr<spdlog::logger> logger;
 };
 
 struct GraphOptimizeResult {

@@ -36,6 +36,8 @@ namespace FlexFlow {
 namespace utils {
 
 struct UndirectedEdgeQuery {
+  UndirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &);
+
   tl::optional<std::unordered_set<Node>> nodes = tl::nullopt;
 };
 

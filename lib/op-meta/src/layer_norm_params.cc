@@ -1,27 +1,26 @@
 #include "op-meta/ops/layer_norm_params.h"
 #include "utils/hash-utils.h"
+#include "op-meta/visit_struct.h"
 
 namespace FlexFlow {
-bool LayerNormParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
-  return inputs.size() == 1 && inputs.at(0).is_valid();
-}
-
-typename LayerNormParams::AsConstTuple LayerNormParams::as_tuple() const {
-  return {this->axes, this->elementwise_affine, this->eps};
-}
+namespace opmeta {
 
 bool operator==(LayerNormParams const &lhs, LayerNormParams const &rhs) {
-  return lhs.as_tuple() == rhs.as_tuple();
+  return visit_eq(lhs, rhs);
 }
 
 bool operator<(LayerNormParams const &lhs, LayerNormParams const &rhs) {
-  return lhs.as_tuple() < rhs.as_tuple();
+  return visit_lt(lhs, rhs);
+}
+
 }
 }
 
 namespace std {
-size_t hash<FlexFlow::LayerNormParams>::operator()(
-    FlexFlow::LayerNormParams const &params) const {
-  return get_std_hash(params.as_tuple());
+using ::FlexFlow::opmeta::LayerNormParams;
+
+size_t hash<LayerNormParams>::operator()(
+    LayerNormParams const &params) const {
+  return visit_hash(params);
 }
 }

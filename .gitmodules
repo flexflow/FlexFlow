@@ -31,3 +31,6 @@
 [submodule "deps/doctest"]
 	path = deps/doctest
 	url = https://github.com/doctest/doctest.git
+[submodule "deps/visit_struct"]
+	path = deps/visit_struct
+	url = https://github.com/cbeck88/visit_struct.git

@@ -14,6 +14,7 @@
 #include "op-meta/parallel_tensor_shape.h"
 
 namespace FlexFlow {
+namespace opmeta {
 
 std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
   std::vector<std::pair<int, int>> mappings,
@@ -96,6 +97,7 @@ ParallelDimMappingSolution solve_parallel_dim_mappings(
 /*   std::vector<ParallelDimMappingRecord> *parallel_dims_mapping; */
 /* }; */
 
-};
+}
+}
 
 #endif 

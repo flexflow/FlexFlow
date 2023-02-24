@@ -1,29 +1,26 @@
 #include "op-meta/ops/fused_parallel_op_params.h"
 #include "utils/hash-utils.h"
+#include "op-meta/visit_struct.h"
 
 namespace FlexFlow {
-
-bool FusedParallelOpParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
-  return (inputs.size() == 1 && inputs.at(0).is_valid());
-}
-
-typename FusedParallelOpParams::AsConstTuple FusedParallelOpParams::as_tuple() const {
-  return {this->parallel_ops};
-}
+namespace opmeta {
 
 bool operator==(FusedParallelOpParams const &lhs, FusedParallelOpParams const &rhs) {
-  return lhs.as_tuple() == rhs.as_tuple();
+  return visit_eq(lhs, rhs);
 }
 
 bool operator<(FusedParallelOpParams const &lhs, FusedParallelOpParams const &rhs) {
-  return lhs.as_tuple() < rhs.as_tuple();
+  return visit_lt(lhs, rhs);
 }
 
+}
 }
 
 namespace std {
-size_t hash<FlexFlow::FusedParallelOpParams>::operator()(
-    FlexFlow::FusedParallelOpParams const &p) const {
-  return get_std_hash(p.as_tuple());
+using ::FlexFlow::opmeta::FusedParallelOpParams;
+
+size_t hash<FusedParallelOpParams>::operator()(
+    FusedParallelOpParams const &p) const {
+  return visit_hash(p);
 }
 }

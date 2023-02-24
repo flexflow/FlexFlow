@@ -1,6 +1,7 @@
 #include "op-meta/ops/binary_op.h"
 
 namespace FlexFlow {
+namespace opmeta {
 
 bool BinaryOpParams::is_valid(std::vector<ParallelTensorShape> const &inputs) const {
   return inputs.size() == 2 
@@ -17,4 +18,5 @@ int BinaryOpParams::num_outputs(std::vector<ParallelTensorShape> const &inputs) 
   return 2;
 }
 
+}
 }

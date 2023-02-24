@@ -40,10 +40,6 @@ bool operator==(TransposeParams const &lhs, TransposeParams const &rhs) {
   return lhs.perm == rhs.perm;
 }
 
-bool TransposeParams::is_valid(ParallelTensorShape const &input) const {
-  return input.is_valid();
-}
-
 TransposeParams Transpose::get_params() const {
   TransposeParams params;
   params.perm.clear();
