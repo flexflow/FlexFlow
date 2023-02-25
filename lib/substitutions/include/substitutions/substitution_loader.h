@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_SUBSTITUTION_LOADER_H
 #define _FLEXFLOW_SUBSTITUTION_LOADER_H
 
-#include <op-meta/op-meta.h>
+#include "op-meta/op-meta.h"
 #include "tl/optional.hpp"
 #include <fstream>
 #include <nlohmann/json.hpp>

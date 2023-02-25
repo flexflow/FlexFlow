@@ -22,6 +22,7 @@ target_link_libraries(
   ${project_target}
   optional
   mpark_variant
+  visit_struct
 )
 set_target_properties(
   ${project_target} 
@@ -32,9 +33,3 @@ set_target_properties(
 )
 
 # add_subdirectory(test)
-
-list(APPEND FLEXFLOW_LIBS ${PROJECT_SOURCE_DIR}/lib${project_target}${LIBEXT})
-list(APPEND FLEXFLOW_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/include)
-
-set(FLEXFLOW_LIBS ${FLEXFLOW_LIBS} PARENT_SCOPE)
-set(FLEXFLOW_INCLUDE_DIRS ${FLEXFLOW_INCLUDE_DIRS} PARENT_SCOPE)

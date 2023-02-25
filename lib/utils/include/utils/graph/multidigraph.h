@@ -41,8 +41,13 @@ namespace FlexFlow {
 namespace utils {
 
 struct MultiDiEdgeQuery {
-  tl::optional<std::unordered_set<Node>> srcs, dsts;
-  tl::optional<std::unordered_set<std::size_t>> srcIdxs, dstIdxs;
+  tl::optional<std::unordered_set<Node>> srcs = tl::nullopt, dsts = tl::nullopt;
+  tl::optional<std::unordered_set<std::size_t>> srcIdxs = tl::nullopt, dstIdxs = tl::nullopt;
+
+  MultiDiEdgeQuery(tl::optional<std::unordered_set<Node>> const &srcs = tl::nullopt, 
+                   tl::optional<std::unordered_set<Node>> const &dsts = tl::nullopt, 
+                   tl::optional<std::unordered_set<std::size_t>> const &srcIdxs = tl::nullopt, 
+                   tl::optional<std::unordered_set<std::size_t>> const &dstIdxs = tl::nullopt);
 
   MultiDiEdgeQuery with_src_nodes(std::unordered_set<Node> const &) const;
   MultiDiEdgeQuery with_src_node(Node const &) const;

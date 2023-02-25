@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include "utils/dot_file.h"
 #include "utils/containers.h"
+#include "views.h"
 
 namespace FlexFlow {
 namespace utils {
@@ -141,17 +142,17 @@ Impl subgraph(IMultiDiGraphView const &g, std::unordered_set<Node> const &nodes)
 
 template <typename Impl>
 Impl join(IMultiDiGraphView const &lhs, IMultiDiGraphView const &rhs) {
-  for (Node const &g : get_nodes(});
+  return materialize_multidigraph_view<Impl>(unsafe_view_as_joined(lhs, rhs));
 }
 
 template <typename Impl>
-Impl join(IDiGraphView const &g, IDiGraphView const &g) {
-
+Impl join(IDiGraphView const &lhs, IDiGraphView const &rhs) {
+  return materialize_digraph_view<Impl>(unsafe_view_as_joined(lhs, rhs));
 }
 
 template <typename Impl>
-Impl join(IUndirectedGraphView const &g, IUndirectedGraphView const &g) {
-
+Impl join(IUndirectedGraphView const &lhs, IUndirectedGraphView const &rhs) {
+  return materialize_undirected_graph_view<Impl>(unsafe_view_as_joined(lhs, rhs));
 }
 
 void export_as_dot(DotFile<Node> &, 

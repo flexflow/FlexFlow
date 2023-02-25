@@ -1,11 +1,12 @@
-#include "ffc/substitution_loader.h"
+#include "substitutions/substitution_loader.h"
 #include <cassert>
 #include <functional>
 #include <sstream>
 
 using json = nlohmann::json;
 
-namespace FlexFlow::substitution_loader {
+namespace FlexFlow {
+namespace substitution_loader {
 
 void from_json(json const &j, Parameter &p) {
   j.at("key").get_to(p.key);
@@ -75,4 +76,5 @@ RuleCollection load_rule_collection_from_path(std::string const &path) {
   return load_rule_collection(input);
 }
 
-} // namespace FlexFlow::substitution_loader
+} 
+}
