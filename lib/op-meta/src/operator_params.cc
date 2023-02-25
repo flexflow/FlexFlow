@@ -1,5 +1,9 @@
 #include "op-meta/operator_params.h"
 #include "op-meta/ffconst_utils.h"
+#include "utils/record_formatter.h"
+#include "visit_struct/visit_struct.hpp"
+#include "op-meta/ffconst_utils.h"
+#include "utils/containers.h"
 
 namespace FlexFlow {
 namespace opmeta {
@@ -44,6 +48,83 @@ OperatorType get_op_type(opmeta::OperatorParameters const &o) {
 
 bool is_parallel_op(opmeta::OperatorParameters const &o) {
   return is_parallel_op(get_op_type(o));
+}
+
+void as_dot(int x, RecordFormatter &r) {
+  r << std::to_string(x); 
+}
+
+void as_dot(std::string const &s, RecordFormatter &r) {
+  r << s;
+}
+
+template <typename T>
+void as_dot(std::vector<T> const &x, RecordFormatter &r) {
+  RecordFormatter rr;
+  for (T const &t : x) {
+    as_dot(t, r);
+  }
+  r << rr;
+}
+
+void as_dot(ParallelOpInfo const &p, RecordFormatter &r) {
+  RecordFormatter rr;
+  as_dot(p.op_type, rr);
+  as_dot(p.parallel_dim, rr);
+  as_dot(p.parallel_degree, rr);
+  r << rr; 
+}
+
+struct as_dot_visitor {
+  RecordFormatter result;
+
+  template <typename T>
+  void operator()(const char *name, T const &t) {
+    RecordFormatter kv;
+    kv << name;
+    as_dot(t, result);
+    result << kv;
+  }
+
+  template <typename T>
+  void operator()(T const &t) {
+    as_dot(t, result);
+  }
+
+  /* template <typename V> */
+  /* void operator()(const char *name, std::vector<V> const &t) { */
+  /*   RecordFormatter kv; */
+  /*   kv << name; */
+  /*   RecordFormatter v; */
+  /*   for (V const &vv : t) { */
+  /*     v << as_dot_str(vv); */
+  /*   } */
+  /*   kv << v; */
+  /* } */
+};
+
+template <typename T>
+RecordFormatter generic_as_dot(T const &t) {
+  as_dot_visitor vis;
+  visit_struct::for_each(t, vis);
+  return vis.result;
+}
+
+template <>
+RecordFormatter generic_as_dot<FlatParams>(FlatParams const &p) {
+  RecordFormatter r; 
+  return r;
+}
+
+struct AsDot {
+  template <typename T>
+  RecordFormatter operator()(T const &t) {
+    return generic_as_dot(t);
+  }
+};
+
+RecordFormatter as_dot(OperatorParameters const &o) {
+  return mpark::visit(AsDot{}, o);
 }
 
 /* int num_outputs(OperatorParameters const &o) { */

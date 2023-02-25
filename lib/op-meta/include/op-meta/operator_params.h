@@ -62,6 +62,7 @@ using OperatorParameters = mp::variant<// AggregateParams,
 
 OperatorType get_op_type(OperatorParameters const &);
 OperatorType get_op_type(OpParamsInterface const &);
+RecordFormatter as_dot(OperatorParameters const &);
 
 bool is_parallel_op(OperatorParameters const &);
 

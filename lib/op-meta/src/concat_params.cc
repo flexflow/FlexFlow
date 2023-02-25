@@ -1,6 +1,7 @@
 #include "op-meta/ops/concat_params.h"
 
 namespace FlexFlow {
+namespace opmeta {
 
 typename ConcatParams::AsConstTuple ConcatParams::as_tuple() const {
   return {this->axis};
@@ -23,4 +24,5 @@ bool ConcatParams::is_valid(
   return valid;
 }
 
+}
 }

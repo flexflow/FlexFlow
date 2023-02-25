@@ -1,25 +1,25 @@
 #include "op-meta/parallel_op_info.h"
-#include "utils/hash-utils.h"
+#include "op-meta/visit_struct.h"
 
 namespace FlexFlow {
-
-typename ParallelOpInfo::AsConstTuple ParallelOpInfo::as_tuple() const {
-  return {this->op_type, this->parallel_dim, this->parallel_degree};
-}
+namespace opmeta {
 
 bool operator==(ParallelOpInfo const &lhs, ParallelOpInfo const &rhs) {
-  return lhs.as_tuple() == rhs.as_tuple();
+  return visit_eq(lhs, rhs);
 }
 
 bool operator<(ParallelOpInfo const &lhs, ParallelOpInfo const &rhs) {
-  return lhs.as_tuple() < rhs.as_tuple();
+  return visit_lt(lhs, rhs);
 }
 
+}
 }
 
 namespace std {
-size_t hash<FlexFlow::ParallelOpInfo>::operator()(
-    FlexFlow::ParallelOpInfo const &params) const {
-  return get_std_hash(params.as_tuple());
+using ::FlexFlow::opmeta::ParallelOpInfo;
+
+size_t hash<ParallelOpInfo>::operator()(
+    ParallelOpInfo const &params) const {
+  return visit_hash(params);
 }
 }

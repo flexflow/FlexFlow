@@ -2,17 +2,16 @@
 #define _FLEXFLOW_PARTITION_PARAMS_H
 
 #include "op-meta/parallel_tensor_shape.h"
-#include "op-meta/ops/op_params.h"
+#include "op-meta/ops/unary_op.h"
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
+namespace opmeta {
 
-struct RepartitionParams : public OpParamsInterface {
+struct RepartitionParams : public UnaryOpParams {
 public:
-  using AsConstTuple = std::tuple<int, int>;
-  AsConstTuple as_tuple() const;
-
-  int num_outputs(std::vector<ParallelTensorShape> const &inputs) const override;
-  bool is_valid(std::vector<ParallelTensorShape> const &inputs) const override;
+  bool is_valid(ParallelTensorShape const &input_shape) const override;
+  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
   OperatorType op_type() const override;
 public:
   int repartition_legion_dim;
@@ -21,13 +20,16 @@ public:
 bool operator==(RepartitionParams const &, RepartitionParams const &);
 bool operator<(RepartitionParams const &, RepartitionParams const &);
 
-} // namespace FlexFlow
+} 
+}
+
+VISITABLE_STRUCT(::FlexFlow::opmeta::RepartitionParams, repartition_legion_dim, repartition_degree);
 
 namespace std {
 template <>
-struct hash<FlexFlow::RepartitionParams> {
-  size_t operator()(FlexFlow::RepartitionParams const &) const;
+struct hash<::FlexFlow::opmeta::RepartitionParams> {
+  size_t operator()(::FlexFlow::opmeta::RepartitionParams const &) const;
 };
-} // namespace std
+}
 
 #endif // _FLEXFLOW_PARTITION_PARAMS_H

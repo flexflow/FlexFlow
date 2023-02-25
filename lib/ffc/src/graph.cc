@@ -16,12 +16,25 @@
 #include "dominators.h"
 #include "op-meta/op-meta.h"
 #include "utils/disjoint_set.h"
+#include <iostream>
+
+using FlexFlow::utils::Node;
+using FlexFlow::opmeta::OperatorParameters;
 
 namespace FlexFlow {
 namespace ffc {
 
-using utils::Node;
-using opmeta::OperatorParameters;
+Graph::Graph(std::string const &logger_name)
+  : Graph(spdlog::get(logger_name))
+{ }
+
+Graph::Graph(std::shared_ptr<spdlog::logger> const &logger) 
+  : logger(logger)
+{ }
+
+Graph::Graph(utils::AdjacencyMultiDiGraph const &g, utils::bidict<Node, OperatorParameters> const &nodeMap, std::shared_ptr<spdlog::logger> const &logger) 
+  : g(g), nodeMap(nodeMap), logger(logger)
+{ }
 
 /* using namespace Legion; */
 /* using FlexFlow::MachineView; */
@@ -46,95 +59,14 @@ void Graph::add_edge(utils::MultiDiEdge const &e) {
   this->g.add_edge(e);
 }
 
-void Graph::remove_edge(Edge const &e, bool remove_node_if_unused) {
-  assert(outEdges[e.srcOp].find(e) != outEdges[e.srcOp].end());
-  assert(inEdges[e.dstOp].find(e) != inEdges[e.dstOp].end());
-  assert(outEdges[e.srcOp].erase(e) == 1);
-  assert(inEdges[e.dstOp].erase(e) == 1);
-  if (remove_node_if_unused) {
-    if ((outEdges[e.srcOp].size() == 0) && (inEdges[e.srcOp].size() == 0)) {
-      outEdges.erase(e.srcOp);
-      inEdges.erase(e.srcOp);
-    }
-    if ((outEdges[e.dstOp].size() == 0) && (inEdges[e.dstOp].size() == 0)) {
-      outEdges.erase(e.dstOp);
-      inEdges.erase(e.dstOp);
-    }
-  }
+void Graph::remove_edge(utils::MultiDiEdge const &e, bool remove_node_if_unused) {
+  this->g.remove_edge(e);
+  utils::remove_node_if_unused(this->g, e.src);
+  utils::remove_node_if_unused(this->g, e.dst);
 }
 
-bool Graph::has_edge(Node const &srcOp,
-                     Node const &dstOp,
-                     int srcIdx,
-                     int dstIdx) const {
-  Edge e(srcOp, dstOp, srcIdx, dstIdx);
-  return this->has_edge(e);
-}
-
-bool Graph::has_edge(Edge const &e) const {
-  if (inEdges.find(e.dstOp) == inEdges.end()) {
-    return false;
-  }
-  if (inEdges.at(e.dstOp).find(e) == inEdges.at(e.dstOp).end()) {
-    return false;
-  }
-  return true;
-}
-
-void Graph::print(void) const {
-  log_graph.print("Printing in-edge graph...");
-  for (auto const &it : inEdges) {
-    if (it.first.guid == 0) {
-      continue;
-    }
-    log_graph.print("	guid(%zu) type(%s): ",
-                    it.first.guid,
-                    get_operator_type_name(it.first.ptr->op_type).data());
-    std::unordered_set<Edge> const &list = it.second;
-    for (auto const &it2 : list) {
-      Edge e = it2;
-      log_graph.print(
-          "         inEdge(guid(%zu) idx(%d))", e.srcOp.guid, e.srcIdx);
-    }
-    // if (it->first.ptr->type == OP_CONV2D) {
-    //   it->first.ptr->inputs[1].print_info("conv weight");
-    // }
-    // else if (it->first.ptr->type == OP_BROADCAST_ADD) {
-    //   it->first.ptr->inputs[1].print_info("conv new bias");
-    // }
-    // else if (it->first.ptr->type == OP_BATCHNORM) {
-    //   it->first.ptr->inputs[1].print_info("gamma");
-    //   it->first.ptr->inputs[2].print_info("beta");
-    //   it->first.ptr->inputs[3].print_info("mean");
-    //   it->first.ptr->inputs[4].print_info("var");
-    // }
-  }
-  log_graph.print("Printing out-edge graph...");
-  for (auto const &it : outEdges) {
-    if (it.first.guid == 0) {
-      continue;
-    }
-    log_graph.print(
-        "	guid(%zu) type(%d): ", it.first.guid, it.first.ptr->op_type);
-    std::unordered_set<Edge> const &list = it.second;
-    for (auto const &it2 : list) {
-      Edge e = it2;
-      log_graph.print(
-          "         outEdge(guid(%zu) idx(%d))", e.dstOp.guid, e.dstIdx);
-    }
-    // if (it->first.ptr->type == OP_CONV2D) {
-    //   it->first.ptr->inputs[1].print_info("conv weight");
-    // }
-    // else if (it->first.ptr->type == OP_BROADCAST_ADD) {
-    //   it->first.ptr->inputs[1].print_info("conv new bias");
-    // }
-    // else if (it->first.ptr->type == OP_BATCHNORM) {
-    //   it->first.ptr->inputs[1].print_info("gamma");
-    //   it->first.ptr->inputs[2].print_info("beta");
-    //   it->first.ptr->inputs[3].print_info("mean");
-    //   it->first.ptr->inputs[4].print_info("var");
-    // }
-  }
+bool Graph::has_edge(utils::MultiDiEdge const &e) const {
+  return utils::contains_edge(this->g, e);
 }
 
 void Graph::print_dot() const {
@@ -142,14 +74,14 @@ void Graph::print_dot() const {
 }
 
 void Graph::print_dot(std::ostream &s) const {
-  using FlexFlow::PCG::Utils::export_as_dot;
+  auto directed = unsafe_view_as_digraph(this->g);
 
   DotFile<Node> dot(s);
 
-  export_as_dot(dot, *this, [](Node const &node) -> RecordFormatter {
+  export_as_dot(dot, directed, [&](utils::Node const &node) -> RecordFormatter {
     RecordFormatter rf;
     rf << node.to_string();
-    tl::optional<RecordFormatter> sub_rf = node.ptr->as_dot();
+    tl::optional<RecordFormatter> sub_rf = this->nodeMap.at_l(node).ptr->as_dot();
     if (sub_rf.has_value()) {
       rf << sub_rf.value();
     }
@@ -159,56 +91,9 @@ void Graph::print_dot(std::ostream &s) const {
   s << std::endl;
 }
 
-bool Graph::has_loop(void) {
-  std::unordered_map<Node, int> todos;
-  std::vector<Node> opList;
-  for (auto const &it : inEdges) {
-    auto const &inList = it.second;
-    todos[it.first] = (int)inList.size();
-    if (todos[it.first] == 0) {
-      opList.push_back(it.first);
-    }
-  }
-  size_t i = 0;
-  while (i < opList.size()) {
-    Node op = opList[i++];
-    auto const &outList = outEdges[op];
-    for (auto const &it2 : outList) {
-      todos[it2.dstOp]--;
-      if (todos[it2.dstOp] == 0) {
-        opList.push_back(it2.dstOp);
-      }
-    }
-  }
-  return (opList.size() < inEdges.size());
+bool Graph::has_loop() {
+  return !utils::is_acyclic(this->g).value_or(true);
 }
-
-bool Graph::check_correctness(void) {
-  bool okay = true;
-  for (auto it = outEdges.begin(); it != outEdges.end(); it++) {
-    auto const &list = it->second;
-    for (auto it2 = list.begin(); it2 != list.end(); it2++) {
-      Edge e = *it2;
-      if (!has_edge(e)) {
-        assert(false);
-      }
-      if (e.srcOp.ptr == NULL) {
-        continue;
-      }
-      assert(e.srcOp != e.dstOp);
-      ParallelTensor srcTensor = e.srcOp.ptr->outputs[e.srcIdx];
-      ParallelTensor dstTensor = e.dstOp.ptr->inputs[e.dstIdx];
-      if (srcTensor->num_dims != dstTensor->num_dims) {
-        assert(false);
-      }
-      for (int i = 0; i < srcTensor->num_dims; i++) {
-        assert(srcTensor->dims[i] == dstTensor->dims[i]);
-      }
-    }
-  }
-  return okay;
-}
-
 
 Node Graph::find_bottleneck_node(Node const &sink_node,
                                  Node const &source_node) const {
@@ -237,59 +122,34 @@ Node Graph::find_bottleneck_node(Node const &sink_node,
   return bn_node;
 }
 
-Graph Graph::subgraph(std::unordered_set<Node> const &ns) const {
-  using FlexFlow::PCG::Utils::nodes;
+Graph Graph::subgraph(std::unordered_set<Node> const &nodes) const {
+  utils::AdjacencyMultiDiGraph sub_g = utils::subgraph<utils::AdjacencyMultiDiGraph>(this->g, nodes);
 
-  Graph sub(this->model);
-
-  std::unordered_set<Node> all_nodes = nodes(*this);
-
-  for (Node const &node : ns) {
-    assert(all_nodes.find(node) != all_nodes.end());
-    sub.add_node(node);
-  }
-  for (auto const &kv : this->inEdges) {
-    for (Edge const &in_edge : kv.second) {
-      if (ns.find(in_edge.srcOp) != ns.end() &&
-          ns.find(in_edge.dstOp) != ns.end()) {
-        sub.add_edge(in_edge);
-      }
+  utils::bidict<utils::Node, opmeta::OperatorParameters> sub_nodeMap;
+  for (auto const &kv : this->nodeMap) {
+    if (contains(nodes, kv.first)) {
+      sub_nodeMap.equate(kv.first, kv.second);
     }
   }
 
-  return sub;
+  return {sub_g, sub_nodeMap, this->logger};
 }
 
 void Graph::remove_node(Node const &node, bool purge_edges) {
-  if (purge_edges) {
-    std::unordered_set<Edge> out_edges = this->outEdges.at(node);
-    for (auto const &e : out_edges) {
-      this->remove_edge(e, false /*remove_node_if_unused*/);
-    }
-    std::unordered_set<Edge> in_edges = this->outEdges.at(node);
-    for (auto const &e : in_edges) {
-      this->remove_edge(e, false /*remove_node_if_unused*/);
-    }
-  } else {
-    assert(this->inEdges.at(node).empty());
-    assert(this->outEdges.at(node).empty());
-  }
-  this->inEdges.erase(node);
-  this->outEdges.erase(node);
+  assert (purge_edges == true);
+  utils::remove_node(this->g, node);
+  this->nodeMap.erase_l(node);
 }
 
 /*static*/
-Graph Graph::singleton(FFModel *model, Node const &node) {
-  Graph g(model);
-  g.add_node(node);
+Graph Graph::singleton(OperatorParameters const &params) {
+  Graph g;
+  g.add_node(params);
   return g;
 }
 
 bool Graph::empty() const {
-  bool inEdges_empty = this->inEdges.empty();
-  bool outEdges_empty = this->outEdges.empty();
-  assert(inEdges_empty == outEdges_empty);
-  return inEdges_empty;
+  return utils::empty(this->g);
 }
 
 void Graph::replace_subgraph(std::unordered_set<Node> const &currentNodes,

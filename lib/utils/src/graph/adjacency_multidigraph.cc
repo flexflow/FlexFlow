@@ -12,9 +12,21 @@ Node AdjacencyMultiDiGraph::add_node() {
   return node;
 }
 
+void AdjacencyMultiDiGraph::add_node_unsafe(Node const &node) {
+  adjacency[node];
+}
+
+void AdjacencyMultiDiGraph::remove_node_unsafe(Node const &n) {
+  this->adjacency.erase(n);
+}
+
 void AdjacencyMultiDiGraph::add_edge(MultiDiEdge const &e) {
   this->adjacency.at(e.dst);
   this->adjacency.at(e.src)[e.dst][e.srcIdx].insert(e.dstIdx);
+}
+
+void AdjacencyMultiDiGraph::remove_edge(MultiDiEdge const &e) {
+  this->adjacency.at(e.src)[e.dst][e.srcIdx].erase(e.dstIdx);
 }
 
 std::unordered_set<MultiDiEdge> AdjacencyMultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {

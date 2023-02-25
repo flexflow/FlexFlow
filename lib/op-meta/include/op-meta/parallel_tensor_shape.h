@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 namespace FlexFlow {
+namespace opmeta {
 
 struct ParallelDim {
   static constexpr int UNKNOWN_DEGREE = -1;
@@ -107,17 +108,18 @@ private:
 
 std::ostream &operator<<(std::ostream &, ParallelTensorShape const &);
 
-}; // namespace FlexFlow
+}
+}
 
 namespace std {
 template <>
-struct hash<FlexFlow::ParallelDim> {
-  size_t operator()(FlexFlow::ParallelDim const &) const;
+struct hash<::FlexFlow::opmeta::ParallelDim> {
+  size_t operator()(::FlexFlow::opmeta::ParallelDim const &) const;
 };
 
 template <>
-struct hash<FlexFlow::ParallelTensorShape> {
-  size_t operator()(FlexFlow::ParallelTensorShape const &) const;
+struct hash<::FlexFlow::opmeta::ParallelTensorShape> {
+  size_t operator()(::FlexFlow::opmeta::ParallelTensorShape const &) const;
 };
 } // namespace std
 

@@ -49,12 +49,16 @@ struct NodeQuery {
   tl::optional<std::unordered_set<Node>> nodes = tl::nullopt;
 };
 
+NodeQuery query_intersection(NodeQuery const &, NodeQuery const &);
+NodeQuery query_union(NodeQuery const &, NodeQuery const &);
+
 struct IGraphView {
   virtual std::unordered_set<Node> query_nodes(NodeQuery const &) const = 0;
 };
 
 struct IGraph {
   virtual Node add_node() = 0;
+  virtual void add_node_unsafe(Node const &) = 0;
   virtual void remove_node_unsafe(Node const &) = 0;
 };
 }

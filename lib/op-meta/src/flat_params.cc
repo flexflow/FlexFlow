@@ -4,6 +4,7 @@
 #include <cassert>
 
 namespace FlexFlow {
+namespace opmeta {
 
 namespace Input {
 constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
@@ -15,16 +16,12 @@ constexpr int NUMDIM = 3, CHANNEL = 0, SAMPLE = 1, REPLICA = 2;
 }
 
 
-typename FlatParams::AsConstTuple FlatParams::as_tuple() const {
-  return {};
-}
-
 bool operator==(FlatParams const &lhs, FlatParams const &rhs) {
-  return lhs.as_tuple() == rhs.as_tuple();
+  return true;
 }
 
 bool operator<(FlatParams const &lhs, FlatParams const &rhs) {
-  return lhs.as_tuple() < rhs.as_tuple();
+  return false;
 }
 
 
@@ -57,4 +54,5 @@ ParallelTensorShape FlatParams::calculate_output_shape(ParallelTensorShape const
 }
 
 
+}
 }

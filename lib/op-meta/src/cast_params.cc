@@ -1,18 +1,15 @@
 #include "op-meta/ops/cast_params.h"
-#include "utils/hash-utils.h"
+#include "op-meta/visit_struct.h"
 
 namespace FlexFlow {
-
-typename CastParams::AsConstTuple CastParams::as_tuple() const {
-  return {this->dtype};
-}
+namespace opmeta {
 
 bool operator==(CastParams const &lhs, CastParams const &rhs) {
-  return lhs.as_tuple() == rhs.as_tuple();
+  return visit_eq(lhs, rhs);
 }
 
 bool operator<(CastParams const &lhs, CastParams const &rhs) {
-  return lhs.as_tuple() < rhs.as_tuple();
+  return visit_lt(lhs, rhs);
 }
 
 bool CastParams::is_valid(ParallelTensorShape const &input) const {
@@ -22,10 +19,14 @@ bool CastParams::is_valid(ParallelTensorShape const &input) const {
 }
 
 }
+}
 
 namespace std {
-size_t hash<FlexFlow::CastParams>::operator()(
-    FlexFlow::CastParams const &params) const {
-  return get_std_hash(params.as_tuple());
+using ::FlexFlow::opmeta::CastParams;
+
+size_t hash<CastParams>::operator()(
+    CastParams const &params) const {
+  return visit_hash(params);
 } 
 }
+

@@ -1,6 +1,7 @@
 #include "op-meta/ops/batch_matmul_params.h"
 
 namespace FlexFlow {
+namespace opmeta {
 
 typename BatchMatmulParams::AsConstTuple BatchMatmulParams::as_tuple() const {
   return {this->a_seq_length_dim, this->b_seq_length_dim};
@@ -34,4 +35,5 @@ bool BatchMatmulParams::is_valid(
   return true;
 }
 
+}
 }

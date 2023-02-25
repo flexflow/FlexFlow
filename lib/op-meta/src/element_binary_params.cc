@@ -1,17 +1,15 @@
 #include "op-meta/ops/element_binary_params.h"
+#include "op-meta/visit_struct.h"
 
 namespace FlexFlow {
-
-typename ElementBinaryParams::AsConstTuple ElementBinaryParams::as_tuple() const {
-  return {this->type};
-}
+namespace opmeta {
 
 bool operator==(ElementBinaryParams const &lhs, ElementBinaryParams const &rhs) {
-  return lhs.as_tuple() == rhs.as_tuple();
+  return visit_eq(lhs, rhs);
 }
 
 bool operator<(ElementBinaryParams const &lhs, ElementBinaryParams const &rhs) {
-  return lhs.as_tuple() < rhs.as_tuple();
+  return visit_lt(lhs, rhs);
 }
 
 bool ElementBinaryParams::is_valid(ParallelTensorShape const &lhs, ParallelTensorShape const &rhs) const {
@@ -26,4 +24,5 @@ bool ElementBinaryParams::is_valid(ParallelTensorShape const &lhs, ParallelTenso
   return true;
 }
 
+}
 }

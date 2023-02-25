@@ -23,6 +23,7 @@ target_link_libraries(
   mpark_variant
   optional
   utils
+  visit_struct
 )
 set_target_properties(
   ${project_target} 

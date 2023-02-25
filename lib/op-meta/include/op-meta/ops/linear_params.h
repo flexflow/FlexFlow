@@ -3,21 +3,20 @@
 
 #include "op-meta/ffconst.h"
 #include "op-meta/parallel_tensor_shape.h"
-#include "op-meta/ops/op_params.h"
+#include "op-meta/ops/unary_op.h"
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
+namespace opmeta {
 
-struct LinearParams : public OpParamsInterface {
+struct LinearParams : public UnaryOpParams {
 public:
   ParallelTensorShape calculate_output_shape(ParallelTensorShape const &input_shape) const;
   ParallelTensorShape calculate_kernel_shape(ParallelTensorShape const &input_shape) const;
   ParallelTensorShape calculate_bias_shape(ParallelTensorShape const &input_shape) const;
 
-  using AsConstTuple = std::tuple<int, bool, DataType, ActiMode>;
-  AsConstTuple as_tuple() const;
-
-  int num_outputs(std::vector<ParallelTensorShape> const &inputs) const override;
-  bool is_valid(std::vector<ParallelTensorShape> const &inputs) const override;
+  bool is_valid(ParallelTensorShape const &input_shape) const override;
+  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
   OperatorType op_type() const override;
 public:
   int out_channels;
@@ -29,13 +28,16 @@ public:
 bool operator==(LinearParams const &, LinearParams const &);
 bool operator<(LinearParams const &, LinearParams const &);
 
-} // namespace FlexFlow
+}
+}
+
+VISITABLE_STRUCT(::FlexFlow::opmeta::LinearParams, out_channels, use_bias, data_type, activation);
 
 namespace std {
 template <>
-struct hash<FlexFlow::LinearParams> {
-  size_t operator()(FlexFlow::LinearParams const &) const;
+struct hash<::FlexFlow::opmeta::LinearParams> {
+  size_t operator()(::FlexFlow::opmeta::LinearParams const &) const;
 };
-} // namespace std
+} 
 
 #endif // _FLEXFLOW_LINEAR_PARAMS_H
