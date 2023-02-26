@@ -84,8 +84,8 @@ public:
   //                        std::vector<Legion::PhysicalRegion> const &regions,
   //                        Legion::Context ctx,
   //                        Legion::Runtime *runtime);
-  opmeta::OperatorParameters find_bottleneck_node(opmeta::OperatorParameters const &sink_node,
-                            opmeta::OperatorParameters const &source_node) const;
+  /* opmeta::OperatorParameters find_bottleneck_node(opmeta::OperatorParameters const &sink_node, */
+  /*                           opmeta::OperatorParameters const &source_node) const; */
   void print_strategy_computation_graph(
       std::unordered_map<opmeta::OperatorParameters, MachineView> const &strategy) const;
   void export_strategy_computation_graph(
@@ -95,10 +95,10 @@ public:
       std::unordered_map<opmeta::OperatorParameters, MachineView> const &strategy,
       DotFile<opmeta::OperatorParameters> &dot) const;
 
-  std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>>
-      split_at_node(opmeta::OperatorParameters const &bottleneck) const;
-  std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>>
-      split_horizontal(opmeta::OperatorParameters const &source_node, opmeta::OperatorParameters const &sink_node) const;
+  /* std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> */
+  /*     split_at_node(opmeta::OperatorParameters const &bottleneck) const; */
+  /* std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> */
+  /*     split_horizontal(opmeta::OperatorParameters const &source_node, opmeta::OperatorParameters const &sink_node) const; */
 
   Graph reduced() const;
 

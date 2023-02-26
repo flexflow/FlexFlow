@@ -9,6 +9,9 @@
 #include "tl/optional.hpp"
 #include <algorithm>
 #include <unordered_set>
+#include <unordered_map>
+#include <vector>
+#include <cassert>
 
 namespace FlexFlow {
 namespace utils {
@@ -37,8 +40,18 @@ std::string join_strings(InputIt first, InputIt last, std::string const &delimit
 }
 
 template <typename Container, typename Element>
+typename Container::const_iterator find(Container const &c, Element const &e) {
+  return std::find(c.cbegin(), c.cend(), e);
+}
+
+template <typename Container, typename Element>
 bool contains(Container const &c, Element const &e) {
-  return c.find(e) != c.cend();
+  return find<Container, Element>(c, e) != c.cend();
+}
+
+template <typename K, typename V>
+bool contains_key(std::unordered_map<K, V> const &m, K const &kv) {
+  return m.find(kv) != m.end();
 }
 
 template <typename Container, typename Element>
@@ -73,6 +86,30 @@ template <typename S, typename D>
 std::unordered_set<D> map_over_unordered_set(std::function<D(S const &)> const &f, std::unordered_set<S> const &input) {
   std::unordered_set<D> result;
   std::transform(input.cbegin(), input.cend(), std::inserter(result, result.begin()), f);
+  return result;
+}
+
+template <typename T>
+T get_only(std::unordered_set<T> const &s) {
+  assert (s.size() == 1);
+  return *s.cbegin(); 
+}
+
+template <typename T>
+T get_first(std::unordered_set<T> const &s) {
+  return *s.cbegin();
+}
+
+template <typename T>
+void extend(std::vector<T> &lhs, std::vector<T> const &rhs) {
+  lhs.reserve(lhs.size() + distance(rhs.begin(), rhs.end()));
+  lhs.insert(lhs.end(), rhs.begin(), rhs.end());
+}
+
+template <typename F, typename In, typename Out = decltype(std::declval<F>()(std::declval<In>()))>
+std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
+  std::vector<Out> result;
+  std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
   return result;
 }
 

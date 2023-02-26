@@ -41,57 +41,74 @@ struct bidict {
   }
 
   void equate(L const &l, R const &r) {
-    fwd_map[l] = r;
-    bwd_map[r] = l;
+    fwd_map.insert({l, r});
+    bwd_map.insert({r, l});
   }
 
   R const &at_l(L const &l) const {
-    return fwd_map.at({l}).value();
+    return fwd_map.at(l);
   }
   L const &at_r(R const &r) const {
-    return bwd_map.at({r}).value();
+    return bwd_map.at(r);
   }
 
-  struct const_iterator {
-    using iterator_category = std::forward_iterator_tag;
-    using difference_type = std::size_t;
-    using value_type = std::pair<L, R>;
-    using pointer = std::pair<L, R> const *;
-    using reference = std::pair<L, R> const &;
+  using const_iterator = typename std::unordered_map<L, R>::const_iterator;
+  /* struct const_iterator { */
+  /*   using iterator_category = std::forward_iterator_tag; */
+  /*   using difference_type = std::size_t; */
+  /*   using value_type = std::pair<L, R>; */
+  /*   using pointer = std::pair<L, R> const *; */
+  /*   using reference = std::pair<L, R> const &; */
 
-    explicit const_iterator(typename std::unordered_map<tl::optional<L>, tl::optional<R>>::const_iterator);
+  /*   explicit const_iterator(typename std::unordered_map<tl::optional<L>, tl::optional<R>>::const_iterator); */
 
-    reference operator*() const {
-      this->current = {this->it->first.value(), this->it->second.value()};
-      return this->current.value();
-    }
-    pointer operator->() const {
-      return &this->operator*();
-    }
+  /*   reference operator*() const { */
+  /*     this->current = {this->it->first.value(), this->it->second.value()}; */
+  /*     return this->current.value(); */
+  /*   } */
+  /*   pointer operator->() const { */
+  /*     return &this->operator*(); */
+  /*   } */
 
-    const_iterator& operator++() {
-      ++this->it;
-      return *this;
-    }
-    const_iterator operator++(int) {
-      auto tmp = *this; 
-      ++(*this); 
-      return tmp; 
-    }
+  /*   const_iterator& operator++() { */
+  /*     ++this->it; */
+  /*     return *this; */
+  /*   } */
+  /*   const_iterator operator++(int) { */
+  /*     auto tmp = *this; */ 
+  /*     ++(*this); */ 
+  /*     return tmp; */ 
+  /*   } */
 
-    bool operator==(const_iterator const &other) const {
-      return this->it == other.it;
-    }
-    bool operator!=(const_iterator const &other) const {
-      return this->it != other.it;
-    }
-  private:
-    mutable tl::optional<std::pair<L, R>> current;
-    typename std::unordered_map<tl::optional<L>, tl::optional<R>>::const_iterator it;
-  };
+  /*   bool operator==(const_iterator const &other) const { */
+  /*     return this->it == other.it; */
+  /*   } */
+  /*   bool operator!=(const_iterator const &other) const { */
+  /*     return this->it != other.it; */
+  /*   } */
+  /* private: */
+  /*   mutable tl::optional<std::pair<L, R>> current; */
+  /*   typename std::unordered_map<tl::optional<L>, tl::optional<R>>::const_iterator it; */
+  /* }; */
+
+  /* const_iterator cbegin() const { */
+  /*   return const_iterator(this->fwd_map.cbegin()); */
+  /* } */
+
+  /* const_iterator begin() const { */
+  /*   return this->cbegin(); */
+  /* } */
+
+  /* const_iterator cend() const { */
+  /*   return const_iterator(this->fwd_map.cend()); */
+  /* } */
+
+  /* const_iterator end() const { */
+  /*   return this->cend(); */
+  /* } */
 
   const_iterator cbegin() const {
-    return const_iterator(this->fwd_map.cbegin());
+    return this->fwd_map.cbegin();
   }
 
   const_iterator begin() const {
@@ -99,7 +116,7 @@ struct bidict {
   }
 
   const_iterator cend() const {
-    return const_iterator(this->fwd_map.cend());
+    return this->fwd_map.cend();
   }
 
   const_iterator end() const {
@@ -113,8 +130,8 @@ private:
   bidict(std::unordered_map<L, R> const &fwd_map, std::unordered_map<R, L> const &bwd_map) 
     : fwd_map(fwd_map), bwd_map(bwd_map) { }
 
-  std::unordered_map<tl::optional<L>, tl::optional<R>> fwd_map;
-  std::unordered_map<tl::optional<R>, tl::optional<L>> bwd_map;
+  std::unordered_map<L, R> fwd_map;
+  std::unordered_map<R, L> bwd_map;
 };
 
 }

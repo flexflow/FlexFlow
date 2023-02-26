@@ -6,6 +6,9 @@
 #include "undirected.h"
 #include "utils/bidict.h"
 #include "visit_struct/visit_struct.hpp"
+#include "adjacency_digraph.h"
+#include <memory>
+#include <vector>
 
 namespace FlexFlow {
 namespace utils {
@@ -54,15 +57,19 @@ private:
   std::size_t next_node_idx = 0;
 };
 
+enum class LRDirection {
+  LEFT, RIGHT 
+};
+
 struct JoinNodeKey {
   JoinNodeKey() = delete;
-  JoinNodeKey(Node const &, bool);
+  JoinNodeKey(Node const &, LRDirection);
 
   bool operator==(JoinNodeKey const &) const;
   bool operator<(JoinNodeKey const &) const;
 
   Node node;
-  bool is_left;
+  LRDirection direction;
 };
 
 }
@@ -116,6 +123,8 @@ public:
 
   std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+  JoinedNodeView const &joined_nodes_view() const;
 private:
   DirectedEdge fix_lhs_edge(DirectedEdge const &) const;
   DirectedEdge fix_rhs_edge(DirectedEdge const &) const;
@@ -133,7 +142,7 @@ public:
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
-  bidict<std::pair<Node, bool>, Node> node_mapping() const;
+  JoinedNodeView const &joined_nodes_view() const;
 private:
   MultiDiEdge fix_lhs_edge(MultiDiEdge const &) const;
   MultiDiEdge fix_rhs_edge(MultiDiEdge const &) const;
@@ -143,13 +152,70 @@ private:
   JoinedNodeView joined_nodes;
 };
 
+struct AddDirectedEdgesView : public IDiGraphView {
+public:
+  AddDirectedEdgesView() = delete;
+  explicit AddDirectedEdgesView(IDiGraphView const &g, std::unordered_set<DirectedEdge> const &edges);
+
+  std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+private:
+  IDiGraphView const &g;
+  std::unordered_set<DirectedEdge> edges;
+};
+
+struct SingleSourceNodeView : public IDiGraphView {
+public:
+  SingleSourceNodeView() = delete;
+  explicit SingleSourceNodeView(IDiGraphView const &);
+
+  std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+private:
+  IDiGraphView const &g;
+  tl::optional<AdjacencyDiGraph> singleton_src;
+  std::unique_ptr<IDiGraphView> joined_view;
+  std::unique_ptr<AddDirectedEdgesView> added_edges_view;
+};
+
+struct ContractNodeView : public IDiGraphView {
+  ContractNodeView() = delete;
+  explicit ContractNodeView(IDiGraphView const &, Node const &removed, Node const &into);
+
+  std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+private:
+  DirectedEdge fix_edge(DirectedEdge const &) const; 
+private:
+  IDiGraphView const &g;
+  Node from, to;
+};
+
+struct DiGraphViewStack : public IDiGraphView {
+public:
+  DiGraphViewStack() = default;
+
+  std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+
+  void add_view(std::function<std::unique_ptr<IDiGraphView>(IDiGraphView const &)> const &);
+private:
+  std::vector<std::unique_ptr<IDiGraphView>> views;
+};
+
 DirectedEdge flipped(DirectedEdge const &);
-FlippedView unsafe_view_as_flipped(IDiGraphView const &);
-DiSubgraphView unsafe_view_subgraph(IDiGraphView const &, std::unordered_set<Node> const &);
-MultiDiSubgraphView unsafe_view_subgraph(IMultiDiGraphView const &, std::unordered_set<Node> const &);
-JoinedUndirectedGraphView unsafe_view_as_joined(IUndirectedGraphView const &, IUndirectedGraphView const &);
-JoinedDigraphView unsafe_view_as_joined(IDiGraphView const &, IDiGraphView const &);
-JoinedMultiDigraphView unsafe_view_as_joined(IMultiDiGraphView const &, IMultiDiGraphView const &);
+
+std::unique_ptr<IDiGraphView> unsafe_view_as_flipped(IDiGraphView const &);
+std::unique_ptr<IDiGraphView> unsafe_view_subgraph(IDiGraphView const &, std::unordered_set<Node> const &);
+std::unique_ptr<IMultiDiGraphView> unsafe_view_subgraph(IMultiDiGraphView const &, std::unordered_set<Node> const &);
+std::unique_ptr<IUndirectedGraphView> unsafe_view_as_joined(IUndirectedGraphView const &, IUndirectedGraphView const &);
+std::unique_ptr<IDiGraphView> unsafe_view_as_joined(IDiGraphView const &, IDiGraphView const &);
+std::unique_ptr<IMultiDiGraphView> unsafe_view_as_joined(IMultiDiGraphView const &, IMultiDiGraphView const &);
+std::unique_ptr<IDiGraphView> unsafe_view_with_added_edges(IDiGraphView const &, std::unordered_set<DirectedEdge> const &);
+std::unique_ptr<IDiGraphView> unsafe_view_as_contracted(IDiGraphView const &, Node const &from, Node const &to);
+std::unique_ptr<IDiGraphView> unsafe_view_as_contracted(IDiGraphView const &, std::unordered_map<Node, Node> const &);
+
+std::unordered_map<Node, Node> flatten_contraction(std::unordered_map<Node, Node> const &);
 
 template <typename Impl, typename View>
 Impl materialize_view(View const &g) {
@@ -181,6 +247,6 @@ Impl materialize_multidigraph_view(IMultiDiGraphView const &g) {
 }
 }
 
-VISITABLE_STRUCT(::FlexFlow::utils::JoinNodeKey, node, is_left);
+VISITABLE_STRUCT(::FlexFlow::utils::JoinNodeKey, node, direction);
 
 #endif 

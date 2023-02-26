@@ -4,7 +4,7 @@ set(project_target ffc)
 file(GLOB_RECURSE ffc_SRC
      CONFIGURE_DEPENDS
      LIST_DIRECTORIES False
-     src/substitution_loader.cc)
+     src/*.cc)
 
 add_library(
   ${project_target}

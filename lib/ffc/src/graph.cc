@@ -81,7 +81,7 @@ void Graph::print_dot(std::ostream &s) const {
   export_as_dot(dot, directed, [&](utils::Node const &node) -> RecordFormatter {
     RecordFormatter rf;
     rf << node.to_string();
-    tl::optional<RecordFormatter> sub_rf = this->nodeMap.at_l(node).ptr->as_dot();
+    tl::optional<RecordFormatter> sub_rf = as_dot(this->nodeMap.at_l(node));
     if (sub_rf.has_value()) {
       rf << sub_rf.value();
     }
@@ -95,32 +95,32 @@ bool Graph::has_loop() {
   return !utils::is_acyclic(this->g).value_or(true);
 }
 
-Node Graph::find_bottleneck_node(Node const &sink_node,
-                                 Node const &source_node) const {
-  using FlexFlow::PCG::Utils::GraphStructure;
-  using FlexFlow::PCG::Utils::imm_post_dominators;
-  using FlexFlow::PCG::Utils::MultisourceGraphStructure;
-  using FlexFlow::PCG::Utils::roots;
+/* Node Graph::find_bottleneck_node(Node const &sink_node, */
+/*                                  Node const &source_node) const { */
+/*   using FlexFlow::PCG::Utils::GraphStructure; */
+/*   using FlexFlow::PCG::Utils::imm_post_dominators; */
+/*   using FlexFlow::PCG::Utils::MultisourceGraphStructure; */
+/*   using FlexFlow::PCG::Utils::roots; */
 
-  Node source(source_node);
-  std::unordered_map<Node, Node> ipd;
-  std::unordered_set<Node> graph_roots = roots(*this);
-  if (source_node != Node::INVALID_NODE) {
-    ipd = imm_post_dominators(*this);
-  } else if (graph_roots.size() == 1) {
-    ipd = imm_post_dominators(*this);
-    source = *graph_roots.begin();
-  } else {
-    ipd = imm_post_dominators<Graph, MultisourceGraphStructure<Graph>>(*this);
-  }
+/*   Node source(source_node); */
+/*   std::unordered_map<Node, Node> ipd; */
+/*   std::unordered_set<Node> graph_roots = roots(*this); */
+/*   if (source_node != Node::INVALID_NODE) { */
+/*     ipd = imm_post_dominators(*this); */
+/*   } else if (graph_roots.size() == 1) { */
+/*     ipd = imm_post_dominators(*this); */
+/*     source = *graph_roots.begin(); */
+/*   } else { */
+/*     ipd = imm_post_dominators<Graph, MultisourceGraphStructure<Graph>>(*this); */
+/*   } */
 
-  Node bn_node = ipd.at(source);
-  if (bn_node == source || bn_node == sink_node) {
-    return Node::INVALID_NODE;
-  }
+/*   Node bn_node = ipd.at(source); */
+/*   if (bn_node == source || bn_node == sink_node) { */
+/*     return Node::INVALID_NODE; */
+/*   } */
 
-  return bn_node;
-}
+/*   return bn_node; */
+/* } */
 
 Graph Graph::subgraph(std::unordered_set<Node> const &nodes) const {
   utils::AdjacencyMultiDiGraph sub_g = utils::subgraph<utils::AdjacencyMultiDiGraph>(this->g, nodes);
@@ -216,67 +216,52 @@ void Graph::replace_subgraph_with_nonempty(
 }
 
 void Graph::contract_out_node(Node const &node) {
-  using FlexFlow::PCG::Utils::successors;
-
-  assert(node.ptr->numOutputs == 1);
-  assert(node.ptr->numInputs == 1);
-
-  std::unordered_set<Edge> in_edges = this->inEdges.at(node);
-  assert(in_edges.size() == 1);
-  std::unordered_set<Edge> out_edges = this->outEdges.at(node);
-
-  for (auto const &in_edge : in_edges) {
-    this->remove_edge(in_edge);
-    for (auto const &out_edge : out_edges) {
-      this->remove_edge(out_edge);
-      this->add_edge(
-          in_edge.srcOp, out_edge.dstOp, in_edge.srcIdx, out_edge.dstIdx);
-    }
-  }
+  contract_node(this->g, node);
+  this->nodeMap.erase_l(node);
 }
 
 
-std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>>
-    Graph::split_at_node(Node const &bottleneck) const {
-  using FlexFlow::PCGe:Utils::topo_sort;
+/* std::pair<std::unique_ptr<Graph>, std::unique_ptr<Graph>> */
+/*     Graph::split_at_node(Node const &bottleneck) const { */
+/*   using FlexFlow::PCGe:Utils::topo_sort; */
 
-  auto first_graph = std::unique_ptr<Graph>(new Graph(this->model));
-  auto second_graph = std::unique_ptr<Graph>(new Graph(this->model));
+/*   auto first_graph = std::unique_ptr<Graph>(new Graph(this->model)); */
+/*   auto second_graph = std::unique_ptr<Graph>(new Graph(this->model)); */
 
-  std::unordered_set<Node> used_nodes;
-  {
-    std::vector<Node> topo_sorted;
-    topo_sort(*this, &topo_sorted);
+/*   std::unordered_set<Node> used_nodes; */
+/*   { */
+/*     std::vector<Node> topo_sorted; */
+/*     topo_sort(*this, &topo_sorted); */
 
-    for (auto const &node : topo_sorted) {
-      if (node == bottleneck) {
-        break;
-      }
+/*     for (auto const &node : topo_sorted) { */
+/*       if (node == bottleneck) { */
+/*         break; */
+/*       } */
 
-      used_nodes.insert(node);
-    }
-    used_nodes.insert(bottleneck);
+/*       used_nodes.insert(node); */
+/*     } */
+/*     used_nodes.insert(bottleneck); */
 
-    assert(used_nodes.size() < topo_sorted.size());
-  }
+/*     assert(used_nodes.size() < topo_sorted.size()); */
+/*   } */
 
-  for (auto const &it : this->inEdges) {
-    auto const &inList = it.second;
-    if (used_nodes.find(it.first) != used_nodes.end()) {
-      // Add all in-edges of used_nodes in to the first_graph
-      for (auto const &it2 : inList) {
-        first_graph->add_edge(it2);
-      }
-    } else {
-      // Add all in-edges of not_used_nodes into the second_graph
-      for (auto const &it2 : inList) {
-        second_graph->add_edge(it2);
-      }
-    }
-  }
+/*   for (auto const &it : this->inEdges) { */
+/*     auto const &inList = it.second; */
+/*     if (used_nodes.find(it.first) != used_nodes.end()) { */
+/*       // Add all in-edges of used_nodes in to the first_graph */
+/*       for (auto const &it2 : inList) { */
+/*         first_graph->add_edge(it2); */
+/*       } */
+/*     } else { */
+/*       // Add all in-edges of not_used_nodes into the second_graph */
+/*       for (auto const &it2 : inList) { */
+/*         second_graph->add_edge(it2); */
+/*       } */
+/*     } */
+/*   } */
 
-  return {std::move(first_graph), std::move(second_graph)};
-}
+/*   return {std::move(first_graph), std::move(second_graph)}; */
+/* } */
 
 void Graph::remove_input_nodes() {
   using FlexFlow::PCG::Utils::nodes;

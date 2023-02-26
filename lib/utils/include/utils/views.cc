@@ -24,8 +24,8 @@ DirectedEdge flipped(DirectedEdge const &e) {
 }
 
 
-FlippedView unsafe_view_as_flipped(IDiGraphView const &g) {
-  return FlippedView(g);
+std::unique_ptr<IDiGraphView> unsafe_view_as_flipped(IDiGraphView const &g) {
+  return std::unique_ptr<IDiGraphView>(new FlippedView(g));
 }
 
 DiSubgraphView::DiSubgraphView(IDiGraphView const &g, std::unordered_set<Node> const &subgraph_nodes)
@@ -50,12 +50,12 @@ std::unordered_set<MultiDiEdge> MultiDiSubgraphView::query_edges(MultiDiEdgeQuer
   return this->g.query_edges(query_intersection(query, subgraph_query));
 }
 
-DiSubgraphView unsafe_view_subgraph(IDiGraphView const &g, std::unordered_set<Node> const &subgraph_nodes) {
-  return DiSubgraphView(g, subgraph_nodes);
+std::unique_ptr<IDiGraphView> unsafe_view_subgraph(IDiGraphView const &g, std::unordered_set<Node> const &subgraph_nodes) {
+  return std::unique_ptr<IDiGraphView>(new DiSubgraphView(g, subgraph_nodes));
 }
 
-MultiDiSubgraphView unsafe_view_subgraph(IMultiDiGraphView const &g, std::unordered_set<Node> const &subgraph_nodes) {
-  return MultiDiSubgraphView(g, subgraph_nodes);
+std::unique_ptr<IMultiDiGraphView> unsafe_view_subgraph(IMultiDiGraphView const &g, std::unordered_set<Node> const &subgraph_nodes) {
+  return std::unique_ptr<IMultiDiGraphView>(new MultiDiSubgraphView(g, subgraph_nodes));
 }
 
 Node NodeSource::fresh_node() {
@@ -240,6 +240,142 @@ MultiDiEdge JoinedMultiDigraphView::fix_rhs_edge(MultiDiEdge const &e) const {
   };
 }
 
+SingleSourceNodeView::SingleSourceNodeView(IDiGraphView const &g)
+  : g(g)
+{
+  std::unordered_set<Node> sources = get_sources(g);
+  if (sources.size() == 1) {
+    this->singleton_src = tl::nullopt;
+    this->joined_view = nullptr;
+  } else {
+    AdjacencyDiGraph singleton_src_g;
+    Node new_src_node = singleton_src_g.value().add_node();
+    this->joined_view = JoinedNodeView(g, singleton_src_g);
+    std::unordered_set<DirectedEdge> new_edges;
+    JoinedNodeView const &joined_nodes_view = this->joined_view.value().joined_nodes_view();
+    for (Node const &src_node : sources) {
+      Node joined_src_node = joined_nodes_view.at_join_key({src_node, LRDirection::LEFT});
+      Node joined_new_src_node = joined_nodes_view.at_join_key({new_src_node, LRDirection::RIGHT});
+      new_edges.insert({joined_new_src_node, joined_src_node});
+    }
+    this->added_edges_view = unsafe_view_with_added_edges(this->joined_view.value(), new_edges);
+    this->singleton_src = singleton_src_g;
+  }
+}
+
+std::unordered_set<Node> SingleSourceNodeView::query_nodes(NodeQuery const &q) const {
+  if (this->joined_nodes.has_value()) {
+    return this->joined_nodes.value().query_nodes(q);
+  } else {
+    return this->g.query_nodes(q);
+  }
+}
+
+std::unordered_set<DirectedEdge> SingleSourceNodeView::query_edges(DirectedEdgeQuery const &q) const {
+  if (joined_view.has_value()) {
+    auto const &joined = joined_view.value();
+    joined.query_edges(q);
+  } else {
+    return this->g.query_edges(q);
+  }
+}
+
+NodePermutationView::NodePermutationView(IDiGraphView const &g, Node const &from, Node const &to)
+  : g(g), from(from), to(to)
+{ }
+
+std::unordered_set<Node> NodePermutationView::query_nodes(NodeQuery const &q) const {
+  NodeQuery qq;
+  for (Node const &n : q.nodes) {
+    if (n == this->from) {
+      qq.insert(this->to);
+    } else {
+      qq.insert(n);
+    }
+  }
+  return this->g.query_nodes(qq);
+}
+
+std::unordered_set<DirectedEdge> NodePermutationView::query_edges(DirectedEdgeQuery const &q) { 
+  DirectedEdgeQuery qq = {std::unordered_set{}, std::unordered_set{}};
+  for (Node const &src : q.srcs) {
+    qq.srcs.insert(src);
+    if (src == this->to) {
+      qq.srcs.insert(this->from);
+    }
+  }
+  for (Node const &dst : q.dsts) {
+    qq.dsts.insert(dst);
+    if (dsts = this->to) {
+      qq.dsts.insert(this->from);
+    }
+  }
+  std::unordered_set<DirectedEdge> edges = this->g.query_edges(qq);
+  return map_over_unordered_set(edges, [](DirectedEdge const &e) { return this->fix_edge(e); });
+}
+
+DirectedEdge NodePermutationView::fix_edge(DirectedEdge const &e) {
+  DirectedEdge result = e;
+  if (result.src == this->from) {
+    result.src = this->to;
+  }
+  if (result.dst = this->from) {
+    result.dst = this->to;
+  }
+}
+
+std::unordered_set<Node> DiGraphViewStack::query_nodes(NodeQuery const &q) const {
+  return this->views.back().query_nodes(q);
+}
+
+std::unordered_set<DirectedEdge> DiGraphViewStack::query_edges(DirectedEdgeQuery const &q) const {
+  return this->views.back().query_edges(q);
+}
+
+void add_view(std::function<std::unique_ptr<IDiGraphView>(IDiGraphView const &)> const &f) const {
+  this->views.push_back(f(this->views.back()));
+}
+
+std::unique_ptr<IDiGraphView> unsafe_view_as_contracted(IDiGraphView const &, Node const &removed, Node const &into) {
+  return std::unique_ptr<IDiGraphView>(new ContractNodesView(from, to));
+}
+
+static void assert_map_is_flattened(std::unordered_map<Node, Node> const &m) {
+  // check that map 
+  std::unordered_set<Node> keys, values;
+  for (auto const &kv : m) {
+    keys.insert(kv.first);
+    values.insert(kv.second);
+  }
+  for (Node const &v : values) {
+    assert (!contains(keys, v) || m.at(v) == v);
+  }
+}
+
+std::unique_ptr<IDiGraphView> unsafe_view_as_contracted(IDiGraphView const &, std::unordered_map<Node, Node> const &m) {
+  assert_map_is_flattened(m);
+  
+  auto result = std::unique_ptr<DiGraphViewStack>(new DiGraphViewStack());
+
+  for (auto const &kv : m) {
+    result.add_view([&k, &v](IDiGraphView const &g) {
+      return unsafe_view_as_contracted(g, k, v);
+    });
+  }
+  return result;
+}
+
+std::unordered_map<Node, Node> flatten_contraction(std::unordered_map<Node, Node> const &m) {
+  disjoint_set<Node> unionfind;
+  for (auto const &kv : m) {
+    unionfind.m_union(kv.first, kv.second);
+  }
+  std::unordered_map<Node> result.add_edge;
+  for (auto const &kv : m) {
+    result[kv.first] = unionfind.find(kv.first);
+  }
+  return result;
+}
 
 }
 }

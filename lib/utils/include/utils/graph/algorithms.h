@@ -81,16 +81,32 @@ bool is_acyclic(IMultiDiGraphView const &, std::unordered_set<Node> const &);
 tl::optional<bool> is_acyclic(IDiGraphView const &);
 tl::optional<bool> is_acyclic(IMultiDiGraphView const &);
 
-std::unordered_map<Node, std::unordered_set<Node>> dominators(IMultiDiGraphView const &);
-std::unordered_map<Node, std::unordered_set<Node>> dominators(IDiGraphView const &);
+std::unordered_map<Node, std::unordered_set<Node>> get_dominators(IMultiDiGraphView const &);
+std::unordered_map<Node, std::unordered_set<Node>> get_dominators(IDiGraphView const &);
+std::unordered_set<Node> get_dominators(IDiGraphView const &, Node const &);
+std::unordered_set<Node> get_dominators(IDiGraphView const &, std::unordered_set<Node> const &);
+
+std::unordered_map<Node, std::unordered_set<Node>> get_post_dominators(IMultiDiGraphView const &);
+std::unordered_map<Node, std::unordered_set<Node>> get_post_dominators(IDiGraphView const &);
+std::unordered_map<Node, tl::optional<Node>> get_imm_dominators(IMultiDiGraphView const &);
+std::unordered_map<Node, tl::optional<Node>> get_imm_dominators(IDiGraphView const &);
+std::unordered_map<Node, tl::optional<Node>> get_imm_post_dominators(IMultiDiGraphView const &);
+std::unordered_map<Node, tl::optional<Node>> get_imm_post_dominators(IDiGraphView const &);
+tl::optional<Node> get_imm_post_dominator(IDiGraphView const &, Node const &);
+tl::optional<Node> get_imm_post_dominator(IMultiDiGraphView const &, Node const &);
+tl::optional<Node> get_imm_post_dominator(IDiGraphView const &, std::unordered_set<Node> const &);
 
 /* std::vector<Node> boundary_dfs_ordering(IDiGraphView const &, std::unordered_set<Node> const &starting_points); */
-std::vector<Node> dfs_ordering(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
-std::vector<Node> unchecked_dfs_ordering(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
-std::vector<Node> bfs_ordering(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
-std::vector<Node> topological_ordering(IDiGraphView const &);
-std::vector<Node> topological_ordering(IMultiDiGraphView const &);
-std::vector<Node> unchecked_topological_ordering(IDiGraphView const &);
+std::vector<Node> get_dfs_ordering(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
+std::vector<Node> get_unchecked_dfs_ordering(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
+std::vector<Node> get_bfs_ordering(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
+std::vector<Node> get_topological_ordering(IDiGraphView const &);
+std::vector<Node> get_topological_ordering(IMultiDiGraphView const &);
+std::vector<Node> get_unchecked_topological_ordering(IDiGraphView const &);
+
+std::vector<std::unordered_set<Node>> get_weakly_connected_components(IMultiDiGraphView const &);
+std::vector<std::unordered_set<Node>> get_weakly_connected_components(IDiGraphView const &);
+std::vector<std::unordered_set<Node>> get_connected_components(IUndirectedGraphView const &);
 
 template <typename Impl>
 Impl subgraph(IUndirectedGraphView const &g, std::unordered_set<Node> const &nodes) {

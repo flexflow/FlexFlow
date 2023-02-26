@@ -83,18 +83,6 @@ void remove_node_if_unused(IUndirectedGraph &g, Node const &n) {
   g.remove_node_unsafe(n);
 }
 
-void contract_node(IMultiDiGraph &g, Node const &n) {
-  return;
-}
-
-void contract_node(IDiGraph &g, Node const &n) {
-
-}
-
-void contract_node(IUndirectedGraph &g, Node const &n) {
-
-}
-
 std::size_t num_nodes(IGraphView const &g) {
   return get_nodes(g).size();
 }
@@ -209,17 +197,17 @@ std::unordered_set<Node> get_predecessors(IMultiDiGraphView const &g, Node const
 }
 
 
-std::vector<Node> unchecked_dfs_ordering(IDiGraphView const &g, std::unordered_set<Node> const &starting_points) {
+std::vector<Node> get_unchecked_dfs_ordering(IDiGraphView const &g, std::unordered_set<Node> const &starting_points) {
   UncheckedDFSView dfs_view = unchecked_dfs(g, starting_points);
   return {dfs_view.begin(), dfs_view.end()};
 }
 
-std::vector<Node> dfs_ordering(IDiGraphView const &g, std::unordered_set<Node> const &starting_points) {
+std::vector<Node> get_dfs_ordering(IDiGraphView const &g, std::unordered_set<Node> const &starting_points) {
   CheckedDFSView dfs_view = dfs(g, starting_points);
   return {dfs_view.begin(), dfs_view.end()};
 }
 
-std::vector<Node> bfs_ordering(IDiGraphView const &g, std::unordered_set<Node> const &starting_points) {
+std::vector<Node> get_bfs_ordering(IDiGraphView const &g, std::unordered_set<Node> const &starting_points) {
   BFSView bfs_view = bfs(g, starting_points);
   return {bfs_view.begin(), bfs_view.end()};
 }
@@ -266,7 +254,7 @@ tl::optional<bool> is_acyclic(IMultiDiGraph const &g) {
   return is_acyclic(digraph_view);
 }
 
-std::vector<Node> unchecked_topological_ordering(IDiGraphView const &g) {
+std::vector<Node> get_unchecked_topological_ordering(IDiGraphView const &g) {
   auto dfs_view = unchecked_dfs(g, get_sources(g));
   std::vector<Node> order;
   std::unordered_set<Node> seen;
@@ -294,22 +282,26 @@ std::vector<Node> unchecked_topological_ordering(IDiGraphView const &g) {
   return order;
 }
 
-std::vector<Node> topological_ordering(IDiGraphView const &g) {
+std::vector<Node> get_topological_ordering(IDiGraphView const &g) {
   assert (is_acyclic(g));
-  return unchecked_topological_ordering(g);
+  return get_unchecked_topological_ordering(g);
 }
 
-std::vector<Node> topological_ordering(IMultiDiGraphView const &g) {
-  return topological_ordering(unsafe_view_as_digraph(g));
+std::vector<Node> get_topological_ordering(IMultiDiGraphView const &g) {
+  return get_topological_ordering(unsafe_view_as_digraph(g));
 }
 
-std::unordered_map<Node, std::unordered_set<Node>> dominators(IDiGraphView const &g) {
-  std::vector<Node> topo = topological_ordering(g);
+std::unordered_map<Node, std::unordered_set<Node>> get_dominators(IMultiDiGraphView const &g) {
+  return get_dominators(unsafe_view_as_digraph(g));
+}
+
+std::unordered_map<Node, std::unordered_set<Node>> get_dominators(IDiGraphView const &g) {
+  std::vector<Node> topo = get_topological_ordering(g);
   std::unordered_map<Node, std::unordered_set<Node>> result;
 
   for (Node const &n : topo) {
     for (Node const &pred : get_predecessors(g, n)) {
-      if (contains(result, n)) {
+      if (contains_key(result, n)) {
         result[n] = result.at(pred);
       } else {
         result.at(n) = intersection(result.at(n), result.at(pred));
@@ -321,10 +313,69 @@ std::unordered_map<Node, std::unordered_set<Node>> dominators(IDiGraphView const
   return result;
 }
 
-std::unordered_map<Node, std::unordered_set<Node>> post_dominators(IDiGraphView const &g) {
-  return dominators(unsafe_view_as_flipped(g));
+std::unordered_map<Node, std::unordered_set<Node>> get_post_dominators(IMultiDiGraphView const &g) {
+  return get_post_dominators(unsafe_view_as_digraph(g));
 }
 
+std::unordered_map<Node, std::unordered_set<Node>> get_post_dominators(IDiGraphView const &g) {
+  return get_dominators(*unsafe_view_as_flipped(g));
+}
+
+std::unordered_map<Node, tl::optional<Node>> get_imm_dominators(IDiGraphView const &g) {
+  std::unordered_map<Node, int> topo_rank = [&g]() {
+    std::vector<Node> topo_ordering = get_topological_ordering(g);
+    std::unordered_map<Node, int> topo_rank;
+    for (int i = 0; i < topo_ordering.size(); i++) {
+      topo_rank[topo_ordering[i]] = i;
+    }
+    return topo_rank;
+  }();
+
+  auto with_greatest_topo_rank = [&topo_rank](std::unordered_set<Node> const &nodes) -> Node {
+    return *std::max_element(nodes.cbegin(), nodes.cend(), [&topo_rank](Node const &lhs, Node const &rhs) {
+      return topo_rank.at(lhs) < topo_rank.at(rhs);
+    });
+  };
+
+  std::unordered_map<Node, tl::optional<Node>> result;
+  for (auto const &kv : get_dominators(g)) {
+    Node node = kv.first;
+    std::unordered_set<Node> node_dominators = kv.second;
+
+    assert (node_dominators.size() >= 1);
+    
+    // a node cannot immediately dominate itself
+    if (node_dominators.size() == 1) {
+      assert (get_only(node_dominators) == node);
+      result[node] = tl::nullopt;
+    } else {
+      node_dominators.erase(node);
+      result[node] = with_greatest_topo_rank(node_dominators);
+    }
+  }
+  return result;
+}
+
+
+std::unordered_map<Node, tl::optional<Node>> get_imm_dominators(IMultiDiGraphView const &g) {
+  return get_imm_dominators(unsafe_view_as_digraph(g));
+}
+
+std::unordered_map<Node, tl::optional<Node>> get_imm_post_dominators(IDiGraphView const &g) {
+  return get_imm_dominators(*unsafe_view_as_flipped(g));
+}
+
+std::unordered_map<Node, tl::optional<Node>> get_imm_post_dominators(IMultiDiGraphView const &g) {
+  return get_imm_post_dominators(unsafe_view_as_digraph(g));
+}
+
+tl::optional<Node> imm_post_dominator(IDiGraphView const &g, Node const &n) {
+  return get_imm_post_dominators(g).at(n);
+}
+
+tl::optional<Node> imm_post_dominator(IMultiDiGraphView const &g, Node const &n) {
+  return get_imm_post_dominators(g).at(n);
+}
 
 }
 }

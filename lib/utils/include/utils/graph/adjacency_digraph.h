@@ -11,10 +11,11 @@ namespace utils {
 class AdjacencyDiGraph : public IDiGraph {
 public:
   Node add_node() override;
+  void add_node_unsafe(Node const &) override;
   void remove_node_unsafe(Node const &) override;
   void add_edge(Edge const &) override;
   void remove_edge(Edge const &) override;
-  std::unordered_set<Edge> query_edges(EdgeQuery const &) const override;
+  std::unordered_set<Edge> query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
   bool operator==(AdjacencyDiGraph const &) const;
