@@ -16,6 +16,7 @@
 #include "flexflow/ops/flat_params.h"
 #include "flexflow/ops/gather_params.h"
 #include "flexflow/ops/groupby_params.h"
+#include "flexflow/ops/inc_multihead_self_attention_params.h"
 #include "flexflow/ops/layer_norm_params.h"
 #include "flexflow/ops/linear_params.h"
 #include "flexflow/ops/pool_2d_params.h"
@@ -52,6 +53,7 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        LayerNormParams,
                                        LinearParams,
                                        MultiHeadAttentionParams,
+                                       IncMultiHeadSelfAttentionParams,
                                        Pool2DParams,
                                        ReduceParams,
                                        ReshapeParams,
