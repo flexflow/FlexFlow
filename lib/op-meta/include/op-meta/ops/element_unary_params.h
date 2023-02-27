@@ -15,7 +15,7 @@ public:
   OperatorType op_type() const override;
 public:
   OperatorType op;
-  bool inplace;
+  /* bool inplace; */
   float scalar = 0.0;
 };
 
@@ -25,7 +25,7 @@ bool operator<(ElementUnaryParams const &, ElementUnaryParams const &);
 }
 }
 
-VISITABLE_STRUCT(::FlexFlow::opmeta::ElementUnaryParams, op, inplace, scalar);
+VISITABLE_STRUCT(::FlexFlow::opmeta::ElementUnaryParams, op, scalar);
 
 namespace std {
 template <>

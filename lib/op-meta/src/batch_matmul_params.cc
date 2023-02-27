@@ -1,18 +1,15 @@
 #include "op-meta/ops/batch_matmul_params.h"
+#include "op-meta/visit_struct.h"
 
 namespace FlexFlow {
 namespace opmeta {
 
-typename BatchMatmulParams::AsConstTuple BatchMatmulParams::as_tuple() const {
-  return {this->a_seq_length_dim, this->b_seq_length_dim};
-}
-
 bool operator==(BatchMatmulParams const &lhs, BatchMatmulParams const &rhs) {
-  return lhs.as_tuple() == rhs.as_tuple();
+  return visit_eq(lhs, rhs);
 }
 
 bool operator<(BatchMatmulParams const &lhs, BatchMatmulParams const &rhs) {
-  return lhs.as_tuple() < rhs.as_tuple();
+  return visit_lt(lhs, rhs);
 }
 
 bool BatchMatmulParams::is_valid(
@@ -36,4 +33,14 @@ bool BatchMatmulParams::is_valid(
 }
 
 }
+}
+
+namespace std {
+
+using ::FlexFlow::opmeta::BatchMatmulParams;
+
+size_t hash<BatchMatmulParams>::operator()(BatchMatmulParams const &p) const {
+  return visit_hash(p);
+}
+
 }

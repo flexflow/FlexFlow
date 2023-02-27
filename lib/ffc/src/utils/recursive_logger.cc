@@ -2,6 +2,7 @@
 #include "utils/not_implemented_exception.h"
 
 namespace FlexFlow {
+namespace utils {
 
 RecursiveLogger::RecursiveLogger(std::shared_ptr<spdlog::logger> const &logger) 
   : logger(logger)
@@ -36,4 +37,5 @@ DepthTag::~DepthTag() {
   this->logger.leave();
 }
 
-}; // namespace FlexFlow
+}
+}

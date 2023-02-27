@@ -14,7 +14,6 @@
  */
 
 #include "substitution.h"
-#include "dominators.h"
 #include "op-meta/op-meta.h"
 #include "graph.h"
 #include "graph_structures.h"
@@ -27,13 +26,10 @@
 #include <chrono>
 #include <iomanip>
 
+using namespace ::FlexFlow::substitutions;
+
 namespace FlexFlow {
-namespace PCG {
-
-using namespace Legion;
-
-LegionRuntime::Logger::Category log_xfers("xfers");
-LegionRuntime::Logger::Category log_xfer_matches("xfer_matches");
+namespace ffc {
 
 const TensorX TensorX::NO_TX = TensorX();
 
@@ -45,67 +41,20 @@ bool TensorX::operator!=(TensorX const &other) const {
   return !this->operator==(other);
 }
 
-GraphXfer *create_combine_inception(FFModel *model,
-                                    int num_convs,
-                                    int num_dims,
-                                    int num_parts);
-
-GraphXfer *create_combine_concat(FFModel *model,
-                                 int num_inputs,
-                                 int num_dims,
-                                 int num_parts);
-
-GraphXfer *create_replicate_linear_combine(FFModel *model,
-                                           int num_dims,
-                                           int num_parts,
-                                           ActiMode activation,
-                                           bool use_bias);
-
-GraphXfer *create_partition_linear_combine(FFModel *model,
-                                           int num_dims,
-                                           int num_parts,
-                                           ActiMode activation,
-                                           bool use_bias);
-
-GraphXfer *create_partition_conv2d_combine(FFModel *model,
-                                           int num_dims,
-                                           int num_parts);
-
-GraphXfer *create_partition_attention_combine(FFModel *model,
-                                              int num_heads,
-                                              int num_parts);
-
-GraphXfer *create_replicate_attention_reduce(FFModel *model,
-                                             int num_heads,
-                                             int num_parts);
-
-GraphXfer *create_partition_add_combine(FFModel *model,
-                                        int parallel_dim,
-                                        int num_parts);
-GraphXfer *create_partition_relu_combine(FFModel *model,
-                                         int parallel_dim,
-                                         int num_parts);
-
-GraphXfer *create_partition_concat_combine(FFModel *model,
-                                           int num_inputs,
-                                           int concat_dim,
-                                           int parallel_dim,
-                                           int num_parts);
-
-GraphXfer *create_partition_softmax_combine(FFModel *model,
-                                            int softmax_dim,
-                                            int part_dim,
-                                            int num_parts);
-GraphXfer *leading_relu_branch_combine(FFModel *model,
-                                       int parallel_dim,
-                                       int num_parts,
-                                       int num_combines);
-GraphXfer *leading_relu_branch_partition(FFModel *model,
-                                         int parallel_dim,
-                                         int num_parts,
-                                         int num_partitions);
-GraphXfer *
-    create_linear_relu_merge(FFModel *model, int num_dims, bool use_bias);
+Rule create_combine_inception(int num_convs, int num_dims, int num_parts);
+Rule create_combine_concat(int num_inputs, int num_dims, int num_parts);
+Rule create_replicate_linear_combine(int num_dims, int num_parts, ActiMode activation, bool use_bias);
+Rule create_partition_linear_combine(int num_dims, int num_parts, ActiMode activation, bool use_bias);
+Rule create_partition_conv2d_combine(int num_dims, int num_parts);
+Rule create_partition_attention_combine(int num_heads, int num_parts);
+Rule create_replicate_attention_reduce(int num_heads, int num_parts);
+Rule create_partition_add_combine(int parallel_dim, int num_parts);
+Rule create_partition_relu_combine(int parallel_dim, int num_parts);
+Rule create_partition_concat_combine(int num_inputs, int concat_dim, int parallel_dim, int num_parts);
+Rule create_partition_softmax_combine(int softmax_dim, int part_dim, int num_parts);
+Rule leading_relu_branch_combine(int parallel_dim, int num_parts, int num_combines);
+Rule leading_relu_branch_partition(int parallel_dim, int num_parts, int num_partitions);
+Rule create_linear_relu_merge(int num_dims, bool use_bias);
 
 PMConstraint::PMConstraint(Compare c, PMParameter p, int v)
     : comp(c), para(p), value(v) {}
@@ -666,24 +615,6 @@ void GraphXfer::run(
       }
     }
   }
-}
-
-Node Graph::find_source_node() const {
-  using FlexFlow::PCG::Utils::roots;
-
-  std::unordered_set<Node> source_nodes = roots(*this);
-  assert(source_nodes.size() == 1);
-
-  return *source_nodes.begin();
-}
-
-Node Graph::find_sink_node() const {
-  using FlexFlow::PCG::Utils::leaves;
-
-  std::unordered_set<Node> sink_nodes = leaves(*this);
-  assert(sink_nodes.size() == 1);
-
-  return *sink_nodes.begin();
 }
 
 void Graph::reshape_output_tensor(ParallelTensorShape const &desired_shape) {
@@ -1392,54 +1323,54 @@ std::string GraphXfer::get_name() const {
   }
 }
 
-int get_num_outputs(sl::Operator const &op) {
-  switch (op.op_type) {
-    case OP_SPLIT:
-      return op.at(PM_NUM_OUTPUTS).value();
-    default:
-      return 1;
-  }
-}
+/* int get_num_outputs(sl::Operator const &op) { */
+/*   switch (op.op_type) { */
+/*     case OP_SPLIT: */
+/*       return op.at(PM_NUM_OUTPUTS).value(); */
+/*     default: */
+/*       return 1; */
+/*   } */
+/* } */
 
-int get_num_inputs(sl::Operator const &op) {
-  switch (op.op_type) {
-    case OP_EW_ADD: // binary ops
-    case OP_EW_SUB:
-    case OP_EW_MUL:
-    case OP_EW_DIV:
-    case OP_EW_EQUAL:
-    case OP_EW_GREATER:
-    case OP_EW_LESS:
-    case OP_EW_MAX:
-    case OP_EW_MIN:
-      return 2;
-    case OP_SPLIT:
-      return 1;
-    case OP_LINEAR:
-      return 1;
-    case OP_CONV2D:
-      return 1;
-    case OP_RELU:
-    case OP_IDENTITY:
-    case OP_SIGMOID:
-    case OP_TANH:
-    case OP_ELU:
-      return 1;
-    case OP_CONCAT:
-      return op.at(PM_NUM_INPUTS).value();
-    case OP_INPUT:
-      return 0;
-    case OP_REPARTITION:
-    case OP_COMBINE:
-    case OP_REPLICATE:
-    case OP_REDUCTION:
-    case OP_PIPELINE:
-      return 1;
-    default:
-      throw std::runtime_error("Unknown num_inputs for operator " +
-                               get_operator_type_name(op.op_type));
-  }
-}
+/* int get_num_inputs(sl::Operator const &op) { */
+/*   switch (op.op_type) { */
+/*     case OP_EW_ADD: // binary ops */
+/*     case OP_EW_SUB: */
+/*     case OP_EW_MUL: */
+/*     case OP_EW_DIV: */
+/*     case OP_EW_EQUAL: */
+/*     case OP_EW_GREATER: */
+/*     case OP_EW_LESS: */
+/*     case OP_EW_MAX: */
+/*     case OP_EW_MIN: */
+/*       return 2; */
+/*     case OP_SPLIT: */
+/*       return 1; */
+/*     case OP_LINEAR: */
+/*       return 1; */
+/*     case OP_CONV2D: */
+/*       return 1; */
+/*     case OP_RELU: */
+/*     case OP_IDENTITY: */
+/*     case OP_SIGMOID: */
+/*     case OP_TANH: */
+/*     case OP_ELU: */
+/*       return 1; */
+/*     case OP_CONCAT: */
+/*       return op.at(PM_NUM_INPUTS).value(); */
+/*     case OP_INPUT: */
+/*       return 0; */
+/*     case OP_REPARTITION: */
+/*     case OP_COMBINE: */
+/*     case OP_REPLICATE: */
+/*     case OP_REDUCTION: */
+/*     case OP_PIPELINE: */
+/*       return 1; */
+/*     default: */
+/*       throw std::runtime_error("Unknown num_inputs for operator " + */
+/*                                get_operator_type_name(op.op_type)); */
+/*   } */
+/* } */
 
 OpX *create_opx(sl::Operator const &op,
                 int parallel_degree,

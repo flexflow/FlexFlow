@@ -1,25 +1,33 @@
 #ifndef _FLEXFLOW_AGGREGATE_SPEC_PARAMS_H
 #define _FLEXFLOW_AGGREGATE_SPEC_PARAMS_H
 
-#include "flexflow/ffconst.h"
-#include "flexflow/parallel_tensor.h"
+#include "op-meta/parallel_tensor_shape.h"
+#include "unary_op.h"
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
+namespace opmeta {
 
-struct AggregateSpecParams {
+struct AggregateSpecParams : public UnaryOpParams {
+public:
+  OperatorType op_type() const override;
+  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
+public:
   int n;
   float lambda_bal;
-  bool is_valid(ParallelTensorShape const &) const;
 };
 bool operator==(AggregateSpecParams const &, AggregateSpecParams const &);
 
-} // namespace FlexFlow
+}
+}
+
+VISITABLE_STRUCT(::FlexFlow::opmeta::AggregateSpecParams, n, lambda_bal);
 
 namespace std {
 template <>
-struct hash<FlexFlow::AggregateSpecParams> {
-  size_t operator()(FlexFlow::AggregateSpecParams const &) const;
+struct hash<::FlexFlow::opmeta::AggregateSpecParams> {
+  size_t operator()(::FlexFlow::opmeta::AggregateSpecParams const &) const;
 };
-} // namespace std
+}
 
 #endif // _FLEXFLOW_AGGREGATE_SPEC_PARAMS_H

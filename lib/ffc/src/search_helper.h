@@ -5,7 +5,7 @@
 #include "split_types.h"
 
 namespace FlexFlow {
-namespace PCG {
+namespace ffc {
 
 struct GraphCostResult {
   float cost;

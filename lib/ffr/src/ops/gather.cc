@@ -39,30 +39,6 @@ using PCG::Node;
 
 using namespace FlexFlow::Kernels::Gather;
 
-bool operator==(GatherParams const &lhs, GatherParams const &rhs) {
-  return lhs.legion_dim == rhs.legion_dim;
-}
-
-bool GatherParams::is_valid(
-    std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
-  if (!input.first.is_valid()) {
-    return false;
-  }
-  if (!input.second.is_valid()) {
-    return false;
-  }
-  if (input.first.num_dims != input.second.num_dims) {
-    return false;
-  }
-  for (int i = 0; i < input.first.num_dims; i++) {
-    if (i != legion_dim &&
-        input.first.dims[i].size < input.second.dims[i].size) {
-      return false;
-    }
-  }
-  return true;
-}
-
 GatherParams Gather::get_params() const {
   GatherParams params;
   params.legion_dim = this->legion_dim;

@@ -19,7 +19,7 @@ struct bidict {
     }
   }
 
-  void erase_l(L const &l) const {
+  void erase_l(L const &l) {
     this->fwd_map.erase(l);
     for (auto const &kv : this->bwd_map) {
       if (kv.second == l) {
@@ -29,7 +29,7 @@ struct bidict {
     }
   }
 
-  void erase_r(R const &r) const {
+  void erase_r(R const &r) {
     this->bwd_map.erase(r);
     for (auto const &kv : this->fwd_map) {
       if (kv.second == r) {

@@ -17,31 +17,20 @@
 #define _FLEXFLOW_SUBSTITUTION_H_
 #include <op-meta/op-meta.h>
 #include "graph.h"
-#include "substitution_loader.h"
-#include "recursive_logger.h"
+#include "substitutions/substitutions.h"
+#include "utils/recursive_logger.h"
 #include "tl/optional.hpp"
 #include <queue>
 
 namespace FlexFlow {
-namespace PCG {
+namespace ffc {
 
-namespace sl = FlexFlow::substitution_loader;
-
-enum Compare {
-  COMPARE_EQ,
-  COMPARE_NE,
-  COMPARE_LT,
-  COMPARE_LE,
-  COMPARE_GT,
-  COMPARE_GE,
-};
-
-struct PMConstraint {
-  PMConstraint(Compare comp, PMParameter para, int value);
-  Compare comp;
-  PMParameter para;
-  int value;
-};
+/* struct PMConstraint { */
+/*   PMConstraint(Compare comp, PMParameter para, int value); */
+/*   Compare comp; */
+/*   PMParameter para; */
+/*   int value; */
+/* }; */
 
 struct TNConstraint {
   TNConstraint(Compare comp, TNParameter para, DIMParameter dim, int value);
@@ -57,15 +46,15 @@ struct TNConstraint {
   int value;
 };
 
-class Op;
-class OpX;
-class GraphXfer;
+/* class Op; */
+/* class OpX; */
+/* class GraphXfer; */
 
 struct TensorX {
   static const TensorX NO_TX;
   TensorX(void) : op(NULL), idx(0) {}
   TensorX(OpX *_op, int _idx) : op(_op), idx(_idx) {}
-  tl::optional<ParallelTensorShape> to_tensor(GraphXfer const *xfer) const;
+  tl::optional<opmeta::ParallelTensorShape> to_tensor(GraphXfer const *xfer) const;
   OpX *op;
   int idx;
 
@@ -82,42 +71,42 @@ struct TensorXCompare {
   };
 };
 
-class OpX {
-public:
-  OpX(OperatorType type,
-      int numInputs,
-      int numOutputs,
-      TensorX const &input1 = TensorX::NO_TX,
-      TensorX const &input2 = TensorX::NO_TX,
-      TensorX const &input3 = TensorX::NO_TX,
-      TensorX const &input4 = TensorX::NO_TX);
-  OpX(OperatorType type,
-      int num_inputs,
-      int num_outputs,
-      TensorX const *inputs);
-  bool add_pm_constraint(Compare, PMParameter para, int value);
-  bool add_input_constraint(Compare, TNParameter, DIMParameter, int);
-  bool add_input_constraint(
-      Compare, TNParameter, DIMParameter, TNParameter, DIMParameter);
-  bool get_pm_constraint(PMParameter para, int &value) const;
+/* class OpX { */
+/* public: */
+/*   OpX(OperatorType type, */
+/*       int numInputs, */
+/*       int numOutputs, */
+/*       TensorX const &input1 = TensorX::NO_TX, */
+/*       TensorX const &input2 = TensorX::NO_TX, */
+/*       TensorX const &input3 = TensorX::NO_TX, */
+/*       TensorX const &input4 = TensorX::NO_TX); */
+/*   OpX(OperatorType type, */
+/*       int num_inputs, */
+/*       int num_outputs, */
+/*       TensorX const *inputs); */
+/*   bool add_pm_constraint(Compare, PMParameter para, int value); */
+/*   bool add_input_constraint(Compare, TNParameter, DIMParameter, int); */
+/*   bool add_input_constraint( */
+/*       Compare, TNParameter, DIMParameter, TNParameter, DIMParameter); */
+/*   bool get_pm_constraint(PMParameter para, int &value) const; */
 
-public:
-  OperatorType type;
-  Node mapOp;
-  OpX const *matchOpX;
-  std::vector<TensorX> inputs, weights, outputs;
-  std::vector<PMConstraint> pmConstraints;
-  std::vector<TNConstraint> tnConstraints;
-};
+/* public: */
+/*   OperatorType type; */
+/*   Node mapOp; */
+/*   OpX const *matchOpX; */
+/*   std::vector<TensorX> inputs, weights, outputs; */
+/*   std::vector<PMConstraint> pmConstraints; */
+/*   std::vector<TNConstraint> tnConstraints; */
+/* }; */
 
-OpX *create_opx(sl::Operator const &op,
+OpX *create_opx(substitutions::Operator const &op,
                 int parallel_degree,
                 TensorX const &input1 = TensorX::NO_TX,
                 TensorX const &input2 = TensorX::NO_TX,
                 TensorX const &input3 = TensorX::NO_TX,
                 TensorX const &input4 = TensorX::NO_TX);
-void create_xfer(GraphXfer &xfer, sl::Rule const &r, int parallel_degree);
-std::vector<GraphXfer *> create_xfers(sl::RuleCollection const &rules,
+void create_xfer(GraphXfer &xfer, substitutions::Rule const &r, int parallel_degree);
+std::vector<GraphXfer *> create_xfers(substitutions::RuleCollection const &rules,
                                       int parallel_degree);
 
 class GraphCompare {
@@ -153,82 +142,82 @@ private:
   GraphXfer const *xfer;
 };
 
-class GraphXfer {
-public:
-  GraphXfer();
-  TensorX new_tensor(void);
-  bool can_match(OpX *srcOp, Node const &op, Graph const *graph);
-  void match(OpX *srcOp, Node const &op, Graph const *graph);
-  void unmatch(OpX *srcOp, Node const &op, Graph const *graph);
-  // Compute Ops
-  template <typename T>
-  OpX *create_opx(TensorX const &input, OpX const *matchOpX);
+/* class GraphXfer { */
+/* public: */
+/*   GraphXfer(); */
+/*   TensorX new_tensor(void); */
+/*   bool can_match(OpX *srcOp, Node const &op, Graph const *graph); */
+/*   void match(OpX *srcOp, Node const &op, Graph const *graph); */
+/*   void unmatch(OpX *srcOp, Node const &op, Graph const *graph); */
+/*   // Compute Ops */
+/*   template <typename T> */
+/*   OpX *create_opx(TensorX const &input, OpX const *matchOpX); */
 
-  OpX *create_noop(TensorX const &input);
-  OpX *create_concat(TensorX const *inputs,
-                     int num_inputs,
-                     OpX const *match_opx,
-                     int concat_dim);
-  OpX *create_element_binary(TensorX const &input1,
-                             TensorX const &input2,
-                             OperatorType op_type);
-  OpX *create_element_unary(TensorX const &input, OperatorType op_type);
-  OpX *create_relu(TensorX const &input);
-  OpX *create_linear(TensorX const &input,
-                     OpX const *match_opx,
-                     int num_dims,
-                     ActiMode acti_mode,
-                     bool use_bias);
-  OpX *create_conv2d(TensorX const &input, OpX const *match_opx);
-  OpX *create_pool2d(TensorX const &input, OpX const *match_opx);
-  OpX *create_attention(TensorX const &query,
-                        TensorX const &key,
-                        TensorX const &value,
-                        OpX const *match_opx,
-                        int num_heads);
-  OpX *create_softmax(TensorX const &input, int softmax_dim);
-  // Parallel Ops
-  OpX *create_repartition(TensorX const &input,
-                          int repartition_dim,
-                          int num_parts);
-  OpX *create_replicate(TensorX const &input, int replicate_dim, int num_parts);
-  OpX *create_reduction(TensorX const &input, int reduction_dim, int num_parts);
-  OpX *create_combine(TensorX const &input, int combine_dim, int num_parts);
-  bool map_output(TensorX const &src, TensorX const &dst);
+/*   OpX *create_noop(TensorX const &input); */
+/*   OpX *create_concat(TensorX const *inputs, */
+/*                      int num_inputs, */
+/*                      OpX const *match_opx, */
+/*                      int concat_dim); */
+/*   OpX *create_element_binary(TensorX const &input1, */
+/*                              TensorX const &input2, */
+/*                              OperatorType op_type); */
+/*   OpX *create_element_unary(TensorX const &input, OperatorType op_type); */
+/*   OpX *create_relu(TensorX const &input); */
+/*   OpX *create_linear(TensorX const &input, */
+/*                      OpX const *match_opx, */
+/*                      int num_dims, */
+/*                      ActiMode acti_mode, */
+/*                      bool use_bias); */
+/*   OpX *create_conv2d(TensorX const &input, OpX const *match_opx); */
+/*   OpX *create_pool2d(TensorX const &input, OpX const *match_opx); */
+/*   OpX *create_attention(TensorX const &query, */
+/*                         TensorX const &key, */
+/*                         TensorX const &value, */
+/*                         OpX const *match_opx, */
+/*                         int num_heads); */
+/*   OpX *create_softmax(TensorX const &input, int softmax_dim); */
+/*   // Parallel Ops */
+/*   OpX *create_repartition(TensorX const &input, */
+/*                           int repartition_dim, */
+/*                           int num_parts); */
+/*   OpX *create_replicate(TensorX const &input, int replicate_dim, int num_parts); */
+/*   OpX *create_reduction(TensorX const &input, int reduction_dim, int num_parts); */
+/*   OpX *create_combine(TensorX const &input, int combine_dim, int num_parts); */
+/*   bool map_output(TensorX const &src, TensorX const &dst); */
 
-  Graph *create_new_graph(Graph const *graph,
-                          SimplificationSettings const &settings);
-  bool create_new_operator(OpX const *opx, Node &op);
+/*   Graph *create_new_graph(Graph const *graph, */
+/*                           SimplificationSettings const &settings); */
+/*   bool create_new_operator(OpX const *opx, Node &op); */
 
-  std::string get_name() const;
+/*   std::string get_name() const; */
 
-  void run(int depth,
-           Graph *graph,
-           std::priority_queue<Graph *, std::vector<Graph *>, GraphCompare> &,
-           std::unordered_set<size_t> &,
-           float threshold,
-           int maxNumOps,
-           SimplificationSettings const &simplification_settings,
-           int &num_matches_found,
-           int &num_matches_rejected);
+/*   void run(int depth, */
+/*            Graph *graph, */
+/*            std::priority_queue<Graph *, std::vector<Graph *>, GraphCompare> &, */
+/*            std::unordered_set<size_t> &, */
+/*            float threshold, */
+/*            int maxNumOps, */
+/*            SimplificationSettings const &simplification_settings, */
+/*            int &num_matches_found, */
+/*            int &num_matches_rejected); */
 
-  void find_matches(Graph const *, std::vector<GraphXferMatch> &matches);
-  GraphXferMatch get_match_record(Graph const *) const;
+/*   void find_matches(Graph const *, std::vector<GraphXferMatch> &matches); */
+/*   GraphXferMatch get_match_record(Graph const *) const; */
 
-private:
-  void find_matches(int depth,
-                    Graph const *graph,
-                    std::vector<GraphXferMatch> &matches);
+/* private: */
+/*   void find_matches(int depth, */
+/*                     Graph const *graph, */
+/*                     std::vector<GraphXferMatch> &matches); */
 
-public:
-  tl::optional<std::string> name = tl::nullopt;
-  int tensorId;
-  std::map<Node, OpX *, NodeCompare> mappedOps;
-  std::multimap<int, std::pair<Node, int>> mappedInputs;
-  std::map<TensorX, TensorX, TensorXCompare> mappedOutputs;
-  std::vector<OpX *> srcOps;
-  std::vector<OpX *> dstOps;
-};
+/* public: */
+/*   tl::optional<std::string> name = tl::nullopt; */
+/*   int tensorId; */
+/*   std::map<Node, OpX *, NodeCompare> mappedOps; */
+/*   std::multimap<int, std::pair<Node, int>> mappedInputs; */
+/*   std::map<TensorX, TensorX, TensorXCompare> mappedOutputs; */
+/*   std::vector<OpX *> srcOps; */
+/*   std::vector<OpX *> dstOps; */
+/* }; */
 
 class GraphSearchHelper {
 public:

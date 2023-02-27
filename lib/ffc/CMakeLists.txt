@@ -26,6 +26,7 @@ target_link_libraries(
   optional
   pcg
   spdlog::spdlog
+  substitutions
 )
 set_target_properties(
   ${project_target} 

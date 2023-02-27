@@ -10,9 +10,6 @@ namespace opmeta {
 
 struct BatchMatmulParams : public BinaryOpParams {
 public:
-  using AsConstTuple = std::tuple<int, int>;
-  AsConstTuple as_tuple() const;
-
   bool is_valid(ParallelTensorShape const &rhs_input_shape, ParallelTensorShape const &lhs_input_shape) const override;
   ParallelTensorShape output_shape(ParallelTensorShape const &rhs_input_shape, ParallelTensorShape const &lhs_input_shape) const override;
   OperatorType op_type() const override;

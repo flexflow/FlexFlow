@@ -10,9 +10,6 @@ namespace opmeta {
 
 struct ConcatParams : public OpParamsInterface {
 public:
-  using AsConstTuple = std::tuple<int>;
-  AsConstTuple as_tuple() const;
-
   bool is_valid(std::vector<ParallelTensorShape> const &input_shapes) const override;
   std::vector<ParallelTensorShape> output_shapes(std::vector<ParallelTensorShape> const &input_shapes) const override;
   OperatorType op_type() const override;

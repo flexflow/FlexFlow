@@ -10,6 +10,7 @@
 #define TAG_ENTER(mlogger) auto UNIQUE_TAG() = mlogger->enter_tag()
 
 namespace FlexFlow {
+namespace utils {
 
 class RecursiveLogger;
 
@@ -60,5 +61,7 @@ private:
   std::shared_ptr<spdlog::logger> logger;
 };
 
-};     // namespace FlexFlow
-#endif // _FLEXFLOW_RECURSIVE_LOGGER_H
+}
+}
+
+#endif 

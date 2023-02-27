@@ -156,71 +156,35 @@ enum OperatorType {
   OP_INVALID,
 };
 
-enum PMParameter {
-  PM_OP_TYPE,            // AnyOp
-  PM_NUM_INPUTS,         // AnyOp
-  PM_NUM_OUTPUTS,        // AnyOp
-  PM_GROUP,              // Conv2D
-  PM_KERNEL_H,           // Conv2D, Pool2D
-  PM_KERNEL_W,           // Conv2D, Pool2D
-  PM_STRIDE_H,           // Conv2D, Pool2D
-  PM_STRIDE_W,           // Conv2D, Pool2D
-  PM_PADDING_H,          // Conv2D, Pool2D
-  PM_PADDING_W,          // Conv2D, Pool2D
-  PM_ACTI,               // Conv2D, Pool2D
-  PM_NUMDIM,             // Concat, Transpose
-  PM_AXIS,               // Concat, Split
-  PM_PERM,               // Transpose
-  PM_OUTSHUFFLE,         // Transpose
-  PM_MERGE_GCONV_COUNT,  // MergeGConv
-  PM_AXES,               // Squeeze, Unsqueeze, Reduce*
-  PM_KEEP_DIMS,          // Reduce*
-  PM_EPSILON,            // BatchNorm
-  PM_REPARTITION_DIM,    // Repartition
-  PM_REPARTITION_DEGREE, // Repartition
-  PM_REPLICATE_DIM,      // Replicate
-  PM_REPLICATE_DEGREE,   // Replicate
-  PM_COMBINE_DIM,        // Combine
-  PM_COMBINE_DEGREE,     // Combine
-  PM_REDUCTION_DIM,      // Reduction
-  PM_REDUCTION_DEGREE,   // Reduction
-  PM_SOFTMAX_DIM,        // Softmax
-  PM_NUM_HEADS,          // MultiHeadAttention
-  PM_INVALID,
-  PM_PARALLEL_DIM,
-  PM_PARALLEL_DEGREE,
-  PM_PAD,
-};
+/* enum TNParameter { */
+/*   INPUT_0 = 100, */
+/*   INPUT_1 = 101, */
+/*   INPUT_2 = 102, */
+/*   INPUT_3 = 103, */
+/*   INPUT_4 = 104, */
+/*   INPUT_5 = 105, */
+/*   WEIGHT_0 = 200, */
+/*   WEIGHT_1 = 201, */
+/*   WEIGHT_2 = 202, */
+/*   WEIGHT_3 = 203, */
+/*   WEIGHT_4 = 204, */
+/*   WEIGHT_5 = 205, */
+/*   OUTPUT_0 = 300, */
+/*   OUTPUT_1 = 301, */
+/*   OUTPUT_2 = 302, */
+/*   OUTPUT_3 = 303, */
+/*   OUTPUT_4 = 304, */
+/*   OUTPUT_5 = 305, */
+/* }; */
 
-enum TNParameter {
-  INPUT_0 = 100,
-  INPUT_1 = 101,
-  INPUT_2 = 102,
-  INPUT_3 = 103,
-  INPUT_4 = 104,
-  INPUT_5 = 105,
-  WEIGHT_0 = 200,
-  WEIGHT_1 = 201,
-  WEIGHT_2 = 202,
-  WEIGHT_3 = 203,
-  WEIGHT_4 = 204,
-  WEIGHT_5 = 205,
-  OUTPUT_0 = 300,
-  OUTPUT_1 = 301,
-  OUTPUT_2 = 302,
-  OUTPUT_3 = 303,
-  OUTPUT_4 = 304,
-  OUTPUT_5 = 305,
-};
-
-enum DIMParameter {
-  DIM_0 = 500,
-  DIM_1 = 501,
-  DIM_2 = 502,
-  DIM_3 = 503,
-  DIM_4 = 504,
-  DIM_ND = 510,
-};
+/* enum DIMParameter { */
+/*   DIM_0 = 500, */
+/*   DIM_1 = 501, */
+/*   DIM_2 = 502, */
+/*   DIM_3 = 503, */
+/*   DIM_4 = 504, */
+/*   DIM_ND = 510, */
+/* }; */
 
 enum {
   LAYER_GUID_FIRST_VALID = 1000000,
@@ -232,4 +196,5 @@ enum {
   PARALLEL_TENSOR_GUID_FIRST_VALID = 4000000,
   NODE_GUID_FIRST_VALID = 5000000,
 };
+
 #endif // _FLEXFLOW_CONST_H_

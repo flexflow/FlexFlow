@@ -1,18 +1,15 @@
 #include "op-meta/ops/concat_params.h"
+#include "op-meta/visit_struct.h"
 
 namespace FlexFlow {
 namespace opmeta {
 
-typename ConcatParams::AsConstTuple ConcatParams::as_tuple() const {
-  return {this->axis};
-}
-
 bool operator==(ConcatParams const &lhs, ConcatParams const &rhs) {
-  return lhs.as_tuple() == rhs.as_tuple();
+  return visit_eq(lhs, rhs);
 }
 
 bool operator<(ConcatParams const &lhs, ConcatParams const &rhs) {
-  return lhs.as_tuple() < rhs.as_tuple();
+  return visit_lt(lhs, rhs);
 }
 
 bool ConcatParams::is_valid(
@@ -25,4 +22,13 @@ bool ConcatParams::is_valid(
 }
 
 }
+}
+
+namespace std {
+using ::FlexFlow::opmeta::ConcatParams;
+
+size_t hash<ConcatParams>::operator()(ConcatParams const &p) const {
+  return visit_hash(p);
+}
+
 }

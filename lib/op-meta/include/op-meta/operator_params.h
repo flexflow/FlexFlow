@@ -1,6 +1,8 @@
 #ifndef _OPERATOR_PARAMS_H
 #define _OPERATOR_PARAMS_H
 
+#include "op-meta/ops/aggregate_params.h"
+#include "op-meta/ops/aggregate_spec_params.h"
 #include "op-meta/ops/attention_params.h"
 #include "op-meta/ops/batch_matmul_params.h"
 #include "op-meta/ops/cast_params.h"
@@ -11,6 +13,8 @@
 #include "op-meta/ops/element_unary_params.h"
 #include "op-meta/ops/embedding_params.h"
 #include "op-meta/ops/flat_params.h"
+#include "op-meta/ops/gather_params.h"
+#include "op-meta/ops/groupby_params.h"
 #include "op-meta/ops/layer_norm_params.h"
 #include "op-meta/ops/linear_params.h"
 #include "op-meta/ops/pool_2d_params.h"
@@ -21,43 +25,43 @@
 #include "op-meta/ops/combine_params.h"
 #include "op-meta/ops/fused_parallel_op_params.h"
 #include "op-meta/ops/repartition_params.h"
+#include "op-meta/ops/reduce_params.h"
 #include "op-meta/ops/reduction_params.h"
 #include "op-meta/ops/replicate_params.h"
+#include "op-meta/ops/topk_params.h"
 #include "mpark/variant.hpp"
-
-namespace mp = mpark;
 
 namespace FlexFlow {
 namespace opmeta {
 
 // TODO: Inherit these operators from OpParamsInterface. Comment out temporarily to avoid compile error.
-using OperatorParameters = mp::variant<// AggregateParams,
-                                       // AggregateSpecParams,
+using OperatorParameters = mpark::variant<AggregateParams,
+                                       AggregateSpecParams,
                                        BatchMatmulParams,
-                                       Conv2DParams,
-                                       ConcatParams,
                                        CastParams,
+                                       CombineParams,
+                                       ConcatParams,
+                                       Conv2DParams,
+                                       DropoutParams,
                                        ElementBinaryParams,
                                        ElementUnaryParams,
-                                       DropoutParams,
                                        EmbeddingParams,
                                        FlatParams,
-                                       // GatherParams,
-                                       // Group_byParams,
+                                       GatherParams,
+                                       Group_byParams,
                                        LayerNormParams,
                                        LinearParams,
                                        MultiHeadAttentionParams,
                                        Pool2DParams,
-                                       // ReduceParams,
-                                       ReshapeParams,
-                                       SplitParams,
-                                       // TopKParams,
-                                       SoftmaxParams,
-                                       TransposeParams,
+                                       ReduceParams,
+                                       ReductionParams,
                                        RepartitionParams,
                                        ReplicateParams,
-                                       ReductionParams,
-                                       CombineParams,
+                                       ReshapeParams,
+                                       SplitParams,
+                                       SoftmaxParams,
+                                       TopKParams,
+                                       TransposeParams,
                                        FusedParallelOpParams>;
 
 OperatorType get_op_type(OperatorParameters const &);

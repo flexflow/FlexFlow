@@ -44,7 +44,7 @@ struct GraphOptimalViewSerialized {
   char data[buffer_size];
 };
 
-class Graph {
+class ParallelComputationGraph {
 public:
   Graph() = default;
   Graph(std::string const &logger_name);

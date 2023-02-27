@@ -54,6 +54,7 @@ bool contains_key(std::unordered_map<K, V> const &m, K const &kv) {
   return m.find(kv) != m.end();
 }
 
+
 template <typename Container, typename Element>
 tl::optional<std::size_t> index_of(Container const &c, Element const &e) {
   auto it = std::find(c.cbegin(), c.cend(), e);
@@ -104,6 +105,16 @@ template <typename T>
 void extend(std::vector<T> &lhs, std::vector<T> const &rhs) {
   lhs.reserve(lhs.size() + distance(rhs.begin(), rhs.end()));
   lhs.insert(lhs.end(), rhs.begin(), rhs.end());
+}
+
+template <typename C, typename F>
+bool all_of(C const &c, F const &f) {
+  for (auto const &v : c) {
+    if (!f(v)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 template <typename F, typename In, typename Out = decltype(std::declval<F>()(std::declval<In>()))>

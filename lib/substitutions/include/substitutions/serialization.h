@@ -1,45 +1,7 @@
-#ifndef _FLEXFLOW_SUBSTITUTION_LOADER_H
-#define _FLEXFLOW_SUBSTITUTION_LOADER_H
+#ifndef _FLEXFLOW_SUBSTITUTIONS_SERIALIZATION_H
+#define _FLEXFLOW_SUBSTITUTIONS_SERIALIZATION_H
 
-#include "op-meta/op-meta.h"
-#include "tl/optional.hpp"
-#include <fstream>
-#include <nlohmann/json.hpp>
-
-NLOHMANN_JSON_SERIALIZE_ENUM(PMParameter,
-                             {{PM_INVALID, nullptr},
-                              {PM_OP_TYPE, "PM_OP_TYPE"},
-                              {PM_NUM_INPUTS, "PM_NUM_INPUTS"},
-                              {PM_NUM_OUTPUTS, "PM_NUM_OUTPUTS"},
-                              {PM_GROUP, "PM_GROUP"},
-                              {PM_KERNEL_H, "PM_KERNEL_H"},
-                              {PM_KERNEL_W, "PM_KERNEL_W"},
-                              {PM_STRIDE_H, "PM_STRIDE_H"},
-                              {PM_STRIDE_W, "PM_STRIDE_W"},
-                              {PM_PADDING_H, "PM_PADDING_H"},
-                              {PM_PADDING_W, "PM_PADDING_W"},
-                              {PM_ACTI, "PM_ACTI"},
-                              {PM_NUMDIM, "PM_NUMDIM"},
-                              {PM_AXIS, "PM_AXIS"},
-                              {PM_PERM, "PM_PERM"},
-                              {PM_OUTSHUFFLE, "PM_OUTSHUFFLE"},
-                              {PM_MERGE_GCONV_COUNT, "PM_MERGE_GCONV_COUNT"},
-                              {PM_AXES, "PM_AXES"},
-                              {PM_KEEP_DIMS, "PM_KEEP_DIMS"},
-                              {PM_EPSILON, "PM_EPSILON"},
-                              {PM_REPARTITION_DIM, "PM_REPARTITION_DIM"},
-                              {PM_REPARTITION_DEGREE, "PM_REPARTITION_DEGREE"},
-                              {PM_REPLICATE_DIM, "PM_REPLICATE_DIM"},
-                              {PM_REPLICATE_DEGREE, "PM_REPLICATE_DEGREE"},
-                              {PM_COMBINE_DIM, "PM_COMBINE_DIM"},
-                              {PM_COMBINE_DEGREE, "PM_COMBINE_DEGREE"},
-                              {PM_REDUCTION_DIM, "PM_REDUCTION_DIM"},
-                              {PM_REDUCTION_DEGREE, "PM_REDUCTION_DEGREE"},
-                              {PM_SOFTMAX_DIM, "PM_SOFTMAX_DIM"},
-                              {PM_NUM_HEADS, "PM_NUM_HEADS"},
-                              {PM_PARALLEL_DIM, "PM_PARALLEL_DIM"},
-                              {PM_PARALLEL_DEGREE, "PM_PARALLEL_DEGREE"},
-                              {PM_PAD, "PM_PAD"}})
+#include "substitutions.h"
 
 NLOHMANN_JSON_SERIALIZE_ENUM(OperatorType,
                              {{OP_INVALID, nullptr},
@@ -132,56 +94,54 @@ NLOHMANN_JSON_SERIALIZE_ENUM(OperatorType,
                               {OP_FUSED_PARALLEL, "OP_FUSED_PARALLEL"}})
 
 namespace FlexFlow {
-namespace substitution_loader {
+namespace substitutions {
 
-using json = nlohmann::json;
-
-struct Parameter {
-  PMParameter key;
-  int value;
-};
-void from_json(json const &j, Parameter &p);
-
-struct Tensor {
-  int opId;
-  int tsId;
-};
-void from_json(json const &j, Tensor &t);
-
-struct Operator {
-  OperatorType op_type;
-  std::vector<Tensor> input;
-  std::vector<Parameter> para;
-
-  tl::optional<int> at(PMParameter key) const;
-};
-void from_json(json const &j, Operator &t);
-
-struct MapOutput {
-  int dstOpId;
-  int dstTsId;
-  int srcOpId;
-  int srcTsId;
-};
-void from_json(json const &j, MapOutput &t);
-
-struct Rule {
-  std::string name;
-  std::vector<Operator> srcOp;
-  std::vector<Operator> dstOp;
-  std::vector<MapOutput> mappedOutput;
-};
-void from_json(json const &j, Rule &t);
-
-struct RuleCollection {
-  std::vector<Rule> rules;
-};
-void from_json(json const &j, RuleCollection &c);
+NLOHMANN_JSON_SERIALIZE_ENUM(ParameterAttribute,
+                             {{ParameterAttribute::INVALID, nullptr},
+                              {ParameterAttribute::OP_TYPE, "PM_OP_TYPE"},
+                              {ParameterAttribute::NUM_INPUTS, "PM_NUM_INPUTS"},
+                              {ParameterAttribute::NUM_OUTPUTS, "PM_NUM_OUTPUTS"},
+                              {ParameterAttribute::GROUP, "PM_GROUP"},
+                              {ParameterAttribute::KERNEL_H, "PM_KERNEL_H"},
+                              {ParameterAttribute::KERNEL_W, "PM_KERNEL_W"},
+                              {ParameterAttribute::STRIDE_H, "PM_STRIDE_H"},
+                              {ParameterAttribute::STRIDE_W, "PM_STRIDE_W"},
+                              {ParameterAttribute::PADDING_H, "PM_PADDING_H"},
+                              {ParameterAttribute::PADDING_W, "PM_PADDING_W"},
+                              {ParameterAttribute::ACTIVATION, "PM_ACTIVATION"},
+                              {ParameterAttribute::NUMDIM, "PM_NUMDIM"},
+                              {ParameterAttribute::AXIS, "PM_AXIS"},
+                              {ParameterAttribute::PERM, "PM_PERM"},
+                              {ParameterAttribute::OUTSHUFFLE, "PM_OUTSHUFFLE"},
+                              {ParameterAttribute::MERGE_GCONV_COUNT, "PM_MERGE_GCONV_COUNT"},
+                              {ParameterAttribute::AXES, "PM_AXES"},
+                              {ParameterAttribute::KEEP_DIMS, "PM_KEEP_DIMS"},
+                              {ParameterAttribute::EPSILON, "PM_EPSILON"},
+                              {ParameterAttribute::REPARTITION_DIM, "PM_REPARTITION_DIM"},
+                              {ParameterAttribute::REPARTITION_DEGREE, "PM_REPARTITION_DEGREE"},
+                              {ParameterAttribute::REPLICATE_DIM, "PM_REPLICATE_DIM"},
+                              {ParameterAttribute::REPLICATE_DEGREE, "PM_REPLICATE_DEGREE"},
+                              {ParameterAttribute::COMBINE_DIM, "PM_COMBINE_DIM"},
+                              {ParameterAttribute::COMBINE_DEGREE, "PM_COMBINE_DEGREE"},
+                              {ParameterAttribute::REDUCTION_DIM, "PM_REDUCTION_DIM"},
+                              {ParameterAttribute::REDUCTION_DEGREE, "PM_REDUCTION_DEGREE"},
+                              {ParameterAttribute::SOFTMAX_DIM, "PM_SOFTMAX_DIM"},
+                              {ParameterAttribute::NUM_HEADS, "PM_NUM_HEADS"},
+                              {ParameterAttribute::PARALLEL_DIM, "PM_PARALLEL_DIM"},
+                              {ParameterAttribute::PARALLEL_DEGREE, "PM_PARALLEL_DEGREE"},
+                              {ParameterAttribute::PAD, "PM_PAD"}})
+void from_json(nlohmann::json const &j, OperatorAttributeConstraint &p);
+void from_json(nlohmann::json const &j, Tensor &t);
+void from_json(nlohmann::json const &j, OperatorConstraint &t);
+void from_json(nlohmann::json const &j, MapOutput &t);
+void from_json(nlohmann::json const &j, Rule &t);
+void from_json(nlohmann::json const &j, RuleCollection &c);
 
 RuleCollection load_rule_collection(std::istream &s);
 RuleCollection load_rule_collection_from_path(std::string const &path);
 
-} // namespace substitution_loader
-} // namespace FlexFlow
 
-#endif // _FLEXFLOW_SUBSTITUTION_LOADER_H
+}
+}
+
+#endif

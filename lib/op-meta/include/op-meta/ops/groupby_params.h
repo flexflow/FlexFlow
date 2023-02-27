@@ -1,26 +1,33 @@
 #ifndef _FLEXFLOW_GROUPBY_PARAMS_H
 #define _FLEXFLOW_GROUPBY_PARAMS_H
 
-#include "flexflow/ffconst.h"
-#include "flexflow/parallel_tensor.h"
+#include "op-meta/parallel_tensor_shape.h"
+#include "binary_op.h"
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
+namespace opmeta {
 
-struct Group_byParams {
+struct Group_byParams : public BinaryOpParams {
+public:
+  ParallelTensorShape output_shape(ParallelTensorShape const &, ParallelTensorShape const &) const override;
+  OperatorType op_type() const override;
+public:
   int n;
   float alpha;
-  bool is_valid(
-      std::pair<ParallelTensorShape, ParallelTensorShape> const &) const;
 };
 bool operator==(Group_byParams const &, Group_byParams const &);
 
-} // namespace FlexFlow
+}
+}
+
+VISITABLE_STRUCT(::FlexFlow::opmeta::Group_byParams, n, alpha);
 
 namespace std {
 template <>
-struct hash<FlexFlow::Group_byParams> {
-  size_t operator()(FlexFlow::Group_byParams const &) const;
+struct hash<::FlexFlow::opmeta::Group_byParams> {
+  size_t operator()(::FlexFlow::opmeta::Group_byParams const &) const;
 };
-} // namespace std
+}
 
-#endif // _FLEXFLOW_GROUPBY_PARAMS_H
+#endif 
