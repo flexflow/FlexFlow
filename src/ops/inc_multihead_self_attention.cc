@@ -342,6 +342,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
 
 void IncMultiHeadSelfAttention::init_inference(
     FFModel const &ff,
+    BatchConfig const &bc,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
     MachineView const *mv) {
@@ -465,6 +466,7 @@ void IncMultiHeadSelfAttention::forward(FFModel const &ff) {
 
 void IncMultiHeadSelfAttention::inference(
     FFModel const &ff,
+    BatchConfig const &bc,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
     MachineView const *mv) {
@@ -475,13 +477,10 @@ void IncMultiHeadSelfAttention::inference(
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   set_argumentmap_for_inference(ff, argmap, view);
   size_t machine_view_hash = view->hash();
-  /* std::cout << "IncMultiHeadSelfAttention op machine_view: " << *(MachineView const
-     *)mv
-            << std::endl; */
   int idx = 0;
   IndexLauncher launcher(INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(NULL, 0),
+                         TaskArgument(&bc, sizeof(BatchConfig)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
