@@ -125,7 +125,7 @@ FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
   FutureMap fm;
   for (size_t o = 0; o < model->operators.size(); o++) {
     Op *op = model->operators[o];
-    if (op->op_type == OP_WEIGHT) {
+    if (op->op_type == OP_WEIGHT || op->op_type == OP_INPUT) {
       continue;
     }
 

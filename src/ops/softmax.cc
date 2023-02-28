@@ -240,7 +240,7 @@ FutureMap Softmax::inference(FFModel const &ff,
   size_t machine_view_hash = view->hash();
   /* std::cout << "Softmax op machine_view: " << *(MachineView const *)mv
             << std::endl; */
-  IndexLauncher launcher(SOFTMAX_FWD_TASK_ID,
+  IndexLauncher launcher(SOFTMAX_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -407,6 +407,29 @@ void Softmax::backward_task_with_dim(Task const *task,
 
   backward_kernel_wrapper(
       m, acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
+}
+
+InferenceResult
+    Softmax::inference_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (in_domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    forward_task_with_dim<DIM>(task, regions, ctx, runtime);                   \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+  // FIXME: replace this with actual result
+  InferenceResult ir;
+  return ir;
 }
 
 bool Softmax::get_int_parameter(PMParameter para, int *value) const {

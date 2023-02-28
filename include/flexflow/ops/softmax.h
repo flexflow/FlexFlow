@@ -54,6 +54,11 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
+  static InferenceResult
+      inference_task(Legion::Task const *task,
+                     std::vector<Legion::PhysicalRegion> const &regions,
+                     Legion::Context ctx,
+                     Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;

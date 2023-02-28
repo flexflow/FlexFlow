@@ -29,6 +29,7 @@
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
+#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -1714,6 +1715,19 @@ GraphOptimalViewSerialized
         sez.serialize(attn->add_zero_attn);
         break;
       }
+      case OP_INC_MULTIHEAD_SELF_ATTENTION: {
+        IncMultiHeadSelfAttention *attn = (IncMultiHeadSelfAttention *)op;
+        sez.serialize(attn->layer_guid.id);
+        sez.serialize(attn->oProjSize);
+        sez.serialize(attn->num_heads);
+        sez.serialize(attn->qProjSize);
+        sez.serialize(attn->vProjSize);
+        sez.serialize(attn->dropout);
+        sez.serialize(attn->bias);
+        sez.serialize(attn->add_bias_kv);
+        sez.serialize(attn->add_zero_attn);
+        break;
+      }
       case OP_SOFTMAX: {
         Softmax *softmax = (Softmax *)op;
         sez.serialize(softmax->dim);
@@ -2070,6 +2084,36 @@ void FFModel::deserialize_graph_optimal_view(
         params.layer_guid = layer_guid;
         node = get_or_create_node<MultiHeadAttention>(
             {inputs[0], inputs[1], inputs[2]}, params);
+        break;
+      }
+      case OP_INC_MULTIHEAD_SELF_ATTENTION: {
+        assert(num_inputs == 1);
+        int embed_dim, num_heads, k_dim, v_dim;
+        float dropout;
+        bool bias, add_bias_kv, add_zero_attn;
+        size_t id;
+        dez.deserialize(id);
+        LayerID layer_guid(id);
+        dez.deserialize(embed_dim);
+        dez.deserialize(num_heads);
+        dez.deserialize(k_dim);
+        dez.deserialize(v_dim);
+        dez.deserialize(dropout);
+        dez.deserialize(bias);
+        dez.deserialize(add_bias_kv);
+        dez.deserialize(add_zero_attn);
+
+        IncMultiHeadSelfAttentionParams params;
+        params.embed_dim = embed_dim;
+        params.num_heads = num_heads;
+        params.kdim = k_dim;
+        params.vdim = v_dim;
+        params.dropout = dropout;
+        params.bias = bias;
+        params.add_bias_kv = add_bias_kv;
+        params.add_zero_attn = add_zero_attn;
+        params.layer_guid = layer_guid;
+        node = get_or_create_node<IncMultiHeadSelfAttention>(inputs[0], params);
         break;
       }
       case OP_TOPK: {

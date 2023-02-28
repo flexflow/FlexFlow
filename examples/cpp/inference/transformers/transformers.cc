@@ -38,7 +38,7 @@ void parse_input_args(char **argv, int argc, MoeConfig &config) {
 Tensor create_inc_multihead_attention_decoder(FFModel *model,
                                               MoeConfig const *moeConfig,
                                               Tensor const &input) {
-  std::vector<int> axes{0};
+  std::vector<int> axes{1};
   Tensor t = model->inc_multihead_self_attention(input,
                                                  moeConfig->hidden_size,
                                                  moeConfig->num_attention_heads,
@@ -153,7 +153,7 @@ void FlexFlow::top_level_task(Task const *task,
         BatchConfig *bc = batch_configs[bid];
         processed_requests += bc->update_results(ir);
         int available_slots =
-            BatchConfig::MAX_NUM_REQUESTS - bc->num_processing_requests();
+            BatchConfig::MAX_NUM_REQUESTS - bc->num_active_requests();
         std::vector<std::pair<size_t, std::vector<int>>> prompts;
         data_generator.get_requests(available_slots, prompts);
         processed_requests += prompts.size();

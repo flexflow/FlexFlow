@@ -156,7 +156,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
-         OP_MULTIHEAD_ATTENTION,
+         OP_INC_MULTIHEAD_SELF_ATTENTION,
          DT_FLOAT,
          name,
          1 /*inputs*/,

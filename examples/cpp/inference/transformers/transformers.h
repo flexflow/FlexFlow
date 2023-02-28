@@ -31,7 +31,7 @@ struct MoeConfig {
     batch_size = 32;
     out_dim = 15;
     num_labels = out_dim;
-    num_layers = 12;
+    num_layers = 1;
     //----------------------- Inference parameters ---------------------
     // total number of requests processed as part of the simulation
     total_requests = 256;

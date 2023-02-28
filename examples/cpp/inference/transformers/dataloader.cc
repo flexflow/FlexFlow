@@ -50,7 +50,7 @@ DataLoader::DataLoader(FFModel &ff,
       // Assume only the first dim can be the replica dim
       assert(i == replica_idx || (!dims[i].is_replica_dim));
     }
-    assert(dims[batch_idx].size == ff.config.batchSize);
+    assert(dims[batch_idx].size == BatchConfig::MAX_NUM_TOKENS);
     dims[batch_idx].size = num_samples;
 
     full_input =
@@ -72,7 +72,7 @@ DataLoader::DataLoader(FFModel &ff,
       // Assume only the last dim can be the replica dim
       assert(i == replica_idx || (!dims[i].is_replica_dim));
     }
-    assert(dims[batch_idx].size == ff.config.batchSize);
+    assert(dims[batch_idx].size == BatchConfig::MAX_NUM_TOKENS);
     // replace batch size with number of samples
     dims[batch_idx].size = num_samples;
 

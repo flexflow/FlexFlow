@@ -27,19 +27,21 @@ struct InferenceResult {
 class BatchConfig {
 public:
   BatchConfig();
-  bool register_new_request(int guid, int length);
+  bool register_new_request(size_t guid, int length);
   void prepare_next_batch();
   int update_results(InferenceResult const &ir);
-  int num_processing_requests();
+  int num_active_requests();
+  int num_active_tokens();
   static int const MAX_NUM_REQUESTS = 256;
   static int const MAX_NUM_TOKENS = InferenceResult::MAX_NUM_TOKENS;
   static int const MAX_SEQUENCE_LENGTH = 1024;
   // These are set by update
+  int num_tokens, num_requests;
+  bool cached_results;
   int token_start_idx[MAX_NUM_REQUESTS];
   int token_last_available_idx[MAX_NUM_REQUESTS];
   int num_processing_tokens[MAX_NUM_REQUESTS];
   size_t request_guid[MAX_NUM_REQUESTS];
-  // This is set by the app
   bool request_completed[MAX_NUM_REQUESTS];
 };
 
