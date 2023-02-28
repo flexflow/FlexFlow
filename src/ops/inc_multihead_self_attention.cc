@@ -37,7 +37,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-bool IncMultiHeadSelfAttentionParams::is_valid(ParallelTensorShape const &input) const {
+bool IncMultiHeadSelfAttentionParams::is_valid(
+    ParallelTensorShape const &input) const {
   bool is_valid = input.is_valid();
   return is_valid;
 }
@@ -53,7 +54,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
                                              bool add_zero_attn,
                                              Initializer *kernel_initializer,
                                              char const *name) {
-  // Currently assume that 
+  // Currently assume that
   Layer *li = new Layer(this,
                         OP_INC_MULTIHEAD_SELF_ATTENTION,
                         DT_FLOAT,
@@ -139,19 +140,20 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
                                        layer->name);
 }
 
-IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(FFModel &model,
-                                                     LayerID const &_layer_guid,
-                                                     const ParallelTensor _input,
-                                                     int _embed_dim,
-                                                     int _num_heads,
-                                                     int _kdim,
-                                                     int _vdim,
-                                                     float _dropout,
-                                                     bool _bias,
-                                                     bool _add_bias_kv,
-                                                     bool _add_zero_attn,
-                                                     bool allocate_weights,
-                                                     char const *name)
+IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
+    FFModel &model,
+    LayerID const &_layer_guid,
+    const ParallelTensor _input,
+    int _embed_dim,
+    int _num_heads,
+    int _kdim,
+    int _vdim,
+    float _dropout,
+    bool _bias,
+    bool _add_bias_kv,
+    bool _add_zero_attn,
+    bool allocate_weights,
+    char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
          OP_MULTIHEAD_ATTENTION,
@@ -166,8 +168,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(FFModel &model,
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
       vProjSize(_vdim), oProjSize(_embed_dim),
-      qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size)
-{
+      qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
 
@@ -221,19 +222,20 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(FFModel &model,
   /* assert(check_output_input_weight_parallel_dims()); */
 }
 
-IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(FFModel &model,
-                                                     const ParallelTensor _input,
-                                                     const ParallelTensor _weight,
-                                                     int _embed_dim,
-                                                     int _num_heads,
-                                                     int _kdim,
-                                                     int _vdim,
-                                                     float _dropout,
-                                                     bool _bias,
-                                                     bool _add_bias_kv,
-                                                     bool _add_zero_attn,
-                                                     bool allocate_weights,
-                                                     char const *name)
+IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
+    FFModel &model,
+    const ParallelTensor _input,
+    const ParallelTensor _weight,
+    int _embed_dim,
+    int _num_heads,
+    int _kdim,
+    int _vdim,
+    float _dropout,
+    bool _bias,
+    bool _add_bias_kv,
+    bool _add_zero_attn,
+    bool allocate_weights,
+    char const *name)
     // Initializer* _bias_initializer)
     : Op(model,
          OP_INC_MULTIHEAD_SELF_ATTENTION,
@@ -302,23 +304,24 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(FFModel &model,
   /* assert(check_output_input_weight_parallel_dims()); */
 }
 
-IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(FFModel &model,
-                                       IncMultiHeadSelfAttention const &other,
-                                       const ParallelTensor input,
-                                       bool allocate_weights)
+IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
+    FFModel &model,
+    IncMultiHeadSelfAttention const &other,
+    const ParallelTensor input,
+    bool allocate_weights)
     : IncMultiHeadSelfAttention(model,
-                         other.layer_guid,
-                         input,
-                         other.oProjSize,
-                         other.num_heads,
-                         other.qProjSize,
-                         other.vProjSize,
-                         other.dropout,
-                         other.bias,
-                         other.add_bias_kv,
-                         other.add_zero_attn,
-                         allocate_weights,
-                         other.name) {}
+                                other.layer_guid,
+                                input,
+                                other.oProjSize,
+                                other.num_heads,
+                                other.qProjSize,
+                                other.vProjSize,
+                                other.dropout,
+                                other.bias,
+                                other.add_bias_kv,
+                                other.add_zero_attn,
+                                allocate_weights,
+                                other.name) {}
 
 IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     FFModel &model,
@@ -327,18 +330,18 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     bool allocate_weights,
     char const *name)
     : IncMultiHeadSelfAttention(model,
-                         params.layer_guid,
-                         input,
-                         params.embed_dim,
-                         params.num_heads,
-                         params.kdim,
-                         params.vdim,
-                         params.dropout,
-                         params.bias,
-                         params.add_bias_kv,
-                         params.add_zero_attn,
-                         allocate_weights,
-                         name) {}
+                                params.layer_guid,
+                                input,
+                                params.embed_dim,
+                                params.num_heads,
+                                params.kdim,
+                                params.vdim,
+                                params.dropout,
+                                params.bias,
+                                params.add_bias_kv,
+                                params.add_zero_attn,
+                                allocate_weights,
+                                name) {}
 
 void IncMultiHeadSelfAttention::init_inference(
     FFModel const &ff,
@@ -428,12 +431,13 @@ void IncMultiHeadSelfAttention::init(FFModel const &ff) {
   regions[1](I): weight
   regions[2](O): output
 */
-OpMeta *
-    IncMultiHeadSelfAttention::init_task(Task const *task,
-                                  std::vector<PhysicalRegion> const &regions,
-                                  Context ctx,
-                                  Runtime *runtime) {
-  IncMultiHeadSelfAttention const *attn = (IncMultiHeadSelfAttention *)task->args;
+OpMeta *IncMultiHeadSelfAttention::init_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  IncMultiHeadSelfAttention const *attn =
+      (IncMultiHeadSelfAttention *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -452,8 +456,8 @@ OpMeta *
                        .only_kind(Memory::GPU_FB_MEM)
                        .best_affinity_to(task->target_proc)
                        .first();
-  IncMultiHeadSelfAttentionMeta *m =
-      new IncMultiHeadSelfAttentionMeta(handle, attn, gpu_mem, num_samples, num_heads);
+  IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
+      handle, attn, gpu_mem, num_samples, num_heads);
   m->profiling = attn->profiling;
   assert(weight.domain.get_volume() * sizeof(float) == m->weightSize);
   return m;
@@ -519,7 +523,8 @@ void IncMultiHeadSelfAttention::inference_task(
     Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == regions.size());
-  // const IncMultiHeadSelfAttention* attn = (IncMultiHeadSelfAttention*) task->args;
+  // const IncMultiHeadSelfAttention* attn = (IncMultiHeadSelfAttention*)
+  // task->args;
   IncMultiHeadSelfAttentionMeta const *m =
       *((IncMultiHeadSelfAttentionMeta **)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
@@ -529,10 +534,8 @@ void IncMultiHeadSelfAttention::inference_task(
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
-  IncMultiHeadSelfAttention::inference_kernel_wrapper(m,
-                                             input.get_float_ptr(),
-                                             weight.get_float_ptr(),
-                                             output.get_float_ptr());
+  IncMultiHeadSelfAttention::inference_kernel_wrapper(
+      m, input.get_float_ptr(), weight.get_float_ptr(), output.get_float_ptr());
 }
 
 void IncMultiHeadSelfAttention::backward(FFModel const &ff) {
@@ -540,7 +543,8 @@ void IncMultiHeadSelfAttention::backward(FFModel const &ff) {
   assert(false);
 }
 
-bool IncMultiHeadSelfAttention::get_int_parameter(PMParameter para, int *value) const {
+bool IncMultiHeadSelfAttention::get_int_parameter(PMParameter para,
+                                                  int *value) const {
   switch (para) {
     case PM_NUM_HEADS:
       *value = num_heads;
@@ -595,8 +599,7 @@ bool IncMultiHeadSelfAttention::measure_operator_cost(
 
   std::function<void()> forward, backward;
   forward = [&] {
-    inference_kernel_wrapper(
-        m, input_ptr, weight_ptr, output_ptr);
+    inference_kernel_wrapper(m, input_ptr, weight_ptr, output_ptr);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     // IncMultiHeadSelfAttention does not support training

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "flexflow/model.h"
 #include "flexflow/inference.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
 
@@ -33,10 +33,10 @@ public:
   void forward(FFModel const &);
   void backward(FFModel const &);
   Legion::FutureMap inference(FFModel const &,
-                      BatchConfig const &,
-                 std::vector<ParallelTensor> const &,
-                 std::vector<ParallelTensor> const &,
-                 MachineView const *mv = nullptr) override;
+                              BatchConfig const &,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) {
     assert(0);
   }

@@ -17,11 +17,10 @@
 
 #include <cstdlib>
 
-
 namespace FlexFlow {
 
 struct InferenceResult {
-  static const int MAX_NUM_TOKENS = 1024;
+  static int const MAX_NUM_TOKENS = 1024;
   int results[MAX_NUM_TOKENS];
 };
 
@@ -32,9 +31,9 @@ public:
   void prepare_next_batch();
   int update_results(InferenceResult const &ir);
   int num_processing_requests();
-  static const int MAX_NUM_REQUESTS = 256;
-  static const int MAX_NUM_TOKENS = InferenceResult::MAX_NUM_TOKENS;
-  static const int MAX_SEQUENCE_LENGTH = 1024;
+  static int const MAX_NUM_REQUESTS = 256;
+  static int const MAX_NUM_TOKENS = InferenceResult::MAX_NUM_TOKENS;
+  static int const MAX_SEQUENCE_LENGTH = 1024;
   // These are set by update
   int token_start_idx[MAX_NUM_REQUESTS];
   int token_last_available_idx[MAX_NUM_REQUESTS];

@@ -36,20 +36,21 @@ void parse_input_args(char **argv, int argc, MoeConfig &config) {
 }
 
 Tensor create_inc_multihead_attention_decoder(FFModel *model,
-                                MoeConfig const *moeConfig,
-                                Tensor const &input) {
+                                              MoeConfig const *moeConfig,
+                                              Tensor const &input) {
   std::vector<int> axes{0};
   Tensor t = model->inc_multihead_self_attention(input,
-                                              moeConfig->hidden_size,
-                                              moeConfig->num_attention_heads,
-                                              moeConfig->attention_kdim,
-                                              moeConfig->attention_vdim);
+                                                 moeConfig->hidden_size,
+                                                 moeConfig->num_attention_heads,
+                                                 moeConfig->attention_kdim,
+                                                 moeConfig->attention_vdim);
 
   t = model->layer_norm(model->add(t, input), axes, true, 1e-05);
-  Tensor x = model->dense(model->dense(t, moeConfig->hidden_size, AC_MODE_RELU, false /*bias*/),
-                          moeConfig->hidden_size,
-                          AC_MODE_NONE,
-                          false /*bias*/);
+  Tensor x = model->dense(
+      model->dense(t, moeConfig->hidden_size, AC_MODE_RELU, false /*bias*/),
+      moeConfig->hidden_size,
+      AC_MODE_NONE,
+      false /*bias*/);
   t = model->layer_norm(model->add(x, t), axes, true, 1e-05);
   return t;
 }
@@ -122,17 +123,17 @@ void FlexFlow::top_level_task(Task const *task,
   data_loader.reset();
   data_generator.start_timer();
   std::map<int, Future> future_handlers;
-  std::map<int, BatchConfig*> batch_configs;
+  std::map<int, BatchConfig *> batch_configs;
   while (processed_requests < moeConfig.total_requests) {
     for (int bid = 0; bid < im.max_num_inflight_batches; bid++) {
       if (future_handlers.find(bid) == future_handlers.end()) {
-        std::vector<std::pair<size_t, std::vector<int> > > prompts;
+        std::vector<std::pair<size_t, std::vector<int>>> prompts;
         assert(im.max_num_requests_per_batch <= BatchConfig::MAX_NUM_REQUESTS);
         data_generator.get_requests(im.max_num_requests_per_batch, prompts);
         assert((int)prompts.size() < im.max_num_requests_per_batch);
-        //TODO: loading data
-        BatchConfig* bc = new BatchConfig();
-        for (const auto & prompt : prompts) {
+        // TODO: loading data
+        BatchConfig *bc = new BatchConfig();
+        for (auto const &prompt : prompts) {
           assert(bc->register_new_request(prompt.first, prompt.second.size()));
         }
         bc->prepare_next_batch();
@@ -145,17 +146,18 @@ void FlexFlow::top_level_task(Task const *task,
         batch_configs[bid] = bc;
       } else {
         Future future = future_handlers[bid];
-        if (!future.is_ready(true/*subscribe*/)) {
+        if (!future.is_ready(true /*subscribe*/)) {
           continue;
         }
         InferenceResult ir = future.get_result<InferenceResult>();
-        BatchConfig* bc = batch_configs[bid];
+        BatchConfig *bc = batch_configs[bid];
         processed_requests += bc->update_results(ir);
-        int available_slots = BatchConfig::MAX_NUM_REQUESTS - bc->num_processing_requests();
-        std::vector<std::pair<size_t, std::vector<int> > > prompts;
+        int available_slots =
+            BatchConfig::MAX_NUM_REQUESTS - bc->num_processing_requests();
+        std::vector<std::pair<size_t, std::vector<int>>> prompts;
         data_generator.get_requests(available_slots, prompts);
         processed_requests += prompts.size();
-        for (const auto& prompt : prompts) {
+        for (auto const &prompt : prompts) {
           assert(bc->register_new_request(prompt.first, prompt.second.size()));
         }
         bc->prepare_next_batch();

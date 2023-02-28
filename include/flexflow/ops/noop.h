@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_NOOP_H
 #define _FLEXFLOW_NOOP_H
 
-#include "flexflow/model.h"
 #include "flexflow/inference.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
 
@@ -24,11 +24,11 @@ public:
                       std::vector<ParallelTensor> const &,
                       MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
-  void inference(FFModel const &,
-                      BatchConfig const &,
-                 std::vector<ParallelTensor> const &,
-                 std::vector<ParallelTensor> const &,
-                 MachineView const *mv = nullptr) override;
+  Legion::FutureMap inference(FFModel const &,
+                              BatchConfig const &,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) override;
   void backward(FFModel const &) override;
   void print_layer(FFModel const &model) override {
     assert(0);

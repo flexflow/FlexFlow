@@ -80,7 +80,9 @@ void DataGenerator::start_timer(void) {
   timer_started = true;
 };
 
-size_t DataGenerator::get_requests(size_t max_num_requests, std::vector<std::pair<size_t, std::vector<int> > >&prompts) {
+size_t DataGenerator::get_requests(
+    size_t max_num_requests,
+    std::vector<std::pair<size_t, std::vector<int>>> &prompts) {
   if (!timer_started) {
     std::cout << "Warning: tried to get number of requests before the timer "
                  "was started."
@@ -103,8 +105,9 @@ size_t DataGenerator::get_requests(size_t max_num_requests, std::vector<std::pai
   for (size_t i = 0; i < received_requests; i++) {
     int length = std::rand() % 10 + 5;
     std::vector<int> prompt;
-    for (int j = 0; j < length; j++)
+    for (int j = 0; j < length; j++) {
       prompt.push_back(j + 1000);
+    }
     prompts.push_back(std::make_pair(global_unique_id++, prompt));
   }
   assert(prompts.size() == received_requests);
@@ -133,4 +136,3 @@ size_t DataGenerator::get_requests() {
 
   return received_requests;
 }
-

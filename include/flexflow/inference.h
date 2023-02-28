@@ -15,8 +15,8 @@
 
 #pragma once
 
-#include "flexflow/model.h"
 #include "flexflow/batch_config.h"
+#include "flexflow/model.h"
 
 namespace FlexFlow {
 

@@ -165,7 +165,7 @@ Group_by::Group_by(FFModel &model,
           model, inputs.first, inputs.second, params.n, params.alpha, name) {}
 
 void Group_by::init_inference(FFModel const &ff,
-    BatchConfig const &bc,
+                              BatchConfig const &bc,
                               std::vector<ParallelTensor> const &batch_inputs,
                               std::vector<ParallelTensor> const &batch_outputs,
                               MachineView const *mv) {
@@ -313,10 +313,10 @@ void Group_by::forward(FFModel const &ff) {
 }
 
 FutureMap Group_by::inference(FFModel const &ff,
-    BatchConfig const &bc,
-                         std::vector<ParallelTensor> const &batch_inputs,
-                         std::vector<ParallelTensor> const &batch_outputs,
-                         MachineView const *mv) {
+                              BatchConfig const &bc,
+                              std::vector<ParallelTensor> const &batch_inputs,
+                              std::vector<ParallelTensor> const &batch_outputs,
+                              MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
