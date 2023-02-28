@@ -3,9 +3,9 @@
 
 #include "flexflow/fftype.h"
 #include "flexflow/machine_view.h"
-#include "flexflow/batch_config.h"
 #include "flexflow/parallel_tensor.h"
 #include "flexflow/utils/dot/record_formatter.h"
+#include "flexflow/batch_config.h"
 #include <vector>
 
 namespace FlexFlow {
@@ -196,7 +196,7 @@ public:
   virtual void forward(FFModel const &) = 0;
   virtual void backward(FFModel const &) = 0;
   // Pure virtual functions for inference
-  virtual void inference(FFModel const &,
+  virtual Legion::FutureMap inference(FFModel const &,
                          BatchConfig const &,
                          std::vector<ParallelTensor> const &,
                          std::vector<ParallelTensor> const &,

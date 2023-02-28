@@ -9,6 +9,7 @@
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/inc_multihead_self_attention_params.h"
+#include "flexflow/inference.h"
 
 namespace FlexFlow {
 
@@ -60,12 +61,14 @@ public:
                                  std::vector<ParallelTensor> const &inputs);
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
+                 BatchConfig const &,
                       std::vector<ParallelTensor> const &,
                       std::vector<ParallelTensor> const &,
                       MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void inference(FFModel const &,
+  Legion::FutureMap inference(FFModel const &,
+                 BatchConfig const &,
                  std::vector<ParallelTensor> const &,
                  std::vector<ParallelTensor> const &,
                  MachineView const *mv = nullptr) override;

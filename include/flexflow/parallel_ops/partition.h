@@ -6,6 +6,7 @@
 #include "flexflow/operator.h"
 #include "flexflow/parallel_ops/partition_params.h"
 #include "parallel_op.h"
+#include "flexflow/inference.h"
 
 namespace FlexFlow {
 
@@ -30,11 +31,13 @@ public:
       std::vector<ParallelTensor> const &batch_outputs) override;
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
+                      BatchConfig const & bc,
                       std::vector<ParallelTensor> const &,
                       std::vector<ParallelTensor> const &,
                       MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   void inference(FFModel const &,
+                      BatchConfig const & bc,
                  std::vector<ParallelTensor> const &,
                  std::vector<ParallelTensor> const &,
                  MachineView const *mv = nullptr) override;

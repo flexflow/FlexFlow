@@ -116,6 +116,7 @@ Softmax::Softmax(FFModel &model,
     : Softmax(model, input, params.dim, name) {}
 
 void Softmax::init_inference(FFModel const &ff,
+                      BatchConfig const & bc,
                              std::vector<ParallelTensor> const &batch_inputs,
                              std::vector<ParallelTensor> const &batch_outputs,
                              MachineView const *mv) {
@@ -225,7 +226,8 @@ OpMeta *Softmax::init_task(Task const *task,
   return m;
 }
 
-void Softmax::inference(FFModel const &ff,
+FutureMap Softmax::inference(FFModel const &ff,
+                      BatchConfig const & bc,
                         std::vector<ParallelTensor> const &batch_inputs,
                         std::vector<ParallelTensor> const &batch_outputs,
                         MachineView const *mv) {
@@ -286,7 +288,7 @@ void Softmax::forward(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Softmax::forward_task(Task const *task,

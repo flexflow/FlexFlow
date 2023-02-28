@@ -464,7 +464,7 @@ void IncMultiHeadSelfAttention::forward(FFModel const &ff) {
   assert(false);
 }
 
-void IncMultiHeadSelfAttention::inference(
+FutureMap IncMultiHeadSelfAttention::inference(
     FFModel const &ff,
     BatchConfig const &bc,
     std::vector<ParallelTensor> const &batch_inputs,
@@ -504,7 +504,7 @@ void IncMultiHeadSelfAttention::inference(
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(idx++, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 /*

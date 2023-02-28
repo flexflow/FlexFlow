@@ -111,16 +111,18 @@ void InferenceManager::init_operators_inference() {
           ((ParallelOp *)op)
               ->create_input_partition_inference(*model, inputs, outputs);
         }
-        op->init_inference(*model, inputs, outputs, view);
+        BatchConfig bc;
+        op->init_inference(*model, bc, inputs, outputs, view);
       }
     }
   }
 }
 
-void InferenceManager::inference(int index) {
+FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
   int batch_index = index % max_num_inflight_batches;
   int device_index = index % num_devices;
   int expert_device_index = 0;
+  FutureMap fm;
   for (size_t o = 0; o < model->operators.size(); o++) {
     Op *op = model->operators[o];
     if (op->op_type == OP_WEIGHT) {
@@ -156,8 +158,9 @@ void InferenceManager::inference(int index) {
       outputs[i] = tensor_buffer[op->outputs[i]][batch_index];
       assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
     }
-    op->inference(*model, inputs, outputs, view);
+    fm = op->inference(*model, bc, inputs, outputs, view);
   }
+  return fm;
 };
 
 }; // namespace FlexFlow

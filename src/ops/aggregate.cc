@@ -285,7 +285,7 @@ void Aggregate::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Aggregate::inference(FFModel const &ff,
+FutureMap Aggregate::inference(FFModel const &ff,
                           BatchConfig const &bc,
                           std::vector<ParallelTensor> const &batch_inputs,
                           std::vector<ParallelTensor> const &batch_outputs,
@@ -338,7 +338,7 @@ void Aggregate::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(n + 2, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Aggregate::forward_task(Task const *task,

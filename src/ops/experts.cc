@@ -643,7 +643,7 @@ void Experts::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Experts::inference(FFModel const &ff,
+FutureMap Experts::inference(FFModel const &ff,
     BatchConfig const &bc,
                         std::vector<ParallelTensor> const &batch_inputs,
                         std::vector<ParallelTensor> const &batch_outputs,
@@ -712,7 +712,7 @@ void Experts::inference(FFModel const &ff,
       launcher.add_field(4 + i * (1 + use_bias) + use_bias, FID_DATA);
     }
   }
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Experts::inference_task(Task const *task,

@@ -11,7 +11,7 @@ DataGenerator::DataGenerator(size_t _num_requests,
                              double _lambda)
     : num_requests(_num_requests), token_dim(_token_dim),
       sequence_length(_sequence_length), poisson_distr(_poisson_distr),
-      lambda(_lambda), timer_started(false) {
+      lambda(_lambda), timer_started(false), global_unique_id(1000000) {
   generate_arrival_times();
 };
 
@@ -80,7 +80,7 @@ void DataGenerator::start_timer(void) {
   timer_started = true;
 };
 
-size_t DataGenerator::get_requests(void) {
+size_t DataGenerator::get_requests(size_t max_num_requests, std::vector<std::pair<size_t, std::vector<int> > >&prompts) {
   if (!timer_started) {
     std::cout << "Warning: tried to get number of requests before the timer "
                  "was started."
@@ -99,5 +99,38 @@ size_t DataGenerator::get_requests(void) {
               << " request(s) by arrival time +" << ms_from_start << "ms"
               << "\n";
   }
+
+  for (size_t i = 0; i < received_requests; i++) {
+    int length = std::rand() % 10 + 5;
+    std::vector<int> prompt;
+    for (int j = 0; j < length; j++)
+      prompt.push_back(j + 1000);
+    prompts.push_back(std::make_pair(global_unique_id++, prompt));
+  }
+  assert(prompts.size() == received_requests);
   return received_requests;
 }
+
+size_t DataGenerator::get_requests() {
+  if (!timer_started) {
+    std::cout << "Warning: tried to get number of requests before the timer "
+                 "was started."
+              << std::endl;
+    return 0;
+  }
+  Clock::time_point cur_time = Clock::now();
+  size_t ms_from_start =
+      chrono::duration_cast<milliseconds>(cur_time - start_time).count();
+  vector<double>::iterator new_arrivals_ptr =
+      upper_bound(arrivals_ptr, arrivals.end(), ms_from_start);
+  size_t received_requests = new_arrivals_ptr - arrivals_ptr;
+  arrivals_ptr = new_arrivals_ptr;
+  if (received_requests > 0) {
+    std::cout << "received " << received_requests
+              << " request(s) by arrival time +" << ms_from_start << "ms"
+              << "\n";
+  }
+
+  return received_requests;
+}
+

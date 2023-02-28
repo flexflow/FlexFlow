@@ -507,7 +507,7 @@ void ElementBinary::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void ElementBinary::inference(FFModel const &ff,
+FutureMap ElementBinary::inference(FFModel const &ff,
     BatchConfig const &bc,
                               std::vector<ParallelTensor> const &batch_inputs,
                               std::vector<ParallelTensor> const &batch_outputs,
@@ -581,7 +581,7 @@ void ElementBinary::inference(FFModel const &ff,
       launcher.add_field(2, FID_DATA);
     }
   }
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 /*

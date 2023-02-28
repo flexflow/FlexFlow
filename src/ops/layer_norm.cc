@@ -195,6 +195,7 @@ LayerNorm::LayerNorm(FFModel &model,
 }
 
 void LayerNorm::init_inference(FFModel const &ff,
+                      BatchConfig const & bc,
                                std::vector<ParallelTensor> const &batch_inputs,
                                std::vector<ParallelTensor> const &batch_outputs,
                                MachineView const *mv) {
@@ -315,7 +316,8 @@ void LayerNorm::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void LayerNorm::inference(FFModel const &ff,
+FutureMap LayerNorm::inference(FFModel const &ff,
+                      BatchConfig const & bc,
                           std::vector<ParallelTensor> const &batch_inputs,
                           std::vector<ParallelTensor> const &batch_outputs,
                           MachineView const *mv) {
@@ -362,7 +364,7 @@ void LayerNorm::inference(FFModel const &ff,
                                                       weights[1]->region));
     launcher.add_field(3, FID_DATA);
   }
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 /*

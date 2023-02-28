@@ -5,6 +5,7 @@
 #include "flexflow/node.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/softmax_params.h"
+#include "flexflow/inference.h"
 
 namespace FlexFlow {
 
@@ -22,11 +23,13 @@ public:
           char const *name = nullptr);
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
+                 BatchConfig const &,
                       std::vector<ParallelTensor> const &,
                       std::vector<ParallelTensor> const &,
                       MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
-  void inference(FFModel const &,
+  Legion::FutureMap inference(FFModel const &,
+                 BatchConfig const &,
                  std::vector<ParallelTensor> const &,
                  std::vector<ParallelTensor> const &,
                  MachineView const *mv = nullptr) override;
