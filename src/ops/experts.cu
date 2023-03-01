@@ -155,6 +155,15 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     cudaEventRecord(t_start, stream);
   }
 
+  // TODO: remove this once we condense all weights in a single tensor
+  // currently each weight matrix is placed on GPU by Legion, but the array
+  // holding the pointers to each weight matrix is on CPU
+  cudaMemcpyAsync(m->dev_weights,
+                  weights,
+                  m->num_experts * sizeof(float *),
+                  cudaMemcpyHostToDevice,
+                  stream);
+
   int num_experts_per_block = m->num_experts;
   int experts_start_idx = m->experts_start_idx;
   // bool use_bias = m->use_bias;
