@@ -98,7 +98,7 @@ __global__ void experts_forward_prepare_kernel(
     thrust::device_ptr<int> destination_start_indices,
     thrust::device_ptr<int> original_indices,
     float const *input,             // @In: Tokens' values (in_dim, batch_size)
-    float const **token_idx_arrary, // @Out: Barray for GemmBatchedEx
+    float const **token_idx_array,  // @Out: Barray for GemmBatchedEx
     float const **weights,          // @In: Experts' weights
     float const **weight_idx_array, // @Out: Aarray for GemmBatchedEx
     float const *coefficients,      // @In: topk_gate_predss coefficients tensor
@@ -114,8 +114,8 @@ __global__ void experts_forward_prepare_kernel(
     int expert_index = exp_local_label_to_index[local_expert_label];
     int within_expert_offset = i - expert_start_indexes[expert_index];
     if (within_expert_offset < expert_capacity) {
-      token_idx_arrary[destination_start_indices[expert_index] +
-                       within_expert_offset] =
+      token_idx_array[destination_start_indices[expert_index] +
+                      within_expert_offset] =
           &input[original_indices[i + lb_index] / num_chosen_experts];
       weight_idx_array[destination_start_indices[expert_index] +
                        within_expert_offset] = weights[local_expert_label];
@@ -159,7 +159,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   int experts_start_idx = m->experts_start_idx;
   // bool use_bias = m->use_bias;
   // ActiMode activation = m->activation;
-  int data_dim = m->data_dim;
+  // int data_dim = m->data_dim;
   int num_chosen_experts = m->num_chosen_experts;
   int num_tokens = m->effective_batch_size;
   int expert_capacity = m->expert_capacity;
@@ -202,11 +202,11 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   }
   thrust::device_ptr<float const> thrust_inputs =
       thrust::device_pointer_cast(input);
-  // for (int i=0; i<num_tokens; i++) {
-  //   std::cout << "Token " << i << ":\t";
-  //   thrust::copy_n(thrust_inputs, data_dim,
-  //   std::ostream_iterator<int>(std::cout, ",")); std::cout << std::endl;
-  // }
+  /* for (int i=0; i<num_tokens; i++) {
+    std::cout << "Token " << i << ":\t";
+    thrust::copy_n(thrust_inputs, data_dim,
+    std::ostream_iterator<int>(std::cout, ",")); std::cout << std::endl;
+  } */
   // create "exp_local_label_to_index", a mapping from local expert label to its
   // non-zero expert index
   thrust::device_ptr<int> non_zero_expert_labels =
