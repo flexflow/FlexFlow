@@ -19,19 +19,18 @@ public:
               ActiMode _activation);
   ~ExpertsMeta(void);
 
-  // float *dev_sorted_tokens;
-  // int *dev_replicated_indices;
-  // int *dev_exp_slice_indices;
-  // float *dev_tokens_in_use;
-
-  float *dev_gemm_result;
-
-  float **dev_token_idx_arrary;
-  float **dev_weight_idx_array;
-  float **dev_result_idx_array;
-
-  float **dev_coefficient_idx_array;
-  float **dev_output_idx_array;
+  int *sorted_indices;
+  int *original_indices;
+  int *non_zero_expert_labels;
+  int *temp_sequence;
+  int *exp_local_label_to_index;
+  int *expert_start_indexes;
+  int *num_assignments_per_expert;
+  int *destination_start_indices;
+  float const **token_idx_array;
+  float const **dev_weights;
+  float const **weight_idx_array;
+  float const **coefficient_idx_array;
 
   int num_experts;
   int experts_start_idx;

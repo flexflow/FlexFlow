@@ -15,42 +15,25 @@
 
 #include "flexflow/ops/experts.h"
 #include "flexflow/utils/cuda_helper.h"
-#define THRUST_IGNORE_DEPRECATED_CPP_DIALECT 1
 #include <cublas_v2.h>
 #include <cuda_runtime.h>
+
+// Thrust-related headers
+#define THRUST_IGNORE_DEPRECATED_CPP_DIALECT 1
+#include <thrust/binary_search.h>
+#include <thrust/copy.h>
 #include <thrust/device_ptr.h>
+#include <thrust/device_vector.h>
+#include <thrust/execution_policy.h>
+#include <thrust/functional.h>
+#include <thrust/sequence.h>
 #include <thrust/sort.h>
+#include <thrust/transform.h>
+#include <thrust/unique.h>
 
 namespace FlexFlow {
 
-/**
-__global__ void experts_forward_kernel1(int data_dim,
-                                        int num_chosen_experts,
-                                        int num_tokens,
-                                        int num_experts_per_block,
-                                        int experts_start_idx,
-                                        int expert_capacity,
-                                        float *tokens_array,
-                                        float const *input,
-                                        int const *indices,
-                                        int *replicated_indices) {
-
-  // initialize tokens_array with replicated tokens
-  CUDA_KERNEL_LOOP(i, data_dim * num_tokens * num_chosen_experts) {
-    int token_index = i / (data_dim * num_chosen_experts);
-    int chosen_exp_index = (i % (data_dim * num_chosen_experts)) / data_dim;
-    int data_dim_index = (i % (data_dim * num_chosen_experts)) % data_dim;
-    assert(i == data_dim * num_chosen_experts * token_index +
-                    data_dim * chosen_exp_index + data_dim_index);
-    int j = data_dim * token_index + data_dim_index;
-    tokens_array[i] = input[j];
-    int k = token_index * num_chosen_experts + chosen_exp_index;
-    replicated_indices[i] = indices[k];
-  }
-}
-**/
-
-__global__ void experts_forward_prepare_kernel(
+/* __global__ void experts_forward_prepare_kernel(
     int num_experts,
     int num_tokens,
     int num_chosen_experts,
@@ -101,8 +84,246 @@ __global__ void experts_forward_prepare_kernel(
     }
   }
 }
+ */
+__global__ void experts_forward_prepare_kernel(
+    int num_valid_assignments,
+    int expert_capacity,
+    int lb_index,
+    int experts_start_idx,
+    int num_experts_per_block,
+    int num_chosen_experts,
+    thrust::device_ptr<int> sorted_indices,
+    thrust::device_ptr<int> expert_start_indexes,
+    thrust::device_ptr<int> exp_local_label_to_index,
+    thrust::device_ptr<int> destination_start_indices,
+    thrust::device_ptr<int> original_indices,
+    float const *input,             // @In: Tokens' values (in_dim, batch_size)
+    float const **token_idx_arrary, // @Out: Barray for GemmBatchedEx
+    float const **weights,          // @In: Experts' weights
+    float const **weight_idx_array, // @Out: Aarray for GemmBatchedEx
+    float const *coefficients,      // @In: topk_gate_predss coefficients tensor
+                                    // (num_chosen_experts, batch_size)
+    float const **coefficient_idx_array // @Out: Barray for Aggregation
+) {
+  CUDA_KERNEL_LOOP(i, num_valid_assignments) {
+    int global_expert_label = sorted_indices[lb_index + i];
+    assert(global_expert_label >= experts_start_idx &&
+           global_expert_label < experts_start_idx + num_experts_per_block);
+    int local_expert_label = global_expert_label - experts_start_idx;
 
-void experts_forward_GemmBatched_kernel(cublasHandle_t const handle,
+    int expert_index = exp_local_label_to_index[local_expert_label];
+    int within_expert_offset = i - expert_start_indexes[expert_index];
+    if (within_expert_offset < expert_capacity) {
+      token_idx_arrary[destination_start_indices[expert_index] +
+                       within_expert_offset] =
+          &input[original_indices[i + lb_index] / num_chosen_experts];
+      weight_idx_array[destination_start_indices[expert_index] +
+                       within_expert_offset] = weights[local_expert_label];
+      coefficient_idx_array[destination_start_indices[expert_index] +
+                            within_expert_offset] =
+          &coefficients[original_indices[i + lb_index]];
+    }
+  }
+}
+
+struct is_less_than_capacity {
+  int _expert_capacity;
+  is_less_than_capacity(int expert_capacity)
+      : _expert_capacity(expert_capacity){};
+  __host__ __device__ bool operator()(int x) {
+    return x <= _expert_capacity;
+  }
+};
+
+/*static*/
+void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
+                                     float const *input,
+                                     int const *indices,
+                                     float const *topk_gate_preds,
+                                     float *output,
+                                     float const **weights,
+                                     int chosen_experts,
+                                     int batch_size,
+                                     int out_dim) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+
+  int num_experts_per_block = m->num_experts;
+  int experts_start_idx = m->experts_start_idx;
+  // bool use_bias = m->use_bias;
+  // ActiMode activation = m->activation;
+  int data_dim = m->data_dim;
+  int num_chosen_experts = m->num_chosen_experts;
+  int num_tokens = m->effective_batch_size;
+  int expert_capacity = m->expert_capacity;
+
+  assert(chosen_experts == num_chosen_experts);
+  assert(num_tokens == batch_size);
+
+  int num_indices = num_tokens * num_chosen_experts;
+  // sort the indices and coefficients by expert. Keep track of the original
+  // position of each index/coefficient using the original_indices array
+  thrust::device_ptr<int const> thrust_indices =
+      thrust::device_pointer_cast(indices);
+  thrust::device_ptr<int> sorted_indices =
+      thrust::device_pointer_cast(m->sorted_indices);
+  thrust::copy(thrust::device,
+               thrust_indices,
+               thrust_indices + num_indices,
+               sorted_indices);
+  thrust::device_ptr<int> original_indices =
+      thrust::device_pointer_cast(m->original_indices);
+  thrust::sequence(
+      thrust::device, original_indices, original_indices + num_indices);
+  thrust::stable_sort_by_key(thrust::device,
+                             sorted_indices,
+                             sorted_indices + num_indices,
+                             original_indices);
+
+  // get lower and upper bound of indices corresponding to experts in the block
+  thrust::device_ptr<int> lb = thrust::lower_bound(
+      sorted_indices, sorted_indices + num_indices, experts_start_idx);
+  thrust::device_ptr<int> ub =
+      thrust::upper_bound(sorted_indices,
+                          sorted_indices + num_indices,
+                          experts_start_idx + num_experts_per_block);
+  int lb_index = lb - sorted_indices;
+  int ub_index = ub - sorted_indices;
+  int num_valid_assignments = ub_index - lb_index;
+  if (num_valid_assignments == 0) {
+    return;
+  }
+  thrust::device_ptr<float const> thrust_inputs =
+      thrust::device_pointer_cast(input);
+  // for (int i=0; i<num_tokens; i++) {
+  //   std::cout << "Token " << i << ":\t";
+  //   thrust::copy_n(thrust_inputs, data_dim,
+  //   std::ostream_iterator<int>(std::cout, ",")); std::cout << std::endl;
+  // }
+  // create "exp_local_label_to_index", a mapping from local expert label to its
+  // non-zero expert index
+  thrust::device_ptr<int> non_zero_expert_labels =
+      thrust::device_pointer_cast(m->non_zero_expert_labels);
+  thrust::device_ptr<int> non_zero_expert_labels_end =
+      thrust::unique_copy(lb, ub, non_zero_expert_labels);
+  int non_zero_experts_count =
+      non_zero_expert_labels_end - non_zero_expert_labels;
+  using namespace thrust::placeholders;
+  thrust::for_each(thrust::device,
+                   non_zero_expert_labels,
+                   non_zero_expert_labels + non_zero_experts_count,
+                   _1 -=
+                   experts_start_idx); // convert global indexes to local ones
+  thrust::device_ptr<int> temp_sequence =
+      thrust::device_pointer_cast(m->temp_sequence);
+  thrust::sequence(
+      thrust::device, temp_sequence, temp_sequence + non_zero_experts_count);
+  thrust::device_ptr<int> exp_local_label_to_index =
+      thrust::device_pointer_cast(m->exp_local_label_to_index);
+  thrust::scatter(thrust::device,
+                  temp_sequence,
+                  temp_sequence + non_zero_experts_count,
+                  non_zero_expert_labels,
+                  exp_local_label_to_index);
+
+  // get local start index (within lower/upper bound) for each expert receiving
+  // non-zero tokens
+  thrust::device_ptr<int> expert_start_indexes =
+      thrust::device_pointer_cast(m->expert_start_indexes);
+  thrust::sequence(thrust::device,
+                   expert_start_indexes,
+                   expert_start_indexes + non_zero_experts_count);
+  int start_indexes =
+      (thrust::unique_by_key(lb, ub, expert_start_indexes)).first - lb;
+  assert(start_indexes == non_zero_experts_count);
+
+  // get number of token assignment to each expert
+  thrust::device_ptr<int> num_assignments_per_expert =
+      thrust::device_pointer_cast(m->num_assignments_per_expert);
+  thrust::transform(expert_start_indexes + 1,
+                    expert_start_indexes + non_zero_experts_count,
+                    num_assignments_per_expert,
+                    expert_start_indexes,
+                    thrust::minus<int>());
+
+  // build destination_start_index array, telling us the first slot that belongs
+  // to each expert in the destination array (after factoring in expert
+  // capacity)
+  thrust::device_ptr<int> destination_start_indices =
+      thrust::device_pointer_cast(m->destination_start_indices);
+  thrust::replace_copy_if(thrust::device,
+                          num_assignments_per_expert,
+                          num_assignments_per_expert + non_zero_experts_count,
+                          destination_start_indices,
+                          is_less_than_capacity(expert_capacity),
+                          expert_capacity);
+  thrust::exclusive_scan(thrust::device,
+                         destination_start_indices,
+                         destination_start_indices + non_zero_experts_count,
+                         destination_start_indices,
+                         0);
+  experts_forward_prepare_kernel<<<GET_BLOCKS(num_valid_assignments),
+                                   min(CUDA_NUM_THREADS,
+                                       (int)num_valid_assignments),
+                                   0,
+                                   stream>>>(num_valid_assignments,
+                                             expert_capacity,
+                                             lb_index,
+                                             experts_start_idx,
+                                             num_experts_per_block,
+                                             num_chosen_experts,
+                                             sorted_indices,
+                                             expert_start_indexes,
+                                             exp_local_label_to_index,
+                                             destination_start_indices,
+                                             original_indices,
+                                             input,
+                                             m->token_idx_array,
+                                             m->dev_weights,
+                                             m->weight_idx_array,
+                                             topk_gate_preds,
+                                             m->coefficient_idx_array);
+
+  // Batched Gemm Excution for every chosen_expert-token pairs
+  /* experts_forward_GemmBatched_kernel(handle,
+                                     m->dev_weight_idx_array,
+                                     m->dev_token_idx_arrary,
+                                     m->dev_result_idx_array,
+                                     //  bias_ptr,
+                                     data_dim,
+                                     out_dim,
+                                     num_tokens,
+                                     num_chosen_experts,
+                                     stream);
+
+  experts_forward_aggregate_kernel(handle,
+                                   m->dev_result_idx_array,
+                                   m->dev_coefficient_idx_array,
+                                   m->dev_output_idx_array,
+                                   out_dim,
+                                   num_tokens,
+                                   num_chosen_experts,
+                                   stream); */
+
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[Experts] forward time = %.2lfms\n", elapsed);
+  }
+}
+
+void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
                                         float **weight_ptr,
                                         float **input_ptr,
                                         float **output_ptr,
@@ -112,8 +333,9 @@ void experts_forward_GemmBatched_kernel(cublasHandle_t const handle,
                                         int num_tokens,
                                         int num_chosen_experts,
                                         ffStream_t stream) {
-  // checkCUDA(cublasSetStream(handle, stream));
-  // checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
 
@@ -127,7 +349,7 @@ void experts_forward_GemmBatched_kernel(cublasHandle_t const handle,
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
 
   cublasGemmBatchedEx(
-      handle,
+      m->handle.blas,
       CUBLAS_OP_T, // Tranpose Weight, shape (in_dim, out_dim) => (out_dim,
                    // in_dim)
       CUBLAS_OP_N, // Input_token, shape (in_dim, 1)
@@ -195,185 +417,6 @@ void experts_forward_aggregate_kernel(cublasHandle_t const handle,
       CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 }
 
-/*static*/
-void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
-                                     float const *input,
-                                     int const *indices,
-                                     float const *topk_gate_preds,
-                                     float *output,
-                                     float const **weights,
-                                     int chosen_experts,
-                                     int batch_size,
-                                     int out_dim) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  int num_experts_per_block = m->num_experts;
-  //   int experts_start_idx = m->experts_start_idx;
-  // bool use_bias = m->use_bias;
-  // ActiMode activation = m->activation;
-  int data_dim = m->data_dim;
-  int num_chosen_experts = m->num_chosen_experts;
-  int num_tokens = m->effective_batch_size;
-  int expert_capacity = m->expert_capacity;
-
-  assert(chosen_experts == num_chosen_experts);
-  assert(num_tokens == batch_size);
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-
-  int prepare_kernel_parallelism = num_tokens * num_chosen_experts;
-  experts_forward_prepare_kernel<<<GET_BLOCKS(prepare_kernel_parallelism),
-                                   min(CUDA_NUM_THREADS,
-                                       (int)prepare_kernel_parallelism),
-                                   0,
-                                   stream>>>(
-      num_experts_per_block,
-      num_tokens,
-      num_chosen_experts,
-      out_dim,
-      data_dim,
-      indices,
-      weights,
-      m->dev_weight_idx_array, // @Out: Aarray for GemmBatchedEx
-      input,
-      m->dev_token_idx_arrary, // @Out: Barray for GemmBatchedEx
-      m->dev_gemm_result,
-      m->dev_result_idx_array, // @Out: Carray for GemmBatchedEx
-      topk_gate_preds,
-      m->dev_coefficient_idx_array,
-      output,
-      m->dev_output_idx_array);
-
-  cublasHandle_t handle;
-  cublasCreate(&handle);
-
-  // Batched Gemm Excution for every chosen_expert-token pairs
-  experts_forward_GemmBatched_kernel(handle,
-                                     m->dev_weight_idx_array,
-                                     m->dev_token_idx_arrary,
-                                     m->dev_result_idx_array,
-                                     //  bias_ptr,
-                                     data_dim,
-                                     out_dim,
-                                     num_tokens,
-                                     num_chosen_experts,
-                                     stream);
-
-  experts_forward_aggregate_kernel(handle,
-                                   m->dev_result_idx_array,
-                                   m->dev_coefficient_idx_array,
-                                   m->dev_output_idx_array,
-                                   out_dim,
-                                   num_tokens,
-                                   num_chosen_experts,
-                                   stream);
-
-  /**
-    int kernel1_parallelism = data_dim * num_tokens * num_chosen_experts;
-    experts_forward_kernel1<<<GET_BLOCKS(kernel1_parallelism),
-                              min(CUDA_NUM_THREADS, (int)kernel1_parallelism),
-                              0,
-                              stream>>>(data_dim,
-                                        num_chosen_experts,
-                                        num_tokens,
-                                        num_experts_per_block,
-                                        experts_start_idx,
-                                        expert_capacity,
-                                        m->dev_sorted_tokens,
-                                        input,
-                                        indices,
-                                        m->dev_replicated_indices);
-
-
-    // thrust_tokens_ptr will contain the input tokens replicated k times and
-    // sorted by expert assignment
-    thrust::device_ptr<float> thrust_tokens_ptr =
-        thrust::device_pointer_cast(m->dev_sorted_tokens);
-    // thrust_indices_ptr contain the expert assignment indices, each replicated
-    // data_dim times
-    thrust::device_ptr<int> thrust_indices_ptr =
-        thrust::device_pointer_cast(m->dev_replicated_indices);
-    // sort thrust_tokens_ptr by key (expert assignments). Use stable sort to
-    // avoid sorting values that don't have an order (we assign the same index
-  to
-    // all the data_dim floats that represent the same token and we want to make
-    // sure that their order does not change during sorting)
-    thrust::stable_sort_by_key(thrust::device,
-                               thrust_indices_ptr,
-                               thrust_indices_ptr +
-                                   num_chosen_experts * num_tokens * data_dim,
-                               thrust_tokens_ptr,
-                               thrust::greater<int>());
-
-    // given the list of indices (representing the token -> expert assignment)
-  in
-    // thrust_indices_ptr, which have been sorted together with the tokens in
-  the
-    // step above, get the index (i.e. the slot) in the sorted
-  thrust_indices_ptr
-    // where each distinct expert index appears for the first time. Save the
-    // result in thrust_exp_slice_ptr. The result will consist of experts_num
-    // integers, or less if some experts don't receive any token, so their
-  indices
-    // don't appear in the assignments
-    thrust::device_ptr<int> thrust_exp_slice_ptr =
-        thrust::device_pointer_cast(m->dev_exp_slice_indices);
-    thrust::sequence(thrust_exp_slice_ptr,
-                     thrust_exp_slice_ptr +
-                         num_chosen_experts * num_tokens * data_dim);
-    // non_zero_tokens_experts holds the number of experts receiving at least
-  one
-    // token
-    int non_zero_tokens_experts =
-        (thrust::unique_by_key(thrust_indices_ptr,
-                               thrust_indices_ptr +
-                                   num_chosen_experts * num_tokens * data_dim,
-                               thrust_exp_slice_ptr))
-            .first -
-        thrust_indices_ptr;
-    thrust::device_ptr<float> thrust_dev_tokens_in_use_ptr =
-        thrust::device_pointer_cast(m->dev_tokens_in_use);
-
-    thrust::copy_n(thrust_exp_slice_ptr,
-                   non_zero_tokens_experts,
-                   thrust_dev_tokens_in_use_ptr);
-
-    cublasHandle_t handle;
-    cublasCreate(&handle);
-
-    int total_matrix = expert_capacity * num_experts;
-
-    experts_forward_GemmBatched_kernel(
-        handle,
-        thrust::raw_pointer_cast(thrust_dev_tokens_in_use_ptr), // tokens
-        m->dev_gemm_result,
-        thrust::raw_pointer_cast(thrust_exp_slice_ptr), // experts
-                                                        //  bias_ptr,
-        data_dim,
-        out_dim,
-        batch_size,
-        expert_capacity,
-        num_experts,
-        stream);
-  **/
-
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("[Experts] forward time = %.2lfms\n", elapsed);
-  }
-}
-
 ExpertsMeta::ExpertsMeta(FFHandler handler,
                          int _num_experts,
                          int _experts_start_idx,
@@ -391,52 +434,44 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
       use_bias(_use_bias), activation(_activation) {
   expert_capacity =
       ceil(alpha * num_chosen_experts / num_experts * effective_batch_size);
-  //   checkCUDA(cudaMalloc(&dev_sorted_tokens,
-  //                        data_dim * effective_batch_size * num_chosen_experts
-  //                        *
-  //                            sizeof(float)));
-  //   checkCUDA(cudaMalloc(&dev_replicated_indices,
-  //                        data_dim * effective_batch_size * num_chosen_experts
-  //                        *
-  //                            sizeof(int)));
-  //   checkCUDA(cudaMalloc(&dev_exp_slice_indices, num_experts * sizeof(int)));
-  //   checkCUDA(
-  //       cudaMalloc(&dev_tokens_in_use,
-  //                  data_dim * expert_capacity * num_experts *
-  //                  sizeof(float)));
 
-  checkCUDA(cudaMalloc(&dev_gemm_result,
-                       out_dim * num_chosen_experts * effective_batch_size *
-                           sizeof(float)));
   checkCUDA(
-      cudaMalloc(&dev_token_idx_arrary,
+      cudaMalloc(&sorted_indices,
+                 num_chosen_experts * effective_batch_size * sizeof(int)));
+  checkCUDA(
+      cudaMalloc(&original_indices,
+                 num_chosen_experts * effective_batch_size * sizeof(int)));
+  checkCUDA(cudaMalloc(&non_zero_expert_labels, num_experts * sizeof(int)));
+  checkCUDA(cudaMalloc(&temp_sequence, num_experts * sizeof(int)));
+  checkCUDA(cudaMalloc(&exp_local_label_to_index, num_experts * sizeof(int)));
+  checkCUDA(cudaMalloc(&expert_start_indexes, num_experts * sizeof(int)));
+  checkCUDA(cudaMalloc(&num_assignments_per_expert, num_experts * sizeof(int)));
+  checkCUDA(cudaMalloc(&destination_start_indices, num_experts * sizeof(int)));
+  checkCUDA(
+      cudaMalloc(&token_idx_array,
+                 num_chosen_experts * effective_batch_size * sizeof(float *)));
+  checkCUDA(cudaMalloc(&dev_weights, num_experts * sizeof(float *)));
+  checkCUDA(
+      cudaMalloc(&weight_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
   checkCUDA(
-      cudaMalloc(&dev_weight_idx_array,
-                 num_chosen_experts * effective_batch_size * sizeof(float *)));
-  checkCUDA(
-      cudaMalloc(&dev_result_idx_array,
-                 num_chosen_experts * effective_batch_size * sizeof(float *)));
-  checkCUDA(
-      cudaMalloc(&dev_coefficient_idx_array,
-                 num_chosen_experts * effective_batch_size * sizeof(float *)));
-  checkCUDA(
-      cudaMalloc(&dev_output_idx_array,
+      cudaMalloc(&coefficient_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
 }
 ExpertsMeta::~ExpertsMeta(void) {
-  //   checkCUDA(cudaFree(&dev_sorted_tokens));
-  //   checkCUDA(cudaFree(&dev_replicated_indices));
-  //   checkCUDA(cudaFree(&dev_exp_slice_indices));
-  //   checkCUDA(cudaFree(&dev_tokens_in_use));
 
-  checkCUDA(cudaFree(&dev_gemm_result));
-  checkCUDA(cudaFree(&dev_token_idx_arrary));
-  checkCUDA(cudaFree(&dev_weight_idx_array));
-  checkCUDA(cudaFree(&dev_result_idx_array));
-
-  checkCUDA(cudaFree(&dev_coefficient_idx_array));
-  checkCUDA(cudaFree(&dev_output_idx_array));
+  checkCUDA(cudaFree(&sorted_indices));
+  checkCUDA(cudaFree(&original_indices));
+  checkCUDA(cudaFree(&non_zero_expert_labels));
+  checkCUDA(cudaFree(&temp_sequence));
+  checkCUDA(cudaFree(&exp_local_label_to_index));
+  checkCUDA(cudaFree(&expert_start_indexes));
+  checkCUDA(cudaFree(&num_assignments_per_expert));
+  checkCUDA(cudaFree(&destination_start_indices));
+  checkCUDA(cudaFree(&token_idx_array));
+  checkCUDA(cudaFree(&dev_weights));
+  checkCUDA(cudaFree(&weight_idx_array));
+  checkCUDA(cudaFree(&coefficient_idx_array));
 }
 
 }; // namespace FlexFlow
