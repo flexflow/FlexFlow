@@ -205,15 +205,33 @@ private:
 
 DirectedEdge flipped(DirectedEdge const &);
 
+
 std::unique_ptr<IDiGraphView> unsafe_view_as_flipped(IDiGraphView const &);
+std::unique_ptr<IDiGraphView> view_as_flipped(std::shared_ptr<IDiGraphView const>);
+
 std::unique_ptr<IDiGraphView> unsafe_view_subgraph(IDiGraphView const &, std::unordered_set<Node> const &);
+std::unique_ptr<IDiGraphView> view_subgraph(std::shared_ptr<IDiGraphView const>, std::unordered_set<Node> const &);
+
 std::unique_ptr<IMultiDiGraphView> unsafe_view_subgraph(IMultiDiGraphView const &, std::unordered_set<Node> const &);
+std::unique_ptr<IMultiDiGraphView> view_subgraph(std::shared_ptr<IMultiDiGraphView const>, std::unordered_set<Node> const &);
+
 std::unique_ptr<IUndirectedGraphView> unsafe_view_as_joined(IUndirectedGraphView const &, IUndirectedGraphView const &);
+std::unique_ptr<IUndirectedGraphView> view_as_joined(std::shared_ptr<IUndirectedGraphView const>, std::shared_ptr<IUndirectedGraphView const>);
+
 std::unique_ptr<IDiGraphView> unsafe_view_as_joined(IDiGraphView const &, IDiGraphView const &);
+std::unique_ptr<IDiGraphView> view_as_joined(std::shared_ptr<IDiGraphView const>, std::shared_ptr<IDiGraphView const>);
+
 std::unique_ptr<IMultiDiGraphView> unsafe_view_as_joined(IMultiDiGraphView const &, IMultiDiGraphView const &);
+std::unique_ptr<IMultiDiGraphView> view_as_joined(std::shared_ptr<IMultiDiGraphView const>, std::shared_ptr<IDiGraphView const>);
+
 std::unique_ptr<IDiGraphView> unsafe_view_with_added_edges(IDiGraphView const &, std::unordered_set<DirectedEdge> const &);
-std::unique_ptr<IDiGraphView> unsafe_view_as_contracted(IDiGraphView const &, Node const &from, Node const &to);
+std::unique_ptr<IDiGraphView> view_with_added_edges(std::shared_ptr<IDiGraphView const>, std::unordered_set<DirectedEdge> const &);
+
+std::unique_ptr<IDiGraphView> unsafe_view_as_contracted(IDiGraphView const &, Node const &from, Node const &into);
+std::unique_ptr<IDiGraphView> view_as_contracted(std::shared_ptr<IDiGraphView const>, Node const &from, Node const &into);
+
 std::unique_ptr<IDiGraphView> unsafe_view_as_contracted(IDiGraphView const &, std::unordered_map<Node, Node> const &);
+std::unique_ptr<IDiGraphView> view_as_contracted(std::shared_ptr<IDiGraphView const>, std::unordered_map<Node, Node> const &);
 
 std::unordered_map<Node, Node> flatten_contraction(std::unordered_map<Node, Node> const &);
 

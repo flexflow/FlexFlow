@@ -57,6 +57,9 @@ std::unordered_set<DirectedEdge> get_incoming_edges(IDiGraphView const &, Node c
 std::unordered_set<MultiDiEdge> get_incoming_edges(IMultiDiGraphView const &, std::unordered_set<Node>);
 std::unordered_set<DirectedEdge> get_incoming_edges(IDiGraphView const &, std::unordered_set<Node> const &);
 
+std::unordered_map<std::size_t, MultiDiEdge> get_incoming_edges_by_idx(IMultiDiGraphView const &, Node const &);
+std::unordered_map<std::size_t, MultiDiEdge> get_outgoing_edges_by_idx(IMultiDiGraphView const &, Node const &);
+
 std::unordered_set<MultiDiEdge> get_outgoing_edges(IMultiDiGraphView const &, Node const &);
 std::unordered_set<MultiDiEdge> get_outgoing_edges(IMultiDiGraphView const &, std::unordered_set<Node> const &);
 
@@ -108,52 +111,21 @@ std::vector<std::unordered_set<Node>> get_weakly_connected_components(IMultiDiGr
 std::vector<std::unordered_set<Node>> get_weakly_connected_components(IDiGraphView const &);
 std::vector<std::unordered_set<Node>> get_connected_components(IUndirectedGraphView const &);
 
+std::unordered_set<DirectedEdge> get_transitive_reduction_delta(IDiGraphView const &);
+
 template <typename Impl>
-Impl subgraph(IUndirectedGraphView const &g, std::unordered_set<Node> const &nodes) {
-  Impl result;
-  for (Node const &n : query_nodes(g, nodes)) {
-    result.add_node_unsafe(n);
-  }
-  for (UndirectedEdge const &e : get_node_edges(g, nodes)) {
-    result.add_edge(e);
-  }
-  return result;
+Impl get_subgraph(IUndirectedGraphView const &g, std::unordered_set<Node> const &nodes) {
+  return materialize_undirected_graph_view<Impl>(g, nodes);
 }
 
 template <typename Impl>
-Impl subgraph(IDiGraphView const &g, std::unordered_set<Node> const &nodes) {
-  Impl result;
-  for (Node const &n : query_nodes(g, nodes)) {
-    result.add_node_unsafe(n);
-  }
-  
-  std::unordered_set<DirectedEdge> subgraph_edges = set_union(
-    get_incoming_edges(g, nodes), get_outgoing_edges(g, nodes)
-  );
-
-  for (DirectedEdge const &e : subgraph_edges) {
-    result.add_edge(e);
-  }
-
-  return result;
+Impl get_subgraph(IDiGraphView const &g, std::unordered_set<Node> const &nodes) {
+  return materialize_digraph_view<Impl>(unsafe_view_subgraph(g, nodes));
 }
 
 template <typename Impl>
-Impl subgraph(IMultiDiGraphView const &g, std::unordered_set<Node> const &nodes) {
-  Impl result;
-  for (Node const &n : query_nodes(g, nodes)) {
-    result.add_node_unsafe(n);
-  }
-
-  std::unordered_set<MultiDiEdge> subgraph_edges = set_union(
-    get_incoming_edges(g, nodes), get_outgoing_edges(g, nodes)
-  );
-
-  for (MultiDiEdge const &e : subgraph_edges) {
-    result.add_edge(e);
-  }
-
-  return result;
+Impl get_subgraph(IMultiDiGraphView const &g, std::unordered_set<Node> const &nodes) {
+  return materialize_multidigraph_view<Impl>(unsafe_view_subgraph(g, nodes));
 }
 
 template <typename Impl>

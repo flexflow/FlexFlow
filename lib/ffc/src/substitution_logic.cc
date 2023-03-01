@@ -183,7 +183,6 @@ tl::optional<bool> satisfies(ParallelTensorShape const &params, ParallelTensorPa
   return optional_all_of(pattern.attribute_constraints, [&](TensorAttributeConstraint const &c) { return satisfies(params, c); });
 }
 
-
 bool assignment_satisfies(utils::IMultiDiGraph const &pcg, 
                           SubstitutionPattern const &pattern,
                           std::unordered_map<utils::Node, utils::Node> const &nodeAssignment,

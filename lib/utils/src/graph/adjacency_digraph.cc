@@ -11,6 +11,11 @@ Node AdjacencyDiGraph::add_node() {
   return node;
 }
 
+void AdjacencyDiGraph::add_node_unsafe(Node const &node) {
+  adjacency[node];
+  this->next_node_idx = std::max(this->next_node_idx, node.idx+1);
+}
+
 void AdjacencyDiGraph::remove_node_unsafe(Node const &n) {
   auto iter = this->adjacency.find(n);
   if (iter != this->adjacency.end()) {

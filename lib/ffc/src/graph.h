@@ -26,6 +26,7 @@
 #include "op-meta/op-meta.h"
 #include "utils/graph.h"
 #include "utils/bidict.h"
+#include "utils/graph/serialparallel.h"
 
 //extern LegionRuntime::Logger::Category log_dp;
 
@@ -44,7 +45,7 @@ struct GraphOptimalViewSerialized {
   char data[buffer_size];
 };
 
-class ParallelComputationGraph {
+class Graph {
 public:
   Graph() = default;
   Graph(std::string const &logger_name);

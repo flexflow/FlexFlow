@@ -219,6 +219,14 @@ private:
 /*   std::vector<OpX *> dstOps; */
 /* }; */
 
+
+struct SubstitutionMatch {
+  std::unordered_map<utils::Node, utils::Node> node_assignment;
+  std::unordered_map<PatternEdge, utils::MultiDiEdge> edge_assignment;
+};
+
+std::unordered_set<SubstitutionMatch> find_matches(SubstitutionPattern const &pattern, ParallelComputationGraph const &pcg);
+
 class GraphSearchHelper {
 public:
   GraphSearchHelper();

@@ -25,7 +25,9 @@ struct Parallel {
   std::vector<mpark::variant<Serial, Node>> children;
 };
 
-mpark::variant<Serial, Parallel, Node> serial_parallel_decomposition(IDiGraphView const &);
+using SerialParallelDecomposition = mpark::variant<Serial, Parallel, Node>;
+
+SerialParallelDecomposition get_serial_parallel_decomposition(IDiGraphView const &);
 
 }
 }

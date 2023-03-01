@@ -287,11 +287,6 @@ tl::optional<OperatorAttributeValue> get_attribute(opmeta::FusedParallelOpParams
   }
 }
 
-/* template <typename T> */
-/* tl::optional<OperatorAttributeValue> get_attribute(T const &t, OperatorAttributeKey key) { */
-/*   static_assert(false, "Missing implementation of get_attribute"); */
-/* } */
-
 struct GetAttribute {
   GetAttribute(OperatorAttributeKey key) : key(key) { }
 

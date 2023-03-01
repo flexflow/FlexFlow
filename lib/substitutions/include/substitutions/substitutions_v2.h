@@ -75,11 +75,9 @@ struct TensorDimensionAttributeConstraint {
   int index; 
 };
 
-
 enum class TensorAttributeKey {
   DIM_SIZES, DIM_DEGREES
 };
-
 
 using OperatorAttributeValue = mpark::variant<int, float, bool, std::vector<int>>;
 using TensorAttributeValue = mpark::variant<int, std::vector<int>>;

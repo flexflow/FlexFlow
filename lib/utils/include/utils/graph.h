@@ -12,5 +12,6 @@
 #include "graph/traversal.h"
 #include "graph/undirected.h"
 #include "graph/views.h"
+#include "graph/serialparallel.h"
 
 #endif
