@@ -23,11 +23,12 @@ using Legion::coord_t;
 using Legion::Memory;
 
 /*static*/
-void IncMultiHeadSelfAttention::inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
-                                        float const *input_ptr,
-                                        float const *weight_ptr,
-                                        float *output_ptr,
-                                        cudaStream_t stream) {
+void IncMultiHeadSelfAttention::inference_kernel(
+    IncMultiHeadSelfAttentionMeta const *m,
+    float const *input_ptr,
+    float const *weight_ptr,
+    float *output_ptr,
+    cudaStream_t stream) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   checkCUDNN(cudnnMultiHeadAttnForward(m->handle.dnn,
@@ -55,10 +56,11 @@ void IncMultiHeadSelfAttention::inference_kernel(IncMultiHeadSelfAttentionMeta c
 }
 
 /*static*/
-void IncMultiHeadSelfAttention::inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
-                                                float const *input_ptr,
-                                                float const *weight_ptr,
-                                                float *output_ptr) {
+void IncMultiHeadSelfAttention::inference_kernel_wrapper(
+    IncMultiHeadSelfAttentionMeta const *m,
+    float const *input_ptr,
+    float const *weight_ptr,
+    float *output_ptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -84,11 +86,12 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(IncMultiHeadSelfAttenti
   }
 }
 
-IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(FFHandler handler,
-                                               IncMultiHeadSelfAttention const *attn,
-                                               Memory gpu_mem,
-                                               int num_samples,
-                                               int num_heads)
+IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
+    FFHandler handler,
+    IncMultiHeadSelfAttention const *attn,
+    Memory gpu_mem,
+    int num_samples,
+    int num_heads)
     : OpMeta(handler) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
