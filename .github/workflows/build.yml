@@ -76,7 +76,8 @@ jobs:
           mkdir build
           cd build
           if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
-            export FF_BUILD_ALL_EXAMPLES=ON 
+            export FF_BUILD_ALL_EXAMPLES=ON
+            export FF_BUILD_ALL_INFERENCE_EXAMPLES=ON
             export FF_BUILD_UNIT_TESTS=ON
           fi
           ../config/config.linux
@@ -91,7 +92,8 @@ jobs:
           export FF_CUDA_ARCH=70
           cd build
           if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
-            export FF_BUILD_ALL_EXAMPLES=ON 
+            export FF_BUILD_ALL_EXAMPLES=ON
+            export FF_BUILD_ALL_INFERENCE_EXAMPLES=ON
             export FF_BUILD_UNIT_TESTS=ON
           fi
           ../config/config.linux

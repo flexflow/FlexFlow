@@ -14,8 +14,8 @@
  */
 
 #include "flexflow/batch_config.h"
-#include <cassert>
 #include "legion.h"
+#include <cassert>
 
 namespace FlexFlow {
 
@@ -36,30 +36,37 @@ int BatchConfig::update_results(InferenceResult const &ir) {
   int t = 0;
   int completed = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    if (request_completed[i])
+    if (request_completed[i]) {
       continue;
-    if (num_processing_tokens[i] == 0)
+    }
+    if (num_processing_tokens[i] == 0) {
       continue;
+    }
     t += num_processing_tokens[i];
     token_start_idx[i] += num_processing_tokens[i];
     if (ir.results[t] == 0) { // TODO: replace this with <EOS>
-      log_bc.print("[Done] guid(%zu) final_length(%d)", request_guid[i], token_start_idx[i]);
+      log_bc.print("[Done] guid(%zu) final_length(%d)",
+                   request_guid[i],
+                   token_start_idx[i]);
       request_completed[i] = true;
       token_start_idx[i] = 0;
       token_last_available_idx[i] = -1;
       num_processing_tokens[i] = 0;
-      completed ++;
+      completed++;
     } else if (token_start_idx[i] >= MAX_SEQUENCE_LENGTH) {
-      //Reach maximum request length
-      log_bc.print("[Done] guid(%zu) final_length(%d)", request_guid[i], token_start_idx[i]);
+      // Reach maximum request length
+      log_bc.print("[Done] guid(%zu) final_length(%d)",
+                   request_guid[i],
+                   token_start_idx[i]);
       request_completed[i] = true;
       token_start_idx[i] = 0;
       token_last_available_idx[i] = -1;
       num_processing_tokens[i] = 0;
-      completed ++;
+      completed++;
     } else {
-      if (token_start_idx[i] == token_last_available_idx[i] + 1)
-        token_last_available_idx[i] ++;
+      if (token_start_idx[i] == token_last_available_idx[i] + 1) {
+        token_last_available_idx[i]++;
+      }
       assert(token_start_idx[i] <= token_last_available_idx[i]);
     }
     num_processing_tokens[i] = 0;
@@ -87,10 +94,13 @@ void BatchConfig::prepare_next_batch() {
   cached_results = false;
   int num_tokens = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    if (request_completed[i])
+    if (request_completed[i]) {
       continue;
-    if (num_tokens + token_last_available_idx[i] - token_start_idx[i] + 1 <= MAX_NUM_TOKENS) {
-      num_processing_tokens[i] = token_last_available_idx[i] - token_start_idx[i] + 1;
+    }
+    if (num_tokens + token_last_available_idx[i] - token_start_idx[i] + 1 <=
+        MAX_NUM_TOKENS) {
+      num_processing_tokens[i] =
+          token_last_available_idx[i] - token_start_idx[i] + 1;
     } else {
       num_processing_tokens[i] = MAX_NUM_TOKENS - num_tokens;
     }
@@ -100,13 +110,14 @@ void BatchConfig::prepare_next_batch() {
 }
 
 int BatchConfig::num_active_requests() {
-  if (cached_results)
+  if (cached_results) {
     return num_requests;
+  }
   num_requests = 0;
   num_tokens = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (!request_completed[i]) {
-      num_requests ++;
+      num_requests++;
       num_tokens += num_processing_tokens[i];
     }
   }
@@ -115,13 +126,14 @@ int BatchConfig::num_active_requests() {
 }
 
 int BatchConfig::num_active_tokens() {
-  if (cached_results)
+  if (cached_results) {
     return num_tokens;
+  }
   num_requests = 0;
   num_tokens = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (!request_completed[i]) {
-      num_requests ++;
+      num_requests++;
       num_tokens += num_processing_tokens[i];
     }
   }
