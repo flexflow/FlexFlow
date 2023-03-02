@@ -54,6 +54,7 @@ def rerun_if_needed():
         sys.exit(1)
 
 if flexflow_init_import():
+  os.environ["NCCL_LAUNCH_MODE"] = "PARALLEL"
   from legion_cffi import ffi, is_legion_python
   from .flexflowlib import flexflow_library
   
