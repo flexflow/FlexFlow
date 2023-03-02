@@ -42,8 +42,12 @@ OperatorType get_op_type(OpParamsInterface const &o) {
   return o.op_type();
 }
                                                           //
-OperatorType get_op_type(opmeta::OperatorParameters const &o) { 
+OperatorType get_op_type(OperatorParameters const &o) { 
   return get_op_type(mpark::visit(AsOpParams{}, o));
+}
+
+std::vector<ParallelTensorShape> get_output_shapes(OperatorParameters const &op_params, std::vector<ParallelTensorShape> const &input_tensor_shapes) {
+  return mpark::visit(AsOpParams{}, op_params).output_shapes(input_tensor_shapes);
 }
 
 bool is_parallel_op(opmeta::OperatorParameters const &o) {

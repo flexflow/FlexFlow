@@ -10,6 +10,7 @@
 #include "utils/dot_file.h"
 #include "utils/containers.h"
 #include "views.h"
+#include "open_graphs.h"
 
 namespace FlexFlow {
 namespace utils {
@@ -49,21 +50,31 @@ void remove_edges(IUndirectedGraph &, std::vector<UndirectedEdge> const &);
 std::unordered_set<MultiDiEdge> get_edges(IMultiDiGraphView const &);
 std::unordered_set<DirectedEdge> get_edges(IDiGraphView const &);
 std::unordered_set<UndirectedEdge> get_edges(IUndirectedGraphView const &);
+std::unordered_set<UpwardOpenMultDiEdge> get_edges(IUpwardOpenMultiDiGraphView const &);
+std::unordered_set<DownwardOpenMultiDiEdge> get_edges(IDownwardOpenMultiDiGraphView const &);
+std::unordered_set<OpenMultiDiEdge> get_edges(IOpenMultiDiGraphView const &);
 
 std::unordered_set<UndirectedEdge> get_node_edges(IUndirectedGraphView const &, Node const &);
 
 std::unordered_set<MultiDiEdge> get_incoming_edges(IMultiDiGraphView const &, Node const &);
 std::unordered_set<DirectedEdge> get_incoming_edges(IDiGraphView const &, Node const &);
+std::unordered_set<UpwardOpenMultDiEdge> get_incoming_edges(IUpwardOpenMultiDiGraphView const &, Node const &);
+std::unordered_set<MultiDiEdge> get_incoming_edges(IDownwardOpenMultiDiGraphView const &, Node const &);
+std::unordered_set<UpwardOpenMultDiEdge> get_incoming_edges(IOpenMultiDiGraphView const &, Node const &);
+
 std::unordered_set<MultiDiEdge> get_incoming_edges(IMultiDiGraphView const &, std::unordered_set<Node>);
 std::unordered_set<DirectedEdge> get_incoming_edges(IDiGraphView const &, std::unordered_set<Node> const &);
 
-std::unordered_map<std::size_t, MultiDiEdge> get_incoming_edges_by_idx(IMultiDiGraphView const &, Node const &);
-std::unordered_map<std::size_t, MultiDiEdge> get_outgoing_edges_by_idx(IMultiDiGraphView const &, Node const &);
+std::unordered_map<std::size_t, std::unordered_set<MultiDiEdge>> get_incoming_edges_by_idx(IMultiDiGraphView const &, Node const &);
+std::unordered_map<std::size_t, std::unordered_set<MultiDiEdge>> get_outgoing_edges_by_idx(IMultiDiGraphView const &, Node const &);
 
 std::unordered_set<MultiDiEdge> get_outgoing_edges(IMultiDiGraphView const &, Node const &);
-std::unordered_set<MultiDiEdge> get_outgoing_edges(IMultiDiGraphView const &, std::unordered_set<Node> const &);
-
 std::unordered_set<DirectedEdge> get_outgoing_edges(IDiGraphView const &, Node const &);
+std::unordered_set<MultiDiEdge> get_outgoing_edges(IUpwardOpenMultiDiGraphView const &, Node const &);
+std::unordered_set<DownwardOpenMultiDiEdge> get_outgoing_edges(IDownwardOpenMultiDiGraphView const &, Node const &);
+std::unordered_set<DownwardOpenMultiDiEdge> get_outgoing_edges(IOpenMultiDiGraphView const &, Node const &);
+
+std::unordered_set<MultiDiEdge> get_outgoing_edges(IMultiDiGraphView const &, std::unordered_set<Node> const &);
 std::unordered_set<DirectedEdge> get_outgoing_edges(IDiGraphView const &, std::unordered_set<Node> const &);
 
 std::unordered_set<UndirectedEdge> get_node_edges(IUndirectedGraphView const &, Node const &);
@@ -107,11 +118,16 @@ std::vector<Node> get_topological_ordering(IDiGraphView const &);
 std::vector<Node> get_topological_ordering(IMultiDiGraphView const &);
 std::vector<Node> get_unchecked_topological_ordering(IDiGraphView const &);
 
+std::vector<DirectedEdge> get_edge_topological_ordering(IDiGraphView const &);
+std::vector<MultiDiEdge> get_edge_topological_ordering(IMultiDiGraphView const &);
+
 std::vector<std::unordered_set<Node>> get_weakly_connected_components(IMultiDiGraphView const &);
 std::vector<std::unordered_set<Node>> get_weakly_connected_components(IDiGraphView const &);
 std::vector<std::unordered_set<Node>> get_connected_components(IUndirectedGraphView const &);
 
 std::unordered_set<DirectedEdge> get_transitive_reduction_delta(IDiGraphView const &);
+
+using GraphSplit = std::pair<std::unordered_set<utils::Node>, std::unordered_set<utils::Node>>;
 
 template <typename Impl>
 Impl get_subgraph(IUndirectedGraphView const &g, std::unordered_set<Node> const &nodes) {

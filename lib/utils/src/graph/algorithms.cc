@@ -291,6 +291,32 @@ std::vector<Node> get_topological_ordering(IMultiDiGraphView const &g) {
   return get_topological_ordering(unsafe_view_as_digraph(g));
 }
 
+std::vector<DirectedEdge> get_edge_topological_ordering(IDiGraphView const &g) {
+  std::vector<DirectedEdge> result;
+  for (Node const &n : get_topological_ordering(g)) {
+    for (DirectedEdge const &e : get_outgoing_edges(g, n)) {
+      result.push_back(e);
+    }
+  }
+
+  assert (result.size() == get_edges(g).size());
+
+  return result;
+}
+
+std::vector<MultiDiEdge> get_edge_topological_ordering(IMultiDiGraphView const &g) {
+  std::vector<MultiDiEdge> result;
+  for (Node const &n : get_topological_ordering(g)) {
+    for (MultiDiEdge const &e : get_outgoing_edges(g, n)) {
+      result.push_back(e);
+    }
+  }
+
+  assert (result.size() == get_edges(g).size());
+
+  return result;
+}
+
 std::unordered_map<Node, std::unordered_set<Node>> get_dominators(IMultiDiGraphView const &g) {
   return get_dominators(unsafe_view_as_digraph(g));
 }

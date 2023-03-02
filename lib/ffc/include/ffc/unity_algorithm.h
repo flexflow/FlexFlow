@@ -8,6 +8,14 @@
 namespace FlexFlow {
 namespace ffc {
 
+struct UnitySearchConfig { };
+
+using SearchAlgorithmConfig = mpark::variant<
+  UnitySearchConfig
+>;
+
+void run_search_algorithm(SearchAlgorithmConfig const &);
+
 struct ParallelComputationGraph {
   ParallelComputationGraph() = delete;
   ParallelComputationGraph(utils::AdjacencyMultiDiGraph const &, 
@@ -18,6 +26,8 @@ struct ParallelComputationGraph {
 };
 
 
+std::unordered_map<utils::MultiDiEdge, opmeta::ParallelTensorShape> infer_tensor_shapes(ParallelComputationGraph const &);
+
 std::unordered_set<utils::Node> get_nodes(utils::Serial const &serial);
 std::unordered_set<utils::Node> get_nodes(utils::Parallel const &parallel);
 std::unordered_set<utils::Node> get_nodes(utils::Node const &node);
@@ -25,7 +35,7 @@ std::unordered_set<utils::Node> get_nodes(utils::SerialParallelDecomposition con
 
 float optimal_cost(ParallelComputationGraph const &g, std::unordered_set<MachineView> const &allowed_machine_views);
 float optimal_cost(ParallelComputationGraph const &g, 
-                   mpark::variant<Serial, Parallel, Node> const &, 
+                   utils::SerialParallelDecomposition const &, 
                    std::unordered_set<MachineView> const &allowed_machine_views);
 
 }

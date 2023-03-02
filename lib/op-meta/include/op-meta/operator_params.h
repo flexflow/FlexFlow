@@ -68,6 +68,9 @@ OperatorType get_op_type(OperatorParameters const &);
 OperatorType get_op_type(OpParamsInterface const &);
 RecordFormatter as_dot(OperatorParameters const &);
 
+std::vector<ParallelTensorShape> get_output_shapes(OperatorParameters const &op_params,
+                                                   std::vector<ParallelTensorShape> const &input_tensor_shapes);
+
 bool is_parallel_op(OperatorParameters const &);
 
 }; // namespace FlexFlow
