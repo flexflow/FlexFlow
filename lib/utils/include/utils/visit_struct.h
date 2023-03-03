@@ -2,7 +2,7 @@
 #define _FLEXFLOW_OP_META_VISIT_STRUCT_H
 
 #include "visit_struct/visit_struct.hpp"
-#include "utils/hash-utils.h"
+#include "hash-utils.h"
 
 namespace FlexFlow {
 
@@ -10,15 +10,31 @@ struct eq_visitor {
   bool result = true;
 
   template <typename T>
-  void operator()(const char *, const T & t1, const T & t2) {
-    result = result && (t1 == t2);
+  void operator()(const char *, T const &t1, T const &t2) {
+    result &= (t1 == t2);
   }
 };
 
 template <typename T>
-bool visit_eq(T const &t1, T const &t2) {
+bool visit_eq(T const &lhs, T const &rhs) {
   eq_visitor vis;
-  visit_struct::for_each(t1, t2, vis);
+  visit_struct::for_each(lhs, rhs, vis);
+  return vis.result;
+}
+
+struct neq_visitor {
+  bool result = false;
+
+  template <typename T>
+  void operator()(const char *, T const &t1, T const &t2) {
+    result |= (t1 != t2);
+  }
+};
+
+template <typename T>
+bool visit_neq(T const &lhs, T const &rhs) {
+  neq_visitor vis;
+  visit_struct::for_each(lhs, rhs, vis);
   return vis.result;
 }
 

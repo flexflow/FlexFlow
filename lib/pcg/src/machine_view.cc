@@ -1,16 +1,7 @@
 #include "pcg/machine_view.h"
-#include "utils/hash-utils.h"
+#include "utils/utils.h"
 
 namespace FlexFlow {
-
-const MachineView MachineView::NO_VIEW = MachineView();
-
-MachineView::MachineView()
-    : device_type(MachineView::GPU), ndims(0), start_device_id(0) {
-  for (int i = 0; i < MAX_TENSOR_DIM; i++) {
-    dim[i] = stride[i] = 0;
-  }
-}
 
 //Domain MachineView::get_domain() const {
 //  Domain d;
@@ -38,71 +29,24 @@ MachineView::MachineView()
 //}
 
 size_t MachineView::num_parts() const {
-  size_t parts = 1;
-  for (int i = 0; i < ndims; i++) {
-    parts *= dim[i];
-  }
-  return parts;
+  return product(vector_transform(num_entries, this->dims));
 }
-
-size_t MachineView::hash() const {
-  size_t ret = 17;
-  ret = ret * 31 + std::hash<int>()(device_type);
-  ret = ret * 31 + std::hash<int>()(ndims);
-  ret = ret * 31 + std::hash<int>()(start_device_id);
-  for (int i = 0; i < ndims; i++) {
-    ret = ret * 31 + std::hash<int>()(dim[i]);
-    ret = ret * 31 + std::hash<int>()(stride[i]);
-  }
-  return ret;
-}
-
-//int MachineView::get_device_id(DomainPoint const &p) const {
-//  assert(p.get_dim() == ndims);
-//  assert(this->get_domain().contains(p));
-//  int idx = this->start_device_id;
-//  for (int i = 0; i < ndims; i++) {
-//    idx += p[i] * stride[i];
-//  }
-//  return idx;
-//}
 
 bool MachineView::operator==(MachineView const &rhs) const {
-  if (device_type != rhs.device_type) {
-    return false;
-  }
-  if (ndims != rhs.ndims) {
-    return false;
-  }
-  if (start_device_id != rhs.start_device_id) {
-    return false;
-  }
-  for (int i = 0; i < ndims; i++) {
-    if (dim[i] != rhs.dim[i]) {
-      return false;
-    }
-    if (stride[i] != rhs.stride[i]) {
-      return false;
-    }
-  }
-  return true;
+  return visit_eq(*this, rhs);
 }
 
 bool MachineView::operator!=(MachineView const &rhs) const {
   return !(*this == rhs);
 }
 
-std::ostream &operator<<(std::ostream &s, MachineView const &view) {
+std::ostream &operator<<(std::ostream &s, StridedInterval const &interval) {
+  return s << "[" << interval.start << ":" << interval.stop << ":" << interval.stride << "]";
+}
+
+std::ostream &operator<<(std::ostream &s, MachineView const &mv) {
   s << "MachineView<";
-  for (int i = 0; i < view.ndims; i++) {
-    int lo = view.start_device_id;
-    int hi = view.start_device_id + view.dim[i];
-    int stride = view.stride[i];
-    s << i << "=[" << lo << ":" << hi << ":" << stride << "]";
-    if (i != view.ndims - 1) {
-      s << " ";
-    }
-  }
+  s << join_strings(mv.dims, ", ");
   s << ">";
 
   return s;
@@ -115,20 +59,11 @@ MachineResource::MachineResource(
     )
     : num_nodes(numNodes), num_cpus_per_node(cpusPerNode), num_gpus_per_node(gpusPerNode){}
 
-size_t MachineResource::hash() const {
-  size_t h = 0;
-  hash_combine(h, 
-      this->num_nodes, 
-      this->num_cpus_per_node,
-      this->num_gpus_per_node);
-  return h;
 }
-
-}; // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::MachineView>::operator()(
-    FlexFlow::MachineView const &mv) const {
-  return mv.hash();
+size_t hash<::FlexFlow::MachineView>::operator()(
+    ::FlexFlow::MachineView const &mv) const {
+  return visit_hash(mv);
 }
-}; // namespace std
+}

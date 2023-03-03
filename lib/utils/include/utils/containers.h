@@ -15,10 +15,9 @@
 #include "bidict.h"
 
 namespace FlexFlow {
-namespace utils {
 
-template <typename InputIt, typename Stringifiable>
-std::string join_strings(InputIt first, InputIt last, std::string const &delimiter, std::function<Stringifiable(InputIt)> const &f) {
+template <typename InputIt, typename F>
+std::string join_strings(InputIt first, InputIt last, std::string const &delimiter, F const &f) {
   std::ostringstream oss;
   bool first_iter = true;
   /* int i = 0; */
@@ -37,7 +36,12 @@ std::string join_strings(InputIt first, InputIt last, std::string const &delimit
 template <typename InputIt>
 std::string join_strings(InputIt first, InputIt last, std::string const &delimiter) {
   using Ref = typename InputIt::reference;
-  return join_strings<InputIt, typename InputIt::reference>(first, last, delimiter, [](Ref r){ return r; });
+  return join_strings<InputIt>(first, last, delimiter, [](Ref r){ return r; });
+}
+
+template <typename Container>
+std::string join_strings(Container const &c, std::string const &delimiter) {
+  return join_strings(c.cbegin(), c.cend(), delimiter);
 }
 
 template <typename Container>
@@ -50,6 +54,15 @@ Element sum(Container const &container) {
   Element result = 0;
   for (Element const &element : container) {
     result += element;
+  }
+  return result;
+}
+
+template <typename Container, typename Element = typename Container::value_type>
+Element product(Container const &container) {
+  Element result = 1;
+  for (Element const &element : container) {
+    result *= element;
   }
   return result;
 }
@@ -136,7 +149,7 @@ std::unordered_map<K, V> merge_maps(std::unordered_map<K, V> const &lhs, std::un
 }
 
 template <typename K, typename V>
-bidict<K, V> merge_maps(utils::bidict<K, V> const &lhs, utils::bidict<K, V> const &rhs) {
+bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs) {
   assert (are_disjoint(keys(lhs), keys(rhs)));
 
   bidict<K, V> result;
@@ -238,7 +251,6 @@ std::pair<std::vector<T>, std::vector<T>> vector_split(std::vector<T> const &v, 
 }
 
 
-}
 }
 
 #endif

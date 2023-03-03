@@ -3,7 +3,6 @@
 #include "utils/containers.h"
 
 namespace FlexFlow {
-namespace utils {
 
 Node AdjacencyMultiDiGraph::add_node() {
   Node node{this->next_node_idx};
@@ -67,5 +66,4 @@ std::unordered_set<Node> AdjacencyMultiDiGraph::query_nodes(NodeQuery const &que
   return result;
 }
 
-}
 }

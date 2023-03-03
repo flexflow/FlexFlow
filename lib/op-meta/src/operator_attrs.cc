@@ -41,15 +41,19 @@ OperatorType get_op_type(OpAttrsInterface const &o) {
   return o.op_type();
 }
                                                           //
-OperatorType get_op_type(OperatorParameters const &o) { 
-  return get_op_type(mpark::visit(AsOpAttrs{}, o));
+OperatorType get_op_type(CompGraphOperatorAttrs const &o) { 
+  return get_op_type(visit(AsOpAttrs{}, o));
 }
 
-std::vector<ParallelTensorShape> get_output_shapes(OperatorParameters const &op_params, std::vector<ParallelTensorShape> const &input_tensor_shapes) {
+OperatorType get_op_type(PCGOperatorAttrs const &o) { 
+  return get_op_type(visit(AsOpAttrs{}, o));
+}
+
+std::vector<ParallelTensorShape> get_output_shapes(PCGOperatorAttrs const &op_params, std::vector<ParallelTensorShape> const &input_tensor_shapes) {
   return mpark::visit(AsOpAttrs{}, op_params).output_shapes(input_tensor_shapes);
 }
 
-bool is_parallel_op(opmeta::OperatorParameters const &o) {
+bool is_parallel_op(PCGOperatorAttrs const &o) {
   return is_parallel_op(get_op_type(o));
 }
 
@@ -126,7 +130,7 @@ struct AsDot {
   }
 };
 
-RecordFormatter as_dot(OperatorParameters const &o) {
+RecordFormatter as_dot(PCGOperatorAttrs const &o) {
   return mpark::visit(AsDot{}, o);
 }
 

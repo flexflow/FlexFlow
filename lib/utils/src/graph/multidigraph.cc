@@ -1,23 +1,18 @@
 #include "utils/graph/multidigraph.h"
-#include "utils/hash-utils.h"
+#include "utils/visit_struct.h"
 
 namespace FlexFlow {
-namespace utils {
 
 MultiDiEdge::MultiDiEdge(Node src, Node dst, size_t srcIdx, size_t dstIdx)
   : src(src), dst(dst), srcIdx(srcIdx), dstIdx(dstIdx)
 { }
 
-typename MultiDiEdge::AsConstTuple MultiDiEdge::as_tuple() const {
-  return {this->src, this->dst, this->srcIdx, this->dstIdx};
-}
-
 bool MultiDiEdge::operator==(MultiDiEdge const &other) const {
-  return this->as_tuple() == other.as_tuple();
+  return visit_eq(*this, other);
 }
 
 bool MultiDiEdge::operator<(MultiDiEdge const &other) const {
-  return this->as_tuple() < other.as_tuple();
+  return visit_lt(*this, other);
 }
 
 std::ostream &operator<<(std::ostream &s, MultiDiEdge const &e) {
@@ -81,12 +76,11 @@ MultiDiEdgeQuery MultiDiEdgeQuery::all() {
 }
 
 }
-}
 
 namespace std {
-using ::FlexFlow::utils::MultiDiEdge;
+using ::FlexFlow::MultiDiEdge;
 
 std::size_t hash<MultiDiEdge>::operator()(MultiDiEdge const &e) const {
-  return get_std_hash(e.as_tuple());
+  return visit_hash(e);
 }
 }

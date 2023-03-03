@@ -6,7 +6,6 @@
 #include "node.h"
 
 namespace FlexFlow {
-namespace utils {
 
 struct UndirectedEdge {
 public:
@@ -15,25 +14,20 @@ public:
 
   bool operator==(UndirectedEdge const &) const;
   bool operator<(UndirectedEdge const &) const;
-
-  using AsConstTuple = std::tuple<Node, Node>;
-  AsConstTuple as_tuple() const;
 public:
   Node smaller, bigger;
 };
 
 }
-}
 
 namespace std {
 template <>
-struct hash<::FlexFlow::utils::UndirectedEdge> {
-  std::size_t operator()(::FlexFlow::utils::UndirectedEdge const &) const;
+struct hash<::FlexFlow::UndirectedEdge> {
+  std::size_t operator()(::FlexFlow::UndirectedEdge const &) const;
 };
 }
 
 namespace FlexFlow {
-namespace utils {
 
 struct UndirectedEdgeQuery {
   UndirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &);
@@ -55,6 +49,6 @@ struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
 
 }
 
-}
+VISITABLE_STRUCT(::FlexFlow::UndirectedEdge, smaller, bigger);
 
 #endif

@@ -2,20 +2,38 @@
 #define _FLEXFLOW_UTILS_VARIANT_H 
 
 #include "mpark/variant.hpp"
+#include "tl/optional.hpp"
 
 namespace FlexFlow {
+
+/* using mp = mpark; */
 
 template <class ...Args>
 struct variant_join_helper;
 
-using mpark::variant;
-using mpark::get;
-using mpark::holds_alternative;
-using mpark::visit;
+/* template <typename ...Ts> */
+/* using variant = ::mpark::variant<Ts...>; */
+
+using namespace tl;
+using namespace mpark;
+
+/* template <typename T> */
+/* using optional = ::tl::optional<T>; */
+
+
+
+/* template <typename T> */
+/* using get = ::mpark::get; */
+
+/* template <typename T> */
+/* using holds_alternative = ::mpark::holds_alternative<T>; */
+
+/* template <typename T> */
+/* using visit = mpark::visit<T>; */
 
 template <class ...Args1, class ...Args2>
-struct variant_join_helper<variant<Args1...>, variant<Args2...>> {
-    using type = variant<Args1..., Args2...>;
+struct variant_join_helper<mpark::variant<Args1...>, mpark::variant<Args2...>> {
+    using type = mpark::variant<Args1..., Args2...>;
 };
 
 template <class Variant1, class Variant2>

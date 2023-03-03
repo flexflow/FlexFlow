@@ -13,5 +13,7 @@
 #include "graph/undirected.h"
 #include "graph/views.h"
 #include "graph/serialparallel.h"
+#include "graph/labelled_graphs.h"
+#include "graph/open_graphs.h"
 
 #endif

@@ -1,7 +1,7 @@
 #include "op-meta/ops/pool_2d.h"
 #include "parallel_dim_mapping_record.h"
 #include "parallel_dim_mapping_record_solver.h"
-#include "op-meta/visit_struct.h"
+#include "utils/visit_struct.h"
 
 namespace FlexFlow {
 

@@ -2,7 +2,6 @@
 #include <cassert>
 
 namespace FlexFlow {
-namespace utils {
 
 Node AdjacencyDiGraph::add_node() {
   Node node{this->next_node_idx};
@@ -73,5 +72,4 @@ bool AdjacencyDiGraph::operator!=(AdjacencyDiGraph const &other) const {
   return (this->adjacency != other.adjacency);
 }
 
-}
 }

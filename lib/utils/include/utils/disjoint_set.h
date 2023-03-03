@@ -7,7 +7,6 @@
 #include <unordered_map>
 
 namespace FlexFlow {
-namespace utils {
 
 template <typename T>
 class m_disjoint_set {
@@ -72,6 +71,5 @@ private:
 };
 
 }
-}
 
-#endif // _FLEXFLOW_DISJOINT_SET_H
+#endif 

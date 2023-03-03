@@ -9,7 +9,6 @@
 #include "utils/graph/views.h"
 
 namespace FlexFlow {
-namespace utils {
 
 std::vector<Node> add_nodes(IGraph &g, int num_nodes) {
   std::vector<Node> nodes;
@@ -403,5 +402,4 @@ tl::optional<Node> imm_post_dominator(IMultiDiGraphView const &g, Node const &n)
   return get_imm_post_dominators(g).at(n);
 }
 
-}
 }

@@ -4,6 +4,7 @@
 #include "node.h"
 #include "tl/optional.hpp"
 #include <unordered_set>
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
 
@@ -14,26 +15,21 @@ public:
 
   bool operator==(DirectedEdge const &) const;
   bool operator<(DirectedEdge const &) const;
-
-  using AsConstTuple = std::tuple<Node, Node>;
-  AsConstTuple as_tuple() const;
 public:
   Node src, dst;
 };
 std::ostream &operator<<(std::ostream &, DirectedEdge const &);
 
 }
-}
 
 namespace std {
 template <>
-struct hash<::FlexFlow::utils::DirectedEdge> {
-  std::size_t operator()(::FlexFlow::utils::DirectedEdge const &) const;
+struct hash<::FlexFlow::DirectedEdge> {
+  std::size_t operator()(::FlexFlow::DirectedEdge const &) const;
 };
 }
 
 namespace FlexFlow {
-namespace utils {
 
 struct DirectedEdgeQuery {
   DirectedEdgeQuery() = default;
@@ -58,5 +54,7 @@ struct IDiGraph : public IDiGraphView, public IGraph {
 };
 
 }
+
+VISITABLE_STRUCT(::FlexFlow::DirectedEdge, src, dst);
 
 #endif

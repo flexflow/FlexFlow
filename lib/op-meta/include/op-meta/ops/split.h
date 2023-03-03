@@ -3,7 +3,7 @@
 
 #include "op-meta/parallel_tensor_shape.h"
 #include "op-meta/ops/unary_op.h"
-#include "op-meta/visit_struct.h"
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
 

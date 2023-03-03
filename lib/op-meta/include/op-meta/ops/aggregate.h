@@ -7,7 +7,7 @@
 
 namespace FlexFlow {
 
-struct AggregateAttrs : public UnaryOutput {
+struct AggregateAttrs : public UnaryOutputOpAttrs {
   bool is_valid(std::vector<ParallelTensorShape> const &) const override;
   ParallelTensorShape output_shape(std::vector<ParallelTensorShape> const &input_shapes) const override;
   OperatorType op_type() const override;

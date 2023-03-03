@@ -3,15 +3,15 @@
 
 #include "node.h"
 #include "multidigraph.h"
-#include "mpark/variant.hpp"
+#include "utils/variant.h"
+#include "tl/optional.hpp"
 
 namespace FlexFlow {
-namespace utils {
 
 struct InputMultiDiEdge {
   std::size_t uid; // necessary to differentiate multiple input edges from different sources resulting from a graph cut
 
-  utils::Node dst;
+  Node dst;
   std::size_t dstIdx;
 };
 bool operator==(InputMultiDiEdge const &, InputMultiDiEdge const &);
@@ -19,23 +19,23 @@ bool operator==(InputMultiDiEdge const &, InputMultiDiEdge const &);
 struct OutputMultiDiEdge {
   std::size_t uid; // necessary to differentiate multiple output edges from different sources resulting from a graph cut
 
-  utils::Node src;
+  Node src;
   std::size_t srcIdx;
 };
 bool operator==(OutputMultiDiEdge const &, OutputMultiDiEdge const &);
 
-using OpenMultiDiEdge = mpark::variant<
+using OpenMultiDiEdge = variant<
   InputMultiDiEdge,
   OutputMultiDiEdge,
   MultiDiEdge
 >;
 
-using DownwardOpenMultiDiEdge = mpark::variant<
+using DownwardOpenMultiDiEdge = variant<
   OutputMultiDiEdge,
   MultiDiEdge
 >;
 
-using UpwardOpenMultDiEdge = mpark::variant<
+using UpwardOpenMultDiEdge = variant<
   InputMultiDiEdge,
   MultiDiEdge
 >;
@@ -45,7 +45,7 @@ bool is_output_edge(OpenMultiDiEdge const &);
 bool is_standard_edge(OpenMultiDiEdge const &);
 
 struct OutputMultiDiEdgeQuery {
-  tl::optional<std::unordered_set<utils::Node>> srcs = tl::nullopt;
+  tl::optional<std::unordered_set<Node>> srcs = tl::nullopt;
   tl::optional<std::unordered_set<std::size_t>> srcIdxs = tl::nullopt;
 
   static OutputMultiDiEdgeQuery all();
@@ -53,7 +53,7 @@ struct OutputMultiDiEdgeQuery {
 };
 
 struct InputMultiDiEdgeQuery {
-  tl::optional<std::unordered_set<utils::Node>> dsts = tl::nullopt;
+  tl::optional<std::unordered_set<Node>> dsts = tl::nullopt;
   tl::optional<std::unordered_set<std::size_t>> dstIdxs = tl::nullopt;
 
   static InputMultiDiEdgeQuery all();
@@ -77,39 +77,37 @@ struct UpwardOpenMultiDiEdgeQuery {
 };
 
 }
-}
 
 namespace std {
 
 template <>
-struct hash<::FlexFlow::utils::OpenMultiDiEdge> {
-  size_t operator()(::FlexFlow::utils::OpenMultiDiEdge const &) const;
+struct hash<::FlexFlow::OpenMultiDiEdge> {
+  size_t operator()(::FlexFlow::OpenMultiDiEdge const &) const;
 };
 
 template <>
-struct hash<::FlexFlow::utils::DownwardOpenMultiDiEdge> {
-  size_t operator()(::FlexFlow::utils::DownwardOpenMultiDiEdge const &) const;
+struct hash<::FlexFlow::DownwardOpenMultiDiEdge> {
+  size_t operator()(::FlexFlow::DownwardOpenMultiDiEdge const &) const;
 };
 
 template <>
-struct hash<::FlexFlow::utils::UpwardOpenMultDiEdge> {
-  size_t operator()(::FlexFlow::utils::UpwardOpenMultDiEdge const &) const;
+struct hash<::FlexFlow::UpwardOpenMultDiEdge> {
+  size_t operator()(::FlexFlow::UpwardOpenMultDiEdge const &) const;
 };
 
 template <>
-struct hash<::FlexFlow::utils::OutputMultiDiEdge> {
-  size_t operator()(::FlexFlow::utils::OutputMultiDiEdge const &) const;
+struct hash<::FlexFlow::OutputMultiDiEdge> {
+  size_t operator()(::FlexFlow::OutputMultiDiEdge const &) const;
 };
 
 template <>
-struct hash<::FlexFlow::utils::InputMultiDiEdge> {
-  size_t operator()(::FlexFlow::utils::InputMultiDiEdge const &) const;
+struct hash<::FlexFlow::InputMultiDiEdge> {
+  size_t operator()(::FlexFlow::InputMultiDiEdge const &) const;
 };
 
 }
 
 namespace FlexFlow {
-namespace utils {
 
 struct IOpenMultiDiGraphView : public IGraphView {
   virtual std::unordered_set<OpenMultiDiEdge> query_edges(OpenMultiDiEdgeQuery const &) const = 0;
@@ -138,7 +136,6 @@ struct IDownwardOpenMultiDiGraph : public IDownwardOpenMultiDiGraphView, public 
   virtual void remove_edge(DownwardOpenMultiDiEdge const &) = 0;
 };
 
-}
 }
 
 #endif 

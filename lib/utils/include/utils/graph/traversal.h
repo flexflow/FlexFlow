@@ -8,7 +8,6 @@
 #include <queue>
 
 namespace FlexFlow {
-namespace utils {
 
 struct unchecked_dfs_iterator {
   using iterator_category = std::forward_iterator_tag;
@@ -161,7 +160,6 @@ UncheckedDFSView unchecked_dfs(IDiGraphView const &, std::unordered_set<Node> co
 CheckedDFSView dfs(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
 BFSView bfs(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
 
-} 
 }
 
 #endif 

@@ -3,6 +3,6 @@
 
 #include "ffconst.h"
 #include "parallel_tensor_shape.h"
-#include "operator_params.h"
+#include "operator_attrs.h"
 
 #endif // _FLEXFLOW_OP_META_H

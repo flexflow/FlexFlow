@@ -7,59 +7,59 @@ namespace FlexFlow {
 namespace substitutions {
 
 
-struct MultiDiGraphPatternSubgraph : public IMultiDiGraphPatternView {
-  std::unordered_set<PatternEdge> query_edges(PatternEdgeQuery const &) const override; 
-  std::unordered_set<utils::Node> query_nodes(utils::NodeQuery const &) const override;
+struct MultiDiGraphPatternSubgraph : public IOpenMultiDiGraph {
+  std::unordered_set<OpenMultiDiEdge> query_edges(OpenMultiDiEdgeQuery const &) const override; 
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 };
 
 struct DiGraphPatternMatch {
-  utils::bidict<utils::Node, utils::Node> nodeAssignment;
-  utils::bidict<PatternEdge, utils::MultiDiEdge> edgeAssignment;
+  bidict<Node, Node> nodeAssignment;
+  bidict<OpenMultiDiEdge, MultiDiEdge> edgeAssignment;
 };
 
 
-using GraphSplit = std::pair<std::unordered_set<utils::Node>, std::unordered_set<utils::Node>>;
+using GraphSplit = std::pair<std::unordered_set<Node>, std::unordered_set<Node>>;
 
 struct MatchSplit {
   DiGraphPatternMatch prefix_submatch;
   DiGraphPatternMatch postfix_submatch;
 };
 
-GraphSplit split_pattern(IMultiDiGraphPatternView const &pattern);
+GraphSplit split_pattern(IOpenMultiDiGraph const &pattern);
 
-struct ViewPatternAsMultiDiGraph : public utils::IMultiDiGraphView { 
+struct ViewPatternAsMultiDiGraph : public IMultiDiGraphView { 
 public:
   ViewPatternAsMultiDiGraph() = delete;
-  explicit ViewPatternAsMultiDiGraph(IMultiDiGraphPatternView const &);
+  explicit ViewPatternAsMultiDiGraph(IOpenMultiDiGraph const &);
 
-  std::unordered_set<utils::MultiDiEdge> query_edges(utils::MultiDiEdgeQuery const &) const override;
-  std::unordered_set<utils::Node> query_nodes(utils::NodeQuery const &) const override;
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 private:
-  IMultiDiGraphPatternView const &pattern;
+  IOpenMultiDiGraphView const &pattern;
 };
 
-struct MultiDiGraphPatternSubgraphView : public IMultiDiGraphPatternView {
+struct MultiDiGraphPatternSubgraphView : public IOpenMultiDiGraphView {
 public:
   MultiDiGraphPatternSubgraphView() = delete;
-  explicit MultiDiGraphPatternSubgraphView(IMultiDiGraphPatternView const &, std::unordered_set<utils::Node> const &);
+  explicit MultiDiGraphPatternSubgraphView(IOpenMultiDiGraphView const &, std::unordered_set<Node> const &);
 
-  std::unordered_set<PatternEdge> query_edges(PatternEdgeQuery const &) const override;
-  std::unordered_set<utils::Node> query_nodes(utils::NodeQuery const &) const override;
+  std::unordered_set<OpenMultiDiEdge> query_edges(OpenMultiDiEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 private:
-  IMultiDiGraphPatternView const &pattern;
+  IOpenMultiDiGraphView const &pattern;
 };
 
-std::unique_ptr<utils::IMultiDiGraphView> unsafe_view_as_multidigraph(IMultiDiGraphPatternView const &);
-std::unique_ptr<IMultiDiGraphPatternView> unsafe_view_as_subgraph(IMultiDiGraphPatternView const &, std::unordered_set<utils::Node> const &);
-std::vector<utils::Node> get_topological_ordering(IMultiDiGraphPatternView const &);
+std::unique_ptr<IMultiDiGraphView> unsafe_view_as_multidigraph(IOpenMultiDiGraphView const &);
+std::unique_ptr<IOpenMultiDiGraphView> unsafe_view_as_subgraph(IOpenMultiDiGraphView const &, std::unordered_set<Node> const &);
+std::vector<Node> get_topological_ordering(IOpenMultiDiGraphView const &);
 
 
-std::unordered_set<PatternEdge> get_edges(IMultiDiGraphPatternView const &);
+std::unordered_set<OpenMultiDiEdge> get_edges(IOpenMultiDiGraphView const &);
 
-bool pattern_matches(IMultiDiGraphPattern const &, 
-                     utils::IMultiDiGraph const &, 
+bool pattern_matches(IOpenMultiDiGraphView const &, 
+                     IMultiDiGraph const &, 
                      DiGraphPatternMatch const &);
-bool is_singleton_pattern(IMultiDiGraphPatternView const &);
+bool is_singleton_pattern(IOpenMultiDiGraphView const &);
 
 }
 }

@@ -8,7 +8,6 @@
 #include <vector>
 
 namespace FlexFlow {
-namespace utils {
 
 struct ParallelInternal;
 
@@ -37,7 +36,6 @@ std::unordered_set<Node> from_source_to_sink(IDiGraphView const &, Node const &s
 mpark::variant<Serial, Parallel, Node> to_final_ast(SplitAST const &);
 SplitAST flatten_ast(SplitAST const &ast);
 
-}
 }
 
 #endif

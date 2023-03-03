@@ -6,7 +6,6 @@
 #include "utils/graph/digraph.h"
 
 namespace FlexFlow {
-namespace utils {
 
 Node find_source_node(IDiGraphView const &g) {
   std::unordered_set<Node> srcs = get_sources(g);
@@ -18,15 +17,15 @@ Node find_sink_node(IDiGraphView const &g) {
   return get_only(sinks);
 }
 
-tl::optional<Node> find_bottleneck_node(IMultiDiGraphView const &g) {
+optional<Node> find_bottleneck_node(IMultiDiGraphView const &g) {
   return find_bottleneck_node(unsafe_view_as_digraph(g));
 }
 
-tl::optional<Node> find_bottleneck_node(IDiGraphView const &g) {
+optional<Node> find_bottleneck_node(IDiGraphView const &g) {
   std::unordered_set<Node> sources = get_sources(g);
   std::unordered_set<Node> sinks = get_sources(g);
 
-  tl::optional<Node> maybe_bottleneck = get_imm_post_dominator(g, sources);
+  optional<Node> maybe_bottleneck = get_imm_post_dominator(g, sources);
   if (maybe_bottleneck.has_value()) {
     assert (contains(get_dominators(g, sinks), maybe_bottleneck.value()));
   }
@@ -95,7 +94,7 @@ SplitAST sp_decomposition(IDiGraphView const &g) {
   std::unordered_set<Node> sources = get_sources(g);
   std::unordered_set<Node> sinks = get_sinks(g);
 
-  tl::optional<Node> bottleneck = find_bottleneck_node(g);
+  optional<Node> bottleneck = find_bottleneck_node(g);
   if (bottleneck.has_value()) {
     return SplitASTNode(
       SplitType::SERIAL,
@@ -195,5 +194,4 @@ mpark::variant<Serial, Parallel, Node> to_final_ast(SplitAST const &ast) {
   return mpark::visit(ToFinalAST{}, ast);
 }
 
-}
 }

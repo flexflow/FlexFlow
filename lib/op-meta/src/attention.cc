@@ -1,7 +1,7 @@
 #include "op-meta/ops/attention.h"
 #include "utils/hash-utils.h"
 #include <algorithm>
-#include "op-meta/visit_struct.h"
+#include "utils/visit_struct.h"
 
 namespace FlexFlow {
 

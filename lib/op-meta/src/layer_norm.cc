@@ -1,6 +1,6 @@
-#include "op-meta/ops/layer_norm_params.h"
+#include "op-meta/ops/layer_norm.h"
 #include "utils/hash-utils.h"
-#include "op-meta/visit_struct.h"
+#include "utils/visit_struct.h"
 
 namespace FlexFlow {
 

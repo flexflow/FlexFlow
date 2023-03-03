@@ -2,10 +2,8 @@
 #define _FLEXFLOW_UTILS_BIDICT_H
 
 #include <unordered_map>
-#include "tl/optional.hpp"
 
 namespace FlexFlow {
-namespace utils {
 
 template <typename L, typename R>
 struct bidict {
@@ -134,7 +132,6 @@ private:
   std::unordered_map<R, L> bwd_map;
 };
 
-}
 }
 
 #endif

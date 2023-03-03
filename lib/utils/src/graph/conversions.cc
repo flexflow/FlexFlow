@@ -3,7 +3,6 @@
 #include <iterator>
 
 namespace FlexFlow {
-namespace utils {
 
 UndirectedEdge to_undirected_edge(DirectedEdge const &e) {
   return {e.src, e.dst};
@@ -167,5 +166,4 @@ ViewMultiDiGraphAsDiGraph view_as_digraph(std::shared_ptr<IMultiDiGraph> const &
   return ViewMultiDiGraphAsDiGraph{multidi};
 }
 
-}
 }

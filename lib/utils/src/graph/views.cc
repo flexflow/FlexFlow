@@ -2,9 +2,9 @@
 #include "utils/containers.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph.h"
+#include "utils/disjoint_set.h"
 
 namespace FlexFlow {
-namespace utils {
 
 FlippedView::FlippedView(IDiGraphView const &g)
   : g(g)
@@ -66,10 +66,10 @@ Node NodeSource::fresh_node() {
 
 JoinedNodeView::JoinedNodeView(IGraphView const &lhs, IGraphView const &rhs) {
   for (Node const &n : get_nodes(lhs)) {
-    this->mapping.equate({n, true}, this->node_source.fresh_node());
+    this->mapping.equate({n, LRDirection::LEFT}, this->node_source.fresh_node());
   }
   for (Node const &n : get_nodes(rhs)) {
-    this->mapping.equate({n, false}, this->node_source.fresh_node());
+    this->mapping.equate({n, LRDirection::RIGHT}, this->node_source.fresh_node());
   }
 }
 
@@ -88,9 +88,10 @@ std::pair<std::unordered_set<Node>, std::unordered_set<Node>> JoinedNodeView::tr
 
   for (Node const &n : nodes) {
     JoinNodeKey k = this->at_node(n);
-    if (k.is_left) {
+    if (k.direction == LRDirection::LEFT) {
       left_nodes.insert(k.node);
     } else {
+      assert (k.direction == LRDirection::RIGHT);
       right_nodes.insert(k.node);
     }
   }
@@ -119,9 +120,10 @@ std::unordered_set<UndirectedEdge> JoinedUndirectedGraphView::query_edges(Undire
   std::unordered_set<Node> left_nodes, right_nodes;
   for (Node const &n : nodes) {
     JoinNodeKey k = this->joined_nodes.at_node(n);
-    if (k.is_left) {
+    if (k.direction == LRDirection::LEFT) {
       left_nodes.insert(k.node);
     } else {
+      assert (k.direction == LRDirection::RIGHT);
       right_nodes.insert(k.node);
     }
   }
@@ -141,15 +143,15 @@ std::unordered_set<UndirectedEdge> JoinedUndirectedGraphView::query_edges(Undire
 
 UndirectedEdge JoinedUndirectedGraphView::fix_lhs_edge(UndirectedEdge const &e) const {
   return {
-    this->joined_nodes.at_join_key({e.smaller, true}),
-    this->joined_nodes.at_join_key({e.bigger, true})
+    this->joined_nodes.at_join_key({e.smaller, LRDirection::LEFT}),
+    this->joined_nodes.at_join_key({e.bigger, LRDirection::LEFT})
   };
 }
 
 UndirectedEdge JoinedUndirectedGraphView::fix_rhs_edge(UndirectedEdge const &e) const {
   return {
-    this->joined_nodes.at_join_key({e.smaller, false}),
-    this->joined_nodes.at_join_key({e.bigger, false})
+    this->joined_nodes.at_join_key({e.smaller, LRDirection::RIGHT}),
+    this->joined_nodes.at_join_key({e.bigger, LRDirection::RIGHT})
   };
 }
 
@@ -182,15 +184,15 @@ std::unordered_set<DirectedEdge> JoinedDigraphView::query_edges(DirectedEdgeQuer
 
 DirectedEdge JoinedDigraphView::fix_lhs_edge(DirectedEdge const &e) const {
   return {
-    this->joined_nodes.at_join_key({e.src, true}),
-    this->joined_nodes.at_join_key({e.dst, true})
+    this->joined_nodes.at_join_key({e.src, LRDirection::LEFT}),
+    this->joined_nodes.at_join_key({e.dst, LRDirection::LEFT})
   };
 }
 
 DirectedEdge JoinedDigraphView::fix_rhs_edge(DirectedEdge const &e) const {
   return {
-    this->joined_nodes.at_join_key({e.src, false}),
-    this->joined_nodes.at_join_key({e.dst, false})
+    this->joined_nodes.at_join_key({e.src, LRDirection::RIGHT}),
+    this->joined_nodes.at_join_key({e.dst, LRDirection::RIGHT})
   };
 }
 
@@ -224,8 +226,8 @@ std::unordered_set<MultiDiEdge> JoinedMultiDigraphView::query_edges(MultiDiEdgeQ
 
 MultiDiEdge JoinedMultiDigraphView::fix_lhs_edge(MultiDiEdge const &e) const {
   return {
-    this->joined_nodes.at_join_key({e.src, true}),
-    this->joined_nodes.at_join_key({e.dst, true}),
+    this->joined_nodes.at_join_key({e.src, LRDirection::LEFT}),
+    this->joined_nodes.at_join_key({e.dst, LRDirection::LEFT}),
     e.srcIdx,
     e.dstIdx
   };
@@ -233,111 +235,110 @@ MultiDiEdge JoinedMultiDigraphView::fix_lhs_edge(MultiDiEdge const &e) const {
 
 MultiDiEdge JoinedMultiDigraphView::fix_rhs_edge(MultiDiEdge const &e) const {
   return {
-    this->joined_nodes.at_join_key({e.src, false}),
-    this->joined_nodes.at_join_key({e.dst, false}),
+    this->joined_nodes.at_join_key({e.src, LRDirection::RIGHT}),
+    this->joined_nodes.at_join_key({e.dst, LRDirection::RIGHT}),
     e.srcIdx,
     e.dstIdx
   };
 }
 
-SingleSourceNodeView::SingleSourceNodeView(IDiGraphView const &g)
-  : g(g)
-{
-  std::unordered_set<Node> sources = get_sources(g);
-  if (sources.size() == 1) {
-    this->singleton_src = tl::nullopt;
-    this->joined_view = nullptr;
-  } else {
-    AdjacencyDiGraph singleton_src_g;
-    Node new_src_node = singleton_src_g.value().add_node();
-    this->joined_view = JoinedNodeView(g, singleton_src_g);
-    std::unordered_set<DirectedEdge> new_edges;
-    JoinedNodeView const &joined_nodes_view = this->joined_view.value().joined_nodes_view();
-    for (Node const &src_node : sources) {
-      Node joined_src_node = joined_nodes_view.at_join_key({src_node, LRDirection::LEFT});
-      Node joined_new_src_node = joined_nodes_view.at_join_key({new_src_node, LRDirection::RIGHT});
-      new_edges.insert({joined_new_src_node, joined_src_node});
-    }
-    this->added_edges_view = unsafe_view_with_added_edges(this->joined_view.value(), new_edges);
-    this->singleton_src = singleton_src_g;
-  }
-}
+/* SingleSourceNodeView::SingleSourceNodeView(IDiGraphView const &g) */
+/*   : g(g) */
+/* { */
+/*   std::unordered_set<Node> sources = get_sources(g); */
+/*   if (sources.size() == 1) { */
+/*     this->singleton_src = tl::nullopt; */
+/*     this->joined_view = tl::nullopt; */
+/*   } else { */
+/*     AdjacencyDiGraph singleton_src_g; */
+/*     Node new_src_node = singleton_src_g.add_node(); */
+/*     this->joined_view = JoinedNodeView(g, singleton_src_g); */
+/*     std::unordered_set<DirectedEdge> new_edges; */
+/*     JoinedNodeView const &joined_nodes_view = this->joined_view.joined_nodes_view(); */
+/*     for (Node const &src_node : sources) { */
+/*       Node joined_src_node = joined_nodes_view.at_join_key({src_node, LRDirection::LEFT}); */
+/*       Node joined_new_src_node = joined_nodes_view.at_join_key({new_src_node, LRDirection::RIGHT}); */
+/*       new_edges.insert({joined_new_src_node, joined_src_node}); */
+/*     } */
+/*     this->added_edges_view = unsafe_view_with_added_edges(this->joined_view.value(), new_edges); */
+/*     this->singleton_src = singleton_src_g; */
+/*   } */
+/* } */
 
-std::unordered_set<Node> SingleSourceNodeView::query_nodes(NodeQuery const &q) const {
-  if (this->joined_nodes.has_value()) {
-    return this->joined_nodes.value().query_nodes(q);
-  } else {
-    return this->g.query_nodes(q);
-  }
-}
+/* std::unordered_set<Node> SingleSourceNodeView::query_nodes(NodeQuery const &q) const { */
+/*   if (this->joined_nodes.has_value()) { */
+/*     return this->joined_nodes.value().query_nodes(q); */
+/*   } else { */
+/*     return this->g.query_nodes(q); */
+/*   } */
+/* } */
 
-std::unordered_set<DirectedEdge> SingleSourceNodeView::query_edges(DirectedEdgeQuery const &q) const {
-  if (joined_view.has_value()) {
-    auto const &joined = joined_view.value();
-    joined.query_edges(q);
-  } else {
-    return this->g.query_edges(q);
-  }
-}
+/* std::unordered_set<DirectedEdge> SingleSourceNodeView::query_edges(DirectedEdgeQuery const &q) const { */
+/*   if (this->joined_view != nullptr) { */
+/*     this->joined_view->query_edges(q); */
+/*   } else { */
+/*     return this->g.query_edges(q); */
+/*   } */
+/* } */
 
-NodePermutationView::NodePermutationView(IDiGraphView const &g, Node const &from, Node const &to)
-  : g(g), from(from), to(to)
-{ }
+/* NodePermutationView::NodePermutationView(IDiGraphView const &g, Node const &from, Node const &to) */
+/*   : g(g), from(from), to(to) */
+/* { } */
 
-std::unordered_set<Node> NodePermutationView::query_nodes(NodeQuery const &q) const {
-  NodeQuery qq;
-  for (Node const &n : q.nodes) {
-    if (n == this->from) {
-      qq.insert(this->to);
-    } else {
-      qq.insert(n);
-    }
-  }
-  return this->g.query_nodes(qq);
-}
+/* std::unordered_set<Node> NodePermutationView::query_nodes(NodeQuery const &q) const { */
+/*   NodeQuery qq; */
+/*   for (Node const &n : q.nodes) { */
+/*     if (n == this->from) { */
+/*       qq.insert(this->to); */
+/*     } else { */
+/*       qq.insert(n); */
+/*     } */
+/*   } */
+/*   return this->g.query_nodes(qq); */
+/* } */
 
-std::unordered_set<DirectedEdge> NodePermutationView::query_edges(DirectedEdgeQuery const &q) { 
-  DirectedEdgeQuery qq = {std::unordered_set{}, std::unordered_set{}};
-  for (Node const &src : q.srcs) {
-    qq.srcs.insert(src);
-    if (src == this->to) {
-      qq.srcs.insert(this->from);
-    }
-  }
-  for (Node const &dst : q.dsts) {
-    qq.dsts.insert(dst);
-    if (dsts = this->to) {
-      qq.dsts.insert(this->from);
-    }
-  }
-  std::unordered_set<DirectedEdge> edges = this->g.query_edges(qq);
-  return map_over_unordered_set(edges, [](DirectedEdge const &e) { return this->fix_edge(e); });
-}
+/* std::unordered_set<DirectedEdge> NodePermutationView::query_edges(DirectedEdgeQuery const &q) { */ 
+/*   DirectedEdgeQuery qq = {std::unordered_set{}, std::unordered_set{}}; */
+/*   for (Node const &src : q.srcs) { */
+/*     qq.srcs.insert(src); */
+/*     if (src == this->to) { */
+/*       qq.srcs.insert(this->from); */
+/*     } */
+/*   } */
+/*   for (Node const &dst : q.dsts) { */
+/*     qq.dsts.insert(dst); */
+/*     if (dsts = this->to) { */
+/*       qq.dsts.insert(this->from); */
+/*     } */
+/*   } */
+/*   std::unordered_set<DirectedEdge> edges = this->g.query_edges(qq); */
+/*   return map_over_unordered_set(edges, [](DirectedEdge const &e) { return this->fix_edge(e); }); */
+/* } */
 
-DirectedEdge NodePermutationView::fix_edge(DirectedEdge const &e) {
-  DirectedEdge result = e;
-  if (result.src == this->from) {
-    result.src = this->to;
-  }
-  if (result.dst = this->from) {
-    result.dst = this->to;
-  }
-}
+/* DirectedEdge NodePermutationView::fix_edge(DirectedEdge const &e) { */
+/*   DirectedEdge result = e; */
+/*   if (result.src == this->from) { */
+/*     result.src = this->to; */
+/*   } */
+/*   if (result.dst = this->from) { */
+/*     result.dst = this->to; */
+/*   } */
+/* } */
 
 std::unordered_set<Node> DiGraphViewStack::query_nodes(NodeQuery const &q) const {
-  return this->views.back().query_nodes(q);
+  return this->views.back()->query_nodes(q);
 }
 
 std::unordered_set<DirectedEdge> DiGraphViewStack::query_edges(DirectedEdgeQuery const &q) const {
-  return this->views.back().query_edges(q);
+  return this->views.back()->query_edges(q);
 }
 
-void add_view(std::function<std::unique_ptr<IDiGraphView>(IDiGraphView const &)> const &f) const {
-  this->views.push_back(f(this->views.back()));
+void DiGraphViewStack::add_view(std::function<std::unique_ptr<IDiGraphView>(IDiGraphView const &)> const &f) {
+  this->views.push_back(f(*this->views.back()));
 }
 
-std::unique_ptr<IDiGraphView> unsafe_view_as_contracted(IDiGraphView const &, Node const &removed, Node const &into) {
-  return std::unique_ptr<IDiGraphView>(new ContractNodesView(from, to));
+std::unique_ptr<IDiGraphView> unsafe_view_as_contracted(IDiGraphView const &g, Node const &removed, Node const &into) {
+  return std::unique_ptr<IDiGraphView>(new ContractNodeView(g, removed, into));
 }
 
 static void assert_map_is_flattened(std::unordered_map<Node, Node> const &m) {
@@ -358,24 +359,23 @@ std::unique_ptr<IDiGraphView> unsafe_view_as_contracted(IDiGraphView const &, st
   auto result = std::unique_ptr<DiGraphViewStack>(new DiGraphViewStack());
 
   for (auto const &kv : m) {
-    result.add_view([&k, &v](IDiGraphView const &g) {
-      return unsafe_view_as_contracted(g, k, v);
+    result->add_view([&kv](IDiGraphView const &g) {
+      return unsafe_view_as_contracted(g, kv.first, kv.second);
     });
   }
   return result;
 }
 
-std::unordered_map<Node, Node> flatten_contraction(std::unordered_map<Node, Node> const &m) {
-  disjoint_set<Node> unionfind;
-  for (auto const &kv : m) {
-    unionfind.m_union(kv.first, kv.second);
-  }
-  std::unordered_map<Node> result.add_edge;
-  for (auto const &kv : m) {
-    result[kv.first] = unionfind.find(kv.first);
-  }
-  return result;
-}
+/* std::unordered_map<Node, Node> flatten_contraction(std::unordered_map<Node, Node> const &m) { */
+/*   disjoint_set<Node> unionfind; */
+/*   for (auto const &kv : m) { */
+/*     unionfind.m_union(kv.first, kv.second); */
+/*   } */
+/*   std::unordered_map<Node, Node> result.add_edge; */
+/*   for (auto const &kv : m) { */
+/*     result[kv.first] = unionfind.find(kv.first); */
+/*   } */
+/*   return result; */
+/* } */
 
-}
 }

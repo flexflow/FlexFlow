@@ -1,23 +1,18 @@
 #include "utils/graph/undirected.h"
-#include "utils/hash-utils.h"
+#include "utils/visit_struct.h"
 
 namespace FlexFlow {
-namespace utils {
 
 UndirectedEdge::UndirectedEdge(Node src, Node dst) 
   : smaller(std::min(smaller, bigger)), bigger(std::max(smaller, bigger))
 { }
 
 bool UndirectedEdge::operator==(UndirectedEdge const &other) const {
-  return this->as_tuple() == other.as_tuple();
+  return visit_eq(*this, other);
 }
 
 bool UndirectedEdge::operator<(UndirectedEdge const &other) const {
-  return this->as_tuple() < other.as_tuple();
-}
-
-typename UndirectedEdge::AsConstTuple UndirectedEdge::as_tuple() const {
-  return {this->smaller, this->bigger};
+  return visit_eq(*this, other);
 }
 
 UndirectedEdgeQuery::UndirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &nodes) 
@@ -25,12 +20,11 @@ UndirectedEdgeQuery::UndirectedEdgeQuery(tl::optional<std::unordered_set<Node>> 
 { }
 
 }
-}
 
 namespace std {
-using ::FlexFlow::utils::UndirectedEdge;
+using ::FlexFlow::UndirectedEdge;
 
 size_t std::hash<UndirectedEdge>::operator()(UndirectedEdge const &e) const {
-  return get_std_hash(e.as_tuple());
+  return visit_hash(e);
 }
 }

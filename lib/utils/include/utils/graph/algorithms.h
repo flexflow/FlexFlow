@@ -11,6 +11,7 @@
 #include "utils/containers.h"
 #include "views.h"
 #include "open_graphs.h"
+#include "tl/optional.hpp"
 
 namespace FlexFlow {
 
@@ -126,7 +127,7 @@ std::vector<std::unordered_set<Node>> get_connected_components(IUndirectedGraphV
 
 std::unordered_set<DirectedEdge> get_transitive_reduction_delta(IDiGraphView const &);
 
-using GraphSplit = std::pair<std::unordered_set<utils::Node>, std::unordered_set<utils::Node>>;
+using GraphSplit = std::pair<std::unordered_set<Node>, std::unordered_set<Node>>;
 
 template <typename Impl>
 Impl get_subgraph(IUndirectedGraphView const &g, std::unordered_set<Node> const &nodes) {

@@ -1,23 +1,18 @@
 #include "utils/graph/digraph.h"
-#include "utils/hash-utils.h"
+#include "utils/visit_struct.h"
 
 namespace FlexFlow {
-namespace utils {
 
 DirectedEdge::DirectedEdge(Node src, Node dst) 
   : src(src), dst(dst)
 { }
 
 bool DirectedEdge::operator==(DirectedEdge const &other) const {
-  return this->as_tuple() == other.as_tuple();
+  return visit_eq(*this, other);
 }
 
 bool DirectedEdge::operator<(DirectedEdge const &other) const {
-  return this->as_tuple() < other.as_tuple();
-}
-
-typename DirectedEdge::AsConstTuple DirectedEdge::as_tuple() const {
-  return {this->src, this->dst};
+  return visit_lt(*this, other);
 }
 
 std::ostream &operator<<(std::ostream &s, DirectedEdge const &e) {
@@ -31,12 +26,11 @@ DirectedEdgeQuery::DirectedEdgeQuery(tl::optional<std::unordered_set<Node>> cons
 { }
 
 }
-}
 
 namespace std {
-using ::FlexFlow::utils::DirectedEdge;
+using ::FlexFlow::DirectedEdge;
 
 size_t std::hash<DirectedEdge>::operator()(DirectedEdge const &e) const {
-  return get_std_hash(e.as_tuple());
+  return visit_hash(e);
 }
 }

@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include "tl/optional.hpp"
 #include <ostream>
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
 
@@ -18,9 +19,6 @@ public:
   bool operator!=(Node const &) const;
   bool operator<(Node const &) const;
 
-  using AsConstTuple = std::tuple<size_t>;
-  AsConstTuple as_tuple() const;
-
   std::string to_string() const;
 public:
   std::size_t idx;
@@ -28,6 +26,8 @@ public:
 std::ostream &operator<<(std::ostream &, Node const &);
 
 }
+
+VISITABLE_STRUCT(::FlexFlow::Node, idx);
 
 namespace std {
 template <>

@@ -4,6 +4,7 @@
 #include "tl/optional.hpp"
 #include <unordered_set>
 #include "node.h"
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
 
@@ -15,9 +16,6 @@ public:
   bool operator==(MultiDiEdge const &) const;
   bool operator<(MultiDiEdge const &) const;
 
-  using AsConstTuple = std::tuple<Node, Node, std::size_t, std::size_t>;
-  AsConstTuple as_tuple() const;
-
   std::string to_string() const;
 public:
   Node src, dst;
@@ -26,18 +24,18 @@ public:
 std::ostream &operator<<(std::ostream &, MultiDiEdge const &);
 
 }
-}
+
+VISITABLE_STRUCT(::FlexFlow::MultiDiEdge, src, dst, srcIdx, dstIdx);
 
 namespace std {
 template <>
-struct hash<::FlexFlow::utils::MultiDiEdge> {
-  std::size_t operator()(::FlexFlow::utils::MultiDiEdge const &) const;
+struct hash<::FlexFlow::MultiDiEdge> {
+  std::size_t operator()(::FlexFlow::MultiDiEdge const &) const;
 };
 }
 
 
 namespace FlexFlow {
-namespace utils {
 
 struct MultiDiEdgeQuery {
   tl::optional<std::unordered_set<Node>> srcs = tl::nullopt, dsts = tl::nullopt;

@@ -9,9 +9,9 @@
 #include "adjacency_digraph.h"
 #include <memory>
 #include <vector>
+#include "tl/optional.hpp"
 
 namespace FlexFlow {
-namespace utils {
 
 struct FlippedView : public IDiGraphView {
 public:
@@ -73,17 +73,15 @@ struct JoinNodeKey {
 };
 
 }
-}
 
 namespace std {
 template <>
-struct hash<::FlexFlow::utils::JoinNodeKey> {
-  std::size_t operator()(::FlexFlow::utils::JoinNodeKey const &) const;
+struct hash<::FlexFlow::JoinNodeKey> {
+  std::size_t operator()(::FlexFlow::JoinNodeKey const &) const;
 };
 }
 
 namespace FlexFlow {
-namespace utils {
 
 struct JoinedNodeView {
 public:
@@ -174,7 +172,7 @@ public:
 private:
   IDiGraphView const &g;
   tl::optional<AdjacencyDiGraph> singleton_src;
-  std::unique_ptr<IDiGraphView> joined_view;
+  tl::optional<JoinedDigraphView> joined_view;
   std::unique_ptr<AddDirectedEdgesView> added_edges_view;
 };
 
@@ -263,8 +261,7 @@ Impl materialize_multidigraph_view(IMultiDiGraphView const &g) {
 }
 
 }
-}
 
-VISITABLE_STRUCT(::FlexFlow::utils::JoinNodeKey, node, direction);
+VISITABLE_STRUCT(::FlexFlow::JoinNodeKey, node, direction);
 
 #endif 

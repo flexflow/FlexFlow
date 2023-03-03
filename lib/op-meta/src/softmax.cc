@@ -1,5 +1,5 @@
 #include "op-meta/ops/softmax.h"
-#include "op-meta/visit_struct.h"
+#include "utils/visit_struct.h"
 
 namespace FlexFlow {
 

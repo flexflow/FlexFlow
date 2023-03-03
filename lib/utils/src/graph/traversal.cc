@@ -3,7 +3,6 @@
 #include "utils/graph/algorithms.h"
 
 namespace FlexFlow {
-namespace utils {
 
 using cdi = checked_dfs_iterator;
 using udi = unchecked_dfs_iterator;
@@ -211,5 +210,4 @@ BFSView bfs(IDiGraphView const &g, std::unordered_set<Node> const &starting_poin
 }
 
 
-}
 }

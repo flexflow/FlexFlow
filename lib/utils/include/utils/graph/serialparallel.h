@@ -3,33 +3,31 @@
 
 #include "digraph.h"
 #include "multidigraph.h"
-#include "mpark/variant.hpp"
+#include "utils/variant.h"
 #include <vector>
 
 namespace FlexFlow {
-namespace utils {
 
 Node find_source_node(IDiGraphView const &);
 Node find_sink_node(IDiGraphView const &);
 
-tl::optional<Node> find_bottleneck_node(IMultiDiGraphView const &);
-tl::optional<Node> find_bottleneck_node(IDiGraphView const &);
+optional<Node> find_bottleneck_node(IMultiDiGraphView const &);
+optional<Node> find_bottleneck_node(IDiGraphView const &);
 
 struct Parallel;
 
 struct Serial {
-  std::vector<mpark::variant<Parallel, Node>> children;
+  std::vector<variant<Parallel, Node>> children;
 };
 
 struct Parallel {
-  std::vector<mpark::variant<Serial, Node>> children;
+  std::vector<variant<Serial, Node>> children;
 };
 
-using SerialParallelDecomposition = mpark::variant<Serial, Parallel, Node>;
+using SerialParallelDecomposition = variant<Serial, Parallel, Node>;
 
 SerialParallelDecomposition get_serial_parallel_decomposition(IDiGraphView const &);
 
-}
 }
 
 #endif 

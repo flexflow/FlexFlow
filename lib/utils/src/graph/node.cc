@@ -1,28 +1,23 @@
 #include "utils/graph/node.h"
-#include "utils/hash-utils.h"
 #include <sstream>
+#include "utils/visit_struct.h"
 
 namespace FlexFlow {
-namespace utils {
 
 Node::Node(std::size_t idx) 
   : idx(idx) 
 { }
 
 bool Node::operator==(Node const &other) const {
-  return this->as_tuple() == other.as_tuple();
+  return visit_eq(*this, other);
 }
 
 bool Node::operator!=(Node const &other) const {
-  return this->as_tuple() != other.as_tuple();
+  return visit_neq(*this, other);
 }
 
 bool Node::operator<(Node const &other) const {
-  return this->as_tuple() < other.as_tuple();
-}
-
-typename Node::AsConstTuple Node::as_tuple() const {
-  return {this->idx};
+  return visit_lt(*this, other);
 }
 
 std::string Node::to_string() const {
@@ -45,12 +40,11 @@ NodeQuery::NodeQuery(tl::optional<std::unordered_set<Node>> const &nodes)
 { }
 
 }
-}
 
 namespace std {
-using ::FlexFlow::utils::Node;
+using ::FlexFlow::Node;
 
 std::size_t hash<Node>::operator()(Node const &n) const {
-  return get_std_hash(n.as_tuple());
+  return visit_hash(n);
 }
 }
