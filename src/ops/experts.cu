@@ -59,7 +59,7 @@ __global__ void experts_forward_prepare_kernel(
     float const *coefficients,      // @In: topk_gate_predss coefficients tensor
                                     // (num_chosen_experts, batch_size)
     float const **coefficient_idx_array, // @Out: Barray for Aggregation
-    float const **output_idx_array) {
+    float **output_idx_array) {
 
   CUDA_KERNEL_LOOP(i, num_valid_assignments) {
     int global_expert_label = sorted_indices[lb_index + i];
@@ -137,6 +137,60 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
       gemm_batch_count, // Total submatrixes
       compute_type,
       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
+  // TODO 1: try to handle the coefficients here with another cublassGemmBatched
+  // float alpha = 1.0f, beta = 0.0f;
+  // cudaDataType_t result_type = CUDA_R_32F;
+  // cudaDataType_t coefficient_type = CUDA_R_32F;
+  // cudaDataType_t output_type = CUDA_R_32F;
+  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
+  // cublasGemmBatchedEx(
+  //     handle,
+  //     CUBLAS_OP_N, // Intermediate reulsts, shape (out_dim, 1)
+  //     CUBLAS_OP_N, // Coefficient, shape (1, 1)
+  //     out_dim,     // num_row of (A, C) = out_dim
+  //     1,           // num_col of (B, C) = 1
+  //     1,           // num_col of A and num_rows of B = in_dim
+  //     &alpha,
+  //     (void const **)
+  //         results_ptr, // Aarray (num_tokens * chosen_experts, out_dim, 1)
+  //     result_type,
+  //     out_dim, // Leading Dimension of result tensor
+  //     (void const **)
+  //         coefficient_ptr, // Barray (num_tokens * chosen_experts, 1, 1)
+  //     coefficient_type,
+  //     1, // Leading Dimension of coefficient tensor
+  //     &beta,
+  //     (void **)output_ptr, // Carray (num_tokens * chosen_experts, out_dim,
+  //     1) output_type, out_dim,                         // Leading Dimension
+  //     of output num_tokens * num_chosen_experts, // Total submatrixs
+  //     compute_type,
+  //     CUBLAS_GEMM_DEFAULT_TENSOR_OP);
+
+  // TODO 2: bias and activations
+}
+
+__global__ void experts_forward_aggregate_kernel(int num_tokens,
+                                                 int gemm_batch_count,
+                                                 int out_dim,
+                                                 float *output,
+                                                 float **results_ptr,
+                                                 float const **coefficient_ptr,
+                                                 float **output_ptr) {
+
+  CUDA_KERNEL_LOOP(i, num_tokens * out_dim) {
+    output[i] = 0.0f;
+  }
+
+  __syncthreads();
+
+  CUDA_KERNEL_LOOP(i, gemm_batch_count * out_dim) {
+    int token_index = i / out_dim;
+    int emb_index = i % out_dim;
+    float res =
+        results_ptr[token_index][emb_index] * (*coefficient_ptr[token_index]);
+    atomicAdd(output_ptr[token_index] + emb_index, res);
+  }
 }
 
 struct exceeds_expert_capacity {
@@ -416,27 +470,21 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      num_chosen_experts,
                                      gemm_batch_count,
                                      stream);
+  cudaDeviceSynchronize();
 
-  // Batched Gemm Excution for every chosen_expert-token pairs
-  /* experts_forward_GemmBatched_kernel(handle,
-                                     m->dev_weight_idx_array,
-                                     m->dev_token_idx_arrary,
-                                     m->dev_result_idx_array,
-                                     //  bias_ptr,
-                                     data_dim,
-                                     out_dim,
-                                     num_tokens,
-                                     num_chosen_experts,
-                                     stream);
-
-  experts_forward_aggregate_kernel(handle,
-                                   m->dev_result_idx_array,
-                                   m->dev_coefficient_idx_array,
-                                   m->dev_output_idx_array,
-                                   out_dim,
-                                   num_tokens,
-                                   num_chosen_experts,
-                                   stream); */
+  int aggregation_parallelism =
+      std::max(num_tokens, gemm_batch_count) * out_dim;
+  experts_forward_aggregate_kernel<<<GET_BLOCKS(aggregation_parallelism),
+                                     min(CUDA_NUM_THREADS,
+                                         (int)aggregation_parallelism),
+                                     0,
+                                     stream>>>(num_tokens,
+                                               gemm_batch_count,
+                                               out_dim,
+                                               output,
+                                               m->dev_batch_outputs,
+                                               m->coefficient_idx_array,
+                                               m->output_idx_array);
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
@@ -447,49 +495,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     cudaEventDestroy(t_end);
     printf("[Experts] forward time = %.2lfms\n", elapsed);
   }
-}
-
-void experts_forward_aggregate_kernel(cublasHandle_t const handle,
-                                      float **results_ptr,
-                                      float **coefficient_ptr,
-                                      float **output_ptr,
-                                      //  int in_dim,
-                                      int out_dim,
-                                      int num_tokens,
-                                      int num_chosen_experts,
-                                      ffStream_t stream) {
-
-  float alpha = 1.0f, beta = 0.0f;
-
-  cudaDataType_t result_type = CUDA_R_32F;
-  cudaDataType_t coefficient_type = CUDA_R_32F;
-  cudaDataType_t output_type = CUDA_R_32F;
-
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
-
-  cublasGemmBatchedEx(
-      handle,
-      CUBLAS_OP_N, // Intermediate reulsts, shape (out_dim, 1)
-      CUBLAS_OP_N, // Coefficient, shape (1, 1)
-      out_dim,     // num_row of (A, C) = out_dim
-      1,           // num_col of (B, C) = 1
-      1,           // num_col of A and num_rows of B = in_dim
-      &alpha,
-      (void const **)
-          results_ptr, // Aarray (num_tokens * chosen_experts, out_dim, 1)
-      result_type,
-      out_dim, // Leading Dimension of result tensor
-      (void const **)
-          coefficient_ptr, // Barray (num_tokens * chosen_experts, 1, 1)
-      coefficient_type,
-      1, // Leading Dimension of coefficient tensor
-      &beta,
-      (void **)output_ptr, // Carray (num_tokens * chosen_experts, out_dim, 1)
-      output_type,
-      out_dim,                         // Leading Dimension of output
-      num_tokens * num_chosen_experts, // Total submatrixs
-      compute_type,
-      CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 }
 
 ExpertsMeta::ExpertsMeta(FFHandler handler,
