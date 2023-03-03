@@ -31,6 +31,7 @@ public:
   float const **dev_weights;
   float const **weight_idx_array;
   float const **coefficient_idx_array;
+  float const **output_idx_array;
 
   int num_experts;
   int experts_start_idx;
