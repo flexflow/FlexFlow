@@ -44,6 +44,8 @@ __global__ void experts_forward_prepare_kernel(
     int num_experts_per_block,
     int num_chosen_experts,
     int data_dim,
+    int out_dim,
+    bool use_bias,
     int *sorted_indices,
     int *expert_start_indexes,
     int *exp_local_label_to_index,
@@ -58,36 +60,31 @@ __global__ void experts_forward_prepare_kernel(
                                     // (num_chosen_experts, batch_size)
     float const **coefficient_idx_array, // @Out: Barray for Aggregation
     float const **output_idx_array) {
+
   CUDA_KERNEL_LOOP(i, num_valid_assignments) {
     int global_expert_label = sorted_indices[lb_index + i];
     assert(global_expert_label >= experts_start_idx &&
            global_expert_label < experts_start_idx + num_experts_per_block);
     int local_expert_label = global_expert_label - experts_start_idx;
-
     int expert_index = exp_local_label_to_index[local_expert_label];
     int within_expert_offset = i - expert_start_indexes[expert_index];
-
     if (within_expert_offset < expert_capacity) {
-
-      /* printf("dest: %d, offset: %d\n",
-      destination_start_indices[expert_index], within_expert_offset );
-      printf("%d: %p\n", destination_start_indices[expert_index] +
-      within_expert_offset, &input[(original_indices[i + lb_index] /
-      num_chosen_experts) * data_dim]); printf("token index: %d\n",
-      (original_indices[i + lb_index] / num_chosen_experts)); */
-
+      int rev_idx = original_indices[i + lb_index];
+      int token_idx = (rev_idx / num_chosen_experts);
+      // printf("dest: %d, offset: %d\n",
+      // destination_start_indices[expert_index], within_expert_offset);
+      // printf("%d: %p\n", destination_start_indices[expert_index] +
+      // within_expert_offset, &input[token_idx * data_dim]); printf("token
+      // index: %d\n", token_idx);
       token_idx_array[destination_start_indices[expert_index] +
-                      within_expert_offset] =
-          &input[(original_indices[i + lb_index] / num_chosen_experts) *
-                 data_dim];
+                      within_expert_offset] = &input[token_idx * data_dim];
       weight_idx_array[destination_start_indices[expert_index] +
-                       within_expert_offset] = weights[local_expert_label];
-      coefficient_idx_array[destination_start_indices[expert_index] +
-                            within_expert_offset] =
-          &coefficients[original_indices[i + lb_index]];
-      output_idx_array[destination_start_indices[expert_index] +
                        within_expert_offset] =
-          &output[original_indices[i + lb_index] / num_chosen_experts];
+          weights[local_expert_label * (1 + use_bias)];
+      coefficient_idx_array[destination_start_indices[expert_index] +
+                            within_expert_offset] = &coefficients[rev_idx];
+      output_idx_array[destination_start_indices[expert_index] +
+                       within_expert_offset] = &output[token_idx * out_dim];
     }
   }
 }
@@ -117,50 +114,6 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
 
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
 
-  std::cout << "batched Gemme count: " << num_tokens * num_chosen_experts
-            << std::endl;
-
-  //   std::cout << output_ptr[0] << std::endl;
-  thrust::device_ptr<float const *> thrust_weight =
-      thrust::device_pointer_cast(weight_ptr);
-  thrust::copy_n(
-      thrust_weight, 1, std::ostream_iterator<float const *>(std::cout, ","));
-  std::cout << std::endl;
-
-  thrust::device_ptr<float const *> thrust_token =
-      thrust::device_pointer_cast(input_ptr);
-  thrust::copy_n(
-      thrust_token, 1, std::ostream_iterator<float const *>(std::cout, ","));
-  std::cout << std::endl;
-
-  float const **host_weights;
-  float const **host_tokens;
-  float const **host_output;
-
-  host_weights = (float const **)malloc(42 * sizeof(float const *));
-  host_tokens = (float const **)malloc(42 * sizeof(float const *));
-  host_output = (float const **)malloc(42 * sizeof(float const *));
-
-  checkCUDA(cudaMemcpy(host_weights,
-                       weight_ptr,
-                       42 * sizeof(float const *),
-                       cudaMemcpyDeviceToHost));
-  checkCUDA(cudaMemcpy(host_tokens,
-                       input_ptr,
-                       42 * sizeof(float const *),
-                       cudaMemcpyDeviceToHost));
-  checkCUDA(cudaMemcpy(host_output,
-                       output_ptr,
-                       42 * sizeof(float const *),
-                       cudaMemcpyDeviceToHost));
-
-  for (int i = 0; i < 42; i++) {
-    printf("%d: \n", i);
-    if (host_weights[i] != nullptr) {
-      printf("%p, %p, %p \n", host_weights[i], host_tokens[i], host_output[i]);
-    }
-  }
-
   cublasGemmEx(
       m->handle.blas,
       CUBLAS_OP_T, // Tranpose Weight, shape (in_dim, out_dim) => (out_dim,
@@ -170,18 +123,14 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
       1,           // num_col of (B, C) = 1
       in_dim,      // num_col of A and num_rows of B = in_dim
       &alpha,
-      // weight_ptr[0], // Aarray (num_tokens * chosen_experts, in_dim, out_dim)
-      (void const *)host_weights[0],
+      weight_ptr, // Aarray (num_tokens * chosen_experts, in_dim, out_dim)
       weight_type,
-      in_dim, // Leading Dimension of weight before transpose
-      // input_ptr[0], // Barray (num_tokens * chosen_experts, in_dim, 1)
-      (void const *)host_tokens[0],
+      in_dim,    // Leading Dimension of weight before transpose
+      input_ptr, // Barray (num_tokens * chosen_experts, in_dim, 1)
       input_type,
       in_dim, // Leading Dimension of input_token
       &beta,
-      // (void *)output_ptr[0], // Carray (num_tokens * chosen_experts, out_dim,
-      // 1)
-      (void *)host_output[0],
+      (void *)output_ptr, // Carray (num_tokens * chosen_experts, out_dim, 1)
       output_type,
       out_dim, // Leading Dimension of output
                //   num_tokens * num_chosen_experts, // Total submatrixs
@@ -256,6 +205,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 
   assert(chosen_experts == num_chosen_experts);
   assert(num_tokens == batch_size);
+  assert(out_dim == m->out_dim);
 
   // TODO: remove this once we condense all weights in a single tensor
   // currently each weight matrix is placed on GPU by Legion, but the array
@@ -430,6 +380,11 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   thrust::copy_n(destination_start_indices, non_zero_experts_count,
   std::ostream_iterator<int>(std::cout, ",")); std::cout << std::endl; */
 
+  int gemm_batch_count =
+      thrust::reduce(thrust::device,
+                     destination_start_indices,
+                     destination_start_indices + non_zero_experts_count);
+
   thrust::exclusive_scan(thrust::device,
                          destination_start_indices,
                          destination_start_indices + non_zero_experts_count,
@@ -458,6 +413,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                              num_experts_per_block,
                                              num_chosen_experts,
                                              data_dim,
+                                             out_dim,
+                                             use_bias,
                                              m->sorted_indices,
                                              m->expert_start_indexes,
                                              m->exp_local_label_to_index,
@@ -473,7 +430,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                              m->output_idx_array);
 
   // cudaDeviceSynchronize();
-  //  std::this_thread::sleep_for(std::chrono::seconds(1));
 
   /* experts_forward_GemmBatched_kernel(m,
                                      m->weight_idx_array,
