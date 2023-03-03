@@ -80,6 +80,7 @@ else()
   message(STATUS "Building NCCL from source")
   list(TRANSFORM CUDA_GENCODE PREPEND "NVCC_GENCODE=" OUTPUT_VARIABLE NCCL_BUILD_NVCC_GENCODE)
   
+  include(ExternalProject)
   ExternalProject_Add(${NCCL_NAME}
    SOURCE_DIR ${PROJECT_SOURCE_DIR}/deps/${NCCL_NAME}
    PREFIX ${CMAKE_BINARY_DIR}/deps/${NCCL_NAME}

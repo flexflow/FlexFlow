@@ -160,7 +160,7 @@ std::unordered_set<MultiDiEdge> get_incoming_edges(IMultiDiGraphView const &g, s
 
 std::unordered_set<DirectedEdge> get_incoming_edges(IDiGraphView const &g, std::unordered_set<Node> const &dsts) {
   auto multidigraph_view = unsafe_view_as_multidigraph(g);
-  return to_directed_edges(get_incoming_edges(multidigraph_view, dsts));
+  return to_directed_edges(get_incoming_edges(*multidigraph_view, dsts));
 }
 
 std::unordered_set<MultiDiEdge> get_outgoing_edges(IMultiDiGraphView const &g, std::unordered_set<Node> const &srcs) {
@@ -169,7 +169,7 @@ std::unordered_set<MultiDiEdge> get_outgoing_edges(IMultiDiGraphView const &g, s
 
 std::unordered_set<DirectedEdge> get_outgoing_edges(IDiGraphView const &g, std::unordered_set<Node> const &dsts) {
   auto multidigraph_view = unsafe_view_as_multidigraph(g);
-  return to_directed_edges(get_outgoing_edges(multidigraph_view, dsts));
+  return to_directed_edges(get_outgoing_edges(*multidigraph_view, dsts));
 }
 
 std::unordered_map<Node, std::unordered_set<Node>> get_predecessors(IDiGraphView const &g, std::unordered_set<Node> const &nodes) {
@@ -188,7 +188,7 @@ std::unordered_set<Node> get_predecessors(IDiGraphView const &g, Node const &n) 
 }
 
 std::unordered_map<Node, std::unordered_set<Node>> get_predecessors(IMultiDiGraphView const &g, std::unordered_set<Node> const &nodes) {
-  return get_predecessors(unsafe_view_as_digraph(g), nodes);
+  return get_predecessors(*unsafe_view_as_digraph(g), nodes);
 }
 
 std::unordered_set<Node> get_predecessors(IMultiDiGraphView const &g, Node const &n) {
@@ -250,7 +250,7 @@ tl::optional<bool> is_acyclic(IDiGraphView const &g) {
 
 tl::optional<bool> is_acyclic(IMultiDiGraph const &g) {
   auto digraph_view = unsafe_view_as_digraph(g);
-  return is_acyclic(digraph_view);
+  return is_acyclic(*digraph_view);
 }
 
 std::vector<Node> get_unchecked_topological_ordering(IDiGraphView const &g) {
@@ -287,7 +287,7 @@ std::vector<Node> get_topological_ordering(IDiGraphView const &g) {
 }
 
 std::vector<Node> get_topological_ordering(IMultiDiGraphView const &g) {
-  return get_topological_ordering(unsafe_view_as_digraph(g));
+  return get_topological_ordering(*unsafe_view_as_digraph(g));
 }
 
 std::vector<DirectedEdge> get_edge_topological_ordering(IDiGraphView const &g) {
@@ -317,7 +317,7 @@ std::vector<MultiDiEdge> get_edge_topological_ordering(IMultiDiGraphView const &
 }
 
 std::unordered_map<Node, std::unordered_set<Node>> get_dominators(IMultiDiGraphView const &g) {
-  return get_dominators(unsafe_view_as_digraph(g));
+  return get_dominators(*unsafe_view_as_digraph(g));
 }
 
 std::unordered_map<Node, std::unordered_set<Node>> get_dominators(IDiGraphView const &g) {
@@ -339,7 +339,7 @@ std::unordered_map<Node, std::unordered_set<Node>> get_dominators(IDiGraphView c
 }
 
 std::unordered_map<Node, std::unordered_set<Node>> get_post_dominators(IMultiDiGraphView const &g) {
-  return get_post_dominators(unsafe_view_as_digraph(g));
+  return get_post_dominators(*unsafe_view_as_digraph(g));
 }
 
 std::unordered_map<Node, std::unordered_set<Node>> get_post_dominators(IDiGraphView const &g) {
@@ -383,7 +383,7 @@ std::unordered_map<Node, tl::optional<Node>> get_imm_dominators(IDiGraphView con
 
 
 std::unordered_map<Node, tl::optional<Node>> get_imm_dominators(IMultiDiGraphView const &g) {
-  return get_imm_dominators(unsafe_view_as_digraph(g));
+  return get_imm_dominators(*unsafe_view_as_digraph(g));
 }
 
 std::unordered_map<Node, tl::optional<Node>> get_imm_post_dominators(IDiGraphView const &g) {
@@ -391,7 +391,7 @@ std::unordered_map<Node, tl::optional<Node>> get_imm_post_dominators(IDiGraphVie
 }
 
 std::unordered_map<Node, tl::optional<Node>> get_imm_post_dominators(IMultiDiGraphView const &g) {
-  return get_imm_post_dominators(unsafe_view_as_digraph(g));
+  return get_imm_post_dominators(*unsafe_view_as_digraph(g));
 }
 
 tl::optional<Node> imm_post_dominator(IDiGraphView const &g, Node const &n) {
@@ -400,6 +400,18 @@ tl::optional<Node> imm_post_dominator(IDiGraphView const &g, Node const &n) {
 
 tl::optional<Node> imm_post_dominator(IMultiDiGraphView const &g, Node const &n) {
   return get_imm_post_dominators(g).at(n);
+}
+
+std::pair<OutputMultiDiEdge, InputMultiDiEdge> split_edge(MultiDiEdge const &e) {
+  return { OutputMultiDiEdge{{e.dst.idx, e.dstIdx}, e.src, e.srcIdx}, InputMultiDiEdge{{e.src.idx, e.srcIdx}, e.dst, e.dstIdx} };
+}
+
+MultiDiEdge unsplit_edge(OutputMultiDiEdge const &output_edge, InputMultiDiEdge const &input_edge) {
+  assert (output_edge.uid.first == input_edge.dst.idx);
+  assert (output_edge.uid.second == input_edge.dstIdx);
+  assert (input_edge.uid.first == output_edge.src.idx);
+  assert (input_edge.uid.second == output_edge.srcIdx);
+  return { output_edge.src, input_edge.dst, output_edge.srcIdx, input_edge.dstIdx };
 }
 
 }

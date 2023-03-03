@@ -142,28 +142,28 @@ std::unordered_set<Node> ViewMultiDiGraphAsDiGraph::query_nodes(NodeQuery const 
   return this->multidi->query_nodes(query);
 }
 
-ViewDiGraphAsUndirectedGraph unsafe_view_as_undirected(IDiGraphView const &directed) {
-  return ViewDiGraphAsUndirectedGraph{directed};
+std::unique_ptr<IUndirectedGraphView> unsafe_view_as_undirected(IDiGraphView const &directed) {
+  return std::unique_ptr<IUndirectedGraphView>(new ViewDiGraphAsUndirectedGraph{directed});
 }
 
-ViewDiGraphAsUndirectedGraph view_as_undirected(std::shared_ptr<IDiGraph> const &directed) {
-  return ViewDiGraphAsUndirectedGraph{directed};
+std::unique_ptr<IUndirectedGraphView> view_as_undirected(std::shared_ptr<IDiGraph> const &directed) {
+  return std::unique_ptr<IUndirectedGraphView>(new ViewDiGraphAsUndirectedGraph{directed});
 }
 
-ViewDiGraphAsMultiDiGraph unsafe_view_as_multidigraph(IDiGraphView const &directed) {
-  return ViewDiGraphAsMultiDiGraph{directed};
+std::unique_ptr<IMultiDiGraphView> unsafe_view_as_multidigraph(IDiGraphView const &directed) {
+  return std::unique_ptr<IMultiDiGraphView>(new ViewDiGraphAsMultiDiGraph(directed));
 }
 
-ViewDiGraphAsMultiDiGraph view_as_multidigraph(std::shared_ptr<IDiGraphView> const &directed) {
-  return ViewDiGraphAsMultiDiGraph{directed};
+std::unique_ptr<IMultiDiGraphView> view_as_multidigraph(std::shared_ptr<IDiGraphView> const &directed) {
+  return std::unique_ptr<IMultiDiGraphView>(new ViewDiGraphAsMultiDiGraph(directed));
 }
 
-ViewMultiDiGraphAsDiGraph unsafe_view_as_digraph(IMultiDiGraphView const &multidi) {
-  return ViewMultiDiGraphAsDiGraph{multidi}; 
+std::unique_ptr<IDiGraphView> unsafe_view_as_digraph(IMultiDiGraphView const &multidi) {
+  return std::unique_ptr<IDiGraphView>(new ViewMultiDiGraphAsDiGraph{multidi});
 }
 
-ViewMultiDiGraphAsDiGraph view_as_digraph(std::shared_ptr<IMultiDiGraph> const &multidi) {
-  return ViewMultiDiGraphAsDiGraph{multidi};
+std::unique_ptr<IDiGraphView> view_as_digraph(std::shared_ptr<IMultiDiGraph> const &multidi) {
+  return std::unique_ptr<IDiGraphView>(new ViewMultiDiGraphAsDiGraph{multidi});
 }
 
 }

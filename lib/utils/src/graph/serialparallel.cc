@@ -18,7 +18,7 @@ Node find_sink_node(IDiGraphView const &g) {
 }
 
 optional<Node> find_bottleneck_node(IMultiDiGraphView const &g) {
-  return find_bottleneck_node(unsafe_view_as_digraph(g));
+  return find_bottleneck_node(*unsafe_view_as_digraph(g));
 }
 
 optional<Node> find_bottleneck_node(IDiGraphView const &g) {

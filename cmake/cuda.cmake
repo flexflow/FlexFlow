@@ -4,6 +4,7 @@ set(CUDA_ROOT ${CUDA_PATH})
 set(CUDA_TOOLKIT_ROOT_DIR ${CUDA_PATH})
 list(APPEND CMAKE_PREFIX_PATH ${CUDA_ROOT})
 find_package(CUDA REQUIRED)
+message("cuda-libraries ${CUDA_LIBRARIES}")
 
 if(CUDA_FOUND)
   # strip the cudart lib

@@ -1,4 +1,4 @@
-set(project_target ffr)
+set(project_target runtime)
 
 project(${project_target})
 
@@ -16,7 +16,7 @@ target_include_directories(
   ${project_target}
   PRIVATE
     src/
-  INTERFACE
+  PUBLIC
     include/
 )
 target_link_libraries(
@@ -24,6 +24,7 @@ target_link_libraries(
   op-meta
   utils
   optional
-  legion
+  ${LEGION_LIBRARY}
+  compiler
 )
 

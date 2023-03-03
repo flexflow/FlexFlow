@@ -15,7 +15,7 @@
 #ifndef _FLEXFLOW_MODEL_H_
 #define _FLEXFLOW_MODEL_H_
 #include "accessor.h"
-#include "config.h"
+#include "runtime/config.h"
 #include "device.h"
 #include "flexflow/node.h"
 #include "flexflow/operator_params.h"

@@ -5,11 +5,12 @@
 #include "multidigraph.h"
 #include "utils/variant.h"
 #include "tl/optional.hpp"
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
 
 struct InputMultiDiEdge {
-  std::size_t uid; // necessary to differentiate multiple input edges from different sources resulting from a graph cut
+  std::pair<std::size_t, std::size_t> uid; // necessary to differentiate multiple input edges from different sources resulting from a graph cut
 
   Node dst;
   std::size_t dstIdx;
@@ -17,7 +18,7 @@ struct InputMultiDiEdge {
 bool operator==(InputMultiDiEdge const &, InputMultiDiEdge const &);
 
 struct OutputMultiDiEdge {
-  std::size_t uid; // necessary to differentiate multiple output edges from different sources resulting from a graph cut
+  std::pair<std::size_t, std::size_t> uid; // necessary to differentiate multiple output edges from different sources resulting from a graph cut
 
   Node src;
   std::size_t srcIdx;
@@ -106,6 +107,9 @@ struct hash<::FlexFlow::InputMultiDiEdge> {
 };
 
 }
+
+VISITABLE_STRUCT(::FlexFlow::InputMultiDiEdge, uid, dst, dstIdx);
+VISITABLE_STRUCT(::FlexFlow::OutputMultiDiEdge, uid, src, srcIdx);
 
 namespace FlexFlow {
 

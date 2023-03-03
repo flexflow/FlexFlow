@@ -116,6 +116,7 @@ std::vector<Node> get_unchecked_dfs_ordering(IDiGraphView const &, std::unordere
 std::vector<Node> get_bfs_ordering(IDiGraphView const &, std::unordered_set<Node> const &starting_points);
 std::vector<Node> get_topological_ordering(IDiGraphView const &);
 std::vector<Node> get_topological_ordering(IMultiDiGraphView const &);
+std::vector<Node> get_topological_ordering(IOpenMultiDiGraphView const &);
 std::vector<Node> get_unchecked_topological_ordering(IDiGraphView const &);
 
 std::vector<DirectedEdge> get_edge_topological_ordering(IDiGraphView const &);
@@ -128,6 +129,9 @@ std::vector<std::unordered_set<Node>> get_connected_components(IUndirectedGraphV
 std::unordered_set<DirectedEdge> get_transitive_reduction_delta(IDiGraphView const &);
 
 using GraphSplit = std::pair<std::unordered_set<Node>, std::unordered_set<Node>>;
+
+std::pair<OutputMultiDiEdge, InputMultiDiEdge> split_edge(MultiDiEdge const &e);
+MultiDiEdge unsplit_edge(OutputMultiDiEdge const &, InputMultiDiEdge const &);
 
 template <typename Impl>
 Impl get_subgraph(IUndirectedGraphView const &g, std::unordered_set<Node> const &nodes) {

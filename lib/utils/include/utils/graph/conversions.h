@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <unordered_map>
 #include "mpark/variant.hpp"
+#include "open_graphs.h"
 
 namespace FlexFlow {
 
@@ -90,13 +91,29 @@ private:
   IMultiDiGraphView const *multidi;
 };
 
-ViewDiGraphAsUndirectedGraph unsafe_view_as_undirected(IDiGraphView const &);
-ViewDiGraphAsUndirectedGraph view_as_undirected(std::shared_ptr<IDiGraphView> const &);
-ViewDiGraphAsMultiDiGraph unsafe_view_as_multidigraph(IDiGraphView const &);
-ViewDiGraphAsMultiDiGraph view_as_multidigraph(std::shared_ptr<IDiGraphView> const &);
-ViewMultiDiGraphAsDiGraph unsafe_view_as_digraph(IMultiDiGraphView const &);
-ViewMultiDiGraphAsDiGraph view_as_digraph(std::shared_ptr<IMultiDiGraphView> const &);
+struct ViewOpenMultiDiGraphAsMultiDiGraph : public IMultiDiGraphView { 
+public:
+  ViewOpenMultiDiGraphAsMultiDiGraph() = delete;
+  explicit ViewOpenMultiDiGraphAsMultiDiGraph(IOpenMultiDiGraph const &);
 
+  std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+private:
+  IOpenMultiDiGraphView const &g;
+};
+
+
+std::unique_ptr<IUndirectedGraphView> unsafe_view_as_undirected(IDiGraphView const &);
+std::unique_ptr<IUndirectedGraphView> view_as_undirected(std::shared_ptr<IDiGraphView const>);
+
+std::unique_ptr<IMultiDiGraphView> unsafe_view_as_multidigraph(IDiGraphView const &);
+std::unique_ptr<IMultiDiGraphView> view_as_multidigraph(std::shared_ptr<IDiGraphView const>);
+
+std::unique_ptr<IDiGraphView> unsafe_view_as_digraph(IMultiDiGraphView const &);
+std::unique_ptr<IDiGraphView> view_as_digraph(std::shared_ptr<IMultiDiGraphView const>);
+
+std::unique_ptr<IMultiDiGraphView> unsafe_view_as_multidigraph(std::shared_ptr<IOpenMultiDiGraphView const>);
+std::unique_ptr<IMultiDiGraphView> view_as_multidigraph(std::shared_ptr<IOpenMultiDiGraphView const>);
 }
 
 #endif

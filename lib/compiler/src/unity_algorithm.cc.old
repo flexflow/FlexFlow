@@ -1,23 +1,14 @@
 #include "ffc/unity_algorithm.h"
 
-using ::FlexFlow::utils::Node;
-using ::FlexFlow::utils::MultiDiEdge;
-using ::FlexFlow::utils::Serial;
-using ::FlexFlow::utils::Parallel;
-using ::FlexFlow::utils::SerialParallelDecomposition;
-using ::FlexFlow::opmeta::OperatorParameters;
-using ::FlexFlow::opmeta::ParallelTensorShape;
-
-
 namespace FlexFlow {
 namespace ffc {
 
-utils::SerialParallelDecomposition get_serial_parallel_decomposition(ParallelComputationGraph const &pcg) {
-  return utils::get_serial_parallel_decomposition(unsafe_view_as_digraph(pcg.g));
+SerialParallelDecomposition get_serial_parallel_decomposition(ParallelComputationGraph const &pcg) {
+  return get_serial_parallel_decomposition(unsafe_view_as_digraph(pcg.g));
 }
 
 std::vector<MultiDiEdge> get_sorted_node_input_edges(ParallelComputationGraph const &pcg, Node const &n) {
-  std::unordered_map<std::size_t, std::unordered_set<MultiDiEdge>> incoming_edges = utils::get_incoming_edges_by_idx(pcg.g, n);
+  std::unordered_map<std::size_t, std::unordered_set<MultiDiEdge>> incoming_edges = get_incoming_edges_by_idx(pcg.g, n);
 
   std::vector<MultiDiEdge> result;
   for (std::size_t i = 0; i < incoming_edges.size(); i++) {
@@ -27,12 +18,12 @@ std::vector<MultiDiEdge> get_sorted_node_input_edges(ParallelComputationGraph co
   return result;
 }
 
-std::unordered_map<utils::MultiDiEdge, opmeta::ParallelTensorShape> infer_tensor_shapes(ParallelComputationGraph const &pcg) {
-  std::unordered_map<utils::MultiDiEdge, opmeta::ParallelTensorShape> result;
-  for (Node const &n : utils::get_topological_ordering(pcg.g)) {
-    OperatorParameters op = pcg.nodeMap.at(n); 
+std::unordered_map<MultiDiEdge, opmeta::ParallelTensorShape> infer_tensor_shapes(ParallelComputationGraph const &pcg) {
+  std::unordered_map<MultiDiEdge, opmeta::ParallelTensorShape> result;
+  for (Node const &n : get_topological_ordering(pcg.g)) {
+    PCGOperatorAttrs op = pcg.at(n); 
 
-    std::vector<ParallelTensorShape> input_tensor_shapes = utils::vector_transform(
+    std::vector<ParallelTensorShape> input_tensor_shapes = vector_transform(
         [&](MultiDiEdge const &e) { return result.at(e); }, 
         get_sorted_node_input_edges(pcg, n)
     );
@@ -42,7 +33,7 @@ std::unordered_map<utils::MultiDiEdge, opmeta::ParallelTensorShape> infer_tensor
     auto outgoing_edges = get_outgoing_edges_by_idx(pcg.g, n);
 
     for (std::size_t i = 0; i < output_tensor_shapes.size(); i++) {
-      if (utils::contains_key(outgoing_edges, i)) {
+      if (contains_key(outgoing_edges, i)) {
         for (MultiDiEdge const &e : outgoing_edges.at(i)) {
           result.insert({ e, output_tensor_shapes[i] });
         }
@@ -55,32 +46,32 @@ std::unordered_map<utils::MultiDiEdge, opmeta::ParallelTensorShape> infer_tensor
   return result;
 }
 
-/* ParallelComputationGraph get_subgraph(ParallelComputationGraph const &pcg, std::unordered_set<utils::Node> const &nodes) { */
-/*   auto raw_subgraph = utils::get_subgraph<utils::AdjacencyMultiDiGraph>(pcg.g, nodes); */
-/*   auto raw_nodeMap = utils::restrict_keys(pcg.nodeMap, nodes); */
+/* ParallelComputationGraph get_subgraph(ParallelComputationGraph const &pcg, std::unordered_set<Node> const &nodes) { */
+/*   auto raw_subgraph = get_subgraph<AdjacencyMultiDiGraph>(pcg.g, nodes); */
+/*   auto raw_nodeMap = restrict_keys(pcg.nodeMap, nodes); */
 /*   return { raw_subgraph, raw_nodeMap }; */
 /* } */
 
 /* struct GetNodes { */
 /*   template <typename T> */
-/*   std::unordered_set<utils::Node> operator()(T const &t) { */
+/*   std::unordered_set<Node> operator()(T const &t) { */
 /*    return get_nodes(t); */ 
 /*   } */
 /* }; */
 
-/* std::unordered_set<utils::Node> get_nodes(utils::Serial const &serial) { */
+/* std::unordered_set<Node> get_nodes(Serial const &serial) { */
 /*   return set_union(vector_transform(GetNodes{}, serial.children)); */
 /* } */
 
-/* std::unordered_set<utils::Node> get_nodes(utils::Parallel const &parallel) { */
+/* std::unordered_set<Node> get_nodes(Parallel const &parallel) { */
 /*   return set_union(vector_transform(GetNodes{}, parallel.children)); */
 /* } */
 
-/* std::unordered_set<utils::Node> get_nodes(utils::Node const &node) { */
+/* std::unordered_set<Node> get_nodes(Node const &node) { */
 /*   return {node}; */
 /* } */
 
-/* std::unordered_set<utils::Node> get_nodes(utils::SerialParallelDecomposition const &sp) { */
+/* std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) { */
 /*   return mpark::visit(GetNodes{}, sp); */
 /* } */
 
@@ -90,9 +81,9 @@ std::unordered_map<utils::MultiDiEdge, opmeta::ParallelTensorShape> infer_tensor
 /* } */
 
 struct OpenSubParallelComputationGraph {
-  std::unique_ptr<utils::IDownwardOpenMultiDiGraphView const> g;
-  std::unordered_map<utils::Node, opmeta::OperatorParameters> nodeMap;
-  std::unordered_map<utils::DownwardOpenMultiDiEdge, MachineView> const &output_machine_views;
+  std::unique_ptr<IDownwardOpenMultiDiGraphView const> g;
+  std::unordered_map<Node, opmeta::OperatorParameters> nodeMap;
+  std::unordered_map<DownwardOpenMultiDiEdge, MachineView> const &output_machine_views;
 };
 
 using SubParallelComputationGraph = mpark::variant<
@@ -128,14 +119,14 @@ bool is_base_case(SubParallelComputationGraph const &g) {
 std::pair<
   OpenSubParallelComputationGraph, 
   OpenSubParallelComputationGraph,
-> apply_split(OpenSubParallelComputationGraph const &g, utils::GraphSplit const &split) {
+> apply_split(OpenSubParallelComputationGraph const &g, GraphSplit const &split) {
   
 }
 
 std::pair<
   OpenSubParallelComputationGraph,
   ParallelComputationGraph
-> apply_split(ParallelComputationGraph const &g, utils::GraphSplit const &split) {
+> apply_split(ParallelComputationGraph const &g, GraphSplit const &split) {
 
 }
 
@@ -161,7 +152,7 @@ struct OptimalCost {
   }
 
   float optimal_cost(Serial const &serial) const {
-    return utils::sum(utils::vector_transform([&](mpark::variant<Parallel, Node> const &t) { return mpark::visit(*this, t); }, serial.children));
+    return sum(vector_transform([&](mpark::variant<Parallel, Node> const &t) { return mpark::visit(*this, t); }, serial.children));
   }
 
   float optimal_cost(Parallel const &parallel) const {

@@ -10,6 +10,7 @@
 #include <memory>
 #include <vector>
 #include "tl/optional.hpp"
+#include "open_graphs.h"
 
 namespace FlexFlow {
 
@@ -201,8 +202,18 @@ private:
   std::vector<std::unique_ptr<IDiGraphView>> views;
 };
 
-DirectedEdge flipped(DirectedEdge const &);
+struct OpenMultiDiSubgraphView : public IOpenMultiDiGraphView {
+public:
+  OpenMultiDiSubgraphView() = delete;
+  explicit OpenMultiDiSubgraphView(IOpenMultiDiGraphView const &, std::unordered_set<Node> const &);
 
+  std::unordered_set<OpenMultiDiEdge> query_edges(OpenMultiDiEdgeQuery const &) const override; 
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+private:
+  IOpenMultiDiGraphView const &g;
+};
+
+DirectedEdge flipped(DirectedEdge const &);
 
 std::unique_ptr<IDiGraphView> unsafe_view_as_flipped(IDiGraphView const &);
 std::unique_ptr<IDiGraphView> view_as_flipped(std::shared_ptr<IDiGraphView const>);
@@ -212,6 +223,9 @@ std::unique_ptr<IDiGraphView> view_subgraph(std::shared_ptr<IDiGraphView const>,
 
 std::unique_ptr<IMultiDiGraphView> unsafe_view_subgraph(IMultiDiGraphView const &, std::unordered_set<Node> const &);
 std::unique_ptr<IMultiDiGraphView> view_subgraph(std::shared_ptr<IMultiDiGraphView const>, std::unordered_set<Node> const &);
+
+std::unique_ptr<IOpenMultiDiGraphView> unsafe_view_as_subgraph(IOpenMultiDiGraphView const &, std::unordered_set<Node> const &);
+std::unique_ptr<IOpenMultiDiGraphView> view_subgraph(std::shared_ptr<IOpenMultiDiGraphView const>, std::unordered_set<Node> const &);
 
 std::unique_ptr<IUndirectedGraphView> unsafe_view_as_joined(IUndirectedGraphView const &, IUndirectedGraphView const &);
 std::unique_ptr<IUndirectedGraphView> view_as_joined(std::shared_ptr<IUndirectedGraphView const>, std::shared_ptr<IUndirectedGraphView const>);
