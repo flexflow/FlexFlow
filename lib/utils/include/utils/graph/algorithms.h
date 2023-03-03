@@ -13,7 +13,6 @@
 #include "open_graphs.h"
 
 namespace FlexFlow {
-namespace utils {
 
 std::vector<Node> add_nodes(IGraph &, int);
 std::unordered_set<Node> get_nodes(IGraphView const &);
@@ -164,7 +163,6 @@ void export_as_dot(DotFile<Node> &,
                    std::function<RecordFormatter(Node const &)> const &, 
                    tl::optional<std::function<std::string(DirectedEdge const &)> const &> = tl::nullopt);
 
-}
 }
 
 #endif 

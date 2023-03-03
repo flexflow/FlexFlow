@@ -10,7 +10,6 @@
 #include "mpark/variant.hpp"
 
 namespace FlexFlow {
-namespace utils {
 
 UndirectedEdge to_undirected_edge(DirectedEdge const &);
 std::unordered_set<UndirectedEdge> to_undirected_edges(std::unordered_set<DirectedEdge> const &);
@@ -98,7 +97,6 @@ ViewDiGraphAsMultiDiGraph view_as_multidigraph(std::shared_ptr<IDiGraphView> con
 ViewMultiDiGraphAsDiGraph unsafe_view_as_digraph(IMultiDiGraphView const &);
 ViewMultiDiGraphAsDiGraph view_as_digraph(std::shared_ptr<IMultiDiGraphView> const &);
 
-}
 }
 
 #endif

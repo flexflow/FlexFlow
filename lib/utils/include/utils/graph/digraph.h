@@ -6,7 +6,6 @@
 #include <unordered_set>
 
 namespace FlexFlow {
-namespace utils {
 
 struct DirectedEdge {
 public:
@@ -58,7 +57,6 @@ struct IDiGraph : public IDiGraphView, public IGraph {
   virtual void remove_edge(Edge const &) = 0;
 };
 
-}
 }
 
 #endif

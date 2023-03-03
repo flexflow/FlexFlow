@@ -6,7 +6,6 @@
 #include <unordered_set>
 
 namespace FlexFlow {
-namespace utils {
 
 class AdjacencyMultiDiGraph : public IMultiDiGraph {
 public:
@@ -25,7 +24,6 @@ private:
       std::unordered_map<std::size_t, std::unordered_set<std::size_t>>>> adjacency;
 };
 
-}
 }
 
 #endif

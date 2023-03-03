@@ -1,6 +1,6 @@
 add_subdirectory(pcg)
-add_subdirectory(ffc)
-#add_subdirectory(ffr)
+add_subdirectory(compiler)
+#add_subdirectory(runtime)
 add_subdirectory(op-meta)
 #add_subdirectory(op-impl)
 add_subdirectory(utils)

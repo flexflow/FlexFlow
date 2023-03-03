@@ -1,0 +1,8 @@
+#ifndef _FLEXFLOW_UTILS_GRAPH_LABELLED_GRAPHS_H
+#define _FLEXFLOW_UTILS_GRAPH_LABELLED_GRAPHS_H
+
+namespace FlexFlow {
+
+}
+
+#endif 

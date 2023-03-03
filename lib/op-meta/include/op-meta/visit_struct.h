@@ -5,7 +5,6 @@
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
-namespace opmeta {
 
 struct eq_visitor {
   bool result = true;
@@ -55,7 +54,6 @@ std::size_t visit_hash(T const &t) {
   return vis.result;
 }
 
-}
 }
 
 #endif 

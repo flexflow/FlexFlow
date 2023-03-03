@@ -2,7 +2,6 @@
 #include <cassert>
 
 namespace FlexFlow {
-namespace opmeta {
 
 ParallelDimMappingRecord::ParallelDimMappingRecord(MappingRecordType type)
     : type(type), output_dim(-1), input_dim(-1), weight_dim(-1), output_idx(-1),
@@ -59,5 +58,4 @@ MappingRecordType ParallelDimMappingRecord::get_type() const {
   return this->type;
 }
 
-}
 }

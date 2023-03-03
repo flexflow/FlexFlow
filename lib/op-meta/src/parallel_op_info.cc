@@ -2,7 +2,6 @@
 #include "op-meta/visit_struct.h"
 
 namespace FlexFlow {
-namespace opmeta {
 
 bool operator==(ParallelOpInfo const &lhs, ParallelOpInfo const &rhs) {
   return visit_eq(lhs, rhs);
@@ -13,10 +12,9 @@ bool operator<(ParallelOpInfo const &lhs, ParallelOpInfo const &rhs) {
 }
 
 }
-}
 
 namespace std {
-using ::FlexFlow::opmeta::ParallelOpInfo;
+using ::FlexFlow::ParallelOpInfo;
 
 size_t hash<ParallelOpInfo>::operator()(
     ParallelOpInfo const &params) const {

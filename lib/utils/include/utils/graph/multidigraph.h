@@ -6,7 +6,6 @@
 #include "node.h"
 
 namespace FlexFlow {
-namespace utils {
 
 struct MultiDiEdge {
 public:
@@ -75,7 +74,6 @@ struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
   virtual void remove_edge(Edge const &) = 0;
 };
 
-}
 }
 
 #endif 

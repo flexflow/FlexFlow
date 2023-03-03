@@ -8,7 +8,6 @@
 #include <ostream>
 
 namespace FlexFlow {
-namespace utils {
 
 struct Node {
 public:
@@ -29,17 +28,15 @@ public:
 std::ostream &operator<<(std::ostream &, Node const &);
 
 }
-}
 
 namespace std {
 template <>
-struct hash<::FlexFlow::utils::Node> {
-  std::size_t operator()(::FlexFlow::utils::Node const &) const;
+struct hash<::FlexFlow::Node> {
+  std::size_t operator()(::FlexFlow::Node const &) const;
 };
 }
 
 namespace FlexFlow {
-namespace utils {
 
 struct NodeQuery {
   NodeQuery() = default;
@@ -61,7 +58,7 @@ struct IGraph {
   virtual void add_node_unsafe(Node const &) = 0;
   virtual void remove_node_unsafe(Node const &) = 0;
 };
-}
+
 }
 
 

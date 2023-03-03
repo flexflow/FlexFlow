@@ -7,7 +7,6 @@
 #include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
-namespace opmeta {
 
 struct ParallelOpInfo {
   OperatorType op_type;
@@ -19,14 +18,13 @@ bool operator==(ParallelOpInfo const &, ParallelOpInfo const &);
 bool operator<(ParallelOpInfo const &, ParallelOpInfo const &);
 
 }
-}
 
-VISITABLE_STRUCT(::FlexFlow::opmeta::ParallelOpInfo, op_type, parallel_dim, parallel_degree);
+VISITABLE_STRUCT(::FlexFlow::ParallelOpInfo, op_type, parallel_dim, parallel_degree);
 
 namespace std {
 template <>
-struct hash<::FlexFlow::opmeta::ParallelOpInfo> {
-  size_t operator()(::FlexFlow::opmeta::ParallelOpInfo const &) const;
+struct hash<::FlexFlow::ParallelOpInfo> {
+  size_t operator()(::FlexFlow::ParallelOpInfo const &) const;
 };
 }
 

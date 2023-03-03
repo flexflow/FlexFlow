@@ -6,7 +6,6 @@
 #include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
-namespace opmeta {
 
 enum class MappingRecordType { INPUT_OUTPUT, INPUT_WEIGHT };
 
@@ -42,8 +41,7 @@ public:
 };
 
 }
-}
 
-VISITABLE_STRUCT(::FlexFlow::opmeta::ParallelDimMappingRecord, type, operation, output_dim, input_dim, weight_dim, output_idx, input_idx, weight_idx);
+VISITABLE_STRUCT(::FlexFlow::ParallelDimMappingRecord, type, operation, output_dim, input_dim, weight_dim, output_idx, input_idx, weight_idx);
 
 #endif 

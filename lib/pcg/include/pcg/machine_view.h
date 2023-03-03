@@ -1,55 +1,55 @@
 #ifndef _FLEXFLOW_MACHINE_VIEW_H
 #define _FLEXFLOW_MACHINE_VIEW_H
 
-//#include "legion.h"
 #include <vector>
 #include <cstddef>
-//#ifdef FF_USE_NCCL
-//#include <nccl.h>
-//#endif
-//#include "flexflow/config.h"
 #include <ostream>
+#include "visit_struct/visit_struct.hpp"
+#include "utils/graph.h"
+#include "op-meta/operator_params.h"
 
 namespace FlexFlow {
+namespace pcg {
 
 const int MAX_TENSOR_DIM = 5;
 const int MAX_NUM_WORKERS = 5;
 
+enum class DeviceType {
+  GPU, 
+  CPU
+};
+
 struct MachineView {
-  static const MachineView NO_VIEW;
   MachineView();
 
-  //int get_device_id(Legion::DomainPoint const &p) const;
   bool operator==(MachineView const &rhs) const;
   bool operator!=(MachineView const &rhs) const;
 
-  //Legion::Domain get_domain() const;
+  std::size_t num_dims() const;
 
-  size_t hash() const;
   size_t num_parts() const;
-  enum DeviceType {
-    GPU = 0,
-    CPU = 1,
-  };
-  DeviceType device_type;
-  int ndims, start_device_id, dim[MAX_TENSOR_DIM], stride[MAX_TENSOR_DIM];
+
   std::vector<int> device_ids() const;
 
   friend std::ostream &operator<<(std::ostream &, MachineView const &);
+
+  DeviceType device_type;
+  int start_device_id;
+  std::vector<int> dimension_sizes;
+  std::vector<int> strides;
+};
+bool operator<(MachineView const &, MachineView const &);
+
+struct BandwidthNetworkModelConfig {
+  int bandwidth;
 };
 
-struct MachineViewDimCompare {
-  bool operator()(MachineView const &a, MachineView const &b) const {
-    if (a.ndims != b.ndims) {
-      return a.ndims < b.ndims;
-    }
-    for (int i = 0; i < a.ndims; i++) {
-      if (a.dim[i] != b.dim[i]) {
-        return a.dim[i] < b.dim[i];
-      }
-    }
-    return false;
-  }
+struct MachineSpecification {
+  int num_nodes;
+  int num_cpus_per_node;
+  int num_gpus_per_node;
+  float inter_node_bandwidth;
+  float intra_node_bandwidth;
 };
 
 struct MachineResource {
@@ -61,48 +61,26 @@ struct MachineResource {
   int start_gpu_id = 0, start_cpu_id = 0;
 };
 
-struct ParallelConfig {
-  enum DeviceType {
-    GPU = 0,
-    CPU = 1,
-  };
-  bool operator==(ParallelConfig const &rhs) const {
-    if (nDims != rhs.nDims) {
-      return false;
-    }
-    if (device_type != rhs.device_type) {
-      return false;
-    }
-    for (int i = 0; i < nDims; i++) {
-      if (dim[i] != rhs.dim[i]) {
-        return false;
-      }
-    }
-    for (int i = 0; i < num_parts(); i++) {
-      if (device_ids[i] != rhs.device_ids[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
-  int num_parts() const;
-  bool is_data_parallel() const;
-  ParallelConfig
-      change_data_parallel_dimensionality(int new_dimensionality) const;
-  DeviceType device_type;
-  int nDims, dim[MAX_TENSOR_DIM];
-  int device_ids[MAX_NUM_WORKERS];
-#ifdef FF_USE_NCCL
-  ncclComm_t nccl_comms[MAX_NUM_WORKERS];
-#endif
+struct ComputationGraph {
+  utils::AdjacencyMultiDiGraph g;
+  std::unordered_map<utils::Node, opmeta::
 };
 
-}; // namespace FlexFlow
+struct ParallelComputationGraph {
+  utils::AdjacencyMultiDiGraph g; 
+  std::unordered_map<utils::Node, opmeta::OperatorParameters> nodeMap;
+};
+
+}
+}
+
+VISITABLE_STRUCT(::FlexFlow::pcg::MachineView, device_type, start_device_id, dimension_sizes, strides);
+VISITABLE_STRUCT(::FlexFlow::pcg::MachineSpecification, num_nodes, num_cpus_per_node, num_gpus_per_node, inter_node_bandwidth, intra_node_bandwidth);
 
 namespace std {
 template <>
-struct hash<FlexFlow::MachineView> {
-  size_t operator()(FlexFlow::MachineView const &) const;
+struct hash<::FlexFlow::pcg::MachineView> {
+  size_t operator()(::FlexFlow::pcg::MachineView const &) const;
 };
 }; // namespace std
 

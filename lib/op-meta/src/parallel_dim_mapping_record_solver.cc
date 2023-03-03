@@ -4,7 +4,6 @@
 #include <algorithm>
 
 namespace FlexFlow {
-namespace opmeta {
 
 std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
     std::vector<ParallelDimMappingRecord> &records,
@@ -337,5 +336,4 @@ ParallelDimMappingSolution solve_parallel_dim_mappings(
   return solution;
 }
 
-}
 }

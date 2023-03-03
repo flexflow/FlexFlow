@@ -2,7 +2,6 @@
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
-namespace opmeta {
 
 ParallelTensorShape::ParallelTensorShape(std::vector<ParallelDim> const &dims,
                                          DataType data_type)
@@ -65,11 +64,10 @@ ParallelTensorShape::const_iterator ParallelTensorShape::end() const { return th
 ParallelTensorShape::const_iterator ParallelTensorShape::cend() const { return this->dims.cend(); };
 
 }
-}
 
 namespace std {
-using ::FlexFlow::opmeta::ParallelDim;
-using ::FlexFlow::opmeta::ParallelTensorShape;
+using ::FlexFlow::ParallelDim;
+using ::FlexFlow::ParallelTensorShape;
 
 size_t hash<ParallelDim>::operator()(ParallelDim const &dim) const {
   return get_std_hash(dim.as_tuple()); 

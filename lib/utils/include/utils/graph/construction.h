@@ -8,7 +8,6 @@
 #include <unordered_set>
 
 namespace FlexFlow {
-namespace utils {
 
 template <typename G>
 G make_multidigraph(std::size_t num_nodes, std::function<std::unordered_set<MultiDiEdge>(std::vector<Node> const &)> const &edges) {
@@ -24,7 +23,6 @@ G make_multidigraph(std::size_t num_nodes, std::function<std::unordered_set<Mult
   return g;
 }
 
-}
 }
 
 #endif 
