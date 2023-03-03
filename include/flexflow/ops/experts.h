@@ -33,6 +33,10 @@ public:
   float const **coefficient_idx_array;
   float const **output_idx_array;
 
+  // array of arrays to store cublasGemmBatchedEx outputs before aggregation
+  float **batch_outputs;
+  float **dev_batch_outputs;
+
   int num_experts;
   int experts_start_idx;
   int data_dim;

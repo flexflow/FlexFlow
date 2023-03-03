@@ -90,14 +90,15 @@ __global__ void experts_forward_prepare_kernel(
 }
 
 void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
-                                        float const **weight_ptr,
-                                        float const **input_ptr,
-                                        float const **output_ptr,
+                                        void const **weights_ptr,
+                                        void const **input_ptr,
+                                        void **output_ptr,
                                         //  void const *bias_ptr,
                                         int in_dim,
                                         int out_dim,
                                         int num_tokens,
                                         int num_chosen_experts,
+                                        int gemm_batch_count,
                                         ffStream_t stream) {
 
   checkCUDA(cublasSetStream(m->handle.blas, stream));
@@ -114,7 +115,7 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
 
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
 
-  cublasGemmEx(
+  checkCUDA(cublasGemmBatchedEx(
       m->handle.blas,
       CUBLAS_OP_T, // Tranpose Weight, shape (in_dim, out_dim) => (out_dim,
                    // in_dim)
@@ -123,46 +124,19 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
       1,           // num_col of (B, C) = 1
       in_dim,      // num_col of A and num_rows of B = in_dim
       &alpha,
-      weight_ptr, // Aarray (num_tokens * chosen_experts, in_dim, out_dim)
+      weights_ptr, // Aarray (num_tokens * chosen_experts, in_dim, out_dim)
       weight_type,
       in_dim,    // Leading Dimension of weight before transpose
       input_ptr, // Barray (num_tokens * chosen_experts, in_dim, 1)
       input_type,
       in_dim, // Leading Dimension of input_token
       &beta,
-      (void *)output_ptr, // Carray (num_tokens * chosen_experts, out_dim, 1)
+      output_ptr, // Carray (num_tokens * chosen_experts, out_dim, 1)
       output_type,
-      out_dim, // Leading Dimension of output
-               //   num_tokens * num_chosen_experts, // Total submatrixs
+      out_dim,          // Leading Dimension of output
+      gemm_batch_count, // Total submatrixes
       compute_type,
-      CUBLAS_GEMM_DEFAULT_TENSOR_OP);
-
-  // checkCUDA(cublasGemmBatchedEx(
-  //     m->handle.blas,
-  //     CUBLAS_OP_T, // Tranpose Weight, shape (in_dim, out_dim) => (out_dim,
-  //                  // in_dim)
-  //     CUBLAS_OP_N, // Input_token, shape (in_dim, 1)
-  //     out_dim,     // num_row of (A, C) = out_dim
-  //     1,           // num_col of (B, C) = 1
-  //     in_dim,      // num_col of A and num_rows of B = in_dim
-  //     &alpha,
-  //     (void const **)
-  //         host_weights, // Aarray (num_tokens * chosen_experts, in_dim,
-  //         out_dim)
-  //     weight_type,
-  //     in_dim, // Leading Dimension of weight before transpose
-  //     (void const **)
-  //         host_tokens, // Barray (num_tokens * chosen_experts, in_dim, 1)
-  //     input_type,
-  //     in_dim, // Leading Dimension of input_token
-  //     &beta,
-  //     (void **)host_output, // Carray (num_tokens * chosen_experts, out_dim,
-  //     1) output_type, out_dim,                         // Leading Dimension
-  //     of output
-  //     // num_tokens * num_chosen_experts, // Total submatrixs
-  //     1,
-  //     compute_type,
-  //     CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 }
 
 struct exceeds_expert_capacity {
@@ -429,18 +403,19 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                              m->coefficient_idx_array,
                                              m->output_idx_array);
 
-  // cudaDeviceSynchronize();
+  cudaDeviceSynchronize();
 
-  /* experts_forward_GemmBatched_kernel(m,
-                                     m->weight_idx_array,
-                                     m->token_idx_array,
-                                     m->output_idx_array,
+  experts_forward_GemmBatched_kernel(m,
+                                     (void const **)m->weight_idx_array,
+                                     (void const **)m->token_idx_array,
+                                     (void **)m->dev_batch_outputs,
                                      //  bias_ptr,
                                      data_dim,
                                      out_dim,
                                      num_tokens,
                                      num_chosen_experts,
-                                     stream); */
+                                     gemm_batch_count,
+                                     stream);
 
   // Batched Gemm Excution for every chosen_expert-token pairs
   /* experts_forward_GemmBatched_kernel(handle,
@@ -473,57 +448,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     printf("[Experts] forward time = %.2lfms\n", elapsed);
   }
 }
-
-// void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
-//                                         float **weight_ptr,
-//                                         float **input_ptr,
-//                                         float **output_ptr,
-//                                         //  void const *bias_ptr,
-//                                         int in_dim,
-//                                         int out_dim,
-//                                         int num_tokens,
-//                                         int num_chosen_experts,
-//                                         ffStream_t stream) {
-
-//   checkCUDA(cublasSetStream(m->handle.blas, stream));
-//   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-
-//   float alpha = 1.0f, beta = 0.0f;
-
-//   // cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type);
-//   // cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type);
-//   // cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type);
-//   cudaDataType_t input_type = CUDA_R_32F;
-//   cudaDataType_t weight_type = CUDA_R_32F;
-//   cudaDataType_t output_type = CUDA_R_32F;
-
-//   cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
-
-//   cublasGemmBatchedEx(
-//       m->handle.blas,
-//       CUBLAS_OP_T, // Tranpose Weight, shape (in_dim, out_dim) => (out_dim,
-//                    // in_dim)
-//       CUBLAS_OP_N, // Input_token, shape (in_dim, 1)
-//       out_dim,     // num_row of (A, C) = out_dim
-//       1,           // num_col of (B, C) = 1
-//       in_dim,      // num_col of A and num_rows of B = in_dim
-//       &alpha,
-//       (void const **)
-//           weight_ptr, // Aarray (num_tokens * chosen_experts, in_dim,
-//           out_dim)
-//       weight_type,
-//       in_dim, // Leading Dimension of weight before transpose
-//       (void const **)
-//           input_ptr, // Barray (num_tokens * chosen_experts, in_dim, 1)
-//       input_type,
-//       in_dim, // Leading Dimension of input_token
-//       &beta,
-//       (void **)output_ptr, // Carray (num_tokens * chosen_experts, out_dim,
-//       1) output_type, out_dim,                         // Leading Dimension
-//       of output num_tokens * num_chosen_experts, // Total submatrixs
-//       compute_type,
-//       CUBLAS_GEMM_DEFAULT_TENSOR_OP);
-// }
 
 void experts_forward_aggregate_kernel(cublasHandle_t const handle,
                                       float **results_ptr,
@@ -617,6 +541,18 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
   checkCUDA(
       cudaMalloc(&output_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
+  batch_outputs = new float *[num_chosen_experts * effective_batch_size];
+  for (int i = 0; i < num_chosen_experts * effective_batch_size; i++) {
+    checkCUDA(cudaMalloc(&batch_outputs[i], out_dim * sizeof(float)));
+  }
+  checkCUDA(
+      cudaMalloc(&dev_batch_outputs,
+                 num_chosen_experts * effective_batch_size * sizeof(float *)));
+  checkCUDA(
+      cudaMemcpy(dev_batch_outputs,
+                 batch_outputs,
+                 num_chosen_experts * effective_batch_size * sizeof(float *),
+                 cudaMemcpyHostToDevice));
 }
 ExpertsMeta::~ExpertsMeta(void) {
 
@@ -633,6 +569,10 @@ ExpertsMeta::~ExpertsMeta(void) {
   checkCUDA(cudaFree(&weight_idx_array));
   checkCUDA(cudaFree(&coefficient_idx_array));
   checkCUDA(cudaFree(&output_idx_array));
+  for (int i = 0; i < num_chosen_experts * effective_batch_size; i++) {
+    checkCUDA(cudaFree(&batch_outputs[i]));
+  }
+  delete[] batch_outputs;
 }
 
 }; // namespace FlexFlow
