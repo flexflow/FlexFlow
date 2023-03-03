@@ -44,14 +44,14 @@ __global__ void experts_forward_prepare_kernel(
     int num_experts_per_block,
     int num_chosen_experts,
     int data_dim,
-    thrust::device_ptr<int> sorted_indices,
-    thrust::device_ptr<int> expert_start_indexes,
-    thrust::device_ptr<int> exp_local_label_to_index,
-    thrust::device_ptr<int> destination_start_indices,
-    thrust::device_ptr<int> original_indices,
+    int *sorted_indices,
+    int *expert_start_indexes,
+    int *exp_local_label_to_index,
+    int *destination_start_indices,
+    int *original_indices,
     float const *input, // @In: Tokens' values (in_dim, batch_size)
-    float const *output,
-    float const **token_idx_arrary, // @Out: Barray for GemmBatchedEx
+    float *output,
+    float const **token_idx_array,  // @Out: Barray for GemmBatchedEx
     float const **weights,          // @In: Experts' weights
     float const **weight_idx_array, // @Out: Aarray for GemmBatchedEx
     float const *coefficients,      // @In: topk_gate_predss coefficients tensor
@@ -72,14 +72,12 @@ __global__ void experts_forward_prepare_kernel(
       /* printf("dest: %d, offset: %d\n",
       destination_start_indices[expert_index], within_expert_offset );
       printf("%d: %p\n", destination_start_indices[expert_index] +
-                       within_expert_offset, &input[(original_indices[i +
-      lb_index] / num_chosen_experts) * data_dim]);
+      within_expert_offset, &input[(original_indices[i + lb_index] /
+      num_chosen_experts) * data_dim]); printf("token index: %d\n",
+      (original_indices[i + lb_index] / num_chosen_experts)); */
 
-      printf("token index: %d\n", (original_indices[i + lb_index] /
-      num_chosen_experts)); */
-
-      token_idx_arrary[destination_start_indices[expert_index] +
-                       within_expert_offset] =
+      token_idx_array[destination_start_indices[expert_index] +
+                      within_expert_offset] =
           &input[(original_indices[i + lb_index] / num_chosen_experts) *
                  data_dim];
       weight_idx_array[destination_start_indices[expert_index] +
@@ -384,9 +382,14 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   thrust::sequence(thrust::device,
                    expert_start_indexes,
                    expert_start_indexes + num_valid_assignments);
-  int start_indexes =
-      (thrust::unique_by_key(lb, ub, expert_start_indexes)).first -
-      lb; // should be num_valid_assignments?
+  int start_indexes = (thrust::unique_by_key_copy(thrust::device,
+                                                  lb,
+                                                  ub,
+                                                  expert_start_indexes,
+                                                  temp_sequence,
+                                                  expert_start_indexes))
+                          .first -
+                      temp_sequence;
   assert(start_indexes == non_zero_experts_count);
 
   // append ub_index
@@ -439,9 +442,10 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 
   /* std::cout << "________________________________________________" <<
   std::endl;
-
   std::cout << input << std::endl;
   std::cout << output << std::endl; */
+
+  cudaDeviceSynchronize();
 
   experts_forward_prepare_kernel<<<GET_BLOCKS(num_valid_assignments),
                                    min(CUDA_NUM_THREADS,
@@ -454,11 +458,11 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                              num_experts_per_block,
                                              num_chosen_experts,
                                              data_dim,
-                                             sorted_indices,
-                                             expert_start_indexes,
-                                             exp_local_label_to_index,
-                                             destination_start_indices,
-                                             original_indices,
+                                             m->sorted_indices,
+                                             m->expert_start_indexes,
+                                             m->exp_local_label_to_index,
+                                             m->destination_start_indices,
+                                             m->original_indices,
                                              input,
                                              output,
                                              m->token_idx_array,
@@ -633,7 +637,10 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
       cudaMalloc(&original_indices,
                  num_chosen_experts * effective_batch_size * sizeof(int)));
   checkCUDA(cudaMalloc(&non_zero_expert_labels, num_experts * sizeof(int)));
-  checkCUDA(cudaMalloc(&temp_sequence, num_experts * sizeof(int)));
+  checkCUDA(cudaMalloc(
+      &temp_sequence,
+      std::max(num_experts, num_chosen_experts * effective_batch_size) *
+          sizeof(int)));
   checkCUDA(cudaMalloc(&exp_local_label_to_index, num_experts * sizeof(int)));
   // expert_start_indexes needs one more slot to save the upper bound index
   checkCUDA(cudaMalloc(&expert_start_indexes, (num_experts + 1) * sizeof(int)));
