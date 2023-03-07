@@ -242,7 +242,7 @@ int64_t GPT_Tokenizer::convert_token_to_id(std::string token) {
   }
 }
 
-void GPT_Tokenizer::padding_encode_single_with_special_tokens(
+void GPT_Tokenizer::encode(
     std::string str,
     size_t max_length,
     std::vector<int64_t> *input_ids,

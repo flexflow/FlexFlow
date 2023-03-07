@@ -32,8 +32,7 @@ int main(int argc, char *argv[]) {
     if (stripped_line.length() == 0) {
       outfile << *l << std::endl;
     } else {
-      tokenizer.padding_encode_single_with_special_tokens(
-          stripped_line, stripped_line.length(), &input_ids, &mask_ids);
+      tokenizer.encode(stripped_line, stripped_line.length(), &input_ids, &mask_ids);
       bool first = true;
       for (std::size_t i = 0; i < input_ids.size(); ++i) {
         if (mask_ids[i]) {
