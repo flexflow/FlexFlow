@@ -15,7 +15,8 @@ int main(int argc, char *argv[]) {
     std::cout << "Error opening input file" << std::endl;
     return -1;
   }
-  std::ofstream outfile("./wikitext-103-raw/wiki.valid.bpe.flexflow", std::ofstream::out);
+  std::ofstream outfile("./wikitext-103-raw/wiki.valid.bpe.flexflow",
+                        std::ofstream::out);
   if (!outfile) {
     std::cout << "Error opening output file" << std::endl;
     return -1;

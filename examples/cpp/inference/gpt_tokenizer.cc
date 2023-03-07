@@ -72,9 +72,9 @@ std::vector<std::string> GPT_Tokenizer::split(std::string const &s,
 };
 
 std::string GPT_Tokenizer::strip(std::string const &inpt) {
-    if (inpt.length() == 0) {
-        return inpt;
-    }
+  if (inpt.length() == 0) {
+    return inpt;
+  }
   auto start_it = inpt.begin();
   auto end_it = inpt.rbegin();
   while (std::isspace(*start_it)) {
@@ -224,9 +224,9 @@ std::vector<std::string> GPT_Tokenizer::tokenize(std::string str) {
       }
     }
     if (token.length() > 0) {
-        decltype(bpe_tokens) curr_bpe_tokens = bpe(token);
-        bpe_tokens.insert(
-            bpe_tokens.end(), curr_bpe_tokens.begin(), curr_bpe_tokens.end());
+      decltype(bpe_tokens) curr_bpe_tokens = bpe(token);
+      bpe_tokens.insert(
+          bpe_tokens.end(), curr_bpe_tokens.begin(), curr_bpe_tokens.end());
     }
     ++iter;
   }
