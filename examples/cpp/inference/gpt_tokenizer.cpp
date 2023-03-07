@@ -3,8 +3,8 @@
 #include <string>
 
 int main(int argc, char *argv[]) {
-  std::string vocab_file = "./vocab.bpe";
-  std::string merge_file = "./encoder.json";
+  std::string vocab_file = "./gpt2_bpe/vocab.bpe";
+  std::string merge_file = "./gpt2_bpe/encoder.json";
 
   GPT_Tokenizer tokenizer(merge_file, vocab_file);
 
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
           } else {
             first = false;
           }
-          outfile << input_ids[i]<< " ";
+          outfile << input_ids[i];
         }
       }
       outfile << std::endl;
