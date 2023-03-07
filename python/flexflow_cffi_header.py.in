@@ -54,7 +54,9 @@ if flexflow_python_interpreter() == "native":
                 break
     else:
         python_shared_lib_path = find_libpython() or ""
+        print("python_shared_lib_path: ", python_shared_lib_path)
         rerun_needed = update_ld_library_path(python_shared_lib_path)
+        print("rerun_needed 1: ", rerun_needed)
         # When installing FlexFlow with pip, the library files are installed within
         # the pip package folder, instead of at /usr/local/lib
         ff_lib_path = os.path.join(
@@ -63,6 +65,9 @@ if flexflow_python_interpreter() == "native":
         # If the library exists at the ff_lib_path, rerun with the ff_lib_path in the LD_LIBRARY_PATH
         if os.path.exists(os.path.join(ff_lib_path, libname)):
             rerun_needed = rerun_needed or update_ld_library_path(ff_lib_path)
+        print("rerun_needed 2: ", rerun_needed)
+        ld_lib_path = os.environ.get("LD_LIBRARY_PATH") or ""
+        print("ld_lib_path: ", ld_lib_path)
         if rerun_needed:
             os.execv(sys.executable, ["python"] + sys.argv)
 ffc = ffi.dlopen(flexflow_lib)
