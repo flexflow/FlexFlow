@@ -3,7 +3,7 @@ set -x
 set -e
 
 cleanup() {
-	rm -rf wikitext-103-raw-v1.zip wikitext-103-raw gpt2_bpe gpt_tokenizer ytokenizer.py bpe.py
+	rm -rf wikitext-103-raw-v1.zip wikitext-103-raw gpt2_bpe gpt_tokenizer pytokenizer.py bpe.py
 }
 
 # Cd into directory holding this script
