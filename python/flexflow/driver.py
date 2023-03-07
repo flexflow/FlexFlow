@@ -16,7 +16,6 @@
 from __future__ import print_function
 import argparse, os, platform, subprocess, sys
 from .config import flexflow_dir
-from .findpylib import find_libpython
 
 _version = sys.version_info
 
@@ -66,14 +65,13 @@ def find_flexflow_python_exe():
 def run_flexflow(freeze_on_error, backtrace, opts):
   flexflow_python_path, flexflow_lib_dir, flexflow_lib64_dir = find_flexflow_python_exe()
   # print(flexflow_python_path, flexflow_lib_dir, flexflow_lib64_dir)
-  python_shared_lib_path = find_libpython() or ""
   
   # set LD_LIBRARY_PATH  
   cmd_env = dict(os.environ.items())
   if 'LD_LIBRARY_PATH' in cmd_env:
-    cmd_env['LD_LIBRARY_PATH'] += ':' + flexflow_lib_dir + ':' + flexflow_lib64_dir + ':' + python_shared_lib_path
+    cmd_env['LD_LIBRARY_PATH'] += ':' + flexflow_lib_dir + ':' + flexflow_lib64_dir
   else:
-    cmd_env['LD_LIBRARY_PATH'] = flexflow_lib_dir + ':' + flexflow_lib64_dir + ':' + python_shared_lib_path
+    cmd_env['LD_LIBRARY_PATH'] = flexflow_lib_dir + ':' + flexflow_lib64_dir
     
   # freeze on error
   if freeze_on_error:
