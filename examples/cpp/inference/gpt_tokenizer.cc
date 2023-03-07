@@ -242,11 +242,10 @@ int64_t GPT_Tokenizer::convert_token_to_id(std::string token) {
   }
 }
 
-void GPT_Tokenizer::encode(
-    std::string str,
-    size_t max_length,
-    std::vector<int64_t> *input_ids,
-    std::vector<int64_t> *mask_ids) {
+void GPT_Tokenizer::encode(std::string str,
+                           size_t max_length,
+                           std::vector<int64_t> *input_ids,
+                           std::vector<int64_t> *mask_ids) {
   if (not input_ids->empty()) {
     input_ids->clear();
   }

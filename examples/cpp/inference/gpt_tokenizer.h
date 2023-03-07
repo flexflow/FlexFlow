@@ -13,9 +13,9 @@
 #include <stdint.h>
 #include <string>
 #include <tuple>
-#include <utility>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 
 using json = nlohmann::json;
 
@@ -54,7 +54,10 @@ public:
   std::vector<std::string> bpe(std::wstring token);
   std::vector<std::string> tokenize(std::string str);
   int64_t convert_token_to_id(std::string token);
-  void encode(std::string str, size_t max_length, std::vector<int64_t> *input_ids, std::vector<int64_t> *mask_ids);
+  void encode(std::string str,
+              size_t max_length,
+              std::vector<int64_t> *input_ids,
+              std::vector<int64_t> *mask_ids);
   std::string bos_token;
   std::string eos_token;
   std::string pad_token;
