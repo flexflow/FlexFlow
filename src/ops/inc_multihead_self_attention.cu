@@ -23,37 +23,37 @@ using Legion::coord_t;
 using Legion::Memory;
 
 /*static*/
-void IncMultiHeadSelfAttention::inference_kernel(
-    IncMultiHeadSelfAttentionMeta const *m,
-    float const *input_ptr,
-    float const *weight_ptr,
-    float *output_ptr,
-    cudaStream_t stream) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+// void IncMultiHeadSelfAttention::inference_kernel(
+//     IncMultiHeadSelfAttentionMeta const *m,
+//     float const *input_ptr,
+//     float const *weight_ptr,
+//     float *output_ptr,
+//     cudaStream_t stream) {
+//   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
-  checkCUDNN(cudnnMultiHeadAttnForward(m->handle.dnn,
-                                       m->attnDesc,
-                                       -1,
-                                       m->loWinIdx,
-                                       m->hiWinIdx,
-                                       m->devQoSeqArray,
-                                       m->devKvSeqArray,
-                                       m->qDesc,
-                                       input_ptr,
-                                       NULL /*residual*/,
-                                       m->kDesc,
-                                       input_ptr,
-                                       m->vDesc,
-                                       input_ptr,
-                                       m->oDesc,
-                                       output_ptr,
-                                       m->weightSize,
-                                       weight_ptr,
-                                       m->handle.workSpaceSize,
-                                       m->handle.workSpace,
-                                       m->reserveSpaceSize,
-                                       m->reserveSpace));
-}
+//   checkCUDNN(cudnnMultiHeadAttnForward(m->handle.dnn,
+//                                        m->attnDesc,
+//                                        -1,
+//                                        m->loWinIdx,
+//                                        m->hiWinIdx,
+//                                        m->devQoSeqArray,
+//                                        m->devKvSeqArray,
+//                                        m->qDesc,
+//                                        input_ptr,
+//                                        NULL /*residual*/,
+//                                        m->kDesc,
+//                                        input_ptr,
+//                                        m->vDesc,
+//                                        input_ptr,
+//                                        m->oDesc,
+//                                        output_ptr,
+//                                        m->weightSize,
+//                                        weight_ptr,
+//                                        m->handle.workSpaceSize,
+//                                        m->handle.workSpace,
+//                                        m->reserveSpaceSize,
+//                                        m->reserveSpace));
+// }
 
 /*static*/
 void IncMultiHeadSelfAttention::inference_kernel_wrapper(
@@ -70,8 +70,17 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  IncMultiHeadSelfAttention::inference_kernel(
-      m, input_ptr, weight_ptr, output_ptr, stream);
+
+  // phase 1: Implement kernel to compute KQV for input tokens
+
+  // phase 2: Update key/val cache
+
+  // phase 3: Compute attention score
+  // 3 kernels for pahse 3: matmul1 - softmax - matmal2
+
+  // IncMultiHeadSelfAttention::inference_kernel(
+  //     m, input_ptr, weight_ptr, output_ptr, stream);
+
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));

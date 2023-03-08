@@ -87,11 +87,11 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
-  static void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
-                               float const *input_ptr,
-                               float const *weight_ptr,
-                               float *output_ptr,
-                               ffStream_t stream);
+  // static void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
+  //                              float const *input_ptr,
+  //                              float const *weight_ptr,
+  //                              float *output_ptr,
+  //                              ffStream_t stream);
   static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
                                        float const *input_ptr,
                                        float const *weight_ptr,
