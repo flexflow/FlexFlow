@@ -128,6 +128,18 @@ public:
   }
 };
 
+class GraphCompareWithMemory {
+public:
+  GraphCompareWithMemory(float factor) : run_time_cost_factor{factor} {}
+  bool operator()(Graph *lhs, Graph *rhs) {
+    return lhs->optimal_cost_with_memory(run_time_cost_factor) >
+           rhs->optimal_cost_with_memory(run_time_cost_factor);
+  }
+
+private:
+  float run_time_cost_factor;
+};
+
 class GraphXferMatch {
 public:
   GraphXferMatch(GraphXfer const *);
@@ -203,15 +215,17 @@ public:
 
   std::string get_name() const;
 
-  void run(int depth,
-           Graph *graph,
-           std::priority_queue<Graph *, std::vector<Graph *>, GraphCompare> &,
-           std::unordered_set<size_t> &,
-           float threshold,
-           int maxNumOps,
-           SimplificationSettings const &simplification_settings,
-           int &num_matches_found,
-           int &num_matches_rejected);
+  template <typename GraphComparator>
+  void
+      run(int depth,
+          Graph *graph,
+          std::priority_queue<Graph *, std::vector<Graph *>, GraphComparator> &,
+          std::unordered_set<size_t> &,
+          float threshold,
+          int maxNumOps,
+          SimplificationSettings const &simplification_settings,
+          int &num_matches_found,
+          int &num_matches_rejected);
 
   void find_matches(Graph const *, std::vector<GraphXferMatch> &matches);
   GraphXferMatch get_match_record(Graph const *) const;
@@ -239,15 +253,37 @@ public:
                       bool only_data_parallel,
                       std::unique_ptr<Graph> &best_graph,
                       std::unordered_map<Node, MachineView> &optimal_views);
+  void graph_optimize_with_memory(
+      size_t budget,
+      bool only_data_parallel,
+      std::unique_ptr<Graph> &best_graph,
+      std::unordered_map<Node, MachineView> &optimal_views,
+      MemorySearchResult &search_result);
   void graph_optimize_no_split(
       size_t budget,
       bool only_data_parallel,
       std::unique_ptr<Graph> &best_graph,
       std::unordered_map<Node, MachineView> &optimal_views);
+  /**
+   * @brief Substitute the mem_config with new_config.
+   */
+  void update_mem_optim_config(MemoryOptimConfig const &new_config);
+
+  /**
+   * @brief Clear the optimized graph cache of this helper.
+   */
+  void clear_cache();
 
 private:
   template <typename T>
   T generic_sequence_optimize(
+      Graph const *graph,
+      Node const &sink_node,
+      tl::optional<ParallelTensorShape> const &output_shape,
+      tl::optional<ParallelTensorShape> const &input_shape);
+
+  template <typename T>
+  T generic_sequence_optimize_with_memory(
       Graph const *graph,
       Node const &sink_node,
       tl::optional<ParallelTensorShape> const &output_shape,
@@ -267,6 +303,16 @@ private:
       Node const &sink_node,
       Node const &bottleneck,
       ParallelTensorShape const &bottleneck_output_shape);
+  template <typename T>
+  T execute_sequence_split_with_memory(
+      std::unique_ptr<Graph> const &pre_graph,
+      std::unique_ptr<Graph> const &post_graph,
+      tl::optional<ParallelTensorShape> const &output_shape,
+      tl::optional<ParallelTensorShape> const &input_shape,
+      Node const &sink_node,
+      Node const &bottleneck,
+      ParallelTensorShape const &bottleneck_output_shape);
+
   void generate_all_pcg_xfers();
   void load_graph_substitutions(std::vector<GraphXfer *> &xfers) const;
   Graph *construct_graph();
@@ -275,6 +321,9 @@ private:
   std::unique_ptr<Graph>
       base_optimize(Graph const *,
                     SimplificationSettings const &simplification_settings);
+
+  std::unique_ptr<Graph> base_optimize_with_memory(
+      Graph const *, SimplificationSettings const &simplification_settings);
 
   std::vector<ParallelTensorShape>
       possible_split_output_tensor_shapes(Node const &) const;
@@ -298,6 +347,7 @@ private:
   std::vector<GraphXfer *> all_pcg_xfers;
   FFModel *model;
   FFConfig const &config;
+  MemoryOptimConfig mem_config;
   std::unique_ptr<RecursiveLogger> logger;
 };
 

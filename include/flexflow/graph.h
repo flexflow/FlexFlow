@@ -17,6 +17,7 @@
 #define _FLEXFLOW_GRAPH_H_
 #include "flexflow/basic_graph.h"
 #include "flexflow/graph_structures.h"
+#include "flexflow/memory_optimization.h"
 #include "flexflow/model.h"
 #include "flexflow/utils/dot/dot_file.h"
 #include "flexflow/utils/recursive_logger.h"
@@ -114,6 +115,31 @@ struct GraphCostResult {
   friend std::ostream &operator<<(std::ostream &, GraphCostResult const &);
 };
 
+/**
+ * @brief Holds the cost information of a PCG.
+ */
+struct GraphCostResultWithMemory {
+  float cost;           ///< Run time cost
+  MemoryUsage mem_cost; ///< Memory usage
+  ///< Corresponding machine views (device placement views)
+  std::unordered_map<Node, MachineView> views;
+
+  /**
+   * @brief Get the multi-objective cost that combines the run time and memory
+   * cost.
+   *
+   * @return float Numerical value to represent the overall cost
+   */
+  float get_multi_obj_cost() const;
+
+  static GraphCostResultWithMemory invalid();
+
+  bool operator<(GraphCostResultWithMemory const &other) const;
+
+  friend std::ostream &operator<<(std::ostream &,
+                                  GraphCostResultWithMemory const &);
+};
+
 template <typename T>
 T sequence_cost(T const &first, T const &second);
 
@@ -157,6 +183,12 @@ public:
                                      NodeAssignment const &source,
                                      NodeAssignment const &sink,
                                      MachineResource const &resources) const;
+  /**
+   * @brief Starting point to get parallel split time cost.
+   *
+   * @tparam T float or GraphCostResult (or GraphCostResultWithMemory in memory
+   * optimization)
+   */
   template <typename T>
   T find_optimal_nonsequence_graph_time(Graph const *g,
                                         NodeAssignment const &source,
@@ -201,6 +233,20 @@ public:
   void add_operator_cost(NodeAssignment const &, float, T *) const;
 
   template <typename T>
+  void add_sink_node_costs(NodeAssignment const &sink,
+                           CostMetrics metrics,
+                           T *result) const;
+
+  /**
+   * @brief Add run time cost and memory cost of the operator to the graph cost.
+   * This is a temp workaround and should be refactored eventually.
+   */
+  void add_operator_cost_with_memory(NodeAssignment const &node,
+                                     float node_run_time_cost,
+                                     MemoryUsage node_mem_cost,
+                                     GraphCostResultWithMemory *cost) const;
+
+  template <typename T>
   float get_cost(T const &) const;
 
   template <typename T>
@@ -208,6 +254,8 @@ public:
 
 public:
   mutable std::unique_ptr<RecursiveLogger> logger;
+
+  void clear_cache();
 
 private:
   template <typename T>
@@ -260,6 +308,7 @@ public:
   Graph subgraph(std::unordered_set<Node> const &nodes) const;
   void contract_out_node(Node const &);
   float optimal_cost() const;
+  float optimal_cost_with_memory(float run_time_cost_factor) const;
   std::unordered_map<Node, MachineView> optimal_views() const;
   void remove_input_nodes();
   void duplicate_input_node(Node const &);
@@ -333,6 +382,20 @@ struct GraphOptimizeResult {
   std::unordered_map<Node, MachineView> views;
 
   friend std::ostream &operator<<(std::ostream &, GraphOptimizeResult const &);
+};
+
+/**
+ * @brief Hold the optimization results with memory information.
+ */
+struct GraphOptimizeResultWithMemory {
+  tl::optional<Graph> graph; ///< Optimized PCG
+  float cost;                ///< Run time cost
+  MemoryUsage mem_cost;      ///< Memory usage
+  ///< Corresponding machine views (device placement views)
+  std::unordered_map<Node, MachineView> views;
+
+  friend std::ostream &operator<<(std::ostream &,
+                                  GraphOptimizeResultWithMemory const &);
 };
 
 namespace Utils {
