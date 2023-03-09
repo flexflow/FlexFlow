@@ -32,29 +32,18 @@ void FlexFlow::top_level_task(Task const *task,
           ffConfig.numNodes);
   FFModel ff(ffConfig);
 
-  std::vector<int> hidden_dims = {
-      8192, 8192, 8192, 8192, 8192, 8192, 8192, 8192};
-  Tensor input1, input2;
+  std::vector<int> hidden_dims = {1};
+  Tensor input1;
   {
-    int const dims[] = {ffConfig.batchSize, 1024};
+    int const dims[] = {ffConfig.batchSize, 6, 3};
     input1 = ff.create_tensor<2>(dims, DT_FLOAT);
-    input2 = ff.create_tensor<2>(dims, DT_FLOAT);
   }
-  Tensor t1 = input1, t2 = input2;
-  for (size_t i = 0; i < hidden_dims.size(); i++) {
-    int const dims[] = {hidden_dims[i], t1->dims[0]};
-    ActiMode acti_mode =
-        (i + 1 == hidden_dims.size()) ? AC_MODE_NONE : AC_MODE_RELU;
-    t1 = ff.dense(t1, hidden_dims[i], acti_mode, false);
-    t2 = ff.dense(t2, hidden_dims[i], acti_mode, false);
-  }
-  Tensor t = ff.add(t1, t2);
-  t = ff.softmax(t);
+  Tensor t = input1;
+  t = ff.dense(t, hidden_dims[0], AC_MODE_NONE, true);
   Optimizer *optimizer = new SGDOptimizer(&ff, 0.001f);
   std::vector<MetricsType> metrics;
-  metrics.push_back(METRICS_ACCURACY);
-  metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
-  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
+  metrics.push_back(METRICS_MEAN_SQUARED_ERROR);
+  ff.compile(optimizer, LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics);
   ff.init_operators();
   // Start timer
   {
@@ -64,7 +53,7 @@ void FlexFlow::top_level_task(Task const *task,
     future.get_void_result();
   }
   double ts_start = Realm::Clock::current_time_in_microseconds();
-  for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
+  for (int epoch = 0; epoch < 2; epoch++) {
     ff.reset_metrics();
     int iterations = 128;
     for (int iter = 0; iter < iterations; iter++) {

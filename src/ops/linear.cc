@@ -197,6 +197,29 @@ Linear::Linear(FFModel &model,
                                                        bias_initializer,
                                                        CHOSEN_SYNC_TYPE);
     }
+    // std::cout << "########### Kernel ";
+    // for (int i = 0; i < kernel_shape.num_dims; i++) {
+    //   std::cout << kernel_shape.dims[i].size << " ";
+    // }
+    // std::cout << "\n";
+    // std::cout << "########### Bias ";
+    // for (int i = 0; i < bias_shape.num_dims; i++) {
+    //   std::cout << bias_shape.dims[i].size << " ";
+    // }
+    // std::cout << "\n";
+    /* Note
+    input0 = Input(shape=(6,3,), dtype="float32") # B,6,3
+    out = Reshape((6*3,))(input0)
+    out = Dense(6, use_bias=True)(out) # B,6
+    out = Reshape((6,1,))(out)
+    ########### Kernel 18 6 1
+    ########### Bias 6 1 1
+
+    input0 = Input(shape=(6,3,), dtype="float32") # B,6,3
+    out = Dense(2, use_bias=True)(input0) # B,6,2
+    ########### Kernel 3 2 1 1
+    ########### Bias 2 1 1 1
+    */
   }
 
   // Create the output tensor
@@ -357,12 +380,14 @@ void Linear::forward(FFModel const &ff) {
                                                     weights[0]->region));
   launcher.add_field(2, FID_DATA);
   if (use_bias) {
+    // std::cout << "######### Launch Bias ###############\n";
     launcher.add_region_requirement(RegionRequirement(weights[1]->part,
                                                       0 /*projection id*/,
                                                       READ_ONLY,
                                                       EXCLUSIVE,
                                                       weights[1]->region));
     launcher.add_field(3, FID_DATA);
+    // std::cout << "######### Launch Bias End ###############\n";
   }
   runtime->execute_index_space(ctx, launcher);
 }
@@ -418,6 +443,10 @@ void Linear::forward_task_with_dim(Task const *task,
   assert(acc_kernel.rect.volume() == static_cast<size_t>(in_dim * out_dim));
   float const *acc_bias_ptr = NULL;
   if (m->use_bias) {
+    // Legion::Rect<3> rect = task->regions[3];
+    // std::cout << "Tensor shape: [" << rect.lo[0] << "," << rect.lo[1] << ","
+    //           << rect.lo[2] << "] - [" << rect.hi[0] << "," << rect.hi[1] << ","
+    //           << rect.hi[2] << "]" << std::endl;
     TensorAccessorR<float, 3> acc_bias(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
     assert(acc_bias.rect.volume() == static_cast<size_t>(out_dim));

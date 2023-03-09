@@ -291,7 +291,7 @@ class Gather(Layer):
   def _verify_inout_tensor_shape(self, input_tensors, output_tensor):
     assert input_tensors[0].num_dims == len(self.input_shape), "[Gather]: check input tensor dims"
     assert output_tensor.num_dims == len(self.output_shape), "[Gather]: check output tensor dims"
-    for i in range (1, output_tensor.num_dims):
+    for i in range(1, output_tensor.num_dims):
       assert output_tensor.batch_shape[i] == self.output_shape[i]
 
   def _reset_layer(self):

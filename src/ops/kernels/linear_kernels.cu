@@ -231,6 +231,7 @@ void forward_kernel(LinearMeta const *m,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   // use_bias = True
   if (bias_ptr != NULL) {
+    // std::cout << "######## Trying to add bias ############\n"; 
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_T,
                            CUBLAS_OP_N,
