@@ -98,6 +98,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     IncMultiHeadSelfAttention const *attn,
+    BatchConfig const *bc,
     Memory gpu_mem,
     int num_samples,
     int num_heads)
@@ -230,7 +231,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   }
   // allocate memory for the seqArray and reserve space
   {
-    size_t totalSize = reserveSpaceSize + sizeof(int) * num_samples * 2;
+    size_t totalSize = reserveSpaceSize + sizeof(int) * num_samples * 2 + bc->MAX_NUM_REQUESTS *bc-> MAX_SEQUENCE_LENGTH * sizeof(int);
     Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
                                    Realm::Point<1, coord_t>(totalSize - 1));
     std::vector<size_t> field_sizes;
@@ -252,7 +253,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                          kvSeqArray,
                          sizeof(int) * num_samples,
                          cudaMemcpyHostToDevice));
-    reserveSpace = (int *)devKvSeqArray + num_samples;
+    kvCache = (int *)devKvSeqArray + num_samples;
+    reserveSpace = (int *)kvCache + bc->MAX_NUM_REQUESTS * bc-> MAX_SEQUENCE_LENGTH;
   }
   // allocate memory for loWinIdx/hiWinIdx
   loWinIdx = (int *)malloc(sizeof(int) * attn->qoSeqLength);

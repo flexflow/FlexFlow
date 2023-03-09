@@ -111,6 +111,7 @@ class IncMultiHeadSelfAttentionMeta : public OpMeta {
 public:
   IncMultiHeadSelfAttentionMeta(FFHandler handler,
                                 IncMultiHeadSelfAttention const *attn,
+				BatchConfig const *bc,
                                 Legion::Memory gpu_mem,
                                 int num_samples,
                                 int num_heads);
@@ -123,7 +124,7 @@ public:
   cudnnAttnDescriptor_t attnDesc;
   cudnnSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
 #endif
-  int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx;
+  int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx, *kvCache;
   void *reserveSpace;
 };
 

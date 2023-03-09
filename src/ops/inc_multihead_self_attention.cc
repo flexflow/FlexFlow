@@ -357,9 +357,10 @@ void IncMultiHeadSelfAttention::init_inference(
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   size_t machine_view_hash = view->hash();
   set_argumentmap_for_init_inference(ff, argmap, view);
+  std::tuple<IncMultiHeadSelfAttention, BatchConfig> args = std::make_tuple(*this, bc);
   IndexLauncher launcher(INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(IncMultiHeadSelfAttention)),
+                         TaskArgument(&args, sizeof(std::tuple<IncMultiHeadSelfAttention, BatchConfig>)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -436,8 +437,10 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
-  IncMultiHeadSelfAttention const *attn =
-      (IncMultiHeadSelfAttention *)task->args;
+  std::tuple<IncMultiHeadSelfAttention, BatchConfig> const *args =
+      (std::tuple<IncMultiHeadSelfAttention, BatchConfig> *)task->args;
+  IncMultiHeadSelfAttention const *attn = &std::get<0>(*args);
+  BatchConfig const *bc = &std::get<1>(*args);
   FFHandler handle = *((FFHandler const *)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -457,7 +460,7 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
                        .best_affinity_to(task->target_proc)
                        .first();
   IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
-      handle, attn, gpu_mem, num_samples, num_heads);
+      handle, attn, bc, gpu_mem, num_samples, num_heads);
   m->profiling = attn->profiling;
   assert(weight.domain.get_volume() * sizeof(float) == m->weightSize);
   return m;
@@ -556,97 +559,98 @@ bool IncMultiHeadSelfAttention::get_int_parameter(PMParameter para,
 
 bool IncMultiHeadSelfAttention::measure_operator_cost(
     Simulator *sim, MachineView const &mv, CostMetrics &cost_metrics) const {
-  ParallelTensorBase sub_output, sub_input;
-  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
-    return false;
-  }
-  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
-    return false;
-  }
-  // Currently assume only data parallel
-  size_t num_weights = 0;
-  {
-    // Compute weight size
-    int qSize = sub_input.dims[0].size;
-    int kSize = sub_input.dims[0].size;
-    int vSize = sub_input.dims[0].size;
-    int qParas = qProjSize * qSize;
-    int kParas = kProjSize * kSize;
-    int vParas = vProjSize * vSize;
-    int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-    num_weights = num_heads * (qParas + kParas + vParas + oParas);
-  }
-  assert(sub_input.num_dims == 4);
-  int num_samples = sub_input.dims[2].size;
-
-  IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
-      sim->handler, this, sim->memory, num_samples, num_heads);
-
-  // allocate tensors in simulator
-  sim->free_all();
-  float const *input_ptr =
-      (float const *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-
-  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
-  assert(output_ptr != NULL);
-  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
-
-  float const *weight_ptr = (float const *)sim->allocate(num_weights, DT_FLOAT);
-  cost_metrics.weights_memory += cost_metrics.total_mem_diff_from(sim->offset);
-
-  assert(m->profiling == false);
-
-  std::function<void()> forward, backward;
-  forward = [&] {
-    inference_kernel_wrapper(m, input_ptr, weight_ptr, output_ptr);
-  };
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    // IncMultiHeadSelfAttention does not support training
-    assert(false);
-  }
-
-  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-
-  if (sim->computationMode == COMP_MODE_TRAINING) {
-    printf("[Measure IncMultiHeadSelfAttention] query(%d %d %d) key(%d %d %d) "
-           "value(%d %d %d) output(%d %d %d)"
-           "forward_time(%.4lf) backward_time(%.4lf)\n",
-           sub_input.dims[2].size,
-           sub_input.dims[1].size,
-           sub_input.dims[0].size,
-           sub_input.dims[2].size,
-           sub_input.dims[1].size,
-           sub_input.dims[0].size,
-           sub_input.dims[2].size,
-           sub_input.dims[1].size,
-           sub_input.dims[0].size,
-           sub_output.dims[2].size,
-           sub_output.dims[1].size,
-           sub_output.dims[0].size,
-           cost_metrics.forward_time,
-           cost_metrics.backward_time);
-  } else {
-    printf("[Measure IncMultiHeadSelfAttention] query(%d %d %d) key(%d %d %d) "
-           "value(%d %d %d) output(%d %d %d)"
-           "forward_time(%.4lf)\n",
-           sub_input.dims[2].size,
-           sub_input.dims[1].size,
-           sub_input.dims[0].size,
-           sub_input.dims[2].size,
-           sub_input.dims[1].size,
-           sub_input.dims[0].size,
-           sub_input.dims[2].size,
-           sub_input.dims[1].size,
-           sub_input.dims[0].size,
-           sub_output.dims[2].size,
-           sub_output.dims[1].size,
-           sub_output.dims[0].size,
-           cost_metrics.forward_time);
-  }
-  // Free multiheadattentionmeta
-  delete m;
-  return true;
+  return false;
+//  ParallelTensorBase sub_output, sub_input;
+//  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
+//    return false;
+//  }
+//  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
+//    return false;
+//  }
+//  // Currently assume only data parallel
+//  size_t num_weights = 0;
+//  {
+//    // Compute weight size
+//    int qSize = sub_input.dims[0].size;
+//    int kSize = sub_input.dims[0].size;
+//    int vSize = sub_input.dims[0].size;
+//    int qParas = qProjSize * qSize;
+//    int kParas = kProjSize * kSize;
+//    int vParas = vProjSize * vSize;
+//    int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
+//    num_weights = num_heads * (qParas + kParas + vParas + oParas);
+//  }
+//  assert(sub_input.num_dims == 4);
+//  int num_samples = sub_input.dims[2].size;
+//
+//  IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
+//      sim->handler, this, sim->memory, num_samples, num_heads);
+//
+//  // allocate tensors in simulator
+//  sim->free_all();
+//  float const *input_ptr =
+//      (float const *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+//  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//
+//  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+//  assert(output_ptr != NULL);
+//  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//
+//  float const *weight_ptr = (float const *)sim->allocate(num_weights, DT_FLOAT);
+//  cost_metrics.weights_memory += cost_metrics.total_mem_diff_from(sim->offset);
+//
+//  assert(m->profiling == false);
+//
+//  std::function<void()> forward, backward;
+//  forward = [&] {
+//    inference_kernel_wrapper(m, input_ptr, weight_ptr, output_ptr);
+//  };
+//  if (sim->computationMode == COMP_MODE_TRAINING) {
+//    // IncMultiHeadSelfAttention does not support training
+//    assert(false);
+//  }
+//
+//  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+//
+//  if (sim->computationMode == COMP_MODE_TRAINING) {
+//    printf("[Measure IncMultiHeadSelfAttention] query(%d %d %d) key(%d %d %d) "
+//           "value(%d %d %d) output(%d %d %d)"
+//           "forward_time(%.4lf) backward_time(%.4lf)\n",
+//           sub_input.dims[2].size,
+//           sub_input.dims[1].size,
+//           sub_input.dims[0].size,
+//           sub_input.dims[2].size,
+//           sub_input.dims[1].size,
+//           sub_input.dims[0].size,
+//           sub_input.dims[2].size,
+//           sub_input.dims[1].size,
+//           sub_input.dims[0].size,
+//           sub_output.dims[2].size,
+//           sub_output.dims[1].size,
+//           sub_output.dims[0].size,
+//           cost_metrics.forward_time,
+//           cost_metrics.backward_time);
+//  } else {
+//    printf("[Measure IncMultiHeadSelfAttention] query(%d %d %d) key(%d %d %d) "
+//           "value(%d %d %d) output(%d %d %d)"
+//           "forward_time(%.4lf)\n",
+//           sub_input.dims[2].size,
+//           sub_input.dims[1].size,
+//           sub_input.dims[0].size,
+//           sub_input.dims[2].size,
+//           sub_input.dims[1].size,
+//           sub_input.dims[0].size,
+//           sub_input.dims[2].size,
+//           sub_input.dims[1].size,
+//           sub_input.dims[0].size,
+//           sub_output.dims[2].size,
+//           sub_output.dims[1].size,
+//           sub_output.dims[0].size,
+//           cost_metrics.forward_time);
+//  }
+//  // Free multiheadattentionmeta
+//  delete m;
+//  return true;
 }
 
 using PCG::Node;
