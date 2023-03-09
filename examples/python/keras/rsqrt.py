@@ -20,18 +20,20 @@ import flexflow.keras.optimizers
 import numpy as np
 
 def test_rsqrt():
-  inp = Input(shape=(32,), dtype="float32")
+  inp1 = Input(shape=(32,), dtype="float32")
+  inp2 = Input(shape=(20,), dtype="float32")
 
-  x = Dense(20, activation='relu')(inp)
-  out = rsqrt(x * x)
+  x = Dense(20, activation='relu')(inp1)
+  out = rsqrt(x + inp2)
 
-  model = flexflow.keras.models.Model(inp, out)
+  model = flexflow.keras.models.Model([inp1, inp2], out)
 
   opt = flexflow.keras.optimizers.Adam(learning_rate=0.001)
   model.compile(optimizer=opt, loss='mean_squared_error', metrics=['mean_squared_error'])
   print(model.summary())
   model.fit(
-    x = np.random.randn(300, 32).astype(np.float32),
+    x = [np.random.randn(300, 32).astype(np.float32),
+         np.ones((300, 20)).astype(np.float32)],
     y = np.random.randn(300, 20).astype(np.float32),
     epochs = 2
   )
