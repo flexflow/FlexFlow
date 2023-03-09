@@ -1,6 +1,6 @@
-#include "flexflow/ops/reduce.h"
-#include "flexflow/model.h"
-#include "flexflow/utils/hash_utils.h"
+#include "reduce.h"
+#include "model.h"
+#include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {

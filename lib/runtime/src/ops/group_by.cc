@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ops-inc/groupby.h"
+#include "groupby.h"
 #include <math.h>
 #include <stdio.h>
 

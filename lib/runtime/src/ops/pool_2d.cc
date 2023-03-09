@@ -1,6 +1,6 @@
-#include "ops-inc/pool_2d.h"
+#include "pool_2d.h"
 #include "model.h"
-#include "ops/pool_2d_kernels.h"
+#include "op-impl/pool_2d_kernels.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 

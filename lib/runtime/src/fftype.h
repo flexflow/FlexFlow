@@ -1,7 +1,7 @@
 #ifndef _FF_TYPE_H
 #define _FF_TYPE_H
 
-#include "flexflow/ffconst.h"
+#include "op-meta/ffconst.h"
 #include <cstddef>
 
 namespace FlexFlow {

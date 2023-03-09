@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "ops-inc/reshape.h"
+#include "reshape.h"
 #include "model.h"
-#include "ops/reshape_kernels.h"
+#include "op-impl/reshape_kernels.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 

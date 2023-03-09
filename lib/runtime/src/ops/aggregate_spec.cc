@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ops-inc/aggregate_spec.h"
+#include "aggregate_spec.h"
 
 namespace FlexFlow {
 

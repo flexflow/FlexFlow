@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/gather.h"
-#include "flexflow/ops/embedding.h"
-#include "flexflow/ops/kernels/gather_kernels.h"
+#include "embedding.h"
+#include "gather.h"
+#include "op-impl/gather_kernels.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {

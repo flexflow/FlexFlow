@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ops-inc/cast.h"
+#include "cast.h"
 #include "model.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"

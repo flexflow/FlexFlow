@@ -20,9 +20,9 @@
 
 #pragma once
 
-#include "flexflow/ffconst.h"
-#include "flexflow/machine_view.h"
-#include "flexflow/utils/dot/record_formatter.h"
+#include "op-meta/ffconst.h"
+#include "pcg/machine_view.h"
+#include "utils/record_formatter.h"
 #include "legion.h"
 #include <ostream>
 #include <unordered_map>

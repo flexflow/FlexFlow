@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ops-inc/batch_matmul.h"
+#include "batch_matmul.h"
 #include "op-impl/batch_matmul_kernels.h"
 #include "legion/legion_utilities.h"
 

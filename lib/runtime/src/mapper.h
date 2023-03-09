@@ -16,7 +16,6 @@
 #ifndef __FLEXFLOW_MAPPER_H__
 #define __FLEXFLOW_MAPPER_H__
 
-#include "default_mappers.h"
 #include "legion.h"
 #include "model.h"
 #include "null_mapper.h"
