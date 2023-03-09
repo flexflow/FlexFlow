@@ -17,6 +17,7 @@
 #include "accessor.h"
 #include "config.h"
 #include "device.h"
+#include "flexflow/memory_optimization.h"
 #include "flexflow/node.h"
 #include "flexflow/operator_params.h"
 #include "flexflow/utils/hash_utils.h"
@@ -65,6 +66,9 @@ enum TaskIDs {
   EMBED_INIT_TASK_ID,
   EMBED_FWD_TASK_ID,
   EMBED_BWD_TASK_ID,
+  GATHER_INIT_TASK_ID,
+  GATHER_FWD_TASK_ID,
+  GATHER_BWD_TASK_ID,
   GROUP_BY_INIT_TASK_ID,
   GROUP_BY_FWD_TASK_ID,
   GROUP_BY_BWD_TASK_ID,
@@ -256,6 +260,7 @@ class ElementBinary;
 class ElementUnary;
 class Embedding;
 class Flat;
+class Gather;
 class Group_by;
 class LayerNorm;
 class Linear;
@@ -349,6 +354,16 @@ public:
                 const Tensor y,
                 bool inplace_a = false,
                 char const *name = NULL);
+  // Add a max layer
+  Tensor max(const Tensor x,
+             const Tensor y,
+             bool inplace_a = false,
+             char const *name = NULL);
+  // Add a min layer
+  Tensor min(const Tensor x,
+             const Tensor y,
+             bool inplace_a = false,
+             char const *name = NULL);
   // Add a rsqrt layer
   Tensor rsqrt(const Tensor x, bool inplace = true, char const *name = NULL);
   // Add a pow layer
@@ -414,6 +429,11 @@ public:
                    Layer const *shared_op = NULL,
                    Initializer *kernel_initializer = NULL,
                    char const *name = NULL);
+  // Add a gather layer
+  Tensor gather(const Tensor input,
+                const Tensor index,
+                int dim,
+                char const *name = NULL);
   // Add a group_by layer
   void group_by(const Tensor data,
                 const Tensor assign,
@@ -765,6 +785,13 @@ public:
                       bool only_data_parallel,
                       std::unique_ptr<PCG::Graph> &best_graph,
                       std::unordered_map<PCG::Node, MachineView> &optimal_view);
+  void graph_optimize(size_t budget,
+                      bool only_data_parallel,
+                      std::unique_ptr<PCG::Graph> &best_graph,
+                      std::unordered_map<PCG::Node, MachineView> &optimal_view,
+                      bool perform_memory_search,
+                      MemoryOptimConfig new_config,
+                      MemorySearchResult &search_result);
   void mcmc_optimize(std::map<Op const *, ParallelConfig> &best,
                      size_t budget,
                      float alpha,
@@ -801,6 +828,11 @@ public:
   // APIs for setting iteration configs
 public:
   void set_iteration_config_sequence_length(int seq_length);
+
+  /**
+   * @brief Clear the cache of the GraphSearchHelper and SearchHelper.
+   */
+  void clear_graph_search_cache();
 
 public:
   size_t op_global_guid, layer_global_guid;
@@ -850,7 +882,10 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, EmbeddingParams>,
                          Embedding *>,
       std::unordered_map<std::pair<ParallelTensorShape, FlatParams>, Flat *>,
-
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    GatherParams>,
+          Gather *>,
       std::unordered_map<
           std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
                     Group_byParams>,

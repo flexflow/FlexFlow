@@ -37,6 +37,7 @@
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
+#include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
@@ -1218,6 +1219,11 @@ FFModel::FFModel(FFConfig &_config)
   for (PointInRectIterator<1> it(task_rect); it(); it++) {
     handlers[idx++] = fm.get_result<FFHandler>(*it);
   }
+}
+
+void FFModel::clear_graph_search_cache() {
+  this->graph_search->clear_cache();
+  this->search->clear_cache();
 }
 
 #ifdef FF_USE_NCCL
@@ -2675,7 +2681,9 @@ Op *FFModel::create_operator_from_layer(
     case OP_EW_ADD:
     case OP_EW_SUB:
     case OP_EW_MUL:
-    case OP_EW_DIV: {
+    case OP_EW_DIV:
+    case OP_EW_MAX:
+    case OP_EW_MIN: {
       Op *op = ElementBinary::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
@@ -2701,6 +2709,11 @@ Op *FFModel::create_operator_from_layer(
     }
     case OP_FLAT: {
       Op *op = Flat::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_GATHER: {
+      Op *op = Gather::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -3522,6 +3535,7 @@ FFConfig::FFConfig() {
   syntheticInput = false;
   perform_fusion = false;
   base_optimize_threshold = DefaultConfig::base_optimize_threshold;
+  perform_memory_search = false;
 
   // Parse input arguments
   {
@@ -3608,6 +3622,10 @@ void FFConfig::parse_args(char **argv, int argc) {
       workersPerNode = atoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "-ll:fsize")) {
+      device_mem = atoi(argv[++i]);
+      continue;
+    }
     if (!strcmp(argv[i], "--nodes")) {
       fprintf(stderr,
               "[Warning] --nodes is deprecated. "
@@ -3692,6 +3710,10 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if (!strcmp(argv[i], "--substitution-json")) {
       substitution_json_path = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--memory-search")) {
+      perform_memory_search = true;
       continue;
     }
   }
@@ -3866,6 +3888,28 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<Embedding::backward_task_cpu>(
         registrar, "Embedding Backward Task");
   }*/
+  // Gather task
+  {
+    TaskVariantRegistrar registrar(GATHER_INIT_TASK_ID, "Gather Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, Gather::init_task>(
+        registrar, "Gather Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(GATHER_FWD_TASK_ID, "Gather Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Gather::forward_task>(
+        registrar, "Gather Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(GATHER_BWD_TASK_ID, "Gather Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Gather::backward_task>(
+        registrar, "Gather Backward Task");
+  }
 
   // Cache task CPU
   {

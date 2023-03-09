@@ -52,6 +52,12 @@ void init_kernel(ElementBinaryMeta *m,
     case OP_EW_MUL:
       mode = CUDNN_OP_TENSOR_MUL;
       break;
+    case OP_EW_MAX:
+      mode = CUDNN_OP_TENSOR_MAX;
+      break;
+    case OP_EW_MIN:
+      mode = CUDNN_OP_TENSOR_MIN;
+      break;
     default:
       assert(false);
   }
@@ -107,6 +113,12 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
       case OP_EW_DIV:
         opName = "Div";
         break;
+      case OP_EW_MAX:
+        opName = "Max";
+        break;
+      case OP_EW_MIN:
+        opName = "Min";
+        break;
       default:
         assert(false);
     }
@@ -159,6 +171,12 @@ void backward_kernel_wrapper(ElementBinaryMeta const *m,
       case OP_EW_DIV:
         opName = "Div";
         break;
+      case OP_EW_MAX:
+        opName = "Max";
+        break;
+      case OP_EW_MIN:
+        opName = "Min";
+        break;
       default:
         assert(false);
     }
@@ -200,6 +218,18 @@ __global__ void elewise_binary_forward_kernel(coord_t volume,
       }
       break;
     }
+    case OP_EW_MAX: {
+      CUDA_KERNEL_LOOP(i, volume) {
+        out[i] = alpha * max(in1[i], in2[i]) + beta * out[i];
+      }
+      break;
+    }
+    case OP_EW_MIN: {
+      CUDA_KERNEL_LOOP(i, volume) {
+        out[i] = alpha * min(in1[i], in2[i]) + beta * out[i];
+      }
+      break;
+    }
     default:
       assert(false);
   }
@@ -237,6 +267,24 @@ __global__ void elewise_binary_backward_kernel(coord_t volume,
                       beta * in2_grad[i];
         break;
       }
+      case OP_EW_MAX: {
+        in1_grad[i] = (in1[i] >= in2[i])
+                          ? alpha * out_grad[i] + beta * in1_grad[i]
+                          : beta * in1_grad[i];
+        in2_grad[i] = (in2[i] >= in1[i])
+                          ? alpha * out_grad[i] + beta * in2_grad[i]
+                          : beta * in2_grad[i];
+        break;
+      }
+      case OP_EW_MIN: {
+        in1_grad[i] = (in1[i] <= in2[i])
+                          ? alpha * out_grad[i] + beta * in1_grad[i]
+                          : beta * in1_grad[i];
+        in2_grad[i] = (in2[i] <= in1[i])
+                          ? alpha * out_grad[i] + beta * in2_grad[i]
+                          : beta * in2_grad[i];
+        break;
+      }
       default:
         assert(false);
     }
@@ -258,6 +306,8 @@ void forward_kernel(ElementBinaryMeta const *m,
       break;
     case OP_EW_ADD:
     case OP_EW_MUL:
+    case OP_EW_MAX:
+    case OP_EW_MIN:
       break;
     default:
       assert(false);
@@ -489,6 +539,30 @@ void backward_kernel(ElementBinaryMeta const *m,
                                  in2_grad_ptr));
       }
     }
+  } else if (m->op_type == OP_EW_MIN || m->op_type == OP_EW_MAX) {
+    float alpha = 1.0f, beta = 1.0f;
+    cudnnDataType_t dataType;
+    int n;
+    int dims[MAX_TENSOR_DIM];
+    int strides[MAX_TENSOR_DIM];
+    checkCUDNN(cudnnGetTensorNdDescriptor(
+        m->outputTensor, MAX_TENSOR_DIM, &dataType, &n, dims, strides));
+    size_t volume = 1;
+    for (int i = 0; i < n; i++) {
+      volume *= dims[i];
+    }
+    elewise_binary_backward_kernel<<<GET_BLOCKS(volume),
+                                     CUDA_NUM_THREADS,
+                                     0,
+                                     stream>>>(volume,
+                                               alpha,
+                                               beta,
+                                               m->op_type,
+                                               out_grad_ptr,
+                                               in1_ptr,
+                                               in2_ptr,
+                                               in1_grad_ptr,
+                                               in2_grad_ptr);
   } else {
     assert(false && "Unsupported ElementWise Binary Type");
   }

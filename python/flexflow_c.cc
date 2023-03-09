@@ -287,6 +287,32 @@ flexflow_tensor_t flexflow_model_add_divide(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
+flexflow_tensor_t flexflow_model_add_max(flexflow_model_t handle_,
+                                         const flexflow_tensor_t x_,
+                                         const flexflow_tensor_t y_,
+                                         bool inplace_a,
+                                         char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor x = FFCObjectWrapper::unwrap_const(x_);
+  const Tensor y = FFCObjectWrapper::unwrap_const(y_);
+  Tensor tensor = handle->max(x, y, inplace_a, name);
+  DEBUG_PRINT("[Max] new Tensor %p, x %p, y %p, name %s", tensor, x, y, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_min(flexflow_model_t handle_,
+                                         const flexflow_tensor_t x_,
+                                         const flexflow_tensor_t y_,
+                                         bool inplace_a,
+                                         char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  const Tensor x = FFCObjectWrapper::unwrap_const(x_);
+  const Tensor y = FFCObjectWrapper::unwrap_const(y_);
+  Tensor tensor = handle->min(x, y, inplace_a, name);
+  DEBUG_PRINT("[Min] new Tensor %p, x %p, y %p, name %s", tensor, x, y, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
 flexflow_tensor_t flexflow_model_add_reduce_sum(flexflow_model_t handle_,
                                                 const flexflow_tensor_t input_,
                                                 int *axes,
@@ -680,6 +706,24 @@ flexflow_tensor_t flexflow_model_add_flat(flexflow_model_t handle_,
   Tensor tensor = handle->flat(input, name);
   DEBUG_PRINT(
       "[Flat] new Tensor 4D %p, input %p, name %s", tensor, input, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_tensor_t flexflow_model_add_gather(flexflow_model_t handle_,
+                                            const flexflow_tensor_t input_,
+                                            const flexflow_tensor_t index_,
+                                            int dim,
+                                            char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor index = FFCObjectWrapper::unwrap(index_);
+  Tensor tensor = handle->gather(input, index, dim, name);
+  DEBUG_PRINT("[Gather] new Tensor %p, input %p, index %p, dim %d name %s",
+              tensor,
+              input,
+              index,
+              dim,
+              name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -1311,6 +1355,15 @@ bool flexflow_tensor_get_tensor_int64(flexflow_tensor_t handle_,
   Tensor handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_);
   return handle->get_tensor<int64_t>(model, data, get_gradients);
+}
+
+bool flexflow_model_get_output_tensor_float(flexflow_model_t model_,
+                                            flexflow_tensor_t handle_,
+                                            float *data,
+                                            bool get_gradients) {
+  FFModel *model = FFCObjectWrapper::unwrap(model_);
+  Tensor handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->get_output_parallel_tensor<float>(model, data, get_gradients);
 }
 
 // -----------------------------------------------------------------------
