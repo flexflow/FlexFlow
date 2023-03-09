@@ -28,6 +28,12 @@ If you are planning to build the Python interface, you will need to install seve
 
 **We recommend that you create your own `conda` environment and then install the Python dependencies, to avoid any version mismatching with your system pre-installed libraries.** 
 
+The `conda` environment can be created and activated as:
+```
+conda env create -f environment.yml
+conda activate flexflow
+```
+
 ## 4. Configuring the FlexFlow build
 You can configure a FlexFlow build by running the `config/config.linux` file in the build folder. If you do not want to build with the default options, you can set your configurations by passing (or exporting) the relevant environment variables. We recommend that you spend some time familiarizing with the available options by scanning the `config/config.linux` file. In particular, the main parameters are:
 

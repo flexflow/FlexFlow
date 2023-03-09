@@ -80,7 +80,7 @@ def ensure_dir_exists(filepath: str):
 
 def save_tensor_ff(tensor_ff: Tensor, ffmodel: FFModel, filepath: str) -> None:
     """Saves the FlexFlow tensor ``tensor_ff`` to the filepath ``filepath``."""
-    tensor_np: np.ndarray = tensor_ff.get_tensor(ffmodel, ParameterSyncType.PS)
+    tensor_np: np.ndarray = tensor_ff.get_model_output_tensor(ffmodel)
     tensor_torch: torch.Tensor = torch.from_numpy(tensor_np)
     ensure_dir_exists(filepath)
     torch.save(tensor_torch, filepath)
@@ -89,7 +89,7 @@ def save_tensor_ff(tensor_ff: Tensor, ffmodel: FFModel, filepath: str) -> None:
 def save_tensor_grad_ff(tensor_ff: Tensor, ffmodel: FFModel, filepath: str) -> None:
     """Saves the gradient of the FlexFlow tensor ``tensor_ff`` to the filepath
     ``filepath``."""
-    grad_np: np.ndarray = tensor_ff.get_gradients(ffmodel, ParameterSyncType.PS)
+    grad_np: np.ndarray = tensor_ff.get_model_output_gradients(ffmodel, ParameterSyncType.PS)
     grad_torch: torch.Tensor = torch.from_numpy(grad_np)
     ensure_dir_exists(filepath)
     torch.save(grad_torch, filepath)

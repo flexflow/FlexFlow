@@ -17,7 +17,7 @@ import flexflow.core as ff
 from flexflow.core.flexflow_logger import fflogger
 
 from .tensor import Tensor
-from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout, BatchNormalization, Embedding, Reshape, Permute
+from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout, BatchNormalization, Embedding, Reshape, Permute, Maximum, Minimum
 from flexflow.keras.backend.internal import BatchMatmul, Sin, Cos, Exp, Pow, ReduceSum, Rsqrt
 from flexflow.keras.optimizers import SGD, Adam
 from flexflow.keras.callbacks import Callback, LearningRateScheduler, VerifyMetrics, EpochVerifyMetrics
@@ -492,6 +492,10 @@ class BaseModel(object):
         out_t = self._ffmodel.subtract(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       elif isinstance(layer, Multiply) == True:
         out_t = self._ffmodel.multiply(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
+      elif isinstance(layer, Maximum) == True:
+        out_t = self._ffmodel.max(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
+      elif isinstance(layer, Minimum) == True:
+        out_t = self._ffmodel.min(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       elif isinstance(layer, Dropout) == True:
         out_t = self._ffmodel.dropout(layer.input_tensors[0].ffhandle, layer.rate, layer.seed)
       elif isinstance(layer, BatchNormalization) == True:
