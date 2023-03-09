@@ -24,6 +24,11 @@ option(FF_BUILD_SUBSTITUTION_TOOL "build substitution conversion tool" OFF)
 option(FF_BUILD_VISUALIZATION_TOOL "build substitution visualization tool" OFF)
 option(FF_BUILD_ARG_PARSER "build command line argument parser" OFF)
 
+set(FF_CUDA_ARCH "autodetect" CACHE STRING "Target CUDA Arch")
+if (FF_CUDA_ARCH STREQUAL "")
+  message(FATAL_ERROR "FF_CUDA_ARCH cannot be an empty string. Set it to `autodetect`, `all`, or pass one or multiple valid CUDA archs.")
+endif()
+
 set(FF_GPU_BACKENDS cuda hip_cuda hip_rocm intel)
 set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")
 include(cuda)
