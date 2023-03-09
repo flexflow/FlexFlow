@@ -1,5 +1,6 @@
 #include "flexflow/model.h"
 #include "flexflow/utils/cuda_helper.h"
+#include "realm/cuda/cuda_module.h"
 
 using Legion::coord_t;
 using Legion::Domain;
@@ -9,22 +10,19 @@ namespace FlexFlow {
 
 #ifdef FF_USE_CUDA
 cudaError_t get_legion_stream(cudaStream_t *stream) {
-#ifdef DISABLE_LEGION_CUDA_HIJACK
-  *stream = (cudaStream_t)0;
+  *stream = Realm::Cuda::get_task_cuda_stream();
+  assert (*stream!=0);
   return cudaSuccess;
-#else
-  return cudaStreamCreate(stream);
-#endif
 }
 #elif FF_USE_HIP_CUDA
 extern "C" {
 cudaStream_t hipGetTaskStream();
 }
 cudaError_t get_legion_stream(cudaStream_t *stream) {
-#ifdef DISABLE_LEGION_CUDA_HIJACK
-  *stream = (cudaStream_t)0;
-#else
+#ifdef REALM_USE_CUDART_HIJACK
   *stream = hipGetTaskStream();
+#else
+  *stream = (cudaStream_t)0;
 #endif
   return cudaSuccess;
 }

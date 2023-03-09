@@ -19,10 +19,10 @@ hipStream_t hipGetTaskStream();
 }
 
 hipError_t get_legion_stream(hipStream_t *stream) {
-#ifdef DISABLE_LEGION_HIP_HIJACK
-  *stream = (hipStream_t)0;
-#else
+#ifdef REALM_USE_HIP_HIJACK
   *stream = hipGetTaskStream();
+#else
+  *stream = (hipStream_t)0;
 #endif
   return hipSuccess;
 }

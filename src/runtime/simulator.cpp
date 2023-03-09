@@ -73,7 +73,7 @@ Simulator::Simulator(FFModel const *model,
   capacity = model->config.simulator_work_space_size;
 
   // Set cublas/cudnn streams to allow Realm catch the events
-#ifndef DISABLE_LEGION_HIP_HIJACK
+#ifdef REALM_USE_HIP_HIJACK
   hipStream_t stream;
   checkCUDA(hipStreamCreate(&stream));
   checkCUDA(hipblasSetStream(handler.blas, stream));
