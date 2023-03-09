@@ -133,6 +133,9 @@ protected:
       bool allocate_weights = true) const;
   bool check_output_input_weight_same_parallel_is() const;
   bool check_output_input_weight_same_machine_view() const;
+  void load_weight(){
+    return;
+  }
 
 public:
   Op(FFModel &model,

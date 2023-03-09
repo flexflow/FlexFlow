@@ -1489,6 +1489,9 @@ ParallelParameter FFModel::create_parallel_weight(const ParallelDim dims[],
   }
   assert(p->get_volume() > 0);
   assert(p->check_valid());
+
+  //set data
+  p->set_tensor();
   return p;
 }
 
@@ -2423,6 +2426,10 @@ void FFModel::recompile_on_condition(RecompileState &r) {
   if (r.trigger()) {
     r.alter();
   }
+}
+
+void FFModel::load_weight(Op *op, float const *data) {
+  //copy data to 
 }
 
 void FFModel::compute_metrics() {

@@ -90,10 +90,28 @@ public:
                                       T *gamma_grad_ptr,
                                       T *beta_grad_ptr);
 
+   template <typename T>
+  static void load_weights_kernel(LayerNormMeta const *m,
+                             T const *input_gamma_ptr,
+                             T const *input_beta_ptr,
+                             T *gamma_ptr,
+                             T *beta_ptr,
+                             size_t copy_size,
+                             ffStream_t stream);
+  template <typename T>
+  static void load_weights_kernel_wrapper(LayerNormMeta const *m,
+                                     T const *input_gamma_ptr,
+                                     T const *input_beta_ptr,
+                                     T *gamma_ptr,
+                                     T *beta_ptr,
+                                     size_t copy_size);                                   
+
 public:
   bool elementwise_affine;
   int64_t effective_batch_size, effective_num_elements;
   float eps;
+  float const *weights
+  float const *bias;
   std::vector<int> axes;
 };
 

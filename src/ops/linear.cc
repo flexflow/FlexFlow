@@ -197,6 +197,9 @@ Linear::Linear(FFModel &model,
                                                        bias_initializer,
                                                        CHOSEN_SYNC_TYPE);
     }
+
+    //load weight task
+    
   }
 
   // Create the output tensor

@@ -130,18 +130,8 @@ void LayerNorm::forward_kernel(LayerNormMeta const *m,
                                T *gamma_ptr,
                                T *beta_ptr,
                                cudaStream_t stream) {
-  RowwiseMomentsCUDAKernel<float>
-      <<<m->effective_batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
-          m->effective_num_elements, m->eps, in_ptr, m->mean_ptr, m->rstd_ptr);
-  LayerNormForwardCUDAKernel<float>
-      <<<m->effective_batch_size, kCUDANumThreads, 0, stream>>>(
-          m->effective_num_elements,
-          in_ptr,
-          m->mean_ptr,
-          m->rstd_ptr,
-          gamma_ptr,
-          beta_ptr,
-          out_ptr);
+   copy_kernel<<<GET_BLOCKS(acc_batch_input.rect.volume()), CUDA_NUM_THREADS>>>(
+      acc_batch_input.ptr, input_zc, acc_batch_input.rect.volume());
 }
 
 /*static*/
@@ -174,6 +164,56 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
     print_tensor<T>(out_ptr, 32, "[LayerNorm:forward:output]");
   }
 }
+
+/*static*/
+template <typename T>
+void LayerNorm::load_weights_kernel(LayerNormMeta const *m,
+                               T const *in_gamma_ptr,
+                               T const *in_beta_ptr,
+                               T *gamma_ptr,
+                               T *beta_ptr,
+                               size_t copy_size,
+                               cudaStream_t stream) {
+  copy_kernel<<<GET_BLOCKS(copy_size), CUDA_NUM_THREADS>>>(
+      gamma_ptr, in_gamma_ptr, copy_size);
+  copy_kernel<<<GET_BLOCKS(copy_size), CUDA_NUM_THREADS>>>(
+      beta_ptr, in_beta_ptr, copy_size);
+}
+
+/*static*/
+template <typename T>
+void LayerNorm::load_weights_kernel_wrapper(LayerNormMeta const *m,
+                                       T const *in_gamma_ptr,
+                                       T const *in_beta_ptr,
+                                       T *gamma_ptr,
+                                       T *beta_ptr,
+                                       size_t copy_size) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+  LayerNorm::forward_kernel<float>(
+      m, in_gamma_ptr, in_beta_ptr, gamma_ptr, beta_ptr, copy_size, stream);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[LayerNorm] load weights time (CF) = %.2fms\n", elapsed);
+    print_tensor<T>(in_gamma_ptr, 32, "[LayerNorm:load_weights:gamma]");
+    print_tensor<T>(in_beta_ptr, 32, "[LayerNorm:load_weights:beta]");
+  }
+}
+
+
+
 
 template <typename T>
 __global__ void ComputeInternalGradientsCUDAKernel(
