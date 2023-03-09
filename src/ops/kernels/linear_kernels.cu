@@ -171,6 +171,53 @@ void backward_kernel_wrapper(LinearMeta const *m,
     // "[Linear:backward:bias_grad]"); print_tensor<float>(input_grad,
     // acc_input.rect.volume(), "[Linear:backward:input_grad]");
   }
+
+  /*static*/
+template <typename T>
+void load_weights_kernel(LayerNormMeta const *m,
+                               T const *in_gamma_ptr,
+                               T const *in_beta_ptr,
+                               T *gamma_ptr,
+                               T *beta_ptr,
+                               size_t copy_size,
+                               cudaStream_t stream) {
+  copy_kernel<<<GET_BLOCKS(copy_size), CUDA_NUM_THREADS>>>(
+      gamma_ptr, in_gamma_ptr, copy_size);
+  copy_kernel<<<GET_BLOCKS(copy_size), CUDA_NUM_THREADS>>>(
+      beta_ptr, in_beta_ptr, copy_size);
+}
+
+/*static*/
+template <typename T>
+void load_weights_kernel_wrapper(LayerNormMeta const *m,
+                                       T const *in_gamma_ptr,
+                                       T const *in_beta_ptr,
+                                       T *gamma_ptr,
+                                       T *beta_ptr,
+                                       size_t copy_size) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+  LayerNorm::forward_kernel<float>(
+      m, in_gamma_ptr, in_beta_ptr, gamma_ptr, beta_ptr, copy_size, stream);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[LayerNorm] load weights time (CF) = %.2fms\n", elapsed);
+    print_tensor<T>(in_gamma_ptr, 32, "[LayerNorm:load_weights:gamma]");
+    print_tensor<T>(in_beta_ptr, 32, "[LayerNorm:load_weights:beta]");
+  }
+}
 }
 
 /*

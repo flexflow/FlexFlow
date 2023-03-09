@@ -61,9 +61,7 @@ Tensor FFModel::layer_norm(const Tensor input,
                            std::vector<int> const &axes,
                            bool elementwise_affine,
                            float eps,
-                           char const *name,
-                           float const *weights,
-                           float const *bias) {
+                           char const *name) {
   // FIXME: currently disable elementwise_affine
   elementwise_affine = false;
   // axes must be the last axes.size() dimensions
@@ -224,20 +222,6 @@ void LayerNorm::init(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     inputs[0]->region));
   launcher.add_field(1, FID_DATA);
-
-  if (elementwise_affine) {
-    launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-                                                      0 /*projection id*/,
-                                                      READ_WRITE,
-                                                      EXCLUSIVE,
-                                                      weights[0]->region));
-    launcher.add_field(2, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
-                                                      0 /*projection id*/,
-                                                      READ_WRITE,
-                                                      EXCLUSIVE,
-                                                      weights[1]->region));
-    launcher.add_field(3, FID_DATA);
   }
 
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
@@ -252,25 +236,7 @@ OpMeta *LayerNorm::init_task(Task const *task,
   LayerNorm *ln = (LayerNorm *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   LayerNormMeta *meta = new LayerNormMeta(handle, ln);
-  // copy ln->weights into weights[0], ln->bias into weights[1]
-  if (m->elementwise_affine) {
-    assert(regions.size() == 4);
-    Domain gamma_domain = runtime->get_index_space_domain(
-        ctx, task->regions[2].region.get_index_space());
-    gamma_ptr = helperGetTensorPointerRW<float>(
-        regions[2], task->regions[2], FID_DATA, ctx, runtime);
-    Domain beta_domain = runtime->get_index_space_domain(
-        ctx, task->regions[3].region.get_index_space());
-    beta_ptr = helperGetTensorPointerRW<float>(
-        regions[3], task->regions[3], FID_DATA, ctx, runtime);
-    assert(gamma_domain == beta_domain);
-    assert(gamma_domain.get_volume() == m->effective_num_elements);
-    size_t copy_size = gamma_domain.get_volume();
-    LayerNorm: load_weights_kernel_wrapper<float>(
-      ln->weights, ln->bias, gamma_ptr, beta_ptr, copy_size);
-  } else {
-    assert(regions.size() == 2);
-  }
+ 
   return meta;
 }
 
