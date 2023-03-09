@@ -447,7 +447,93 @@ void LayerNorm::backward_task(Task const *task,
 bool LayerNorm::measure_operator_cost(Simulator *sim,
                                       MachineView const &mv,
                                       CostMetrics &cost_metrics) const {
-  return false;
+  ParallelTensorBase sub_output, sub_input;
+  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
+    return false;
+  }
+  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
+    return false;
+  }
+  LayerNormMeta *m = new LayerNormMeta(sim->handler, this);
+
+  sim->free_all();
+  float *in_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  assert(in_ptr != NULL);
+  cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  float *out_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  assert(out_ptr != NULL);
+  cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+  // FIXME please add gamma_ptr and beta_ptr after finish the implementation
+  float *gamma_ptr = NULL, *beta_ptr = NULL;
+
+  bool out_of_memory =
+      (in_ptr == NULL) || (out_ptr == NULL) ||
+      (((gamma_ptr == NULL) || (beta_ptr == NULL)) && (m->elementwise_affine));
+  if (out_of_memory) {
+    cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+    return true;
+  }
+
+  std::function<void()> forward, backward;
+  forward = [&] {
+    forward_kernel_wrapper(m, in_ptr, out_ptr, gamma_ptr, beta_ptr);
+  };
+
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    float *in_grad_ptr =
+        (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    assert(in_grad_ptr != NULL);
+    cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
+
+    float *out_grad_ptr = NULL;
+    out_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    assert(out_grad_ptr != NULL);
+    cost_metrics.outputs_memory +=
+        cost_metrics.total_mem_diff_from(sim->offset);
+
+    float *gamma_grad_ptr = NULL, *beta_grad_ptr = NULL;
+
+    out_of_memory = (in_grad_ptr == NULL) || (out_grad_ptr == NULL) ||
+                    (((gamma_grad_ptr == NULL) || (beta_grad_ptr == NULL)) &&
+                     (m->elementwise_affine));
+    if (out_of_memory) {
+      cost_metrics.forward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+      cost_metrics.backward_time = Simulator::MAXIMUM_TASK_RUN_TIME;
+      return true;
+    }
+
+    backward = [&] {
+      backward_kernel_wrapper<float>(m,
+                                     out_grad_ptr,
+                                     in_ptr,
+                                     in_grad_ptr,
+                                     gamma_ptr,
+                                     gamma_grad_ptr,
+                                     beta_grad_ptr);
+    };
+  }
+
+  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
+
+  if (sim->computationMode == COMP_MODE_TRAINING) {
+    log_measure.debug("[Measure LayerNorm] name(%s) num_elements(%zu) "
+                      "forward_time(%.4lf) backward_time(%.4lf)\n",
+                      name,
+                      sub_output.get_volume(),
+                      cost_metrics.forward_time,
+                      cost_metrics.backward_time);
+  } else {
+    log_measure.debug("[Measure LayerNorm] name(%s) num_elements(%zu) "
+                      "forward_time(%.4lf)\n",
+                      name,
+                      sub_output.get_volume(),
+                      cost_metrics.forward_time);
+  }
+
+  return true;
 }
 
 void LayerNorm::serialize(Legion::Serializer &sez) const {
