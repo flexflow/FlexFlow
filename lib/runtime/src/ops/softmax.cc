@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ops-inc/softmax.h"
+#include "softmax.h"
 #include "model.h"
 #include "utils/hash_utils.h"
 

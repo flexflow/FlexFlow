@@ -1,13 +1,7 @@
-<<<<<<< HEAD:lib/ffr/src/ops/dropout.cc
-#include "ops-inc/dropout.h"
+#include "dropout.h"
 #include "model.h"
 #include "utils/hash_utils.h"
-=======
-#include "flexflow/ops/dropout.h"
-#include "flexflow/model.h"
-#include "flexflow/ops/kernels/dropout_kernels.h"
-#include "flexflow/utils/hash_utils.h"
->>>>>>> master:src/ops/dropout.cc
+#include "op-impl/dropout_kernels.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {

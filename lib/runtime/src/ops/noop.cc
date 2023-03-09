@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ops-inc/noop.h"
+#include "noop.h"
 #include "utils/hash_utils.h"
 
 namespace FlexFlow {

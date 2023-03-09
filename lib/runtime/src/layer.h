@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ffconst.h"
+#include "op-meta/ffconst.h"
 #include "fftype.h"
 #include "tensor.h"
 

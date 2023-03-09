@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "ops-inc/transpose.h"
-#include "ops-impl/transpose_kernels.h"
+#include "transpose.h"
+#include "op-impl/transpose_kernels.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {

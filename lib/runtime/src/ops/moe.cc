@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/model.h"
+#include "model.h"
 
 using namespace FlexFlow;
 

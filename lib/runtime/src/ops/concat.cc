@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "ops-inc/concat.h"
+#include "concat.h"
 #include "model.h"
-#include "ops-impl/concat_kernels.h"
+#include "op-impl/concat_kernels.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 

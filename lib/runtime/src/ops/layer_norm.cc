@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ops-inc/layer_norm.h"
+#include "layer_norm.h"
 #include "model.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"

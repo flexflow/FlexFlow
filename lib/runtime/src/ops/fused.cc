@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-#include "ops-inc/fused.h"
+#include "fused.h"
 #include "model.h"
-#include "ops-inc/batch_matmul.h"
-#include "ops-inc/batch_norm.h"
-#include "ops-inc/concat.h"
-#include "ops-inc/dropout.h"
-#include "ops-inc/element_binary.h"
-#include "ops-inc/element_unary.h"
-#include "ops-inc/flat.h"
-#include "ops-inc/pool_2d.h"
-#include "ops-inc/reshape.h"
-#include "ops-inc/transpose.h"
+#include "batch_matmul.h"
+#include "batch_norm.h"
+#include "concat.h"
+#include "dropout.h"
+#include "element_binary.h"
+#include "element_unary.h"
+#include "flat.h"
+#include "pool_2d.h"
+#include "reshape.h"
+#include "transpose.h"
 
 namespace FlexFlow {
 // declare Legion names

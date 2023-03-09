@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ops-inc/topk.h"
+#include "topk.h"
 
 namespace FlexFlow {
 // declare Legion names

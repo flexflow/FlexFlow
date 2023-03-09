@@ -1,7 +1,7 @@
-#include "ops-inc/linear.h"
+#include "linear.h"
 #include "layer.h"
 #include "model.h"
-#include "ops-impl/linear_kernels.h"
+#include "op-impl/linear_kernels.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
