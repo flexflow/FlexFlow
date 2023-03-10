@@ -73,18 +73,16 @@ Tensor create_moe_encoder(FFModel *model,
   std::vector<int> axes = {0, 1, 2};
   Tensor x = input;
   for (int i = 0; i < moeConfig->num_encoder_layers; i++) {
-    x = model->layer_norm(
-        model->add(model->multihead_attention(x,
-                                              x,
-                                              x,
-                                              moeConfig->hidden_size,
-                                              moeConfig->num_attention_heads,
-                                              moeConfig->attention_kdim,
-                                              moeConfig->attention_vdim),
-                   x),
-        axes,
-        true,
-        1e-05);
+    x = model->layer_norm(model->add(model->inc_multihead_self_attention(
+                                         x,
+                                         moeConfig->hidden_size,
+                                         moeConfig->num_attention_heads,
+                                         moeConfig->attention_kdim,
+                                         moeConfig->attention_vdim),
+                                     x),
+                          axes,
+                          true,
+                          1e-05);
     x = model->layer_norm(
         model->add(create_moe(model, moeConfig, x), x), axes, true, 1e-05);
   }

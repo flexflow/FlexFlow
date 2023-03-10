@@ -25,17 +25,17 @@ using Legion::Memory;
 /*static*/
 void IncMultiHeadSelfAttention::inference_kernel1(
     IncMultiHeadSelfAttentionMeta const *m,
-    BatchConfig *bc,
+    BatchConfig const *bc,
     float const *input_ptr,
     float const *weight_ptr,
     float *output_ptr,
     cudaStream_t stream) {
-  
+
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
 
   float alpha = 1.0f, beta = 0.0f;
-  int out_dim = m->qProjSize + m->kProjSize + m->vProjSize;
+  int out_dim = (m->qProjSize + m->kProjSize + m->vProjSize) * m->num_heads;
   int in_dim = m->qSize;
   assert(in_dim == m->vSize && in_dim == m->kSize);
   cudaDataType_t data_type = ff_to_cuda_datatype(DT_FLOAT);
@@ -45,7 +45,6 @@ void IncMultiHeadSelfAttention::inference_kernel1(
 #else
   cudaDataType_t compute_type = CUDA_R_32F;
 #endif
-
   checkCUDA(cublasGemmEx(m->handle.blas,
                          CUBLAS_OP_T,
                          CUBLAS_OP_N,
@@ -61,7 +60,7 @@ void IncMultiHeadSelfAttention::inference_kernel1(
                          in_dim,
                          &beta,
                          output_ptr,
-                         output_type,
+                         data_type,
                          out_dim,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
@@ -70,6 +69,7 @@ void IncMultiHeadSelfAttention::inference_kernel1(
 /*static*/
 void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
     float const *input_ptr,
     float const *weight_ptr,
     float *output_ptr) {
@@ -92,8 +92,6 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
 
-  
-
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -114,11 +112,11 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     BatchConfig const *bc,
     Memory gpu_mem,
     int num_samples,
-    int num_heads)
+    int _num_heads)
     : OpMeta(handler, attn) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  //checkCUDNN(cudnnSetStream(handler.dnn, stream));
+  // checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
   qSize = attn->qSize;
   kSize = attn->kSize;
@@ -130,6 +128,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   kProjSize = attn->kProjSize;
   vProjSize = attn->vProjSize;
   oProjSize = attn->oProjSize;
+  num_heads = _num_heads;
+  weightSize = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
+                oProjSize * (vProjSize > 0 ? vProjSize : vSize)) *
+               num_heads * sizeof(float);
 
   /*checkCUDNN(cudnnCreateAttnDescriptor(&attnDesc));
   checkCUDNN(cudnnCreateSeqDataDescriptor(&qDesc));
@@ -138,48 +140,49 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   checkCUDNN(cudnnCreateSeqDataDescriptor(&oDesc));*/
   // Currently do not support adding bias to key/value projection
   assert(!attn->add_bias_kv);
-  //cudnnAttnQueryMap_t attnMode = CUDNN_ATTN_QUERYMAP_ALL_TO_ONE;
-  // Assume no beam search for now
-  int maxBeamSize = 1;
-  // printf("batchSize(%d) qSize(%d) kSize(%d) vSize(%d) qProjSize(%d)
-  // kProjSize(%d)\n",
-  //     num_samples, attn->qSize, attn->kSize, attn->vSize, attn->qProjSize,
-  //     attn->kProjSize);
-  // printf("vProjSize(%d) oProjSize(%d) qoSeqLength(%d) kvSeqLength(%d)\n",
-  //     attn->vProjSize, attn->oProjSize, attn->qoSeqLength,
-  //     attn->kvSeqLength);
-  // cudnnMathType_t math_type;
-  // if (handle.allowTensorOpMathConversion) {
-  //   math_type = CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION;
-  // } else {
-  //   math_type = CUDNN_TENSOR_OP_MATH;
-  // }
-  // checkCUDNN(cudnnSetAttnDescriptor(attnDesc,
-  //                                   attnMode,
-  //                                   num_heads,
-  //                                   1.0f /*smScalar*/,
-  //                                   CUDNN_DATA_FLOAT,
-  //                                   CUDNN_DATA_FLOAT,
-  //                                   math_type,
-  //                                   NULL /*attnDropoutDesc*/,
-  //                                   NULL /*postDropoutDesc*/,
-  //                                   attn->qSize,
-  //                                   attn->kSize,
-  //                                   attn->vSize,
-  //                                   attn->qProjSize,
-  //                                   attn->kProjSize,
-  //                                   attn->vProjSize,
-  //                                   attn->oProjSize,
-  //                                   attn->qoSeqLength,
-  //                                   attn->kvSeqLength,
-  //                                   num_samples,
-  //                                   maxBeamSize));
-  // size_t workSpaceSize;
-  // checkCUDNN(cudnnGetMultiHeadAttnBuffers(
-  //     handler.dnn, attnDesc, &weightSize, &workSpaceSize, &reserveSpaceSize));
-  // assert(workSpaceSize <= handler.workSpaceSize);
-  // printf("weightSize(%zu) workSpaceSize(%zu) reserveSpaceSize(%zu)\n",
-  // weightSize, workSpaceSize, reserveSpaceSize);
+  // cudnnAttnQueryMap_t attnMode = CUDNN_ATTN_QUERYMAP_ALL_TO_ONE;
+  //  Assume no beam search for now
+  // int maxBeamSize = 1;
+  //  printf("batchSize(%d) qSize(%d) kSize(%d) vSize(%d) qProjSize(%d)
+  //  kProjSize(%d)\n",
+  //      num_samples, attn->qSize, attn->kSize, attn->vSize, attn->qProjSize,
+  //      attn->kProjSize);
+  //  printf("vProjSize(%d) oProjSize(%d) qoSeqLength(%d) kvSeqLength(%d)\n",
+  //      attn->vProjSize, attn->oProjSize, attn->qoSeqLength,
+  //      attn->kvSeqLength);
+  //  cudnnMathType_t math_type;
+  //  if (handle.allowTensorOpMathConversion) {
+  //    math_type = CUDNN_TENSOR_OP_MATH_ALLOW_CONVERSION;
+  //  } else {
+  //    math_type = CUDNN_TENSOR_OP_MATH;
+  //  }
+  //  checkCUDNN(cudnnSetAttnDescriptor(attnDesc,
+  //                                    attnMode,
+  //                                    num_heads,
+  //                                    1.0f /*smScalar*/,
+  //                                    CUDNN_DATA_FLOAT,
+  //                                    CUDNN_DATA_FLOAT,
+  //                                    math_type,
+  //                                    NULL /*attnDropoutDesc*/,
+  //                                    NULL /*postDropoutDesc*/,
+  //                                    attn->qSize,
+  //                                    attn->kSize,
+  //                                    attn->vSize,
+  //                                    attn->qProjSize,
+  //                                    attn->kProjSize,
+  //                                    attn->vProjSize,
+  //                                    attn->oProjSize,
+  //                                    attn->qoSeqLength,
+  //                                    attn->kvSeqLength,
+  //                                    num_samples,
+  //                                    maxBeamSize));
+  //  size_t workSpaceSize;
+  //  checkCUDNN(cudnnGetMultiHeadAttnBuffers(
+  //      handler.dnn, attnDesc, &weightSize, &workSpaceSize,
+  //      &reserveSpaceSize));
+  //  assert(workSpaceSize <= handler.workSpaceSize);
+  //  printf("weightSize(%zu) workSpaceSize(%zu) reserveSpaceSize(%zu)\n",
+  //  weightSize, workSpaceSize, reserveSpaceSize);
   /*int dimA[CUDNN_SEQDATA_DIM_COUNT];
   cudnnSeqDataAxis_t axes[CUDNN_SEQDATA_DIM_COUNT];
   assert(CUDNN_SEQDATA_DIM_COUNT == 4);
@@ -255,12 +258,15 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   }*/
   // allocate memory for the seqArray and reserve space
   {
-    //size_t totalSize = reserveSpaceSize + sizeof(int) * num_samples * 2 + bc->MAX_NUM_REQUESTS *bc-> MAX_SEQUENCE_LENGTH * sizeof(int);
-    //size_t max_num_tokens = bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
-    size_t qkv_combined_dim = qProjSize + kProjSize + vProjSize;
-    size_t qkv_max_proj_size = num_samples * qkv_combined_dim;
-    
-    size_t totalSize = qkv_max_proj_size * sizeof(float); // more components will be added here later
+    // size_t totalSize = reserveSpaceSize + sizeof(int) * num_samples * 2 +
+    // bc->MAX_NUM_REQUESTS *bc-> MAX_SEQUENCE_LENGTH * sizeof(int); size_t
+    // max_num_tokens = bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
+    size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
+    size_t qkv_max_proj_size = num_samples * qkv_proj_dim * num_heads;
+
+    size_t totalSize =
+        qkv_max_proj_size *
+        sizeof(float); // more components will be added here later
 
     Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
                                    Realm::Point<1, coord_t>(totalSize - 1));
@@ -284,7 +290,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     //                      sizeof(int) * num_samples,
     //                      cudaMemcpyHostToDevice));
     // kvCache = (int *)devKvSeqArray + num_samples;
-    // reserveSpace = (int *)kvCache + bc->MAX_NUM_REQUESTS * bc-> MAX_SEQUENCE_LENGTH;
+    // reserveSpace = (int *)kvCache + bc->MAX_NUM_REQUESTS * bc->
+    // MAX_SEQUENCE_LENGTH;
   }
   /*// allocate memory for loWinIdx/hiWinIdx
   loWinIdx = (int *)malloc(sizeof(int) * attn->qoSeqLength);
@@ -293,8 +300,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     loWinIdx[i] = 0;
     hiWinIdx[i] = attn->kvSeqLength;
   }*/
-  //free(qoSeqArray);
-  //free(kvSeqArray);
+  // free(qoSeqArray);
+  // free(kvSeqArray);
 }
 
 IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {
