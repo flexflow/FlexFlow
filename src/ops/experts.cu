@@ -80,7 +80,7 @@ __global__ void experts_forward_prepare_kernel(
           weights[local_expert_label * (1 + use_bias)];
       if (use_bias) {
         bias_idx_array[destination_start_indices[expert_index] +
-                      within_expert_offset] =
+                       within_expert_offset] =
             weights[local_expert_label * (1 + use_bias) + use_bias];
       }
       coefficient_idx_array[destination_start_indices[expert_index] +
@@ -168,14 +168,14 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
         &alpha,
         bias_ptr, // bias tensor (out_dim, 1)
         weight_type,
-        out_dim, // Leading Dimension of bias tensor
-        (const void **)m->one_ptr_array, // all-one tensor (1, 1)
+        out_dim,                         // Leading Dimension of bias tensor
+        (void const **)m->one_ptr_array, // all-one tensor (1, 1)
         CUDA_R_32F,
-        1,      // Leading Dimension of all-one tensor
+        1, // Leading Dimension of all-one tensor
         &alpha,
         output_ptr, // Carray (num_tokens * chosen_experts, out_dim, 1)
         output_type,
-        out_dim, // Leading Dimension of output
+        out_dim,          // Leading Dimension of output
         gemm_batch_count, // Total submatrixs
         compute_type,
         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
@@ -197,22 +197,21 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
     checkCUDNN(cudnnSetActivationDescriptor(
         m->actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
     checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        // CUDNN_DATA_FLOAT,
-                                        cuda_to_cudnn_datatype(output_type),
-                                        gemm_batch_count,
-                                        out_dim,
-                                        1,
-                                        1));
-    checkCUDNN(cudnnActivationForward(
-        m->handle.dnn,
-        m->actiDesc,
-        &alpha,
-        m->outputTensor,
-        m->batch_outputs[0],
-        &beta,
-        m->outputTensor,
-        m->batch_outputs[0]));
+                                          CUDNN_TENSOR_NCHW,
+                                          // CUDNN_DATA_FLOAT,
+                                          cuda_to_cudnn_datatype(output_type),
+                                          gemm_batch_count,
+                                          out_dim,
+                                          1,
+                                          1));
+    checkCUDNN(cudnnActivationForward(m->handle.dnn,
+                                      m->actiDesc,
+                                      &alpha,
+                                      m->outputTensor,
+                                      m->batch_outputs[0],
+                                      &beta,
+                                      m->outputTensor,
+                                      m->batch_outputs[0]));
   }
 }
 
@@ -549,10 +548,8 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
   }
   float *fb_one_ptr;
   checkCUDA(cudaMalloc(&fb_one_ptr, sizeof(float) * 1));
-  checkCUDA(cudaMemcpy(fb_one_ptr,
-                       dram_one_ptr,
-                       sizeof(float) * 1,
-                       cudaMemcpyHostToDevice));
+  checkCUDA(cudaMemcpy(
+      fb_one_ptr, dram_one_ptr, sizeof(float) * 1, cudaMemcpyHostToDevice));
   one_ptr = (float const *)fb_one_ptr;
   checkCUDA(
       cudaMalloc(&one_ptr_array,
