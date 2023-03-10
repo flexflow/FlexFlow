@@ -11,16 +11,56 @@ public:
   ExpertsMeta(FFHandler handler,
               int _num_experts,
               int _experts_start_idx,
+              int _data_dim,
+              int _out_dim,
+              int _effective_batch_size,
+              int _num_chosen_experts,
               float _alpha,
               bool _use_bias,
               ActiMode _activation);
   ~ExpertsMeta(void);
+
+  // Thrust helper arrays
+  int *sorted_indices;
+  int *original_indices;
+  int *non_zero_expert_labels;
+  int *temp_sequence;
+  int *exp_local_label_to_index;
+  int *expert_start_indexes;
+  int *num_assignments_per_expert; // numbers of tokes assigned to each expert.
+                                   // Values may exceed the expert capacity
+  int *capped_num_assignments_per_expert;
+  int *destination_start_indices;
+  float const **token_idx_array;
   float const **dev_weights;
+  float const **weight_idx_array;
+  float const **coefficient_idx_array;
+  float **output_idx_array;
+  float const **bias_idx_array;
+  float const *one_ptr;
+  float const **one_ptr_array;
+
+  // array of arrays to store cublasGemmBatchedEx outputs before aggregation
+  float **batch_outputs;
+  float **dev_batch_outputs;
+
   int num_experts;
   int experts_start_idx;
+  int data_dim;
+  int out_dim;
+  int effective_batch_size;
+  int num_chosen_experts;
+  int expert_capacity;
   float alpha;
   bool use_bias;
   ActiMode activation;
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+  cudnnTensorDescriptor_t resultTensorDesc;
+  cudnnActivationDescriptor_t actiDesc;
+#else
+  miopenTensorDescriptor_t resultTensorDesc;
+  miopenActivationDescriptor_t actiDesc;
+#endif
 };
 
 // definitions for the CUDA kernel
@@ -107,6 +147,10 @@ public:
   int num_experts;
   int experts_start_idx;
   int experts_output_dim_size;
+  int data_dim;
+  int out_dim;
+  int effective_batch_size;
+  int num_chosen_experts;
   float alpha;
   int experts_num_layers;
   int experts_internal_dim_size;
