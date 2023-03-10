@@ -9,7 +9,7 @@ namespace FlexFlow {
 
 #ifdef FF_USE_CUDA
 cudaError_t get_legion_stream(cudaStream_t *stream) {
-#ifdef DISABLE_LEGION_CUDA_HIJACK
+#ifndef REALM_USE_CUDART_HIJACK
   *stream = (cudaStream_t)0;
   return cudaSuccess;
 #else
@@ -21,7 +21,7 @@ extern "C" {
 cudaStream_t hipGetTaskStream();
 }
 cudaError_t get_legion_stream(cudaStream_t *stream) {
-#ifdef DISABLE_LEGION_CUDA_HIJACK
+#ifndef REALM_USE_CUDART_HIJACK
   *stream = (cudaStream_t)0;
 #else
   *stream = hipGetTaskStream();
