@@ -29,39 +29,27 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      int chosen_experts,
                                      int batch_size,
                                      int out_dim) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  int expert_capacity =
-      ceil(m->alpha * chosen_experts / m->num_experts * batch_size);
-
-  int num_experts = m->num_experts;
-  // int expert_start_index = experts_start_idx;
-  bool use_bias = m->use_bias;
-  // ActiMode activation = m->activation;
-
-  hipMemcpy(m->dev_weights,
-            weights,
-            num_experts * (1 + use_bias) * sizeof(float *),
-            hipMemcpyHostToDevice);
-
   // TODO: write the HIP version of the kernel after finishing the CUDA kernel
+  handle_unimplemented_hip_kernel(OP_EXPERTS);
 }
 
 ExpertsMeta::ExpertsMeta(FFHandler handler,
                          int _num_experts,
                          int _experts_start_idx,
+                         int _data_dim,
+                         int _out_dim,
+                         int _effective_batch_size,
+                         int _num_chosen_experts,
                          float _alpha,
                          bool _use_bias,
                          ActiMode _activation)
     : OpMeta(handler), num_experts(_num_experts),
-      experts_start_idx(_experts_start_idx), alpha(_alpha), use_bias(_use_bias),
-      activation(_activation) {
-  checkCUDA(
-      hipMalloc(&dev_weights, num_experts * (1 + use_bias) * sizeof(float *)));
+      experts_start_idx(_experts_start_idx), data_dim(_data_dim),
+      out_dim(_out_dim), effective_batch_size(_effective_batch_size),
+      num_chosen_experts(_num_chosen_experts), alpha(_alpha),
+      use_bias(_use_bias), activation(_activation) {
 }
 ExpertsMeta::~ExpertsMeta(void) {
-  checkCUDA(hipFree(&dev_weights));
 }
 
 }; // namespace FlexFlow
