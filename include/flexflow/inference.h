@@ -15,6 +15,7 @@
 
 #pragma once
 
+#include "flexflow/batch_config.h"
 #include "flexflow/model.h"
 
 namespace FlexFlow {
@@ -28,7 +29,7 @@ public:
                    int max_num_inflight_batches);
   void compile_model_and_allocate_buffer(void);
   void init_operators_inference();
-  void inference(int index);
+  Legion::FutureMap inference(int index, BatchConfig const &bc);
 
 public:
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;

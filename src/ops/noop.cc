@@ -96,6 +96,7 @@ OpMeta *NoOp::init_task(Task const *task,
 }
 
 void NoOp::init_inference(FFModel const &ff,
+                          BatchConfig const &bc,
                           std::vector<ParallelTensor> const &batch_inputs,
                           std::vector<ParallelTensor> const &batch_outputs,
                           MachineView const *mv) {
@@ -258,10 +259,14 @@ void NoOp::init(FFModel const &ff) {
 
 void NoOp::forward(FFModel const &ff) {}
 
-void NoOp::inference(FFModel const &ff,
-                     std::vector<ParallelTensor> const &batch_inputs,
-                     std::vector<ParallelTensor> const &batch_outputs,
-                     MachineView const *mv) {}
+FutureMap NoOp::inference(FFModel const &ff,
+                          BatchConfig const &bc,
+                          std::vector<ParallelTensor> const &batch_inputs,
+                          std::vector<ParallelTensor> const &batch_outputs,
+                          MachineView const *mv) {
+  FutureMap empty;
+  return empty;
+}
 
 void NoOp::backward(FFModel const &ff) {}
 

@@ -438,6 +438,7 @@ Node Experts::deserialize(FFModel &ff,
 }
 
 void Experts::init_inference(FFModel const &ff,
+                             BatchConfig const &bc,
                              std::vector<ParallelTensor> const &batch_inputs,
                              std::vector<ParallelTensor> const &batch_outputs,
                              MachineView const *mv) {
@@ -656,10 +657,11 @@ void Experts::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Experts::inference(FFModel const &ff,
-                        std::vector<ParallelTensor> const &batch_inputs,
-                        std::vector<ParallelTensor> const &batch_outputs,
-                        MachineView const *mv) {
+FutureMap Experts::inference(FFModel const &ff,
+                             BatchConfig const &bc,
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs,
+                             MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -724,7 +726,7 @@ void Experts::inference(FFModel const &ff,
       launcher.add_field(4 + i * (1 + use_bias) + use_bias, FID_DATA);
     }
   }
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Experts::inference_task(Task const *task,

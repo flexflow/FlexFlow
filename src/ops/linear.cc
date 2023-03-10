@@ -255,6 +255,7 @@ void Linear::init(FFModel const &ff) {
 }
 
 void Linear::init_inference(FFModel const &ff,
+                            BatchConfig const &bc,
                             std::vector<ParallelTensor> const &batch_inputs,
                             std::vector<ParallelTensor> const &batch_outputs,
                             MachineView const *mv) {
@@ -420,10 +421,11 @@ void Linear::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Linear::inference(FFModel const &ff,
-                       std::vector<ParallelTensor> const &batch_inputs,
-                       std::vector<ParallelTensor> const &batch_outputs,
-                       MachineView const *mv) {
+FutureMap Linear::inference(FFModel const &ff,
+                            BatchConfig const &bc,
+                            std::vector<ParallelTensor> const &batch_inputs,
+                            std::vector<ParallelTensor> const &batch_outputs,
+                            MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -467,7 +469,7 @@ void Linear::inference(FFModel const &ff,
                                                       weights[1]->region));
     launcher.add_field(3, FID_DATA);
   }
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Linear::forward_task(Task const *task,

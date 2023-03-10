@@ -1,6 +1,7 @@
 #ifndef _OPERATOR_H
 #define _OPERATOR_H
 
+#include "flexflow/batch_config.h"
 #include "flexflow/fftype.h"
 #include "flexflow/machine_view.h"
 #include "flexflow/parallel_tensor.h"
@@ -186,6 +187,7 @@ public:
   // Pure virtual functions that must be implemented
   virtual void init(FFModel const &) = 0;
   virtual void init_inference(FFModel const &,
+                              BatchConfig const &,
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) {
@@ -194,10 +196,11 @@ public:
   virtual void forward(FFModel const &) = 0;
   virtual void backward(FFModel const &) = 0;
   // Pure virtual functions for inference
-  virtual void inference(FFModel const &,
-                         std::vector<ParallelTensor> const &,
-                         std::vector<ParallelTensor> const &,
-                         MachineView const *mv = nullptr) {
+  virtual Legion::FutureMap inference(FFModel const &,
+                                      BatchConfig const &,
+                                      std::vector<ParallelTensor> const &,
+                                      std::vector<ParallelTensor> const &,
+                                      MachineView const *mv = nullptr) {
     assert(false);
   };
   virtual void print_layer(FFModel const &model) = 0;

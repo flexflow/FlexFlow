@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "moe.h"
+#include "transformers.h"
 #include "flexflow/inference.h"
 #include <cstdlib>
 #include <fstream>
@@ -24,7 +24,7 @@
 
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_app("MoE");
+LegionRuntime::Logger::Category log_app("Transformers");
 
 void parse_input_args(char **argv, int argc, MoeConfig &config) {
   for (int i = 1; i < argc; i++) {
@@ -35,60 +35,24 @@ void parse_input_args(char **argv, int argc, MoeConfig &config) {
   }
 }
 
-Tensor create_moe(FFModel *model,
-                  MoeConfig const *moeConfig,
-                  Tensor const &input) {
-  // MoE model
-  Tensor gate_preds = model->dense(input, moeConfig->num_exp, AC_MODE_RELU);
-  Tensor topK_output[2];
-  model->top_k(gate_preds, topK_output, moeConfig->num_select, false);
+Tensor create_inc_multihead_attention_decoder(FFModel *model,
+                                              MoeConfig const *moeConfig,
+                                              Tensor const &input) {
+  std::vector<int> axes{1};
+  Tensor t = model->inc_multihead_self_attention(input,
+                                                 moeConfig->hidden_size,
+                                                 moeConfig->num_attention_heads,
+                                                 moeConfig->attention_kdim,
+                                                 moeConfig->attention_vdim);
 
-  assert(moeConfig->num_exp % moeConfig->experts_per_block == 0);
-  int nblocks = moeConfig->num_exp / moeConfig->experts_per_block;
-  Tensor exp_preds;
-  Tensor expert_block_inputs[3] = {input, topK_output[1], topK_output[0]};
-  for (int i = 0; i < nblocks /*number of experts layers*/; i++) {
-    Tensor block_preds =
-        model->experts(expert_block_inputs,
-                       moeConfig->experts_per_block,     /*number of experts*/
-                       moeConfig->experts_per_block * i, /*expert start index*/
-                       moeConfig->hidden_size,           /*output_size*/
-                       moeConfig->alpha);
-    assert(block_preds != nullptr);
-    if (i == 0) {
-      exp_preds = block_preds;
-    } else {
-      assert(exp_preds != nullptr);
-      model->add(exp_preds, block_preds, /*inplace_a*/ true);
-    }
-  }
-
-  // model->get_metrics();
-  return exp_preds;
-}
-
-Tensor create_moe_encoder(FFModel *model,
-                          MoeConfig const *moeConfig,
-                          Tensor const &input) {
-  std::vector<int> axes = {0, 1, 2};
-  Tensor x = input;
-  for (int i = 0; i < moeConfig->num_encoder_layers; i++) {
-    x = model->layer_norm(
-        model->add(model->multihead_attention(x,
-                                              x,
-                                              x,
-                                              moeConfig->hidden_size,
-                                              moeConfig->num_attention_heads,
-                                              moeConfig->attention_kdim,
-                                              moeConfig->attention_vdim),
-                   x),
-        axes,
-        true,
-        1e-05);
-    x = model->layer_norm(
-        model->add(create_moe(model, moeConfig, x), x), axes, true, 1e-05);
-  }
-  return x;
+  t = model->layer_norm(model->add(t, input), axes, true, 1e-05);
+  Tensor x = model->dense(
+      model->dense(t, moeConfig->hidden_size, AC_MODE_RELU, false /*bias*/),
+      moeConfig->hidden_size,
+      AC_MODE_NONE,
+      false /*bias*/);
+  t = model->layer_norm(model->add(x, t), axes, true, 1e-05);
+  return t;
 }
 
 void FlexFlow::top_level_task(Task const *task,
@@ -114,15 +78,17 @@ void FlexFlow::top_level_task(Task const *task,
   //----------------------- Create inputs --------------------------------
   Tensor input;
   {
-    int const dims[] = {
-        ffConfig.batchSize, moeConfig.sequence_length, moeConfig.token_dim};
-    input = ff.create_tensor<3>(dims, DT_FLOAT);
+    int const dims[] = {BatchConfig::MAX_NUM_TOKENS, moeConfig.token_dim};
+    input = ff.create_tensor<2>(dims, DT_FLOAT);
   }
 
   //----------------------- Define the model ------------------------------
-  Tensor t = create_moe_encoder(&ff, &moeConfig, input);
-  // Tensor t = create_moe(&ff, &moeConfig, input);
+  Tensor t = input;
+  for (int i = 0; i < moeConfig.num_layers; i++) {
+    t = create_inc_multihead_attention_decoder(&ff, &moeConfig, input);
+  }
   t = ff.dense(t, moeConfig.out_dim, AC_MODE_RELU);
+  t = ff.softmax(t);
 
   //------------------- Initialize the inference manager ------------------
   InferenceManager im(
@@ -156,20 +122,53 @@ void FlexFlow::top_level_task(Task const *task,
   int num_devices = ffConfig.workersPerNode * ffConfig.numNodes;
   data_loader.reset();
   data_generator.start_timer();
-  BatchConfig bc;
+  std::map<int, Future> future_handlers;
+  std::map<int, BatchConfig *> batch_configs;
   while (processed_requests < moeConfig.total_requests) {
-    size_t received_requests = data_generator.get_requests();
-    int iterations = (received_requests % moeConfig.batch_size == 0)
-                         ? (received_requests / moeConfig.batch_size)
-                         : (received_requests / moeConfig.batch_size) + 1;
-    for (int iter = 0; iter < iterations; iter++) {
-      data_loader.next_batch(ff, received_requests);
-      runtime->begin_trace(ctx, 111 + index % num_devices /*trace_id*/);
-      im.inference(index, bc);
-      runtime->end_trace(ctx, 111 + index % num_devices /*trace_id*/);
-      index++;
+    for (int bid = 0; bid < im.max_num_inflight_batches; bid++) {
+      if (future_handlers.find(bid) == future_handlers.end()) {
+        std::vector<std::pair<size_t, std::vector<int>>> prompts;
+        assert(im.max_num_requests_per_batch <= BatchConfig::MAX_NUM_REQUESTS);
+        data_generator.get_requests(im.max_num_requests_per_batch, prompts);
+        assert((int)prompts.size() < im.max_num_requests_per_batch);
+        // TODO: loading data
+        BatchConfig *bc = new BatchConfig();
+        for (auto const &prompt : prompts) {
+          assert(bc->register_new_request(prompt.first, prompt.second.size()));
+        }
+        bc->prepare_next_batch();
+        runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
+        FutureMap fm = im.inference(bid, *bc);
+        runtime->end_trace(ctx, 111 + bid % num_devices /*trace_id*/);
+        assert(fm.get_future_map_domain().get_volume() == 1);
+        Future future = fm.get_future(0);
+        future_handlers[bid] = future;
+        batch_configs[bid] = bc;
+      } else {
+        Future future = future_handlers[bid];
+        if (!future.is_ready(true /*subscribe*/)) {
+          continue;
+        }
+        InferenceResult ir = future.get_result<InferenceResult>();
+        BatchConfig *bc = batch_configs[bid];
+        processed_requests += bc->update_results(ir);
+        int available_slots =
+            BatchConfig::MAX_NUM_REQUESTS - bc->num_active_requests();
+        std::vector<std::pair<size_t, std::vector<int>>> prompts;
+        data_generator.get_requests(available_slots, prompts);
+        processed_requests += prompts.size();
+        for (auto const &prompt : prompts) {
+          assert(bc->register_new_request(prompt.first, prompt.second.size()));
+        }
+        bc->prepare_next_batch();
+        runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
+        FutureMap fm = im.inference(bid, *bc);
+        runtime->end_trace(ctx, 111 + bid % num_devices /*trace_id*/);
+        assert(fm.get_future_map_domain().get_volume() == 1);
+        future_handlers[bid] = fm.get_future(0);
+        batch_configs[bid] = bc;
+      }
     }
-    processed_requests += received_requests;
   }
   //----------------------- End of inference! ------------------------------
 

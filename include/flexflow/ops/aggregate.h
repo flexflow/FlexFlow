@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_AGGREGATE_H_
 #define _FLEXFLOW_AGGREGATE_H_
 
+#include "flexflow/inference.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/aggregate_params.h"
 
@@ -36,14 +37,16 @@ public:
             char const *name = nullptr);
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
+                      BatchConfig const &,
                       std::vector<ParallelTensor> const &,
                       std::vector<ParallelTensor> const &,
                       MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
-  void inference(FFModel const &,
-                 std::vector<ParallelTensor> const &,
-                 std::vector<ParallelTensor> const &,
-                 MachineView const *mv = nullptr) override;
+  Legion::FutureMap inference(FFModel const &,
+                              BatchConfig const &,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) override;
   void backward(FFModel const &) override;
   void print_layer(FFModel const &model) override {
     assert(0);

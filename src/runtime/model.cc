@@ -4286,6 +4286,13 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<Softmax::backward_task>(
         registrar, "softmax_bwd_task");
   }
+  {
+    TaskVariantRegistrar registrar(SOFTMAX_INF_TASK_ID, "softmax_inf_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<InferenceResult, Softmax::inference_task>(
+        registrar, "softmax_inf_task");
+  }
   // compute Loss
   {
     TaskVariantRegistrar registrar(LOSS_BWD_TASK_ID, "Loss Backward");

@@ -29,19 +29,23 @@ public:
   void start_timer(void);
   // Get number of requests that have arrived since the last time this function
   // was called
-  size_t get_requests(void);
+  size_t
+      get_requests(size_t max_num_requests,
+                   std::vector<std::pair<size_t, std::vector<int>>> &prompts);
+  size_t get_requests();
 
 private:
   // Compute the arrival times of each request and save them in the arrivals
   // vector.
   void generate_arrival_times(void);
 
-  size_t num_requests;    // total number of requests
-  size_t token_dim;       // embedding dim of each token
-  size_t sequence_length; // dimension of one request tensor
-  bool poisson_distr;     // false implies uniform distribution
-  double lambda;          // mean #num of arrivals per sec
-  bool timer_started;     // whether timer was initiated
+  size_t num_requests;     // total number of requests
+  size_t token_dim;        // embedding dim of each token
+  size_t sequence_length;  // dimension of one request tensor
+  bool poisson_distr;      // false implies uniform distribution
+  double lambda;           // mean #num of arrivals per sec
+  bool timer_started;      // whether timer was initiated
+  size_t global_unique_id; // guid for requests
   // time when get_requests() is called for the first time
   Clock::time_point start_time;
   // arrival times (ms) generated based on distribution

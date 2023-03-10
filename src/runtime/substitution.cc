@@ -28,6 +28,7 @@
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/experts.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
@@ -3219,6 +3220,13 @@ bool FFModel::convert_graph_to_operators(
         MultiHeadAttention *attn = (MultiHeadAttention *)node.ptr;
         new_op = new MultiHeadAttention(
             *this, *attn, inputs[0], inputs[1], inputs[2], true);
+        break;
+        break;
+      }
+      case OP_INC_MULTIHEAD_SELF_ATTENTION: {
+        assert(inList.size() == 1);
+        IncMultiHeadSelfAttention *attn = (IncMultiHeadSelfAttention *)node.ptr;
+        new_op = new IncMultiHeadSelfAttention(*this, *attn, inputs[0], true);
         break;
         break;
       }

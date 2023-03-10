@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_PARTITION_H
 #define _FLEXFLOW_PARTITION_H
 
+#include "flexflow/inference.h"
 #include "flexflow/layer.h"
 #include "flexflow/node.h"
 #include "flexflow/operator.h"
@@ -30,14 +31,16 @@ public:
       std::vector<ParallelTensor> const &batch_outputs) override;
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
+                      BatchConfig const &bc,
                       std::vector<ParallelTensor> const &,
                       std::vector<ParallelTensor> const &,
                       MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
-  void inference(FFModel const &,
-                 std::vector<ParallelTensor> const &,
-                 std::vector<ParallelTensor> const &,
-                 MachineView const *mv = nullptr) override;
+  Legion::FutureMap inference(FFModel const &,
+                              BatchConfig const &bc,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) override;
   void backward(FFModel const &) override;
   bool get_int_parameter(PMParameter, int *) const override;
   bool append_parallel_op_info(

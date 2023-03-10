@@ -14,7 +14,8 @@
  */
 
 #include "flexflow/ops/inc_multihead_self_attention.h"
-#include "flexflow/utils/cuda_helper.h"
+#include "flexflow/utils/hip_helper.h"
+#include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
@@ -28,31 +29,9 @@ void IncMultiHeadSelfAttention::inference_kernel(
     float const *input_ptr,
     float const *weight_ptr,
     float *output_ptr,
-    cudaStream_t stream) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-
-  checkCUDNN(cudnnMultiHeadAttnForward(m->handle.dnn,
-                                       m->attnDesc,
-                                       -1,
-                                       m->loWinIdx,
-                                       m->hiWinIdx,
-                                       m->devQoSeqArray,
-                                       m->devKvSeqArray,
-                                       m->qDesc,
-                                       input_ptr,
-                                       NULL /*residual*/,
-                                       m->kDesc,
-                                       input_ptr,
-                                       m->vDesc,
-                                       input_ptr,
-                                       m->oDesc,
-                                       output_ptr,
-                                       m->weightSize,
-                                       weight_ptr,
-                                       m->handle.workSpaceSize,
-                                       m->handle.workSpace,
-                                       m->reserveSpaceSize,
-                                       m->reserveSpace));
+    hipStream_t stream) {
+  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+  handle_unimplemented_hip_kernel(OP_INC_MULTIHEAD_SELF_ATTENTION);
 }
 
 /*static*/
@@ -61,24 +40,24 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     float const *input_ptr,
     float const *weight_ptr,
     float *output_ptr) {
-  cudaStream_t stream;
+  hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
-  cudaEvent_t t_start, t_end;
+  hipEvent_t t_start, t_end;
   if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
+    hipEventCreate(&t_start);
+    hipEventCreate(&t_end);
+    hipEventRecord(t_start, stream);
   }
   IncMultiHeadSelfAttention::inference_kernel(
       m, input_ptr, weight_ptr, output_ptr, stream);
   if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
+    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
+    checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
+    hipEventDestroy(t_start);
+    hipEventDestroy(t_end);
     printf("IncMultiHeadSelfAttention forward time = %.2fms\n", elapsed);
     // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
@@ -93,10 +72,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     int num_samples,
     int num_heads)
     : OpMeta(handler, attn) {
-  cudaStream_t stream;
+  hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  checkCUDNN(cudnnSetStream(handler.dnn, stream));
-
+  checkCUDNN(miopenSetStream(handler.dnn, stream));
+#if 0
   checkCUDNN(cudnnCreateAttnDescriptor(&attnDesc));
   checkCUDNN(cudnnCreateSeqDataDescriptor(&qDesc));
   checkCUDNN(cudnnCreateSeqDataDescriptor(&kDesc));
@@ -254,9 +233,11 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   }
   free(qoSeqArray);
   free(kvSeqArray);
+#endif
 }
 
 IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {
+#if 0
   reserveInst.destroy();
   free(loWinIdx);
   free(hiWinIdx);
@@ -265,6 +246,7 @@ IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {
   checkCUDNN(cudnnDestroySeqDataDescriptor(kDesc));
   checkCUDNN(cudnnDestroySeqDataDescriptor(vDesc));
   checkCUDNN(cudnnDestroySeqDataDescriptor(oDesc));
+#endif
 }
 
 }; // namespace FlexFlow
