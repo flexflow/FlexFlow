@@ -83,6 +83,21 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
 
+  // phase 0: convert BatchConfig representation to {rid, tid} struct
+  int curr_token_idx = 0;
+  int curr_request_idx = 0;
+  while (curr_request_idx < bc->num_requests) {
+    for (int i = 0; i < bc->num_processing_tokens[curr_request_idx]; i++) {
+      m->input_token_ids[curr_token_idx].request_id = curr_request_idx;
+      m->input_token_ids[curr_token_idx].token_id = bc->token_start_idx[curr_request_idx] + i;
+      curr_token_idx += 1;
+      if (curr_token_idx >= bc->num_tokens) {
+        assert(false); // total number of tokens should matches the batch config
+      }
+    }
+    curr_request_idx += 1;
+  }
+
   // phase 1: Implement kernel to compute KQV for input tokens
   IncMultiHeadSelfAttention::inference_kernel1(
       m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
@@ -293,6 +308,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     // reserveSpace = (int *)kvCache + bc->MAX_NUM_REQUESTS * bc->
     // MAX_SEQUENCE_LENGTH;
   }
+
+  input_token_ids = new request_token_id[bc->MAX_NUM_TOKENS];
+  
   /*// allocate memory for loWinIdx/hiWinIdx
   loWinIdx = (int *)malloc(sizeof(int) * attn->qoSeqLength);
   hiWinIdx = (int *)malloc(sizeof(int) * attn->qoSeqLength);

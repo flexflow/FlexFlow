@@ -12,6 +12,11 @@
 
 namespace FlexFlow {
 
+struct request_token_id {
+  uint16_t request_id;
+  uint16_t token_id;
+};
+
 class IncMultiHeadSelfAttentionMeta;
 
 class IncMultiHeadSelfAttention : public Op {
@@ -131,6 +136,8 @@ public:
   // int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx, *kvCache;
   float *devQKVProjArray;
   // void *reserveSpace;
+
+  request_token_id* input_token_ids;
 };
 
 }; // namespace FlexFlow
