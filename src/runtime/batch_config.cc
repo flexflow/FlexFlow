@@ -107,8 +107,8 @@ void BatchConfig::prepare_next_batch() {
     num_tokens += num_processing_tokens[i];
   }
   log_bc.print("[NextBatch] num_tokens(%d)", num_tokens);
-  this->num_tokens = this->num_active_tokens();
-  this->num_requests = this->num_active_requests();
+  // this->num_tokens = this->num_active_tokens();
+  // this->num_requests = this->num_active_requests();
 }
 
 int BatchConfig::num_active_requests() {

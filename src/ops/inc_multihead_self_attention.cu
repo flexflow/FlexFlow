@@ -108,13 +108,13 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   int curr_request_idx = 0;
   printf("Start phase 0: num_tokens: %d, num_requests: %d\n", bc->num_tokens, bc->num_requests);
   // BatchConfig *bc_copy = new BatchConfig(*bc);
-  // printf("num_active_tokens: %d, num_active_requests: %d\n", bc_copy->num_active_tokens(), bc_copy->num_active_requests());
-  while (curr_request_idx < bc->num_requests) {
+  printf("num_active_tokens: %d, num_active_requests: %d\n", ((BatchConfig*)(bc))->num_active_tokens(),  ((BatchConfig*)(bc))->num_active_requests());
+  while (curr_request_idx < ((BatchConfig*)(bc))->num_active_requests()) {
     printf("request %d: num_tokens: %d, start_idx: %d\n", curr_request_idx, bc->num_processing_tokens[curr_request_idx], bc->token_start_idx[curr_request_idx]);
     for (int i = 0; i < bc->num_processing_tokens[curr_request_idx]; i++) {
       m->input_token_ids[curr_token_idx].request_id = curr_request_idx;
       m->input_token_ids[curr_token_idx].token_id = bc->token_start_idx[curr_request_idx] + i;
-      if (curr_token_idx >= bc->num_tokens) {
+      if (curr_token_idx >= ((BatchConfig*)(bc))->num_active_tokens()) {
         printf("curr_token_idx: %d, curr_request_idx: %d\n", curr_token_idx, curr_request_idx);
         assert(false); // total number of tokens should matches the batch config
       }
