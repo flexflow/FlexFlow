@@ -181,46 +181,39 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
 
-  // if (use_activation(activation)) {
-  //   checkCUDNN(cudnnActivationForward(
-  //       m->handle.dnn,
-  //       m->activation_desc,
-  //       &alpha,
-  //       m->output_tensor_desc,
-  //       output_ptr[0],
-  //       &beta,
-  //       m->output_tensor_desc,
-  //       output_ptr[0]));
-  // }
-
-  // TODO 1: try to handle the coefficients here with another cublassGemmBatched
-  // float alpha = 1.0f, beta = 0.0f;
-  // cudaDataType_t result_type = CUDA_R_32F;
-  // cudaDataType_t coefficient_type = CUDA_R_32F;
-  // cudaDataType_t output_type = CUDA_R_32F;
-  // cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
-  // cublasGemmBatchedEx(
-  //     handle,
-  //     CUBLAS_OP_N, // Intermediate reulsts, shape (out_dim, 1)
-  //     CUBLAS_OP_N, // Coefficient, shape (1, 1)
-  //     out_dim,     // num_row of (A, C) = out_dim
-  //     1,           // num_col of (B, C) = 1
-  //     1,           // num_col of A and num_rows of B = in_dim
-  //     &alpha,
-  //     (void const **)
-  //         results_ptr, // Aarray (num_tokens * chosen_experts, out_dim, 1)
-  //     result_type,
-  //     out_dim, // Leading Dimension of result tensor
-  //     (void const **)
-  //         coefficient_ptr, // Barray (num_tokens * chosen_experts, 1, 1)
-  //     coefficient_type,
-  //     1, // Leading Dimension of coefficient tensor
-  //     &beta,
-  //     (void **)output_ptr, // Carray (num_tokens * chosen_experts, out_dim,
-  //     1) output_type, out_dim,                         // Leading Dimension
-  //     of output num_tokens * num_chosen_experts, // Total submatrixs
-  //     compute_type,
-  //     CUBLAS_GEMM_DEFAULT_TENSOR_OP);
+  if (use_activation(activation)) {
+    cudnnActivationMode_t mode;
+    switch (activation) {
+      case AC_MODE_RELU:
+        mode = CUDNN_ACTIVATION_RELU;
+        break;
+      case AC_MODE_SIGMOID:
+        mode = CUDNN_ACTIVATION_SIGMOID;
+        break;
+      default:
+        // Unsupported activation mode
+        assert(false);
+    }
+    checkCUDNN(cudnnSetActivationDescriptor(
+        m->actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
+    checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
+                                        CUDNN_TENSOR_NCHW,
+                                        // CUDNN_DATA_FLOAT,
+                                        cuda_to_cudnn_datatype(output_type),
+                                        gemm_batch_count,
+                                        out_dim,
+                                        1,
+                                        1));
+    checkCUDNN(cudnnActivationForward(
+        m->handle.dnn,
+        m->actiDesc,
+        &alpha,
+        m->outputTensor,
+        m->batch_outputs[0],
+        &beta,
+        m->outputTensor,
+        m->batch_outputs[0]));
+  }
 }
 
 __global__ void experts_forward_aggregate_kernel(int num_tokens,
@@ -333,27 +326,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     return;
   }
 
-  // print out tensor values
-  //   thrust::device_ptr<float const> thrust_inputs =
-  //       thrust::device_pointer_cast(input);
-  //   thrust::device_ptr<float const> thrust_coefficient =
-  //       thrust::device_pointer_cast(topk_gate_preds);
-  //   for (int i=0; i<num_tokens; i++) {
-  //     std::cout << "Token " << i << ":\t";
-  //     // thrust::copy_n(thrust_inputs, data_dim,
-  //     // std::ostream_iterator<float>(std::cout, ",")); std::cout <<
-  //     std::endl;
-
-  //     thrust::copy_n(original_indices, num_chosen_experts,
-  //     std::ostream_iterator<int>(std::cout, ",")); std::cout << std::endl;
-
-  //     thrust::copy_n(thrust_indices, num_chosen_experts,
-  //     std::ostream_iterator<int>(std::cout, ",")); std::cout << std::endl;
-
-  //     thrust::copy_n(thrust_coefficient, num_chosen_experts,
-  //     std::ostream_iterator<float>(std::cout, ",")); std::cout << std::endl;
-  //   }
-
   // create "exp_local_label_to_index", a mapping from local expert label to its
   // non-zero expert index
   thrust::device_ptr<int> non_zero_expert_labels =
@@ -363,17 +335,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   int non_zero_experts_count =
       non_zero_expert_labels_end - non_zero_expert_labels;
 
-  /* std::cout << "lb_index: " << lb_index << " ub_index: " << ub_index <<
-  std::endl; std::cout << "num_valid_assignments: " << num_valid_assignments <<
-  std::endl; */
-  /* std::cout << "indices in bound: " << std::endl;
-  thrust::copy_n(lb, num_valid_assignments,
-  std::ostream_iterator<int>(std::cout, ",")); std::cout << std::endl; */
-  /* std::cout << "non_zero_expert_labels: " << std::endl;
-  thrust::copy_n(non_zero_expert_labels, non_zero_experts_count,
-  std::ostream_iterator<int>(std::cout, ",")); std::cout << std::endl; std::cout
-  << "experts_start_idx: " << experts_start_idx << std::endl; */
-
   using namespace thrust::placeholders;
   thrust::for_each(thrust::device,
                    non_zero_expert_labels,
@@ -381,18 +342,10 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                    _1 -=
                    experts_start_idx); // convert global indexes to local ones
 
-  /* std::cout << "non_zero_expert_labels: " << std::endl;
-  thrust::copy_n(non_zero_expert_labels, non_zero_experts_count,
-  std::ostream_iterator<int>(std::cout, ",")); std::cout << std::endl; */
-
   thrust::device_ptr<int> temp_sequence =
       thrust::device_pointer_cast(m->temp_sequence);
   thrust::sequence(
       thrust::device, temp_sequence, temp_sequence + non_zero_experts_count);
-
-  /* std::cout << "temp_sequence: " << std::endl;
-  thrust::copy_n(temp_sequence, non_zero_experts_count,
-  std::ostream_iterator<int>(std::cout, ",")); std::cout << std::endl; */
 
   thrust::device_ptr<int> exp_local_label_to_index =
       thrust::device_pointer_cast(m->exp_local_label_to_index);
@@ -401,10 +354,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                   temp_sequence + non_zero_experts_count,
                   non_zero_expert_labels,
                   exp_local_label_to_index);
-
-  /*  std::cout << "exp_local_label_to_index: " << std::endl;
-   thrust::copy_n(exp_local_label_to_index, 10,
-   std::ostream_iterator<int>(std::cout, ",")); std::cout << std::endl; */
 
   // get local start index (within lower/upper bound) for each expert receiving
   // non-zero tokens
@@ -426,10 +375,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   // append ub_index
   expert_start_indexes[start_indexes] = ub_index;
 
-  /* std::cout << "expert_start_indexes: " << std::endl;
-  thrust::copy_n(expert_start_indexes, 3, std::ostream_iterator<int>(std::cout,
-  ",")); std::cout << std::endl; */
-
   // get number of token assignment to each expert
   thrust::device_ptr<int> num_assignments_per_expert =
       thrust::device_pointer_cast(m->num_assignments_per_expert);
@@ -439,11 +384,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                     expert_start_indexes,
                     num_assignments_per_expert,
                     thrust::minus<int>());
-
-  /* std::cout << "non_zero_experts_count: " << non_zero_experts_count <<
-  std::endl; std::cout << "num_assignments_per_expert: " << std::endl;
-  thrust::copy_n(num_assignments_per_expert, non_zero_experts_count,
-  std::ostream_iterator<int>(std::cout, ",")); std::cout << std::endl; */
 
   // build destination_start_index array, telling us the first slot that belongs
   // to each expert in the destination array (after factoring in expert
@@ -457,10 +397,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                           exceeds_expert_capacity(expert_capacity),
                           expert_capacity);
 
-  /* std::cout << "destination_start_indices: " << std::endl;
-  thrust::copy_n(destination_start_indices, non_zero_experts_count,
-  std::ostream_iterator<int>(std::cout, ",")); std::cout << std::endl; */
-
   int gemm_batch_count =
       thrust::reduce(thrust::device,
                      destination_start_indices,
@@ -471,15 +407,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                          destination_start_indices + non_zero_experts_count,
                          destination_start_indices,
                          0);
-
-  /* std::cout << "destination_start_indices: " << std::endl;
-  thrust::copy_n(destination_start_indices, non_zero_experts_count,
-  std::ostream_iterator<int>(std::cout, ",")); std::cout << std::endl; */
-
-  /* std::cout << "________________________________________________" <<
-  std::endl;
-  std::cout << input << std::endl;
-  std::cout << output << std::endl; */
 
   cudaDeviceSynchronize();
 
@@ -636,6 +563,8 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
                          sizeof(float *),
                          cudaMemcpyHostToDevice));
   }
+  checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
 }
 ExpertsMeta::~ExpertsMeta(void) {
 
@@ -660,6 +589,8 @@ ExpertsMeta::~ExpertsMeta(void) {
     checkCUDA(cudaFree(&batch_outputs[i]));
   }
   delete[] batch_outputs;
+  checkCUDNN(cudnnDestroyActivationDescriptor(actiDesc));
+  checkCUDNN(cudnnDestroyTensorDescriptor(outputTensor));
 }
 
 }; // namespace FlexFlow

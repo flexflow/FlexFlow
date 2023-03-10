@@ -50,6 +50,8 @@ public:
   float alpha;
   bool use_bias;
   ActiMode activation;
+  cudnnTensorDescriptor_t outputTensor;
+  cudnnActivationDescriptor_t actiDesc;
 };
 
 // definitions for the CUDA kernel

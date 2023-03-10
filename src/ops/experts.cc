@@ -68,7 +68,7 @@ Tensor FFModel::experts(Tensor const *inputs,
 
   // parameters for the FFN implementing the experts. We can make these
   // FFModel::experts(...) function parameters if needed.
-  bool use_bias = false;
+  bool use_bias = true;
   ActiMode activation = AC_MODE_RELU;
 
   Layer *e = new Layer(this,
@@ -833,7 +833,7 @@ void Experts::inference_task(Task const *task,
           task->regions[4 + i * (1 + use_bias) + use_bias]
               .region.get_index_space());
       int bias_dims = bias_domain.get_dim();
-      assert(bias_dims == 1);
+      assert(bias_dims == 4);
       assert(bias_domain.hi()[0] - bias_domain.lo()[0] + 1 == out_dim);
     }
   }
