@@ -87,12 +87,13 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
-  // static void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
-  //                              float const *input_ptr,
-  //                              float const *weight_ptr,
-  //                              float *output_ptr,
-  //                              ffStream_t stream);
+  static void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                               float const *input_ptr,
+                               float const *weight_ptr,
+                               float *output_ptr,
+                               ffStream_t stream);
   static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
+                                       BatchConfig const *bc,
                                        float const *input_ptr,
                                        float const *weight_ptr,
                                        float *output_ptr);
@@ -111,7 +112,7 @@ class IncMultiHeadSelfAttentionMeta : public OpMeta {
 public:
   IncMultiHeadSelfAttentionMeta(FFHandler handler,
                                 IncMultiHeadSelfAttention const *attn,
-				BatchConfig const *bc,
+				                        BatchConfig const *bc,
                                 Legion::Memory gpu_mem,
                                 int num_samples,
                                 int num_heads);
@@ -120,10 +121,11 @@ public:
 public:
   Realm::RegionInstance reserveInst;
   size_t weightSize, reserveSpaceSize;
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
+/*#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnAttnDescriptor_t attnDesc;
   cudnnSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
-#endif
+#endif*/
   int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx, *kvCache;
   void *reserveSpace;
 };

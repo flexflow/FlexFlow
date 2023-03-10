@@ -526,10 +526,11 @@ void IncMultiHeadSelfAttention::inference_task(
     Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == regions.size());
-  // const IncMultiHeadSelfAttention* attn = (IncMultiHeadSelfAttention*)
-  // task->args;
+  
+  const BatchConfig *bc = (BatchConfig *)task->args;
   IncMultiHeadSelfAttentionMeta const *m =
       *((IncMultiHeadSelfAttentionMeta **)task->local_args);
+
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
@@ -538,7 +539,7 @@ void IncMultiHeadSelfAttention::inference_task(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
   IncMultiHeadSelfAttention::inference_kernel_wrapper(
-      m, input.get_float_ptr(), weight.get_float_ptr(), output.get_float_ptr());
+      m, bc, input.get_float_ptr(), weight.get_float_ptr(), output.get_float_ptr());
 }
 
 void IncMultiHeadSelfAttention::backward(FFModel const &ff) {
