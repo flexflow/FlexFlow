@@ -54,8 +54,13 @@ public:
   float alpha;
   bool use_bias;
   ActiMode activation;
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t resultTensorDesc;
   cudnnActivationDescriptor_t actiDesc;
+#else
+  miopenTensorDescriptor_t resultTensorDesc;
+  miopenActivationDescriptor_t actiDesc;
+#endif
 };
 
 // definitions for the CUDA kernel
