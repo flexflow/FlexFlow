@@ -335,28 +335,14 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
   }
 
   if (use_activation(activation)) {
-    int expert_block_start_index = 0;
-    for (int i = 0; i < non_zero_experts_count; i++) {
-      checkCUDNN(
-          cudnnSetTensor4dDescriptor(m->resultTensorDesc,
-                                     CUDNN_TENSOR_NCHW,
-                                     // CUDNN_DATA_FLOAT,
-                                     cuda_to_cudnn_datatype(output_type),
-                                     m->capped_num_assignments_per_expert[i],
-                                     out_dim,
-                                     1,
-                                     1));
-      checkCUDNN(
-          cudnnActivationForward(m->handle.dnn,
-                                 m->actiDesc,
-                                 &alpha,
-                                 m->resultTensorDesc,
-                                 m->batch_outputs[expert_block_start_index],
-                                 &beta,
-                                 m->resultTensorDesc,
-                                 m->batch_outputs[expert_block_start_index]));
-      expert_block_start_index += m->capped_num_assignments_per_expert[i];
-    }
+    checkCUDNN(cudnnActivationForward(m->handle.dnn,
+                                      m->actiDesc,
+                                      &alpha,
+                                      m->resultTensorDesc,
+                                      m->batch_outputs[0],
+                                      &beta,
+                                      m->resultTensorDesc,
+                                      m->batch_outputs[0]));
   }
 }
 
@@ -631,6 +617,15 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
     }
     checkCUDNN(
         cudnnSetActivationDescriptor(actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
+    checkCUDNN(
+        cudnnSetTensor4dDescriptor(resultTensorDesc,
+                                   CUDNN_TENSOR_NCHW,
+                                   // CUDNN_DATA_FLOAT,
+                                   cuda_to_cudnn_datatype(CUDA_R_32F),
+                                   num_chosen_experts * effective_batch_size,
+                                   out_dim,
+                                   1,
+                                   1));
   }
 }
 ExpertsMeta::~ExpertsMeta(void) {
