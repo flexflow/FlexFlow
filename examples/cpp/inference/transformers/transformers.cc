@@ -137,6 +137,8 @@ void FlexFlow::top_level_task(Task const *task,
           assert(bc->register_new_request(prompt.first, prompt.second.size()));
         }
         bc->prepare_next_batch();
+        // bc->num_active_requests();
+        // bc->num_active_tokens();
         runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
         FutureMap fm = im.inference(bid, *bc);
         runtime->end_trace(ctx, 111 + bid % num_devices /*trace_id*/);
