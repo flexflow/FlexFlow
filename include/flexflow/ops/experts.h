@@ -32,6 +32,9 @@ public:
   float const **weight_idx_array;
   float const **coefficient_idx_array;
   float **output_idx_array;
+  float const **bias_idx_array;
+  float const *one_ptr;
+  float const **one_ptr_array;
 
   // array of arrays to store cublasGemmBatchedEx outputs before aggregation
   float **batch_outputs;

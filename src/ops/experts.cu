@@ -56,6 +56,7 @@ __global__ void experts_forward_prepare_kernel(
     float const **token_idx_array,  // @Out: Barray for GemmBatchedEx
     float const **weights,          // @In: Experts' weights
     float const **weight_idx_array, // @Out: Aarray for GemmBatchedEx
+    float const **bias_idx_array,   // @Out: Experts' bias
     float const *coefficients,      // @In: topk_gate_predss coefficients tensor
                                     // (num_chosen_experts, batch_size)
     float const **coefficient_idx_array, // @Out: Barray for Aggregation
@@ -71,16 +72,17 @@ __global__ void experts_forward_prepare_kernel(
     if (within_expert_offset < expert_capacity) {
       int rev_idx = original_indices[i + lb_index];
       int token_idx = (rev_idx / num_chosen_experts);
-      // printf("dest: %d, offset: %d\n",
-      // destination_start_indices[expert_index], within_expert_offset);
-      // printf("%d: %p\n", destination_start_indices[expert_index] +
-      // within_expert_offset, &input[token_idx * data_dim]); printf("token
-      // index: %d\n", token_idx);
+
       token_idx_array[destination_start_indices[expert_index] +
                       within_expert_offset] = &input[token_idx * data_dim];
       weight_idx_array[destination_start_indices[expert_index] +
                        within_expert_offset] =
           weights[local_expert_label * (1 + use_bias)];
+      if (use_bias) {
+        bias_idx_array[destination_start_indices[expert_index] +
+                      within_expert_offset] =
+            weights[local_expert_label * (1 + use_bias) + use_bias];
+      }
       coefficient_idx_array[destination_start_indices[expert_index] +
                             within_expert_offset] = &coefficients[rev_idx];
       output_idx_array[destination_start_indices[expert_index] +
@@ -89,11 +91,27 @@ __global__ void experts_forward_prepare_kernel(
   }
 }
 
+bool use_activation(ActiMode mode) {
+  switch (mode) {
+    case AC_MODE_RELU:
+    case AC_MODE_SIGMOID:
+    case AC_MODE_TANH:
+      return true;
+    case AC_MODE_NONE:
+      return false;
+    default:
+      assert(0);
+      break;
+  }
+  return false;
+}
+
 void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
                                         void const **weights_ptr,
                                         void const **input_ptr,
                                         void **output_ptr,
-                                        //  void const *bias_ptr,
+                                        void const **bias_ptr,
+                                        ActiMode activation,
                                         int in_dim,
                                         int out_dim,
                                         int num_tokens,
@@ -138,6 +156,43 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
       compute_type,
       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
+  // TODO 2: bias and activations
+  if (m->use_bias) {
+    checkCUDA(cublasGemmBatchedEx(
+        m->handle.blas,
+        CUBLAS_OP_T, // Bias, shape (out_dim, 1)
+        CUBLAS_OP_N, // Coefficient, shape (1, 1)
+        out_dim,     // num_row of (A, C) = out_dim
+        1,           // num_col of (B, C) = 1
+        1,           // num_col of A and num_rows of B = 1
+        &alpha,
+        bias_ptr, // bias tensor (out_dim, 1)
+        weight_type,
+        out_dim, // Leading Dimension of bias tensor
+        (const void **)m->one_ptr_array, // all-one tensor (1, 1)
+        CUDA_R_32F,
+        1,      // Leading Dimension of all-one tensor
+        &alpha,
+        output_ptr, // Carray (num_tokens * chosen_experts, out_dim, 1)
+        output_type,
+        out_dim, // Leading Dimension of output
+        gemm_batch_count, // Total submatrixs
+        compute_type,
+        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  }
+
+  // if (use_activation(activation)) {
+  //   checkCUDNN(cudnnActivationForward(
+  //       m->handle.dnn,
+  //       m->activation_desc,
+  //       &alpha,
+  //       m->output_tensor_desc,
+  //       output_ptr[0],
+  //       &beta,
+  //       m->output_tensor_desc,
+  //       output_ptr[0]));
+  // }
+
   // TODO 1: try to handle the coefficients here with another cublassGemmBatched
   // float alpha = 1.0f, beta = 0.0f;
   // cudaDataType_t result_type = CUDA_R_32F;
@@ -166,8 +221,6 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
   //     of output num_tokens * num_chosen_experts, // Total submatrixs
   //     compute_type,
   //     CUBLAS_GEMM_DEFAULT_TENSOR_OP);
-
-  // TODO 2: bias and activations
 }
 
 __global__ void experts_forward_aggregate_kernel(int num_tokens,
@@ -225,7 +278,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   int num_experts_per_block = m->num_experts;
   int experts_start_idx = m->experts_start_idx;
   bool use_bias = m->use_bias;
-  // ActiMode activation = m->activation;
+  ActiMode activation = m->activation;
   int data_dim = m->data_dim;
   int num_chosen_experts = m->num_chosen_experts;
   int num_tokens = m->effective_batch_size;
@@ -453,6 +506,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                              m->token_idx_array,
                                              m->dev_weights,
                                              m->weight_idx_array,
+                                             m->bias_idx_array,
                                              topk_gate_preds,
                                              m->coefficient_idx_array,
                                              m->output_idx_array);
@@ -463,7 +517,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      (void const **)m->weight_idx_array,
                                      (void const **)m->token_idx_array,
                                      (void **)m->dev_batch_outputs,
-                                     //  bias_ptr,
+                                     (void const **)m->bias_idx_array,
+                                     activation,
                                      data_dim,
                                      out_dim,
                                      num_tokens,
@@ -541,6 +596,9 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
       cudaMalloc(&weight_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
   checkCUDA(
+      cudaMalloc(&bias_idx_array,
+                 num_chosen_experts * effective_batch_size * sizeof(float *)));
+  checkCUDA(
       cudaMalloc(&coefficient_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
   checkCUDA(
@@ -558,6 +616,26 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
                  batch_outputs,
                  num_chosen_experts * effective_batch_size * sizeof(float *),
                  cudaMemcpyHostToDevice));
+  float *dram_one_ptr = (float *)malloc(sizeof(float) * 1);
+  for (int i = 0; i < 1; i++) {
+    dram_one_ptr[i] = 1.0f;
+  }
+  float *fb_one_ptr;
+  checkCUDA(cudaMalloc(&fb_one_ptr, sizeof(float) * 1));
+  checkCUDA(cudaMemcpy(fb_one_ptr,
+                       dram_one_ptr,
+                       sizeof(float) * 1,
+                       cudaMemcpyHostToDevice));
+  one_ptr = (float const *)fb_one_ptr;
+  checkCUDA(
+      cudaMalloc(&one_ptr_array,
+                 num_chosen_experts * effective_batch_size * sizeof(float *)));
+  for (int i = 0; i < num_chosen_experts * effective_batch_size; i++) {
+    checkCUDA(cudaMemcpy(&one_ptr_array[i],
+                         &fb_one_ptr,
+                         sizeof(float *),
+                         cudaMemcpyHostToDevice));
+  }
 }
 ExpertsMeta::~ExpertsMeta(void) {
 
@@ -574,6 +652,10 @@ ExpertsMeta::~ExpertsMeta(void) {
   checkCUDA(cudaFree(&weight_idx_array));
   checkCUDA(cudaFree(&coefficient_idx_array));
   checkCUDA(cudaFree(&output_idx_array));
+  checkCUDA(cudaFree(&dev_batch_outputs));
+  checkCUDA(cudaFree(&bias_idx_array));
+  checkCUDA(cudaFree(&one_ptr));
+  checkCUDA(cudaFree(&one_ptr_array));
   for (int i = 0; i < num_chosen_experts * effective_batch_size; i++) {
     checkCUDA(cudaFree(&batch_outputs[i]));
   }
