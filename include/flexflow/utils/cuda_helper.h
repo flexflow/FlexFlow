@@ -137,6 +137,8 @@ cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Legion::Domain domain);
 
 cudaDataType_t ff_to_cuda_datatype(DataType type);
-
 cudnnDataType_t ff_to_cudnn_datatype(DataType type);
+
+cudaDataType_t cudnn_to_cuda_datatype(cudnnDataType_t type);
+cudnnDataType_t cuda_to_cudnn_datatype(cudaDataType_t type);
 #endif

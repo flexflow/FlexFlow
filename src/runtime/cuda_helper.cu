@@ -318,6 +318,34 @@ cudaDataType_t ff_to_cuda_datatype(DataType type) {
   return CUDA_R_32F;
 }
 
+cudaDataType_t cudnn_to_cuda_datatype(cudnnDataType_t type) {
+  switch (type) {
+    case CUDNN_DATA_FLOAT:
+      return CUDA_R_32F;
+    case CUDNN_DATA_DOUBLE:
+      return CUDA_R_64F;
+    case CUDNN_DATA_INT32:
+      return CUDA_R_32I;
+    default:
+      assert(false && "Unsupported cuda data type");
+  }
+  return CUDA_R_32F;
+}
+
+cudnnDataType_t cuda_to_cudnn_datatype(cudaDataType_t type) {
+  switch (type) {
+    case CUDA_R_32F:
+      return CUDNN_DATA_FLOAT;
+    case CUDA_R_64F:
+      return CUDNN_DATA_DOUBLE;
+    case CUDA_R_32I:
+      return CUDNN_DATA_INT32;
+    default:
+      assert(false && "Unsupported cudnn data type");
+  }
+  return CUDNN_DATA_FLOAT;
+}
+
 template __global__ void
     assign_kernel<half>(half *ptr, coord_t size, half value);
 template __global__ void
