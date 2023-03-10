@@ -77,7 +77,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   checkCUDNN(miopenSetStream(handler.dnn, stream));
 }
 
-IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {
-}
+IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {}
 
 }; // namespace FlexFlow

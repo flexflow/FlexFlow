@@ -66,13 +66,19 @@ void IncMultiHeadSelfAttention::inference_kernel1(
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 }
 
-__global__ void store_kv_cache(
-    float const *input_ptr, float const *cache_ptr, request_token_id const *id_map, int max_seq_len, int hid_dim) {
+__global__ void store_kv_cache(float const *input_ptr,
+                               float const *cache_ptr,
+                               request_token_id const *id_map,
+                               int max_seq_len,
+                               int hid_dim) {
   int const token_idx = blockIdx.x;
   int const element_idx = threadIdx.x;
   int const req_id = id_map[token_idx].request_id;
   int const tok_id = id_map[token_idx].token_id;
-  memcpy((float *)input_ptr + token_idx * hid_dim + element_idx, (float *)cache_ptr + (req_id * max_seq_len + tok_id) * hid_dim + element_idx, sizeof(float)) ;
+  memcpy((float *)input_ptr + token_idx * hid_dim + element_idx,
+         (float *)cache_ptr + (req_id * max_seq_len + tok_id) * hid_dim +
+             element_idx,
+         sizeof(float));
 }
 
 /*static*/
@@ -82,8 +88,18 @@ void IncMultiHeadSelfAttention::inference_kernel2(
     float const *input_ptr,
     request_token_id const *id_map,
     cudaStream_t stream) {
-  store_kv_cache<<<bc->num_tokens, m->kProjSize>>>((float *)input_ptr + bc->MAX_NUM_TOKENS * m->qProjSize, m->keyCache, id_map, bc->MAX_SEQUENCE_LENGTH, m->kProjSize);
-  store_kv_cache<<<bc->num_tokens, m->vProjSize>>>((float *)input_ptr + bc->MAX_NUM_TOKENS * (m->qProjSize + m->kProjSize), m->valueCache, id_map, bc->MAX_SEQUENCE_LENGTH, m->vProjSize);
+  store_kv_cache<<<bc->num_tokens, m->kProjSize>>>(
+      (float *)input_ptr + bc->MAX_NUM_TOKENS * m->qProjSize,
+      m->keyCache,
+      id_map,
+      bc->MAX_SEQUENCE_LENGTH,
+      m->kProjSize);
+  store_kv_cache<<<bc->num_tokens, m->vProjSize>>>(
+      (float *)input_ptr + bc->MAX_NUM_TOKENS * (m->qProjSize + m->kProjSize),
+      m->valueCache,
+      id_map,
+      bc->MAX_SEQUENCE_LENGTH,
+      m->vProjSize);
 }
 
 /*static*/
@@ -106,24 +122,35 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   // phase 0: convert BatchConfig representation to {rid, tid} struct
   int curr_token_idx = 0;
   int curr_request_idx = 0;
-  printf("Start phase 0: num_tokens: %d, num_requests: %d\n", bc->num_tokens, bc->num_requests);
+  printf("Start phase 0: num_tokens: %d, num_requests: %d\n",
+         bc->num_tokens,
+         bc->num_requests);
   // BatchConfig *bc_copy = new BatchConfig(*bc);
-  printf("num_active_tokens: %d, num_active_requests: %d\n", ((BatchConfig*)(bc))->num_active_tokens(),  ((BatchConfig*)(bc))->num_active_requests());
-  while (curr_request_idx < ((BatchConfig*)(bc))->num_active_requests()) {
-    printf("request %d: num_tokens: %d, start_idx: %d\n", curr_request_idx, bc->num_processing_tokens[curr_request_idx], bc->token_start_idx[curr_request_idx]);
+  printf("num_active_tokens: %d, num_active_requests: %d\n",
+         ((BatchConfig *)(bc))->num_active_tokens(),
+         ((BatchConfig *)(bc))->num_active_requests());
+  while (curr_request_idx < ((BatchConfig *)(bc))->num_active_requests()) {
+    printf("request %d: num_tokens: %d, start_idx: %d\n",
+           curr_request_idx,
+           bc->num_processing_tokens[curr_request_idx],
+           bc->token_start_idx[curr_request_idx]);
     for (int i = 0; i < bc->num_processing_tokens[curr_request_idx]; i++) {
       m->input_token_ids[curr_token_idx].request_id = curr_request_idx;
-      m->input_token_ids[curr_token_idx].token_id = bc->token_start_idx[curr_request_idx] + i;
-      if (curr_token_idx >= ((BatchConfig*)(bc))->num_active_tokens()) {
-        printf("curr_token_idx: %d, curr_request_idx: %d\n", curr_token_idx, curr_request_idx);
+      m->input_token_ids[curr_token_idx].token_id =
+          bc->token_start_idx[curr_request_idx] + i;
+      if (curr_token_idx >= ((BatchConfig *)(bc))->num_active_tokens()) {
+        printf("curr_token_idx: %d, curr_request_idx: %d\n",
+               curr_token_idx,
+               curr_request_idx);
         assert(false); // total number of tokens should matches the batch config
       }
       curr_token_idx += 1;
     }
     curr_request_idx += 1;
   }
-  printf("End of phase 0: curr_token_idx: %d, curr_request_idx: %d\n", curr_token_idx, curr_request_idx);
-
+  printf("End of phase 0: curr_token_idx: %d, curr_request_idx: %d\n",
+         curr_token_idx,
+         curr_request_idx);
 
   // phase 1: Implement kernel to compute KQV for input tokens
   IncMultiHeadSelfAttention::inference_kernel1(
@@ -179,7 +206,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
   // Currently do not support adding bias to key/value projection
   assert(!attn->add_bias_kv);
-  
+
   // allocate memory for the seqArray and reserve space
   {
     // size_t totalSize = reserveSpaceSize + sizeof(int) * num_samples * 2 +
@@ -187,11 +214,13 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     // max_num_tokens = bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
     size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
     size_t qkv_max_proj_size = num_samples * qkv_proj_dim * num_heads;
-    size_t key_cache_size = kProjSize * bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
-    size_t value_cache_size = vProjSize * bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
+    size_t key_cache_size =
+        kProjSize * bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
+    size_t value_cache_size =
+        vProjSize * bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
 
     size_t totalSize =
-        (qkv_max_proj_size  + key_cache_size + value_cache_size) *
+        (qkv_max_proj_size + key_cache_size + value_cache_size) *
         sizeof(float); // more components will be added here later
 
     Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
@@ -230,12 +259,14 @@ IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {
 }
 
 //__global__ void store_kv_cache(
-//    float const *input_ptr, float const *cache_ptr, request_token_id const *id_map, int max_seq_len, int hid_dim) {
+//    float const *input_ptr, float const *cache_ptr, request_token_id const
+//    *id_map, int max_seq_len, int hid_dim) {
 //  int const token_idx = blockIdx.x;
 //  int const element_idx = threadIdx.x;
 //  int const req_id = id_map[token_idx].request_id;
 //  int const tok_id = id_map[token_idx].token_id;
-//  cache_ptr[(req_id * max_seq_len + tok_id) * hid_dim + element_idx] = input_ptr[token_idx * hid_dim + element_idx];
+//  cache_ptr[(req_id * max_seq_len + tok_id) * hid_dim + element_idx] =
+//  input_ptr[token_idx * hid_dim + element_idx];
 //}
 
 }; // namespace FlexFlow
