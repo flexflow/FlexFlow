@@ -19,13 +19,16 @@ public:
               ActiMode _activation);
   ~ExpertsMeta(void);
 
+  // Thrust helper arrays
   int *sorted_indices;
   int *original_indices;
   int *non_zero_expert_labels;
   int *temp_sequence;
   int *exp_local_label_to_index;
   int *expert_start_indexes;
-  int *num_assignments_per_expert;
+  int *num_assignments_per_expert; // numbers of tokes assigned to each expert.
+                                   // Values may exceed the expert capacity
+  int *capped_num_assignments_per_expert;
   int *destination_start_indices;
   float const **token_idx_array;
   float const **dev_weights;
@@ -50,7 +53,7 @@ public:
   float alpha;
   bool use_bias;
   ActiMode activation;
-  cudnnTensorDescriptor_t outputTensor;
+  cudnnTensorDescriptor_t resultTensorDesc;
   cudnnActivationDescriptor_t actiDesc;
 };
 

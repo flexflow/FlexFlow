@@ -170,6 +170,12 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
                           exceeds_expert_capacity(expert_capacity),
                           expert_capacity);
 
+  cudaMemcpyAsync(m->capped_num_assignments_per_expert,
+                  m->destination_start_indices,
+                  (*non_zero_experts_count) * sizeof(int),
+                  cudaMemcpyDeviceToHost,
+                  stream);
+
   *gemm_batch_count =
       thrust::reduce(thrust::cuda::par.on(stream),
                      destination_start_indices,
@@ -255,7 +261,7 @@ bool use_activation(ActiMode mode) {
 void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
                                         void const **weights_ptr,
                                         void const **input_ptr,
-                                        void **output_ptr,
+                                        void **results_ptr,
                                         void const **bias_ptr,
                                         ActiMode activation,
                                         int in_dim,
@@ -263,6 +269,7 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
                                         int num_tokens,
                                         int num_chosen_experts,
                                         int gemm_batch_count,
+                                        int non_zero_experts_count,
                                         ffStream_t stream) {
 
   checkCUDA(cublasSetStream(m->handle.blas, stream));
@@ -295,7 +302,7 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
       input_type,
       in_dim, // Leading Dimension of input_token
       &beta,
-      output_ptr, // Carray (num_tokens * chosen_experts, out_dim, 1)
+      results_ptr, // Carray (num_tokens * chosen_experts, out_dim, 1)
       output_type,
       out_dim,          // Leading Dimension of output
       gemm_batch_count, // Total submatrixes
@@ -319,7 +326,7 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
         CUDA_R_32F,
         1, // Leading Dimension of all-one tensor
         &alpha,
-        output_ptr, // Carray (num_tokens * chosen_experts, out_dim, 1)
+        results_ptr, // Carray (num_tokens * chosen_experts, out_dim, 1)
         output_type,
         out_dim,          // Leading Dimension of output
         gemm_batch_count, // Total submatrixs
@@ -328,36 +335,28 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
   }
 
   if (use_activation(activation)) {
-    cudnnActivationMode_t mode;
-    switch (activation) {
-      case AC_MODE_RELU:
-        mode = CUDNN_ACTIVATION_RELU;
-        break;
-      case AC_MODE_SIGMOID:
-        mode = CUDNN_ACTIVATION_SIGMOID;
-        break;
-      default:
-        // Unsupported activation mode
-        assert(false);
+    int expert_block_start_index = 0;
+    for (int i = 0; i < non_zero_experts_count; i++) {
+      checkCUDNN(
+          cudnnSetTensor4dDescriptor(m->resultTensorDesc,
+                                     CUDNN_TENSOR_NCHW,
+                                     // CUDNN_DATA_FLOAT,
+                                     cuda_to_cudnn_datatype(output_type),
+                                     m->capped_num_assignments_per_expert[i],
+                                     out_dim,
+                                     1,
+                                     1));
+      checkCUDNN(
+          cudnnActivationForward(m->handle.dnn,
+                                 m->actiDesc,
+                                 &alpha,
+                                 m->resultTensorDesc,
+                                 m->batch_outputs[expert_block_start_index],
+                                 &beta,
+                                 m->resultTensorDesc,
+                                 m->batch_outputs[expert_block_start_index]));
+      expert_block_start_index += m->capped_num_assignments_per_expert[i];
     }
-    checkCUDNN(cudnnSetActivationDescriptor(
-        m->actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
-    checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
-                                          CUDNN_TENSOR_NCHW,
-                                          // CUDNN_DATA_FLOAT,
-                                          cuda_to_cudnn_datatype(output_type),
-                                          gemm_batch_count,
-                                          out_dim,
-                                          1,
-                                          1));
-    checkCUDNN(cudnnActivationForward(m->handle.dnn,
-                                      m->actiDesc,
-                                      &alpha,
-                                      m->outputTensor,
-                                      m->batch_outputs[0],
-                                      &beta,
-                                      m->outputTensor,
-                                      m->batch_outputs[0]));
   }
 }
 
@@ -496,8 +495,9 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      num_tokens,
                                      num_chosen_experts,
                                      gemm_batch_count,
+                                     non_zero_experts_count,
                                      stream);
-  
+
   cudaStreamSynchronize(stream);
 
   int aggregation_parallelism =
@@ -558,6 +558,7 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
   // expert_start_indexes needs one more slot to save the upper bound index
   checkCUDA(cudaMalloc(&expert_start_indexes, (num_experts + 1) * sizeof(int)));
   checkCUDA(cudaMalloc(&num_assignments_per_expert, num_experts * sizeof(int)));
+  capped_num_assignments_per_expert = (int *)malloc(num_experts * sizeof(int));
   checkCUDA(cudaMalloc(&destination_start_indices, num_experts * sizeof(int)));
 
   checkCUDA(
@@ -578,8 +579,11 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
       cudaMalloc(&output_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
   batch_outputs = new float *[num_chosen_experts * effective_batch_size];
-  for (int i = 0; i < num_chosen_experts * effective_batch_size; i++) {
-    checkCUDA(cudaMalloc(&batch_outputs[i], out_dim * sizeof(float)));
+  checkCUDA(cudaMalloc(&batch_outputs[0],
+                       out_dim * num_chosen_experts * effective_batch_size *
+                           sizeof(float)));
+  for (int i = 1; i < num_chosen_experts * effective_batch_size; i++) {
+    batch_outputs[i] = batch_outputs[i - 1] + out_dim * sizeof(float);
   }
   checkCUDA(
       cudaMalloc(&dev_batch_outputs,
@@ -589,6 +593,7 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
                  batch_outputs,
                  num_chosen_experts * effective_batch_size * sizeof(float *),
                  cudaMemcpyHostToDevice));
+  // Bias
   float *dram_one_ptr = (float *)malloc(sizeof(float) * 1);
   for (int i = 0; i < 1; i++) {
     dram_one_ptr[i] = 1.0f;
@@ -598,6 +603,7 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
   checkCUDA(cudaMemcpy(
       fb_one_ptr, dram_one_ptr, sizeof(float) * 1, cudaMemcpyHostToDevice));
   one_ptr = (float const *)fb_one_ptr;
+  free((void *)dram_one_ptr);
   checkCUDA(
       cudaMalloc(&one_ptr_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
@@ -607,34 +613,52 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
                          sizeof(float *),
                          cudaMemcpyHostToDevice));
   }
+  // Activation
   checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
-  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&resultTensorDesc));
+  if (use_activation(activation)) {
+    cudnnActivationMode_t mode;
+    switch (activation) {
+      case AC_MODE_RELU:
+        mode = CUDNN_ACTIVATION_RELU;
+        break;
+      case AC_MODE_SIGMOID:
+        mode = CUDNN_ACTIVATION_SIGMOID;
+        break;
+      default:
+        // Unsupported activation mode
+        assert(false);
+    }
+    checkCUDNN(
+        cudnnSetActivationDescriptor(actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
+  }
 }
 ExpertsMeta::~ExpertsMeta(void) {
 
-  checkCUDA(cudaFree(&sorted_indices));
-  checkCUDA(cudaFree(&original_indices));
-  checkCUDA(cudaFree(&non_zero_expert_labels));
-  checkCUDA(cudaFree(&temp_sequence));
-  checkCUDA(cudaFree(&exp_local_label_to_index));
-  checkCUDA(cudaFree(&expert_start_indexes));
-  checkCUDA(cudaFree(&num_assignments_per_expert));
-  checkCUDA(cudaFree(&destination_start_indices));
-  checkCUDA(cudaFree(&token_idx_array));
-  checkCUDA(cudaFree(&dev_weights));
-  checkCUDA(cudaFree(&weight_idx_array));
-  checkCUDA(cudaFree(&coefficient_idx_array));
-  checkCUDA(cudaFree(&output_idx_array));
-  checkCUDA(cudaFree(&dev_batch_outputs));
-  checkCUDA(cudaFree(&bias_idx_array));
-  checkCUDA(cudaFree(&one_ptr));
-  checkCUDA(cudaFree(&one_ptr_array));
-  for (int i = 0; i < num_chosen_experts * effective_batch_size; i++) {
-    checkCUDA(cudaFree(&batch_outputs[i]));
-  }
+  checkCUDA(cudaFree(sorted_indices));
+  checkCUDA(cudaFree(original_indices));
+  checkCUDA(cudaFree(non_zero_expert_labels));
+  checkCUDA(cudaFree(temp_sequence));
+  checkCUDA(cudaFree(exp_local_label_to_index));
+  checkCUDA(cudaFree(expert_start_indexes));
+  checkCUDA(cudaFree(num_assignments_per_expert));
+  free(capped_num_assignments_per_expert);
+  checkCUDA(cudaFree(destination_start_indices));
+  checkCUDA(cudaFree(token_idx_array));
+  checkCUDA(cudaFree(dev_weights));
+  checkCUDA(cudaFree(weight_idx_array));
+  checkCUDA(cudaFree(coefficient_idx_array));
+  checkCUDA(cudaFree(output_idx_array));
+  checkCUDA(cudaFree(dev_batch_outputs));
+  checkCUDA(cudaFree(bias_idx_array));
+  checkCUDA(cudaFree(batch_outputs[0]));
   delete[] batch_outputs;
+  // Bias
+  checkCUDA(cudaFree((void *)one_ptr));
+  checkCUDA(cudaFree((void *)one_ptr_array));
+  // Activation
   checkCUDNN(cudnnDestroyActivationDescriptor(actiDesc));
-  checkCUDNN(cudnnDestroyTensorDescriptor(outputTensor));
+  checkCUDNN(cudnnDestroyTensorDescriptor(resultTensorDesc));
 }
 
 }; // namespace FlexFlow
