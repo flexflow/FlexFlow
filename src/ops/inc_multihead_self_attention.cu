@@ -22,6 +22,15 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Memory;
 
+__global__ void store_kv_cache(
+    float const *input_ptr, float const *cache_ptr, request_token_id const *id_map, int max_seq_len, int hid_dim) {
+  int const token_idx = blockIdx.x;
+  int const element_idx = threadIdx.x;
+  int const req_id = id_map[token_idx].request_id;
+  int const tok_id = id_map[token_idx].token_id;
+  memcpy((float *)input_ptr + token_idx * hid_dim + element_idx, (float *)cache_ptr + (req_id * max_seq_len + tok_id) * hid_dim + element_idx, sizeof(float)) ;
+}
+
 /*static*/
 void IncMultiHeadSelfAttention::inference_kernel1(
     IncMultiHeadSelfAttentionMeta const *m,
@@ -67,6 +76,17 @@ void IncMultiHeadSelfAttention::inference_kernel1(
 }
 
 /*static*/
+void IncMultiHeadSelfAttention::inference_kernel2(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    float const *input_ptr,
+    request_token_id const *id_map,
+    cudaStream_t stream) {
+  store_kv_cache<<<bc->num_tokens, m->kSize>>>((float *)input_ptr + bc->MAX_NUM_TOKENS * m->qProjSize, m->keyCache, id_map, bc->MAX_SEQUENCE_LENGTH, m->kProjSize);
+  store_kv_cache<<<bc->num_tokens, m->vSize>>>((float *)input_ptr + bc->MAX_NUM_TOKENS * (m->qProjSize + m->kProjSize), m->valueCache, id_map, bc->MAX_SEQUENCE_LENGTH, m->vProjSize);
+}
+
+/*static*/
 void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
@@ -103,6 +123,8 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
       m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
 
   // phase 2: Update key/val cache
+  IncMultiHeadSelfAttention::inference_kernel2(
+      m, bc, m->devQKVProjArray, m->input_token_ids, stream);
 
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
@@ -278,9 +300,11 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     // max_num_tokens = bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
     size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
     size_t qkv_max_proj_size = num_samples * qkv_proj_dim * num_heads;
+    size_t key_cache_size = kProjSize * bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
+    size_t value_cache_size = vProjSize * bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
 
     size_t totalSize =
-        qkv_max_proj_size *
+        (qkv_max_proj_size  + key_cache_size + value_cache_size) *
         sizeof(float); // more components will be added here later
 
     Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
@@ -295,6 +319,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                            Realm::ProfilingRequestSet())
         .wait();
     devQKVProjArray = (float *)reserveInst.pointer_untyped(0, sizeof(char));
+    keyCache = (float *)devQKVProjArray + qkv_max_proj_size;
+    valueCache = (float *)keyCache + key_cache_size;
     // checkCUDA(cudaMemcpy(devQoSeqArray,
     //                      qoSeqArray,
     //                      sizeof(int) * num_samples,
@@ -332,5 +358,14 @@ IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {
   checkCUDNN(cudnnDestroySeqDataDescriptor(vDesc));
   checkCUDNN(cudnnDestroySeqDataDescriptor(oDesc));*/
 }
+
+//__global__ void store_kv_cache(
+//    float const *input_ptr, float const *cache_ptr, request_token_id const *id_map, int max_seq_len, int hid_dim) {
+//  int const token_idx = blockIdx.x;
+//  int const element_idx = threadIdx.x;
+//  int const req_id = id_map[token_idx].request_id;
+//  int const tok_id = id_map[token_idx].token_id;
+//  cache_ptr[(req_id * max_seq_len + tok_id) * hid_dim + element_idx] = input_ptr[token_idx * hid_dim + element_idx];
+//}
 
 }; // namespace FlexFlow

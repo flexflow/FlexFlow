@@ -98,6 +98,11 @@ public:
                                 float const *weight_ptr,
                                 float *output_ptr,
                                 ffStream_t stream);
+  static void inference_kernel2(IncMultiHeadSelfAttentionMeta const *m,
+                                BatchConfig const *bc,
+                                float const *input_ptr,
+                                request_token_id const *id_map,
+                                cudaStream_t stream);
   static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
                                        BatchConfig const *bc,
                                        float const *input_ptr,
@@ -134,7 +139,7 @@ public:
     cudnnSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
   #endif*/
   // int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx, *kvCache;
-  float *devQKVProjArray;
+  float *devQKVProjArray, *keyCache, *valueCache;
   // void *reserveSpace;
 
   request_token_id* input_token_ids;

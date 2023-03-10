@@ -28,7 +28,7 @@ struct MoeConfig {
     //----------------------- Input/output data ------------------------
     token_dim = DATA_DIM;
     sequence_length = 10;
-    batch_size = 32;
+    batch_size = 16;
     out_dim = 15;
     num_labels = out_dim;
     num_layers = 1;
