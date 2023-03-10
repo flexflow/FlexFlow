@@ -22,15 +22,6 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Memory;
 
-__global__ void store_kv_cache(
-    float const *input_ptr, float const *cache_ptr, request_token_id const *id_map, int max_seq_len, int hid_dim) {
-  int const token_idx = blockIdx.x;
-  int const element_idx = threadIdx.x;
-  int const req_id = id_map[token_idx].request_id;
-  int const tok_id = id_map[token_idx].token_id;
-  memcpy((float *)input_ptr + token_idx * hid_dim + element_idx, (float *)cache_ptr + (req_id * max_seq_len + tok_id) * hid_dim + element_idx, sizeof(float)) ;
-}
-
 /*static*/
 void IncMultiHeadSelfAttention::inference_kernel1(
     IncMultiHeadSelfAttentionMeta const *m,
@@ -75,6 +66,15 @@ void IncMultiHeadSelfAttention::inference_kernel1(
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 }
 
+__global__ void store_kv_cache(
+    float const *input_ptr, float const *cache_ptr, request_token_id const *id_map, int max_seq_len, int hid_dim) {
+  int const token_idx = blockIdx.x;
+  int const element_idx = threadIdx.x;
+  int const req_id = id_map[token_idx].request_id;
+  int const tok_id = id_map[token_idx].token_id;
+  memcpy((float *)input_ptr + token_idx * hid_dim + element_idx, (float *)cache_ptr + (req_id * max_seq_len + tok_id) * hid_dim + element_idx, sizeof(float)) ;
+}
+
 /*static*/
 void IncMultiHeadSelfAttention::inference_kernel2(
     IncMultiHeadSelfAttentionMeta const *m,
@@ -82,8 +82,8 @@ void IncMultiHeadSelfAttention::inference_kernel2(
     float const *input_ptr,
     request_token_id const *id_map,
     cudaStream_t stream) {
-  store_kv_cache<<<bc->num_tokens, m->kSize>>>((float *)input_ptr + bc->MAX_NUM_TOKENS * m->qProjSize, m->keyCache, id_map, bc->MAX_SEQUENCE_LENGTH, m->kProjSize);
-  store_kv_cache<<<bc->num_tokens, m->vSize>>>((float *)input_ptr + bc->MAX_NUM_TOKENS * (m->qProjSize + m->kProjSize), m->valueCache, id_map, bc->MAX_SEQUENCE_LENGTH, m->vProjSize);
+  store_kv_cache<<<bc->num_tokens, m->kProjSize>>>((float *)input_ptr + bc->MAX_NUM_TOKENS * m->qProjSize, m->keyCache, id_map, bc->MAX_SEQUENCE_LENGTH, m->kProjSize);
+  store_kv_cache<<<bc->num_tokens, m->vProjSize>>>((float *)input_ptr + bc->MAX_NUM_TOKENS * (m->qProjSize + m->kProjSize), m->valueCache, id_map, bc->MAX_SEQUENCE_LENGTH, m->vProjSize);
 }
 
 /*static*/
