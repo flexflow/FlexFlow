@@ -121,24 +121,35 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   // phase 0: convert BatchConfig representation to {rid, tid} struct
   int curr_token_idx = 0;
-  int curr_request_idx = 0;
+  int processed_requests = 0;
   printf("Start phase 0: num_tokens: %d, num_requests: %d\n",
          bc->num_tokens,
          bc->num_requests);
-  // BatchConfig *bc_copy = new BatchConfig(*bc);
   printf("num_active_tokens: %d, num_active_requests: %d\n",
-         ((BatchConfig *)(bc))->num_active_tokens(),
-         ((BatchConfig *)(bc))->num_active_requests());
-  while (curr_request_idx < ((BatchConfig *)(bc))->num_active_requests()) {
-    printf("request %d: num_tokens: %d, start_idx: %d\n",
-           curr_request_idx,
-           bc->num_processing_tokens[curr_request_idx],
-           bc->token_start_idx[curr_request_idx]);
+         bc->num_active_tokens(),
+         bc->num_active_requests());
+
+  for (uint16_t curr_request_idx = 0; curr_request_idx < bc->MAX_NUM_REQUESTS;
+       curr_request_idx++) {
+    // printf("request %u: num_tokens: %d, start_idx: %d\n",
+    //        curr_request_idx,
+    //        bc->num_processing_tokens[curr_request_idx],
+    //        bc->token_start_idx[curr_request_idx]);
+
+    if (bc->num_processing_tokens[curr_request_idx] == 0) {
+      continue;
+    }
+
     for (int i = 0; i < bc->num_processing_tokens[curr_request_idx]; i++) {
       m->input_token_ids[curr_token_idx].request_id = curr_request_idx;
       m->input_token_ids[curr_token_idx].token_id =
           bc->token_start_idx[curr_request_idx] + i;
-      if (curr_token_idx >= ((BatchConfig *)(bc))->num_active_tokens()) {
+
+      // printf("token %d: request_id: %u, token_id: %u\n",
+      //        curr_token_idx,
+      //        m->input_token_ids[curr_token_idx].request_id,
+      //        m->input_token_ids[curr_token_idx].token_id);
+      if (curr_token_idx >= bc->num_active_tokens()) {
         printf("curr_token_idx: %d, curr_request_idx: %d\n",
                curr_token_idx,
                curr_request_idx);
@@ -146,11 +157,13 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
       }
       curr_token_idx += 1;
     }
-    curr_request_idx += 1;
+    processed_requests += 1;
   }
-  printf("End of phase 0: curr_token_idx: %d, curr_request_idx: %d\n",
+  printf("End of phase 0: curr_token_idx: %d, processed_requests: %d\n",
          curr_token_idx,
-         curr_request_idx);
+         processed_requests);
+
+  assert(processed_requests == bc->num_active_requests());
 
   // phase 1: Implement kernel to compute KQV for input tokens
   IncMultiHeadSelfAttention::inference_kernel1(
