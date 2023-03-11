@@ -112,6 +112,9 @@ def create_single_operator_ff():
     elif operator_name == 'min':
         input_tensors, label, output_tensor = create_tensors_for_min_ff(
             ffmodel)
+    elif operator_name == 'gather':
+        input_tensors, label, output_tensor = create_tensors_for_gather_ff(
+            ffmodel)
     else:
         raise ValueError(
             'Not include such Operator in Aligment Test', operator_name)
@@ -645,6 +648,23 @@ def create_tensors_for_min_ff(ffmodel):
         name="max"
     )
     return ((input_tensor_1, inp1),(input_tensor_2, inp2)), label, output_tensor
+
+def create_tensors_for_gather_ff(ffmodel):
+    inp1 = create_general_test_tensor_torch()
+    index = torch.zeros(BATCH_SIZE, SEQ_LENGTH, INPUT_SIZE, dtype=torch.int64)
+    
+    label = create_general_test_tensor_torch()
+
+    input_tensor = ffmodel.create_tensor(inp1.shape, DataType.DT_FLOAT)
+    index_tensor = ffmodel.create_tensor(index.shape, DataType.DT_INT64)
+    output_tensor = ffmodel.gather(
+        input=input_tensor,
+        index=index_tensor,
+        dim=0,
+        name="gather"
+    )
+    return ((input_tensor, inp1),(index_tensor, index)), label, output_tensor
+
 
 
 

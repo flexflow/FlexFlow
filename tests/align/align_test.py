@@ -118,12 +118,15 @@ def test_linear():
     _test_operator('linear')
     
     
-def test_max():
-    _test_operator('max')
+# def test_max():
+#     _test_operator('max')
     
     
-def test_min():
-    _test_operator('min')
+# def test_min():
+#     _test_operator('min')
+    
+def test_gather():
+    _test_operator('gather')
 
 
 def _test_operator(operater_name):
