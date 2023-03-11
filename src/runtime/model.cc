@@ -2701,6 +2701,7 @@ Op *FFModel::create_operator_from_layer(
     case OP_TANH:
     case OP_IDENTITY:
     case OP_GELU:
+    case OP_RSQRT:
     case OP_ELU: {
       Op *op = ElementUnary::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
