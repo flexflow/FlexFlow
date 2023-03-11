@@ -170,12 +170,6 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
                           exceeds_expert_capacity(expert_capacity),
                           expert_capacity);
 
-  cudaMemcpyAsync(m->capped_num_assignments_per_expert,
-                  m->destination_start_indices,
-                  (*non_zero_experts_count) * sizeof(int),
-                  cudaMemcpyDeviceToHost,
-                  stream);
-
   *gemm_batch_count =
       thrust::reduce(thrust::cuda::par.on(stream),
                      destination_start_indices,
@@ -269,7 +263,6 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
                                         int num_tokens,
                                         int num_chosen_experts,
                                         int gemm_batch_count,
-                                        int non_zero_experts_count,
                                         ffStream_t stream) {
 
   checkCUDA(cublasSetStream(m->handle.blas, stream));
@@ -481,7 +474,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      num_tokens,
                                      num_chosen_experts,
                                      gemm_batch_count,
-                                     non_zero_experts_count,
                                      stream);
 
   cudaStreamSynchronize(stream);
@@ -544,7 +536,6 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
   // expert_start_indexes needs one more slot to save the upper bound index
   checkCUDA(cudaMalloc(&expert_start_indexes, (num_experts + 1) * sizeof(int)));
   checkCUDA(cudaMalloc(&num_assignments_per_expert, num_experts * sizeof(int)));
-  capped_num_assignments_per_expert = (int *)malloc(num_experts * sizeof(int));
   checkCUDA(cudaMalloc(&destination_start_indices, num_experts * sizeof(int)));
 
   checkCUDA(
@@ -637,7 +628,6 @@ ExpertsMeta::~ExpertsMeta(void) {
   checkCUDA(cudaFree(exp_local_label_to_index));
   checkCUDA(cudaFree(expert_start_indexes));
   checkCUDA(cudaFree(num_assignments_per_expert));
-  free(capped_num_assignments_per_expert);
   checkCUDA(cudaFree(destination_start_indices));
   checkCUDA(cudaFree(token_idx_array));
   checkCUDA(cudaFree(dev_weights));
