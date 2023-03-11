@@ -29,6 +29,7 @@ BatchConfig::BatchConfig() {
     request_completed[i] = true;
     num_processing_tokens[i] = 0;
   }
+  update_num_active_requests_tokens();
 }
 
 int BatchConfig::update_results(InferenceResult const &ir) {
@@ -71,6 +72,7 @@ int BatchConfig::update_results(InferenceResult const &ir) {
     }
     num_processing_tokens[i] = 0;
   }
+  update_num_active_requests_tokens();
   return completed;
 }
 
@@ -84,15 +86,17 @@ bool BatchConfig::register_new_request(size_t guid, int length) {
       request_guid[i] = guid;
       num_processing_tokens[i] = 0;
       request_completed[i] = false;
+      update_num_active_requests_tokens();
       return true;
     }
   }
+  update_num_active_requests_tokens();
   return false;
 }
 
 void BatchConfig::prepare_next_batch() {
   cached_results = false;
-  int num_tokens = 0;
+  int count = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (request_completed[i]) {
       continue;
@@ -104,43 +108,43 @@ void BatchConfig::prepare_next_batch() {
     } else {
       num_processing_tokens[i] = MAX_NUM_TOKENS - num_tokens;
     }
-    num_tokens += num_processing_tokens[i];
+    count += num_processing_tokens[i];
   }
-  log_bc.print("[NextBatch] num_tokens(%d)", num_tokens);
-  // this->num_tokens = this->num_active_tokens();
-  // this->num_requests = this->num_active_requests();
+  update_num_active_requests_tokens();
+  log_bc.print("[NextBatch] num_tokens(%d)", count);
 }
 
-int BatchConfig::num_active_requests() {
+bool BatchConfig::update_num_active_requests_tokens() {
+  num_requests = 0;
+  num_tokens = 0;
+  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
+    if (!request_completed[i]) {
+      num_requests++;
+      num_tokens += num_processing_tokens[i];
+    }
+  }
+  cached_results = true;
+  return true;
+}
+
+int BatchConfig::num_active_requests() const {
   if (cached_results) {
     return num_requests;
+  } else {
+    assert(false &&
+           "some BatchConfig functions updated requests but didn't call "
+           "update_num_active_requests_tokens() before exit");
   }
-  num_requests = 0;
-  num_tokens = 0;
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    if (!request_completed[i]) {
-      num_requests++;
-      num_tokens += num_processing_tokens[i];
-    }
-  }
-  cached_results = true;
-  return num_requests;
 }
 
-int BatchConfig::num_active_tokens() {
+int BatchConfig::num_active_tokens() const {
   if (cached_results) {
     return num_tokens;
+  } else {
+    assert(false &&
+           "some BatchConfig functions updated requests but didn't call "
+           "update_num_active_requests_tokens() before exit");
   }
-  num_requests = 0;
-  num_tokens = 0;
-  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-    if (!request_completed[i]) {
-      num_requests++;
-      num_tokens += num_processing_tokens[i];
-    }
-  }
-  cached_results = true;
-  return num_tokens;
 }
 
 }; // namespace FlexFlow
