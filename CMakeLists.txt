@@ -314,6 +314,20 @@ else()
   target_link_libraries(flexflow ${LEGION_LIBRARY} ${FLEXFLOW_EXT_LIBRARIES} nlohmann_json::nlohmann_json mpark_variant optional)
 endif()
 
+#library api version, bump from time to time
+set(SOVERSION 1)
+
+set_target_properties(flexflow PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(flexflow PROPERTIES OUTPUT_NAME "flexflow${INSTALL_SUFFIX}")
+set_target_properties(flexflow PROPERTIES SOVERSION ${SOVERSION})
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  set_target_properties(flexflow PROPERTIES BUILD_RPATH "\$ORIGIN")
+  set_target_properties(flexflow PROPERTIES INSTALL_RPATH "\$ORIGIN")
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+  set_target_properties(flexflow PROPERTIES BUILD_RPATH "@loader_path")
+  set_target_properties(flexflow PROPERTIES INSTALL_RPATH "@loader_path")
+endif()
+
 # python related
 # create flexflow_cffi_header.py
 add_custom_command(TARGET flexflow
