@@ -101,6 +101,7 @@ public:
   static void inference_kernel2(IncMultiHeadSelfAttentionMeta const *m,
                                 BatchConfig const *bc,
                                 float const *input_ptr,
+                                float *cache_ptr,
                                 request_token_id const *id_map,
                                 cudaStream_t stream);
   static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,

@@ -67,7 +67,7 @@ void IncMultiHeadSelfAttention::inference_kernel1(
 }
 
 __global__ void store_kv_cache(float const *input_ptr,
-                               float const *cache_ptr,
+                               float *cache_ptr,
                                request_token_id const *id_map,
                                int max_seq_len,
                                int hid_dim) {
@@ -75,10 +75,8 @@ __global__ void store_kv_cache(float const *input_ptr,
   int const element_idx = threadIdx.x;
   int const req_id = id_map[token_idx].request_id;
   int const tok_id = id_map[token_idx].token_id;
-  memcpy((float *)input_ptr + token_idx * hid_dim + element_idx,
-         (float *)cache_ptr + (req_id * max_seq_len + tok_id) * hid_dim +
-             element_idx,
-         sizeof(float));
+  float copy_elem = input_ptr[token_idx * hid_dim + element_idx];
+  // cache_ptr[(req_id * max_seq_len + tok_id) * hid_dim + element_idx] = copy_elem;
 }
 
 /*static*/
@@ -86,20 +84,23 @@ void IncMultiHeadSelfAttention::inference_kernel2(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
     float const *input_ptr,
+    float *cache_ptr,
     request_token_id const *id_map,
     cudaStream_t stream) {
-  store_kv_cache<<<bc->num_tokens, m->kProjSize>>>(
-      (float *)input_ptr + bc->MAX_NUM_TOKENS * m->qProjSize,
-      m->keyCache,
-      id_map,
-      bc->MAX_SEQUENCE_LENGTH,
-      m->kProjSize);
-  store_kv_cache<<<bc->num_tokens, m->vProjSize>>>(
-      (float *)input_ptr + bc->MAX_NUM_TOKENS * (m->qProjSize + m->kProjSize),
-      m->valueCache,
-      id_map,
-      bc->MAX_SEQUENCE_LENGTH,
-      m->vProjSize);
+  if (bc->num_active_tokens() > 0) {
+    store_kv_cache<<<bc->num_active_tokens(), m->kProjSize * m->num_heads>>>(
+        (float *)input_ptr + bc->MAX_NUM_TOKENS * m->num_heads * m->qProjSize,
+        cache_ptr,
+        id_map,
+        bc->MAX_SEQUENCE_LENGTH,
+        m->kProjSize * m->num_heads);
+    store_kv_cache<<<bc->num_tokens, m->vProjSize * m->num_heads>>>(
+        (float *)input_ptr + bc->MAX_NUM_TOKENS * m->num_heads * (m->qProjSize + m->kProjSize),
+        (float *)cache_ptr + m->num_heads * m->kProjSize * bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH,
+        id_map,
+        bc->MAX_SEQUENCE_LENGTH,
+        m->vProjSize * m->num_heads);
+  }
 }
 
 /*static*/
@@ -171,7 +172,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   // phase 2: Update key/val cache
   IncMultiHeadSelfAttention::inference_kernel2(
-      m, bc, m->devQKVProjArray, m->input_token_ids, stream);
+      m, bc, m->devQKVProjArray, m->keyCache, m->input_token_ids, stream);
 
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
@@ -226,11 +227,11 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     // bc->MAX_NUM_REQUESTS *bc-> MAX_SEQUENCE_LENGTH * sizeof(int); size_t
     // max_num_tokens = bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
     size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
-    size_t qkv_max_proj_size = num_samples * qkv_proj_dim * num_heads;
+    size_t qkv_max_proj_size = bc->MAX_NUM_TOKENS * qkv_proj_dim * num_heads;
     size_t key_cache_size =
-        kProjSize * bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
+        kProjSize * num_heads * bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
     size_t value_cache_size =
-        vProjSize * bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
+        vProjSize * num_heads * bc->MAX_NUM_REQUESTS * bc->MAX_SEQUENCE_LENGTH;
 
     size_t totalSize =
         (qkv_max_proj_size + key_cache_size + value_cache_size) *
