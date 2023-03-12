@@ -16,6 +16,7 @@
 #include "flexflow/batch_config.h"
 #include "legion.h"
 #include <cassert>
+#include <climits>
 
 namespace FlexFlow {
 
@@ -28,6 +29,9 @@ BatchConfig::BatchConfig() {
     token_last_available_idx[i] = -1;
     request_completed[i] = true;
     num_processing_tokens[i] = 0;
+  }
+  for (int i=0; i<MAX_NUM_TOKENS; i++) {
+    token2ids[i] = {USHRT_MAX, USHRT_MAX};
   }
   update_num_active_requests_tokens();
 }
@@ -45,17 +49,8 @@ int BatchConfig::update_results(InferenceResult const &ir) {
     }
     t += num_processing_tokens[i];
     token_start_idx[i] += num_processing_tokens[i];
-    if (ir.results[t] == 0) { // TODO: replace this with <EOS>
-      log_bc.print("[Done] guid(%zu) final_length(%d)",
-                   request_guid[i],
-                   token_start_idx[i]);
-      request_completed[i] = true;
-      token_start_idx[i] = 0;
-      token_last_available_idx[i] = -1;
-      num_processing_tokens[i] = 0;
-      completed++;
-    } else if (token_start_idx[i] >= MAX_SEQUENCE_LENGTH) {
-      // Reach maximum request length
+    if (ir.results[t] == 0 || // TODO: replace this with <EOS>
+        token_start_idx[i] >= MAX_SEQUENCE_LENGTH) {
       log_bc.print("[Done] guid(%zu) final_length(%d)",
                    request_guid[i],
                    token_start_idx[i]);
@@ -120,7 +115,11 @@ bool BatchConfig::update_num_active_requests_tokens() {
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (!request_completed[i]) {
       num_requests++;
-      num_tokens += num_processing_tokens[i];
+      for (int j=0; j<num_processing_tokens[i]; j++) {
+        token2ids[num_tokens] = {(uint16_t) i, (uint16_t) (token_start_idx[i] + j)};
+        num_tokens++;
+      }
+      //num_tokens += num_processing_tokens[i];
     }
   }
   cached_results = true;

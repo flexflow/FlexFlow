@@ -12,10 +12,10 @@
 
 namespace FlexFlow {
 
-struct request_token_id {
+/* struct token_ids {
   uint16_t request_id;
   uint16_t token_id;
-};
+}; */
 
 class IncMultiHeadSelfAttentionMeta;
 
@@ -100,10 +100,7 @@ public:
                                 ffStream_t stream);
   static void inference_kernel2(IncMultiHeadSelfAttentionMeta const *m,
                                 BatchConfig const *bc,
-                                float const *input_ptr,
-                                float *cache_ptr,
-                                request_token_id const *id_map,
-                                cudaStream_t stream);
+                                ffStream_t stream);
   static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
                                        BatchConfig const *bc,
                                        float const *input_ptr,
@@ -143,7 +140,7 @@ public:
   float *devQKVProjArray, *keyCache, *valueCache;
   // void *reserveSpace;
 
-  request_token_id *input_token_ids, *input_token_ids_dev;
+  BatchConfig::token_ids *dev_token2ids;
 };
 
 }; // namespace FlexFlow

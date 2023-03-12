@@ -16,6 +16,7 @@
 #pragma once
 
 #include <cstdlib>
+#include <stdint.h>
 
 namespace FlexFlow {
 
@@ -26,6 +27,10 @@ struct InferenceResult {
 
 class BatchConfig {
 public:
+  struct token_ids {
+    uint16_t request_id;
+    uint16_t token_id;
+  };
   BatchConfig();
   bool register_new_request(size_t guid, int length);
   void prepare_next_batch();
@@ -42,6 +47,7 @@ public:
   int token_start_idx[MAX_NUM_REQUESTS];
   int token_last_available_idx[MAX_NUM_REQUESTS];
   int num_processing_tokens[MAX_NUM_REQUESTS];
+  token_ids token2ids[MAX_NUM_TOKENS];
   size_t request_guid[MAX_NUM_REQUESTS];
   bool request_completed[MAX_NUM_REQUESTS];
 };
