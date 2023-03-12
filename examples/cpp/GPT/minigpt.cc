@@ -20,8 +20,15 @@ using namespace Legion;
 LegionRuntime::Logger::Category log_app("minigpt");
 
 // future read from config file
-MiniGPTformerConfig::MiniGPTformerConfig(void) {
+MiniGPTConfig::MiniGPTConfig(void) {
   //todo read from config/param file
+  num_layers = 6;
+  embedding_prob_drop = 0.1;
+  n_embd = 768;
+  resid_pdrop = 0.1;
+  vocab_size = 50257;
+  block_size = 1024;
+
 }
 
 void FlexFlow::top_level_task(Task const *task,
@@ -29,34 +36,43 @@ void FlexFlow::top_level_task(Task const *task,
                               Context ctx,
                               Runtime *runtime) {
   FFConfig ffconfig;
-  MiniGPTformerConfig minigptconfig;
+  MiniGPTConfig minigptconfig;
 
   FFModel ff(ffConfig);
 
   //todo init params from pre-trained model
-
+  Tensor input;
+  Tensor pos;
+  {
+    int const token_dims[] = {ffConfig.batchSize, 10, minigptconfig.n_embd};
+    int const pos_dims[] = {1 10, minigptconfig.n_embd};
+    input = ff.create_tensor<3>(token_dims, DT_FLOAT);
+    pos = ff.create_tensor<3>(pos_dims, DT_INT64)
+  }
+  
   //word&position embedding
-  Tensor token_embedding = ff.embedding();
-  Tensor position_embedding = ff.embedding();
-  Tensor x = ff.add(token_embedding, position_embedding) x =
-      ff.dropout(x, minigptconfig.embedding_prob_drop);
+  Tensor token_embedding = ff.embedding(input, minigptconfig.vocab_size);
+  Tensor position_embedding = ff.embedding(pos, minigptconfig.block_size);
+  Tensor x = ff.add(token_embedding, position_embedding)；
+  x =ff.dropout(x, minigptconfig.embedding_prob_drop);
 
   // n-layers transformer block
   for (int i = 0; i < minigptconfig.num_layers; i++) {
     // get q, k, v
     float const *data = NULL;
     x = ff.layer_norm(minigptconfig.n_embd, layer_norm)
-    //get the latest layer
-    Layer *l = ff.layers.back();
-    //get Tensor access
-    assert(len(l->weights) == 2)
-    //copy data to weights tensor
-    Tensor weight = weights[0];
-    Tensor bias = weights[1];
-    weight.set_tensor(ff, 0, data);
-    bias.set_tensor(ff, 0, data);
+    // //get the latest layer
+    // Layer *l = ff.layers.back();
+    // //get Tensor access
+    // assert(len(l->weights) == 2)
+    // //copy data to weights tensor
+    // Tensor weight = weights[0];
+    // Tensor bias = weights[1];
+    // weight.set_tensor(ff, 0, data);
+    // bias.set_tensor(ff, 0, data);
 
-    q, k, v = ff.dense(x, minigptconfig.n_embd * 3).split(minigptconfig.n_embd, dim=2);
+    x = ff.dense(x, minigptconfig.n_embd * 3)
+    q, k, v = ff.split(x, minigptconfig.n_embd, dim=2);
     // multihead attention
     mha = ff.multihead_attention(q, k, v)
     x = ff.add(x, mha);
@@ -77,6 +93,9 @@ void FlexFlow::top_level_task(Task const *task,
   std::vector<MetricsType> metrics;
   ff.compile(optimizer, LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics);
   // Data Loader
+  ParallelTensor input_pt, label_pt;
+  ff.get_parallel_tensor_from_tensor(input, input_pt);
+  ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
   DataLoader loader(ff, minigptconfig, input, ff.label_tensor);
   loader.next_batch(ff);
   loader.reset();
@@ -101,5 +120,5 @@ void FlexFlow::top_level_task(Task const *task,
     }
   }
 
-  
+  fprintf(stderr, "----------train end--------------");
 }
