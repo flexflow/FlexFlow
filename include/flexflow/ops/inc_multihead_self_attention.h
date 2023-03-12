@@ -143,7 +143,7 @@ public:
   float *devQKVProjArray, *keyCache, *valueCache;
   // void *reserveSpace;
 
-  request_token_id *input_token_ids;
+  request_token_id *input_token_ids, *input_token_ids_dev;
 };
 
 }; // namespace FlexFlow

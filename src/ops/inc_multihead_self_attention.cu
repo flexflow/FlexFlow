@@ -173,8 +173,12 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
       m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
 
   // phase 2: Update key/val cache
+  checkCUDA(cudaMemcpy(m->input_token_ids_dev,
+                       m->input_token_ids,
+                       sizeof(request_token_id),
+                       cudaMemcpyHostToDevice));
   IncMultiHeadSelfAttention::inference_kernel2(
-      m, bc, m->devQKVProjArray, m->keyCache, m->input_token_ids, stream);
+      m, bc, m->devQKVProjArray, m->keyCache, m->input_token_ids_dev, stream);
 
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
@@ -237,7 +241,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
     size_t totalSize =
         (qkv_max_proj_size + key_cache_size + value_cache_size) *
-        sizeof(float); // more components will be added here later
+        sizeof(float) +
+        sizeof(request_token_id); // more components will be added here later
 
     Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
                                    Realm::Point<1, coord_t>(totalSize - 1));
@@ -253,6 +258,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     devQKVProjArray = (float *)reserveInst.pointer_untyped(0, sizeof(char));
     keyCache = (float *)devQKVProjArray + qkv_max_proj_size;
     valueCache = (float *)keyCache + key_cache_size;
+    input_token_ids_dev = (request_token_id *)valueCache + value_cache_size;
     // checkCUDA(cudaMemcpy(devQoSeqArray,
     //                      qoSeqArray,
     //                      sizeof(int) * num_samples,
