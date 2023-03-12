@@ -81,9 +81,7 @@ Tensor FFModel::gather(const Tensor input,
                             0 /*weights*/,
                             1 /*output*/,
                             input,
-                            index);
-  fprintf(stderr, "datatype");  
-  fprintf(stderr, std::to_string(index->data_type).c_str());     
+                            index);   
   assert(index->data_type == DT_INT32 || index->data_type == DT_INT64);
   assert(input->num_dims == index->num_dims);
   int legion_dim = input->num_dims - 1 - dim;

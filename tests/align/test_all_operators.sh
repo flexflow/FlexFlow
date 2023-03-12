@@ -41,6 +41,7 @@ generate_ff_tensor view_embedding
 generate_ff_tensor max
 generate_ff_tensor min
 generate_ff_tensor linear
+generate_ff_tensor gather
 
 
 #create torch tensorss
@@ -72,6 +73,7 @@ generate_torch_tensor view_embedding
 generate_torch_tensor max
 generate_torch_tensor min
 generate_torch_tensor linear
+generate_torch_tensor gather
 
 conda info --envs
 conda activate flexflow
