@@ -22,7 +22,7 @@ LegionRuntime::Logger::Category log_app("minigpt");
 // future read from config file
 MiniGPTConfig::MiniGPTConfig(void) {
   //todo read from config/param file
-  num_layers = 6;
+  n_layer = 6;
   embedding_prob_drop = 0.1;
   n_embd = 768;
   resid_pdrop = 0.1;
@@ -38,29 +38,31 @@ void FlexFlow::top_level_task(Task const *task,
   FFConfig ffconfig;
   MiniGPTConfig minigptconfig;
 
-  FFModel ff(ffConfig);
+  FFModel ff(ffconfig);
 
   //todo init params from pre-trained model
   Tensor input;
   Tensor pos;
   {
-    int const token_dims[] = {ffConfig.batchSize, 10, minigptconfig.n_embd};
-    int const pos_dims[] = {1 10, minigptconfig.n_embd};
+    int const token_dims[] = {ffconfig.batchSize, 10, minigptconfig.n_embd};
+    int const pos_dims[] = {1, minigptconfig.n_embd};
     input = ff.create_tensor<3>(token_dims, DT_FLOAT);
-    pos = ff.create_tensor<3>(pos_dims, DT_INT64)
+    pos = ff.create_tensor<3>(pos_dims, DT_INT64);
   }
   
   //word&position embedding
-  Tensor token_embedding = ff.embedding(input, minigptconfig.vocab_size);
-  Tensor position_embedding = ff.embedding(pos, minigptconfig.block_size);
-  Tensor x = ff.add(token_embedding, position_embedding)；
+  Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
+  Tensor token_embedding = ff.embedding(input, minigptconfig.vocab_size, minigptconfig.n_embd, AGGR_MODE_SUM, DT_FLOAT, NULL, embed_init);
+  Tensor position_embedding = ff.embedding(pos, minigptconfig.block_size, minigptconfig.n_embd, AGGR_MODE_SUM, DT_FLOAT, NULL, embed_init);
+  Tensor x = ff.add(token_embedding, position_embedding);
   x =ff.dropout(x, minigptconfig.embedding_prob_drop);
 
   // n-layers transformer block
-  for (int i = 0; i < minigptconfig.num_layers; i++) {
+  for (int i = 0; i < minigptconfig.n_layer; i++) {
     // get q, k, v
     float const *data = NULL;
-    x = ff.layer_norm(minigptconfig.n_embd, layer_norm)
+    std::vector<int> axes = {minigptconfig.n_embd};
+    x = ff.layer_norm(x, axes, true, 1e-5);
     // //get the latest layer
     // Layer *l = ff.layers.back();
     // //get Tensor access
@@ -71,27 +73,33 @@ void FlexFlow::top_level_task(Task const *task,
     // weight.set_tensor(ff, 0, data);
     // bias.set_tensor(ff, 0, data);
 
-    x = ff.dense(x, minigptconfig.n_embd * 3)
-    q, k, v = ff.split(x, minigptconfig.n_embd, dim=2);
+    x = ff.dense(x, minigptconfig.n_embd * 3);
+    Tensor* splited_tensor = new Tensor[3];
+    std::vector<int> split = {minigptconfig.n_embd};
+    ff.split(x, splited_tensor, split, 2);
+    Tensor q, k, v = splited_tensor[0], splited_tensor[1], splited_tensor[2];
     // multihead attention
-    mha = ff.multihead_attention(q, k, v)
+    Tensor mha = ff.multihead_attention(q, k, v);
     x = ff.add(x, mha);
     //mlp
-    c_fc = ff.dense(x, minigptconfig.n_embd * 4);
-    act = ff.gelu(c_fc);
-    c_proj = ff.dense(act, minigptconfig.n_embd);
-    dropout = ff.dropout(c_proj, minigptconfig.resid_pdrop);
+    Tensor c_fc = ff.dense(x, minigptconfig.n_embd * 4);
+    Tensor act = ff.gelu(c_fc);
+    Tensor c_proj = ff.dense(act, minigptconfig.n_embd);
+    Tensor dropout = ff.dropout(c_proj, minigptconfig.resid_pdrop);
 
     x = ff.add(x, dropout);
   }
 
-  x = ff.layer_norm(x, minigptconfig.n_embd);
-  x = ff.dense(x, vocab_size);
+  std::vector<int> axes = {minigptconfig.n_embd};
+  x = ff.layer_norm(x, axes, true, 1e-5);
+  x = ff.dense(x, minigptconfig.vocab_size);
 
   // optimizer
   Optimizer *optimizer = new SGDOptimizer(&ff, 0.01f);
   std::vector<MetricsType> metrics;
   ff.compile(optimizer, LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics);
+
+  return;
   // Data Loader
   ParallelTensor input_pt, label_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
@@ -102,10 +110,10 @@ void FlexFlow::top_level_task(Task const *task,
   ff.init_operators();
 
   //train
-  for (int epoch = 0; epoch < ffConfig.epochs; epoch++) {
+  for (int epoch = 0; epoch < ffconfig.epochs; epoch++) {
     loader.reset();
     ff.reset_metrics();
-    int iterations = loader.num_samples / ffConfig.batchSize;
+    int iterations = loader.num_samples / ffconfig.batchSize;
     for (int iter = 0; iter < iterations; iter++) {
       // Only load data once for random input
       if (iter == 0 && epoch == 0) {

@@ -23,7 +23,7 @@ struct MiniGPTConfig {
   MiniGPTConfig(void);
   int hidden_size, n_embd, n_head, n_layer, sequence_length, vocab_size,
       embedding_prob_drop, layer_norm_epsilon, n_positions,
-      attn_pdrop, activation_function, embd_pdrop, layer_norm_epsilon;
+      attn_pdrop, activation_function, embd_pdrop, layer_norm_epsilon, resid_pdrop, block_size;
 };
 
 
