@@ -95,45 +95,54 @@ Op *Linear::create_operator_from_layer(
   int outdim = value;
   layer->get_int_property("activation", value);
   ActiMode activation = (ActiMode)value;
-  Linear linear = Linear(model,
-                         layer->layer_guid,
-                         inputs[0],
-                         outdim,
-                         activation,
-                         use_bias,
-                         layer->data_type,
-                         false /*allocate_weights*/,
-                         layer->name);
-  // load weight task
-  if (allocate_weights) {
-    // lauanch a load weights task
-    parallel_is = linear.outputs[0]->parallel_is;
-    ArgumentMap argmap;
-    IndexLauncher launcher(LINEAR_LOAD_WEIGHTS_TASK_ID,
-                           parallel_is,
-                           TaskArgument(layer, sizeof(Layer const *)),
-                           argmap,
-                           Predicate::TRUE_PRED,
-                           false /*must*/,
-                           0 /*mapper_id*/,
-                           linear.outputs[0]->machine_view.hash());
+  return new Linear(model,
+                    layer->layer_guid,
+                    inputs[0],
+                    outdim,
+                    activation,
+                    use_bias,
+                    layer->data_type,
+                    false /*allocate_weights*/,
+                    layer->name);
+  // Linear linear = Linear(model,
+  //                        layer->layer_guid,
+  //                        inputs[0],
+  //                        outdim,
+  //                        activation,
+  //                        use_bias,
+  //                        layer->data_type,
+  //                        false /*allocate_weights*/,
+  //                        layer->name);
+  // // load weight task
+  // if (allocate_weights) {
+  //   // lauanch a load weights task
+  //   parallel_is = linear.outputs[0]->parallel_is;
+  //   ArgumentMap argmap;
+  //   IndexLauncher launcher(LINEAR_LOAD_WEIGHTS_TASK_ID,
+  //                          parallel_is,
+  //                          TaskArgument(layer, sizeof(Layer const *)),
+  //                          argmap,
+  //                          Predicate::TRUE_PRED,
+  //                          false /*must*/,
+  //                          0 /*mapper_id*/,
+  //                          linear.outputs[0]->machine_view.hash());
 
-    launcher.add_region_requirement(
-        RegionRequirement(linear.weights[KERNEL_IDX]->part,
-                          0 /*projection id*/,
-                          READ_WRITE,
-                          EXCLUSIVE,
-                          linear.weights[KERNEL_IDX]->region));
-    launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(
-        RegionRequirement(linear.weights[KERNEL_IDX]->part,
-                          0 /*projection id*/,
-                          READ_WRITE,
-                          EXCLUSIVE,
-                          linear.weights[KERNEL_IDX]->region));
-    launcher.add_field(1, FID_DATA);
-  }
-  return l;
+  //   launcher.add_region_requirement(
+  //       RegionRequirement(linear.weights[KERNEL_IDX]->part,
+  //                         0 /*projection id*/,
+  //                         READ_WRITE,
+  //                         EXCLUSIVE,
+  //                         linear.weights[KERNEL_IDX]->region));
+  //   launcher.add_field(0, FID_DATA);
+  //   launcher.add_region_requirement(
+  //       RegionRequirement(linear.weights[KERNEL_IDX]->part,
+  //                         0 /*projection id*/,
+  //                         READ_WRITE,
+  //                         EXCLUSIVE,
+  //                         linear.weights[KERNEL_IDX]->region));
+  //   launcher.add_field(1, FID_DATA);
+  // }
+  // return l;
 }
 
 // size_t Linear::get_params_hash() const {
@@ -284,30 +293,30 @@ void Linear::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-void Linear : load_weight_task(Task const *task,
-                               std::vector<PhysicalRegion> const &regions,
-                               Context ctx,
-                               Runtime *runtime) {
-  // copy ln->weights into weights[0], ln->bias into weights[1]
-  Layer *layer = (Layer *)task->args;
-  if (allocate_weights) {
-    assert(regions.size() == 4);
-    Domain weights_domain = runtime->get_index_space_domain(
-        ctx, task->regions[0].region.get_index_space());
-    weights_ptr = helperGetTensorPointerRW<float>(
-        regions[0], task->regions[0], FID_DATA, ctx, runtime);
-    Domain bias_domain = runtime->get_index_space_domain(
-        ctx, task->regions[1].region.get_index_space());
-    bias_ptr = helperGetTensorPointerRW<float>(
-        regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    size_t copy_size = weights_domain.get_volume();
-  Linear:
-    load_weights_kernel_wrapper<float>(
-        layer->weights[0], layer->weights[1], weights_ptr, bias_ptr, copy_size);
-  } else {
-    assert(regions.size() == 2);
-  }
-}
+// void Linear : load_weight_task(Task const *task,
+//                                std::vector<PhysicalRegion> const &regions,
+//                                Context ctx,
+//                                Runtime *runtime) {
+//   // copy ln->weights into weights[0], ln->bias into weights[1]
+//   Layer *layer = (Layer *)task->args;
+//   if (allocate_weights) {
+//     assert(regions.size() == 4);
+//     Domain weights_domain = runtime->get_index_space_domain(
+//         ctx, task->regions[0].region.get_index_space());
+//     weights_ptr = helperGetTensorPointerRW<float>(
+//         regions[0], task->regions[0], FID_DATA, ctx, runtime);
+//     Domain bias_domain = runtime->get_index_space_domain(
+//         ctx, task->regions[1].region.get_index_space());
+//     bias_ptr = helperGetTensorPointerRW<float>(
+//         regions[1], task->regions[1], FID_DATA, ctx, runtime);
+//     size_t copy_size = weights_domain.get_volume();
+//   Linear:
+//     load_weights_kernel_wrapper<float>(
+//         layer->weights[0], layer->weights[1], weights_ptr, bias_ptr, copy_size);
+//   } else {
+//     assert(regions.size() == 2);
+//   }
+// }
 
 /*
   regions[0](O): output

@@ -79,7 +79,7 @@ void FlexFlow::top_level_task(Task const *task,
     ff.split(x, splited_tensor, split, 2);
     Tensor q, k, v = splited_tensor[0], splited_tensor[1], splited_tensor[2];
     // multihead attention
-    Tensor mha = ff.multihead_attention(q, k, v);
+    Tensor mha = ff.multihead_attention(q, k, v, 0, 0, 0, 0);
     x = ff.add(x, mha);
     //mlp
     Tensor c_fc = ff.dense(x, minigptconfig.n_embd * 4);
