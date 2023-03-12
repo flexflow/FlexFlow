@@ -194,7 +194,6 @@ LayerNorm::LayerNorm(FFModel &model,
   return;
 }
 
-
 void LayerNorm::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
@@ -222,8 +221,6 @@ void LayerNorm::init(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     inputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  }
-
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
@@ -236,7 +233,6 @@ OpMeta *LayerNorm::init_task(Task const *task,
   LayerNorm *ln = (LayerNorm *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
   LayerNormMeta *meta = new LayerNormMeta(handle, ln);
- 
   return meta;
 }
 

@@ -88,8 +88,7 @@ public:
                                       T *input_grad_ptr,
                                       T const *gamma_ptr,
                                       T *gamma_grad_ptr,
-                                      T *beta_grad_ptr);                                 
-
+                                      T *beta_grad_ptr);
 public:
   bool elementwise_affine;
   int64_t effective_batch_size, effective_num_elements;

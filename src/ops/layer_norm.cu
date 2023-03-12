@@ -141,7 +141,7 @@ void LayerNorm::forward_kernel(LayerNormMeta const *m,
           m->rstd_ptr,
           gamma_ptr,
           beta_ptr,
-          out_ptr);                             
+          out_ptr);
 }
 
 /*static*/
@@ -174,9 +174,6 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
     print_tensor<T>(out_ptr, 32, "[LayerNorm:forward:output]");
   }
 }
-
-
-
 
 template <typename T>
 __global__ void ComputeInternalGradientsCUDAKernel(

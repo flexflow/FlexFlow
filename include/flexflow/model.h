@@ -473,9 +473,7 @@ public:
                     std::vector<int> const &axes,
                     bool elementwise_affine,
                     float eps,
-                    char const *name = NULL,
-                    float const *weights = NULL,
-                    float const *bias = NULL);
+                    char const *name = NULL);
   // Add a batch_norm layer
   Tensor
       batch_norm(const Tensor input, bool relu = true, char const *name = NULL);
@@ -773,7 +771,6 @@ public:
   void get_metrics();
   void backward(int seq_length = -1);
   void update();
-  void load_weight(Op *op, float const *data);
   bool apply_fusion(std::vector<Op *> const &operators,
                     std::vector<Op *> &new_operators);
   Op *get_final_operator() const;
