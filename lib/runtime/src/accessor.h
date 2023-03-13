@@ -11,8 +11,6 @@
 #include <hip/hip_fp16.h>
 #endif
 
-// using namespace Legion;
-
 namespace FlexFlow {
 
 template <typename FT, int N, typename T = Legion::coord_t>
@@ -129,6 +127,6 @@ GenericTensorAccessorW
                                      Legion::Context ctx,
                                      Legion::Runtime *runtime);
 
-}; // namespace FlexFlow
+}
 
 #endif

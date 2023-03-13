@@ -652,46 +652,52 @@ OpMeta *Conv2D::init_task(Task const *task,
   return m;
 }
 
-void Conv2D::forward(FFModel const &ff) {
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(CONV2D_FWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
-  launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region));
-  launcher.add_field(2, FID_DATA);
+TaskSpec Conv2D::get_forward_task_spec() const {
+  TaskSpec spec = {
+    CONV2D_FWD_TASK_ID, 
+    Pass::FWD,
+    {
+      {TensorRole::INPUT, 0},
+      {TensorRole::OUTPUT, 0},
+      {TensorRole::WEIGHT, 0},
+    }
+  };
   if (use_bias) {
-    launcher.add_region_requirement(RegionRequirement(weights[1]->region,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      weights[1]->region));
-    launcher.add_field(3, FID_DATA);
+    spec.tensors.push_back({TensorRole::WEIGHT, 1});
   }
-  runtime->execute_index_space(ctx, launcher);
+  return spec;
+}
+
+TaskSpec Conv2D::get_backward_task_spec() const {
+  TaskSpec spec = {
+    CONV2D_BWD_TASK_ID,
+    Pass::BWD,
+    {
+      {TensorRole::INPUT, 0},
+      {TensorRole::INPUT, 0, IsGrad::YES},
+      {TensorRole::OUTPUT, 0},
+      {TensorRole::OUTPUT, 0, IsGrad::YES},
+      {TensorRole::PARAM, 0},
+      {TensorRole::PARAM, 0, Isgrad::YES},
+    }
+  };
+
+  if (use_bias) {
+    extend(spec.tensors, {
+      {TensorRole::PARAM, 1},
+      {TensorRole::PARAM, 1, IsGrad::YES}
+    });
+  }
+
+  return spec;
+}
+
+void Conv2D::forward(FFModel const &ff) {
+  this->execute_task_spec(this->get_forward_task_spec());
+}
+
+void Conv2D::backward(FFModel const &ff) {
+  return this->execute_task_spec(this->get_backward_task_spec());
 }
 
 /*
@@ -727,76 +733,6 @@ void Conv2D::forward_task(Task const *task,
 
   forward_kernel_wrapper(
       m, acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_bias_ptr);
-}
-
-void Conv2D::backward(FFModel const &ff) {
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(CONV2D_BWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  int rid = 0;
-  // regions[0](I): input
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
-  launcher.add_field(rid++, FID_DATA);
-  // regions[1](I/O): input_grad
-  if (trainableInputs[0]) {
-    launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                      0 /*projection id*/,
-                                                      READ_WRITE,
-                                                      EXCLUSIVE,
-                                                      inputs[0]->region_grad));
-    launcher.add_field(rid++, FID_DATA);
-  }
-  // regions[2](I): output
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
-  launcher.add_field(rid++, FID_DATA);
-  // regions[3](I/O): output_grad
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region_grad));
-  launcher.add_field(rid++, FID_DATA);
-  // regions[4](I): filter
-  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region));
-  launcher.add_field(rid++, FID_DATA);
-  // regions[5](I/O): filter_grad
-  launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region_grad));
-  launcher.add_field(rid++, FID_DATA);
-  if (use_bias) {
-    // regions[6](I/O): bias_grad
-    launcher.add_region_requirement(RegionRequirement(weights[1]->part_grad,
-                                                      0 /*projection id*/,
-                                                      READ_WRITE,
-                                                      EXCLUSIVE,
-                                                      weights[1]->region_grad));
-    launcher.add_field(rid++, FID_DATA);
-  }
-  FutureMap fm = runtime->execute_index_space(ctx, launcher);
 }
 
 /*

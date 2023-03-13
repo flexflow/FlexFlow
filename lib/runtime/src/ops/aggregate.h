@@ -1,7 +1,9 @@
 #ifndef _FLEXFLOW_AGGREGATE_H_
 #define _FLEXFLOW_AGGREGATE_H_
 
-#include "model.h"
+#include "op_meta.h"
+#include "operator.h"
+#include "layer.h"
 
 namespace FlexFlow {
 
@@ -19,8 +21,6 @@ public:
 
 class Aggregate : public Op {
 public:
-  using Params = AggregateParams;
-  using Input = std::vector<ParallelTensor>;
   Aggregate(FFModel &model,
             ParallelTensor const *inputs,
             int _n,
@@ -29,10 +29,6 @@ public:
   Aggregate(FFModel &model,
             Aggregate const &other,
             std::vector<ParallelTensor> const &inputs);
-  Aggregate(FFModel &model,
-            Params const &params,
-            Input const &inputs,
-            char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -83,7 +79,7 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
-  Params get_params() const;
+  /* Params get_params() const; */
 
 public:
   int n;

@@ -14,6 +14,8 @@
  */
 
 #include "model.h"
+#include "runtime/tasks.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
@@ -75,7 +77,7 @@ void Loss::backward(FFModel *model,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         logit->machine_view.hash());
+                         get_std_hash(logit->machine_view));
   launcher.add_region_requirement(RegionRequirement(logit->part_grad,
                                                     0 /*projection id*/,
                                                     READ_WRITE,

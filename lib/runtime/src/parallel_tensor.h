@@ -53,12 +53,12 @@ struct ParallelTensorBase {
   T *get_raw_ptr(FFConfig &config);
   void attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major);
   void detach_raw_ptr(FFConfig &config);
-  bool get_input_sub_tensor(ParallelConfig const &pc,
+  bool get_input_sub_tensor(MachineView const &,
                             ParallelTensorBase &tensor,
                             OperatorType type);
   bool get_sub_tensor(MachineView const &mv,
                       ParallelTensorBase &subtensor) const;
-  bool get_output_sub_tensor(ParallelConfig const &pc,
+  bool get_output_sub_tensor(MachineView const &,
                              ParallelTensorBase &tensor,
                              OperatorType type);
   size_t get_owner_independent_hash() const;
@@ -81,7 +81,7 @@ struct ParallelTensorBase {
 
 private:
   template <typename T>
-  bool get_input_sub_tensor_via_mappings(ParallelConfig const &pc,
+  bool get_input_sub_tensor_via_mappings(MachineView const &,
                                          ParallelTensorBase &tensor) const;
 
 public:
@@ -98,7 +98,7 @@ public:
   bool create_gradients = false;
 
   // The following fields are initialized after model.compile
-  MachineView machine_view = MachineView::NO_VIEW;
+  tl::optional<MachineView> machine_view = tl::nullopt;
   Legion::IndexSpace parallel_is = Legion::IndexSpace::NO_SPACE;
   Legion::LogicalRegion region = Legion::LogicalRegion::NO_REGION,
                         region_grad = Legion::LogicalRegion::NO_REGION;
@@ -107,7 +107,16 @@ public:
   Legion::PhysicalRegion physical_region;
 };
 
-typedef ParallelTensorBase *ParallelTensor;
-typedef ParallelTensorBase *ParallelParameter;
+struct ParallelTensor {
+public:
+  ParallelTensor(ParallelTensorBase const &);
+
+  ParallelTensorBase *operator->();
+  ParallelTensorBase const *operator->() const;
+private:
+  std::shared_ptr<ParallelTensorBase> ptr;
+};
+
+using ParallelParameter = ParallelTensor;
 
 }; // namespace FlexFlow

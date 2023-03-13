@@ -28,8 +28,8 @@ namespace FlexFlow {
 //  return device_ids_list;
 //}
 
-size_t MachineView::num_parts() const {
-  return product(vector_transform(num_entries, this->dims));
+size_t MachineView::num_devices() const {
+  return num_entries(this->rect);
 }
 
 bool MachineView::operator==(MachineView const &rhs) const {
@@ -37,20 +37,20 @@ bool MachineView::operator==(MachineView const &rhs) const {
 }
 
 bool MachineView::operator!=(MachineView const &rhs) const {
-  return !(*this == rhs);
+  return visit_neq(*this, rhs);
 }
 
-std::ostream &operator<<(std::ostream &s, StridedInterval const &interval) {
-  return s << "[" << interval.start << ":" << interval.stop << ":" << interval.stride << "]";
-}
+/* std::ostream &operator<<(std::ostream &s, StridedInterval const &interval) { */
+/*   return s << "[" << interval.start << ":" << interval.stop << ":" << interval.stride << "]"; */
+/* } */
 
-std::ostream &operator<<(std::ostream &s, MachineView const &mv) {
-  s << "MachineView<";
-  s << join_strings(mv.dims, ", ");
-  s << ">";
+/* std::ostream &operator<<(std::ostream &s, MachineView const &mv) { */
+/*   s << "MachineView<"; */
+/*   s << join_strings(mv.dims, ", "); */
+/*   s << ">"; */
 
-  return s;
-}
+/*   return s; */
+/* } */
 
 MachineResource::MachineResource(
     int numNodes, 

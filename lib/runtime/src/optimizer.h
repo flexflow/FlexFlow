@@ -16,7 +16,7 @@
 #ifndef _FLEXFLOW_OPTIMIZER_H_
 #define _FLEXFLOW_OPTIMIZER_H_
 
-#include "flexflow/parallel_tensor.h"
+#include "parallel_tensor.h"
 #include "legion.h"
 
 namespace FlexFlow {

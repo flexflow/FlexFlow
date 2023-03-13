@@ -15,7 +15,6 @@
 
 #pragma once
 
-#include "flexflow/machine_view.h"
 #include "legion.h"
 #include <unordered_map>
 

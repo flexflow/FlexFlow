@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef _INITIALIZER_H_
-#define _INITIALIZER_H_
+#ifndef _FLEXFLOW_INITIALIZER_H_
+#define _FLEXFLOW_INITIALIZER_H_
 
 #include "legion.h"
 #include "parallel_tensor.h"
@@ -118,5 +118,6 @@ public:
   int int32_value;
 };
 
-}; // namespace FlexFlow
+}
+
 #endif

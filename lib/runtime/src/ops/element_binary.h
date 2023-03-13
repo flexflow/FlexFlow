@@ -2,28 +2,18 @@
 #define _FLEXFLOW_ELEMENT_BINARY_H
 
 #include "layer.h"
-#include "flexflow/node.h"
 #include "operator.h"
-#include "op-meta/element_binary_params.h"
 
 namespace FlexFlow {
 
 class ElementBinary : public Op {
 public:
-  using Params = ElementBinaryParams;
-  using Input = std::pair<ParallelTensor, ParallelTensor>;
-
   ElementBinary(FFModel &model,
                 OperatorType type,
                 const ParallelTensor x,
                 const ParallelTensor y,
                 bool inplace_a,
                 char const *name);
-  ElementBinary(FFModel &model,
-                Params const &params,
-                Input const &inputs,
-                char const *name = nullptr,
-                bool inplace_a = false);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -53,8 +43,6 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  Params get_params() const;
-
 public:
   bool inplace_a, has_same_operands;
   bool broadcast_input1, broadcast_input2;

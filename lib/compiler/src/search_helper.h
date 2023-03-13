@@ -5,7 +5,6 @@
 #include "split_types.h"
 
 namespace FlexFlow {
-namespace ffc {
 
 struct GraphCostResult {
   float cost;
@@ -117,8 +116,6 @@ private:
       cached_operator_valid_views;
 };
 
-
-}
 }
 
 #endif

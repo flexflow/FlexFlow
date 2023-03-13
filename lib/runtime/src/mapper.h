@@ -50,6 +50,26 @@ struct InstanceCreationLog {
   Processor processor;
 };
 
+void register_sharding_functor(Runtime *, FFShardingFunctor *);
+void register_sharding_functor(Runtime *, std::size_t, FFShardingFunctor *);
+std::vector<MachineView> starting_at_all_devices(MachineView const &, int total_num_cpus, int total_num_gpus);
+int get_device_index(MachineView const &, DomainPoint const &, Domain const &);
+
+struct NodesConfig {
+  NodesConfig(int num_nodes, int cpus_per_node, int gpus_per_node);
+
+  int get_cpus_per_node() const;
+  int get_gpus_per_node() const;
+  int get_num_nodes() const;
+  int get_total_num_cpus() const;
+  int get_total_num_gpus() const;
+
+  FFShardingFunctor *make_sharding_functor(MachineView const &) const;
+  std::vector<MachineView> starting_at_all_devices(MachineView const &);
+private:
+  int cpus_per_node, gpus_per_node, num_nodes;
+};
+
 class FFMapper : public NullMapper {
 public:
   FFMapper(MapperRuntime *rt,
@@ -66,7 +86,7 @@ public:
   static void update_mappers(Machine machine,
                              Runtime *rt,
                              std::set<Processor> const &local_procs);
-  static void register_sharding_functor(Runtime *runtime,
+  static void register_sharding_functors(Runtime *runtime,
                                         Machine machine,
                                         int argv,
                                         char **argc);
@@ -338,6 +358,15 @@ private:
   bool is_initializer_task(TaskID tid);
   std::vector<Processor> const &all_procs_by_kind(Processor::Kind kind);
 
+  void register_machine_view(MappingTagID, MachineView const &);
+  void register_machine_view(MachineView const &);
+  void register_machine_views(std::vector<MachineView> const &);
+  std::vector<MachineView> starting_at_all_devices(MachineView const &);
+
+  NodesConfig get_nodes_config() const;
+
+  int get_gpus_per_node() const;
+  int get_cpus_per_node() const;
 protected:
   const Processor local_processor;
   const AddressSpace node_id;

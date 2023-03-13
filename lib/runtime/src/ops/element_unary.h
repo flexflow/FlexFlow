@@ -2,27 +2,18 @@
 #define _ELEMENT_UNARY_H
 
 #include "layer.h"
-#include "flexflow/node.h"
 #include "operator.h"
-#include "op-meta/element_unary_params.h"
 
 namespace FlexFlow {
 
 class ElementUnary : public Op {
 public:
-  using Params = ElementUnaryParams;
-  using Input = ParallelTensor;
-
   ElementUnary(FFModel &model,
                OperatorType type,
                const ParallelTensor x,
                bool inplace,
                char const *name,
                float scalar);
-  ElementUnary(FFModel &model,
-               Params const &params,
-               Input const x,
-               char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -67,16 +58,9 @@ public:
                              CostMetrics &cost_metrics) const override;
   static bool use_cudnn(OperatorType type);
 
-  void serialize(Legion::Serializer &) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;
-
-  Params get_params() const;
 
 private:
   bool inplace;
@@ -85,6 +69,6 @@ public:
   float scalar;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _ELEMENT_UNARY_H
+#endif 

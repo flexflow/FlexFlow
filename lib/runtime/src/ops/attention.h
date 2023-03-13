@@ -3,7 +3,6 @@
 
 #include "device.h"
 #include "fftype.h"
-#include "flexflow/node.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "layer.h"

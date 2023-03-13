@@ -14,6 +14,8 @@
  */
 
 #include "aggregate.h"
+#include "model.h"
+#include "runtime/tasks.h"
 
 namespace FlexFlow {
 
@@ -32,7 +34,6 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
-using PCG::Node;
 
 Tensor FFModel::aggregate(
     Tensor const *inputs, /* gate_preds, gate_assign, gate assign TopK,
@@ -78,19 +79,12 @@ Op *Aggregate::create_operator_from_layer(
   return new Aggregate(model, inputs.data(), n, lambda_bal, layer->name);
 }
 
-AggregateParams Aggregate::get_params() const {
-  AggregateParams params;
-  params.n = this->n;
-  params.lambda_bal = this->lambda_bal;
-  return params;
-}
-
-bool AggregateParams::is_valid(std::vector<ParallelTensorShape> const &) const {
+bool AggregateAttrs::is_valid(std::vector<ParallelTensorShape> const &) const {
   // Aggregate is always valid
   return true;
 }
 
-bool operator==(AggregateParams const &lhs, AggregateParams const &rhs) {
+bool operator==(AggregateAttrs const &lhs, AggregateAttrs const &rhs) {
   return lhs.n == rhs.n && lhs.lambda_bal == rhs.lambda_bal;
 }
 
@@ -157,12 +151,6 @@ Aggregate::Aggregate(FFModel &model,
                      std::vector<ParallelTensor> const &inputs)
     : Aggregate(model, inputs.data(), other.n, other.lambda_bal, other.name) {}
 
-Aggregate::Aggregate(FFModel &model,
-                     AggregateParams const &params,
-                     std::vector<ParallelTensor> const &inputs,
-                     char const *name)
-    : Aggregate(model, inputs.data(), params.n, params.lambda_bal, name) {}
-
 void Aggregate::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
@@ -177,7 +165,7 @@ void Aggregate::init(FFModel const &ff) {
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
+                         get_std_hash(outputs[0]->machine_view.value()));
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
@@ -553,14 +541,4 @@ bool Aggregate::measure_operator_cost(Simulator *sim,
   return true;
 }
 
-}; // namespace FlexFlow
-
-namespace std {
-size_t hash<FlexFlow::AggregateParams>::operator()(
-    FlexFlow::AggregateParams const &params) const {
-  size_t key = 0;
-  hash_combine(key, params.n);
-  hash_combine(key, params.lambda_bal);
-  return key;
 }
-}; // namespace std

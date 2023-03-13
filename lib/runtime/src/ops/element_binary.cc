@@ -374,68 +374,49 @@ OpMeta *ElementBinary::init_task(Task const *task,
   return m;
 }
 
-void ElementBinary::forward(FFModel const &ff) {
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(ELEMENTBINARY_FWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  if (inplace_a) {
-    assert(outputs[0]->part == inputs[0]->part);
-    assert(outputs[0]->region == inputs[0]->region);
-    launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                      0 /*projection id*/,
-                                                      READ_WRITE,
-                                                      EXCLUSIVE,
-                                                      inputs[0]->region));
-    launcher.add_field(0, FID_DATA);
-    if (has_same_operands) {
-      // do nothing else
-    } else {
-      launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
-                                                        0 /*projection id*/,
-                                                        READ_ONLY,
-                                                        EXCLUSIVE,
-                                                        inputs[1]->region));
-      launcher.add_field(1, FID_DATA);
+void ElementBinary::get_forward_task_spec() const {
+  TaskSpec spec = { ELEMENTBINARY_FWD_TASK_ID, Pass::FWD, {} };
+  if (this->inplace_a) {
+    spec.add_tensor(TensorRole::INPUT, 0, IsGrad::NO, READ_WRITE);
+    if (!this->has_same_operands) {
+      spec.add_tensor(TensorRole::INPUT, 1);
     }
   } else {
-    launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      inputs[0]->region));
-    launcher.add_field(0, FID_DATA);
-    if (has_same_operands) {
-      launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                        0 /*projection id*/,
-                                                        WRITE_ONLY,
-                                                        EXCLUSIVE,
-                                                        outputs[0]->region));
-      launcher.add_field(1, FID_DATA);
-    } else {
-      launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
-                                                        0 /*projection id*/,
-                                                        READ_ONLY,
-                                                        EXCLUSIVE,
-                                                        inputs[1]->region));
-      launcher.add_field(1, FID_DATA);
-      launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                        0 /*projection id*/,
-                                                        WRITE_ONLY,
-                                                        EXCLUSIVE,
-                                                        outputs[0]->region));
-      launcher.add_field(2, FID_DATA);
+    spec.add_tensor(TensorRole::INPUT, 0);
+    if (!this->has_same_operands) {
+      spec.add_tensor(TensorRole::INPUT, 1);
+    }
+    spec.add_tensor(TensorRole::OUTPUT, 0);
+  }
+}
+
+void ElementBinary::get_backward_task_spec() const {
+  TaskSpec spec = { ELEMENTBINARY_BWD_TASK_ID, Pass::BWD, {} };
+  if (this->inplace_a) {
+    spec.add_tensor(TensorRole::OUTPUT, 0, IsGrad::YES);
+    spec.add_tensor(TensorRole::INPUT, 0);
+    if (!this->has_same_operands) {
+      spec.add_tensor(TensorRole::INPUT, 1);
+      spec.add_tensor(TensorRole::INPUT, 1, IsGrad::YES);
+    }
+  } else {
+    spec.add_tensor(TensorRole::OUTPUT, 0, IsGrad::YES);
+    spec.add_tensor(TensorRole::INPUT, 0);
+    spec.add_tensor(TensorRole::INPUT, 0, IsGrad::YES);
+    if (!this->has_same_operands) {
+      spec.add_tensor(TensorRole::INPUT, 1);
+      spec.add_tensor(TensorRole::INPUT, 1, IsGrad::YES);
     }
   }
-  runtime->execute_index_space(ctx, launcher);
+  return spec;
+}
+
+void ElementBinary::forward(FFModel const &ff) {
+  return this->execute_task_spec(ff, this->get_forward_task_spec());
+}
+
+void ElementBinary::backward(FFModel const &ff) {
+  return this->execute_task_spec(ff, this->get_backward_task_spec());
 }
 
 /*
@@ -508,100 +489,6 @@ __host__ void
   }
 
   forward_kernel_wrapper(m, in1_ptr, in2_ptr, out_ptr);
-}
-
-void ElementBinary::backward(FFModel const &ff) {
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(ELEMENTBINARY_BWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(nullptr, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  if (inplace_a) {
-    // regions[0](I/O): output_grad
-    launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-                                                      0 /*projection id*/,
-                                                      READ_WRITE,
-                                                      EXCLUSIVE,
-                                                      outputs[0]->region_grad));
-    launcher.add_field(0, FID_DATA);
-    // regions[1](I): input0
-    launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      inputs[0]->region));
-    launcher.add_field(1, FID_DATA);
-    if (inputs[0]->region != inputs[1]->region) {
-      // regions[3](I): input1
-      launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
-                                                        0 /*projection id*/,
-                                                        READ_ONLY,
-                                                        EXCLUSIVE,
-                                                        inputs[1]->region));
-      launcher.add_field(2, FID_DATA);
-      // regions[4](I/O): input1_grad
-      launcher.add_region_requirement(
-          RegionRequirement(inputs[1]->part_grad,
-                            0 /*projection id*/,
-                            READ_WRITE,
-                            EXCLUSIVE,
-                            inputs[1]->region_grad));
-      launcher.add_field(3, FID_DATA);
-    }
-  } else {
-    int rid = 0;
-    // regions[0](I): output_grad
-    launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      outputs[0]->region_grad));
-    launcher.add_field(rid++, FID_DATA);
-    // regions[1](I): input0
-    launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      inputs[0]->region));
-    launcher.add_field(rid++, FID_DATA);
-    // regions[2](I/O): input0_grad
-    if (trainableInputs[0]) {
-      launcher.add_region_requirement(
-          RegionRequirement(inputs[0]->part_grad,
-                            0 /*projection id*/,
-                            READ_WRITE,
-                            EXCLUSIVE,
-                            inputs[0]->region_grad));
-      launcher.add_field(rid++, FID_DATA);
-    }
-    if (inputs[0]->region != inputs[1]->region) {
-      // regions[3](I): input1
-      launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
-                                                        0 /*projection id*/,
-                                                        READ_ONLY,
-                                                        EXCLUSIVE,
-                                                        inputs[1]->region));
-      launcher.add_field(rid++, FID_DATA);
-      // regions[4](I/O): input1_grad
-      if (trainableInputs[1]) {
-        launcher.add_region_requirement(
-            RegionRequirement(inputs[1]->part_grad,
-                              0 /*projection id*/,
-                              READ_WRITE,
-                              EXCLUSIVE,
-                              inputs[1]->region_grad));
-        launcher.add_field(rid++, FID_DATA);
-      }
-    }
-  }
-  runtime->execute_index_space(ctx, launcher);
 }
 
 /*

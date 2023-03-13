@@ -15,10 +15,10 @@
 #ifndef _FLEXFLOW_SIMULATOR_H_
 #define _FLEXFLOW_SIMULATOR_H_
 
-#include "config.h"
-#include "ffconst.h"
-#include "flexflow/operator_params.h"
-#include "flexflow/utils/hash_utils.h"
+#include "runtime/config.h"
+#include "op-meta/ffconst.h"
+#include "op-meta/operator_attrs.h"
+#include "utils/hash-utils.h"
 #include "mpark/variant.hpp"
 #include "parallel_tensor.h"
 #include <fstream>
@@ -26,8 +26,6 @@
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
-
-namespace mp = mpark;
 
 namespace FlexFlow {
 
@@ -677,7 +675,7 @@ public:
 
 size_t data_type_size(DataType);
 
-using ProfilingRecordKey = std::tuple<OperatorParameters, MachineView>;
+using ProfilingRecordKey = std::tuple<PCGOperatorAttrs, MachineView>;
 
 class Simulator {
 public:
@@ -693,7 +691,6 @@ public:
                                        SimTask *dst_task,
                                        size_t message_size,
                                        bool force_zero_cost = false);
-  CostMetrics measure_operator_cost(Op const *op, ParallelConfig const &config);
   CostMetrics measure_operator_cost(Op const *op, MachineView const &view);
   float estimate_xfer_cost(Op const *op,
                            int input_idx,
@@ -709,13 +706,6 @@ public:
   float default_estimate_sync_cost(const ParallelTensor tensor,
                                    MachineView const &view,
                                    int num_replicate_dims);
-  float simulate_runtime(FFModel const *model,
-                         std::map<Op const *, ParallelConfig> const &global,
-                         CompMode comp_mode);
-  float simulate_runtime(FFModel const *model,
-                         std::map<Op const *, ParallelConfig> const &global,
-                         CompMode comp_mode,
-                         std::string const &export_file_name);
   static void
       strategy_search_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
@@ -768,54 +758,5 @@ private:
       MachineView const &target_view) const;
 };
 
-/**
- * An alternative implementation of the simulator which uses the "logical
- * task graph", defined as a taskgraph that only records computation
- * and communication on a logical level.
- */
-class LogicalTaskgraphBasedSimulator : public Simulator {
-public:
-  LogicalTaskgraphBasedSimulator(FFModel const *model,
-                                 FFHandler handler,
-                                 Legion::Memory memory,
-                                 MachineModel *machine);
-
-  SimTask *new_comm_task_unrecorded();
-  SimTask *new_update_task_unrecorded();
-  virtual float
-      simulate_runtime(FFModel const *model,
-                       std::map<Op const *, ParallelConfig> const &global,
-                       CompMode comp_mode);
-  virtual float
-      simulate_runtime(FFModel const *model,
-                       std::map<Op const *, ParallelConfig> const &global,
-                       CompMode comp_mode,
-                       std::string const &export_file_name);
-  virtual float route_transfer(SimTask *transfer_task,
-                               float start_time,
-                               std::map<Device *, float> &device_times);
-  virtual float route_transfer_seg(SimTask *transfer_task,
-                                   float start_time,
-                                   std::map<Device *, float> &device_times,
-                                   bool &finished);
-  virtual void expand_allreduce(
-      SimTask *allreduce_task,
-      float start_time,
-      std::priority_queue<SimTask *, std::vector<SimTask *>, SimTaskCompare>
-          &ready_queue);
-  void add_task_dependencies_with_xfer(SimTask *src_task,
-                                       SimTask *dst_task,
-                                       size_t message_size);
-  static void
-      simulation_task(Legion::Task const *task,
-                      std::vector<Legion::PhysicalRegion> const &regions,
-                      Legion::Context ctx,
-                      Legion::Runtime *runtime);
-  bool segment_transfer;
-  size_t segment_size;
-
-  // flatbuffers::FlatBufferBuilder builder;
-};
-
-}; // namespace FlexFlow
+}
 #endif

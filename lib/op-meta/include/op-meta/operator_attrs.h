@@ -79,6 +79,7 @@ std::vector<ParallelTensorShape> get_output_shapes(PCGOperatorAttrs const &op_pa
                                                    std::vector<ParallelTensorShape> const &input_tensor_shapes);
 
 bool is_parallel_op(PCGOperatorAttrs const &);
+bool is_valid(PCGOperatorAttrs const &, std::vector<ParallelTensorShape> const &);
 
 }
 

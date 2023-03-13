@@ -14,8 +14,8 @@
  */
 #ifndef _FLEXFLOW_MODEL_H_
 #define _FLEXFLOW_MODEL_H_
-#include "accessor.h"
 #include "runtime/config.h"
+#include "accessor.h"
 #include "device.h"
 #include "utils/graph/node.h"
 #include "op-meta/operator_attrs.h"
@@ -35,187 +35,12 @@
 #include <functional>
 #include <unistd.h>
 #include <utility>
+#include "compiler/compiler.h"
 
-#include "ffconst.h"
+#include "op-meta/ffconst.h"
 #include "fftype.h"
 
 namespace FlexFlow {
-
-enum TaskIDs {
-  TOP_LEVEL_TASK_ID,
-  FF_INIT_TASK_ID,
-  IMAGE_INIT_TASK_ID,
-  LABEL_INIT_TASK_ID,
-  LOAD_IMAGES_TASK_ID,
-  NORMALIZE_IMAGES_TASK_ID,
-  ELEMENTBINARY_INIT_TASK_ID,
-  ELEMENTBINARY_FWD_TASK_ID,
-  ELEMENTBINARY_BWD_TASK_ID,
-  ELEMENTUNARY_INIT_TASK_ID,
-  ELEMENTUNARY_FWD_TASK_ID,
-  ELEMENTUNARY_BWD_TASK_ID,
-  CONV2D_INIT_TASK_ID,
-  CONV2D_INIT_PARA_TASK_ID,
-  CONV2D_FWD_TASK_ID,
-  CONV2D_BWD_TASK_ID,
-  CONV2D_UPD_TASK_ID,
-  DROPOUT_INIT_TASK_ID,
-  DROPOUT_FWD_TASK_ID,
-  DROPOUT_BWD_TASK_ID,
-  EMBED_INIT_TASK_ID,
-  EMBED_FWD_TASK_ID,
-  EMBED_BWD_TASK_ID,
-  GATHER_INIT_TASK_ID,
-  GATHER_FWD_TASK_ID,
-  GATHER_BWD_TASK_ID,
-  GROUP_BY_INIT_TASK_ID,
-  GROUP_BY_FWD_TASK_ID,
-  GROUP_BY_BWD_TASK_ID,
-  CACHE_INIT_TASK_ID,
-  CACHE_FWD_TASK_ID,
-  CACHE_UPDATE_TASK_ID,
-  CAST_INIT_TASK_ID,
-  CAST_FWD_TASK_ID,
-  CAST_BWD_TASK_ID,
-  AGGREGATE_INIT_TASK_ID,
-  AGGREGATE_FWD_TASK_ID,
-  AGGREGATE_BWD_TASK_ID,
-  AGG_SPEC_INIT_TASK_ID,
-  AGG_SPEC_FWD_TASK_ID,
-  AGG_SPEC_BWD_TASK_ID,
-  POOL2D_INIT_TASK_ID,
-  POOL2D_FWD_TASK_ID,
-  POOL2D_BWD_TASK_ID,
-  BATCHNORM_INIT_TASK_ID,
-  BATCHNORM_INIT_PARA_TASK_ID,
-  BATCHNORM_FWD_TASK_ID,
-  BATCHNORM_BWD_TASK_ID,
-  BATCHMATMUL_INIT_TASK_ID,
-  BATCHMATMUL_FWD_TASK_ID,
-  BATCHMATMUL_BWD_TASK_ID,
-  LAYERNORM_INIT_TASK_ID,
-  LAYERNORM_FWD_TASK_ID,
-  LAYERNORM_BWD_TASK_ID,
-  LINEAR_INIT_TASK_ID,
-  LINEAR_INIT_PARA_TASK_ID,
-  LINEAR_FWD_TASK_ID,
-  LINEAR_BWD_TASK_ID,
-  LINEAR_BWD2_TASK_ID,
-  LINEAR_UPD_TASK_ID,
-  FLAT_INIT_TASK_ID,
-  FLAT_FWD_TASK_ID,
-  FLAT_BWD_TASK_ID,
-  SOFTMAX_INIT_TASK_ID,
-  SOFTMAX_FWD_TASK_ID,
-  SOFTMAX_BWD_TASK_ID,
-  CONCAT_INIT_TASK_ID,
-  CONCAT_FWD_TASK_ID,
-  CONCAT_BWD_TASK_ID,
-  SPLIT_INIT_TASK_ID,
-  SPLIT_FWD_TASK_ID,
-  SPLIT_BWD_TASK_ID,
-  REDUCE_INIT_TASK_ID,
-  REDUCE_FWD_TASK_ID,
-  REDUCE_BWD_TASK_ID,
-  RESHAPE_INIT_TASK_ID,
-  RESHAPE_FWD_TASK_ID,
-  RESHAPE_BWD_TASK_ID,
-  REVERSE_INIT_TASK_ID,
-  REVERSE_FWD_TASK_ID,
-  REVERSE_BWD_TASK_ID,
-  TOPK_INIT_TASK_ID,
-  TOPK_FWD_TASK_ID,
-  TOPK_BWD_TASK_ID,
-  TRANSPOSE_INIT_TASK_ID,
-  TRANSPOSE_FWD_TASK_ID,
-  TRANSPOSE_BWD_TASK_ID,
-  ATTENTION_INIT_TASK_ID,
-  ATTENTION_FWD_TASK_ID,
-  ATTENTION_BWD_TASK_ID,
-  MSELOSS_BWD_TASK_ID,
-  FUSEDOP_INIT_TASK_ID,
-  FUSEDOP_FWD_TASK_ID,
-  FUSEDOP_BWD_TASK_ID,
-  NOOP_INIT_TASK_ID,
-  // Metrics tasks
-  METRICS_COMP_TASK_ID,
-  UPDATE_METRICS_TASK_ID,
-  // Parameter server prefetch task
-  PS_PREFETCH_TASK_ID,
-  // Loss
-  LOSS_BWD_TASK_ID,
-  // Optimizer with PS
-  SGD_UPD_PS_TASK_ID,
-  ADAM_UPD_PS_TASK_ID,
-  // Optimizer with NCCL
-  SGD_UPD_NCCL_TASK_ID,
-  ADAM_UPD_NCCL_TASK_ID,
-  // Initializer
-  GLOROT_INIT_TASK_ID,
-  ZERO_INIT_TASK_ID,
-  CONSTANT_INIT_TASK_ID,
-  UNIFORM_INIT_TASK_ID,
-  NORMAL_INIT_TASK_ID,
-  // NCCL tasks
-  NCCL_GETUNIQUEID_TASK_ID,
-  NCCL_INIT_COMMS_TASK_ID,
-  // Search
-  STRATEGY_SEARCH_TASK_ID,
-  // Graph
-  GRAPH_OPTIMIZE_TASK_ID,
-  // Python data loader
-  PY_DL_FLOAT_LOAD_ENTIRE_CPU_TASK_ID,
-  PY_DL_INT32_LOAD_ENTIRE_CPU_TASK_ID,
-  PY_DL_INT64_LOAD_ENTIRE_CPU_TASK_ID,
-  PY_DL_FLOAT_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
-  PY_DL_INT32_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
-  PY_DL_INT64_INDEX_LOAD_ENTIRE_CPU_TASK_ID,
-  PY_DL_FLOAT_LOAD_BATCH_GPU_TASK_ID,
-  PY_DL_INT32_LOAD_BATCH_GPU_TASK_ID,
-  PY_DL_INT64_LOAD_BATCH_GPU_TASK_ID,
-  // Parallel Ops
-  REPARTITION_INIT_TASK_ID,
-  REPARTITION_FWD_TASK_ID,
-  REPARTITION_BWD_TASK_ID,
-  COMBINE_INIT_TASK_ID,
-  COMBINE_FWD_TASK_ID,
-  COMBINE_BWD_TASK_ID,
-  REPLICATE_INIT_TASK_ID,
-  REPLICATE_FWD_TASK_ID,
-  REPLICATE_BWD_TASK_ID,
-  REDUCTION_INIT_TASK_ID,
-  REDUCTION_FWD_TASK_ID,
-  REDUCTION_BWD_TASK_ID,
-  PIPELINE_INIT_TASK_ID,
-  PIPELINE_FWD_TASK_ID,
-  PIPELINE_BWD_TASK_ID,
-  FUSED_PARALLELOP_INIT_TASK_ID,
-  FUSED_PARALLELOP_FWD_TASK_ID,
-  FUSED_PARALLELOP_BWD_TASK_ID,
-  // Custom tasks
-  CUSTOM_GPU_TASK_ID_FIRST,
-  CUSTOM_GPU_TASK_ID_1,
-  CUSTOM_GPU_TASK_ID_2,
-  CUSTOM_GPU_TASK_ID_3,
-  CUSTOM_GPU_TASK_ID_4,
-  CUSTOM_GPU_TASK_ID_5,
-  CUSTOM_GPU_TASK_ID_6,
-  CUSTOM_GPU_TASK_ID_7,
-  CUSTOM_GPU_TASK_ID_8,
-  CUSTOM_GPU_TASK_ID_LAST,
-  CUSTOM_CPU_TASK_ID_FIRST,
-  CUSTOM_CPU_TASK_ID_1,
-  CUSTOM_CPU_TASK_ID_2,
-  CUSTOM_CPU_TASK_ID_3,
-  CUSTOM_CPU_TASK_ID_4,
-  CUSTOM_CPU_TASK_ID_5,
-  CUSTOM_CPU_TASK_ID_6,
-  CUSTOM_CPU_TASK_ID_7,
-  CUSTOM_CPU_TASK_ID_LAST,
-  // Make sure PYTHON_TOP_LEVEL_TASK_ID is
-  // consistent with python/main.cc
-  PYTHON_TOP_LEVEL_TASK_ID = 11111,
-};
 
 enum ShardingID {
   DataParallelShardingID = 135,
@@ -225,110 +50,19 @@ enum ShardingID {
 //   class Serializer;
 // }
 
-namespace PCG {
-class SearchHelper;
-class GraphSearchHelper;
-class Graph;
-}; // namespace PCG
 
 class FFModel;
 class ParallelOp;
-
-void solve_parallel_dim_mappings(
-    std::vector<ParallelDimMappingRecord> const &mapping,
-    std::vector<ParallelDim const *> const &inputs,
-    std::vector<ParallelDim *> const &weights,
-    std::vector<ParallelDim *> const &outputs);
-std::unordered_map<int, int> output_to_input_mapping(
-    std::vector<ParallelDimMappingRecord> const &mapping);
-std::unordered_map<int, int> input_to_output_mapping(
-    std::vector<ParallelDimMappingRecord> const &mapping);
+class ElementBinary;
+class ElementUnary;
 
 class NoOp;
 
-ParallelConfig get_basic_data_parallel_config(int num_parts, int dims);
-
-class Aggregate;
-class AggregateSpec;
-class BatchMatmul;
-class Cast;
-class Concat;
-class Conv2D;
-class Dropout;
-class ElementBinary;
-class ElementUnary;
-class Embedding;
-class Flat;
-class Gather;
-class Group_by;
-class LayerNorm;
-class Linear;
-class MultiHeadAttention;
-class Pool2D;
-class Reduce;
-class Reshape;
-class Softmax;
-class Split;
-class TopK;
-class Transpose;
-class Combine;
-class Repartition;
-class Reduction;
-class Replicate;
-class FusedParallelOp;
-class ParallelOpInfo;
-
-// TODO: Move to an appropriate place
-/*
-  This is used to create a type that recursively replaces value type
-  ParallelTensor by ParallelTensorShape in T. E.g., ToShape<std::tuple<int,
-  ParallelTensor>>::type gives std::tuple<int, ParallelTensorShape>
-*/
-template <typename T>
-struct ToShape {
-  using type = T;
-};
-
-template <>
-struct ToShape<ParallelTensor> {
-  using type = ParallelTensorShape;
-};
-
-template <typename... Args, template <typename...> class Container>
-struct ToShape<Container<Args...>> {
-  using type = Container<typename ToShape<Args>::type...>;
-};
-
-// TODO: Move to an appropriate place
-template <typename Input>
-typename ToShape<Input>::type get_input_shape(Input const &input) = delete;
-
-template <>
-std::tuple<> get_input_shape(std::tuple<> const &);
-
-template <>
-std::tuple<ParallelTensorShape, ParallelTensorShape, ParallelTensorShape>
-    get_input_shape(
-        std::tuple<ParallelTensor, ParallelTensor, ParallelTensor> const &);
-
-template <>
-ParallelTensorShape get_input_shape(ParallelTensor const &input);
-
-template <>
-std::pair<ParallelTensorShape, ParallelTensorShape>
-    get_input_shape(std::pair<ParallelTensor, ParallelTensor> const &inputs);
-
-template <>
-std::vector<ParallelTensorShape>
-    get_input_shape(std::vector<ParallelTensor> const &inputs);
+MachineView get_basic_data_parallel_machine_view(int num_parts, int dims);
 
 class FFModel {
 public:
   FFModel(FFConfig &config);
-
-  static constexpr float PROPAGATION_CHANCE = 0.25;
-  static constexpr float CONTINUE_PROPAGATION_CHANCE = 0.75;
-  static constexpr float PROPAGATION_SIZE_WEIGHT = 1.0;
 
   // C++ APIs for constructing models
   // Add an exp layer
@@ -640,31 +374,7 @@ public:
   // ========================================
   // Graph APIs
   // ========================================
-  float graph_cost(const PCG::Graph *graph,
-                   const PCG::Node &sink_node,
-                   MachineView const &sink_view,
-                   const PCG::Node &source_node,
-                   MachineView const &source_view,
-                   MachineResource const &resources,
-                   bool include_sink_compute_time,
-                   bool constructing_optimal_view = false);
-  void construct_optimal_view(
-      const PCG::Graph *graph,
-      const PCG::Node &sink_node,
-      MachineView const &sink_view,
-      const PCG::Node &source_node,
-      MachineView const &source_view,
-      MachineResource const &resources,
-      bool include_sink_compute_time,
-      float optimal_cost,
-      std::unordered_map<PCG::Node, MachineView> &optimal_views);
-  void deserialize_graph_optimal_view(
-      Legion::Deserializer &dez,
-      PCG::Graph *graph,
-      std::unordered_map<PCG::Node, MachineView> &optimal_views);
-  bool convert_graph_to_operators(
-      const PCG::Graph *graph,
-      std::unordered_map<PCG::Node, MachineView> const &optimal_views);
+  bool convert_graph_to_operators(SearchSolution const &);
   static void register_all_machine_views(int num_nodes,
                                          int gpus_per_node,
                                          int cpus_per_node,
@@ -672,42 +382,39 @@ public:
   // ========================================
   // Internal PCG::Node creation APIs
   // ========================================
-  template <typename T>
-  PCG::Node get_or_create_node(const typename T::Input &input,
-                               typename T::Params const &params) {
-    using Params = typename T::Params;
+  /* tl::optional<Node> get_or_create_node(std::vector<ParallelTensor> const &inputs, */
+  /*                         PCGOperatorAttrs const &attrs) { */
+  /*   auto input_shapes = vector_transform([](ParallelTensor const &t) { return t->get_shape(); }, inputs); */
 
-    auto input_shapes = get_input_shape<typename T::Input>(input);
+  /*   if (!is_valid(attrs, input_shapes)) { */
+  /*     return tl::nullopt; */
+  /*   } */
 
-    if (!params.is_valid(input_shapes)) {
-      return PCG::Node::INVALID_NODE;
-    }
+  /*   T *op = nullptr; */
 
-    T *op = nullptr;
+  /*   std::pair<typename ToShape<typename T::Input>::type, Params> key{ */
+  /*       input_shapes, params}; */
+  /*   auto &cache = get<std::unordered_map< */
+  /*       std::pair<typename ToShape<typename T::Input>::type, Params>, */
+  /*       T *>>(this->cached_ops); */
+  /*   auto const &it = cache.find(key); */
+  /*   if (it != cache.end()) { */
+  /*     op = it->second; */
+  /*   } else { */
+  /*     op = new T(*this, params, input); */
+  /*     cache[key] = op; */
+  /*   } */
 
-    std::pair<typename ToShape<typename T::Input>::type, Params> key{
-        input_shapes, params};
-    auto &cache = get<std::unordered_map<
-        std::pair<typename ToShape<typename T::Input>::type, Params>,
-        T *>>(this->cached_ops);
-    auto const &it = cache.find(key);
-    if (it != cache.end()) {
-      op = it->second;
-    } else {
-      op = new T(*this, params, input);
-      cache[key] = op;
-    }
+  /*   assert(op->get_params() == params); */
+  /*   return this->new_node(op); */
+  /* } */
 
-    assert(op->get_params() == params);
-    return this->new_node(op);
-  }
-
-  PCG::Node get_or_create_noop_node(const ParallelTensor input);
-  PCG::Node get_or_create_input_node(ParallelTensorShape const &);
-  PCG::Node get_or_create_fused_parallel_node(
+  Node get_or_create_noop_node(const ParallelTensor input);
+  Node get_or_create_input_node(ParallelTensorShape const &);
+  Node get_or_create_fused_parallel_node(
       const ParallelTensor input,
       std::vector<ParallelOpInfo> const &parallel_ops);
-  PCG::Node get_or_create_parallel_op_node(const ParallelTensor input,
+  Node get_or_create_parallel_op_node(const ParallelTensor input,
                                            ParallelOpInfo const &);
   // ========================================
   // Internal APIs that should not be invoked from applications
@@ -780,24 +487,17 @@ public:
                LossType loss_type,
                std::vector<MetricsType> const &metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
-  void graph_optimize(size_t budget,
-                      bool only_data_parallel,
-                      std::unique_ptr<PCG::Graph> &best_graph,
-                      std::unordered_map<PCG::Node, MachineView> &optimal_view);
-  void mcmc_optimize(std::map<Op const *, ParallelConfig> &best,
-                     size_t budget,
-                     float alpha,
-                     CompMode comp_mode,
-                     bool use_propagation) const;
+  SearchSolution graph_optimize(ComputationGraph const &, 
+                                MachineSpecification const &);
 #ifdef FF_USE_NCCL
   ncclComm_t *find_nccl_comms(MachineView const &view) const;
 #endif
 #ifdef FF_USE_PROPAGATE
-  void propagate(std::map<Op *, ParallelConfig> const &current,
-                 std::map<Op *, ParallelConfig> &next) const;
+  void propagate(std::map<Op *, MachineView> const &current,
+                 std::map<Op *, MachineView> &next) const;
 #endif
-  void rewrite(std::map<Op const *, ParallelConfig> const &current,
-               std::map<Op const *, ParallelConfig> &next,
+  void rewrite(std::map<Op const *, MachineView> const &current,
+               std::map<Op const *, MachineView> &next,
                bool use_propagation) const;
   void recompile_on_condition(RecompileState &r);
   void zero_gradients();
@@ -807,13 +507,11 @@ public:
       get_bwd_edge_map() const;
 
   // Internal funcitons
-  Legion::IndexSpace get_or_create_task_is(ParallelConfig const &pc);
-  Legion::IndexSpace get_or_create_task_is(MachineView const &view);
+  Legion::IndexSpace get_or_create_task_is(MachineView const &);
   Legion::IndexSpace get_or_create_task_is(Legion::Domain const &domain);
   Legion::IndexSpace get_or_create_task_is(const ParallelTensor);
   Legion::IndexSpace get_task_is(Legion::Domain const &domain) const;
-  Legion::IndexSpace get_task_is(ParallelConfig const &pc) const;
-  Legion::IndexSpace get_task_is(MachineView const &view) const;
+  Legion::IndexSpace get_task_is(MachineView const &) const;
   void create_operators_from_layers();
   Op *create_operator_from_layer(Layer *layer,
                                  std::vector<ParallelTensor> const &inputs);
@@ -827,8 +525,6 @@ public:
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer *optimizer;
-  PCG::SearchHelper *search;
-  PCG::GraphSearchHelper *graph_search;
   Loss *loss_op;
   Metrics *metrics_op;
   Simulator *simulator;
@@ -839,85 +535,17 @@ public:
   std::vector<Layer *> layers;
   std::vector<Op *> operators;
   std::vector<ParallelTensor> parameters;
-  FFHandler handlers[MAX_NUM_WORKERS];
+  std::vector<FFHandler> handlers;
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
-  std::tuple<
-      std::unordered_map<
-          std::pair<std::vector<ParallelTensorShape>, AggregateParams>,
-          Aggregate *>,
-      std::unordered_map<std::pair<ParallelTensorShape, AggregateSpecParams>,
-                         AggregateSpec *>,
-      std::unordered_map<
-          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
-                    BatchMatmulParams>,
-          BatchMatmul *>,
-      std::unordered_map<std::pair<ParallelTensorShape, CastParams>, Cast *>,
-      std::unordered_map<
-          std::pair<std::vector<ParallelTensorShape>, ConcatParams>,
-          Concat *>,
-      std::unordered_map<std::pair<ParallelTensorShape, Conv2DParams>,
-                         Conv2D *>,
-      std::unordered_map<std::pair<ParallelTensorShape, DropoutParams>,
-                         Dropout *>,
-      std::unordered_map<
-          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
-                    ElementBinaryParams>,
-          ElementBinary *>,
-      std::unordered_map<std::pair<ParallelTensorShape, ElementUnaryParams>,
-                         ElementUnary *>,
-      std::unordered_map<std::pair<ParallelTensorShape, EmbeddingParams>,
-                         Embedding *>,
-      std::unordered_map<std::pair<ParallelTensorShape, FlatParams>, Flat *>,
-      std::unordered_map<
-          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
-                    GatherParams>,
-          Gather *>,
-      std::unordered_map<
-          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
-                    Group_byParams>,
-          Group_by *>,
-      std::unordered_map<std::pair<ParallelTensorShape, LayerNormParams>,
-                         LayerNorm *>,
-      std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
-                         Linear *>,
-      std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>,
-                         Pool2D *>,
-      std::unordered_map<std::pair<std::tuple<ParallelTensorShape,
-                                              ParallelTensorShape,
-                                              ParallelTensorShape>,
-                                   MultiHeadAttentionParams>,
-                         MultiHeadAttention *>,
-      std::unordered_map<std::pair<ParallelTensorShape, ReduceParams>,
-                         Reduce *>,
-      std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,
-                         Reshape *>,
-      std::unordered_map<std::pair<ParallelTensorShape, SplitParams>, Split *>,
-      std::unordered_map<std::pair<ParallelTensorShape, SoftmaxParams>,
-                         Softmax *>,
-      std::unordered_map<std::pair<ParallelTensorShape, TopKParams>, TopK *>,
-      std::unordered_map<std::pair<ParallelTensorShape, TransposeParams>,
-                         Transpose *>,
-      std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
-                         Repartition *>,
-      std::unordered_map<std::pair<ParallelTensorShape, ReplicateParams>,
-                         Replicate *>,
-      std::unordered_map<std::pair<ParallelTensorShape, ReductionParams>,
-                         Reduction *>,
-      std::unordered_map<std::pair<ParallelTensorShape, CombineParams>,
-                         Combine *>,
-      std::unordered_map<std::pair<ParallelTensorShape, FusedParallelOpParams>,
-                         FusedParallelOp *>>
-      cached_ops;
-  std::unordered_map<size_t, NoOp *> cached_noop_ops;
-  std::unordered_map<size_t, NoOp *> cached_input_ops;
+  std::unordered_map<PCGOperatorAttrs, Op*> cached_ops;
   std::vector<MachineView> all_valid_views;
 #ifdef FF_USE_NCCL
   std::unordered_map<size_t, ncclComm_t *> view_hash_to_nccl_comms;
 #endif
 private:
   bool debug;
-  std::map<MachineView, Legion::IndexSpace, MachineViewDimCompare> all_task_is;
+  std::map<MachineView, Legion::IndexSpace> all_task_is;
 
   template <int NDIM>
   void map_tensor_with_dim(ParallelTensor tensor, Op const *parallel_op);
@@ -939,7 +567,7 @@ private:
                float scalar = 0.0);
   ElementUnary *
       unary(OperatorType op, char const *name = NULL, float scalar = 0.0);
-  PCG::Node new_node(Op *);
+  Node new_node(Op *);
 };
 
 class UtilityTasks {
