@@ -157,11 +157,10 @@ void FlexFlow::top_level_task(Task const *task,
   BatchConfig bc;
   while (processed_requests < moeConfig.total_requests) {
     size_t received_requests = data_generator.get_requests();
-    int iterations = (received_requests % moeConfig.batch_size == 0)
-                         ? (received_requests / moeConfig.batch_size)
-                         : (received_requests / moeConfig.batch_size) + 1;
-    for (int iter = 0; iter < iterations; iter++) {
-      data_loader.next_batch(ff, received_requests);
+    for (size_t reqs = 0; reqs < received_requests;
+         reqs += moeConfig.batch_size) {
+      data_loader.next_batch(
+          ff, min((size_t)moeConfig.batch_size, received_requests - reqs));
       runtime->begin_trace(ctx, 111 + index % num_devices /*trace_id*/);
       im.inference(index, bc);
       runtime->end_trace(ctx, 111 + index % num_devices /*trace_id*/);
