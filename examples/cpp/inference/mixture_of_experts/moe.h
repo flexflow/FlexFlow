@@ -37,7 +37,7 @@ struct MoeConfig {
     poisson_distribution = true;
     // average number of request arrivals per second
     arrival_rate = 25;
-    num_inflight_batches = 10;
+    num_inflight_batches = 5;
     //----------------------- MoE layer --------------------------------
     // total number of experts
     num_exp = 128;
