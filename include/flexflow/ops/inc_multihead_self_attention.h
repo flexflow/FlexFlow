@@ -9,6 +9,8 @@
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/inc_multihead_self_attention_params.h"
+#include "math.h"
+#include <cfloat>
 
 namespace FlexFlow {
 
@@ -101,6 +103,9 @@ public:
   static void inference_kernel2(IncMultiHeadSelfAttentionMeta const *m,
                                 BatchConfig const *bc,
                                 ffStream_t stream);
+  static void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
+                                BatchConfig const *bc,
+                                ffStream_t stream);
   static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
                                        BatchConfig const *bc,
                                        float const *input_ptr,
@@ -138,6 +143,7 @@ public:
   #endif*/
   // int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx, *kvCache;
   float *devQKVProjArray, *keyCache, *valueCache;
+  float *qt_prods, *qt_prods_softmax;
   // void *reserveSpace;
 
   BatchConfig::token_ids *dev_token2ids;
