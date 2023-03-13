@@ -30,7 +30,7 @@ BatchConfig::BatchConfig() {
     request_completed[i] = true;
     num_processing_tokens[i] = 0;
   }
-  for (int i=0; i<MAX_NUM_TOKENS; i++) {
+  for (int i = 0; i < MAX_NUM_TOKENS; i++) {
     token2ids[i] = {USHRT_MAX, USHRT_MAX};
   }
   update_num_active_requests_tokens();
@@ -115,11 +115,12 @@ bool BatchConfig::update_num_active_requests_tokens() {
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (!request_completed[i]) {
       num_requests++;
-      for (int j=0; j<num_processing_tokens[i]; j++) {
-        token2ids[num_tokens] = {(uint16_t) i, (uint16_t) (token_start_idx[i] + j)};
+      for (int j = 0; j < num_processing_tokens[i]; j++) {
+        token2ids[num_tokens] = {(uint16_t)i,
+                                 (uint16_t)(token_start_idx[i] + j)};
         num_tokens++;
       }
-      //num_tokens += num_processing_tokens[i];
+      // num_tokens += num_processing_tokens[i];
     }
   }
   cached_results = true;
