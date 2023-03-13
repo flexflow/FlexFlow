@@ -652,42 +652,66 @@ OpMeta *Conv2D::init_task(Task const *task,
   return m;
 }
 
-TaskSpec Conv2D::get_forward_task_spec() const {
-  TaskSpec spec = {
-    CONV2D_FWD_TASK_ID, 
-    Pass::FWD,
-    {
-      {TensorRole::INPUT, 0},
-      {TensorRole::OUTPUT, 0},
-      {TensorRole::WEIGHT, 0},
-    }
-  };
-  if (use_bias) {
-    spec.tensors.push_back({TensorRole::WEIGHT, 1});
+TaskSpec Conv2D::get_task_spec() const {
+  TaskSpec spec;
+  auto fwd = spec.make_forward(CONV2D_FWD_TASK_ID);
+  auto bwd = spec.make_backward(CONV2D_BWD_TASK_ID);
+
+  auto input = spec.add_tensor(TensorRole::INPUT, 0);
+  auto kernel = spec.add_tensor(TensorRole::PARAM, 0);
+  auto bias = spec.add_tensor(TensorRole::PARAM, 1);
+  auto output = spec.add_tensor(TensorRole::OUTPUT, 0);
+
+  fwd[INPUT] = input;
+  fwd[KERNEL] = kernel;
+  if (this->use_bias) {
+    fwd[BIAS] = bias;
   }
+  fwd[OUTPUT] = output;
+
+  return spec;
+}
+
+TaskSpec Conv2D::get_forward_task_spec() const {
+  TaskSpec spec = { CONV2D_FWD_TASK_ID, Pass::FWD };
+
+  auto input = spec.add_tensor(TensorRole::INPUT, 0);
+  auto kernel = spec.add_tensor(TensorRole::PARAM, 0);
+  auto bias = spec.add_tensor(TensorRole::BIAS, 1);
+  auto output = spec.add_tensor(TensorRole::OUTPUT, 0);
+
+  spec.add_input(INPUT, input);
+  spec.add_input(KERNEL, kernel);
+
+  if (this->use_bias) {
+    spec.add_input(BIAS, bias);
+  }
+
+  spec.add_output(OUTPUT, output);
+
   return spec;
 }
 
 TaskSpec Conv2D::get_backward_task_spec() const {
-  TaskSpec spec = {
-    CONV2D_BWD_TASK_ID,
-    Pass::BWD,
-    {
-      {TensorRole::INPUT, 0},
-      {TensorRole::INPUT, 0, IsGrad::YES},
-      {TensorRole::OUTPUT, 0},
-      {TensorRole::OUTPUT, 0, IsGrad::YES},
-      {TensorRole::PARAM, 0},
-      {TensorRole::PARAM, 0, Isgrad::YES},
-    }
-  };
+  TaskSpec spec = { CONV2D_BWD_TASK_ID, Pass::BWD };
+  
+  auto input = spec.add_tensor(TensorRole::INPUT, 0);
+  auto kernel = spec.add_tensor(TensorRole::PARAM, 0);
+  auto bias = spec.add_tensor(TensorRole::BIAS, 1);
+  auto output = spec.add_tensor(TensorRole::OUTPUT, 0);
 
-  if (use_bias) {
-    extend(spec.tensors, {
-      {TensorRole::PARAM, 1},
-      {TensorRole::PARAM, 1, IsGrad::YES}
-    });
+  spec.add_input(INPUT, input);
+  spec.add_output(INPUT_GRAD, input.grad);
+  spec.add_input(KERNEL, kernel);
+  spec.add_output(KERNEL_GRAD, kernel.grad);
+
+  if (this->use_bias) {
+    spec.add_input(BIAS, bias);
+    spec.add_output(BIAS_GRAD, bias.grad);
   }
+
+  spec.add_input(OUTPUT, output);
+  spec.add_input(OUTPUT_GRAD, output.grad);
 
   return spec;
 }

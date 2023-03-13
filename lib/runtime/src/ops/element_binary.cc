@@ -6,6 +6,15 @@
 
 namespace FlexFlow {
 
+enum Tensors {
+  LHS_INPUT,
+  RHS_INPUT, 
+  OUTPUT,
+  LHS_INPUT_GRAD,
+  RHS_INPUT_GRAD,
+  OUTPUT_GRAD
+};
+
 // declare Legion names
 using Legion::ArgumentMap;
 using Legion::Context;
@@ -374,42 +383,70 @@ OpMeta *ElementBinary::init_task(Task const *task,
   return m;
 }
 
-void ElementBinary::get_forward_task_spec() const {
-  TaskSpec spec = { ELEMENTBINARY_FWD_TASK_ID, Pass::FWD, {} };
-  if (this->inplace_a) {
-    spec.add_tensor(TensorRole::INPUT, 0, IsGrad::NO, READ_WRITE);
-    if (!this->has_same_operands) {
-      spec.add_tensor(TensorRole::INPUT, 1);
-    }
-  } else {
-    spec.add_tensor(TensorRole::INPUT, 0);
-    if (!this->has_same_operands) {
-      spec.add_tensor(TensorRole::INPUT, 1);
-    }
-    spec.add_tensor(TensorRole::OUTPUT, 0);
-  }
-}
+OpTasksSpec ElementBinary::get_task_spec() const {
+  OpTasksSpec spec {
+    ELEMENTBINARY_INIT_TASK_ID,
+    ELEMENTBINARY_FWD_TASK_ID,
+    ELEMENTBINARY_BWD_TASK_ID
+  };
+  auto fwd = spec.get_fwd();
 
-void ElementBinary::get_backward_task_spec() const {
-  TaskSpec spec = { ELEMENTBINARY_BWD_TASK_ID, Pass::BWD, {} };
-  if (this->inplace_a) {
-    spec.add_tensor(TensorRole::OUTPUT, 0, IsGrad::YES);
-    spec.add_tensor(TensorRole::INPUT, 0);
-    if (!this->has_same_operands) {
-      spec.add_tensor(TensorRole::INPUT, 1);
-      spec.add_tensor(TensorRole::INPUT, 1, IsGrad::YES);
-    }
-  } else {
-    spec.add_tensor(TensorRole::OUTPUT, 0, IsGrad::YES);
-    spec.add_tensor(TensorRole::INPUT, 0);
-    spec.add_tensor(TensorRole::INPUT, 0, IsGrad::YES);
-    if (!this->has_same_operands) {
-      spec.add_tensor(TensorRole::INPUT, 1);
-      spec.add_tensor(TensorRole::INPUT, 1, IsGrad::YES);
-    }
-  }
+  fwd.add_input_slot(LHS_INPUT);
+  fwd.add_input_slot(RHS_INPUT);
+  fwd.add_output_slot(OUTPUT);
+
+  auto input0 = spec.input_tensor(0);
+  auto input1 = spec.input_tensor(1);
+  auto output = spec.output_tensor(0);
+
+  fwd[LHS_INPUT] = input0;
+  fwd[RHS_INPUT] = this->has_same_operands ? input0 : input1;
+  fwd[OUTPUT] = this->inplace_a ? input0 : output;
+
   return spec;
 }
+
+/* TaskSpec ElementBinary::get_forward_task_spec() const { */
+/*   TaskSpec spec = { ELEMENTBINARY_FWD_TASK_ID, Pass::FWD, {} }; */
+
+/*   auto input0 = spec.add_tensor(TensorRole::INPUT, 0); */
+/*   auto input1 = spec.add_tensor(TensorRole::INPUT, 1); */
+/*   auto input2 = spec.add_tensor(TensorRole::OUTPUT, 0); */
+
+/*   spec.add_input(LHS_INPUT); */
+/*   spec.add_input(RHS_INPUT); */
+/*   spec.add_output(OUTPUT); */
+
+/*   spec[LHS_INPUT] = input0; */
+/*   spec[RHS_INPUT] = this->has_same_operands ? input0 : input1; */
+/*   spec[OUTPUT] = this->inplace_a ? input0 : output; */
+
+/*   return spec; */
+/* } */
+
+/* TaskSpec ElementBinary::get_backward_task_spec() const { */
+/*   TaskSpec spec = { ELEMENTBINARY_BWD_TASK_ID, Pass::BWD, {} }; */
+
+/*   auto input0 = spec.add_tensor(TensorRole::INPUT, 0); */
+/*   auto input1 = spec.add_tensor(TensorRole::INPUT, 1); */
+/*   auto output = spec.add_tensor(TensorRole::OUTPUT, 0); */
+
+/*   spec.add_input(LHS_INPUT); */
+/*   spec.add_input(RHS_INPUT); */
+/*   spec.add_input(OUTPUT); */
+/*   spec.add_input(OUTPUT_GRAD); */
+/*   spec.add_output(LHS_INPUT_GRAD); */
+/*   spec.add_output(RHS_INPUT_GRAD); */
+
+/*   spec[LHS_INPUT] = input0; */
+/*   spec[RHS_INPUT] = this->has_same_operands ? input0 : input1; */
+/*   spec[OUTPUT] = this->inplace_a ? input0 : output; */
+/*   spec[OUTPUT_GRAD] = spec[OUTPUT].grad; */
+/*   spec[LHS_INPUT_GRAD] = spec[LHS_INPUT].grad; */
+/*   spec[RHS_INPUT_GRAD] = spec[RHS_INPUT].grad; */
+
+/*   return spec; */
+/* } */
 
 void ElementBinary::forward(FFModel const &ff) {
   return this->execute_task_spec(ff, this->get_forward_task_spec());
@@ -431,6 +468,7 @@ __host__ void
                                 Runtime *runtime) {
   // const ElementBinary* ele = (const ElementBinary*) task->args;
   ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
+
   Domain in1_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   if (!m->has_same_operands) {
@@ -442,52 +480,11 @@ __host__ void
              m->op_type == OP_EW_MUL);
     }
   }
-  float const *in1_ptr = NULL, *in2_ptr = NULL;
-  float *out_ptr = NULL;
-  if (m->inplace_a) {
-    if (m->has_same_operands) {
-      assert(regions.size() == 1);
-      assert(task->regions.size() == 1);
-      out_ptr = helperGetTensorPointerRW<float>(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      in2_ptr = out_ptr;
-      in1_ptr = out_ptr;
-    } else {
-      assert(regions.size() == 2);
-      assert(task->regions.size() == 2);
-      out_ptr = helperGetTensorPointerRW<float>(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      in2_ptr = helperGetTensorPointerRO<float>(
-          regions[1], task->regions[1], FID_DATA, ctx, runtime);
-      in1_ptr = out_ptr;
-    }
-  } else {
-    if (m->has_same_operands) {
-      assert(regions.size() == 2);
-      assert(task->regions.size() == 2);
-      Domain out_domain = runtime->get_index_space_domain(
-          ctx, task->regions[1].region.get_index_space());
-      // assert(out_domain == in1_domain);
-      in1_ptr = helperGetTensorPointerRO<float>(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      in2_ptr = in1_ptr;
-      out_ptr = helperGetTensorPointerWO<float>(
-          regions[1], task->regions[1], FID_DATA, ctx, runtime);
-    } else {
-      assert(regions.size() == 3);
-      assert(task->regions.size() == 3);
-      Domain out_domain = runtime->get_index_space_domain(
-          ctx, task->regions[2].region.get_index_space());
-      // assert(out_domain == in1_domain);
-      in1_ptr = helperGetTensorPointerRO<float>(
-          regions[0], task->regions[0], FID_DATA, ctx, runtime);
-      in2_ptr = helperGetTensorPointerRO<float>(
-          regions[1], task->regions[1], FID_DATA, ctx, runtime);
-      out_ptr = helperGetTensorPointerWO<float>(
-          regions[2], task->regions[2], FID_DATA, ctx, runtime);
-    }
-  }
 
+  TaskAccessor acc(task, regions, ctx, runtime, Pass::FWD);
+  float const *in1_ptr = acc.get_const_slot<float>(Tensors::LHS_INPUT);
+  float const *in2_ptr = acc.get_const_slot<float>(Tensors::RHS_INPUT);
+  float *out_ptr = acc.get_slot<float>(Tensors::OUTPUT);
   forward_kernel_wrapper(m, in1_ptr, in2_ptr, out_ptr);
 }
 
@@ -504,83 +501,95 @@ void ElementBinary::backward_task(Task const *task,
                                   Runtime *runtime) {
   // const ElementBinary* ele = (const ElementBinary*) task->args;
   ElementBinaryMeta const *m = *((ElementBinaryMeta **)task->local_args);
-  float const *in0_ptr = NULL, *in1_ptr = NULL, *out_grad_ptr = NULL;
-  float *in0_grad_ptr = NULL, *in1_grad_ptr = NULL;
-  Domain out_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  if (m->inplace_a) {
-    in0_grad_ptr = helperGetTensorPointerRW<float>(
-        regions[0], task->regions[0], FID_DATA, ctx, runtime);
-    assert(regions.size() == 2 || regions.size() == 4);
-    assert(task->regions.size() == regions.size());
-    if (regions.size() == 2) {
-      Domain in0_domain = runtime->get_index_space_domain(
-          ctx, task->regions[1].region.get_index_space());
-      assert(in0_domain == out_grad_domain);
-      in0_ptr = helperGetTensorPointerRO<float>(
-          regions[1], task->regions[1], FID_DATA, ctx, runtime);
-      in1_ptr = in0_ptr;
-      in1_grad_ptr = in0_grad_ptr;
-      out_grad_ptr = in0_grad_ptr;
-    } else {
-      Domain in0_domain = runtime->get_index_space_domain(
-          ctx, task->regions[1].region.get_index_space());
-      Domain in1_domain = runtime->get_index_space_domain(
-          ctx, task->regions[2].region.get_index_space());
-      assert(in0_domain == out_grad_domain);
-      // assert(in1_domain == out_grad_domain);
-      in0_ptr = helperGetTensorPointerRO<float>(
-          regions[1], task->regions[1], FID_DATA, ctx, runtime);
-      in1_ptr = helperGetTensorPointerRO<float>(
-          regions[2], task->regions[2], FID_DATA, ctx, runtime);
-      in1_grad_ptr = helperGetTensorPointerRW<float>(
-          regions[3], task->regions[3], FID_DATA, ctx, runtime);
-      out_grad_ptr = in0_grad_ptr;
-    }
-  } else {
-    int rid = 0;
-    out_grad_ptr = helperGetTensorPointerRO<float>(
-        regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
-    rid++;
-    Domain in0_domain = runtime->get_index_space_domain(
-        ctx, task->regions[rid].region.get_index_space());
-    in0_ptr = helperGetTensorPointerRO<float>(
-        regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
-    rid++;
-    if (m->trainableInputs[0]) {
-      Domain in0_grad_domain = runtime->get_index_space_domain(
-          ctx, task->regions[rid].region.get_index_space());
-      assert(in0_domain == in0_grad_domain);
-      in0_grad_ptr = helperGetTensorPointerRW<float>(
-          regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
-      rid++;
-    }
-    if (m->has_same_operands) {
-      // in0 == in1
-      in1_ptr = in0_ptr;
-      in1_grad_ptr = in0_grad_ptr;
-    } else {
-      Domain in1_domain = runtime->get_index_space_domain(
-          ctx, task->regions[rid].region.get_index_space());
-      in1_ptr = helperGetTensorPointerRO<float>(
-          regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
-      rid++;
-      if (m->trainableInputs[1]) {
-        Domain in1_grad_domain = runtime->get_index_space_domain(
-            ctx, task->regions[rid].region.get_index_space());
-        // assert(out_grad_domain == in1_domain);
-        assert(in1_domain == in1_grad_domain);
-        in1_grad_ptr = helperGetTensorPointerRW<float>(
-            regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
-        rid++;
-      }
-    }
-    assert(task->regions.size() == rid);
-    assert(task->regions.size() == regions.size());
-  }
+
+  TaskAccessor acc(task, regions, ctx, runtime, Pass::BWD);
+  float const *in1_ptr = acc.get_const_slot<float>(Tensors::LHS_INPUT);
+  float const *in2_ptr = acc.get_const_slot<float>(Tensors::RHS_INPUT);
+  float const *out_ptr = acc.get_const_slot<float>(Tensors::OUTPUT);
+  float *in1_grad_ptr = acc.get_slot<float>(grad(Tensors::LHS_INPUT));
+  float *in2_grad_ptr = acc.get_slot<float>(grad(Tensors::RHS_INPUT));
+  float const *out_grad_ptr = acc.get_const_slot<float>(grad(Tensors::OUTPUT));
 
   backward_kernel_wrapper(
       m, out_grad_ptr, in0_ptr, in1_ptr, in0_grad_ptr, in1_grad_ptr);
+
+  /* Domain out_grad_domain = runtime->get_index_space_domain( */
+  /*     ctx, task->regions[0].region.get_index_space()); */
+
+
+  /* if (m->inplace_a) { */
+  /*   in0_grad_ptr = helperGetTensorPointerRW<float>( */
+  /*       regions[0], task->regions[0], FID_DATA, ctx, runtime); */
+  /*   assert(regions.size() == 2 || regions.size() == 4); */
+  /*   assert(task->regions.size() == regions.size()); */
+  /*   if (regions.size() == 2) { */
+  /*     Domain in0_domain = runtime->get_index_space_domain( */
+  /*         ctx, task->regions[1].region.get_index_space()); */
+  /*     assert(in0_domain == out_grad_domain); */
+  /*     in0_ptr = helperGetTensorPointerRO<float>( */
+  /*         regions[1], task->regions[1], FID_DATA, ctx, runtime); */
+  /*     in1_ptr = in0_ptr; */
+  /*     in1_grad_ptr = in0_grad_ptr; */
+  /*     out_grad_ptr = in0_grad_ptr; */
+  /*   } else { */
+  /*     Domain in0_domain = runtime->get_index_space_domain( */
+  /*         ctx, task->regions[1].region.get_index_space()); */
+  /*     Domain in1_domain = runtime->get_index_space_domain( */
+  /*         ctx, task->regions[2].region.get_index_space()); */
+  /*     assert(in0_domain == out_grad_domain); */
+  /*     // assert(in1_domain == out_grad_domain); */
+  /*     in0_ptr = helperGetTensorPointerRO<float>( */
+  /*         regions[1], task->regions[1], FID_DATA, ctx, runtime); */
+  /*     in1_ptr = helperGetTensorPointerRO<float>( */
+  /*         regions[2], task->regions[2], FID_DATA, ctx, runtime); */
+  /*     in1_grad_ptr = helperGetTensorPointerRW<float>( */
+  /*         regions[3], task->regions[3], FID_DATA, ctx, runtime); */
+  /*     out_grad_ptr = in0_grad_ptr; */
+  /*   } */
+  /* } else { */
+  /*   int rid = 0; */
+  /*   out_grad_ptr = helperGetTensorPointerRO<float>( */
+  /*       regions[rid], task->regions[rid], FID_DATA, ctx, runtime); */
+  /*   rid++; */
+  /*   Domain in0_domain = runtime->get_index_space_domain( */
+  /*       ctx, task->regions[rid].region.get_index_space()); */
+  /*   in0_ptr = helperGetTensorPointerRO<float>( */
+  /*       regions[rid], task->regions[rid], FID_DATA, ctx, runtime); */
+  /*   rid++; */
+  /*   if (m->trainableInputs[0]) { */
+  /*     Domain in0_grad_domain = runtime->get_index_space_domain( */
+  /*         ctx, task->regions[rid].region.get_index_space()); */
+  /*     assert(in0_domain == in0_grad_domain); */
+  /*     in0_grad_ptr = helperGetTensorPointerRW<float>( */
+  /*         regions[rid], task->regions[rid], FID_DATA, ctx, runtime); */
+  /*     rid++; */
+  /*   } */
+  /*   if (m->has_same_operands) { */
+  /*     // in0 == in1 */
+  /*     in1_ptr = in0_ptr; */
+  /*     in1_grad_ptr = in0_grad_ptr; */
+  /*   } else { */
+  /*     Domain in1_domain = runtime->get_index_space_domain( */
+  /*         ctx, task->regions[rid].region.get_index_space()); */
+  /*     in1_ptr = helperGetTensorPointerRO<float>( */
+  /*         regions[rid], task->regions[rid], FID_DATA, ctx, runtime); */
+  /*     rid++; */
+  /*     if (m->trainableInputs[1]) { */
+  /*       Domain in1_grad_domain = runtime->get_index_space_domain( */
+  /*           ctx, task->regions[rid].region.get_index_space()); */
+  /*       // assert(out_grad_domain == in1_domain); */
+  /*       assert(in1_domain == in1_grad_domain); */
+  /*       in1_grad_ptr = helperGetTensorPointerRW<float>( */
+  /*           regions[rid], task->regions[rid], FID_DATA, ctx, runtime); */
+  /*       rid++; */
+  /*     } */
+  /*   } */
+  /*   assert(task->regions.size() == rid); */
+  /*   assert(task->regions.size() == regions.size()); */
+  /* } */
+
+  /* backward_kernel_wrapper( */
+  /*     m, out_grad_ptr, in0_ptr, in1_ptr, in0_grad_ptr, in1_grad_ptr); */
 }
 
 bool ElementBinary::measure_operator_cost(Simulator *sim,
