@@ -18,14 +18,14 @@ conda activate flexflow
 conda info --envs
 for(( i=0;i<${#ops[@]};i++)) 
 do
-    generate_ff_tensor ${ops[i]};
+    generate_ff_tensor "${ops[i]}";
 done;
 
 #create torch tensorss
 conda activate pytorch
 for(( i=0;i<${#ops[@]};i++)) 
 do
-    generate_torch_tensor ${ops[i]};
+    generate_torch_tensor "${ops[i]}";
 done;
 
 conda activate flexflow
