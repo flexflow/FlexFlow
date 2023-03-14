@@ -105,6 +105,7 @@ public:
                                 ffStream_t stream);
   static void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
                                 BatchConfig const *bc,
+                                float *output_ptr,
                                 ffStream_t stream);
   static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
                                        BatchConfig const *bc,
@@ -127,6 +128,7 @@ public:
   IncMultiHeadSelfAttentionMeta(FFHandler handler,
                                 IncMultiHeadSelfAttention const *attn,
                                 BatchConfig const *bc,
+                                float const *weight_ptr,
                                 Legion::Memory gpu_mem,
                                 int num_samples,
                                 int _num_heads);
@@ -134,7 +136,7 @@ public:
 
 public:
   Realm::RegionInstance reserveInst;
-  size_t weightSize, reserveSpaceSize;
+  size_t weights_params, weightSize, reserveSpaceSize;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int num_heads;
   /*#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
@@ -144,6 +146,7 @@ public:
   // int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx, *kvCache;
   float *devQKVProjArray, *keyCache, *valueCache;
   float *qt_prods, *qt_prods_softmax;
+  float *attn_heads, *W_out_contiguous;
   // void *reserveSpace;
 
   BatchConfig::token_ids *dev_token2ids;

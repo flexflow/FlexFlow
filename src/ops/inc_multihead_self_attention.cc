@@ -463,7 +463,7 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
                        .best_affinity_to(task->target_proc)
                        .first();
   IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
-      handle, attn, bc, gpu_mem, num_samples, num_heads);
+      handle, attn, bc, weight, gpu_mem, num_samples, num_heads);
   m->profiling = attn->profiling;
   assert(weight.domain.get_volume() * sizeof(float) == m->weightSize);
   return m;
