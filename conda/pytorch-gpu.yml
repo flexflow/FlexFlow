@@ -8,3 +8,4 @@ dependencies:
   - pip
   - pip:
     - torch>=1.13.1
+    
