@@ -37,8 +37,9 @@ void FlexFlow::top_level_task(Task const *task,
                               Runtime *runtime) {
   FFConfig ffconfig;
   MiniGPTConfig minigptconfig;
-
+  std::vector<Layer*> weights_layers;
   FFModel ff(ffconfig);
+
 
   // todo init params from pre-trained model
   Tensor input;
@@ -76,16 +77,14 @@ void FlexFlow::top_level_task(Task const *task,
     std::vector<int> axes = {2};
     x = ff.layer_norm(x, axes, true, 1e-5);
     // //get the latest layer
-    // Layer *l = ff.layers.back();
-    // //get Tensor access
-    // assert(len(l->weights) == 2)
-    // //copy data to weights tensor
-    // Tensor weight = weights[0];
-    // Tensor bias = weights[1];
-    // weight.set_tensor(ff, 0, data);
-    // bias.set_tensor(ff, 0, data);
+   
 
     Tensor sp_1 = ff.dense(x, minigptconfig.n_embd * 3, AC_MODE_RELU, false);
+    Layer *l = ff.layers.back();
+    weights_layers.push_back(l);
+    //get Tensor access
+    // weight->set_tensor(ff, 0, data);
+    // bias->set_tensor(ff, 0, data);
     Tensor *splited_tensor = new Tensor[3];
 
  
@@ -142,6 +141,29 @@ void FlexFlow::top_level_task(Task const *task,
   ff.get_parallel_tensor_from_tensor(pos, pos_pt);
   ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
   DataLoader loader(ff, &minigptconfig, input_pt, pos_pt, label_pt);
+
+  //set weight tensors
+  ParallelTensor weights_pt, bias_pt;
+  //copy data to weights tensor
+  Layer *l = weights_layers[0];
+  Tensor weight = l->weights[0];
+  // ff.get_parallel_tensor_from_tensor(l->weights[0], weights_pt);
+
+  //mock weight data
+  int size = minigptconfig.n_embd * 3 * ffconfig.batchSize;
+  float data[size];
+  for(int i = 0; i < size; i++){
+    data[i] = ((float)std::rand()) / RAND_MAX;
+  }
+  std::vector<int> dims_vec;
+  for (int i = 0; i <weight->num_dims; i++) {
+    dims_vec.push_back(weight->dims[i]);
+  }
+  weight->set_tensor<float>(&ff, dims_vec, data);
+  
+
+
+
   loader.next_batch(ff);
   loader.reset();
   ff.init_operators();
