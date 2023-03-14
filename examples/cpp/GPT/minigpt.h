@@ -23,16 +23,17 @@ struct MiniGPTConfig {
   MiniGPTConfig(void);
   int hidden_size, n_embd, n_head, n_layer, sequence_length, vocab_size,
       embedding_prob_drop, layer_norm_epsilon, n_positions,
-      attn_pdrop, activation_function, embd_pdrop, layer_norm_epsilon, resid_pdrop, block_size;
+      attn_pdrop, activation_function, embd_pdrop, resid_pdrop, block_size;
 };
 
 
 class DataLoader {
 public:
   DataLoader(FFModel &ff,
-             MiniGPTConfig const &minigptconfig,
-             Tensor const &_input,
-             Tensor const &_label);
+             MiniGPTConfig const *minigptconfig,
+             ParallelTensor const &input,
+             ParallelTensor const &pos,
+             ParallelTensor const &label);
   void next_batch(FFModel &ff);
   void reset();
   static void load_entire_dataset(Task const *task,
@@ -57,12 +58,16 @@ public:
   static void load_bias(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
                          Context ctx,
-                         Runtime *runtime);                                                                     
-
+                         Runtime *runtime); 
+  static void load_pos(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime);                       
 public:
   int num_samples, next_index;
   FlexFlow::ParallelTensor full_input, batch_input;
   FlexFlow::ParallelTensor full_label, batch_label;
+  FlexFlow::ParallelTensor full_pos, batch_pos;
   FlexFlow::ParallelTensor ln_f_bias, ln_f_weight;
 };
 

@@ -21,14 +21,14 @@ LegionRuntime::Logger::Category log_app("minigpt");
 
 // future read from config file
 MiniGPTConfig::MiniGPTConfig(void) {
-  //todo read from config/param file
+  // todo read from config/param file
   n_layer = 6;
   embedding_prob_drop = 0.1;
   n_embd = 768;
   resid_pdrop = 0.1;
   vocab_size = 50257;
   block_size = 1024;
-
+  n_head = 12;
 }
 
 void FlexFlow::top_level_task(Task const *task,
@@ -40,28 +40,40 @@ void FlexFlow::top_level_task(Task const *task,
 
   FFModel ff(ffconfig);
 
-  //todo init params from pre-trained model
+  // todo init params from pre-trained model
   Tensor input;
   Tensor pos;
   {
     int const token_dims[] = {ffconfig.batchSize, 10, minigptconfig.n_embd};
-    int const pos_dims[] = {1, minigptconfig.n_embd};
+    int const pos_dims[] = {ffconfig.batchSize, 10, minigptconfig.n_embd};
     input = ff.create_tensor<3>(token_dims, DT_FLOAT);
-    pos = ff.create_tensor<3>(pos_dims, DT_INT64);
+    pos = ff.create_tensor<3>(pos_dims, DT_FLOAT);
   }
-  
-  //word&position embedding
-  Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
-  Tensor token_embedding = ff.embedding(input, minigptconfig.vocab_size, minigptconfig.n_embd, AGGR_MODE_SUM, DT_FLOAT, NULL, embed_init);
-  Tensor position_embedding = ff.embedding(pos, minigptconfig.block_size, minigptconfig.n_embd, AGGR_MODE_SUM, DT_FLOAT, NULL, embed_init);
-  Tensor x = ff.add(token_embedding, position_embedding);
-  x =ff.dropout(x, minigptconfig.embedding_prob_drop);
+
+  // word&position embedding
+  // Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
+  // Tensor token_embedding = ff.embedding(input,
+  //                                       minigptconfig.vocab_size,
+  //                                       minigptconfig.n_embd,
+  //                                       AGGR_MODE_SUM,
+  //                                       DT_FLOAT,
+  //                                       NULL,
+  //                                       embed_init);
+  // Tensor position_embedding = ff.embedding(pos,
+  //                                          minigptconfig.block_size,
+  //                                          minigptconfig.n_embd,
+  //                                          AGGR_MODE_SUM,
+  //                                          DT_FLOAT,
+  //                                          NULL,
+  //                                          embed_init);
+  Tensor x = ff.add(input, pos);
+  x = ff.dropout(x, minigptconfig.embedding_prob_drop);
 
   // n-layers transformer block
   for (int i = 0; i < minigptconfig.n_layer; i++) {
     // get q, k, v
-    float const *data = NULL;
-    std::vector<int> axes = {minigptconfig.n_embd};
+    // float const *data = NULL;
+    std::vector<int> axes = {2};
     x = ff.layer_norm(x, axes, true, 1e-5);
     // //get the latest layer
     // Layer *l = ff.layers.back();
@@ -73,49 +85,74 @@ void FlexFlow::top_level_task(Task const *task,
     // weight.set_tensor(ff, 0, data);
     // bias.set_tensor(ff, 0, data);
 
-    x = ff.dense(x, minigptconfig.n_embd * 3);
-    Tensor* splited_tensor = new Tensor[3];
-    std::vector<int> split = {minigptconfig.n_embd};
-    ff.split(x, splited_tensor, split, 2);
-    Tensor q, k, v = splited_tensor[0], splited_tensor[1], splited_tensor[2];
-    // multihead attention
-    Tensor mha = ff.multihead_attention(q, k, v, 0, 0, 0, 0);
-    x = ff.add(x, mha);
-    //mlp
-    Tensor c_fc = ff.dense(x, minigptconfig.n_embd * 4);
-    Tensor act = ff.gelu(c_fc);
-    Tensor c_proj = ff.dense(act, minigptconfig.n_embd);
-    Tensor dropout = ff.dropout(c_proj, minigptconfig.resid_pdrop);
+    Tensor sp_1 = ff.dense(x, minigptconfig.n_embd * 3, AC_MODE_RELU, false);
+    Tensor *splited_tensor = new Tensor[3];
 
+ 
+
+    std::vector<int> split = {
+        minigptconfig.n_embd, minigptconfig.n_embd, minigptconfig.n_embd};
+    ff.split(sp_1, splited_tensor, split, 2);
+    Tensor q = splited_tensor[0];
+    Tensor k = splited_tensor[1];
+    Tensor v = splited_tensor[2];
+    assert(q != NULL);
+    assert(k != NULL);
+    assert(v != NULL);
+    // multihead attention
+    Tensor mha = ff.multihead_attention(q,
+                                        k,
+                                        v,
+                                        minigptconfig.n_embd,
+                                        minigptconfig.n_head,
+                                        minigptconfig.n_embd,
+                                        minigptconfig.n_embd);
+    Tensor ln_1 = ff.dense(mha, minigptconfig.n_embd, AC_MODE_RELU, false);                                  
+
+
+    x = ff.add(x, ln_1);
+    // mlp
+    Tensor c_fc = ff.dense(x, minigptconfig.n_embd * 4, AC_MODE_RELU, false);
+    Tensor act = ff.gelu(c_fc);
+    Tensor c_proj = ff.dense(act, minigptconfig.n_embd, AC_MODE_RELU, false);
+    Tensor dropout = ff.dropout(c_proj, minigptconfig.resid_pdrop);
     x = ff.add(x, dropout);
   }
 
-  std::vector<int> axes = {minigptconfig.n_embd};
+  std::vector<int> axes = {2};
   x = ff.layer_norm(x, axes, true, 1e-5);
-  x = ff.dense(x, minigptconfig.vocab_size);
+  // fprintf(stderr, "--final dim---");
+  //    for(int i = 0; i < ff.label_tensor->num_dims; i++){
+  //       fprintf(stderr, std::to_string(ff.label_tensor->dims[i]).c_str());
+  //       fprintf(stderr, "-----");
+  //   }
+  // x = ff.dense(x, minigptconfig.vocab_size);
 
   // optimizer
   Optimizer *optimizer = new SGDOptimizer(&ff, 0.01f);
   std::vector<MetricsType> metrics;
-  ff.compile(optimizer, LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics);
+  metrics.push_back(METRICS_ACCURACY);
+  metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
+  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
 
-  return;
-  // Data Loader
-  ParallelTensor input_pt, label_pt;
+  fprintf(stderr, "----------compile end--------------");
+  // read data into input
+  ParallelTensor input_pt, label_pt, pos_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
+  ff.get_parallel_tensor_from_tensor(pos, pos_pt);
   ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
-  DataLoader loader(ff, minigptconfig, input, ff.label_tensor);
+  DataLoader loader(ff, &minigptconfig, input_pt, pos_pt, label_pt);
   loader.next_batch(ff);
   loader.reset();
   ff.init_operators();
 
   //train
   for (int epoch = 0; epoch < ffconfig.epochs; epoch++) {
-    loader.reset();
+    // loader.reset();
     ff.reset_metrics();
     int iterations = loader.num_samples / ffconfig.batchSize;
     for (int iter = 0; iter < iterations; iter++) {
-      // Only load data once for random input
+      // // Only load data once for random input
       if (iter == 0 && epoch == 0) {
         loader.next_batch(ff);
       }

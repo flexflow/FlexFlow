@@ -706,7 +706,7 @@ void MultiHeadAttention::backward_task(
     key_grad_ptr = acc_query_grad.ptr;
     value_grad_ptr = acc_value_grad.ptr;
   } else {
-    assert(regions.size() == 10);
+    assert(regions.size() == 9);
     TensorAccessorW<float, 4> acc_key_grad(regions[7],
                                            task->regions[7],
                                            FID_DATA,

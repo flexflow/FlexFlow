@@ -115,11 +115,11 @@ void forward_kernel_wrapper(LinearMeta const *m,
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("%s [Linear] forward time = %.2lfms\n", m->op_name, elapsed);
-    // print_tensor<float>((float*)input_ptr, in_dim * batch_size,
-    // "[Linear:forward:input]"); print_tensor<float>((float*)weight_ptr, in_dim
-    // * out_dim, "[Linear:forward:kernel]");
-    // print_tensor<float>((float*)output_ptr, out_dim * batch_size,
-    // "[Linear:forward:output]");
+    print_tensor<float>((float*)input_ptr, in_dim * batch_size,
+    "[Linear:forward:input]"); print_tensor<float>((float*)weight_ptr, in_dim
+    * out_dim, "[Linear:forward:kernel]");
+    print_tensor<float>((float*)output_ptr, out_dim * batch_size,
+    "[Linear:forward:output]");
   }
 }
 
