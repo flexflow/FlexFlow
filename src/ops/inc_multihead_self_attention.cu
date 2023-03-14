@@ -22,14 +22,12 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Memory;
 
-/*static*/
-void IncMultiHeadSelfAttention::inference_kernel1(
-    IncMultiHeadSelfAttentionMeta const *m,
-    BatchConfig const *bc,
-    float const *input_ptr,
-    float const *weight_ptr,
-    float *output_ptr,
-    cudaStream_t stream) {
+void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
+                       BatchConfig const *bc,
+                       float const *input_ptr,
+                       float const *weight_ptr,
+                       float *output_ptr,
+                       cudaStream_t stream) {
 
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -71,7 +69,7 @@ void IncMultiHeadSelfAttention::inference_kernel1(
                                        data_type,
                                        ldc,
                                        strideC,
-                                       num_heads,
+                                       m->num_heads,
                                        compute_type,
                                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 }
@@ -109,11 +107,9 @@ __global__ void store_kv_cache(float const *devQKVProjArray,
   }
 }
 
-/*static*/
-void IncMultiHeadSelfAttention::inference_kernel2(
-    IncMultiHeadSelfAttentionMeta const *m,
-    BatchConfig const *bc,
-    cudaStream_t stream) {
+void inference_kernel2(IncMultiHeadSelfAttentionMeta const *m,
+                       BatchConfig const *bc,
+                       cudaStream_t stream) {
   int num_tokens = bc->num_active_tokens();
   if (num_tokens > 0) {
     int parallelism = m->kProjSize * num_tokens * m->num_heads;
@@ -170,12 +166,10 @@ __global__ void fill_last_entry_vector(float *matrix,
   }
 }
 
-/*static*/
-void IncMultiHeadSelfAttention::inference_kernel3(
-    IncMultiHeadSelfAttentionMeta const *m,
-    BatchConfig const *bc,
-    float *output_ptr,
-    cudaStream_t stream) {
+void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
+                       BatchConfig const *bc,
+                       float *output_ptr,
+                       cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(DT_FLOAT);
@@ -394,8 +388,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   }
 
   // phase 1: Implement kernel to compute KQV for input tokens
-  IncMultiHeadSelfAttention::inference_kernel1(
-      m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
+  inference_kernel1(m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
 
   // phase 2: Update key/val cache
   cudaMemcpyAsync(m->dev_token2ids,
@@ -403,11 +396,11 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
                   bc->MAX_NUM_TOKENS * sizeof(BatchConfig::token_ids),
                   cudaMemcpyHostToDevice,
                   stream);
-  IncMultiHeadSelfAttention::inference_kernel2(m, bc, stream);
+  inference_kernel2(m, bc, stream);
 
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
-  IncMultiHeadSelfAttention::inference_kernel3(m, bc, output_ptr, stream);
+  inference_kernel3(m, bc, output_ptr, stream);
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
