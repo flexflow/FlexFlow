@@ -318,7 +318,7 @@ void IncMultiHeadSelfAttention::inference_kernel3(
                                          CUBLAS_OP_N,
                                          CUBLAS_OP_T,
                                          m_,
-                                         n_,
+                                         n,
                                          k,
                                          &alpha,
                                          A,
