@@ -18,4 +18,3 @@ dependencies:
     - torch==1.13.1+cpu
     - torchaudio==0.13.1+cpu
     - torchvision
-    
