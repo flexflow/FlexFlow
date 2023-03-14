@@ -14,6 +14,7 @@ respectively).
 Assuming those two `conda` environments, we may run
 ```
 cd FlexFlow
+conda activate flexflow
 ./tests/align/test_all_operators.sh
 ```
 
