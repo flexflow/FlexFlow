@@ -1,4 +1,5 @@
 #include "reduce.h"
+#include "op-impl/reduce_kernels.h"
 #include "model.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
@@ -19,6 +20,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::Reduce;
 
 bool operator==(ReduceParams const &lhs, ReduceParams const &rhs) {
   return (lhs.axes == rhs.axes) && (lhs.keepdims == rhs.keepdims);
@@ -247,7 +250,7 @@ void Reduce::forward_task(Task const *task,
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       DT_FLOAT, regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  Reduce::forward_kernel_wrapper(m, input, output);
+  forward_kernel_wrapper(m, input, output);
 }
 
 void Reduce::backward(FFModel const &ff) {
@@ -291,7 +294,7 @@ void Reduce::backward_task(Task const *task,
       DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
       DT_FLOAT, regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  Reduce::backward_kernel_wrapper(m, output_grad, input_grad);
+  backward_kernel_wrapper(m, output_grad, input_grad);
 }
 
 bool Reduce::measure_operator_cost(Simulator *sim,
