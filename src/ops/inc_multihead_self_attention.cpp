@@ -24,19 +24,9 @@ using Legion::coord_t;
 using Legion::Memory;
 
 /*static*/
-void IncMultiHeadSelfAttention::inference_kernel(
-    IncMultiHeadSelfAttentionMeta const *m,
-    float const *input_ptr,
-    float const *weight_ptr,
-    float *output_ptr,
-    hipStream_t stream) {
-  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
-  handle_unimplemented_hip_kernel(OP_INC_MULTIHEAD_SELF_ATTENTION);
-}
-
-/*static*/
 void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
     float const *input_ptr,
     float const *weight_ptr,
     float *output_ptr) {
@@ -49,8 +39,9 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  IncMultiHeadSelfAttention::inference_kernel(
-      m, input_ptr, weight_ptr, output_ptr, stream);
+  
+  handle_unimplemented_hip_kernel(OP_INC_MULTIHEAD_SELF_ATTENTION);
+
   if (m->profiling) {
     hipEventRecord(t_end, stream);
     checkCUDA(hipEventSynchronize(t_end));
@@ -68,9 +59,11 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     IncMultiHeadSelfAttention const *attn,
+    BatchConfig const *bc,
+    float const *weight_ptr,
     Memory gpu_mem,
     int num_samples,
-    int num_heads)
+    int _num_heads)
     : OpMeta(handler, attn) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
