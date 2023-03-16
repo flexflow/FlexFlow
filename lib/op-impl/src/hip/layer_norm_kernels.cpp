@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/layer_norm.h"
-#include "flexflow/utils/hip_helper.h"
+#include "layer_norm_kernels.h"
+#include "utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
@@ -37,6 +37,165 @@ LayerNormMeta::LayerNormMeta(FFHandler handle, LayerNorm const *ln)
   checkCUDA(hipMalloc(&scale_ptr, sizeof(float) * effective_batch_size));
   checkCUDA(hipMalloc(&bias_ptr, sizeof(float) * effective_batch_size));
 }
+
+namespace Kernels {
+namespace LayerNorm {
+
+template <typename T>
+void forward_kernel_wrapper(LayerNormMeta const *m,
+                                       T const *in_ptr,
+                                       T *out_ptr,
+                                       T *gamma_ptr,
+                                       T *beta_ptr) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::forward_kernel<float>(
+      m, in_ptr, out_ptr, gamma_ptr, beta_ptr, stream);
+}
+
+template <typename T>
+void backward_kernel_wrapper(LayerNormMeta const *m,
+                                        T const *output_grad_ptr,
+                                        T const *input_ptr,
+                                        T *input_grad_ptr,
+                                        T const *gamma_ptr,
+                                        T *gamma_grad_ptr,
+                                        T *beta_grad_ptr) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::backward_kernel<float>(m,
+                                    output_grad_ptr,
+                                    input_ptr,
+                                    input_grad_ptr,
+                                    gamma_ptr,
+                                    gamma_grad_ptr,
+                                    beta_grad_ptr,
+                                    stream);
+}
+
+template void forward_kernel_wrapper<float>(LayerNormMeta const *m,
+                                                       float const *in_ptr,
+                                                       float *out_ptr,
+                                                       float *gamma_ptr,
+                                                       float *beta_ptr);
+template void
+    backward_kernel_wrapper<float>(LayerNormMeta const *m,
+                                              float const *output_grad_ptr,
+                                              float const *input_ptr,
+                                              float *input_grad_ptr,
+                                              float const *gamma_ptr,
+                                              float *gamma_grad_ptr,
+                                              float *beta_grad_ptr);
+
+namespace Internal {
+  
+template <typename T>
+void forward_kernel(LayerNormMeta const *m,
+                               T const *in_ptr,
+                               T *out_ptr,
+                               T *gamma_ptr,
+                               T *beta_ptr,
+                               hipStream_t stream) {
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(RowwiseMomentsCUDAKernel<float>),
+                     m->effective_batch_size,
+                     kCUDABlockReduceNumThreads,
+                     0,
+                     stream,
+                     m->effective_num_elements,
+                     m->eps,
+                     in_ptr,
+                     m->mean_ptr,
+                     m->rstd_ptr);
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(LayerNormForwardCUDAKernel<float>),
+                     m->effective_batch_size,
+                     kCUDANumThreads,
+                     0,
+                     stream,
+                     m->effective_num_elements,
+                     in_ptr,
+                     m->mean_ptr,
+                     m->rstd_ptr,
+                     gamma_ptr,
+                     beta_ptr,
+                     out_ptr);
+}
+
+
+template <typename T>
+void backward_kernel(LayerNormMeta const *m,
+                                T const *output_grad_ptr,
+                                T const *input_ptr,
+                                T *input_grad_ptr,
+                                T const *gamma_ptr,
+                                T *gamma_grad_ptr,
+                                T *beta_grad_ptr,
+                                hipStream_t stream) {
+  const int64_t M = m->effective_batch_size;
+  const int64_t N = m->effective_num_elements;
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(ComputeInternalGradientsCUDAKernel<T>),
+                     M,
+                     kCUDABlockReduceNumThreads,
+                     0,
+                     stream,
+                     N,
+                     output_grad_ptr,
+                     input_ptr,
+                     gamma_ptr,
+                     m->ds_ptr,
+                     m->db_ptr);
+  const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
+  hipLaunchKernelGGL(HIP_KERNEL_NAME(ComputeGradientFusedParamsCUDAKernel<T>),
+                     B,
+                     kCUDANumThreads,
+                     0,
+                     stream,
+                     M,
+                     N,
+                     m->mean_ptr,
+                     m->rstd_ptr,
+                     m->ds_ptr,
+                     m->db_ptr,
+                     m->scale_ptr,
+                     m->bias_ptr);
+  if (gamma_grad_ptr != NULL || beta_grad_ptr != NULL) {
+    if (M < 512) {
+      // For small batch size, do colwise reduce directly
+      const int64_t B = (N + kCUDANumThreads - 1) / kCUDANumThreads;
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(GammaBetaBackwardSimpleCUDAKernel<T>),
+                         B,
+                         kCUDANumThreads,
+                         0,
+                         stream,
+                         M,
+                         N,
+                         output_grad_ptr,
+                         input_ptr,
+                         m->mean_ptr,
+                         m->rstd_ptr,
+                         gamma_grad_ptr,
+                         beta_grad_ptr);
+    } else {
+      const int64_t B =
+          (N + kColwiseReduceTileSize - 1) / kColwiseReduceTileSize;
+      constexpr int kThreadX = kColwiseReduceTileSize;
+      constexpr int kThreadY = kColwiseReduceTileSize / 2;
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(GammaBetaBackwardCUDAKernel<T>),
+                         B,
+                         dim3(kThreadX, kThreadY),
+                         0,
+                         stream,
+                         M,
+                         N,
+                         output_grad_ptr,
+                         input_ptr,
+                         m->mean_ptr,
+                         m->rstd_ptr,
+                         gamma_grad_ptr,
+                         beta_grad_ptr);
+    }
+  }
+}
+
 
 template <typename T>
 __device__ __forceinline__ T WARP_SHFL_DOWN(T value,
@@ -122,51 +281,6 @@ __global__ void LayerNormForwardCUDAKernel(int64_t N,
                    static_cast<T_ACC>(rstd[i]) * gamma_v +
                beta_v;
   }
-}
-
-/*static*/
-template <typename T>
-void LayerNorm::forward_kernel(LayerNormMeta const *m,
-                               T const *in_ptr,
-                               T *out_ptr,
-                               T *gamma_ptr,
-                               T *beta_ptr,
-                               hipStream_t stream) {
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(RowwiseMomentsCUDAKernel<float>),
-                     m->effective_batch_size,
-                     kCUDABlockReduceNumThreads,
-                     0,
-                     stream,
-                     m->effective_num_elements,
-                     m->eps,
-                     in_ptr,
-                     m->mean_ptr,
-                     m->rstd_ptr);
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(LayerNormForwardCUDAKernel<float>),
-                     m->effective_batch_size,
-                     kCUDANumThreads,
-                     0,
-                     stream,
-                     m->effective_num_elements,
-                     in_ptr,
-                     m->mean_ptr,
-                     m->rstd_ptr,
-                     gamma_ptr,
-                     beta_ptr,
-                     out_ptr);
-}
-
-/*static*/
-template <typename T>
-void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
-                                       T const *in_ptr,
-                                       T *out_ptr,
-                                       T *gamma_ptr,
-                                       T *beta_ptr) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  LayerNorm::forward_kernel<float>(
-      m, in_ptr, out_ptr, gamma_ptr, beta_ptr, stream);
 }
 
 template <typename T>
@@ -346,115 +460,7 @@ __global__ void GammaBetaBackwardCUDAKernel(int64_t M,
   }
 }
 
-/*static*/
-template <typename T>
-void LayerNorm::backward_kernel(LayerNormMeta const *m,
-                                T const *output_grad_ptr,
-                                T const *input_ptr,
-                                T *input_grad_ptr,
-                                T const *gamma_ptr,
-                                T *gamma_grad_ptr,
-                                T *beta_grad_ptr,
-                                hipStream_t stream) {
-  const int64_t M = m->effective_batch_size;
-  const int64_t N = m->effective_num_elements;
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(ComputeInternalGradientsCUDAKernel<T>),
-                     M,
-                     kCUDABlockReduceNumThreads,
-                     0,
-                     stream,
-                     N,
-                     output_grad_ptr,
-                     input_ptr,
-                     gamma_ptr,
-                     m->ds_ptr,
-                     m->db_ptr);
-  const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(ComputeGradientFusedParamsCUDAKernel<T>),
-                     B,
-                     kCUDANumThreads,
-                     0,
-                     stream,
-                     M,
-                     N,
-                     m->mean_ptr,
-                     m->rstd_ptr,
-                     m->ds_ptr,
-                     m->db_ptr,
-                     m->scale_ptr,
-                     m->bias_ptr);
-  if (gamma_grad_ptr != NULL || beta_grad_ptr != NULL) {
-    if (M < 512) {
-      // For small batch size, do colwise reduce directly
-      const int64_t B = (N + kCUDANumThreads - 1) / kCUDANumThreads;
-      hipLaunchKernelGGL(HIP_KERNEL_NAME(GammaBetaBackwardSimpleCUDAKernel<T>),
-                         B,
-                         kCUDANumThreads,
-                         0,
-                         stream,
-                         M,
-                         N,
-                         output_grad_ptr,
-                         input_ptr,
-                         m->mean_ptr,
-                         m->rstd_ptr,
-                         gamma_grad_ptr,
-                         beta_grad_ptr);
-    } else {
-      const int64_t B =
-          (N + kColwiseReduceTileSize - 1) / kColwiseReduceTileSize;
-      constexpr int kThreadX = kColwiseReduceTileSize;
-      constexpr int kThreadY = kColwiseReduceTileSize / 2;
-      hipLaunchKernelGGL(HIP_KERNEL_NAME(GammaBetaBackwardCUDAKernel<T>),
-                         B,
-                         dim3(kThreadX, kThreadY),
-                         0,
-                         stream,
-                         M,
-                         N,
-                         output_grad_ptr,
-                         input_ptr,
-                         m->mean_ptr,
-                         m->rstd_ptr,
-                         gamma_grad_ptr,
-                         beta_grad_ptr);
-    }
-  }
-}
-
-/*static*/
-template <typename T>
-void LayerNorm::backward_kernel_wrapper(LayerNormMeta const *m,
-                                        T const *output_grad_ptr,
-                                        T const *input_ptr,
-                                        T *input_grad_ptr,
-                                        T const *gamma_ptr,
-                                        T *gamma_grad_ptr,
-                                        T *beta_grad_ptr) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  LayerNorm::backward_kernel<float>(m,
-                                    output_grad_ptr,
-                                    input_ptr,
-                                    input_grad_ptr,
-                                    gamma_ptr,
-                                    gamma_grad_ptr,
-                                    beta_grad_ptr,
-                                    stream);
-}
-
-template void LayerNorm::forward_kernel_wrapper<float>(LayerNormMeta const *m,
-                                                       float const *in_ptr,
-                                                       float *out_ptr,
-                                                       float *gamma_ptr,
-                                                       float *beta_ptr);
-template void
-    LayerNorm::backward_kernel_wrapper<float>(LayerNormMeta const *m,
-                                              float const *output_grad_ptr,
-                                              float const *input_ptr,
-                                              float *input_grad_ptr,
-                                              float const *gamma_ptr,
-                                              float *gamma_grad_ptr,
-                                              float *beta_grad_ptr);
-
-}; // namespace FlexFlow
+} // namespace Internal
+} // namespace LayerNorm
+} // namespace Kernels
+} // namespace FlexFlow
