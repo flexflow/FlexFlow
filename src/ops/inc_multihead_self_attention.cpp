@@ -39,7 +39,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     hipEventCreate(&t_end);
     hipEventRecord(t_start, stream);
   }
-  
+
   handle_unimplemented_hip_kernel(OP_INC_MULTIHEAD_SELF_ATTENTION);
 
   if (m->profiling) {
