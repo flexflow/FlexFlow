@@ -143,7 +143,7 @@ void FlexFlow::top_level_task(Task const *task,
         size_t available_slots = im.max_num_requests_per_batch - bc->num_active_requests();
         new_prompts = data_generator.get_requests(im.max_num_requests_per_batch);
       }
-      for (size_t i=0; i<new_prompts.second; i++)
+      for (size_t i=0; i<new_prompts.second; i++) {
         size_t guid = new_prompts.first + i;
         assert(bc->register_new_request(guid, prompt.second.size()));
       }
