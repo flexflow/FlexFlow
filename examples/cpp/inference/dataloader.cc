@@ -14,7 +14,7 @@
  */
 
 #include "flexflow/inference.h"
-#include "moe.h"
+#include "transformers.h"
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -25,7 +25,7 @@
 using namespace Legion;
 
 DataLoader::DataLoader(FFModel &ff,
-                       MoeConfig const &moeConfig,
+                       InferenceConfig const &inferenceConfig,
                        DataGenerator &data_generator,
                        ParallelTensor input) {
   Context ctx = ff.config.lg_ctx;
@@ -34,7 +34,8 @@ DataLoader::DataLoader(FFModel &ff,
   int numdims = input->num_dims;
   int replica_idx = numdims - 1;
   int batch_idx = numdims - 2;
-  num_samples = moeConfig.total_requests;
+  num_samples = inferenceConfig.total_requests;
+  max_sequence_length = data_generator.max_sequence_length;
 
   // Create full input
   {
@@ -61,7 +62,7 @@ DataLoader::DataLoader(FFModel &ff,
   // TODO: Use index launcher instead of task launcher
   assert(full_input != nullptr && "full_input is nullptr");
 
-  DataLoaderInput dataloader_input = {moeConfig, data_generator};
+  DataLoaderInput dataloader_input = {inferenceConfig, data_generator};
   DataLoaderInput const *ptr = &dataloader_input;
 
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
@@ -82,7 +83,7 @@ void DataLoader::load_entire_dataset(Task const *task,
                                      Context ctx,
                                      Runtime *runtime) {
   DataLoaderInput const input_struct = *((DataLoaderInput *)task->args);
-  MoeConfig const &conf = input_struct._moeConfig;
+  InferenceConfig const &conf = input_struct._inferenceConfig;
   DataGenerator &datagen = input_struct._data_generator;
   assert(regions.size() == 1);
   assert(task->regions.size() == regions.size());

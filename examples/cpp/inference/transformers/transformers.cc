@@ -26,7 +26,7 @@ using namespace Legion;
 
 LegionRuntime::Logger::Category log_app("Transformers");
 
-void parse_input_args(char **argv, int argc, MoeConfig &config) {
+void parse_input_args(char **argv, int argc, TransformerConfig &config) {
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--dataset")) {
       config.dataset_path = std::string(argv[++i]);
@@ -36,19 +36,19 @@ void parse_input_args(char **argv, int argc, MoeConfig &config) {
 }
 
 Tensor create_inc_multihead_attention_decoder(FFModel *model,
-                                              MoeConfig const *moeConfig,
+                                              TransformerConfig const *transformerConfig,
                                               Tensor const &input) {
   std::vector<int> axes{1};
   Tensor t = model->inc_multihead_self_attention(input,
-                                                 moeConfig->hidden_size,
-                                                 moeConfig->num_attention_heads,
-                                                 moeConfig->attention_kdim,
-                                                 moeConfig->attention_vdim);
+                                                 transformerConfig->hidden_size,
+                                                 transformerConfig->num_attention_heads,
+                                                 transformerConfig->attention_kdim,
+                                                 transformerConfig->attention_vdim);
 
   t = model->layer_norm(model->add(t, input), axes, true, 1e-05);
   Tensor x = model->dense(
-      model->dense(t, moeConfig->hidden_size, AC_MODE_RELU, false /*bias*/),
-      moeConfig->hidden_size,
+      model->dense(t, transformerConfig->hidden_size, AC_MODE_RELU, false /*bias*/),
+      transformerConfig->hidden_size,
       AC_MODE_NONE,
       false /*bias*/);
   t = model->layer_norm(model->add(x, t), axes, true, 1e-05);
@@ -60,14 +60,14 @@ void FlexFlow::top_level_task(Task const *task,
                               Context ctx,
                               Runtime *runtime) {
   //----------------------- Initial configurations ------------------------
-  MoeConfig moeConfig;
+  TransformerConfig transformerConfig;
   FFConfig ffConfig;
-  ffConfig.batchSize = moeConfig.batch_size;
+  ffConfig.batchSize = transformerConfig.batch_size;
   {
     InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
     int argc = command_args.argc;
-    parse_input_args(argv, argc, moeConfig);
+    parse_input_args(argv, argc, transformerConfig);
     log_app.print("batchSize(%d) workersPerNodes(%d) numNodes(%d)",
                   ffConfig.batchSize,
                   ffConfig.workersPerNode,
@@ -78,33 +78,33 @@ void FlexFlow::top_level_task(Task const *task,
   //----------------------- Create inputs --------------------------------
   Tensor input;
   {
-    int const dims[] = {BatchConfig::MAX_NUM_TOKENS, moeConfig.token_dim};
+    int const dims[] = {BatchConfig::MAX_NUM_TOKENS, transformerConfig.token_dim};
     input = ff.create_tensor<2>(dims, DT_FLOAT);
   }
 
   //----------------------- Define the model ------------------------------
   Tensor t = input;
-  for (int i = 0; i < moeConfig.num_layers; i++) {
-    t = create_inc_multihead_attention_decoder(&ff, &moeConfig, input);
+  for (int i = 0; i < transformerConfig.num_layers; i++) {
+    t = create_inc_multihead_attention_decoder(&ff, &transformerConfig, input);
   }
-  t = ff.dense(t, moeConfig.out_dim, AC_MODE_RELU);
+  t = ff.dense(t, transformerConfig.out_dim, AC_MODE_RELU);
   t = ff.softmax(t);
 
   //------------------- Initialize the inference manager ------------------
   InferenceManager im(
-      &ff, moeConfig.batch_size, moeConfig.num_inflight_batches);
+      &ff, transformerConfig.batch_size, transformerConfig.num_inflight_batches);
   im.compile_model_and_allocate_buffer();
   im.init_operators_inference();
 
   //------------ Initialize the data loader and data generator ------------
-  DataGenerator data_generator(moeConfig.total_requests,
-                               moeConfig.token_dim,
-                               moeConfig.sequence_length,
-                               moeConfig.poisson_distribution,
-                               moeConfig.arrival_rate);
+  DataGenerator data_generator(transformerConfig.total_requests,
+                               transformerConfig.token_dim,
+                               transformerConfig.sequence_length,
+                               transformerConfig.poisson_distribution,
+                               transformerConfig.arrival_rate);
   ParallelTensor input_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
-  DataLoader data_loader(ff, moeConfig, data_generator, input_pt);
+  DataLoader data_loader(ff, transformerConfig, data_generator, input_pt);
 
   //----------------------- Start timer -----------------------------------
   {
@@ -122,15 +122,17 @@ void FlexFlow::top_level_task(Task const *task,
   data_generator.start_timer();
   std::map<int, Future> future_handlers;
   std::map<int, BatchConfig *> batch_configs;
-  assert(im.max_num_requests_per_batch <= BatchConfig::MAX_NUM_REQUESTS);
+  std::cout << im.max_tokens_per_batch << std::endl;
   std::pair<size_t, size_t> new_prompts;
   BatchConfig *bc = nullptr;
-  while (processed_requests < moeConfig.total_requests) {
-    for (int bid = 0; bid < im.max_num_inflight_batches; bid++) {
+  
+  // simulation loop. For deployment, we will use a while(true)
+  while (processed_requests < transformerConfig.total_requests) {
+    for (int bid = 0; bid < im.max_inflight_batches; bid++) {
       if (future_handlers.find(bid) == future_handlers.end()) {
         new_prompts =
-            data_generator.get_requests(im.max_num_requests_per_batch);
-        assert(new_prompts.second < im.max_num_requests_per_batch);
+            data_generator.get_requests(im.max_tokens_per_batch);
+        assert(new_prompts.second < BatchConfig::MAX_NUM_REQUESTS);
         bc = new BatchConfig();
       } else {
         Future future = future_handlers[bid];
@@ -140,10 +142,8 @@ void FlexFlow::top_level_task(Task const *task,
         InferenceResult ir = future.get_result<InferenceResult>();
         bc = batch_configs[bid];
         processed_requests += bc->update_results(ir);
-        size_t available_slots =
-            im.max_num_requests_per_batch - bc->num_active_requests();
-        new_prompts =
-            data_generator.get_requests(im.max_num_requests_per_batch);
+        size_t available_slots = im.max_tokens_per_batch - bc->num_active_tokens();
+        new_prompts = data_generator.get_requests(available_slots);
       }
       for (size_t i = 0; i < new_prompts.second; i++) {
         size_t guid = new_prompts.first + i;
@@ -176,5 +176,5 @@ void FlexFlow::top_level_task(Task const *task,
   double run_time = 1e-6 * (ts_end - ts_start);
   printf("ELAPSED TIME = %.4fs, THROUGHPUT = %.2f requests/s\n",
          run_time,
-         moeConfig.total_requests / run_time);
+         transformerConfig.total_requests / run_time);
 }

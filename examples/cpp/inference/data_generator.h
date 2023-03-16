@@ -29,6 +29,7 @@ public:
   // was called
   std::pair<size_t, size_t> get_requests(size_t max_num_requests);
   ssize_t get_request_length(size_t guid);
+  size_t max_sequence_length; // dimension of one request tensor
 
 private:
   // Compute the arrival times of each request and save them in the arrivals
@@ -38,7 +39,6 @@ private:
 
   size_t num_requests;        // total number of requests
   size_t token_dim;           // embedding dim of each token
-  size_t max_sequence_length; // dimension of one request tensor
   bool poisson_distr;         // false implies uniform distribution
   double lambda;              // mean #num of arrivals per sec
   bool timer_started;         // whether timer was initiated

@@ -21,10 +21,10 @@ namespace FlexFlow {
 using namespace Legion;
 
 InferenceManager::InferenceManager(FFModel *_model,
-                                   int _max_num_requests_per_batch,
-                                   int _max_num_inflight_batches)
-    : model(_model), max_num_requests_per_batch(_max_num_requests_per_batch),
-      max_num_inflight_batches(_max_num_inflight_batches) {
+                                   int _max_tokens_per_batch,
+                                   int _max_inflight_batches)
+    : model(_model), max_tokens_per_batch(_max_tokens_per_batch),
+      max_inflight_batches(_max_inflight_batches) {
   // populate array of valid single-device machine views
   num_devices = model->config.workersPerNode * model->config.numNodes;
   for (int i = 0; i < num_devices; i++) {
@@ -36,11 +36,13 @@ InferenceManager::InferenceManager(FFModel *_model,
     view.start_device_id = i;
     machine_views.push_back(view);
   }
+  assert(max_tokens_per_batch <= BatchConfig::MAX_NUM_TOKENS && max_tokens_per_batch <= BatchConfig::MAX_SEQUENCE_LENGTH);
+  std::cout << "Initialized the InferenceManager." << max_tokens_per_batch << " " << max_inflight_batches << std::endl;
 }
 
 void InferenceManager::compile_model_and_allocate_buffer(void) {
   std::vector<MetricsType> metrics;
-  model->config.batchSize = max_num_requests_per_batch;
+  model->config.batchSize = max_tokens_per_batch;
   model->compile(
       LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics, COMP_MODE_INFERENCE);
   Context ctx = model->config.lg_ctx;
@@ -54,7 +56,7 @@ void InferenceManager::compile_model_and_allocate_buffer(void) {
       ParallelTensor pt_base = op->outputs[i];
       assert(tensor_buffer.find(pt_base) == tensor_buffer.end());
       std::vector<ParallelTensor> list;
-      for (int j = 0; j < max_num_inflight_batches; j++) {
+      for (int j = 0; j < max_inflight_batches; j++) {
         // Copy the metadata from pt_base to pt
         ParallelTensor pt = new ParallelTensorBase(*pt_base);
         pt->region =
@@ -71,7 +73,7 @@ void InferenceManager::compile_model_and_allocate_buffer(void) {
 }
 
 void InferenceManager::init_operators_inference() {
-  for (int batch_index = 0; batch_index < max_num_inflight_batches;
+  for (int batch_index = 0; batch_index < max_inflight_batches;
        batch_index++) {
     for (int device_index = 0; device_index < num_devices; device_index++) {
       // int fused_experts_index = 0;
@@ -119,7 +121,7 @@ void InferenceManager::init_operators_inference() {
 }
 
 FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
-  int batch_index = index % max_num_inflight_batches;
+  int batch_index = index % max_inflight_batches;
   int device_index = index % num_devices;
   int expert_device_index = 0;
   FutureMap fm;

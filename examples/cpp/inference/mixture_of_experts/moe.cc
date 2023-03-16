@@ -125,6 +125,10 @@ void FlexFlow::top_level_task(Task const *task,
   t = ff.dense(t, moeConfig.out_dim, AC_MODE_RELU);
 
   //------------------- Initialize the inference manager ------------------
+  std::cout << "Initializing the InferenceManager with "
+            << "moeConfig.batch_size="<< moeConfig.batch_size 
+            << " moeConfig.num_inflight_batches=" << moeConfig.num_inflight_batches
+            << std::endl;
   InferenceManager im(
       &ff, moeConfig.batch_size, moeConfig.num_inflight_batches);
   im.compile_model_and_allocate_buffer();
@@ -156,15 +160,17 @@ void FlexFlow::top_level_task(Task const *task,
   data_generator.start_timer();
   std::map<int, Future> future_handlers;
   std::map<int, BatchConfig *> batch_configs;
-  assert(im.max_num_requests_per_batch <= BatchConfig::MAX_NUM_REQUESTS);
+  std::cout << im.max_tokens_per_batch << std::endl;
   std::pair<size_t, size_t> new_prompts;
   BatchConfig *bc = nullptr;
+  
+  // simulation loop. For deployment, we will use a while(true)
   while (processed_requests < moeConfig.total_requests) {
-    for (int bid = 0; bid < im.max_num_inflight_batches; bid++) {
+    for (int bid = 0; bid < im.max_inflight_batches; bid++) {
       if (future_handlers.find(bid) == future_handlers.end()) {
         new_prompts =
-            data_generator.get_requests(im.max_num_requests_per_batch);
-        assert(new_prompts.second < im.max_num_requests_per_batch);
+            data_generator.get_requests(im.max_tokens_per_batch);
+        assert(new_prompts.second < BatchConfig::MAX_NUM_REQUESTS);
         bc = new BatchConfig();
       } else {
         Future future = future_handlers[bid];
@@ -174,10 +180,8 @@ void FlexFlow::top_level_task(Task const *task,
         InferenceResult ir = future.get_result<InferenceResult>();
         bc = batch_configs[bid];
         processed_requests += bc->update_results(ir);
-        size_t available_slots =
-            im.max_num_requests_per_batch - bc->num_active_requests();
-        new_prompts =
-            data_generator.get_requests(im.max_num_requests_per_batch);
+        size_t available_slots = im.max_tokens_per_batch - bc->num_active_tokens();
+        new_prompts = data_generator.get_requests(available_slots);
       }
       for (size_t i = 0; i < new_prompts.second; i++) {
         size_t guid = new_prompts.first + i;

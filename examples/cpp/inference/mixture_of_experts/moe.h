@@ -13,31 +13,11 @@
  * limitations under the License.
  */
 
-#include "data_generator.h"
-#include "flexflow/model.h"
-#define MAX_NUM_SAMPLES 1000
-#define MNIST_DIMS 28 * 28
-#define DATA_DIM MNIST_DIMS
+#include "inference_config.h"
+#include "dataloader.h"
 
-using namespace Legion;
-using namespace std;
-using namespace FlexFlow;
-
-struct MoeConfig {
-  MoeConfig(void) {
-    //----------------------- Input/output data ------------------------
-    token_dim = DATA_DIM;
-    sequence_length = 10;
-    batch_size = 32;
-    out_dim = 15;
-    num_labels = out_dim;
-    //----------------------- Inference parameters ---------------------
-    // total number of requests processed as part of the simulation
-    total_requests = 2560;
-    poisson_distribution = true;
-    // average number of request arrivals per second
-    arrival_rate = 250;
-    num_inflight_batches = 5;
+struct MoeConfig : InferenceConfig {
+  MoeConfig(void): InferenceConfig() {
     //----------------------- MoE layer --------------------------------
     // total number of experts
     num_exp = 128;
@@ -50,25 +30,8 @@ struct MoeConfig {
     lambda = 0.04f; // multiplier for load balance term
     // expert hidden size
     hidden_size = DATA_DIM;
-    //----------------------- Rest of model parameters ------------------
-    // Encoder layer
-    num_attention_heads = 16;
-    attention_kdim = attention_vdim = hidden_size / num_attention_heads;
-    num_encoder_layers = 1;
   }
 
-  // Input/output data
-  int token_dim;
-  int sequence_length;
-  int batch_size;
-  int out_dim;
-  int num_labels;
-  std::string dataset_path;
-  // Inference parameters
-  int total_requests;
-  bool poisson_distribution;
-  double arrival_rate;
-  int num_inflight_batches;
   // MoE layer
   int num_exp;
   int experts_per_block;
@@ -76,41 +39,4 @@ struct MoeConfig {
   float alpha;
   float lambda;
   int hidden_size;
-  // Model parameters
-  int num_attention_heads;
-  int attention_kdim;
-  int attention_vdim;
-  int num_encoder_layers;
-};
-
-class DataLoader {
-public:
-  DataLoader(FFModel &ff,
-             MoeConfig const &moeConfig,
-             DataGenerator &data_generator,
-             ParallelTensor input);
-  static void load_input(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime);
-  static void load_entire_dataset(Task const *task,
-                                  std::vector<PhysicalRegion> const &regions,
-                                  Context ctx,
-                                  Runtime *runtime);
-  void next_batch(FFModel &, BatchConfig *);
-
-public:
-  int num_samples;
-  FlexFlow::ParallelTensor full_input, batch_input;
-  struct DataLoaderInput {
-    MoeConfig const &_moeConfig;
-    DataGenerator &_data_generator;
-  };
-};
-
-struct SampleIdxs {
-  int num_samples;
-  size_t idxs[MAX_NUM_SAMPLES]; // the id of each token within its request
-  size_t
-      guids[MAX_NUM_SAMPLES]; // the guid of the request each token belongs to
 };
