@@ -33,11 +33,11 @@ struct MoeConfig {
     num_labels = out_dim;
     //----------------------- Inference parameters ---------------------
     // total number of requests processed as part of the simulation
-    total_requests = 256;
+    total_requests = 2560;
     poisson_distribution = true;
     // average number of request arrivals per second
-    arrival_rate = 25;
-    num_inflight_batches = 10;
+    arrival_rate = 250;
+    num_inflight_batches = 5;
     //----------------------- MoE layer --------------------------------
     // total number of experts
     num_exp = 128;
@@ -88,13 +88,8 @@ public:
   DataLoader(FFModel &ff,
              MoeConfig const &moeConfig,
              DataGenerator &data_generator,
-             ParallelTensor input,
-             ParallelTensor label);
+             ParallelTensor input);
   static void load_input(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime);
-  static void load_label(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime);
@@ -102,13 +97,11 @@ public:
                                   std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime);
-  void next_batch(FFModel &, size_t);
-  void reset(void);
+  void next_batch(FFModel &, BatchConfig *);
 
 public:
-  int num_samples, next_index;
+  int num_samples;
   FlexFlow::ParallelTensor full_input, batch_input;
-  FlexFlow::ParallelTensor full_label, batch_label;
   struct DataLoaderInput {
     MoeConfig const &_moeConfig;
     DataGenerator &_data_generator;
@@ -117,5 +110,7 @@ public:
 
 struct SampleIdxs {
   int num_samples;
-  int idxs[MAX_NUM_SAMPLES];
+  size_t idxs[MAX_NUM_SAMPLES]; // the id of each token within its request
+  size_t
+      guids[MAX_NUM_SAMPLES]; // the guid of the request each token belongs to
 };

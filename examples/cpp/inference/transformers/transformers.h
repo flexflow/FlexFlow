@@ -90,13 +90,8 @@ public:
   DataLoader(FFModel &ff,
              MoeConfig const &moeConfig,
              DataGenerator &data_generator,
-             ParallelTensor input,
-             ParallelTensor label);
+             ParallelTensor input);
   static void load_input(Task const *task,
-                         std::vector<PhysicalRegion> const &regions,
-                         Context ctx,
-                         Runtime *runtime);
-  static void load_label(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime);
@@ -104,13 +99,11 @@ public:
                                   std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime);
-  void next_batch(FFModel &, size_t);
-  void reset(void);
+  void next_batch(FFModel &, BatchConfig *);
 
 public:
-  int num_samples, next_index;
+  int num_samples;
   FlexFlow::ParallelTensor full_input, batch_input;
-  FlexFlow::ParallelTensor full_label, batch_label;
   struct DataLoaderInput {
     MoeConfig const &_moeConfig;
     DataGenerator &_data_generator;

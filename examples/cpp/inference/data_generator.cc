@@ -6,7 +6,7 @@ using namespace std;
 
 DataGenerator::DataGenerator(size_t _num_requests,
                              size_t _token_dim,
-                             size_t _sequence_length,
+                             size_t _max_sequence_length,
                              bool _poisson_distr,
                              double _lambda)
     : num_requests(_num_requests), token_dim(_token_dim),
@@ -18,13 +18,12 @@ DataGenerator::DataGenerator(size_t _num_requests,
 // generate each request's arrival time and sequence length
 void DataGenerator::generate_requests_meta() {
   // set up a uniform number generator with range [0,1) for the arrival times
-  random_device rnd1;
-  mt19937 gen1(rnd1());
+  random_device rnd1, rnd2;
+  mt19937 gen1(rnd1()), gen2(rnd2());
   uniform_real_distribution<double> dist1{0, 1.0};
   double cur_arrival = 0; // assume first request comes in at time 0
   // set up a uniform number generator for the sequence length
-  mt19937 gen2(rnd2());
-  uniform_int_distribution<unsigned long> dist2{1, _max_sequence_length};
+  uniform_int_distribution<unsigned long> dist2{1, max_sequence_length};
   size_t cur_seq_len = dist2(gen2);
 
   for (size_t i = 0; i < num_requests; i++) {
@@ -37,7 +36,7 @@ void DataGenerator::generate_requests_meta() {
       cur_arrival += (1000 / lambda);
     }
     seq_lengths.push_back(cur_seq_len);
-    cur_seq_len = dist2(gen2)
+    cur_seq_len = dist2(gen2);
   }
   // cout << "Arrivals : [";
   // copy(arrivals.begin(), arrivals.end(), ostream_iterator<int>(cout, " "));
@@ -75,7 +74,7 @@ std::pair<size_t, size_t> DataGenerator::get_requests(size_t max_num_requests) {
     std::cout << "Warning: tried to get number of requests before the timer "
                  "was started."
               << std::endl;
-    return 0;
+    return std::make_pair(0, 0);
   }
   Clock::time_point cur_time = Clock::now();
   size_t ms_from_start =
@@ -84,16 +83,23 @@ std::pair<size_t, size_t> DataGenerator::get_requests(size_t max_num_requests) {
       upper_bound(arrivals_ptr, arrivals.end(), ms_from_start);
   // number of new requests received
   size_t received_requests =
-      std::min(new_arrivals_ptr - arrivals_ptr, max_num_requests);
+      std::min((size_t)(new_arrivals_ptr - arrivals_ptr), max_num_requests);
   // id of first received request
   size_t first_request_guid = arrivals_ptr - arrivals.begin();
   std::advance(arrivals_ptr, received_requests);
 
-  if (received_requests > 0) {
+  /* if (received_requests > 0) {
     std::cout << "received " << received_requests
               << " request(s) by arrival time +" << ms_from_start << "ms"
               << "\n";
-  }
+  } */
 
   return std::make_pair(first_request_guid, received_requests);
+}
+
+ssize_t DataGenerator::get_request_length(size_t guid) {
+  if (seq_lengths.size() <= guid) {
+    return -1;
+  }
+  return seq_lengths[guid];
 }

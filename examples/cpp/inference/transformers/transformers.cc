@@ -119,7 +119,6 @@ void FlexFlow::top_level_task(Task const *task,
   int index = 0;
   int processed_requests = 0;
   int num_devices = ffConfig.workersPerNode * ffConfig.numNodes;
-  data_loader.reset();
   data_generator.start_timer();
   std::map<int, Future> future_handlers;
   std::map<int, BatchConfig *> batch_configs;
@@ -148,11 +147,13 @@ void FlexFlow::top_level_task(Task const *task,
       }
       for (size_t i = 0; i < new_prompts.second; i++) {
         size_t guid = new_prompts.first + i;
-        assert(bc->register_new_request(guid, prompt.second.size()));
+        ssize_t seq_len = data_generator.get_request_length(guid);
+        assert(seq_len >= 0);
+        assert(bc->register_new_request(guid, (size_t)seq_len));
       }
       bc->prepare_next_batch();
       // TODO: loading data
-      dataloader.next_batch(ff, bc);
+      data_loader.next_batch(ff, bc);
 
       runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
       FutureMap fm = im.inference(bid, *bc);

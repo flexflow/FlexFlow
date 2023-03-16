@@ -75,7 +75,6 @@ DataLoader::DataLoader(FFModel &ff,
   launcher.add_field(0, FID_DATA);
 
   runtime->execute_task(ctx, launcher);
-  reset();
 }
 
 void DataLoader::load_entire_dataset(Task const *task,
@@ -118,7 +117,6 @@ void DataLoader::next_batch(FFModel &ff, BatchConfig *bc) {
     Domain domain =
         runtime->get_index_space_domain(ctx, batch_input->parallel_is);
     ArgumentMap argmap;
-    int counter = 0;
     // No partitioning of the batch input token in inference mode
     int input_dims = batch_input->num_dims;
     for (int i = 0; i < input_dims; i++) {
@@ -140,14 +138,13 @@ void DataLoader::next_batch(FFModel &ff, BatchConfig *bc) {
           for (int j = 0; j < bc->num_processing_tokens[i]; j++) {
             meta.guids[token_index] = bc->request_guid[i];
             meta.idxs[token_index] = bc->token_start_idx[i] + j;
-            token_index++
+            token_index++;
           }
         }
       }
       assert(token_index == num_active_tokens);
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
-    assert(counter == received_requests);
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1,
                            batch_input->parallel_is,
                            TaskArgument(NULL, 0),
@@ -171,11 +168,6 @@ void DataLoader::next_batch(FFModel &ff, BatchConfig *bc) {
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
-  next_index += received_requests;
-}
-
-void DataLoader::reset() {
-  next_index = 0;
 }
 
 void FlexFlow::register_custom_tasks() {
