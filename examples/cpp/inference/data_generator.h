@@ -29,15 +29,13 @@ public:
   void start_timer(void);
   // Get number of requests that have arrived since the last time this function
   // was called
-  size_t
-      get_requests(size_t max_num_requests,
-                   std::vector<std::pair<size_t, std::vector<int>>> &prompts);
-  size_t get_requests();
+  std::pair<size_t, size_t> DataGenerator::get_requests(size_t max_num_requests)
 
 private:
   // Compute the arrival times of each request and save them in the arrivals
   // vector.
-  void generate_arrival_times(void);
+  //void generate_arrival_times(void);
+  void generate_requests_meta();
 
   size_t num_requests;     // total number of requests
   size_t token_dim;        // embedding dim of each token
@@ -51,4 +49,6 @@ private:
   // arrival times (ms) generated based on distribution
   vector<double> arrivals;
   vector<double>::iterator arrivals_ptr;
+  // sequence lengths generated based on uniform distribution
+  vector<size_t> cur_seq_len;
 };

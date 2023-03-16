@@ -102,10 +102,9 @@ void FlexFlow::top_level_task(Task const *task,
                                moeConfig.sequence_length,
                                moeConfig.poisson_distribution,
                                moeConfig.arrival_rate);
-  ParallelTensor input_pt, label_pt;
+  ParallelTensor input_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
-  ff.get_parallel_tensor_from_tensor(ff.label_tensor, label_pt);
-  DataLoader data_loader(ff, moeConfig, data_generator, input_pt, label_pt);
+  DataLoader data_loader(ff, moeConfig, data_generator, input_pt);
 
   //----------------------- Start timer -----------------------------------
   {
@@ -124,50 +123,40 @@ void FlexFlow::top_level_task(Task const *task,
   data_generator.start_timer();
   std::map<int, Future> future_handlers;
   std::map<int, BatchConfig *> batch_configs;
+  assert(im.max_num_requests_per_batch <= BatchConfig::MAX_NUM_REQUESTS);
+  std::pair<size_t, size_t> new_prompts;
+  BatchConfig *bc = nullptr;
   while (processed_requests < moeConfig.total_requests) {
     for (int bid = 0; bid < im.max_num_inflight_batches; bid++) {
       if (future_handlers.find(bid) == future_handlers.end()) {
-        std::vector<std::pair<size_t, std::vector<int>>> prompts;
-        assert(im.max_num_requests_per_batch <= BatchConfig::MAX_NUM_REQUESTS);
-        data_generator.get_requests(im.max_num_requests_per_batch, prompts);
-        assert((int)prompts.size() < im.max_num_requests_per_batch);
-        // TODO: loading data
-        BatchConfig *bc = new BatchConfig();
-        for (auto const &prompt : prompts) {
-          assert(bc->register_new_request(prompt.first, prompt.second.size()));
-        }
-        bc->prepare_next_batch();
-        runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
-        FutureMap fm = im.inference(bid, *bc);
-        runtime->end_trace(ctx, 111 + bid % num_devices /*trace_id*/);
-        assert(fm.get_future_map_domain().get_volume() == 1);
-        Future future = fm.get_future(0);
-        future_handlers[bid] = future;
-        batch_configs[bid] = bc;
+        new_prompts = data_generator.get_requests(im.max_num_requests_per_batch);
+        assert(new_prompts.second < im.max_num_requests_per_batch);
+        bc = new BatchConfig();
       } else {
         Future future = future_handlers[bid];
         if (!future.is_ready(true /*subscribe*/)) {
           continue;
         }
         InferenceResult ir = future.get_result<InferenceResult>();
-        BatchConfig *bc = batch_configs[bid];
+        bc = batch_configs[bid];
         processed_requests += bc->update_results(ir);
-        int available_slots =
-            BatchConfig::MAX_NUM_REQUESTS - bc->num_active_requests();
-        std::vector<std::pair<size_t, std::vector<int>>> prompts;
-        data_generator.get_requests(available_slots, prompts);
-        processed_requests += prompts.size();
-        for (auto const &prompt : prompts) {
-          assert(bc->register_new_request(prompt.first, prompt.second.size()));
-        }
-        bc->prepare_next_batch();
-        runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
-        FutureMap fm = im.inference(bid, *bc);
-        runtime->end_trace(ctx, 111 + bid % num_devices /*trace_id*/);
-        assert(fm.get_future_map_domain().get_volume() == 1);
-        future_handlers[bid] = fm.get_future(0);
-        batch_configs[bid] = bc;
+        size_t available_slots = im.max_num_requests_per_batch - bc->num_active_requests();
+        new_prompts = data_generator.get_requests(im.max_num_requests_per_batch);
       }
+      for (size_t i=0; i<new_prompts.second; i++)
+        size_t guid = new_prompts.first + i;
+        assert(bc->register_new_request(guid, prompt.second.size()));
+      }
+      bc->prepare_next_batch();
+      // TODO: loading data
+      dataloader.next_batch(ff, bc);
+
+      runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
+      FutureMap fm = im.inference(bid, *bc);
+      runtime->end_trace(ctx, 111 + bid % num_devices /*trace_id*/);
+      assert(fm.get_future_map_domain().get_volume() == 1);
+      future_handlers[bid] = fm.get_future(0);
+      batch_configs[bid] = bc;
     }
   }
   //----------------------- End of inference! ------------------------------
