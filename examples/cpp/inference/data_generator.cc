@@ -44,7 +44,6 @@ void DataGenerator::generate_requests_meta() {
   // cout << "]" << endl;
 };
 
-
 void DataGenerator::generate_requests(float *req_ptr) {
   assert(req_ptr != nullptr);
   /* for (size_t i=0; i<num_requests; i++) {
@@ -84,11 +83,12 @@ std::pair<size_t, size_t> DataGenerator::get_requests(size_t max_num_requests) {
   std::vector<double>::iterator new_arrivals_ptr =
       upper_bound(arrivals_ptr, arrivals.end(), ms_from_start);
   // number of new requests received
-  size_t received_requests = std::min(new_arrivals_ptr - arrivals_ptr, max_num_requests);
+  size_t received_requests =
+      std::min(new_arrivals_ptr - arrivals_ptr, max_num_requests);
   // id of first received request
   size_t first_request_guid = arrivals_ptr - arrivals.begin();
   std::advance(arrivals_ptr, received_requests);
-  
+
   if (received_requests > 0) {
     std::cout << "received " << received_requests
               << " request(s) by arrival time +" << ms_from_start << "ms"

@@ -119,6 +119,7 @@ public:
 
 struct SampleIdxs {
   int num_samples;
-  size_t idxs[MAX_NUM_SAMPLES];  // the id of each token within its request
-  size_t guids[MAX_NUM_SAMPLES]; // the guid of the request each token belongs to
+  size_t idxs[MAX_NUM_SAMPLES]; // the id of each token within its request
+  size_t
+      guids[MAX_NUM_SAMPLES]; // the guid of the request each token belongs to
 };

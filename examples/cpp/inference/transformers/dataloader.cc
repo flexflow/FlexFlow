@@ -122,19 +122,22 @@ void DataLoader::next_batch(FFModel &ff, BatchConfig *bc) {
     // No partitioning of the batch input token in inference mode
     int input_dims = batch_input->num_dims;
     for (int i = 0; i < input_dims; i++) {
-        assert(batch_input->dims[i].degree == 1 && "Dataloader does not support input token partitioning in inference mode");
+      assert(batch_input->dims[i].degree == 1 &&
+             "Dataloader does not support input token partitioning in "
+             "inference mode");
     }
     int batch_size = batch_input->dims[input_dims - 2].size;
-    assert(ff.config.batchSize == batch_size && batch_size >= num_active_tokens);
+    assert(ff.config.batchSize == batch_size &&
+           batch_size >= num_active_tokens);
     for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
       meta.num_samples = num_active_tokens;
-      int token_index=0;
+      int token_index = 0;
       for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
         if (bc->request_completed[i]) {
           continue;
         } else {
-          for (int j=0; j < bc->num_processing_tokens[i]; j++) {
+          for (int j = 0; j < bc->num_processing_tokens[i]; j++) {
             meta.guids[token_index] = bc->request_guid[i];
             meta.idxs[token_index] = bc->token_start_idx[i] + j;
             token_index++

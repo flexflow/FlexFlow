@@ -31,11 +31,11 @@ public:
   // was called
   std::pair<size_t, size_t> DataGenerator::get_requests(size_t max_num_requests)
 
-private:
-  // Compute the arrival times of each request and save them in the arrivals
-  // vector.
-  //void generate_arrival_times(void);
-  void generate_requests_meta();
+      private :
+      // Compute the arrival times of each request and save them in the arrivals
+      // vector.
+      // void generate_arrival_times(void);
+      void generate_requests_meta();
 
   size_t num_requests;     // total number of requests
   size_t token_dim;        // embedding dim of each token

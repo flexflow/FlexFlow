@@ -129,7 +129,8 @@ void FlexFlow::top_level_task(Task const *task,
   while (processed_requests < moeConfig.total_requests) {
     for (int bid = 0; bid < im.max_num_inflight_batches; bid++) {
       if (future_handlers.find(bid) == future_handlers.end()) {
-        new_prompts = data_generator.get_requests(im.max_num_requests_per_batch);
+        new_prompts =
+            data_generator.get_requests(im.max_num_requests_per_batch);
         assert(new_prompts.second < im.max_num_requests_per_batch);
         bc = new BatchConfig();
       } else {
@@ -140,10 +141,12 @@ void FlexFlow::top_level_task(Task const *task,
         InferenceResult ir = future.get_result<InferenceResult>();
         bc = batch_configs[bid];
         processed_requests += bc->update_results(ir);
-        size_t available_slots = im.max_num_requests_per_batch - bc->num_active_requests();
-        new_prompts = data_generator.get_requests(im.max_num_requests_per_batch);
+        size_t available_slots =
+            im.max_num_requests_per_batch - bc->num_active_requests();
+        new_prompts =
+            data_generator.get_requests(im.max_num_requests_per_batch);
       }
-      for (size_t i=0; i<new_prompts.second; i++) {
+      for (size_t i = 0; i < new_prompts.second; i++) {
         size_t guid = new_prompts.first + i;
         assert(bc->register_new_request(guid, prompt.second.size()));
       }

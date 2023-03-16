@@ -101,8 +101,10 @@ void BatchConfig::prepare_next_batch() {
     if (request_completed[i]) {
       continue;
     }
-    if (num_tokens + token_last_available_idx[i] - token_start_idx[i] + 1 <= MAX_NUM_TOKENS) {
-      num_processing_tokens[i] = token_last_available_idx[i] - token_start_idx[i] + 1;
+    if (num_tokens + token_last_available_idx[i] - token_start_idx[i] + 1 <=
+        MAX_NUM_TOKENS) {
+      num_processing_tokens[i] =
+          token_last_available_idx[i] - token_start_idx[i] + 1;
     } else {
       num_processing_tokens[i] = MAX_NUM_TOKENS - num_tokens;
     }
