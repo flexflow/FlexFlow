@@ -43,32 +43,10 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  static void forward_kernel_wrapper(AggregateSpecMeta const *m,
-                                     float **exp_preds,
-                                     int const *acc_gate_assign_ptr,
-                                     float *acc_output_ptr,
-                                     int n,
-                                     int const k,
-                                     int rows,
-                                     int const batch_size,
-                                     int out_dim);
   static void backward_task(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
-  static void backward_kernel_wrapper(AggregateSpecMeta const *m,
-                                      float **exp_grads,
-                                      int const *acc_gate_assign_ptr,
-                                      int const *acc_true_gate_assign_ptr,
-                                      float const *acc_gate_pred_ptr,
-                                      float *acc_full_gate_grad_ptr,
-                                      float const *acc_output_grad_ptr,
-                                      int n,
-                                      int const k,
-                                      int rows,
-                                      float lambda_bal,
-                                      int const batch_size,
-                                      int out_dim);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;

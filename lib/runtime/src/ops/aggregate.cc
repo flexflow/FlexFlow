@@ -14,6 +14,7 @@
  */
 
 #include "aggregate.h"
+#include "op-impl/aggregate_kernels.h"
 #include "model.h"
 #include "runtime/tasks.h"
 
@@ -34,6 +35,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::Aggregate;
 
 Tensor FFModel::aggregate(
     Tensor const *inputs, /* gate_preds, gate_assign, gate assign TopK,
@@ -280,7 +283,7 @@ void Aggregate::forward_task(Task const *task,
 
   int k = (int)(rect_gate_assign.hi[0] - rect_gate_assign.lo[0] + 1);
 
-  Aggregate::forward_kernel_wrapper(m,
+  forward_kernel_wrapper(m,
                                     exp_preds,
                                     acc_gate_assign.ptr(rect_gate_assign),
                                     acc_gate_pred.ptr(rect_gate_pred),
@@ -434,7 +437,7 @@ void Aggregate::backward_task(Task const *task,
     assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
   }
 
-  Aggregate::backward_kernel_wrapper(
+  backward_kernel_wrapper(
       m,
       exp_preds,
       exp_grads,
