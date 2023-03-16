@@ -13,11 +13,102 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/aggregate_spec.h"
-#include "flexflow/utils/hip_helper.h"
+#include "aggregate_spec_kernels.h"
+#include "utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
+
+AggregateSpecMeta::AggregateSpecMeta(FFHandler handler, int n)
+    : OpMeta(handler) {
+  checkCUDA(hipMalloc(&dev_region_ptrs, n * sizeof(float *)));
+}
+AggregateSpecMeta::~AggregateSpecMeta(void) {
+  checkCUDA(hipFree(&dev_region_ptrs));
+}
+
+namespace Kernels {
+namespace AggregateSpec {
+
+void forward_kernel_wrapper(AggregateSpecMeta const *m,
+                                           float **exp_preds,
+                                           int const *acc_gate_assign_ptr,
+                                           float *acc_output_ptr,
+                                           int n,
+                                           int const k,
+                                           int rows,
+                                           int const batch_size,
+                                           int out_dim) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  checkCUDA(hipblasSetStream(m->handle.blas, stream));
+  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+
+  // call forward kernel
+  hipMemcpy(m->dev_region_ptrs,
+            exp_preds,
+            n * sizeof(float *),
+            hipMemcpyHostToDevice);
+
+  hipLaunchKernelGGL(aggspec_forward_kernel,
+                     GET_BLOCKS(batch_size * k * out_dim),
+                     min(CUDA_NUM_THREADS, (int)(batch_size * k * out_dim)),
+                     0,
+                     stream,
+                     m->dev_region_ptrs,
+                     acc_gate_assign_ptr,
+                     acc_output_ptr,
+                     n,
+                     k,
+                     rows,
+                     batch_size,
+                     out_dim);
+}
+
+void backward_kernel_wrapper(AggregateSpecMeta const *m,
+                                            float **exp_grads,
+                                            int const *acc_gate_assign_ptr,
+                                            int const *acc_true_gate_assign_ptr,
+                                            float const *acc_gate_pred_ptr,
+                                            float *acc_full_gate_grad_ptr,
+                                            float const *acc_output_grad_ptr,
+                                            int n,
+                                            int const k,
+                                            int rows,
+                                            float lambda_bal,
+                                            int const batch_size,
+                                            int out_dim) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  checkCUDA(hipblasSetStream(m->handle.blas, stream));
+  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
+
+  // call backward kernel
+  hipMemcpy(m->dev_region_ptrs,
+            exp_grads,
+            n * sizeof(float *),
+            hipMemcpyHostToDevice);
+
+  hipLaunchKernelGGL(aggspec_backward_kernel,
+                     GET_BLOCKS(batch_size * k * out_dim),
+                     min(CUDA_NUM_THREADS, (int)(batch_size * k * out_dim)),
+                     0,
+                     stream,
+                     m->dev_region_ptrs,
+                     acc_gate_assign_ptr,
+                     acc_true_gate_assign_ptr,
+                     acc_gate_pred_ptr,
+                     acc_full_gate_grad_ptr,
+                     acc_output_grad_ptr,
+                     n,
+                     k,
+                     rows,
+                     lambda_bal,
+                     batch_size,
+                     out_dim);
+}
+ 
+namespace Internal {
 
 __global__ void
     aggspec_forward_kernel(float **exp_preds,
@@ -210,92 +301,8 @@ __global__ void
                                out_dim);
 }
 
-/*static*/
-void AggregateSpec::forward_kernel_wrapper(AggregateSpecMeta const *m,
-                                           float **exp_preds,
-                                           int const *acc_gate_assign_ptr,
-                                           float *acc_output_ptr,
-                                           int n,
-                                           int const k,
-                                           int rows,
-                                           int const batch_size,
-                                           int out_dim) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  checkCUDA(hipblasSetStream(m->handle.blas, stream));
-  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
-  // call forward kernel
-  hipMemcpy(m->dev_region_ptrs,
-            exp_preds,
-            n * sizeof(float *),
-            hipMemcpyHostToDevice);
-
-  hipLaunchKernelGGL(aggspec_forward_kernel,
-                     GET_BLOCKS(batch_size * k * out_dim),
-                     min(CUDA_NUM_THREADS, (int)(batch_size * k * out_dim)),
-                     0,
-                     stream,
-                     m->dev_region_ptrs,
-                     acc_gate_assign_ptr,
-                     acc_output_ptr,
-                     n,
-                     k,
-                     rows,
-                     batch_size,
-                     out_dim);
-}
-
-/*static*/
-void AggregateSpec::backward_kernel_wrapper(AggregateSpecMeta const *m,
-                                            float **exp_grads,
-                                            int const *acc_gate_assign_ptr,
-                                            int const *acc_true_gate_assign_ptr,
-                                            float const *acc_gate_pred_ptr,
-                                            float *acc_full_gate_grad_ptr,
-                                            float const *acc_output_grad_ptr,
-                                            int n,
-                                            int const k,
-                                            int rows,
-                                            float lambda_bal,
-                                            int const batch_size,
-                                            int out_dim) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  checkCUDA(hipblasSetStream(m->handle.blas, stream));
-  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
-
-  // call backward kernel
-  hipMemcpy(m->dev_region_ptrs,
-            exp_grads,
-            n * sizeof(float *),
-            hipMemcpyHostToDevice);
-
-  hipLaunchKernelGGL(aggspec_backward_kernel,
-                     GET_BLOCKS(batch_size * k * out_dim),
-                     min(CUDA_NUM_THREADS, (int)(batch_size * k * out_dim)),
-                     0,
-                     stream,
-                     m->dev_region_ptrs,
-                     acc_gate_assign_ptr,
-                     acc_true_gate_assign_ptr,
-                     acc_gate_pred_ptr,
-                     acc_full_gate_grad_ptr,
-                     acc_output_grad_ptr,
-                     n,
-                     k,
-                     rows,
-                     lambda_bal,
-                     batch_size,
-                     out_dim);
-}
-
-AggregateSpecMeta::AggregateSpecMeta(FFHandler handler, int n)
-    : OpMeta(handler) {
-  checkCUDA(hipMalloc(&dev_region_ptrs, n * sizeof(float *)));
-}
-AggregateSpecMeta::~AggregateSpecMeta(void) {
-  checkCUDA(hipFree(&dev_region_ptrs));
-}
-
-}; // namespace FlexFlow
+} // namespace Internal
+} // namespace AggregateSpec
+} // namespace Kernels
+} // namespace FlexFlow

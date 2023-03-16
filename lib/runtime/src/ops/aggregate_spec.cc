@@ -14,6 +14,7 @@
  */
 
 #include "aggregate_spec.h"
+#include "op-impl/aggregate_spec_kernels.h"
 
 namespace FlexFlow {
 
@@ -32,6 +33,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::AggregateSpec;
 
 Tensor FFModel::aggregate_spec(
     Tensor const *inputs, /* gate_preds, gate_assign, gate assign TopK,
@@ -279,7 +282,7 @@ void AggregateSpec::forward_task(Task const *task,
     assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
   }
 
-  AggregateSpec::forward_kernel_wrapper(m,
+  forward_kernel_wrapper(m,
                                         exp_preds,
                                         acc_gate_assign.ptr(rect_gate_assign),
                                         acc_output.ptr(rect_output),
@@ -417,7 +420,7 @@ void AggregateSpec::backward_task(Task const *task,
     assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
   }
 
-  AggregateSpec::backward_kernel_wrapper(
+  backward_kernel_wrapper(
       m,
       exp_grads,
       acc_gate_assign.ptr(rect_gate_assign),
