@@ -7,10 +7,6 @@
 
 namespace FlexFlow {
 
-#define AGGREGATE_MAX_K 4
-#define AGGREGATE_MAX_BATCH_SIZE 64
-#define AGGREGATE_MAX_N 12
-
 class AggregateMeta : public OpMeta {
 public:
   AggregateMeta(FFHandler handle, int n);
