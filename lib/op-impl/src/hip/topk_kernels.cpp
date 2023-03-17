@@ -13,13 +13,87 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/topk.h"
-#include "flexflow/utils/hip_helper.h"
+#include "topk_kernels.h"
+#include "utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
+
+TopKMeta::TopKMeta(FFHandler handler) : OpMeta(handler) {}
+
+namespace Kernels {
+namespace TopK {
+
+void forward_kernel_wrapper(TopKMeta const *m,
+                                  float const *input_ptr,
+                                  float *output_ptr,
+                                  int *indices_ptr,
+                                  size_t batch_size,
+                                  int length,
+                                  int k,
+                                  bool sorted) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  hipEvent_t t_start, t_end;
+  if (m->profiling) {
+    hipEventCreate(&t_start);
+    hipEventCreate(&t_end);
+    hipEventRecord(t_start, stream);
+  }
+
+  Internal::forward_kernel(m,
+                       input_ptr,
+                       output_ptr,
+                       indices_ptr,
+                       batch_size,
+                       length,
+                       k,
+                       sorted,
+                       stream);
+
+  if (m->profiling) {
+    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
+    hipEventDestroy(t_start);
+    hipEventDestroy(t_end);
+  }
+}
+
+void backward_kernel_wrapper(TopKMeta const *m,
+                                   float const *value_grad_ptr,
+                                   int const *indices_ptr,
+                                   float *in_grad_ptr,
+                                   size_t batch_size,
+                                   int length,
+                                   int k) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  hipEvent_t t_start, t_end;
+  if (m->profiling) {
+    hipEventCreate(&t_start);
+    hipEventCreate(&t_end);
+    hipEventRecord(t_start, stream);
+  }
+
+  Internal::backward_kernel(m,
+                        value_grad_ptr,
+                        indices_ptr,
+                        in_grad_ptr,
+                        batch_size,
+                        length,
+                        k,
+                        stream);
+
+  // TODO: missing profiling here
+}
+
+namespace Internal {
 
 enum class HeapType { kMinHeap, kMaxHeap };
 enum class PreferIndices { kLower, kHigher };
@@ -364,8 +438,7 @@ __global__ void topk_forward_kernel(T const *__restrict__ input,
   }
 }
 
-/*static*/
-void TopK::forward_kernel(TopKMeta const *m,
+void forward_kernel(TopKMeta const *m,
                           float const *input_ptr,
                           float *output_ptr,
                           int *indices_ptr,
@@ -407,45 +480,6 @@ void TopK::forward_kernel(TopKMeta const *m,
                      indices_ptr);
 }
 
-/*static*/
-void TopK::forward_kernel_wrapper(TopKMeta const *m,
-                                  float const *input_ptr,
-                                  float *output_ptr,
-                                  int *indices_ptr,
-                                  size_t batch_size,
-                                  int length,
-                                  int k,
-                                  bool sorted) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  hipEvent_t t_start, t_end;
-  if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
-  }
-
-  TopK::forward_kernel(m,
-                       input_ptr,
-                       output_ptr,
-                       indices_ptr,
-                       batch_size,
-                       length,
-                       k,
-                       sorted,
-                       stream);
-
-  if (m->profiling) {
-    hipEventRecord(t_end, stream);
-    checkCUDA(hipEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
-  }
-}
-
 template <typename T>
 __global__ void topk_backward_kernel(T const *__restrict__ value_grad_ptr,
                                      int const *__restrict__ indices_ptr,
@@ -461,8 +495,7 @@ __global__ void topk_backward_kernel(T const *__restrict__ value_grad_ptr,
   }
 }
 
-/*static*/
-void TopK::backward_kernel(TopKMeta const *m,
+void backward_kernel(TopKMeta const *m,
                            float const *value_grad_ptr,
                            int const *indices_ptr,
                            float *in_grad_ptr,
@@ -483,36 +516,7 @@ void TopK::backward_kernel(TopKMeta const *m,
                      k);
 }
 
-/*static*/
-void TopK::backward_kernel_wrapper(TopKMeta const *m,
-                                   float const *value_grad_ptr,
-                                   int const *indices_ptr,
-                                   float *in_grad_ptr,
-                                   size_t batch_size,
-                                   int length,
-                                   int k) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  hipEvent_t t_start, t_end;
-  if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
-  }
-
-  TopK::backward_kernel(m,
-                        value_grad_ptr,
-                        indices_ptr,
-                        in_grad_ptr,
-                        batch_size,
-                        length,
-                        k,
-                        stream);
-
-  // TODO: missing profiling here
-}
-
-TopKMeta::TopKMeta(FFHandler handler) : OpMeta(handler) {}
-
-}; // namespace FlexFlow
+} // namespace Internal
+} // namespace TopK  
+} // namespace Kernels
+} // namespace FlexFlow

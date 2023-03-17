@@ -14,6 +14,7 @@
  */
 
 #include "topk.h"
+#include "op-impl/topk_kernels.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -35,6 +36,8 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
+
+using namespace FlexFlow::Kernels::TopK;
 
 // For an input tensor, computes the top k entries in each row
 // (resp. vector along the last dimension). Thus,
@@ -253,7 +256,7 @@ void TopK::forward_task(Task const *task,
       out1_domain.hi()[0] - out1_domain.lo()[0] + 1; /*TODO: This prints to 5*/
   size_t batch_size = in1_domain.get_volume() / length;
 
-  TopK::forward_kernel_wrapper(
+  forward_kernel_wrapper(
       m, in_ptr, value_ptr, index_ptr, batch_size, length, k, m->sorted);
 }
 
@@ -327,7 +330,7 @@ void TopK::backward_task(Task const *task,
   int length = in_domain.hi()[0] - in_domain.lo()[0] + 1;
   int k = out1_domain.hi()[0] - out1_domain.lo()[0] + 1;
   size_t batch_size = in_domain.get_volume() / length;
-  TopK::backward_kernel_wrapper(
+  backward_kernel_wrapper(
       m, value_grad_ptr, indices_ptr, in_grad_ptr, batch_size, length, k);
 }
 
