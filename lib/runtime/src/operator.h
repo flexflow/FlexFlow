@@ -200,11 +200,11 @@ protected:
   void set_opmeta_from_futuremap(FFModel const &ff,
                                  Legion::FutureMap const &fm);
 
-  template <typename T>
-  Legion::IndexLauncher make_fwd_index_launcher(FFModel const &ff, TaskID task_id, tl::optional<T const &> arg = tl::nullopt) const {
-    using namespace Legion;
+  /* template <typename T> */
+  /* Legion::IndexLauncher make_fwd_index_launcher(FFModel const &ff, TaskID task_id, tl::optional<T const &> arg = tl::nullopt) const { */
+  /*   using namespace Legion; */
 
-  }
+  /* } */
 
   virtual OpTasksSpec get_tasks_spec() const = 0;
   OpTasksSpec get_fully_defined_tasks_spec() const;

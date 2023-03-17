@@ -16,6 +16,7 @@
 #include "model.h"
 #include "runtime/tasks.h"
 #include "utils/hash-utils.h"
+#include "operator.h"
 
 namespace FlexFlow {
 

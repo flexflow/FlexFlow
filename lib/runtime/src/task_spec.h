@@ -10,6 +10,7 @@
 #include "utils/bidict.h"
 #include "accessor.h"
 #include "serialization.h"
+#include "ff_task_args.h"
 
 namespace FlexFlow {
 
@@ -35,6 +36,10 @@ enum class OpTaskType {
   BWD
 };
 
+using slot_id = int;
+using region_idx = int;
+
+
 struct TensorSpec {
   TensorSpec() = delete;
   TensorSpec(TensorRole, int, IsGrad is_grad = IsGrad::NO, optional<Legion::PrivilegeMode> mode = nullopt);
@@ -51,8 +56,8 @@ struct TensorSpec {
 
 Legion::PrivilegeMode get_default_mode(OpTaskType, TensorRole, IsGrad);
 
-struct OpTaskSpec {
-  OpTaskSpec(TaskID, OpTaskType);
+struct OpTaskSignature {
+  OpTaskSignature(TaskID, OpTaskType);
 
   void add_slot(int, TensorRole);
   void add_grad_slot(int, TensorRole);
@@ -63,6 +68,20 @@ struct OpTaskSpec {
   void add_input_grad_slot(int);
   void add_param_grad_slot(int);
   void add_output_grad_slot(int);
+
+  template <typename T>
+  void add_arg_slot(int);
+
+  TaskID get_task_id() const;
+private:
+  TaskID task_id;
+
+  std::vector<std::type_info> task_arg_types;
+  std::unordered_map<int, TensorRole> slots;
+};
+
+struct OpTaskSpec {
+  OpTaskSpec(TaskID, OpTaskType);
 
   void bind(int, TensorSpec const &);
   void bind_grad(int, TensorSpec const &);
@@ -79,8 +98,6 @@ struct OpTaskSpec {
 
   bidict<TensorSpec, int> const &get_region_idxs() const;
 
-  TaskID get_task_id() const;
-  
   template <typename T>
   void add_arg(T const &t) {
     this->task_args.add_arg<T>(t);
@@ -101,12 +118,9 @@ struct OpTaskSpec {
 private:
   int new_region_idx();
 
-  std::vector<std::type_info> task_arg_types;
   int region_idx_counter = 0;
-  TaskID task_id;
   OpTaskType task_type;
   FFTaskArgs task_args;
-  std::unordered_map<int, TensorRole> slots;
   std::unordered_map<int, TensorSpec> bindings;
   bidict<TensorSpec, int> region_idxs;
 };
@@ -117,6 +131,7 @@ struct OpTasksSpec {
   OpTaskSpec const &get_init() const;
   OpTaskSpec const &get_fwd() const;
   OpTaskSpec const &get_bwd() const;
+
   void set_init(OpTaskSpec const &);
   void set_fwd(OpTaskSpec const &); 
   void set_bwd(OpTaskSpec const &);
@@ -131,13 +146,25 @@ struct OpTasksSpec {
   TaskID get_task_id(OpTaskType) const;
 
 private:
-  std::unordered_set<TensorSpec> tensors;
   variant<OpTaskSpec, TaskID> init_spec, fwd_spec, bwd_spec;
 };
 
+struct TaskAccessorGuide {
+  std::unordered_map<slot_id, optional<std::pair<std::size_t, std::type_info>>> args;
+  std::unordered_map<slot_id, optional<std::pair<region_idx, Legion::PrivilegeMode>>> regions;
+};
+
 struct TaskAccessor {
-  TaskAccessor(Legion::Task const *task, std::vector<Legion::PhysicalRegion> const &regions, Legion::Context const &ctx, Legion::Runtime *runtime, OpTaskSpec const &spec);
-  TaskAccessor(Legion::Task const *task, std::vector<Legion::PhysicalRegion> const &regions, Legion::Context const &ctx, Legion::Runtime *runtime, OpTaskType task_type);
+  TaskAccessor(Legion::Task const *task, 
+               std::vector<Legion::PhysicalRegion> const &regions, 
+               Legion::Context const &ctx, 
+               Legion::Runtime *runtime, 
+               TaskAccessorGuide);
+
+  TaskAccessor(Legion::Task const *task, 
+               std::vector<Legion::PhysicalRegion> const &regions, 
+               Legion::Context const &ctx, Legion::Runtime *runtime, 
+               OpTaskType task_type);
 
   template <typename DT>
   DT *get_slot(int slot) const {
@@ -215,5 +242,8 @@ private:
 
 
 }
+
+VISITABLE_STRUCT(::FlexFlow::TaskAccessorGuide, args, regions);
+
 
 #endif

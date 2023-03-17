@@ -4,6 +4,7 @@
 #include "digraph.h"
 #include "multidigraph.h"
 #include "utils/variant.h"
+#include "utils/optional.h"
 #include <vector>
 
 namespace FlexFlow {

@@ -175,7 +175,7 @@ void FFMapper::register_sharding_functors(Runtime *runtime,
   }
 }
 
-bool FFMapper::is_parameter_server_update_task(TaskID tid) {
+bool FFMapper::is_parameter_server_update_task(Legion::TaskID tid) {
   switch (tid) {
     case SGD_UPD_PS_TASK_ID:
     case ADAM_UPD_PS_TASK_ID:
@@ -185,7 +185,7 @@ bool FFMapper::is_parameter_server_update_task(TaskID tid) {
   }
 }
 
-bool FFMapper::is_initializer_task(TaskID tid) {
+bool FFMapper::is_initializer_task(Legion::TaskID tid) {
   switch (tid) {
     case GLOROT_INIT_TASK_ID:
     case ZERO_INIT_TASK_ID:
