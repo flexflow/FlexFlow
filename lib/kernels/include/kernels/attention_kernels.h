@@ -4,6 +4,7 @@
 #include "kernels/device.h"
 #include "kernels/op_meta.h"
 #include <cstddef>
+#include "legion.h"
 
 namespace FlexFlow {
 

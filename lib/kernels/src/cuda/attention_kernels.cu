@@ -15,6 +15,7 @@
 
 #include "kernels/attention_kernels.h"
 #include "kernels/cuda_helper.h"
+#include "attention_kernels.h"
 
 namespace FlexFlow {
 

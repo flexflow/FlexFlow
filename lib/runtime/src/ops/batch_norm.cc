@@ -124,6 +124,43 @@ void BatchNorm::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
+/*
+  regions[0]: input
+  regions[1]: output
+  regions[2](I): scale
+  regions[3](I): bias
+*/
+OpMeta * BatchNorm::init_task(Task const *task,
+                         std::vector<PhysicalRegion> const &regions,
+                         Context ctx,
+                         Runtime *runtime) {
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
+  BatchNorm const *bm = (BatchNorm *)task->args;
+  FFHandler handle = *((FFHandler const *)task->local_args);
+  TensorAccessorR<float, 4> acc_input(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 4> acc_output(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, 1> acc_scale(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, 1> acc_bias(
+      regions[3], task->regions[3], FID_DATA, ctx, runtime);
+
+  int output_w = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
+  int output_h = acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1;
+  int output_c = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
+  int output_n = acc_output.rect.hi[3] - acc_output.rect.lo[3] + 1;
+
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                       .only_kind(Memory::GPU_FB_MEM)
+                       .best_affinity_to(task->target_proc)
+                       .first();
+  BatchNormMeta *m = new BatchNormMeta(
+      handle, bm, gpu_mem, output_n, output_c, output_h, output_w);
+  return m;
+}
+
 void BatchNorm::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -163,6 +200,55 @@ void BatchNorm::forward(FFModel const &ff) {
   launcher.add_field(3, FID_DATA);
 
   runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I): input
+  regions[1](O): ouptut
+  regions[2](I): scale
+  regions[3](I): bias
+*/
+void
+    BatchNorm::forward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
+  // const BatchNorm* bm = (BatchNorm*) task->args;
+  BatchNormMeta *m = *((BatchNormMeta **)task->local_args);
+  TensorAccessorR<float, 4> acc_input(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 4> acc_output(
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, 1> acc_scale(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  TensorAccessorR<float, 1> acc_bias(
+      regions[3], task->regions[3], FID_DATA, ctx, runtime);
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+  forward_kernel(m,
+                 acc_input.ptr,
+                 acc_output.ptr,
+                 acc_scale.ptr,
+                 acc_bias.ptr /*, stream*/);
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("BatchNorm forward time (BF) = %.2fms\n", elapsed);
+  }
 }
 
 void BatchNorm::backward(FFModel const &ff) {
@@ -228,6 +314,85 @@ void BatchNorm::backward(FFModel const &ff) {
                                                     weights[1]->region_grad));
   launcher.add_field(6, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I): input
+  regions[1](I/O): input_grad
+  regions[2](I): output
+  regions[3](I/O): output_grad
+  regions[4](I): scale
+  regions[5](I/O): scale_grad
+  regions[6](I/O): bias_grad
+*/
+__host__ void
+    BatchNorm::backward_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
+  assert(regions.size() == 7);
+  assert(task->regions.size() == 7);
+  // float beta = 0.0f;
+  // const BatchNorm* bm = (BatchNorm*) task->args;
+  BatchNormMeta *m = *((BatchNormMeta **)task->local_args);
+  TensorAccessorR<float, 4> acc_input(
+      regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 4> acc_input_grad(regions[1],
+                                           task->regions[1],
+                                           FID_DATA,
+                                           ctx,
+                                           runtime,
+                                           true /*readOutput*/);
+  TensorAccessorR<float, 4> acc_output(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 4> acc_output_grad(regions[3],
+                                            task->regions[3],
+                                            FID_DATA,
+                                            ctx,
+                                            runtime,
+                                            true /*readOutput*/);
+  TensorAccessorR<float, 1> acc_scale(
+      regions[4], task->regions[4], FID_DATA, ctx, runtime);
+  TensorAccessorW<float, 1> acc_scale_grad(regions[5],
+                                           task->regions[5],
+                                           FID_DATA,
+                                           ctx,
+                                           runtime,
+                                           true /*readOutput*/);
+  TensorAccessorW<float, 1> acc_bias_grad(regions[6],
+                                          task->regions[6],
+                                          FID_DATA,
+                                          ctx,
+                                          runtime,
+                                          true /*readOutput*/);
+
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+  backward_kernel(m,
+                  acc_input.ptr,
+                  acc_output_grad.ptr,
+                  acc_output.ptr,
+                  acc_input_grad.ptr,
+                  acc_scale.ptr,
+                  acc_scale_grad.ptr,
+                  acc_bias_grad.ptr,
+                  acc_output.rect.volume());
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("BatchNorm backward time = %.2fms\n", elapsed);
+  }
 }
 
 bool BatchNorm::measure_operator_cost(Simulator *sim,

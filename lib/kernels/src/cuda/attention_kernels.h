@@ -1,9 +1,11 @@
 #ifndef _FLEXFLOW_KERNELS_CUDA_ATTENTION_KERNELS_H
 #define _FLEXFLOW_KERNELS_CUDA_ATTENTION_KERNELS_H
 
+#include "kernels/attention_kernels.h"
+
 namespace FlexFlow {
 namespace Kernels {
-namespace Aggregate {
+namespace MultiHeadAttention {
 namespace Internal {
 
 void forward_kernel(MultiHeadAttentionMeta const *m,

@@ -18,12 +18,14 @@ cudaError_t get_legion_stream(cudaStream_t *stream);
 typedef cudnnTensorDescriptor_t ffTensorDescriptor_t;
 typedef cudnnActivationDescriptor_t ffActivationDescriptor_t;
 typedef cudnnPoolingDescriptor_t ffPoolingDescriptor_t;
+typedef cudnnBatchNormMode_t ffBatchNormMode_t;
 #elif defined(FF_USE_HIP_ROCM)
 typedef hipStream_t ffStream_t;
 hipError_t get_legion_stream(hipStream_t *stream);
 typedef miopenTensorDescriptor_t ffTensorDescriptor_t;
 typedef miopenActivationDescriptor_t ffActivationDescriptor_t;
 typedef miopenPoolingDescriptor_t ffPoolingDescriptor_t;
+typedef miopenBatchNormMode_t ffBatchNormMode_t;
 #else
 #error "Unknown device"
 #endif
