@@ -13,13 +13,54 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/reverse.h"
-#include "flexflow/utils/hip_helper.h"
+#include "reverse_kernels.h"
+#include "utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
+
+namespace Kernels {
+namespace Reverse {
+
+
+void forward_kernel_wrapper(float const *in_ptr,
+                                     float *out_ptr,
+                                     coord_t num_out_blks,
+                                     coord_t reverse_dim_size,
+                                     coord_t in_blk_size,
+                                     coord_t output_size) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::forward_kernel(in_ptr,
+                          out_ptr,
+                          num_out_blks,
+                          reverse_dim_size,
+                          in_blk_size,
+                          output_size,
+                          stream);
+}
+
+
+void backward_kernel_wrapper(float const *out_grad_ptr,
+                                      float *in_grad_ptr,
+                                      coord_t num_out_blks,
+                                      coord_t reverse_dim_size,
+                                      coord_t in_blk_size,
+                                      coord_t input_size) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::backward_kernel(out_grad_ptr,
+                           in_grad_ptr,
+                           num_out_blks,
+                           reverse_dim_size,
+                           in_blk_size,
+                           input_size,
+                           stream);
+}
+
+namespace Internal {
 
 __global__ void reverse_forward_kernel(float const *in_ptr,
                                        float *out_ptr,
@@ -37,8 +78,8 @@ __global__ void reverse_forward_kernel(float const *in_ptr,
   }
 }
 
-/*static*/
-void Reverse::forward_kernel(float const *in_ptr,
+
+void forward_kernel(float const *in_ptr,
                              float *out_ptr,
                              coord_t num_out_blks,
                              coord_t reverse_dim_size,
@@ -57,26 +98,10 @@ void Reverse::forward_kernel(float const *in_ptr,
                      in_blk_size);
 }
 
-/*static*/
-void Reverse::forward_kernel_wrapper(float const *in_ptr,
-                                     float *out_ptr,
-                                     coord_t num_out_blks,
-                                     coord_t reverse_dim_size,
-                                     coord_t in_blk_size,
-                                     coord_t output_size) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Reverse::forward_kernel(in_ptr,
-                          out_ptr,
-                          num_out_blks,
-                          reverse_dim_size,
-                          in_blk_size,
-                          output_size,
-                          stream);
-}
 
-/*static*/
-void Reverse::backward_kernel(float const *out_grad_ptr,
+
+
+void backward_kernel(float const *out_grad_ptr,
                               float *in_grad_ptr,
                               coord_t num_out_blks,
                               coord_t reverse_dim_size,
@@ -95,22 +120,9 @@ void Reverse::backward_kernel(float const *out_grad_ptr,
                      in_blk_size);
 }
 
-/*static*/
-void Reverse::backward_kernel_wrapper(float const *out_grad_ptr,
-                                      float *in_grad_ptr,
-                                      coord_t num_out_blks,
-                                      coord_t reverse_dim_size,
-                                      coord_t in_blk_size,
-                                      coord_t input_size) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Reverse::backward_kernel(out_grad_ptr,
-                           in_grad_ptr,
-                           num_out_blks,
-                           reverse_dim_size,
-                           in_blk_size,
-                           input_size,
-                           stream);
-}
 
-}; // namespace FlexFlow
+
+} // namespace Internal
+} // namespace Reverse
+} // namespace Kernels
+} // namespace FlexFlow

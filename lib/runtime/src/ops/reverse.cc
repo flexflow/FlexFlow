@@ -14,6 +14,7 @@
  */
 
 #include "reverse.h"
+#include "op-impl/reverse_kernels.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -31,6 +32,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::Reverse;
 
 Tensor FFModel::reverse(const Tensor input, int axis, char const *name) {
   assert(false);
@@ -156,7 +159,7 @@ void Reverse::forward_task(Task const *task,
   }
   int output_size = out_domain.get_volume();
 
-  Reverse::forward_kernel_wrapper(in_ptr,
+  forward_kernel_wrapper(in_ptr,
                                   out_ptr,
                                   num_out_blks,
                                   reverse_dim_size,
@@ -222,7 +225,7 @@ void Reverse::backward_task(Task const *task,
     }
   }
 
-  Reverse::backward_kernel_wrapper(out_grad_ptr,
+  backward_kernel_wrapper(out_grad_ptr,
                                    in_grad_ptr,
                                    num_out_blks,
                                    reverse_dim_size,
