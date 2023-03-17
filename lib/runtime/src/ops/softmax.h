@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_SOFTMAX_H
 #define _FLEXFLOW_SOFTMAX_H
 
-#include "device.h"
 #include "fftype.h"
 #include "layer.h"
 #include "flexflow/node.h"

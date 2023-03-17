@@ -2,7 +2,6 @@
 #define _FLEXFLOW_EMBEDDING_H
 
 #include "accessor.h"
-#include "device.h"
 #include "fftype.h"
 #include "layer.h"
 #include "flexflow/node.h"

@@ -16,7 +16,6 @@
 #define _FLEXFLOW_MODEL_H_
 #include "runtime/config.h"
 #include "accessor.h"
-#include "device.h"
 #include "utils/graph/node.h"
 #include "op-meta/operator_attrs.h"
 #include "utils/hash-utils.h"

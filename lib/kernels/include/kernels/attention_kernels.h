@@ -1,19 +1,28 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_ATTENTION_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_ATTENTION_KERNELS_H
 
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
-#include "flexflow/op_meta.h"
+#include "kernels/device.h"
+#include "kernels/op_meta.h"
+#include <cstddef>
 
 namespace FlexFlow {
 
 class MultiHeadAttentionMeta : public OpMeta {
 public:
   MultiHeadAttentionMeta(FFHandler handler,
-                         MultiHeadAttention const *attn,
                          Legion::Memory gpu_mem,
                          int num_samples,
-                         int num_heads);
+                         int num_heads,
+                         int qSize,
+                         int kSize,
+                         int vSize,
+                         int qProjSize,
+                         int kProjSize,
+                         int vProjSize,
+                         int oProjSize,
+                         int qoSeqLength,
+                         int kvSeqLength,
+                         bool add_bias_kv);
   ~MultiHeadAttentionMeta(void);
 
 public:
@@ -46,29 +55,6 @@ namespace MultiHeadAttention {
                                       float *weight_grad_ptr,
                                       float const *output_grad_ptr);
 
-namespace Internal {
-
-
- void forward_kernel(MultiHeadAttentionMeta const *m,
-                             float const *query_ptr,
-                             float const *key_ptr,
-                             float const *value_ptr,
-                             float const *weight_ptr,
-                             float *output_ptr,
-                             ffStream_t stream);
-   void backward_kernel(MultiHeadAttentionMeta const *m,
-                              float const *query_ptr,
-                              float *query_grad_ptr,
-                              float const *key_ptr,
-                              float *key_grad_ptr,
-                              float const *value_ptr,
-                              float *value_grad_ptr,
-                              float const *weight_ptr,
-                              float *weight_grad_ptr,
-                              float const *output_grad_ptr,
-                              ffStream_t stream);
-
-} // namespace Internal
 } // namespace MultiHeadAttention
 } // namespace Kernels
 } // namespace FlexFlow

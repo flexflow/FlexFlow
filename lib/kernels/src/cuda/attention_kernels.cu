@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "op-impl/attention_kernels.h"
-#include "utils/cuda_helper.h"
+#include "kernels/attention_kernels.h"
+#include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
 
@@ -195,10 +195,19 @@ void backward_kernel(MultiHeadAttentionMeta const *m,
 } // namespace Kernels
 
 MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
-                                               MultiHeadAttention const *attn,
                                                Memory gpu_mem,
                                                int num_samples,
-                                               int num_heads)
+                                               int num_heads,
+                                               int qSize,
+                                               int kSize,
+                                               int vSize,
+                                               int qProjSize,
+                                               int kProjSize,
+                                               int vProjSize,
+                                               int oProjSize,
+                                               int qoSeqLength,
+                                               int kvSeqLength,
+                                               bool add_bias_kv)
     : OpMeta(handler) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -210,7 +219,7 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
   checkCUDNN(cudnnCreateSeqDataDescriptor(&vDesc));
   checkCUDNN(cudnnCreateSeqDataDescriptor(&oDesc));
   // Currently do not support adding bias to key/value projection
-  assert(!attn->add_bias_kv);
+  assert(!add_bias_kv);
   cudnnAttnQueryMap_t attnMode = CUDNN_ATTN_QUERYMAP_ALL_TO_ONE;
   // Assume no beam search for now
   int maxBeamSize = 1;
@@ -236,15 +245,15 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
                                     math_type,
                                     NULL /*attnDropoutDesc*/,
                                     NULL /*postDropoutDesc*/,
-                                    attn->qSize,
-                                    attn->kSize,
-                                    attn->vSize,
-                                    attn->qProjSize,
-                                    attn->kProjSize,
-                                    attn->vProjSize,
-                                    attn->oProjSize,
-                                    attn->qoSeqLength,
-                                    attn->kvSeqLength,
+                                    qSize,
+                                    kSize,
+                                    vSize,
+                                    qProjSize,
+                                    kProjSize,
+                                    vProjSize,
+                                    oProjSize,
+                                    qoSeqLength,
+                                    kvSeqLength,
                                     num_samples,
                                     maxBeamSize));
   size_t workSpaceSize;
@@ -263,15 +272,15 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
   int *qoSeqArray = (int *)malloc(sizeof(int) * num_samples);
   int *kvSeqArray = (int *)malloc(sizeof(int) * num_samples);
   for (int i = 0; i < num_samples; i++) {
-    qoSeqArray[i] = attn->qoSeqLength;
-    kvSeqArray[i] = attn->kvSeqLength;
+    qoSeqArray[i] = qoSeqLength;
+    kvSeqArray[i] = kvSeqLength;
   }
   // Set qDesc
   {
     dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;
     dimA[CUDNN_SEQDATA_BATCH_DIM] = num_samples;
-    dimA[CUDNN_SEQDATA_TIME_DIM] = attn->qoSeqLength;
-    dimA[CUDNN_SEQDATA_VECT_DIM] = attn->qSize;
+    dimA[CUDNN_SEQDATA_TIME_DIM] = qoSeqLength;
+    dimA[CUDNN_SEQDATA_VECT_DIM] = qSize;
     checkCUDNN(cudnnSetSeqDataDescriptor(qDesc,
                                          CUDNN_DATA_FLOAT,
                                          CUDNN_SEQDATA_DIM_COUNT,
@@ -285,8 +294,8 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
   {
     dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;
     dimA[CUDNN_SEQDATA_BATCH_DIM] = num_samples;
-    dimA[CUDNN_SEQDATA_TIME_DIM] = attn->kvSeqLength;
-    dimA[CUDNN_SEQDATA_VECT_DIM] = attn->kSize;
+    dimA[CUDNN_SEQDATA_TIME_DIM] = kvSeqLength;
+    dimA[CUDNN_SEQDATA_VECT_DIM] = kSize;
     checkCUDNN(cudnnSetSeqDataDescriptor(kDesc,
                                          CUDNN_DATA_FLOAT,
                                          CUDNN_SEQDATA_DIM_COUNT,
@@ -300,8 +309,8 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
   {
     dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;
     dimA[CUDNN_SEQDATA_BATCH_DIM] = num_samples;
-    dimA[CUDNN_SEQDATA_TIME_DIM] = attn->kvSeqLength;
-    dimA[CUDNN_SEQDATA_VECT_DIM] = attn->vSize;
+    dimA[CUDNN_SEQDATA_TIME_DIM] = kvSeqLength;
+    dimA[CUDNN_SEQDATA_VECT_DIM] = vSize;
     checkCUDNN(cudnnSetSeqDataDescriptor(vDesc,
                                          CUDNN_DATA_FLOAT,
                                          CUDNN_SEQDATA_DIM_COUNT,
@@ -315,8 +324,8 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
   {
     dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;
     dimA[CUDNN_SEQDATA_BATCH_DIM] = num_samples;
-    dimA[CUDNN_SEQDATA_TIME_DIM] = attn->qoSeqLength;
-    dimA[CUDNN_SEQDATA_VECT_DIM] = attn->oProjSize;
+    dimA[CUDNN_SEQDATA_TIME_DIM] = qoSeqLength;
+    dimA[CUDNN_SEQDATA_VECT_DIM] = oProjSize;
     checkCUDNN(cudnnSetSeqDataDescriptor(oDesc,
                                          CUDNN_DATA_FLOAT,
                                          CUDNN_SEQDATA_DIM_COUNT,
@@ -353,11 +362,11 @@ MultiHeadAttentionMeta::MultiHeadAttentionMeta(FFHandler handler,
     reserveSpace = (int *)devKvSeqArray + num_samples;
   }
   // allocate memory for loWinIdx/hiWinIdx
-  loWinIdx = (int *)malloc(sizeof(int) * attn->qoSeqLength);
-  hiWinIdx = (int *)malloc(sizeof(int) * attn->qoSeqLength);
-  for (int i = 0; i < attn->qoSeqLength; i++) {
+  loWinIdx = (int *)malloc(sizeof(int) * qoSeqLength);
+  hiWinIdx = (int *)malloc(sizeof(int) * qoSeqLength);
+  for (int i = 0; i < qoSeqLength; i++) {
     loWinIdx[i] = 0;
-    hiWinIdx[i] = attn->kvSeqLength;
+    hiWinIdx[i] = kvSeqLength;
   }
   free(qoSeqArray);
   free(kvSeqArray);

@@ -1,9 +1,12 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_AGGREGATE_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_AGGREGATE_KERNELS_H
 
-#include "runtime/device.h"
-#include "runtime/fftype.h"
-#include "runtime/op_meta.h"
+#include "kernels/device.h"
+#include "kernels/op_meta.h"
+
+#define AGGREGATE_MAX_K 4
+#define AGGREGATE_MAX_BATCH_SIZE 64
+#define AGGREGATE_MAX_N 12
 
 namespace FlexFlow {
 
@@ -42,30 +45,6 @@ void backward_kernel_wrapper(AggregateMeta const *m,
                                       int const batch_size,
                                       int out_dim);
 
-namespace Internal {
-void agg_forward_kernel(float **exp_preds,
-                                   int const *exp_assign,
-                                   float const *gate_net_preds,
-                                   float *output,
-                                   int n,
-                                   int const k,     // num chosen experts
-                                   int exp_samples, // max samples per expert
-                                   int const batch_size,
-                                   int out_dim);
-void agg_backward_kernel(float **exp_preds,
-                                    float **exp_grads,
-                                    int const *exp_assign,
-                                    int const *true_exp_assign,
-                                    float const *gating_net_preds,
-                                    float *full_gating_grads,
-                                    float const *output_grads,
-                                    int n,           // num experts
-                                    int k,           // num chosen experts
-                                    int exp_samples, // max samples per expert
-                                    float lambda_bal,
-                                    int batch_size,
-                                    int out_dim);
-} // namespace Internal
 } // namespace Aggregate
 } // namespace Kernels
 } // namespace FlexFlow

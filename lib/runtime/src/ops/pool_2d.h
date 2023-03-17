@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_POOL_2D_H
 #define _FLEXFLOW_POOL_2D_H
 
-#include "device.h"
 #include "fftype.h"
 #include "layer.h"
 #include "flexflow/node.h"

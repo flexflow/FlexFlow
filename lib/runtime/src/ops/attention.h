@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_ATTENTION_H
 #define _FLEXFLOW_ATTENTION_H
 
-#include "device.h"
 #include "fftype.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"

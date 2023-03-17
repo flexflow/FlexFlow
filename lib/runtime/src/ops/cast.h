@@ -15,7 +15,6 @@
 #ifndef _FLEXFLOW_CAST_H
 #define _FLEXFLOW_CAST_H
 
-#include "device.h"
 #include "fftype.h"
 #include "layer.h"
 #include "flexflow/ode.h"

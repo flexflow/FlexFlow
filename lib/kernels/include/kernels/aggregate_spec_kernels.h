@@ -1,11 +1,14 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_AGGREGATE_SPEC_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_AGGREGATE_SPEC_KERNELS_H
 
-#include "runtime/device.h"
-#include "runtime/fftype.h"
-#include "runtime/op_meta.h"
+#include "kernels/device.h"
+#include "kernels/op_meta.h"
 
 namespace FlexFlow {
+
+#define AGGREGATE_SPEC_MAX_K 4
+#define AGGREGATE_SPEC_MAX_BATCH_SIZE 32
+#define AGGREGATE_SPEC_MAX_N 12
 
 class AggregateSpecMeta : public OpMeta {
 public:
@@ -38,31 +41,8 @@ void backward_kernel_wrapper(AggregateSpecMeta const *m,
                                       float lambda_bal,
                                       int const batch_size,
                                       int out_dim);
+}
+}
+}
 
-namespace Internal {
-void aggspec_forward_kernel(float **exp_preds,
-                           int const *exp_assign,
-                           float *output,
-                           int n,           // num experts
-                           int const k,     // num chosen experts
-                           int exp_samples, // max samples per expert
-                           int const batch_size,
-                           int out_dim);
-void aggspec_backward_kernel(float **exp_grads,
-                            int const *exp_assign,
-                            int const *true_exp_assign,
-                            float const *gating_net_preds,
-                            float *full_gating_grads,
-                            float const *output_grads,
-                            int n,           // num experts
-                            int k,           // num chosen experts
-                            int exp_samples, // max samples per expert
-                            float lambda_bal,
-                            int batch_size,
-                            int out_dim);
-} // namespace Internal
-} // namespace AggregateSpec
-} // namespace Kernels
-} // namespace FlexFlow
-
-#endif // _FLEXFLOW_OPS_KERNELS_AGGREGATE_SPEC_KERNELS_H
+#endif 

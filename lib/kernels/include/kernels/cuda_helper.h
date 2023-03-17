@@ -1,9 +1,11 @@
 #ifndef _FLEXFLOW_CUDA_HELPER_H_
 #define _FLEXFLOW_CUDA_HELPER_H_
-#include "flexflow/ffconst.h"
+
+#include "op-meta/ffconst.h"
 #include "legion.h"
 #include <cublas_v2.h>
 #include <cudnn.h>
+#include <cstdlib>
 
 #define FatalError(s)                                                          \
   do {                                                                         \

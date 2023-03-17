@@ -18,28 +18,13 @@
 #include "op-meta/ffconst.h"
 #include "legion.h"
 #include <cstring>
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-#include <cublas_v2.h>
-#include <cudnn.h>
-#elif defined(FF_USE_HIP_ROCM)
-#include <hipblas.h>
-#include <miopen/miopen.h>
-#else
-#error "Unknown device"
-#endif
 #include "utils/optional.h"
-#ifdef FF_USE_NCCL
-#include <nccl.h>
-#endif
 
 namespace FlexFlow {
 
 // ========================================================
 // Define Runtime Constants
 // ========================================================
-#define MAX_NUM_INPUTS 256
-#define MAX_NUM_WEIGHTS 64
-#define MAX_NUM_OUTPUTS 256
 #define MAX_NUM_FUSED_OPERATORS 64
 #define MAX_NUM_FUSED_TENSORS 64
 /* #define MAX_NUM_WORKERS 1024 */
@@ -60,21 +45,6 @@ constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::PS;
 
 class FFConfig;
 
-struct FFHandler {
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnHandle_t dnn;
-  cublasHandle_t blas;
-#else
-  miopenHandle_t dnn;
-  hipblasHandle_t blas;
-#endif
-  void *workSpace;
-  size_t workSpaceSize;
-  bool allowTensorOpMathConversion;
-#ifdef FF_USE_NCCL
-  ncclComm_t ncclComm;
-#endif
-};
 
 struct FFInitInfo {
   size_t workSpaceSize;
