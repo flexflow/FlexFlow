@@ -13,14 +13,9 @@
  * limitations under the License.
  */
 
+#include "dataloader.h"
 #include "flexflow/inference.h"
-#include "transformers.h"
-#include <cstdlib>
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <unistd.h>
+#include "inference_config.h"
 
 using namespace Legion;
 
@@ -131,6 +126,7 @@ void DataLoader::next_batch(FFModel &ff, BatchConfig *bc) {
     for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
       meta.num_samples = num_active_tokens;
+      meta.max_sequence_length = max_sequence_length;
       int token_index = 0;
       for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
         if (bc->request_completed[i]) {

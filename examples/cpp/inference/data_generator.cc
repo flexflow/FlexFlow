@@ -1,8 +1,24 @@
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "data_generator.h"
 #include <algorithm>
 #include <iostream>
 #include <vector>
 using namespace std;
+using namespace FlexFlow;
 
 DataGenerator::DataGenerator(size_t _num_requests,
                              size_t _token_dim,
@@ -11,7 +27,7 @@ DataGenerator::DataGenerator(size_t _num_requests,
                              double _lambda)
     : num_requests(_num_requests), token_dim(_token_dim),
       max_sequence_length(_max_sequence_length), poisson_distr(_poisson_distr),
-      lambda(_lambda), timer_started(false), global_unique_id(1000000) {
+      lambda(_lambda), timer_started(false) {
   generate_requests_meta();
 };
 
@@ -82,14 +98,16 @@ std::pair<size_t, size_t> DataGenerator::get_requests(size_t batch_capacity) {
   std::vector<double>::iterator new_arrivals_ptr =
       upper_bound(arrivals_ptr, arrivals.end(), ms_from_start);
   // number of new requests received
-  //size_t received_requests =
-  //    std::min((size_t)(new_arrivals_ptr - arrivals_ptr), max_num_requests);
+  size_t received_requests = 0;
   // id of first received request
   size_t first_request_guid = arrivals_ptr - arrivals.begin();
   size_t new_tokens = 0;
-  for (size_t j=0; j < new_arrivals_ptr - arrivals_ptr && new_tokens < batch_capacity && received_requests < BatchConfig::MAX_NUM_REQUESTS; j++) {
+  for (size_t j = 0;
+       j < new_arrivals_ptr - arrivals_ptr && new_tokens < batch_capacity &&
+       received_requests < BatchConfig::MAX_NUM_REQUESTS;
+       j++) {
     received_requests++;
-    new_tokens += seq_lengths[first_request_guid+j];
+    new_tokens += seq_lengths[first_request_guid + j];
   }
   std::advance(arrivals_ptr, received_requests);
 

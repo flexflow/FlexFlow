@@ -13,11 +13,13 @@
  * limitations under the License.
  */
 
-#include "inference_config.h"
+#pragma once
+
 #include "dataloader.h"
+#include "inference_config.h"
 
 struct MoeConfig : InferenceConfig {
-  MoeConfig(void): InferenceConfig() {
+  MoeConfig(void) : InferenceConfig() {
     //----------------------- MoE layer --------------------------------
     // total number of experts
     num_exp = 128;
@@ -38,5 +40,4 @@ struct MoeConfig : InferenceConfig {
   int num_select;
   float alpha;
   float lambda;
-  int hidden_size;
 };

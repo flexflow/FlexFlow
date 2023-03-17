@@ -126,9 +126,9 @@ void FlexFlow::top_level_task(Task const *task,
 
   //------------------- Initialize the inference manager ------------------
   std::cout << "Initializing the InferenceManager with "
-            << "moeConfig.batch_size="<< moeConfig.batch_size 
-            << " moeConfig.num_inflight_batches=" << moeConfig.num_inflight_batches
-            << std::endl;
+            << "moeConfig.batch_size=" << moeConfig.batch_size
+            << " moeConfig.num_inflight_batches="
+            << moeConfig.num_inflight_batches << std::endl;
   InferenceManager im(
       &ff, moeConfig.batch_size, moeConfig.num_inflight_batches);
   im.compile_model_and_allocate_buffer();
@@ -137,7 +137,7 @@ void FlexFlow::top_level_task(Task const *task,
   //------------ Initialize the data loader and data generator ------------
   DataGenerator data_generator(moeConfig.total_requests,
                                moeConfig.token_dim,
-                               moeConfig.sequence_length,
+                               BatchConfig::MAX_NUM_TOKENS / 2,
                                moeConfig.poisson_distribution,
                                moeConfig.arrival_rate);
   ParallelTensor input_pt;
@@ -163,13 +163,12 @@ void FlexFlow::top_level_task(Task const *task,
   std::cout << im.max_tokens_per_batch << std::endl;
   std::pair<size_t, size_t> new_prompts;
   BatchConfig *bc = nullptr;
-  
+
   // simulation loop. For deployment, we will use a while(true)
   while (processed_requests < moeConfig.total_requests) {
     for (int bid = 0; bid < im.max_inflight_batches; bid++) {
       if (future_handlers.find(bid) == future_handlers.end()) {
-        new_prompts =
-            data_generator.get_requests(im.max_tokens_per_batch);
+        new_prompts = data_generator.get_requests(im.max_tokens_per_batch);
         assert(new_prompts.second < BatchConfig::MAX_NUM_REQUESTS);
         bc = new BatchConfig();
       } else {
@@ -180,7 +179,8 @@ void FlexFlow::top_level_task(Task const *task,
         InferenceResult ir = future.get_result<InferenceResult>();
         bc = batch_configs[bid];
         processed_requests += bc->update_results(ir);
-        size_t available_slots = im.max_tokens_per_batch - bc->num_active_tokens();
+        size_t available_slots =
+            im.max_tokens_per_batch - bc->num_active_tokens();
         new_prompts = data_generator.get_requests(available_slots);
       }
       for (size_t i = 0; i < new_prompts.second; i++) {

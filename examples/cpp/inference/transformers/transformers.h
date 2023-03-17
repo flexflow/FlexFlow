@@ -13,12 +13,11 @@
  * limitations under the License.
  */
 
-#include "inference_config.h"
+#pragma once
+
 #include "dataloader.h"
+#include "inference_config.h"
 
 struct TransformerConfig : InferenceConfig {
-  TransformerConfig(void): InferenceConfig() {
-    
-  }
-
+  TransformerConfig(void) : InferenceConfig() {}
 };

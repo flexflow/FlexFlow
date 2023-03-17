@@ -12,9 +12,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
+
 #include "data_generator.h"
 #include "flexflow/model.h"
 #include "inference_config.h"
+
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <unistd.h>
+
+using namespace Legion;
+using namespace FlexFlow;
 
 class DataLoader {
 public:
@@ -33,8 +45,7 @@ public:
   void next_batch(FFModel &, BatchConfig *);
 
 public:
-  int num_samples;
-  size_t max_sequence_length;
+  size_t num_samples, max_sequence_length;
   FlexFlow::ParallelTensor full_input, batch_input;
   struct DataLoaderInput {
     InferenceConfig const &_inferenceConfig;
@@ -43,7 +54,8 @@ public:
 };
 
 struct SampleIdxs {
-  int num_samples;
+  size_t num_samples;
+  size_t max_sequence_length;
   size_t idxs[MAX_NUM_SAMPLES]; // the id of each token within its request
   size_t
       guids[MAX_NUM_SAMPLES]; // the guid of the request each token belongs to

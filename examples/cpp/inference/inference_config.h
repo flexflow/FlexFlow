@@ -12,11 +12,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
+
 #include "flexflow/batch_config.h"
+#include <string>
 
 #define MAX_NUM_SAMPLES 1024
 #define MNIST_DIMS 28 * 28
 #define DATA_DIM MNIST_DIMS
+
+using namespace FlexFlow;
 
 struct InferenceConfig {
   InferenceConfig(void) {
@@ -35,6 +40,7 @@ struct InferenceConfig {
     arrival_rate = 250;
     num_inflight_batches = 5;
     //----------------------- Rest of model parameters ------------------
+    hidden_size = DATA_DIM;
     // Encoder layer
     num_attention_heads = 16;
     attention_kdim = attention_vdim = hidden_size / num_attention_heads;
@@ -55,6 +61,7 @@ struct InferenceConfig {
   double arrival_rate;
   int num_inflight_batches;
   // Model parameters
+  int hidden_size;
   int num_attention_heads;
   int attention_kdim;
   int attention_vdim;

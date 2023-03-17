@@ -35,19 +35,22 @@ void parse_input_args(char **argv, int argc, TransformerConfig &config) {
   }
 }
 
-Tensor create_inc_multihead_attention_decoder(FFModel *model,
-                                              TransformerConfig const *transformerConfig,
-                                              Tensor const &input) {
+Tensor create_inc_multihead_attention_decoder(
+    FFModel *model,
+    TransformerConfig const *transformerConfig,
+    Tensor const &input) {
   std::vector<int> axes{1};
-  Tensor t = model->inc_multihead_self_attention(input,
-                                                 transformerConfig->hidden_size,
-                                                 transformerConfig->num_attention_heads,
-                                                 transformerConfig->attention_kdim,
-                                                 transformerConfig->attention_vdim);
+  Tensor t = model->inc_multihead_self_attention(
+      input,
+      transformerConfig->hidden_size,
+      transformerConfig->num_attention_heads,
+      transformerConfig->attention_kdim,
+      transformerConfig->attention_vdim);
 
   t = model->layer_norm(model->add(t, input), axes, true, 1e-05);
   Tensor x = model->dense(
-      model->dense(t, transformerConfig->hidden_size, AC_MODE_RELU, false /*bias*/),
+      model->dense(
+          t, transformerConfig->hidden_size, AC_MODE_RELU, false /*bias*/),
       transformerConfig->hidden_size,
       AC_MODE_NONE,
       false /*bias*/);
@@ -78,7 +81,8 @@ void FlexFlow::top_level_task(Task const *task,
   //----------------------- Create inputs --------------------------------
   Tensor input;
   {
-    int const dims[] = {BatchConfig::MAX_NUM_TOKENS, transformerConfig.token_dim};
+    int const dims[] = {BatchConfig::MAX_NUM_TOKENS,
+                        transformerConfig.token_dim};
     input = ff.create_tensor<2>(dims, DT_FLOAT);
   }
 
@@ -91,8 +95,9 @@ void FlexFlow::top_level_task(Task const *task,
   t = ff.softmax(t);
 
   //------------------- Initialize the inference manager ------------------
-  InferenceManager im(
-      &ff, transformerConfig.batch_size, transformerConfig.num_inflight_batches);
+  InferenceManager im(&ff,
+                      transformerConfig.batch_size,
+                      transformerConfig.num_inflight_batches);
   im.compile_model_and_allocate_buffer();
   im.init_operators_inference();
 
@@ -125,13 +130,12 @@ void FlexFlow::top_level_task(Task const *task,
   std::cout << im.max_tokens_per_batch << std::endl;
   std::pair<size_t, size_t> new_prompts;
   BatchConfig *bc = nullptr;
-  
+
   // simulation loop. For deployment, we will use a while(true)
   while (processed_requests < transformerConfig.total_requests) {
     for (int bid = 0; bid < im.max_inflight_batches; bid++) {
       if (future_handlers.find(bid) == future_handlers.end()) {
-        new_prompts =
-            data_generator.get_requests(im.max_tokens_per_batch);
+        new_prompts = data_generator.get_requests(im.max_tokens_per_batch);
         assert(new_prompts.second < BatchConfig::MAX_NUM_REQUESTS);
         bc = new BatchConfig();
       } else {
@@ -142,7 +146,8 @@ void FlexFlow::top_level_task(Task const *task,
         InferenceResult ir = future.get_result<InferenceResult>();
         bc = batch_configs[bid];
         processed_requests += bc->update_results(ir);
-        size_t available_slots = im.max_tokens_per_batch - bc->num_active_tokens();
+        size_t available_slots =
+            im.max_tokens_per_batch - bc->num_active_tokens();
         new_prompts = data_generator.get_requests(available_slots);
       }
       for (size_t i = 0; i < new_prompts.second; i++) {

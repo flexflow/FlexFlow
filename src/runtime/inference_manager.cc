@@ -36,8 +36,10 @@ InferenceManager::InferenceManager(FFModel *_model,
     view.start_device_id = i;
     machine_views.push_back(view);
   }
-  assert(max_tokens_per_batch <= BatchConfig::MAX_NUM_TOKENS && max_tokens_per_batch <= BatchConfig::MAX_SEQUENCE_LENGTH);
-  std::cout << "Initialized the InferenceManager." << max_tokens_per_batch << " " << max_inflight_batches << std::endl;
+  assert(max_tokens_per_batch <= BatchConfig::MAX_NUM_TOKENS &&
+         max_tokens_per_batch <= BatchConfig::MAX_SEQUENCE_LENGTH);
+  std::cout << "Initialized the InferenceManager." << max_tokens_per_batch
+            << " " << max_inflight_batches << std::endl;
 }
 
 void InferenceManager::compile_model_and_allocate_buffer(void) {
@@ -73,8 +75,7 @@ void InferenceManager::compile_model_and_allocate_buffer(void) {
 }
 
 void InferenceManager::init_operators_inference() {
-  for (int batch_index = 0; batch_index < max_inflight_batches;
-       batch_index++) {
+  for (int batch_index = 0; batch_index < max_inflight_batches; batch_index++) {
     for (int device_index = 0; device_index < num_devices; device_index++) {
       // int fused_experts_index = 0;
       for (size_t o = 0; o < model->operators.size(); o++) {
