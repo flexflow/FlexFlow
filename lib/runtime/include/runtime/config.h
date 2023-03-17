@@ -27,7 +27,7 @@
 #else
 #error "Unknown device"
 #endif
-#include "tl/optional.hpp"
+#include "utils/optional.h"
 #ifdef FF_USE_NCCL
 #include <nccl.h>
 #endif

@@ -73,8 +73,18 @@ bool contains(Container const &c, typename Container::value_type const &e) {
 }
 
 template <typename K, typename V>
-bool contains_key(std::unordered_map<K, V> const &m, K const &kv) {
-  return m.find(kv) != m.end();
+bool contains_key(std::unordered_map<K, V> const &m, K const &k) {
+  return m.find(k) != m.end();
+}
+
+template <typename K, typename V>
+bool contains_l(bidict<K, V> const &m, K const &k) {
+  return m.find(k) != m.end();
+}
+
+template <typename K, typename V>
+bool contains_r(bidict<K, V> const &m, V const &v) {
+  return m.find(v) != m.end();
 }
 
 template <typename K, typename V>

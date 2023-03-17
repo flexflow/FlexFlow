@@ -652,15 +652,22 @@ OpMeta *Conv2D::init_task(Task const *task,
   return m;
 }
 
-TaskSpec Conv2D::get_task_spec() const {
-  TaskSpec spec;
-  auto fwd = spec.make_forward(CONV2D_FWD_TASK_ID);
-  auto bwd = spec.make_backward(CONV2D_BWD_TASK_ID);
+TaskSpec Conv2D::get_tasks_spec() const {
+  OpTasksSpec spec {
+    CONV2D_INIT_TASK_ID,
+    CONV2D_FWD_TASK_ID,
+    CONV2D_BWD_TASK_ID
+  };
+  auto &fwd = spec.get_fwd();
 
-  auto input = spec.add_tensor(TensorRole::INPUT, 0);
-  auto kernel = spec.add_tensor(TensorRole::PARAM, 0);
-  auto bias = spec.add_tensor(TensorRole::PARAM, 1);
-  auto output = spec.add_tensor(TensorRole::OUTPUT, 0);
+  fwd.add_input_slot(INPUT);
+  fwd.add_param_slot(KERNEL);
+  fwd.add_output_slot(OUTPUT);
+
+  auto input = spec.input_tensor(0);
+  auto kernel = spec.param_tensor(0);
+  auto bias = spec.param_tensor(1);
+  auto output = spec.output_tensor(0);
 
   fwd[INPUT] = input;
   fwd[KERNEL] = kernel;
@@ -672,56 +679,56 @@ TaskSpec Conv2D::get_task_spec() const {
   return spec;
 }
 
-TaskSpec Conv2D::get_forward_task_spec() const {
-  TaskSpec spec = { CONV2D_FWD_TASK_ID, Pass::FWD };
+/* TaskSpec Conv2D::get_forward_task_spec() const { */
+/*   TaskSpec spec = { CONV2D_FWD_TASK_ID, Pass::FWD }; */
 
-  auto input = spec.add_tensor(TensorRole::INPUT, 0);
-  auto kernel = spec.add_tensor(TensorRole::PARAM, 0);
-  auto bias = spec.add_tensor(TensorRole::BIAS, 1);
-  auto output = spec.add_tensor(TensorRole::OUTPUT, 0);
+/*   auto input = spec.add_tensor(TensorRole::INPUT, 0); */
+/*   auto kernel = spec.add_tensor(TensorRole::PARAM, 0); */
+/*   auto bias = spec.add_tensor(TensorRole::BIAS, 1); */
+/*   auto output = spec.add_tensor(TensorRole::OUTPUT, 0); */
 
-  spec.add_input(INPUT, input);
-  spec.add_input(KERNEL, kernel);
+/*   spec.add_input(INPUT, input); */
+/*   spec.add_input(KERNEL, kernel); */
 
-  if (this->use_bias) {
-    spec.add_input(BIAS, bias);
-  }
+/*   if (this->use_bias) { */
+/*     spec.add_input(BIAS, bias); */
+/*   } */
 
-  spec.add_output(OUTPUT, output);
+/*   spec.add_output(OUTPUT, output); */
 
-  return spec;
-}
+/*   return spec; */
+/* } */
 
-TaskSpec Conv2D::get_backward_task_spec() const {
-  TaskSpec spec = { CONV2D_BWD_TASK_ID, Pass::BWD };
+/* TaskSpec Conv2D::get_backward_task_spec() const { */
+/*   TaskSpec spec = { CONV2D_BWD_TASK_ID, Pass::BWD }; */
   
-  auto input = spec.add_tensor(TensorRole::INPUT, 0);
-  auto kernel = spec.add_tensor(TensorRole::PARAM, 0);
-  auto bias = spec.add_tensor(TensorRole::BIAS, 1);
-  auto output = spec.add_tensor(TensorRole::OUTPUT, 0);
+/*   auto input = spec.add_tensor(TensorRole::INPUT, 0); */
+/*   auto kernel = spec.add_tensor(TensorRole::PARAM, 0); */
+/*   auto bias = spec.add_tensor(TensorRole::BIAS, 1); */
+/*   auto output = spec.add_tensor(TensorRole::OUTPUT, 0); */
 
-  spec.add_input(INPUT, input);
-  spec.add_output(INPUT_GRAD, input.grad);
-  spec.add_input(KERNEL, kernel);
-  spec.add_output(KERNEL_GRAD, kernel.grad);
+/*   spec.add_input(INPUT, input); */
+/*   spec.add_output(INPUT_GRAD, input.grad); */
+/*   spec.add_input(KERNEL, kernel); */
+/*   spec.add_output(KERNEL_GRAD, kernel.grad); */
 
-  if (this->use_bias) {
-    spec.add_input(BIAS, bias);
-    spec.add_output(BIAS_GRAD, bias.grad);
-  }
+/*   if (this->use_bias) { */
+/*     spec.add_input(BIAS, bias); */
+/*     spec.add_output(BIAS_GRAD, bias.grad); */
+/*   } */
 
-  spec.add_input(OUTPUT, output);
-  spec.add_input(OUTPUT_GRAD, output.grad);
+/*   spec.add_input(OUTPUT, output); */
+/*   spec.add_input(OUTPUT_GRAD, output.grad); */
 
-  return spec;
-}
+/*   return spec; */
+/* } */
 
 void Conv2D::forward(FFModel const &ff) {
-  this->execute_task_spec(this->get_forward_task_spec());
+  this->execute_task_spec(this->get_task_spec().get_fwd());
 }
 
 void Conv2D::backward(FFModel const &ff) {
-  return this->execute_task_spec(this->get_backward_task_spec());
+  return this->execute_task_spec(this->get_task_spec().get_bwd());
 }
 
 /*
@@ -734,29 +741,34 @@ void Conv2D::forward_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
-  // Conv2D* conv = (Conv2D*) task->args;
   Conv2DMeta const *m = *((Conv2DMeta **)task->local_args);
-  assert(regions.size() == (3 + static_cast<size_t>(m->use_bias)));
-  assert(task->regions.size() == (3 + static_cast<size_t>(m->use_bias)));
-  TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, Conv2DOutput::NUMDIM> acc_output(regions[1],
-                                                          task->regions[1],
-                                                          FID_DATA,
-                                                          ctx,
-                                                          runtime,
-                                                          false /*readOutput*/);
-  TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  float const *acc_bias_ptr = NULL;
-  if (m->use_bias) {
-    TensorAccessorR<float, Conv2DBias::NUMDIM> acc_bias(
-        regions[3], task->regions[3], FID_DATA, ctx, runtime);
-    acc_bias_ptr = acc_bias.ptr;
-  }
+
+  TaskAccessor acc(task, regions, ctx, runtime, OpTaskType::FWD);
+
+  float const *in_ptr = acc.get_const_slot<float>(INPUT);
+  float const *kernel_ptr = acc.get_const_slot<float>(KERNEL);
+  float const *bias_ptr = acc.get_const_slot<float>(BIAS);
+  float *out_ptr = acc.get_slot<float>(OUTPUT);
+
+  // TensorAccessorR<float, Conv2DInput::NUMDIM> acc_input(
+  //     regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  // TensorAccessorW<float, Conv2DOutput::NUMDIM> acc_output(regions[1],
+  //                                                         task->regions[1],
+  //                                                         FID_DATA,
+  //                                                         ctx,
+  //                                                         runtime,
+  //                                                         false /*readOutput*/);
+  // TensorAccessorR<float, Conv2DKernel::NUMDIM> acc_kernel(
+  //     regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  // float const *acc_bias_ptr = NULL;
+  // if (m->use_bias) {
+  //   TensorAccessorR<float, Conv2DBias::NUMDIM> acc_bias(
+  //       regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  //   acc_bias_ptr = acc_bias.ptr;
+  // }
 
   forward_kernel_wrapper(
-      m, acc_input.ptr, acc_output.ptr, acc_kernel.ptr, acc_bias_ptr);
+      m, in_ptr, out_ptr, kernel_ptr, bias_ptr);
 }
 
 /*

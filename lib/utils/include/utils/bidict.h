@@ -7,7 +7,9 @@ namespace FlexFlow {
 
 template <typename L, typename R>
 struct bidict {
-  bidict() = default;
+  bidict() 
+    : fwd_map{}, bwd_map{}
+  { }
 
   template <typename InputIt>
   bidict(InputIt first, InputIt last) {
