@@ -14,7 +14,10 @@
  */
 
 #include "batch_norm.h"
+#include "kernels/batch_norm_kernels.h"
 #include "legion/legion_utilities.h"
+
+using namespace FlexFlow::Kernels::BatchNorm;
 
 namespace FlexFlow {
 
@@ -226,29 +229,7 @@ void
   TensorAccessorR<float, 1> acc_bias(
       regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-  forward_kernel(m,
-                 acc_input.ptr,
-                 acc_output.ptr,
-                 acc_scale.ptr,
-                 acc_bias.ptr /*, stream*/);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("BatchNorm forward time (BF) = %.2fms\n", elapsed);
-  }
+  forward_kernel_wrapper(m, acc_input.ptr, acc_output.ptr, acc_scale.ptr, acc_bias.ptr);
 }
 
 void BatchNorm::backward(FFModel const &ff) {
@@ -366,33 +347,7 @@ __host__ void
                                           runtime,
                                           true /*readOutput*/);
 
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-  backward_kernel(m,
-                  acc_input.ptr,
-                  acc_output_grad.ptr,
-                  acc_output.ptr,
-                  acc_input_grad.ptr,
-                  acc_scale.ptr,
-                  acc_scale_grad.ptr,
-                  acc_bias_grad.ptr,
-                  acc_output.rect.volume());
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("BatchNorm backward time = %.2fms\n", elapsed);
-  }
+  backward_kernel_wrapper(m, acc_input.ptr, acc_output_grad.ptr, acc_output.ptr, acc_input_grad.ptr, acc_scale.ptr, acc_scale_grad.ptr, acc_bias_grad.ptr, acc_output.rect.volume());
 }
 
 bool BatchNorm::measure_operator_cost(Simulator *sim,
@@ -430,7 +385,7 @@ bool BatchNorm::measure_operator_cost(Simulator *sim,
 
   std::function<void()> forward, backward;
   forward = [&] {
-    forward_kernel(m, input_ptr, output_ptr, scale_ptr, bias_ptr);
+    forward_kernel_wrapper(m, input_ptr, output_ptr, scale_ptr, bias_ptr);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr =
@@ -452,7 +407,7 @@ bool BatchNorm::measure_operator_cost(Simulator *sim,
         cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&] {
-      backward_kernel(m,
+      backward_kernel_wrapper(m,
                       input_ptr,
                       output_grad_ptr,
                       output_ptr,
