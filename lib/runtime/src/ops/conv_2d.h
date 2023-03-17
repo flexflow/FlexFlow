@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_CONV_2D_H
 #define _FLEXFLOW_CONV_2D_H
 
-#include "flexflow/node.h"
 #include "operator.h"
 #include "op-meta/conv_2d_params.h"
 

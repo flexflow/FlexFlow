@@ -11,5 +11,6 @@
 #include "utils/variant.h"
 #include "utils/vector.h"
 #include "utils/visit_struct.h"
+#include "utils/optional.h"
 
 #endif 

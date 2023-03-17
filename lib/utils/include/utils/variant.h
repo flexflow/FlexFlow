@@ -2,7 +2,6 @@
 #define _FLEXFLOW_UTILS_VARIANT_H 
 
 #include "mpark/variant.hpp"
-#include "tl/optional.hpp"
 
 namespace FlexFlow {
 
@@ -14,7 +13,6 @@ struct variant_join_helper;
 /* template <typename ...Ts> */
 /* using variant = ::mpark::variant<Ts...>; */
 
-using namespace tl;
 using namespace mpark;
 
 /* template <typename T> */

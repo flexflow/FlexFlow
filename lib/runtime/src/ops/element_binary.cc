@@ -389,7 +389,7 @@ OpTasksSpec ElementBinary::get_task_spec() const {
     ELEMENTBINARY_FWD_TASK_ID,
     ELEMENTBINARY_BWD_TASK_ID
   };
-  auto fwd = spec.get_fwd();
+  auto &fwd = spec.get_fwd();
 
   fwd.add_input_slot(LHS_INPUT);
   fwd.add_input_slot(RHS_INPUT);
@@ -399,9 +399,11 @@ OpTasksSpec ElementBinary::get_task_spec() const {
   auto input1 = spec.input_tensor(1);
   auto output = spec.output_tensor(0);
 
-  fwd[LHS_INPUT] = input0;
-  fwd[RHS_INPUT] = this->has_same_operands ? input0 : input1;
-  fwd[OUTPUT] = this->inplace_a ? input0 : output;
+  fwd.bind({
+    {LHS_INPUT, input0},
+    {RHS_INPUT, this->has_same_operands ? input0 : input1},
+    {OUTPUT, this->inplace_a ? input0 : output}
+  });
 
   return spec;
 }
@@ -461,7 +463,7 @@ void ElementBinary::backward(FFModel const &ff) {
   regions[1](I): in2
   regions[2](O): output
 */
-__host__ void
+void
     ElementBinary::forward_task(Task const *task,
                                 std::vector<PhysicalRegion> const &regions,
                                 Context ctx,

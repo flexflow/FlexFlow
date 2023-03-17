@@ -10,6 +10,7 @@
 #include "model.h"
 #include "runtime/tasks.h"
 #include <stdexcept>
+#include "task_spec.h"
 
 namespace FlexFlow {
 
@@ -19,150 +20,73 @@ class OpMeta;
 class Simulator;
 class CostMetrics;
 
-enum class TensorRole {
-  INPUT,
-  PARAM,
-  OUTPUT,
-};
+/* struct TaskSpec { */
+/* private: */
+/*   struct AddTensorResult { */
+/*     AddTensorResult() = delete; */
+/*     explicit AddTensorResult(int idx); */
 
-enum class IsGrad {
-  YES,
-  NO
-};
+/*     int idx; */
+/*   }; */
 
-enum class Pass {
-  FWD,
-  BWD
-};
+/* public: */
+/*   template <typename T> */
+/*   TaskSpec(TaskID task_id, OpTaskType task_type, std::vector<TensorSpec> const &tensors, T const &arg) */
+/*     : TaskSpec(task_id, task_type, tensors, Legion::TaskArgument{&arg.value(), sizeof(T)}) */
+/*   { } */
 
-struct TensorSpec {
-  TensorSpec() = delete;
-  TensorSpec(TensorRole, int, IsGrad is_grad = IsGrad::NO, tl::optional<Legion::PrivilegeMode> mode = tl::nullopt);
+/*   template <> */
+/*   TaskSpec(TaskID task_id, OpTaskType task_type, std::vector<TensorSpec> const &tensors, Legion::TaskArgument const &argument) */
+/*     : task_id(task_id), task_type(task_type), argument(argument), tensors(tensors) */
+/*   { */ 
+/*     for (TensorSpec &tensor_spec : this->tensors) { */
+/*       tensor_spec.mode = tensor_spec.mode.value_or(get_default_mode(task_type, tensor_spec.role, tensor_spec.is_grad)); */
+/*     } */
+/*   } */
 
-  TensorRole role;
-  int idx;
-  IsGrad is_grad;
-  tl::optional<Legion::PrivilegeMode> mode;
-};
+/*   TaskSpec(TaskID task_id, Pass pass, std::vector<TensorSpec> const &tensors) */ 
+/*     : TaskSpec(task_id, pass, tensors, Legion::TaskArgument{nullptr, 0}) */
+/*   { } */
 
-Legion::PrivilegeMode get_default_mode(Pass, TensorRole, IsGrad);
+/*   template <typename ...Ts> */
+/*   AddTensorResult add_tensor(int name, Ts const &...ts) { */
+/*     this->tensors.push_back(TensorSpec{ts...}); */
+/*     return AddTensorResult(this->tensors.size()-1); */
+/*   } */
 
-struct OpTaskSpec {
-  void add_input_slot(int);
-  void add_output_slot(int);
+/*   AddTensorResult map_tensor_to_name(AddTensorResult const &, int name); */
+/*   AddTensorResult map_tensor_to_names(AddTensorResult const &, std::unordered_set<int> const &names); */
 
-  template <typename DT>
-  DT const *get_const_slot(int);
+/*   template <typename ...Ts> */
+/*   AddTensorResult add_named_tensor(int name, Ts const &...ts) { */
+/*     return this->add_tensor(std::unordered_set<int>{name}, ts...); */
+/*   } */
 
-  template <typename DT>
-  DT *get_slot(int);
+/*   template <typename ...Ts> */
+/*   AddTensorResult add_named_tensor(std::unordered_set<int> const &names, Ts const &...ts) { */
+/*     auto result = this->add_tensor(ts...); */
+/*     this->map_tensor_to_names(result, names); */
+/*   } */
 
-  void operator[](int);
-};
+/*   std::pair<int, TensorSpec> get_tensor_spec_by_name(int name) const; */
 
-struct OpTensorSpec {
-};
+/*   AddTensorResult &operator[](int name); */
 
-struct OpTasksSpec {
-  OpTasksSpec(TaskID init, TaskID fwd, TaskID bwd);
+/*   TaskID task_id; */
+/*   Pass pass; */
+/*   Legion::TaskArgument argument; */
 
-  void get_init();
-  void get_fwd();
-  void get_bwd();
-
-  OpTensorSpec input_tensor();
-  OpTensorSpec output_tensor();
-private:
-  OpTaskSpec init_spec, fwd_spec, bwd_spec;
-};
-
-struct TaskSpec {
-private:
-  struct AddTensorResult {
-    AddTensorResult() = delete;
-    explicit AddTensorResult(int idx);
-
-    int idx;
-  };
-
-public:
-  template <typename T>
-  TaskSpec(TaskID task_id, Pass pass, std::vector<TensorSpec> const &tensors, T const &arg)
-    : TaskSpec(task_id, pass, tensors, Legion::TaskArgument{&arg.value(), sizeof(T)})
-  { }
-
-  template <>
-  TaskSpec(TaskID task_id, Pass pass, std::vector<TensorSpec> const &tensors, Legion::TaskArgument const &argument)
-    : task_id(task_id), pass(pass), argument(argument), tensors(tensors)
-  { 
-    for (TensorSpec &tensor_spec : this->tensors) {
-      tensor_spec.mode = tensor_spec.mode.value_or(get_default_mode(pass, tensor_spec.role, tensor_spec.is_grad));
-    }
-  }
-
-  TaskSpec(TaskID task_id, Pass pass, std::vector<TensorSpec> const &tensors) 
-    : TaskSpec(task_id, pass, tensors, Legion::TaskArgument{nullptr, 0})
-  { }
-
-  template <typename ...Ts>
-  AddTensorResult add_tensor(int name, Ts const &...ts) {
-    this->tensors.push_back(TensorSpec{ts...});
-    return AddTensorResult(this->tensors.size()-1);
-  }
-
-  AddTensorResult map_tensor_to_name(AddTensorResult const &, int name);
-  AddTensorResult map_tensor_to_names(AddTensorResult const &, std::unordered_set<int> const &names);
-
-  template <typename ...Ts>
-  AddTensorResult add_named_tensor(int name, Ts const &...ts) {
-    return this->add_tensor(std::unordered_set<int>{name}, ts...);
-  }
-
-  template <typename ...Ts>
-  AddTensorResult add_named_tensor(std::unordered_set<int> const &names, Ts const &...ts) {
-    auto result = this->add_tensor(ts...);
-    this->map_tensor_to_names(result, names);
-  }
-
-  std::pair<int, TensorSpec> get_tensor_spec_by_name(int name) const;
-
-  AddTensorResult &operator[](int name);
-
-  TaskID task_id;
-  Pass pass;
-  Legion::TaskArgument argument;
-
-private:
-  std::vector<TensorSpec> tensors;
-  std::unordered_map<int, int> name_map;
-};
+/* private: */
+/*   std::vector<TensorSpec> tensors; */
+/*   std::unordered_map<int, int> name_map; */
+/* }; */
 
 class Op {
 protected:
-  void register_weight_parallel_dims(std::vector<std::pair<int, int>> mappings,
-                                     int input_idx = 0,
-                                     int weight_idx = 0);
-
-  void register_output_parallel_dims(std::vector<std::pair<int, int>> mappings,
-                                     int input_idx = 0,
-                                     int output_idx = 0);
-
-  int get_output_to_input_dim_mapping(const ParallelTensor output,
-                                      int output_dim,
-                                      const ParallelTensor input);
-  int get_output_to_weight_dim_mapping(const ParallelTensor output,
-                                       int output_dim,
-                                       const ParallelTensor weight);
-
   void inner_measure_operator_cost(Simulator *sim,
                                    std::function<void()> const &forward,
                                    std::function<void()> const &backward,
                                    CostMetrics &cost_metrics) const;
-
-  bool check_output_input_weight_parallel_dims(
-      bool allocate_weights = true) const;
-  bool check_output_input_weight_same_parallel_is() const;
-  bool check_output_input_weight_same_machine_view() const;
 
 public:
   Op(FFModel &model,
@@ -210,9 +134,10 @@ public:
      ParallelTensor const *tensors);
   
   // Pure virtual functions that must be implemented
-  virtual void init(FFModel const &) = 0;
-  virtual void forward(FFModel const &) = 0;
-  virtual void backward(FFModel const &) = 0;
+  virtual void init(FFModel const &);
+  virtual void forward(FFModel const &);
+  virtual void backward(FFModel const &);
+
   virtual void print_layer(FFModel const &model) = 0;
   virtual bool measure_operator_cost(Simulator *sim,
                                      MachineView const &mv,
@@ -253,8 +178,6 @@ public:
 
   virtual tl::optional<RecordFormatter> as_dot() const;
 
-  TaskSpec get_task_spec(Pass) const;
-
   int get_dimension() const;
 #ifdef FF_USE_NCCL
   static ncclUniqueId get_nccl_unique_id_task(
@@ -283,14 +206,14 @@ protected:
 
   }
 
-  void require_input_tensor(Legion::IndexLauncher &, int idx) const;
-  void require_output_tensor(Legion::IndexLauncher &, int idx) const;
-  void require_weight_tensor(Legion::IndexLauncher &, int idx) const;
+  virtual OpTasksSpec get_tasks_spec() const = 0;
+  OpTasksSpec get_fully_defined_tasks_spec() const;
+  OpTaskSpec infer_bwd_spec(TaskID bwd_task_id, OpTaskSpec const &fwd_spec) const;
+  OpTaskSpec infer_init_spec(TaskID init_task_id, OpTaskSpec const &bwd_spec) const;
+  void infer_bwd_spec(OpTasksSpec &spec) const;
+  void infer_init_spec(OpTasksSpec &spec) const;
 
-  virtual TaskSpec get_forward_task_spec() const = 0;
-  virtual TaskSpec get_backward_task_spec() const = 0;
-
-  void execute_task_spec(FFModel const &, TaskSpec const &);
+  void execute_task_spec(FFModel const &, OpTaskSpec const &);
   ParallelTensor const &get_parallel_tensor(TensorRole, int); 
 public:
   OperatorType op_type;
@@ -311,54 +234,6 @@ public:
 #ifdef FF_USE_NCCL
   ncclUniqueId ncclId;
 #endif
-};
-
-struct TaskAccessor {
-  TaskAccessor(Legion::Task const *task, std::vector<Legion::PhysicalRegion> const &regions, Legion::Context const &ctx, Legion::Runtime *runtime, TaskSpec const &spec)
-    : task(task), regions(regions), ctx(ctx), runtime(runtime), spec(spec)
-  { }
-
-  TaskAccessor(Legion::Task const *task, std::vector<Legion::PhysicalRegion> const &regions, Legion::Context const &ctx, Legion::Runtime *runtime, Pass pass)
-    : TaskAccessor(task, regions, ctx, runtime, ((Op const *)task->args)->get_task_spec(pass))
-  { }
-
-
-  template <typename DT>
-  DT *get_tensor_by_name(int name) const {
-    auto result = this->spec.get_tensor_spec_by_name(name);
-    int region_idx = result.first;
-    TensorSpec spec = result.second;
-    assert (spec.mode == READ_ONLY || spec.mode == READ_WRITE || spec.mode == WRITE_ONLY);
-    if (spec.mode == READ_ONLY) {
-      throw std::runtime_error("Cannot access ro tensor as non-const");
-      /* return helperGetTensorPointerRO<DT>(regions[region_idx], task->regions[region_idx], FID_DATA, ctx, runtime); */
-    } else if (spec.mode == READ_WRITE) {
-      return helperGetTensorPointerRW<DT>(regions[region_idx], task->regions[region_idx], FID_DATA, ctx, runtime);
-    } else if (spec.mode == WRITE_ONLY) {
-      return helperGetTensorPointerWO<DT>(regions[region_idx], task->regions[region_idx], FID_DATA, ctx, runtime);
-    }
-  }
-
-  template <typename DT>
-  DT const *get_const_tensor_by_name(int name) const {
-    auto result = this->spec.get_tensor_spec_by_name(name);
-    int region_idx = result.first;
-    TensorSpec spec = result.second;
-    assert (spec.mode == READ_ONLY || spec.mode == READ_WRITE || spec.mode == WRITE_ONLY);
-    if (spec.mode == READ_ONLY) {
-      return helperGetTensorPointerRO<DT>(regions[region_idx], task->regions[region_idx], FID_DATA, ctx, runtime);
-    } else if (spec.mode == READ_WRITE) {
-      return helperGetTensorPointerRW<DT>(regions[region_idx], task->regions[region_idx], FID_DATA, ctx, runtime);
-    } else if (spec.mode == WRITE_ONLY) {
-      return helperGetTensorPointerWO<DT>(regions[region_idx], task->regions[region_idx], FID_DATA, ctx, runtime);
-    } 
-  }
-
-  Legion::Task const *task;
-  std::vector<Legion::PhysicalRegion> const &regions;
-  Legion::Context const &ctx;
-  Legion::Runtime *runtime;
-  TaskSpec spec;
 };
 
 }
