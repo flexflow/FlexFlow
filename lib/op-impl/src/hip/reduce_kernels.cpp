@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/reduce.h"
-#include "flexflow/utils/hip_helper.h"
+#include "reduce_kernels.h"
+#include "utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
@@ -51,7 +51,30 @@ ReduceMeta::~ReduceMeta(void) {
   checkCUDNN(miopenDestroyTensorDescriptor(outputTensor));
 }
 
-void Reduce::forward_kernel(ReduceMeta const *m,
+namespace Kernels {
+namespace Reduce {
+
+void Reduce::forward_kernel_wrapper(ReduceMeta const *m,
+                                    GenericTensorAccessorR const &input,
+                                    GenericTensorAccessorW const &output) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::forward_kernel(
+      m, input.get_float_ptr(), output.get_float_ptr(), stream);
+}
+
+void Reduce::backward_kernel_wrapper(ReduceMeta const *m,
+                                     GenericTensorAccessorR const &output_grad,
+                                     GenericTensorAccessorW const &input_grad) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  Internal::backward_kernel(
+      m, output_grad.get_float_ptr(), input_grad.get_float_ptr(), stream);
+}
+
+namespace Internal {
+
+void forward_kernel(ReduceMeta const *m,
                             float const *input_ptr,
                             float *output_ptr,
                             hipStream_t stream) {
@@ -71,17 +94,8 @@ void Reduce::forward_kernel(ReduceMeta const *m,
                                 output_ptr));
 };
 
-/*static*/
-void Reduce::forward_kernel_wrapper(ReduceMeta const *m,
-                                    GenericTensorAccessorR const &input,
-                                    GenericTensorAccessorW const &output) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Reduce::forward_kernel(
-      m, input.get_float_ptr(), output.get_float_ptr(), stream);
-}
 
-void Reduce::backward_kernel(ReduceMeta const *m,
+void backward_kernel(ReduceMeta const *m,
                              float const *output_grad_ptr,
                              float *input_grad_ptr,
                              hipStream_t stream) {
@@ -100,13 +114,8 @@ void Reduce::backward_kernel(ReduceMeta const *m,
                             input_grad_ptr));
 }
 
-void Reduce::backward_kernel_wrapper(ReduceMeta const *m,
-                                     GenericTensorAccessorR const &output_grad,
-                                     GenericTensorAccessorW const &input_grad) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Reduce::backward_kernel(
-      m, output_grad.get_float_ptr(), input_grad.get_float_ptr(), stream);
-}
 
-}; // namespace FlexFlow
+} // namespace Internal
+} // namespace Reduce
+} // namespace Kernels
+} // namespace FlexFlow

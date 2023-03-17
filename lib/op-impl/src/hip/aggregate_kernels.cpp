@@ -13,11 +13,16 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/aggregate.h"
-#include "flexflow/utils/hip_helper.h"
+#include "aggregate_kernels.h"
+#include "utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
+
+namespace Kernels {
+namespace Aggregate {
+
+namespace Internal {
 
 __global__ void agg_forward_kernel(float **exp_preds,
                                    int const *exp_assign,
@@ -290,4 +295,7 @@ AggregateMeta::~AggregateMeta(void) {
   checkCUDA(hipFree(&dev_exp_grads));
 }
 
-}; // namespace FlexFlow
+} // namespace Internal
+} // namespace Aggregate
+} // namespace Kernels
+} // namespace FlexFlow

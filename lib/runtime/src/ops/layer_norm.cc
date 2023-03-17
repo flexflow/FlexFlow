@@ -14,6 +14,7 @@
  */
 
 #include "layer_norm.h"
+#include "op-impl/layer_norm_kernels.h"
 #include "model.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
@@ -38,6 +39,8 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+
+using namespace FlexFlow::Kernels::LayerNorm;
 
 LayerNormParams LayerNorm::get_params() const {
   LayerNormParams params;
@@ -310,7 +313,7 @@ void LayerNorm::forward_task(Task const *task,
     assert(regions.size() == 2);
   }
 
-  LayerNorm::forward_kernel_wrapper<float>(
+  forward_kernel_wrapper<float>(
       m, in_ptr, out_ptr, gamma_ptr, beta_ptr);
 }
 
@@ -426,7 +429,7 @@ void LayerNorm::backward_task(Task const *task,
     assert(regions.size() == 3);
   }
 
-  LayerNorm::backward_kernel_wrapper<float>(m,
+  backward_kernel_wrapper<float>(m,
                                             out_grad_ptr,
                                             in_ptr,
                                             in_grad_ptr,
