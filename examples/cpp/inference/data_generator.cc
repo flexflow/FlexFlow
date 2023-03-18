@@ -18,29 +18,38 @@
 #include <iostream>
 #include <vector>
 using namespace std;
-using namespace FlexFlow;
 
 DataGenerator::DataGenerator(size_t _num_requests,
                              size_t _token_dim,
-                             size_t _max_sequence_length,
+                             size_t _min_input_tokens,
+                             size_t _max_input_tokens,
+                             size_t _min_tokens_to_generate,
+                             size_t _max_tokens_to_generate,
                              bool _poisson_distr,
                              double _lambda)
     : num_requests(_num_requests), token_dim(_token_dim),
-      max_sequence_length(_max_sequence_length), poisson_distr(_poisson_distr),
-      lambda(_lambda), timer_started(false) {
+      min_input_tokens(_min_input_tokens), max_input_tokens(_max_input_tokens),
+      min_tokens_to_generate(_min_tokens_to_generate),
+      max_tokens_to_generate(_max_tokens_to_generate),
+      poisson_distr(_poisson_distr), lambda(_lambda), timer_started(false) {
   generate_requests_meta();
 };
 
 // generate each request's arrival time and sequence length
 void DataGenerator::generate_requests_meta() {
-  // set up a uniform number generator with range [0,1) for the arrival times
-  random_device rnd1, rnd2;
-  mt19937 gen1(rnd1()), gen2(rnd2());
+  random_device rnd1, rnd2, rnd3;
+  mt19937 gen1(rnd1()), gen2(rnd2()), gen3(rnd3());
+  // set up a uniform number generator with range [0,1) (in seconds) for the
+  // arrival times
   uniform_real_distribution<double> dist1{0, 1.0};
   double cur_arrival = 0; // assume first request comes in at time 0
-  // set up a uniform number generator for the sequence length
-  uniform_int_distribution<unsigned long> dist2{1, max_sequence_length};
+  // set up a uniform number generator for the initial/generated sequence length
+  uniform_int_distribution<unsigned long> dist2{min_input_tokens,
+                                                max_input_tokens};
+  uniform_int_distribution<unsigned long> dist3{min_tokens_to_generate,
+                                                max_tokens_to_generate};
   size_t cur_seq_len = dist2(gen2);
+  size_t tokens_to_generate = dist3(gen3);
 
   for (size_t i = 0; i < num_requests; i++) {
     arrivals.push_back(cur_arrival);
@@ -51,8 +60,9 @@ void DataGenerator::generate_requests_meta() {
     } else {
       cur_arrival += (1000 / lambda);
     }
-    seq_lengths.push_back(cur_seq_len);
+    seq_lengths.push_back(std::make_pair(cur_seq_len, tokens_to_generate));
     cur_seq_len = dist2(gen2);
+    tokens_to_generate = dist3(gen3);
   }
   // cout << "Arrivals : [";
   // copy(arrivals.begin(), arrivals.end(), ostream_iterator<int>(cout, " "));
@@ -68,6 +78,9 @@ void DataGenerator::generate_requests(float *req_ptr) {
       }
     }
   } */
+  // faster generation assuming req_ptr points to a tensor with contiguous
+  // memory of size token_dim * max_input_tokens * num_requests, enough to
+  // contain all requests data
   random_device rnd_device;
   mt19937 mersenne_engine{rnd_device()};
 
@@ -76,7 +89,7 @@ void DataGenerator::generate_requests(float *req_ptr) {
     return float_dist(mersenne_engine);
   };
   std::generate(
-      req_ptr, req_ptr + token_dim * max_sequence_length * num_requests, gen);
+      req_ptr, req_ptr + token_dim * max_input_tokens * num_requests, gen);
 };
 
 void DataGenerator::start_timer(void) {
@@ -85,7 +98,17 @@ void DataGenerator::start_timer(void) {
   timer_started = true;
 };
 
-std::pair<size_t, size_t> DataGenerator::get_requests(size_t batch_capacity) {
+// In non-incremental mode, the number of requests we want is limited by the
+// tensor's batch size. As long as each request has a length that is shorter
+// than the tensor's max sequence length, we do not need to impose any
+// additional requirement on the max number of tokens across requests. We can
+// thus pass max_tokens = max_requests * tensor max sequence length as a
+// placeholder. In incremental mode, the max number of requests is only limited
+// by the BatchConfig request capacity (for storing each request's metadata),
+// whereas the total number number of tokens across requests will be limited by
+// the tensor's batch_size * sequence length.
+std::pair<size_t, size_t> DataGenerator::get_requests(size_t max_requests,
+                                                      size_t max_tokens) {
   if (!timer_started) {
     std::cout << "Warning: tried to get number of requests before the timer "
                  "was started."
@@ -103,11 +126,13 @@ std::pair<size_t, size_t> DataGenerator::get_requests(size_t batch_capacity) {
   size_t first_request_guid = arrivals_ptr - arrivals.begin();
   size_t new_tokens = 0;
   for (size_t j = 0;
-       j < new_arrivals_ptr - arrivals_ptr && new_tokens < batch_capacity &&
-       received_requests < BatchConfig::MAX_NUM_REQUESTS;
+       j < std::min((size_t)(new_arrivals_ptr - arrivals_ptr), max_requests) &&
+       new_tokens < max_tokens;
        j++) {
-    received_requests++;
-    new_tokens += seq_lengths[first_request_guid + j];
+    if (seq_lengths[first_request_guid + j].first <= max_tokens - new_tokens) {
+      received_requests++;
+      new_tokens += seq_lengths[first_request_guid + j].first;
+    }
   }
   std::advance(arrivals_ptr, received_requests);
 
@@ -120,9 +145,9 @@ std::pair<size_t, size_t> DataGenerator::get_requests(size_t batch_capacity) {
   return std::make_pair(first_request_guid, received_requests);
 }
 
-ssize_t DataGenerator::get_request_length(size_t guid) {
-  if (seq_lengths.size() <= guid) {
-    return -1;
-  }
+std::pair<size_t, size_t> DataGenerator::get_request_length(size_t guid) {
+  assert(seq_lengths.size() >
+         guid); // make sure the guid is valid (seq_lengths has an entry for the
+                // sequence with given guid)
   return seq_lengths[guid];
 }

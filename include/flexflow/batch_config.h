@@ -16,11 +16,14 @@
 #pragma once
 
 #include <cstdlib>
+#define MAX_SEQ_LEN 1024
+#define BATCH_SIZE 32
+#define MAX_REQUESTS 256
 
 namespace FlexFlow {
 
 struct InferenceResult {
-  static int const MAX_NUM_TOKENS = 1024;
+  static int const MAX_NUM_TOKENS = MAX_SEQ_LEN * BATCH_SIZE;
   int results[MAX_NUM_TOKENS];
 };
 
@@ -33,9 +36,9 @@ public:
   bool update_num_active_requests_tokens();
   int num_active_requests() const;
   int num_active_tokens() const;
-  static int const MAX_NUM_REQUESTS = 256;
+  static int const MAX_NUM_REQUESTS = MAX_REQUESTS;
   static int const MAX_NUM_TOKENS = InferenceResult::MAX_NUM_TOKENS;
-  static int const MAX_SEQUENCE_LENGTH = 1024;
+  static int const MAX_SEQUENCE_LENGTH = MAX_SEQ_LEN;
   // These are set by update
   int num_tokens, num_requests;
   bool cached_results;

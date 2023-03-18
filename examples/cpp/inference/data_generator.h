@@ -25,8 +25,6 @@
 #include <thread>
 #include <unistd.h>
 
-#include "flexflow/batch_config.h"
-
 using namespace std;
 
 typedef std::chrono::high_resolution_clock Clock;
@@ -36,7 +34,10 @@ class DataGenerator {
 public:
   DataGenerator(size_t _num_requests,
                 size_t _token_dim,
-                size_t _max_sequence_length,
+                size_t _min_input_tokens,
+                size_t _max_input_tokens,
+                size_t _min_tokens_to_generate,
+                size_t _max_tokens_to_generate,
                 bool _poisson_distr,
                 double _lambda);
 
@@ -47,9 +48,10 @@ public:
   void start_timer(void);
   // Get number of requests that have arrived since the last time this function
   // was called
-  std::pair<size_t, size_t> get_requests(size_t max_num_requests);
-  ssize_t get_request_length(size_t guid);
-  size_t max_sequence_length; // dimension of one request tensor
+  std::pair<size_t, size_t> get_requests(size_t max_requests,
+                                         size_t max_tokens);
+  std::pair<size_t, size_t> get_request_length(size_t guid);
+  // size_t max_sequence_length; // dimension of one request tensor
 
 private:
   // Compute the arrival times of each request and save them in the arrivals
@@ -59,14 +61,18 @@ private:
 
   size_t num_requests; // total number of requests
   size_t token_dim;    // embedding dim of each token
-  bool poisson_distr;  // false implies uniform distribution
-  double lambda;       // mean #num of arrivals per sec
-  bool timer_started;  // whether timer was initiated
+  size_t min_input_tokens;
+  size_t max_input_tokens;
+  size_t min_tokens_to_generate;
+  size_t max_tokens_to_generate;
+  bool poisson_distr; // false implies uniform distribution
+  double lambda;      // mean #num of arrivals per sec
+  bool timer_started; // whether timer was initiated
   // time when get_requests() is called for the first time
   Clock::time_point start_time;
   // arrival times (ms) generated based on distribution
   std::vector<double> arrivals;
   std::vector<double>::iterator arrivals_ptr;
   // sequence lengths generated based on uniform distribution
-  std::vector<size_t> seq_lengths;
+  std::vector<std::pair<size_t, size_t>> seq_lengths;
 };

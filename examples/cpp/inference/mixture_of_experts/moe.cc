@@ -73,18 +73,21 @@ Tensor create_moe_encoder(FFModel *model,
   std::vector<int> axes = {0, 1, 2};
   Tensor x = input;
   for (int i = 0; i < moeConfig->num_encoder_layers; i++) {
-    x = model->layer_norm(
-        model->add(model->multihead_attention(x,
-                                              x,
-                                              x,
-                                              moeConfig->hidden_size,
-                                              moeConfig->num_attention_heads,
-                                              moeConfig->attention_kdim,
-                                              moeConfig->attention_vdim),
-                   x),
-        axes,
-        true,
-        1e-05);
+    Tensor t = moeConfig->incremental_mode
+                   ? model->inc_multihead_self_attention(
+                         x,
+                         moeConfig->hidden_size,
+                         moeConfig->num_attention_heads,
+                         moeConfig->attention_kdim,
+                         moeConfig->attention_vdim)
+                   : model->multihead_attention(x,
+                                                x,
+                                                x,
+                                                moeConfig->hidden_size,
+                                                moeConfig->num_attention_heads,
+                                                moeConfig->attention_kdim,
+                                                moeConfig->attention_vdim);
+    x = model->layer_norm(model->add(t, x), axes, true, 1e-05);
     x = model->layer_norm(
         model->add(create_moe(model, moeConfig, x), x), axes, true, 1e-05);
   }
@@ -135,9 +138,14 @@ void FlexFlow::top_level_task(Task const *task,
   im.init_operators_inference();
 
   //------------ Initialize the data loader and data generator ------------
+  size_t min_input_tokens = 32, max_input_tokens = 512,
+         min_tokens_to_generate = 1, max_tokens_to_generate = 128;
   DataGenerator data_generator(moeConfig.total_requests,
                                moeConfig.token_dim,
-                               BatchConfig::MAX_NUM_TOKENS / 2,
+                               min_input_tokens,
+                               max_input_tokens,
+                               min_tokens_to_generate,
+                               max_tokens_to_generate,
                                moeConfig.poisson_distribution,
                                moeConfig.arrival_rate);
   ParallelTensor input_pt;

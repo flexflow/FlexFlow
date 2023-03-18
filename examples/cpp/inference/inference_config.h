@@ -14,21 +14,19 @@
  */
 #pragma once
 
-#include "flexflow/batch_config.h"
 #include <string>
 
-#define MAX_NUM_SAMPLES 1024
+#define MAX_SEQ_LEN 1024
+#define BATCH_SIZE 32
 #define MNIST_DIMS 28 * 28
 #define DATA_DIM MNIST_DIMS
-
-using namespace FlexFlow;
 
 struct InferenceConfig {
   InferenceConfig(void) {
     //----------------------- Input/output data ------------------------
     token_dim = DATA_DIM;
-    sequence_length = 1;
-    batch_size = InferenceResult::MAX_NUM_TOKENS;
+    sequence_length = MAX_SEQ_LEN;
+    batch_size = BATCH_SIZE;
     out_dim = 15;
     num_labels = out_dim;
     num_layers = 1;
@@ -39,6 +37,7 @@ struct InferenceConfig {
     // average number of request arrivals per second
     arrival_rate = 250;
     num_inflight_batches = 5;
+    incremental_mode = false;
     //----------------------- Rest of model parameters ------------------
     hidden_size = DATA_DIM;
     // Encoder layer
@@ -60,6 +59,7 @@ struct InferenceConfig {
   bool poisson_distribution;
   double arrival_rate;
   int num_inflight_batches;
+  bool incremental_mode;
   // Model parameters
   int hidden_size;
   int num_attention_heads;

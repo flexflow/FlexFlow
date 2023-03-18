@@ -64,7 +64,7 @@ public:
 };
 
 // definitions for the CUDA kernel
-#define MAX_BATCH_SIZE 1024 //32 * 10
+#define MAX_BATCH_SIZE 1024 // 32 * 10
 #define MAX_EXPERTS_PER_BLOCK 32
 
 class Experts : public Op {

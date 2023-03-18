@@ -56,7 +56,7 @@ public:
 struct SampleIdxs {
   size_t num_samples;
   size_t max_sequence_length;
-  size_t idxs[MAX_NUM_SAMPLES]; // the id of each token within its request
+  size_t idxs[MAX_SEQ_LEN]; // the id of each token within its request
   size_t
-      guids[MAX_NUM_SAMPLES]; // the guid of the request each token belongs to
+      guids[MAX_SEQ_LEN]; // the guid of the request each token belongs to
 };
