@@ -126,6 +126,7 @@ void FlexFlow::top_level_task(Task const *task,
   Tensor t = create_moe_encoder(&ff, &moeConfig, input);
   // Tensor t = create_moe(&ff, &moeConfig, input);
   t = ff.dense(t, moeConfig.out_dim, AC_MODE_RELU);
+  t = ff.softmax(t);
 
   //------------------- Initialize the inference manager ------------------
   InferenceManager im(

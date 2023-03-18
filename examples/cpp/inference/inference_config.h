@@ -17,7 +17,7 @@
 #include <string>
 
 #define MAX_SEQ_LEN 1024
-#define BATCH_SIZE 32
+#define BATCH_SIZE 2
 #define MNIST_DIMS 28 * 28
 #define DATA_DIM MNIST_DIMS
 
