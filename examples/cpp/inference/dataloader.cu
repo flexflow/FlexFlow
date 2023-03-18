@@ -47,7 +47,7 @@ void DataLoader::load_input(Task const *task,
   assert(sequence_length == full_input_sequence_length);
 
   // Currently assume continous indices
-  assert(meta->num_samples <= batch_size);
+  assert(meta->num_samples <= batch_size * sequence_length);
   for (int i = 1; i < meta->num_samples; i++) {
     if (meta->guids[i] == meta->guids[i - 1]) {
       assert(meta->idxs[i] == meta->idxs[i - 1] + 1);
