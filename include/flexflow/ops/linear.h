@@ -37,7 +37,6 @@ public:
 
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
-                      BatchConfig const &,
                       std::vector<ParallelTensor> const &,
                       std::vector<ParallelTensor> const &,
                       MachineView const *mv = nullptr) override;

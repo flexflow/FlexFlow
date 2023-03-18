@@ -111,8 +111,7 @@ void InferenceManager::init_operators_inference() {
           ((ParallelOp *)op)
               ->create_input_partition_inference(*model, inputs, outputs);
         }
-        BatchConfig bc;
-        op->init_inference(*model, bc, inputs, outputs, view);
+        op->init_inference(*model, inputs, outputs, view);
       }
     }
   }

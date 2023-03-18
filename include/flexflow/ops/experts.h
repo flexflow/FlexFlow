@@ -64,7 +64,7 @@ public:
 };
 
 // definitions for the CUDA kernel
-#define MAX_BATCH_SIZE 32 * 10
+#define MAX_BATCH_SIZE 1024 * 2 // 32 * 10
 #define MAX_EXPERTS_PER_BLOCK 32
 
 class Experts : public Op {
@@ -96,7 +96,6 @@ public:
 
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
-                      BatchConfig const &,
                       std::vector<ParallelTensor> const &,
                       std::vector<ParallelTensor> const &,
                       MachineView const *mv = nullptr) override;

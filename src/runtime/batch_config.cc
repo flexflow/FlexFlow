@@ -21,7 +21,8 @@ namespace FlexFlow {
 
 LegionRuntime::Logger::Category log_bc("BatchConfig");
 
-BatchConfig::BatchConfig() {
+BatchConfig::BatchConfig(bool _incremental_mode)
+    : incremental_mode(_incremental_mode) {
   cached_results = false;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     token_start_idx[i] = 0;
