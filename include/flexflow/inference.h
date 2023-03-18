@@ -25,8 +25,8 @@ class FFModel;
 class InferenceManager {
 public:
   InferenceManager(FFModel *_model,
-                   int max_tokens_per_batch,
-                   int max_inflight_batches);
+                   int max_num_requests_per_batch,
+                   int max_num_inflight_batches);
   void compile_model_and_allocate_buffer(void);
   void init_operators_inference();
   Legion::FutureMap inference(int index, BatchConfig const &bc);
@@ -34,8 +34,8 @@ public:
 public:
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
   FFModel *model;
-  int max_tokens_per_batch; // the token capacity of each input tensor
-  int max_inflight_batches;
+  int max_num_requests_per_batch;
+  int max_num_inflight_batches;
   int num_devices;
   std::vector<MachineView> machine_views;
 };
