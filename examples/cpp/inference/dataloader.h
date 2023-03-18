@@ -45,7 +45,7 @@ public:
   void next_batch(FFModel &, BatchConfig *);
 
 public:
-  size_t num_samples, max_sequence_length;
+  size_t num_samples;
   FlexFlow::ParallelTensor full_input, batch_input;
   struct DataLoaderInput {
     InferenceConfig const &_inferenceConfig;
@@ -54,9 +54,8 @@ public:
 };
 
 struct SampleIdxs {
+  bool incremental_mode;
   size_t num_samples;
-  size_t max_sequence_length;
-  size_t idxs[MAX_SEQ_LEN]; // the id of each token within its request
-  size_t
-      guids[MAX_SEQ_LEN]; // the guid of the request each token belongs to
+  size_t idxs[MAX_SEQ_LEN];  // the id of each token within its request
+  size_t guids[MAX_SEQ_LEN]; // the guid of the request each token belongs to
 };

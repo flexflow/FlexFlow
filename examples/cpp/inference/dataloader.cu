@@ -42,6 +42,9 @@ void DataLoader::load_input(Task const *task,
       batch_input_domain.hi()[1] - batch_input_domain.lo()[1] + 1;
   coord_t batch_size =
       batch_input_domain.hi()[2] - batch_input_domain.lo()[2] + 1;
+  coord_t full_input_sequence_length =
+      full_input_domain.hi()[1] - full_input_domain.lo()[1] + 1;
+  assert(sequence_length == full_input_sequence_length);
 
   // Currently assume continous indices
   assert(meta->num_samples <= batch_size);
@@ -53,15 +56,30 @@ void DataLoader::load_input(Task const *task,
   // keep things simple for now
   assert(batch_input_domain.get_volume() ==
          batch_size * sequence_length * token_dim);
-  // currently use sequence length = 1, since we just concatenate all tensors
-  assert(sequence_length == 1);
 
   // pad inputs if needed (this is really only useful for debugging)
-  if (meta->num_samples < batch_size) {
-    checkCUDA(cudaMemset(batch_input_ptr + token_dim * meta->num_samples,
-                         0,
-                         token_dim * (batch_size - meta->num_samples) *
-                             sizeof(float)));
+  checkCUDA(cudaMemset(
+      batch_input_ptr, 0, batch_input_domain.get_volume() * sizeof(float)));
+
+  if (!meta->incremental_mode) {
+    size_t num_requests = 0;
+    size_t guid;
+    for (size_t i = 0; i < meta->num_samples; i++) {
+      if (i == 0 || meta->guids[i] != guid) {
+        guid = meta->guids[0];
+        num_requests++;
+      }
+    }
+
+    coord_t start_idx = meta->guids[0];
+    assert(batch_input_domain.get_volume() % batch_size == 0);
+    size_t size_to_copy = token_dim * sequence_length * num_requests;
+    float const *input_zc =
+        full_input_ptr + start_idx * token_dim * sequence_length;
+    copy_kernel<<<GET_BLOCKS(size_to_copy), CUDA_NUM_THREADS>>>(
+        batch_input_ptr, input_zc, size_to_copy);
+    checkCUDA(cudaDeviceSynchronize());
+    return;
   }
 
   size_t guid = meta->guids[0];
@@ -73,7 +91,7 @@ void DataLoader::load_input(Task const *task,
       size_t size_to_copy = token_dim * (meta->idxs[i - 1] - start_idx + 1);
       total_tokens += size_to_copy / token_dim;
       float const *input_zc = full_input_ptr +
-                              (guid * token_dim * meta->max_sequence_length) +
+                              (guid * token_dim * sequence_length) +
                               start_idx * token_dim;
       float *dst_ptr = batch_input_ptr + dst_idx * token_dim;
       copy_kernel<<<GET_BLOCKS(size_to_copy), CUDA_NUM_THREADS>>>(

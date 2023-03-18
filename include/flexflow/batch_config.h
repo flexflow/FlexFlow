@@ -29,7 +29,7 @@ struct InferenceResult {
 
 class BatchConfig {
 public:
-  BatchConfig();
+  BatchConfig(bool _incremental_mode);
   bool register_new_request(size_t guid, int length);
   void prepare_next_batch();
   int update_results(InferenceResult const &ir);
@@ -47,6 +47,7 @@ public:
   int num_processing_tokens[MAX_NUM_REQUESTS];
   size_t request_guid[MAX_NUM_REQUESTS];
   bool request_completed[MAX_NUM_REQUESTS];
+  bool incremental_mode;
 };
 
 }; // namespace FlexFlow

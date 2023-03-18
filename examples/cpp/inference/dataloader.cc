@@ -30,7 +30,6 @@ DataLoader::DataLoader(FFModel &ff,
   int replica_idx = numdims - 1;
   int batch_idx = numdims - 2;
   num_samples = inferenceConfig.total_requests;
-  max_sequence_length = data_generator.max_sequence_length;
 
   // Create full input
   {
@@ -45,7 +44,7 @@ DataLoader::DataLoader(FFModel &ff,
       // Assume only the first dim can be the replica dim
       assert(i == replica_idx || (!dims[i].is_replica_dim));
     }
-    assert(dims[batch_idx].size == BatchConfig::MAX_NUM_TOKENS);
+    assert(dims[batch_idx].size == inferenceConfig.batch_size);
     dims[batch_idx].size = num_samples;
 
     full_input =
@@ -121,12 +120,13 @@ void DataLoader::next_batch(FFModel &ff, BatchConfig *bc) {
              "inference mode");
     }
     int batch_size = batch_input->dims[input_dims - 2].size;
+    int seq_len = batch_input->dims[input_dims - 3].size;
     assert(ff.config.batchSize == batch_size &&
-           batch_size >= num_active_tokens);
+           batch_size * seq_len >= num_active_tokens);
     for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
       meta.num_samples = num_active_tokens;
-      meta.max_sequence_length = max_sequence_length;
+      meta.incremental_mode = bc->incremental_mode;
       int token_index = 0;
       for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
         if (bc->request_completed[i]) {

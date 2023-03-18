@@ -183,7 +183,6 @@ Node Aggregate::deserialize(FFModel &ff,
 }
 
 void Aggregate::init_inference(FFModel const &ff,
-                               BatchConfig const &bc,
                                std::vector<ParallelTensor> const &batch_inputs,
                                std::vector<ParallelTensor> const &batch_outputs,
                                MachineView const *mv) {
