@@ -16,31 +16,30 @@
 #pragma once
 
 #include <cstdlib>
-#include <stdint.h>
+
+#define MAX_SEQ_LEN 1024
+#define BATCH_SIZE 2
+#define MAX_REQUESTS 256
 
 namespace FlexFlow {
 
 struct InferenceResult {
-  static int const MAX_NUM_TOKENS = 1024;
+  static int const MAX_NUM_TOKENS = MAX_SEQ_LEN * BATCH_SIZE;
   int results[MAX_NUM_TOKENS];
 };
 
 class BatchConfig {
 public:
-  struct token_ids {
-    uint16_t request_id;
-    uint16_t token_id;
-  };
-  BatchConfig();
+  BatchConfig(bool _incremental_mode);
   bool register_new_request(size_t guid, int length);
   void prepare_next_batch();
   int update_results(InferenceResult const &ir);
   bool update_num_active_requests_tokens();
   int num_active_requests() const;
   int num_active_tokens() const;
-  static int const MAX_NUM_REQUESTS = 256;
+  static int const MAX_NUM_REQUESTS = MAX_REQUESTS;
   static int const MAX_NUM_TOKENS = InferenceResult::MAX_NUM_TOKENS;
-  static int const MAX_SEQUENCE_LENGTH = 1024;
+  static int const MAX_SEQUENCE_LENGTH = MAX_SEQ_LEN;
   // These are set by update
   int num_tokens, num_requests;
   bool cached_results;
@@ -50,6 +49,7 @@ public:
   token_ids token2ids[MAX_NUM_TOKENS];
   size_t request_guid[MAX_NUM_REQUESTS];
   bool request_completed[MAX_NUM_REQUESTS];
+  bool incremental_mode;
 };
 
 }; // namespace FlexFlow
