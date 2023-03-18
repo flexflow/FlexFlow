@@ -55,8 +55,9 @@ FusedOp::FusedOp(FFModel &model, Op *op)
   numInputs = 0;
   for (int i = 0; i < op->numInputs; i++) {
     bool found = false;
-    //we also need to check region duplicate for the first op in a fused op (e.g., MHA)
-    for (int j = 0; j < numInputs; j++)
+    // we also need to check region duplicate for the first op in a fused op
+    // (e.g., MHA)
+    for (int j = 0; j < numInputs; j++) {
       if (inputs[j]->region == op->inputs[i]->region) {
         // This input is one of my inputs
         assert(!found);
@@ -66,16 +67,16 @@ FusedOp::FusedOp(FFModel &model, Op *op)
         found = true;
         break;
       }
-      if(found) {
-        //do nothing
-      }
-      else {
-        inputs[numInputs] = op->inputs[i];
-        input_data_types[numInputs] = op->inputs[i]->data_type;
-        op_input_source[i] = SOURCE_INPUT;
-        op_input_idx[i] = numInputs;
-        numInputs++;
-      }
+    }
+    if (found) {
+      // do nothing
+    } else {
+      inputs[numInputs] = op->inputs[i];
+      input_data_types[numInputs] = op->inputs[i]->data_type;
+      op_input_source[i] = SOURCE_INPUT;
+      op_input_idx[i] = numInputs;
+      numInputs++;
+    }
     // input_lps[i] = op->input_lps[i];
     // input_grad_lps[i] = op->input_grad_lps[i];
   }
