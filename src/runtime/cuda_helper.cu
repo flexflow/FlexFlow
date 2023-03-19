@@ -412,3 +412,12 @@ template __host__ void
     print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
 template __host__ void
     print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
+
+template __host__ float *download_tensor<float>(float const *ptr,
+                                                size_t num_elements);
+template __host__ double *download_tensor<double>(double const *ptr,
+                                                  size_t rect);
+template __host__ int32_t *download_tensor<int32_t>(int32_t const *ptr,
+                                                    size_t rect);
+template __host__ int64_t *download_tensor<int64_t>(int64_t const *ptr,
+                                                    size_t rect);

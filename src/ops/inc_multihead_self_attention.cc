@@ -559,11 +559,14 @@ void IncMultiHeadSelfAttention::inference_task(
                                                       output.get_float_ptr());
 
   // Now re-implement manually
-  float *input_cpu = download_tensor<float>(input.get_float_ptr(), input_domain.get_volume());
+  float *input_cpu =
+      download_tensor<float>(input.get_float_ptr(), input_domain.get_volume());
   assert(input_cpu != nullptr);
-  float *weight_cpu = download_tensor<float>(weight.get_float_ptr(), weight_domain.get_volume());
+  float *weight_cpu = download_tensor<float>(weight.get_float_ptr(),
+                                             weight_domain.get_volume());
   assert(weight_cpu != nullptr);
-  float *output_cpu = download_tensor<float>(output.get_float_ptr(), output_domain.get_volume());
+  float *output_cpu = download_tensor<float>(output.get_float_ptr(),
+                                             output_domain.get_volume());
   assert(output_cpu != nullptr);
   checkCUDA(cudaFreeHost(input_cpu));
   checkCUDA(cudaFreeHost(weight_cpu));
