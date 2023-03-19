@@ -1,0 +1,95 @@
+#------------------------------------------------------------------------------#
+# Copyright 2022 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#------------------------------------------------------------------------------#
+
+#
+# Multistage build.
+#
+
+ARG BUILD_IMAGE=nvcr.io/nvidia/tritonserver:21.06-py3-min
+ARG SDK_IMAGE=nvcr.io/nvidia/tritonserver:21.06-py3-sdk
+ARG TRITON_IMAGE=nvcr.io/nvidia/tritonserver:21.06-py3
+ARG TRITON_COMMON_REPO_TAG=main
+ARG TRITON_CORE_REPO_TAG=main
+ARG TRITON_BACKEND_REPO_TAG=main
+
+############################################################################
+## Build legion backend from the BUILD_IMAGE since it has already been configured
+## correctly and has some existing build artifacts. Copy artifacts
+## into QA area.
+############################################################################
+FROM ${BUILD_IMAGE} AS build
+
+# Ensure apt-get won't prompt for selecting options
+ENV DEBIAN_FRONTEND=noninteractive
+
+ARG TRITON_COMMON_REPO_TAG
+ARG TRITON_CORE_REPO_TAG
+ARG TRITON_BACKEND_REPO_TAG
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+            zlib1g-dev \
+            rapidjson-dev \
+            software-properties-common && \
+    rm -rf /var/lib/apt/lists/*
+
+# Legion backend build requires recent version of CMake (FetchContent required)
+RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | \
+      gpg --dearmor - |  \
+      tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null && \
+    apt-add-repository 'deb https://apt.kitware.com/ubuntu/ focal main' && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+      cmake-data=3.18.4-0kitware1ubuntu20.04.1 cmake=3.18.4-0kitware1ubuntu20.04.1
+
+WORKDIR /workspace
+COPY . .
+RUN cmake -DTRITON_COMMON_REPO_TAG:STRING=${TRITON_COMMON_REPO_TAG} \
+          -DTRITON_CORE_REPO_TAG:STRING=${TRITON_CORE_REPO_TAG} \
+          -DTRITON_BACKEND_REPO_TAG:STRING=${TRITON_BACKEND_REPO_TAG} . && \
+    make -j16
+
+# Introduce the name
+FROM ${SDK_IMAGE} AS sdk
+
+############################################################################
+## Create CI enabled image
+############################################################################
+FROM ${TRITON_IMAGE}
+
+WORKDIR /opt/tritonserver
+COPY --chown=1000:1000 --from=build /workspace/qa/ qa/
+COPY --chown=1000:1000 --from=build /workspace/triton-legion/backends/legion backends/legion/.
+COPY --chown=1000:1000 --from=build /workspace/triton-legion/test/onnx_parser_test qa/L0_parser/.
+COPY --chown=1000:1000 --from=build /workspace/triton-legion/test/data/* qa/L0_parser/data/
+COPY --chown=1000:1000 --from=sdk /workspace/install/python/triton*.whl qa/pkgs/
+
+# Ensure apt-get won't prompt for selecting options
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies for running Legion backend
+RUN apt-get update && apt-get install -y --no-install-recommends \
+                              openmpi-bin && \
+    rm -rf /var/lib/apt/lists/*
+
+# CI/QA expects "python" executable (not python3).
+RUN rm -f /usr/bin/python && \
+    ln -s /usr/bin/python3 /usr/bin/python
+# Install Python packages for test
+RUN pip3 install --upgrade numpy
+RUN find qa/pkgs/ -maxdepth 1 -type f -name \
+    "tritonclient-*-manylinux1_x86_64.whl" | xargs printf -- '%s[all]' | \
+    xargs pip3 install --upgrade

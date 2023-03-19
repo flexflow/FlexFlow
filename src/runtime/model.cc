@@ -2801,6 +2801,7 @@ Op *FFModel::create_operator_from_layer(
     case OP_TANH:
     case OP_IDENTITY:
     case OP_GELU:
+    case OP_RSQRT:
     case OP_ELU: {
       Op *op = ElementUnary::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -4790,6 +4791,15 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<UtilityTasks::dummy_task>(
         registrar, "Weights Prefetch Task");
+  }
+  // Tensor Equal task
+  {
+    TaskVariantRegistrar registrar(TENSOR_EQUAL_TASK_ID, "Tensor Equal");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<bool,
+                                      ParallelTensorBase::tensor_equal_task>(
+        registrar, "Tensor Equal Task");
   }
 }
 
