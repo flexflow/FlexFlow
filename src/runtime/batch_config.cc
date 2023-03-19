@@ -22,17 +22,20 @@ namespace FlexFlow {
 
 LegionRuntime::Logger::Category log_bc("BatchConfig");
 
-BatchConfig::BatchConfig(bool _incremental_mode)
-    : incremental_mode(_incremental_mode) {
+BatchConfig::BatchConfig() {
   cached_results = false;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     token_start_idx[i] = 0;
     token_last_available_idx[i] = -1;
     request_completed[i] = true;
     num_processing_tokens[i] = 0;
+    max_sequence_length[i] = 0;
   }
+  token2ids.num_samples = 0;
   for (int i = 0; i < MAX_NUM_TOKENS; i++) {
-    token2ids[i] = {USHRT_MAX, USHRT_MAX};
+    token2ids.guids[i] = SIZE_MAX;
+    token2ids.token_indexes[i].request_index = SIZE_MAX;
+    token2ids.token_indexes[i].token_position = SIZE_MAX;
   }
   update_num_active_requests_tokens();
 }
@@ -50,8 +53,9 @@ int BatchConfig::update_results(InferenceResult const &ir) {
     }
     t += num_processing_tokens[i];
     token_start_idx[i] += num_processing_tokens[i];
-    if (ir.results[t] == 0 || // TODO: replace this with <EOS>
-        token_start_idx[i] >= MAX_SEQUENCE_LENGTH) {
+    if (token_start_idx[i] >= max_sequence_length[i]
+        // || ir.results[t] == 0 TODO: replace this with <EOS>
+    ) {
       log_bc.print("[Done] guid(%zu) final_length(%d)",
                    request_guid[i],
                    token_start_idx[i]);
@@ -72,13 +76,16 @@ int BatchConfig::update_results(InferenceResult const &ir) {
   return completed;
 }
 
-bool BatchConfig::register_new_request(size_t guid, int length) {
+bool BatchConfig::register_new_request(size_t guid,
+                                       int initial_length,
+                                       int tokens_to_generate) {
   cached_results = false;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (request_completed[i]) {
-      log_bc.print("[NewRequest] guid(%zu) length(%d)", guid, length);
+      log_bc.print("[NewRequest] guid(%zu) length(%d)", guid, initial_length);
       token_start_idx[i] = 0;
-      token_last_available_idx[i] = length - 1;
+      token_last_available_idx[i] = initial_length - 1;
+      max_sequence_length[i] = initial_length + tokens_to_generate;
       request_guid[i] = guid;
       num_processing_tokens[i] = 0;
       request_completed[i] = false;
@@ -110,22 +117,23 @@ void BatchConfig::prepare_next_batch() {
   log_bc.print("[NextBatch] num_tokens(%d)", count);
 }
 
-bool BatchConfig::update_num_active_requests_tokens() {
+void BatchConfig::update_num_active_requests_tokens() {
   num_requests = 0;
   num_tokens = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (!request_completed[i]) {
       num_requests++;
       for (int j = 0; j < num_processing_tokens[i]; j++) {
-        token2ids[num_tokens] = {(uint16_t)i,
-                                 (uint16_t)(token_start_idx[i] + j)};
+        token2ids.guids[num_tokens] = request_guid[i];
+        token2ids.token_indexes[num_tokens].token_position =
+            token_start_idx[i] + j;
+        token2ids.token_indexes[num_tokens].request_index = i;
         num_tokens++;
       }
-      // num_tokens += num_processing_tokens[i];
     }
   }
+  token2ids.num_samples = num_tokens;
   cached_results = true;
-  return true;
 }
 
 int BatchConfig::num_active_requests() const {

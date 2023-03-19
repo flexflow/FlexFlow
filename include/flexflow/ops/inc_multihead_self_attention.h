@@ -14,11 +14,6 @@
 
 namespace FlexFlow {
 
-/* struct token_ids {
-  uint16_t request_id;
-  uint16_t token_id;
-}; */
-
 class IncMultiHeadSelfAttentionMeta;
 
 class IncMultiHeadSelfAttention : public Op {
@@ -113,7 +108,6 @@ class IncMultiHeadSelfAttentionMeta : public OpMeta {
 public:
   IncMultiHeadSelfAttentionMeta(FFHandler handler,
                                 IncMultiHeadSelfAttention const *attn,
-                                BatchConfig const *bc,
                                 float const *weight_ptr,
                                 Legion::Memory gpu_mem,
                                 int num_samples,
@@ -135,7 +129,7 @@ public:
   float *attn_heads, *W_out_contiguous;
   // void *reserveSpace;
 
-  BatchConfig::token_ids *dev_token2ids;
+  BatchConfig::token_idxs *dev_token2ids;
 };
 
 }; // namespace FlexFlow

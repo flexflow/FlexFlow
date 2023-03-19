@@ -30,26 +30,49 @@ struct InferenceResult {
 
 class BatchConfig {
 public:
-  BatchConfig(bool _incremental_mode);
-  bool register_new_request(size_t guid, int length);
+  BatchConfig();
+  bool register_new_request(size_t guid,
+                            int initial_length,
+                            int tokens_to_generate);
   void prepare_next_batch();
   int update_results(InferenceResult const &ir);
-  bool update_num_active_requests_tokens();
+  void update_num_active_requests_tokens();
   int num_active_requests() const;
   int num_active_tokens() const;
   static int const MAX_NUM_REQUESTS = MAX_REQUESTS;
   static int const MAX_NUM_TOKENS = InferenceResult::MAX_NUM_TOKENS;
-  static int const MAX_SEQUENCE_LENGTH = MAX_SEQ_LEN;
-  // These are set by update
+  // static int const MAX_SEQUENCE_LENGTH = MAX_SEQ_LEN;
+  //  These are set by update
   int num_tokens, num_requests;
   bool cached_results;
-  int token_start_idx[MAX_NUM_REQUESTS];
-  int token_last_available_idx[MAX_NUM_REQUESTS];
-  int num_processing_tokens[MAX_NUM_REQUESTS];
-  token_ids token2ids[MAX_NUM_TOKENS];
+  int token_start_idx[MAX_NUM_REQUESTS]; // index of first token in a request
+                                         // that should be processed in the
+                                         // current batch/iteration
+  int token_last_available_idx
+      [MAX_NUM_REQUESTS]; // last valid token index in a request. This includes
+                          // both the prompt and generated tokens
+  int num_processing_tokens[MAX_NUM_REQUESTS]; // a request's number of tokens
+                                               // being processed in the current
+                                               // batch/iteration
+  size_t max_sequence_length[MAX_NUM_REQUESTS];
+
+  struct token_idxs {
+    size_t request_index;  // the index within the BatchConfig of the request
+                           // that the token belongs to
+    size_t token_position; // the index indicating the position of each token
+                           // within its request
+  };
+
+  struct SampleIdxs {
+    size_t num_samples;
+    size_t guids[InferenceResult::MAX_NUM_TOKENS]; // the guid of the request
+                                                   // each token belongs to
+    token_idxs token_indexes[InferenceResult::MAX_NUM_TOKENS];
+  };
+
+  SampleIdxs token2ids;
   size_t request_guid[MAX_NUM_REQUESTS];
   bool request_completed[MAX_NUM_REQUESTS];
-  bool incremental_mode;
 };
 
 }; // namespace FlexFlow

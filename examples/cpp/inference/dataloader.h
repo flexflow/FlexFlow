@@ -15,6 +15,7 @@
 #pragma once
 
 #include "data_generator.h"
+#include "flexflow/batch_config.h"
 #include "flexflow/model.h"
 #include "inference_config.h"
 
@@ -51,11 +52,4 @@ public:
     InferenceConfig const &_inferenceConfig;
     DataGenerator &_data_generator;
   };
-};
-
-struct SampleIdxs {
-  bool incremental_mode;
-  size_t num_samples;
-  size_t idxs[MAX_SEQ_LEN];  // the id of each token within its request
-  size_t guids[MAX_SEQ_LEN]; // the guid of the request each token belongs to
 };

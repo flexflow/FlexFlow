@@ -124,23 +124,9 @@ void DataLoader::next_batch(FFModel &ff, BatchConfig *bc) {
     assert(ff.config.batchSize == batch_size &&
            batch_size * seq_len >= num_active_tokens);
     for (Domain::DomainPointIterator it(domain); it; it++) {
-      SampleIdxs meta;
-      meta.num_samples = num_active_tokens;
-      meta.incremental_mode = bc->incremental_mode;
-      int token_index = 0;
-      for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
-        if (bc->request_completed[i]) {
-          continue;
-        } else {
-          for (int j = 0; j < bc->num_processing_tokens[i]; j++) {
-            meta.guids[token_index] = bc->request_guid[i];
-            meta.idxs[token_index] = bc->token_start_idx[i] + j;
-            token_index++;
-          }
-        }
-      }
-      assert(token_index == num_active_tokens);
-      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+      // SampleIdxs meta = bc->token2ids;
+      argmap.set_point(
+          *it, TaskArgument(&bc->token2ids, sizeof(BatchConfig::SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1,
                            batch_input->parallel_is,

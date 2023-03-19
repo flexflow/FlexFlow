@@ -356,18 +356,14 @@ void IncMultiHeadSelfAttention::init_inference(
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   size_t machine_view_hash = view->hash();
   set_argumentmap_for_init_inference(ff, argmap, view);
-  std::tuple<IncMultiHeadSelfAttention, BatchConfig> args =
-      std::make_tuple(*this, bc);
-  IndexLauncher launcher(
-      INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
-      parallel_is,
-      TaskArgument(&args,
-                   sizeof(std::tuple<IncMultiHeadSelfAttention, BatchConfig>)),
-      argmap,
-      Predicate::TRUE_PRED,
-      false /*must*/,
-      0 /*mapper_id*/,
-      machine_view_hash);
+  IndexLauncher launcher(INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+                         parallel_is,
+                         TaskArgument(this, sizeof(IncMultiHeadSelfAttention)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -439,11 +435,10 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
     std::vector<PhysicalRegion> const &regions,
     Context ctx,
     Runtime *runtime) {
-  std::tuple<IncMultiHeadSelfAttention, BatchConfig> const *args =
-      (std::tuple<IncMultiHeadSelfAttention, BatchConfig> *)task->args;
-  IncMultiHeadSelfAttention const *attn = &std::get<0>(*args);
-  BatchConfig const *bc = &std::get<1>(*args);
+  IncMultiHeadSelfAttention const *attn =
+      (IncMultiHeadSelfAttention *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
+
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
@@ -461,14 +456,8 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
                        .only_kind(Memory::GPU_FB_MEM)
                        .best_affinity_to(task->target_proc)
                        .first();
-  IncMultiHeadSelfAttentionMeta *m =
-      new IncMultiHeadSelfAttentionMeta(handle,
-                                        attn,
-                                        bc,
-                                        weight.get_float_ptr(),
-                                        gpu_mem,
-                                        num_samples,
-                                        num_heads);
+  IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
+      handle, attn, weight.get_float_ptr(), gpu_mem, num_samples, num_heads);
   m->profiling = attn->profiling;
   assert(weight.domain.get_volume() * sizeof(float) == m->weightSize);
   return m;
@@ -549,6 +538,15 @@ void IncMultiHeadSelfAttention::inference_task(
       m->weight_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+
+  // Domain input_domain = runtime->get_index_space_domain(ctx,
+  // task->regions[0].region.get_index_space());
+
+  // assert(input_domain.get_dim() == 4);
+  // print_tensor<4, float>(input.get_float_ptr(), input_domain.get_volume(),
+  // "[Attention:forward:query]");
+  //  print_tensor<3, float>(acc_output.ptr, acc_output.rect,
+  //  "[Attention:forward:output]");
 
   IncMultiHeadSelfAttention::inference_kernel_wrapper(m,
                                                       bc,

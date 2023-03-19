@@ -126,6 +126,7 @@ void FlexFlow::top_level_task(Task const *task,
   double ts_start = Realm::Clock::current_time_in_microseconds();
 
   //----------------------- Begin inference! -------------------------------
+  //----------------------- Begin inference! -------------------------------
   int index = 0;
   int processed_requests = 0;
   int num_devices = ffConfig.workersPerNode * ffConfig.numNodes;
@@ -135,18 +136,21 @@ void FlexFlow::top_level_task(Task const *task,
   std::pair<size_t, size_t> new_prompts;
   BatchConfig *bc = nullptr;
 
+  assert(im.max_num_requests_per_batch == transformerConfig.batch_size);
+  // assert(transformerConfig.batch_size <= BatchConfig::MAX_NUM_REQUESTS);
+
   // simulation loop. For deployment, we will use a while(true)
   while (processed_requests < transformerConfig.total_requests) {
     for (int bid = 0; bid < im.max_num_requests_per_batch; bid++) {
+      size_t max_reqs, max_tkns;
       if (future_handlers.find(bid) == future_handlers.end()) {
-        size_t max_reqs = transformerConfig.incremental_mode
-                              ? bc->MAX_NUM_REQUESTS
-                              : im.max_num_requests_per_batch;
-        size_t max_tkns =
+        max_reqs = transformerConfig.incremental_mode
+                       ? bc->MAX_NUM_REQUESTS
+                       : im.max_num_requests_per_batch;
+        max_tkns =
             transformerConfig.sequence_length * transformerConfig.batch_size;
         new_prompts = data_generator.get_requests(max_reqs, max_tkns);
-        assert(new_prompts.second <= BatchConfig::MAX_NUM_REQUESTS);
-        bc = new BatchConfig(transformerConfig.incremental_mode);
+        bc = new BatchConfig();
       } else {
         Future future = future_handlers[bid];
         if (!future.is_ready(true /*subscribe*/)) {
@@ -155,14 +159,15 @@ void FlexFlow::top_level_task(Task const *task,
         InferenceResult ir = future.get_result<InferenceResult>();
         bc = batch_configs[bid];
         processed_requests += bc->update_results(ir);
-        size_t max_reqs = transformerConfig.incremental_mode
-                              ? bc->MAX_NUM_REQUESTS - bc->num_active_requests()
-                              : im.max_num_requests_per_batch;
-        size_t max_tkns =
+        max_reqs = transformerConfig.incremental_mode
+                       ? bc->MAX_NUM_REQUESTS - bc->num_active_requests()
+                       : im.max_num_requests_per_batch;
+        max_tkns =
             transformerConfig.sequence_length * transformerConfig.batch_size -
             (transformerConfig.incremental_mode ? bc->num_active_tokens() : 0);
         new_prompts = data_generator.get_requests(max_reqs, max_tkns);
       }
+      assert(new_prompts.second <= max_reqs);
       for (size_t i = 0; i < new_prompts.second; i++) {
         size_t guid = new_prompts.first + i;
         std::pair<size_t, size_t> seq_lens =
@@ -171,10 +176,9 @@ void FlexFlow::top_level_task(Task const *task,
                seq_lens.first <= max_input_tokens &&
                seq_lens.second >= min_tokens_to_generate &&
                seq_lens.second <= max_tokens_to_generate);
-        assert(bc->register_new_request(guid, seq_lens.first));
+        assert(bc->register_new_request(guid, seq_lens.first, seq_lens.second));
       }
       bc->prepare_next_batch();
-      // TODO: loading data
       data_loader.next_batch(ff, bc);
 
       runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
