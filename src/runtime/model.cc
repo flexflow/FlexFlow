@@ -38,7 +38,9 @@
 #include "flexflow/ops/experts.h"
 #include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
+#include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
+#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -975,6 +977,49 @@ void Op::set_argumentmap_for_init(FFModel const &ff, ArgumentMap &argmap) {
   }
 }
 
+void Op::set_argumentmap_for_init_inference(FFModel const &ff,
+                                            ArgumentMap &argmap,
+                                            MachineView const *view) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, this->parallel_is);
+  switch (domain.get_dim()) {
+#ifdef FF_USE_NCCL
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      FFHandler handle = ff.handlers[view->get_device_id(*it)];                \
+      if (ff.config.computationMode == COMP_MODE_TRAINING &&                   \
+          op_type == OP_WEIGHT) {                                              \
+        ncclComm_t *nccl_comms = ff.find_nccl_comms(*view);                    \
+        handle.ncclComm = nccl_comms[idx++];                                   \
+      }                                                                        \
+      argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));         \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+#else
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      FFHandler handle = ff.handlers[view->get_device_id(*it)];                \
+      argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));         \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+#endif
+    default:
+      assert(false);
+  }
+}
+
 void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -996,6 +1041,29 @@ void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
   }
 }
 
+void Op::set_opmeta_from_futuremap_inference(FFModel const &ff,
+                                             FutureMap const &fm,
+                                             MachineView const *view) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      inference_meta[view->hash()][idx++] = fm.get_result<OpMeta *>(*it);      \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
 void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -1007,6 +1075,30 @@ void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) {
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
       OpMeta *mp = meta[idx++];                                                \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
+    }                                                                          \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+}
+
+void Op::set_argumentmap_for_inference(FFModel const &ff,
+                                       ArgumentMap &argmap,
+                                       MachineView const *view) {
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
+  switch (domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    Rect<DIM> rect = domain;                                                   \
+    int idx = 0;                                                               \
+    for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
+      OpMeta *mp = inference_meta[view->hash()][idx++];                        \
       argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
     }                                                                          \
     break;                                                                     \
@@ -1219,6 +1311,11 @@ FFModel::FFModel(FFConfig &_config)
   for (PointInRectIterator<1> it(task_rect); it(); it++) {
     handlers[idx++] = fm.get_result<FFHandler>(*it);
   }
+}
+
+void FFModel::clear_graph_search_cache() {
+  this->graph_search->clear_cache();
+  this->search->clear_cache();
 }
 
 #ifdef FF_USE_NCCL
@@ -1682,6 +1779,7 @@ void FFModel::map_weight_with_dim(ParallelTensor weight,
   switch (parallel_op->op_type) {
     case OP_LINEAR:
     case OP_EMBEDDING:
+    case OP_EXPERTS:
     case OP_MULTIHEAD_ATTENTION: {
       switch (tdim) {
 #define DIMFUNC(TDIM)                                                          \
@@ -2630,7 +2728,8 @@ Op *FFModel::create_operator_from_layer(
       assert(tensor->parallel_tensor == nullptr);
       tensor->parallel_tensor = pt;
       // start from data parllel tensor
-      if (config.only_data_parallel) {
+      if (config.only_data_parallel &&
+          config.computationMode == COMP_MODE_TRAINING) {
         Repartition *part = new Repartition(
             *this, pt, num_dims - 1, config.numNodes * config.workersPerNode);
         operators.push_back(part);
@@ -2640,6 +2739,12 @@ Op *FFModel::create_operator_from_layer(
     case OP_MULTIHEAD_ATTENTION: {
       Op *op =
           MultiHeadAttention::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_INC_MULTIHEAD_SELF_ATTENTION: {
+      Op *op = IncMultiHeadSelfAttention::create_operator_from_layer(
+          *this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -2676,7 +2781,9 @@ Op *FFModel::create_operator_from_layer(
     case OP_EW_ADD:
     case OP_EW_SUB:
     case OP_EW_MUL:
-    case OP_EW_DIV: {
+    case OP_EW_DIV:
+    case OP_EW_MAX:
+    case OP_EW_MIN: {
       Op *op = ElementBinary::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
@@ -2694,6 +2801,7 @@ Op *FFModel::create_operator_from_layer(
     case OP_TANH:
     case OP_IDENTITY:
     case OP_GELU:
+    case OP_RSQRT:
     case OP_ELU: {
       Op *op = ElementUnary::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -2701,6 +2809,11 @@ Op *FFModel::create_operator_from_layer(
     }
     case OP_FLAT: {
       Op *op = Flat::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_GATHER: {
+      Op *op = Gather::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -3531,6 +3644,7 @@ FFConfig::FFConfig() {
   syntheticInput = false;
   perform_fusion = false;
   base_optimize_threshold = DefaultConfig::base_optimize_threshold;
+  perform_memory_search = false;
 
   // Parse input arguments
   {
@@ -3617,6 +3731,10 @@ void FFConfig::parse_args(char **argv, int argc) {
       workersPerNode = atoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "-ll:fsize")) {
+      device_mem = atoi(argv[++i]);
+      continue;
+    }
     if (!strcmp(argv[i], "--nodes")) {
       fprintf(stderr,
               "[Warning] --nodes is deprecated. "
@@ -3701,6 +3819,10 @@ void FFConfig::parse_args(char **argv, int argc) {
     }
     if (!strcmp(argv[i], "--substitution-json")) {
       substitution_json_path = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--memory-search")) {
+      perform_memory_search = true;
       continue;
     }
   }
@@ -3904,6 +4026,28 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<Embedding::backward_task_cpu>(
         registrar, "Embedding Backward Task");
   }*/
+  // Gather task
+  {
+    TaskVariantRegistrar registrar(GATHER_INIT_TASK_ID, "Gather Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, Gather::init_task>(
+        registrar, "Gather Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(GATHER_FWD_TASK_ID, "Gather Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Gather::forward_task>(
+        registrar, "Gather Forward Task");
+  }
+  {
+    TaskVariantRegistrar registrar(GATHER_BWD_TASK_ID, "Gather Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<Gather::backward_task>(
+        registrar, "Gather Backward Task");
+  }
 
   // Cache task CPU
   {
@@ -4157,6 +4301,13 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<Softmax::backward_task>(
         registrar, "softmax_bwd_task");
   }
+  {
+    TaskVariantRegistrar registrar(SOFTMAX_INF_TASK_ID, "softmax_inf_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<InferenceResult, Softmax::inference_task>(
+        registrar, "softmax_inf_task");
+  }
   // compute Loss
   {
     TaskVariantRegistrar registrar(LOSS_BWD_TASK_ID, "Loss Backward");
@@ -4368,6 +4519,25 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<MultiHeadAttention::backward_task>(
         registrar, "MultiHeadAttention Backward Task");
+  }
+  // MultiHeadAttention task
+  {
+    TaskVariantRegistrar registrar(INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+                                   "IncMultiHeadSelfAttention Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *,
+                                      IncMultiHeadSelfAttention::init_task>(
+        registrar, "IncMultiHeadSelfAttention Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+                                   "IncMultiHeadSelfAttention Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<
+        IncMultiHeadSelfAttention::inference_task>(
+        registrar, "IncMultiHeadSelfAttention Inference Task");
   }
   // NoOp
   {

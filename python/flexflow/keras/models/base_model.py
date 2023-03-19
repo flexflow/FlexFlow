@@ -17,8 +17,8 @@ import flexflow.core as ff
 from flexflow.core.flexflow_logger import fflogger
 
 from .tensor import Tensor
-from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout, BatchNormalization, Embedding, Reshape, Permute
-from flexflow.keras.backend.internal import BatchMatmul, Sin, Cos, Exp, Pow, ReduceSum
+from flexflow.keras.layers import Conv2D, Pooling2D, Flatten, Dense, Activation, Concatenate, Add, Subtract, Multiply, Dropout, BatchNormalization, Embedding, Reshape, Permute, Maximum, Minimum
+from flexflow.keras.backend.internal import BatchMatmul, Sin, Cos, Exp, Pow, ReduceSum, Rsqrt
 from flexflow.keras.optimizers import SGD, Adam
 from flexflow.keras.callbacks import Callback, LearningRateScheduler, VerifyMetrics, EpochVerifyMetrics
 from flexflow.keras import losses as keras_losses
@@ -152,6 +152,8 @@ class BaseModel(object):
       self._label_type = ff.DataType.DT_INT32
     elif loss == 'mean_squared_error':
       self._loss = keras_losses.MeanSquaredError()
+    elif loss == 'identity':
+      self._loss = keras_losses.Identity()
     else:
       assert 0, 'Unsupported loss'
 
@@ -490,6 +492,10 @@ class BaseModel(object):
         out_t = self._ffmodel.subtract(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       elif isinstance(layer, Multiply) == True:
         out_t = self._ffmodel.multiply(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
+      elif isinstance(layer, Maximum) == True:
+        out_t = self._ffmodel.max(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
+      elif isinstance(layer, Minimum) == True:
+        out_t = self._ffmodel.min(layer.input_tensors[0].ffhandle, layer.input_tensors[1].ffhandle)
       elif isinstance(layer, Dropout) == True:
         out_t = self._ffmodel.dropout(layer.input_tensors[0].ffhandle, layer.rate, layer.seed)
       elif isinstance(layer, BatchNormalization) == True:
@@ -512,6 +518,8 @@ class BaseModel(object):
         out_t = self._ffmodel.pow(layer.input_tensors[0].ffhandle, layer.a)
       elif isinstance(layer, ReduceSum):
         out_t = self._ffmodel.reduce_sum(layer.input_tensors[0].ffhandle, layer.axis, layer.keepdims)
+      elif isinstance(layer, Rsqrt):
+        out_t = self._ffmodel.rsqrt(layer.input_tensors[0].ffhandle)
       else:
         assert 0, "unknown layer"
 

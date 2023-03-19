@@ -13,7 +13,9 @@
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
 #include "flexflow/ops/flat.h"
+#include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
+#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/mean.h"
@@ -44,6 +46,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
     case OP_EW_SUB:
     case OP_EW_MUL:
     case OP_EW_DIV:
+    case OP_EW_MAX:
+    case OP_EW_MIN:
       return ((ElementBinary *)op)->get_params();
     case OP_EXP:
     case OP_SIN:
@@ -71,8 +75,12 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((Embedding *)op)->get_params();
     case OP_FLAT:
       return ((Flat *)op)->get_params();
+    case OP_GATHER:
+      return ((Gather *)op)->get_params();
     case OP_MULTIHEAD_ATTENTION:
       return ((MultiHeadAttention *)op)->get_params();
+    case OP_INC_MULTIHEAD_SELF_ATTENTION:
+      return ((IncMultiHeadSelfAttention *)op)->get_params();
     case OP_LAYERNORM:
       return ((LayerNorm *)op)->get_params();
     case OP_REDUCE_SUM:

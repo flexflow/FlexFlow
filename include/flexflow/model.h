@@ -17,6 +17,7 @@
 #include "accessor.h"
 #include "config.h"
 #include "device.h"
+#include "flexflow/memory_optimization.h"
 #include "flexflow/node.h"
 #include "flexflow/operator_params.h"
 #include "flexflow/utils/hash_utils.h"
@@ -69,6 +70,9 @@ enum TaskIDs {
   EMBED_INIT_TASK_ID,
   EMBED_FWD_TASK_ID,
   EMBED_BWD_TASK_ID,
+  GATHER_INIT_TASK_ID,
+  GATHER_FWD_TASK_ID,
+  GATHER_BWD_TASK_ID,
   GROUP_BY_INIT_TASK_ID,
   GROUP_BY_FWD_TASK_ID,
   GROUP_BY_BWD_TASK_ID,
@@ -109,6 +113,7 @@ enum TaskIDs {
   SOFTMAX_INIT_TASK_ID,
   SOFTMAX_FWD_TASK_ID,
   SOFTMAX_BWD_TASK_ID,
+  SOFTMAX_INF_TASK_ID,
   CONCAT_INIT_TASK_ID,
   CONCAT_FWD_TASK_ID,
   CONCAT_BWD_TASK_ID,
@@ -133,6 +138,10 @@ enum TaskIDs {
   ATTENTION_INIT_TASK_ID,
   ATTENTION_FWD_TASK_ID,
   ATTENTION_BWD_TASK_ID,
+  INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+  INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
+  INC_MULTIHEAD_SELF_ATTENTION_BWD_TASK_ID,
+  INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
   MSELOSS_BWD_TASK_ID,
   FUSEDOP_INIT_TASK_ID,
   FUSEDOP_FWD_TASK_ID,
@@ -263,10 +272,12 @@ class ElementUnary;
 class Embedding;
 class Experts;
 class Flat;
+class Gather;
 class Group_by;
 class LayerNorm;
 class Linear;
 class MultiHeadAttention;
+class IncMultiHeadSelfAttention;
 class Pool2D;
 class Reduce;
 class Reshape;
@@ -356,6 +367,16 @@ public:
                 const Tensor y,
                 bool inplace_a = false,
                 char const *name = NULL);
+  // Add a max layer
+  Tensor max(const Tensor x,
+             const Tensor y,
+             bool inplace_a = false,
+             char const *name = NULL);
+  // Add a min layer
+  Tensor min(const Tensor x,
+             const Tensor y,
+             bool inplace_a = false,
+             char const *name = NULL);
   // Add a rsqrt layer
   Tensor rsqrt(const Tensor x, bool inplace = true, char const *name = NULL);
   // Add a pow layer
@@ -421,6 +442,11 @@ public:
                    Layer const *shared_op = NULL,
                    Initializer *kernel_initializer = NULL,
                    char const *name = NULL);
+  // Add a gather layer
+  Tensor gather(const Tensor input,
+                const Tensor index,
+                int dim,
+                char const *name = NULL);
   // Add a group_by layer
   void group_by(const Tensor data,
                 const Tensor assign,
@@ -547,6 +573,17 @@ public:
                              bool add_zero_attn = false,
                              Initializer *kernel_initializer = NULL,
                              char const *name = NULL);
+  Tensor inc_multihead_self_attention(const Tensor input,
+                                      int embed_dim,
+                                      int num_heads,
+                                      int kdim = 0,
+                                      int vdim = 0,
+                                      float dropout = 0.0f,
+                                      bool bias = true,
+                                      bool add_bias_kv = false,
+                                      bool add_zero_attn = false,
+                                      Initializer *kernel_initializer = NULL,
+                                      char const *name = NULL);
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
                                        DataType data_type,
@@ -786,6 +823,13 @@ public:
                       bool only_data_parallel,
                       std::unique_ptr<PCG::Graph> &best_graph,
                       std::unordered_map<PCG::Node, MachineView> &optimal_view);
+  void graph_optimize(size_t budget,
+                      bool only_data_parallel,
+                      std::unique_ptr<PCG::Graph> &best_graph,
+                      std::unordered_map<PCG::Node, MachineView> &optimal_view,
+                      bool perform_memory_search,
+                      MemoryOptimConfig new_config,
+                      MemorySearchResult &search_result);
   void mcmc_optimize(std::map<Op const *, ParallelConfig> &best,
                      size_t budget,
                      float alpha,
@@ -822,6 +866,11 @@ public:
   // APIs for setting iteration configs
 public:
   void set_iteration_config_sequence_length(int seq_length);
+
+  /**
+   * @brief Clear the cache of the GraphSearchHelper and SearchHelper.
+   */
+  void clear_graph_search_cache();
 
 public:
   size_t op_global_guid, layer_global_guid;
@@ -874,7 +923,10 @@ public:
           std::pair<std::vector<ParallelTensorShape>, ExpertsParams>,
           Experts *>,
       std::unordered_map<std::pair<ParallelTensorShape, FlatParams>, Flat *>,
-
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    GatherParams>,
+          Gather *>,
       std::unordered_map<
           std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
                     Group_byParams>,
@@ -890,6 +942,9 @@ public:
                                               ParallelTensorShape>,
                                    MultiHeadAttentionParams>,
                          MultiHeadAttention *>,
+      std::unordered_map<
+          std::pair<ParallelTensorShape, IncMultiHeadSelfAttentionParams>,
+          IncMultiHeadSelfAttention *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReduceParams>,
                          Reduce *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,

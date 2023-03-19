@@ -117,13 +117,16 @@ Softmax::Softmax(FFModel &model,
 
 void Softmax::init_inference(FFModel const &ff,
                              std::vector<ParallelTensor> const &batch_inputs,
-                             std::vector<ParallelTensor> const &batch_outputs) {
+                             std::vector<ParallelTensor> const &batch_outputs,
+                             MachineView const *mv) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = batch_outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_init_inference(ff, argmap, view);
   IndexLauncher launcher(SOFTMAX_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Softmax)),
@@ -131,7 +134,7 @@ void Softmax::init_inference(FFModel const &ff,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         batch_outputs[0]->machine_view.hash());
+                         machine_view_hash);
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -146,7 +149,7 @@ void Softmax::init_inference(FFModel const &ff,
   launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  set_opmeta_from_futuremap(ff, fm);
+  set_opmeta_from_futuremap_inference(ff, fm, view);
 }
 
 void Softmax::init(FFModel const &ff) {
@@ -222,17 +225,21 @@ OpMeta *Softmax::init_task(Task const *task,
   return m;
 }
 
-void Softmax::inference(FFModel const &ff,
-                        std::vector<ParallelTensor> const &batch_inputs,
-                        std::vector<ParallelTensor> const &batch_outputs,
-                        MachineView const *mv) {
+FutureMap Softmax::inference(FFModel const &ff,
+                             BatchConfig const &bc,
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs,
+                             MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_forward(ff, argmap);
-  size_t machine_view_hash =
-      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
-  IndexLauncher launcher(SOFTMAX_FWD_TASK_ID,
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, view);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "Softmax op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
+  IndexLauncher launcher(SOFTMAX_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -252,7 +259,7 @@ void Softmax::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Softmax::forward(FFModel const &ff) {
@@ -399,6 +406,29 @@ void Softmax::backward_task_with_dim(Task const *task,
 
   backward_kernel_wrapper(
       m, acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
+}
+
+InferenceResult
+    Softmax::inference_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  switch (in_domain.get_dim()) {
+#define DIMFUNC(DIM)                                                           \
+  case DIM: {                                                                  \
+    forward_task_with_dim<DIM>(task, regions, ctx, runtime);                   \
+    break;                                                                     \
+  }
+    LEGION_FOREACH_N(DIMFUNC)
+#undef DIMFUNC
+    default:
+      assert(false);
+  }
+  // FIXME: replace this with actual result
+  InferenceResult ir;
+  return ir;
 }
 
 bool Softmax::get_int_parameter(PMParameter para, int *value) const {

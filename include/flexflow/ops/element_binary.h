@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_ELEMENT_BINARY_H
 #define _FLEXFLOW_ELEMENT_BINARY_H
 
+#include "flexflow/inference.h"
 #include "flexflow/layer.h"
 #include "flexflow/node.h"
 #include "flexflow/operator.h"
@@ -27,13 +28,15 @@ public:
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
                       std::vector<ParallelTensor> const &,
-                      std::vector<ParallelTensor> const &) override;
+                      std::vector<ParallelTensor> const &,
+                      MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void inference(FFModel const &,
-                 std::vector<ParallelTensor> const &,
-                 std::vector<ParallelTensor> const &,
-                 MachineView const *mv = nullptr) override;
+  Legion::FutureMap inference(FFModel const &,
+                              BatchConfig const &,
+                              std::vector<ParallelTensor> const &,
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) override {
     assert(0);
   }

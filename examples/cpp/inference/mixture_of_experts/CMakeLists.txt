@@ -6,11 +6,12 @@ set(project_target inference_moe)
 set(CPU_SRC
   ${FLEXFLOW_CPP_DRV_SRC}
   moe.cc
-  moe.h
-  ../data_generator.h)
+  ../dataloader.cc
+  ../data_generator.cc
+  ../gpt_tokenizer.cc)
 
 set(GPU_SRC
-  moe.cu)
+  ../dataloader.cu)
 
 cuda_add_executable(${project_target} ${CPU_SRC} ${GPU_SRC})
 target_include_directories(${project_target} PRIVATE ${FLEXFLOW_INCLUDE_DIRS} ${CMAKE_INSTALL_INCLUDEDIR})

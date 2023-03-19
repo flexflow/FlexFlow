@@ -32,6 +32,7 @@ class LossType(Enum):
   LOSS_SPARSE_CATEGORICAL_CROSSENTROPY = 51
   LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE = 52
   LOSS_MEAN_SQUARED_ERROR_SUM_REDUCE = 53
+  LOSS_IDENTITY = 54
 
 class CompMode(Enum):
   TRAINING = 70
@@ -83,6 +84,8 @@ class OpType(Enum):
   INPUT = 2050
   OUTPUT = 2051
   REDUCE_SUM = 2052
+  MAX = 2053
+  MIN = 2054
   MULTIHEAD_ATTENTION = 2060
   GETITEM = 2070
   GETATTR = 2080
@@ -104,6 +107,7 @@ class OpType(Enum):
   UNSQUEEZE = 2103
   TYPE_AS = 2104
   VIEW = 2105
+  GATHER = 2106
   ATTRIBUTE = 2200
 def enum_to_int(enum, enum_item):
   for item in enum:

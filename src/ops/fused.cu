@@ -18,12 +18,14 @@
 #include "flexflow/ops/batch_norm.h"
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/ops/embedding.h"
+#include "flexflow/ops/flat.h"
 #include "flexflow/ops/fused.h"
 #include "flexflow/ops/kernels/batch_matmul_kernels.h"
 #include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/ops/kernels/conv_2d_kernels.h"
 #include "flexflow/ops/kernels/dropout_kernels.h"
 #include "flexflow/ops/kernels/element_binary_kernels.h"
+#include "flexflow/ops/kernels/embedding_kernels.h"
 #include "flexflow/ops/kernels/flat_kernels.h"
 #include "flexflow/ops/kernels/linear_kernels.h"
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
@@ -286,7 +288,9 @@ __host__ void FusedOp::forward_task(Task const *task,
       case OP_EW_ADD:
       case OP_EW_SUB:
       case OP_EW_MUL:
-      case OP_EW_DIV: {
+      case OP_EW_DIV:
+      case OP_EW_MAX:
+      case OP_EW_MIN: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -355,13 +359,13 @@ __host__ void FusedOp::forward_task(Task const *task,
         }
 
         assert(my_input_accessor[0].data_type == DT_INT64);
-        Embedding::forward_kernel_wrapper(m,
-                                          my_input_accessor[0],
-                                          my_output_accessor[0],
-                                          my_weight_accessor[0],
-                                          in_dim,
-                                          out_dim,
-                                          effective_batch_size);
+        Kernels::Embedding::forward_kernel_wrapper(m,
+                                                   my_input_accessor[0],
+                                                   my_output_accessor[0],
+                                                   my_weight_accessor[0],
+                                                   in_dim,
+                                                   out_dim,
+                                                   effective_batch_size);
         break;
       }
       case OP_RELU:
@@ -742,7 +746,9 @@ __host__ void FusedOp::backward_task(Task const *task,
       case OP_EW_ADD:
       case OP_EW_SUB:
       case OP_EW_MUL:
-      case OP_EW_DIV: {
+      case OP_EW_DIV:
+      case OP_EW_MAX:
+      case OP_EW_MIN: {
         assert(fused->op_num_inputs[op] == 2);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
@@ -783,13 +789,13 @@ __host__ void FusedOp::backward_task(Task const *task,
           assert(effective_batch_size * in_dim ==
                  my_input_accessor[0].domain.get_volume());
         }
-        Embedding::backward_kernel_wrapper(m,
-                                           my_input_accessor[0],
-                                           my_output_grad_accessor[0],
-                                           my_weight_grad_accessor[0],
-                                           in_dim,
-                                           out_dim,
-                                           effective_batch_size);
+        Kernels::Embedding::backward_kernel_wrapper(m,
+                                                    my_input_accessor[0],
+                                                    my_output_grad_accessor[0],
+                                                    my_weight_grad_accessor[0],
+                                                    in_dim,
+                                                    out_dim,
+                                                    effective_batch_size);
         break;
       }
       case OP_LINEAR: {

@@ -1,117 +1,78 @@
+/* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+
+#include <cassert>
 #include <chrono>
 #include <ctime>
 #include <iostream>
+#include <iterator>
 #include <math.h>
 #include <random>
 #include <thread>
 #include <unistd.h>
+
 using namespace std;
+
 typedef std::chrono::high_resolution_clock Clock;
 typedef std::chrono::milliseconds milliseconds;
 
-class Generator {
+class DataGenerator {
 public:
-  size_t num_requests; // total number of requests
-  size_t tensor_size;  // dimension of one request tensor
-  bool poisson;        // false implied uniform distribution
-  double lambda;       // mean #num of arrivals per sec
+  DataGenerator(size_t _num_requests,
+                size_t _token_dim,
+                size_t _min_input_tokens,
+                size_t _max_input_tokens,
+                size_t _min_tokens_to_generate,
+                size_t _max_tokens_to_generate,
+                bool _poisson_distr,
+                double _lambda);
 
-  Generator(size_t req, size_t tensor, bool poi, double lamb) {
-    num_requests = req;
-    tensor_size = tensor;
-    poisson = poi;
-    lambda = lamb;
-    compute_distribution();
-    arrivals_ptr = arrivals.begin();
-    timer_started = false;
-  }
-
-  vector<vector<double>> get_requests(void); // function to retrieve requests
+  // Generate random requests by filling each token with random data. For now,
+  // assume all requests have the same sequence length. Also generate random
+  // labels (if label_ptr != nullptr and num_labels >0).
+  void generate_requests(float *req_ptr);
+  void start_timer(void);
+  // Get number of requests that have arrived since the last time this function
+  // was called
+  std::pair<size_t, size_t> get_requests(size_t max_requests,
+                                         size_t max_tokens);
+  std::pair<size_t, size_t> get_request_length(size_t guid);
+  // size_t max_sequence_length; // dimension of one request tensor
 
 private:
-  bool timer_started; // tracks if start time has been initiated
-  Clock::time_point
-      start_time; // time when get_requests() is called for the first time
-  vector<double> arrivals; // arrival times (ms) generated based on distribution
-  vector<double>::iterator arrivals_ptr; // next request to output
+  // Compute the arrival times of each request and save them in the arrivals
+  // vector.
+  // void generate_arrival_times(void);
+  void generate_requests_meta();
 
-  void compute_distribution(void);        // populate arrivals
-  vector<double> get_random_tensor(void); // generate a random tensor
-};
-
-void Generator::compute_distribution(void) {
-  // set up uniform number generator [0,1)
-  random_device rnd;
-  mt19937 gen(rnd());
-  uniform_real_distribution<double> dist{0, 1.0};
-  double cur_arrival = 0; // assume first request comes in at time 0
-
-  for (size_t i = 0; i < num_requests; i++) {
-    arrivals.push_back(cur_arrival);
-    cout << "arrival time " << i << ": +" << cur_arrival << "ms \n";
-
-    if (poisson) {
-      double u = dist(gen);
-      double interval = -(1 / lambda) * log(1 - u) * 1000;
-      cur_arrival += interval;
-    } else {
-      cur_arrival += (1000 / lambda);
-    }
-  }
-  return;
-};
-
-vector<vector<double>> Generator::get_requests(void) {
-  Clock::time_point cur_time = Clock::now();
-  vector<vector<double>> requests;
-  if (!timer_started) {
-    // simply return one request and start timer for the first call
-    start_time = Clock::now();
-    timer_started = true;
-    arrivals_ptr++;
-    requests.push_back(get_random_tensor());
-    return requests;
-  }
-
-  // output requests till we reach current timestamp
-  milliseconds ms_from_start =
-      chrono::duration_cast<milliseconds>(cur_time - start_time);
-  while (arrivals_ptr < arrivals.end() &&
-         ms_from_start.count() >= *arrivals_ptr) {
-    cout << "request at arrival time +" << *arrivals_ptr << "\n";
-    requests.push_back(get_random_tensor());
-    arrivals_ptr++;
-  }
-  return requests;
-};
-
-// template <class ForwardIt, class Generator>
-// void generate(ForwardIt first, ForwardIt last, Generator gen) {
-//   while (first != last) {
-//     *first++ = gen();
-//   }
-// }
-
-vector<double> Generator::get_random_tensor(void) {
-  random_device rnd_device;
-  mt19937 mersenne_engine{rnd_device()};
-  uniform_real_distribution<double> dist{0, 1.0}; // state distribution
-
-  auto gen = [&dist, &mersenne_engine]() { return dist(mersenne_engine); };
-
-  vector<double> vec(tensor_size);
-  generate(begin(vec), end(vec), gen);
-  return vec;
-};
-
-// for debugging
-void print_requests(vector<vector<double>> req) {
-  cout << "printing requests\n";
-  for (vector<double> v : req) {
-    for (double e : v) {
-      cout << e << ",";
-    }
-    cout << "\n";
-  }
-  cout << "\n";
+  size_t num_requests; // total number of requests
+  size_t token_dim;    // embedding dim of each token
+  size_t min_input_tokens;
+  size_t max_input_tokens;
+  size_t min_tokens_to_generate;
+  size_t max_tokens_to_generate;
+  bool poisson_distr; // false implies uniform distribution
+  double lambda;      // mean #num of arrivals per sec
+  bool timer_started; // whether timer was initiated
+  // time when get_requests() is called for the first time
+  Clock::time_point start_time;
+  // arrival times (ms) generated based on distribution
+  std::vector<double> arrivals;
+  std::vector<double>::iterator arrivals_ptr;
+  // sequence lengths generated based on uniform distribution
+  std::vector<std::pair<size_t, size_t>> seq_lengths;
 };

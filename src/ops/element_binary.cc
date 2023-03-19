@@ -129,6 +129,20 @@ Tensor FFModel::divide(const Tensor in1,
   return this->binary(OP_EW_DIV, in1, in2, inplace_a, name);
 }
 
+Tensor FFModel::max(const Tensor in1,
+                    const Tensor in2,
+                    bool inplace_a,
+                    char const *name) {
+  return this->binary(OP_EW_MAX, in1, in2, inplace_a, name);
+}
+
+Tensor FFModel::min(const Tensor in1,
+                    const Tensor in2,
+                    bool inplace_a,
+                    char const *name) {
+  return this->binary(OP_EW_MIN, in1, in2, inplace_a, name);
+}
+
 bool ElementBinaryParams::is_valid(
     std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const {
   bool is_valid = true;
@@ -249,7 +263,8 @@ void ElementBinary::do_inplace_output(void) {
 void ElementBinary::init_inference(
     FFModel const &ff,
     std::vector<ParallelTensor> const &batch_inputs,
-    std::vector<ParallelTensor> const &batch_outputs) {
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   // Check if we have the same oprands
   has_same_operands = (batch_inputs[0]->region == batch_inputs[1]->region);
   assert(check_output_input_weight_same_parallel_is());
@@ -257,7 +272,9 @@ void ElementBinary::init_inference(
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_init_inference(ff, argmap, view);
   IndexLauncher launcher(ELEMENTBINARY_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(ElementBinary)),
@@ -265,7 +282,7 @@ void ElementBinary::init_inference(
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         batch_outputs[0]->machine_view.hash());
+                         machine_view_hash);
   int rid = 0;
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
@@ -308,7 +325,7 @@ void ElementBinary::init_inference(
   //}
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  set_opmeta_from_futuremap(ff, fm);
+  set_opmeta_from_futuremap_inference(ff, fm, view);
 }
 
 void ElementBinary::init(FFModel const &ff) {
@@ -489,16 +506,21 @@ void ElementBinary::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void ElementBinary::inference(FFModel const &ff,
-                              std::vector<ParallelTensor> const &batch_inputs,
-                              std::vector<ParallelTensor> const &batch_outputs,
-                              MachineView const *mv) {
+FutureMap
+    ElementBinary::inference(FFModel const &ff,
+                             BatchConfig const &bc,
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs,
+                             MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_forward(ff, argmap);
-  size_t machine_view_hash =
-      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, view);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "ElementBinary op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
   IndexLauncher launcher(ELEMENTBINARY_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
@@ -559,7 +581,7 @@ void ElementBinary::inference(FFModel const &ff,
       launcher.add_field(2, FID_DATA);
     }
   }
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 /*

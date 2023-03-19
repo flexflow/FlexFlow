@@ -1,6 +1,7 @@
 #ifndef _OPERATOR_H
 #define _OPERATOR_H
 
+#include "flexflow/batch_config.h"
 #include "flexflow/fftype.h"
 #include "flexflow/machine_view.h"
 #include "flexflow/parallel_tensor.h"
@@ -187,16 +188,18 @@ public:
   virtual void init(FFModel const &) = 0;
   virtual void init_inference(FFModel const &,
                               std::vector<ParallelTensor> const &,
-                              std::vector<ParallelTensor> const &) {
+                              std::vector<ParallelTensor> const &,
+                              MachineView const *mv = nullptr) {
     assert(false);
   };
   virtual void forward(FFModel const &) = 0;
   virtual void backward(FFModel const &) = 0;
   // Pure virtual functions for inference
-  virtual void inference(FFModel const &,
-                         std::vector<ParallelTensor> const &,
-                         std::vector<ParallelTensor> const &,
-                         MachineView const *mv = nullptr) {
+  virtual Legion::FutureMap inference(FFModel const &,
+                                      BatchConfig const &,
+                                      std::vector<ParallelTensor> const &,
+                                      std::vector<ParallelTensor> const &,
+                                      MachineView const *mv = nullptr) {
     assert(false);
   };
   virtual void print_layer(FFModel const &model) = 0;
@@ -254,12 +257,21 @@ public:
 #endif
 protected:
   void set_argumentmap_for_init(FFModel const &ff, Legion::ArgumentMap &argmap);
+  void set_argumentmap_for_init_inference(FFModel const &ff,
+                                          Legion::ArgumentMap &argmap,
+                                          MachineView const *view);
   void set_argumentmap_for_forward(FFModel const &ff,
                                    Legion::ArgumentMap &argmap);
+  void set_argumentmap_for_inference(FFModel const &ff,
+                                     Legion::ArgumentMap &argmap,
+                                     MachineView const *view);
   void set_argumentmap_for_backward(FFModel const &ff,
                                     Legion::ArgumentMap &argmap);
   void set_opmeta_from_futuremap(FFModel const &ff,
                                  Legion::FutureMap const &fm);
+  void set_opmeta_from_futuremap_inference(FFModel const &ff,
+                                           Legion::FutureMap const &fm,
+                                           MachineView const *view);
   void solve_parallel_dim_mappings(
       std::vector<ParallelDim const *> const &inputs,
       std::vector<ParallelDim *> const &weights,
@@ -279,6 +291,7 @@ public:
   ParallelParameter weights[MAX_NUM_WEIGHTS];
   bool trainableInputs[MAX_NUM_INPUTS];
   OpMeta *meta[MAX_NUM_WORKERS];
+  std::map<size_t, OpMeta *[MAX_NUM_WORKERS]> inference_meta;
   int numInputs, numWeights, numOutputs;
   bool profiling;
 #ifdef FF_USE_NCCL

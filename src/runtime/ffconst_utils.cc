@@ -47,6 +47,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "Embedding";
     case OP_EXPERTS:
       return "Experts";
+    case OP_GATHER:
+      return "Gather";
     case OP_GROUP_BY:
       return "Group_by";
     case OP_CACHE:
@@ -141,6 +143,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "PReLU";
     case OP_MULTIHEAD_ATTENTION:
       return "MultiHeadAttention";
+    case OP_INC_MULTIHEAD_SELF_ATTENTION:
+      return "IncMultiHeadSelfAttention";
     case OP_INPUT:
       return "Input";
     case OP_WEIGHT:

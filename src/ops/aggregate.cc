@@ -182,16 +182,18 @@ Node Aggregate::deserialize(FFModel &ff,
   return ff.get_or_create_node<Aggregate>(inputs, params);
 }
 
-void Aggregate::init_inference(
-    FFModel const &ff,
-    std::vector<ParallelTensor> const &batch_inputs,
-    std::vector<ParallelTensor> const &batch_outputs) {
+void Aggregate::init_inference(FFModel const &ff,
+                               std::vector<ParallelTensor> const &batch_inputs,
+                               std::vector<ParallelTensor> const &batch_outputs,
+                               MachineView const *mv) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = batch_outputs[0]->parallel_is;
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_init_inference(ff, argmap, view);
   IndexLauncher launcher(AGGREGATE_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Aggregate)),
@@ -199,10 +201,10 @@ void Aggregate::init_inference(
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         batch_outputs[0]->machine_view.hash());
+                         machine_view_hash);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  set_opmeta_from_futuremap(ff, fm);
+  set_opmeta_from_futuremap_inference(ff, fm, view);
 }
 
 void Aggregate::init(FFModel const &ff) {
@@ -282,16 +284,20 @@ void Aggregate::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void Aggregate::inference(FFModel const &ff,
-                          std::vector<ParallelTensor> const &batch_inputs,
-                          std::vector<ParallelTensor> const &batch_outputs,
-                          MachineView const *mv) {
+FutureMap Aggregate::inference(FFModel const &ff,
+                               BatchConfig const &bc,
+                               std::vector<ParallelTensor> const &batch_inputs,
+                               std::vector<ParallelTensor> const &batch_outputs,
+                               MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
-  parallel_is = outputs[0]->parallel_is;
-  size_t machine_view_hash = mv ? mv->hash() : outputs[0]->machine_view.hash();
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, view);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "Aggregate op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
   IndexLauncher launcher(AGGREGATE_FWD_TASK_ID,
                          parallel_is,
                          TaskArgument(nullptr, 0),
@@ -331,7 +337,7 @@ void Aggregate::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(n + 2, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Aggregate::forward_task(Task const *task,

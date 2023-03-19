@@ -104,13 +104,16 @@ OpMeta *Repartition::init_task(Task const *task,
 void Repartition::init_inference(
     FFModel const &ff,
     std::vector<ParallelTensor> const &batch_inputs,
-    std::vector<ParallelTensor> const &batch_outputs) {
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   ArgumentMap argmap;
   parallel_is = batch_outputs[0]->parallel_is;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   IndexLauncher launcher(REPARTITION_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(nullptr, 0),
@@ -118,7 +121,7 @@ void Repartition::init_inference(
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         batch_outputs[0]->machine_view.hash());
+                         machine_view_hash);
   assert(inference_input_lps.find(batch_inputs[0]) !=
          inference_input_lps.end());
   launcher.add_region_requirement(
@@ -196,10 +199,12 @@ void Repartition::create_input_partition_inference(
                                inference_input_lps[batch_inputs[0]]);
 }
 
-void Repartition::inference(FFModel const &ff,
-                            std::vector<ParallelTensor> const &batch_inputs,
-                            std::vector<ParallelTensor> const &batch_outputs,
-                            MachineView const *mv) {
+FutureMap
+    Repartition::inference(FFModel const &ff,
+                           BatchConfig const &bc,
+                           std::vector<ParallelTensor> const &batch_inputs,
+                           std::vector<ParallelTensor> const &batch_outputs,
+                           MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -209,6 +214,8 @@ void Repartition::inference(FFModel const &ff,
   DataType data_type = batch_inputs[0]->data_type;
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  /* std::cout << "Partition op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
   IndexLauncher launcher(REPARTITION_FWD_TASK_ID,
                          batch_outputs[0]->parallel_is,
                          TaskArgument(&data_type, sizeof(DataType)),
@@ -230,7 +237,7 @@ void Repartition::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Repartition::forward(FFModel const &ff) {
@@ -304,6 +311,11 @@ bool Repartition::measure_operator_cost(Simulator *sim,
   cost_metrics = CostMetrics();
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
+
+  cost_metrics.sync_time = 0;
+  cost_metrics.inputs_memory = 0;
+  cost_metrics.outputs_memory = 0;
+  cost_metrics.weights_memory = 0;
   return true;
 }
 

@@ -68,6 +68,18 @@ bool TensorBase::get_tensor(FFModel const *ff, T *data, bool get_gradients) {
   return true;
 }
 
+template <typename T>
+bool TensorBase::get_output_parallel_tensor(FFModel const *ff,
+                                            T *data,
+                                            bool get_gradients) {
+  ParallelTensor parallel_tensor = nullptr;
+  Op *final_operator = ff->get_final_operator();
+  assert(final_operator->numOutputs == 1);
+  parallel_tensor = final_operator->outputs[0];
+  parallel_tensor->get_tensor<T>(ff, data, get_gradients);
+  return true;
+}
+
 bool ParallelTensorShape::is_valid() const {
   bool used[MAX_TENSOR_DIM];
   std::fill_n(used, MAX_TENSOR_DIM, false);
@@ -837,6 +849,11 @@ template bool ParallelTensorBase::get_tensor<int64_t>(FFModel const *ff,
                                                       int64_t *data,
                                                       bool get_gradients);
 
+
 template bool ParallelTensorBase::tensor_equal<float>(FFConfig &config, ParallelTensorBase &tensor);
+
+template bool TensorBase::get_output_parallel_tensor<float>(FFModel const *ff,
+                                                            float *data,
+                                                            bool get_gradients);
 
 }; // namespace FlexFlow

@@ -50,6 +50,14 @@ __global__ void mean_squared_error_avg_loss_backward(float *logit_grad,
   }
 }
 
+__global__ void identity_loss_backward(float *loss_grad,
+                                       float const *loss,
+                                       coord_t num_elements) {
+  CUDA_KERNEL_LOOP(i, num_elements) {
+    loss_grad[i] = 1.0f;
+  }
+}
+
 void Loss::sparse_categorical_crossentropy_loss_backward_kernel_wrapper(
     float *logit_grad_ptr,
     float const *logit_ptr,
@@ -112,6 +120,22 @@ void Loss::mean_squared_error_avg_loss_backward_kernel_wrapper(
   // Scale logit gradients by loss->scale_factor
   scale_kernel<<<GET_BLOCKS(logit_grad_volume), CUDA_NUM_THREADS, 0, stream>>>(
       logit_grad_ptr, logit_grad_volume, 0, scale_factor);
+}
+
+void Loss::identity_loss_backward_kernel_wrapper(float *loss_grad_ptr,
+                                                 float const *loss_ptr,
+                                                 size_t loss_volume,
+                                                 size_t loss_grad_volume,
+                                                 float scale_factor) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  identity_loss_backward<<<GET_BLOCKS(loss_volume),
+                           CUDA_NUM_THREADS,
+                           0,
+                           stream>>>(loss_grad_ptr, loss_ptr, loss_volume);
+  // Scale logit gradients by loss->scale_factor
+  scale_kernel<<<GET_BLOCKS(loss_grad_volume), CUDA_NUM_THREADS, 0, stream>>>(
+      loss_grad_ptr, loss_grad_volume, 0, scale_factor);
 }
 
 }; // namespace FlexFlow
