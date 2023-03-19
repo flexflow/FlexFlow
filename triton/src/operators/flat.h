@@ -19,38 +19,44 @@
 #include "operator.h"
 #include "tensor.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 struct FlatArgs : public OperatorArgs {
- public:
+public:
 };
 
 class Flat : public Operator {
- public:
-  Flat(LegionModelState* state, const char* name);
+public:
+  Flat(LegionModelState *state, char const *name);
 
-  void configure(Tensor* input, Tensor* output);
+  void configure(Tensor *input, Tensor *output);
 
-  virtual void initialize(LegionModelInstance* instance);
-  virtual void forward(LegionModelInstance* instance);
-  virtual void finalize(LegionModelInstance* instance);
+  virtual void initialize(LegionModelInstance *instance);
+  virtual void forward(LegionModelInstance *instance);
+  virtual void finalize(LegionModelInstance *instance);
 
-  static FlatArgs initalize_gpu(
-      const Legion::Task* task,
-      const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-      Legion::Runtime* runtime);
-  static void forward_gpu(
-      const Legion::Task* task,
-      const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-      Legion::Runtime* runtime);
-  static void forward_kernel(
-      const FlatArgs* args, const void* input_ptr, void* output_ptr,
-      size_t num_elements);
+  static FlatArgs
+      initalize_gpu(Legion::Task const *task,
+                    std::vector<Legion::PhysicalRegion> const &regions,
+                    Legion::Context ctx,
+                    Legion::Runtime *runtime);
+  static void forward_gpu(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
+  static void forward_kernel(FlatArgs const *args,
+                             void const *input_ptr,
+                             void *output_ptr,
+                             size_t num_elements);
 
- public:
-  LegionModelState* const model;
+public:
+  LegionModelState *const model;
 };
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton
 
-#endif  // __LEGION_TRITON_FLAT_H__
+#endif // __LEGION_TRITON_FLAT_H__

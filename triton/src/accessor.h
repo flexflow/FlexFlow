@@ -19,43 +19,56 @@
 #include "legion.h"
 #include "types.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 template <Legion::PrivilegeMode MODE, int DIM>
 class TensorAccessor {
- public:
-  static inline void* access(
-      DataType type, const Legion::Rect<DIM>& bounds,
-      const Legion::PhysicalRegion& region)
-  {
+public:
+  static inline void *access(DataType type,
+                             Legion::Rect<DIM> const &bounds,
+                             Legion::PhysicalRegion const &region) {
     // Legion doesn't understand types, it just knows about field
     // sizes so we just need to use types of the right size
     switch (sizeof_datatype(type)) {
       case 1: {
         Legion::FieldAccessor<
-            MODE, int8_t, DIM, Legion::coord_t,
-            Realm::AffineAccessor<int8_t, DIM, Legion::coord_t> >
+            MODE,
+            int8_t,
+            DIM,
+            Legion::coord_t,
+            Realm::AffineAccessor<int8_t, DIM, Legion::coord_t>>
             accessor(region, FID_DATA);
         return accessor.ptr(bounds);
       }
       case 2: {
         Legion::FieldAccessor<
-            MODE, int16_t, DIM, Legion::coord_t,
-            Realm::AffineAccessor<int16_t, DIM, Legion::coord_t> >
+            MODE,
+            int16_t,
+            DIM,
+            Legion::coord_t,
+            Realm::AffineAccessor<int16_t, DIM, Legion::coord_t>>
             accessor(region, FID_DATA);
         return accessor.ptr(bounds);
       }
       case 4: {
         Legion::FieldAccessor<
-            MODE, int32_t, DIM, Legion::coord_t,
-            Realm::AffineAccessor<int32_t, DIM, Legion::coord_t> >
+            MODE,
+            int32_t,
+            DIM,
+            Legion::coord_t,
+            Realm::AffineAccessor<int32_t, DIM, Legion::coord_t>>
             accessor(region, FID_DATA);
         return accessor.ptr(bounds);
       }
       case 8: {
         Legion::FieldAccessor<
-            MODE, int64_t, DIM, Legion::coord_t,
-            Realm::AffineAccessor<int64_t, DIM, Legion::coord_t> >
+            MODE,
+            int64_t,
+            DIM,
+            Legion::coord_t,
+            Realm::AffineAccessor<int64_t, DIM, Legion::coord_t>>
             accessor(region, FID_DATA);
         return accessor.ptr(bounds);
       }
@@ -69,39 +82,50 @@ class TensorAccessor {
 // specialization for read-only privileges to return a const void*
 template <int DIM>
 class TensorAccessor<LEGION_READ_ONLY, DIM> {
- public:
-  static inline const void* access(
-      DataType type, const Legion::Rect<DIM>& bounds,
-      const Legion::PhysicalRegion& region)
-  {
+public:
+  static inline void const *access(DataType type,
+                                   Legion::Rect<DIM> const &bounds,
+                                   Legion::PhysicalRegion const &region) {
     // Legion doesn't understand types, it just knows about field
     // sizes so we just need to use types of the right size
     switch (sizeof_datatype(type)) {
       case 1: {
         Legion::FieldAccessor<
-            LEGION_READ_ONLY, int8_t, DIM, Legion::coord_t,
-            Realm::AffineAccessor<int8_t, DIM, Legion::coord_t> >
+            LEGION_READ_ONLY,
+            int8_t,
+            DIM,
+            Legion::coord_t,
+            Realm::AffineAccessor<int8_t, DIM, Legion::coord_t>>
             accessor(region, FID_DATA);
         return accessor.ptr(bounds);
       }
       case 2: {
         Legion::FieldAccessor<
-            LEGION_READ_ONLY, int16_t, DIM, Legion::coord_t,
-            Realm::AffineAccessor<int16_t, DIM, Legion::coord_t> >
+            LEGION_READ_ONLY,
+            int16_t,
+            DIM,
+            Legion::coord_t,
+            Realm::AffineAccessor<int16_t, DIM, Legion::coord_t>>
             accessor(region, FID_DATA);
         return accessor.ptr(bounds);
       }
       case 4: {
         Legion::FieldAccessor<
-            LEGION_READ_ONLY, int32_t, DIM, Legion::coord_t,
-            Realm::AffineAccessor<int32_t, DIM, Legion::coord_t> >
+            LEGION_READ_ONLY,
+            int32_t,
+            DIM,
+            Legion::coord_t,
+            Realm::AffineAccessor<int32_t, DIM, Legion::coord_t>>
             accessor(region, FID_DATA);
         return accessor.ptr(bounds);
       }
       case 8: {
         Legion::FieldAccessor<
-            LEGION_READ_ONLY, int64_t, DIM, Legion::coord_t,
-            Realm::AffineAccessor<int64_t, DIM, Legion::coord_t> >
+            LEGION_READ_ONLY,
+            int64_t,
+            DIM,
+            Legion::coord_t,
+            Realm::AffineAccessor<int64_t, DIM, Legion::coord_t>>
             accessor(region, FID_DATA);
         return accessor.ptr(bounds);
       }
@@ -112,6 +136,8 @@ class TensorAccessor<LEGION_READ_ONLY, DIM> {
   };
 };
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton
 
-#endif  // __LEGION_TRITON_ACCESSOR_H__
+#endif // __LEGION_TRITON_ACCESSOR_H__

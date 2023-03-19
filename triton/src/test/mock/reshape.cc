@@ -17,26 +17,27 @@
 
 using namespace Legion;
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
-Reshape::Reshape(
-    LegionModelState* model, const LayerStrategy* strategy, const char* name)
-    : Operator(model, strategy, OperatorType::OP_RESHAPE, name, 1, 0, 1)
-{
-}
+Reshape::Reshape(LegionModelState *model,
+                 LayerStrategy const *strategy,
+                 char const *name)
+    : Operator(model, strategy, OperatorType::OP_RESHAPE, name, 1, 0, 1) {}
 
-void
-Reshape::Configure(Tensor* input, Tensor* output)
-{
+void Reshape::Configure(Tensor *input, Tensor *output) {
   assert(input != nullptr);
   assert(output != nullptr);
   assert(input->type == output->type);
   // Make sure that they have the same volumes
   size_t input_volume = 1, output_volume = 1;
-  for (unsigned idx = 0; idx < input->bounds.size(); idx++)
+  for (unsigned idx = 0; idx < input->bounds.size(); idx++) {
     input_volume *= input->bounds[idx];
-  for (unsigned idx = 0; idx < output->bounds.size(); idx++)
+  }
+  for (unsigned idx = 0; idx < output->bounds.size(); idx++) {
     output_volume *= output->bounds[idx];
+  }
   assert(input_volume == output_volume);
 
   // Group dimensions from the two input tensors together from
@@ -68,97 +69,85 @@ Reshape::Configure(Tensor* input, Tensor* output)
   // onto the original output launch space or just by using affine indirect
   // copy launchers when they are available.
   for (unsigned g = 0; g < output_groups.size(); g++) {
-    const std::vector<int>& input_group = input_groups[g];
-    const std::vector<int>& output_group = output_groups[g];
-    for (unsigned idx = 0; idx < (output_group.size() - 1); idx++)
+    std::vector<int> const &input_group = input_groups[g];
+    std::vector<int> const &output_group = output_groups[g];
+    for (unsigned idx = 0; idx < (output_group.size() - 1); idx++) {
       assert(strategy->dim[output_group[idx]] == 1);
+    }
     // the size of the earliest dimension in the input group must also
     // be divisible by the number of chunks
-    assert(
-        (input->bounds[input_group.back()] %
-         strategy->dim[output_group.back()]) == 0);
+    assert((input->bounds[input_group.back()] %
+            strategy->dim[output_group.back()]) == 0);
     // the output bounds also need to be evenly divisible too or this will not
     // work
-    assert(
-        (output->bounds[output_group.back()] %
-         strategy->dim[output_group.back()]) == 0);
+    assert((output->bounds[output_group.back()] %
+            strategy->dim[output_group.back()]) == 0);
   }
   inputs.push_back(input);
   outputs.push_back(output);
 
   // Hack so that we can access the tensors in the tests
-  auto vec_ptr = reinterpret_cast<std::vector<Tensor*>*>(model);
+  auto vec_ptr = reinterpret_cast<std::vector<Tensor *> *>(model);
   vec_ptr->emplace_back(input);
   vec_ptr->emplace_back(output);
 }
 
-Domain
-Reshape::GetInputBounds(Processor proc)
-{
+Domain Reshape::GetInputBounds(Processor proc) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-Domain
-Reshape::GetOutputBounds(Processor proc)
-{
+Domain Reshape::GetOutputBounds(Processor proc) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-Reshape::Load(Processor proc)
-{
+void Reshape::Load(Processor proc) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-Reshape::initialize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void Reshape::initialize(LegionModelInstance *instance,
+                         unsigned const instance_index,
+                         Runtime *runtime,
+                         Context ctx,
+                         MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-Reshape::forward(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void Reshape::forward(LegionModelInstance *instance,
+                      unsigned const instance_index,
+                      Runtime *runtime,
+                      Context ctx,
+                      MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-Reshape::finalize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Runtime* runtime, Context ctx, MapperID mapper)
-{
+void Reshape::finalize(LegionModelInstance *instance,
+                       unsigned const instance_index,
+                       Runtime *runtime,
+                       Context ctx,
+                       MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-Reshape::Free(Processor proc)
-{
+void Reshape::Free(Processor proc) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-/*static*/ void
-Reshape::PreregisterTaskVariants(void)
-{
+/*static*/ void Reshape::PreregisterTaskVariants(void) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-/*static*/ void
-Reshape::forward_cpu(
-    const Task* task, const std::vector<PhysicalRegion>& regions, Context ctx,
-    Runtime* runtime)
-{
+/*static*/ void Reshape::forward_cpu(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
@@ -166,14 +155,15 @@ Reshape::forward_cpu(
 ReshapeArgs::ReshapeArgs(void) {}
 
 #ifdef LEGION_USE_CUDA
-/*static*/ void
-Reshape::forward_gpu(
-    const Task* task, const std::vector<PhysicalRegion>& regions, Context ctx,
-    Runtime* runtime)
-{
+/*static*/ void Reshape::forward_gpu(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 #endif
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

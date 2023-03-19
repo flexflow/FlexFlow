@@ -17,43 +17,59 @@
 
 using namespace Legion;
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
-Conv2D::Conv2D(
-    LegionModelState* model, const LayerStrategy* strategy, size_t inChannels,
-    size_t outChannels, size_t kernelH, size_t kernelW, size_t strideH,
-    size_t strideW, size_t paddingH, size_t paddingW, ActivationMode act,
-    size_t gps, bool bias, const char* name)
-    : Operator(
-          model, strategy, OP_CONV2D, name, 1 /*inputs*/,
-          bias ? 2 : 1 /*weights*/, 1 /*outputs*/),
+Conv2D::Conv2D(LegionModelState *model,
+               LayerStrategy const *strategy,
+               size_t inChannels,
+               size_t outChannels,
+               size_t kernelH,
+               size_t kernelW,
+               size_t strideH,
+               size_t strideW,
+               size_t paddingH,
+               size_t paddingW,
+               ActivationMode act,
+               size_t gps,
+               bool bias,
+               char const *name)
+    : Operator(model,
+               strategy,
+               OP_CONV2D,
+               name,
+               1 /*inputs*/,
+               bias ? 2 : 1 /*weights*/,
+               1 /*outputs*/),
       activation(act), in_channels(inChannels), out_channels(outChannels),
       kernel_h(kernelH), kernel_w(kernelW), stride_h(strideH),
       stride_w(strideW), padding_h(paddingH), padding_w(paddingW), groups(gps),
-      use_bias(bias)
-{
-}
+      use_bias(bias) {}
 
 Conv2D::~Conv2D() {}
 
-void
-Conv2D::Configure(Tensor* input, Weights* wts, Tensor* output, Weights* bias)
-{
+void Conv2D::Configure(Tensor *input,
+                       Weights *wts,
+                       Tensor *output,
+                       Weights *bias) {
   assert(input != nullptr);
   assert(in_channels == input->bounds[1]);
   assert(wts != nullptr);
   assert(output != nullptr);
-  if (use_bias)
+  if (use_bias) {
     assert(bias != nullptr);
-  else
+  } else {
     assert(bias == nullptr);
+  }
   inputs.push_back(input);
   outputs.push_back(output);
   weights.push_back(wts);
-  if (use_bias)
+  if (use_bias) {
     weights.push_back(bias);
+  }
   // Hack so that we can access the tensors in the tests
-  auto vec_ptr = reinterpret_cast<std::vector<Tensor*>*>(model);
+  auto vec_ptr = reinterpret_cast<std::vector<Tensor *> *>(model);
   vec_ptr->emplace_back(input);
   vec_ptr->emplace_back(wts);
   if (use_bias) {
@@ -62,9 +78,7 @@ Conv2D::Configure(Tensor* input, Weights* wts, Tensor* output, Weights* bias)
   vec_ptr->emplace_back(output);
 }
 
-Rect<4>
-Conv2D::GetWeightBounds(Realm::Processor proc)
-{
+Rect<4> Conv2D::GetWeightBounds(Realm::Processor proc) {
   if ((weights.size() < 1) || (weights.size() > 2)) {
     throw std::invalid_argument("Weight is not configured for Conv2D operator");
   }
@@ -102,9 +116,7 @@ Conv2D::GetWeightBounds(Realm::Processor proc)
   return Rect<4>(lo, hi);
 }
 
-Rect<1>
-Conv2D::GetBiasBounds(Realm::Processor proc)
-{
+Rect<1> Conv2D::GetBiasBounds(Realm::Processor proc) {
   if (weights.size() != 2) {
     throw std::invalid_argument("Bias is not configured for Conv2D operator");
   }
@@ -117,48 +129,44 @@ Conv2D::GetBiasBounds(Realm::Processor proc)
   return Rect<1>(lo, hi);
 }
 
-void
-Conv2D::Load(Realm::Processor processor)
-{
+void Conv2D::Load(Realm::Processor processor) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
-void
-Conv2D::initialize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
+void Conv2D::initialize(LegionModelInstance *instance,
+                        unsigned const instance_index,
+                        Legion::Runtime *runtime,
+                        Legion::Context ctx,
+                        Legion::MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
-void
-Conv2D::forward(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
+void Conv2D::forward(LegionModelInstance *instance,
+                     unsigned const instance_index,
+                     Legion::Runtime *runtime,
+                     Legion::Context ctx,
+                     Legion::MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
-void
-Conv2D::finalize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
+void Conv2D::finalize(LegionModelInstance *instance,
+                      unsigned const instance_index,
+                      Legion::Runtime *runtime,
+                      Legion::Context ctx,
+                      Legion::MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
-void
-Conv2D::Free(Realm::Processor processor)
-{
+void Conv2D::Free(Realm::Processor processor) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-Conv2D::PreregisterTaskVariants()
-{
+void Conv2D::PreregisterTaskVariants() {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

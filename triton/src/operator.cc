@@ -23,26 +23,31 @@
 #include "operators/unary.h"
 #include "tensor.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
-Operator::Operator(
-    LegionModelState* m, const LayerStrategy* s, OperatorType t,
-    const char* name, unsigned in, unsigned wts, unsigned out)
+Operator::Operator(LegionModelState *m,
+                   LayerStrategy const *s,
+                   OperatorType t,
+                   char const *name,
+                   unsigned in,
+                   unsigned wts,
+                   unsigned out)
     : op_type(t), op_name(name), model(m), strategy(s), num_inputs(in),
-      num_weights(wts), num_outputs(out)
-{
-}
+      num_weights(wts), num_outputs(out) {}
 
-Operator::~Operator(void)
-{
+Operator::~Operator(void) {
   // Delete all the weight and output tensors
-  for (auto wts : weights) delete wts;
-  for (auto tensor : outputs) delete tensor;
+  for (auto wts : weights) {
+    delete wts;
+  }
+  for (auto tensor : outputs) {
+    delete tensor;
+  }
 }
 
-/*static*/ void
-Operator::PreregisterTaskVariants(void)
-{
+/*static*/ void Operator::PreregisterTaskVariants(void) {
   BinaryOperator::PreregisterTaskVariants();
   Concat::PreregisterTaskVariants();
   Conv2D::PreregisterTaskVariants();
@@ -52,4 +57,6 @@ Operator::PreregisterTaskVariants(void)
   UnaryOperator::PreregisterTaskVariants();
 }
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

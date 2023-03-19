@@ -18,20 +18,20 @@
 
 using namespace Legion;
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
-Tensor::Tensor(Operator* op, DataType t, const size_t* dims, size_t num_dims)
-    : owner(op), type(t), bounds(dims, dims + num_dims)
-{
+Tensor::Tensor(Operator *op, DataType t, size_t const *dims, size_t num_dims)
+    : owner(op), type(t), bounds(dims, dims + num_dims) {
   for (unsigned idx = 0; idx < MAX_NUM_INSTANCES; idx++) {
     region[idx] = LogicalRegion::NO_REGION;
     partition[idx] = LogicalPartition::NO_PART;
   }
 }
 
-Tensor::Tensor(Operator* op, DataType t, const std::vector<size_t>& dims)
-    : owner(op), type(t), bounds(dims)
-{
+Tensor::Tensor(Operator *op, DataType t, std::vector<size_t> const &dims)
+    : owner(op), type(t), bounds(dims) {
   for (unsigned idx = 0; idx < MAX_NUM_INSTANCES; idx++) {
     region[idx] = LogicalRegion::NO_REGION;
     partition[idx] = LogicalPartition::NO_PART;
@@ -40,9 +40,8 @@ Tensor::Tensor(Operator* op, DataType t, const std::vector<size_t>& dims)
 
 Tensor::~Tensor(void) {}
 
-Weights::Weights(Operator* op, DataType t, const size_t* dims, size_t num_dims)
-    : Tensor(op, t, dims, num_dims)
-{
+Weights::Weights(Operator *op, DataType t, size_t const *dims, size_t num_dims)
+    : Tensor(op, t, dims, num_dims) {
   const Memory local_sysmem = op->model->runtime_->local_sysmem_;
   for (size_t idx = 0; idx < MAX_LOCAL_PROCS; ++idx) {
     local_memory[idx] = local_sysmem;
@@ -50,9 +49,8 @@ Weights::Weights(Operator* op, DataType t, const size_t* dims, size_t num_dims)
   }
 }
 
-Weights::Weights(Operator* op, DataType t, const std::vector<size_t>& dims)
-    : Tensor(op, t, dims)
-{
+Weights::Weights(Operator *op, DataType t, std::vector<size_t> const &dims)
+    : Tensor(op, t, dims) {
   const Memory local_sysmem = op->model->runtime_->local_sysmem_;
   for (size_t idx = 0; idx < MAX_LOCAL_PROCS; ++idx) {
     local_memory[idx] = local_sysmem;
@@ -60,11 +58,12 @@ Weights::Weights(Operator* op, DataType t, const std::vector<size_t>& dims)
   }
 }
 
-Weights::~Weights(void)
-{
+Weights::~Weights(void) {
   for (size_t idx = 0; idx < MAX_LOCAL_PROCS; ++idx) {
     assert(local_allocation[idx] == nullptr);
   }
 }
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

@@ -19,10 +19,12 @@
 #include "operator.h"
 #include "tensor.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 struct Pool2DArgs : public OperatorArgs {
- public:
+public:
   Pool2DArgs(void);
 #ifdef LEGION_USE_CUDA
   cudnnTensorDescriptor_t inputTensor, outputTensor;
@@ -33,48 +35,62 @@ struct Pool2DArgs : public OperatorArgs {
 };
 
 class Pool2D : public Operator {
- public:
-  Pool2D(
-      LegionModelState* model, const LayerStrategy* strategy, int kernelH,
-      int kernelW, int strideH, int strideW, int paddingH, int paddingW,
-      PoolType type, ActivationMode activation, const char* name);
+public:
+  Pool2D(LegionModelState *model,
+         LayerStrategy const *strategy,
+         int kernelH,
+         int kernelW,
+         int strideH,
+         int strideW,
+         int paddingH,
+         int paddingW,
+         PoolType type,
+         ActivationMode activation,
+         char const *name);
   virtual ~Pool2D(void);
 
-  void Configure(Tensor* input, Tensor* output);
+  void Configure(Tensor *input, Tensor *output);
 
   virtual void Load(Realm::Processor processor) override;
-  virtual void initialize(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
-  virtual void forward(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
-  virtual void finalize(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) override;
+  virtual void initialize(LegionModelInstance *instance,
+                          unsigned const instance_index,
+                          Legion::Runtime *runtime,
+                          Legion::Context ctx,
+                          Legion::MapperID mapper) override;
+  virtual void forward(LegionModelInstance *instance,
+                       unsigned const instance_index,
+                       Legion::Runtime *runtime,
+                       Legion::Context ctx,
+                       Legion::MapperID mapper) override;
+  virtual void finalize(LegionModelInstance *instance,
+                        unsigned const instance_index,
+                        Legion::Runtime *runtime,
+                        Legion::Context ctx,
+                        Legion::MapperID mapper) override;
   virtual void Free(Realm::Processor processor) override;
 
 #ifdef LEGION_USE_CUDA
-  static Pool2DArgs initialize_gpu(
-      const Legion::Task* task,
-      const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-      Legion::Runtime* runtime);
-  static void forward_gpu(
-      const Legion::Task* task,
-      const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-      Legion::Runtime* runtime);
-  static void forward_kernel(
-      const Pool2DArgs* args, const void* input_ptr, void* output_ptr);
+  static Pool2DArgs
+      initialize_gpu(Legion::Task const *task,
+                     std::vector<Legion::PhysicalRegion> const &regions,
+                     Legion::Context ctx,
+                     Legion::Runtime *runtime);
+  static void forward_gpu(Legion::Task const *task,
+                          std::vector<Legion::PhysicalRegion> const &regions,
+                          Legion::Context ctx,
+                          Legion::Runtime *runtime);
+  static void forward_kernel(Pool2DArgs const *args,
+                             void const *input_ptr,
+                             void *output_ptr);
 #endif
- public:
+public:
   const ActivationMode activation;
   const PoolType pool_type;
-  const int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
+  int const kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
 };
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton
 
-#endif  // __LEGION_TRITON_POOL2D_H__
+#endif // __LEGION_TRITON_POOL2D_H__

@@ -15,74 +15,65 @@
 
 #include "pool2d.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 // FIXME below are stub functions, need to fill in implementation
-Pool2D::Pool2D(
-    LegionModelState* model, const LayerStrategy* strategy, int kernelH,
-    int kernelW, int strideH, int strideW, int paddingH, int paddingW,
-    PoolType type, ActivationMode act, const char* name)
+Pool2D::Pool2D(LegionModelState *model,
+               LayerStrategy const *strategy,
+               int kernelH,
+               int kernelW,
+               int strideH,
+               int strideW,
+               int paddingH,
+               int paddingW,
+               PoolType type,
+               ActivationMode act,
+               char const *name)
     : Operator(model, strategy, OperatorType::OP_POOL2D, name, 1, 0, 1),
       activation(act), pool_type(type), kernel_h(kernelH), kernel_w(kernelW),
       stride_h(strideH), stride_w(strideW), padding_h(paddingH),
-      padding_w(paddingW)
-{
-}
+      padding_w(paddingW) {}
 
 Pool2D::~Pool2D() {}
-void
-Pool2D::Load(Realm::Processor processor)
-{
-}
-void
-Pool2D::Free(Realm::Processor processor)
-{
-}
-void
-Pool2D::Configure(Tensor* input, Tensor* output)
-{
-}
-void
-Pool2D::initialize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
-}
-void
-Pool2D::forward(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
-}
-void
-Pool2D::finalize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
-}
+void Pool2D::Load(Realm::Processor processor) {}
+void Pool2D::Free(Realm::Processor processor) {}
+void Pool2D::Configure(Tensor *input, Tensor *output) {}
+void Pool2D::initialize(LegionModelInstance *instance,
+                        unsigned const instance_index,
+                        Legion::Runtime *runtime,
+                        Legion::Context ctx,
+                        Legion::MapperID mapper) {}
+void Pool2D::forward(LegionModelInstance *instance,
+                     unsigned const instance_index,
+                     Legion::Runtime *runtime,
+                     Legion::Context ctx,
+                     Legion::MapperID mapper) {}
+void Pool2D::finalize(LegionModelInstance *instance,
+                      unsigned const instance_index,
+                      Legion::Runtime *runtime,
+                      Legion::Context ctx,
+                      Legion::MapperID mapper) {}
 Pool2DArgs::Pool2DArgs(void) {}
 
 #ifdef LEGION_USE_CUDA
 Pool2DArgs
-Pool2D::initialize_gpu(
-    const Legion::Task* task,
-    const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-    Legion::Runtime* runtime)
-{
+    Pool2D::initialize_gpu(Legion::Task const *task,
+                           std::vector<Legion::PhysicalRegion> const &regions,
+                           Legion::Context ctx,
+                           Legion::Runtime *runtime) {
   return Pool2DArgs();
 }
-void
-Pool2D::forward_gpu(
-    const Legion::Task* task,
-    const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-    Legion::Runtime* runtime)
-{
-}
-void
-Pool2D::forward_kernel(
-    const Pool2DArgs* args, const void* input_ptr, void* output_ptr)
-{
-}
+void Pool2D::forward_gpu(Legion::Task const *task,
+                         std::vector<Legion::PhysicalRegion> const &regions,
+                         Legion::Context ctx,
+                         Legion::Runtime *runtime) {}
+void Pool2D::forward_kernel(Pool2DArgs const *args,
+                            void const *input_ptr,
+                            void *output_ptr) {}
 #endif
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

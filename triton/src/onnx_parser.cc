@@ -24,34 +24,34 @@
 #include "operators/softmax.h"
 #include "operators/unary.h"
 
+#include "triton/backend/backend_common.h"
+#include <fstream>
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/text_format.h>
 #include <string.h>
-#include <fstream>
 #include <string>
-#include "triton/backend/backend_common.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 namespace {
 
-#define RETURN_IF_TYPE_MISMATCH(NODE, ATTRIBUTE, EXPECTED_TYPE)        \
-  do {                                                                 \
-    if (ATTRIBUTE.type() != EXPECTED_TYPE) {                           \
-      return TRITONSERVER_ErrorNew(                                    \
-          TRITONSERVER_ERROR_INVALID_ARG,                              \
-          (std::string("Attribute '") + ATTRIBUTE.name() + "' for '" + \
-           NODE.op_type() + "' layer named '" + NODE.name() +          \
-           "' must have attribute type " +                             \
-           onnx::AttributeProto::AttributeType_Name(EXPECTED_TYPE))    \
-              .c_str());                                               \
-    }                                                                  \
+#define RETURN_IF_TYPE_MISMATCH(NODE, ATTRIBUTE, EXPECTED_TYPE)                \
+  do {                                                                         \
+    if (ATTRIBUTE.type() != EXPECTED_TYPE) {                                   \
+      return TRITONSERVER_ErrorNew(                                            \
+          TRITONSERVER_ERROR_INVALID_ARG,                                      \
+          (std::string("Attribute '") + ATTRIBUTE.name() + "' for '" +         \
+           NODE.op_type() + "' layer named '" + NODE.name() +                  \
+           "' must have attribute type " +                                     \
+           onnx::AttributeProto::AttributeType_Name(EXPECTED_TYPE))            \
+              .c_str());                                                       \
+    }                                                                          \
   } while (false)
 
-
-TRITONSERVER_Error*
-OnnxTypeToDataType(const int32_t element_type, DataType* converted_type)
-{
+TRITONSERVER_Error *OnnxTypeToDataType(const int32_t element_type,
+                                       DataType *converted_type) {
   switch (element_type) {
     case 10 /* FLOAT16 */:
       *converted_type = DT_HALF;
@@ -97,19 +97,18 @@ OnnxTypeToDataType(const int32_t element_type, DataType* converted_type)
               .c_str());
       break;
   }
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-ReadTextFile(const std::string& path, std::string* contents)
-{
+TRITONSERVER_Error *ReadTextFile(std::string const &path,
+                                 std::string *contents) {
   std::ifstream in(path, std::ios::in | std::ios::binary);
   if (!in) {
     return TRITONSERVER_ErrorNew(
-        TRITONSERVER_ERROR_INTERNAL, std::string(
-                                         "failed to open text file for read " +
-                                         path + ": " + strerror(errno))
-                                         .c_str());
+        TRITONSERVER_ERROR_INTERNAL,
+        std::string("failed to open text file for read " + path + ": " +
+                    strerror(errno))
+            .c_str());
   }
 
   in.seekg(0, std::ios::end);
@@ -118,10 +117,10 @@ ReadTextFile(const std::string& path, std::string* contents)
   in.read(&(*contents)[0], contents->size());
   in.close();
 
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-}  // namespace
+} // namespace
 
 std::map<std::string, OnnxParser::ParseFn_t> OnnxParser::op_type_parser_map_{
     {"Conv", &OnnxParser::ParseConv2D},
@@ -139,16 +138,15 @@ std::map<std::string, OnnxParser::ParseFn_t> OnnxParser::op_type_parser_map_{
     {"Reciprocal", &OnnxParser::ParseReciprocal},
     {"Sqrt", &OnnxParser::ParseSqrt}};
 
-TRITONSERVER_Error*
-OnnxParser::LoadModel(
-    std::function<const std::vector<Realm::Processor>&(Realm::Processor::Kind)>
+TRITONSERVER_Error *OnnxParser::LoadModel(
+    std::function<std::vector<Realm::Processor> const &(Realm::Processor::Kind)>
         find_local_processor_fn,
-    LegionModelState* model, const PartitionStrategy* strategy,
-    const std::string& onnx_file,
-    std::vector<std::pair<std::string, Tensor*>>* inputs,
-    std::vector<std::pair<std::string, Tensor*>>* outputs,
-    std::vector<Operator*>* layers)
-{
+    LegionModelState *model,
+    PartitionStrategy const *strategy,
+    std::string const &onnx_file,
+    std::vector<std::pair<std::string, Tensor *>> *inputs,
+    std::vector<std::pair<std::string, Tensor *>> *outputs,
+    std::vector<Operator *> *layers) {
   onnx::ModelProto onnx_model;
   {
     std::string file_content;
@@ -163,7 +161,8 @@ OnnxParser::LoadModel(
 
   // Sanity check
   RETURN_ERROR_IF_FALSE(
-      (strategy != nullptr), TRITONSERVER_ERROR_INVALID_ARG,
+      (strategy != nullptr),
+      TRITONSERVER_ERROR_INVALID_ARG,
       std::string("failed to parse ONNX model, strategy is not provided"));
   RETURN_ERROR_IF_FALSE(
       (strategy->layers.size() == onnx_model.graph().node().size()),
@@ -174,9 +173,13 @@ OnnxParser::LoadModel(
   // WIP
   // [gluo FIXME] should validate the ONNX model (versioning, op set, ONNX
   // checker-like etc.)
-  OnnxParser parser(
-      find_local_processor_fn, model, strategy, onnx_model, inputs, outputs,
-      layers);
+  OnnxParser parser(find_local_processor_fn,
+                    model,
+                    strategy,
+                    onnx_model,
+                    inputs,
+                    outputs,
+                    layers);
 
   // Note that the weights specified in 'initializer' may also be specified
   // in 'input', thus we should parse in "weight, input" order so that we can
@@ -185,81 +188,75 @@ OnnxParser::LoadModel(
   RETURN_IF_ERROR(parser.ParseInput(onnx_model.graph()));
 
   for (int idx = 0; idx < onnx_model.graph().node().size(); ++idx) {
-    const auto& node = onnx_model.graph().node(idx);
+    auto const &node = onnx_model.graph().node(idx);
     auto parser_it = op_type_parser_map_.find(node.op_type());
     if (parser_it != op_type_parser_map_.end()) {
       RETURN_IF_ERROR(
           (parser_it->second)(&parser, strategy->layers[idx], node));
     } else {
-      return TRITONSERVER_ErrorNew(
-          TRITONSERVER_ERROR_UNSUPPORTED,
-          (std::string("Layer type '") + node.op_type() +
-           "' is not currently supported")
-              .c_str());
+      return TRITONSERVER_ErrorNew(TRITONSERVER_ERROR_UNSUPPORTED,
+                                   (std::string("Layer type '") +
+                                    node.op_type() +
+                                    "' is not currently supported")
+                                       .c_str());
     }
   }
 
   // Output must be parsed at the end, as the output tensors are created while
   // parsing operators.
   RETURN_IF_ERROR(parser.ParseOutput(onnx_model.graph()));
-  return nullptr;  // success
+  return nullptr; // success
 }
 
 OnnxParser::OnnxParser(
-    std::function<const std::vector<Realm::Processor>&(Realm::Processor::Kind)>
+    std::function<std::vector<Realm::Processor> const &(Realm::Processor::Kind)>
         find_local_processor_fn,
-    LegionModelState* model, const PartitionStrategy* strategy,
-    const onnx::ModelProto& onnx_model,
-    std::vector<std::pair<std::string, Tensor*>>* inputs,
-    std::vector<std::pair<std::string, Tensor*>>* outputs,
-    std::vector<Operator*>* layers)
+    LegionModelState *model,
+    PartitionStrategy const *strategy,
+    onnx::ModelProto const &onnx_model,
+    std::vector<std::pair<std::string, Tensor *>> *inputs,
+    std::vector<std::pair<std::string, Tensor *>> *outputs,
+    std::vector<Operator *> *layers)
     : find_local_processor_fn_(find_local_processor_fn), model_(model),
       strategy_(strategy), onnx_model_(onnx_model), inputs_(inputs),
-      outputs_(outputs), layers_(layers)
-{
-}
+      outputs_(outputs), layers_(layers) {}
 
-OnnxParser::~OnnxParser()
-{
+OnnxParser::~OnnxParser() {
   // [gluo FIXME] don't need below if the operators are holding
   // the smart pointers as well
-  for (auto& tensor : tensors_) {
+  for (auto &tensor : tensors_) {
     tensor.second.release();
   }
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseWeight(const onnx::GraphProto& onnx_graph)
-{
+TRITONSERVER_Error *
+    OnnxParser::ParseWeight(onnx::GraphProto const &onnx_graph) {
   if (!onnx_graph.sparse_initializer().empty()) {
     return TRITONSERVER_ErrorNew(
         TRITONSERVER_ERROR_UNSUPPORTED,
         "ONNX sparse initializer is currently not supported");
   }
-  for (const auto& initializer : onnx_graph.initializer()) {
+  for (auto const &initializer : onnx_graph.initializer()) {
     // Only storing the pointer to the protobuf message, need to interact with
     // the corresponding layer to load data properly
     weights_.emplace(initializer.name(), &initializer);
   }
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseInput(const onnx::GraphProto& onnx_graph)
-{
-  for (const auto& input : onnx_graph.input()) {
+TRITONSERVER_Error *OnnxParser::ParseInput(onnx::GraphProto const &onnx_graph) {
+  for (auto const &input : onnx_graph.input()) {
     // ignore weights that are also specified in input
     if (weights_.find(input.name()) != weights_.end()) {
       continue;
     }
     if (!input.type().has_tensor_type()) {
-      return TRITONSERVER_ErrorNew(
-          TRITONSERVER_ERROR_UNSUPPORTED,
-          (std::string("Type for ONNX input '") + input.name() +
-           "' must be tensor")
-              .c_str());
+      return TRITONSERVER_ErrorNew(TRITONSERVER_ERROR_UNSUPPORTED,
+                                   (std::string("Type for ONNX input '") +
+                                    input.name() + "' must be tensor")
+                                       .c_str());
     }
-    const auto& type_proto = input.type().tensor_type();
+    auto const &type_proto = input.type().tensor_type();
     DataType type;
     RETURN_IF_ERROR(OnnxTypeToDataType(type_proto.elem_type(), &type));
     // FIXME ONNX model that supports batching should have dynamic first
@@ -267,11 +264,10 @@ OnnxParser::ParseInput(const onnx::GraphProto& onnx_graph)
     // 'max_batch_size' from model config as a hint on handling / allowing
     // batching.
     std::vector<size_t> dims;
-    for (const auto& dim : type_proto.shape().dim()) {
+    for (auto const &dim : type_proto.shape().dim()) {
       if (dim.has_dim_param()) {
-        return TRITONSERVER_ErrorNew(
-            TRITONSERVER_ERROR_UNSUPPORTED,
-            "Dynamic tensor shape is not supported");
+        return TRITONSERVER_ErrorNew(TRITONSERVER_ERROR_UNSUPPORTED,
+                                     "Dynamic tensor shape is not supported");
       }
       dims.emplace_back(dim.dim_value());
     }
@@ -279,39 +275,36 @@ OnnxParser::ParseInput(const onnx::GraphProto& onnx_graph)
     inputs_->emplace_back(input.name(), tensor.get());
     tensors_.emplace(input.name(), std::move(tensor));
   }
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseOutput(const onnx::GraphProto& onnx_graph)
-{
-  for (const auto& io : onnx_graph.output()) {
+TRITONSERVER_Error *
+    OnnxParser::ParseOutput(onnx::GraphProto const &onnx_graph) {
+  for (auto const &io : onnx_graph.output()) {
     auto it = tensors_.find(io.name());
     if (it == tensors_.end()) {
-      return TRITONSERVER_ErrorNew(
-          TRITONSERVER_ERROR_INVALID_ARG,
-          (std::string("ONNX output '") + io.name() +
-           "' will not be produced by the model")
-              .c_str());
+      return TRITONSERVER_ErrorNew(TRITONSERVER_ERROR_INVALID_ARG,
+                                   (std::string("ONNX output '") + io.name() +
+                                    "' will not be produced by the model")
+                                       .c_str());
     }
     outputs_->emplace_back(io.name(), it->second.get());
   }
-  return nullptr;  // success
+  return nullptr; // success
 }
 
 template <int Dim>
-TRITONSERVER_Error*
-OnnxParser::LoadWeight(
-    const LayerStrategy* strategy,
+TRITONSERVER_Error *OnnxParser::LoadWeight(
+    LayerStrategy const *strategy,
     std::function<Legion::Rect<Dim>(Realm::Processor)> local_bound_fn,
-    const onnx::TensorProto* weight_proto, Weights* weight)
-{
-  const auto& processors = find_local_processor_fn_(strategy->kind);
-  for (const auto& proc : processors) {
+    onnx::TensorProto const *weight_proto,
+    Weights *weight) {
+  auto const &processors = find_local_processor_fn_(strategy->kind);
+  for (auto const &proc : processors) {
     if (strategy->is_local_processor(proc)) {
       size_t proc_idx = strategy->find_local_offset(proc);
       weight->local_bounds[proc_idx] = Legion::Domain(local_bound_fn(proc));
-      const auto& local_bounds = weight->local_bounds[proc_idx];
+      auto const &local_bounds = weight->local_bounds[proc_idx];
       size_t total_byte_size = sizeof_datatype(weight->type);
       for (int dim_idx = (weight->bounds.size() - 1); dim_idx >= 0; --dim_idx) {
         weight->local_strides[proc_idx][dim_idx] = total_byte_size;
@@ -339,7 +332,7 @@ OnnxParser::LoadWeight(
         TRITONSERVER_ERROR_UNSUPPORTED,
         "Loading weight stored out of ONNX file is currently not supported");
   }
-  const void* weight_ptr = weight_proto->has_data_location()
+  void const *weight_ptr = weight_proto->has_data_location()
                                ? nullptr
                                : weight_proto->raw_data().data();
   // boolean value stored in raw_data is represent in 1 byte (00000001 for true,
@@ -372,9 +365,8 @@ OnnxParser::LoadWeight(
         weight_ptr = weight_proto->uint64_data().data();
         break;
       default:
-        return TRITONSERVER_ErrorNew(
-            TRITONSERVER_ERROR_UNSUPPORTED,
-            "Loading weight of unsupported data type");
+        return TRITONSERVER_ErrorNew(TRITONSERVER_ERROR_UNSUPPORTED,
+                                     "Loading weight of unsupported data type");
         break;
     }
   }
@@ -387,21 +379,26 @@ OnnxParser::LoadWeight(
   for (size_t proc_idx = 0; proc_idx < MAX_LOCAL_PROCS; ++proc_idx) {
     if (weight->local_allocation[proc_idx] != nullptr) {
       RETURN_IF_ERROR(SetElementData(
-          strides, weight->local_bounds[proc_idx],
-          weight->local_strides[proc_idx], 0, is_raw_boolean,
-          reinterpret_cast<const char*>(weight_ptr),
-          reinterpret_cast<char*>(weight->local_allocation[proc_idx])));
+          strides,
+          weight->local_bounds[proc_idx],
+          weight->local_strides[proc_idx],
+          0,
+          is_raw_boolean,
+          reinterpret_cast<char const *>(weight_ptr),
+          reinterpret_cast<char *>(weight->local_allocation[proc_idx])));
     }
   }
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::SetElementData(
-    const std::vector<size_t>& strides, const Legion::Domain& local_bounds,
-    const size_t* local_strides, size_t dim_idx, const bool is_raw_boolean,
-    const char* src_data, char* dst_data)
-{
+TRITONSERVER_Error *
+    OnnxParser::SetElementData(std::vector<size_t> const &strides,
+                               Legion::Domain const &local_bounds,
+                               size_t const *local_strides,
+                               size_t dim_idx,
+                               bool const is_raw_boolean,
+                               char const *src_data,
+                               char *dst_data) {
   if (dim_idx == (strides.size() - 1)) {
     if (is_raw_boolean) {
       // boolean value stored in raw_data is represent in 1 byte (00000001 for
@@ -409,9 +406,10 @@ OnnxParser::SetElementData(
       // https://github.com/onnx/onnx/blob/v1.9.0/onnx/onnx-ml.proto#L558
       size_t dst_idx_offset = 0;
       for (size_t idx = local_bounds.lo()[dim_idx];
-           idx <= local_bounds.hi()[dim_idx]; ++idx) {
-        reinterpret_cast<bool*>(dst_data)[dst_idx_offset] =
-            (reinterpret_cast<const uint8_t*>(src_data)[idx] == 1);
+           idx <= local_bounds.hi()[dim_idx];
+           ++idx) {
+        reinterpret_cast<bool *>(dst_data)[dst_idx_offset] =
+            (reinterpret_cast<uint8_t const *>(src_data)[idx] == 1);
         ++dst_idx_offset;
       }
     } else {
@@ -424,22 +422,25 @@ OnnxParser::SetElementData(
     }
   } else {
     for (size_t idx = local_bounds.lo()[dim_idx];
-         idx <= local_bounds.hi()[dim_idx]; ++idx) {
-      RETURN_IF_ERROR(SetElementData(
-          strides, local_bounds, local_strides, dim_idx + 1, is_raw_boolean,
-          src_data + strides[dim_idx] * idx,
-          dst_data +
-              local_strides[dim_idx] * (idx - local_bounds.lo()[dim_idx])));
+         idx <= local_bounds.hi()[dim_idx];
+         ++idx) {
+      RETURN_IF_ERROR(
+          SetElementData(strides,
+                         local_bounds,
+                         local_strides,
+                         dim_idx + 1,
+                         is_raw_boolean,
+                         src_data + strides[dim_idx] * idx,
+                         dst_data + local_strides[dim_idx] *
+                                        (idx - local_bounds.lo()[dim_idx])));
     }
   }
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseConv2D(
-    OnnxParser* parser, const LayerStrategy* strategy,
-    const onnx::NodeProto& onnx_node)
-{
+TRITONSERVER_Error *OnnxParser::ParseConv2D(OnnxParser *parser,
+                                            LayerStrategy const *strategy,
+                                            onnx::NodeProto const &onnx_node) {
   // Layer attributes
   size_t groups = 1;
   size_t kernel_h = 0;
@@ -450,12 +451,12 @@ OnnxParser::ParseConv2D(
   size_t stride_w = 1;
   size_t dilation_h = 1;
   size_t dilation_w = 1;
-  for (const auto& attribute : onnx_node.attribute()) {
+  for (auto const &attribute : onnx_node.attribute()) {
     if (attribute.name() == "auto_pad") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_STRING);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_STRING);
       if (attribute.s() != "NOTSET") {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_UNSUPPORTED,
@@ -466,11 +467,11 @@ OnnxParser::ParseConv2D(
                 .c_str());
       }
     } else if (attribute.name() == "dilations") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INTS);
-      for (const auto dilation : attribute.ints()) {
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INTS);
+      for (auto const dilation : attribute.ints()) {
         if (dilation != 1) {
           return TRITONSERVER_ErrorNew(
               TRITONSERVER_ERROR_UNSUPPORTED,
@@ -482,16 +483,16 @@ OnnxParser::ParseConv2D(
         }
       }
     } else if (attribute.name() == "group") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INT);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INT);
       groups = attribute.i();
     } else if (attribute.name() == "kernel_shape") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INTS);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INTS);
       if (attribute.ints().size() != 2) {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_INVALID_ARG,
@@ -504,10 +505,10 @@ OnnxParser::ParseConv2D(
       kernel_h = attribute.ints(0);
       kernel_w = attribute.ints(1);
     } else if (attribute.name() == "pads") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INTS);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INTS);
       if (attribute.ints().size() != 4) {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_INVALID_ARG,
@@ -530,10 +531,10 @@ OnnxParser::ParseConv2D(
       padding_h = attribute.ints(0);
       padding_w = attribute.ints(2);
     } else if (attribute.name() == "strides") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INTS);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INTS);
       if (attribute.ints().size() != 2) {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_INVALID_ARG,
@@ -566,7 +567,7 @@ OnnxParser::ParseConv2D(
          "of layer that presedes this layer")
             .c_str());
   }
-  auto& input = input_it->second;
+  auto &input = input_it->second;
   if (input->bounds.size() != 4) {
     return TRITONSERVER_ErrorNew(
         TRITONSERVER_ERROR_INVALID_ARG,
@@ -588,11 +589,11 @@ OnnxParser::ParseConv2D(
          "', the weight must be specified as initializer of the model")
             .c_str());
   }
-  const auto& weight_proto = weight_it->second;
+  auto const &weight_proto = weight_it->second;
   DataType weight_dt;
   RETURN_IF_ERROR(OnnxTypeToDataType(weight_proto->data_type(), &weight_dt));
   std::vector<size_t> weight_dims;
-  for (const auto& dim : weight_proto->dims()) {
+  for (auto const &dim : weight_proto->dims()) {
     weight_dims.emplace_back(dim);
   }
   if ((weight_dims.size() != 4) || ((weight_dims[1] * groups) != in_channels)) {
@@ -602,9 +603,8 @@ OnnxParser::ParseConv2D(
          onnx_node.op_type() + "' layer named '" + onnx_node.name() +
          "' must have shape (M, C/group, kH, kW)")
             .c_str());
-  } else if (
-      ((kernel_h != 0) || (kernel_w != 0)) &&
-      ((kernel_h != weight_dims[2]) || (kernel_w != weight_dims[3]))) {
+  } else if (((kernel_h != 0) || (kernel_w != 0)) &&
+             ((kernel_h != weight_dims[2]) || (kernel_w != weight_dims[3]))) {
     return TRITONSERVER_ErrorNew(
         TRITONSERVER_ERROR_INVALID_ARG,
         (std::string("Weight tensor '") + onnx_node.input(1) + "' for '" +
@@ -628,27 +628,37 @@ OnnxParser::ParseConv2D(
          "', the bias must be specified as initializer of the model")
             .c_str());
   }
-  const auto& bias_proto = bias_it->second;
+  auto const &bias_proto = bias_it->second;
   DataType bias_dt;
   RETURN_IF_ERROR(OnnxTypeToDataType(bias_proto->data_type(), &bias_dt));
   std::vector<size_t> bias_dims;
-  for (const auto& dim : bias_proto->dims()) {
+  for (auto const &dim : bias_proto->dims()) {
     bias_dims.emplace_back(dim);
   }
   if ((bias_dims.size() != 1) || (out_channels != bias_dims[0])) {
-    return TRITONSERVER_ErrorNew(
-        TRITONSERVER_ERROR_INVALID_ARG,
-        (std::string("Bias tensor '") + onnx_node.input(1) + "' for '" +
-         onnx_node.op_type() + "' layer named '" + onnx_node.name() +
-         "' must have shape (M)")
-            .c_str());
+    return TRITONSERVER_ErrorNew(TRITONSERVER_ERROR_INVALID_ARG,
+                                 (std::string("Bias tensor '") +
+                                  onnx_node.input(1) + "' for '" +
+                                  onnx_node.op_type() + "' layer named '" +
+                                  onnx_node.name() + "' must have shape (M)")
+                                     .c_str());
   }
 
   // Construct layer
-  std::unique_ptr<Conv2D> conv2d_op(new Conv2D(
-      parser->model_, strategy, in_channels, out_channels, kernel_h, kernel_w,
-      stride_h, stride_w, padding_h, padding_w, ActivationMode::AC_MODE_NONE,
-      groups, use_bias, onnx_node.name().c_str()));
+  std::unique_ptr<Conv2D> conv2d_op(new Conv2D(parser->model_,
+                                               strategy,
+                                               in_channels,
+                                               out_channels,
+                                               kernel_h,
+                                               kernel_w,
+                                               stride_h,
+                                               stride_w,
+                                               padding_h,
+                                               padding_w,
+                                               ActivationMode::AC_MODE_NONE,
+                                               groups,
+                                               use_bias,
+                                               onnx_node.name().c_str()));
   auto conv2d_op_ptr = conv2d_op.get();
 
   // Finalize weight, bias, and output
@@ -667,9 +677,10 @@ OnnxParser::ParseConv2D(
       (input->bounds[3] + 2 * padding_w - dilation_w * (kernel_w - 1) - 1) /
           stride_w +
       1;
-  std::unique_ptr<Tensor> output(new Tensor(
-      conv2d_op.get(), input->type,
-      {input->bounds[0], out_channels, output_h, output_w}));
+  std::unique_ptr<Tensor> output(
+      new Tensor(conv2d_op.get(),
+                 input->type,
+                 {input->bounds[0], out_channels, output_h, output_w}));
 
   conv2d_op->Configure(input.get(), weight.get(), output.get(), bias.get());
 
@@ -679,14 +690,16 @@ OnnxParser::ParseConv2D(
       [conv2d_op_ptr](Realm::Processor proc) {
         return conv2d_op_ptr->GetWeightBounds(proc);
       },
-      weight_proto, weight.get()));
+      weight_proto,
+      weight.get()));
   if (bias != nullptr) {
     RETURN_IF_ERROR(parser->LoadWeight<1>(
         strategy,
         [conv2d_op_ptr](Realm::Processor proc) {
           return conv2d_op_ptr->GetBiasBounds(proc);
         },
-        bias_proto, bias.get()));
+        bias_proto,
+        bias.get()));
   }
   // Weights are relased here as they are not placed in 'tensors_'
   weight.release();
@@ -694,24 +707,21 @@ OnnxParser::ParseConv2D(
 
   parser->tensors_.emplace(onnx_node.output(0), std::move(output));
   parser->layers_->emplace_back(conv2d_op.release());
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseFlatten(
-    OnnxParser* parser, const LayerStrategy* strategy,
-    const onnx::NodeProto& onnx_node)
-{
+TRITONSERVER_Error *OnnxParser::ParseFlatten(OnnxParser *parser,
+                                             LayerStrategy const *strategy,
+                                             onnx::NodeProto const &onnx_node) {
   // FIXME
   std::cerr << onnx_node.DebugString() << std::endl;
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseAveragePool(
-    OnnxParser* parser, const LayerStrategy* strategy,
-    const onnx::NodeProto& onnx_node)
-{
+TRITONSERVER_Error *
+    OnnxParser::ParseAveragePool(OnnxParser *parser,
+                                 LayerStrategy const *strategy,
+                                 onnx::NodeProto const &onnx_node) {
   // Layer attributes
   size_t kernel_h = 0;
   size_t kernel_w = 0;
@@ -719,12 +729,12 @@ OnnxParser::ParseAveragePool(
   size_t padding_w = 0;
   size_t stride_h = 1;
   size_t stride_w = 1;
-  for (const auto& attribute : onnx_node.attribute()) {
+  for (auto const &attribute : onnx_node.attribute()) {
     if (attribute.name() == "auto_pad") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_STRING);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_STRING);
       if (attribute.s() != "NOTSET") {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_UNSUPPORTED,
@@ -735,10 +745,10 @@ OnnxParser::ParseAveragePool(
                 .c_str());
       }
     } else if (attribute.name() == "ceil_mode") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INT);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INT);
       if (attribute.i() != 0) {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_UNSUPPORTED,
@@ -749,10 +759,10 @@ OnnxParser::ParseAveragePool(
                 .c_str());
       }
     } else if (attribute.name() == "count_include_pad") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INT);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INT);
       if (attribute.i() != 0) {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_UNSUPPORTED,
@@ -763,10 +773,10 @@ OnnxParser::ParseAveragePool(
                 .c_str());
       }
     } else if (attribute.name() == "kernel_shape") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INTS);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INTS);
       if (attribute.ints().size() != 2) {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_INVALID_ARG,
@@ -779,10 +789,10 @@ OnnxParser::ParseAveragePool(
       kernel_h = attribute.ints(0);
       kernel_w = attribute.ints(1);
     } else if (attribute.name() == "pads") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INTS);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INTS);
       if (attribute.ints().size() != 4) {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_INVALID_ARG,
@@ -805,10 +815,10 @@ OnnxParser::ParseAveragePool(
       padding_h = attribute.ints(0);
       padding_w = attribute.ints(2);
     } else if (attribute.name() == "strides") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INTS);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INTS);
       if (attribute.ints().size() != 2) {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_INVALID_ARG,
@@ -841,7 +851,7 @@ OnnxParser::ParseAveragePool(
          "of layer that presedes this layer")
             .c_str());
   }
-  auto& input = input_it->second;
+  auto &input = input_it->second;
   if (input->bounds.size() != 4) {
     return TRITONSERVER_ErrorNew(
         TRITONSERVER_ERROR_INVALID_ARG,
@@ -852,32 +862,38 @@ OnnxParser::ParseAveragePool(
   }
 
   // Construct layer
-  std::unique_ptr<Pool2D> pool_op(new Pool2D(
-      parser->model_, strategy, kernel_h, kernel_w, stride_h, stride_w,
-      padding_h, padding_w, PoolType::POOL_AVG, ActivationMode::AC_MODE_NONE,
-      onnx_node.name().c_str()));
+  std::unique_ptr<Pool2D> pool_op(new Pool2D(parser->model_,
+                                             strategy,
+                                             kernel_h,
+                                             kernel_w,
+                                             stride_h,
+                                             stride_w,
+                                             padding_h,
+                                             padding_w,
+                                             PoolType::POOL_AVG,
+                                             ActivationMode::AC_MODE_NONE,
+                                             onnx_node.name().c_str()));
 
   // Finalize output
   size_t output_h =
       (input->bounds[2] + 2 * padding_h - kernel_h) / stride_h + 1;
   size_t output_w =
       (input->bounds[3] + 2 * padding_w - kernel_w) / stride_w + 1;
-  std::unique_ptr<Tensor> output(new Tensor(
-      pool_op.get(), input->type,
-      {input->bounds[0], input->bounds[1], output_h, output_w}));
+  std::unique_ptr<Tensor> output(
+      new Tensor(pool_op.get(),
+                 input->type,
+                 {input->bounds[0], input->bounds[1], output_h, output_w}));
 
   pool_op->Configure(input.get(), output.get());
 
   parser->tensors_.emplace(onnx_node.output(0), std::move(output));
   parser->layers_->emplace_back(pool_op.release());
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseMaxPool(
-    OnnxParser* parser, const LayerStrategy* strategy,
-    const onnx::NodeProto& onnx_node)
-{
+TRITONSERVER_Error *OnnxParser::ParseMaxPool(OnnxParser *parser,
+                                             LayerStrategy const *strategy,
+                                             onnx::NodeProto const &onnx_node) {
   // Layer attributes
   size_t kernel_h = 0;
   size_t kernel_w = 0;
@@ -887,12 +903,12 @@ OnnxParser::ParseMaxPool(
   size_t stride_w = 1;
   size_t dilation_h = 1;
   size_t dilation_w = 1;
-  for (const auto& attribute : onnx_node.attribute()) {
+  for (auto const &attribute : onnx_node.attribute()) {
     if (attribute.name() == "auto_pad") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_STRING);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_STRING);
       if (attribute.s() != "NOTSET") {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_UNSUPPORTED,
@@ -903,10 +919,10 @@ OnnxParser::ParseMaxPool(
                 .c_str());
       }
     } else if (attribute.name() == "ceil_mode") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INT);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INT);
       if (attribute.i() != 0) {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_UNSUPPORTED,
@@ -917,11 +933,11 @@ OnnxParser::ParseMaxPool(
                 .c_str());
       }
     } else if (attribute.name() == "dilations") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INTS);
-      for (const auto dilation : attribute.ints()) {
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INTS);
+      for (auto const dilation : attribute.ints()) {
         if (dilation != 1) {
           return TRITONSERVER_ErrorNew(
               TRITONSERVER_ERROR_UNSUPPORTED,
@@ -933,10 +949,10 @@ OnnxParser::ParseMaxPool(
         }
       }
     } else if (attribute.name() == "kernel_shape") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INTS);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INTS);
       if (attribute.ints().size() != 2) {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_INVALID_ARG,
@@ -949,10 +965,10 @@ OnnxParser::ParseMaxPool(
       kernel_h = attribute.ints(0);
       kernel_w = attribute.ints(1);
     } else if (attribute.name() == "pads") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INTS);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INTS);
       if (attribute.ints().size() != 4) {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_INVALID_ARG,
@@ -975,10 +991,10 @@ OnnxParser::ParseMaxPool(
       padding_h = attribute.ints(0);
       padding_w = attribute.ints(2);
     } else if (attribute.name() == "storage_order") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INT);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INT);
       if (attribute.i() != 0) {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_UNSUPPORTED,
@@ -989,10 +1005,10 @@ OnnxParser::ParseMaxPool(
                 .c_str());
       }
     } else if (attribute.name() == "strides") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INTS);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INTS);
       if (attribute.ints().size() != 2) {
         return TRITONSERVER_ErrorNew(
             TRITONSERVER_ERROR_INVALID_ARG,
@@ -1025,7 +1041,7 @@ OnnxParser::ParseMaxPool(
          "of layer that presedes this layer")
             .c_str());
   }
-  auto& input = input_it->second;
+  auto &input = input_it->second;
   if (input->bounds.size() != 4) {
     return TRITONSERVER_ErrorNew(
         TRITONSERVER_ERROR_INVALID_ARG,
@@ -1036,18 +1052,25 @@ OnnxParser::ParseMaxPool(
   }
 
   // Construct layer
-  std::unique_ptr<Pool2D> pool_op(new Pool2D(
-      parser->model_, strategy, kernel_h, kernel_w, stride_h, stride_w,
-      padding_h, padding_w, PoolType::POOL_MAX, ActivationMode::AC_MODE_NONE,
-      onnx_node.name().c_str()));
+  std::unique_ptr<Pool2D> pool_op(new Pool2D(parser->model_,
+                                             strategy,
+                                             kernel_h,
+                                             kernel_w,
+                                             stride_h,
+                                             stride_w,
+                                             padding_h,
+                                             padding_w,
+                                             PoolType::POOL_MAX,
+                                             ActivationMode::AC_MODE_NONE,
+                                             onnx_node.name().c_str()));
 
   // Finalize output
   if (onnx_node.output().size() != 1) {
-    return TRITONSERVER_ErrorNew(
-        TRITONSERVER_ERROR_INVALID_ARG,
-        (std::string("Expect only 1 output for '") + onnx_node.op_type() +
-         "' layer named '" + onnx_node.name() + "'")
-            .c_str());
+    return TRITONSERVER_ErrorNew(TRITONSERVER_ERROR_INVALID_ARG,
+                                 (std::string("Expect only 1 output for '") +
+                                  onnx_node.op_type() + "' layer named '" +
+                                  onnx_node.name() + "'")
+                                     .c_str());
   }
   size_t output_h =
       (input->bounds[2] + 2 * padding_h - dilation_h * (kernel_h - 1) - 1) /
@@ -1058,22 +1081,21 @@ OnnxParser::ParseMaxPool(
           stride_w +
       1;
 
-  std::unique_ptr<Tensor> output(new Tensor(
-      pool_op.get(), input->type,
-      {input->bounds[0], input->bounds[1], output_h, output_w}));
+  std::unique_ptr<Tensor> output(
+      new Tensor(pool_op.get(),
+                 input->type,
+                 {input->bounds[0], input->bounds[1], output_h, output_w}));
 
   pool_op->Configure(input.get(), output.get());
 
   parser->tensors_.emplace(onnx_node.output(0), std::move(output));
   parser->layers_->emplace_back(pool_op.release());
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseSoftmax(
-    OnnxParser* parser, const LayerStrategy* strategy,
-    const onnx::NodeProto& onnx_node)
-{
+TRITONSERVER_Error *OnnxParser::ParseSoftmax(OnnxParser *parser,
+                                             LayerStrategy const *strategy,
+                                             onnx::NodeProto const &onnx_node) {
   int axis = -1;
 
   // Input
@@ -1089,15 +1111,15 @@ OnnxParser::ParseSoftmax(
          "of layer that precedes this layer")
             .c_str());
   }
-  auto& input = input_it->second;
+  auto &input = input_it->second;
 
   // Axis
-  for (const auto& attribute : onnx_node.attribute()) {
+  for (auto const &attribute : onnx_node.attribute()) {
     if (attribute.name() == "axis") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INT);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INT);
       axis = attribute.i();
       break;
     }
@@ -1107,17 +1129,17 @@ OnnxParser::ParseSoftmax(
       axis >= (int)input->bounds.size()) {
     return TRITONSERVER_ErrorNew(
         TRITONSERVER_ERROR_INVALID_ARG,
-        (std::string(
-             "Attribute 'axis' in '" + onnx_node.op_type() + "' layer named '" +
-             onnx_node.name() +
-             "' must be between [-r, r-1] where r = rank(input), got " +
-             std::to_string(axis) + std::string(" with rank ") +
-             std::to_string(input->bounds.size()))
+        (std::string("Attribute 'axis' in '" + onnx_node.op_type() +
+                     "' layer named '" + onnx_node.name() +
+                     "' must be between [-r, r-1] where r = rank(input), got " +
+                     std::to_string(axis) + std::string(" with rank ") +
+                     std::to_string(input->bounds.size()))
              .c_str()));
   }
 
-  if (axis <= -1)
+  if (axis <= -1) {
     axis = input->bounds.size() + axis;
+  }
 
   std::unique_ptr<Softmax> softmax_op(
       new Softmax(parser->model_, strategy, axis, onnx_node.name().c_str()));
@@ -1128,14 +1150,12 @@ OnnxParser::ParseSoftmax(
   parser->tensors_.emplace(onnx_node.output(0), std::move(output));
   parser->layers_->emplace_back(softmax_op.release());
 
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseRelu(
-    OnnxParser* parser, const LayerStrategy* strategy,
-    const onnx::NodeProto& onnx_node)
-{
+TRITONSERVER_Error *OnnxParser::ParseRelu(OnnxParser *parser,
+                                          LayerStrategy const *strategy,
+                                          onnx::NodeProto const &onnx_node) {
   auto input_it = parser->tensors_.find(onnx_node.input(0));
   if (input_it == parser->tensors_.end()) {
     return TRITONSERVER_ErrorNew(
@@ -1147,49 +1167,46 @@ OnnxParser::ParseRelu(
          "of layer that precedes this layer")
             .c_str());
   }
-  auto& input = input_it->second;
+  auto &input = input_it->second;
 
-  std::unique_ptr<UnaryOperator> unary_op(new UnaryOperator(
-      parser->model_, strategy, OperatorType::OP_RELU, nullptr, DT_NONE,
-      false /*inplace*/, onnx_node.name().c_str()));
+  std::unique_ptr<UnaryOperator> unary_op(
+      new UnaryOperator(parser->model_,
+                        strategy,
+                        OperatorType::OP_RELU,
+                        nullptr,
+                        DT_NONE,
+                        false /*inplace*/,
+                        onnx_node.name().c_str()));
   std::unique_ptr<Tensor> output(
       new Tensor(unary_op.get(), input->type, input->bounds));
   unary_op->Configure(input.get(), output.get());
 
   parser->tensors_.emplace(onnx_node.output(0), std::move(output));
   parser->layers_->emplace_back(unary_op.release());
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseAdd(
-    OnnxParser* parser, const LayerStrategy* strategy,
-    const onnx::NodeProto& onnx_node)
-{
+TRITONSERVER_Error *OnnxParser::ParseAdd(OnnxParser *parser,
+                                         LayerStrategy const *strategy,
+                                         onnx::NodeProto const &onnx_node) {
   return parser->ParseBinary(strategy, onnx_node, OperatorType::OP_EW_ADD);
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseSub(
-    OnnxParser* parser, const LayerStrategy* strategy,
-    const onnx::NodeProto& onnx_node)
-{
+TRITONSERVER_Error *OnnxParser::ParseSub(OnnxParser *parser,
+                                         LayerStrategy const *strategy,
+                                         onnx::NodeProto const &onnx_node) {
   return parser->ParseBinary(strategy, onnx_node, OperatorType::OP_EW_SUB);
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseMul(
-    OnnxParser* parser, const LayerStrategy* strategy,
-    const onnx::NodeProto& onnx_node)
-{
+TRITONSERVER_Error *OnnxParser::ParseMul(OnnxParser *parser,
+                                         LayerStrategy const *strategy,
+                                         onnx::NodeProto const &onnx_node) {
   return parser->ParseBinary(strategy, onnx_node, OperatorType::OP_EW_MUL);
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseBinary(
-    const LayerStrategy* strategy, const onnx::NodeProto& onnx_node,
-    OperatorType op_type)
-{
+TRITONSERVER_Error *OnnxParser::ParseBinary(LayerStrategy const *strategy,
+                                            onnx::NodeProto const &onnx_node,
+                                            OperatorType op_type) {
   if (onnx_node.input().size() != 2) {
     return TRITONSERVER_ErrorNew(
         TRITONSERVER_ERROR_INVALID_ARG,
@@ -1221,27 +1238,27 @@ OnnxParser::ParseBinary(
          "of layer that precedes this layer")
             .c_str());
   }
-  auto& input0 = input_it0->second;
-  auto& input1 = input_it1->second;
+  auto &input0 = input_it0->second;
+  auto &input1 = input_it1->second;
 
   // Error checking
   if (input0->type != input1->type) {
-    return TRITONSERVER_ErrorNew(
-        TRITONSERVER_ERROR_INVALID_ARG,
-        (std::string("Non-matching input types: ") +
-         std::to_string(input0->type) + std::string(" and ") +
-         std::to_string(input1->type))
-            .c_str());
+    return TRITONSERVER_ErrorNew(TRITONSERVER_ERROR_INVALID_ARG,
+                                 (std::string("Non-matching input types: ") +
+                                  std::to_string(input0->type) +
+                                  std::string(" and ") +
+                                  std::to_string(input1->type))
+                                     .c_str());
   }
 
   // [gluo FIXME] broadcasting not currently supported
   if (input0->bounds != input1->bounds) {
-    return TRITONSERVER_ErrorNew(
-        TRITONSERVER_ERROR_INVALID_ARG,
-        (std::string("Non-matching input bounds: ") +
-         std::to_string(input0->bounds.size()) + std::string(" and ") +
-         std::to_string(input1->bounds.size()))
-            .c_str());
+    return TRITONSERVER_ErrorNew(TRITONSERVER_ERROR_INVALID_ARG,
+                                 (std::string("Non-matching input bounds: ") +
+                                  std::to_string(input0->bounds.size()) +
+                                  std::string(" and ") +
+                                  std::to_string(input1->bounds.size()))
+                                     .c_str());
   }
 
   std::unique_ptr<BinaryOperator> binary_op(new BinaryOperator(
@@ -1253,14 +1270,13 @@ OnnxParser::ParseBinary(
   tensors_.emplace(onnx_node.output(0), std::move(output));
   layers_->emplace_back(binary_op.release());
 
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseIdentity(
-    OnnxParser* parser, const LayerStrategy* strategy,
-    const onnx::NodeProto& onnx_node)
-{
+TRITONSERVER_Error *
+    OnnxParser::ParseIdentity(OnnxParser *parser,
+                              LayerStrategy const *strategy,
+                              onnx::NodeProto const &onnx_node) {
   if (onnx_node.input().size() != 1) {
     return TRITONSERVER_ErrorNew(
         TRITONSERVER_ERROR_INVALID_ARG,
@@ -1281,14 +1297,19 @@ OnnxParser::ParseIdentity(
          "of layer that precedes this layer")
             .c_str());
   }
-  auto& input = input_it->second;
+  auto &input = input_it->second;
 
   // Identity doesn't use scalar, so set a large enough buffer with zeros for
   // scalar value
   uint64_t scalar_value = 0;
-  std::unique_ptr<UnaryOperator> op(new UnaryOperator(
-      parser->model_, strategy, OperatorType::OP_IDENTITY, &scalar_value,
-      input->type, false /* inplace */, onnx_node.name().c_str()));
+  std::unique_ptr<UnaryOperator> op(
+      new UnaryOperator(parser->model_,
+                        strategy,
+                        OperatorType::OP_IDENTITY,
+                        &scalar_value,
+                        input->type,
+                        false /* inplace */,
+                        onnx_node.name().c_str()));
   std::unique_ptr<Tensor> output(
       new Tensor(op.get(), input->type, input->bounds));
   op->Configure(input.get(), output.get());
@@ -1296,14 +1317,12 @@ OnnxParser::ParseIdentity(
   parser->tensors_.emplace(onnx_node.output(0), std::move(output));
   parser->layers_->emplace_back(op.release());
 
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseCast(
-    OnnxParser* parser, const LayerStrategy* strategy,
-    const onnx::NodeProto& onnx_node)
-{
+TRITONSERVER_Error *OnnxParser::ParseCast(OnnxParser *parser,
+                                          LayerStrategy const *strategy,
+                                          onnx::NodeProto const &onnx_node) {
   if (onnx_node.input().size() != 1) {
     return TRITONSERVER_ErrorNew(
         TRITONSERVER_ERROR_INVALID_ARG,
@@ -1324,15 +1343,15 @@ OnnxParser::ParseCast(
          "of layer that precedes this layer")
             .c_str());
   }
-  auto& input = input_it->second;
+  auto &input = input_it->second;
   DataType new_type;
 
-  for (const auto& attribute : onnx_node.attribute()) {
+  for (auto const &attribute : onnx_node.attribute()) {
     if (attribute.name() == "to") {
-      RETURN_IF_TYPE_MISMATCH(
-          onnx_node, attribute,
-          onnx::AttributeProto::AttributeType::
-              AttributeProto_AttributeType_INT);
+      RETURN_IF_TYPE_MISMATCH(onnx_node,
+                              attribute,
+                              onnx::AttributeProto::AttributeType::
+                                  AttributeProto_AttributeType_INT);
       OnnxTypeToDataType(attribute.i(), &new_type);
       break;
     }
@@ -1341,23 +1360,26 @@ OnnxParser::ParseCast(
   // Cast doesn't use scalar, so set a large enough buffer with zeros for
   // scalar value
   uint64_t scalar_value = 0;
-  std::unique_ptr<UnaryOperator> op(new UnaryOperator(
-      parser->model_, strategy, OperatorType::OP_CAST, &scalar_value,
-      input->type, false /* inplace */, onnx_node.name().c_str()));
+  std::unique_ptr<UnaryOperator> op(
+      new UnaryOperator(parser->model_,
+                        strategy,
+                        OperatorType::OP_CAST,
+                        &scalar_value,
+                        input->type,
+                        false /* inplace */,
+                        onnx_node.name().c_str()));
   std::unique_ptr<Tensor> output(new Tensor(op.get(), new_type, input->bounds));
   op->Configure(input.get(), output.get());
 
   parser->tensors_.emplace(onnx_node.output(0), std::move(output));
   parser->layers_->emplace_back(op.release());
 
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseTanh(
-    OnnxParser* parser, const LayerStrategy* strategy,
-    const onnx::NodeProto& onnx_node)
-{
+TRITONSERVER_Error *OnnxParser::ParseTanh(OnnxParser *parser,
+                                          LayerStrategy const *strategy,
+                                          onnx::NodeProto const &onnx_node) {
   if (onnx_node.input().size() != 1) {
     return TRITONSERVER_ErrorNew(
         TRITONSERVER_ERROR_INVALID_ARG,
@@ -1378,14 +1400,19 @@ OnnxParser::ParseTanh(
          "of layer that precedes this layer")
             .c_str());
   }
-  auto& input = input_it->second;
+  auto &input = input_it->second;
 
   // Tanh doesn't use scalar, so set a large enough buffer with zeros for
   // scalar value
   uint64_t scalar_value = 0;
-  std::unique_ptr<UnaryOperator> op(new UnaryOperator(
-      parser->model_, strategy, OperatorType::OP_TANH, &scalar_value,
-      input->type, false /* inplace */, onnx_node.name().c_str()));
+  std::unique_ptr<UnaryOperator> op(
+      new UnaryOperator(parser->model_,
+                        strategy,
+                        OperatorType::OP_TANH,
+                        &scalar_value,
+                        input->type,
+                        false /* inplace */,
+                        onnx_node.name().c_str()));
   std::unique_ptr<Tensor> output(
       new Tensor(op.get(), input->type, input->bounds));
   op->Configure(input.get(), output.get());
@@ -1393,14 +1420,13 @@ OnnxParser::ParseTanh(
   parser->tensors_.emplace(onnx_node.output(0), std::move(output));
   parser->layers_->emplace_back(op.release());
 
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseReciprocal(
-    OnnxParser* parser, const LayerStrategy* strategy,
-    const onnx::NodeProto& onnx_node)
-{
+TRITONSERVER_Error *
+    OnnxParser::ParseReciprocal(OnnxParser *parser,
+                                LayerStrategy const *strategy,
+                                onnx::NodeProto const &onnx_node) {
   if (onnx_node.input().size() != 1) {
     return TRITONSERVER_ErrorNew(
         TRITONSERVER_ERROR_INVALID_ARG,
@@ -1421,14 +1447,19 @@ OnnxParser::ParseReciprocal(
          "of layer that precedes this layer")
             .c_str());
   }
-  auto& input = input_it->second;
+  auto &input = input_it->second;
 
   // Reciprocal doesn't use scalar, so set a large enough buffer with zeros for
   // scalar value
   uint64_t scalar_value = 0;
-  std::unique_ptr<UnaryOperator> op(new UnaryOperator(
-      parser->model_, strategy, OperatorType::OP_RECIPROCAL, &scalar_value,
-      input->type, false /* inplace */, onnx_node.name().c_str()));
+  std::unique_ptr<UnaryOperator> op(
+      new UnaryOperator(parser->model_,
+                        strategy,
+                        OperatorType::OP_RECIPROCAL,
+                        &scalar_value,
+                        input->type,
+                        false /* inplace */,
+                        onnx_node.name().c_str()));
   std::unique_ptr<Tensor> output(
       new Tensor(op.get(), input->type, input->bounds));
   op->Configure(input.get(), output.get());
@@ -1436,14 +1467,12 @@ OnnxParser::ParseReciprocal(
   parser->tensors_.emplace(onnx_node.output(0), std::move(output));
   parser->layers_->emplace_back(op.release());
 
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-TRITONSERVER_Error*
-OnnxParser::ParseSqrt(
-    OnnxParser* parser, const LayerStrategy* strategy,
-    const onnx::NodeProto& onnx_node)
-{
+TRITONSERVER_Error *OnnxParser::ParseSqrt(OnnxParser *parser,
+                                          LayerStrategy const *strategy,
+                                          onnx::NodeProto const &onnx_node) {
   if (onnx_node.input().size() != 1) {
     return TRITONSERVER_ErrorNew(
         TRITONSERVER_ERROR_INVALID_ARG,
@@ -1464,14 +1493,19 @@ OnnxParser::ParseSqrt(
          "of layer that precedes this layer")
             .c_str());
   }
-  auto& input = input_it->second;
+  auto &input = input_it->second;
 
   // Sqrt doesn't use scalar, so set a large enough buffer with zeros for
   // scalar value
   uint64_t scalar_value = 0;
-  std::unique_ptr<UnaryOperator> op(new UnaryOperator(
-      parser->model_, strategy, OperatorType::OP_SQRT, &scalar_value,
-      input->type, false /* inplace */, onnx_node.name().c_str()));
+  std::unique_ptr<UnaryOperator> op(
+      new UnaryOperator(parser->model_,
+                        strategy,
+                        OperatorType::OP_SQRT,
+                        &scalar_value,
+                        input->type,
+                        false /* inplace */,
+                        onnx_node.name().c_str()));
   std::unique_ptr<Tensor> output(
       new Tensor(op.get(), input->type, input->bounds));
   op->Configure(input.get(), output.get());
@@ -1479,7 +1513,9 @@ OnnxParser::ParseSqrt(
   parser->tensors_.emplace(onnx_node.output(0), std::move(output));
   parser->layers_->emplace_back(op.release());
 
-  return nullptr;  // success
+  return nullptr; // success
 }
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

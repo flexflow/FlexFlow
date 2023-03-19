@@ -4797,7 +4797,8 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(TENSOR_EQUAL_TASK_ID, "Tensor Equal");
     registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<bool, ParallelTensorBase::tensor_equal_task>(
+    Runtime::preregister_task_variant<bool,
+                                      ParallelTensorBase::tensor_equal_task>(
         registrar, "Tensor Equal Task");
   }
 }

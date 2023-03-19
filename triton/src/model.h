@@ -21,7 +21,9 @@
 #include "triton/backend/backend_model.h"
 #include "types.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 //
 // LegionModelState
@@ -29,73 +31,80 @@ namespace triton { namespace backend { namespace legion {
 // Capture the meta data needed for representing a model
 //
 class LegionModelState : public BackendModel {
- public:
-  static TRITONSERVER_Error* Create(
-      TRITONBACKEND_Model* triton_model, const std::string& name,
-      uint64_t version, LegionTritonRuntime* runtime, LegionModelState** state);
+public:
+  static TRITONSERVER_Error *Create(TRITONBACKEND_Model *triton_model,
+                                    std::string const &name,
+                                    uint64_t version,
+                                    LegionTritonRuntime *runtime,
+                                    LegionModelState **state);
   virtual ~LegionModelState();
 
-
   unsigned ReserveInstance(void);
-  void RecordInstance(LegionModelInstance* instance);
+  void RecordInstance(LegionModelInstance *instance);
 
-  LegionModelInstance* FindInstance(
-      unsigned instance_index, bool external, bool need_lock = true);
-  const PartitionStrategy* GetStrategy(void) const;
+  LegionModelInstance *FindInstance(unsigned instance_index,
+                                    bool external,
+                                    bool need_lock = true);
+  PartitionStrategy const *GetStrategy(void) const;
 
   // These methods must all be called while the instance is bound
   // to the its implicit top-level task context
-  void initialize(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper);
-  void forward(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper,
-      const std::vector<InputTensor>& inputs,
-      const std::vector<OutputTensor>& outputs,
-      std::vector<uint64_t>& compute_input_end_ns,
-      std::vector<uint64_t>& compute_output_end_ns);
-  void finalize(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper);
-  const std::vector<
-      std::tuple<std::string, TRITONSERVER_DataType, std::vector<int64_t>>>&
-  OutputInfos()
-  {
+  void initialize(LegionModelInstance *instance,
+                  unsigned const instance_index,
+                  Legion::Runtime *runtime,
+                  Legion::Context ctx,
+                  Legion::MapperID mapper);
+  void forward(LegionModelInstance *instance,
+               unsigned const instance_index,
+               Legion::Runtime *runtime,
+               Legion::Context ctx,
+               Legion::MapperID mapper,
+               std::vector<InputTensor> const &inputs,
+               std::vector<OutputTensor> const &outputs,
+               std::vector<uint64_t> &compute_input_end_ns,
+               std::vector<uint64_t> &compute_output_end_ns);
+  void finalize(LegionModelInstance *instance,
+                unsigned const instance_index,
+                Legion::Runtime *runtime,
+                Legion::Context ctx,
+                Legion::MapperID mapper);
+  std::vector<std::tuple<std::string,
+                         TRITONSERVER_DataType,
+                         std::vector<int64_t>>> const &
+      OutputInfos() {
     return output_infos_;
   }
 
- private:
-  LegionModelState(
-      TRITONBACKEND_Model* triton_model, LegionTritonRuntime* runtime,
-      const std::string& n, uint64_t v)
+private:
+  LegionModelState(TRITONBACKEND_Model *triton_model,
+                   LegionTritonRuntime *runtime,
+                   std::string const &n,
+                   uint64_t v)
       : BackendModel(triton_model), runtime_(runtime), name(n), version(v),
-        strategy_(nullptr)
-  {
-  }
+        strategy_(nullptr) {}
 
-  TRITONSERVER_Error* LoadModel();
-  TRITONSERVER_Error* AutoCompleteConfig();
-  TRITONSERVER_Error* ValidateModelConfig();
-  TRITONSERVER_Error* SetOutputInfos();
+  TRITONSERVER_Error *LoadModel();
+  TRITONSERVER_Error *AutoCompleteConfig();
+  TRITONSERVER_Error *ValidateModelConfig();
+  TRITONSERVER_Error *SetOutputInfos();
 
   void LoadLayers(void) const;
   void FuseLayers(void);
   void FreeLayers(void) const;
 
- public:
-  LegionTritonRuntime* const runtime_;
+public:
+  LegionTritonRuntime *const runtime_;
   const std::string name;
   const uint64_t version;
 
- private:
+private:
   Realm::FastReservation lock_;
-  std::vector<std::pair<std::string, Tensor*>> inputs_;  // We own these tensors
-  std::vector<std::pair<std::string, Tensor*>>
-      outputs_;  // We do NOT own these tensors
-  std::vector<Operator*> layers_;
-  PartitionStrategy* strategy_;
-  std::vector<LegionModelInstance*> instances_;
+  std::vector<std::pair<std::string, Tensor *>> inputs_; // We own these tensors
+  std::vector<std::pair<std::string, Tensor *>>
+      outputs_; // We do NOT own these tensors
+  std::vector<Operator *> layers_;
+  PartitionStrategy *strategy_;
+  std::vector<LegionModelInstance *> instances_;
   // Output information parsed from 'outputs_' for easier access,
   // use to interact with Triton APIs.
   // FIXME calculate stride once for all
@@ -104,6 +113,8 @@ class LegionModelState : public BackendModel {
       output_infos_;
 };
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton
 
-#endif  // __LEGION_TRITON_MODEL_H__
+#endif // __LEGION_TRITON_MODEL_H__

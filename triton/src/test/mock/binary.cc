@@ -15,84 +15,77 @@
 
 #include "operators/binary.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
-BinaryOperator::BinaryOperator(
-    LegionModelState* model, const LayerStrategy* strategy, OperatorType type,
-    bool inplace_a, const char* name)
-    : Operator(model, strategy, type, name, 2, 0, 1), inplace(inplace_a)
-{
-}
+BinaryOperator::BinaryOperator(LegionModelState *model,
+                               LayerStrategy const *strategy,
+                               OperatorType type,
+                               bool inplace_a,
+                               char const *name)
+    : Operator(model, strategy, type, name, 2, 0, 1), inplace(inplace_a) {}
 
-void
-BinaryOperator::Configure(Tensor* input0, Tensor* input1, Tensor* output)
-{
+void BinaryOperator::Configure(Tensor *input0, Tensor *input1, Tensor *output) {
   // Hack so that we can access the tensors in the tests
-  auto vec_ptr = reinterpret_cast<std::vector<Tensor*>*>(model);
+  auto vec_ptr = reinterpret_cast<std::vector<Tensor *> *>(model);
   vec_ptr->emplace_back(input0);
   vec_ptr->emplace_back(input1);
   vec_ptr->emplace_back(output);
 }
 
-Legion::Domain
-BinaryOperator::GetBounds(Realm::Processor proc)
-{
+Legion::Domain BinaryOperator::GetBounds(Realm::Processor proc) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-BinaryOperator::Load(Realm::Processor processor)
-{
+void BinaryOperator::Load(Realm::Processor processor) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
-void
-BinaryOperator::initialize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
+void BinaryOperator::initialize(LegionModelInstance *instance,
+                                unsigned const instance_index,
+                                Legion::Runtime *runtime,
+                                Legion::Context ctx,
+                                Legion::MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
-void
-BinaryOperator::forward(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
+void BinaryOperator::forward(LegionModelInstance *instance,
+                             unsigned const instance_index,
+                             Legion::Runtime *runtime,
+                             Legion::Context ctx,
+                             Legion::MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
-void
-BinaryOperator::finalize(
-    LegionModelInstance* instance, const unsigned instance_index,
-    Legion::Runtime* runtime, Legion::Context ctx, Legion::MapperID mapper)
-{
+void BinaryOperator::finalize(LegionModelInstance *instance,
+                              unsigned const instance_index,
+                              Legion::Runtime *runtime,
+                              Legion::Context ctx,
+                              Legion::MapperID mapper) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
-void
-BinaryOperator::Free(Realm::Processor processor)
-{
+void BinaryOperator::Free(Realm::Processor processor) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-BinaryOperator::forward_cpu(
-    const Legion::Task* task,
-    const std::vector<Legion::PhysicalRegion>& regions, Legion::Context ctx,
-    Legion::Runtime* runtime)
-{
+void BinaryOperator::forward_cpu(
+    Legion::Task const *task,
+    std::vector<Legion::PhysicalRegion> const &regions,
+    Legion::Context ctx,
+    Legion::Runtime *runtime) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-void
-BinaryOperator::PreregisterTaskVariants(void)
-{
+void BinaryOperator::PreregisterTaskVariants(void) {
   throw std::invalid_argument(
       "This function shouldn't be called in parser unit test");
 }
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

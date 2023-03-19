@@ -19,17 +19,21 @@
 
 using namespace Legion;
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
-__global__ static void
-binary_forward_half(
-    const __half* input0, const __half* input1, __half* output,
-    const __half alpha, const __half beta, const OperatorType optype,
-    const size_t volume)
-{
+__global__ static void binary_forward_half(__half const *input0,
+                                           __half const *input1,
+                                           __half *output,
+                                           const __half alpha,
+                                           const __half beta,
+                                           const OperatorType optype,
+                                           const size_t volume) {
   const size_t offset = blockIdx.x * THREADS_PER_BLOCK + threadIdx.x;
-  if (offset >= volume)
+  if (offset >= volume) {
     return;
+  }
   switch (optype) {
     case OP_EW_ADD: {
       output[offset] =
@@ -56,14 +60,17 @@ binary_forward_half(
   }
 }
 
-__global__ static void
-binary_forward_float(
-    const float* input0, const float* input1, float* output, const float alpha,
-    const float beta, const OperatorType optype, const size_t volume)
-{
+__global__ static void binary_forward_float(float const *input0,
+                                            float const *input1,
+                                            float *output,
+                                            float const alpha,
+                                            float const beta,
+                                            const OperatorType optype,
+                                            const size_t volume) {
   const size_t offset = blockIdx.x * THREADS_PER_BLOCK + threadIdx.x;
-  if (offset >= volume)
+  if (offset >= volume) {
     return;
+  }
   switch (optype) {
     case OP_EW_ADD: {
       output[offset] =
@@ -90,15 +97,17 @@ binary_forward_float(
   }
 }
 
-__global__ static void
-binary_forward_double(
-    const double* input0, const double* input1, double* output,
-    const double alpha, const double beta, const OperatorType optype,
-    const size_t volume)
-{
+__global__ static void binary_forward_double(double const *input0,
+                                             double const *input1,
+                                             double *output,
+                                             double const alpha,
+                                             double const beta,
+                                             const OperatorType optype,
+                                             const size_t volume) {
   const size_t offset = blockIdx.x * THREADS_PER_BLOCK + threadIdx.x;
-  if (offset >= volume)
+  if (offset >= volume) {
     return;
+  }
   switch (optype) {
     case OP_EW_ADD: {
       output[offset] =
@@ -125,15 +134,17 @@ binary_forward_double(
   }
 }
 
-__global__ static void
-binary_forward_int8(
-    const int8_t* input0, const int8_t* input1, int8_t* output,
-    const int8_t alpha, const int8_t beta, const OperatorType optype,
-    const size_t volume)
-{
+__global__ static void binary_forward_int8(int8_t const *input0,
+                                           int8_t const *input1,
+                                           int8_t *output,
+                                           const int8_t alpha,
+                                           const int8_t beta,
+                                           const OperatorType optype,
+                                           const size_t volume) {
   const size_t offset = blockIdx.x * THREADS_PER_BLOCK + threadIdx.x;
-  if (offset >= volume)
+  if (offset >= volume) {
     return;
+  }
   switch (optype) {
     case OP_EW_ADD: {
       output[offset] =
@@ -162,50 +173,80 @@ binary_forward_int8(
 
 __host__
     /*static*/ void
-    BinaryOperator::forward_kernel(
-        const BinaryArgs* args, ::cudaStream_t stream, const void* input0_ptr,
-        const void* input1_ptr, void* output_ptr, size_t num_elements)
-{
+    BinaryOperator::forward_kernel(BinaryArgs const *args,
+                                   ::cudaStream_t stream,
+                                   void const *input0_ptr,
+                                   void const *input1_ptr,
+                                   void *output_ptr,
+                                   size_t num_elements) {
   if (use_cudnn(args->op_type, args->datatype)) {
     switch (args->datatype) {
       case DataType::DT_DOUBLE: {
         double alpha0 = 1.0,
                alpha1 = (args->op_type == OperatorType::OP_EW_SUB) ? -1.0 : 1.0,
                beta = 0.0;
-        CHECK_CUDNN(cudnnOpTensor(
-            args->cudnn, args->opDesc, &alpha0, args->input0Tensor, input0_ptr,
-            &alpha1, args->input1Tensor, input1_ptr, &beta, args->outputTensor,
-            output_ptr));
+        CHECK_CUDNN(cudnnOpTensor(args->cudnn,
+                                  args->opDesc,
+                                  &alpha0,
+                                  args->input0Tensor,
+                                  input0_ptr,
+                                  &alpha1,
+                                  args->input1Tensor,
+                                  input1_ptr,
+                                  &beta,
+                                  args->outputTensor,
+                                  output_ptr));
         break;
       }
       case DataType::DT_FLOAT: {
         float alpha0 = 1.f,
               alpha1 = (args->op_type == OperatorType::OP_EW_SUB) ? -1.f : 1.f,
               beta = 0.f;
-        CHECK_CUDNN(cudnnOpTensor(
-            args->cudnn, args->opDesc, &alpha0, args->input0Tensor, input0_ptr,
-            &alpha1, args->input1Tensor, input1_ptr, &beta, args->outputTensor,
-            output_ptr));
+        CHECK_CUDNN(cudnnOpTensor(args->cudnn,
+                                  args->opDesc,
+                                  &alpha0,
+                                  args->input0Tensor,
+                                  input0_ptr,
+                                  &alpha1,
+                                  args->input1Tensor,
+                                  input1_ptr,
+                                  &beta,
+                                  args->outputTensor,
+                                  output_ptr));
         break;
       }
       case DataType::DT_INT8: {
         int8_t alpha0 = 1,
                alpha1 = (args->op_type == OperatorType::OP_EW_SUB) ? -1 : 1,
                beta = 0;
-        CHECK_CUDNN(cudnnOpTensor(
-            args->cudnn, args->opDesc, &alpha0, args->input0Tensor, input0_ptr,
-            &alpha1, args->input1Tensor, input1_ptr, &beta, args->outputTensor,
-            output_ptr));
+        CHECK_CUDNN(cudnnOpTensor(args->cudnn,
+                                  args->opDesc,
+                                  &alpha0,
+                                  args->input0Tensor,
+                                  input0_ptr,
+                                  &alpha1,
+                                  args->input1Tensor,
+                                  input1_ptr,
+                                  &beta,
+                                  args->outputTensor,
+                                  output_ptr));
         break;
       }
       case DataType::DT_HALF: {
         __half alpha0 = 1.f,
                alpha1 = (args->op_type == OperatorType::OP_EW_SUB) ? -1.f : 1.f,
                beta = 0.f;
-        CHECK_CUDNN(cudnnOpTensor(
-            args->cudnn, args->opDesc, &alpha0, args->input0Tensor, input0_ptr,
-            &alpha1, args->input1Tensor, input1_ptr, &beta, args->outputTensor,
-            output_ptr));
+        CHECK_CUDNN(cudnnOpTensor(args->cudnn,
+                                  args->opDesc,
+                                  &alpha0,
+                                  args->input0Tensor,
+                                  input0_ptr,
+                                  &alpha1,
+                                  args->input1Tensor,
+                                  input1_ptr,
+                                  &beta,
+                                  args->outputTensor,
+                                  output_ptr));
         break;
       }
       default:
@@ -215,36 +256,55 @@ __host__
   } else {
     const size_t blocks =
         (num_elements + (THREADS_PER_BLOCK - 1)) / THREADS_PER_BLOCK;
-    assert(
-        (args->op_type == OP_EW_ADD) || (args->op_type == OP_EW_SUB) ||
-        (args->op_type == OP_EW_MUL) || (args->op_type == OP_EW_DIV));
+    assert((args->op_type == OP_EW_ADD) || (args->op_type == OP_EW_SUB) ||
+           (args->op_type == OP_EW_MUL) || (args->op_type == OP_EW_DIV));
     switch (args->datatype) {
       case DataType::DT_DOUBLE: {
         double alpha = 1.0, beta = 0.0;
         binary_forward_double<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(
-            (const double*)input0_ptr, (const double*)input1_ptr,
-            (double*)output_ptr, alpha, beta, args->op_type, num_elements);
+            (double const *)input0_ptr,
+            (double const *)input1_ptr,
+            (double *)output_ptr,
+            alpha,
+            beta,
+            args->op_type,
+            num_elements);
         break;
       }
       case DataType::DT_FLOAT: {
         float alpha = 1.f, beta = 0.f;
         binary_forward_float<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(
-            (const float*)input0_ptr, (const float*)input1_ptr,
-            (float*)output_ptr, alpha, beta, args->op_type, num_elements);
+            (float const *)input0_ptr,
+            (float const *)input1_ptr,
+            (float *)output_ptr,
+            alpha,
+            beta,
+            args->op_type,
+            num_elements);
         break;
       }
       case DataType::DT_INT8: {
         int8_t alpha = 1, beta = 0;
         binary_forward_int8<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(
-            (const int8_t*)input0_ptr, (const int8_t*)input1_ptr,
-            (int8_t*)output_ptr, alpha, beta, args->op_type, num_elements);
+            (int8_t const *)input0_ptr,
+            (int8_t const *)input1_ptr,
+            (int8_t *)output_ptr,
+            alpha,
+            beta,
+            args->op_type,
+            num_elements);
         break;
       }
       case DataType::DT_HALF: {
         __half alpha = 1.f, beta = 0.f;
         binary_forward_half<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(
-            (const __half*)input0_ptr, (const __half*)input1_ptr,
-            (__half*)output_ptr, alpha, beta, args->op_type, num_elements);
+            (__half const *)input0_ptr,
+            (__half const *)input1_ptr,
+            (__half *)output_ptr,
+            alpha,
+            beta,
+            args->op_type,
+            num_elements);
         break;
       }
       default:
@@ -254,4 +314,6 @@ __host__
   }
 }
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton

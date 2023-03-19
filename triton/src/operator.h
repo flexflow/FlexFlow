@@ -24,17 +24,19 @@
 #include "strategy.h"
 #include "types.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 class Operator;
 
 struct OperatorArgs {
- public:
+public:
   OperatorArgs(bool prof = false) : profiling(prof), owner(nullptr) {}
 
- public:
+public:
   bool profiling;
-  Operator* owner;  // technically not legion safe, debugging/profiling only
+  Operator *owner; // technically not legion safe, debugging/profiling only
 #if 0
   cudnnHandle_t dnn;
   cublasHandle_t blas;
@@ -46,51 +48,59 @@ struct OperatorArgs {
 };
 
 class Operator {
- public:
-  Operator(
-      LegionModelState* model, const LayerStrategy* strategy, OperatorType type,
-      const char* name, unsigned num_inputs, unsigned num_weights,
-      unsigned num_outputs);
+public:
+  Operator(LegionModelState *model,
+           LayerStrategy const *strategy,
+           OperatorType type,
+           char const *name,
+           unsigned num_inputs,
+           unsigned num_weights,
+           unsigned num_outputs);
   virtual ~Operator(void);
 
- public:
+public:
   // Called by model load (Realm)
   virtual void Load(Realm::Processor processor) = 0;
   // Called per instance (Legion)
-  virtual void initialize(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) = 0;
-  virtual void forward(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) = 0;
-  virtual void finalize(
-      LegionModelInstance* instance, const unsigned instance_index,
-      Legion::Runtime* runtime, Legion::Context ctx,
-      Legion::MapperID mapper) = 0;
+  virtual void initialize(LegionModelInstance *instance,
+                          unsigned const instance_index,
+                          Legion::Runtime *runtime,
+                          Legion::Context ctx,
+                          Legion::MapperID mapper) = 0;
+  virtual void forward(LegionModelInstance *instance,
+                       unsigned const instance_index,
+                       Legion::Runtime *runtime,
+                       Legion::Context ctx,
+                       Legion::MapperID mapper) = 0;
+  virtual void finalize(LegionModelInstance *instance,
+                        unsigned const instance_index,
+                        Legion::Runtime *runtime,
+                        Legion::Context ctx,
+                        Legion::MapperID mapper) = 0;
   // Called by model free (Realm)
   virtual void Free(Realm::Processor processor) = 0;
 
- public:
+public:
   static void PreregisterTaskVariants(void);
 
- public:
+public:
   const OperatorType op_type;
   const std::string op_name;
-  LegionModelState* const model;
-  const LayerStrategy* const strategy;
-  const unsigned num_inputs;
-  const unsigned num_weights;
-  const unsigned num_outputs;
+  LegionModelState *const model;
+  LayerStrategy const *const strategy;
+  unsigned const num_inputs;
+  unsigned const num_weights;
+  unsigned const num_outputs;
 
- protected:
+protected:
   Legion::IndexSpace launch_space[MAX_NUM_INSTANCES];
-  std::vector<Tensor*> inputs;
-  std::vector<Tensor*> outputs;
-  std::vector<Weights*> weights;
+  std::vector<Tensor *> inputs;
+  std::vector<Tensor *> outputs;
+  std::vector<Weights *> weights;
 };
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton
 
-#endif  // __LEGION_TRITON_OPERATOR_H__
+#endif // __LEGION_TRITON_OPERATOR_H__

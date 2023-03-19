@@ -24,11 +24,13 @@
 #include "triton/backend/backend_memory.h"
 #include "triton/backend/backend_model_instance.h"
 
-namespace triton { namespace backend { namespace legion {
+namespace triton {
+namespace backend {
+namespace legion {
 
 struct InputTensor {
   std::string name_;
-  std::vector<const void*> buffers_;
+  std::vector<void const *> buffers_;
   std::vector<std::pair<TRITONSERVER_MemoryType, int64_t>> buffer_locations_;
   std::vector<Realm::Memory> buffer_memories_;
   std::vector<int64_t> strides_;
@@ -38,7 +40,7 @@ struct InputTensor {
 
 struct OutputTensor {
   std::string name_;
-  std::vector<void*> buffers_;
+  std::vector<void *> buffers_;
   std::vector<std::pair<TRITONSERVER_MemoryType, int64_t>> buffer_locations_;
   std::vector<Realm::Memory> buffer_memories_;
   std::vector<int64_t> strides_;
@@ -57,114 +59,121 @@ struct OutputTensor {
 //
 //
 class LegionModelInstance : public BackendModelInstance {
- public:
-  static TRITONSERVER_Error* Create(
-      TRITONBACKEND_ModelInstance* triton_model_instance,
-      LegionModelState* model_state, LegionModelInstance** state);
+public:
+  static TRITONSERVER_Error *
+      Create(TRITONBACKEND_ModelInstance *triton_model_instance,
+             LegionModelState *model_state,
+             LegionModelInstance **state);
 
   ~LegionModelInstance();
 
-  void CreateContext(
-      Legion::Runtime* runtime, Legion::TaskID tid, unsigned rank,
-      size_t total_ranks, Realm::Event precondition, bool owner_instance);
+  void CreateContext(Legion::Runtime *runtime,
+                     Legion::TaskID tid,
+                     unsigned rank,
+                     size_t total_ranks,
+                     Realm::Event precondition,
+                     bool owner_instance);
 
-  Realm::Barrier GetExecutionBarrier(
-      size_t ranks, Realm::Event& precondition, bool external,
-      bool need_lock = true);
+  Realm::Barrier GetExecutionBarrier(size_t ranks,
+                                     Realm::Event &precondition,
+                                     bool external,
+                                     bool need_lock = true);
 
   // Execute...
-  void ProcessRequests(
-      TRITONBACKEND_Request** requests, const uint32_t request_count);
+  void ProcessRequests(TRITONBACKEND_Request **requests,
+                       const uint32_t request_count);
 
-  void RunModel(
-      const std::vector<InputTensor>& inputs,
-      const std::vector<OutputTensor>& outputs,
-      std::vector<uint64_t>& compute_input_end,
-      std::vector<uint64_t>& compute_output_start, bool distributed = false);
+  void RunModel(std::vector<InputTensor> const &inputs,
+                std::vector<OutputTensor> const &outputs,
+                std::vector<uint64_t> &compute_input_end,
+                std::vector<uint64_t> &compute_output_start,
+                bool distributed = false);
 
- private:
-  inline void Bind() const
-  {
+private:
+  inline void Bind() const {
     runtime_->bind_implicit_task_to_external_thread(context_);
   }
-  inline void Unbind() const
-  {
+  inline void Unbind() const {
     runtime_->unbind_implicit_task_from_external_thread(context_);
   }
 
   // Small helper class to make sure we always unbind even under errors
   class AutoBind {
-   public:
-    AutoBind(LegionModelInstance* state) : instance_state(state)
-    {
+  public:
+    AutoBind(LegionModelInstance *state) : instance_state(state) {
       state->Bind();
     }
-    ~AutoBind() { instance_state->Unbind(); }
+    ~AutoBind() {
+      instance_state->Unbind();
+    }
 
-   private:
-    LegionModelInstance* const instance_state;
+  private:
+    LegionModelInstance *const instance_state;
   };
 
   // Set the input tensors for running the model, in case of error, responses
   // will be returned with error and the function will return false.
   // Returns true on success.
-  bool SetInputTensors(
-      const size_t total_batch_size, TRITONBACKEND_Request** requests,
-      const uint32_t request_count,
-      std::vector<TRITONBACKEND_Response*>* responses,
-      std::vector<InputTensor>& inputs);
+  bool SetInputTensors(const size_t total_batch_size,
+                       TRITONBACKEND_Request **requests,
+                       const uint32_t request_count,
+                       std::vector<TRITONBACKEND_Response *> *responses,
+                       std::vector<InputTensor> &inputs);
 
-  bool SetOutputTensors(
-      const size_t total_batch_size,
-      const std::vector<size_t>& request_batch_sizes,
-      TRITONBACKEND_Request** requests, const uint32_t request_count,
-      std::vector<TRITONBACKEND_Response*>* responses,
-      std::vector<OutputTensor>& outputs);
+  bool SetOutputTensors(const size_t total_batch_size,
+                        std::vector<size_t> const &request_batch_sizes,
+                        TRITONBACKEND_Request **requests,
+                        const uint32_t request_count,
+                        std::vector<TRITONBACKEND_Response *> *responses,
+                        std::vector<OutputTensor> &outputs);
 
-  LegionModelInstance(
-      TRITONBACKEND_ModelInstance* triton_model_instance,
-      LegionModelState* model_state, unsigned index, Realm::Event ready);
+  LegionModelInstance(TRITONBACKEND_ModelInstance *triton_model_instance,
+                      LegionModelState *model_state,
+                      unsigned index,
+                      Realm::Event ready);
 
- public:
+public:
   // methods for support of operators
   // should only be invoked inside the implicit top-level legion tasks
-  Legion::IndexSpace find_or_create_index_space(const Legion::Domain& domain);
-  Legion::IndexPartition find_or_create_partition(
-      Legion::IndexSpace top_level_space, Legion::IndexSpace color_space,
-      const Legion::DomainTransform& transform, const Legion::Domain& extent,
-      Legion::PartitionKind kind);
+  Legion::IndexSpace find_or_create_index_space(Legion::Domain const &domain);
+  Legion::IndexPartition
+      find_or_create_partition(Legion::IndexSpace top_level_space,
+                               Legion::IndexSpace color_space,
+                               Legion::DomainTransform const &transform,
+                               Legion::Domain const &extent,
+                               Legion::PartitionKind kind);
   Legion::FieldSpace find_or_create_field_space(DataType date_type);
-  Legion::LogicalRegion create_tensor_region(Tensor* tensor);
-  Legion::LogicalPartition find_or_create_tiled_partition(
-      Tensor* tensor, const LayerStrategy* strategy);
+  Legion::LogicalRegion create_tensor_region(Tensor *tensor);
+  Legion::LogicalPartition
+      find_or_create_tiled_partition(Tensor *tensor,
+                                     LayerStrategy const *strategy);
 
- public:
-  Legion::Runtime* const runtime_;
-  LegionModelState* const model_state_;
-  const unsigned index_;
+public:
+  Legion::Runtime *const runtime_;
+  LegionModelState *const model_state_;
+  unsigned const index_;
   const Realm::Event context_ready_;
 
- private:
+private:
   Legion::Context context_;
   Legion::MapperID mapper_;
 
- private:
+private:
   Realm::FastReservation lock_;
   Realm::Barrier execution_barrier_;
 
- private:
+private:
   std::map<Legion::Domain, Legion::IndexSpace> top_level_index_spaces;
   struct Partition {
-   public:
+  public:
     Partition(void) {}
-    Partition(
-        Legion::IndexSpace cs, Legion::IndexPartition p,
-        const Legion::DomainTransform& t, const Legion::Domain& e)
-        : color_space(cs), partition(p), transform(t), extent(e)
-    {
-    }
+    Partition(Legion::IndexSpace cs,
+              Legion::IndexPartition p,
+              Legion::DomainTransform const &t,
+              Legion::Domain const &e)
+        : color_space(cs), partition(p), transform(t), extent(e) {}
 
-   public:
+  public:
     Legion::IndexSpace color_space;
     Legion::IndexPartition partition;
     Legion::DomainTransform transform;
@@ -175,6 +184,8 @@ class LegionModelInstance : public BackendModelInstance {
   std::vector<Legion::LogicalRegion> top_level_regions;
 };
 
-}}}  // namespace triton::backend::legion
+} // namespace legion
+} // namespace backend
+} // namespace triton
 
-#endif  // __LEGION_TRITON_INSTANCE_H__
+#endif // __LEGION_TRITON_INSTANCE_H__
