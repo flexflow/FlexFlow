@@ -540,13 +540,13 @@ void IncMultiHeadSelfAttention::inference_task(
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
-  Domain input_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
+  // Domain input_domain = runtime->get_index_space_domain(
+  //     ctx, task->regions[0].region.get_index_space());
 
-  assert(input_domain.get_dim() == 4);
-  print_tensor<float>(input.get_float_ptr(),
-                      input_domain.get_volume(),
-                      "[Attention:forward:query]");
+  // assert(input_domain.get_dim() == 4);
+  // print_tensor<float>(input.get_float_ptr(),
+  //                     input_domain.get_volume(),
+  //                     "[Attention:forward:query]");
 
   IncMultiHeadSelfAttention::inference_kernel_wrapper(m,
                                                       bc,

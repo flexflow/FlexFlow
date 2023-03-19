@@ -114,7 +114,10 @@ void FlexFlow::top_level_task(Task const *task,
                                transformerConfig.arrival_rate);
   ParallelTensor input_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
-  DataLoader data_loader(ff, transformerConfig, data_generator, input_pt);
+  assert(im.tensor_buffer.find(input_pt) != im.tensor_buffer.end());
+  assert(im.tensor_buffer[input_pt].size() == im.max_num_inflight_batches);
+  DataLoader data_loader(
+      ff, transformerConfig, data_generator, im.tensor_buffer[input_pt]);
 
   //----------------------- Start timer -----------------------------------
   {
@@ -141,7 +144,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   // simulation loop. For deployment, we will use a while(true)
   while (processed_requests < transformerConfig.total_requests) {
-    for (int bid = 0; bid < im.max_num_requests_per_batch; bid++) {
+    for (int bid = 0; bid < im.max_num_inflight_batches; bid++) {
       size_t max_reqs, max_tkns;
       if (future_handlers.find(bid) == future_handlers.end()) {
         max_reqs = transformerConfig.incremental_mode
@@ -179,7 +182,7 @@ void FlexFlow::top_level_task(Task const *task,
         assert(bc->register_new_request(guid, seq_lens.first, seq_lens.second));
       }
       bc->prepare_next_batch();
-      data_loader.next_batch(ff, bc);
+      data_loader.next_batch(ff, bid, bc);
 
       runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
       FutureMap fm = im.inference(bid, *bc);

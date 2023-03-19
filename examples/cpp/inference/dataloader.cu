@@ -93,5 +93,11 @@ void DataLoader::load_input(Task const *task,
     }
   }
   assert(total_tokens == meta->num_samples);
+  /*printf("token_dim: %lli, sequence_length: %lli, batch_size: %lli\n",
+  token_dim, sequence_length, batch_size); printf("total_tokens: %lu\n",
+  total_tokens); printf("guid: %lu\n", guid);
+  print_tensor<float>(batch_input_ptr,
+                      batch_input_domain.get_volume(),
+                      "[BatchInput]");*/
   checkCUDA(cudaDeviceSynchronize());
 }
