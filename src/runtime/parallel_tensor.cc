@@ -752,25 +752,21 @@ bool ParallelTensorBase::tensor_equal(FFConfig &config,
                                       ParallelTensorBase &tensor) {
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
-  TaskLauncher launcher(TENSOR_EQUAL_TASK_ID,
-                        TaskArgument(&num_dims, sizeof(num_dims)));
-  launcher.add_region_requirement(
-      RegionRequirement(region, READ_ONLY, EXCLUSIVE, region));
+  TaskLauncher launcher(TENSOR_EQUAL_TASK_ID, TaskArgument(&num_dims, sizeof(num_dims)));
+  launcher.add_region_requirement(RegionRequirement(region, READ_ONLY, EXCLUSIVE, region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(tensor.region, READ_ONLY, EXCLUSIVE, tensor.region));
+  launcher.add_region_requirement(RegionRequirement(tensor.region, READ_ONLY, EXCLUSIVE, tensor.region));
   launcher.add_field(1, FID_DATA);
   Future result = runtime->execute_task(ctx, launcher);
   bool equals = result.get_result<bool>();
 }
 
-bool ParallelTensorBase::tensor_equal_task(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
-    Runtime *runtime) {
+bool ParallelTensorBase::tensor_equal_task(const Task *task,
+                                           const std::vector<PhysicalRegion> &regions,
+                                           Context ctx,
+					   Runtime *runtime) {
   assert(regions.size() == 2);
-  int dim = *(int const *)task->args;
+  int dim = *(const int*)task->args;
   switch (dim) {
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
@@ -784,17 +780,16 @@ bool ParallelTensorBase::tensor_equal_task(
 }
 
 template <int NDIM>
-bool ParallelTensorBase::tensor_equal_task_with_dim(
-    Task const *task,
-    std::vector<PhysicalRegion> const &regions,
-    Context ctx,
-    Runtime *runtime) {
+bool ParallelTensorBase::tensor_equal_task_with_dim(const Task *task,
+                                                    const std::vector<PhysicalRegion> &regions,
+                                                    Context ctx,
+                                                    Runtime *runtime) {
   TensorAccessorR<float, NDIM> acc1(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   TensorAccessorR<float, NDIM> acc2(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  float const *data1 = acc1.ptr;
-  float const *data2 = acc2.ptr;
+  const float *data1 = acc1.ptr;
+  const float *data2 = acc2.ptr;
   bool equal = true;
   for (int i = 0; i < acc1.rect.volume(); i++) {
     if (data1[i] != data2[i]) {
@@ -854,9 +849,8 @@ template bool ParallelTensorBase::get_tensor<int64_t>(FFModel const *ff,
                                                       int64_t *data,
                                                       bool get_gradients);
 
-template bool
-    ParallelTensorBase::tensor_equal<float>(FFConfig &config,
-                                            ParallelTensorBase &tensor);
+
+template bool ParallelTensorBase::tensor_equal<float>(FFConfig &config, ParallelTensorBase &tensor);
 
 template bool TensorBase::get_output_parallel_tensor<float>(FFModel const *ff,
                                                             float *data,

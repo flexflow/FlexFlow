@@ -30,10 +30,14 @@ IndexSpace::IndexSpace() : id(0), tid(0), type_tag(0) {}
 IndexPartition::IndexPartition() : id(0), tid(0), type_tag(0) {}
 LogicalPartition::LogicalPartition()
     : tree_id(0), index_partition(IndexPartition::NO_PART),
-      field_space(FieldSpace::NO_SPACE) {}
+      field_space(FieldSpace::NO_SPACE)
+{
+}
 LogicalRegion::LogicalRegion()
     : tree_id(0), index_space(IndexSpace::NO_SPACE),
-      field_space(FieldSpace::NO_SPACE) {}
+      field_space(FieldSpace::NO_SPACE)
+{
+}
 const LogicalRegion LogicalRegion::NO_REGION = LogicalRegion();
 const LogicalPartition LogicalPartition::NO_PART = LogicalPartition();
 
@@ -55,4 +59,4 @@ ExternalResources::~ExternalResources() {}
 PhysicalRegion::PhysicalRegion() {}
 PhysicalRegion::~PhysicalRegion() {}
 
-} // namespace Legion
+}  // namespace Legion

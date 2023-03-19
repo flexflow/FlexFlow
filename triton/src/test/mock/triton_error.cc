@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "triton/core/tritonserver.h"
 #include <string>
+#include "triton/core/tritonserver.h"
 
 namespace {
 
@@ -22,35 +22,38 @@ namespace {
 // Duplication of TRITONSERVER_Error implementation
 //
 class TritonServerError {
-public:
-  static TRITONSERVER_Error *Create(TRITONSERVER_Error_Code code,
-                                    char const *msg);
+ public:
+  static TRITONSERVER_Error* Create(
+      TRITONSERVER_Error_Code code, const char* msg);
 
-  static char const *CodeString(const TRITONSERVER_Error_Code code);
-  TRITONSERVER_Error_Code Code() const {
-    return code_;
-  }
-  std::string const &Message() const {
-    return msg_;
-  }
+  static const char* CodeString(const TRITONSERVER_Error_Code code);
+  TRITONSERVER_Error_Code Code() const { return code_; }
+  const std::string& Message() const { return msg_; }
 
-private:
-  TritonServerError(TRITONSERVER_Error_Code code, std::string const &msg)
-      : code_(code), msg_(msg) {}
-  TritonServerError(TRITONSERVER_Error_Code code, char const *msg)
-      : code_(code), msg_(msg) {}
+ private:
+  TritonServerError(TRITONSERVER_Error_Code code, const std::string& msg)
+      : code_(code), msg_(msg)
+  {
+  }
+  TritonServerError(TRITONSERVER_Error_Code code, const char* msg)
+      : code_(code), msg_(msg)
+  {
+  }
 
   TRITONSERVER_Error_Code code_;
   const std::string msg_;
 };
 
-TRITONSERVER_Error *TritonServerError::Create(TRITONSERVER_Error_Code code,
-                                              char const *msg) {
-  return reinterpret_cast<TRITONSERVER_Error *>(
+TRITONSERVER_Error*
+TritonServerError::Create(TRITONSERVER_Error_Code code, const char* msg)
+{
+  return reinterpret_cast<TRITONSERVER_Error*>(
       new TritonServerError(code, msg));
 }
 
-char const *TritonServerError::CodeString(const TRITONSERVER_Error_Code code) {
+const char*
+TritonServerError::CodeString(const TRITONSERVER_Error_Code code)
+{
   switch (code) {
     case TRITONSERVER_ERROR_UNKNOWN:
       return "Unknown";
@@ -73,35 +76,44 @@ char const *TritonServerError::CodeString(const TRITONSERVER_Error_Code code) {
   return "<invalid code>";
 }
 
-} // namespace
+}  // namespace
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-TRITONSERVER_Error *TRITONSERVER_ErrorNew(TRITONSERVER_Error_Code code,
-                                          char const *msg) {
-  return reinterpret_cast<TRITONSERVER_Error *>(
+TRITONSERVER_Error*
+TRITONSERVER_ErrorNew(TRITONSERVER_Error_Code code, const char* msg)
+{
+  return reinterpret_cast<TRITONSERVER_Error*>(
       TritonServerError::Create(code, msg));
 }
 
-void TRITONSERVER_ErrorDelete(TRITONSERVER_Error *error) {
-  TritonServerError *lerror = reinterpret_cast<TritonServerError *>(error);
+void
+TRITONSERVER_ErrorDelete(TRITONSERVER_Error* error)
+{
+  TritonServerError* lerror = reinterpret_cast<TritonServerError*>(error);
   delete lerror;
 }
 
-TRITONSERVER_Error_Code TRITONSERVER_ErrorCode(TRITONSERVER_Error *error) {
-  TritonServerError *lerror = reinterpret_cast<TritonServerError *>(error);
+TRITONSERVER_Error_Code
+TRITONSERVER_ErrorCode(TRITONSERVER_Error* error)
+{
+  TritonServerError* lerror = reinterpret_cast<TritonServerError*>(error);
   return lerror->Code();
 }
 
-char const *TRITONSERVER_ErrorCodeString(TRITONSERVER_Error *error) {
-  TritonServerError *lerror = reinterpret_cast<TritonServerError *>(error);
+const char*
+TRITONSERVER_ErrorCodeString(TRITONSERVER_Error* error)
+{
+  TritonServerError* lerror = reinterpret_cast<TritonServerError*>(error);
   return TritonServerError::CodeString(lerror->Code());
 }
 
-char const *TRITONSERVER_ErrorMessage(TRITONSERVER_Error *error) {
-  TritonServerError *lerror = reinterpret_cast<TritonServerError *>(error);
+const char*
+TRITONSERVER_ErrorMessage(TRITONSERVER_Error* error)
+{
+  TritonServerError* lerror = reinterpret_cast<TritonServerError*>(error);
   return lerror->Message().c_str();
 }
 
