@@ -39,6 +39,7 @@ public:
   void update_num_active_requests_tokens();
   int num_active_requests() const;
   int num_active_tokens() const;
+  void print() const;
   static int const MAX_NUM_REQUESTS = MAX_REQUESTS;
   static int const MAX_NUM_TOKENS = InferenceResult::MAX_NUM_TOKENS;
   // static int const MAX_SEQUENCE_LENGTH = MAX_SEQ_LEN;

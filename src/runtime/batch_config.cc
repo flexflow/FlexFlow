@@ -80,6 +80,7 @@ bool BatchConfig::register_new_request(size_t guid,
                                        int initial_length,
                                        int tokens_to_generate) {
   cached_results = false;
+  assert(initial_length > 0 && tokens_to_generate > 0);
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (request_completed[i]) {
       log_bc.print("[NewRequest] guid(%zu) length(%d)", guid, initial_length);
@@ -154,6 +155,72 @@ int BatchConfig::num_active_tokens() const {
            "some BatchConfig functions updated requests but didn't call "
            "update_num_active_requests_tokens() before exit");
   }
+}
+
+void BatchConfig::print() const {
+  printf("--------------------------BatchConfig--------------------------\n");
+  printf("num_tokens: %i, num_requests: %i, cached_results: %i\n",
+         num_tokens,
+         num_requests,
+         cached_results);
+
+  printf("requests_completed: ");
+  for (int i = 0; i < num_requests; i++) {
+    printf("%i ", request_completed[i]);
+  }
+  printf("\n");
+
+  printf("token_start_idx: ");
+  for (int i = 0; i < num_requests; i++) {
+    printf("%i ", token_start_idx[i]);
+  }
+  printf("\n");
+
+  printf("token_last_available_idx: ");
+  for (int i = 0; i < num_requests; i++) {
+    printf("%i ", token_last_available_idx[i]);
+  }
+  printf("\n");
+
+  printf("num_processing_tokens: ");
+  for (int i = 0; i < num_requests; i++) {
+    printf("%i ", num_processing_tokens[i]);
+  }
+  printf("\n");
+
+  printf("max_sequence_length: ");
+  for (int i = 0; i < num_requests; i++) {
+    printf("%lu ", max_sequence_length[i]);
+  }
+  printf("\n");
+
+  printf("request_guid: ");
+  for (int i = 0; i < num_requests; i++) {
+    printf("%lu ", request_guid[i]);
+  }
+  printf("\n");
+
+  printf("token2ids.num_samples:%lu\n", token2ids.num_samples);
+
+  printf("token2ids.guids: ");
+  for (int i = 0; i < num_tokens; i++) {
+    printf("%lu ", token2ids.guids[i]);
+  }
+  printf("\n");
+
+  printf("token2ids.token_indexes[i].request_index: ");
+  for (int i = 0; i < num_tokens; i++) {
+    printf("%lu ", token2ids.token_indexes[i].request_index);
+  }
+  printf("\n");
+
+  printf("token2ids.token_indexes[i].token_position: ");
+  for (int i = 0; i < num_tokens; i++) {
+    printf("%lu ", token2ids.token_indexes[i].token_position);
+  }
+  printf("\n");
+  printf("---------------------------------------------------------------------"
+         "---------\n");
 }
 
 }; // namespace FlexFlow

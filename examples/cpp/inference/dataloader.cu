@@ -57,8 +57,8 @@ void DataLoader::load_input(Task const *task,
   assert(meta->num_samples <= batch_size * sequence_length);
   for (int i = 1; i < meta->num_samples; i++) {
     if (meta->guids[i] == meta->guids[i - 1]) {
-      assert(meta->token_indexes[i].request_index ==
-             meta->token_indexes[i - 1].request_index + 1);
+      assert(meta->token_indexes[i].token_position ==
+             meta->token_indexes[i - 1].token_position + 1);
     }
   }
   // keep things simple for now
@@ -70,14 +70,14 @@ void DataLoader::load_input(Task const *task,
       batch_input_ptr, 0, batch_input_domain.get_volume() * sizeof(float)));
 
   size_t guid = meta->guids[0];
-  size_t start_idx = meta->token_indexes[0].request_index;
+  size_t start_idx = meta->token_indexes[0].token_position;
   size_t dst_idx = 0;
   size_t total_tokens = 0;
   for (size_t i = 1; i <= meta->num_samples; i++) {
     if (i == meta->num_samples || meta->guids[i] != guid) {
       size_t size_to_copy =
           token_dim *
-          (meta->token_indexes[i - 1].request_index - start_idx + 1);
+          (meta->token_indexes[i - 1].token_position - start_idx + 1);
       total_tokens += size_to_copy / token_dim;
       float const *input_zc = full_input_ptr +
                               (guid * token_dim * sequence_length) +
@@ -87,7 +87,7 @@ void DataLoader::load_input(Task const *task,
           dst_ptr, input_zc, size_to_copy);
       if (i < meta->num_samples) {
         guid = meta->guids[i];
-        start_idx = meta->token_indexes[i].request_index;
+        start_idx = meta->token_indexes[i].token_position;
       }
       dst_idx = i;
     }

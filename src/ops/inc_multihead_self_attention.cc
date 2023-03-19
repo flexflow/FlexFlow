@@ -15,6 +15,7 @@
 
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/cuda_helper.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -539,14 +540,13 @@ void IncMultiHeadSelfAttention::inference_task(
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
-  // Domain input_domain = runtime->get_index_space_domain(ctx,
-  // task->regions[0].region.get_index_space());
+  Domain input_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
 
-  // assert(input_domain.get_dim() == 4);
-  // print_tensor<4, float>(input.get_float_ptr(), input_domain.get_volume(),
-  // "[Attention:forward:query]");
-  //  print_tensor<3, float>(acc_output.ptr, acc_output.rect,
-  //  "[Attention:forward:output]");
+  assert(input_domain.get_dim() == 4);
+  print_tensor<float>(input.get_float_ptr(),
+                      input_domain.get_volume(),
+                      "[Attention:forward:query]");
 
   IncMultiHeadSelfAttention::inference_kernel_wrapper(m,
                                                       bc,
