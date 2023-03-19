@@ -224,6 +224,20 @@ __host__ void
   checkCUDA(cudaFreeHost(host_ptr));
 }
 
+template <typename T>
+__host__ T *download_tensor(T const *ptr, size_t num_elements) {
+  // device synchronize to make sure the data are ready
+  // checkCUDA(cudaDeviceSynchronize());
+  T *host_ptr;
+  checkCUDA(cudaHostAlloc(&host_ptr,
+                          sizeof(T) * num_elements,
+                          cudaHostAllocPortable | cudaHostAllocMapped));
+  checkCUDA(cudaMemcpy(
+      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
+  // checkCUDA(cudaDeviceSynchronize());
+  return host_ptr;
+}
+
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Domain domain) {
   int dims[MAX_TENSOR_DIM];

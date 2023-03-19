@@ -133,6 +133,9 @@ __host__ void updateGAS(float *para_ptr,
 template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
 
+template <typename T>
+T *download_tensor(T const *ptr, size_t num_elements);
+
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Legion::Domain domain);
 

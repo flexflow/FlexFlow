@@ -540,8 +540,12 @@ void IncMultiHeadSelfAttention::inference_task(
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
 
-  // Domain input_domain = runtime->get_index_space_domain(
-  //     ctx, task->regions[0].region.get_index_space());
+  Domain input_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  Domain weight_domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  Domain output_domain = runtime->get_index_space_domain(
+      ctx, task->regions[2].region.get_index_space());
 
   // assert(input_domain.get_dim() == 4);
   // print_tensor<float>(input.get_float_ptr(),
@@ -553,6 +557,17 @@ void IncMultiHeadSelfAttention::inference_task(
                                                       input.get_float_ptr(),
                                                       weight.get_float_ptr(),
                                                       output.get_float_ptr());
+
+  // Now re-implement manually
+  float *input_cpu = download_tensor<float>(input.get_float_ptr(), input_domain.get_volume());
+  assert(input_cpu != nullptr);
+  float *weight_cpu = download_tensor<float>(weight.get_float_ptr(), weight_domain.get_volume());
+  assert(weight_cpu != nullptr);
+  float *output_cpu = download_tensor<float>(output.get_float_ptr(), output_domain.get_volume());
+  assert(output_cpu != nullptr);
+  checkCUDA(cudaFreeHost(input_cpu));
+  checkCUDA(cudaFreeHost(weight_cpu));
+  checkCUDA(cudaFreeHost(output_cpu));
 }
 
 void IncMultiHeadSelfAttention::backward(FFModel const &ff) {

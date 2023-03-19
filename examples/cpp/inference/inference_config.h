@@ -36,8 +36,8 @@ struct InferenceConfig {
     poisson_distribution = true;
     // average number of request arrivals per second
     arrival_rate = 250;
-    num_inflight_batches = 5;
-    incremental_mode = false;
+    num_inflight_batches = 1;
+    incremental_mode = true;
     //----------------------- Rest of model parameters ------------------
     hidden_size = DATA_DIM;
     // Encoder layer
