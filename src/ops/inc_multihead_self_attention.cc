@@ -588,7 +588,10 @@ void IncMultiHeadSelfAttention::inference_task(
   size_t kParas = m->kProjSize * m->kSize;
   size_t vParas = m->vProjSize * m->vSize;
   size_t oParas = m->oProjSize * (m->vProjSize > 0 ? m->vProjSize : m->vSize);
-  printf("all_weight_params: %lli, num_heads: %lli, replica_dim: %lli\n", all_weight_params, num_heads, replica_dim);
+  printf("all_weight_params: %lli, num_heads: %lli, replica_dim: %lli\n",
+         all_weight_params,
+         num_heads,
+         replica_dim);
   assert(all_weight_params == qParas + kParas + vParas + oParas);
   assert(num_heads == m->num_heads);
   assert(replica_dim == 1);
