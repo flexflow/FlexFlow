@@ -17,6 +17,7 @@
 #include "flexflow/model.h"
 #include "flexflow/utils/cuda_helper.h"
 #include "flexflow/utils/hash_utils.h"
+#include <torch/torch.h>
 
 namespace FlexFlow {
 
@@ -568,9 +569,15 @@ void IncMultiHeadSelfAttention::inference_task(
   float *output_cpu = download_tensor<float>(output.get_float_ptr(),
                                              output_domain.get_volume());
   assert(output_cpu != nullptr);
+
   checkCUDA(cudaFreeHost(input_cpu));
   checkCUDA(cudaFreeHost(weight_cpu));
   checkCUDA(cudaFreeHost(output_cpu));
+
+  torch::Tensor tensor = torch::rand({2, 3});
+  std::cout << tensor << std::endl;
+
+  assert(false);
 }
 
 void IncMultiHeadSelfAttention::backward(FFModel const &ff) {

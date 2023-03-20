@@ -723,7 +723,7 @@ public:
 
     std::pair<typename ToShape<typename T::Input>::type, Params> key{
         input_shapes, params};
-    auto &cache = get<std::unordered_map<
+    auto &cache = FlexFlow::get<std::unordered_map<
         std::pair<typename ToShape<typename T::Input>::type, Params>,
         T *>>(this->cached_ops);
     auto const &it = cache.find(key);
