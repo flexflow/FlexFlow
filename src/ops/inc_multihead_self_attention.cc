@@ -17,8 +17,8 @@
 #include "flexflow/model.h"
 #include "flexflow/utils/cuda_helper.h"
 #include "flexflow/utils/hash_utils.h"
-// #include <torch/torch.h>
-// using namespace at::indexing;
+#include <torch/torch.h>
+using namespace at::indexing;
 
 namespace FlexFlow {
 
@@ -588,9 +588,36 @@ void IncMultiHeadSelfAttention::inference_task(
   size_t kParas = m->kProjSize * m->kSize;
   size_t vParas = m->vProjSize * m->vSize;
   size_t oParas = m->oProjSize * (m->vProjSize > 0 ? m->vProjSize : m->vSize);
+  printf("all_weight_params: %lli, num_heads: %lli, replica_dim: %lli\n", all_weight_params, num_heads, replica_dim);
   assert(all_weight_params == qParas + kParas + vParas + oParas);
   assert(num_heads == m->num_heads);
   assert(replica_dim == 1);
+
+  assert(m->qSize == m->kSize && m->kSize == m->vSize);
+  printf("m->qSize: %i\n", m->qSize);
+  // keep things simple for now
+  assert(m->qProjSize == m->kProjSize && m->kProjSize == m->vProjSize);
+  printf("m->qProjSize: %i\n", m->qProjSize);
+  long int proj_sum = m->qProjSize + m->kProjSize + m->vProjSize;
+  printf("proj_sum: %lu\n", proj_sum);
+  // load weight manually because Torch can't easily read a tensor serialized in
+  // column-major order.
+  float w_qkv[m->qSize][proj_sum][num_heads] = {0};
+  for (int h = 0; h < num_heads; h++) {
+    for (size_t i = 0; i < proj_sum * m->qSize; i++) {
+      size_t row_index = i % m->qSize;
+      size_t column_index = i / m->qSize;
+      w_qkv[row_index][column_index][h] =
+          weight_cpu[all_weight_params * h + m->qSize * column_index +
+                     row_index];
+    }
+  }
+  // convert weights to torch tensor
+  torch::Tensor torch_w_qkv =
+      torch::from_blob(w_qkv, {m->qSize, proj_sum, num_heads}, torch::kFloat32);
+  std::cout << "dim 0: " << torch_w_qkv.sizes()[0] << std::endl;
+  std::cout << "dim 1: " << torch_w_qkv.sizes()[1] << std::endl;
+  std::cout << "dim 2: " << torch_w_qkv.sizes()[2] << std::endl;
 
   /*torch::Tensor torch_input = torch::from_blob(input_cpu, {data_dim,
   sequence_length, batch_size, replica_dim}); std::cout << "dim 0: " <<
