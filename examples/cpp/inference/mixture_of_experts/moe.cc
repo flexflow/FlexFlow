@@ -135,8 +135,10 @@ void FlexFlow::top_level_task(Task const *task,
   im.init_operators_inference();
 
   //------------ Initialize the data loader and data generator ------------
-  size_t min_input_tokens = 32, max_input_tokens = 512,
-         min_tokens_to_generate = 1, max_tokens_to_generate = 128;
+  /*size_t min_input_tokens = 32, max_input_tokens = 512,
+         min_tokens_to_generate = 1, max_tokens_to_generate = 128;*/
+  size_t min_input_tokens = 5, max_input_tokens = 10,
+         min_tokens_to_generate = 1, max_tokens_to_generate = 15;
   DataGenerator data_generator(moeConfig.total_requests,
                                moeConfig.token_dim,
                                min_input_tokens,

@@ -17,7 +17,8 @@
 #include "flexflow/model.h"
 #include "flexflow/utils/cuda_helper.h"
 #include "flexflow/utils/hash_utils.h"
-#include <torch/torch.h>
+// #include <torch/torch.h>
+// using namespace at::indexing;
 
 namespace FlexFlow {
 
@@ -548,16 +549,18 @@ void IncMultiHeadSelfAttention::inference_task(
   Domain output_domain = runtime->get_index_space_domain(
       ctx, task->regions[2].region.get_index_space());
 
-  // assert(input_domain.get_dim() == 4);
-  // print_tensor<float>(input.get_float_ptr(),
-  //                     input_domain.get_volume(),
-  //                     "[Attention:forward:query]");
+  assert(input_domain.get_dim() == 4);
+  assert(weight_domain.get_dim() == 3);
+  assert(output_domain.get_dim() == 4);
+  print_tensor<float>(input.get_float_ptr(),
+                      input_domain.get_volume(),
+                      "[Attention:forward:query]");
 
-  IncMultiHeadSelfAttention::inference_kernel_wrapper(m,
+  /*IncMultiHeadSelfAttention::inference_kernel_wrapper(m,
                                                       bc,
                                                       input.get_float_ptr(),
                                                       weight.get_float_ptr(),
-                                                      output.get_float_ptr());
+                                                      output.get_float_ptr());*/
 
   // Now re-implement manually
   float *input_cpu =
@@ -570,13 +573,43 @@ void IncMultiHeadSelfAttention::inference_task(
                                              output_domain.get_volume());
   assert(output_cpu != nullptr);
 
+  // Input tensor dimensions
+  coord_t data_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
+  coord_t sequence_length = input_domain.hi()[1] - input_domain.lo()[1] + 1;
+  coord_t batch_size = input_domain.hi()[2] - input_domain.lo()[2] + 1;
+  coord_t replica_dim = input_domain.hi()[3] - input_domain.lo()[3] + 1;
+  assert(replica_dim == 1);
+
+  // Weight tensor dimensions
+  coord_t all_weight_params = weight_domain.hi()[0] - weight_domain.lo()[0] + 1;
+  coord_t num_heads = weight_domain.hi()[1] - weight_domain.lo()[1] + 1;
+  replica_dim = weight_domain.hi()[2] - weight_domain.lo()[2] + 1;
+  size_t qParas = m->qProjSize * m->qSize;
+  size_t kParas = m->kProjSize * m->kSize;
+  size_t vParas = m->vProjSize * m->vSize;
+  size_t oParas = m->oProjSize * (m->vProjSize > 0 ? m->vProjSize : m->vSize);
+  assert(all_weight_params == qParas + kParas + vParas + oParas);
+  assert(num_heads == m->num_heads);
+  assert(replica_dim == 1);
+
+  /*torch::Tensor torch_input = torch::from_blob(input_cpu, {data_dim,
+  sequence_length, batch_size, replica_dim}); std::cout << "dim 0: " <<
+  torch_input.sizes()[0] << std::endl; std::cout << "dim 1: " <<
+  torch_input.sizes()[1] << std::endl; std::cout << "dim 2: " <<
+  torch_input.sizes()[2] << std::endl; std::cout << "dim 3: " <<
+  torch_input.sizes()[3] << std::endl;
+  //torch::Tensor tensor = torch::rand({2, 3});
+  for (size_t b=0; b<batch_size; b++) {
+    std::cout << torch_input.index({Slice(), Slice(), (int64_t)b, 0}) <<
+  std::endl; std::cout << std::endl;
+  }
+  assert(torch_input.sizes()[3] == 1);*/
+
+  // std::cout << torch_input << std::endl;
+
   checkCUDA(cudaFreeHost(input_cpu));
   checkCUDA(cudaFreeHost(weight_cpu));
   checkCUDA(cudaFreeHost(output_cpu));
-
-  torch::Tensor tensor = torch::rand({2, 3});
-  std::cout << tensor << std::endl;
-
   assert(false);
 }
 

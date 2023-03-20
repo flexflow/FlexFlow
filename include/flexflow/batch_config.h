@@ -17,7 +17,9 @@
 
 #include <cstdlib>
 
-#define MAX_SEQ_LEN 1024
+// #define MAX_SEQ_LEN 1024
+// #define BATCH_SIZE 2
+#define MAX_SEQ_LEN 20
 #define BATCH_SIZE 2
 #define MAX_REQUESTS 256
 
