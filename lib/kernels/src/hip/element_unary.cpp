@@ -15,7 +15,7 @@
 
 #include "flexflow/ops/element_unary.h"
 #include "flexflow/utils/hip_helper.h"
-#include "op-impl/element_unary_kernels.h"
+#include "kernels/element_unary_kernels.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {

@@ -1,9 +1,10 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_ELEMENT_BINARY_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_ELEMENT_BINARY_KERNELS_H
 
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
-#include "flexflow/op_meta.h"
+#include "device.h"
+#include "fftype.h"
+#include "op_meta.h"
+#include "legion.h"
 
 namespace FlexFlow {
 

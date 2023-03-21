@@ -14,7 +14,7 @@
  */
 
 #include "utils/hip_helper.h"
-#include "op-impl/attention_kernels.h"
+#include "attention_kernels.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {

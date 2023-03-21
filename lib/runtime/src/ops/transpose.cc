@@ -14,7 +14,7 @@
  */
 
 #include "transpose.h"
-#include "op-impl/transpose_kernels.h"
+#include "kernels/transpose_kernels.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {

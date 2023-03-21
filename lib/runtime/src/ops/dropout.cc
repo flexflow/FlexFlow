@@ -1,7 +1,7 @@
 #include "dropout.h"
 #include "model.h"
 #include "utils/hash_utils.h"
-#include "op-impl/dropout_kernels.h"
+#include "kernels/dropout_kernels.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {

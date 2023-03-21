@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_AGGREGATE_SPEC_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_AGGREGATE_SPEC_KERNELS_H
 
-#include "kernels/device.h"
-#include "kernels/op_meta.h"
+#include "device.h"
+#include "op_meta.h"
 
 namespace FlexFlow {
 

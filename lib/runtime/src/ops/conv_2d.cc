@@ -1,7 +1,7 @@
 #include "conv_2d.h"
 #include "layer.h"
 #include "model.h"
-#include "op-impl/conv_2d_kernels.h"
+#include "kernels/conv_2d_kernels.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 #include "mpark/variant.hpp"

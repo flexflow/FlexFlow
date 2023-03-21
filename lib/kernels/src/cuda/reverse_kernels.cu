@@ -14,7 +14,7 @@
  */
 
 #include "reverse_kernels.h"
-#include "utils/cuda_helper.h"
+#include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
 // declare Legion names

@@ -3,7 +3,7 @@
 
 #include "flexflow/layer.h"
 #include "flexflow/node.h"
-#include "flexflow/op_meta.h"
+#include "op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/parallel_ops/replicate_params.h"
 #include "parallel_op.h"

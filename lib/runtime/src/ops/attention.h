@@ -2,7 +2,7 @@
 #define _FLEXFLOW_ATTENTION_H
 
 #include "fftype.h"
-#include "flexflow/op_meta.h"
+#include "op_meta.h"
 #include "flexflow/operator.h"
 #include "layer.h"
 #include "op-meta/attention_params.h"

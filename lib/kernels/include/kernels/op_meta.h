@@ -1,7 +1,7 @@
 #ifndef _OP_META_H
 #define _OP_META_H
 
-#include "kernels/config.h"
+#include "config.h"
 #include "op-meta/ffconst.h"
 
 namespace FlexFlow {

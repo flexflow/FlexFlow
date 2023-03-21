@@ -14,7 +14,7 @@
  */
 
 #include "topk.h"
-#include "op-impl/topk_kernels.h"
+#include "kernels/topk_kernels.h"
 
 namespace FlexFlow {
 // declare Legion names

@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_AGGREGATE_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_AGGREGATE_KERNELS_H
 
-#include "kernels/device.h"
-#include "kernels/op_meta.h"
+#include "device.h"
+#include "op_meta.h"
 
 #define AGGREGATE_MAX_K 4
 #define AGGREGATE_MAX_BATCH_SIZE 64

@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_REDUCTION_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_REDUCTION_KERNELS_H
 
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
+#include "device.h"
+#include "fftype.h"
 
 namespace FlexFlow {
 namespace Kernels {

@@ -14,7 +14,7 @@
  */
 
 #include "layer_norm.h"
-#include "op-impl/layer_norm_kernels.h"
+#include "kernels/layer_norm_kernels.h"
 #include "model.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"

@@ -14,7 +14,7 @@
  */
 
 #include "aggregate_spec.h"
-#include "op-impl/aggregate_spec_kernels.h"
+#include "kernels/aggregate_spec_kernels.h"
 
 namespace FlexFlow {
 

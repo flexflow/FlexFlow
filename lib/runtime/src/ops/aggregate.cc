@@ -14,7 +14,7 @@
  */
 
 #include "aggregate.h"
-#include "op-impl/aggregate_kernels.h"
+#include "kernels/aggregate_kernels.h"
 #include "model.h"
 #include "runtime/tasks.h"
 

@@ -13,9 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/element_unary.h"
-#include "flexflow/utils/cuda_helper.h"
-#include "op-impl/element_unary_kernels.h"
+#include "kernels/cuda_helper.h"
+#include "kernels/element_unary_kernels.h"
 
 namespace FlexFlow {
 

@@ -15,7 +15,7 @@
 
 #include "reshape.h"
 #include "model.h"
-#include "op-impl/reshape_kernels.h"
+#include "kernels/reshape_kernels.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
