@@ -612,66 +612,242 @@ void IncMultiHeadSelfAttention::inference_task(
   long int proj_sum = m->qProjSize + m->kProjSize + m->vProjSize;
   // load weight manually because Torch can't easily read a tensor serialized in
   // column-major order.
-  float w_qkv[m->qSize][proj_sum][num_heads] = {0};
+  float w_qkv[m->qSize][m->qProjSize][3][num_heads];
+  memset(&w_qkv,
+         0,
+         m->qSize * m->qProjSize * 3 * num_heads *
+             sizeof(float)); // assuming that 0.0f is encoded as all zero bytes
+  assert(w_qkv[0][0][0][0] == 0.0f);
+
   for (int h = 0; h < num_heads; h++) {
-    for (size_t i = 0; i < proj_sum * m->qSize; i++) {
+    for (size_t i = 0; i < m->qProjSize * m->qSize; i++) {
       size_t row_index = i % m->qSize;
       size_t column_index = i / m->qSize;
-      w_qkv[row_index][column_index][h] =
+      // Q
+      w_qkv[row_index][column_index][0][h] =
           weight_cpu[all_weight_params * h + m->qSize * column_index +
                      row_index];
+      // K
+      w_qkv[row_index][column_index][1][h] =
+          weight_cpu[all_weight_params * h + m->qProjSize * m->qSize +
+                     m->qSize * column_index + row_index];
+      // V
+      w_qkv[row_index][column_index][2][h] =
+          weight_cpu[all_weight_params * h + 2 * m->qProjSize * m->qSize +
+                     m->qSize * column_index + row_index];
     }
   }
   // convert weights to torch tensor
-  torch::Tensor torch_w_qkv =
-      torch::from_blob(w_qkv, {m->qSize, proj_sum, num_heads}, torch::kFloat32);
+  torch::Tensor torch_w_qkv = torch::from_blob(
+      w_qkv, {m->qSize, m->qProjSize, 3, num_heads}, torch::kFloat32);
 
   std::cout << "Torch projection weights size: " << torch_w_qkv.sizes()
             << std::endl;
   std::cout << "Torch input size: " << torch_input.sizes() << std::endl;
   std::cout << "Number of active tokens: " << bc->num_active_tokens()
             << std::endl;
+  // std::cout << "torch_w_qkv:" << std::endl << torch_w_qkv << std::endl;
   torch::Tensor qkv_projs = torch::einsum(
-      "ijk,il->jlk",
+      "ijkl,im->jmkl",
       {torch_w_qkv,
        torch_input.index({Slice(), Slice(0, bc->num_active_tokens())})});
   std::cout << "qkv_projs size: " << qkv_projs.sizes() << std::endl;
-  assert(qkv_projs.sizes()[0] == proj_sum);
+  assert(qkv_projs.sizes()[0] == m->qProjSize);
   assert(qkv_projs.sizes()[1] == bc->num_active_tokens() &&
          qkv_projs.sizes()[1] <= effective_batch_size);
-  assert(qkv_projs.sizes()[2] == num_heads);
+  assert(qkv_projs.sizes()[2] == 3);
+  assert(qkv_projs.sizes()[3] == num_heads);
 
   float *QKVProjArray_cpu = download_tensor<float>(m->devQKVProjArray,
                                                    BatchConfig::MAX_NUM_TOKENS *
                                                        proj_sum * m->num_heads);
   assert(QKVProjArray_cpu != nullptr);
 
-  float QKVProjArray_converted[proj_sum][bc->num_active_tokens()][num_heads] = {
-      0}; // skip over padding at the end of QKVProjArray_cpu
+  float QKVProjArray_converted[m->qProjSize][bc->num_active_tokens()][3]
+                              [num_heads];
+  memset(&QKVProjArray_converted,
+         0,
+         m->qProjSize * bc->num_active_tokens() * 3 * num_heads *
+             sizeof(float)); // assuming that 0.0f is encoded as all zero bytes
+  assert(QKVProjArray_converted[0][0][0][0] == 0.0f);
+
+  // skip over padding at the end of QKVProjArray_cpu
   // convert from column order to 3D matrix because torch cannot automatically
   // import matrices flattened in column order
   for (size_t i = 0; i < proj_sum * bc->num_active_tokens() * num_heads; i++) {
-    size_t proj_size_index = i % proj_sum;
+    size_t proj_size_index = i % m->qProjSize;
     size_t head_index = i / (proj_sum * bc->num_active_tokens());
-    size_t token_index = (i % (proj_sum * bc->num_active_tokens())) / proj_sum;
+    size_t token_index =
+        ((i - head_index * proj_sum * bc->num_active_tokens()) / m->qProjSize) %
+        bc->num_active_tokens();
+    size_t qkv_offset = (i - head_index * proj_sum * bc->num_active_tokens()) /
+                        (m->qProjSize * bc->num_active_tokens());
     assert(proj_size_index < proj_sum);
     assert(head_index < num_heads);
     assert(token_index < bc->num_active_tokens());
-    QKVProjArray_converted[proj_size_index][token_index][head_index] =
-        QKVProjArray_cpu[i];
+    assert(qkv_offset < 3);
+    QKVProjArray_converted[proj_size_index][token_index][qkv_offset]
+                          [head_index] = QKVProjArray_cpu[i];
   }
   torch::Tensor QKVProjArray_torch =
       torch::from_blob(QKVProjArray_converted,
-                       {proj_sum, bc->num_active_tokens(), num_heads},
+                       {m->qProjSize, bc->num_active_tokens(), 3, num_heads},
                        torch::kFloat32);
 
+  // std::cout << "QKVProjArray_torch" << std::endl;
+  // for (int i=0; i<num_heads; i++) {
+  //   for (int j=0; j<3; j++) {
+  //     std::cout << QKVProjArray_torch.index({Slice(), Slice(), j, i}) <<
+  //     std::endl;
+  //   }
+  // }
+  // std::cout << "qkv_projs" << std::endl;
+  // for (int i=0; i<num_heads; i++) {
+  //   for (int j=0; j<3; j++) {
+  //     std::cout << qkv_projs.index({Slice(), Slice(), j, i}) << std::endl;
+  //   }
+  // }
+
   assert(torch::allclose(QKVProjArray_torch, qkv_projs));
+
+  float kcache[m->kProjSize][BatchConfig::MAX_NUM_TOKENS][num_heads]
+              [BatchConfig::MAX_NUM_REQUESTS];
+  float vcache[m->vProjSize][BatchConfig::MAX_NUM_TOKENS][num_heads]
+              [BatchConfig::MAX_NUM_REQUESTS];
+  float *keyCache_cpu =
+      download_tensor<float>(m->keyCache,
+                             m->num_heads * m->kProjSize *
+                                 BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN);
+  float *valueCache_cpu =
+      download_tensor<float>(m->valueCache,
+                             m->num_heads * m->vProjSize *
+                                 BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN);
+  assert(keyCache_cpu != nullptr);
+  assert(valueCache_cpu != nullptr);
+
+  /* std::cout << "qkv proj array:" << std::endl;
+  for (int i=0; i<num_heads; i++) {
+    for (int j=0; j<proj_sum; j++) {
+        for (int k=0; k<bc->num_active_tokens(); k++) {
+            std::cout << qkv_projs.index({j, k, i}).item<float>() << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout <<std::endl;
+    //std::cout << torch_w_qkv.index({Slice(), Slice(), i}) << std::endl;
+  } */
+
+  assert(m->qProjSize == m->vProjSize && m->vProjSize == m->kProjSize);
+  // printf("m->kProjSize: %i, BatchConfig::MAX_NUM_TOKENS: %i,
+  // bc->num_active_tokens(): %i, num_heads: %lli,
+  // BatchConfig::MAX_NUM_REQUESTS: %i, bc->num_active_requests(): %i\n",
+  //   m->kProjSize, BatchConfig::MAX_NUM_TOKENS, bc->num_active_tokens(),
+  //   num_heads, BatchConfig::MAX_NUM_REQUESTS, bc->num_active_requests());
+  // for (int t=0; t<bc->num_active_tokens(); t++) {
+  //   printf("token %i has request_index: %li and token_position: %li\n", t,
+  //   bc->token2ids.token_indexes[t].request_index,
+  //   bc->token2ids.token_indexes[t].token_position);
+  // }
+
+  for (size_t h = 0; h < num_heads; h++) {
+    for (size_t t = 0; t < bc->num_active_tokens(); t++) {
+      for (size_t d = 0; d < m->kProjSize; d++) {
+        kcache[d][bc->token2ids.token_indexes[t].token_position][h]
+              [bc->token2ids.token_indexes[t].request_index] =
+                  qkv_projs.index({(int64_t)d, (int64_t)t, 1, (int64_t)h})
+                      .item<float>();
+        assert(fabs(kcache[d][bc->token2ids.token_indexes[t].token_position][h]
+                          [bc->token2ids.token_indexes[t].request_index] -
+                    keyCache_cpu[bc->token2ids.token_indexes[t].request_index *
+                                     num_heads * m->kProjSize * MAX_SEQ_LEN +
+                                 h * m->kProjSize * MAX_SEQ_LEN +
+                                 m->kProjSize * bc->token2ids.token_indexes[t]
+                                                    .token_position +
+                                 d]) <= FLT_EPSILON);
+      }
+      for (size_t d = 0; d < m->vProjSize; d++) {
+        vcache[d][bc->token2ids.token_indexes[t].token_position][h]
+              [bc->token2ids.token_indexes[t].request_index] =
+                  qkv_projs.index({(int64_t)d, (int64_t)t, 2, (int64_t)h})
+                      .item<float>();
+        assert(
+            fabs(vcache[d][bc->token2ids.token_indexes[t].token_position][h]
+                       [bc->token2ids.token_indexes[t].request_index] -
+                 valueCache_cpu[bc->token2ids.token_indexes[t].request_index *
+                                    num_heads * m->vProjSize * MAX_SEQ_LEN +
+                                h * m->vProjSize * MAX_SEQ_LEN +
+                                m->vProjSize * bc->token2ids.token_indexes[t]
+                                                   .token_position +
+                                d]) <= FLT_EPSILON);
+      }
+    }
+  }
+  /* std::cout << "keyCache from CUDA:" << std::endl;
+  for (int i=0; i<bc->num_active_requests()+1; i++) {
+    for (int j=0; j<num_heads; j++) {
+        for (int l=0; l<m->kProjSize; l++) {
+            for (int k=0; k< MAX_SEQ_LEN; k++) {
+                printf("%f ", keyCache_cpu[i*m->kProjSize*MAX_SEQ_LEN*num_heads
+  + j*m->kProjSize*MAX_SEQ_LEN + k*m->kProjSize + l]);
+            }
+            printf("\n");
+        }
+        printf("\n");
+    }
+    printf("\n");
+  }
+  std::cout << "valueCache from CUDA:" << std::endl;
+  for (int i=0; i<bc->num_active_requests()+1; i++) {
+    for (int j=0; j<num_heads; j++) {
+        for (int l=0; l<m->vProjSize; l++) {
+            for (int k=0; k< MAX_SEQ_LEN; k++) {
+                printf("%f ",
+  valueCache_cpu[i*m->vProjSize*MAX_SEQ_LEN*num_heads +
+  j*m->vProjSize*MAX_SEQ_LEN + k*m->vProjSize + l]);
+            }
+            printf("\n");
+        }
+        printf("\n");
+    }
+    printf("\n");
+  }
+
+  printf("\n");
+
+  std::cout << "C++ kcache:" << std::endl;
+  for (int i=0; i<bc->num_active_requests()+1; i++) {
+    for (int j=0; j<num_heads; j++) {
+        for (int l=0; l<m->kProjSize; l++) {
+            for (int k=0; k< MAX_SEQ_LEN; k++) {
+                printf("%f ", kcache[l][k][j][i]);
+            }
+            printf("\n");
+        }
+        printf("\n");
+    }
+    printf("\n");
+  }
+  std::cout << "C++ vcache:" << std::endl;
+  for (int i=0; i<bc->num_active_requests()+1; i++) {
+    for (int j=0; j<num_heads; j++) {
+        for (int l=0; l<m->vProjSize; l++) {
+            for (int k=0; k< MAX_SEQ_LEN; k++) {
+                printf("%f ", vcache[l][k][j][i]);
+            }
+            printf("\n");
+        }
+        printf("\n");
+    }
+    printf("\n");
+  } */
 
   checkCUDA(cudaFreeHost(input_cpu));
   checkCUDA(cudaFreeHost(weight_cpu));
   checkCUDA(cudaFreeHost(output_cpu));
   checkCUDA(cudaFreeHost(QKVProjArray_cpu));
-  assert(false);
+  checkCUDA(cudaFreeHost(keyCache_cpu));
+  checkCUDA(cudaFreeHost(valueCache_cpu));
+  assert(false && "All good if you see this assert failure! :)");
 }
 
 void IncMultiHeadSelfAttention::backward(FFModel const &ff) {

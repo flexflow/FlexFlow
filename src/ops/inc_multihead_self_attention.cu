@@ -41,20 +41,28 @@ void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
 #else
   cudaDataType_t compute_type = CUDA_R_32F;
 #endif
-  // Compute (W^T)x matmul
-  int m_ = m->qProjSize + m->kProjSize + m->vProjSize;
+  // Compute (W^T)x matmul: einsum(ijkl,im->jmkl)
+  // Weights: qSize x qProjSize x 3 x num_heads
+  // Input: qSize x num_tokens
+  // Output >>> qProjSize x num_tokens x 3 x num_heads
+  int m_q = m->qProjSize;
+  int m_k = m->kProjSize;
+  int m_v = m->vProjSize;
+  assert(m_q == m_k && m_k == m_v); // keep things simple for now
   int n = bc->num_active_tokens();
   int k = m->qSize;
-  int lda = k, ldb = k, ldc = m_;
+  int lda = k, ldb = k, ldc_q = m_q, ldc_k = m_k, ldc_v = m_v;
   size_t strideA =
-      m->weights_params;   // need to also skip over all the parameters for each
-                           // head, plus the unused W_o weights
-  size_t strideB = 0;      // input stays the same for all heads.
-  size_t strideC = m_ * n; // size of the output block for each head.
+      m->weights_params; // need to also skip over all the parameters for each
+                         // head, plus the unused W_o weights
+  size_t strideB = 0;    // input stays the same for all heads.
+  size_t strideC =
+      (m_q + m_k + m_v) * n; // size of the output block for each head.
+  // Q
   checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                        CUBLAS_OP_T,
                                        CUBLAS_OP_N,
-                                       m_,
+                                       m_q,
                                        n,
                                        k,
                                        &alpha,
@@ -69,7 +77,55 @@ void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
                                        &beta,
                                        output_ptr,
                                        data_type,
-                                       ldc,
+                                       ldc_q,
+                                       strideC,
+                                       m->num_heads,
+                                       compute_type,
+                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  // K
+  checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                       CUBLAS_OP_T,
+                                       CUBLAS_OP_N,
+                                       m_k,
+                                       n,
+                                       k,
+                                       &alpha,
+                                       weight_ptr + m_q * k,
+                                       data_type,
+                                       lda,
+                                       strideA,
+                                       input_ptr,
+                                       data_type,
+                                       ldb,
+                                       strideB,
+                                       &beta,
+                                       output_ptr + m_q * n,
+                                       data_type,
+                                       ldc_k,
+                                       strideC,
+                                       m->num_heads,
+                                       compute_type,
+                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  // V
+  checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                       CUBLAS_OP_T,
+                                       CUBLAS_OP_N,
+                                       m_v,
+                                       n,
+                                       k,
+                                       &alpha,
+                                       weight_ptr + (m_q + m_k) * k,
+                                       data_type,
+                                       lda,
+                                       strideA,
+                                       input_ptr,
+                                       data_type,
+                                       ldb,
+                                       strideB,
+                                       &beta,
+                                       output_ptr + (m_q + m_k) * n,
+                                       data_type,
+                                       ldc_v,
                                        strideC,
                                        m->num_heads,
                                        compute_type,
