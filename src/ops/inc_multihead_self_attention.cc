@@ -552,15 +552,15 @@ void IncMultiHeadSelfAttention::inference_task(
   assert(input_domain.get_dim() == 4);
   assert(weight_domain.get_dim() == 3);
   assert(output_domain.get_dim() == 4);
-  print_tensor<float>(input.get_float_ptr(),
+  /* print_tensor<float>(input.get_float_ptr(),
                       input_domain.get_volume(),
-                      "[Attention:forward:query]");
+                      "[Attention:forward:query]"); */
 
-  /*IncMultiHeadSelfAttention::inference_kernel_wrapper(m,
+  IncMultiHeadSelfAttention::inference_kernel_wrapper(m,
                                                       bc,
                                                       input.get_float_ptr(),
                                                       weight.get_float_ptr(),
-                                                      output.get_float_ptr());*/
+                                                      output.get_float_ptr());
 
   // Now re-implement manually
   float *input_cpu =
@@ -575,10 +575,22 @@ void IncMultiHeadSelfAttention::inference_task(
 
   // Input tensor dimensions
   coord_t data_dim = input_domain.hi()[0] - input_domain.lo()[0] + 1;
-  coord_t sequence_length = input_domain.hi()[1] - input_domain.lo()[1] + 1;
+  coord_t max_sequence_length = input_domain.hi()[1] - input_domain.lo()[1] + 1;
   coord_t batch_size = input_domain.hi()[2] - input_domain.lo()[2] + 1;
   coord_t replica_dim = input_domain.hi()[3] - input_domain.lo()[3] + 1;
   assert(replica_dim == 1);
+
+  size_t effective_batch_size = max_sequence_length * batch_size;
+  float inputs_arr[data_dim][effective_batch_size] = {0};
+  for (size_t i = 0; i < data_dim * bc->num_active_tokens(); i++) {
+    size_t data_index = i % data_dim;
+    size_t token_index = i / data_dim;
+    assert(data_index < data_dim);
+    assert(token_index < effective_batch_size);
+    inputs_arr[data_index][token_index] = input_cpu[i];
+  }
+  torch::Tensor torch_input = torch::from_blob(
+      inputs_arr, {data_dim, (long int)effective_batch_size}, torch::kFloat32);
 
   // Weight tensor dimensions
   coord_t all_weight_params = weight_domain.hi()[0] - weight_domain.lo()[0] + 1;
@@ -588,10 +600,7 @@ void IncMultiHeadSelfAttention::inference_task(
   size_t kParas = m->kProjSize * m->kSize;
   size_t vParas = m->vProjSize * m->vSize;
   size_t oParas = m->oProjSize * (m->vProjSize > 0 ? m->vProjSize : m->vSize);
-  printf("all_weight_params: %lli, num_heads: %lli, replica_dim: %lli\n",
-         all_weight_params,
-         num_heads,
-         replica_dim);
+
   assert(all_weight_params == qParas + kParas + vParas + oParas);
   assert(num_heads == m->num_heads);
   assert(replica_dim == 1);
@@ -600,9 +609,7 @@ void IncMultiHeadSelfAttention::inference_task(
   printf("m->qSize: %i\n", m->qSize);
   // keep things simple for now
   assert(m->qProjSize == m->kProjSize && m->kProjSize == m->vProjSize);
-  printf("m->qProjSize: %i\n", m->qProjSize);
   long int proj_sum = m->qProjSize + m->kProjSize + m->vProjSize;
-  printf("proj_sum: %lu\n", proj_sum);
   // load weight manually because Torch can't easily read a tensor serialized in
   // column-major order.
   float w_qkv[m->qSize][proj_sum][num_heads] = {0};
@@ -618,28 +625,52 @@ void IncMultiHeadSelfAttention::inference_task(
   // convert weights to torch tensor
   torch::Tensor torch_w_qkv =
       torch::from_blob(w_qkv, {m->qSize, proj_sum, num_heads}, torch::kFloat32);
-  std::cout << "dim 0: " << torch_w_qkv.sizes()[0] << std::endl;
-  std::cout << "dim 1: " << torch_w_qkv.sizes()[1] << std::endl;
-  std::cout << "dim 2: " << torch_w_qkv.sizes()[2] << std::endl;
 
-  /*torch::Tensor torch_input = torch::from_blob(input_cpu, {data_dim,
-  sequence_length, batch_size, replica_dim}); std::cout << "dim 0: " <<
-  torch_input.sizes()[0] << std::endl; std::cout << "dim 1: " <<
-  torch_input.sizes()[1] << std::endl; std::cout << "dim 2: " <<
-  torch_input.sizes()[2] << std::endl; std::cout << "dim 3: " <<
-  torch_input.sizes()[3] << std::endl;
-  //torch::Tensor tensor = torch::rand({2, 3});
-  for (size_t b=0; b<batch_size; b++) {
-    std::cout << torch_input.index({Slice(), Slice(), (int64_t)b, 0}) <<
-  std::endl; std::cout << std::endl;
+  std::cout << "Torch projection weights size: " << torch_w_qkv.sizes()
+            << std::endl;
+  std::cout << "Torch input size: " << torch_input.sizes() << std::endl;
+  std::cout << "Number of active tokens: " << bc->num_active_tokens()
+            << std::endl;
+  torch::Tensor qkv_projs = torch::einsum(
+      "ijk,il->jlk",
+      {torch_w_qkv,
+       torch_input.index({Slice(), Slice(0, bc->num_active_tokens())})});
+  std::cout << "qkv_projs size: " << qkv_projs.sizes() << std::endl;
+  assert(qkv_projs.sizes()[0] == proj_sum);
+  assert(qkv_projs.sizes()[1] == bc->num_active_tokens() &&
+         qkv_projs.sizes()[1] <= effective_batch_size);
+  assert(qkv_projs.sizes()[2] == num_heads);
+
+  float *QKVProjArray_cpu = download_tensor<float>(m->devQKVProjArray,
+                                                   BatchConfig::MAX_NUM_TOKENS *
+                                                       proj_sum * m->num_heads);
+  assert(QKVProjArray_cpu != nullptr);
+
+  float QKVProjArray_converted[proj_sum][bc->num_active_tokens()][num_heads] = {
+      0}; // skip over padding at the end of QKVProjArray_cpu
+  // convert from column order to 3D matrix because torch cannot automatically
+  // import matrices flattened in column order
+  for (size_t i = 0; i < proj_sum * bc->num_active_tokens() * num_heads; i++) {
+    size_t proj_size_index = i % proj_sum;
+    size_t head_index = i / (proj_sum * bc->num_active_tokens());
+    size_t token_index = (i % (proj_sum * bc->num_active_tokens())) / proj_sum;
+    assert(proj_size_index < proj_sum);
+    assert(head_index < num_heads);
+    assert(token_index < bc->num_active_tokens());
+    QKVProjArray_converted[proj_size_index][token_index][head_index] =
+        QKVProjArray_cpu[i];
   }
-  assert(torch_input.sizes()[3] == 1);*/
+  torch::Tensor QKVProjArray_torch =
+      torch::from_blob(QKVProjArray_converted,
+                       {proj_sum, bc->num_active_tokens(), num_heads},
+                       torch::kFloat32);
 
-  // std::cout << torch_input << std::endl;
+  assert(torch::allclose(QKVProjArray_torch, qkv_projs));
 
   checkCUDA(cudaFreeHost(input_cpu));
   checkCUDA(cudaFreeHost(weight_cpu));
   checkCUDA(cudaFreeHost(output_cpu));
+  checkCUDA(cudaFreeHost(QKVProjArray_cpu));
   assert(false);
 }
 
@@ -662,101 +693,6 @@ bool IncMultiHeadSelfAttention::get_int_parameter(PMParameter para,
 bool IncMultiHeadSelfAttention::measure_operator_cost(
     Simulator *sim, MachineView const &mv, CostMetrics &cost_metrics) const {
   return false;
-  //  ParallelTensorBase sub_output, sub_input;
-  //  if (!inputs[0]->get_sub_tensor(mv, sub_input)) {
-  //    return false;
-  //  }
-  //  if (!outputs[0]->get_sub_tensor(mv, sub_output)) {
-  //    return false;
-  //  }
-  //  // Currently assume only data parallel
-  //  size_t num_weights = 0;
-  //  {
-  //    // Compute weight size
-  //    int qSize = sub_input.dims[0].size;
-  //    int kSize = sub_input.dims[0].size;
-  //    int vSize = sub_input.dims[0].size;
-  //    int qParas = qProjSize * qSize;
-  //    int kParas = kProjSize * kSize;
-  //    int vParas = vProjSize * vSize;
-  //    int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-  //    num_weights = num_heads * (qParas + kParas + vParas + oParas);
-  //  }
-  //  assert(sub_input.num_dims == 4);
-  //  int num_samples = sub_input.dims[2].size;
-  //
-  //  IncMultiHeadSelfAttentionMeta *m = new IncMultiHeadSelfAttentionMeta(
-  //      sim->handler, this, sim->memory, num_samples, num_heads);
-  //
-  //  // allocate tensors in simulator
-  //  sim->free_all();
-  //  float const *input_ptr =
-  //      (float const *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
-  //  cost_metrics.inputs_memory +=
-  //  cost_metrics.total_mem_diff_from(sim->offset);
-  //
-  //  float *output_ptr = (float *)sim->allocate(sub_output.get_volume(),
-  //  DT_FLOAT); assert(output_ptr != NULL); cost_metrics.outputs_memory +=
-  //  cost_metrics.total_mem_diff_from(sim->offset);
-  //
-  //  float const *weight_ptr = (float const *)sim->allocate(num_weights,
-  //  DT_FLOAT); cost_metrics.weights_memory +=
-  //  cost_metrics.total_mem_diff_from(sim->offset);
-  //
-  //  assert(m->profiling == false);
-  //
-  //  std::function<void()> forward, backward;
-  //  forward = [&] {
-  //    inference_kernel_wrapper(m, input_ptr, weight_ptr, output_ptr);
-  //  };
-  //  if (sim->computationMode == COMP_MODE_TRAINING) {
-  //    // IncMultiHeadSelfAttention does not support training
-  //    assert(false);
-  //  }
-  //
-  //  inner_measure_operator_cost(sim, forward, backward, cost_metrics);
-  //
-  //  if (sim->computationMode == COMP_MODE_TRAINING) {
-  //    printf("[Measure IncMultiHeadSelfAttention] query(%d %d %d) key(%d %d
-  //    %d) "
-  //           "value(%d %d %d) output(%d %d %d)"
-  //           "forward_time(%.4lf) backward_time(%.4lf)\n",
-  //           sub_input.dims[2].size,
-  //           sub_input.dims[1].size,
-  //           sub_input.dims[0].size,
-  //           sub_input.dims[2].size,
-  //           sub_input.dims[1].size,
-  //           sub_input.dims[0].size,
-  //           sub_input.dims[2].size,
-  //           sub_input.dims[1].size,
-  //           sub_input.dims[0].size,
-  //           sub_output.dims[2].size,
-  //           sub_output.dims[1].size,
-  //           sub_output.dims[0].size,
-  //           cost_metrics.forward_time,
-  //           cost_metrics.backward_time);
-  //  } else {
-  //    printf("[Measure IncMultiHeadSelfAttention] query(%d %d %d) key(%d %d
-  //    %d) "
-  //           "value(%d %d %d) output(%d %d %d)"
-  //           "forward_time(%.4lf)\n",
-  //           sub_input.dims[2].size,
-  //           sub_input.dims[1].size,
-  //           sub_input.dims[0].size,
-  //           sub_input.dims[2].size,
-  //           sub_input.dims[1].size,
-  //           sub_input.dims[0].size,
-  //           sub_input.dims[2].size,
-  //           sub_input.dims[1].size,
-  //           sub_input.dims[0].size,
-  //           sub_output.dims[2].size,
-  //           sub_output.dims[1].size,
-  //           sub_output.dims[0].size,
-  //           cost_metrics.forward_time);
-  //  }
-  //  // Free multiheadattentionmeta
-  //  delete m;
-  //  return true;
 }
 
 using PCG::Node;

@@ -41,14 +41,16 @@ void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
 #else
   cudaDataType_t compute_type = CUDA_R_32F;
 #endif
+  // Compute (W^T)x matmul
   int m_ = m->qProjSize + m->kProjSize + m->vProjSize;
   int n = bc->num_active_tokens();
   int k = m->qSize;
   int lda = k, ldb = k, ldc = m_;
-  size_t strideA = 0;
-  size_t strideB =
-      m->weights_params; // need to also skip over unused W_o weights
-  size_t strideC = m_ * n;
+  size_t strideA =
+      m->weights_params;   // need to also skip over all the parameters for each
+                           // head, plus the unused W_o weights
+  size_t strideB = 0;      // input stays the same for all heads.
+  size_t strideC = m_ * n; // size of the output block for each head.
   checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                        CUBLAS_OP_T,
                                        CUBLAS_OP_N,
@@ -56,11 +58,11 @@ void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
                                        n,
                                        k,
                                        &alpha,
-                                       input_ptr,
+                                       weight_ptr,
                                        data_type,
                                        lda,
                                        strideA,
-                                       weight_ptr,
+                                       input_ptr,
                                        data_type,
                                        ldb,
                                        strideB,
