@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/kernels/dropout_kernels.h"
-#include "flexflow/utils/cuda_helper.h"
+#include "kernels/dropout_kernels.h"
+#include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
 
@@ -24,11 +24,10 @@ using Legion::Domain;
 using Legion::Memory;
 
 DropoutMeta::DropoutMeta(FFHandler handler,
-                         Dropout const *dropout,
                          Memory gpu_mem,
                          Domain const &output_domain)
     : OpMeta(handler) {
-  profiling = dropout->profiling;
+  profiling = false; //dropout->profiling;
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateDropoutDescriptor(&dropoutDesc));
@@ -58,10 +57,10 @@ DropoutMeta::DropoutMeta(FFHandler handler,
   // checkCUDA(cudaMalloc(&reserveSpace, reserveSpaceSize));
   checkCUDNN(cudnnSetDropoutDescriptor(dropoutDesc,
                                        handle.dnn,
-                                       dropout->rate,
+                                       0.0, //dropout->rate,
                                        dropoutStates,
                                        dropoutStateSize,
-                                       dropout->seed));
+                                       0));//dropout->seed));
 }
 
 DropoutMeta::~DropoutMeta(void) {
