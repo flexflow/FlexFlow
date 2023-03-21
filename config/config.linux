@@ -17,6 +17,12 @@
 BUILD_TYPE=${BUILD_TYPE:-Release}
 
 LIBTORCH_PATH=${LIBTORCH_PATH:"../../libtorch"}
+if [[ ! -d "$LIBTORCH_PATH" ]]; then
+    cd "$LIBTORCH_PATH/.."
+    wget https://download.pytorch.org/libtorch/nightly/cpu/libtorch-shared-with-deps-latest.zip
+    unzip libtorch-shared-with-deps-latest.zip
+    rm libtorch-shared-with-deps-latest.zip
+fi
 
 # set CUDA Arch to the desired GPU architecture(s) to target (e.g. pass "FF_CUDA_ARCH=60" for Pascal). 
 # To pass more than one value, separate architecture numbers with a comma (e.g. FF_CUDA_ARCH=70,75).
