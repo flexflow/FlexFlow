@@ -15,25 +15,6 @@ public:
 
 namespace Kernels {
 namespace Embedding {
-
-/* struct GenericTensorPtr { */
-/* public: */
-/*   int32_t const *get_int32_ptr() const; */
-/*   int64_t const *get_int64_ptr() const; */
-/*   float const *get_float_ptr() const; */
-/*   double const *get_double_ptr() const; */
-/*   half const *get_half_ptr() const; */
-
-/*   int32_t *get_int32_ptr(); */
-/*   int64_t *get_int64_ptr(); */
-/*   float *get_float_ptr(); */
-/*   double *get_double_ptr(); */
-/*   half *get_half_ptr(); */
-/* private: */
-/*   DataType data_type; */
-/*   void *ptr; */
-/* }; */
-
 void forward_kernel_wrapper(EmbeddingMeta const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorW const &output,

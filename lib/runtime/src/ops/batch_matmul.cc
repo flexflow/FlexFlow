@@ -14,7 +14,7 @@
  */
 
 #include "batch_matmul.h"
-#include "op-impl/batch_matmul_kernels.h"
+#include "kernels/batch_matmul_kernels.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {

@@ -1,5 +1,5 @@
 #include "reduce.h"
-#include "op-impl/reduce_kernels.h"
+#include "kernels/reduce_kernels.h"
 #include "model.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"

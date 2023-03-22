@@ -1,10 +1,9 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_SOFTMAX_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_SOFTMAX_KERNELS_H
 
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
-#include "flexflow/op_meta.h"
-#include "flexflow/ops/softmax.h"
+#include "device.h"
+#include "fftype.h"
+#include "op_meta.h"
 
 namespace FlexFlow {
 

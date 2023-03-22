@@ -10,7 +10,7 @@ namespace FlexFlow {
 
 class DropoutMeta : public OpMeta {
 public:
-  DropoutMeta(FFHandler handle,
+  DropoutMeta(FFHandler handler,
               float rate,
               unsigned long long seed,
               bool profiling,

@@ -15,7 +15,7 @@
 
 #include "embedding.h"
 #include "gather.h"
-#include "op-impl/gather_kernels.h"
+#include "kernels/gather_kernels.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {

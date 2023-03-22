@@ -1,4 +1,4 @@
-#include "flexflow/utils/hip_helper.h"
+#include "utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {

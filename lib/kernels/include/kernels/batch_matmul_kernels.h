@@ -17,7 +17,7 @@ namespace Kernels {
 namespace BatchMatmul {
 
 void forward_kernel(ffStream_t stream,
-                    PerDeviceOpState const *,
+                    BatchMatmulPerDeviceOpState const *,
                     float *o_ptr,
                     float const *a_ptr,
                     float const *b_ptr,
@@ -31,7 +31,7 @@ void forward_kernel(ffStream_t stream,
                     int seq_length = -1);
 
 void backward_kernel(ffStream_t stream,
-                     PerDeviceOpState const *,
+                     BatchMatmulPerDeviceOpState const *,
                      float const *o_ptr,
                      float const *o_grad_ptr,
                      float const *a_ptr,

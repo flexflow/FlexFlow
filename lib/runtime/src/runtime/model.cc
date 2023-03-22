@@ -17,7 +17,7 @@
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "flexflow/utils/cuda_helper.h"
 #else
-#include "flexflow/utils/hip_helper.h"
+#include "utils/hip_helper.h"
 #endif
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/graph.h"

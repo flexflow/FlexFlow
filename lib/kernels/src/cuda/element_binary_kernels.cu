@@ -125,7 +125,6 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
   }
 }
 
-void backward_kernel_wrapper(ElementBinaryMeta const *m,
                              float const *out_grad_ptr,
                              float const *in1_ptr,
                              float const *in2_ptr,
@@ -286,7 +285,6 @@ __global__ void elewise_binary_backward_kernel(coord_t volume,
   }
 }
 
-void forward_kernel(ElementBinaryMeta const *m,
                     float const *in1_ptr,
                     float const *in2_ptr,
                     float *out_ptr,

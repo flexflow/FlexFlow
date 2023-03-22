@@ -15,7 +15,7 @@
 
 #include "split.h"
 #include "model.h"
-#include "op-impl/split_kernels.h"
+#include "kernels/split_kernels.h"
 #include "utils/hash_utils.h"
 
 namespace FlexFlow {

@@ -14,7 +14,7 @@
  */
 
 #include "reverse.h"
-#include "op-impl/reverse_kernels.h"
+#include "kernels/reverse_kernels.h"
 
 namespace FlexFlow {
 // declare Legion names

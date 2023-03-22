@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/kernels/embedding_kernels.h"
-#include "flexflow/utils/cuda_helper.h"
+#include "kernels/embedding_kernels.h"
+#include "utils/cuda_helper.h"
 
 namespace FlexFlow {
 // declare Legion names

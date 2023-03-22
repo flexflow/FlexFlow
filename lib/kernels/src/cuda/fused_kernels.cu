@@ -13,21 +13,20 @@
  * limitations under the License.
  */
 
-#include "accessor.h"
-#include "model.h"
-#include "op-impl/batch_matmul_kernels.h"
-#include "op-impl/concat_kernels.h"
-#include "op-impl/conv_2d_kernels.h"
-#include "op-impl/element_binary_kernels.h"
-#include "op-impl/linear_kernels.h"
-#include "op-impl/pool_2d_kernels.h"
-#include "op-impl/reshape_kernels.h"
-#include "op-impl/transpose_kernels.h"
-#include "ops-impl/element_unary_kernels.h"
-#include "ops-inc/batch_norm.h"
-#include "ops-inc/dropout.h"
-#include "ops-inc/embedding.h"
-#include "ops-inc/flat.h"
+#include "kernels/accessor.h"
+#include "kernels/batch_matmul_kernels.h"
+#include "kernels/concat_kernels.h"
+#include "kernels/conv_2d_kernels.h"
+#include "kernels/element_binary_kernels.h"
+#include "kernels/linear_kernels.h"
+#include "kernels/pool_2d_kernels.h"
+#include "kernels/reshape_kernels.h"
+#include "kernels/transpose_kernels.h"
+#include "kernels/element_unary_kernels.h"
+#include "kernels/batch_norm_kernels.h"
+#include "kernels/dropout_kernels.h"
+#include "kernels/embedding_kernels.h"
+#include "kernels/flat_kernels.h"
 #include "ops-inc/fused.h"
 #include "utils/cuda_helper.h"
 
@@ -199,7 +198,7 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(my_weight_accessor[0].domain.get_dim() == 2);
         assert(my_weight_accessor[1].domain.get_dim() == 2);
         BatchNormMeta *m = (BatchNormMeta *)metas->meta[op];
-        BatchNorm::forward_kernel(m,
+        Kernels::BatchNorm::Internal::forward_kernel(m,
                                   my_input_accessor[0].get_float_ptr(),
                                   my_output_accessor[0].get_float_ptr(),
                                   my_weight_accessor[0].get_float_ptr(),

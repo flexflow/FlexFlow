@@ -79,10 +79,6 @@ void backward_kernel(Conv2DMeta const *m,
                      float *bias_grad_ptr,
                      ffStream_t stream);
 
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-#else
-#endif
-
 } // namespace Internal
 } // namespace Conv2D
 } // namespace Kernels

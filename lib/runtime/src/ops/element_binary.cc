@@ -1,6 +1,6 @@
 #include "element_binary.h"
 #include "model.h"
-#include "op-impl/element_binary_kernels.h"
+#include "kernels/element_binary_kernels.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 

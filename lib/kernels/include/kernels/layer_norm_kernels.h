@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_LAYER_NORM_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_LAYER_NORM_KERNELS_H
 
-#include "runtime/device.h"
-#include "runtime/fftype.h"
-#include "runtime/op_meta.h"
+#include "device.h"
+#include "fftype.h"
+#include "op_meta.h"
 
 namespace FlexFlow {
 

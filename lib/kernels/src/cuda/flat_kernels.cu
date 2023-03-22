@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/kernels/flat_kernels.h"
-#include "flexflow/utils/cuda_helper.h"
+#include "kernels/flat_kernels.h"
+#include "utils/cuda_helper.h"
 
 namespace FlexFlow {
 

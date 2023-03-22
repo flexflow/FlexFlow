@@ -15,7 +15,7 @@
 
 #include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/utils/hash_utils.h"
-#include "flexflow/utils/hip_helper.h"
+#include "utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {

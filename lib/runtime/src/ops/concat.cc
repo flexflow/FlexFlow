@@ -15,7 +15,7 @@
 
 #include "concat.h"
 #include "model.h"
-#include "op-impl/concat_kernels.h"
+#include "kernels/concat_kernels.h"
 #include "utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 
