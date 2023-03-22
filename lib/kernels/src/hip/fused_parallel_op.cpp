@@ -14,7 +14,7 @@
  */
 
 #include "flexflow/parallel_ops/fused_parallel_op.h"
-#include "flexflow/utils/hip_helper.h"
+#include "utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {}; // namespace FlexFlow

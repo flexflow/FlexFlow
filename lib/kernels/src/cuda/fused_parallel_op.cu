@@ -14,6 +14,6 @@
  */
 
 #include "flexflow/parallel_ops/fused_parallel_op.h"
-#include "kernels/cuda_helper.h"
+#include "utils/cuda_helper.h"
 
 namespace FlexFlow {}; // namespace FlexFlow

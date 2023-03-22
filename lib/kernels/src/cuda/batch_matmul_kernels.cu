@@ -14,7 +14,7 @@
  */
 
 #include "kernels/batch_matmul_kernels.h"
-#include "kernels/cuda_helper.h"
+#include "utils/cuda_helper.h"
 #include "batch_matmul_kernels.h"
 
 namespace FlexFlow {

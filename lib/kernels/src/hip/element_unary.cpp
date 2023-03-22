@@ -13,8 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/element_unary.h"
-#include "flexflow/utils/hip_helper.h"
+#include "utils/hip_helper.h"
 #include "kernels/element_unary_kernels.h"
 #include <hip/hip_runtime.h>
 
@@ -58,6 +57,22 @@ void init_kernel(ElementUnaryMeta *m,
   // input_domain == output_domain
   checkCUDNN(
       cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
+}
+
+bool use_cudnn(OperatorType type) {
+  if (type == OP_RELU) {
+    return true;
+  }
+  if (type == OP_SIGMOID) {
+    return true;
+  }
+  if (type == OP_TANH) {
+    return true;
+  }
+  if (type == OP_ELU) {
+    return true;
+  }
+  return false;
 }
 
 template <typename T>

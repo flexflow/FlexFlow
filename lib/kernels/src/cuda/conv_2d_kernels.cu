@@ -1,5 +1,5 @@
 #include "kernels/conv_2d_kernels.h"
-#include "kernels/cuda_helper.h"
+#include "utils/cuda_helper.h"
 
 namespace FlexFlow {
 

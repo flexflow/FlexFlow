@@ -28,7 +28,7 @@
 #include "kernels/embedding_kernels.h"
 #include "kernels/flat_kernels.h"
 #include "ops-inc/fused.h"
-#include "kernels/cuda_helper.h"
+#include "utils/cuda_helper.h"
 
 namespace FlexFlow {
 // declare Legion names

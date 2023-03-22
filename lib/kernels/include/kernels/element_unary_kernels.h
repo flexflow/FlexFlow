@@ -31,6 +31,8 @@ void init_kernel(ElementUnaryMeta *m,
                  Legion::Domain const &input_domain,
                  Legion::Domain const &output_domain);
 
+bool use_cudnn(OperatorType type);
+
 template <typename T>
 void forward_kernel_wrapper(ElementUnaryMeta const *m,
                             T const *in_ptr,

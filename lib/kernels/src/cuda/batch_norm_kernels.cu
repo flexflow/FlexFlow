@@ -14,7 +14,7 @@
  */
 
 #include "kernels/batch_norm_kernels.h"
-#include "kernels/cuda_helper.h"
+#include "utils/cuda_helper.h"
 #include "batch_norm_kernels.h"
 
 using Legion::coord_t;

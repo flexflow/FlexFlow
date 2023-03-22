@@ -231,22 +231,6 @@ void ElementUnary::do_inplace_output(void) {
   inplace = true;
 }
 
-bool ElementUnary::use_cudnn(OperatorType type) {
-  if (type == OP_RELU) {
-    return true;
-  }
-  if (type == OP_SIGMOID) {
-    return true;
-  }
-  if (type == OP_TANH) {
-    return true;
-  }
-  if (type == OP_ELU) {
-    return true;
-  }
-  return false;
-}
-
 void ElementUnary::init(FFModel const &ff) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = outputs[0]->parallel_is;
