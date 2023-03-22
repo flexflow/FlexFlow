@@ -1,28 +1,25 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_DROPOUT_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_DROPOUT_KERNELS_H
 
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
-#include "flexflow/op_meta.h"
-#include "flexflow/ops/dropout.h"
+#include "kernels/device.h"
+#include "kernels/op_meta.h"
+#include "legion.h"
+#include <cstddef>
 
 namespace FlexFlow {
 
 class DropoutMeta : public OpMeta {
 public:
   DropoutMeta(FFHandler handle,
-              Dropout const *dropout,
+              float rate,
+              unsigned long long seed,
+              bool profiling,
               Legion::Memory gpu_mem,
               Legion::Domain const &output_domain);
   ~DropoutMeta(void);
   Realm::RegionInstance reserveInst;
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
-  cudnnDropoutDescriptor_t dropoutDesc;
-#else
-  miopenTensorDescriptor_t inputTensor, outputTensor;
-  miopenDropoutDescriptor_t dropoutDesc;
-#endif
+  ffTensorDescriptor_t inputTensor, outputTensor;
+  ffDropoutDescriptor_t dropoutDesc;
   void *reserveSpace, *dropoutStates;
   size_t reserveSpaceSize, dropoutStateSize;
 };

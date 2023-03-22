@@ -2,14 +2,36 @@
 #define _FLEXFLOW_ATTENTION_H
 
 #include "fftype.h"
-#include "flexflow/op_meta.h"
-#include "flexflow/operator.h"
+#include "kernels/op_meta.h"
+#include "operator.h"
 #include "layer.h"
 #include "op-meta/attention_params.h"
+#include "kernels/attention_kernels.h"
 
 namespace FlexFlow {
 
-class MultiHeadAttentionMeta;
+class RealmBackedAttentionMeta : public MultiHeadAttentionMeta {
+public:
+  RealmBackedAttentionMeta(FFHandler handler,
+                         Legion::Memory gpu_mem,
+                         int num_samples,
+                         int num_heads,
+                         int qSize,
+                         int kSize,
+                         int vSize,
+                         int qProjSize,
+                         int kProjSize,
+                         int vProjSize,
+                         int oProjSize,
+                         int qoSeqLength,
+                         int kvSeqLength,
+                         bool add_bias_kv);
+  ~RealmBackedAttentionMeta(void);
+
+  void *gpu_alloc(size_t size) override;
+public:
+  Realm::RegionInstance reserveInst;
+};
 
 class MultiHeadAttention : public Op {
 public:

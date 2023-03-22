@@ -13,13 +13,11 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/kernels/element_binary_kernels.h"
-#include "flexflow/utils/cuda_helper.h"
+#include "kernels/element_binary_kernels.h"
+#include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
 // declare Legion names
-using Legion::coord_t;
-using Legion::Domain;
 
 ElementBinaryMeta::ElementBinaryMeta(FFHandler handler) : OpMeta(handler) {
   checkCUDNN(cudnnCreateTensorDescriptor(&input1Tensor));
@@ -38,7 +36,6 @@ ElementBinaryMeta::ElementBinaryMeta(FFHandler handler) : OpMeta(handler) {
 namespace Kernels {
 namespace ElementBinary {
 
-/*static*/
 void init_kernel(ElementBinaryMeta *m,
                  Domain const &input1_domain,
                  Domain const &input2_domain,
@@ -77,7 +74,6 @@ void init_kernel(ElementBinaryMeta *m,
       cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
 }
 
-/*static*/
 void forward_kernel_wrapper(ElementBinaryMeta const *m,
                             float const *in1_ptr,
                             float const *in2_ptr,
@@ -129,7 +125,6 @@ void forward_kernel_wrapper(ElementBinaryMeta const *m,
   }
 }
 
-/*static*/
 void backward_kernel_wrapper(ElementBinaryMeta const *m,
                              float const *out_grad_ptr,
                              float const *in1_ptr,
@@ -291,7 +286,6 @@ __global__ void elewise_binary_backward_kernel(coord_t volume,
   }
 }
 
-/*static*/
 void forward_kernel(ElementBinaryMeta const *m,
                     float const *in1_ptr,
                     float const *in2_ptr,
@@ -393,7 +387,6 @@ void forward_kernel(ElementBinaryMeta const *m,
   }
 }
 
-/*static*/
 void backward_kernel(ElementBinaryMeta const *m,
                      float const *out_grad_ptr,
                      float const *in1_ptr,

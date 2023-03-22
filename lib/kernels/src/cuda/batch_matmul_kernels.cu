@@ -15,106 +15,105 @@
 
 #include "kernels/batch_matmul_kernels.h"
 #include "kernels/cuda_helper.h"
-#include "batch_matmul_kernels.h"
 
 namespace FlexFlow {
 
-BatchMatmulMeta::BatchMatmulMeta(FFHandler handler) : OpMeta(handler) {}
+BatchMatmulPerDeviceState::BatchMatmulPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {}
 
 namespace Kernels {
 namespace BatchMatmul {
 
-void forward_kernel_wrapper(BatchMatmulMeta const *meta,
-                            float *o_ptr,
-                            float const *a_ptr,
-                            float const *b_ptr,
-                            float const *c_ptr,
-                            int m,
-                            int n,
-                            int k,
-                            int batch,
-                            int a_seq_length_dim,
-                            int b_seq_length_dim,
-                            int seq_length) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+/* void forward_kernel_wrapper(BatchMatmulPerDeviceState const *meta, */
+/*                             float *o_ptr, */
+/*                             float const *a_ptr, */
+/*                             float const *b_ptr, */
+/*                             float const *c_ptr, */
+/*                             int m, */
+/*                             int n, */
+/*                             int k, */
+/*                             int batch, */
+/*                             int a_seq_length_dim, */
+/*                             int b_seq_length_dim, */
+/*                             int seq_length) { */
+/*   cudaStream_t stream; */
+/*   checkCUDA(get_legion_stream(&stream)); */
 
-  cudaEvent_t t_start, t_end;
-  if (meta->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-  Internal::forward_kernel(meta,
-                           o_ptr,
-                           a_ptr,
-                           b_ptr,
-                           c_ptr,
-                           m,
-                           n,
-                           k,
-                           batch,
-                           stream,
-                           a_seq_length_dim,
-                           b_seq_length_dim,
-                           seq_length);
-  if (meta->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("BatchMatmul forward time = %.2lfms\n", elapsed);
-  }
-}
+/*   cudaEvent_t t_start, t_end; */
+/*   if (meta->profiling) { */
+/*     cudaEventCreate(&t_start); */
+/*     cudaEventCreate(&t_end); */
+/*     cudaEventRecord(t_start, stream); */
+/*   } */
+/*   Internal::forward_kernel(meta, */
+/*                            o_ptr, */
+/*                            a_ptr, */
+/*                            b_ptr, */
+/*                            c_ptr, */
+/*                            m, */
+/*                            n, */
+/*                            k, */
+/*                            batch, */
+/*                            stream, */
+/*                            a_seq_length_dim, */
+/*                            b_seq_length_dim, */
+/*                            seq_length); */
+/*   if (meta->profiling) { */
+/*     cudaEventRecord(t_end, stream); */
+/*     checkCUDA(cudaEventSynchronize(t_end)); */
+/*     float elapsed = 0; */
+/*     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end)); */
+/*     cudaEventDestroy(t_start); */
+/*     cudaEventDestroy(t_end); */
+/*     printf("BatchMatmul forward time = %.2lfms\n", elapsed); */
+/*   } */
+/* } */
 
-void backward_kernel_wrapper(BatchMatmulMeta const *meta,
-                             float const *o_ptr,
-                             float const *o_grad_ptr,
-                             float const *a_ptr,
-                             float *a_grad_ptr,
-                             float const *b_ptr,
-                             float *b_grad_ptr,
-                             float *c_grad_ptr,
-                             int m,
-                             int n,
-                             int k,
-                             int batch) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+/* void backward_kernel_wrapper(BatchMatmulPerDeviceState const *meta, */
+/*                              float const *o_ptr, */
+/*                              float const *o_grad_ptr, */
+/*                              float const *a_ptr, */
+/*                              float *a_grad_ptr, */
+/*                              float const *b_ptr, */
+/*                              float *b_grad_ptr, */
+/*                              float *c_grad_ptr, */
+/*                              int m, */
+/*                              int n, */
+/*                              int k, */
+/*                              int batch) { */
+/*   cudaStream_t stream; */
+/*   checkCUDA(get_legion_stream(&stream)); */
 
-  cudaEvent_t t_start, t_end;
-  if (meta->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-  Internal::backward_kernel(meta,
-                            o_ptr,
-                            o_grad_ptr,
-                            a_ptr,
-                            a_grad_ptr,
-                            b_ptr,
-                            b_grad_ptr,
-                            c_grad_ptr,
-                            m,
-                            n,
-                            k,
-                            batch,
-                            stream);
-  if (meta->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("BatchMatmul backward time = %.2lfms\n", elapsed);
-  }
-}
+/*   cudaEvent_t t_start, t_end; */
+/*   if (meta->profiling) { */
+/*     cudaEventCreate(&t_start); */
+/*     cudaEventCreate(&t_end); */
+/*     cudaEventRecord(t_start, stream); */
+/*   } */
+/*   Internal::backward_kernel(meta, */
+/*                             o_ptr, */
+/*                             o_grad_ptr, */
+/*                             a_ptr, */
+/*                             a_grad_ptr, */
+/*                             b_ptr, */
+/*                             b_grad_ptr, */
+/*                             c_grad_ptr, */
+/*                             m, */
+/*                             n, */
+/*                             k, */
+/*                             batch, */
+/*                             stream); */
+/*   if (meta->profiling) { */
+/*     cudaEventRecord(t_end, stream); */
+/*     checkCUDA(cudaEventSynchronize(t_end)); */
+/*     float elapsed = 0; */
+/*     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end)); */
+/*     cudaEventDestroy(t_start); */
+/*     cudaEventDestroy(t_end); */
+/*     printf("BatchMatmul backward time = %.2lfms\n", elapsed); */
+/*   } */
+/* } */
 
-namespace Internal {
+/* namespace Internal { */
 
 /*
 A: (batch, n, k)
@@ -123,7 +122,7 @@ O: (batch, n, m)
 O = A * B
 */
 
-void forward_kernel(BatchMatmulMeta const *meta,
+void forward_kernel(BatchMatmulPerDeviceState const *meta,
                     float *o_ptr,
                     float const *a_ptr,
                     float const *b_ptr,
@@ -200,7 +199,7 @@ O, OGrad: (batch, n, m)
 AGrad = OGrad * B^T
 BGrad = A^T * OGrad
 */
-void backward_kernel(BatchMatmulMeta const *meta,
+void backward_kernel(BatchMatmulPerDeviceState const *meta,
                      float const *o_ptr,
                      float const *o_grad_ptr,
                      float const *a_ptr,
@@ -259,7 +258,7 @@ void backward_kernel(BatchMatmulMeta const *meta,
   assert(c_grad_ptr == NULL);
 }
 
-} // namespace Internal
+/* } // namespace Internal */
 } // namespace BatchMatmul
 } // namespace Kernels
 } // namespace FlexFlow

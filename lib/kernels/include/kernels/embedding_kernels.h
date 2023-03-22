@@ -1,10 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_EMBEDDING_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_EMBEDDING_KERNELS_H
 
-#include "flexflow/accessor.h"
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
-#include "flexflow/op_meta.h"
+#include "kernels/device.h"
+#include "kernels/op_meta.h"
 
 namespace FlexFlow {
 
@@ -17,6 +15,25 @@ public:
 
 namespace Kernels {
 namespace Embedding {
+
+/* struct GenericTensorPtr { */
+/* public: */
+/*   int32_t const *get_int32_ptr() const; */
+/*   int64_t const *get_int64_ptr() const; */
+/*   float const *get_float_ptr() const; */
+/*   double const *get_double_ptr() const; */
+/*   half const *get_half_ptr() const; */
+
+/*   int32_t *get_int32_ptr(); */
+/*   int64_t *get_int64_ptr(); */
+/*   float *get_float_ptr(); */
+/*   double *get_double_ptr(); */
+/*   half *get_half_ptr(); */
+/* private: */
+/*   DataType data_type; */
+/*   void *ptr; */
+/* }; */
+
 void forward_kernel_wrapper(EmbeddingMeta const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorW const &output,

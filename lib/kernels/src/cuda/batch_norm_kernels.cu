@@ -15,96 +15,91 @@
 
 #include "kernels/batch_norm_kernels.h"
 #include "kernels/cuda_helper.h"
-#include "batch_norm_kernels.h"
-
-using Legion::coord_t;
 
 namespace FlexFlow {
 namespace Kernels {
 namespace BatchNorm {
 
-void forward_kernel_wrapper(BatchNormMeta const *m,
+/* void forward_kernel_wrapper(BatchNormPerDeviceState const *m, */
+/*                                float const *input_ptr, */
+/*                                float *output_ptr, */
+/*                                float const *scale_ptr, */
+/*                                float const *bias_ptr) { */
+/*   cudaStream_t stream; */
+/*   checkCUDA(get_legion_stream(&stream)); */
+
+/*   cudaEvent_t t_start, t_end; */
+/*   if (m->profiling) { */
+/*     cudaEventCreate(&t_start); */
+/*     cudaEventCreate(&t_end); */
+/*     cudaEventRecord(t_start, stream); */
+/*   } */
+/*   Internal::forward_kernel(m, */
+/*                  input_ptr, */
+/*                  output_ptr, */
+/*                  scale_ptr, */
+/*                  bias_ptr); */
+/*   if (m->profiling) { */
+/*     cudaEventRecord(t_end, stream); */
+/*     checkCUDA(cudaEventSynchronize(t_end)); */
+/*     float elapsed = 0; */
+/*     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end)); */
+/*     cudaEventDestroy(t_start); */
+/*     cudaEventDestroy(t_end); */
+/*     printf("BatchNorm forward time (BF) = %.2fms\n", elapsed); */
+/*   } */
+/* } */
+
+/* void backward_kernel_wrapper(BatchNormPerDeviceState *m, */
+/*                              float const *input_ptr, */
+/*                              float *output_grad_ptr, */
+/*                              float const *output_ptr, */
+/*                              float *input_grad_ptr, */
+/*                              float const *scale_ptr, */
+/*                              float *scale_grad_ptr, */
+/*                              float *bias_grad_ptr, */
+/*                              size_t numElements) { */
+/*   cudaStream_t stream; */
+/*   checkCUDA(get_legion_stream(&stream)); */
+
+/*   cudaEvent_t t_start, t_end; */
+/*   if (m->profiling) { */
+/*     cudaEventCreate(&t_start); */
+/*     cudaEventCreate(&t_end); */
+/*     cudaEventRecord(t_start, stream); */
+/*   } */
+/*   Internal::backward_kernel(m, */
+/*                   input_ptr, */
+/*                   output_grad_ptr, */
+/*                   output_ptr, */
+/*                   input_grad_ptr, */
+/*                   scale_ptr, */
+/*                   scale_grad_ptr, */
+/*                   bias_grad_ptr, */
+/*                   numElements); */
+/*   if (m->profiling) { */
+/*     cudaEventRecord(t_end, stream); */
+/*     checkCUDA(cudaEventSynchronize(t_end)); */
+/*     float elapsed = 0; */
+/*     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end)); */
+/*     cudaEventDestroy(t_start); */
+/*     cudaEventDestroy(t_end); */
+/*     printf("BatchNorm backward time = %.2fms\n", elapsed); */
+/*   } */
+
+/* } */
+
+/* namespace Internal { */
+
+void forward_kernel(cudaStream_t stream,
+                    BatchNormPerDeviceState const *m,
                                float const *input_ptr,
                                float *output_ptr,
                                float const *scale_ptr,
                                float const *bias_ptr) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-  Internal::forward_kernel(m,
-                 input_ptr,
-                 output_ptr,
-                 scale_ptr,
-                 bias_ptr);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("BatchNorm forward time (BF) = %.2fms\n", elapsed);
-  }
-}
-
-void backward_kernel_wrapper(BatchNormMeta *m,
-                             float const *input_ptr,
-                             float *output_grad_ptr,
-                             float const *output_ptr,
-                             float *input_grad_ptr,
-                             float const *scale_ptr,
-                             float *scale_grad_ptr,
-                             float *bias_grad_ptr,
-                             size_t numElements) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-  Internal::backward_kernel(m,
-                  input_ptr,
-                  output_grad_ptr,
-                  output_ptr,
-                  input_grad_ptr,
-                  scale_ptr,
-                  scale_grad_ptr,
-                  bias_grad_ptr,
-                  numElements);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("BatchNorm backward time = %.2fms\n", elapsed);
-  }
-
-}
-
-namespace Internal {
-
-void forward_kernel(BatchNormMeta const *m,
-                               float const *input_ptr,
-                               float *output_ptr,
-                               float const *scale_ptr,
-                               float const *bias_ptr) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
-  // coord_t numChannels = m->numChannels;
   checkCUDNN(cudnnBatchNormalizationForwardTraining(m->handle.dnn,
                                                     m->mode,
                                                     &alpha,
@@ -125,17 +120,16 @@ void forward_kernel(BatchNormMeta const *m,
 }
 
 
-void backward_kernel(BatchNormMeta *m,
-                                float const *input_ptr,
-                                float *output_grad_ptr,
-                                float const *output_ptr,
-                                float *input_grad_ptr,
-                                float const *scale_ptr,
-                                float *scale_grad_ptr,
-                                float *bias_grad_ptr,
-                                size_t numElements) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+void backward_kernel(cudaStream_t stream,
+                     BatchNormPerDeviceState *m,
+                     float const *input_ptr,
+                     float *output_grad_ptr,
+                     float const *output_ptr,
+                     float *input_grad_ptr,
+                     float const *scale_ptr,
+                     float *scale_grad_ptr,
+                     float *bias_grad_ptr,
+                     size_t numElements) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f;
@@ -166,17 +160,16 @@ void backward_kernel(BatchNormMeta *m,
 
 }
 }
-}
 
-BatchNormMeta::BatchNormMeta(FFHandler handler,
-                             Legion::Memory gpu_mem,
+BatchNormPerDeviceState::BatchNormPerDeviceState(FFHandler handler,
+                             std::unique_ptr<IAllocator> allocator,
                              int output_n,
                              int output_c,
                              int output_h,
                              int output_w,
                              bool relu,
                              bool profiling)
-    : OpMeta(handler), relu(relu), profiling(profiling) {
+    : PerDeviceOpState(handler), relu(relu), profiling(profiling), allocator(std::move(allocator)) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&biasTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
@@ -205,18 +198,7 @@ BatchNormMeta::BatchNormMeta(FFHandler handler,
   // allocate memory for runningMean, runningVar, saveMean, saveVar
   {
     size_t totalSize = sizeof(float) * output_c * 4;
-    Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
-                                   Realm::Point<1, coord_t>(totalSize - 1));
-    std::vector<size_t> field_sizes;
-    field_sizes.push_back(sizeof(char));
-    Realm::RegionInstance::create_instance(reserveInst,
-                                           gpu_mem,
-                                           bounds,
-                                           field_sizes,
-                                           0,
-                                           Realm::ProfilingRequestSet())
-        .wait();
-    runningMean = (float *)reserveInst.pointer_untyped(0, sizeof(char));
+    runningMean = (float *)this->allocator->allocate(totalSize);
     runningVar = (float *)runningMean + output_c;
     saveMean = (float *)runningVar + output_c;
     saveVar = (float *)saveMean + output_c;
@@ -234,8 +216,7 @@ BatchNormMeta::BatchNormMeta(FFHandler handler,
   }
 }
 
-BatchNormMeta::~BatchNormMeta() {
-  reserveInst.destroy();
+BatchNormPerDeviceState::~BatchNormPerDeviceState() {
   checkCUDNN(cudnnDestroyTensorDescriptor(inputTensor));
   checkCUDNN(cudnnDestroyTensorDescriptor(biasTensor));
   checkCUDNN(cudnnDestroyTensorDescriptor(outputTensor));

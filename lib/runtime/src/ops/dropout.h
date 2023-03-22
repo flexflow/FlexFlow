@@ -12,18 +12,12 @@ namespace FlexFlow {
 
 class Dropout : public Op {
 public:
-  using Params = DropoutParams;
-  using Input = ParallelTensor;
   Dropout(FFModel &model,
           const ParallelTensor input,
           float rate,
           unsigned long long seed,
           char const *name);
   Dropout(FFModel &model, Dropout const &other, const ParallelTensor input);
-  Dropout(FFModel &model,
-          Params const &params,
-          Input const input,
-          char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -56,8 +50,6 @@ public:
                                Legion::Deserializer &d,
                                ParallelTensor inputs[],
                                int num_inputs);
-
-  Params get_params() const;
 
 public:
   float rate;

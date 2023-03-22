@@ -4,18 +4,43 @@
 #include "kernels/attention_kernels.h"
 
 namespace FlexFlow {
+
 namespace Kernels {
 namespace MultiHeadAttention {
 namespace Internal {
 
-void forward_kernel(MultiHeadAttentionMeta const *m,
+void forward_kernel(FFHandler handler,
+                    ffAttnDescriptor_t const &attnDesc,
+                    int *loWinIdx,
+                    int *hiWinIdx,
+                    int *devQoSeqArray,
+                    int *devKvSeqArray,
+                    ffSeqDataDescriptor_t const &qDesc,
+                    ffSeqDataDescriptor_t const &kDesc,
+                    ffSeqDataDescriptor_t const &vDesc,
+                    ffSeqDataDescriptor_t const &oDesc,
+                    size_t weightSize,
+                    void *reserveSpace, 
+                    size_t reserveSpaceSize,
                     float const *query_ptr,
                     float const *key_ptr,
                     float const *value_ptr,
                     float const *weight_ptr,
                     float *output_ptr,
-                    ffStream_t stream);
-void backward_kernel(MultiHeadAttentionMeta const *m,
+                    cudaStream_t stream);
+void backward_kernel(FFHandler const &handle,
+                     ffAttnDescriptor_t const &attnDesc,
+                     int *loWinIdx,
+                     int *hiWinIdx,
+                     int *devQoSeqArray,
+                     int *devKvSeqArray,
+                     ffSeqDataDescriptor_t const &qDesc,
+                     ffSeqDataDescriptor_t const &kDesc,
+                     ffSeqDataDescriptor_t const &vDesc,
+                     ffSeqDataDescriptor_t const &oDesc,
+                     size_t weightSize,
+                     void *reserveSpace,
+                     size_t reserveSpaceSize,
                      float const *query_ptr,
                      float *query_grad_ptr,
                      float const *key_ptr,
@@ -25,7 +50,7 @@ void backward_kernel(MultiHeadAttentionMeta const *m,
                      float const *weight_ptr,
                      float *weight_grad_ptr,
                      float const *output_grad_ptr,
-                     ffStream_t stream);
+                     cudaStream_t stream);
 
 } 
 }

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/kernels/concat_kernels.h"
-#include "flexflow/utils/cuda_helper.h"
+#include "kernels/concat_kernels.h"
+#include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
 
@@ -29,9 +29,12 @@ void init_meta(ConcatMeta *m, int legion_axis) {
   m->legion_axis = legion_axis;
 }
 
+template <int DIM>
 void forward_kernel_wrapper(ConcatMeta const *m,
-                            GenericTensorAccessorW const &output,
-                            GenericTensorAccessorR const *inputs,
+                            float *output,
+                            float const * const *inputs,
+                            Legion::Rect<DIM> output_domain,
+                            Legion::Rect<DIM> const *input_domains,
                             int num_inputs,
                             int axis) {
   cudaStream_t stream;
@@ -43,7 +46,7 @@ void forward_kernel_wrapper(ConcatMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  Internal::forward_kernel(output, inputs, num_inputs, axis, stream);
+  Internal::forward_kernel<DIM>(output, inputs, output_domain, input_domains, num_inputs, axis);
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -60,9 +63,12 @@ void forward_kernel_wrapper(ConcatMeta const *m,
   }
 }
 
+template <int DIM>
 void backward_kernel_wrapper(ConcatMeta const *m,
-                             GenericTensorAccessorR const &output_grad,
-                             GenericTensorAccessorW const *input_grads,
+                             float const *output_grad,
+                             float * const *input_grads,
+                             Legion::Rect<DIM> output_domain,
+                             Legion::Rect<DIM> const *input_domains,
                              int num_inputs,
                              int axis) {
   cudaStream_t stream;
@@ -74,7 +80,7 @@ void backward_kernel_wrapper(ConcatMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  Internal::backward_kernel(output_grad, input_grads, num_inputs, axis, stream);
+  Internal::backward_kernel(output_grad, input_grads, output_domain, input_domains);
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -104,40 +110,32 @@ void calc_blk_size(coord_t &num_blocks,
   }
 }
 
-void forward_kernel(GenericTensorAccessorW const &output,
-                    GenericTensorAccessorR const *inputs,
+template <int DIM>
+void forward_kernel(float *output,
+                    float const **inputs,
+                    Rect<DIM> output_domain,
+                    Rect<DIM> const *input_domains,
                     int num_inputs,
                     int axis,
                     cudaStream_t stream) {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
-  switch (output.domain.get_dim()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM: {                                                                  \
-    Rect<DIM> rect = output.domain;                                            \
-    calc_blk_size<DIM>(num_blocks, output_blk_size, rect, axis);               \
-    for (int i = 0; i < num_inputs; i++) {                                     \
-      rect = inputs[i].domain;                                                 \
-      coord_t input_num_blocks = 1;                                            \
-      calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], rect, axis);    \
-      assert(input_num_blocks == num_blocks);                                  \
-    }                                                                          \
-    break;                                                                     \
-  }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      fprintf(stderr, "Unsupported concat dimension number");
-      assert(false);
-  }
+  Rect<DIM> rect = output_domain;
+  calc_blk_size<DIM>(num_blocks, output_blk_size, rect, axis);
+  for (int i = 0; i < num_inputs; i++) {
+    rect = input_domains[i];
+    coord_t input_num_blocks = 1;
+    calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], rect, axis);
+    assert(input_num_blocks == num_blocks);
+  }                                                                          
 
   off_t offset = 0;
   for (int i = 0; i < num_inputs; i++) {
     copy_with_stride<<<GET_BLOCKS(input_blk_sizes[i] * num_blocks),
                        CUDA_NUM_THREADS,
                        0,
-                       stream>>>(output.get_float_ptr() + offset,
-                                 inputs[i].get_float_ptr(),
+                       stream>>>(output + offset,
+                                 inputs[i],
                                  num_blocks,
                                  output_blk_size,
                                  input_blk_sizes[i]);
@@ -148,31 +146,23 @@ void forward_kernel(GenericTensorAccessorW const &output,
   }
 }
 
-void backward_kernel(GenericTensorAccessorR const &output_grad,
-                     GenericTensorAccessorW const *input_grads,
+template <int DIM>
+void backward_kernel(float const *output_grad,
+                     float * const *input_grads,
+                     Rect<DIM> output_domain,
+                     Rect<DIM> const *input_domains,
                      int num_inputs,
                      int axis,
                      cudaStream_t stream) {
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
-  switch (output_grad.domain.get_dim()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM: {                                                                  \
-    Rect<DIM> rect = output_grad.domain;                                       \
-    calc_blk_size<DIM>(num_blocks, output_blk_size, rect, axis);               \
-    for (int i = 0; i < num_inputs; i++) {                                     \
-      rect = input_grads[i].domain;                                            \
-      coord_t input_num_blocks = 1;                                            \
-      calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], rect, axis);    \
-      assert(input_num_blocks == num_blocks);                                  \
-    }                                                                          \
-    break;                                                                     \
-  }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      fprintf(stderr, "Unsupported concat dimension number");
-      assert(false);
+  Rect<DIM> rect = output_domain;
+  calc_blk_size<DIM>(num_blocks, output_blk_size, rect, axis);
+  for (int i = 0; i < num_inputs; i++) {
+    rect = input_domains[i];
+    coord_t input_num_blocks = 1;
+    calc_blk_size<DIM>(input_num_blocks, input_blk_sizes[i], rect, axis);
+    assert(input_num_blocks == num_blocks);
   }
 
   off_t offset = 0;
@@ -180,8 +170,8 @@ void backward_kernel(GenericTensorAccessorR const &output_grad,
     add_with_stride<<<GET_BLOCKS(input_blk_sizes[i] * num_blocks),
                       CUDA_NUM_THREADS,
                       0,
-                      stream>>>(input_grads[i].get_float_ptr(),
-                                output_grad.get_float_ptr() + offset,
+                      stream>>>(input_grads[i],
+                                output_grad + offset,
                                 num_blocks,
                                 input_blk_sizes[i],
                                 output_blk_size);

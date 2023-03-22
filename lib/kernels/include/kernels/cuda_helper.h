@@ -1,11 +1,14 @@
 #ifndef _FLEXFLOW_CUDA_HELPER_H_
 #define _FLEXFLOW_CUDA_HELPER_H_
 
-#include "op-meta/ffconst.h"
-#include "legion.h"
+#include "kernels/array_shape.h"
+#include "op-attrs/ffconst.h"
 #include <cublas_v2.h>
 #include <cudnn.h>
 #include <cstdlib>
+#include <iostream>
+#include <sstream>
+#include <cassert>
 
 #define FatalError(s)                                                          \
   do {                                                                         \
@@ -60,7 +63,7 @@
 
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n)                                                 \
-  for (Legion::coord_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n);     \
+  for (size_t i = blockIdx.x * blockDim.x + threadIdx.x; i < (n);     \
        i += blockDim.x * gridDim.x)
 
 // Use 1024 threads per block, which requires cuda sm_2x or above
@@ -74,15 +77,15 @@ inline int GET_BLOCKS(int const N) {
 }
 
 __global__ void
-    scale_kernel(float *ptr, Legion::coord_t size, float a, float b);
+    scale_kernel(float *ptr, size_t size, float a, float b);
 
-__global__ void ones_kernel(float *ptr, Legion::coord_t size);
-
-template <typename DT>
-__global__ void assign_kernel(DT *ptr, Legion::coord_t size, DT value);
+__global__ void ones_kernel(float *ptr, size_t size);
 
 template <typename DT>
-__global__ void copy_kernel(DT *dst, const DT *src, Legion::coord_t size);
+__global__ void assign_kernel(DT *ptr, size_t size, DT value);
+
+template <typename DT>
+__global__ void copy_kernel(DT *dst, const DT *src, size_t size);
 
 template <typename T>
 __global__ void add_kernel(T *data_ptr, T const *grad_ptr, size_t size);
@@ -135,8 +138,8 @@ __host__ void updateGAS(float *para_ptr,
 template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
 
-cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
-                                                 Legion::Domain domain);
+cudnnStatus_t cudnnSetTensorDescriptorFromArrayShape(cudnnTensorDescriptor_t tensor,
+                                                     FlexFlow::ArrayShape const &shape);
 
 cudaDataType_t ff_to_cuda_datatype(DataType type);
 

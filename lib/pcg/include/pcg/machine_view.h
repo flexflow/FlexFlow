@@ -6,7 +6,7 @@
 #include <ostream>
 #include "visit_struct/visit_struct.hpp"
 #include "utils/graph.h"
-#include "op-meta/operator_attrs.h"
+#include "op-attrs/operator_attrs.h"
 
 namespace FlexFlow {
 

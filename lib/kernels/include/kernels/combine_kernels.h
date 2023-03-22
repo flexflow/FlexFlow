@@ -1,9 +1,8 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_COMBINE_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_COMBINE_KERNELS_H
 
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
-#include "flexflow/op_meta.h"
+#include "kernels/device.h"
+#include "kernels/op_meta.h"
 
 namespace FlexFlow {
 

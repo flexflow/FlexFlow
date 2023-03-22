@@ -19,18 +19,18 @@
 
 namespace FlexFlow {
 
-AggregateSpecMeta::AggregateSpecMeta(FFHandler handler, int n)
-    : OpMeta(handler) {
+AggregateSpecPerDeviceState::AggregateSpecPerDeviceState(FFHandler handler, int n)
+    : PerDeviceOpState(handler) {
   checkCUDA(cudaMalloc(&dev_region_ptrs, n * sizeof(float *)));
 }
-AggregateSpecMeta::~AggregateSpecMeta(void) {
+AggregateSpecPerDeviceState::~AggregateSpecPerDeviceState(void) {
   checkCUDA(cudaFree(&dev_region_ptrs));
 }
 
 namespace Kernels {
 namespace AggregateSpec {
 
-void forward_kernel_wrapper(AggregateSpecMeta const *m,
+void forward_kernel_wrapper(AggregateSpecPerDeviceState const *m,
                                            float **exp_preds,
                                            int const *acc_gate_assign_ptr,
                                            float *acc_output_ptr,
@@ -64,7 +64,7 @@ void forward_kernel_wrapper(AggregateSpecMeta const *m,
                                      out_dim);
 }
 
-void backward_kernel_wrapper(AggregateSpecMeta const *m,
+void backward_kernel_wrapper(AggregateSpecPerDeviceState const *m,
                                             float **exp_grads,
                                             int const *acc_gate_assign_ptr,
                                             int const *acc_true_gate_assign_ptr,

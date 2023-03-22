@@ -16,6 +16,8 @@
 #include "attention.h"
 #include "utils/hash_utils.h"
 #include "model.h"
+#include "kernels/attention_kernels.h"
+#include "kernels/profiling.h"
 
 namespace FlexFlow {
 
@@ -546,7 +548,22 @@ void MultiHeadAttention::forward_task(
                                        runtime,
                                        false /*readOutput*/);
 
-  forward_kernel_wrapper(m,
+  profiling_wrapper(
+
+  );
+  forward_kernel_wrapper(m->handler,
+                         m->attnDesc,
+                         m->loWinIdx,
+                         m->hiWinIdx,
+                         m->devQoSeqArray,
+                         m->devKvSeqArray,
+                         m->qDesc,
+                         m->kDesc,
+                         m->vDesc,
+                         m->oDesc,
+                         m->weightSize,
+                         m->reserveSpace,
+                         m->reserveSpaceSize,
                          acc_query.ptr,
                          acc_key.ptr,
                          acc_value.ptr,
@@ -716,16 +733,32 @@ void MultiHeadAttention::backward_task(
     key_grad_ptr = acc_key_grad.ptr;
   }
 
-  backward_kernel_wrapper(m,
-                          acc_query.ptr,
-                          acc_query_grad.ptr,
-                          acc_key.ptr,
-                          key_grad_ptr,
-                          acc_value.ptr,
-                          value_grad_ptr,
-                          acc_weight.ptr,
-                          acc_weight_grad.ptr,
-                          acc_output_grad.ptr);
+  profiling_wrapper(
+    backward_kernel,
+    m->profiling,
+    m->handler, 
+    m->attnDesc,
+    m->loWinIdx,
+    m->hiWinIdx,
+    m->devQoSeqArray,
+    m->devKvSeqArray,
+    m->qDesc,
+    m->kDesc,
+    m->vDesc,
+    m->oDesc,
+    m->weightSize,
+    m->reserveSpace,
+    m->reserveSpaceSize,
+    acc_query.ptr,
+    acc_query_grad.ptr,
+    acc_key.ptr,
+    key_grad_ptr,
+    acc_value.ptr,
+    value_grad_ptr,
+    acc_weight.ptr,
+    acc_weight_grad.ptr,
+    acc_output_grad.ptr
+  );
 }
 
 bool MultiHeadAttention::get_int_parameter(PMParameter para, int *value) const {
@@ -886,6 +919,28 @@ MultiHeadAttentionParams MultiHeadAttention::get_params() const {
   params.add_bias_kv = this->add_bias_kv;
   params.add_zero_attn = this->add_zero_attn;
   return params;
+}
+
+void *RealmBackedAttentionMeta::gpu_alloc(size_t size) {
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                       .only_kind(Memory::GPU_FB_MEM)
+                       .best_affinity_to(task->target_proc)
+                       .first();
+  Realm::Rect<1, coord_t> bounds(Realm::Point<1, coord_t>(0),
+                                 Realm::Point<1, coord_t>(size - 1));
+  std::vector<size_t> field_sizes { sizeof(char) };
+  Realm::RegionInstance::create_instance(this->reserveInst,
+                                         gpu_mem,
+                                         bounds,
+                                         field_sizes,
+                                         0,
+                                         Realm::ProfilingRequestSet())
+      .wait();
+  return this->reserveInst.pointer_untyped(0, sizeof(char));
+}
+
+RealmBackedAttentionMeta::~RealmBackedAttentionMeta() {
+  this->reserveInst.destroy();
 }
 
 }; // namespace FlexFlow

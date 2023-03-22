@@ -1,22 +1,19 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_ELEMENT_UNARY_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_ELEMENT_UNARY_KERNELS_H
 
-#include "flexflow/device.h"
-#include "flexflow/fftype.h"
-#include "flexflow/op_meta.h"
+#include "kernels/device.h"
+#include "kernels/op_meta.h"
+#include "legion.h"
+#include <cstddef>
 
 namespace FlexFlow {
 
 class ElementUnaryMeta : public OpMeta {
 public:
   ElementUnaryMeta(FFHandler handle);
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnTensorDescriptor_t inputTensor, outputTensor;
-  cudnnActivationDescriptor_t actiDesc;
-#else
-  miopenTensorDescriptor_t inputTensor, outputTensor;
-  miopenActivationDescriptor_t actiDesc;
-#endif
+  ffTensorDescriptor_t inputTensor, outputTensor;
+  ffActivationDescriptor_t actiDesc;
+
   OperatorType op_type;
   DataType data_type;
   bool inplace;
@@ -60,9 +57,9 @@ void backward_kernel(ElementUnaryMeta const *m,
                      size_t num_elements,
                      ffStream_t stream);
 
-} // namespace Internal
-} // namespace ElementUnary
-} // namespace Kernels
-} // namespace FlexFlow
+} 
+}
+}
+}
 
-#endif // _FLEXFLOW_OPS_KERNELS_ELEMENT_UNARY_KERNELS_H
+#endif

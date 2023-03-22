@@ -29,7 +29,6 @@ using Legion::Task;
 namespace Kernels {
 namespace Embedding {
 
-/*static*/
 void forward_kernel_wrapper(EmbeddingMeta const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorW const &output,
@@ -120,7 +119,6 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
   }
 }
 
-/*static*/
 void backward_kernel_wrapper(EmbeddingMeta const *m,
                              GenericTensorAccessorR const &input,
                              GenericTensorAccessorR const &output,
@@ -416,7 +414,6 @@ __global__ void embed_backward_with_aggr<int64_t, half>(int64_t const *input,
   }
 }
 
-/*static*/
 template <typename TI, typename TD>
 void forward_kernel(TI const *input_ptr,
                     TD *output_ptr,
@@ -448,7 +445,6 @@ void forward_kernel(TI const *input_ptr,
   }
 }
 
-/*static*/
 template <typename TI, typename TD>
 void backward_kernel(TI const *input_ptr,
                      TD const *output_ptr,

@@ -56,7 +56,6 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  static bool use_cudnn(OperatorType type);
 
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],

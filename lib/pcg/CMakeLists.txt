@@ -25,7 +25,7 @@ target_link_libraries(
   nlohmann_json::nlohmann_json
   optional
   visit_struct
-  op-meta
+  op-attrs
 )
 set_target_properties(
   ${project_target} 

@@ -19,11 +19,11 @@
 
 namespace FlexFlow {
 
-AggregateMeta::AggregateMeta(FFHandler handler, int n) : OpMeta(handler) {
+AggregatePerDeviceState::AggregatePerDeviceState(FFHandler handler, int n) : PerDeviceOpState(handler) {
   checkCUDA(cudaMalloc(&dev_exp_preds, n * sizeof(float *)));
   checkCUDA(cudaMalloc(&dev_exp_grads, n * sizeof(float *)));
 }
-AggregateMeta::~AggregateMeta(void) {
+AggregatePerDeviceState::~AggregatePerDeviceState(void) {
   checkCUDA(cudaFree(&dev_exp_preds));
   checkCUDA(cudaFree(&dev_exp_grads));
 }
@@ -216,7 +216,7 @@ __global__ void agg_backward_kernel(float **exp_preds,
 } // namespace Internal
 
 
-void forward_kernel_wrapper(AggregateMeta const *m,
+void forward_kernel_wrapper(AggregatePerDeviceState const *m,
                                        float **exp_preds,
                                        int const *acc_gate_assign_ptr,
                                        float const *acc_gate_pred_ptr,
@@ -265,7 +265,7 @@ void forward_kernel_wrapper(AggregateMeta const *m,
   }
 }
 
-void backward_kernel_wrapper(AggregateMeta const *m,
+void backward_kernel_wrapper(AggregatePerDeviceState const *m,
                                         float **exp_preds,
                                         float **exp_grads,
                                         int const *acc_gate_assign_ptr,
@@ -322,6 +322,6 @@ void backward_kernel_wrapper(AggregateMeta const *m,
     printf("[Aggregate] backward time = %.2lfms\n", elapsed);
   }
 }
-} // namespace Aggregate
-} // namespace Kernels
-} // namespace FlexFlow
+} 
+}
+}

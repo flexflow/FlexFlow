@@ -20,7 +20,7 @@ target_include_directories(
 )
 target_link_libraries(
   ${project_target}
-  op-meta
+  op-attrs
   utils
   nlohmann_json::nlohmann_json
   optional
