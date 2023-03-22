@@ -841,6 +841,63 @@ void IncMultiHeadSelfAttention::inference_task(
     printf("\n");
   } */
 
+  torch::Tensor Q_projs =
+      qkv_projs.index({Slice(), Slice(), 0, Slice()}).squeeze();
+
+  // std::cout << "qkv_projs.sizes(): " << qkv_projs.sizes() << std::endl;
+  // std::cout << "Q_projs.sizes(): " << Q_projs.sizes() << std::endl;
+
+  std::vector<size_t> req_idxs;
+  std::vector<size_t> r_first_idx;
+  std::vector<size_t> r_num_tokens;
+  for (size_t t = 0; t < bc->num_active_tokens(); t++) {
+    size_t rid = bc->token2ids.token_indexes[t].request_index;
+    if (req_idxs.size() == 0 || req_idxs[req_idxs.size() - 1] != rid) {
+      req_idxs.push_back(rid);
+      r_first_idx.push_back(t);
+      r_num_tokens.push_back(1);
+    } else {
+      r_num_tokens[r_num_tokens.size() - 1]++;
+    }
+    assert(req_idxs.size() == r_first_idx.size() &&
+           r_first_idx.size() == r_num_tokens.size());
+  }
+  assert(req_idxs.size() == bc->num_active_requests());
+  assert(std::accumulate(r_num_tokens.begin(),
+                         r_num_tokens.end(),
+                         decltype(r_num_tokens)::value_type(0)) ==
+         bc->num_active_tokens());
+
+  torch::Tensor K_t = torch::from_blob(kcache,
+                                       {m->kProjSize,
+                                        BatchConfig::MAX_NUM_TOKENS,
+                                        num_heads,
+                                        BatchConfig::MAX_NUM_REQUESTS},
+                                       torch::kFloat32);
+
+  for (size_t r = 0; r < bc->num_active_requests(); r++) {
+    size_t num_new_tokens = r_num_tokens[r];
+    assert(num_new_tokens == bc->num_processing_tokens[r]);
+    torch::Tensor Q_req =
+        Q_projs.index({Slice(),
+                       Slice(r_first_idx[r], r_first_idx[r] + num_new_tokens),
+                       Slice()});
+    // std::cout << "Q_req.sizes(): " << Q_req.sizes() << std::endl;
+    assert(Q_req.sizes()[0] == m->qProjSize);
+    assert(Q_req.sizes()[1] == num_new_tokens);
+    assert(Q_req.sizes()[2] == num_heads);
+
+    int64_t num_tokens_received_so_far =
+        (int64_t)(bc->token_last_available_idx[r] + 1);
+    assert(num_tokens_received_so_far >= (int64_t)num_new_tokens);
+    int64_t rid = (int64_t)(req_idxs[r]);
+    torch::Tensor qkt_product = torch::einsum(
+        "ijk,ilk->jlk",
+        {Q_req,
+         K_t.index(
+             {Slice(), Slice(0, num_tokens_received_so_far), Slice(), rid})});
+  }
+
   checkCUDA(cudaFreeHost(input_cpu));
   checkCUDA(cudaFreeHost(weight_cpu));
   checkCUDA(cudaFreeHost(output_cpu));

@@ -237,7 +237,7 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
 #else
   cudaDataType_t compute_type = CUDA_R_32F;
 #endif
-  int num_requests = bc->num_active_requests();
+  // int num_requests = bc->num_active_requests();
   int num_tokens = bc->num_active_tokens();
   int tokens_previous_requests = 0;
   int tokens_prev_requests_squares = 0;
@@ -250,7 +250,10 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
   float alpha = 1.0f / (float)sqrt(m->kProjSize), beta = 0.0f;
   assert(m->qProjSize == m->kProjSize);
 
-  for (int i = 0; i < num_requests; i++) {
+  for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
+    if (bc->request_completed[i]) {
+      continue;
+    }
     int num_new_tokens = bc->num_processing_tokens[i];
     int total_tokens = bc->token_last_available_idx[i] + 1;
 
