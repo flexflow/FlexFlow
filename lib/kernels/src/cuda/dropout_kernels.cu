@@ -24,10 +24,12 @@ using Legion::Domain;
 using Legion::Memory;
 
 DropoutMeta::DropoutMeta(FFHandler handler,
+                         bool profiling,
+                         float rate,
+                         unsigned long long seed,
                          Memory gpu_mem,
                          Domain const &output_domain)
     : OpMeta(handler) {
-  profiling = false; //dropout->profiling;
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateDropoutDescriptor(&dropoutDesc));
@@ -57,10 +59,10 @@ DropoutMeta::DropoutMeta(FFHandler handler,
   // checkCUDA(cudaMalloc(&reserveSpace, reserveSpaceSize));
   checkCUDNN(cudnnSetDropoutDescriptor(dropoutDesc,
                                        handle.dnn,
-                                       0.0, //dropout->rate,
+                                       rate,
                                        dropoutStates,
                                        dropoutStateSize,
-                                       0));//dropout->seed));
+                                       seed));
 }
 
 DropoutMeta::~DropoutMeta(void) {

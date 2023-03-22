@@ -161,7 +161,11 @@ OpMeta *Dropout::init_task(Task const *task,
                        .best_affinity_to(task->target_proc)
                        .first();
   assert(input_domain == output_domain);
-  DropoutMeta *m = new DropoutMeta(handle, dropout, gpu_mem, output_domain);
+  DropoutMeta *m = new DropoutMeta(handle, 
+                                   dropout->profiling, 
+                                   dropout->rate, 
+                                   dropout->seed,
+                                   gpu_mem, output_domain);
   return m;
 }
 
@@ -291,7 +295,9 @@ bool Dropout::measure_operator_cost(Simulator *sim,
   }
   assert(sub_input.get_domain() == sub_output.get_domain());
   DropoutMeta *m =
-      new DropoutMeta(sim->handler, this, sim->memory, sub_output.get_domain());
+      new DropoutMeta(sim->handler, 
+                      this->profiling, this->rate, this->seed, 
+                      sim->memory, sub_output.get_domain());
 
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);

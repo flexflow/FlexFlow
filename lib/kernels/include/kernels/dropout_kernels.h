@@ -11,6 +11,9 @@ namespace FlexFlow {
 class DropoutMeta : public OpMeta {
 public:
   DropoutMeta(FFHandler handler,
+              bool profiling,
+              float rate,
+              unsigned long long seed,
               Legion::Memory gpu_mem,
               Legion::Domain const &output_domain);
   ~DropoutMeta(void);
