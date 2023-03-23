@@ -960,6 +960,7 @@ void IncMultiHeadSelfAttention::inference_task(
   checkCUDA(cudaFreeHost(QKVProjArray_cpu));
   checkCUDA(cudaFreeHost(keyCache_cpu));
   checkCUDA(cudaFreeHost(valueCache_cpu));
+  checkCUDA(cudaFreeHost(qt_prods_cpu));
   assert(false && "All good if you see this assert failure! :)");
 }
 
