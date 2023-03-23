@@ -300,34 +300,52 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
     fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
                                   min((size_t)CUDA_NUM_THREADS, parallelism),
                                   0,
-                                  stream>>>(
-        (float *)C,
-        num_new_tokens,
-        total_tokens,
-        m->num_heads,
-        entries_above_diagonal,
-        std::numeric_limits<float>::lowest());
+                                  stream>>>((float *)C,
+                                            num_new_tokens,
+                                            total_tokens,
+                                            m->num_heads,
+                                            entries_above_diagonal,
+                                            -INFINITY);
 
     // Compute Softmax(QK^T/sqrt(d_k))
     cudnnTensorDescriptor_t qt_tensor;
     checkCUDNN(cudnnCreateTensorDescriptor(&qt_tensor));
-    checkCUDNN(cudnnSetTensor4dDescriptor(
-        qt_tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, strideC, 1, 1, 1));
+    // Before modifying the parameters below, make sure to read the following
+    // description of the CUDNN_TENSOR_NCHW tensor layout, from
+    // https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnTensorFormat_t:
+    // This tensor format specifies that the data is laid out in the following
+    // order: batch size, feature maps, rows, columns. The strides are
+    // implicitly defined in such a way that the data are contiguous in memory
+    // with no padding between images, feature maps, rows, and columns; the
+    // columns are the inner dimension and the images are the outermost
+    // dimension.
+    int n_param = m->num_heads;
+    int c_param = total_tokens;
+    int h_param = 1;
+    int w_param = num_new_tokens;
+    checkCUDNN(cudnnSetTensor4dDescriptor(qt_tensor,
+                                          CUDNN_TENSOR_NCHW,
+                                          CUDNN_DATA_FLOAT,
+                                          n_param,
+                                          c_param,
+                                          h_param,
+                                          w_param));
     alpha = 1.0f, beta = 0.0f;
     void *C_softmax = (void *)(m->qt_prods_softmax +
                                m->num_heads * tokens_prev_requests_squares);
-    for (int attn_index = 0; attn_index < m->num_heads; attn_index++) {
-      checkCUDNN(cudnnSoftmaxForward(
-          m->handle.dnn,
-          CUDNN_SOFTMAX_ACCURATE,
-          CUDNN_SOFTMAX_MODE_CHANNEL,
-          &alpha,
-          qt_tensor,
-          (void *)((float *)C + attn_index * strideC),
-          &beta,
-          qt_tensor,
-          (void *)((float *)C_softmax + attn_index * strideC)));
-    }
+    // The softmax operation below is executed according to the
+    // CUDNN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
+    // softmax operation is computed per spatial location (H,W) per image (N)
+    // across dimension C.
+    checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
+                                   CUDNN_SOFTMAX_ACCURATE,
+                                   CUDNN_SOFTMAX_MODE_CHANNEL,
+                                   &alpha,
+                                   qt_tensor,
+                                   (void *)((float *)C),
+                                   &beta,
+                                   qt_tensor,
+                                   (void *)((float *)C_softmax)));
 
     // Matmul softmax(QK^T/sqrt(d_k)) by V
     alpha = 1.0f, beta = 0.0f;

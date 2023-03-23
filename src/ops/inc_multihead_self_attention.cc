@@ -875,8 +875,12 @@ void IncMultiHeadSelfAttention::inference_task(
                                         BatchConfig::MAX_NUM_REQUESTS},
                                        torch::kFloat32);
   torch::Tensor qkt_products[bc->num_active_requests()];
+  torch::Tensor qkt_softmax[bc->num_active_requests()];
   float *qt_prods_cpu = download_tensor<float>(
       m->qt_prods,
+      BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads);
+  float *qt_prods_softmax_cpu = download_tensor<float>(
+      m->qt_prods_softmax,
       BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads);
   size_t qt_prods_cpu_offset = 0;
   for (size_t r = 0; r < bc->num_active_requests(); r++) {
@@ -905,6 +909,8 @@ void IncMultiHeadSelfAttention::inference_task(
         (1.0f / sqrt(m->kProjSize));
     float converted_qt_prod[num_new_tokens][num_tokens_received_so_far]
                            [num_heads] = {0};
+    float converted_qt_prod_softmax[num_new_tokens][num_tokens_received_so_far]
+                                   [num_heads] = {0};
     for (size_t i = 0;
          i < num_new_tokens * num_tokens_received_so_far * num_heads;
          i++) {
@@ -915,9 +921,15 @@ void IncMultiHeadSelfAttention::inference_task(
              all_t_idx < num_tokens_received_so_far && head_idx < num_heads);
       converted_qt_prod[new_t_idx][all_t_idx][head_idx] =
           qt_prods_cpu[i + qt_prods_cpu_offset];
+      converted_qt_prod_softmax[new_t_idx][all_t_idx][head_idx] =
+          qt_prods_softmax_cpu[i + qt_prods_cpu_offset];
     }
     torch::Tensor qt_prods_torch = torch::from_blob(
         converted_qt_prod,
+        {(int64_t)num_new_tokens, num_tokens_received_so_far, num_heads},
+        torch::kFloat32);
+    torch::Tensor qt_prods_softmax_torch = torch::from_blob(
+        converted_qt_prod_softmax,
         {(int64_t)num_new_tokens, num_tokens_received_so_far, num_heads},
         torch::kFloat32);
 
@@ -930,17 +942,11 @@ void IncMultiHeadSelfAttention::inference_task(
                       h})
               .tril() +
           torch::full({(int64_t)num_new_tokens, (int64_t)num_new_tokens},
-                      std::numeric_limits<float>::lowest())
+                      -INFINITY)
               .triu()
               .fill_diagonal_(0);
+      qkt_softmax[r] = torch::softmax(qkt_products[r], -2);
     }
-    assert(torch::allclose(qt_prods_torch, qkt_products[r]));
-
-    // std::cout << "C++ tril:" <<std::endl;
-    // for (int h=0; h<num_heads; h++) {
-    //   std::cout << qkt_products[r].tril().index({Slice(), Slice(), h}) <<
-    //   std::endl;
-    // }
     /* std::cout << "C++:" <<std::endl;
     for (int h=0; h<num_heads; h++) {
       std::cout << qkt_products[r].index({Slice(), Slice(), h}) << std::endl;
@@ -948,7 +954,26 @@ void IncMultiHeadSelfAttention::inference_task(
     std::cout << "CUDA:" <<std::endl;
     for (int h=0; h<num_heads; h++) {
       std::cout << qt_prods_torch.index({Slice(), Slice(), h}) << std::endl;
+    }
+    //
+
+    std::cout << "C++:" <<std::endl;
+    for (int h=0; h<num_heads; h++) {
+      std::cout << qkt_softmax[r].index({Slice(), Slice(), h}) << std::endl;
+    }
+    std::cout << "CUDA:" <<std::endl;
+    for (int h=0; h<num_heads; h++) {
+      std::cout << qt_prods_softmax_torch.index({Slice(), Slice(), h}) <<
+    std::endl;
     } */
+    assert(torch::allclose(qt_prods_torch, qkt_products[r]));
+    assert(torch::allclose(qt_prods_softmax_torch, qkt_softmax[r]));
+
+    // std::cout << "C++ tril:" <<std::endl;
+    // for (int h=0; h<num_heads; h++) {
+    //   std::cout << qkt_products[r].tril().index({Slice(), Slice(), h}) <<
+    //   std::endl;
+    // }
 
     qt_prods_cpu_offset +=
         num_new_tokens * num_tokens_received_so_far * num_heads;
@@ -961,6 +986,7 @@ void IncMultiHeadSelfAttention::inference_task(
   checkCUDA(cudaFreeHost(keyCache_cpu));
   checkCUDA(cudaFreeHost(valueCache_cpu));
   checkCUDA(cudaFreeHost(qt_prods_cpu));
+  checkCUDA(cudaFreeHost(qt_prods_softmax_cpu));
   assert(false && "All good if you see this assert failure! :)");
 }
 
