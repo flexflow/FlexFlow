@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/experts.h"
+#include "flexflow/utils/cuda_helper.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {
@@ -37,6 +38,7 @@ using PCG::Node;
 
 static constexpr int KERNEL_IDX = 0;
 static constexpr int BIAS_IDX = 1;
+static bool DEBUG_MODE = false;
 
 // For now, we use one input and one output per expert
 Tensor FFModel::experts(Tensor const *inputs,
@@ -839,6 +841,102 @@ void Experts::inference_task(Task const *task,
     }
   }
 
+  if (DEBUG_MODE) {
+    std::cout << "forward_kernel_wrapper" << std::endl << "-------------------------------" << std::endl;
+    std::cout << m->data_dim << std::endl;
+    std::cout << m->out_dim << std::endl;
+    std::cout << m->num_chosen_experts << std::endl;
+    std::cout << m->effective_batch_size << std::endl;
+    std::cout << m->num_experts << std::endl;
+    std::cout << m->use_bias << std::endl;
+
+
+    /* ----------------Input Token--------------*/
+    float *cpu_input_ptr = new float[data_dim];
+    checkCUDA(cudaMemcpy(cpu_input_ptr, input_ptr, data_dim * sizeof(float), cudaMemcpyDeviceToHost));
+
+    srand(42);
+    float cpu_sum = 0;
+    for (int i = 0; i < data_dim; i++) {
+      // cpu_input_ptr[i] = (float)rand() / (float)RAND_MAX;
+      cpu_input_ptr[i] = float(i)/(float)data_dim;
+      cpu_sum += cpu_input_ptr[i];
+    }
+    std::cout << "[CPU] Token 0 sum = " << cpu_sum << std::endl;
+    std::cout << "Total token number = " << batch_size << std::endl;
+    for (int i = 0; i < batch_size; i++) {
+        checkCUDA(cudaMemcpy((float *)(input_ptr + i * data_dim), cpu_input_ptr, data_dim * sizeof(float), cudaMemcpyHostToDevice));
+    }
+    free(cpu_input_ptr);
+
+    
+    /* ----------------indices--------------*/
+    int *cpu_indices_ptr = new int[chosen_experts * batch_size];
+    checkCUDA(cudaMemcpy(cpu_indices_ptr, indices_ptr, chosen_experts * batch_size * sizeof(int), cudaMemcpyDeviceToHost));
+    for (int i = 0; i < chosen_experts * 10; i++) {
+      if (i%2 == 1)
+        cpu_indices_ptr[i] += chosen_experts;
+    }
+    checkCUDA(cudaMemcpy((int *)indices_ptr, cpu_indices_ptr, chosen_experts * batch_size * sizeof(int), cudaMemcpyHostToDevice));
+    free(cpu_indices_ptr);
+
+
+    /* ----------------coefficient--------------*/
+    float *cpu_topk_gate_pred_ptr = new float[chosen_experts * batch_size];
+    checkCUDA(cudaMemcpy(cpu_topk_gate_pred_ptr, topk_gate_pred_ptr, chosen_experts * batch_size * sizeof(float), cudaMemcpyDeviceToHost));
+    for (int i = 0; i < chosen_experts * batch_size; i++) {
+      if (i%2 == 0) cpu_topk_gate_pred_ptr[i] = 0.5;
+      else cpu_topk_gate_pred_ptr[i] = 0.1;
+    }
+    checkCUDA(cudaMemcpy((float *)topk_gate_pred_ptr, cpu_topk_gate_pred_ptr, chosen_experts * batch_size * sizeof(float), cudaMemcpyHostToDevice));
+    free(cpu_topk_gate_pred_ptr);
+
+
+    /* ----------------Expert Weights--------------*/
+    float *cpu_experts_1 = new float[data_dim * out_dim];
+    float *cpu_experts_2 = new float[data_dim * out_dim];
+    checkCUDA(cudaMemcpy(cpu_experts_1, weights_ptrs[0], data_dim * out_dim * sizeof(float), cudaMemcpyDeviceToHost));
+    checkCUDA(cudaMemcpy(cpu_experts_2, weights_ptrs[2], data_dim * out_dim * sizeof(float), cudaMemcpyDeviceToHost));
+    cpu_sum = 0;
+    for (int i = 0; i < data_dim * out_dim; i++) {
+      cpu_experts_1[i] = float(i)/float(data_dim * out_dim);
+      cpu_sum += cpu_experts_1[i];
+    }
+    std::cout << "[CPU] Experts 0 weights sum = " << cpu_sum << std::endl;
+
+    for (int i = 0; i < data_dim * out_dim; i++) {
+      cpu_experts_2[i] = float(data_dim * out_dim - i)/float(data_dim * out_dim);
+      cpu_sum += cpu_experts_2[i];
+    }
+    std::cout << "[CPU] Experts 1 weights sum = " << cpu_sum << std::endl;
+
+    for (int i = 0; i < num_experts; i++) {
+      if (i%2 == 0)
+        checkCUDA(cudaMemcpy((float *)weights_ptrs[i * (1 + use_bias)], cpu_experts_1, data_dim * out_dim * sizeof(float), cudaMemcpyHostToDevice));
+      else
+        checkCUDA(cudaMemcpy((float *)weights_ptrs[i * (1 + use_bias)], cpu_experts_2, data_dim * out_dim * sizeof(float), cudaMemcpyHostToDevice));
+    }
+    free(cpu_experts_1);
+    free(cpu_experts_2);
+
+
+    /* ----------------Expert Bias--------------*/
+    if (use_bias) {
+      float *bias_experts_1 = new float[out_dim];
+      checkCUDA(cudaMemcpy(bias_experts_1, weights_ptrs[1], out_dim * sizeof(float), cudaMemcpyDeviceToHost));
+      cpu_sum = 0;
+      for (int i = 0; i < out_dim; i++) {
+        cpu_sum += bias_experts_1[i];
+        // bias_experts_1[i] = 1.0f;
+      }
+      std::cout << "[CPU] Bias 0 sum = " << cpu_sum << std::endl;
+      for (int i = 0; i < num_experts; i++) {
+        checkCUDA(cudaMemcpy((float *)weights_ptrs[i*(1+use_bias) + 1], bias_experts_1, out_dim * sizeof(float), cudaMemcpyHostToDevice));
+      }
+      free(bias_experts_1);
+    }
+  } 
+
   Experts::forward_kernel_wrapper(m,
                                   input_ptr,
                                   indices_ptr,
@@ -848,6 +946,42 @@ void Experts::inference_task(Task const *task,
                                   chosen_experts,
                                   batch_size,
                                   out_dim);
+
+  if (DEBUG_MODE) {
+    /* ----------------Output after computation--------------*/
+    float *cpu_output_ptr = new float[batch_size * out_dim];
+    float cpu_sum = 0;
+    checkCUDA(cudaMemcpy(cpu_output_ptr, output_ptr, batch_size * out_dim * sizeof(float), cudaMemcpyDeviceToHost));
+    for (int j = 0; j < batch_size * out_dim; j += out_dim) {
+      cpu_sum = 0;
+      for (int i = 0; i < out_dim; i++) {
+        cpu_sum += cpu_output_ptr[j + i];
+      }
+      // if ((j/out_dim) < 50) std::cout << "[CPU] output " << (j/out_dim) << " sum = " << cpu_sum << std::endl;
+      if (cpu_sum > 0.0f) {
+        std::cout << "[CPU] output " << (j/out_dim) << " sum = " << cpu_sum << std::endl;
+      }
+    }
+    std::cout << "[CPU] output 0's 10th element = " << cpu_output_ptr[10] << std::endl;
+    std::cout << "[CPU] output 0's 99th element = " << cpu_output_ptr[99] << std::endl;
+    std::cout << "[CPU] output 0's 123th element = " << cpu_output_ptr[123] << std::endl;
+
+     /* refrence output */
+     /*
+      * Input token sum = 391.5
+      * Expert 0 weights sum = 307327.5
+      * Expert 1 weights sum = 307328.47
+      *  ------------------
+      * experts 0's reulst = 153533.1
+      * experts 1's reulst = 153402.9
+      * Aggreated Result = 92106.836
+      * 10th element = 41.28053
+      * 99th element = 59.057823
+      * 123th element = 63.8517
+     */
+
+     free(cpu_output_ptr);
+  }
 }
 
 void Experts::forward_task(Task const *task,
