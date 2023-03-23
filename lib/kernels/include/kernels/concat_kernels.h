@@ -7,9 +7,9 @@
 
 namespace FlexFlow {
 
-class ConcatMeta : public OpMeta {
+class ConcatPerDeviceState : public PerDeviceOpState {
 public:
-  ConcatMeta(FFHandler handle) : OpMeta(handle){};
+  ConcatPerDeviceState(FFHandler handle) : PerDeviceOpState(handle) {};
   int legion_axis;
   char op_name[MAX_OPNAME];
 };
@@ -17,34 +17,22 @@ public:
 namespace Kernels {
 namespace Concat {
 
-void init_meta(ConcatMeta *meta, int legion_axis);
-void forward_kernel_wrapper(ConcatMeta const *m,
-                            GenericTensorAccessorW const &output,
-                            GenericTensorAccessorR const *inputs,
-                            int num_inputs,
-                            int axis);
-void backward_kernel_wrapper(ConcatMeta const *m,
-                             GenericTensorAccessorR const &output_grad,
-                             GenericTensorAccessorW const *input_grads,
-                             int num_inputs,
-                             int axis);
+void init_meta(ConcatPerDeviceState *meta, int legion_axis);
 
-namespace Internal {
-
-void forward_kernel(GenericTensorAccessorW const &output,
+void forward_kernel(ffStream_t stream,
+                    ConcatPerDeviceState const *m,
+                    GenericTensorAccessorW const &output,
                     GenericTensorAccessorR const *inputs,
-                    int num_inputs,
-                    int axis,
-                    ffStream_t stream);
+                    int num_inputs);
 
-void backward_kernel(GenericTensorAccessorR const &output_grad,
+void backward_kernel(ffStream_t stream, 
+                     ConcatPerDeviceState const *m, 
+                     GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorW const *input_grads,
-                     int num_inputs,
-                     int axis,
-                     ffStream_t stream);
-} // namespace Internal
-} // namespace Concat
-} // namespace Kernels
-} // namespace FlexFlow
+                     int num_inputs);
 
-#endif // _FLEXFLOW_OPS_KERNELS_CONCAT_KERNELS_H
+}
+}
+}
+
+#endif 

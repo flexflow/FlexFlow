@@ -13,8 +13,18 @@ public:
   ArrayShape(size_t *dims, size_t num_dims);
   ArrayShape(std::vector<std::size_t> const &);
 
+  /**
+   * @brief Alias of ArrayShape::num_elements for compatibility with Legion::Domain
+   */
   std::size_t get_volume() const;
+
+  /**
+   * @brief Alias of ArrayShape::num_dims for compatibility with Legion::Domain
+   */
   std::size_t get_dim() const;
+
+  std::size_t num_elements() const;
+  std::size_t num_dims() const;
 
   std::size_t operator[](std::size_t) const;
 
