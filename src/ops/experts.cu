@@ -403,68 +403,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
              num_experts_per_block * (1 + use_bias) * sizeof(float *),
              cudaMemcpyHostToDevice);
 
-  // int *cpu_indices = (int *)malloc(num_tokens * num_chosen_experts * sizeof(int));
-  // checkCUDA(cudaMemcpy(cpu_indices,
-  //                      indices,
-  //                      num_tokens * num_chosen_experts * sizeof(int),
-  //                      cudaMemcpyDeviceToHost));
-  // for (int i = 0; i < 10 * num_chosen_experts; i++) {
-  //   // std::cout << "indices[" << i << "] = " << cpu_indices[i] << std::endl;
-  //   assert(cpu_indices[i] >= 0);
-  //   assert(cpu_indices[i] < num_experts_per_block);
-  // }
-  // free(cpu_indices);
-
-  // float *cpu_input = (float *)malloc(data_dim * sizeof(float));
-  // checkCUDA(cudaMemcpy(cpu_input,
-  //                      input,
-  //                      data_dim * sizeof(float),
-  //                      cudaMemcpyDeviceToHost));
-  // float sum = 0.0f;
-  // for (int i = 0; i < data_dim; i++) {
-  //   sum += cpu_input[i];
-  // }
-  // free(cpu_input);
-  // std::cout << "[Kernel] sum of input = " << sum << std::endl;
-
-  // float *cpu_topk_gate_preds =
-  //     (float *)malloc(num_tokens * num_chosen_experts * sizeof(float));
-  // checkCUDA(cudaMemcpy(cpu_topk_gate_preds,
-  //                      topk_gate_preds,
-  //                      num_tokens * num_chosen_experts * sizeof(float),
-  //                      cudaMemcpyDeviceToHost));
-  // for (int i = 0; i < 10 * num_chosen_experts; i++) {
-  //   // std::cout << "topk_gate_preds[" << i << "] = " << cpu_topk_gate_preds[i]
-  //   //           << std::endl;
-  //   assert(cpu_topk_gate_preds[i] >= 0.0f);
-  //   assert(cpu_topk_gate_preds[i] <= 1.0f);
-  // }
-
-  // float *cpu_output_before = (float *)malloc(out_dim * sizeof(float));
-  // checkCUDA(cudaMemcpy(cpu_output_before,
-  //                      output,
-  //                      out_dim * sizeof(float),
-  //                      cudaMemcpyDeviceToHost));
-  // sum = 0.0f;
-  // for (int i = 0; i < out_dim; i++) {
-  //   sum += cpu_output_before[i];
-  // }
-  // free(cpu_output_before);
-  // std::cout << "[Kernel] sum of output before Gemm = " << sum << std::endl;
-
-  // float *cpu_bias_1 = (float *)malloc(out_dim * sizeof(float));
-  // checkCUDA(cudaMemcpy(cpu_bias_1,
-  //                      weights[1],
-  //                      out_dim * sizeof(float),
-  //                      cudaMemcpyDeviceToHost));
-  // sum = 0.0f;
-  // for (int i = 0; i < out_dim; i++) {
-  //   sum += cpu_bias_1[i];
-  // }
-  // free(cpu_bias_1);
-  // std::cout << "[Kernel] sum of bias_1 = " << sum << std::endl;
-    
-
   int num_indices = num_tokens * num_chosen_experts;
   // values below are set by Thrust in the experts_forward_thrust_wrapper
   // function
@@ -553,17 +491,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                                m->dev_batch_outputs,
                                                m->coefficient_idx_array,
                                                m->output_idx_array);
-  // float *cpu_output = (float *)malloc(out_dim * sizeof(float));
-  // checkCUDA(cudaMemcpy(cpu_output,
-  //                      output,
-  //                      out_dim * sizeof(float),
-  //                      cudaMemcpyDeviceToHost));
-  // sum = 0.0f;
-  // for (int i = 0; i < out_dim; i++) {
-  //   sum += cpu_output[i];
-  // }
-  // free(cpu_output);
-  // std::cout << "[Kernel] sum of output = " << sum << std::endl;
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
