@@ -874,14 +874,27 @@ void IncMultiHeadSelfAttention::inference_task(
                                         num_heads,
                                         BatchConfig::MAX_NUM_REQUESTS},
                                        torch::kFloat32);
+  torch::Tensor V_t = torch::from_blob(vcache,
+                                       {m->vProjSize,
+                                        BatchConfig::MAX_NUM_TOKENS,
+                                        num_heads,
+                                        BatchConfig::MAX_NUM_REQUESTS},
+                                       torch::kFloat32);
   torch::Tensor qkt_products[bc->num_active_requests()];
   torch::Tensor qkt_softmax[bc->num_active_requests()];
+  torch::Tensor attn_heads[bc->num_active_requests()];
   float *qt_prods_cpu = download_tensor<float>(
       m->qt_prods,
       BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads);
+  assert(qt_prods_cpu != nullptr);
   float *qt_prods_softmax_cpu = download_tensor<float>(
       m->qt_prods_softmax,
       BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads);
+  assert(qt_prods_softmax_cpu != nullptr);
+  float *attn_heads_cpu = download_tensor<float>(
+      m->attn_heads, BatchConfig::MAX_NUM_TOKENS * m->num_heads * m->vProjSize);
+  assert(attn_heads_cpu != nullptr);
+
   size_t qt_prods_cpu_offset = 0;
   for (size_t r = 0; r < bc->num_active_requests(); r++) {
     size_t num_new_tokens = r_num_tokens[r];
@@ -945,7 +958,6 @@ void IncMultiHeadSelfAttention::inference_task(
                       -INFINITY)
               .triu()
               .fill_diagonal_(0);
-      qkt_softmax[r] = torch::softmax(qkt_products[r], -2);
     }
     /* std::cout << "C++:" <<std::endl;
     for (int h=0; h<num_heads; h++) {
@@ -956,7 +968,6 @@ void IncMultiHeadSelfAttention::inference_task(
       std::cout << qt_prods_torch.index({Slice(), Slice(), h}) << std::endl;
     }
     //
-
     std::cout << "C++:" <<std::endl;
     for (int h=0; h<num_heads; h++) {
       std::cout << qkt_softmax[r].index({Slice(), Slice(), h}) << std::endl;
@@ -966,14 +977,52 @@ void IncMultiHeadSelfAttention::inference_task(
       std::cout << qt_prods_softmax_torch.index({Slice(), Slice(), h}) <<
     std::endl;
     } */
-    assert(torch::allclose(qt_prods_torch, qkt_products[r]));
-    assert(torch::allclose(qt_prods_softmax_torch, qkt_softmax[r]));
-
     // std::cout << "C++ tril:" <<std::endl;
     // for (int h=0; h<num_heads; h++) {
     //   std::cout << qkt_products[r].tril().index({Slice(), Slice(), h}) <<
     //   std::endl;
     // }
+    assert(torch::allclose(qt_prods_torch, qkt_products[r]));
+    qkt_softmax[r] = torch::softmax(qkt_products[r], -2);
+    assert(torch::allclose(qt_prods_softmax_torch, qkt_softmax[r]));
+
+    assert(qkt_softmax[r].sizes()[0] == num_new_tokens);
+    assert(qkt_softmax[r].sizes()[1] == num_tokens_received_so_far);
+    assert(qkt_softmax[r].sizes()[2] == m->num_heads);
+    assert(
+        V_t.index({Slice(), Slice(0, num_tokens_received_so_far), Slice(), rid})
+            .sizes()[0] == m->vProjSize);
+    assert(
+        V_t.index({Slice(), Slice(0, num_tokens_received_so_far), Slice(), rid})
+            .sizes()[1] == num_tokens_received_so_far);
+    assert(
+        V_t.index({Slice(), Slice(0, num_tokens_received_so_far), Slice(), rid})
+            .sizes()[2] == m->num_heads);
+    attn_heads[r] = torch::einsum(
+        "ijk,ljk->ilk",
+        {qkt_softmax[r],
+         V_t.index(
+             {Slice(), Slice(0, num_tokens_received_so_far), Slice(), rid})});
+    assert(attn_heads[r].sizes()[0] == num_new_tokens);
+    assert(attn_heads[r].sizes()[1] == m->vProjSize);
+    assert(attn_heads[r].sizes()[2] == m->num_heads);
+
+    float converted_attn_heads_cpu[num_new_tokens][m->vProjSize][m->num_heads] =
+        {0};
+    for (int i = 0; i < num_new_tokens * m->vProjSize * m->num_heads; i++) {
+      int token_ix = i % num_new_tokens;
+      int vproj_idx = (i / num_new_tokens) % m->vProjSize;
+      int head_idx = i / (num_new_tokens * m->vProjSize);
+      assert(token_ix < num_new_tokens && vproj_idx < m->vProjSize &&
+             head_idx < m->num_heads);
+      converted_attn_heads_cpu[token_ix][vproj_idx][head_idx] =
+          attn_heads_cpu[r_first_idx[r] * m->vProjSize * m->num_heads + i];
+    }
+    torch::Tensor converted_attn_heads_torch =
+        torch::from_blob(converted_attn_heads_cpu,
+                         {(int64_t)num_new_tokens, m->vProjSize, m->num_heads},
+                         torch::kFloat32);
+    assert(torch::allclose(converted_attn_heads_torch, attn_heads[r]));
 
     qt_prods_cpu_offset +=
         num_new_tokens * num_tokens_received_so_far * num_heads;
@@ -987,6 +1036,7 @@ void IncMultiHeadSelfAttention::inference_task(
   checkCUDA(cudaFreeHost(valueCache_cpu));
   checkCUDA(cudaFreeHost(qt_prods_cpu));
   checkCUDA(cudaFreeHost(qt_prods_softmax_cpu));
+  checkCUDA(cudaFreeHost(attn_heads_cpu));
   assert(false && "All good if you see this assert failure! :)");
 }
 
