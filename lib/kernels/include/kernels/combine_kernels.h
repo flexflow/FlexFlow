@@ -2,26 +2,29 @@
 #define _FLEXFLOW_OPS_KERNELS_COMBINE_KERNELS_H
 
 #include "kernels/device.h"
-#include "kernels/op_meta.h"
+#include "kernels/per_device_op_state.h"
+#include "kernels/accessor.h"
 
 namespace FlexFlow {
 
-class CombineMeta : public OpMeta {
+class CombinePerDeviceState : public PerDeviceOpState {
 public:
-  CombineMeta(FFHandler handle);
+  CombinePerDeviceState(FFHandler handle);
   DataType data_type;
 };
 
 namespace Kernels {
 namespace Combine {
 
-template <typename T>
-void forward_kernel(T const *input_ptr, T *output_ptr, size_t num_elements);
+void forward_kernel(ffStream_t stream,
+                    CombinePerDeviceState const *m,
+                    GenericTensorAccessorR const &input,
+                    GenericTensorAccessorW const &output);
 
-template <typename T>
-void backward_kernel(T const *output_grad_ptr,
-                     T *input_grad_ptr,
-                     size_t num_elements);
+void backward_kernel(ffStream_t stream,
+                     CombinePerDeviceState const *m,
+                     GenericTensorAccessorR const &output_grad,
+                     GenericTensorAccessorW const &input_grad);
 
 } // namespace Combine
 } // namespace Kernels

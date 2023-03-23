@@ -23,6 +23,22 @@ void dispatch(DataType dt, Args&&... args) {
   }
 }
 
+template <template <DataType> typename F>
+struct DataTypeDispatch1 {
+  template <DataType DT>
+  struct Type1Dispatch {
+    template <typename ...Args>
+    void operator()(Args... args) const { 
+      F<DT>{}(std::forward<Args>(args)...);
+    }
+  };
+  
+  template <typename ...Args>
+  void operator()(DataType data_type, Args... args) {
+    dispatch<Type1Dispatch>(data_type, std::forward<Args>(args)...);
+  }
+};
+
 template <template <DataType, DataType> typename F>
 struct DataTypeDispatch2 {
   template <DataType IT>

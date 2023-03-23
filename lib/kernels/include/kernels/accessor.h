@@ -34,6 +34,10 @@ typename data_type_enum_to_class<DT>::type cast_to(T t) {
   return (typename data_type_enum_to_class<DT>::type)t;
 }
 
+template <DataType DT> 
+using real_type = typename data_type_enum_to_class<DT>::type;
+
+size_t size_of(DataType);
 class GenericTensorAccessorW {
 public:
   GenericTensorAccessorW();
