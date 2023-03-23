@@ -201,26 +201,19 @@ void inference_kernel2(IncMultiHeadSelfAttentionMeta const *m,
   }
 }
 
-__global__ void fill_above_diagonal_square(float *matrix,
-                                           int x_dim,
-                                           int num_heads,
-                                           int entries_above_diagonal,
-                                           float value) {
+__global__ void fill_entries_above_diagonal(float *matrix,
+                                            size_t num_rows,
+                                            size_t num_cols,
+                                            size_t num_heads,
+                                            size_t entries_above_diagonal,
+                                            float value) {
   CUDA_KERNEL_LOOP(i, entries_above_diagonal * num_heads) {
-    int head_idx = i / entries_above_diagonal;
-    int y = (-1 + sqrt(8 * (float)i + 1)) / 2 + 1;
-    int x = i - y * (y + 1) / 2;
-    matrix[head_idx * x_dim * x_dim + x_dim * y + x] = value;
-  }
-}
-
-__global__ void fill_last_entry_vector(float *matrix,
-                                       int y_dim,
-                                       int num_heads,
-                                       float value) {
-  // Fill last entry of each of the num_heads contiguous arrays of size y_dim
-  CUDA_KERNEL_LOOP(i, num_heads) {
-    matrix[i * y_dim + (y_dim - 1)] = value;
+    size_t head_idx = i / entries_above_diagonal;
+    size_t entry_idx = i % entries_above_diagonal;
+    size_t y = (-1 + sqrt(8 * (float)entry_idx + 1)) / 2;
+    size_t x = entry_idx - y * (y + 1) / 2;
+    y += (num_cols - num_rows) + 1;
+    matrix[head_idx * num_rows * num_cols + num_cols * y + x] = value;
   }
 }
 
@@ -299,32 +292,21 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
-    // Fill all elements above diagonal in QT prods with -inf (FLT_MIN) to force
-    // causal attention assume that number of rows (num new tokens) is either:
-    // -> 1, in incremental phase, where each request has one more token
-    // -> equal to number of columns (total number of tokens received so far) in
-    // initialization phase
-    assert(num_new_tokens == 1 || num_new_tokens == total_tokens);
-
-    if (num_new_tokens == 1) {
-      int parallelism = m->num_heads;
-      fill_last_entry_vector<<<GET_BLOCKS(parallelism),
-                               min(CUDA_NUM_THREADS, parallelism),
-                               0,
-                               stream>>>(
-          (float *)C, total_tokens, m->num_heads, FLT_MIN);
-    } else {
-      int entries_above_diagonal = total_tokens * (total_tokens - 1) / 2;
-      int parallelism = m->num_heads * entries_above_diagonal;
-      fill_above_diagonal_square<<<GET_BLOCKS(parallelism),
-                                   min(CUDA_NUM_THREADS, parallelism),
-                                   0,
-                                   stream>>>((float *)C,
-                                             total_tokens,
-                                             m->num_heads,
-                                             entries_above_diagonal,
-                                             FLT_MIN);
-    }
+    // Fill all elements above diagonal in QT prods with -inf to force
+    // causal attention.
+    assert(num_new_tokens <= total_tokens);
+    size_t entries_above_diagonal = num_new_tokens * (num_new_tokens - 1) / 2;
+    size_t parallelism = m->num_heads * entries_above_diagonal;
+    fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
+                                  min((size_t)CUDA_NUM_THREADS, parallelism),
+                                  0,
+                                  stream>>>(
+        (float *)C,
+        num_new_tokens,
+        total_tokens,
+        m->num_heads,
+        entries_above_diagonal,
+        std::numeric_limits<float>::lowest());
 
     // Compute Softmax(QK^T/sqrt(d_k))
     cudnnTensorDescriptor_t qt_tensor;
@@ -335,16 +317,16 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
     void *C_softmax = (void *)(m->qt_prods_softmax +
                                m->num_heads * tokens_prev_requests_squares);
     for (int attn_index = 0; attn_index < m->num_heads; attn_index++) {
-      checkCUDNN(
-          cudnnSoftmaxForward(m->handle.dnn,
-                              CUDNN_SOFTMAX_ACCURATE,
-                              CUDNN_SOFTMAX_MODE_CHANNEL,
-                              &alpha,
-                              qt_tensor,
-                              (void *)((float *)C + attn_index * strideC),
-                              &beta,
-                              qt_tensor,
-                              (void *)((float *)C + attn_index * strideC)));
+      checkCUDNN(cudnnSoftmaxForward(
+          m->handle.dnn,
+          CUDNN_SOFTMAX_ACCURATE,
+          CUDNN_SOFTMAX_MODE_CHANNEL,
+          &alpha,
+          qt_tensor,
+          (void *)((float *)C + attn_index * strideC),
+          &beta,
+          qt_tensor,
+          (void *)((float *)C_softmax + attn_index * strideC)));
     }
 
     // Matmul softmax(QK^T/sqrt(d_k)) by V

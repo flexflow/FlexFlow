@@ -874,7 +874,11 @@ void IncMultiHeadSelfAttention::inference_task(
                                         num_heads,
                                         BatchConfig::MAX_NUM_REQUESTS},
                                        torch::kFloat32);
-
+  torch::Tensor qkt_products[bc->num_active_requests()];
+  float *qt_prods_cpu = download_tensor<float>(
+      m->qt_prods,
+      BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads);
+  size_t qt_prods_cpu_offset = 0;
   for (size_t r = 0; r < bc->num_active_requests(); r++) {
     size_t num_new_tokens = r_num_tokens[r];
     assert(num_new_tokens == bc->num_processing_tokens[r]);
@@ -891,11 +895,63 @@ void IncMultiHeadSelfAttention::inference_task(
         (int64_t)(bc->token_last_available_idx[r] + 1);
     assert(num_tokens_received_so_far >= (int64_t)num_new_tokens);
     int64_t rid = (int64_t)(req_idxs[r]);
-    torch::Tensor qkt_product = torch::einsum(
-        "ijk,ilk->jlk",
-        {Q_req,
-         K_t.index(
-             {Slice(), Slice(0, num_tokens_received_so_far), Slice(), rid})});
+    qkt_products[r] =
+        torch::einsum("ijk,ilk->jlk",
+                      {Q_req,
+                       K_t.index({Slice(),
+                                  Slice(0, num_tokens_received_so_far),
+                                  Slice(),
+                                  rid})}) *
+        (1.0f / sqrt(m->kProjSize));
+    float converted_qt_prod[num_new_tokens][num_tokens_received_so_far]
+                           [num_heads] = {0};
+    for (size_t i = 0;
+         i < num_new_tokens * num_tokens_received_so_far * num_heads;
+         i++) {
+      size_t new_t_idx = i % num_new_tokens;
+      size_t all_t_idx = (i / num_new_tokens) % num_tokens_received_so_far;
+      size_t head_idx = i / (num_new_tokens * num_tokens_received_so_far);
+      assert(new_t_idx < num_new_tokens &&
+             all_t_idx < num_tokens_received_so_far && head_idx < num_heads);
+      converted_qt_prod[new_t_idx][all_t_idx][head_idx] =
+          qt_prods_cpu[i + qt_prods_cpu_offset];
+    }
+    torch::Tensor qt_prods_torch = torch::from_blob(
+        converted_qt_prod,
+        {(int64_t)num_new_tokens, num_tokens_received_so_far, num_heads},
+        torch::kFloat32);
+
+    for (int h = 0; h < num_heads; h++) {
+      qkt_products[r].index(
+          {Slice(), Slice(num_tokens_received_so_far - num_new_tokens), h}) =
+          qkt_products[r]
+              .index({Slice(),
+                      Slice(num_tokens_received_so_far - num_new_tokens),
+                      h})
+              .tril() +
+          torch::full({(int64_t)num_new_tokens, (int64_t)num_new_tokens},
+                      std::numeric_limits<float>::lowest())
+              .triu()
+              .fill_diagonal_(0);
+    }
+    assert(torch::allclose(qt_prods_torch, qkt_products[r]));
+
+    // std::cout << "C++ tril:" <<std::endl;
+    // for (int h=0; h<num_heads; h++) {
+    //   std::cout << qkt_products[r].tril().index({Slice(), Slice(), h}) <<
+    //   std::endl;
+    // }
+    /* std::cout << "C++:" <<std::endl;
+    for (int h=0; h<num_heads; h++) {
+      std::cout << qkt_products[r].index({Slice(), Slice(), h}) << std::endl;
+    }
+    std::cout << "CUDA:" <<std::endl;
+    for (int h=0; h<num_heads; h++) {
+      std::cout << qt_prods_torch.index({Slice(), Slice(), h}) << std::endl;
+    } */
+
+    qt_prods_cpu_offset +=
+        num_new_tokens * num_tokens_received_so_far * num_heads;
   }
 
   checkCUDA(cudaFreeHost(input_cpu));
