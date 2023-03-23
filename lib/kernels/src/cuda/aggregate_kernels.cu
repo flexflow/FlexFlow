@@ -14,7 +14,7 @@
  */
 
 #include "kernels/aggregate_kernels.h"
-#include "utils/cuda_helper.h"
+#include "kernels/cuda_helper.h"
 #include "aggregate_kernels.h"
 
 namespace FlexFlow {

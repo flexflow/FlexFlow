@@ -34,3 +34,9 @@ elseif (FF_GPU_BACKEND STREQUAL "hip_rocm")
 endif()
 
 target_compile_definitions(${project_target} PUBLIC MAX_TENSOR_DIM)
+
+set_target_properties(
+  ${project_target} 
+  PROPERTIES 
+  CUDA_STANDARD 11
+)

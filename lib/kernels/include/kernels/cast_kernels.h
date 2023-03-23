@@ -2,42 +2,33 @@
 #define _FLEXFLOW_OPS_KERNELS_CAST_KERNELS_H
 
 #include "kernels/device.h"
-#include "kernels/op_meta.h"
+#include "kernels/per_device_op_state.h"
+#include "op-attrs/ffconst.h"
+#include "kernels/accessor.h"
 
 namespace FlexFlow {
 
-class CastMeta : public OpMeta {
+class CastPerDeviceState : public PerDeviceOpState {
 public:
-  CastMeta(FFHandler handle);
+  CastPerDeviceState(FFHandler handle);
   DataType input_data_type, output_data_type;
 };
 
 namespace Kernels {
 namespace Cast {
-template <typename IDT, typename ODT>
-void forward_kernel_wrapper(CastMeta const *m,
-                            IDT const *input_ptr,
-                            ODT *output_ptr,
-                            size_t volume);
 
-template <typename IDT, typename ODT>
-void backward_kernel_wrapper(IDT const *src_ptr, ODT *dst_ptr, size_t volume);
+void forward_kernel(ffStream_t stream,
+                    CastPerDeviceState const *,
+                    GenericTensorAccessorR const &input,
+                    GenericTensorAccessorW const &output);
 
-namespace Internal {
+void backward_kernel(ffStream_t stream,
+                     CastPerDeviceState const *,
+                     GenericTensorAccessorR const &input,
+                     GenericTensorAccessorW const &output);
+        
+}
+}
+}
 
-template <typename IDT, typename ODT>
-void forward_kernel(IDT const *input_ptr,
-                    ODT *output_ptr,
-                    size_t volume,
-                    ffStream_t stream);
-template <typename IDT, typename ODT>
-void backward_kernel(IDT const *src_ptr,
-                     ODT *dst_ptr,
-                     size_t volume,
-                     ffStream_t stream);
-} // namespace Internal
-} // namespace Cast
-} // namespace Kernels
-} // namespace FlexFlow
-
-#endif // _FLEXFLOW_OPS_KERNELS_CAST_KERNELS_H
+#endif
