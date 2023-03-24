@@ -14,11 +14,14 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -UNDEBUG")
 
+option(INFERENCE_TESTS "Run inference tests" OFF)
 set(LIBTORCH_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../libtorch" CACHE STRING "LibTorch Path")
-find_package(Torch REQUIRED PATHS ${LIBTORCH_PATH} NO_DEFAULT_PATH)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
-message(STATUS "LIBTORCH_PATH: ${LIBTORCH_PATH}")
-message(STATUS "TORCH_LIBRARIES: ${TORCH_LIBRARIES}")
+if (INFERENCE_TESTS)
+  find_package(Torch REQUIRED PATHS ${LIBTORCH_PATH} NO_DEFAULT_PATH)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+  message(STATUS "LIBTORCH_PATH: ${LIBTORCH_PATH}")
+  message(STATUS "TORCH_LIBRARIES: ${TORCH_LIBRARIES}")
+endif()
 
 # Set a default build type if none was specified
 set(default_build_type "Debug")
@@ -139,6 +142,14 @@ if(FF_USE_NCCL)
     -DFF_USE_NCCL)
   list(APPEND FF_NVCC_FLAGS
     -DFF_USE_NCCL)
+endif()
+
+# Inference tests
+if(INFERENCE_TESTS)
+  list(APPEND FF_CC_FLAGS
+    -DINFERENCE_TESTS)
+  list(APPEND FF_NVCC_FLAGS
+    -DINFERENCE_TESTS)
 endif()
 
 # Legion
@@ -327,8 +338,10 @@ if(FF_USE_NCCL)
   add_dependencies(flexflow ${NCCL_NAME})
 endif()
 
-target_link_libraries(flexflow "${TORCH_LIBRARIES}")
-set_property(TARGET flexflow PROPERTY CXX_STANDARD 14)
+if (INFERENCE_TESTS)
+  target_link_libraries(flexflow "${TORCH_LIBRARIES}")
+  set_property(TARGET flexflow PROPERTY CXX_STANDARD 14)
+endif()
 
 # build binary
 option(FF_BUILD_RESNET "build resnet example" OFF)

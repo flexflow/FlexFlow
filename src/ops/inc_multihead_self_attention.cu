@@ -479,7 +479,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
   inference_kernel3(m, bc, output_ptr, stream);
-  //cudaDeviceSynchronize();
+  // cudaDeviceSynchronize();
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);

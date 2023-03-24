@@ -15,8 +15,9 @@
 # set build type
 BUILD_TYPE=${BUILD_TYPE:-Release}
 
-LIBTORCH_PATH=${LIBTORCH_PATH:-"../../libtorch"}
-if [[ ! -d "$LIBTORCH_PATH" ]]; then
+INFERENCE_TESTS=${INFERENCE_TESTS:-OFF}
+LIBTORCH_PATH=${LIBTORCH_PATH:-"$(realpath ../..)/libtorch"}
+if [[ "$INFERENCE_TESTS" == "ON" && ! -d "$LIBTORCH_PATH" ]]; then
     cwd="$(pwd)"
     cd ../..
     wget https://download.pytorch.org/libtorch/nightly/cpu/libtorch-shared-with-deps-latest.zip
