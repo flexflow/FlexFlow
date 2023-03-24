@@ -22,6 +22,23 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Memory;
 
+__global__ void build_w_out_tensor(float const *weight_ptr,
+                                   float *contiguous_weight_ptr,
+                                   int vProjSize,
+                                   int oProjSize,
+                                   int num_heads,
+                                   int qkv_weight_block_size) {
+  CUDA_KERNEL_LOOP(i, vProjSize * oProjSize * num_heads) {
+    int row_idx = i % vProjSize;
+    int col_idx = (i / vProjSize) % oProjSize;
+    int head_idx = i / (vProjSize * oProjSize);
+    contiguous_weight_ptr[col_idx * vProjSize * num_heads +
+                          head_idx * vProjSize + row_idx] =
+        weight_ptr[head_idx * (qkv_weight_block_size + vProjSize * oProjSize) +
+                   qkv_weight_block_size + col_idx * vProjSize + row_idx];
+  }
+}
+
 void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
                        BatchConfig const *bc,
                        float const *input_ptr,
@@ -396,16 +413,16 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
     // Project to output, save result directly on output tensor
     alpha = 1.0f, beta = 0.0f;
 
-    m_ = num_new_tokens;
-    n = m->oProjSize;
+    m_ = m->oProjSize;
     k = m->vProjSize * m->num_heads;
-    lda = m_, ldb = n, ldc = m_;
-    A = (void const *)C;
-    B = (void const *)m->W_out_contiguous;
+    n = num_new_tokens;
+    lda = k, ldb = n, ldc = m_;
+    A = (void const *)m->W_out_contiguous;
+    B = (void const *)C;
     C = (void *)(output_ptr + tokens_previous_requests * m->oProjSize);
 
     checkCUDA(cublasGemmEx(m->handle.blas,
-                           CUBLAS_OP_N,
+                           CUBLAS_OP_T,
                            CUBLAS_OP_T,
                            m_,
                            n,
@@ -551,16 +568,17 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     qt_prods_softmax = (float *)(qt_prods + qt_prod_size);
     attn_heads = (float *)qt_prods_softmax + qt_prod_size;
     W_out_contiguous = (float *)attn_heads + attn_heads_size;
-    for (int h_idx = 0; h_idx < num_heads; h_idx++) {
-      void *dest = (void *)(W_out_contiguous + W_out_block_size * h_idx);
-      void const *src = (void const *)(weight_ptr + h_idx * weights_params +
-                                       (qSize * qProjSize + kSize * kProjSize +
-                                        vSize * vProjSize));
-      checkCUDA(cudaMemcpy(dest,
-                           src,
-                           sizeof(float) * W_out_block_size,
-                           cudaMemcpyDeviceToDevice));
-    }
+    int parallelism = vProjSize * oProjSize * num_heads;
+    build_w_out_tensor<<<GET_BLOCKS(parallelism),
+                         min(CUDA_NUM_THREADS, parallelism),
+                         0,
+                         stream>>>(
+        weight_ptr,
+        W_out_contiguous,
+        vProjSize,
+        oProjSize,
+        num_heads,
+        (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize));
   }
 }
 

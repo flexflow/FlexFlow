@@ -646,6 +646,18 @@ void IncMultiHeadSelfAttention::inference_task(
   std::cout << "Torch input size: " << torch_input.sizes() << std::endl;
   std::cout << "Number of active tokens: " << bc->num_active_tokens()
             << std::endl;
+  float output_cuda[m->oProjSize][effective_batch_size] = {0};
+  for (int i = 0; i < m->oProjSize * effective_batch_size; i++) {
+    int row_idx = i % m->oProjSize;
+    int col_idx = i / m->oProjSize;
+    assert(row_idx < m->oProjSize && col_idx < effective_batch_size);
+    output_cuda[row_idx][col_idx] = output_cpu[i];
+  }
+  torch::Tensor torch_out_cuda =
+      torch::from_blob(output_cuda,
+                       {m->oProjSize, (int64_t)effective_batch_size},
+                       torch::kFloat32);
+
   // std::cout << "torch_w_qkv:" << std::endl << torch_w_qkv << std::endl;
   torch::Tensor qkv_projs = torch::einsum(
       "ijkl,im->jmkl",
@@ -895,6 +907,40 @@ void IncMultiHeadSelfAttention::inference_task(
       m->attn_heads, BatchConfig::MAX_NUM_TOKENS * m->num_heads * m->vProjSize);
   assert(attn_heads_cpu != nullptr);
 
+  float w_out[m->vProjSize][m->num_heads][m->oProjSize] = {0};
+  for (int h = 0; h < num_heads; h++) {
+    for (int v = 0; v < m->vProjSize; v++) {
+      for (int o = 0; o < m->oProjSize; o++) {
+        w_out[v][h][o] =
+            weight_cpu[all_weight_params * h + 3 * m->qProjSize * m->qSize +
+                       m->vProjSize * o + v];
+      }
+    }
+  }
+  // convert weights to torch tensor
+  torch::Tensor torch_w_out = torch::from_blob(
+      w_out, {m->vProjSize, m->num_heads, m->oProjSize}, torch::kFloat32);
+
+  float *w_out_cuda = download_tensor<float>(
+      m->W_out_contiguous, m->vProjSize * m->oProjSize * m->num_heads);
+  float converted_wout_tensor[m->vProjSize][m->num_heads][m->oProjSize] = {0};
+  for (int i = 0; i < m->vProjSize * m->num_heads * m->oProjSize; i++) {
+    int row_index = i % m->vProjSize;
+    int col_index = (i / m->vProjSize) % m->num_heads;
+    int depth_index = i / (m->vProjSize * m->num_heads);
+    assert(row_index < m->vProjSize && col_index < m->num_heads &&
+           depth_index < m->oProjSize);
+    converted_wout_tensor[row_index][col_index][depth_index] = w_out_cuda[i];
+  }
+  torch::Tensor w_out_cuda_torch =
+      torch::from_blob(converted_wout_tensor,
+                       {m->vProjSize, m->num_heads, m->oProjSize},
+                       torch::kFloat32);
+  assert(torch::allclose(w_out_cuda_torch, torch_w_out));
+
+  torch::Tensor cpp_output =
+      torch::zeros({m->oProjSize, bc->num_active_tokens()});
+
   size_t qt_prods_cpu_offset = 0;
   for (size_t r = 0; r < bc->num_active_requests(); r++) {
     size_t num_new_tokens = r_num_tokens[r];
@@ -1024,9 +1070,29 @@ void IncMultiHeadSelfAttention::inference_task(
                          torch::kFloat32);
     assert(torch::allclose(converted_attn_heads_torch, attn_heads[r]));
 
+    cpp_output.index(
+        {Slice(),
+         Slice(r_first_idx[r], r_first_idx[r] + (int64_t)num_new_tokens)}) =
+        torch::einsum("jkl,ijk->li", {torch_w_out, attn_heads[r]});
+
     qt_prods_cpu_offset +=
         num_new_tokens * num_tokens_received_so_far * num_heads;
   }
+
+  /* std::cout << "C++:" <<std::endl;
+  for (int i=0; i<m->oProjSize; i++) {
+    std::cout << cpp_output.index({i, Slice()}) << std::endl;
+  }
+  std::cout << "CUDA:" <<std::endl;
+  for (int i=0; i<m->oProjSize; i++) {
+    std::cout << torch_out_cuda.index({i, Slice(0,
+  (int64_t)bc->num_active_tokens())}) << std::endl;
+  } */
+
+  assert(torch::allclose(
+      torch_out_cuda.index(
+          {Slice(), Slice(0, (int64_t)bc->num_active_tokens())}),
+      cpp_output));
 
   checkCUDA(cudaFreeHost(input_cpu));
   checkCUDA(cudaFreeHost(weight_cpu));
