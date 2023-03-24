@@ -41,7 +41,7 @@ struct InferenceConfig {
     num_inflight_batches = 1;
     incremental_mode = true;
     //----------------------- Rest of model parameters ------------------
-    hidden_size = 12;
+    hidden_size = DATA_DIM;
     // Encoder layer
     num_attention_heads = 3;
     attention_kdim = attention_vdim = hidden_size / num_attention_heads;

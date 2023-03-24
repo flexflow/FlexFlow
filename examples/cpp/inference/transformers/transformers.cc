@@ -39,14 +39,22 @@ Tensor create_inc_multihead_attention_decoder(
     FFModel *model,
     TransformerConfig const *transformerConfig,
     Tensor const &input) {
-  std::vector<int> axes{1};
-  Tensor t = model->inc_multihead_self_attention(
-      input,
-      transformerConfig->hidden_size,
-      transformerConfig->num_attention_heads,
-      transformerConfig->attention_kdim,
-      transformerConfig->attention_vdim);
-
+  std::vector<int> axes{2};
+  Tensor t =
+      transformerConfig->incremental_mode
+          ? model->inc_multihead_self_attention(
+                input,
+                transformerConfig->hidden_size,
+                transformerConfig->num_attention_heads,
+                transformerConfig->attention_kdim,
+                transformerConfig->attention_vdim)
+          : model->multihead_attention(input,
+                                       input,
+                                       input,
+                                       transformerConfig->hidden_size,
+                                       transformerConfig->num_attention_heads,
+                                       transformerConfig->attention_kdim,
+                                       transformerConfig->attention_vdim);
   t = model->layer_norm(model->add(t, input), axes, true, 1e-05);
   Tensor x = model->dense(
       model->dense(
@@ -81,9 +89,10 @@ void FlexFlow::top_level_task(Task const *task,
   //----------------------- Create inputs --------------------------------
   Tensor input;
   {
-    int const dims[] = {BatchConfig::MAX_NUM_TOKENS,
+    int const dims[] = {ffConfig.batchSize,
+                        transformerConfig.sequence_length,
                         transformerConfig.token_dim};
-    input = ff.create_tensor<2>(dims, DT_FLOAT);
+    input = ff.create_tensor<3>(dims, DT_FLOAT);
   }
 
   //----------------------- Define the model ------------------------------
