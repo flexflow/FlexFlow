@@ -59,7 +59,6 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     IncMultiHeadSelfAttention const *attn,
-    BatchConfig const *bc,
     float const *weight_ptr,
     Memory gpu_mem,
     int num_samples,
