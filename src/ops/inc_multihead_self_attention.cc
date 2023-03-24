@@ -923,6 +923,7 @@ void IncMultiHeadSelfAttention::inference_task(
 
   float *w_out_cuda = download_tensor<float>(
       m->W_out_contiguous, m->vProjSize * m->oProjSize * m->num_heads);
+  assert(w_out_cuda != nullptr);
   float converted_wout_tensor[m->vProjSize][m->num_heads][m->oProjSize] = {0};
   for (int i = 0; i < m->vProjSize * m->num_heads * m->oProjSize; i++) {
     int row_index = i % m->vProjSize;
@@ -1103,6 +1104,7 @@ void IncMultiHeadSelfAttention::inference_task(
   checkCUDA(cudaFreeHost(qt_prods_cpu));
   checkCUDA(cudaFreeHost(qt_prods_softmax_cpu));
   checkCUDA(cudaFreeHost(attn_heads_cpu));
+  checkCUDA(cudaFreeHost(w_out_cuda));
   assert(false && "All good if you see this assert failure! :)");
 }
 
