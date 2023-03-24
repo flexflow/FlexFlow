@@ -306,7 +306,7 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
   if (m->use_bias) {
     checkCUDA(cublasGemmBatchedEx(
         m->handle.blas,
-        CUBLAS_OP_T, // Bias, shape (out_dim, 1)
+        CUBLAS_OP_N, // Bias, shape (out_dim, 1)
         CUBLAS_OP_N, // Coefficient, shape (1, 1)
         out_dim,     // num_row of (A, C) = out_dim
         1,           // num_col of (B, C) = 1
@@ -557,6 +557,10 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
   batch_outputs = new float *[num_chosen_experts * effective_batch_size];
   checkCUDA(cudaMalloc(&batch_outputs[0],
+                       out_dim * num_chosen_experts * effective_batch_size *
+                           sizeof(float)));
+  checkCUDA(cudaMemset(batch_outputs[0],
+                       0,
                        out_dim * num_chosen_experts * effective_batch_size *
                            sizeof(float)));
   for (int i = 1; i < num_chosen_experts * effective_batch_size; i++) {
