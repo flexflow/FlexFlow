@@ -20,7 +20,7 @@
 #include "flexflow/ode.h"
 #include "op_meta.h"
 #include "operator.h"
-#include "op-meta/cast_params.h"
+#include "op-attrs/cast_params.h"
 
 namespace FlexFlow {
 

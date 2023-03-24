@@ -16,7 +16,7 @@
 #ifndef _FF_LOSS_FUNCTIONS_H_
 #define _FF_LOSS_FUNCTIONS_H_
 
-#include "op-meta/ffconst.h"
+#include "op-attrs/ffconst.h"
 #include "legion.h"
 #include "parallel_tensor.h"
 

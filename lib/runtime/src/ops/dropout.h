@@ -6,7 +6,7 @@
 #include "flexflow/node.h"
 #include "op_meta.h"
 #include "operator.h"
-#include "op-meta/dropout_params.h"
+#include "op-attrs/dropout_params.h"
 
 namespace FlexFlow {
 

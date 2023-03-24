@@ -6,7 +6,7 @@
 #include "flexflow/node.h"
 #include "op_meta.h"
 #include "operator.h"
-#include "op-meta/softmax_params.h"
+#include "op-attrs/softmax_params.h"
 
 namespace FlexFlow {
 

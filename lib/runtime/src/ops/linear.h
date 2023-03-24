@@ -3,7 +3,7 @@
 
 #include "flexflow/node.h"
 #include "operator.h"
-#include "op-meta/linear_params.h"
+#include "op-attrs/linear_params.h"
 
 namespace FlexFlow {
 

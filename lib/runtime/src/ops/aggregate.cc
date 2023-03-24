@@ -1,5 +1,6 @@
 /* Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
  *
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,10 +16,18 @@
 
 #include "aggregate.h"
 #include "kernels/aggregate_kernels.h"
-#include "model.h"
 #include "runtime/tasks.h"
 
 namespace FlexFlow {
+
+enum Slots {
+  GATE_PREDS,
+  GATE_ASSIGN,
+  TRUE_GATE_ASSIGN,
+  FULL_GATE_GRADIENTS,
+  EXP_PREDS,
+  OUTPUT
+};
 
 // declare Legion names
 using Legion::ArgumentMap;
@@ -38,37 +47,6 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Aggregate;
 
-Tensor FFModel::aggregate(
-    Tensor const *inputs, /* gate_preds, gate_assign, gate assign TopK,
-                             full_gate_pred, exp_pred_1, ... , exp_pred_n */
-    int n,
-    float lambda_bal,
-    char const *name) {
-  Layer *li = new Layer(this,
-                        OP_AGGREGATE,
-                        DT_FLOAT,
-                        name,
-                        n + 4 /*inputs*/,
-                        0 /*weights*/,
-                        1 /*outputs*/,
-                        inputs);
-  {
-    int num_dim = inputs[4]->num_dims;
-    // Set output shape
-    int dims[MAX_TENSOR_DIM];
-    for (int i = 0; i < num_dim - 1; i++) {
-      dims[i] = inputs[4]->dims[i];
-    }
-    dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
-    li->outputs[0] = create_tensor_legion_ordering(
-        num_dim, dims, DT_FLOAT, li, 0, true /*create_grad*/);
-  }
-  li->add_int_property("n", n);
-  li->add_float_property("lambda_bal", lambda_bal);
-  layers.push_back(li);
-  return li->outputs[0];
-}
-
 Op *Aggregate::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
@@ -80,15 +58,6 @@ Op *Aggregate::create_operator_from_layer(
   layer->get_float_property("lambda_bal", value2);
   float lambda_bal = value2;
   return new Aggregate(model, inputs.data(), n, lambda_bal, layer->name);
-}
-
-bool AggregateAttrs::is_valid(std::vector<ParallelTensorShape> const &) const {
-  // Aggregate is always valid
-  return true;
-}
-
-bool operator==(AggregateAttrs const &lhs, AggregateAttrs const &rhs) {
-  return lhs.n == rhs.n && lhs.lambda_bal == rhs.lambda_bal;
 }
 
 Aggregate::Aggregate(FFModel &model,
@@ -180,7 +149,7 @@ OpMeta *Aggregate::init_task(Task const *task,
                              Runtime *runtime) {
   Aggregate *agg = (Aggregate *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  AggregateMeta *m = new AggregateMeta(handle, agg->n);
+  AggregatePerDeviceState *m = new AggregatePerDeviceState(handle, agg->n);
   m->profiling = agg->profiling;
   return m;
 }
@@ -231,6 +200,15 @@ void Aggregate::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+OpTasksSpec Aggregate::get_tasks_spec() const {
+  OpTaskSignature fwd(AGGREGATE_FWD_TASK_ID, OpTaskType::FWD);
+
+  fwd.add_input_slot(GATE_PREDS);
+  fwd.add_input_slot(GATE_ASSIGN);
+  fwd.add_input_slot(EXP_PREDS, SlotType::VARIADIC);
+  fwd.add_output_slot(OUTPUT);
+}
+
 void Aggregate::forward_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
@@ -240,7 +218,7 @@ void Aggregate::forward_task(Task const *task,
   assert((int)regions.size() == n + 3);
   assert((int)task->regions.size() == n + 3);
 
-  AggregateMeta const *m = *((AggregateMeta **)task->local_args);
+  AggregatePerDeviceState const *m = *((AggregatePerDeviceState **)task->local_args);
 
   // get gate_pred, gate_assign, output
   AccessorRO<float, 3> const acc_gate_pred(regions[0], FID_DATA);
@@ -371,7 +349,7 @@ void Aggregate::backward_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
                               Context ctx,
                               Runtime *runtime) {
-  AggregateMeta const *m = *((AggregateMeta **)task->local_args);
+  AggregatePerDeviceState const *m = *((AggregatePerDeviceState **)task->local_args);
   int n = ((Aggregate *)task->args)->n;
   float lambda_bal = ((Aggregate *)task->args)->lambda_bal;
 
@@ -482,7 +460,7 @@ bool Aggregate::measure_operator_cost(Simulator *sim,
     return false;
   }
 
-  AggregateMeta *m = new AggregateMeta(sim->handler, n);
+  AggregatePerDeviceState *m = new AggregatePerDeviceState(sim->handler, n);
 
   // allocate
   sim->free_all();

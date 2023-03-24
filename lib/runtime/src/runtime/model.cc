@@ -1074,6 +1074,38 @@ FFModel::FFModel(FFConfig &_config)
   }
 }
 
+Tensor FFModel::aggregate(
+    Tensor const *inputs, /* gate_preds, gate_assign, gate assign TopK,
+                             full_gate_pred, exp_pred_1, ... , exp_pred_n */
+    int n,
+    float lambda_bal,
+    char const *name) {
+  Layer *li = new Layer(this,
+                        OP_AGGREGATE,
+                        DT_FLOAT,
+                        name,
+                        n + 4 /*inputs*/,
+                        0 /*weights*/,
+                        1 /*outputs*/,
+                        inputs);
+  {
+    int num_dim = inputs[4]->num_dims;
+    // Set output shape
+    int dims[MAX_TENSOR_DIM];
+    for (int i = 0; i < num_dim - 1; i++) {
+      dims[i] = inputs[4]->dims[i];
+    }
+    dims[num_dim - 1] = inputs[0]->dims[num_dim - 1];
+    li->outputs[0] = create_tensor_legion_ordering(
+        num_dim, dims, DT_FLOAT, li, 0, true /*create_grad*/);
+  }
+  li->add_int_property("n", n);
+  li->add_float_property("lambda_bal", lambda_bal);
+  layers.push_back(li);
+  return li->outputs[0];
+}
+
+
 #ifdef FF_USE_NCCL
 ncclComm_t *FFModel::find_nccl_comms(MachineView const &view) const {
   auto const &it = view_hash_to_nccl_comms.find(view.hash());

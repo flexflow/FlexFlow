@@ -17,7 +17,7 @@
 #include "runtime/config.h"
 #include "accessor.h"
 #include "utils/graph/node.h"
-#include "op-meta/operator_attrs.h"
+#include "op-attrs/operator_attrs.h"
 #include "utils/hash-utils.h"
 #include "utils/tuple.h"
 #include "initializer.h"
@@ -36,7 +36,7 @@
 #include <utility>
 #include "compiler/compiler.h"
 
-#include "op-meta/ffconst.h"
+#include "op-attrs/ffconst.h"
 #include "fftype.h"
 
 namespace FlexFlow {

@@ -7,7 +7,7 @@
 #include "flexflow/node.h"
 #include "op_meta.h"
 #include "operator.h"
-#include "op-meta/embedding_params.h"
+#include "op-attrs/embedding_params.h"
 
 namespace FlexFlow {
 

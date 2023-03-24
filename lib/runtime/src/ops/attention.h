@@ -5,7 +5,7 @@
 #include "kernels/op_meta.h"
 #include "operator.h"
 #include "layer.h"
-#include "op-meta/attention_params.h"
+#include "op-attrs/attention_params.h"
 #include "kernels/attention_kernels.h"
 
 namespace FlexFlow {

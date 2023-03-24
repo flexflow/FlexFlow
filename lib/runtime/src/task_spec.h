@@ -36,7 +36,13 @@ enum class OpTaskType {
   BWD
 };
 
+enum class SlotType {
+  TENSOR,
+  VARIADIC
+};
+
 using slot_id = int;
+
 using region_idx = int;
 
 
@@ -56,29 +62,96 @@ struct TensorSpec {
 
 Legion::PrivilegeMode get_default_mode(OpTaskType, TensorRole, IsGrad);
 
+struct TensorSlotSpec {
+  TensorSlotSpec() = delete;
+  TensorSlotSpec(slot_id, SlotType, TensorRole, IsGrad, optional<Legion::PrivilegeMode> mode = nullopt);
+
+  slot_id name;
+  SlotType slot_type;
+  TensorRole tensor_role;
+  IsGrad is_grad;
+  optional<Legion::PrivilegeMode> mode;
+
+  Legion::PrivilegeMode get_privileges(OpTaskType) const;
+};
+
+TensorSlotSpec get_backward_slot(TensorSlotSpec const &forward_slot);
+TensorSlotSpec get_backward_grad_slot(TensorSlotSpec const &forward_slot);
+
+struct ArgSlotSpec {
+  std::type_info type;
+};
+
+using SlotSpec = variant<TensorSlotSpec, ArgSlotSpec>;
+
+bool is_tensor_slot(SlotSpec const &);
+bool is_arg_slot(SlotSpec const &);
+TensorSlotSpec get_tensor_slot(SlotSpec const &);
+ArgSlotSpec get_arg_slot(SlotSpec const &);
+
 struct OpTaskSignature {
-  OpTaskSignature(TaskID, OpTaskType);
+  OpTaskSignature(OpTaskType);
 
-  void add_slot(int, TensorRole);
-  void add_grad_slot(int, TensorRole);
+  void add_slot(slot_id, TensorRole, SlotType);
+  void add_grad_slot(slot_id, TensorRole, SlotType);
 
-  void add_input_slot(int);
-  void add_param_slot(int);
-  void add_output_slot(int);
-  void add_input_grad_slot(int);
-  void add_param_grad_slot(int);
-  void add_output_grad_slot(int);
+  void add_arg_slot(slot_id);
 
-  template <typename T>
-  void add_arg_slot(int);
+  void add_input_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
+  void add_param_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
+  void add_output_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
 
-  TaskID get_task_id() const;
+  void add_input_grad_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
+  void add_param_grad_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
+  void add_output_grad_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
+
+  std::unordered_set<SlotSpec> get_slots() const;
+
 private:
-  TaskID task_id;
-
   std::vector<std::type_info> task_arg_types;
   std::unordered_map<int, TensorRole> slots;
 };
+
+struct OpTaskBinding {
+  void bind(slot_id, TensorSpec const &);
+  void bind_grad(slot_id, TensorSpec const &);
+
+private:
+  std::unordered_map<int, TensorSpec> bindings;
+
+/*   tl::optional<TensorSpec const &> in_slot(slot_id) const; */
+/*   std::vector<TensorSpec const &> in_variadic_slot(slot_id) const; */
+};
+
+OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
+
+struct OpTaskArgumentFormat {
+private:
+  int region_idx_counter;
+  bidict<TensorSpec, int> region_idxs;
+};
+
+OpTaskArgumentFormat generate_argument_format(OpTaskBinding const &);
+
+struct OpTaskArgumentAccessor {
+  OpTaskArgumentAccessor(Legion::Task const *task, 
+                         std::vector<Legion::PhysicalRegion> const &regions,
+                         Legion::Context ctx,
+                         Legion::Runtime *runtime);
+
+  template <typename T>
+  T get_argument(slot_id);
+
+  template <Legion::PrivilegeMode PRIV>
+  typename privilege_mode_to_accessor<PRIV>::type get_tensor(slot_id);
+
+private:
+  Legion::Task const *task;
+  std::vector<Legion::PhysicalRegion> const &regions;
+  Legion::Context ctx;
+  Legion::Runtime *runtime;
+};
+
 
 struct OpTaskSpec {
   OpTaskSpec(TaskID, OpTaskType);

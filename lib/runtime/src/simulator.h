@@ -16,8 +16,8 @@
 #define _FLEXFLOW_SIMULATOR_H_
 
 #include "runtime/config.h"
-#include "op-meta/ffconst.h"
-#include "op-meta/operator_attrs.h"
+#include "op-attrs/ffconst.h"
+#include "op-attrs/operator_attrs.h"
 #include "utils/hash-utils.h"
 #include "mpark/variant.hpp"
 #include "parallel_tensor.h"

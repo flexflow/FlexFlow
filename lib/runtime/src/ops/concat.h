@@ -4,7 +4,7 @@
 #include "layer.h"
 #include "flexflow/node.h"
 #include "operator.h"
-#include "op-meta/concat_params.h"
+#include "op-attrs/concat_params.h"
 
 namespace FlexFlow {
 

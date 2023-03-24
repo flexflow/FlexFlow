@@ -20,67 +20,6 @@ class OpMeta;
 class Simulator;
 class CostMetrics;
 
-/* struct TaskSpec { */
-/* private: */
-/*   struct AddTensorResult { */
-/*     AddTensorResult() = delete; */
-/*     explicit AddTensorResult(int idx); */
-
-/*     int idx; */
-/*   }; */
-
-/* public: */
-/*   template <typename T> */
-/*   TaskSpec(TaskID task_id, OpTaskType task_type, std::vector<TensorSpec> const &tensors, T const &arg) */
-/*     : TaskSpec(task_id, task_type, tensors, Legion::TaskArgument{&arg.value(), sizeof(T)}) */
-/*   { } */
-
-/*   template <> */
-/*   TaskSpec(TaskID task_id, OpTaskType task_type, std::vector<TensorSpec> const &tensors, Legion::TaskArgument const &argument) */
-/*     : task_id(task_id), task_type(task_type), argument(argument), tensors(tensors) */
-/*   { */ 
-/*     for (TensorSpec &tensor_spec : this->tensors) { */
-/*       tensor_spec.mode = tensor_spec.mode.value_or(get_default_mode(task_type, tensor_spec.role, tensor_spec.is_grad)); */
-/*     } */
-/*   } */
-
-/*   TaskSpec(TaskID task_id, Pass pass, std::vector<TensorSpec> const &tensors) */ 
-/*     : TaskSpec(task_id, pass, tensors, Legion::TaskArgument{nullptr, 0}) */
-/*   { } */
-
-/*   template <typename ...Ts> */
-/*   AddTensorResult add_tensor(int name, Ts const &...ts) { */
-/*     this->tensors.push_back(TensorSpec{ts...}); */
-/*     return AddTensorResult(this->tensors.size()-1); */
-/*   } */
-
-/*   AddTensorResult map_tensor_to_name(AddTensorResult const &, int name); */
-/*   AddTensorResult map_tensor_to_names(AddTensorResult const &, std::unordered_set<int> const &names); */
-
-/*   template <typename ...Ts> */
-/*   AddTensorResult add_named_tensor(int name, Ts const &...ts) { */
-/*     return this->add_tensor(std::unordered_set<int>{name}, ts...); */
-/*   } */
-
-/*   template <typename ...Ts> */
-/*   AddTensorResult add_named_tensor(std::unordered_set<int> const &names, Ts const &...ts) { */
-/*     auto result = this->add_tensor(ts...); */
-/*     this->map_tensor_to_names(result, names); */
-/*   } */
-
-/*   std::pair<int, TensorSpec> get_tensor_spec_by_name(int name) const; */
-
-/*   AddTensorResult &operator[](int name); */
-
-/*   TaskID task_id; */
-/*   Pass pass; */
-/*   Legion::TaskArgument argument; */
-
-/* private: */
-/*   std::vector<TensorSpec> tensors; */
-/*   std::unordered_map<int, int> name_map; */
-/* }; */
-
 class Op {
 protected:
   void inner_measure_operator_cost(Simulator *sim,

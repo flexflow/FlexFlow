@@ -41,7 +41,6 @@ public:
     return this->contents[this->size-1];
   }
 
-
   T const &at(std::size_t idx) const {
     assert (idx < MAXSIZE);
     return this->contents[idx];
@@ -50,6 +49,14 @@ public:
   T &at(std::size_t idx) {
     assert (idx < MAXSIZE);
     return this->content[idx];
+  }
+
+  T const &operator[](std::size_t idx) const {
+    return this->at(idx);
+  }
+
+  T &operator[](std::size_t idx) {
+    return this->at(idx);
   }
 
   using iterator = typename std::array<T, MAXSIZE>::iterator;

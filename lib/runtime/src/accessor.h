@@ -1,8 +1,10 @@
 #ifndef _FF_ACCESSOR_H_
 #define _FF_ACCESSOR_H_
-#include "op-meta/op_meta.h"
+
 #include "legion.h"
 #include "kernels/config.h"
+#include "kernels/accessor.h"
+#include "op-attrs/ffconst.h"
 
 namespace FlexFlow {
 

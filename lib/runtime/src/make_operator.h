@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_RUNTIME_MAKE_OPERATOR_H
 #define _FLEXFLOW_RUNTIME_MAKE_OPERATOR_H
 
-#include "op-meta/operator_attrs.h"
+#include "op-attrs/operator_attrs.h"
 #include "operator.h"
 #include "ops/aggregate.h"
 

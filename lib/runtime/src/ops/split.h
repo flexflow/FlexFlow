@@ -4,7 +4,7 @@
 #include "layer.h"
 #include "flexflow/node.h"
 #include "operator.h"
-#include "op-meta/split_params.h"
+#include "op-attrs/split_params.h"
 
 namespace FlexFlow {
 

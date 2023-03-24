@@ -1,19 +1,10 @@
 #ifndef _FLEXFLOW_AGGREGATE_H_
 #define _FLEXFLOW_AGGREGATE_H_
 
-#include "op_meta.h"
 #include "operator.h"
 #include "layer.h"
 
 namespace FlexFlow {
-
-class AggregateMeta : public OpMeta {
-public:
-  AggregateMeta(FFHandler handle, int n);
-  ~AggregateMeta(void);
-  float **dev_exp_preds;
-  float **dev_exp_grads;
-};
 
 class Aggregate : public Op {
 public:
@@ -51,7 +42,8 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
-  /* Params get_params() const; */
+
+  OpTasksSpec get_tasks_spec() const override;
 
 public:
   int n;

@@ -6,7 +6,7 @@
 #include "flexflow/node.h"
 #include "op_meta.h"
 #include "operator.h"
-#include "op-meta/reshape_params.h"
+#include "op-attrs/reshape_params.h"
 
 namespace FlexFlow {
 

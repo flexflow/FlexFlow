@@ -2,7 +2,7 @@
 #define _FLEXFLOW_TRANSPOSE_H_
 
 #include "model.h"
-#include "op-meta/transpose_params.h"
+#include "op-attrs/transpose_params.h"
 
 namespace FlexFlow {
 

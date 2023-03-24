@@ -6,7 +6,7 @@
 #include "flexflow/node.h"
 #include "op_meta.h"
 #include "operator.h"
-#include "op-meta/pool_2d_params.h"
+#include "op-attrs/pool_2d_params.h"
 
 namespace FlexFlow {
 

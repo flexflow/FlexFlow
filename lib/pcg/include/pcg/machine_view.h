@@ -10,7 +10,6 @@
 
 namespace FlexFlow {
 
-const int MAX_TENSOR_DIM = 5;
 const int MAX_NUM_WORKERS = 5;
 
 enum class DeviceType {

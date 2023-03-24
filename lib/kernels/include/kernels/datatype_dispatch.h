@@ -5,37 +5,41 @@
 
 namespace FlexFlow {
 
-template <template <DataType> typename F, typename ...Args>
-void dispatch(DataType dt, Args&&... args) {
+template <template <DataType> typename F, 
+          typename ...Args,
+          typename Out = decltype(std::declval<F<DT_FLOAT>>{}(std::declval<Args>()...))
+         >
+Out dispatch(DataType dt, Args&&... args) {
   switch (dt) {
     case DT_FLOAT:
-      F<DT_FLOAT>{}(std::forward<Args>(args)...);
+      return F<DT_FLOAT>{}(std::forward<Args>(args)...);
     case DT_DOUBLE:
-      F<DT_DOUBLE>{}(std::forward<Args>(args)...);
+      return F<DT_DOUBLE>{}(std::forward<Args>(args)...);
     case DT_INT32:
-      F<DT_INT32>{}(std::forward<Args>(args)...);
+      return F<DT_INT32>{}(std::forward<Args>(args)...);
     case DT_INT64:
-      F<DT_INT64>{}(std::forward<Args>(args)...);
+      return F<DT_INT64>{}(std::forward<Args>(args)...);
     case DT_BOOLEAN:
-      F<DT_BOOLEAN>{}(std::forward<Args>(args)...);
+      return F<DT_BOOLEAN>{}(std::forward<Args>(args)...);
     default:
       throw std::runtime_error("Unknown datatype" + get_data_type_name(dt));
   }
 }
 
-template <template <DataType> typename F>
+template <template <DataType> typename F, 
+          typename Out = decltype(std::declval<F<DT_FLOAT>>{}(std::declval<Args>()...))>
 struct DataTypeDispatch1 {
   template <DataType DT>
   struct Type1Dispatch {
     template <typename ...Args>
-    void operator()(Args... args) const { 
-      F<DT>{}(std::forward<Args>(args)...);
+    Out operator()(Args... args) const { 
+      return F<DT>{}(std::forward<Args>(args)...);
     }
   };
   
   template <typename ...Args>
-  void operator()(DataType data_type, Args... args) {
-    dispatch<Type1Dispatch>(data_type, std::forward<Args>(args)...);
+  Out operator()(DataType data_type, Args... args) {
+    return dispatch<Type1Dispatch>(data_type, std::forward<Args>(args)...);
   }
 };
 

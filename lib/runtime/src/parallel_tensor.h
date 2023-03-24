@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "op-meta/ffconst.h"
+#include "op-attrs/ffconst.h"
 #include "pcg/machine_view.h"
 #include "utils/record_formatter.h"
 #include "legion.h"
