@@ -975,15 +975,15 @@ void Experts::inference_task(Task const *task,
     }
   }
 
-  Experts::forward_kernel_wrapper(m,
-                                  input_ptr,
-                                  indices_ptr,
-                                  topk_gate_pred_ptr,
-                                  output_ptr,
-                                  weights_ptrs,
-                                  chosen_experts,
-                                  batch_size,
-                                  out_dim);
+  // Experts::forward_kernel_wrapper(m,
+  //                                 input_ptr,
+  //                                 indices_ptr,
+  //                                 topk_gate_pred_ptr,
+  //                                 output_ptr,
+  //                                 weights_ptrs,
+  //                                 chosen_experts,
+  //                                 batch_size,
+  //                                 out_dim);
 
   if (DEBUG_MODE) {
     /* ----------------Output after computation--------------*/

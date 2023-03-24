@@ -313,17 +313,18 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
     // causal attention.
     assert(num_new_tokens <= total_tokens);
     size_t entries_above_diagonal = num_new_tokens * (num_new_tokens - 1) / 2;
-    size_t parallelism = m->num_heads * entries_above_diagonal;
-    fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
-                                  min((size_t)CUDA_NUM_THREADS, parallelism),
-                                  0,
-                                  stream>>>((float *)C,
-                                            num_new_tokens,
-                                            total_tokens,
-                                            m->num_heads,
-                                            entries_above_diagonal,
-                                            -INFINITY);
-
+    if (entries_above_diagonal > 0) {
+      size_t parallelism = m->num_heads * entries_above_diagonal;
+      fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
+                                    min((size_t)CUDA_NUM_THREADS, parallelism),
+                                    0,
+                                    stream>>>((float *)C,
+                                              num_new_tokens,
+                                              total_tokens,
+                                              m->num_heads,
+                                              entries_above_diagonal,
+                                              -INFINITY);
+    }
     // Compute Softmax(QK^T/sqrt(d_k))
     cudnnTensorDescriptor_t qt_tensor;
     checkCUDNN(cudnnCreateTensorDescriptor(&qt_tensor));
