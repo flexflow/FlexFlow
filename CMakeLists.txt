@@ -415,8 +415,12 @@ if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/mixture_of_experts)
 endif()
 
-if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
+if(FF_BUILD_ALL_EXAMPLES)
   add_subdirectory(examples/cpp/GPT)
+endif()
+
+if(FF_BUILD_ALL_EXAMPLES)
+  add_subdirectory(examples/cpp/LLAMA)
 endif()
 
 # installation
