@@ -19,5 +19,7 @@
 #include "inference_config.h"
 
 struct TransformerConfig : InferenceConfig {
-  TransformerConfig(void) : InferenceConfig() {}
+  TransformerConfig(void) : InferenceConfig() {
+    hidden_size = DATA_DIM;
+  }
 };

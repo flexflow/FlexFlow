@@ -856,8 +856,10 @@ void IncMultiHeadSelfAttention::inference_task(
     printf("\n");
   } */
 
-  torch::Tensor Q_projs =
-      qkv_projs.index({Slice(), Slice(), 0, Slice()}).squeeze();
+  torch::Tensor Q_projs = qkv_projs.index({Slice(), Slice(), 0, Slice()})
+                              .reshape({qkv_projs.sizes()[0],
+                                        qkv_projs.sizes()[1],
+                                        qkv_projs.sizes()[3]});
 
   // std::cout << "qkv_projs.sizes(): " << qkv_projs.sizes() << std::endl;
   // std::cout << "Q_projs.sizes(): " << Q_projs.sizes() << std::endl;
