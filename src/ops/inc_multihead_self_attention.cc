@@ -725,10 +725,6 @@ void IncMultiHeadSelfAttention::inference_task(
 
   assert(torch::allclose(QKVProjArray_torch, qkv_projs));
 
-  float kcache[m->kProjSize][MAX_SEQ_LEN][num_heads]
-              [BatchConfig::MAX_NUM_REQUESTS];
-  float vcache[m->vProjSize][MAX_SEQ_LEN][num_heads]
-              [BatchConfig::MAX_NUM_REQUESTS];
   float *keyCache_cpu =
       download_tensor<float>(m->keyCache,
                              m->num_heads * m->kProjSize *
@@ -740,17 +736,46 @@ void IncMultiHeadSelfAttention::inference_task(
   assert(keyCache_cpu != nullptr);
   assert(valueCache_cpu != nullptr);
 
-  /* std::cout << "qkv proj array:" << std::endl;
-  for (int i=0; i<num_heads; i++) {
-    for (int j=0; j<proj_sum; j++) {
-        for (int k=0; k<bc->num_active_tokens(); k++) {
-            std::cout << qkv_projs.index({j, k, i}).item<float>() << " ";
+  float *kcache_cuda = (float *)calloc(
+      m->kProjSize * MAX_SEQ_LEN * m->num_heads * BatchConfig::MAX_NUM_REQUESTS,
+      sizeof(float));
+  float *vcache_cuda = (float *)calloc(
+      m->vProjSize * MAX_SEQ_LEN * m->num_heads * BatchConfig::MAX_NUM_REQUESTS,
+      sizeof(float));
+  int index = 0;
+  for (int i = 0; i < m->kProjSize; i++) {
+    for (int j = 0; j < MAX_SEQ_LEN; j++) {
+      for (int k = 0; k < m->num_heads; k++) {
+        for (int l = 0; l < BatchConfig::MAX_NUM_REQUESTS; l++) {
+          int col_major_index = l * m->kProjSize * MAX_SEQ_LEN * m->num_heads +
+                                k * m->kProjSize * MAX_SEQ_LEN +
+                                j * m->kProjSize + i;
+          kcache_cuda[index++] = keyCache_cpu[col_major_index];
         }
-        std::cout << std::endl;
+      }
     }
-    std::cout <<std::endl;
-    //std::cout << torch_w_qkv.index({Slice(), Slice(), i}) << std::endl;
-  } */
+  }
+  index = 0;
+  for (int i = 0; i < m->vProjSize; i++) {
+    for (int j = 0; j < MAX_SEQ_LEN; j++) {
+      for (int k = 0; k < m->num_heads; k++) {
+        for (int l = 0; l < BatchConfig::MAX_NUM_REQUESTS; l++) {
+          int col_major_index = l * m->vProjSize * MAX_SEQ_LEN * m->num_heads +
+                                k * m->vProjSize * MAX_SEQ_LEN +
+                                j * m->vProjSize + i;
+          vcache_cuda[index++] = valueCache_cpu[col_major_index];
+        }
+      }
+    }
+  }
+  torch::Tensor K_t_cuda = torch::from_blob(
+      kcache_cuda,
+      {m->kProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
+      torch::kFloat32);
+  torch::Tensor V_t_cuda = torch::from_blob(
+      vcache_cuda,
+      {m->vProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
+      torch::kFloat32);
 
   assert(m->qProjSize == m->vProjSize && m->vProjSize == m->kProjSize);
   // printf("m->kProjSize: %i, BatchConfig::MAX_NUM_TOKENS: %i,
@@ -767,94 +792,127 @@ void IncMultiHeadSelfAttention::inference_task(
   for (size_t h = 0; h < num_heads; h++) {
     for (size_t t = 0; t < bc->num_active_tokens(); t++) {
       for (size_t d = 0; d < m->kProjSize; d++) {
-        kcache[d][bc->token2ids.token_indexes[t].token_position][h]
-              [bc->token2ids.token_indexes[t].request_index] =
-                  qkv_projs.index({(int64_t)d, (int64_t)t, 1, (int64_t)h})
-                      .item<float>();
-        assert(fabs(kcache[d][bc->token2ids.token_indexes[t].token_position][h]
-                          [bc->token2ids.token_indexes[t].request_index] -
-                    keyCache_cpu[bc->token2ids.token_indexes[t].request_index *
-                                     num_heads * m->kProjSize * MAX_SEQ_LEN +
-                                 h * m->kProjSize * MAX_SEQ_LEN +
-                                 m->kProjSize * bc->token2ids.token_indexes[t]
-                                                    .token_position +
-                                 d]) <= FLT_EPSILON);
+        size_t kcache_idx =
+            d * MAX_SEQ_LEN * m->num_heads * BatchConfig::MAX_NUM_REQUESTS +
+            bc->token2ids.token_indexes[t].token_position * m->num_heads *
+                BatchConfig::MAX_NUM_REQUESTS +
+            h * BatchConfig::MAX_NUM_REQUESTS +
+            bc->token2ids.token_indexes[t].request_index;
+        m->kcache[kcache_idx] =
+            qkv_projs.index({(int64_t)d, (int64_t)t, 1, (int64_t)h})
+                .item<float>();
+        // assert(fabs(m->kcache[kcache_idx] -
+        //             keyCache_cpu[bc->token2ids.token_indexes[t].request_index
+        //             *
+        //                              num_heads * m->kProjSize * MAX_SEQ_LEN +
+        //                          h * m->kProjSize * MAX_SEQ_LEN +
+        //                          m->kProjSize *
+        //                          bc->token2ids.token_indexes[t]
+        //                                             .token_position +
+        //                          d]) <= FLT_EPSILON);
       }
       for (size_t d = 0; d < m->vProjSize; d++) {
-        vcache[d][bc->token2ids.token_indexes[t].token_position][h]
-              [bc->token2ids.token_indexes[t].request_index] =
-                  qkv_projs.index({(int64_t)d, (int64_t)t, 2, (int64_t)h})
-                      .item<float>();
-        assert(
-            fabs(vcache[d][bc->token2ids.token_indexes[t].token_position][h]
-                       [bc->token2ids.token_indexes[t].request_index] -
-                 valueCache_cpu[bc->token2ids.token_indexes[t].request_index *
-                                    num_heads * m->vProjSize * MAX_SEQ_LEN +
-                                h * m->vProjSize * MAX_SEQ_LEN +
-                                m->vProjSize * bc->token2ids.token_indexes[t]
-                                                   .token_position +
-                                d]) <= FLT_EPSILON);
+        size_t vcache_idx =
+            d * MAX_SEQ_LEN * m->num_heads * BatchConfig::MAX_NUM_REQUESTS +
+            bc->token2ids.token_indexes[t].token_position * m->num_heads *
+                BatchConfig::MAX_NUM_REQUESTS +
+            h * BatchConfig::MAX_NUM_REQUESTS +
+            bc->token2ids.token_indexes[t].request_index;
+        m->vcache[vcache_idx] =
+            qkv_projs.index({(int64_t)d, (int64_t)t, 2, (int64_t)h})
+                .item<float>();
+        // assert(
+        //     fabs(m->vcache[vcache_idx] -
+        //          valueCache_cpu[bc->token2ids.token_indexes[t].request_index
+        //          *
+        //                             num_heads * m->vProjSize * MAX_SEQ_LEN +
+        //                         h * m->vProjSize * MAX_SEQ_LEN +
+        //                         m->vProjSize * bc->token2ids.token_indexes[t]
+        //                                            .token_position +
+        //                         d]) <= FLT_EPSILON);
       }
     }
   }
-  /* std::cout << "keyCache from CUDA:" << std::endl;
-  for (int i=0; i<bc->num_active_requests()+1; i++) {
-    for (int j=0; j<num_heads; j++) {
-        for (int l=0; l<m->kProjSize; l++) {
-            for (int k=0; k< MAX_SEQ_LEN; k++) {
-                printf("%f ", keyCache_cpu[i*m->kProjSize*MAX_SEQ_LEN*num_heads
-  + j*m->kProjSize*MAX_SEQ_LEN + k*m->kProjSize + l]);
-            }
-            printf("\n");
-        }
-        printf("\n");
-    }
-    printf("\n");
-  }
-  std::cout << "valueCache from CUDA:" << std::endl;
-  for (int i=0; i<bc->num_active_requests()+1; i++) {
-    for (int j=0; j<num_heads; j++) {
-        for (int l=0; l<m->vProjSize; l++) {
-            for (int k=0; k< MAX_SEQ_LEN; k++) {
-                printf("%f ",
-  valueCache_cpu[i*m->vProjSize*MAX_SEQ_LEN*num_heads +
-  j*m->vProjSize*MAX_SEQ_LEN + k*m->vProjSize + l]);
-            }
-            printf("\n");
-        }
-        printf("\n");
-    }
-    printf("\n");
-  }
 
-  printf("\n");
+  torch::Tensor K_t = torch::from_blob(
+      m->kcache,
+      {m->kProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
+      torch::kFloat32);
+  torch::Tensor V_t = torch::from_blob(
+      m->vcache,
+      {m->vProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
+      torch::kFloat32);
 
-  std::cout << "C++ kcache:" << std::endl;
-  for (int i=0; i<bc->num_active_requests()+1; i++) {
-    for (int j=0; j<num_heads; j++) {
-        for (int l=0; l<m->kProjSize; l++) {
-            for (int k=0; k< MAX_SEQ_LEN; k++) {
-                printf("%f ", kcache[l][k][j][i]);
-            }
-            printf("\n");
-        }
-        printf("\n");
-    }
-    printf("\n");
-  }
-  std::cout << "C++ vcache:" << std::endl;
-  for (int i=0; i<bc->num_active_requests()+1; i++) {
-    for (int j=0; j<num_heads; j++) {
-        for (int l=0; l<m->vProjSize; l++) {
-            for (int k=0; k< MAX_SEQ_LEN; k++) {
-                printf("%f ", vcache[l][k][j][i]);
-            }
-            printf("\n");
-        }
-        printf("\n");
-    }
-    printf("\n");
-  } */
+  assert(torch::allclose(K_t_cuda, K_t));
+  assert(torch::allclose(V_t_cuda, V_t));
+  free(kcache_cuda);
+  free(vcache_cuda);
+
+  /*std::cout << "keyCache from CUDA:" << std::endl;
+ for (int i=0; i<bc->num_active_requests()+1; i++) {
+   for (int j=0; j<num_heads; j++) {
+       for (int l=0; l<m->kProjSize; l++) {
+           for (int k=0; k< MAX_SEQ_LEN; k++) {
+               printf("%f ", keyCache_cpu[i*m->kProjSize*MAX_SEQ_LEN*num_heads+
+ j*m->kProjSize*MAX_SEQ_LEN + k*m->kProjSize + l]);
+           }
+           printf("\n");
+       }
+       printf("\n");
+   }
+   printf("\n");
+ }
+ std::cout << "valueCache from CUDA:" << std::endl;
+ for (int i=0; i<bc->num_active_requests()+1; i++) {
+   for (int j=0; j<num_heads; j++) {
+       for (int l=0; l<m->vProjSize; l++) {
+           for (int k=0; k< MAX_SEQ_LEN; k++) {
+               printf("%f ", valueCache_cpu[i*m->vProjSize*MAX_SEQ_LEN*num_heads
+ + j*m->vProjSize*MAX_SEQ_LEN + k*m->vProjSize + l]);
+           }
+           printf("\n");
+       }
+       printf("\n");
+   }
+   printf("\n");
+ }
+
+ printf("\n");
+
+ std::cout << "C++ kcache:" << std::endl;
+ for (int i=0; i<bc->num_active_requests()+1; i++) {
+   for (int j=0; j < num_heads; j++) {
+       for (int l=0; l < m->kProjSize; l++) {
+           for (int k=0; k < MAX_SEQ_LEN; k++) {
+               size_t kcache_idx = l * MAX_SEQ_LEN * num_heads *
+ BatchConfig::MAX_NUM_REQUESTS + k * num_heads * BatchConfig::MAX_NUM_REQUESTS +
+                                   j * BatchConfig::MAX_NUM_REQUESTS +
+                                   i;
+               printf("%f ", m->kcache[kcache_idx]);
+           }
+           printf("\n");
+       }
+       printf("\n");
+   }
+   printf("\n");
+ }
+ std::cout << "C++ vcache:" << std::endl;
+ for (int i=0; i<bc->num_active_requests()+1; i++) {
+   for (int j=0; j<num_heads; j++) {
+       for (int l=0; l<m->vProjSize; l++) {
+           for (int k=0; k< MAX_SEQ_LEN; k++) {
+               size_t vcache_idx = l * MAX_SEQ_LEN * num_heads *
+ BatchConfig::MAX_NUM_REQUESTS + k * num_heads * BatchConfig::MAX_NUM_REQUESTS +
+                                   j * BatchConfig::MAX_NUM_REQUESTS +
+                                   i;
+               printf("%f ", m->vcache[vcache_idx]);
+           }
+           printf("\n");
+       }
+       printf("\n");
+   }
+   printf("\n");
+ } */
 
   torch::Tensor Q_projs = qkv_projs.index({Slice(), Slice(), 0, Slice()})
                               .reshape({qkv_projs.sizes()[0],
@@ -885,14 +943,6 @@ void IncMultiHeadSelfAttention::inference_task(
                          decltype(r_num_tokens)::value_type(0)) ==
          bc->num_active_tokens());
 
-  torch::Tensor K_t = torch::from_blob(
-      kcache,
-      {m->kProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
-      torch::kFloat32);
-  torch::Tensor V_t = torch::from_blob(
-      vcache,
-      {m->vProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
-      torch::kFloat32);
   torch::Tensor qkt_products[bc->num_active_requests()];
   torch::Tensor qkt_softmax[bc->num_active_requests()];
   torch::Tensor attn_heads[bc->num_active_requests()];

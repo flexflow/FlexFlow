@@ -527,6 +527,15 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   // Currently do not support adding bias to key/value projection
   assert(!attn->add_bias_kv);
 
+#ifdef INFERENCE_TESTS
+  kcache = (float *)calloc(kProjSize * MAX_SEQ_LEN * num_heads *
+                               BatchConfig::MAX_NUM_REQUESTS,
+                           sizeof(float));
+  vcache = (float *)calloc(vProjSize * MAX_SEQ_LEN * num_heads *
+                               BatchConfig::MAX_NUM_REQUESTS,
+                           sizeof(float));
+#endif
+
   // allocate memory for the seqArray and reserve space
   {
     size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
@@ -587,6 +596,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
 IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {
   reserveInst.destroy();
+#ifdef INFERENCE_TESTS
+  free(kcache);
+  free(vcache);
+#endif
 }
 
 }; // namespace FlexFlow

@@ -119,6 +119,9 @@ public:
   size_t weights_params, weightSize, reserveSpaceSize;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int num_heads;
+#ifdef INFERENCE_TESTS
+  float *kcache, *vcache;
+#endif
   /*#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
     cudnnAttnDescriptor_t attnDesc;
     cudnnSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
