@@ -23,7 +23,7 @@
 #include "utils/recursive_logger.h"
 #include <unordered_set>
 #include <memory>
-#include "op-meta/op-meta.h"
+#include "op-attrs/op-attrs.h"
 #include "utils/graph.h"
 #include "utils/bidict.h"
 #include "utils/graph/serialparallel.h"

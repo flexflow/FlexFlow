@@ -1,6 +1,6 @@
 #include "node.h"
 #include "utils/hash-utils.h"
-#include "op-meta/ffconst_utils.h"
+#include "op-attrs/ffconst_utils.h"
 
 namespace FlexFlow {
 namespace PCG {

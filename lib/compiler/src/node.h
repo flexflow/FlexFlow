@@ -4,7 +4,7 @@
 #include <string>
 
 #include "tl/optional.hpp"
-#include "op-meta/op-meta.h"
+#include "op-attrs/op-attrs.h"
 
 namespace FlexFlow {
 namespace ffc {

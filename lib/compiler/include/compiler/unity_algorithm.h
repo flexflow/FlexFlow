@@ -2,7 +2,7 @@
 #define _FLEXFLOW_FFC_UNITY_ALGORITHM_H
 
 #include "utils/graph.h"
-#include "op-meta/operator_attrs.h"
+#include "op-attrs/operator_attrs.h"
 #include "pcg/machine_view.h"
 
 namespace FlexFlow {
