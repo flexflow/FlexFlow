@@ -958,6 +958,7 @@ void IncMultiHeadSelfAttention::inference_task(
       torch::from_blob(converted_wout_tensor,
                        {m->vProjSize, m->num_heads, m->oProjSize},
                        torch::kFloat32);
+
   //  ----------------------- Comparing C++ & CUDA results ---------------------
   assert(torch::allclose(w_out_cuda_torch, torch_w_out));
 
@@ -965,8 +966,7 @@ void IncMultiHeadSelfAttention::inference_task(
   //  Compute the softmax(QK^T/sqrt(d_k))V product, request by request
   // =============================================================================
 
-  //  ----------------------- C++ initialization steps
-  //  --------------------------
+  //  ----------------------- C++ initialization steps -------------------------
   torch::Tensor Q_projs = qkv_projs.index({Slice(), Slice(), 0, Slice()})
                               .reshape({qkv_projs.sizes()[0],
                                         qkv_projs.sizes()[1],
@@ -1029,8 +1029,7 @@ void IncMultiHeadSelfAttention::inference_task(
     assert(num_tokens_received_so_far >= (int64_t)num_new_tokens);
     int64_t rid = (int64_t)(req_idxs[r]);
 
-    //  ----------------------- C++ computations
-    //  --------------------------------
+    //  ----------------------- C++ computations -------------------------------
     // Get the slice of the Q projection tensor with the tokens in the current
     // request
     torch::Tensor Q_req =
@@ -1072,8 +1071,7 @@ void IncMultiHeadSelfAttention::inference_task(
     assert(qk_softmax[r].sizes()[1] == num_tokens_received_so_far);
     assert(qk_softmax[r].sizes()[2] == m->num_heads);
 
-    //  ----------------------- Loading CUDA results for this step
-    //  ---------------
+    //  ------------------- Loading CUDA results for this step ---------------
     float converted_qk_prod[num_new_tokens][num_tokens_received_so_far]
                            [num_heads] = {0};
     float converted_qk_prod_softmax[num_new_tokens][num_tokens_received_so_far]
@@ -1100,8 +1098,7 @@ void IncMultiHeadSelfAttention::inference_task(
         {(int64_t)num_new_tokens, num_tokens_received_so_far, num_heads},
         torch::kFloat32);
 
-    //  ----------------------- Comparing C++ & CUDA results
-    //  ---------------------
+    //  ------------------- Comparing C++ & CUDA results ------------------
     /* std::cout << "C++:" <<std::endl;
     for (int h=0; h<num_heads; h++) {
       std::cout << qk_products[r].index({Slice(), Slice(), h}) << std::endl;
@@ -1128,8 +1125,7 @@ void IncMultiHeadSelfAttention::inference_task(
     assert(torch::allclose(qk_prods_cuda, qk_products[r]));
     assert(torch::allclose(qk_prods_softmax_cuda, qk_softmax[r]));
 
-    //  ----------------------- C++ computations
-    //  --------------------------------
+    //  --------------------- C++ computations --------------------------
     // Multiply softmax results by V
     assert(
         V_t.index({Slice(), Slice(0, num_tokens_received_so_far), Slice(), rid})
@@ -1149,8 +1145,7 @@ void IncMultiHeadSelfAttention::inference_task(
     assert(attn_heads[r].sizes()[1] == m->vProjSize);
     assert(attn_heads[r].sizes()[2] == m->num_heads);
 
-    //  ----------------------- Loading CUDA results for this step
-    //  ---------------
+    //  ------------------- Loading CUDA results for this step  ---------------
     float converted_attn_heads_cpu[num_new_tokens][m->vProjSize][m->num_heads] =
         {0};
     for (int i = 0; i < num_new_tokens * m->vProjSize * m->num_heads; i++) {
@@ -1167,12 +1162,10 @@ void IncMultiHeadSelfAttention::inference_task(
                          {(int64_t)num_new_tokens, m->vProjSize, m->num_heads},
                          torch::kFloat32);
 
-    //  ----------------------- Comparing C++ & CUDA results
-    //  ---------------------
+    //  -------------------- Comparing C++ & CUDA results -------------------
     assert(torch::allclose(converted_attn_heads_cuda, attn_heads[r]));
 
-    //  ----------------------- C++ computations
-    //  --------------------------------
+    //  ----------------------- C++ computations ----------------------------
     // Compute output values by projecting all heads to output space
     cpp_output.index(
         {Slice(),
