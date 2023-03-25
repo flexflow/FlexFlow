@@ -69,6 +69,7 @@ public:
   FlexFlow::ParallelTensor full_label, batch_label;
   FlexFlow::ParallelTensor full_pos, batch_pos;
   FlexFlow::ParallelTensor ln_f_bias, ln_f_weight;
+  std::unordered_map<char const*, float*> weights_pointers;
 };
 
 struct SampleIdxs {
