@@ -725,9 +725,9 @@ void IncMultiHeadSelfAttention::inference_task(
 
   assert(torch::allclose(QKVProjArray_torch, qkv_projs));
 
-  float kcache[m->kProjSize][BatchConfig::MAX_NUM_TOKENS][num_heads]
+  float kcache[m->kProjSize][MAX_SEQ_LEN][num_heads]
               [BatchConfig::MAX_NUM_REQUESTS];
-  float vcache[m->vProjSize][BatchConfig::MAX_NUM_TOKENS][num_heads]
+  float vcache[m->vProjSize][MAX_SEQ_LEN][num_heads]
               [BatchConfig::MAX_NUM_REQUESTS];
   float *keyCache_cpu =
       download_tensor<float>(m->keyCache,
@@ -885,18 +885,14 @@ void IncMultiHeadSelfAttention::inference_task(
                          decltype(r_num_tokens)::value_type(0)) ==
          bc->num_active_tokens());
 
-  torch::Tensor K_t = torch::from_blob(kcache,
-                                       {m->kProjSize,
-                                        BatchConfig::MAX_NUM_TOKENS,
-                                        num_heads,
-                                        BatchConfig::MAX_NUM_REQUESTS},
-                                       torch::kFloat32);
-  torch::Tensor V_t = torch::from_blob(vcache,
-                                       {m->vProjSize,
-                                        BatchConfig::MAX_NUM_TOKENS,
-                                        num_heads,
-                                        BatchConfig::MAX_NUM_REQUESTS},
-                                       torch::kFloat32);
+  torch::Tensor K_t = torch::from_blob(
+      kcache,
+      {m->kProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
+      torch::kFloat32);
+  torch::Tensor V_t = torch::from_blob(
+      vcache,
+      {m->vProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
+      torch::kFloat32);
   torch::Tensor qkt_products[bc->num_active_requests()];
   torch::Tensor qkt_softmax[bc->num_active_requests()];
   torch::Tensor attn_heads[bc->num_active_requests()];
