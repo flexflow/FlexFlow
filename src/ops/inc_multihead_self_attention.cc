@@ -620,16 +620,15 @@ void IncMultiHeadSelfAttention::inference_task(
   // load weight manually because Torch can't easily read a tensor serialized in
   // column-major order.
 
-  // printf("m->kProjSize: %i, BatchConfig::MAX_NUM_TOKENS: %i,
-  // bc->num_active_tokens(): %i, num_heads: %lli,
-  // BatchConfig::MAX_NUM_REQUESTS: %i, bc->num_active_requests(): %i\n",
-  //   m->kProjSize, BatchConfig::MAX_NUM_TOKENS, bc->num_active_tokens(),
-  //   num_heads, BatchConfig::MAX_NUM_REQUESTS, bc->num_active_requests());
-  // for (int t=0; t<bc->num_active_tokens(); t++) {
-  //   printf("token %i has request_index: %li and token_position: %li\n", t,
-  //   bc->token2ids.token_indexes[t].request_index,
-  //   bc->token2ids.token_indexes[t].token_position);
-  // }
+  /*printf("m->kProjSize: %i, BatchConfig::MAX_NUM_TOKENS: %i,
+  bc->num_active_tokens(): %i, num_heads: %lli, BatchConfig::MAX_NUM_REQUESTS:
+  %i, bc->num_active_requests(): %i\n", m->kProjSize,
+  BatchConfig::MAX_NUM_TOKENS, bc->num_active_tokens(), num_heads,
+  BatchConfig::MAX_NUM_REQUESTS, bc->num_active_requests()); for (int t=0;
+  t<bc->num_active_tokens(); t++) { printf("token %i has request_index: %li and
+  token_position: %li\n", t, bc->token2ids.token_indexes[t].request_index,
+    bc->token2ids.token_indexes[t].token_position);
+  }*/
 
   // =============================================================================
   //  Load the output tensor (with CUDA results), and create a Torch tensor
@@ -954,13 +953,13 @@ void IncMultiHeadSelfAttention::inference_task(
            depth_index < m->oProjSize);
     converted_wout_tensor[row_index][col_index][depth_index] = w_out_cuda[i];
   }
-  torch::Tensor w_out_cuda_torch =
+  torch::Tensor w_out_cuda_tensor =
       torch::from_blob(converted_wout_tensor,
                        {m->vProjSize, m->num_heads, m->oProjSize},
                        torch::kFloat32);
 
   //  ----------------------- Comparing C++ & CUDA results ---------------------
-  assert(torch::allclose(w_out_cuda_torch, torch_w_out));
+  assert(torch::allclose(w_out_cuda_tensor, torch_w_out));
 
   // =============================================================================
   //  Compute the softmax(QK^T/sqrt(d_k))V product, request by request
@@ -1041,6 +1040,18 @@ void IncMultiHeadSelfAttention::inference_task(
     assert(Q_req.sizes()[1] == num_new_tokens);
     assert(Q_req.sizes()[2] == num_heads);
 
+    /*printf("\n------------ QK multiplication (C++) -------------\n");
+    printf("Request r=%lu. num_new_tokens: %lu, num_tokens_received_so_far: %li,
+    rid: %li, Qproj slice: (%i, %i)\n", r, num_new_tokens,
+    num_tokens_received_so_far, rid, r_first_idx[r], r_first_idx[r] +
+    num_new_tokens);
+
+    std::cout << "Q_req matrix (idk dims):" << std::endl <<
+    Q_req.index({Slice(), Slice(), 0}) << std::endl << std::endl; std::cout <<
+    "K_t matrix (ilk dims):" << std::endl << K_t.index({Slice(), Slice(0,
+    num_tokens_received_so_far), 0, rid}) << std::endl << std::endl; std::cout
+    << "C++ alpha: " << (1.0f / sqrt(m->kProjSize)) << std::endl;*/
+
     // Compute (Q*K^T)/sqrt(d_k) matmul
     qk_products[r] =
         torch::einsum("ijk,ilk->jlk",
@@ -1106,8 +1117,8 @@ void IncMultiHeadSelfAttention::inference_task(
     std::cout << "CUDA:" <<std::endl;
     for (int h=0; h<num_heads; h++) {
       std::cout << qk_prods_cuda.index({Slice(), Slice(), h}) << std::endl;
-    }
-    //
+    } */
+    /* //
     std::cout << "C++:" <<std::endl;
     for (int h=0; h<num_heads; h++) {
       std::cout << qk_softmax[r].index({Slice(), Slice(), h}) << std::endl;
@@ -1163,6 +1174,15 @@ void IncMultiHeadSelfAttention::inference_task(
                          torch::kFloat32);
 
     //  -------------------- Comparing C++ & CUDA results -------------------
+    /* std::cout << "CUDA attn head for req " << r << ":" <<std::endl;
+    for (int h=0; h<m->num_heads; h++) {
+      std::cout << converted_attn_heads_cuda.index({Slice(), Slice(), h}) <<
+    std::endl;
+    }
+    std::cout << "C++ attn head for req " << r << ":" <<std::endl;
+    for (int h=0; h<m->num_heads; h++) {
+      std::cout << attn_heads[r].index({Slice(), Slice(), h}) << std::endl;
+    } */
     assert(torch::allclose(converted_attn_heads_cuda, attn_heads[r]));
 
     //  ----------------------- C++ computations ----------------------------

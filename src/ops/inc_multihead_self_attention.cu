@@ -257,7 +257,6 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
   int kt_req_block_size = kt_block_size * m->num_heads;
   int vt_block_size = m->vProjSize * MAX_SEQ_LEN;
   int vt_req_block_size = vt_block_size * m->num_heads;
-  float alpha = 1.0f / (float)sqrt(m->kProjSize), beta = 0.0f;
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
@@ -275,6 +274,7 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
     int strideA = qkv_block_size;
     int strideB = kt_block_size;
     int strideC = num_new_tokens * total_tokens;
+    float alpha = 1.0f / (float)sqrt(m->kProjSize), beta = 0.0f;
     // To get A, skip over Q entries from previous requests (same head)
     void const *A = (void const *)(m->devQKVProjArray +
                                    tokens_previous_requests * m->qProjSize);
@@ -284,6 +284,39 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
     // To get C, skip over QK^T products from previous requests
     void *C =
         (void *)(m->qk_prods + m->num_heads * tokens_prev_requests_squares);
+
+    /*printf("\n------------ QK multiplication (CUDA) -------------\n");
+    printf("req: %i, num_new_tokens: %i, total_tokens: %i,
+    tokens_previous_requests: %i, tokens_prev_requests_squares: %i\n", i,
+    num_new_tokens, total_tokens, tokens_previous_requests,
+    tokens_prev_requests_squares); printf("About to multiply the following
+    matrices (printing only first head):\n"); printf("A:\n"); float
+    *QKVProjArray_cpu = download_tensor<float>(m->devQKVProjArray,
+    BatchConfig::MAX_NUM_TOKENS * (m->qProjSize + m->kProjSize + m->vProjSize) *
+    m->num_heads); assert(QKVProjArray_cpu != nullptr); float *keyCache_cpu =
+      download_tensor<float>(m->keyCache,
+                             m->num_heads * m->kProjSize *
+                                 BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN);
+    assert(keyCache_cpu != nullptr);
+    for (int aaa=0; aaa < m->qProjSize; aaa++) {
+      for (int bbb=0; bbb<num_new_tokens; bbb++) {
+        printf("%f ", QKVProjArray_cpu[(tokens_previous_requests + bbb) *
+    m->qProjSize + aaa]);
+      }
+      printf("\n");
+    }
+    printf("B:\n");
+    for (int aaa=0; aaa < m->kProjSize; aaa++) {
+      for (int bbb=0; bbb < total_tokens; bbb++) {
+        printf("%f ", keyCache_cpu[i * kt_req_block_size + bbb*m->kProjSize +
+    aaa]);
+      }
+      printf("\n");
+    }
+    checkCUDA(cudaFreeHost(QKVProjArray_cpu));
+    checkCUDA(cudaFreeHost(keyCache_cpu));
+    printf("------------------------------------------------------------\n");
+    printf("CUDA alpha: %f", alpha);*/
 
     checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                          CUBLAS_OP_T,
@@ -367,7 +400,6 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
 
     // Matmul softmax(QK^T/sqrt(d_k)) by V
     alpha = 1.0f, beta = 0.0f;
-
     m_ = num_new_tokens;
     n = m->vProjSize;
     k = total_tokens;
@@ -377,8 +409,7 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
     strideC = num_new_tokens * m->vProjSize;
     // To get A, skip over softmax(QK^T/sqrt(d_k)) entries from previous
     // requests (all heads)
-    A = (void const *)((float *)C_softmax +
-                       m->num_heads * tokens_prev_requests_squares);
+    A = (void const *)C_softmax;
     // To get B, skip over V^T entries from previous requests (all heads +
     // padding)
     B = (void const *)(m->valueCache + i * vt_req_block_size);
@@ -413,7 +444,6 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
 
     // Project to output, save result directly on output tensor
     alpha = 1.0f, beta = 0.0f;
-
     m_ = m->oProjSize;
     k = m->vProjSize * m->num_heads;
     n = num_new_tokens;
