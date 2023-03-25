@@ -128,7 +128,7 @@ public:
   #endif*/
   // int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx, *kvCache;
   float *devQKVProjArray, *keyCache, *valueCache;
-  float *qt_prods, *qt_prods_softmax;
+  float *qk_prods, *qk_prods_softmax;
   float *attn_heads, *W_out_contiguous;
   // void *reserveSpace;
 

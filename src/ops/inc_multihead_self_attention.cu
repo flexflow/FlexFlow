@@ -283,7 +283,7 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
     void const *B = (void const *)(m->keyCache + i * kt_req_block_size);
     // To get C, skip over QK^T products from previous requests
     void *C =
-        (void *)(m->qt_prods + m->num_heads * tokens_prev_requests_squares);
+        (void *)(m->qk_prods + m->num_heads * tokens_prev_requests_squares);
 
     checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                          CUBLAS_OP_T,
@@ -309,7 +309,7 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
-    // Fill all elements above diagonal in QT prods with -inf to force
+    // Fill all elements above diagonal in qk prods with -inf to force
     // causal attention.
     assert(num_new_tokens <= total_tokens);
     size_t entries_above_diagonal = num_new_tokens * (num_new_tokens - 1) / 2;
@@ -326,8 +326,8 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
                                               -INFINITY);
     }
     // Compute Softmax(QK^T/sqrt(d_k))
-    cudnnTensorDescriptor_t qt_tensor;
-    checkCUDNN(cudnnCreateTensorDescriptor(&qt_tensor));
+    cudnnTensorDescriptor_t qk_tensor;
+    checkCUDNN(cudnnCreateTensorDescriptor(&qk_tensor));
     // Before modifying the parameters below, make sure to read the following
     // description of the CUDNN_TENSOR_NCHW tensor layout, from
     // https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnTensorFormat_t:
@@ -341,7 +341,7 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
     int c_param = total_tokens;
     int h_param = 1;
     int w_param = num_new_tokens;
-    checkCUDNN(cudnnSetTensor4dDescriptor(qt_tensor,
+    checkCUDNN(cudnnSetTensor4dDescriptor(qk_tensor,
                                           CUDNN_TENSOR_NCHW,
                                           CUDNN_DATA_FLOAT,
                                           n_param,
@@ -349,7 +349,7 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
                                           h_param,
                                           w_param));
     alpha = 1.0f, beta = 0.0f;
-    void *C_softmax = (void *)(m->qt_prods_softmax +
+    void *C_softmax = (void *)(m->qk_prods_softmax +
                                m->num_heads * tokens_prev_requests_squares);
     // The softmax operation below is executed according to the
     // CUDNN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
@@ -359,10 +359,10 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
                                    CUDNN_SOFTMAX_ACCURATE,
                                    CUDNN_SOFTMAX_MODE_CHANNEL,
                                    &alpha,
-                                   qt_tensor,
+                                   qk_tensor,
                                    (void *)((float *)C),
                                    &beta,
-                                   qt_tensor,
+                                   qk_tensor,
                                    (void *)((float *)C_softmax)));
 
     // Matmul softmax(QK^T/sqrt(d_k)) by V
@@ -546,7 +546,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     size_t value_cache_size =
         num_heads * vProjSize * BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN;
     size_t token2ids_size = BatchConfig::MAX_NUM_TOKENS;
-    size_t qt_prod_size =
+    size_t qk_prod_size =
         BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads;
     size_t attn_heads_size =
         BatchConfig::MAX_NUM_TOKENS * num_heads * vProjSize;
@@ -554,7 +554,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     size_t W_out_contiguous_size = W_out_block_size * num_heads;
     size_t totalSize =
         (qkv_max_proj_size + key_cache_size + value_cache_size +
-         2 * qt_prod_size + attn_heads_size + W_out_contiguous_size) *
+         2 * qk_prod_size + attn_heads_size + W_out_contiguous_size) *
             sizeof(float) +
         token2ids_size *
             sizeof(BatchConfig::token_idxs); // more components will
@@ -575,9 +575,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     keyCache = (float *)devQKVProjArray + qkv_max_proj_size;
     valueCache = (float *)keyCache + key_cache_size;
     dev_token2ids = (BatchConfig::token_idxs *)(valueCache + value_cache_size);
-    qt_prods = (float *)(dev_token2ids + token2ids_size);
-    qt_prods_softmax = (float *)(qt_prods + qt_prod_size);
-    attn_heads = (float *)qt_prods_softmax + qt_prod_size;
+    qk_prods = (float *)(dev_token2ids + token2ids_size);
+    qk_prods_softmax = (float *)(qk_prods + qk_prod_size);
+    attn_heads = (float *)qk_prods_softmax + qk_prod_size;
     W_out_contiguous = (float *)attn_heads + attn_heads_size;
     int parallelism = vProjSize * oProjSize * num_heads;
     build_w_out_tensor<<<GET_BLOCKS(parallelism),

@@ -565,7 +565,11 @@ void IncMultiHeadSelfAttention::inference_task(
                                                       output.get_float_ptr());
 #ifdef INFERENCE_TESTS
   printf("Checking IncMultiHeadSelfAttention computations...\n");
-  // Now re-implement manually
+
+  // =============================================================================
+  //  Load input/output/weights and parse general configs
+  // =============================================================================
+
   float *input_cpu =
       download_tensor<float>(input.get_float_ptr(), input_domain.get_volume());
   assert(input_cpu != nullptr);
@@ -615,6 +619,38 @@ void IncMultiHeadSelfAttention::inference_task(
   long int proj_sum = m->qProjSize + m->kProjSize + m->vProjSize;
   // load weight manually because Torch can't easily read a tensor serialized in
   // column-major order.
+
+  // printf("m->kProjSize: %i, BatchConfig::MAX_NUM_TOKENS: %i,
+  // bc->num_active_tokens(): %i, num_heads: %lli,
+  // BatchConfig::MAX_NUM_REQUESTS: %i, bc->num_active_requests(): %i\n",
+  //   m->kProjSize, BatchConfig::MAX_NUM_TOKENS, bc->num_active_tokens(),
+  //   num_heads, BatchConfig::MAX_NUM_REQUESTS, bc->num_active_requests());
+  // for (int t=0; t<bc->num_active_tokens(); t++) {
+  //   printf("token %i has request_index: %li and token_position: %li\n", t,
+  //   bc->token2ids.token_indexes[t].request_index,
+  //   bc->token2ids.token_indexes[t].token_position);
+  // }
+
+  // =============================================================================
+  //  Load the output tensor (with CUDA results), and create a Torch tensor
+  // =============================================================================
+
+  float output_cuda[m->oProjSize][effective_batch_size] = {0};
+  for (int i = 0; i < m->oProjSize * effective_batch_size; i++) {
+    int row_idx = i % m->oProjSize;
+    int col_idx = i / m->oProjSize;
+    assert(row_idx < m->oProjSize && col_idx < effective_batch_size);
+    output_cuda[row_idx][col_idx] = output_cpu[i];
+  }
+  torch::Tensor torch_out_cuda =
+      torch::from_blob(output_cuda,
+                       {m->oProjSize, (int64_t)effective_batch_size},
+                       torch::kFloat32);
+
+  // =============================================================================
+  //  Load the Q/K/V projection weights, and create a Torch tensor
+  // =============================================================================
+
   float w_qkv[m->qSize][m->qProjSize][3][num_heads];
   memset(&w_qkv,
          0,
@@ -649,19 +685,13 @@ void IncMultiHeadSelfAttention::inference_task(
   std::cout << "Torch input size: " << torch_input.sizes() << std::endl;
   std::cout << "Number of active tokens: " << bc->num_active_tokens()
             << std::endl; */
-  float output_cuda[m->oProjSize][effective_batch_size] = {0};
-  for (int i = 0; i < m->oProjSize * effective_batch_size; i++) {
-    int row_idx = i % m->oProjSize;
-    int col_idx = i / m->oProjSize;
-    assert(row_idx < m->oProjSize && col_idx < effective_batch_size);
-    output_cuda[row_idx][col_idx] = output_cpu[i];
-  }
-  torch::Tensor torch_out_cuda =
-      torch::from_blob(output_cuda,
-                       {m->oProjSize, (int64_t)effective_batch_size},
-                       torch::kFloat32);
-
   // std::cout << "torch_w_qkv:" << std::endl << torch_w_qkv << std::endl;
+
+  // =============================================================================
+  //  Compute the Q/K/V projections, and compare the results with CUDA
+  // =============================================================================
+
+  //  ----------------------- C++ computations & checks ------------------------
   torch::Tensor qkv_projs = torch::einsum(
       "ijkl,im->jmkl",
       {torch_w_qkv,
@@ -673,6 +703,7 @@ void IncMultiHeadSelfAttention::inference_task(
   assert(qkv_projs.sizes()[2] == 3);
   assert(qkv_projs.sizes()[3] == num_heads);
 
+  //  ----------------------- Loading CUDA results for this step ---------------
   float *QKVProjArray_cpu = download_tensor<float>(m->devQKVProjArray,
                                                    BatchConfig::MAX_NUM_TOKENS *
                                                        proj_sum * m->num_heads);
@@ -709,6 +740,7 @@ void IncMultiHeadSelfAttention::inference_task(
                        {m->qProjSize, bc->num_active_tokens(), 3, num_heads},
                        torch::kFloat32);
 
+  //  ----------------------- Comparing C++ & CUDA results ---------------------
   // std::cout << "QKVProjArray_torch" << std::endl;
   // for (int i=0; i<num_heads; i++) {
   //   for (int j=0; j<3; j++) {
@@ -722,9 +754,50 @@ void IncMultiHeadSelfAttention::inference_task(
   //     std::cout << qkv_projs.index({Slice(), Slice(), j, i}) << std::endl;
   //   }
   // }
-
   assert(torch::allclose(QKVProjArray_torch, qkv_projs));
 
+  // =============================================================================
+  //  Store the K/V projections into the cache
+  // =============================================================================
+
+  //  ----------------------- C++ operations & checks --------------------------
+  for (size_t h = 0; h < num_heads; h++) {
+    for (size_t t = 0; t < bc->num_active_tokens(); t++) {
+      for (size_t d = 0; d < m->kProjSize; d++) {
+        size_t kcache_idx =
+            d * MAX_SEQ_LEN * m->num_heads * BatchConfig::MAX_NUM_REQUESTS +
+            bc->token2ids.token_indexes[t].token_position * m->num_heads *
+                BatchConfig::MAX_NUM_REQUESTS +
+            h * BatchConfig::MAX_NUM_REQUESTS +
+            bc->token2ids.token_indexes[t].request_index;
+        m->kcache[kcache_idx] =
+            qkv_projs.index({(int64_t)d, (int64_t)t, 1, (int64_t)h})
+                .item<float>();
+      }
+      for (size_t d = 0; d < m->vProjSize; d++) {
+        size_t vcache_idx =
+            d * MAX_SEQ_LEN * m->num_heads * BatchConfig::MAX_NUM_REQUESTS +
+            bc->token2ids.token_indexes[t].token_position * m->num_heads *
+                BatchConfig::MAX_NUM_REQUESTS +
+            h * BatchConfig::MAX_NUM_REQUESTS +
+            bc->token2ids.token_indexes[t].request_index;
+        m->vcache[vcache_idx] =
+            qkv_projs.index({(int64_t)d, (int64_t)t, 2, (int64_t)h})
+                .item<float>();
+      }
+    }
+  }
+
+  torch::Tensor K_t = torch::from_blob(
+      m->kcache,
+      {m->kProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
+      torch::kFloat32);
+  torch::Tensor V_t = torch::from_blob(
+      m->vcache,
+      {m->vProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
+      torch::kFloat32);
+
+  //  ----------------------- Loading CUDA results for this step ---------------
   float *keyCache_cpu =
       download_tensor<float>(m->keyCache,
                              m->num_heads * m->kProjSize *
@@ -777,72 +850,7 @@ void IncMultiHeadSelfAttention::inference_task(
       {m->vProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
       torch::kFloat32);
 
-  assert(m->qProjSize == m->vProjSize && m->vProjSize == m->kProjSize);
-  // printf("m->kProjSize: %i, BatchConfig::MAX_NUM_TOKENS: %i,
-  // bc->num_active_tokens(): %i, num_heads: %lli,
-  // BatchConfig::MAX_NUM_REQUESTS: %i, bc->num_active_requests(): %i\n",
-  //   m->kProjSize, BatchConfig::MAX_NUM_TOKENS, bc->num_active_tokens(),
-  //   num_heads, BatchConfig::MAX_NUM_REQUESTS, bc->num_active_requests());
-  // for (int t=0; t<bc->num_active_tokens(); t++) {
-  //   printf("token %i has request_index: %li and token_position: %li\n", t,
-  //   bc->token2ids.token_indexes[t].request_index,
-  //   bc->token2ids.token_indexes[t].token_position);
-  // }
-
-  for (size_t h = 0; h < num_heads; h++) {
-    for (size_t t = 0; t < bc->num_active_tokens(); t++) {
-      for (size_t d = 0; d < m->kProjSize; d++) {
-        size_t kcache_idx =
-            d * MAX_SEQ_LEN * m->num_heads * BatchConfig::MAX_NUM_REQUESTS +
-            bc->token2ids.token_indexes[t].token_position * m->num_heads *
-                BatchConfig::MAX_NUM_REQUESTS +
-            h * BatchConfig::MAX_NUM_REQUESTS +
-            bc->token2ids.token_indexes[t].request_index;
-        m->kcache[kcache_idx] =
-            qkv_projs.index({(int64_t)d, (int64_t)t, 1, (int64_t)h})
-                .item<float>();
-        // assert(fabs(m->kcache[kcache_idx] -
-        //             keyCache_cpu[bc->token2ids.token_indexes[t].request_index
-        //             *
-        //                              num_heads * m->kProjSize * MAX_SEQ_LEN +
-        //                          h * m->kProjSize * MAX_SEQ_LEN +
-        //                          m->kProjSize *
-        //                          bc->token2ids.token_indexes[t]
-        //                                             .token_position +
-        //                          d]) <= FLT_EPSILON);
-      }
-      for (size_t d = 0; d < m->vProjSize; d++) {
-        size_t vcache_idx =
-            d * MAX_SEQ_LEN * m->num_heads * BatchConfig::MAX_NUM_REQUESTS +
-            bc->token2ids.token_indexes[t].token_position * m->num_heads *
-                BatchConfig::MAX_NUM_REQUESTS +
-            h * BatchConfig::MAX_NUM_REQUESTS +
-            bc->token2ids.token_indexes[t].request_index;
-        m->vcache[vcache_idx] =
-            qkv_projs.index({(int64_t)d, (int64_t)t, 2, (int64_t)h})
-                .item<float>();
-        // assert(
-        //     fabs(m->vcache[vcache_idx] -
-        //          valueCache_cpu[bc->token2ids.token_indexes[t].request_index
-        //          *
-        //                             num_heads * m->vProjSize * MAX_SEQ_LEN +
-        //                         h * m->vProjSize * MAX_SEQ_LEN +
-        //                         m->vProjSize * bc->token2ids.token_indexes[t]
-        //                                            .token_position +
-        //                         d]) <= FLT_EPSILON);
-      }
-    }
-  }
-
-  torch::Tensor K_t = torch::from_blob(
-      m->kcache,
-      {m->kProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
-      torch::kFloat32);
-  torch::Tensor V_t = torch::from_blob(
-      m->vcache,
-      {m->vProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
-      torch::kFloat32);
-
+  //  ----------------------- Comparing C++ & CUDA results ---------------------
   assert(torch::allclose(K_t_cuda, K_t));
   assert(torch::allclose(V_t_cuda, V_t));
   free(kcache_cuda);
@@ -914,6 +922,51 @@ void IncMultiHeadSelfAttention::inference_task(
    printf("\n");
  } */
 
+  // =============================================================================
+  //  Load the W_out projection weights
+  // =============================================================================
+
+  //  ----------------------- C++ operations & checks --------------------------
+  float w_out[m->vProjSize][m->num_heads][m->oProjSize] = {0};
+  for (int h = 0; h < num_heads; h++) {
+    for (int v = 0; v < m->vProjSize; v++) {
+      for (int o = 0; o < m->oProjSize; o++) {
+        w_out[v][h][o] =
+            weight_cpu[all_weight_params * h + 3 * m->qProjSize * m->qSize +
+                       m->vProjSize * o + v];
+      }
+    }
+  }
+  // convert weights to torch tensor
+  torch::Tensor torch_w_out = torch::from_blob(
+      w_out, {m->vProjSize, m->num_heads, m->oProjSize}, torch::kFloat32);
+
+  //  ----------------------- Loading CUDA results for this step ---------------
+  float *w_out_cuda = download_tensor<float>(
+      m->W_out_contiguous, m->vProjSize * m->oProjSize * m->num_heads);
+  assert(w_out_cuda != nullptr);
+  float converted_wout_tensor[m->vProjSize][m->num_heads][m->oProjSize] = {0};
+  for (int i = 0; i < m->vProjSize * m->num_heads * m->oProjSize; i++) {
+    int row_index = i % m->vProjSize;
+    int col_index = (i / m->vProjSize) % m->num_heads;
+    int depth_index = i / (m->vProjSize * m->num_heads);
+    assert(row_index < m->vProjSize && col_index < m->num_heads &&
+           depth_index < m->oProjSize);
+    converted_wout_tensor[row_index][col_index][depth_index] = w_out_cuda[i];
+  }
+  torch::Tensor w_out_cuda_torch =
+      torch::from_blob(converted_wout_tensor,
+                       {m->vProjSize, m->num_heads, m->oProjSize},
+                       torch::kFloat32);
+  //  ----------------------- Comparing C++ & CUDA results ---------------------
+  assert(torch::allclose(w_out_cuda_torch, torch_w_out));
+
+  // =============================================================================
+  //  Compute the softmax(QK^T/sqrt(d_k))V product, request by request
+  // =============================================================================
+
+  //  ----------------------- C++ initialization steps
+  //  --------------------------
   torch::Tensor Q_projs = qkv_projs.index({Slice(), Slice(), 0, Slice()})
                               .reshape({qkv_projs.sizes()[0],
                                         qkv_projs.sizes()[1],
@@ -921,7 +974,6 @@ void IncMultiHeadSelfAttention::inference_task(
 
   // std::cout << "qkv_projs.sizes(): " << qkv_projs.sizes() << std::endl;
   // std::cout << "Q_projs.sizes(): " << Q_projs.sizes() << std::endl;
-
   std::vector<size_t> req_idxs;
   std::vector<size_t> r_first_idx;
   std::vector<size_t> r_num_tokens;
@@ -943,60 +995,44 @@ void IncMultiHeadSelfAttention::inference_task(
                          decltype(r_num_tokens)::value_type(0)) ==
          bc->num_active_tokens());
 
-  torch::Tensor qkt_products[bc->num_active_requests()];
-  torch::Tensor qkt_softmax[bc->num_active_requests()];
+  torch::Tensor qk_products[bc->num_active_requests()];
+  torch::Tensor qk_softmax[bc->num_active_requests()];
   torch::Tensor attn_heads[bc->num_active_requests()];
-  float *qt_prods_cpu = download_tensor<float>(
-      m->qt_prods,
-      BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads);
-  assert(qt_prods_cpu != nullptr);
-  float *qt_prods_softmax_cpu = download_tensor<float>(
-      m->qt_prods_softmax,
-      BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads);
-  assert(qt_prods_softmax_cpu != nullptr);
-  float *attn_heads_cpu = download_tensor<float>(
-      m->attn_heads, BatchConfig::MAX_NUM_TOKENS * m->num_heads * m->vProjSize);
-  assert(attn_heads_cpu != nullptr);
-
-  float w_out[m->vProjSize][m->num_heads][m->oProjSize] = {0};
-  for (int h = 0; h < num_heads; h++) {
-    for (int v = 0; v < m->vProjSize; v++) {
-      for (int o = 0; o < m->oProjSize; o++) {
-        w_out[v][h][o] =
-            weight_cpu[all_weight_params * h + 3 * m->qProjSize * m->qSize +
-                       m->vProjSize * o + v];
-      }
-    }
-  }
-  // convert weights to torch tensor
-  torch::Tensor torch_w_out = torch::from_blob(
-      w_out, {m->vProjSize, m->num_heads, m->oProjSize}, torch::kFloat32);
-
-  float *w_out_cuda = download_tensor<float>(
-      m->W_out_contiguous, m->vProjSize * m->oProjSize * m->num_heads);
-  assert(w_out_cuda != nullptr);
-  float converted_wout_tensor[m->vProjSize][m->num_heads][m->oProjSize] = {0};
-  for (int i = 0; i < m->vProjSize * m->num_heads * m->oProjSize; i++) {
-    int row_index = i % m->vProjSize;
-    int col_index = (i / m->vProjSize) % m->num_heads;
-    int depth_index = i / (m->vProjSize * m->num_heads);
-    assert(row_index < m->vProjSize && col_index < m->num_heads &&
-           depth_index < m->oProjSize);
-    converted_wout_tensor[row_index][col_index][depth_index] = w_out_cuda[i];
-  }
-  torch::Tensor w_out_cuda_torch =
-      torch::from_blob(converted_wout_tensor,
-                       {m->vProjSize, m->num_heads, m->oProjSize},
-                       torch::kFloat32);
-  assert(torch::allclose(w_out_cuda_torch, torch_w_out));
 
   torch::Tensor cpp_output =
       torch::zeros({m->oProjSize, bc->num_active_tokens()});
 
-  size_t qt_prods_cpu_offset = 0;
+  //  ----------------------- Loading CUDA results for this step ---------------
+  float *qk_prods_cpu = download_tensor<float>(
+      m->qk_prods,
+      BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads);
+  assert(qk_prods_cpu != nullptr);
+
+  float *qk_prods_softmax_cpu = download_tensor<float>(
+      m->qk_prods_softmax,
+      BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads);
+  assert(qk_prods_softmax_cpu != nullptr);
+
+  float *attn_heads_cpu = download_tensor<float>(
+      m->attn_heads, BatchConfig::MAX_NUM_TOKENS * m->num_heads * m->vProjSize);
+  assert(attn_heads_cpu != nullptr);
+
+  //  ----------------------- Main loop (request by request) -------------------
+  size_t qk_prods_cpu_offset = 0;
+
   for (size_t r = 0; r < bc->num_active_requests(); r++) {
+    // Compute pre-request parameters
     size_t num_new_tokens = r_num_tokens[r];
     assert(num_new_tokens == bc->num_processing_tokens[r]);
+    int64_t num_tokens_received_so_far =
+        (int64_t)(bc->token_last_available_idx[r] + 1);
+    assert(num_tokens_received_so_far >= (int64_t)num_new_tokens);
+    int64_t rid = (int64_t)(req_idxs[r]);
+
+    //  ----------------------- C++ computations
+    //  --------------------------------
+    // Get the slice of the Q projection tensor with the tokens in the current
+    // request
     torch::Tensor Q_req =
         Q_projs.index({Slice(),
                        Slice(r_first_idx[r], r_first_idx[r] + num_new_tokens),
@@ -1006,11 +1042,8 @@ void IncMultiHeadSelfAttention::inference_task(
     assert(Q_req.sizes()[1] == num_new_tokens);
     assert(Q_req.sizes()[2] == num_heads);
 
-    int64_t num_tokens_received_so_far =
-        (int64_t)(bc->token_last_available_idx[r] + 1);
-    assert(num_tokens_received_so_far >= (int64_t)num_new_tokens);
-    int64_t rid = (int64_t)(req_idxs[r]);
-    qkt_products[r] =
+    // Compute (Q*K^T)/sqrt(d_k) matmul
+    qk_products[r] =
         torch::einsum("ijk,ilk->jlk",
                       {Q_req,
                        K_t.index({Slice(),
@@ -1018,36 +1051,12 @@ void IncMultiHeadSelfAttention::inference_task(
                                   Slice(),
                                   rid})}) *
         (1.0f / sqrt(m->kProjSize));
-    float converted_qt_prod[num_new_tokens][num_tokens_received_so_far]
-                           [num_heads] = {0};
-    float converted_qt_prod_softmax[num_new_tokens][num_tokens_received_so_far]
-                                   [num_heads] = {0};
-    for (size_t i = 0;
-         i < num_new_tokens * num_tokens_received_so_far * num_heads;
-         i++) {
-      size_t new_t_idx = i % num_new_tokens;
-      size_t all_t_idx = (i / num_new_tokens) % num_tokens_received_so_far;
-      size_t head_idx = i / (num_new_tokens * num_tokens_received_so_far);
-      assert(new_t_idx < num_new_tokens &&
-             all_t_idx < num_tokens_received_so_far && head_idx < num_heads);
-      converted_qt_prod[new_t_idx][all_t_idx][head_idx] =
-          qt_prods_cpu[i + qt_prods_cpu_offset];
-      converted_qt_prod_softmax[new_t_idx][all_t_idx][head_idx] =
-          qt_prods_softmax_cpu[i + qt_prods_cpu_offset];
-    }
-    torch::Tensor qt_prods_torch = torch::from_blob(
-        converted_qt_prod,
-        {(int64_t)num_new_tokens, num_tokens_received_so_far, num_heads},
-        torch::kFloat32);
-    torch::Tensor qt_prods_softmax_torch = torch::from_blob(
-        converted_qt_prod_softmax,
-        {(int64_t)num_new_tokens, num_tokens_received_so_far, num_heads},
-        torch::kFloat32);
 
+    // Set entries above diagonal to -inf to make attention causal.
     for (int h = 0; h < num_heads; h++) {
-      qkt_products[r].index(
+      qk_products[r].index(
           {Slice(), Slice(num_tokens_received_so_far - num_new_tokens), h}) =
-          qkt_products[r]
+          qk_products[r]
               .index({Slice(),
                       Slice(num_tokens_received_so_far - num_new_tokens),
                       h})
@@ -1057,36 +1066,71 @@ void IncMultiHeadSelfAttention::inference_task(
               .triu()
               .fill_diagonal_(0);
     }
+    // Compute softmax for each request block
+    qk_softmax[r] = torch::softmax(qk_products[r], -2);
+    assert(qk_softmax[r].sizes()[0] == num_new_tokens);
+    assert(qk_softmax[r].sizes()[1] == num_tokens_received_so_far);
+    assert(qk_softmax[r].sizes()[2] == m->num_heads);
+
+    //  ----------------------- Loading CUDA results for this step
+    //  ---------------
+    float converted_qk_prod[num_new_tokens][num_tokens_received_so_far]
+                           [num_heads] = {0};
+    float converted_qk_prod_softmax[num_new_tokens][num_tokens_received_so_far]
+                                   [num_heads] = {0};
+    for (size_t i = 0;
+         i < num_new_tokens * num_tokens_received_so_far * num_heads;
+         i++) {
+      size_t new_t_idx = i % num_new_tokens;
+      size_t all_t_idx = (i / num_new_tokens) % num_tokens_received_so_far;
+      size_t head_idx = i / (num_new_tokens * num_tokens_received_so_far);
+      assert(new_t_idx < num_new_tokens &&
+             all_t_idx < num_tokens_received_so_far && head_idx < num_heads);
+      converted_qk_prod[new_t_idx][all_t_idx][head_idx] =
+          qk_prods_cpu[i + qk_prods_cpu_offset];
+      converted_qk_prod_softmax[new_t_idx][all_t_idx][head_idx] =
+          qk_prods_softmax_cpu[i + qk_prods_cpu_offset];
+    }
+    torch::Tensor qk_prods_cuda = torch::from_blob(
+        converted_qk_prod,
+        {(int64_t)num_new_tokens, num_tokens_received_so_far, num_heads},
+        torch::kFloat32);
+    torch::Tensor qk_prods_softmax_cuda = torch::from_blob(
+        converted_qk_prod_softmax,
+        {(int64_t)num_new_tokens, num_tokens_received_so_far, num_heads},
+        torch::kFloat32);
+
+    //  ----------------------- Comparing C++ & CUDA results
+    //  ---------------------
     /* std::cout << "C++:" <<std::endl;
     for (int h=0; h<num_heads; h++) {
-      std::cout << qkt_products[r].index({Slice(), Slice(), h}) << std::endl;
+      std::cout << qk_products[r].index({Slice(), Slice(), h}) << std::endl;
     }
     std::cout << "CUDA:" <<std::endl;
     for (int h=0; h<num_heads; h++) {
-      std::cout << qt_prods_torch.index({Slice(), Slice(), h}) << std::endl;
+      std::cout << qk_prods_cuda.index({Slice(), Slice(), h}) << std::endl;
     }
     //
     std::cout << "C++:" <<std::endl;
     for (int h=0; h<num_heads; h++) {
-      std::cout << qkt_softmax[r].index({Slice(), Slice(), h}) << std::endl;
+      std::cout << qk_softmax[r].index({Slice(), Slice(), h}) << std::endl;
     }
     std::cout << "CUDA:" <<std::endl;
     for (int h=0; h<num_heads; h++) {
-      std::cout << qt_prods_softmax_torch.index({Slice(), Slice(), h}) <<
+      std::cout << qk_prods_softmax_cuda.index({Slice(), Slice(), h}) <<
     std::endl;
     } */
     // std::cout << "C++ tril:" <<std::endl;
     // for (int h=0; h<num_heads; h++) {
-    //   std::cout << qkt_products[r].tril().index({Slice(), Slice(), h}) <<
+    //   std::cout << qk_products[r].tril().index({Slice(), Slice(), h}) <<
     //   std::endl;
     // }
-    assert(torch::allclose(qt_prods_torch, qkt_products[r]));
-    qkt_softmax[r] = torch::softmax(qkt_products[r], -2);
-    assert(torch::allclose(qt_prods_softmax_torch, qkt_softmax[r]));
+    assert(torch::allclose(qk_prods_cuda, qk_products[r]));
+    assert(torch::allclose(qk_prods_softmax_cuda, qk_softmax[r]));
 
-    assert(qkt_softmax[r].sizes()[0] == num_new_tokens);
-    assert(qkt_softmax[r].sizes()[1] == num_tokens_received_so_far);
-    assert(qkt_softmax[r].sizes()[2] == m->num_heads);
+    //  ----------------------- C++ computations
+    //  --------------------------------
+    // Multiply softmax results by V
     assert(
         V_t.index({Slice(), Slice(0, num_tokens_received_so_far), Slice(), rid})
             .sizes()[0] == m->vProjSize);
@@ -1098,13 +1142,15 @@ void IncMultiHeadSelfAttention::inference_task(
             .sizes()[2] == m->num_heads);
     attn_heads[r] = torch::einsum(
         "ijk,ljk->ilk",
-        {qkt_softmax[r],
+        {qk_softmax[r],
          V_t.index(
              {Slice(), Slice(0, num_tokens_received_so_far), Slice(), rid})});
     assert(attn_heads[r].sizes()[0] == num_new_tokens);
     assert(attn_heads[r].sizes()[1] == m->vProjSize);
     assert(attn_heads[r].sizes()[2] == m->num_heads);
 
+    //  ----------------------- Loading CUDA results for this step
+    //  ---------------
     float converted_attn_heads_cpu[num_new_tokens][m->vProjSize][m->num_heads] =
         {0};
     for (int i = 0; i < num_new_tokens * m->vProjSize * m->num_heads; i++) {
@@ -1116,21 +1162,29 @@ void IncMultiHeadSelfAttention::inference_task(
       converted_attn_heads_cpu[token_ix][vproj_idx][head_idx] =
           attn_heads_cpu[r_first_idx[r] * m->vProjSize * m->num_heads + i];
     }
-    torch::Tensor converted_attn_heads_torch =
+    torch::Tensor converted_attn_heads_cuda =
         torch::from_blob(converted_attn_heads_cpu,
                          {(int64_t)num_new_tokens, m->vProjSize, m->num_heads},
                          torch::kFloat32);
-    assert(torch::allclose(converted_attn_heads_torch, attn_heads[r]));
 
+    //  ----------------------- Comparing C++ & CUDA results
+    //  ---------------------
+    assert(torch::allclose(converted_attn_heads_cuda, attn_heads[r]));
+
+    //  ----------------------- C++ computations
+    //  --------------------------------
+    // Compute output values by projecting all heads to output space
     cpp_output.index(
         {Slice(),
          Slice(r_first_idx[r], r_first_idx[r] + (int64_t)num_new_tokens)}) =
         torch::einsum("jkl,ijk->li", {torch_w_out, attn_heads[r]});
 
-    qt_prods_cpu_offset +=
+    // increment main loop's auxiliary index
+    qk_prods_cpu_offset +=
         num_new_tokens * num_tokens_received_so_far * num_heads;
   }
 
+  //  ----------------------- Comparing C++ & CUDA results ---------------------
   /* std::cout << "C++:" <<std::endl;
   for (int i=0; i<m->oProjSize; i++) {
     std::cout << cpp_output.index({i, Slice()}) << std::endl;
@@ -1146,18 +1200,23 @@ void IncMultiHeadSelfAttention::inference_task(
           {Slice(), Slice(0, (int64_t)bc->num_active_tokens())}),
       cpp_output));
 
+  // =============================================================================
+  //  Cleanup
+  // =============================================================================
+
   checkCUDA(cudaFreeHost(input_cpu));
   checkCUDA(cudaFreeHost(weight_cpu));
   checkCUDA(cudaFreeHost(output_cpu));
   checkCUDA(cudaFreeHost(QKVProjArray_cpu));
   checkCUDA(cudaFreeHost(keyCache_cpu));
   checkCUDA(cudaFreeHost(valueCache_cpu));
-  checkCUDA(cudaFreeHost(qt_prods_cpu));
-  checkCUDA(cudaFreeHost(qt_prods_softmax_cpu));
+  checkCUDA(cudaFreeHost(qk_prods_cpu));
+  checkCUDA(cudaFreeHost(qk_prods_softmax_cpu));
   checkCUDA(cudaFreeHost(attn_heads_cpu));
   checkCUDA(cudaFreeHost(w_out_cuda));
   // assert(false && "All good if you see this assert failure! :)");
 #endif
+  // Done with INFERENCE_TESTS block
 }
 
 void IncMultiHeadSelfAttention::backward(FFModel const &ff) {
