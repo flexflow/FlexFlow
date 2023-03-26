@@ -16,10 +16,12 @@
 
 #include <string>
 
-#define MAX_SEQ_LEN 1024
+// #define MAX_SEQ_LEN 1024
+#define MAX_SEQ_LEN 20
 #define BATCH_SIZE 2
-#define MNIST_DIMS 28 * 28
-#define DATA_DIM MNIST_DIMS
+// #define MNIST_DIMS 28 * 28
+// #define DATA_DIM MNIST_DIMS
+#define DATA_DIM 3
 
 struct InferenceConfig {
   InferenceConfig(void) {
@@ -27,7 +29,7 @@ struct InferenceConfig {
     token_dim = DATA_DIM;
     sequence_length = MAX_SEQ_LEN;
     batch_size = BATCH_SIZE;
-    out_dim = 15;
+    out_dim = 3;
     num_labels = out_dim;
     num_layers = 1;
     //----------------------- Inference parameters ---------------------
@@ -36,12 +38,12 @@ struct InferenceConfig {
     poisson_distribution = true;
     // average number of request arrivals per second
     arrival_rate = 250;
-    num_inflight_batches = 5;
-    incremental_mode = false;
+    num_inflight_batches = 4;
+    incremental_mode = true;
     //----------------------- Rest of model parameters ------------------
-    hidden_size = DATA_DIM;
+    hidden_size = 12;
     // Encoder layer
-    num_attention_heads = 16;
+    num_attention_heads = 3;
     attention_kdim = attention_vdim = hidden_size / num_attention_heads;
     num_encoder_layers = 1;
   }

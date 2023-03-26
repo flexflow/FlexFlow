@@ -135,8 +135,11 @@ void FlexFlow::top_level_task(Task const *task,
   im.init_operators_inference();
 
   //------------ Initialize the data loader and data generator ------------
-  size_t min_input_tokens = 32, max_input_tokens = 512,
-         min_tokens_to_generate = 1, max_tokens_to_generate = 128;
+  /*size_t min_input_tokens = 32, max_input_tokens = 512,
+         min_tokens_to_generate = 1, max_tokens_to_generate = 128;*/
+  size_t min_input_tokens = 5, max_input_tokens = 10,
+         min_tokens_to_generate = 1,
+         max_tokens_to_generate = MAX_SEQ_LEN - max_input_tokens;
   DataGenerator data_generator(moeConfig.total_requests,
                                moeConfig.token_dim,
                                min_input_tokens,
@@ -147,7 +150,10 @@ void FlexFlow::top_level_task(Task const *task,
                                moeConfig.arrival_rate);
   ParallelTensor input_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
-  DataLoader data_loader(ff, moeConfig, data_generator, input_pt);
+  assert(im.tensor_buffer.find(input_pt) != im.tensor_buffer.end());
+  assert(im.tensor_buffer[input_pt].size() == im.max_num_inflight_batches);
+  DataLoader data_loader(
+      ff, moeConfig, data_generator, im.tensor_buffer[input_pt]);
 
   //----------------------- Start timer -----------------------------------
   {
@@ -168,17 +174,18 @@ void FlexFlow::top_level_task(Task const *task,
   std::pair<size_t, size_t> new_prompts;
   BatchConfig *bc = nullptr;
 
+  assert(im.max_num_requests_per_batch == moeConfig.batch_size);
+
   // simulation loop. For deployment, we will use a while(true)
   while (processed_requests < moeConfig.total_requests) {
-    for (int bid = 0; bid < im.max_num_requests_per_batch; bid++) {
+    for (int bid = 0; bid < im.max_num_inflight_batches; bid++) {
+      size_t max_reqs, max_tkns;
       if (future_handlers.find(bid) == future_handlers.end()) {
-        size_t max_reqs = moeConfig.incremental_mode
-                              ? bc->MAX_NUM_REQUESTS
-                              : im.max_num_requests_per_batch;
-        size_t max_tkns = moeConfig.sequence_length * moeConfig.batch_size;
+        max_reqs = moeConfig.incremental_mode ? bc->MAX_NUM_REQUESTS
+                                              : im.max_num_requests_per_batch;
+        max_tkns = moeConfig.sequence_length * moeConfig.batch_size;
         new_prompts = data_generator.get_requests(max_reqs, max_tkns);
-        assert(new_prompts.second <= BatchConfig::MAX_NUM_REQUESTS);
-        bc = new BatchConfig(moeConfig.incremental_mode);
+        bc = new BatchConfig();
       } else {
         Future future = future_handlers[bid];
         if (!future.is_ready(true /*subscribe*/)) {
@@ -187,13 +194,16 @@ void FlexFlow::top_level_task(Task const *task,
         InferenceResult ir = future.get_result<InferenceResult>();
         bc = batch_configs[bid];
         processed_requests += bc->update_results(ir);
-        size_t max_reqs = moeConfig.incremental_mode
-                              ? bc->MAX_NUM_REQUESTS - bc->num_active_requests()
-                              : im.max_num_requests_per_batch;
-        size_t max_tkns =
-            moeConfig.sequence_length * moeConfig.batch_size -
-            (moeConfig.incremental_mode ? bc->num_active_tokens() : 0);
+        max_reqs = moeConfig.incremental_mode
+                       ? bc->MAX_NUM_REQUESTS - bc->num_active_requests()
+                       : im.max_num_requests_per_batch;
+        max_tkns = moeConfig.sequence_length * moeConfig.batch_size -
+                   (moeConfig.incremental_mode ? bc->num_active_tokens() : 0);
         new_prompts = data_generator.get_requests(max_reqs, max_tkns);
+      }
+      assert(new_prompts.second <= max_reqs);
+      if (bc->num_active_tokens() == 0 && new_prompts.second == 0) {
+        continue;
       }
       for (size_t i = 0; i < new_prompts.second; i++) {
         size_t guid = new_prompts.first + i;
@@ -203,11 +213,10 @@ void FlexFlow::top_level_task(Task const *task,
                seq_lens.first <= max_input_tokens &&
                seq_lens.second >= min_tokens_to_generate &&
                seq_lens.second <= max_tokens_to_generate);
-        assert(bc->register_new_request(guid, seq_lens.first));
+        assert(bc->register_new_request(guid, seq_lens.first, seq_lens.second));
       }
       bc->prepare_next_batch();
-      // TODO: loading data
-      data_loader.next_batch(ff, bc);
+      data_loader.next_batch(ff, bid, bc);
 
       runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
       FutureMap fm = im.inference(bid, *bc);

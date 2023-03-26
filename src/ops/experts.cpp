@@ -26,6 +26,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      float const *topk_gate_preds,
                                      float *output,
                                      float const **weights,
+                                     int num_active_tokens,
                                      int chosen_experts,
                                      int batch_size,
                                      int out_dim) {

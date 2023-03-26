@@ -14,6 +14,15 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 set(FLEXFLOW_ROOT ${CMAKE_CURRENT_LIST_DIR})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -UNDEBUG")
 
+option(INFERENCE_TESTS "Run inference tests" OFF)
+set(LIBTORCH_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../libtorch" CACHE STRING "LibTorch Path")
+if (INFERENCE_TESTS)
+  find_package(Torch REQUIRED PATHS ${LIBTORCH_PATH} NO_DEFAULT_PATH)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+  message(STATUS "LIBTORCH_PATH: ${LIBTORCH_PATH}")
+  message(STATUS "TORCH_LIBRARIES: ${TORCH_LIBRARIES}")
+endif()
+
 # Set a default build type if none was specified
 set(default_build_type "Debug")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -84,11 +93,19 @@ set(NVCC_FLAGS $ENV{NVCC_FLAGS})
 set(LD_FLAGS $ENV{LD_FLAGS})
 
 # Set global FLAGS
+if(INFERENCE_TESTS)
 list(APPEND CC_FLAGS
+  -std=c++14)
+
+list(APPEND NVCC_FLAGS
+  -std=c++14)
+else()
+  list(APPEND CC_FLAGS
   -std=c++11)
 
 list(APPEND NVCC_FLAGS
   -std=c++11)
+endif()
 
 add_compile_options(${CC_FLAGS})
 set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS} ${NVCC_FLAGS})
@@ -133,6 +150,14 @@ if(FF_USE_NCCL)
     -DFF_USE_NCCL)
   list(APPEND FF_NVCC_FLAGS
     -DFF_USE_NCCL)
+endif()
+
+# Inference tests
+if(INFERENCE_TESTS)
+  list(APPEND FF_CC_FLAGS
+    -DINFERENCE_TESTS)
+  list(APPEND FF_NVCC_FLAGS
+    -DINFERENCE_TESTS)
 endif()
 
 # Legion
@@ -319,6 +344,11 @@ endif()
 
 if(FF_USE_NCCL)
   add_dependencies(flexflow ${NCCL_NAME})
+endif()
+
+if (INFERENCE_TESTS)
+  target_link_libraries(flexflow "${TORCH_LIBRARIES}")
+  set_property(TARGET flexflow PROPERTY CXX_STANDARD 14)
 endif()
 
 # build binary

@@ -16,47 +16,47 @@
 #include "flexflow/batch_config.h"
 #include "legion.h"
 #include <cassert>
+#include <climits>
 
 namespace FlexFlow {
 
 LegionRuntime::Logger::Category log_bc("BatchConfig");
 
-BatchConfig::BatchConfig(bool _incremental_mode)
-    : incremental_mode(_incremental_mode) {
+BatchConfig::BatchConfig() {
   cached_results = false;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     token_start_idx[i] = 0;
     token_last_available_idx[i] = -1;
     request_completed[i] = true;
     num_processing_tokens[i] = 0;
+    max_sequence_length[i] = 0;
+  }
+  token2ids.num_samples = 0;
+  for (int i = 0; i < MAX_NUM_TOKENS; i++) {
+    token2ids.guids[i] = SIZE_MAX;
+    token2ids.token_indexes[i].request_index = SIZE_MAX;
+    token2ids.token_indexes[i].token_position = SIZE_MAX;
   }
   update_num_active_requests_tokens();
 }
 
 int BatchConfig::update_results(InferenceResult const &ir) {
   cached_results = false;
-  int t = 0;
+  // int tokens_processed = 0;
   int completed = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (request_completed[i]) {
       continue;
     }
-    if (num_processing_tokens[i] == 0) {
-      continue;
-    }
-    t += num_processing_tokens[i];
+    assert(num_processing_tokens[i] > 0);
+    // if (num_processing_tokens[i] == 0) {
+    //   continue;
+    // }
+    // tokens_processed += num_processing_tokens[i];
     token_start_idx[i] += num_processing_tokens[i];
-    if (ir.results[t] == 0) { // TODO: replace this with <EOS>
-      log_bc.print("[Done] guid(%zu) final_length(%d)",
-                   request_guid[i],
-                   token_start_idx[i]);
-      request_completed[i] = true;
-      token_start_idx[i] = 0;
-      token_last_available_idx[i] = -1;
-      num_processing_tokens[i] = 0;
-      completed++;
-    } else if (token_start_idx[i] >= MAX_SEQUENCE_LENGTH) {
-      // Reach maximum request length
+    if (token_start_idx[i] >= max_sequence_length[i]
+        // || ir.results[t] == 0 TODO: replace this with <EOS>
+    ) {
       log_bc.print("[Done] guid(%zu) final_length(%d)",
                    request_guid[i],
                    token_start_idx[i]);
@@ -68,22 +68,28 @@ int BatchConfig::update_results(InferenceResult const &ir) {
     } else {
       if (token_start_idx[i] == token_last_available_idx[i] + 1) {
         token_last_available_idx[i]++;
+        num_processing_tokens[i] = 1; // incremental phase
+      } else {
+        assert(false);
       }
       assert(token_start_idx[i] <= token_last_available_idx[i]);
     }
-    num_processing_tokens[i] = 0;
   }
   update_num_active_requests_tokens();
   return completed;
 }
 
-bool BatchConfig::register_new_request(size_t guid, int length) {
+bool BatchConfig::register_new_request(size_t guid,
+                                       int initial_length,
+                                       int tokens_to_generate) {
   cached_results = false;
+  assert(initial_length > 0 && tokens_to_generate > 0);
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (request_completed[i]) {
-      log_bc.print("[NewRequest] guid(%zu) length(%d)", guid, length);
+      log_bc.print("[NewRequest] guid(%zu) length(%d)", guid, initial_length);
       token_start_idx[i] = 0;
-      token_last_available_idx[i] = length - 1;
+      token_last_available_idx[i] = initial_length - 1;
+      max_sequence_length[i] = initial_length + tokens_to_generate;
       request_guid[i] = guid;
       num_processing_tokens[i] = 0;
       request_completed[i] = false;
@@ -115,17 +121,23 @@ void BatchConfig::prepare_next_batch() {
   log_bc.print("[NextBatch] num_tokens(%d)", count);
 }
 
-bool BatchConfig::update_num_active_requests_tokens() {
+void BatchConfig::update_num_active_requests_tokens() {
   num_requests = 0;
   num_tokens = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (!request_completed[i]) {
       num_requests++;
-      num_tokens += num_processing_tokens[i];
+      for (int j = 0; j < num_processing_tokens[i]; j++) {
+        token2ids.guids[num_tokens] = request_guid[i];
+        token2ids.token_indexes[num_tokens].token_position =
+            token_start_idx[i] + j;
+        token2ids.token_indexes[num_tokens].request_index = i;
+        num_tokens++;
+      }
     }
   }
+  token2ids.num_samples = num_tokens;
   cached_results = true;
-  return true;
 }
 
 int BatchConfig::num_active_requests() const {
@@ -146,6 +158,72 @@ int BatchConfig::num_active_tokens() const {
            "some BatchConfig functions updated requests but didn't call "
            "update_num_active_requests_tokens() before exit");
   }
+}
+
+void BatchConfig::print() const {
+  printf("--------------------------BatchConfig--------------------------\n");
+  printf("num_tokens: %i, num_requests: %i, cached_results: %i\n",
+         num_tokens,
+         num_requests,
+         cached_results);
+
+  printf("requests_completed: ");
+  for (int i = 0; i < num_requests; i++) {
+    printf("%i ", request_completed[i]);
+  }
+  printf("\n");
+
+  printf("token_start_idx: ");
+  for (int i = 0; i < num_requests; i++) {
+    printf("%i ", token_start_idx[i]);
+  }
+  printf("\n");
+
+  printf("token_last_available_idx: ");
+  for (int i = 0; i < num_requests; i++) {
+    printf("%i ", token_last_available_idx[i]);
+  }
+  printf("\n");
+
+  printf("num_processing_tokens: ");
+  for (int i = 0; i < num_requests; i++) {
+    printf("%i ", num_processing_tokens[i]);
+  }
+  printf("\n");
+
+  printf("max_sequence_length: ");
+  for (int i = 0; i < num_requests; i++) {
+    printf("%lu ", max_sequence_length[i]);
+  }
+  printf("\n");
+
+  printf("request_guid: ");
+  for (int i = 0; i < num_requests; i++) {
+    printf("%lu ", request_guid[i]);
+  }
+  printf("\n");
+
+  printf("token2ids.num_samples:%lu\n", token2ids.num_samples);
+
+  printf("token2ids.guids: ");
+  for (int i = 0; i < num_tokens; i++) {
+    printf("%lu ", token2ids.guids[i]);
+  }
+  printf("\n");
+
+  printf("token2ids.token_indexes[i].request_index: ");
+  for (int i = 0; i < num_tokens; i++) {
+    printf("%lu ", token2ids.token_indexes[i].request_index);
+  }
+  printf("\n");
+
+  printf("token2ids.token_indexes[i].token_position: ");
+  for (int i = 0; i < num_tokens; i++) {
+    printf("%lu ", token2ids.token_indexes[i].token_position);
+  }
+  printf("\n");
+  printf("---------------------------------------------------------------------"
+         "---------\n");
 }
 
 }; // namespace FlexFlow

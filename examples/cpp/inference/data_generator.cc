@@ -14,6 +14,7 @@
  */
 
 #include "data_generator.h"
+#include "flexflow/batch_config.h"
 #include <algorithm>
 #include <iostream>
 #include <vector>
@@ -32,6 +33,9 @@ DataGenerator::DataGenerator(size_t _num_requests,
       min_tokens_to_generate(_min_tokens_to_generate),
       max_tokens_to_generate(_max_tokens_to_generate),
       poisson_distr(_poisson_distr), lambda(_lambda), timer_started(false) {
+  assert(max_input_tokens >= min_input_tokens);
+  assert(max_tokens_to_generate >= min_tokens_to_generate);
+  assert(max_input_tokens + max_tokens_to_generate <= MAX_SEQ_LEN);
   generate_requests_meta();
 };
 
@@ -109,6 +113,7 @@ void DataGenerator::start_timer(void) {
 // the tensor's batch_size * sequence length.
 std::pair<size_t, size_t> DataGenerator::get_requests(size_t max_requests,
                                                       size_t max_tokens) {
+  // printf("\nget_requests(%lu, %lu)\n\n", max_requests, max_tokens);
   if (!timer_started) {
     std::cout << "Warning: tried to get number of requests before the timer "
                  "was started."
@@ -132,6 +137,8 @@ std::pair<size_t, size_t> DataGenerator::get_requests(size_t max_requests,
     if (seq_lengths[first_request_guid + j].first <= max_tokens - new_tokens) {
       received_requests++;
       new_tokens += seq_lengths[first_request_guid + j].first;
+    } else {
+      break;
     }
   }
   std::advance(arrivals_ptr, received_requests);

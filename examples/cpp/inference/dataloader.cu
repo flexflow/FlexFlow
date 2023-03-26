@@ -22,7 +22,7 @@ void DataLoader::load_input(Task const *task,
                             Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  SampleIdxs *meta = (SampleIdxs *)task->local_args;
+  BatchConfig::SampleIdxs *meta = (BatchConfig::SampleIdxs *)task->local_args;
   if (meta->num_samples == 0) {
     return;
   }
@@ -42,15 +42,23 @@ void DataLoader::load_input(Task const *task,
       batch_input_domain.hi()[1] - batch_input_domain.lo()[1] + 1;
   coord_t batch_size =
       batch_input_domain.hi()[2] - batch_input_domain.lo()[2] + 1;
+
+  coord_t full_input_token_dim =
+      batch_input_domain.hi()[0] - batch_input_domain.lo()[0] + 1;
   coord_t full_input_sequence_length =
-      full_input_domain.hi()[1] - full_input_domain.lo()[1] + 1;
+      batch_input_domain.hi()[1] - batch_input_domain.lo()[1] + 1;
+  coord_t full_input_batch_size =
+      batch_input_domain.hi()[2] - batch_input_domain.lo()[2] + 1;
+  assert(token_dim == full_input_token_dim);
   assert(sequence_length == full_input_sequence_length);
+  assert(batch_size <= full_input_batch_size);
 
   // Currently assume continous indices
   assert(meta->num_samples <= batch_size * sequence_length);
   for (int i = 1; i < meta->num_samples; i++) {
     if (meta->guids[i] == meta->guids[i - 1]) {
-      assert(meta->idxs[i] == meta->idxs[i - 1] + 1);
+      assert(meta->token_indexes[i].token_position ==
+             meta->token_indexes[i - 1].token_position + 1);
     }
   }
   // keep things simple for now
@@ -61,34 +69,15 @@ void DataLoader::load_input(Task const *task,
   checkCUDA(cudaMemset(
       batch_input_ptr, 0, batch_input_domain.get_volume() * sizeof(float)));
 
-  if (!meta->incremental_mode) {
-    size_t num_requests = 0;
-    size_t guid;
-    for (size_t i = 0; i < meta->num_samples; i++) {
-      if (i == 0 || meta->guids[i] != guid) {
-        guid = meta->guids[0];
-        num_requests++;
-      }
-    }
-
-    coord_t start_idx = meta->guids[0];
-    assert(batch_input_domain.get_volume() % batch_size == 0);
-    size_t size_to_copy = token_dim * sequence_length * num_requests;
-    float const *input_zc =
-        full_input_ptr + start_idx * token_dim * sequence_length;
-    copy_kernel<<<GET_BLOCKS(size_to_copy), CUDA_NUM_THREADS>>>(
-        batch_input_ptr, input_zc, size_to_copy);
-    checkCUDA(cudaDeviceSynchronize());
-    return;
-  }
-
   size_t guid = meta->guids[0];
-  size_t start_idx = meta->idxs[0];
+  size_t start_idx = meta->token_indexes[0].token_position;
   size_t dst_idx = 0;
   size_t total_tokens = 0;
   for (size_t i = 1; i <= meta->num_samples; i++) {
     if (i == meta->num_samples || meta->guids[i] != guid) {
-      size_t size_to_copy = token_dim * (meta->idxs[i - 1] - start_idx + 1);
+      size_t size_to_copy =
+          token_dim *
+          (meta->token_indexes[i - 1].token_position - start_idx + 1);
       total_tokens += size_to_copy / token_dim;
       float const *input_zc = full_input_ptr +
                               (guid * token_dim * sequence_length) +
@@ -98,11 +87,17 @@ void DataLoader::load_input(Task const *task,
           dst_ptr, input_zc, size_to_copy);
       if (i < meta->num_samples) {
         guid = meta->guids[i];
-        start_idx = meta->idxs[i];
+        start_idx = meta->token_indexes[i].token_position;
       }
       dst_idx = i;
     }
   }
   assert(total_tokens == meta->num_samples);
+  /*printf("token_dim: %lli, sequence_length: %lli, batch_size: %lli\n",
+  token_dim, sequence_length, batch_size); printf("total_tokens: %lu\n",
+  total_tokens); printf("guid: %lu\n", guid);
+  print_tensor<float>(batch_input_ptr,
+                      batch_input_domain.get_volume(),
+                      "[BatchInput]");*/
   checkCUDA(cudaDeviceSynchronize());
 }
