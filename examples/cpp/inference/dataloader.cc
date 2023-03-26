@@ -27,10 +27,16 @@ DataLoader::DataLoader(FFModel &ff,
   Runtime *runtime = ff.config.lg_hlr;
 
   assert(input.size() > 0);
-  for (int i = 1; i < input.size(); i++) {
-    assert(input[i]->dims == input[0]->dims);
-  }
   int numdims = input[0]->num_dims;
+  for (int i = 1; i < input.size(); i++) {
+    assert(input[i]->num_dims == numdims);
+    for (int j = 0; j < numdims; j++) {
+      assert(input[i]->dims[j].size == input[0]->dims[j].size);
+      assert(input[i]->dims[j].degree == input[0]->dims[j].degree);
+      assert(input[i]->dims[j].parallel_idx == input[0]->dims[j].parallel_idx);
+    }
+  }
+
   int replica_idx = numdims - 1;
   int batch_idx = numdims - 2;
   num_samples = inferenceConfig.total_requests;

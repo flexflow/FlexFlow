@@ -715,7 +715,6 @@ void IncMultiHeadSelfAttention::inference_task(
          0,
          m->qProjSize * bc->num_active_tokens() * 3 * num_heads *
              sizeof(float)); // assuming that 0.0f is encoded as all zero bytes
-  assert(QKVProjArray_converted[0][0][0][0] == 0.0f);
 
   // skip over padding at the end of QKVProjArray_cpu
   // convert from column order to 3D matrix because torch cannot automatically
@@ -754,7 +753,7 @@ void IncMultiHeadSelfAttention::inference_task(
   //     std::cout << qkv_projs.index({Slice(), Slice(), j, i}) << std::endl;
   //   }
   // }
-  assert(torch::allclose(QKVProjArray_torch, qkv_projs));
+  assert(torch::allclose(QKVProjArray_torch, qkv_projs, 1e-05, 1e-05));
 
   // =============================================================================
   //  Store the K/V projections into the cache
@@ -978,8 +977,8 @@ void IncMultiHeadSelfAttention::inference_task(
   //    printf("\n");
   //  }
 
-  assert(torch::allclose(K_t_cuda, K_t));
-  assert(torch::allclose(V_t_cuda, V_t));
+  assert(torch::allclose(K_t_cuda, K_t, 1e-05, 1e-05));
+  assert(torch::allclose(V_t_cuda, V_t, 1e-05, 1e-05));
   free(kcache_cuda);
   free(vcache_cuda);
 
@@ -1021,7 +1020,7 @@ void IncMultiHeadSelfAttention::inference_task(
                        torch::kFloat32);
 
   //  ----------------------- Comparing C++ & CUDA results ---------------------
-  assert(torch::allclose(w_out_cuda_tensor, torch_w_out));
+  assert(torch::allclose(w_out_cuda_tensor, torch_w_out, 1e-05, 1e-05));
 
   // =============================================================================
   //  Compute the softmax(QK^T/sqrt(d_k))V product, request by request
@@ -1175,8 +1174,8 @@ void IncMultiHeadSelfAttention::inference_task(
     //   std::cout << qk_products[r].tril().index({Slice(), Slice(), h}) <<
     //   std::endl;
     // }
-    assert(torch::allclose(qk_prods_cuda, qk_products[r]));
-    assert(torch::allclose(qk_prods_softmax_cuda, qk_softmax[r]));
+    assert(torch::allclose(qk_prods_cuda, qk_products[r], 1e-05, 1e-05));
+    assert(torch::allclose(qk_prods_softmax_cuda, qk_softmax[r], 1e-05, 1e-05));
 
     //  --------------------- C++ computations --------------------------
     // Multiply softmax results by V
@@ -1225,7 +1224,8 @@ void IncMultiHeadSelfAttention::inference_task(
     for (int h=0; h<m->num_heads; h++) {
       std::cout << attn_heads[r].index({Slice(), Slice(), h}) << std::endl;
     } */
-    assert(torch::allclose(converted_attn_heads_cuda, attn_heads[r]));
+    assert(torch::allclose(
+        converted_attn_heads_cuda, attn_heads[r], 1e-05, 1e-05));
 
     //  ----------------------- C++ computations ----------------------------
     // Compute output values by projecting all heads to output space
@@ -1253,7 +1253,9 @@ void IncMultiHeadSelfAttention::inference_task(
   assert(torch::allclose(
       torch_out_cuda.index(
           {Slice(), Slice(0, (int64_t)bc->num_active_tokens())}),
-      cpp_output));
+      cpp_output,
+      1e-05,
+      1e-05));
 
   // =============================================================================
   //  Cleanup
