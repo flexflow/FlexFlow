@@ -89,7 +89,7 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
       thrust::upper_bound(thrust::cuda::par.on(stream),
                           sorted_indices,
                           sorted_indices + num_indices,
-                          experts_start_idx + num_experts_per_block);
+                          experts_start_idx + num_experts_per_block - 1);
 
   *lb_index = lb - sorted_indices;
   *ub_index = ub - sorted_indices;
@@ -369,6 +369,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      float const *topk_gate_preds,
                                      float *output,
                                      float const **weights,
+                                     int num_active_tokens,
                                      int chosen_experts,
                                      int batch_size,
                                      int out_dim) {
@@ -382,17 +383,22 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     cudaEventRecord(t_start, stream);
   }
 
+  assert(num_active_tokens > 0);
+  assert(num_active_tokens <= m->effective_batch_size);
+  assert(m->effective_batch_size == batch_size);
+
   int num_experts_per_block = m->num_experts;
   int experts_start_idx = m->experts_start_idx;
   bool use_bias = m->use_bias;
   ActiMode activation = m->activation;
   int data_dim = m->data_dim;
   int num_chosen_experts = m->num_chosen_experts;
-  int num_tokens = m->effective_batch_size;
+  // int num_tokens = m->effective_batch_size;
+  int num_tokens = num_active_tokens;
   int expert_capacity = m->expert_capacity;
 
   assert(chosen_experts == num_chosen_experts);
-  assert(num_tokens == batch_size);
+  // assert(num_tokens == batch_size);
   assert(out_dim == m->out_dim);
 
   // TODO: remove this once we condense all weights in a single tensor
@@ -463,34 +469,34 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 
   cudaStreamSynchronize(stream);
 
-  experts_forward_GemmBatched_kernel(m,
-                                     (void const **)m->weight_idx_array,
-                                     (void const **)m->token_idx_array,
-                                     (void **)m->dev_batch_outputs,
-                                     (void const **)m->bias_idx_array,
-                                     activation,
-                                     data_dim,
-                                     out_dim,
-                                     num_tokens,
-                                     num_chosen_experts,
-                                     gemm_batch_count,
-                                     stream);
+  // experts_forward_GemmBatched_kernel(m,
+  //                                    (void const **)m->weight_idx_array,
+  //                                    (void const **)m->token_idx_array,
+  //                                    (void **)m->dev_batch_outputs,
+  //                                    (void const **)m->bias_idx_array,
+  //                                    activation,
+  //                                    data_dim,
+  //                                    out_dim,
+  //                                    num_tokens,
+  //                                    num_chosen_experts,
+  //                                    gemm_batch_count,
+  //                                    stream);
 
   cudaStreamSynchronize(stream);
 
-  int aggregation_parallelism =
-      std::max(num_tokens, gemm_batch_count) * out_dim;
-  experts_forward_aggregate_kernel<<<GET_BLOCKS(aggregation_parallelism),
-                                     min(CUDA_NUM_THREADS,
-                                         (int)aggregation_parallelism),
-                                     0,
-                                     stream>>>(num_tokens,
-                                               gemm_batch_count,
-                                               out_dim,
-                                               output,
-                                               m->dev_batch_outputs,
-                                               m->coefficient_idx_array,
-                                               m->output_idx_array);
+  // int aggregation_parallelism =
+  //     std::max(num_tokens, gemm_batch_count) * out_dim;
+  // experts_forward_aggregate_kernel<<<GET_BLOCKS(aggregation_parallelism),
+  //                                    min(CUDA_NUM_THREADS,
+  //                                        (int)aggregation_parallelism),
+  //                                    0,
+  //                                    stream>>>(num_tokens,
+  //                                              gemm_batch_count,
+  //                                              out_dim,
+  //                                              output,
+  //                                              m->dev_batch_outputs,
+  //                                              m->coefficient_idx_array,
+  //                                              m->output_idx_array);
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);

@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # set the CC and CXX, usually it is not needed as cmake can detect it
 # set CC and CXX to mpicc and mpic++ when enable gasnet
 # CC=mpicc
@@ -15,6 +14,18 @@
 
 # set build type
 BUILD_TYPE=${BUILD_TYPE:-Release}
+
+INFERENCE_TESTS=${INFERENCE_TESTS:-OFF}
+LIBTORCH_PATH=${LIBTORCH_PATH:-"$(realpath ../..)/libtorch"}
+if [[ "$INFERENCE_TESTS" == "ON" && ! -d "$LIBTORCH_PATH" ]]; then
+    cwd="$(pwd)"
+    cd ../..
+    wget https://download.pytorch.org/libtorch/nightly/cpu/libtorch-shared-with-deps-latest.zip
+    unzip libtorch-shared-with-deps-latest.zip
+    rm libtorch-shared-with-deps-latest.zip
+    LIBTORCH_PATH="$(pwd)/libtorch"
+    cd "$cwd"
+fi
 
 # set CUDA Arch to the desired GPU architecture(s) to target (e.g. pass "FF_CUDA_ARCH=60" for Pascal). 
 # To pass more than one value, separate architecture numbers with a comma (e.g. FF_CUDA_ARCH=70,75).

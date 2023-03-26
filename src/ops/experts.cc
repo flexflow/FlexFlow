@@ -672,9 +672,10 @@ FutureMap Experts::inference(FFModel const &ff,
   size_t machine_view_hash = view->hash();
   /* std::cout << "Experts op machine_view: " << *(MachineView const *)mv
             << std::endl; */
+  int num_active_tokens = bc.num_active_tokens();
   IndexLauncher launcher(EXPERTS_INF_TASK_ID,
                          parallel_is,
-                         TaskArgument(nullptr, 0),
+                         TaskArgument(&num_active_tokens, sizeof(int)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -737,6 +738,10 @@ void Experts::inference_task(Task const *task,
   assert(regions.size() == task->regions.size());
 
   ExpertsMeta const *m = *((ExpertsMeta **)task->local_args);
+  int num_active_tokens = *(int *)task->args;
+  if (num_active_tokens == 0) {
+    return;
+  }
 
   int num_experts = m->num_experts;
   bool use_bias = m->use_bias;
@@ -981,6 +986,7 @@ void Experts::inference_task(Task const *task,
                                   topk_gate_pred_ptr,
                                   output_ptr,
                                   weights_ptrs,
+                                  num_active_tokens,
                                   chosen_experts,
                                   batch_size,
                                   out_dim);

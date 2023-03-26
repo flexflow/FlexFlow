@@ -9,6 +9,8 @@
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/ops/inc_multihead_self_attention_params.h"
+#include "math.h"
+#include <cfloat>
 
 namespace FlexFlow {
 
@@ -86,12 +88,8 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
-  static void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
-                               float const *input_ptr,
-                               float const *weight_ptr,
-                               float *output_ptr,
-                               ffStream_t stream);
   static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
+                                       BatchConfig const *bc,
                                        float const *input_ptr,
                                        float const *weight_ptr,
                                        float *output_ptr);
@@ -110,20 +108,31 @@ class IncMultiHeadSelfAttentionMeta : public OpMeta {
 public:
   IncMultiHeadSelfAttentionMeta(FFHandler handler,
                                 IncMultiHeadSelfAttention const *attn,
+                                float const *weight_ptr,
                                 Legion::Memory gpu_mem,
                                 int num_samples,
-                                int num_heads);
+                                int _num_heads);
   ~IncMultiHeadSelfAttentionMeta(void);
 
 public:
   Realm::RegionInstance reserveInst;
-  size_t weightSize, reserveSpaceSize;
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnAttnDescriptor_t attnDesc;
-  cudnnSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
+  size_t weights_params, weightSize, reserveSpaceSize;
+  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
+  int num_heads;
+#ifdef INFERENCE_TESTS
+  float *kcache, *vcache;
 #endif
-  int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx;
-  void *reserveSpace;
+  /*#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+    cudnnAttnDescriptor_t attnDesc;
+    cudnnSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
+  #endif*/
+  // int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx, *kvCache;
+  float *devQKVProjArray, *keyCache, *valueCache;
+  float *qk_prods, *qk_prods_softmax;
+  float *attn_heads, *W_out_contiguous;
+  // void *reserveSpace;
+
+  BatchConfig::token_idxs *dev_token2ids;
 };
 
 }; // namespace FlexFlow

@@ -22,11 +22,21 @@ using namespace Legion;
 DataLoader::DataLoader(FFModel &ff,
                        InferenceConfig const &inferenceConfig,
                        DataGenerator &data_generator,
-                       ParallelTensor input) {
+                       std::vector<ParallelTensor> input) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
 
-  int numdims = input->num_dims;
+  assert(input.size() > 0);
+  int numdims = input[0]->num_dims;
+  for (int i = 1; i < input.size(); i++) {
+    assert(input[i]->num_dims == numdims);
+    for (int j = 0; j < numdims; j++) {
+      assert(input[i]->dims[j].size == input[0]->dims[j].size);
+      assert(input[i]->dims[j].degree == input[0]->dims[j].degree);
+      assert(input[i]->dims[j].parallel_idx == input[0]->dims[j].parallel_idx);
+    }
+  }
+
   int replica_idx = numdims - 1;
   int batch_idx = numdims - 2;
   num_samples = inferenceConfig.total_requests;
@@ -37,10 +47,10 @@ DataLoader::DataLoader(FFModel &ff,
 
     ParallelDim dims[numdims];
     for (int i = 0; i < numdims; i++) {
-      dims[i].size = input->dims[i].size;
+      dims[i].size = input[0]->dims[i].size;
       dims[i].degree = 1;
       dims[i].parallel_idx = -1;
-      dims[i].is_replica_dim = input->dims[i].is_replica_dim;
+      dims[i].is_replica_dim = input[0]->dims[i].is_replica_dim;
       // Assume only the first dim can be the replica dim
       assert(i == replica_idx || (!dims[i].is_replica_dim));
     }
@@ -100,56 +110,46 @@ void DataLoader::load_entire_dataset(Task const *task,
   }
 }
 
-void DataLoader::next_batch(FFModel &ff, BatchConfig *bc) {
+void DataLoader::next_batch(FFModel &ff, int bid, BatchConfig *bc) {
   size_t num_active_tokens = bc->num_active_tokens();
   if (num_active_tokens == 0) {
     return;
   }
+  assert(bid < batch_input.size());
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   // Load input
   {
     Domain domain =
-        runtime->get_index_space_domain(ctx, batch_input->parallel_is);
+        runtime->get_index_space_domain(ctx, batch_input[bid]->parallel_is);
     ArgumentMap argmap;
     // No partitioning of the batch input token in inference mode
-    int input_dims = batch_input->num_dims;
+    int input_dims = batch_input[bid]->num_dims;
     for (int i = 0; i < input_dims; i++) {
-      assert(batch_input->dims[i].degree == 1 &&
+      assert(batch_input[bid]->dims[i].degree == 1 &&
              "Dataloader does not support input token partitioning in "
              "inference mode");
     }
-    int batch_size = batch_input->dims[input_dims - 2].size;
-    int seq_len = batch_input->dims[input_dims - 3].size;
+    int batch_size = batch_input[bid]->dims[input_dims - 2].size;
+    int seq_len = batch_input[bid]->dims[input_dims - 3].size;
+    /* printf("ff.config.batchSize: %i, batch_size: %i, seq_len: %i,
+       num_active_tokens: %i\n", ff.config.batchSize, batch_size, seq_len,
+       num_active_tokens); */
     assert(ff.config.batchSize == batch_size &&
            batch_size * seq_len >= num_active_tokens);
     for (Domain::DomainPointIterator it(domain); it; it++) {
-      SampleIdxs meta;
-      meta.num_samples = num_active_tokens;
-      meta.incremental_mode = bc->incremental_mode;
-      int token_index = 0;
-      for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
-        if (bc->request_completed[i]) {
-          continue;
-        } else {
-          for (int j = 0; j < bc->num_processing_tokens[i]; j++) {
-            meta.guids[token_index] = bc->request_guid[i];
-            meta.idxs[token_index] = bc->token_start_idx[i] + j;
-            token_index++;
-          }
-        }
-      }
-      assert(token_index == num_active_tokens);
-      argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
+      // SampleIdxs meta = bc->token2ids;
+      argmap.set_point(
+          *it, TaskArgument(&bc->token2ids, sizeof(BatchConfig::SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1,
-                           batch_input->parallel_is,
+                           batch_input[bid]->parallel_is,
                            TaskArgument(NULL, 0),
                            argmap,
                            Predicate::TRUE_PRED,
                            false /*must*/,
                            0 /*mapper_id*/,
-                           batch_input->machine_view.hash());
+                           batch_input[bid]->machine_view.hash());
     launcher.add_region_requirement(RegionRequirement(full_input->region,
                                                       0 /*projection id*/,
                                                       READ_ONLY,
@@ -157,11 +157,12 @@ void DataLoader::next_batch(FFModel &ff, BatchConfig *bc) {
                                                       full_input->region,
                                                       MAP_TO_ZC_MEMORY));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(batch_input->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_input->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_input[bid]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_input[bid]->region));
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
