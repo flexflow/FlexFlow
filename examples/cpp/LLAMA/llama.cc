@@ -90,36 +90,32 @@ void FlexFlow::top_level_task(Task const *task,
                            attention_norm);
 
     // missing a rotary embedding of q, k, v
-    Tensor q = ff.dense(norm_output, llamaConfig.dim, AC_MODE_RELU, false);
-    Layer *q_layer = ff.layers.back();
-    weights_layers.emplace(
-        "layers_" + std::to_string(i) + "_attention_wq_weight", q_layer);
-    Tensor k = ff.dense(norm_output, llamaConfig.dim, AC_MODE_RELU, false);
-    Layer *k_layer = ff.layers.back();
-    weights_layers.emplace(
-        "layers_" + std::to_string(i) + "_attention_wk_weight", k_layer);
-    Tensor v = ff.dense(norm_output, llamaConfig.dim, AC_MODE_RELU, false);
-    Layer *v_layer = ff.layers.back();
-    weights_layers.emplace(
-        "layers_" + std::to_string(i) + "_attention_wv_weight", v_layer);
+    // Tensor q = ff.dense(norm_output, llamaConfig.dim, AC_MODE_RELU, false);
+    // Layer *q_layer = ff.layers.back();
+    // weights_layers.emplace(
+    //     "layers_" + std::to_string(i) + "_attention_wq_weight", q_layer);
+    // Tensor k = ff.dense(norm_output, llamaConfig.dim, AC_MODE_RELU, false);
+    // Layer *k_layer = ff.layers.back();
+    // weights_layers.emplace(
+    //     "layers_" + std::to_string(i) + "_attention_wk_weight", k_layer);
+    // Tensor v = ff.dense(norm_output, llamaConfig.dim, AC_MODE_RELU, false);
+    // Layer *v_layer = ff.layers.back();
+    // weights_layers.emplace(
+    //     "layers_" + std::to_string(i) + "_attention_wv_weight", v_layer);
 
     // TODO add a rotary embedding before calling attention
     //    xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
-    Tensor mha = ff.multihead_attention(q,
-                                        k,
-                                        v,
+    Tensor mha = ff.multihead_attention(norm_output,
+                                        norm_output,
+                                        norm_output,
                                         llamaConfig.dim,
                                         llamaConfig.n_heads,
                                         llamaConfig.dim / llamaConfig.n_heads,
                                         llamaConfig.dim / llamaConfig.n_heads);
 
-    // std::cout << "-----mha shape";
-    // std::cout << mha->num_dims << "------\n";
-    // for(int i = 0; i < mha->num_dims; i++){
-    //   std::cout << mha->dims[i] << "------\n";
-    // }
-    // dims = {ffconfig.batchSize, 1, llamaConfig.dim};
-    // mha = ff.reshape(mha, dims);
+    Layer *attention_layer = ff.layers.back();
+    weights_layers.emplace(
+        "layers_" + std::to_string(i) + "_attention_weight", attention_layer);
     token = ff.add(token, mha);
 
     // step 2: SILU activaion
@@ -185,10 +181,16 @@ void FlexFlow::top_level_task(Task const *task,
 
     assert(weight->data_type == DT_FLOAT);
     float *data = (float *)malloc(sizeof(float) * volume);
-    loader.load_from_file(data,
+
+    if(v.first.find("attention") != std::string::npos){
+       loader.load_attention_weights(data, volume, v.first);
+    }else{
+       loader.load_from_file(data,
                           volume,
                           "/home/ubuntu/FlexFlow/examples/cpp/LLAMA/weights/" +
                               v.first);
+    }
+   
     weight->set_tensor<float>(&ff, dims_vec, data);
   }
 
@@ -206,7 +208,9 @@ void FlexFlow::top_level_task(Task const *task,
       // input shape, batch_size * 1 = 5 * 1
       ff.forward();
       loader.next_batch(ff);
+      
     }
+    loader.reset();
     // todo process one sentence
   }
 

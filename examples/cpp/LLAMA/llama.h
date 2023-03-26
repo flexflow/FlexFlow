@@ -15,6 +15,7 @@
 
 #include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 65536
+#define MAX_TOKEN_LEN 32000
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -73,12 +74,43 @@ public:
     in.close();
   }
 
+  template <typename T>
+  static void load_attention_weights(T *ptr, size_t size, std::string layer_name) {
+
+    // std::cout << "start loading input";
+    std::ifstream in(filename, std::ios::in | std::ios::binary);
+    std::vector<T> host_array(size);
+    size_t loaded_data_size = sizeof(T) * size;
+    in.seekg(0, in.end);
+    in.seekg(0, in.beg);
+    in.read((char *)host_array.data(), loaded_data_size);
+
+    size_t in_get_size = in.gcount();
+    std::cout << "size seee" << std::endl;
+    std::cout << loaded_data_size << std::endl;
+    std::cout << in_get_size << std::endl;
+    if (in_get_size != loaded_data_size) {
+      std::cout << "load data error";
+      return;
+    }
+
+    std::cout << "finish loading input";
+    assert(size == host_array.size());
+    long index = 0;
+    for (auto i = host_array.begin(); i != host_array.end(); i++) {
+      ptr[index++] = *i;
+    }
+    // ptr = (T*)host_array.data();
+    in.close();
+  }
+
 public:
-  int num_samples, next_index;
+  int num_samples, next_index, next_token_idx;
   FlexFlow::ParallelTensor full_input, batch_input;
 };
 
 struct SampleIdxs {
   int num_samples;
   int idxs[MAX_NUM_SAMPLES];
+  int token_idx[MAX_NUM_SAMPLES];
 };

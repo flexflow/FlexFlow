@@ -88,11 +88,14 @@ void DataLoader::next_batch(FFModel &ff) {
     int idx = next_index;
     for (Domain::DomainPointIterator it(domain); it; it++) {
       SampleIdxs meta;
-      assert(ff.config.batchSize % batch_input->dims[2].size == 0);
+      assert(ff.config.batchSize % batch_input->dims[1].size == 0);
       meta.num_samples = ff.config.batchSize / batch_input->dims[2].size;
       for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
+        meta.token_idx[i] = next_token_idx;
       }
+
+
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1,
@@ -120,10 +123,12 @@ void DataLoader::next_batch(FFModel &ff) {
   }
   // progress next_index
   next_index += ff.config.batchSize;
+  next_token_idx += 1;
 }
 
 void DataLoader::reset() {
   next_index = 0;
+  token_idx = 0;
 }
 
 void FlexFlow::register_custom_tasks() {
