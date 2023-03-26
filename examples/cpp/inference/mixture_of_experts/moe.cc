@@ -203,6 +203,9 @@ void FlexFlow::top_level_task(Task const *task,
         new_prompts = data_generator.get_requests(max_reqs, max_tkns);
       }
       assert(new_prompts.second <= max_reqs);
+      if (bc->num_active_tokens() == 0 && new_prompts.second == 0) {
+        continue;
+      }
       for (size_t i = 0; i < new_prompts.second; i++) {
         size_t guid = new_prompts.first + i;
         std::pair<size_t, size_t> seq_lens =

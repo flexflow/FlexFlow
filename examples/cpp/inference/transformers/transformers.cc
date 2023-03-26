@@ -111,8 +111,11 @@ void FlexFlow::top_level_task(Task const *task,
   im.init_operators_inference();
 
   //------------ Initialize the data loader and data generator ------------
-  size_t min_input_tokens = 32, max_input_tokens = 512,
-         min_tokens_to_generate = 1, max_tokens_to_generate = 128;
+  /* size_t min_input_tokens = 32, max_input_tokens = 512,
+         min_tokens_to_generate = 1, max_tokens_to_generate = 128; */
+  size_t min_input_tokens = 5, max_input_tokens = 10,
+         min_tokens_to_generate = 1,
+         max_tokens_to_generate = MAX_SEQ_LEN - max_input_tokens;
   DataGenerator data_generator(transformerConfig.total_requests,
                                transformerConfig.token_dim,
                                min_input_tokens,
@@ -180,6 +183,9 @@ void FlexFlow::top_level_task(Task const *task,
         new_prompts = data_generator.get_requests(max_reqs, max_tkns);
       }
       assert(new_prompts.second <= max_reqs);
+      if (bc->num_active_tokens() == 0 && new_prompts.second == 0) {
+        continue;
+      }
       for (size_t i = 0; i < new_prompts.second; i++) {
         size_t guid = new_prompts.first + i;
         std::pair<size_t, size_t> seq_lens =
