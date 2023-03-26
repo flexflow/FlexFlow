@@ -14,7 +14,9 @@
  */
 
 #include "flexflow/ops/experts.h"
+#ifdef INFERENCE_TESTS
 #include "flexflow/utils/cuda_helper.h"
+#endif
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {
@@ -38,7 +40,9 @@ using PCG::Node;
 
 static constexpr int KERNEL_IDX = 0;
 static constexpr int BIAS_IDX = 1;
+#ifdef INFERENCE_TESTS
 static bool DEBUG_MODE = false;
+#endif
 
 // For now, we use one input and one output per expert
 Tensor FFModel::experts(Tensor const *inputs,
@@ -845,7 +849,7 @@ void Experts::inference_task(Task const *task,
       assert(bias_domain.hi()[0] - bias_domain.lo()[0] + 1 == out_dim);
     }
   }
-
+#ifdef INFERENCE_TESTS
   if (DEBUG_MODE) {
     std::cout << "forward_kernel_wrapper" << std::endl
               << "-------------------------------" << std::endl;
@@ -979,7 +983,7 @@ void Experts::inference_task(Task const *task,
       free(bias_experts_1);
     }
   }
-
+#endif
   Experts::forward_kernel_wrapper(m,
                                   input_ptr,
                                   indices_ptr,
@@ -990,7 +994,7 @@ void Experts::inference_task(Task const *task,
                                   chosen_experts,
                                   batch_size,
                                   out_dim);
-
+#ifdef INFERENCE_TESTS
   if (DEBUG_MODE) {
     /* ----------------Output after computation--------------*/
     float *cpu_output_ptr = new float[batch_size * out_dim];
@@ -1034,6 +1038,7 @@ void Experts::inference_task(Task const *task,
 
     free(cpu_output_ptr);
   }
+#endif
 }
 
 void Experts::forward_task(Task const *task,
