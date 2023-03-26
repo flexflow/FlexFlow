@@ -24,7 +24,7 @@ struct LLAMAConfig {
   int hidden_size, n_embd, n_heads, n_layers, sequence_length, vocab_size,
       embedding_prob_drop, layer_norm_epsilon, n_positions, dim, multiple_of,
       norm_eps, attn_pdrop, activation_function, embd_pdrop, resid_pdrop,
-      block_size, hidden_dim;
+      block_size, hidden_dim, total_sentence, total_len;
 };
 
 class DataLoader {

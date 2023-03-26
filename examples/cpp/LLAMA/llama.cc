@@ -29,6 +29,8 @@ LLAMAConfig::LLAMAConfig(void) {
   dim = 4096;
   multiple_of = 256;
   norm_eps = 1e-6;
+  total_sentence = 5;
+  total_len = 347;
 
   // hidden dim
   hidden_dim = 4 * dim;
@@ -83,19 +85,23 @@ void FlexFlow::top_level_task(Task const *task,
     Tensor norm_output =
         ff.layer_norm(token, axes, false, llamaConfig.norm_eps);
     Layer *attention_norm = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_attention_norm_weight",
+    weights_layers.emplace("layers_" + std::to_string(i) +
+                               "_attention_norm_weight",
                            attention_norm);
 
     // missing a rotary embedding of q, k, v
     Tensor q = ff.dense(norm_output, llamaConfig.dim, AC_MODE_RELU, false);
     Layer *q_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_attention_wq_weight", q_layer);
+    weights_layers.emplace(
+        "layers_" + std::to_string(i) + "_attention_wq_weight", q_layer);
     Tensor k = ff.dense(norm_output, llamaConfig.dim, AC_MODE_RELU, false);
     Layer *k_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_attention_wk_weight", k_layer);
+    weights_layers.emplace(
+        "layers_" + std::to_string(i) + "_attention_wk_weight", k_layer);
     Tensor v = ff.dense(norm_output, llamaConfig.dim, AC_MODE_RELU, false);
     Layer *v_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_attention_wv_weight", v_layer);
+    weights_layers.emplace(
+        "layers_" + std::to_string(i) + "_attention_wv_weight", v_layer);
 
     // TODO add a rotary embedding before calling attention
     //    xq, xk = apply_rotary_emb(xq, xk, freqs_cis=freqs_cis)
@@ -119,24 +125,27 @@ void FlexFlow::top_level_task(Task const *task,
     // step 2: SILU activaion
     Tensor ffn_norm = ff.layer_norm(token, axes, false, llamaConfig.norm_eps);
     Layer *ffn_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_ffn_norm_weight", ffn_layer);
+    weights_layers.emplace("layers_" + std::to_string(i) + "_ffn_norm_weight",
+                           ffn_layer);
     // hidden dim
     Tensor w1 = ff.dense(ffn_norm, llamaConfig.hidden_dim, AC_MODE_RELU, false);
     Layer *w1_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_feed_forward_w1_weight", w1_layer);
+    weights_layers.emplace(
+        "layers_" + std::to_string(i) + "_feed_forward_w1_weight", w1_layer);
 
     Tensor w3 = ff.dense(ffn_norm, llamaConfig.hidden_dim, AC_MODE_RELU, false);
     Layer *w3_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_feed_forward_w3_weight", w3_layer);
+    weights_layers.emplace(
+        "layers_" + std::to_string(i) + "_feed_forward_w3_weight", w3_layer);
     Tensor sigmoid = ff.sigmoid(w1);
     Tensor silu = ff.multiply(w1, sigmoid);
     Tensor multi = ff.multiply(silu, w3);
     Tensor w2 = ff.dense(multi, llamaConfig.dim, AC_MODE_RELU, false);
     Layer *w2_layer = ff.layers.back();
-    weights_layers.emplace("layers_" + std::to_string(i) + "_feed_forward_w2_weight", w2_layer);
+    weights_layers.emplace(
+        "layers_" + std::to_string(i) + "_feed_forward_w2_weight", w2_layer);
     token = ff.add(token, w2);
   }
-
 
   std::vector<int> axes = {2};
   token = ff.layer_norm(token, axes, true, llamaConfig.norm_eps);
@@ -150,48 +159,56 @@ void FlexFlow::top_level_task(Task const *task,
   ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
 
   fprintf(stderr, "----------load inputs--------------");
-  //read prompt into input
+  // read prompt into input
   ParallelTensor input_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
   DataLoader loader(ff, &llamaConfig, input_pt);
 
   fprintf(stderr, "----------load weights--------------");
   for (auto &v : weights_layers) {
-      std::cout << "weights : "<< v.first <<"\n";
-      Tensor weight = v.second->weights[0];
+    std::cout << "weights : " << v.first << "\n";
+    Tensor weight = v.second->weights[0];
 
-      if(weight == NULL){
-        std::cout << "no weights : "<< v.first << "\n";
-        continue;
-      }
+    if (weight == NULL) {
+      std::cout << "no weights : " << v.first << "\n";
+      continue;
+    }
 
+    size_t volume = 1;
+    std::vector<int> dims_vec;
+    std::cout << "shape is: " << std::endl;
+    for (int i = 0; i < weight->num_dims; i++) {
+      dims_vec.push_back(weight->dims[i]);
+      std::cout << weight->dims[i] << ", ";
+      volume *= static_cast<size_t>(weight->dims[i]);
+    }
 
-      size_t volume = 1;
-      std::vector<int> dims_vec;
-      std::cout << "shape is: "<<std::endl;
-      for (int i = 0; i <weight->num_dims; i++) {
-        dims_vec.push_back(weight->dims[i]);
-        std::cout << weight->dims[i] << ", ";
-        volume *= static_cast<size_t>(weight->dims[i]);
-      }
-
-      assert(weight->data_type == DT_FLOAT);
-      float *data = (float *)malloc(sizeof(float) * volume);
-      loader.load_from_file(data, volume, "/home/ubuntu/FlexFlow/examples/cpp/LLAMA/weights/" + v.first);
-      weight->set_tensor<float>(
-          &ff, dims_vec, data);
+    assert(weight->data_type == DT_FLOAT);
+    float *data = (float *)malloc(sizeof(float) * volume);
+    loader.load_from_file(data,
+                          volume,
+                          "/home/ubuntu/FlexFlow/examples/cpp/LLAMA/weights/" +
+                              v.first);
+    weight->set_tensor<float>(&ff, dims_vec, data);
   }
 
   ff.init_operators();
 
-  //todo, replace it with inference
+  // todo, replace it with inference
   loader.reset();
   ff.reset_metrics();
   loader.next_batch(ff);
 
-  // // loader.next_batch(ff);
-  // loader.reset();
-  
+  // first iteration: total batch/batch size
+  for (int i = 0; i < (llamaConfig.total_sentence / ffconfig.batchSize); i++) {
+    // second iteration: for each batch, predict one by one token
+    for (int j = 0; j < llamaConfig.total_len; j++) {
+      // input shape, batch_size * 1 = 5 * 1
+      ff.forward();
+      loader.next_batch(ff);
+    }
+    // todo process one sentence
+  }
 
-  // fprintf(stderr, "----------inference end--------------");
+  fprintf(stderr, "----------inference end--------------");
 }

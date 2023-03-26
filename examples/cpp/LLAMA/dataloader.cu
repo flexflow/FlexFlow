@@ -37,8 +37,6 @@ void DataLoader::load_input(Task const *task,
    std::cout << batch_size<<"\n";
 
    std::cout << meta->num_samples<<"\n";
-   
-  
 
   // FIXME: currently assume continous indices
   assert(meta->num_samples <= batch_size);
