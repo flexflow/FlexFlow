@@ -13,11 +13,6 @@ DataLoader::DataLoader(FFModel &ff,
   {
     batch_input = input;
     int num_dims = input->num_dims;
-    std::cout << "before input shape"
-              << "\n";
-    for (int i = 0; i < input->num_dims; i++) {
-      std::cout << input->dims[i].size << "------\n";
-    }
 
     ParallelDim dims[num_dims];
     for (int i = 0; i < num_dims; i++) {
@@ -32,11 +27,6 @@ DataLoader::DataLoader(FFModel &ff,
     full_input =
         ff.create_parallel_tensor_legion_ordering(num_dims, dims, DT_INT64);
 
-    std::cout << "input shape"
-              << "\n";
-    for (int i = 0; i < full_input->num_dims; i++) {
-      std::cout << full_input->dims[i].size << "------\n";
-    }
     ff.map_tensor(full_input, NULL /*parallel_op*/);
   }
 
@@ -51,10 +41,6 @@ DataLoader::DataLoader(FFModel &ff,
   launcher.add_field(0, FID_DATA);
   runtime->execute_task(ctx, launcher);
 }
-
-
-
-
 
 void DataLoader::load_entire_dataset(Task const *task,
                                      std::vector<PhysicalRegion> const &regions,
@@ -80,7 +66,6 @@ void DataLoader::load_entire_dataset(Task const *task,
 void DataLoader::next_batch(FFModel &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  fprintf(stderr, "----------next batch--------------");
   // Load Input
   {
     Domain domain =
@@ -96,7 +81,6 @@ void DataLoader::next_batch(FFModel &ff) {
         meta.token_idx = next_token_idx;
         meta.batch_idx = next_batch_index;
       }
-
 
       argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     }
@@ -122,7 +106,6 @@ void DataLoader::next_batch(FFModel &ff) {
                                                       batch_input->region));
     launcher.add_field(1, FID_DATA);
 
-    fprintf(stderr, "----------lunach the input--------------");
     runtime->execute_index_space(ctx, launcher);
   }
   // progress next_index
@@ -136,7 +119,104 @@ void DataLoader::reset() {
   next_batch_index = 0;
 }
 
-void FlexFlow::register_custom_tasks() {
+template <typename T>
+static void load_from_file(T *ptr, size_t size, std::string filename) {
+
+  // std::cout << "start loading input";
+  std::ifstream in(filename, std::ios::in | std::ios::binary);
+  std::vector<T> host_array(size);
+  size_t loaded_data_size = sizeof(T) * size;
+  in.seekg(0, in.end);
+  in.seekg(0, in.beg);
+  in.read((char *)host_array.data(), loaded_data_size);
+
+  size_t in_get_size = in.gcount();
+  // std::cout << "size seee" << std::endl;
+  // std::cout << loaded_data_size << std::endl;
+  // std::cout << in_get_size << std::endl;
+  if (in_get_size != loaded_data_size) {
+    std::cout << "load data error";
+    return;
+  }
+
+  // std::cout << "finish loading input";
+  assert(size == host_array.size());
+
+  // normal
+  long data_index = 0;
+  for (auto v : host_array) {
+    ptr[data_index++] = v;
+  }
+  in.close();
+}
+
+template <typename T>
+static void load_attention_weights(T *ptr,
+                                   size_t size,
+                                   std::string layer_name,
+                                   std::string weight_path) {
+
+  std::string q_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wq_weight";
+  std::string k_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wk_weight";
+  std::string v_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wk_weight";
+  std::string o_file = weight_path +
+                       layer_name.substr(0, layer_name.find("attention")) +
+                       "attention_wv_weight";
+  std::vector<std::string> weight_files = {q_file, k_file, v_file, o_file};
+
+  size_t index = 0;
+
+  for (auto file : weight_files) {
+    size_t partial_size = size / 4;
+    std::ifstream in(file, std::ios::in | std::ios::binary);
+    std::vector<T> host_array(partial_size);
+    size_t loaded_data_size = sizeof(T) * partial_size;
+    in.seekg(0, in.end);
+    in.seekg(0, in.beg);
+    in.read((char *)host_array.data(), loaded_data_size);
+    size_t in_get_size = in.gcount();
+
+    if (in_get_size != loaded_data_size) {
+      std::cout << "load data error";
+      return;
+    }
+    assert(partial_size == host_array.size());
+
+    size_t offset = index * 4096 * 4096;
+    size_t one_head_size = 4096 * 128;
+    size_t data_index = 0;
+
+    for (size_t i = 0; i < one_head_size; i++) {
+      for (size_t j = 0; j < 32; j++) {
+        ptr[j * one_head_size + i + index] = host_array.at(data_index++);
+      }
+    }
+
+    in.close();
+    index++;
+  }
+}
+
+template static void load_attention_weights<float>(float *ptr,
+                                                   size_t size,
+                                                   std::string layer_name,
+                                                   std::string weight_path);
+template static void load_from_file<long>(
+    long *ptr,
+    size_t size,
+    std::string
+        filename) template static void load_from_file<float>(float *ptr,
+                                                             size_t size,
+                                                             std::string
+                                                                 filename)
+
+    void FlexFlow::register_custom_tasks() {
   // Load entire dataset
   {
     TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_1, "Load Entire Dataset");

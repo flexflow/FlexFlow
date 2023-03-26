@@ -20,7 +20,8 @@ void DataLoader::load_input(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
-  fprintf(stderr, "----------start load input--------------");                                        
+                               
+  LLAMAConfig llamaconfig;                                       
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
   SampleIdxs *meta = (SampleIdxs *)task->local_args;
@@ -39,16 +40,10 @@ void DataLoader::load_input(Task const *task,
   Domain batch_input_domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
   
-  //1, 5
   coord_t sequence_length =
       batch_input_domain.hi()[0] - batch_input_domain.lo()[0] + 1;
   coord_t batch_size =
       batch_input_domain.hi()[1] - batch_input_domain.lo()[1] + 1;
-
-   std::cout << "dims "<<"\n";
-   std::cout << sequence_length<<"\n";
-   std::cout << batch_size<<"\n";
-   std::cout << meta->num_samples<<"\n";
 
   //copy 1 token from each batch
   // FIXME: currently assume continous indices
@@ -64,10 +59,6 @@ void DataLoader::load_input(Task const *task,
 
    checkCUDA(cudaMemset(
       batch_input.ptr, 0, batch_input_domain.get_volume() * sizeof(long)));
-
-
-  long *input_zc = (long *) malloc(5 * sizeof(long));
-  
   
 
   std::cout << size_to_copy <<std::endl;
@@ -75,24 +66,18 @@ void DataLoader::load_input(Task const *task,
   
   size_t index[size_to_copy];
   size_t *cuda_index;
-  for(int i = 0; i < 5; i++){
-     index[i] = meta->batch_idx * (347 * batch_size) + (347 * i) + meta->token_idx;
-     std::cout << index[i] << ", ";
+
+  //-------get index of input-----
+  for(int i = 0; i < batch_size; i++){
+     index[i] = meta->batch_idx * (llamaconfig.sentence_len * batch_size) + (sentence_len * i) + meta->token_idx;
   }
 
-  cudaMalloc((void **)&cuda_index, 5 * sizeof(size_t));
-  cudaMemcpy(cuda_index, index, 5 * sizeof(size_t), cudaMemcpyHostToDevice);
-  std::cout << "--------"<<std::endl;
+  cudaMalloc((void **)&cuda_index, batch_size * sizeof(size_t));
+  cudaMemcpy(cuda_index, index, batch_size * sizeof(size_t), cudaMemcpyHostToDevice);
 
   
   copy_kernel_discrete<<<GET_BLOCKS(size_to_copy), CUDA_NUM_THREADS>>>(
       batch_input.ptr, full_input.ptr, size_to_copy, cuda_index);
   checkCUDA(cudaDeviceSynchronize());
 
-  long* cpp_array_cpu = (long *) malloc(5 * sizeof(long));
-  cudaMemcpy(cpp_array_cpu, batch_input.ptr, 5 * sizeof(long), cudaMemcpyDeviceToHost);
-
-  for(int i = 0; i < 5; i++){
-    std::cout << cpp_array_cpu[i] << ", ";
-  }
 }
