@@ -126,6 +126,9 @@ void DataLoader::next_batch(FFModel &ff, int bid, BatchConfig *bc) {
     }
     int batch_size = batch_input[bid]->dims[input_dims - 2].size;
     int seq_len = batch_input[bid]->dims[input_dims - 3].size;
+    /* printf("ff.config.batchSize: %i, batch_size: %i, seq_len: %i,
+       num_active_tokens: %i\n", ff.config.batchSize, batch_size, seq_len,
+       num_active_tokens); */
     assert(ff.config.batchSize == batch_size &&
            batch_size * seq_len >= num_active_tokens);
     for (Domain::DomainPointIterator it(domain); it; it++) {

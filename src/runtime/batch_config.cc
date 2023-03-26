@@ -42,16 +42,17 @@ BatchConfig::BatchConfig() {
 
 int BatchConfig::update_results(InferenceResult const &ir) {
   cached_results = false;
-  int t = 0;
+  // int tokens_processed = 0;
   int completed = 0;
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     if (request_completed[i]) {
       continue;
     }
-    if (num_processing_tokens[i] == 0) {
-      continue;
-    }
-    t += num_processing_tokens[i];
+    assert(num_processing_tokens[i] > 0);
+    // if (num_processing_tokens[i] == 0) {
+    //   continue;
+    // }
+    // tokens_processed += num_processing_tokens[i];
     token_start_idx[i] += num_processing_tokens[i];
     if (token_start_idx[i] >= max_sequence_length[i]
         // || ir.results[t] == 0 TODO: replace this with <EOS>
@@ -67,10 +68,12 @@ int BatchConfig::update_results(InferenceResult const &ir) {
     } else {
       if (token_start_idx[i] == token_last_available_idx[i] + 1) {
         token_last_available_idx[i]++;
+        num_processing_tokens[i] = 1; // incremental phase
+      } else {
+        assert(false);
       }
       assert(token_start_idx[i] <= token_last_available_idx[i]);
     }
-    num_processing_tokens[i] = 0;
   }
   update_num_active_requests_tokens();
   return completed;

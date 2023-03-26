@@ -138,7 +138,8 @@ void FlexFlow::top_level_task(Task const *task,
   /*size_t min_input_tokens = 32, max_input_tokens = 512,
          min_tokens_to_generate = 1, max_tokens_to_generate = 128;*/
   size_t min_input_tokens = 5, max_input_tokens = 10,
-         min_tokens_to_generate = 1, max_tokens_to_generate = 15;
+         min_tokens_to_generate = 1,
+         max_tokens_to_generate = MAX_SEQ_LEN - max_input_tokens;
   DataGenerator data_generator(moeConfig.total_requests,
                                moeConfig.token_dim,
                                min_input_tokens,

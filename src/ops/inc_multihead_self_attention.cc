@@ -620,15 +620,16 @@ void IncMultiHeadSelfAttention::inference_task(
   // load weight manually because Torch can't easily read a tensor serialized in
   // column-major order.
 
-  /*printf("m->kProjSize: %i, BatchConfig::MAX_NUM_TOKENS: %i,
-  bc->num_active_tokens(): %i, num_heads: %lli, BatchConfig::MAX_NUM_REQUESTS:
-  %i, bc->num_active_requests(): %i\n", m->kProjSize,
-  BatchConfig::MAX_NUM_TOKENS, bc->num_active_tokens(), num_heads,
-  BatchConfig::MAX_NUM_REQUESTS, bc->num_active_requests()); for (int t=0;
-  t<bc->num_active_tokens(); t++) { printf("token %i has request_index: %li and
-  token_position: %li\n", t, bc->token2ids.token_indexes[t].request_index,
-    bc->token2ids.token_indexes[t].token_position);
-  }*/
+  // printf("m->kProjSize: %i, BatchConfig::MAX_NUM_TOKENS: %i, "
+  //     "bc->num_active_tokens(): %i, num_heads: %lli,
+  //     BatchConfig::MAX_NUM_REQUESTS: %i, " "bc->num_active_requests(): %i\n",
+  //     m->kProjSize, BatchConfig::MAX_NUM_TOKENS, bc->num_active_tokens(),
+  //     num_heads, BatchConfig::MAX_NUM_REQUESTS, bc->num_active_requests());
+  // for (int t=0; t < bc->num_active_tokens(); t++) {
+  //   printf("token %i has request_index: %li and token_position: %li\n",
+  //   t, bc->token2ids.token_indexes[t].request_index,
+  //   bc->token2ids.token_indexes[t].token_position);
+  // }
 
   // =============================================================================
   //  Load the output tensor (with CUDA results), and create a Torch tensor
@@ -760,6 +761,7 @@ void IncMultiHeadSelfAttention::inference_task(
   // =============================================================================
 
   //  ----------------------- C++ operations & checks --------------------------
+  // Store projections into k/v cache arrays
   for (size_t h = 0; h < num_heads; h++) {
     for (size_t t = 0; t < bc->num_active_tokens(); t++) {
       for (size_t d = 0; d < m->kProjSize; d++) {
@@ -786,7 +788,7 @@ void IncMultiHeadSelfAttention::inference_task(
       }
     }
   }
-
+  // Create torch tensors from the arrays
   torch::Tensor K_t = torch::from_blob(
       m->kcache,
       {m->kProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
@@ -795,6 +797,28 @@ void IncMultiHeadSelfAttention::inference_task(
       m->vcache,
       {m->vProjSize, MAX_SEQ_LEN, num_heads, BatchConfig::MAX_NUM_REQUESTS},
       torch::kFloat32);
+
+  // Compute useful indices
+  std::vector<size_t> req_idxs;
+  std::vector<size_t> r_first_idx;
+  std::vector<size_t> r_num_tokens;
+  for (size_t t = 0; t < bc->num_active_tokens(); t++) {
+    size_t rid = bc->token2ids.token_indexes[t].request_index;
+    if (req_idxs.size() == 0 || req_idxs[req_idxs.size() - 1] != rid) {
+      req_idxs.push_back(rid);
+      r_first_idx.push_back(t);
+      r_num_tokens.push_back(1);
+    } else {
+      r_num_tokens[r_num_tokens.size() - 1]++;
+    }
+    assert(req_idxs.size() == r_first_idx.size() &&
+           r_first_idx.size() == r_num_tokens.size());
+  }
+  assert(req_idxs.size() == bc->num_active_requests());
+  assert(std::accumulate(r_num_tokens.begin(),
+                         r_num_tokens.end(),
+                         decltype(r_num_tokens)::value_type(0)) ==
+         bc->num_active_tokens());
 
   //  ----------------------- Loading CUDA results for this step ---------------
   float *keyCache_cpu =
@@ -850,76 +874,114 @@ void IncMultiHeadSelfAttention::inference_task(
       torch::kFloat32);
 
   //  ----------------------- Comparing C++ & CUDA results ---------------------
+
+  // std::cout << "kcache differences:" << std::endl;
+  // for (int i=0; i < bc->num_active_requests() + 1; i++) {
+  //   for (int j=0; j < num_heads; j++) {
+  //     for (int l=0; l < m->kProjSize; l++) {
+  //       for (int k=0; k < MAX_SEQ_LEN; k++) {
+  //         size_t kcache_idx =
+  //           l * MAX_SEQ_LEN * num_heads * BatchConfig::MAX_NUM_REQUESTS +
+  //           k * num_heads * BatchConfig::MAX_NUM_REQUESTS +
+  //           j * BatchConfig::MAX_NUM_REQUESTS +
+  //           i;
+  //           if ( abs(m->kcache[kcache_idx] - keyCache_cpu[
+  //               i * m->kProjSize * MAX_SEQ_LEN * num_heads +
+  //               j * m->kProjSize * MAX_SEQ_LEN +
+  //               k * m->kProjSize +
+  //               l
+  //           ]) > 0.00001) {
+  //             printf("req: %i (rid: %i), head: %i, data_dim: %i, token_pos:
+  //             %i\n",
+  //                   i, req_idxs[i], j, l, k);
+  //           }
+  //       }
+  //     }
+  //   }
+  // }
+
+  //  std::cout << "keyCache from CUDA:" << std::endl;
+  //  for (int i=0; i<bc->num_active_requests()+1; i++) {
+  //    for (int j=0; j<num_heads; j++) {
+  //     for (int l=0; l<m->kProjSize; l++) {
+  //       for (int k=0; k< MAX_SEQ_LEN; k++) {
+  //         printf("%f ",
+  //           keyCache_cpu[i * m->kProjSize * MAX_SEQ_LEN * num_heads +
+  //               j * m->kProjSize * MAX_SEQ_LEN +
+  //               k * m->kProjSize +
+  //               l
+  //         ]);
+  //       }
+  //       printf("\n");
+  //     }
+  //     printf("\n");
+  //    }
+  //    printf("\n");
+  //  }
+
+  //  std::cout << "valueCache from CUDA:" << std::endl;
+  //  for (int i=0; i<bc->num_active_requests()+1; i++) {
+  //    for (int j=0; j<num_heads; j++) {
+  //       for (int l=0; l<m->vProjSize; l++) {
+  //         for (int k=0; k< MAX_SEQ_LEN; k++) {
+  //           printf("%f ",
+  //             valueCache_cpu[
+  //                 i * m->vProjSize * MAX_SEQ_LEN * num_heads +
+  //                 j * m->vProjSize * MAX_SEQ_LEN +
+  //                 k * m->vProjSize +
+  //             l]);
+  //         }
+  //         printf("\n");
+  //       }
+  //       printf("\n");
+  //    }
+  //    printf("\n");
+  //  }
+
+  //  printf("\n");
+
+  //  std::cout << "C++ kcache:" << std::endl;
+  //  for (int i=0; i<bc->num_active_requests()+1; i++) {
+  //    for (int j=0; j < num_heads; j++) {
+  //       for (int l=0; l < m->kProjSize; l++) {
+  //         for (int k=0; k < MAX_SEQ_LEN; k++) {
+  //           size_t kcache_idx =
+  //             l * MAX_SEQ_LEN * num_heads * BatchConfig::MAX_NUM_REQUESTS +
+  //             k * num_heads * BatchConfig::MAX_NUM_REQUESTS +
+  //             j * BatchConfig::MAX_NUM_REQUESTS +
+  //             i;
+  //           printf("%f ", m->kcache[kcache_idx]);
+  //         }
+  //         printf("\n");
+  //       }
+  //       printf("\n");
+  //    }
+  //    printf("\n");
+  //  }
+
+  //  std::cout << "C++ vcache:" << std::endl;
+  //  for (int i=0; i<bc->num_active_requests()+1; i++) {
+  //    for (int j=0; j<num_heads; j++) {
+  //       for (int l=0; l<m->vProjSize; l++) {
+  //         for (int k=0; k< MAX_SEQ_LEN; k++) {
+  //             size_t vcache_idx =
+  //               l * MAX_SEQ_LEN * num_heads * BatchConfig::MAX_NUM_REQUESTS +
+  //               k * num_heads * BatchConfig::MAX_NUM_REQUESTS +
+  //               j * BatchConfig::MAX_NUM_REQUESTS +
+  //               i;
+  //             printf("%f ", m->vcache[vcache_idx]);
+  //         }
+  //         printf("\n");
+  //       }
+  //       printf("\n");
+  //    }
+  //    printf("\n");
+  //  }
+
   assert(torch::allclose(K_t_cuda, K_t));
   assert(torch::allclose(V_t_cuda, V_t));
   free(kcache_cuda);
   free(vcache_cuda);
-
-  /*std::cout << "keyCache from CUDA:" << std::endl;
- for (int i=0; i<bc->num_active_requests()+1; i++) {
-   for (int j=0; j<num_heads; j++) {
-       for (int l=0; l<m->kProjSize; l++) {
-           for (int k=0; k< MAX_SEQ_LEN; k++) {
-               printf("%f ", keyCache_cpu[i*m->kProjSize*MAX_SEQ_LEN*num_heads+
- j*m->kProjSize*MAX_SEQ_LEN + k*m->kProjSize + l]);
-           }
-           printf("\n");
-       }
-       printf("\n");
-   }
-   printf("\n");
- }
- std::cout << "valueCache from CUDA:" << std::endl;
- for (int i=0; i<bc->num_active_requests()+1; i++) {
-   for (int j=0; j<num_heads; j++) {
-       for (int l=0; l<m->vProjSize; l++) {
-           for (int k=0; k< MAX_SEQ_LEN; k++) {
-               printf("%f ", valueCache_cpu[i*m->vProjSize*MAX_SEQ_LEN*num_heads
- + j*m->vProjSize*MAX_SEQ_LEN + k*m->vProjSize + l]);
-           }
-           printf("\n");
-       }
-       printf("\n");
-   }
-   printf("\n");
- }
-
- printf("\n");
-
- std::cout << "C++ kcache:" << std::endl;
- for (int i=0; i<bc->num_active_requests()+1; i++) {
-   for (int j=0; j < num_heads; j++) {
-       for (int l=0; l < m->kProjSize; l++) {
-           for (int k=0; k < MAX_SEQ_LEN; k++) {
-               size_t kcache_idx = l * MAX_SEQ_LEN * num_heads *
- BatchConfig::MAX_NUM_REQUESTS + k * num_heads * BatchConfig::MAX_NUM_REQUESTS +
-                                   j * BatchConfig::MAX_NUM_REQUESTS +
-                                   i;
-               printf("%f ", m->kcache[kcache_idx]);
-           }
-           printf("\n");
-       }
-       printf("\n");
-   }
-   printf("\n");
- }
- std::cout << "C++ vcache:" << std::endl;
- for (int i=0; i<bc->num_active_requests()+1; i++) {
-   for (int j=0; j<num_heads; j++) {
-       for (int l=0; l<m->vProjSize; l++) {
-           for (int k=0; k< MAX_SEQ_LEN; k++) {
-               size_t vcache_idx = l * MAX_SEQ_LEN * num_heads *
- BatchConfig::MAX_NUM_REQUESTS + k * num_heads * BatchConfig::MAX_NUM_REQUESTS +
-                                   j * BatchConfig::MAX_NUM_REQUESTS +
-                                   i;
-               printf("%f ", m->vcache[vcache_idx]);
-           }
-           printf("\n");
-       }
-       printf("\n");
-   }
-   printf("\n");
- } */
 
   // =============================================================================
   //  Load the W_out projection weights
@@ -971,29 +1033,6 @@ void IncMultiHeadSelfAttention::inference_task(
                                         qkv_projs.sizes()[1],
                                         qkv_projs.sizes()[3]});
 
-  // std::cout << "qkv_projs.sizes(): " << qkv_projs.sizes() << std::endl;
-  // std::cout << "Q_projs.sizes(): " << Q_projs.sizes() << std::endl;
-  std::vector<size_t> req_idxs;
-  std::vector<size_t> r_first_idx;
-  std::vector<size_t> r_num_tokens;
-  for (size_t t = 0; t < bc->num_active_tokens(); t++) {
-    size_t rid = bc->token2ids.token_indexes[t].request_index;
-    if (req_idxs.size() == 0 || req_idxs[req_idxs.size() - 1] != rid) {
-      req_idxs.push_back(rid);
-      r_first_idx.push_back(t);
-      r_num_tokens.push_back(1);
-    } else {
-      r_num_tokens[r_num_tokens.size() - 1]++;
-    }
-    assert(req_idxs.size() == r_first_idx.size() &&
-           r_first_idx.size() == r_num_tokens.size());
-  }
-  assert(req_idxs.size() == bc->num_active_requests());
-  assert(std::accumulate(r_num_tokens.begin(),
-                         r_num_tokens.end(),
-                         decltype(r_num_tokens)::value_type(0)) ==
-         bc->num_active_tokens());
-
   torch::Tensor qk_products[bc->num_active_requests()];
   torch::Tensor qk_softmax[bc->num_active_requests()];
   torch::Tensor attn_heads[bc->num_active_requests()];
@@ -1022,11 +1061,14 @@ void IncMultiHeadSelfAttention::inference_task(
   for (size_t r = 0; r < bc->num_active_requests(); r++) {
     // Compute pre-request parameters
     size_t num_new_tokens = r_num_tokens[r];
-    assert(num_new_tokens == bc->num_processing_tokens[r]);
-    int64_t num_tokens_received_so_far =
-        (int64_t)(bc->token_last_available_idx[r] + 1);
-    assert(num_tokens_received_so_far >= (int64_t)num_new_tokens);
     int64_t rid = (int64_t)(req_idxs[r]);
+    int64_t num_tokens_received_so_far =
+        (int64_t)(bc->token_last_available_idx[rid] + 1);
+    // printf("num_new_tokens: %lu, bc->num_processing_tokens[rid]: %i, rid:
+    // %li\n",
+    //         num_new_tokens, bc->num_processing_tokens[rid], rid);
+    assert(num_new_tokens == bc->num_processing_tokens[rid]);
+    assert(num_tokens_received_so_far >= (int64_t)num_new_tokens);
 
     //  ----------------------- C++ computations -------------------------------
     // Get the slice of the Q projection tensor with the tokens in the current
