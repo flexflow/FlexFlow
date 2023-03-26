@@ -163,7 +163,7 @@ void FlexFlow::top_level_task(Task const *task,
   for (int i = 0; i < (llamaConfig.total_sentence / llamaConfig.batchSize);
        i++) {
     // second iteration: for each batch, predict one by one token
-    for (int j = 0; j < llamaConfig.sentence_len; j++) {
+    for (int j = 0; j < 10; j++) {
       // input shape: batch_size * 1
       std::cout << "iteration" << j << ", ";
       ff.forward();

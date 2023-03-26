@@ -21,7 +21,7 @@ using namespace Legion;
 using namespace FlexFlow;
 
 struct LLAMAConfig {
-  LLAMAConfig::LLAMAConfig(void) {
+   LLAMAConfig(void) {
     // todo read from config/param file
     n_layers = 32;
     vocab_size = 32000;
@@ -44,7 +44,7 @@ struct LLAMAConfig {
         multiple_of * int((hidden_dim + multiple_of - 1) / multiple_of);
   }
   int n_heads, n_layers, vocab_size, dim, multiple_of, norm_eps, hidden_dim,
-      total_sentence, sentence_len batchSize;
+      total_sentence, sentence_len, batchSize;
   std::string weight_file_path;
   std::string input_path;
 };
@@ -72,7 +72,7 @@ public:
   static void load_attention_weights(T *ptr,
                                      size_t size,
                                      std::string layer_name,
-                                     std::string weight_path);
+                                     std::string weight_path);                         
 
 public:
   int num_samples, next_index, next_token_idx, next_batch_index;

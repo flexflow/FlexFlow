@@ -120,7 +120,7 @@ void DataLoader::reset() {
 }
 
 template <typename T>
-static void load_from_file(T *ptr, size_t size, std::string filename) {
+void DataLoader::load_from_file(T *ptr, size_t size, std::string filename) {
 
   // std::cout << "start loading input";
   std::ifstream in(filename, std::ios::in | std::ios::binary);
@@ -151,10 +151,10 @@ static void load_from_file(T *ptr, size_t size, std::string filename) {
 }
 
 template <typename T>
-static void load_attention_weights(T *ptr,
-                                   size_t size,
-                                   std::string layer_name,
-                                   std::string weight_path) {
+void DataLoader::load_attention_weights(T *ptr,
+                            size_t size,
+                            std::string layer_name,
+                            std::string weight_path) {
 
   std::string q_file = weight_path +
                        layer_name.substr(0, layer_name.find("attention")) +
@@ -203,20 +203,17 @@ static void load_attention_weights(T *ptr,
   }
 }
 
-template static void load_attention_weights<float>(float *ptr,
-                                                   size_t size,
-                                                   std::string layer_name,
-                                                   std::string weight_path);
-template static void load_from_file<long>(
-    long *ptr,
-    size_t size,
-    std::string
-        filename) template static void load_from_file<float>(float *ptr,
-                                                             size_t size,
-                                                             std::string
-                                                                 filename)
+template void DataLoader::load_attention_weights<float>(
+    float *ptr, size_t size, std::string layer_name, std::string weight_path);
+template void DataLoader::load_from_file<long>(long *ptr,
+                                               size_t size,
+                                               std::string filename);
+template void DataLoader::load_from_file<float>(float *ptr,
+                                                size_t size,
+                                                std::string filename);
 
-    void FlexFlow::register_custom_tasks() {
+
+void FlexFlow::register_custom_tasks() {
   // Load entire dataset
   {
     TaskVariantRegistrar registrar(CUSTOM_CPU_TASK_ID_1, "Load Entire Dataset");

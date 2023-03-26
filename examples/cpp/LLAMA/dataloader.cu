@@ -52,7 +52,7 @@ void DataLoader::load_input(Task const *task,
     assert(meta->idxs[i] == meta->idxs[0] + i);
   }
   
-  std::cout << "token idx: " << meta->token_idx <<std::endl;
+//   std::cout << "token idx: " << meta->token_idx <<std::endl;
   
   size_t size_to_copy =
       (batch_input_domain.get_volume());
@@ -61,15 +61,15 @@ void DataLoader::load_input(Task const *task,
       batch_input.ptr, 0, batch_input_domain.get_volume() * sizeof(long)));
   
 
-  std::cout << size_to_copy <<std::endl;
-  std::cout << "load input....."<<std::endl;
+//   std::cout << size_to_copy <<std::endl;
+//   std::cout << "load input....."<<std::endl;
   
   size_t index[size_to_copy];
   size_t *cuda_index;
 
   //-------get index of input-----
   for(int i = 0; i < batch_size; i++){
-     index[i] = meta->batch_idx * (llamaconfig.sentence_len * batch_size) + (sentence_len * i) + meta->token_idx;
+     index[i] = meta->batch_idx * (llamaconfig.sentence_len * batch_size) + (llamaconfig.sentence_len * i) + meta->token_idx;
   }
 
   cudaMalloc((void **)&cuda_index, batch_size * sizeof(size_t));

@@ -83,7 +83,7 @@ template <typename DT>
 __global__ void copy_kernel(DT *dst, const DT *src, Legion::coord_t size);
 
 template <typename DT>
-__global__ void copy_kernel_discrete(DT *dst, const DT *src, coord_t size, coord_t* index);
+__global__ void copy_kernel_discrete(DT *dst, const DT *src, Legion::coord_t size, size_t* index);
 
 template <typename T>
 __global__ void add_kernel(T *data_ptr, T const *grad_ptr, size_t size);

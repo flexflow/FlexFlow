@@ -215,6 +215,7 @@ MultiHeadAttention::MultiHeadAttention(FFModel &model,
     dims[2].size = qParas + kParas + vParas + oParas;
     dims[2].degree = 1;
     dims[2].parallel_idx = -1;
+    std::cout << "-----print weight dims: "<< dims[0].size << ", " << dims[1].size << ", " << dims[2].size;
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
 #ifdef USE_NCCL
