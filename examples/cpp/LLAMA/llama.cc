@@ -54,7 +54,7 @@ void FlexFlow::top_level_task(Task const *task,
   // }
 
   // n transformer blocks impl
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 1; i++) {
     // step 1: attention
     std::vector<int> axes = {2};
     Tensor norm_output =
@@ -109,17 +109,18 @@ void FlexFlow::top_level_task(Task const *task,
   token = ff.layer_norm(token, axes, true, llamaConfig.norm_eps);
   Tensor output = ff.dense(token, llamaConfig.vocab_size, AC_MODE_RELU, false);
 
-  // optimizer
-  Optimizer *optimizer = new SGDOptimizer(&ff, 0.01f);
-  std::vector<MetricsType> metrics;
-  metrics.push_back(METRICS_ACCURACY);
-  metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
-  ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
+  //------------------- compile the model --------------------------------
 
-  //------------------------------ dataloader --------------------------
+  InferenceManager im(
+      &ff, llamaConfig.batch_size, llamaConfig.num_inflight_batches);
+  im.compile_model_and_allocate_buffer();
+  im.init_operators_inference();
+
+  //------------------------------ load inputs --------------------------
   // read prompt into input
   ParallelTensor input_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
+  assert(im.tensor_buffer.find(input_pt) != im.tensor_buffer.end());
   DataLoader loader(ff, &llamaConfig, input_pt);
 
   //------------------------------ load weights---------------------------
@@ -152,18 +153,14 @@ void FlexFlow::top_level_task(Task const *task,
     weight->set_tensor<float>(&ff, dims_vec, data);
   }
 
-  ff.init_operators();
-
-  // TODO, replace forward with inference
-  loader.reset();
-  ff.reset_metrics();
-
+  
   //------------------------------ do inference---------------------------
+  loader.reset();
   // first iteration: total batch/batch size
   for (int i = 0; i < (llamaConfig.total_sentence / llamaConfig.batchSize);
        i++) {
     // second iteration: for each batch, predict one by one token
-    for (int j = 0; j < 10; j++) {
+    for (int j = 0; j < llamaConfig.sentence_len; j++) {
       // input shape: batch_size * 1
       std::cout << "iteration" << j << ", ";
       ff.forward();
