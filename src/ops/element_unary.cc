@@ -446,7 +446,7 @@ FutureMap ElementUnary::inference(FFModel const &ff,
                                                       batch_outputs[0]->region));
     launcher.add_field(1, FID_DATA);
   }
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void ElementUnary::forward_task(Task const *task,

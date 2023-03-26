@@ -369,7 +369,7 @@ void Embedding::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-void Embeddingl::init_inference(FFModel const &ff,
+void Embedding::init_inference(FFModel const &ff,
                             std::vector<ParallelTensor> const &batch_inputs,
                             std::vector<ParallelTensor> const &batch_outputs,
                             MachineView const *mv) {
@@ -511,7 +511,7 @@ FutureMap Embedding::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     weights[0]->region));
   launcher.add_field(2, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 /*
