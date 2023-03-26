@@ -56,61 +56,87 @@ public:
     in.read((char *)host_array.data(), loaded_data_size);
 
     size_t in_get_size = in.gcount();
-    std::cout << "size seee" << std::endl;
-    std::cout << loaded_data_size << std::endl;
-    std::cout << in_get_size << std::endl;
+    // std::cout << "size seee" << std::endl;
+    // std::cout << loaded_data_size << std::endl;
+    // std::cout << in_get_size << std::endl;
     if (in_get_size != loaded_data_size) {
       std::cout << "load data error";
       return;
     }
 
-    std::cout << "finish loading input";
+    // std::cout << "finish loading input";
     assert(size == host_array.size());
-    long index = 0;
-    for (auto i = host_array.begin(); i != host_array.end(); i++) {
-      ptr[index++] = *i;
+
+    // normal
+    long data_index = 0;
+    for (auto v : host_array) {
+      ptr[data_index++] = v;
     }
-    // ptr = (T*)host_array.data();
     in.close();
   }
 
   template <typename T>
-  static void load_attention_weights(T *ptr, size_t size, std::string layer_name) {
+  static void
+      load_attention_weights(T *ptr, size_t size, std::string layer_name) {
 
-    // std::cout << "start loading input";
-    std::ifstream in(filename, std::ios::in | std::ios::binary);
-    std::vector<T> host_array(size);
-    size_t loaded_data_size = sizeof(T) * size;
-    in.seekg(0, in.end);
-    in.seekg(0, in.beg);
-    in.read((char *)host_array.data(), loaded_data_size);
+    // get files
+    // layers_3_attention_weight
+    std::string q_file = "/home/ubuntu/FlexFlow/examples/cpp/LLAMA/weights/" +
+                         layer_name.substr(0, layer_name.find("attention")) +
+                         "attention_wq_weight";
+    std::string k_file = "/home/ubuntu/FlexFlow/examples/cpp/LLAMA/weights/" +
+                         layer_name.substr(0, layer_name.find("attention")) +
+                         "attention_wk_weight";
+    std::string v_file = "/home/ubuntu/FlexFlow/examples/cpp/LLAMA/weights/" +
+                         layer_name.substr(0, layer_name.find("attention")) +
+                         "attention_wk_weight";
+    std::string o_file = "/home/ubuntu/FlexFlow/examples/cpp/LLAMA/weights/" +
+                         layer_name.substr(0, layer_name.find("attention")) +
+                         "attention_wv_weight";
+    std::vector<std::string> weight_files = {q_file, k_file, v_file, o_file};
 
-    size_t in_get_size = in.gcount();
-    std::cout << "size seee" << std::endl;
-    std::cout << loaded_data_size << std::endl;
-    std::cout << in_get_size << std::endl;
-    if (in_get_size != loaded_data_size) {
-      std::cout << "load data error";
-      return;
+    size_t index = 0;
+
+    for (auto file : weight_files) {
+      size_t partial_size = size / 4;
+      std::ifstream in(file, std::ios::in | std::ios::binary);
+      std::vector<T> host_array(partial_size);
+      size_t loaded_data_size = sizeof(T) * partial_size;
+      in.seekg(0, in.end);
+      in.seekg(0, in.beg);
+      in.read((char *)host_array.data(), loaded_data_size);
+      size_t in_get_size = in.gcount();
+
+      if (in_get_size != loaded_data_size) {
+        std::cout << "load data error";
+        return;
+      }
+      assert(partial_size == host_array.size());
+
+      size_t offset = index * 4096 * 4096;
+      size_t one_head_size = 4096 * 128;
+      size_t data_index = 0;
+
+      for (size_t i = 0; i < one_head_size; i++) {
+        for (size_t j = 0; j < 32; j++) {
+          ptr[j * one_head_size + i + index] =
+              host_array.at(data_index++);
+        }
+      }
+
+      in.close();
+      index++;
     }
-
-    std::cout << "finish loading input";
-    assert(size == host_array.size());
-    long index = 0;
-    for (auto i = host_array.begin(); i != host_array.end(); i++) {
-      ptr[index++] = *i;
-    }
-    // ptr = (T*)host_array.data();
-    in.close();
   }
 
 public:
-  int num_samples, next_index, next_token_idx;
+  int num_samples, next_index, next_token_idx, next_batch_index;
   FlexFlow::ParallelTensor full_input, batch_input;
 };
 
 struct SampleIdxs {
   int num_samples;
   int idxs[MAX_NUM_SAMPLES];
-  int token_idx[MAX_NUM_SAMPLES];
+  int token_idx;
+  int batch_idx;
 };

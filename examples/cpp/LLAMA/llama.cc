@@ -172,10 +172,10 @@ void FlexFlow::top_level_task(Task const *task,
 
     size_t volume = 1;
     std::vector<int> dims_vec;
-    std::cout << "shape is: " << std::endl;
+    // std::cout << "shape is: " << std::endl;
     for (int i = 0; i < weight->num_dims; i++) {
       dims_vec.push_back(weight->dims[i]);
-      std::cout << weight->dims[i] << ", ";
+      // std::cout << weight->dims[i] << ", ";
       volume *= static_cast<size_t>(weight->dims[i]);
     }
 
@@ -183,6 +183,7 @@ void FlexFlow::top_level_task(Task const *task,
     float *data = (float *)malloc(sizeof(float) * volume);
 
     if(v.first.find("attention") != std::string::npos){
+       std::cout << "attention layer "<< v.first <<std::endl;
        loader.load_attention_weights(data, volume, v.first);
     }else{
        loader.load_from_file(data,
@@ -199,20 +200,26 @@ void FlexFlow::top_level_task(Task const *task,
   // todo, replace it with inference
   loader.reset();
   ff.reset_metrics();
-  loader.next_batch(ff);
+  
 
-  // first iteration: total batch/batch size
-  for (int i = 0; i < (llamaConfig.total_sentence / ffconfig.batchSize); i++) {
-    // second iteration: for each batch, predict one by one token
-    for (int j = 0; j < llamaConfig.total_len; j++) {
-      // input shape, batch_size * 1 = 5 * 1
-      ff.forward();
+  for(int i = 0; i < 3; i++){
       loader.next_batch(ff);
-      
-    }
-    loader.reset();
-    // todo process one sentence
   }
+  // assert(false);
+
+  // // first iteration: total batch/batch size
+  // for (int i = 0; i < (llamaConfig.total_sentence / ffconfig.batchSize); i++) {
+  //   // second iteration: for each batch, predict one by one token
+  //   for (int j = 0; j < llamaConfig.total_len; j++) {
+  //     // input shape, batch_size * 1 = 5 * 1
+  //     std::cout << "iteration" << j << ", ";
+  //     ff.forward();
+  //     loader.next_batch(ff);
+      
+  //   }
+  //   loader.reset();
+  //   // todo process one sentence
+  // }
 
   fprintf(stderr, "----------inference end--------------");
 }

@@ -80,6 +80,7 @@ void DataLoader::load_entire_dataset(Task const *task,
 void DataLoader::next_batch(FFModel &ff) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
+  fprintf(stderr, "----------next batch--------------");
   // Load Input
   {
     Domain domain =
@@ -92,7 +93,8 @@ void DataLoader::next_batch(FFModel &ff) {
       meta.num_samples = ff.config.batchSize / batch_input->dims[2].size;
       for (int i = 0; i < meta.num_samples; i++) {
         meta.idxs[i] = idx++;
-        meta.token_idx[i] = next_token_idx;
+        meta.token_idx = next_token_idx;
+        meta.batch_idx = next_batch_index;
       }
 
 
@@ -115,10 +117,12 @@ void DataLoader::next_batch(FFModel &ff) {
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(RegionRequirement(batch_input->part,
                                                       0 /*projection id*/,
-                                                      WRITE_ONLY,
+                                                      READ_WRITE,
                                                       EXCLUSIVE,
                                                       batch_input->region));
     launcher.add_field(1, FID_DATA);
+
+    fprintf(stderr, "----------lunach the input--------------");
     runtime->execute_index_space(ctx, launcher);
   }
   // progress next_index
@@ -128,7 +132,8 @@ void DataLoader::next_batch(FFModel &ff) {
 
 void DataLoader::reset() {
   next_index = 0;
-  token_idx = 0;
+  next_token_idx = 0;
+  next_batch_index = 0;
 }
 
 void FlexFlow::register_custom_tasks() {
