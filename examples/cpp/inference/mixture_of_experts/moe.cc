@@ -175,7 +175,6 @@ void FlexFlow::top_level_task(Task const *task,
   BatchConfig *bc = nullptr;
 
   assert(im.max_num_requests_per_batch == moeConfig.batch_size);
-  // assert(moeConfig.batch_size <= BatchConfig::MAX_NUM_REQUESTS);
 
   // simulation loop. For deployment, we will use a while(true)
   while (processed_requests < moeConfig.total_requests) {
