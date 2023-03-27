@@ -1,21 +1,13 @@
 #ifndef _FLEXFLOW_AGGREGATE_SPEC_H_
 #define _FLEXFLOW_AGGREGATE_SPEC_H_
 
-#include "model.h"
+#include "operator.h"
+#include "layer.h"
 
 namespace FlexFlow {
 
-class AggregateSpecMeta : public OpMeta {
-public:
-  AggregateSpecMeta(FFHandler handle, int n);
-  ~AggregateSpecMeta(void);
-  float **dev_region_ptrs;
-};
-
 class AggregateSpec : public Op {
 public:
-  using Params = AggregateSpecParams;
-  using Input = ParallelTensor;
   AggregateSpec(FFModel &model,
                 ParallelTensor const *inputs,
                 int _n,
@@ -31,7 +23,7 @@ public:
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -46,12 +38,13 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  Params get_params() const;
 
+  OpTaskBinding get_init_task_binding() const override;
+  OpTaskBinding get_fwd_task_binding() const override;
+  OpTaskBinding get_bwd_task_binding() const override;
 public:
-  int n;
-  float lambda_bal;
+  AggregateSpecAttrs attrs;
 };
 
-}; // namespace FlexFlow
+}
 #endif

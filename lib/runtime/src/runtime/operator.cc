@@ -133,6 +133,28 @@ void Op::infer_bwd_spec(OpTasksSpec &spec) const {
   spec.set_bwd(this->infer_bwd_spec(spec.get_task_id(OpTaskType::BWD), spec.get_fwd()));
 }
 
+bool Op::check_output_input_weight_same_parallel_is() const {
+  assert(numOutputs > 0);
+  IndexSpace parallel_is = outputs[0]->parallel_is;
+  for (int i = 0; i < numOutputs; i++) {
+    if (outputs[i]->parallel_is != parallel_is) {
+      return false;
+    }
+  }
+  for (int i = 0; i < numInputs; i++) {
+    if (inputs[i]->parallel_is != parallel_is) {
+      return false;
+    }
+  }
+  for (int i = 0; i < numWeights; i++) {
+    if (weights[i]->parallel_is != parallel_is) {
+      return false;
+    }
+  }
+  return true;
+}
+
+
 void Op::execute_task_spec(FFModel const &ff, OpTaskSpec const &task_spec) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -162,18 +184,52 @@ void Op::execute_task_spec(FFModel const &ff, OpTaskSpec const &task_spec) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-OpTasksSpec Op::get_fully_defined_tasks_spec() const {
-  OpTasksSpec spec = this->get_tasks_spec();
-  assert (spec.is_defined(OpTaskType::FWD));
-  if (!spec.is_defined(OpTaskType::BWD)) {
-    this->infer_bwd_spec(spec);
+void Op::execute_task(FFModel const &ff, TaskID task_id, OpTaskSignature const &signature) {
+  if (signature.get_task_type() == OpTaskType::INIT) {
+    assert (this->check_output_input_weight_same_parallel_is());
+    this->parallel_is = outputs[0]->parallel_is;
   }
-  if (!spec.is_defined(OpTaskType::INIT)) {
-    this->infer_init_spec(spec);
-  }
-  assert (spec.is_fully_defined());
 
-  return spec;
+  OpTaskBinding binding = this->get_task_binding(signature.get_task_type());
+
+  OpTaskArgumentFormat task_arg_fmt = compile_task_invocation(signature, binding);
+
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+
+  this->set_argumentmap(signature.get_task_type(), ff, argmap);
+  TaskArgument task_arg;
+
+  IndexLauncher launcher(task_id, 
+                         this->parallel_is, 
+                         binding.get_legion_task_arg(), 
+                         argmap, 
+                         Predicate::TRUE_PRED, 
+                         false /*must*/, 
+                         0 /*mapper_id*/, 
+                         get_std_hash(this->outputs.at(0)->machine_view));
+
+  for (auto const &kv : get_region_idxs(task_arg_fmt)) {
+    int region_idx = kv.second;
+    TensorSpec const &tensor_spec = kv.second;
+
+    ParallelTensor const &parallel_tensor = this->get_parallel_tensor(tensor_spec);
+
+    launcher.add_region_requirement(RegionRequirement(parallel_tensor->part, 
+                                                      0 /*projection id*/,
+                                                      tensor_spec.mode.value(),
+                                                      EXCLUSIVE,
+                                                      parallel_tensor->region));
+    launcher.add_field(region_idx, FID_DATA);
+    region_idx++;
+  }
+
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  if (signature.get_task_type() == OpTaskType::INIT) {
+    fm.wait_all_results();
+    this->set_opmeta_from_futuremap(ff, fm);
+  }
 }
 
 void Op::init(FFModel const &ff) {

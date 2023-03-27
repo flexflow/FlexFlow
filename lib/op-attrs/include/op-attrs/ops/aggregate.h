@@ -8,6 +8,9 @@
 namespace FlexFlow {
 
 struct AggregateAttrs : public UnaryOutputOpAttrs {
+  AggregateAttrs() = delete;
+  AggregateAttrs(int n, float lambda_bal);
+
   bool is_valid(std::vector<ParallelTensorShape> const &) const override;
   ParallelTensorShape output_shape(std::vector<ParallelTensorShape> const &input_shapes) const override;
   OperatorType op_type() const override;
@@ -28,6 +31,6 @@ template <>
 struct hash<::FlexFlow::AggregateAttrs> {
   size_t operator()(::FlexFlow::AggregateAttrs const &) const;
 };
-} // namespace std
+}
 
-#endif // _FLEXFLOW_AGGREGATE_PARAMS_H
+#endif 

@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-template <typename T, int MAXSIZE>
+template <typename T, std::size_t MAXSIZE>
 struct stack_vector {
 public:
   stack_vector() = default;
@@ -48,7 +48,7 @@ public:
 
   T &at(std::size_t idx) {
     assert (idx < MAXSIZE);
-    return this->content[idx];
+    return this->contents[idx];
   }
 
   T const &operator[](std::size_t idx) const {

@@ -8,7 +8,7 @@
 namespace FlexFlow {
 
 template <typename F, typename ...Ts>
-optional<float> profiling_wrapper(F const &f, bool profiling, Ts const &...ts) {
+optional<float> profiling_wrapper(F const &f, bool profiling, Ts &&...ts) { 
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 

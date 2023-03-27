@@ -22,7 +22,6 @@
 namespace FlexFlow {
 
 class FFModel;
-class OpMeta;
 
 class Optimizer {
 public:

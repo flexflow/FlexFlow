@@ -36,8 +36,8 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
 void Op::inner_measure_operator_cost(Simulator *sim,
-                                     std::function<void()> const &forward,
-                                     std::function<void()> const &backward,
+                                     std::function<void(ffStream_t)> const &forward,
+                                     std::function<void(ffStream_t)> const &backward,
                                      CostMetrics &cost_metrics) const {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));

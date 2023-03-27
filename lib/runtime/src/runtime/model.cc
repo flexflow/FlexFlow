@@ -69,6 +69,7 @@ using namespace Legion;
 
 LegionRuntime::Logger::Category log_model("Model");
 LegionRuntime::Logger::Category log_measure("measure");
+LegionRuntime::Logger::Category log_profile("profile");
 
 Op::Op(FFModel &model,
        OperatorType otype,

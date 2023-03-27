@@ -14,6 +14,10 @@ public:
             float _lambda_bal,
             char const *name);
   Aggregate(FFModel &model,
+            ParallelTensor const *inputs, 
+            AggregateAttrs const &attrs,
+            char const *name);
+  Aggregate(FFModel &model,
             Aggregate const &other,
             std::vector<ParallelTensor> const &inputs);
   void init(FFModel const &) override;
@@ -26,7 +30,7 @@ public:
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -43,13 +47,15 @@ public:
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
 
-  OpTasksSpec get_tasks_spec() const override;
-
+  OpTaskBinding get_init_task_binding() const override;
+  OpTaskBinding get_fwd_task_binding() const override;
+  OpTaskBinding get_bwd_task_binding() const override;
 public:
-  int n;
-  float lambda_bal;
+  AggregateAttrs attrs;
 };
 
-}; // namespace FlexFlow
+
+
+}
 
 #endif

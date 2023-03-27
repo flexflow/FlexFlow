@@ -11,20 +11,22 @@
 #include "runtime/tasks.h"
 #include <stdexcept>
 #include "task_spec.h"
+#include "kernels/per_device_op_state.h"
+#include "kernels/profiling.h"
 
 namespace FlexFlow {
 
 extern LegionRuntime::Logger::Category log_measure;
+extern LegionRuntime::Logger::Category log_profile;
 
-class OpMeta;
 class Simulator;
 class CostMetrics;
 
 class Op {
 protected:
   void inner_measure_operator_cost(Simulator *sim,
-                                   std::function<void()> const &forward,
-                                   std::function<void()> const &backward,
+                                   std::function<void(ffStream_t)> const &forward,
+                                   std::function<void(ffStream_t)> const &backward,
                                    CostMetrics &cost_metrics) const;
 
 public:
@@ -139,21 +141,33 @@ protected:
   void set_opmeta_from_futuremap(FFModel const &ff,
                                  Legion::FutureMap const &fm);
 
+  bool check_output_input_weight_same_parallel_is() const;
+
   /* template <typename T> */
   /* Legion::IndexLauncher make_fwd_index_launcher(FFModel const &ff, TaskID task_id, tl::optional<T const &> arg = tl::nullopt) const { */
   /*   using namespace Legion; */
 
   /* } */
 
-  virtual OpTasksSpec get_tasks_spec() const = 0;
-  OpTasksSpec get_fully_defined_tasks_spec() const;
-  OpTaskSpec infer_bwd_spec(TaskID bwd_task_id, OpTaskSpec const &fwd_spec) const;
-  OpTaskSpec infer_init_spec(TaskID init_task_id, OpTaskSpec const &bwd_spec) const;
-  void infer_bwd_spec(OpTasksSpec &spec) const;
-  void infer_init_spec(OpTasksSpec &spec) const;
+  /* virtual OpTasksSpec get_tasks_spec() const = 0; */
+  /* OpTasksSpec get_fully_defined_tasks_spec() const; */
+  /* OpTaskSpec infer_bwd_spec(TaskID bwd_task_id, OpTaskSpec const &fwd_spec) const; */
+  /* OpTaskSpec infer_init_spec(TaskID init_task_id, OpTaskSpec const &bwd_spec) const; */
+  /* void infer_bwd_spec(OpTasksSpec &spec) const; */
+  /* void infer_init_spec(OpTasksSpec &spec) const; */
 
-  void execute_task_spec(FFModel const &, OpTaskSpec const &);
-  ParallelTensor const &get_parallel_tensor(TensorRole, int); 
+  /* void execute_task_spec(FFModel const &, OpTaskSpec const &); */
+  /* ParallelTensor const &get_parallel_tensor(TensorRole, int); */ 
+
+  void execute_task(FFModel const &, TaskID, OpTaskSignature const &);
+  ParallelTensor const &get_parallel_tensor(TensorSpec const &) const;
+  TensorSpec input_tensor(int idx) const;
+  OpTaskBinding get_task_binding(OpTaskType) const;
+  void set_argumentmap(OpTaskType, FFModel const &f, Legion::ArgumentMap);
+
+  virtual OpTaskBinding get_init_task_binding() const = 0;
+  virtual OpTaskBinding get_fwd_task_binding() const = 0;
+  virtual OpTaskBinding get_bwd_task_binding() const = 0;
 public:
   OperatorType op_type;
   DataType data_type;
@@ -167,13 +181,21 @@ public:
   stack_vector<ParallelTensor, MAX_NUM_INPUTS> inputs;
   stack_vector<ParallelParameter, MAX_NUM_WEIGHTS> weights;
   stack_vector<bool, MAX_NUM_INPUTS> trainableInputs;
-  stack_vector<OpMeta *, MAX_NUM_WORKERS> meta;
+  stack_vector<PerDeviceOpState *, MAX_NUM_WORKERS> meta;
   int numInputs, numWeights, numOutputs;
   bool profiling;
 #ifdef FF_USE_NCCL
   ncclUniqueId ncclId;
 #endif
 };
+
+template <typename F, typename ...Ts, typename Str>
+void profile(F const &f, bool profiling, Str s, Ts &&...ts) {
+  optional<float> elapsed = profiling_wrapper<F, Ts...>(f, profiling, std::forward<Ts>(ts)...);
+  if (elapsed.has_value()) {
+    log_profile.debug(s, elapsed.value());
+  }
+}
 
 }
 

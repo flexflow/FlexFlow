@@ -13,6 +13,7 @@
 #include <vector>
 #include <cassert>
 #include "bidict.h"
+#include "stack_map.h"
 
 namespace FlexFlow {
 
@@ -77,6 +78,11 @@ bool contains_key(std::unordered_map<K, V> const &m, K const &k) {
   return m.find(k) != m.end();
 }
 
+template <typename K, typename V, size_t MAXSIZE>
+bool contains_key(stack_map<K, V, MAXSIZE> const &m, K const &k) {
+  return m.find(k) != m.end();
+}
+
 template <typename K, typename V>
 bool contains_l(bidict<K, V> const &m, K const &k) {
   return m.find(k) != m.end();
@@ -96,6 +102,14 @@ std::unordered_set<K> keys(std::unordered_map<K, V> const &m) {
   return result;
 }
 
+template <typename K, typename V, size_t MAXSIZE>
+std::unordered_set<K> keys(stack_map<K, V, MAXSIZE> const &m) {
+  std::unordered_set<K> result;
+  for (auto const &kv : m) {
+    result.insert(kv.first);
+  }
+  return result;
+}
 
 template <typename K, typename V>
 std::unordered_set<K> keys(bidict<K, V> const &m) {
@@ -217,10 +231,10 @@ std::unordered_set<D> map_over_unordered_set(std::function<D(S const &)> const &
   return result;
 }
 
-template <typename T>
-T get_only(std::unordered_set<T> const &s) {
-  assert (s.size() == 1);
-  return *s.cbegin(); 
+template <typename C>
+typename C::value_type get_only(C const &c) {
+  assert (c.size() == 1);
+  return *c.cbegin(); 
 }
 
 template <typename T>
