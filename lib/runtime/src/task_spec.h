@@ -194,6 +194,18 @@ OpTaskArgumentFormat compile_task_invocation(OpTaskSignature const &, OpTaskBind
 
 template <Legion::PrivilegeMode> struct privilege_mode_to_accessor { };
 
+template <> struct privilege_mode_to_accessor<READ_WRITE> {
+  using type = GenericTensorAccessorW;
+};
+
+template <> struct privilege_mode_to_accessor<READ_ONLY> {
+  using type = GenericTensorAccessorR;
+};
+
+template <> struct privilege_mode_to_accessor<WRITE_ONLY> {
+  using type = GenericTensorAccessorW;
+};
+
 struct OpTaskArgumentAccessor {
   OpTaskArgumentAccessor(Legion::Task const *task, 
                          std::vector<Legion::PhysicalRegion> const &regions,
@@ -207,7 +219,13 @@ struct OpTaskArgumentAccessor {
   typename privilege_mode_to_accessor<PRIV>::type get_tensor(slot_id);
 
   template <Legion::PrivilegeMode PRIV>
+  typename privilege_mode_to_accessor<PRIV>::type get_tensor_grad(slot_id);
+
+  template <Legion::PrivilegeMode PRIV>
   std::vector<typename privilege_mode_to_accessor<PRIV>::type> get_variadic_tensor(slot_id);
+
+  template <Legion::PrivilegeMode PRIV>
+  std::vector<typename privilege_mode_to_accessor<PRIV>::type> get_variadic_tensor_grad(slot_id);
 private:
   Legion::Task const *task;
   std::vector<Legion::PhysicalRegion> const &regions;

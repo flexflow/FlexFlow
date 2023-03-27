@@ -88,6 +88,23 @@ public:
   const_iterator cend() const {
     return this->cbegin() + this->size;
   }
+
+  bool operator==(stack_vector<T, MAXSIZE> const &other) {
+    if (this->size != other.size) {
+      return false;
+    }
+    for (std::size_t i = 0; i < this->size; i++) {
+      if (other.at(i) != this->at(i)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool operator!=(stack_vector<T, MAXSIZE> const &other) {
+    return !(*this == other);
+  }
 private:
   std::size_t size = 0;
   std::array<T, MAXSIZE> contents;

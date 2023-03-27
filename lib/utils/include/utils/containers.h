@@ -258,6 +258,17 @@ bool all_of(C const &c, F const &f) {
   return true;
 }
 
+template <typename C>
+bool are_all_same(C const &c) {
+  auto const &first = *c.cbegin();
+  for (auto const &v : c) {
+    if (v != first) {
+      return false;
+    }
+  }
+  return true;
+}
+
 template <typename F, typename In, typename Out = decltype(std::declval<F>()(std::declval<In>()))>
 std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
   std::vector<Out> result;

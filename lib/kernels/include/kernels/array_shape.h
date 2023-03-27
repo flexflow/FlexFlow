@@ -5,6 +5,7 @@
 #include <cstddef>
 #include "utils/stack_vector.h"
 #include "utils/optional.h"
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
 
@@ -43,8 +44,23 @@ public:
   iterator end();
   const_iterator end() const;
   const_iterator cend() const;
-private:
+
+  bool operator==(ArrayShape const &) const;
+  bool operator!=(ArrayShape const &) const;
+
+public:
   stack_vector<std::size_t, MAX_TENSOR_DIM> dims;
+};
+
+}
+
+VISITABLE_STRUCT(::FlexFlow::ArrayShape, dims);
+
+namespace std {
+
+template <>
+struct hash<::FlexFlow::ArrayShape> {
+  size_t operator()(::FlexFlow::ArrayShape const &) const;
 };
 
 }
