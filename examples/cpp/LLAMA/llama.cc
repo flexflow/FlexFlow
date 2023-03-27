@@ -112,16 +112,29 @@ void FlexFlow::top_level_task(Task const *task,
   //------------------- compile the model --------------------------------
 
   InferenceManager im(
-      &ff, llamaConfig.batch_size, llamaConfig.num_inflight_batches);
+      &ff, llamaConfig.batchSize, 4);
   im.compile_model_and_allocate_buffer();
   im.init_operators_inference();
+
+
+  // optimizer
+  // Optimizer *optimizer = new SGDOptimizer(&ff, 0.01f);
+  // std::vector<MetricsType> metrics;
+  // metrics.push_back(METRICS_ACCURACY);
+  // metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
+  // ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
+  // std::cout << "------model compiled ----------" << std::endl;
+  
+
 
   //------------------------------ load inputs --------------------------
   // read prompt into input
   ParallelTensor input_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
-  assert(im.tensor_buffer.find(input_pt) != im.tensor_buffer.end());
+  // assert(im.tensor_buffer.find(input_pt) != im.tensor_buffer.end());
   DataLoader loader(ff, &llamaConfig, input_pt);
+
+  
 
   //------------------------------ load weights---------------------------
   for (auto &v : weights_layers) {
@@ -152,22 +165,32 @@ void FlexFlow::top_level_task(Task const *task,
 
     weight->set_tensor<float>(&ff, dims_vec, data);
   }
+  std::cout << "------load wieght finished----------" << std::endl;
 
   
   //------------------------------ do inference---------------------------
+  BatchConfig *bc = new BatchConfig();
+  // ff.init_operators();
   loader.reset();
-  // first iteration: total batch/batch size
-  for (int i = 0; i < (llamaConfig.total_sentence / llamaConfig.batchSize);
-       i++) {
-    // second iteration: for each batch, predict one by one token
-    for (int j = 0; j < llamaConfig.sentence_len; j++) {
-      // input shape: batch_size * 1
-      std::cout << "iteration" << j << ", ";
-      ff.forward();
-      loader.next_batch(ff);
-    }
-    loader.reset();
-    // TODO process one sentence
-  }
+  loader.next_batch(ff);
+  
+  
+  FutureMap fm = im.inference(0, *bc);
+  loader.next_batch(ff);
+  fm = im.inference(0, *bc);
+  
+  // // first iteration: total batch/batch size
+  // for (int i = 0; i < (llamaConfig.total_sentence / llamaConfig.batchSize);
+  //      i++) {
+  //   // second iteration: for each batch, predict one by one token
+  //   for (int j = 0; j < llamaConfig.sentence_len; j++) {
+  //     // input shape: batch_size * 1
+  //     std::cout << "iteration" << j << ", ";
+  //     FutureMap fm = im.inference(bid, *bc);
+  //     loader.next_batch(ff);
+  //   }
+  //   loader.reset();
+  //   // TODO process one sentence
+  // }
   std::cout << "----------inference finished--------------" << std::endl;
 }

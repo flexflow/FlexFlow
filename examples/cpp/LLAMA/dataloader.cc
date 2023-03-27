@@ -26,7 +26,7 @@ DataLoader::DataLoader(FFModel &ff,
     dims[num_dims - 1].size = num_samples;
     full_input =
         ff.create_parallel_tensor_legion_ordering(num_dims, dims, DT_INT64);
-
+    assert(full_input != nullptr && "full_input is nullptr");
     ff.map_tensor(full_input, NULL /*parallel_op*/);
   }
 
@@ -101,7 +101,7 @@ void DataLoader::next_batch(FFModel &ff) {
     launcher.add_field(0, FID_DATA);
     launcher.add_region_requirement(RegionRequirement(batch_input->part,
                                                       0 /*projection id*/,
-                                                      READ_WRITE,
+                                                      WRITE_ONLY,
                                                       EXCLUSIVE,
                                                       batch_input->region));
     launcher.add_field(1, FID_DATA);
