@@ -93,29 +93,20 @@ bool contains_r(bidict<K, V> const &m, V const &v) {
   return m.find(v) != m.end();
 }
 
-template <typename K, typename V>
-std::unordered_set<K> keys(std::unordered_map<K, V> const &m) {
-  std::unordered_set<K> result;
-  for (auto const &kv : m) {
-    result.insert(kv.first);
+template <typename C>
+std::vector<typename C::key_type> keys(C const &c) {
+  std::vector<typename C::key_type> result;
+  for (auto const &kv : c) {
+    result.push_back(kv.first);
   }
   return result;
 }
 
-template <typename K, typename V, size_t MAXSIZE>
-std::unordered_set<K> keys(stack_map<K, V, MAXSIZE> const &m) {
-  std::unordered_set<K> result;
-  for (auto const &kv : m) {
-    result.insert(kv.first);
-  }
-  return result;
-}
-
-template <typename K, typename V>
-std::unordered_set<K> keys(bidict<K, V> const &m) {
-  std::unordered_set<K> result;
-  for (auto const &kv : m) {
-    result.insert(kv.first);
+template <typename C>
+std::vector<typename C::mapped_type> values(C const &c) {
+  std::vector<typename C::mapped_type> result;
+  for (auto const &kv : c) {
+    result.push_back(kv.second);
   }
   return result;
 }
@@ -285,6 +276,16 @@ std::pair<std::vector<T>, std::vector<T>> vector_split(std::vector<T> const &v, 
   return { prefix, postfix };
 }
 
+
+template <typename T>
+T maximum(std::vector<T> const &v) {
+  return std::max_element(v.begin(), v.end());
+}
+
+template <typename T, size_t MAXSIZE>
+T maximum(stack_vector<T, MAXSIZE> const &v) {
+  return std::max_element(v.begin(), v.end());
+}
 
 }
 

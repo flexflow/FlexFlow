@@ -41,6 +41,8 @@ struct stack_map {
   using value_type = std::pair<K, V>;
   using reference = value_type &;
   using const_reference = value_type const &;
+  using key_type = K;
+  using mapped_type = V;
 
   iterator begin() {
     return this->contents.begin();

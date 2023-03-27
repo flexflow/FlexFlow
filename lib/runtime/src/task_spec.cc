@@ -198,6 +198,8 @@ allocate_region_idxs(OpTaskSignature const &signature, OpTaskBinding const &bind
 
 static std::unordered_map<slot_id, ArgSpec>
 allocate_argument_offsets(OpTaskSignature const &signature, OpTaskBinding const &binding) {
+  static_assert(is_trivially_serializable<OpTaskArgumentFormat>, "OpTaskArgumentFormat must be trivially serializable for this to work");
+
   for (auto const &kv : binding.get_arg_bindings()) {
     slot_id slot = kv.first;
     ArgSpec const &arg = kv.second;
@@ -212,14 +214,22 @@ allocate_argument_offsets(OpTaskSignature const &signature, OpTaskBinding const 
   return binding.get_arg_bindings();
 }
 
-OpTaskArgumentFormat compile_task_invocation(OpTaskSignature const &signature, OpTaskBinding const &binding) {
+OpTaskArgumentFormat compile_task_invocation(OpTaskSignature const &signature, OpTaskBinding &binding) {
   OpTaskArgumentFormat result;
 
   result.region_idxs = allocate_region_idxs(signature, binding);
   result.argument_offsets = allocate_argument_offsets(signature, binding);
+  *((OpTaskArgumentFormat *)binding.task_format_location) = result;
 
   return result;
 }
+
+OpTaskArgumentAccessor::OpTaskArgumentAccessor(Legion::Task const *task,
+                                               std::vector<Legion::PhysicalRegion> const &regions,
+                                               Legion::Context ctx,
+                                               Legion::Runtime *runtime)
+  : task(task), regions(regions), ctx(ctx), runtime(runtime), args_fmt(*(OpTaskArgumentFormat const *)task->args)
+{ }
 
 /* TensorSpec::TensorSpec(TensorRole tensor_role, int idx, IsGrad is_grad, optional<Legion::PrivilegeMode> mode) */
 /*   : role(tensor_role), idx(idx), is_grad(is_grad), mode(mode) */
