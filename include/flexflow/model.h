@@ -138,6 +138,8 @@ enum TaskIDs {
   ATTENTION_INIT_TASK_ID,
   ATTENTION_FWD_TASK_ID,
   ATTENTION_BWD_TASK_ID,
+  RMSNROM_INIT_TASK_ID,
+  RMSNROM_INFERENCE_TASK_ID
   INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_BWD_TASK_ID,
@@ -285,6 +287,7 @@ class Softmax;
 class Split;
 class TopK;
 class Transpose;
+class RMSNorm
 class Combine;
 class Repartition;
 class Reduction;
@@ -496,6 +499,11 @@ public:
                       int a_seq_length_dim = -1,
                       int b_seq_length_dim = -1,
                       char const *name = nullptr);
+   // Add a root mean square layer
+  Tensor rms_norm(const Tensor input,
+                  float eps,
+                  int dim,
+                  char const *name = NULL);                    
   // Add a dense layer
   Tensor dense(const Tensor input,
                int outDim,
@@ -955,6 +963,8 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, TopKParams>, TopK *>,
       std::unordered_map<std::pair<ParallelTensorShape, TransposeParams>,
                          Transpose *>,
+      std::unordered_map<std::pair<ParallelTensorShape, RMSNormParams>,
+                         RMSNorm *>,                   
       std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
                          Repartition *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReplicateParams>,

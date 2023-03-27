@@ -40,6 +40,7 @@
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
+#include "flexflow/ops/rms_norm.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
@@ -2705,6 +2706,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_TRANSPOSE: {
         node = Transpose::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_RMS_NORM: {
+        node = RMSNorm::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_COMBINE: {

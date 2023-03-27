@@ -25,6 +25,7 @@
 #include "flexflow/ops/softmax_params.h"
 #include "flexflow/ops/split_params.h"
 #include "flexflow/ops/topk_params.h"
+#include "flexflow/ops/rms_norm_params.h"
 #include "flexflow/ops/transpose_params.h"
 #include "flexflow/parallel_ops/combine_params.h"
 #include "flexflow/parallel_ops/fused_parallel_op_params.h"
