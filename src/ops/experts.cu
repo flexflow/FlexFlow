@@ -79,11 +79,9 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
                              sorted_indices,
                              sorted_indices + num_indices,
                              original_indices);
-  // std::cout << "sorted_indices " << experts_start_idx << std::endl;
-  // thrust::copy(sorted_indices, sorted_indices + num_indices, std::ostream_iterator<int>(std::cout, " "));
-  // std::cout << std::endl;
 
-  // get lower and upper bound of token->expert assignments corresponding to experts in the block
+  // get lower and upper bound of token->expert assignments corresponding to
+  // experts in the block
   thrust::device_ptr<int> lb = thrust::lower_bound(thrust::cuda::par.on(stream),
                                                    sorted_indices,
                                                    sorted_indices + num_indices,
@@ -93,9 +91,11 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
                           sorted_indices,
                           sorted_indices + num_indices,
                           experts_start_idx + num_experts_per_block - 1);
-  // lowest index in the sorted indices array corresponding to an expert within the block
+  // lowest index in the sorted indices array corresponding to an expert within
+  // the block
   *lb_index = lb - sorted_indices;
-  // 1 + largest index in the sorted indices array corresponding to an expert within the block
+  // 1 + largest index in the sorted indices array corresponding to an expert
+  // within the block
   *ub_index = ub - sorted_indices;
   *num_valid_assignments = (*ub_index) - (*lb_index);
   if ((*num_valid_assignments) == 0) {
@@ -104,19 +104,21 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
 
   thrust::device_ptr<int> non_zero_expert_labels =
       thrust::device_pointer_cast(m->non_zero_expert_labels);
-  // non_zero_expert_labels: a list of global labels of the experts in this block receiving nonzero tokens
+  // non_zero_expert_labels: a list of global labels of the experts in this
+  // block receiving nonzero tokens
   thrust::device_ptr<int> non_zero_expert_labels_end = thrust::unique_copy(
       thrust::cuda::par.on(stream), lb, ub, non_zero_expert_labels);
   // number of experts in this block receiving at least one token
   *non_zero_experts_count = non_zero_expert_labels_end - non_zero_expert_labels;
 
   using namespace thrust::placeholders;
-  // convert global labels to local labelling (e.g. expert 65->index 65-64=1 in block containing experts 64-96) by substracting the experts_start_idx, inplace.
+  // convert global labels to local labelling (e.g. expert 65->index 65-64=1 in
+  // block containing experts 64-96) by substracting the experts_start_idx,
+  // inplace.
   thrust::for_each(thrust::cuda::par.on(stream),
                    non_zero_expert_labels,
                    non_zero_expert_labels + (*non_zero_experts_count),
-                   _1 -=
-                   experts_start_idx); 
+                   _1 -= experts_start_idx);
 
   thrust::device_ptr<int> temp_sequence =
       thrust::device_pointer_cast(m->temp_sequence);
@@ -124,7 +126,9 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
                    temp_sequence,
                    temp_sequence + (*non_zero_experts_count));
 
-  // create "exp_local_label_to_index", a mapping from local expert label to its non-zero expert index (i.e. expert with index i is the i-th expert in the block to receive at least 1 token)
+  // create "exp_local_label_to_index", a mapping from local expert label to its
+  // non-zero expert index (i.e. expert with index i is the i-th expert in the
+  // block to receive at least 1 token)
   thrust::device_ptr<int> exp_local_label_to_index =
       thrust::device_pointer_cast(m->exp_local_label_to_index);
   thrust::scatter(thrust::cuda::par.on(stream),
@@ -153,10 +157,6 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
   // append ub_index
   expert_start_indexes[(*start_indexes)] = (*ub_index) - (*lb_index);
 
-  // std::cout << "expert_start_indexes " << experts_start_idx << std::endl;
-  // thrust::copy(expert_start_indexes, expert_start_indexes + (*non_zero_experts_count) + 1, std::ostream_iterator<int>(std::cout, " "));
-  // std::cout << std::endl;
-
   // get number of token assignment to each expert
   thrust::device_ptr<int> num_assignments_per_expert =
       thrust::device_pointer_cast(m->num_assignments_per_expert);
@@ -166,9 +166,6 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
                     expert_start_indexes,
                     num_assignments_per_expert,
                     thrust::minus<int>());
-  // std::cout << "num_assignments_per_expert " << experts_start_idx << std::endl;
-  // thrust::copy(num_assignments_per_expert, num_assignments_per_expert + (*non_zero_experts_count) + 1, std::ostream_iterator<int>(std::cout, " "));
-  // std::cout << std::endl;
 
   // build destination_start_index array, telling us the first slot that belongs
   // to each expert in the destination array (after factoring in expert
@@ -182,9 +179,6 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
                           destination_start_indices,
                           exceeds_expert_capacity(expert_capacity),
                           expert_capacity);
-  // std::cout << "destination_start_indices " << experts_start_idx << std::endl;
-  // thrust::copy(destination_start_indices, destination_start_indices + (*non_zero_experts_count) + 1, std::ostream_iterator<int>(std::cout, " "));
-  // std::cout << std::endl;
 
   *gemm_batch_count =
       thrust::reduce(thrust::cuda::par.on(stream),
@@ -451,7 +445,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 
   cudaStreamSynchronize(stream);
 
-  assert(ub_index-lb_index == num_valid_assignments);
+  assert(ub_index - lb_index == num_valid_assignments);
   assert(num_valid_assignments >= non_zero_experts_count);
   assert(non_zero_experts_count <= num_experts_per_block);
   if (non_zero_experts_count == 0) {
@@ -465,8 +459,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   if (num_valid_assignments == 0) {
     return;
   }
-  // printf("experts_start_idx: %i, num_active_tokens: %i, num_chosen_experts: %i, num_indices: %i, lb_index: %i, ub_index: %i, num_valid_assignments: %i, non_zero_experts_count: %i, start_indexes: %i, gemm_batch_count: %i\n",
-  //         experts_start_idx, num_active_tokens, num_chosen_experts, num_indices, lb_index, ub_index, num_valid_assignments, non_zero_experts_count, start_indexes, gemm_batch_count);
 
   experts_forward_prepare_kernel<<<GET_BLOCKS(num_valid_assignments),
                                    min(CUDA_NUM_THREADS,

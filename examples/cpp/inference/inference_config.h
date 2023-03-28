@@ -21,7 +21,7 @@
 #define BATCH_SIZE 32
 #define MNIST_DIMS 28 * 28
 #define DATA_DIM MNIST_DIMS
-//#define DATA_DIM 3
+// #define DATA_DIM 3
 
 struct InferenceConfig {
   InferenceConfig(void) {
