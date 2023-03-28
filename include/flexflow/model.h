@@ -139,7 +139,7 @@ enum TaskIDs {
   ATTENTION_FWD_TASK_ID,
   ATTENTION_BWD_TASK_ID,
   RMSNROM_INIT_TASK_ID,
-  RMSNROM_INFERENCE_TASK_ID
+  RMSNROM_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_BWD_TASK_ID,
@@ -287,7 +287,7 @@ class Softmax;
 class Split;
 class TopK;
 class Transpose;
-class RMSNorm
+class RMSNorm;
 class Combine;
 class Repartition;
 class Reduction;

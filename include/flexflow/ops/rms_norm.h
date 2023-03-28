@@ -3,19 +3,28 @@
 
 #include "flexflow/model.h"
 #include "flexflow/ops/rms_norm_params.h"
+#include "flexflow/inference.h"
 
 namespace FlexFlow {
 
+class RMSNormMeta;
+
 class RMSNorm : public Op {
 public:
+  using Params = RMSNormParams;
   using Input = ParallelTensor;
   RMSNorm(FFModel &model,
-            LayerID const &_layer_guid,
-            const ParallelTensor _input,
-            float _eps,
-            char const *name);
+          LayerID const &_layer_guid,
+          const ParallelTensor _input,
+          float _eps,
+          char const *name);
+  RMSNorm(FFModel &model,
+            RMSNormParams const &params,
+            ParallelTensor input,
+            char const *name = nullptr);        
   void init(FFModel const &);
   void forward(FFModel const &);
+  void backward(FFModel const &);
   void init_inference(FFModel const &,
                       std::vector<ParallelTensor> const &,
                       std::vector<ParallelTensor> const &,
@@ -27,9 +36,9 @@ public:
                               MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) {
     assert(0);
-  }    
+  }
 
- static Op *
+  static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
@@ -51,9 +60,13 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  
+  bool measure_operator_cost(Simulator *sim,
+                             MachineView const &pc,
+                             CostMetrics &cost_metrics) const;                         
 
 public:
-    float eps;
-    char op_name[MAX_OPNAME];
+  float eps;
+  char op_name[MAX_OPNAME];
 };
+} // namespace FlexFlow
+#endif // _FLEXFLOW_RMS_NORM_H
