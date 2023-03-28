@@ -70,12 +70,10 @@ Tensor FFModel::rms_norm(const Tensor input,
       input->num_dims, input->dims, DT_FLOAT, rm, 0, true /*create_grad*/);
 
   // weights
-  // TODO weight dims check
-  int dims[1] = {dim};
+  int weight_dims[1] = {input->dims[input->num_dims - 1]};
   rm->weights[0] = create_weight_legion_ordering(
-      1, dims, DT_FLOAT, rm, true /*create_grad*/, nullptr, CHOSEN_SYNC_TYPE);
+      1, weight_dims, DT_FLOAT, rm, true /*create_grad*/, nullptr, CHOSEN_SYNC_TYPE);
   rm->add_float_property("eps", eps);
-  rm->add_float_property("dim", dim);
   layers.push_back(rm);
   return rm->outputs[0];
 }
@@ -118,6 +116,8 @@ RMSNorm::RMSNorm(FFModel &model,
       _input->num_dims, dims, _input->data_type, this);
   // weights
   Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
+
+  // TODO weight dims check
   weights[0] =
       model.create_parallel_weight_legion_ordering(_input->num_dims,
                                                    dims,
@@ -302,7 +302,7 @@ void RMSNorm::forward_task(Task const *task,
       m->input_type[1], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  
+  forward_kernel_wrapper(m, input, weight, output);
 }
 
 void RMSNorm::serialize(Legion::Serializer &sez) const {
@@ -333,8 +333,23 @@ Op *RMSNorm::materialize(FFModel &ff,
                          ParallelTensor inputs[],
                          int num_inputs) const {
   RMSNormParams params = get_params();
-  return new RMSNorm(
-      ff, params, inputs[0], this->name);
+  return new RMSNorm(ff, params, inputs[0], this->name);
+}
+
+void RMSNorm::backward(FFModel const &ff) {}
+
+bool RMSNorm::measure_operator_cost(Simulator *sim,
+                                    MachineView const &mv,
+                                    CostMetrics &cost_metrics) const {
+  return false;
 }
 
 } // namespace FlexFlow
+namespace std {
+size_t hash<FlexFlow::RMSNormParams>::operator()(
+    FlexFlow::RMSNormParams const &params) const {
+  size_t key = 0;
+  hash_combine(key, params.eps);
+  return key;
+}
+}; // namespace std

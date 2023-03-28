@@ -24,13 +24,14 @@ namespace Kernels {
 namespace RMSNorm {
 void forward_kernel_wrapper(RMSNormMeta const *m,
                             GenericTensorAccessorR const &input,
-                            GenericTensorAccessorW const &output,
-                            GenericTensorAccessorR const &weight);
+                            GenericTensorAccessorR const &weight,
+                            GenericTensorAccessorW const &output);
 namespace Internal {
 
 void forward_kernel(float const *input_ptr,
                     float const *weight_ptr,
                     float *output_ptr,
+                    Legion::coord_t dim_size,
                     ffStream_t stream);
 } // namespace Internal
 } // namespace RMSNorm

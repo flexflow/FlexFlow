@@ -31,20 +31,60 @@ RMSNormMeta::RMSNormMeta(FFHandler handler, RMSNorm const *rms)
 
 namespace Kernels {
 namespace RMSNorm {
-template <typename T>
+
 void forward_kernel_wrapper(RMSNormMeta const *m,
                             GenericTensorAccessorR const &input,
-                            GenericTensorAccessorW const &output,
-                            GenericTensorAccessorR const &weight) {
+                            GenericTensorAccessorR const &weight,
+                            GenericTensorAccessorW const &output
+                            ) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }  
+
+  Internal::forward_kernel(input.get_float_ptr(),
+                             weight.get_float_ptr(),
+                             output.get_float_ptr(),
+                             input.domain.get_volume(),
+                             stream);
+   if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("[RMSNorm] forward time (CF) = %.2fms\n", elapsed);
+    print_tensor<float>(input.get_float_ptr(), 32, "[RMSNorm:forward:input]");
+    print_tensor<float>(output.get_float_ptr(), 32, "[RMSNorm:forward:output]");
+  }
+
 }
 
 namespace Internal {
 /*static*/
-template <typename T>
 void forward_kernel(float const *input_ptr,
                              float const *weight_ptr,
                              float *output_ptr,
+                             coord_t dim_size,
                              cudaStream_t stream) {
+    //pow
+
+    //reduce
+
+    //add eps
+
+    //multiply with x
+
+
+    //apply weights   
+
+    return;                       
 
 }
 } // namespace Internal
