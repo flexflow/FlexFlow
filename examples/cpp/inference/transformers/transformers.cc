@@ -98,7 +98,7 @@ void FlexFlow::top_level_task(Task const *task,
   //----------------------- Define the model ------------------------------
   Tensor t = input;
   for (int i = 0; i < transformerConfig.num_layers; i++) {
-    t = create_inc_multihead_attention_decoder(&ff, &transformerConfig, input);
+    t = create_inc_multihead_attention_decoder(&ff, &transformerConfig, t);
   }
   t = ff.dense(t, transformerConfig.out_dim, AC_MODE_RELU);
   t = ff.softmax(t);
