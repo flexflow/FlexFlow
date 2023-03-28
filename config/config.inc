@@ -76,6 +76,8 @@ if [ "$FF_USE_GASNET" = "ON" ]; then
     SET_GASNET+=" -DFF_GASNET_CONDUIT=mpi"
   elif [ "$FF_GASNET_CONDUIT" = "udp" ]; then
     SET_GASNET+=" -DFF_GASNET_CONDUIT=udp"
+  elif [ "$FF_GASNET_CONDUIT" = "ucx" ]; then
+    SET_GASNET+=" -DFF_GASNET_CONDUIT=ucx"
   fi
 elif [ "$FF_USE_GASNET" = "OFF" ]; then
   SET_GASNET="-DFF_USE_GASNET=OFF"

@@ -46,7 +46,7 @@ option(FF_USE_ALL_PREBUILT_LIBRARIES "Enable use of all pre-compiled libraries, 
 # option for using Python
 option(FF_USE_GASNET "Run FlexFlow with GASNet" OFF)
 set(FF_GASNET_CONDUITS aries udp mpi ibv ucx)
-set(FF_GASNET_CONDUIT "mpi" CACHE STRING "Select GASNet conduit ${FF_GASNET_CONDUITS}")
+set(FF_GASNET_CONDUIT ${FF_GASNET_CONDUIT} CACHE STRING "Select GASNet conduit ${FF_GASNET_CONDUITS}")
 set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})
 
 set(FF_GPU_BACKENDS cuda hip_cuda hip_rocm intel)
