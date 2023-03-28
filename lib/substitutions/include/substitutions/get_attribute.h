@@ -1,14 +1,14 @@
 #ifndef _FLEXFLOW_SUBSTITUTIONS_OPERATOR_ATTRIBUTES_H
 #define _FLEXFLOW_SUBSTITUTIONS_OPERATOR_ATTRIBUTES_H
 
-#include "op-meta/operator_attrs.h"
+#include "op-attrs/operator_attrs.h"
 #include "tl/optional.hpp"
 #include "substitutions/substitutions_v2.h"
 
 namespace FlexFlow {
 namespace substitutions {
 
-tl::optional<OperatorAttributeValue> get_attribute(OperatorParameters const &, OperatorAttributeKey);
+tl::optional<OperatorAttributeValue> get_attribute(OpAttrsInterface const &, OperatorAttributeKey);
 tl::optional<OperatorAttributeValue> get_attribute(AggregateAttrs const &p, OperatorAttributeKey);
 tl::optional<OperatorAttributeValue> get_attribute(AggregateSpecAttrs const &p, OperatorAttributeKey);
 tl::optional<OperatorAttributeValue> get_attribute(BatchMatmulAttrs const &p, OperatorAttributeKey);
