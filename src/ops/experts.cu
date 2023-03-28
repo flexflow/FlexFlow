@@ -156,6 +156,7 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
 
   // append ub_index
   expert_start_indexes[(*start_indexes)] = (*ub_index) - (*lb_index);
+  expert_start_indexes[(*start_indexes)] = (*ub_index) - (*lb_index);
 
   // get number of token assignment to each expert
   thrust::device_ptr<int> num_assignments_per_expert =
@@ -309,10 +310,11 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
       output_type,
       out_dim,          // Leading Dimension of output
       gemm_batch_count, // Total submatrixes
+      // 1,
       compute_type,
       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
-  // TODO 2: bias and activations
+  // bias and activations
   if (m->use_bias) {
     checkCUDA(cublasGemmBatchedEx(
         m->handle.blas,
@@ -333,6 +335,7 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
         output_type,
         out_dim,          // Leading Dimension of output
         gemm_batch_count, // Total submatrixs
+        // 1,
         compute_type,
         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
@@ -442,6 +445,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                  &start_indexes,
                                  &gemm_batch_count,
                                  stream);
+  assert(num_valid_assignments >= gemm_batch_count);
 
   cudaStreamSynchronize(stream);
 
@@ -457,6 +461,13 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   assert(gemm_batch_count <= num_valid_assignments);
 
   if (num_valid_assignments == 0) {
+    if (m->profiling) {
+      cudaEventRecord(t_end, stream);
+      cudaEventSynchronize(t_end);
+      float milliseconds = 0;
+      cudaEventElapsedTime(&milliseconds, t_start, t_end);
+      printf("forward_kernel_wrapper: %f ms\n", milliseconds);
+    }
     return;
   }
 
