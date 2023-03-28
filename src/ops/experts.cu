@@ -456,7 +456,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   assert(non_zero_experts_count <= num_experts_per_block);
   if (non_zero_experts_count == 0) {
     assert(num_valid_assignments == 0 && gemm_batch_count == 0);
-  else {
+  } else {
     assert(num_valid_assignments > 0 && gemm_batch_count > 0);
   }
   assert(num_valid_assignments <= num_indices);
