@@ -110,7 +110,7 @@ void DataLoader::load_entire_dataset(Task const *task,
   }
 }
 
-void DataLoader::next_batch(FFModel &ff, int bid, BatchConfig *bc) {
+void DataLoader::next_batch(FFModel &ff, int bid, BatchConfig *bc, MachineView const *mv) {
   size_t num_active_tokens = bc->num_active_tokens();
   if (num_active_tokens == 0) {
     return;
@@ -142,6 +142,8 @@ void DataLoader::next_batch(FFModel &ff, int bid, BatchConfig *bc) {
       argmap.set_point(
           *it, TaskArgument(&bc->token2ids, sizeof(BatchConfig::SampleIdxs)));
     }
+    MachineView const *view = mv ? mv : &batch_input[bid]->machine_view;
+    size_t machine_view_hash = view->hash();
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1,
                            batch_input[bid]->parallel_is,
                            TaskArgument(NULL, 0),
@@ -149,7 +151,7 @@ void DataLoader::next_batch(FFModel &ff, int bid, BatchConfig *bc) {
                            Predicate::TRUE_PRED,
                            false /*must*/,
                            0 /*mapper_id*/,
-                           batch_input[bid]->machine_view.hash());
+                           machine_view_hash);
     launcher.add_region_requirement(RegionRequirement(full_input->region,
                                                       0 /*projection id*/,
                                                       READ_ONLY,

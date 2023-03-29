@@ -117,6 +117,11 @@ void InferenceManager::init_operators_inference() {
   }
 }
 
+MachineView *InferenceManager::get_machine_view(int mv_id) {
+  assert(mv_id >= 0 && mv_id < machine_views.size());
+  return &machine_views[mv_id];
+}
+
 FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
   int batch_index = index % max_num_inflight_batches;
   int device_index = index % num_devices;
@@ -130,11 +135,13 @@ FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
 
     MachineView *view;
     if (op->op_type == OP_EXPERTS) {
-      view = &machine_views[expert_device_index];
+      view = get_machine_view(expert_device_index);
+      //view = &machine_views[expert_device_index];
       expert_device_index = (expert_device_index + 1) % num_devices;
     } else {
       // pick mv w startdeviceid = device_index
-      view = &machine_views[device_index];
+      //view = &machine_views[device_index];
+      view = get_machine_view(device_index);
     }
 
     std::vector<ParallelTensor> inputs(op->numInputs);

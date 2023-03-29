@@ -98,7 +98,7 @@ void FlexFlow::top_level_task(Task const *task,
   //----------------------- Define the model ------------------------------
   Tensor t = input;
   for (int i = 0; i < transformerConfig.num_layers; i++) {
-    t = create_inc_multihead_attention_decoder(&ff, &transformerConfig, input);
+    t = create_inc_multihead_attention_decoder(&ff, &transformerConfig, t);
   }
   t = ff.dense(t, transformerConfig.out_dim, AC_MODE_RELU);
   t = ff.softmax(t);
@@ -197,11 +197,13 @@ void FlexFlow::top_level_task(Task const *task,
         assert(bc->register_new_request(guid, seq_lens.first, seq_lens.second));
       }
       bc->prepare_next_batch();
-      data_loader.next_batch(ff, bid, bc);
+      MachineView *view = im.get_machine_view(bid % im.num_devices);
 
-      runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
+      //runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
+      data_loader.next_batch(ff, bid, bc, view);
       FutureMap fm = im.inference(bid, *bc);
-      runtime->end_trace(ctx, 111 + bid % num_devices /*trace_id*/);
+      //runtime->end_trace(ctx, 111 + bid % num_devices /*trace_id*/);
+
       assert(fm.get_future_map_domain().get_volume() == 1);
       future_handlers[bid] = fm.get_future(0);
       batch_configs[bid] = bc;
