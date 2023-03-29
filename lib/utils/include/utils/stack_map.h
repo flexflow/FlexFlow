@@ -70,7 +70,7 @@ struct stack_map {
 private:
   optional<size_t> get_idx(K const &k) const {
     for (std::size_t idx = 0; idx < contents.size(); idx++) {
-      if (contents.at(idx) == k) {
+      if (contents.at(idx).first == k) {
         return idx;
       }
     }

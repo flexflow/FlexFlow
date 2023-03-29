@@ -1,11 +1,20 @@
 #include "task_spec.h"
 #include "operator.h"
 #include "utils/containers.h"
-#include "variant.h"
+#include "utils/variant.h"
+#include "utils/visit_struct.h"
 
 using namespace Legion;
 
 namespace FlexFlow {
+
+bool TensorSpec::operator==(TensorSpec const &other) const {
+  return visit_eq(*this, other);
+}
+
+bool TensorSpec::operator!=(TensorSpec const &other) const {
+  return visit_neq(*this, other);
+}
 
 Legion::PrivilegeMode get_default_fwd_privs(TensorRole tensor_role, IsGrad is_grad) {
   assert (is_grad == IsGrad::NO); 

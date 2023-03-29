@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cassert>
+#include "hash-utils.h"
 
 namespace FlexFlow {
 
@@ -21,9 +22,9 @@ public:
   }
 
   void push_back(T const &t) {
-    assert (this->size < MAXSIZE);
-    this->contents[this->size] = t;
-    this->size++;
+    assert (this->m_size < MAXSIZE);
+    this->contents[this->m_size] = t;
+    this->m_size++;
   }
 
   template< class... Args >
@@ -32,13 +33,13 @@ public:
   }
 
   T const &back() const {
-    assert (this->size >= 1);
-    return this->contents[this->size-1];
+    assert (this->m_size >= 1);
+    return this->contents[this->m_size-1];
   }
 
   T &back() {
-    assert (this->size >= 1);
-    return this->contents[this->size-1];
+    assert (this->m_size >= 1);
+    return this->contents[this->m_size-1];
   }
 
   T const &at(std::size_t idx) const {
@@ -78,7 +79,7 @@ public:
   }
 
   iterator end() {
-    return this->begin() + this->size;
+    return this->begin() + this->m_size;
   }
 
   const_iterator end() const {
@@ -86,14 +87,14 @@ public:
   }
 
   const_iterator cend() const {
-    return this->cbegin() + this->size;
+    return this->cbegin() + this->m_size;
   }
 
-  bool operator==(stack_vector<T, MAXSIZE> const &other) {
-    if (this->size != other.size) {
+  bool operator==(stack_vector<T, MAXSIZE> const &other) const {
+    if (this->m_size != other.m_size) {
       return false;
     }
-    for (std::size_t i = 0; i < this->size; i++) {
+    for (std::size_t i = 0; i < this->m_size; i++) {
       if (other.at(i) != this->at(i)) {
         return false;
       }
@@ -102,12 +103,42 @@ public:
     return true;
   }
 
-  bool operator!=(stack_vector<T, MAXSIZE> const &other) {
+  bool operator!=(stack_vector<T, MAXSIZE> const &other) const {
     return !(*this == other);
   }
+
+  std::size_t size() const {
+    return this->m_size;
+  }
+
+  T *data() {
+    return this->contents.data();
+  }
+
+  T const *data() const {
+    return this->contents.data();
+  }
 private:
-  std::size_t size = 0;
+  std::size_t m_size = 0;
   std::array<T, MAXSIZE> contents;
+};
+
+}
+
+namespace std {
+
+using ::FlexFlow::stack_vector;
+
+template <typename T, std::size_t MAXSIZE>
+struct hash<stack_vector<T, MAXSIZE>> {
+  size_t operator()(stack_vector<T, MAXSIZE> const &v) {
+    size_t result = 0;
+    hash_combine(result, v.size());
+    for (auto const &ele : v) {
+      hash_combine(result, ele);
+    }
+    return result;
+  }
 };
 
 }

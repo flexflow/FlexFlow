@@ -13,6 +13,7 @@
 #include "ff_task_args.h"
 #include <typeindex>
 #include "utils/stack_map.h"
+#include "accessor.h"
 
 namespace FlexFlow {
 
@@ -50,13 +51,17 @@ using region_idx = int;
 
 struct TensorSpec {
   TensorSpec() = delete;
-  TensorSpec(TensorRole, int, bool is_trainable, IsGrad is_grad = IsGrad::NO, optional<Legion::PrivilegeMode> mode = nullopt);
-  TensorSpec(TensorRole, int, IsTrainable, IsGrad is_grad = IsGrad::NO, optional<Legion::PrivilegeMode> mode = nullopt);
+  TensorSpec(TensorRole, int, bool is_trainable, DataType, IsGrad is_grad = IsGrad::NO, optional<Legion::PrivilegeMode> mode = nullopt);
+  TensorSpec(TensorRole, int, IsTrainable, DataType, IsGrad is_grad = IsGrad::NO, optional<Legion::PrivilegeMode> mode = nullopt);
+
+  bool operator==(TensorSpec const &) const;
+  bool operator!=(TensorSpec const &) const;
 
   TensorRole role;
   int idx;
   IsGrad is_grad;
   IsTrainable is_trainable;
+  DataType datatype;
   optional<Legion::PrivilegeMode> mode;
 
   TensorSpec grad() const;
@@ -144,16 +149,18 @@ private:
 };
 
 using TensorArgumentFormat = variant<
-  std::pair<int, TensorSpec>,
-  std::vector<std::pair<int, TensorSpec>>
+  std::pair<region_idx, TensorSpec>,
+  std::vector<std::pair<region_idx, TensorSpec>>
 >;
+
+using SlotKey = std::pair<slot_id, IsGrad>;
 
 constexpr size_t MAX_NUM_TASK_REGIONS = 20;
 constexpr size_t MAX_NUM_TASK_ARGUMENTS = 5;
 
 struct OpTaskArgumentFormat {
-  stack_map<slot_id, TensorArgumentFormat, MAX_NUM_TASK_REGIONS> region_idxs;
-  stack_map<slot_id, ArgSpec, MAX_NUM_TASK_ARGUMENTS> argument_offsets;
+  stack_map<SlotKey, TensorArgumentFormat, MAX_NUM_TASK_REGIONS> region_idxs;
+  stack_map<SlotKey, ArgSpec, MAX_NUM_TASK_ARGUMENTS> argument_offsets;
   ArgSpec self_offset;
 };
 
@@ -208,20 +215,6 @@ std::unordered_map<int, TensorSpec> get_regions_idxs(OpTaskArgumentFormat const 
 
 OpTaskArgumentFormat compile_task_invocation(OpTaskSignature const &, OpTaskBinding const &);
 
-template <Legion::PrivilegeMode> struct privilege_mode_to_accessor { };
-
-template <> struct privilege_mode_to_accessor<READ_WRITE> {
-  using type = GenericTensorAccessorW;
-};
-
-template <> struct privilege_mode_to_accessor<READ_ONLY> {
-  using type = GenericTensorAccessorR;
-};
-
-template <> struct privilege_mode_to_accessor<WRITE_ONLY> {
-  using type = GenericTensorAccessorW;
-};
-
 struct OpTaskArgumentAccessor {
   OpTaskArgumentAccessor(Legion::Task const *task, 
                          std::vector<Legion::PhysicalRegion> const &regions,
@@ -232,26 +225,59 @@ struct OpTaskArgumentAccessor {
   T const &get_argument(slot_id);
 
   template <Legion::PrivilegeMode PRIV>
-  typename privilege_mode_to_accessor<PRIV>::type get_tensor(slot_id slot, int dimension) {
-    auto argument_format = this->args_fmt.region_idxs.at(slot);
-    int region_idx = get<std::pair<int, TensorSpec>>(argument_format).first;
-
-
+  privilege_mode_to_accessor<PRIV> get_generic_accessor(TensorSpec const &tensor_spec, region_idx idx) {
+    auto tensor_privs = tensor_spec.get_privileges();
+    if (tensor_privs != PRIV) {
+      std::ostringstream oss;
+      oss << "Privilege mismatch while accessing tensor: " << to_string(tensor_privs) << " != " << to_string(PRIV);
+      throw std::runtime_error(oss.str());
+    }
+    
+    return helperGetGenericTensorAccessor<PRIV>(tensor_spec.datatype, regions[idx], task->regions[idx], FID_DATA, ctx, runtime);
   }
 
   template <Legion::PrivilegeMode PRIV>
-  typename privilege_mode_to_accessor<PRIV>::type get_tensor_grad(slot_id) {
-
+  privilege_mode_to_accessor<PRIV> get_generic_accessor(std::pair<region_idx, TensorSpec> const &p) {
+    return this->get_generic_accessor<PRIV>(p.second, p.first);
   }
 
   template <Legion::PrivilegeMode PRIV>
-  std::vector<typename privilege_mode_to_accessor<PRIV>::type> get_variadic_tensor(slot_id) {
+  privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot, IsGrad is_grad) {
+    auto argument_format = get<std::pair<int, TensorSpec>>(this->args_fmt.region_idxs.at({slot, is_grad}));
 
+    return this->get_generic_accessor<PRIV>(argument_format);
   }
 
   template <Legion::PrivilegeMode PRIV>
-  std::vector<typename privilege_mode_to_accessor<PRIV>::type> get_variadic_tensor_grad(slot_id) {
+  privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot) {
+    return this->get_tensor<PRIV>(slot, IsGrad::NO);
+  }
 
+  template <Legion::PrivilegeMode PRIV>
+  privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id slot) {
+    return this->get_tensor<PRIV>(slot, IsGrad::YES);
+  }
+
+  template <Legion::PrivilegeMode PRIV>
+  std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor(slot_id slot, IsGrad is_grad) {
+    std::vector<privilege_mode_to_accessor<PRIV>> result;
+
+    auto argument_format = get<std::vector<std::pair<region_idx, TensorSpec>>>(this->args_fmt.region_idxs.at({slot, is_grad}));
+    for (auto const &argument : argument_format) {
+      result.push_back(this->get_generic_accessor<PRIV>(argument));
+    }
+
+    return result;
+  }
+
+  template <Legion::PrivilegeMode PRIV>
+  std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor(slot_id slot) {
+    return this->get_variadic_tensor<PRIV>(slot, IsGrad::NO);
+  }
+
+  template <Legion::PrivilegeMode PRIV>
+  std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor_grad(slot_id slot) {
+    return this->get_variadic_tensor<PRIV>(slot, IsGrad::YES); 
   }
 private:
   Legion::Task const *task;
@@ -418,7 +444,7 @@ private:
 
 }
 
-/* VISITABLE_STRUCT(::FlexFlow::TaskAccessorGuide, args, regions); */
+VISITABLE_STRUCT(::FlexFlow::TensorSpec, role, idx, is_grad, is_trainable, mode);
 
 
 #endif
