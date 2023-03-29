@@ -27,6 +27,26 @@ RMSNormMeta::RMSNormMeta(FFHandler handler, RMSNorm const *rms)
   eps = rms->eps;
   // fixme
   checkCUDA(cudaMalloc(&mean_ptr, sizeof(float) * 1000));
+
+  //set descriptor for reduce kenrnel
+  checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceDesc));
+  checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(cudnnSetReduceTensorDescriptor(reduceDesc,
+                                            CUDNN_REDUCE_TENSOR_AVG,
+                                            CUDNN_DATA_FLOAT,
+                                            CUDNN_PROPAGATE_NAN,
+                                            CUDNN_REDUCE_TENSOR_NO_INDICES,
+                                            CUDNN_32BIT_INDICES));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
+  Domain output_domain = input_domain;
+  for (size_t i = 0; i < rd->num_axes; i++) {
+    assert(input_domain.dim > rd->axes[i]);
+    output_domain.rect_data[rd->axes[i] + output_domain.dim] =
+        output_domain.rect_data[rd->axes[i]];
+  }
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_domain));
+
 }
 
 namespace Kernels {
@@ -73,7 +93,10 @@ void forward_kernel(float const *input_ptr,
                              float *output_ptr,
                              coord_t dim_size,
                              cudaStream_t stream) {
+
+    //impl from https://github.com/facebookresearch/llama/blob/main/llama/model.py#:~:text=class%20RMSNorm(torch,*%20self.weight                      
     //pow
+
 
     //reduce
 

@@ -13,6 +13,13 @@ class RMSNorm;
 class RMSNormMeta : public OpMeta {
 public:
   RMSNormMeta(FFHandler handler, RMSNorm const *rms);
+  #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+  cudnnTensorDescriptor_t inputTensor, outputTensor;
+  cudnnReduceTensorDescriptor_t reduceDesc;
+  #else
+    miopenTensorDescriptor_t inputTensor, outputTensor;
+    miopenReduceTensorDescriptor_t reduceDesc;
+  #endif
 
 public:
   float eps;
