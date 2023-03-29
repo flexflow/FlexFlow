@@ -160,7 +160,7 @@ constexpr size_t MAX_NUM_TASK_ARGUMENTS = 5;
 
 struct OpTaskArgumentFormat {
   stack_map<SlotKey, TensorArgumentFormat, MAX_NUM_TASK_REGIONS> region_idxs;
-  stack_map<SlotKey, ArgSpec, MAX_NUM_TASK_ARGUMENTS> argument_offsets;
+  stack_map<slot_id, ArgSpec, MAX_NUM_TASK_ARGUMENTS> argument_offsets;
   ArgSpec self_offset;
 };
 
@@ -222,7 +222,21 @@ struct OpTaskArgumentAccessor {
                          Legion::Runtime *runtime);
 
   template <typename T>
-  T const &get_argument(slot_id);
+  T const &get_argument(slot_id slot) {
+    ArgSpec arg_spec = this->args_fmt.argument_offsets.at(slot);
+
+    std::type_index requested_type = {typeid(T)};
+    if (arg_spec.type != requested_type) {
+      std::ostringstream oss;
+      oss << "Type mismatch in argument access: \"" << arg_spec.type.name() << "\" != \"" << requested_type.name() << "\"";
+      throw std::runtime_error(oss.str());
+    }
+
+    void *start_ptr = &((std::uint8_t*)this->task->args)[arg_spec.start];
+    Legion::Deserializer dez(start_ptr, arg_spec.size);
+
+    return ff_task_deserialize<T>(dez);
+  }
 
   template <Legion::PrivilegeMode PRIV>
   privilege_mode_to_accessor<PRIV> get_generic_accessor(TensorSpec const &tensor_spec, region_idx idx) {

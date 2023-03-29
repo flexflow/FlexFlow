@@ -176,15 +176,15 @@ struct deserialize_visitor {
   Legion::Deserializer &dez;
 
   template <typename T>
-  void operator()(char const *, T &t) {
+  T const &operator()(char const *, T &t) {
     deserialize(dez, t);
   }
 };
 
 template <typename T>
-void visit_deserialize(Legion::Deserializer &dez, T &t) {
+T const &visit_deserialize(Legion::Deserializer &dez) {
   deserialize_visitor vis(dez);
-  visit_struct::for_each(t, vis);
+  return visit_struct::for_each<T>(vis);
 }
 
 template <typename T>
@@ -193,8 +193,8 @@ class VisitSerialize {
     return visit_serialize(sez, t);
   }
 
-  void deserialize(Legion::Deserializer &dez, T &t) const {
-    return visit_deserialize(dez, t);
+  T const &deserialize(Legion::Deserializer &dez) const {
+    return visit_deserialize<T>(dez);
   }
 };
 
@@ -203,6 +203,13 @@ void ff_task_serialize(Legion::Serializer &sez, T const &t) {
   static_assert(is_serializable<T>, "Type must be serializable"); 
 
   return Serialization<T>::serialize(sez, t);
+}
+
+template <typename T>
+void ff_task_deserialize(Legion::Deserializer &dez) {
+  static_assert(is_serializable<T>, "Type must be serializable");
+
+  return Serialization<T>::deserialize(dez);
 }
 
 /*     Legion::Deserializer &dez, */
