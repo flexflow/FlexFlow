@@ -197,11 +197,12 @@ void FlexFlow::top_level_task(Task const *task,
         assert(bc->register_new_request(guid, seq_lens.first, seq_lens.second));
       }
       bc->prepare_next_batch();
+      MachineView *view = im.get_machine_view(bid % im.num_devices);
 
-      runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
-      data_loader.next_batch(ff, bid, bc);
+      //runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
+      data_loader.next_batch(ff, bid, bc, view);
       FutureMap fm = im.inference(bid, *bc);
-      runtime->end_trace(ctx, 111 + bid % num_devices /*trace_id*/);
+      //runtime->end_trace(ctx, 111 + bid % num_devices /*trace_id*/);
 
       assert(fm.get_future_map_domain().get_volume() == 1);
       future_handlers[bid] = fm.get_future(0);

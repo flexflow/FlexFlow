@@ -43,7 +43,7 @@ public:
                                   std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime);
-  void next_batch(FFModel &, int, BatchConfig *);
+  void next_batch(FFModel &ff, int bid, BatchConfig *bc, MachineView const *mv = nullptr);
 
 public:
   size_t num_samples;
