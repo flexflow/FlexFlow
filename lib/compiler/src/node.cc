@@ -6,7 +6,7 @@ namespace FlexFlow {
 namespace PCG {
 
 Node::Node(size_t guid,
-           OperatorParameters const &op_params)
+           PCGOperatorAttrs const &op_params)
   : guid(guid), op_params(op_params) { }
 
 typename Node::AsConstTuple Node::as_tuple() const {

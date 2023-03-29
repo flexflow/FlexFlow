@@ -58,7 +58,7 @@ public:
                               MachineResource const &resource,
                               bool log = false) const;
   std::vector<MachineView> get_valid_machine_views(
-      OperatorParameters const &op, MachineResource const &resource, bool log = false) const;
+      PCGOperatorAttrs const &op, MachineResource const &resource, bool log = false) const;
 
   template <typename T>
   std::pair<bool, T> try_get_cost_from_cache(size_t hash) const;

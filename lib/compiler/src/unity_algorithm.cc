@@ -1,10 +1,10 @@
-#include "ffc/unity_algorithm.h"
+#include "compiler/unity_algorithm.h"
 
 namespace FlexFlow {
 namespace ffc {
 
 SerialParallelDecomposition get_serial_parallel_decomposition(ParallelComputationGraph const &pcg) {
-  return get_serial_parallel_decomposition(unsafe_view_as_digraph(pcg.g));
+  return get_serial_parallel_decomposition(unsafe_view_as_digraph(*pcg.base_graph));
 }
 
 std::vector<MultiDiEdge> get_sorted_node_input_edges(ParallelComputationGraph const &pcg, Node const &n) {
@@ -82,7 +82,7 @@ std::unordered_map<MultiDiEdge, opmeta::ParallelTensorShape> infer_tensor_shapes
 
 struct OpenSubParallelComputationGraph {
   std::unique_ptr<IDownwardOpenMultiDiGraphView const> g;
-  std::unordered_map<Node, opmeta::OperatorParameters> nodeMap;
+  std::unordered_map<Node, PCGOperatorAttrs> nodeMap;
   std::unordered_map<DownwardOpenMultiDiEdge, MachineView> const &output_machine_views;
 };
 
@@ -92,7 +92,7 @@ using SubParallelComputationGraph = mpark::variant<
 >;
 
 struct ICostEstimator {
-  virtual float estimate_cost(OperatorParameters const &op, 
+  virtual float estimate_cost(PCGOperatorAttrs const &op, 
                               std::vector<ParallelTensorShape> const &inputs, 
                               MachineView const &mv) const = 0;
   virtual float estimate_cost(ParallelTensorShape const &tensor_shape,

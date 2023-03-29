@@ -1,15 +1,15 @@
 #include "substitutions/substitutions_v2.h"
-#include "op-meta/operator_params.h"
-#include "op-meta/parallel_tensor_shape.h"
-#include "substitutions/operator_attributes.h"
+#include "op-attrs/operator_attrs.h"
+#include "op-attrs/parallel_tensor_shape.h"
+#include "substitutions/get_attribute.h"
 
-using namespace ::FlexFlow::opmeta;
+// using namespace ::FlexFlow::opmeta;
 using namespace ::FlexFlow::substitutions;
 
 namespace FlexFlow {
 namespace ffc {
 
-bool satisfies(OperatorParameters const &, std::vector<ParallelTensorShape> const &, OperatorConstraint const &);
+bool satisfies(PCGOperatorAttrs const &, std::vector<ParallelTensorShape> const &, OperatorAttributeConstraint const &);
 
 
 /* tl::optional<bool> satisfies(OperatorParameters const &params, OperatorConstraint const &constraint) { */
@@ -60,7 +60,7 @@ tl::optional<V> evaluate_list_size(tl::optional<V> const &v) {
 }
 
 struct EvaluateOperatorAttributeExpr {
-  EvaluateOperatorAttributeExpr(OperatorParameters const &attrs) : attrs(attrs) { }
+  EvaluateOperatorAttributeExpr(PCGOperatorAttrs const &attrs) : attrs(attrs) { }
 
   tl::optional<OperatorAttributeValue> operator()(OperatorAttributeKey key) {
     return get_attribute(this->attrs, key);
@@ -76,7 +76,7 @@ struct EvaluateOperatorAttributeExpr {
     return evaluate_list_size(v);
   }
 private:
-  OperatorParameters attrs;
+  PCGOperatorAttrs attrs;
 };
 
 tl::optional<TensorAttributeValue> evaluate_tensor_attribute_expr(ParallelTensorShape const &, AttributeExpr<TensorAttributeKey> const &);
@@ -126,7 +126,7 @@ tl::optional<TensorAttributeValue> evaluate_attribute_expr(ParallelTensorShape c
   return mpark::visit(EvaluateTensorAttributeExpr(tensor_shape), expr);
 }
 
-tl::optional<OperatorAttributeValue> evaluate_attribute_expr(OperatorParameters const &attrs, AttributeExpr<OperatorAttributeKey> const &expr) {
+tl::optional<OperatorAttributeValue> evaluate_attribute_expr(PCGOperatorAttrs const &attrs, AttributeExpr<OperatorAttributeKey> const &expr) {
   return mpark::visit(EvaluateOperatorAttributeExpr(attrs), expr);
 }
 
@@ -155,7 +155,7 @@ tl::optional<bool> satisfies(ParallelTensorShape const &tensor_shape, TensorAttr
   return satisfies(constraint.constraint_type, constraint.attribute_value, value);
 }
 
-tl::optional<bool> satisfies(OperatorParameters const &params, OperatorAttributeConstraint const &constraint) {
+tl::optional<bool> satisfies(PCGOperatorAttrs const &params, OperatorAttributeConstraint const &constraint) {
   auto value = evaluate_attribute_expr(params, constraint.attribute_expr);
   return satisfies(constraint.constraint_type, constraint.attribute_value, value);
 }
@@ -175,7 +175,7 @@ tl::optional<bool> optional_all_of(Container const &container, Function const &f
   return true;
 }
 
-tl::optional<bool> satisfies(OperatorParameters const &params, OperatorPattern const &pattern) {
+tl::optional<bool> satisfies(PCGOperatorAttrs const &params, OperatorPattern const &pattern) {
   return optional_all_of(pattern.attribute_constraints, [&](OperatorAttributeConstraint const &c) { return satisfies(params, c); });
 }
 
@@ -183,29 +183,28 @@ tl::optional<bool> satisfies(ParallelTensorShape const &params, ParallelTensorPa
   return optional_all_of(pattern.attribute_constraints, [&](TensorAttributeConstraint const &c) { return satisfies(params, c); });
 }
 
-bool assignment_satisfies(utils::IMultiDiGraph const &pcg, 
+bool assignment_satisfies(IMultiDiGraph const &pcg, 
                           SubstitutionPattern const &pattern,
-                          std::unordered_map<utils::Node, utils::Node> const &nodeAssignment,
-                          std::unordered_map<PatternEdge, utils::MultiDiEdge> const &edgeAssignment,
-                          std::unordered_map<utils::Node, OperatorParameters> const &pcgNodeParams,
-                          std::unordered_map<PatternEdge, ParallelTensorShape> const &pcgTensorShapes
+                          DiGraphPatternMatch const &patternMatch,
+                          std::unordered_map<Node, PCGOperatorAttrs> const &pcgNodeParams,
+                          std::unordered_map<OpenMultiDiEdge, ParallelTensorShape> const &pcgTensorShapes
                           ) {
   bool result = true;
-  for (auto const &kv : nodeAssignment) {
+  for (auto const &kv : patternMatch.nodeAssignment) {
     auto patternNode = kv.first;
     auto pcgNode = kv.second;
     tl::optional<bool> constraintResult = satisfies(pcgNodeParams.at(pcgNode), pattern.at(patternNode));
     result &= constraintResult.value_or(false);
   }
 
-  for (auto const &kv : edgeAssignment) {
+  for (auto const &kv : patternMatch.edgeAssignment) {
     auto patternEdge = kv.first;
     auto pcgEdge = kv.second;
     tl::optional<bool> constraintResult = satisfies(pcgTensorShapes.at(pcgEdge), pattern.at(patternEdge));
     result &= constraintResult.value_or(false);
   }
 
-  result &= pattern_matches(*pattern.graph, pcg, nodeAssignment, edgeAssignment);
+  result &= pattern_matches(*pattern.graph, pcg, patternMatch);
 
   return result;
 }

@@ -102,14 +102,18 @@ struct ParallelTensorPattern {
 
 struct SubstitutionPattern {
   OperatorPattern at(Node) const;
-  ParallelTensorPattern at(PatternEdge) const;
+  ParallelTensorPattern at(OpenMultiDiEdge) const;
 
-  std::unique_ptr<IMultiDiGraphPattern> graph;
+  std::unique_ptr<IOpenMultiDiGraph> graph;
   bidict<Node, OperatorPattern> node_map;
-  bidict<PatternEdge, ParallelTensorPattern> edge_map;
+  bidict<OpenMultiDiEdge, ParallelTensorPattern> edge_map;
 };
 
-bool assignment_satisfies(SubstitutionPattern const &, std::unordered_map<Node, Node> const &nodeAssignment, std::unordered_map<PatternEdge, MultiDiEdge> const &edgeAssignment);
+bool assignment_satisfies(IMultiDiGraph const &, 
+                          SubstitutionPattern const &,
+                          DiGraphPatternMatch const &,
+                          std::unordered_map<Node, PCGOperatorAttrs> const &,
+                          std::unordered_map<OpenMultiDiEdge, ParallelTensorShape> const &);
 
 }
 }

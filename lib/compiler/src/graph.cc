@@ -14,15 +14,14 @@
  */
 #include "graph.h"
 #include "dominators.h"
-#include "op-meta/op-meta.h"
+#include "op-attrs/op-attrs.h"
 #include "utils/disjoint_set.h"
 #include <iostream>
 
-using FlexFlow::utils::Node;
-using FlexFlow::opmeta::OperatorParameters;
+// using FlexFlow::utils::Node;
+// using FlexFlow::opmeta::OperatorParameters;
 
 namespace FlexFlow {
-namespace ffc {
 
 ParallelComputationGraph::Graph(std::string const &logger_name)
   : Graph(spdlog::get(logger_name))
@@ -32,7 +31,7 @@ ParallelComputationGraph::Graph(std::shared_ptr<spdlog::logger> const &logger)
   : logger(logger)
 { }
 
-Graph::Graph(utils::AdjacencyMultiDiGraph const &g, utils::bidict<Node, OperatorParameters> const &nodeMap, std::shared_ptr<spdlog::logger> const &logger) 
+Graph::Graph(utils::AdjacencyMultiDiGraph const &g, utils::bidict<Node, PCGOperatorAttrs> const &nodeMap, std::shared_ptr<spdlog::logger> const &logger) 
   : g(g), nodeMap(nodeMap), logger(logger)
 { }
 
@@ -49,7 +48,7 @@ void Graph::add_edge(Node const &srcOp,
   this->g.add_edge({srcOp, dstOp, (std::size_t)srcIdx, (std::size_t)dstIdx});
 }
 
-Node Graph::add_node(OperatorParameters const &params) {
+Node Graph::add_node(PCGOperatorAttrs const &params) {
   Node n = this->g.add_node();
   this->nodeMap.equate(n, params);
   return n;
@@ -123,9 +122,9 @@ bool Graph::has_loop() {
 /* } */
 
 Graph Graph::subgraph(std::unordered_set<Node> const &nodes) const {
-  utils::AdjacencyMultiDiGraph sub_g = utils::subgraph<utils::AdjacencyMultiDiGraph>(this->g, nodes);
+  AdjacencyMultiDiGraph sub_g = subgraph<AdjacencyMultiDiGraph>(this->g, nodes);
 
-  utils::bidict<utils::Node, opmeta::OperatorParameters> sub_nodeMap;
+  bidict<Node, opmeta::PCGOperatorAttrs> sub_nodeMap;
   for (auto const &kv : this->nodeMap) {
     if (contains(nodes, kv.first)) {
       sub_nodeMap.equate(kv.first, kv.second);
@@ -142,7 +141,7 @@ void Graph::remove_node(Node const &node, bool purge_edges) {
 }
 
 /*static*/
-Graph Graph::singleton(OperatorParameters const &params) {
+Graph Graph::singleton(PCGOperatorAttrs const &params) {
   Graph g;
   g.add_node(params);
   return g;
@@ -955,7 +954,7 @@ void FFModel::construct_optimal_view(
 /*                                                    data_type, */
 /*                                                    nullptr, */
 /*                                                    0, */
-/*                                                    true /*create_grad*/, */
+/*                                                    true create_grad, */
 /*                                                    input_tensor_guid); */
 /*         node.ptr = t->owner_op; */
 /*         node.guid = node_global_guid++; */

@@ -8,7 +8,7 @@
 namespace FlexFlow {
 namespace substitutions {
 
-tl::optional<OperatorAttributeValue> get_attribute(OpAttrsInterface const &, OperatorAttributeKey);
+tl::optional<OperatorAttributeValue> get_attribute(PCGOperatorAttrs const &, OperatorAttributeKey);
 tl::optional<OperatorAttributeValue> get_attribute(AggregateAttrs const &p, OperatorAttributeKey);
 tl::optional<OperatorAttributeValue> get_attribute(AggregateSpecAttrs const &p, OperatorAttributeKey);
 tl::optional<OperatorAttributeValue> get_attribute(BatchMatmulAttrs const &p, OperatorAttributeKey);

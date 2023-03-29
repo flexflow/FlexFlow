@@ -300,7 +300,7 @@ private:
 };
 
 
-tl::optional<OperatorAttributeValue> get_attribute(OpAttrsInterface const &p, OperatorAttributeKey key) {
+tl::optional<OperatorAttributeValue> get_attribute(PCGOperatorAttrs const &p, OperatorAttributeKey key) {
   return mpark::visit(GetAttribute(key), p);
 }
 
