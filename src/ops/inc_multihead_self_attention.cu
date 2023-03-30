@@ -495,23 +495,22 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  cudaDeviceSynchronize();
+
   // phase 1: Implement kernel to compute KQV for input tokens
   inference_kernel1(m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
-  cudaDeviceSynchronize();
+
   // phase 2: Update key/val cache
   cudaMemcpyAsync(m->dev_token2ids,
                   &(bc->token2ids.token_indexes),
                   bc->MAX_NUM_TOKENS * sizeof(BatchConfig::token_idxs),
                   cudaMemcpyHostToDevice,
                   stream);
-  cudaDeviceSynchronize();
+
   inference_kernel2(m, bc, stream);
-  cudaDeviceSynchronize();
+
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
   inference_kernel3(m, bc, output_ptr, stream);
-  cudaDeviceSynchronize();
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
