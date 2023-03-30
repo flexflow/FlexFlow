@@ -110,7 +110,10 @@ void DataLoader::load_entire_dataset(Task const *task,
   }
 }
 
-void DataLoader::next_batch(FFModel &ff, int bid, BatchConfig *bc, MachineView const *mv) {
+void DataLoader::next_batch(FFModel &ff,
+                            int bid,
+                            BatchConfig *bc,
+                            MachineView const *mv) {
   size_t num_active_tokens = bc->num_active_tokens();
   if (num_active_tokens == 0) {
     return;

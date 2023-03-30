@@ -762,6 +762,7 @@ bool ParallelTensorBase::tensor_equal(FFConfig &config,
   launcher.add_field(1, FID_DATA);
   Future result = runtime->execute_task(ctx, launcher);
   bool equals = result.get_result<bool>();
+  return equals;
 }
 
 bool ParallelTensorBase::tensor_equal_task(
