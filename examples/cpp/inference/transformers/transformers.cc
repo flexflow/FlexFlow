@@ -175,6 +175,7 @@ void FlexFlow::top_level_task(Task const *task,
         }
         InferenceResult ir = future.get_result<InferenceResult>();
         bc = batch_configs[bid];
+        data_loader.store_outputs(bc, ir);
         processed_requests += bc->update_results(ir);
         max_reqs = transformerConfig.incremental_mode
                        ? bc->MAX_NUM_REQUESTS - bc->num_active_requests()

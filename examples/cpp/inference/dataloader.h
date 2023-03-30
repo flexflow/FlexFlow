@@ -47,11 +47,13 @@ public:
                   int bid,
                   BatchConfig *bc,
                   MachineView const *mv = nullptr);
+  void store_outputs(BatchConfig *bc, InferenceResult const &ir);
 
 public:
   size_t num_samples;
   ParallelTensor full_input;
   std::vector<ParallelTensor> batch_input;
+  std::map<size_t, std::vector<int>> outputs;
   struct DataLoaderInput {
     InferenceConfig const &_inferenceConfig;
     DataGenerator &_data_generator;

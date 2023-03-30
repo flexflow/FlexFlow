@@ -173,6 +173,25 @@ void DataLoader::next_batch(FFModel &ff,
   }
 }
 
+void DataLoader::store_outputs(BatchConfig *bc, InferenceResult const &ir) {
+  assert(bc->token2ids.num_samples == bc->num_active_tokens() &&
+         bc->token2ids.num_samples <= bc->MAX_NUM_TOKENS);
+  for (size_t i = 0; i < bc->token2ids.num_samples; i++) {
+    if (i == bc->token2ids.num_samples - 1 ||
+        bc->token2ids.guids[i] != bc->token2ids.guids[i + 1]) {
+      assert(bc->token2ids.token_indexes[i].token_position ==
+             bc->token_last_available_idx[bc->token2ids.token_indexes[i]
+                                              .request_index]);
+      if (outputs.find(bc->token2ids.guids[i]) == outputs.end()) {
+        std::vector<int> v{ir.results[i]};
+        outputs[bc->token2ids.guids[i]] = v;
+      } else {
+        outputs[bc->token2ids.guids[i]].push_back(ir.results[i]);
+      }
+    }
+  }
+}
+
 void FlexFlow::register_custom_tasks() {
   // Load entire dataset
   {
