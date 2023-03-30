@@ -156,7 +156,6 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
 
   // append ub_index
   expert_start_indexes[(*start_indexes)] = (*ub_index) - (*lb_index);
-  expert_start_indexes[(*start_indexes)] = (*ub_index) - (*lb_index);
 
   // get number of token assignment to each expert
   thrust::device_ptr<int> num_assignments_per_expert =
@@ -310,7 +309,6 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
       output_type,
       out_dim,          // Leading Dimension of output
       gemm_batch_count, // Total submatrixes
-      // 1,
       compute_type,
       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
@@ -335,7 +333,6 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
         output_type,
         out_dim,          // Leading Dimension of output
         gemm_batch_count, // Total submatrixs
-        // 1,
         compute_type,
         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
