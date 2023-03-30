@@ -127,6 +127,8 @@ void FlexFlow::top_level_task(Task const *task,
   // Tensor t = create_moe(&ff, &moeConfig, input);
   t = ff.dense(t, moeConfig.out_dim, AC_MODE_RELU);
   t = ff.softmax(t);
+  // select most likely next token
+  Tensor output = ff.arg_top_k(t, /*k=*/1, /*sorted=*/false);
 
   //------------------- Initialize the inference manager ------------------
   InferenceManager im(

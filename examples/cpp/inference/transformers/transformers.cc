@@ -102,6 +102,8 @@ void FlexFlow::top_level_task(Task const *task,
   }
   t = ff.dense(t, transformerConfig.out_dim, AC_MODE_RELU);
   t = ff.softmax(t);
+  // select most likely next token
+  Tensor output = ff.arg_top_k(t, /*k=*/1, false);
 
   //------------------- Initialize the inference manager ------------------
   InferenceManager im(&ff,
