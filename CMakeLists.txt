@@ -49,6 +49,48 @@ set(FF_GASNET_CONDUITS aries udp mpi ibv ucx)
 set(FF_GASNET_CONDUIT ${FF_GASNET_CONDUIT} CACHE STRING "Select GASNet conduit ${FF_GASNET_CONDUITS}")
 set_property(CACHE FF_GASNET_CONDUIT PROPERTY STRINGS ${FF_GASNET_CONDUITS})
 
+if (FF_GASNET_CONDUIT STREQUAL "ucx")
+    set(UCX_URL "https://github.com/openucx/ucx/releases/download/v1.14.0-rc1/ucx-1.14.0.tar.gz")
+    set(UCX_DIR ${CMAKE_CURRENT_BINARY_DIR}/ucx)
+
+    if(NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/ucx.tar.gz")
+        message(STATUS "Downloading openucx/ucx from: ${UCX_URL}")
+        file(
+            DOWNLOAD
+            "${UCX_URL}" "${CMAKE_CURRENT_BINARY_DIR}/ucx.tar.gz"
+            SHOW_PROGRESS
+            STATUS status
+            LOG log
+        )
+
+        list(GET status 0 status_code)
+        list(GET status 1 status_string)
+
+        if(status_code EQUAL 0)
+            message(STATUS "Downloading... done")
+        else()
+            message(FATAL_ERROR "error: downloading '${UCX_URL}' failed
+                status_code: ${status_code}
+                status_string: ${status_string}
+                log:
+                --- LOG BEGIN ---
+                ${log}
+                --- LOG END ---"
+            )
+        endif()
+    else()
+        message(STATUS "ucx.tar.gz already exists")
+    endif()
+
+    execute_process(COMMAND mkdir -p ${UCX_DIR})
+    execute_process(COMMAND tar xzf ucx.tar.gz -C ${UCX_DIR} --strip-components 1)
+    execute_process(COMMAND sh -c "cd ${UCX_DIR} && ${UCX_DIR}/contrib/configure-release --prefix=${UCX_DIR}/install && make -j8 && make install")
+    
+    set(ENV{UCX_HOME} "${UCX_DIR}/install")
+else()
+    message(STATUS "FF_GASNET_CONDUIT: ${FF_GASNET_CONDUIT}")
+endif()
+
 set(FF_GPU_BACKENDS cuda hip_cuda hip_rocm intel)
 set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")
 set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
