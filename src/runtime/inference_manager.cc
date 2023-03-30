@@ -136,11 +136,11 @@ FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
     MachineView *view;
     if (op->op_type == OP_EXPERTS) {
       view = get_machine_view(expert_device_index);
-      //view = &machine_views[expert_device_index];
+      // view = &machine_views[expert_device_index];
       expert_device_index = (expert_device_index + 1) % num_devices;
     } else {
       // pick mv w startdeviceid = device_index
-      //view = &machine_views[device_index];
+      // view = &machine_views[device_index];
       view = get_machine_view(device_index);
     }
 

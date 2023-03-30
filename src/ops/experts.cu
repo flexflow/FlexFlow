@@ -457,6 +457,13 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   assert(gemm_batch_count <= num_valid_assignments);
 
   if (num_valid_assignments == 0) {
+    if (m->profiling) {
+      cudaEventRecord(t_end, stream);
+      cudaEventSynchronize(t_end);
+      float milliseconds = 0;
+      cudaEventElapsedTime(&milliseconds, t_start, t_end);
+      printf("forward_kernel_wrapper: %f ms\n", milliseconds);
+    }
     return;
   }
 
