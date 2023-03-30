@@ -17,6 +17,11 @@
 #include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+#include "flexflow/utils/cuda_helper.h"
+#else
+#include "flexflow/utils/hip_helper.h"
+#endif
 
 namespace FlexFlow {
 // declare Legion names
@@ -287,8 +292,8 @@ InferenceResult
                             std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {
-  assert(regions.size() == 3);
-  assert(task->regions.size() == 3);
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
   // const ArgTopK* topk = (const ArgTopK*) task->args;
   ArgTopKMeta const *m = *((ArgTopKMeta **)task->local_args);
   Domain in1_domain = runtime->get_index_space_domain(
@@ -296,7 +301,9 @@ InferenceResult
   //   Domain out1_domain = runtime->get_index_space_domain(
   //       ctx, task->regions[1].region.get_index_space());
   Domain out2_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
+      ctx, task->regions[1].region.get_index_space());
+  int numdims = in1_domain.get_dim();
+  assert(out2_domain.get_dim() == numdims);
 
   int in_cols = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
   // int out1_cols = out1_domain.hi()[0] - out1_domain.lo()[0] + 1;
@@ -312,20 +319,19 @@ InferenceResult
   //   float *value_ptr = helperGetTensorPointerWO<float>(
   //       regions[1], task->regions[1], FID_DATA, ctx, runtime);
   int *index_ptr = helperGetTensorPointerWO<int>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+      regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   int length = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
   int k =
       out2_domain.hi()[0] - out2_domain.lo()[0] + 1; /*TODO: This prints to 5*/
   size_t batch_size = in1_domain.get_volume() / length;
+  assert(out2_domain.get_volume() / k == batch_size);
 
   ArgTopK::forward_kernel_wrapper(
       m, in_ptr, index_ptr, batch_size, length, k, m->sorted);
 
   InferenceResult ir;
-  assert(!ir.done);
-  ir.done = true;
-  assert(ir.done);
+  download_tensor<int>(index_ptr, ir.results, batch_size);
   return ir;
 }
 
