@@ -131,7 +131,7 @@ void FlexFlow::top_level_task(Task const *task,
                    embed_init);
 
   //----------------------- Define the model ------------------------------
-  t = create_moe_encoder(&ff, &moeConfig, input);
+  t = create_moe_encoder(&ff, &moeConfig, t);
   // Tensor t = create_moe(&ff, &moeConfig, input);
   t = ff.dense(t, moeConfig.out_dim, AC_MODE_RELU);
   t = ff.softmax(t);
