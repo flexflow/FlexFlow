@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_RMS_NORM_H
 #define _FLEXFLOW_RMS_NORM_H
 
+#include "flexflow/inference.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/rms_norm_params.h"
-#include "flexflow/inference.h"
 
 namespace FlexFlow {
 
@@ -19,9 +19,9 @@ public:
           float _eps,
           char const *name);
   RMSNorm(FFModel &model,
-            RMSNormParams const &params,
-            ParallelTensor input,
-            char const *name = nullptr);        
+          RMSNormParams const &params,
+          ParallelTensor input,
+          char const *name = nullptr);
   void init(FFModel const &);
   void forward(FFModel const &);
   void backward(FFModel const &);
@@ -62,7 +62,7 @@ public:
                            Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
-                             CostMetrics &cost_metrics) const;                         
+                             CostMetrics &cost_metrics) const;
 
 public:
   float eps;

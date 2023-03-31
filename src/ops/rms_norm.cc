@@ -71,8 +71,13 @@ Tensor FFModel::rms_norm(const Tensor input,
 
   // weights
   int weight_dims[1] = {input->dims[input->num_dims - 1]};
-  rm->weights[0] = create_weight_legion_ordering(
-      1, weight_dims, DT_FLOAT, rm, true /*create_grad*/, nullptr, CHOSEN_SYNC_TYPE);
+  rm->weights[0] = create_weight_legion_ordering(1,
+                                                 weight_dims,
+                                                 DT_FLOAT,
+                                                 rm,
+                                                 true /*create_grad*/,
+                                                 nullptr,
+                                                 CHOSEN_SYNC_TYPE);
   rm->add_float_property("eps", eps);
   layers.push_back(rm);
   return rm->outputs[0];

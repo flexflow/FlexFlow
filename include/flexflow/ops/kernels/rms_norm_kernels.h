@@ -13,17 +13,20 @@ class RMSNorm;
 class RMSNormMeta : public OpMeta {
 public:
   RMSNormMeta(FFHandler handler, RMSNorm const *rms);
-  #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnReduceTensorDescriptor_t reduceDesc;
-  #else
-    miopenTensorDescriptor_t inputTensor, outputTensor;
-    miopenReduceTensorDescriptor_t reduceDesc;
-  #endif
+#else
+  miopenTensorDescriptor_t inputTensor, outputTensor;
+  miopenReduceTensorDescriptor_t reduceDesc;
+#endif
 
 public:
   float eps;
   float *mean_ptr;
+  int in_dim;
+  int num_dims;
+  int num_elements;
   char op_name[MAX_OPNAME];
 };
 
@@ -35,7 +38,13 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
                             GenericTensorAccessorW const &output);
 namespace Internal {
 
-void forward_kernel(float const *input_ptr,
+void norm_kernel(RMSNormMeta const *m,
+                 float const *input_ptr,
+                 float *output_ptr,
+                 ffStream_t stream);
+
+void forward_kernel(RMSNormMeta const *m,
+                    float const *input_ptr,
                     float const *weight_ptr,
                     float *output_ptr,
                     Legion::coord_t dim_size,

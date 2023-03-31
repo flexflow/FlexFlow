@@ -499,11 +499,9 @@ public:
                       int a_seq_length_dim = -1,
                       int b_seq_length_dim = -1,
                       char const *name = nullptr);
-   // Add a root mean square layer
-  Tensor rms_norm(const Tensor input,
-                  float eps,
-                  int dim,
-                  char const *name = NULL);                    
+  // Add a root mean square layer
+  Tensor
+      rms_norm(const Tensor input, float eps, int dim, char const *name = NULL);
   // Add a dense layer
   Tensor dense(const Tensor input,
                int outDim,
@@ -964,7 +962,7 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, TransposeParams>,
                          Transpose *>,
       std::unordered_map<std::pair<ParallelTensorShape, RMSNormParams>,
-                         RMSNorm *>,                   
+                         RMSNorm *>,
       std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
                          Repartition *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReplicateParams>,
