@@ -137,7 +137,6 @@ enum OperatorType {
   OP_SHAPE,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Shape
   OP_SIZE,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Size
   OP_TOPK,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#TopK
-  OP_ARG_TOPK,
   OP_WHERE,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Where
   OP_CEIL,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Ceil
   OP_CAST,   // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Cast
