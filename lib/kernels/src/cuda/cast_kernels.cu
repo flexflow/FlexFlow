@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "kernels/accessor.h"
 #include "kernels/cast_kernels.h"
 #include "kernels/cuda_helper.h"
 #include "kernels/datatype_dispatch.h"

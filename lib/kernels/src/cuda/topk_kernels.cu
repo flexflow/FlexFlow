@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "topk_kernels.h"
+#include "kernels/topk_kernels.h"
 #include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
@@ -21,12 +21,12 @@ namespace FlexFlow {
 using Legion::coord_t;
 
 
-TopKMeta::TopKMeta(FFHandler handler) : OpMeta(handler) {}
+TopKPerDeviceState::TopKPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {}
 
 namespace Kernels {
 namespace TopK {
 
-void forward_kernel_wrapper(TopKMeta const *m,
+void forward_kernel_wrapper(TopKPerDeviceState const *m,
                                   float const *input_ptr,
                                   float *output_ptr,
                                   int *indices_ptr,
@@ -35,7 +35,7 @@ void forward_kernel_wrapper(TopKMeta const *m,
                                   int k,
                                   bool sorted) {
   cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -66,7 +66,7 @@ void forward_kernel_wrapper(TopKMeta const *m,
 }
 
 
-void backward_kernel_wrapper(TopKMeta const *m,
+void backward_kernel_wrapper(TopKPerDeviceState const *m,
                                    float const *value_grad_ptr,
                                    int const *indices_ptr,
                                    float *in_grad_ptr,
@@ -74,7 +74,7 @@ void backward_kernel_wrapper(TopKMeta const *m,
                                    int length,
                                    int k) {
   cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -447,7 +447,7 @@ __global__ void topk_forward_kernel(T const *__restrict__ input,
   }
 }
 
-void forward_kernel(TopKMeta const *m,
+void forward_kernel(TopKPerDeviceState const *m,
                           float const *input_ptr,
                           float *output_ptr,
                           int *indices_ptr,
@@ -500,7 +500,7 @@ __global__ void topk_backward_kernel(T const *__restrict__ value_grad_ptr,
   }
 }
 
-void backward_kernel(TopKMeta const *m,
+void backward_kernel(TopKPerDeviceState const *m,
                            float const *value_grad_ptr,
                            int const *indices_ptr,
                            float *in_grad_ptr,

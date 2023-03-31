@@ -2,17 +2,17 @@
 #define _FLEXFLOW_OPS_KERNELS_GATHER_KERNELS_H
 
 #include "accessor.h"
-#include "device.h"
-#include "fftype.h"
-#include "op_meta.h"
+#include "kernels/device.h"
+
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
 class Gather;
 
-class GatherMeta : public OpMeta {
+class GatherPerDeviceState : public PerDeviceOpState {
 public:
-  GatherMeta(FFHandler handler, Gather const *gather);
+  GatherPerDeviceState(FFHandler handler, Gather const *gather);
 
 public:
   int legion_dim;
@@ -20,11 +20,11 @@ public:
 
 namespace Kernels {
 namespace Gather {
-void forward_kernel_wrapper(GatherMeta const *m,
+void forward_kernel_wrapper(GatherPerDeviceState const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorR const &index,
                             GenericTensorAccessorW const &output);
-void backward_kernel_wrapper(GatherMeta const *m,
+void backward_kernel_wrapper(GatherPerDeviceState const *m,
                              GenericTensorAccessorR const &output_grad,
                              GenericTensorAccessorR const &index,
                              GenericTensorAccessorW const &input_grad);

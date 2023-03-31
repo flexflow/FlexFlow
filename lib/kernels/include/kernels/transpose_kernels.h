@@ -1,15 +1,14 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_TRANSPOSE_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_TRANSPOSE_KERNELS_H
 
-#include "device.h"
-#include "fftype.h"
-#include "op_meta.h"
+#include "kernels/device.h"
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
-class TransposeMeta : public OpMeta {
+class TransposePerDeviceState : public PerDeviceOpState {
 public:
-  TransposeMeta(FFHandler handler) : OpMeta(handler){};
+  TransposePerDeviceState(FFHandler handler) : PerDeviceOpState(handler){};
   int num_dim;
   int perm[MAX_TENSOR_DIM];
 };
@@ -17,12 +16,12 @@ public:
 namespace Kernels {
 namespace Transpose {
 
-void forward_kernel_wrapper(TransposeMeta const *m,
+void forward_kernel_wrapper(TransposePerDeviceState const *m,
                             float const *input_ptr,
                             float *output_ptr,
                             Legion::Domain in_domain,
                             Legion::Domain out_domain);
-void backward_kernel_wrapper(TransposeMeta const *m,
+void backward_kernel_wrapper(TransposePerDeviceState const *m,
                              float *input_grad_ptr,
                              float const *output_grad_ptr,
                              Legion::Domain in_grad_domain,
@@ -30,13 +29,13 @@ void backward_kernel_wrapper(TransposeMeta const *m,
 
 namespace Internal {
 
-void forward_kernel(TransposeMeta const *m,
+void forward_kernel(TransposePerDeviceState const *m,
                     float const *input_ptr,
                     float *output_ptr,
                     Legion::Domain in_domain,
                     Legion::Domain out_domain,
                     ffStream_t stream);
-void backward_kernel(TransposeMeta const *m,
+void backward_kernel(TransposePerDeviceState const *m,
                      float *input_grad_ptr,
                      float const *output_grad_ptr,
                      Legion::Domain in_grad_domain,

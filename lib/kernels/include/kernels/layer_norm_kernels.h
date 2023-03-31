@@ -1,16 +1,20 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_LAYER_NORM_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_LAYER_NORM_KERNELS_H
 
-#include "device.h"
-#include "fftype.h"
-#include "op_meta.h"
+#include "kernels/device.h"
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
 
-class LayerNormMeta : public OpMeta {
+class LayerNormPerDeviceState : public PerDeviceOpState {
 public:
-  LayerNormMeta(FFHandler handle, LayerNorm const *ln);
+  LayerNormPerDeviceState(FFHandler handle, 
+                          bool elementwise_affine_,
+                          int64_t effective_batch_size_,
+                          int64_t effective_num_elements_,
+                          bool profiling_,
+                          float eps_);
 
 public:
   bool elementwise_affine;
@@ -22,42 +26,25 @@ public:
 
 namespace Kernels {
 namespace LayerNorm {
-template <typename T>
-void forward_kernel_wrapper(LayerNormMeta const *m,
-                                     T const *input_ptr,
-                                     T *output_ptr,
-                                     T *gamma_ptr,
-                                     T *beta_ptr);
 
 template <typename T>
-void backward_kernel_wrapper(LayerNormMeta const *m,
-                                      T const *output_grad_ptr,
-                                      T const *input_ptr,
-                                      T *input_grad_ptr,
-                                      T const *gamma_ptr,
-                                      T *gamma_grad_ptr,
-                                      T *beta_grad_ptr);
-
-namespace Internal {
-
-template <typename T>
-void forward_kernel(LayerNormMeta const *m,
+void forward_kernel(ffStream_t stream,
+                            LayerNormPerDeviceState const *m,
                             T const *input_ptr,
                             T *output_ptr,
                             T *gamma_ptr,
-                            T *beta_ptr,
-                            ffStream_t stream);
+                            T *beta_ptr);
 
 template <typename T>
-void backward_kernel(LayerNormMeta const *m,
+void backward_kernel(ffStream_t stream,
+                            LayerNormPerDeviceState const *m,
                             T const *output_grad_ptr,
                             T const *input_ptr,
                             T *input_grad_ptr,
                             T const *gamma_ptr,
                             T *gamma_grad_ptr,
-                            T *beta_grad_ptr,
-                            ffStream_t stream);
-} // namespace Internal
+                            T *beta_grad_ptr);
+                            
 } // namespace LayerNorm
 } // namespace Kernels
 } // namespace FlexFlow

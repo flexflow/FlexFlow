@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "kernels/hip_helper.h"
 #include "kernels/element_unary_kernels.h"
-#include "kernels/cuda_helper.h"
-#include "kernels/datatype_dispatch.h"
+#include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
@@ -24,65 +24,65 @@ using Legion::coord_t;
 using Legion::Domain;
 
 ElementUnaryPerDeviceState::ElementUnaryPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {
-  checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
-  checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
+  checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));
 }
 
 namespace Kernels {
 namespace ElementUnary {
 
-static bool use_cudnn(OperatorType op_type) {
-  switch (op_type) {
-    case OP_RELU:
-    case OP_SIGMOID:
-    case OP_TANH:
-    case OP_ELU:
-      return true;
-    default:
-      return false;
-  }
-}
-
-
 void init_kernel(ElementUnaryPerDeviceState *m,
                  Domain const &input_domain,
                  Domain const &output_domain) {
-
-  if (use_cudnn(m->op_type)) {
-    cudnnActivationMode_t mode;
-    switch (m->op_type) {
-      case OP_SIGMOID:
-        mode = CUDNN_ACTIVATION_SIGMOID;
-        break;
-      case OP_RELU:
-        mode = CUDNN_ACTIVATION_RELU;
-        break;
-      case OP_TANH:
-        mode = CUDNN_ACTIVATION_TANH;
-        break;
-      case OP_ELU:
-        mode = CUDNN_ACTIVATION_ELU;
-        break;
-      default:
-        assert(false);
-    }
-    checkCUDNN(cudnnSetActivationDescriptor(
-        m->actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
-    checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
-    // input_domain == output_domain
-    checkCUDNN(
-        cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
+  miopenActivationMode_t mode;
+  switch (m->op_type) {
+    case OP_SIGMOID:
+      mode = miopenActivationLOGISTIC;
+      break;
+    case OP_RELU:
+      mode = miopenActivationRELU;
+      break;
+    case OP_TANH:
+      mode = miopenActivationTANH;
+      break;
+    case OP_ELU:
+      mode = miopenActivationELU;
+      break;
+    default:
+      assert(false);
   }
+  checkCUDNN(miopenSetActivationDescriptor(m->actiDesc, mode, 0.0, 0.0, 0.0));
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(m->inputTensor, input_domain));
+  // input_domain == output_domain
+  checkCUDNN(
+      cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
 }
+
+bool use_cudnn(OperatorType type) {
+  if (type == OP_RELU) {
+    return true;
+  }
+  if (type == OP_SIGMOID) {
+    return true;
+  }
+  if (type == OP_TANH) {
+    return true;
+  }
+  if (type == OP_ELU) {
+    return true;
+  }
+  return false;
+}
+
 
 template <DataType T>
 struct ForwardKernel {
   void operator()(ffStream_t stream, ElementUnaryPerDeviceState const *m, GenericTensorAccessorR const &input, GenericTensorAccessorW const &output) {
-    checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+    checkCUDNN(miopenSetStream(m->handle.dnn, stream));
     if (use_cudnn(m->op_type)) {
       float alpha = 1.0f, beta = 0.0f;
-      checkCUDNN(cudnnActivationForward(m->handle.dnn,
+      checkCUDNN(miopenActivationForward(m->handle.dnn,
                                         m->actiDesc,
                                         &alpha,
                                         m->inputTensor,
@@ -92,14 +92,20 @@ struct ForwardKernel {
                                         output.get<T>()));
     } else {
       size_t num_elements = input.shape.num_elements();
-      elewise_unary_forward_kernel<<<GET_BLOCKS(num_elements),
-                                    CUDA_NUM_THREADS,
-                                    0,
-                                    stream>>>(
-          num_elements, (T)m->scalar, m->op_type, input.get<T>(), output.get<T>());
+      hipLaunchKernelGGL(elewise_unary_forward_kernel,
+                       GET_BLOCKS(num_elements),
+                       CUDA_NUM_THREADS,
+                       0,
+                       stream,
+                       num_elements,
+                       (T)m->scalar,
+                       m->op_type,
+                       input.get<T>(),
+                       output.get<T>());
     }
   }
 }
+
 
 template <DataType T>
 struct BackwardKernel {
@@ -109,11 +115,12 @@ struct BackwardKernel {
                      GenericTensorAccessorR const &input_grad,
                      GenericTensorAccessorW const &output,                     
                      GenericTensorAccessorW const &output_grad) {
-    checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+    checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
     if (use_cudnn(m->op_type)) {
       float alpha = 1.0f;
-      checkCUDNN(cudnnActivationBackward(m->handle.dnn,
+      float beta = 0.0f;
+      checkCUDNN(miopenActivationBackward(m->handle.dnn,
                                         m->actiDesc,
                                         &alpha,
                                         m->outputTensor,
@@ -122,24 +129,26 @@ struct BackwardKernel {
                                         output_grad.get<T>()),
                                         m->inputTensor,
                                         input.get<T>(),
-                                        &alpha,
+                                        &beta,
                                         m->inputTensor,
-                                        input_grad.get<T>()));
+                                        input_grad.get<T>());
     } else {
       size_t num_elements = input.shape.num_elements();
-      elewise_unary_backward_kernel<T>
-          <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
-              num_elements,
-              m->scalar,
-              m->op_type,
-              output.get<T>(),
-              output_grad.get<T>(),
-              input.get<T>(),
-              input_grad.get<T>());
+      hipLaunchKernelGGL(HIP_KERNEL_NAME(elewise_unary_backward_kernel<T>),
+                       GET_BLOCKS(num_elements),
+                       CUDA_NUM_THREADS,
+                       0,
+                       stream,
+                       num_elements,
+                       m->scalar,
+                       m->op_type,
+                       output.get<T>(),
+                       output_grad.get<T>(),
+                       input.get<T>(),
+                       input_grad.get<T>());
     }
   }
 }
-
 void forward_kernel(ffStream_t stream, 
                     ElementUnaryPerDeviceState const *m, 
                     GenericTensorAccessorR const &input, 
@@ -277,7 +286,6 @@ __global__ void elewise_unary_backward_kernel(coord_t volume,
     }
   }
 }
-
 
 } // namespace ElementUnary
 } // namespace Kernels

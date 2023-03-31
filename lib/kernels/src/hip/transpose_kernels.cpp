@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/kernels/transpose_kernels.h"
-#include "utils/hip_helper.h"
+#include "kernels/transpose_kernels.h"
+#include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
@@ -31,57 +31,13 @@ struct TransposeStrides {
 namespace Kernels {
 namespace Transpose {
 
-void forward_kernel_wrapper(TransposeMeta const *m,
+void forward_kernel( hipStream_t stream, TransposePerDeviceState const *m,
                             float const *input_ptr,
                             float *output_ptr,
                             Domain in_domain,
                             Domain out_domain) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::forward_kernel(
-      m, input_ptr, output_ptr, in_domain, out_domain, stream);
-}
 
-void backward_kernel_wrapper(TransposeMeta const *m,
-                             float *input_grad_ptr,
-                             float const *output_grad_ptr,
-                             Domain in_grad_domain,
-                             Domain out_grad_domain) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::backward_kernel(m,
-                            input_grad_ptr,
-                            output_grad_ptr,
-                            in_grad_domain,
-                            out_grad_domain,
-                            stream);
-}
-
-namespace Internal {
-
-__global__ void transpose_simple_kernel(coord_t volume,
-                                        float const *in_ptr,
-                                        float *out_ptr,
-                                        const TransposeStrides info,
-                                        float const beta) {
-  CUDA_KERNEL_LOOP(o_idx, volume) {
-    coord_t i_idx = 0;
-    coord_t t = o_idx;
-    for (int i = info.num_dim - 1; i >= 0; i--) {
-      coord_t ratio = t / info.out_strides[i];
-      t -= ratio * info.out_strides[i];
-      i_idx += ratio * info.in_strides[info.perm[i]];
-    }
-    out_ptr[o_idx] += out_ptr[o_idx] * beta + in_ptr[i_idx];
-  }
-}
-
-void forward_kernel(TransposeMeta const *m,
-                    float const *input_ptr,
-                    float *output_ptr,
-                    Domain in_domain,
-                    Domain out_domain,
-                    hipStream_t stream) {
+  
   TransposeStrides info;
   info.num_dim = out_domain.get_dim();
   assert(info.num_dim == m->num_dim);
@@ -104,12 +60,13 @@ void forward_kernel(TransposeMeta const *m,
                      0.0f /*beta*/);
 }
 
-void backward_kernel(TransposeMeta const *m,
-                     float *input_grad_ptr,
-                     float const *output_grad_ptr,
-                     Domain in_grad_domain,
-                     Domain out_grad_domain,
-                     hipStream_t stream) {
+void backward_kernel(hipStream_t stream, TransposePerDeviceState const *m,
+                             float *input_grad_ptr,
+                             float const *output_grad_ptr,
+                             Domain in_grad_domain,
+                             Domain out_grad_domain) {
+  
+  
   TransposeStrides info;
   info.num_dim = in_grad_domain.get_dim();
   assert(info.num_dim == m->num_dim);
@@ -132,7 +89,23 @@ void backward_kernel(TransposeMeta const *m,
                      1.0f /*beta*/);
 }
 
-} // namespace Internal
+__global__ void transpose_simple_kernel(coord_t volume,
+                                        float const *in_ptr,
+                                        float *out_ptr,
+                                        const TransposeStrides info,
+                                        float const beta) {
+  CUDA_KERNEL_LOOP(o_idx, volume) {
+    coord_t i_idx = 0;
+    coord_t t = o_idx;
+    for (int i = info.num_dim - 1; i >= 0; i--) {
+      coord_t ratio = t / info.out_strides[i];
+      t -= ratio * info.out_strides[i];
+      i_idx += ratio * info.in_strides[info.perm[i]];
+    }
+    out_ptr[o_idx] += out_ptr[o_idx] * beta + in_ptr[i_idx];
+  }
+}
+
 } // namespace Transpose
 } // namespace Kernels
 } // namespace FlexFlow

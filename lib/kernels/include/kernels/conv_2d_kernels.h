@@ -2,13 +2,13 @@
 #define _FLEXFLOW_OPS_KERNELS_CONV_2D_KERNELS_H
 
 #include "kernels/device.h"
-#include "kernels/op_meta.h"
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
-class Conv2DMeta : public OpMeta {
+class Conv2DPerDeviceState : public PerDeviceOpState {
 public:
-  Conv2DMeta(FFHandler handler);
+  Conv2DPerDeviceState(FFHandler handler);
   ffTensorDescriptor_t inputTensor, biasTensor, outputTensor;
   ffFilterDescriptor_t filterDesc;
   ffActivationDescriptor_t actiDesc;
@@ -23,7 +23,7 @@ public:
 namespace Kernels {
 namespace Conv2D {
 
-void init_kernel(Conv2DMeta *m,
+void init_kernel(Conv2DPerDeviceState *m,
                  int input_w,
                  int input_h,
                  int input_c,
@@ -46,40 +46,23 @@ void init_kernel(Conv2DMeta *m,
                  float *forward_time = nullptr,
                  float *backward_time = nullptr);
 
-void forward_kernel_wrapper(Conv2DMeta const *m,
-                            float const *input_ptr,
-                            float *output_ptr,
-                            float const *filter_ptr,
-                            float const *bias_ptr);
-void backward_kernel_wrapper(Conv2DMeta const *m,
-                             float const *input_ptr,
-                             float *input_grad_ptr,
-                             float const *output_ptr,
-                             float *output_grad_ptr,
-                             float const *kernel_ptr,
-                             float *kernel_grad_ptr,
-                             float *bias_grad_ptr);
-
-namespace Internal {
-
-void forward_kernel(Conv2DMeta const *m,
+void forward_kernel(ffStream_t stream,
+                    Conv2DPerDeviceState const *m,
                     float const *input_ptr,
                     float *output_ptr,
                     float const *filter_ptr,
-                    float const *bias_ptr,
-                    ffStream_t stream);
+                    float const *bias_ptr);
 
-void backward_kernel(Conv2DMeta const *m,
+void backward_kernel(ffStream_t stream,
+                     Conv2DPerDeviceState const *m,
                      float const *input_ptr,
                      float *input_grad_ptr,
                      float const *output_ptr,
                      float *output_grad_ptr,
                      float const *kernel_ptr,
                      float *kernel_grad_ptr,
-                     float *bias_grad_ptr,
-                     ffStream_t stream);
+                     float *bias_grad_ptr);
 
-} // namespace Internal
 } // namespace Conv2D
 } // namespace Kernels
 } // namespace FlexFlow

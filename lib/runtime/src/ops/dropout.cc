@@ -211,7 +211,7 @@ void Dropout::forward_task(Task const *task,
   float *output_ptr = helperGetTensorPointerWO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  forward_kernel_wrapper(m, input_ptr, output_ptr);
+  forward_kernel(m, input_ptr, output_ptr);
 }
 
 void Dropout::backward(FFModel const &ff) {
@@ -260,7 +260,7 @@ void Dropout::backward_task(Task const *task,
   float const *output_grad_ptr = helperGetTensorPointerRO<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  backward_kernel_wrapper(m, output_grad_ptr, input_grad_ptr);
+  backward_kernel(m, output_grad_ptr, input_grad_ptr);
 }
 
 void Dropout::serialize(Legion::Serializer &sez) const {
@@ -311,7 +311,7 @@ bool Dropout::measure_operator_cost(Simulator *sim,
   assert(m->profiling == false);
 
   std::function<void()> forward, backward;
-  forward = [&] { forward_kernel_wrapper(m, input_ptr, output_ptr); };
+  forward = [&] { forward_kernel(m, input_ptr, output_ptr); };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr =
         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -325,7 +325,7 @@ bool Dropout::measure_operator_cost(Simulator *sim,
         cost_metrics.total_mem_diff_from(sim->offset);
 
     backward = [&] {
-      backward_kernel_wrapper(m, output_grad_ptr, input_grad_ptr);
+      backward_kernel(m, output_grad_ptr, input_grad_ptr);
     };
   }
 

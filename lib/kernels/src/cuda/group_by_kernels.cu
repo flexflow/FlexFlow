@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/groupby.h"
-#include "flexflow/utils/cuda_helper.h"
+#include "kernels/groupby_kernels.h"
+#include "kernels/cuda_helper.h"
 #include <math.h>
 #include <stdio.h>
 
@@ -23,6 +23,9 @@
 #define MAX_N 12
 
 namespace FlexFlow {
+namespace Kernels {
+namespace GroupBy {
+  
 
 __global__ void
     gb_forward_kernel(float const *input,
@@ -105,9 +108,9 @@ __global__ void
   }
 }
 
-/*static*/
-void Group_by::forward_kernel_wrapper(
-    GroupByMeta const *m,
+void forward_kernel(
+    cudaStream_t stream,
+    GroupByPerDeviceState const *m,
     float const *input,
     int const *exp_assign,
     float **outputs,
@@ -117,14 +120,7 @@ void Group_by::forward_kernel_wrapper(
     int batch_size,
     int data_dim) {
   // TODO: why cublas/cudnn stream is needed here?
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
+  
   // call forward kernel
   cudaMemcpyAsync(m->dev_region_ptrs,
                   outputs,
@@ -137,19 +133,11 @@ void Group_by::forward_kernel_wrapper(
                       0,
                       stream>>>(
       input, exp_assign, m->dev_region_ptrs, n, k, alpha, batch_size, data_dim);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("[GroupBy] forward time = %.2lfms\n", elapsed);
-  }
 }
 
-void Group_by::backward_kernel_wrapper(
-    GroupByMeta const *m,
+void backward_kernel(
+    cudaStream_t stream,
+    GroupByPerDeviceState const *m,
     float *input_grad,
     int const *exp_assign,
     float **output_grads,
@@ -158,15 +146,6 @@ void Group_by::backward_kernel_wrapper(
     float alpha, // factor additional memory assigned
     int batch_size,
     int data_dim) {
-  // TODO: why cublas/cudnn stream is needed here
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
 
   // call forward kernel
   cudaMemcpyAsync(m->dev_region_ptrs,
@@ -185,21 +164,16 @@ void Group_by::backward_kernel_wrapper(
                                  alpha,
                                  batch_size,
                                  data_dim);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("[GroupBy] backward time = %.2lfms\n", elapsed);
-  }
+  
 }
 
-GroupByMeta::GroupByMeta(FFHandler handler, int n) : OpMeta(handler) {
+}
+}
+
+GroupByPerDeviceState::GroupByPerDeviceState(FFHandler handler, int n) : OpPerDeviceState(handler) {
   checkCUDA(cudaMalloc(&dev_region_ptrs, n * sizeof(float *)));
 }
-GroupByMeta::~GroupByMeta(void) {
+GroupByPerDeviceState::~GroupByPerDeviceState(void) {
   checkCUDA(cudaFree(&dev_region_ptrs));
 }
 

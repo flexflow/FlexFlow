@@ -1,15 +1,14 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_LINEAR_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_LINEAR_KERNELS_H
 
-#include "device.h"
-#include "fftype.h"
-#include "op_meta.h"
+#include "kernels/device.h"
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
-class LinearMeta : public OpMeta {
+class LinearPerDeviceState : public PerDeviceOpState {
 public:
-  LinearMeta(FFHandler handle, int batch_size);
+  LinearPerDeviceState(FFHandler handle, int batch_size);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t outputTensor;
   cudnnActivationDescriptor_t actiDesc;
@@ -26,39 +25,20 @@ public:
 
 namespace Kernels {
 namespace Linear {
-void init_kernel(LinearMeta *m, int batch_size, int channel);
-void forward_kernel_wrapper(LinearMeta const *m,
-                            void const *input_ptr,
-                            void *output_ptr,
-                            void const *filter_ptr,
-                            void const *bias_ptr,
-                            int in_dim,
-                            int out_dim,
-                            int batch_size);
-void backward_kernel_wrapper(LinearMeta const *m,
-                             void const *input_ptr,
-                             void *input_grad_ptr,
-                             void const *output_ptr,
-                             void *output_grad_ptr,
-                             void const *kernel_ptr,
-                             void *kernel_grad_ptr,
-                             void *bias_ptr,
-                             int in_dim,
-                             int out_dim,
-                             int batch_size);
+void init_kernel(LinearPerDeviceState *m, int batch_size, int channel);
 bool use_activation(ActiMode mode);
 
-namespace Internal {
-void forward_kernel(LinearMeta const *m,
+void forward_kernel(ffStream_t stream,
+                    LinearPerDeviceState const *m,
                     void const *input_ptr,
                     void *output_ptr,
                     void const *filter_ptr,
                     void const *bias_ptr,
                     int in_dim,
                     int out_dim,
-                    int batch_size,
-                    ffStream_t stream);
-void backward_kernel(LinearMeta const *m,
+                    int batch_size);
+void backward_kernel(ffStream_t stream,
+                     LinearPerDeviceState const *m,
                      void const *input_ptr,
                      void *input_grad_ptr,
                      void const *output_ptr,
@@ -68,9 +48,8 @@ void backward_kernel(LinearMeta const *m,
                      void *bias_ptr,
                      int in_dim,
                      int out_dim,
-                     int batch_size,
-                     ffStream_t stream);
-} // namespace Internal
+                     int batch_size);
+                     
 } // namespace Linear
 } // namespace Kernels
 } // namespace FlexFlow

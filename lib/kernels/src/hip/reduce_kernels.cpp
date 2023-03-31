@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "reduce_kernels.h"
-#include "utils/hip_helper.h"
+#include "kernels/reduce_kernels.h"
+#include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
@@ -22,10 +22,10 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Domain;
 
-ReduceMeta::ReduceMeta(FFHandler handler,
+ReducePerDeviceState::ReducePerDeviceState(FFHandler handler,
                        Reduce const *rd,
                        Domain const &input_domain)
-    : OpMeta(handler) {
+    : PerDeviceOpState(handler) {
   checkCUDNN(miopenCreateReduceTensorDescriptor(&reduceDesc));
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
@@ -45,7 +45,7 @@ ReduceMeta::ReduceMeta(FFHandler handler,
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_domain));
 }
 
-ReduceMeta::~ReduceMeta(void) {
+ReducePerDeviceState::~ReducePerDeviceState(void) {
   checkCUDNN(miopenDestroyReduceTensorDescriptor(reduceDesc));
   checkCUDNN(miopenDestroyTensorDescriptor(inputTensor));
   checkCUDNN(miopenDestroyTensorDescriptor(outputTensor));
@@ -54,30 +54,10 @@ ReduceMeta::~ReduceMeta(void) {
 namespace Kernels {
 namespace Reduce {
 
-void Reduce::forward_kernel_wrapper(ReduceMeta const *m,
-                                    GenericTensorAccessorR const &input,
-                                    GenericTensorAccessorW const &output) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::forward_kernel(
-      m, input.get_float_ptr(), output.get_float_ptr(), stream);
-}
-
-void Reduce::backward_kernel_wrapper(ReduceMeta const *m,
-                                     GenericTensorAccessorR const &output_grad,
-                                     GenericTensorAccessorW const &input_grad) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::backward_kernel(
-      m, output_grad.get_float_ptr(), input_grad.get_float_ptr(), stream);
-}
-
-namespace Internal {
-
-void forward_kernel(ReduceMeta const *m,
+void forward_kernel(hipStream_t stream,
+                            ReducePerDeviceState const *m,
                             float const *input_ptr,
-                            float *output_ptr,
-                            hipStream_t stream) {
+                            float *output_ptr) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(miopenReduceTensor(m->handle.dnn,
@@ -95,10 +75,10 @@ void forward_kernel(ReduceMeta const *m,
 };
 
 
-void backward_kernel(ReduceMeta const *m,
+void backward_kernel(hipStream_t stream,
+                             ReducePerDeviceState const *m,
                              float const *output_grad_ptr,
-                             float *input_grad_ptr,
-                             hipStream_t stream) {
+                             float *input_grad_ptr) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(miopenOpTensor(m->handle.dnn,
@@ -114,8 +94,6 @@ void backward_kernel(ReduceMeta const *m,
                             input_grad_ptr));
 }
 
-
-} // namespace Internal
 } // namespace Reduce
 } // namespace Kernels
 } // namespace FlexFlow

@@ -2,27 +2,27 @@
 #define _FLEXFLOW_OPS_KERNELS_EMBEDDING_KERNELS_H
 
 #include "kernels/device.h"
-#include "kernels/op_meta.h"
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
-class EmbeddingMeta : public OpMeta {
+class EmbeddingPerDeviceState : public PerDeviceOpState {
 public:
-  EmbeddingMeta(FFHandler handle, Op const *op);
+  EmbeddingPerDeviceState(FFHandler handle, Op const *op);
   DataType input_data_type;
   AggrMode aggr;
 };
 
 namespace Kernels {
 namespace Embedding {
-void forward_kernel_wrapper(EmbeddingMeta const *m,
+void forward_kernel_wrapper(EmbeddingPerDeviceState const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorW const &output,
                             GenericTensorAccessorR const &weight,
                             int in_dim,
                             int out_dim,
                             int batch_size);
-void backward_kernel_wrapper(EmbeddingMeta const *m,
+void backward_kernel_wrapper(EmbeddingPerDeviceState const *m,
                              GenericTensorAccessorR const &input,
                              GenericTensorAccessorR const &output,
                              GenericTensorAccessorW const &weight_grad,

@@ -34,7 +34,7 @@ void init_kernel(MHAPerDeviceState *m,
                  int kvSeqLength,
                  bool add_bias_kv) {
   cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   checkCUDNN(cudnnCreateAttnDescriptor(&m->attnDesc));
   checkCUDNN(cudnnCreateSeqDataDescriptor(&m->qDesc));
@@ -193,7 +193,7 @@ void init_kernel(MHAPerDeviceState *m,
 /*                                                 float *output_ptr) { */
 /*   wrapper(Internal::forward_kernel, m->profiling, ) */
 /*   cudaStream_t stream; */
-/*   checkCUDA(get_legion_stream(&stream)); */
+/*    */
 
 /*   cudaEvent_t t_start, t_end; */
 /*   if (m->profiling) { */
@@ -229,7 +229,7 @@ void init_kernel(MHAPerDeviceState *m,
 /*     float *weight_grad_ptr, */
 /*     float const *output_grad_ptr) { */
 /*   cudaStream_t stream; */
-/*   checkCUDA(get_legion_stream(&stream)); */
+/*    */
 
 /*   cudaEvent_t t_start, t_end; */
 /*   if (m->profiling) { */
@@ -262,13 +262,13 @@ void init_kernel(MHAPerDeviceState *m,
 
 /* namespace Internal { */
 
-void forward_kernel(MHAPerDeviceState *m,
+void forward_kernel(cudaStream_t stream,
+                    MHAPerDeviceState *m,
                     float const *query_ptr,
                     float const *key_ptr,
                     float const *value_ptr,
                     float const *weight_ptr,
-                    float *output_ptr,
-                    cudaStream_t stream) {
+                    float *output_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   checkCUDNN(cudnnMultiHeadAttnForward(m->handle.dnn,
@@ -295,7 +295,8 @@ void forward_kernel(MHAPerDeviceState *m,
                                        m->reserveSpace));
 }
 
-void backward_kernel(MHAPerDeviceState *m,
+void backward_kernel(cudaStream_t stream,
+                     MHAPerDeviceState *m,
                      float const *query_ptr,
                      float *query_grad_ptr,
                      float const *key_ptr,
@@ -304,8 +305,7 @@ void backward_kernel(MHAPerDeviceState *m,
                      float *value_grad_ptr,
                      float const *weight_ptr,
                      float *weight_grad_ptr,
-                     float const *output_grad_ptr,
-                     cudaStream_t stream) {
+                     float const *output_grad_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   checkCUDNN(cudnnMultiHeadAttnBackwardData(m->handle.dnn,
@@ -369,7 +369,7 @@ void backward_kernel(MHAPerDeviceState *m,
 /*                                                int qoSeqLength, */
 /*                                                int kvSeqLength, */
 /*                                                bool add_bias_kv) */
-/*     : OpMeta(handler) { */
+/*     : PerDeviceOpState(handler) { */
 /* } */
 
 MHAPerDeviceState::~MHAPerDeviceState(void) {

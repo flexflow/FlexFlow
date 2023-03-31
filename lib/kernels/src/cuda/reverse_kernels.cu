@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "reverse_kernels.h"
+#include "kernels/reverse_kernels.h"
 #include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
@@ -23,42 +23,36 @@ using Legion::coord_t;
 namespace Kernels {
 namespace Reverse {
 
-void forward_kernel_wrapper(float const *in_ptr,
+void forward_kernel(cudaStream_t stream, float const *in_ptr,
                                      float *out_ptr,
                                      coord_t num_out_blks,
                                      coord_t reverse_dim_size,
                                      coord_t in_blk_size,
                                      coord_t output_size) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::forward_kernel(in_ptr,
-                          out_ptr,
-                          num_out_blks,
-                          reverse_dim_size,
-                          in_blk_size,
-                          output_size,
-                          stream);
+  
+  
+  reverse_forward_kernel<<<GET_BLOCKS(output_size),
+                           CUDA_NUM_THREADS,
+                           0,
+                           stream>>>(
+      in_ptr, out_ptr, num_out_blks, reverse_dim_size, in_blk_size);
 }
 
 
-void backward_kernel_wrapper(float const *out_grad_ptr,
+void backward_kernel(cudaStream_t stream, float const *out_grad_ptr,
                                       float *in_grad_ptr,
                                       coord_t num_out_blks,
                                       coord_t reverse_dim_size,
                                       coord_t in_blk_size,
                                       coord_t input_size) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::backward_kernel(out_grad_ptr,
-                           in_grad_ptr,
-                           num_out_blks,
-                           reverse_dim_size,
-                           in_blk_size,
-                           input_size,
-                           stream);
+  
+  
+  reverse_forward_kernel<<<GET_BLOCKS(input_size),
+                           CUDA_NUM_THREADS,
+                           0,
+                           stream>>>(
+      out_grad_ptr, in_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size);
 }
-
-namespace Internal {
 
 __global__ void reverse_forward_kernel(float const *in_ptr,
                                        float *out_ptr,
@@ -76,37 +70,6 @@ __global__ void reverse_forward_kernel(float const *in_ptr,
   }
 }
 
-void forward_kernel(float const *in_ptr,
-                             float *out_ptr,
-                             coord_t num_out_blks,
-                             coord_t reverse_dim_size,
-                             coord_t in_blk_size,
-                             coord_t output_size,
-                             cudaStream_t stream) {
-  reverse_forward_kernel<<<GET_BLOCKS(output_size),
-                           CUDA_NUM_THREADS,
-                           0,
-                           stream>>>(
-      in_ptr, out_ptr, num_out_blks, reverse_dim_size, in_blk_size);
-}
-
-
-void backward_kernel(float const *out_grad_ptr,
-                              float *in_grad_ptr,
-                              coord_t num_out_blks,
-                              coord_t reverse_dim_size,
-                              coord_t in_blk_size,
-                              coord_t input_size,
-                              cudaStream_t stream) {
-  reverse_forward_kernel<<<GET_BLOCKS(input_size),
-                           CUDA_NUM_THREADS,
-                           0,
-                           stream>>>(
-      out_grad_ptr, in_grad_ptr, num_out_blks, reverse_dim_size, in_blk_size);
-}
-
-
-} // namespace Internal
 } // namespace Reverse
 } // namespace Kernels
 } // namespace FlexFlow

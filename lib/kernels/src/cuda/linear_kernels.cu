@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/kernels/linear_kernels.h"
-#include "flexflow/utils/cuda_helper.h"
+#include "kernels/linear_kernels.h"
+#include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
 
-LinearMeta::LinearMeta(FFHandler handler, int batch_size) : OpMeta(handler) {
+LinearPerDeviceState::LinearPerDeviceState(FFHandler handler, int batch_size) : PerDeviceOpState(handler) {
   // Allocate an all-one's vector
   float *dram_one_ptr = (float *)malloc(sizeof(float) * batch_size);
   for (int i = 0; i < batch_size; i++) {
@@ -54,7 +54,7 @@ bool use_activation(ActiMode mode) {
   return false;
 }
 
-void init_kernel(LinearMeta *m, int batch_size, int channel) {
+void init_kernel(LinearPerDeviceState *m, int batch_size, int channel) {
   if (use_activation(m->activation)) {
     cudnnActivationMode_t mode;
     switch (m->activation) {
@@ -80,7 +80,7 @@ void init_kernel(LinearMeta *m, int batch_size, int channel) {
   }
 }
 
-void forward_kernel_wrapper(LinearMeta const *m,
+void forward_kernel(cudaStream_t stream, LinearPerDeviceState const *m,
                             void const *input_ptr,
                             void *output_ptr,
                             void const *weight_ptr,
@@ -88,116 +88,7 @@ void forward_kernel_wrapper(LinearMeta const *m,
                             int in_dim,
                             int out_dim,
                             int batch_size) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-  Internal::forward_kernel(m,
-                           input_ptr,
-                           output_ptr,
-                           weight_ptr,
-                           bias_ptr,
-                           in_dim,
-                           out_dim,
-                           batch_size,
-                           stream);
-
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("%s [Linear] forward time = %.2lfms\n", m->op_name, elapsed);
-    // print_tensor<float>((float*)input_ptr, in_dim * batch_size,
-    // "[Linear:forward:input]"); print_tensor<float>((float*)weight_ptr, in_dim
-    // * out_dim, "[Linear:forward:kernel]");
-    // print_tensor<float>((float*)output_ptr, out_dim * batch_size,
-    // "[Linear:forward:output]");
-  }
-}
-
-void backward_kernel_wrapper(LinearMeta const *m,
-                             void const *input_ptr,
-                             void *input_grad_ptr,
-                             void const *output_ptr,
-                             void *output_grad_ptr,
-                             void const *kernel_ptr,
-                             void *kernel_grad_ptr,
-                             void *bias_grad_ptr,
-                             int in_dim,
-                             int out_dim,
-                             int batch_size) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-  Internal::backward_kernel(m,
-                            input_ptr,
-                            input_grad_ptr,
-                            output_ptr,
-                            output_grad_ptr,
-                            kernel_ptr,
-                            kernel_grad_ptr,
-                            bias_grad_ptr,
-                            in_dim,
-                            out_dim,
-                            batch_size,
-                            stream);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("%s Linear backward time = %.2lfms\n", m->op_name, elapsed);
-    // print_tensor<float>(acc_output_grad.ptr, acc_output_grad.rect.volume(),
-    // "[Linear:backward:output_grad]");
-    // print_tensor<float>(acc_kernel_grad.ptr, acc_kernel_grad.rect.volume(),
-    // "[Linear:backward:kernel_grad]"); print_tensor<1,
-    // float>(acc_bias_grad.ptr, acc_bias_grad.rect,
-    // "[Linear:backward:bias_grad]"); print_tensor<float>(input_grad,
-    // acc_input.rect.volume(), "[Linear:backward:input_grad]");
-  }
-}
-
-/*
-__host__
-Parameter* Linear::get_parameter(int index)
-{
-  if (index == 0) {
-    return &weights[0];
-  } else if (index == 1){
-    return &weights[1];
-  } else {
-    assert(0);
-    return NULL;
-  }
-}
-*/
-namespace Internal {
-
-void forward_kernel(LinearMeta const *m,
-                    void const *input_ptr,
-                    void *output_ptr,
-                    void const *weight_ptr,
-                    void const *bias_ptr,
-                    int in_dim,
-                    int out_dim,
-                    int batch_size,
-                    ffStream_t stream) {
+  
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
@@ -273,18 +164,18 @@ void forward_kernel(LinearMeta const *m,
   }
 }
 
-void backward_kernel(LinearMeta const *m,
-                     void const *input_ptr,
-                     void *input_grad_ptr,
-                     void const *output_ptr,
-                     void *output_grad_ptr,
-                     void const *kernel_ptr,
-                     void *kernel_grad_ptr,
-                     void *bias_grad_ptr,
-                     int in_dim,
-                     int out_dim,
-                     int batch_size,
-                     ffStream_t stream) {
+void backward_kernel(cudaStream_t stream, LinearPerDeviceState const *m,
+                             void const *input_ptr,
+                             void *input_grad_ptr,
+                             void const *output_ptr,
+                             void *output_grad_ptr,
+                             void const *kernel_ptr,
+                             void *kernel_grad_ptr,
+                             void *bias_grad_ptr,
+                             int in_dim,
+                             int out_dim,
+                             int batch_size) {
+  
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
@@ -377,9 +268,9 @@ void backward_kernel(LinearMeta const *m,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
+  
 }
 
-} // namespace Internal
 } // namespace Linear
 } // namespace Kernels
 } // namespace FlexFlow

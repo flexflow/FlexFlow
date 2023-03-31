@@ -27,7 +27,7 @@
 #include "kernels/dropout_kernels.h"
 #include "kernels/embedding_kernels.h"
 #include "kernels/flat_kernels.h"
-#include "ops-inc/fused.h"
+#include "kernels/fused_kernels.h"
 #include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
@@ -41,19 +41,19 @@ using Legion::PhysicalRegion;
 using Legion::Runtime;
 using Legion::Task;
 
-OpMeta *FusedOp::init_task(Task const *task,
+PerDeviceOpState *FusedOp::init_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {
   FusedOp const *fused = (FusedOp *)task->args;
-  FusedOpMeta const *metas = (FusedOpMeta *)task->local_args;
-  FusedOpMeta *local_meta = new FusedOpMeta();
-  memcpy(local_meta, metas, sizeof(FusedOpMeta));
+  FusedOpPerDeviceState const *metas = (FusedOpPerDeviceState *)task->local_args;
+  FusedOpPerDeviceState *local_meta = new FusedOpPerDeviceState();
+  memcpy(local_meta, metas, sizeof(FusedOpPerDeviceState));
   local_meta->fused_op = (FusedOp *)malloc(sizeof(FusedOp));
   memcpy(static_cast<void *>(local_meta->fused_op),
          static_cast<void const *>(fused),
          sizeof(FusedOp));
-  return ((OpMeta *)local_meta);
+  return ((PerDeviceOpState *)local_meta);
 }
 
 /*
@@ -66,7 +66,7 @@ __host__ void FusedOp::forward_task(Task const *task,
                                     Context ctx,
                                     Runtime *runtime) {
   // const FusedOp* fused = (FusedOp*) task->args;
-  FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
+  FusedOpPerDeviceState const *metas = *((FusedOpPerDeviceState **)task->local_args);
   FusedOp const *fused = metas->fused_op;
   assert(metas->numOperators == fused->numOperators);
   assert(regions.size() == task->regions.size());
@@ -166,9 +166,9 @@ __host__ void FusedOp::forward_task(Task const *task,
       case OP_CONCAT: {
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        ConcatMeta *m = (ConcatMeta *)metas->meta[op];
+        ConcatPerDeviceState *m = (ConcatPerDeviceState *)metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
-        Kernels::Concat::forward_kernel_wrapper(m,
+        Kernels::Concat::forward_kernel(m,
                                                 my_output_accessor[0],
                                                 my_input_accessor,
                                                 num_inputs,
@@ -181,8 +181,8 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(my_input_accessor[0].domain.get_dim() == 5);
         assert(my_weight_accessor[0].domain.get_dim() == 5);
         assert(my_output_accessor[0].domain.get_dim() == 5);
-        Conv2DMeta *m = (Conv2DMeta *)metas->meta[op];
-        Kernels::Conv2D::forward_kernel_wrapper(
+        Conv2DPerDeviceState *m = (Conv2DPerDeviceState *)metas->meta[op];
+        Kernels::Conv2D::forward_kernel(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_output_accessor[0].get_float_ptr(),
@@ -197,7 +197,7 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(my_output_accessor[0].domain.get_dim() == 5);
         assert(my_weight_accessor[0].domain.get_dim() == 2);
         assert(my_weight_accessor[1].domain.get_dim() == 2);
-        BatchNormMeta *m = (BatchNormMeta *)metas->meta[op];
+        BatchNormPerDeviceState *m = (BatchNormPerDeviceState *)metas->meta[op];
         Kernels::BatchNorm::Internal::forward_kernel(m,
                                   my_input_accessor[0].get_float_ptr(),
                                   my_output_accessor[0].get_float_ptr(),
@@ -208,8 +208,8 @@ __host__ void FusedOp::forward_task(Task const *task,
       case OP_DROPOUT: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
-        DropoutMeta *m = (DropoutMeta *)metas->meta[op];
-        Kernels::Dropout::forward_kernel_wrapper(
+        Dropout *m = (DropoutPerDeviceState *)metas->meta[op];
+        Kernels::Dropout::forward_kernel(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_output_accessor[0].get_float_ptr());
@@ -232,8 +232,8 @@ __host__ void FusedOp::forward_task(Task const *task,
         } else {
           assert(fused->op_num_weights[op] == 1);
         }
-        LinearMeta *m = (LinearMeta *)metas->meta[op];
-        Kernels::Linear::forward_kernel_wrapper(
+        LinearPerDeviceState *m = (LinearPerDeviceState *)metas->meta[op];
+        Kernels::Linear::forward_kernel(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_output_accessor[0].get_float_ptr(),
@@ -266,8 +266,8 @@ __host__ void FusedOp::forward_task(Task const *task,
           assert(dim_size == out_domain.hi()[i] - out_domain.lo()[i] + 1);
           batch *= dim_size;
         }
-        BatchMatmulMeta *meta = (BatchMatmulMeta *)metas->meta[op];
-        Kernels::BatchMatmul::forward_kernel_wrapper(
+        BatchMatmulPerDeviceState *meta = (BatchMatmulPerDeviceState *)metas->meta[op];
+        Kernels::BatchMatmul::forward_kernel(
             meta,
             my_output_accessor[0].get_float_ptr(),
             my_input_accessor[0].get_float_ptr(),
@@ -293,8 +293,8 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
-        ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
-        Kernels::ElementBinary::forward_kernel_wrapper(
+        ElementBinaryPerDeviceState *m = (ElementBinaryPerDeviceState *)metas->meta[op];
+        Kernels::ElementBinary::forward_kernel(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_input_accessor[1].get_float_ptr(),
@@ -305,7 +305,7 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
-        EmbeddingMeta *m = (EmbeddingMeta *)metas->meta[op];
+        EmbeddingPerDeviceState *m = (EmbeddingPerDeviceState *)metas->meta[op];
         if (m->aggr == AGGR_MODE_NONE) {
           // assert(kernel_domain.get_dim() == 2);
           assert(my_input_accessor[0].domain.get_dim() + 1 ==
@@ -356,7 +356,7 @@ __host__ void FusedOp::forward_task(Task const *task,
         }
 
         assert(my_input_accessor[0].data_type == DT_INT64);
-        Kernels::Embedding::forward_kernel_wrapper(m,
+        Kernels::Embedding::forward_kernel(m,
                                                    my_input_accessor[0],
                                                    my_output_accessor[0],
                                                    my_weight_accessor[0],
@@ -373,8 +373,8 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
-        ElementUnaryMeta *m = (ElementUnaryMeta *)metas->meta[op];
-        Kernels::ElementUnary::forward_kernel_wrapper(
+        ElementUnaryPerDeviceState *m = (ElementUnaryPerDeviceState *)metas->meta[op];
+        Kernels::ElementUnary::forward_kernel(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_output_accessor[0].get_float_ptr(),
@@ -386,8 +386,8 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
         // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
-        Pool2DMeta *m = (Pool2DMeta *)metas->meta[op];
-        Kernels::Pool2D::forward_kernel_wrapper(
+        Pool2DPerDeviceState *m = (Pool2DPerDeviceState *)metas->meta[op];
+        Kernels::Pool2D::forward_kernel(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_output_accessor[0].get_float_ptr());
@@ -399,7 +399,7 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
-        Kernels::Flat::forward_kernel_wrapper(
+        Kernels::Flat::forward_kernel(
             my_input_accessor[0].get_float_ptr(),
             my_output_accessor[0].get_float_ptr(),
             my_input_accessor[0].domain.get_volume());
@@ -411,7 +411,7 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
-        Kernels::Reshape::forward_kernel_wrapper(
+        Kernels::Reshape::forward_kernel(
             my_input_accessor[0].get_float_ptr(),
             my_output_accessor[0].get_float_ptr(),
             my_input_accessor[0].domain.get_volume());
@@ -423,8 +423,8 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain.get_volume() ==
                my_output_accessor[0].domain.get_volume());
-        TransposeMeta *m = (TransposeMeta *)metas->meta[op];
-        Kernels::Transpose::forward_kernel_wrapper(
+        TransposePerDeviceState *m = (TransposePerDeviceState *)metas->meta[op];
+        Kernels::Transpose::forward_kernel(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_output_accessor[0].get_float_ptr(),
@@ -462,7 +462,7 @@ __host__ void FusedOp::backward_task(Task const *task,
                                      Context ctx,
                                      Runtime *runtime) {
   // const FusedOp* fused = (FusedOp*) task->args;
-  FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
+  FusedOpPerDeviceState const *metas = *((FusedOpPerDeviceState **)task->local_args);
   FusedOp const *fused = metas->fused_op;
 
   assert(metas->numOperators == fused->numOperators);
@@ -664,8 +664,8 @@ __host__ void FusedOp::backward_task(Task const *task,
           assert(dim_size == out_domain.hi()[i] - out_domain.lo()[i] + 1);
           batch *= dim_size;
         }
-        BatchMatmulMeta *meta = (BatchMatmulMeta *)metas->meta[op];
-        Kernels::BatchMatmul::backward_kernel_wrapper(
+        BatchMatmulPerDeviceState *meta = (BatchMatmulPerDeviceState *)metas->meta[op];
+        Kernels::BatchMatmul::backward_kernel(
             meta,
             (float const *)my_output_accessor[0].get_float_ptr(),
             (float const *)my_output_grad_accessor[0].get_float_ptr(),
@@ -687,7 +687,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(my_weight_accessor[0].domain.get_dim() == 2);
         assert(my_weight_accessor[1].domain.get_dim() == 2);
         assert(my_output_accessor[0].domain.get_dim() == 5);
-        BatchNormMeta *m = (BatchNormMeta *)metas->meta[op];
+        BatchNormPerDeviceState *m = (BatchNormPerDeviceState *)metas->meta[op];
         BatchNorm::backward_kernel(
             m,
             (float const *)my_input_accessor[0].get_float_ptr(),
@@ -703,9 +703,9 @@ __host__ void FusedOp::backward_task(Task const *task,
       case OP_CONCAT: {
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        ConcatMeta *m = (ConcatMeta *)metas->meta[op];
+        ConcatPerDeviceState *m = (ConcatPerDeviceState *)metas->meta[op];
         int num_inputs = fused->op_num_inputs[op];
-        Kernels::Concat::backward_kernel_wrapper(m,
+        Kernels::Concat::backward_kernel(m,
                                                  my_output_grad_accessor[0],
                                                  my_input_grad_accessor,
                                                  num_inputs,
@@ -718,8 +718,8 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(my_input_accessor[0].domain.get_dim() == 5);
         assert(my_weight_accessor[0].domain.get_dim() == 5);
         assert(my_output_accessor[0].domain.get_dim() == 5);
-        Conv2DMeta *m = (Conv2DMeta *)metas->meta[op];
-        Kernels::Conv2D::backward_kernel_wrapper(
+        Conv2DPerDeviceState *m = (Conv2DPerDeviceState *)metas->meta[op];
+        Kernels::Conv2D::backward_kernel(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr(),
@@ -733,8 +733,8 @@ __host__ void FusedOp::backward_task(Task const *task,
       case OP_DROPOUT: {
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
-        DropoutMeta *m = (DropoutMeta *)metas->meta[op];
-        Kernels::Dropout::backward_kernel_wrapper(
+        DropoutPerDeviceState *m = (DropoutPerDeviceState *)metas->meta[op];
+        Kernels::Dropout::backward_kernel(
             m,
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr());
@@ -751,8 +751,8 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain == my_input_accessor[1].domain);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
-        ElementBinaryMeta *m = (ElementBinaryMeta *)metas->meta[op];
-        Kernels::ElementBinary::backward_kernel_wrapper(
+        ElementBinaryPerDeviceState *m = (ElementBinaryPerDeviceState *)metas->meta[op];
+        Kernels::ElementBinary::backward_kernel(
             m,
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_accessor[0].get_float_ptr(),
@@ -765,7 +765,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
-        EmbeddingMeta *m = (EmbeddingMeta *)metas->meta[op];
+        EmbeddingPerDeviceState *m = (EmbeddingPerDeviceState *)metas->meta[op];
         assert(my_input_accessor[0].data_type == DT_INT64);
         int in_dim, out_dim, effective_batch_size;
         if (m->aggr == AGGR_MODE_NONE) {
@@ -786,7 +786,7 @@ __host__ void FusedOp::backward_task(Task const *task,
           assert(effective_batch_size * in_dim ==
                  my_input_accessor[0].domain.get_volume());
         }
-        Kernels::Embedding::backward_kernel_wrapper(m,
+        Kernels::Embedding::backward_kernel(m,
                                                     my_input_accessor[0],
                                                     my_output_grad_accessor[0],
                                                     my_weight_grad_accessor[0],
@@ -812,8 +812,8 @@ __host__ void FusedOp::backward_task(Task const *task,
         } else {
           assert(fused->op_num_weights[op] == 1);
         }
-        LinearMeta *m = (LinearMeta *)metas->meta[op];
-        Kernels::Linear::backward_kernel_wrapper(
+        LinearPerDeviceState *m = (LinearPerDeviceState *)metas->meta[op];
+        Kernels::Linear::backward_kernel(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr(),
@@ -835,8 +835,8 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
-        ElementUnaryMeta *m = (ElementUnaryMeta *)metas->meta[op];
-        Kernels::ElementUnary::backward_kernel_wrapper(
+        ElementUnaryPerDeviceState *m = (ElementUnaryPerDeviceState *)metas->meta[op];
+        Kernels::ElementUnary::backward_kernel(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr(),
@@ -850,8 +850,8 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
         // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
-        Pool2DMeta *m = (Pool2DMeta *)metas->meta[op];
-        Kernels::Pool2D::backward_kernel_wrapper(
+        Pool2DPerDeviceState *m = (Pool2DPerDeviceState *)metas->meta[op];
+        Kernels::Pool2D::backward_kernel(
             m,
             my_input_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].get_float_ptr(),
@@ -865,7 +865,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_grad_accessor[0].domain.get_volume() ==
                my_output_grad_accessor[0].domain.get_volume());
-        Kernels::Flat::backward_kernel_wrapper(
+        Kernels::Flat::backward_kernel(
             my_input_grad_accessor[0].get_float_ptr(),
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].domain.get_volume());
@@ -877,7 +877,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_grad_accessor[0].domain.get_volume() ==
                my_output_grad_accessor[0].domain.get_volume());
-        Kernels::Reshape::backward_kernel_wrapper(
+        Kernels::Reshape::backward_kernel(
             my_input_grad_accessor[0].get_float_ptr(),
             my_output_grad_accessor[0].get_float_ptr(),
             my_input_grad_accessor[0].domain.get_volume());
@@ -889,8 +889,8 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         assert(my_input_grad_accessor[0].domain.get_volume() ==
                my_output_grad_accessor[0].domain.get_volume());
-        TransposeMeta *m = (TransposeMeta *)metas->meta[op];
-        Kernels::Transpose::backward_kernel_wrapper(
+        TransposePerDeviceState *m = (TransposePerDeviceState *)metas->meta[op];
+        Kernels::Transpose::backward_kernel(
             m,
             my_input_grad_accessor[0].get_float_ptr(),
             my_output_grad_accessor[0].get_float_ptr(),

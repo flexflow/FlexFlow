@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/kernels/flat_kernels.h"
-#include "utils/hip_helper.h"
+#include "kernels/flat_kernels.h"
+#include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
@@ -22,45 +22,24 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Flat {
 
-void forward_kernel_wrapper(float const *input_ptr,
+void forward_kernel(hipStream_t stream, float const *input_ptr,
                             float *output_ptr,
                             size_t num_elements) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::forward_kernel(input_ptr, output_ptr, num_elements, stream);
-  // checkCUDA(hipDeviceSynchronize());
-}
-
-void backward_kernel_wrapper(float *input_grad_ptr,
-                             float const *output_grad_ptr,
-                             size_t num_elements) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::backward_kernel(
-      input_grad_ptr, output_grad_ptr, num_elements, stream);
-  // checkCUDA(hipMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
-  //                           acc_input_grad.rect.volume() * sizeof(float),
-  //                           hipMemcpyDeviceToDevice));
-  // checkCUDA(hipDeviceSynchronize());
-}
-
-namespace Internal {
-
-void forward_kernel(float const *input_ptr,
-                    float *output_ptr,
-                    size_t num_elements,
-                    hipStream_t stream) {
+  
+  
   checkCUDA(hipMemcpyAsync(output_ptr,
                            input_ptr,
                            num_elements * sizeof(float),
                            hipMemcpyDeviceToDevice,
                            stream));
+  // checkCUDA(hipDeviceSynchronize());
 }
 
-void backward_kernel(float *input_grad_ptr,
-                     float const *output_grad_ptr,
-                     size_t num_elements,
-                     hipStream_t stream) {
+void backward_kernel(hipStream_t stream, float *input_grad_ptr,
+                             float const *output_grad_ptr,
+                             size_t num_elements) {
+  
+  
   float alpha = 1.0f;
   hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_add_with_scale<float>),
                      GET_BLOCKS(num_elements),
@@ -71,9 +50,13 @@ void backward_kernel(float *input_grad_ptr,
                      output_grad_ptr,
                      num_elements,
                      alpha);
+  // checkCUDA(hipMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
+  //                           acc_input_grad.rect.volume() * sizeof(float),
+  //                           hipMemcpyDeviceToDevice));
+  // checkCUDA(hipDeviceSynchronize());
 }
 
-} // namespace Internal
+
 } // namespace Flat
 } // namespace Kernels
 } // namespace FlexFlow

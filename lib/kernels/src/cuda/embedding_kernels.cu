@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "kernels/datatype_dispatch.h"
 #include "kernels/embedding_kernels.h"
 #include "kernels/cuda_helper.h"
 
@@ -29,7 +30,7 @@ using Legion::Task;
 namespace Kernels {
 namespace Embedding {
 
-void forward_kernel_wrapper(EmbeddingMeta const *m,
+void forward_kernel_wrapper(EmbeddingPerDeviceState const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorW const &output,
                             GenericTensorAccessorR const &weight,
@@ -37,7 +38,7 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
                             int out_dim,
                             int batch_size) {
   cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   if (input.data_type == DT_INT32) {
     if (weight.data_type == DT_HALF) {
       Internal::forward_kernel(input.get_int32_ptr(),
@@ -119,7 +120,7 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
   }
 }
 
-void backward_kernel_wrapper(EmbeddingMeta const *m,
+void backward_kernel_wrapper(EmbeddingPerDeviceState const *m,
                              GenericTensorAccessorR const &input,
                              GenericTensorAccessorR const &output,
                              GenericTensorAccessorW const &weight_grad,
@@ -127,7 +128,7 @@ void backward_kernel_wrapper(EmbeddingMeta const *m,
                              int out_dim,
                              int batch_size) {
   cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   if (m->input_type[0] == DT_INT32) {
     if (m->output_type[0] == DT_HALF) {
       Internal::backward_kernel(input.get_int32_ptr(),
@@ -210,7 +211,7 @@ void backward_kernel_wrapper(EmbeddingMeta const *m,
 
 void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p) {
   cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   // Randomly initialize the intput tensor to avoid out of index range issues
   Internal::
       rand_generate_int<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
@@ -219,7 +220,7 @@ void rand_generate_int64_wrapper(int64_t *ptr, size_t size, int64_t p) {
 
 void rand_generate_int32_wrapper(int32_t *ptr, size_t size, int32_t p) {
   cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   // Randomly initialize the intput tensor to avoid out of index range issues
   Internal::
       rand_generate_int<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
@@ -483,7 +484,7 @@ __global__ void rand_generate_int(TD *ptr, size_t size, TD p) {
 }
 
 #ifdef DEADCODE
-template void forward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
+template void forward_kernel_wrapper<int32_t>(EmbeddingPerDeviceState const *m,
                                               int32_t const *input_ptr,
                                               float *output_ptr,
                                               float const *weight_ptr,
@@ -492,7 +493,7 @@ template void forward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
                                               int batch_size,
                                               AggrMode aggr,
                                               int outputSize);
-template void forward_kernel_wrapper<int64_t>(EmbeddingMeta const *m,
+template void forward_kernel_wrapper<int64_t>(EmbeddingPerDeviceState const *m,
                                               int64_t const *input_ptr,
                                               float *output_ptr,
                                               float const *weight_ptr,
@@ -502,7 +503,7 @@ template void forward_kernel_wrapper<int64_t>(EmbeddingMeta const *m,
                                               AggrMode aggr,
                                               int outputSize);
 
-template void backward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
+template void backward_kernel_wrapper<int32_t>(EmbeddingPerDeviceState const *m,
                                                int32_t const *input_ptr,
                                                float const *output_ptr,
                                                float *weight_grad_ptr,
@@ -511,7 +512,7 @@ template void backward_kernel_wrapper<int32_t>(EmbeddingMeta const *m,
                                                int batch_size,
                                                AggrMode aggr,
                                                int outputSize);
-template void backward_kernel_wrapper<int64_t>(EmbeddingMeta const *m,
+template void backward_kernel_wrapper<int64_t>(EmbeddingPerDeviceState const *m,
                                                int64_t const *input_ptr,
                                                float const *output_ptr,
                                                float *weight_grad_ptr,

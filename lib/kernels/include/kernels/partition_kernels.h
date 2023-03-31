@@ -1,15 +1,15 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_PARTITION_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_PARTITION_KERNELS_H
 
-#include "device.h"
-#include "fftype.h"
-#include "op_meta.h"
+#include "kernels/device.h"
+
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
-class RepartitionMeta : public OpMeta {
+class RepartitionPerDeviceState : public PerDeviceOpState {
 public:
-  RepartitionMeta(FFHandler handle);
+  RepartitionPerDeviceState(FFHandler handle);
   DataType data_type;
 };
 
