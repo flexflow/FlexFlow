@@ -46,8 +46,11 @@ public:
   void next_batch(FFModel &ff,
                   int bid,
                   BatchConfig *bc,
+                  std::map<size_t, int> &batch_predictions,
                   MachineView const *mv = nullptr);
-  void store_outputs(BatchConfig *bc, InferenceResult const &ir);
+  void store_outputs(BatchConfig *bc,
+                     InferenceResult const &ir,
+                     std::map<size_t, int> &batch_predictions);
 
 public:
   size_t num_samples;
@@ -57,5 +60,9 @@ public:
   struct DataLoaderInput {
     InferenceConfig const &_inferenceConfig;
     DataGenerator &_data_generator;
+  };
+  struct DataLoaderNextBatchInput {
+    BatchConfig::SampleIdxs const &meta;
+    std::map<size_t, int> const &prev_batch_preds;
   };
 };

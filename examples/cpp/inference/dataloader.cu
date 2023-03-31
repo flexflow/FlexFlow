@@ -22,13 +22,18 @@ void DataLoader::load_input(Task const *task,
                             Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  BatchConfig::SampleIdxs *meta = (BatchConfig::SampleIdxs *)task->local_args;
-  if (meta->num_samples == 0) {
+
+  DataLoaderNextBatchInput const input_struct =
+      *((DataLoaderNextBatchInput *)task->args);
+  BatchConfig::SampleIdxs const &meta = input_struct.meta;
+  std::map<size_t, int> const &prev_batch_preds = input_struct.prev_batch_preds;
+
+  if (meta.num_samples == 0) {
     return;
   }
-  float const *full_input_ptr = helperGetTensorPointerRO<float>(
+  int const *full_input_ptr = helperGetTensorPointerRO<int>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float *batch_input_ptr = helperGetTensorPointerWO<float>(
+  int *batch_input_ptr = helperGetTensorPointerWO<int>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   Domain full_input_domain = runtime->get_index_space_domain(
@@ -36,67 +41,90 @@ void DataLoader::load_input(Task const *task,
   Domain batch_input_domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
 
-  coord_t token_dim =
-      batch_input_domain.hi()[0] - batch_input_domain.lo()[0] + 1;
   coord_t sequence_length =
-      batch_input_domain.hi()[1] - batch_input_domain.lo()[1] + 1;
-  coord_t batch_size =
-      batch_input_domain.hi()[2] - batch_input_domain.lo()[2] + 1;
-
-  coord_t full_input_token_dim =
       batch_input_domain.hi()[0] - batch_input_domain.lo()[0] + 1;
-  coord_t full_input_sequence_length =
+  coord_t batch_size =
       batch_input_domain.hi()[1] - batch_input_domain.lo()[1] + 1;
+
+  coord_t full_input_sequence_length =
+      batch_input_domain.hi()[0] - batch_input_domain.lo()[0] + 1;
   coord_t full_input_batch_size =
-      batch_input_domain.hi()[2] - batch_input_domain.lo()[2] + 1;
-  assert(token_dim == full_input_token_dim);
+      batch_input_domain.hi()[1] - batch_input_domain.lo()[1] + 1;
+
   assert(sequence_length == full_input_sequence_length);
   assert(batch_size <= full_input_batch_size);
 
   // Currently assume continous indices
-  assert(meta->num_samples <= batch_size * sequence_length);
-  for (int i = 1; i < meta->num_samples; i++) {
-    if (meta->guids[i] == meta->guids[i - 1]) {
-      assert(meta->token_indexes[i].token_position ==
-             meta->token_indexes[i - 1].token_position + 1);
+  assert(meta.num_samples <= batch_size * sequence_length);
+  for (int i = 1; i < meta.num_samples; i++) {
+    if (meta.guids[i] == meta.guids[i - 1]) {
+      assert(meta.token_indexes[i].token_position ==
+             meta.token_indexes[i - 1].token_position + 1);
     }
   }
   // keep things simple for now
-  assert(batch_input_domain.get_volume() ==
-         batch_size * sequence_length * token_dim);
+  assert(batch_input_domain.get_volume() == batch_size * sequence_length);
 
   // pad inputs if needed (this is really only useful for debugging)
   checkCUDA(cudaMemset(
-      batch_input_ptr, 0, batch_input_domain.get_volume() * sizeof(float)));
+      batch_input_ptr, 0, batch_input_domain.get_volume() * sizeof(int)));
 
-  size_t guid = meta->guids[0];
-  size_t start_idx = meta->token_indexes[0].token_position;
+  size_t guid = meta.guids[0];
+  size_t start_idx = meta.token_indexes[0].token_position;
   size_t dst_idx = 0;
   size_t total_tokens = 0;
-  for (size_t i = 1; i <= meta->num_samples; i++) {
-    if (i == meta->num_samples || meta->guids[i] != guid) {
-      size_t size_to_copy =
-          token_dim *
-          (meta->token_indexes[i - 1].token_position - start_idx + 1);
-      total_tokens += size_to_copy / token_dim;
-      float const *input_zc = full_input_ptr +
-                              (guid * token_dim * sequence_length) +
-                              start_idx * token_dim;
-      float *dst_ptr = batch_input_ptr + dst_idx * token_dim;
-      copy_kernel<<<GET_BLOCKS(size_to_copy), CUDA_NUM_THREADS>>>(
-          dst_ptr, input_zc, size_to_copy);
-      if (i < meta->num_samples) {
-        guid = meta->guids[i];
-        start_idx = meta->token_indexes[i].token_position;
+  for (size_t i = 1; i <= meta.num_samples; i++) {
+    if (i == meta.num_samples || meta.guids[i] != guid) {
+
+      size_t tokens_to_copy =
+          (meta.token_indexes[i - 1].token_position - start_idx + 1);
+      // size_t size_to_copy = token_dim * tokens_to_copy;
+      assert(tokens_to_copy > 0);
+      if (tokens_to_copy > 1 || meta.token_indexes[i - 1].token_position <
+                                    meta.token_indexes[i - 1].initial_length) {
+        // initialization phase
+        assert(meta.token_indexes[i - 1].token_position <
+               meta.token_indexes[i - 1].initial_length);
+        int const *input_zc =
+            full_input_ptr + (guid * sequence_length) + start_idx;
+        int *dst_ptr = batch_input_ptr + dst_idx;
+        copy_kernel<<<GET_BLOCKS(tokens_to_copy), CUDA_NUM_THREADS>>>(
+            dst_ptr, input_zc, tokens_to_copy);
+      } else {
+        // incremental phase
+        assert(meta.token_indexes[i - 1].token_position >=
+               meta.token_indexes[i - 1].initial_length);
+        assert(tokens_to_copy == 1);
+
+        /* std::cout << "Looking for guid: " << guid << std::endl;
+        std::cout << "prev_batch_preds: ";
+        for (const auto& elem : prev_batch_preds){
+            std::cout << elem.first << ":" << elem.second << ", ";
+        }
+        std::cout << std::endl; */
+        assert(prev_batch_preds.find(guid) != prev_batch_preds.end());
+        int token = prev_batch_preds.at(guid);
+        int *dst_ptr = batch_input_ptr + dst_idx;
+        cudaMemcpy(dst_ptr, &token, 1, cudaMemcpyHostToDevice);
+        // copy_kernel<<<GET_BLOCKS(tokens_to_copy),
+        // CUDA_NUM_THREADS>>>(dst_ptr, &token, tokens_to_copy);
+        //  cudaMemcpyAsync(batch_input_ptr + dst_idx * token_dim, &token, 1,
+        //  cudaMemcpyHostToDevice);
+      }
+      total_tokens += tokens_to_copy;
+
+      if (i < meta.num_samples) {
+        guid = meta.guids[i];
+        start_idx = meta.token_indexes[i].token_position;
       }
       dst_idx = i;
     }
   }
-  assert(total_tokens == meta->num_samples);
+  assert(total_tokens == meta.num_samples);
   /*printf("token_dim: %lli, sequence_length: %lli, batch_size: %lli\n",
   token_dim, sequence_length, batch_size); printf("total_tokens: %lu\n",
   total_tokens); printf("guid: %lu\n", guid);
-  print_tensor<float>(batch_input_ptr,
+  print_tensor<int>(batch_input_ptr,
                       batch_input_domain.get_volume(),
                       "[BatchInput]");*/
   checkCUDA(cudaDeviceSynchronize());

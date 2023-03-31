@@ -117,13 +117,21 @@ void FlexFlow::top_level_task(Task const *task,
   //----------------------- Create inputs --------------------------------
   Tensor input;
   {
-    int const dims[] = {
-        ffConfig.batchSize, moeConfig.sequence_length, moeConfig.token_dim};
-    input = ff.create_tensor<3>(dims, DT_FLOAT);
+    int const dims[] = {ffConfig.batchSize, moeConfig.sequence_length};
+    input = ff.create_tensor<2>(dims, DT_INT32);
   }
+  Tensor t = input;
+  Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
+  t = ff.embedding(t,
+                   moeConfig.vocab_size,
+                   moeConfig.token_dim,
+                   AGGR_MODE_NONE,
+                   DT_FLOAT,
+                   NULL,
+                   embed_init);
 
   //----------------------- Define the model ------------------------------
-  Tensor t = create_moe_encoder(&ff, &moeConfig, input);
+  t = create_moe_encoder(&ff, &moeConfig, input);
   // Tensor t = create_moe(&ff, &moeConfig, input);
   t = ff.dense(t, moeConfig.out_dim, AC_MODE_RELU);
   t = ff.softmax(t);
@@ -143,7 +151,7 @@ void FlexFlow::top_level_task(Task const *task,
          min_tokens_to_generate = 1,
          max_tokens_to_generate = MAX_SEQ_LEN - max_input_tokens;
   DataGenerator data_generator(moeConfig.total_requests,
-                               moeConfig.token_dim,
+                               moeConfig.vocab_size,
                                min_input_tokens,
                                max_input_tokens,
                                min_tokens_to_generate,
@@ -175,6 +183,7 @@ void FlexFlow::top_level_task(Task const *task,
   std::map<int, BatchConfig *> batch_configs;
   std::pair<size_t, size_t> new_prompts;
   BatchConfig *bc = nullptr;
+  std::map<size_t, int> batch_predictions[im.max_num_inflight_batches];
 
   assert(im.max_num_requests_per_batch == moeConfig.batch_size);
 
@@ -195,6 +204,7 @@ void FlexFlow::top_level_task(Task const *task,
         }
         InferenceResult ir = future.get_result<InferenceResult>();
         bc = batch_configs[bid];
+        data_loader.store_outputs(bc, ir, batch_predictions[bid]);
         processed_requests += bc->update_results(ir);
         max_reqs = moeConfig.incremental_mode
                        ? bc->MAX_NUM_REQUESTS - bc->num_active_requests()
@@ -221,7 +231,7 @@ void FlexFlow::top_level_task(Task const *task,
       MachineView *view = im.get_machine_view(bid % im.num_devices);
 
       // runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
-      data_loader.next_batch(ff, bid, bc, view);
+      data_loader.next_batch(ff, bid, bc, batch_predictions[bid], view);
       FutureMap fm = im.inference(bid, *bc);
       // runtime->end_trace(ctx, 111 + bid % num_devices /*trace_id*/);
 

@@ -32,6 +32,10 @@ struct InferenceConfig {
     out_dim = DATA_DIM;
     num_labels = out_dim;
     num_layers = 3;
+
+    vocab_size = 50257;
+    block_size = 1024;
+
     //----------------------- Inference parameters ---------------------
     // total number of requests processed as part of the simulation
     total_requests = 2560;
@@ -55,6 +59,10 @@ struct InferenceConfig {
   int out_dim;
   int num_labels;
   int num_layers;
+
+  int vocab_size;
+  int block_size;
+
   std::string dataset_path;
   // Inference parameters
   int total_requests;

@@ -33,7 +33,7 @@ typedef std::chrono::milliseconds milliseconds;
 class DataGenerator {
 public:
   DataGenerator(size_t _num_requests,
-                size_t _token_dim,
+                size_t _vocab_size,
                 size_t _min_input_tokens,
                 size_t _max_input_tokens,
                 size_t _min_tokens_to_generate,
@@ -41,17 +41,15 @@ public:
                 bool _poisson_distr,
                 double _lambda);
 
-  // Generate random requests by filling each token with random data. For now,
-  // assume all requests have the same sequence length. Also generate random
-  // labels (if label_ptr != nullptr and num_labels >0).
-  void generate_requests(float *req_ptr);
+  // Generate random requests by filling each tensor with random tokens. For
+  // now, assume all requests have the same sequence length.
+  void generate_requests(int *req_ptr);
   void start_timer(void);
   // Get number of requests that have arrived since the last time this function
   // was called
   std::pair<size_t, size_t> get_requests(size_t max_requests,
                                          size_t max_tokens);
   std::pair<size_t, size_t> get_request_length(size_t guid);
-  // size_t max_sequence_length; // dimension of one request tensor
 
 private:
   // Compute the arrival times of each request and save them in the arrivals
@@ -60,7 +58,7 @@ private:
   void generate_requests_meta();
 
   size_t num_requests; // total number of requests
-  size_t token_dim;    // embedding dim of each token
+  size_t vocab_size;   // number of words in the vocab
   size_t min_input_tokens;
   size_t max_input_tokens;
   size_t min_tokens_to_generate;

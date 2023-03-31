@@ -21,14 +21,14 @@
 using namespace std;
 
 DataGenerator::DataGenerator(size_t _num_requests,
-                             size_t _token_dim,
+                             size_t _vocab_size,
                              size_t _min_input_tokens,
                              size_t _max_input_tokens,
                              size_t _min_tokens_to_generate,
                              size_t _max_tokens_to_generate,
                              bool _poisson_distr,
                              double _lambda)
-    : num_requests(_num_requests), token_dim(_token_dim),
+    : num_requests(_num_requests), vocab_size(_vocab_size),
       min_input_tokens(_min_input_tokens), max_input_tokens(_max_input_tokens),
       min_tokens_to_generate(_min_tokens_to_generate),
       max_tokens_to_generate(_max_tokens_to_generate),
@@ -73,7 +73,7 @@ void DataGenerator::generate_requests_meta() {
   // cout << "]" << endl;
 };
 
-void DataGenerator::generate_requests(float *req_ptr) {
+void DataGenerator::generate_requests(int *req_ptr) {
   assert(req_ptr != nullptr);
   /* for (size_t i=0; i<num_requests; i++) {
     for (size_t j=0; j<max_sequence_length; j++) {
@@ -88,12 +88,15 @@ void DataGenerator::generate_requests(float *req_ptr) {
   random_device rnd_device;
   mt19937 mersenne_engine{rnd_device()};
 
-  uniform_real_distribution<float> float_dist{0, 1.0};
-  auto gen = [&float_dist, &mersenne_engine]() {
-    return float_dist(mersenne_engine);
+  // uniform_real_distribution<float> float_dist{0, 1.0};
+  //  auto gen = [&float_dist, &mersenne_engine]() {
+  //    return float_dist(mersenne_engine);
+  //  };
+  std::uniform_int_distribution<int> int_dist(0, vocab_size - 1);
+  auto gen = [&int_dist, &mersenne_engine]() {
+    return int_dist(mersenne_engine);
   };
-  std::generate(
-      req_ptr, req_ptr + token_dim * max_input_tokens * num_requests, gen);
+  std::generate(req_ptr, req_ptr + max_input_tokens * num_requests, gen);
 };
 
 void DataGenerator::start_timer(void) {
