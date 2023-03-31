@@ -248,6 +248,31 @@ __host__ void
   checkCUDA(hipHostFree(host_ptr));
 }
 
+template <typename T>
+__host__ T *download_tensor(T const *ptr, size_t num_elements) {
+  // device synchronize to make sure the data are ready
+  // checkCUDA(hipDeviceSynchronize());
+  T *host_ptr;
+  checkCUDA(hipHostMalloc(&host_ptr,
+                          sizeof(T) * num_elements,
+                          hipHostMallocPortable | hipHostMallocMapped));
+  checkCUDA(hipMemcpy(
+      host_ptr, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost));
+  // checkCUDA(hipDeviceSynchronize());
+  return host_ptr;
+}
+
+template <typename T>
+__host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
+  // device synchronize to make sure the data are ready
+  // checkCUDA(hipDeviceSynchronize());
+  assert(dst != nullptr);
+  checkCUDA(
+      hipMemcpy(dst, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost));
+  // checkCUDA(hipDeviceSynchronize());
+  return true;
+}
+
 miopenStatus_t
     cudnnSetTensorDescriptorFromDomain(miopenTensorDescriptor_t tensor,
                                        Domain domain) {
@@ -382,3 +407,23 @@ template __host__ void
     print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
 template __host__ void
     print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
+
+template __host__ float *download_tensor<float>(float const *ptr,
+                                                size_t num_elements);
+template __host__ double *download_tensor<double>(double const *ptr,
+                                                  size_t num_elements);
+template __host__ int32_t *download_tensor<int32_t>(int32_t const *ptr,
+                                                    size_t num_elements);
+template __host__ int64_t *download_tensor<int64_t>(int64_t const *ptr,
+                                                    size_t num_elements);
+template __host__ bool
+    download_tensor<float>(float const *ptr, float *dst, size_t num_elements);
+template __host__ bool download_tensor<double>(double const *ptr,
+                                               double *dst,
+                                               size_t num_elements);
+template __host__ bool download_tensor<int32_t>(int32_t const *ptr,
+                                                int32_t *dst,
+                                                size_t num_elements);
+template __host__ bool download_tensor<int64_t>(int64_t const *ptr,
+                                                int64_t *dst,
+                                                size_t num_elements);

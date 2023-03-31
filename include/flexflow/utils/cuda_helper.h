@@ -136,6 +136,9 @@ void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
 template <typename T>
 T *download_tensor(T const *ptr, size_t num_elements);
 
+template <typename T>
+bool download_tensor(T const *ptr, T *dst, size_t num_elements);
+
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Legion::Domain domain);
 

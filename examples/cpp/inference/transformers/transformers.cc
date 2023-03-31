@@ -89,19 +89,29 @@ void FlexFlow::top_level_task(Task const *task,
   //----------------------- Create inputs --------------------------------
   Tensor input;
   {
-    int const dims[] = {ffConfig.batchSize,
-                        transformerConfig.sequence_length,
-                        transformerConfig.token_dim};
-    input = ff.create_tensor<3>(dims, DT_FLOAT);
+    int const dims[] = {ffConfig.batchSize, transformerConfig.sequence_length};
+    input = ff.create_tensor<2>(dims, DT_INT32);
   }
 
   //----------------------- Define the model ------------------------------
   Tensor t = input;
+
+  Initializer *embed_init = new UniformInitializer(std::rand(), 0, 0);
+  t = ff.embedding(t,
+                   transformerConfig.vocab_size,
+                   transformerConfig.token_dim,
+                   AGGR_MODE_NONE,
+                   DT_FLOAT,
+                   NULL,
+                   embed_init);
+
   for (int i = 0; i < transformerConfig.num_layers; i++) {
     t = create_inc_multihead_attention_decoder(&ff, &transformerConfig, t);
   }
   t = ff.dense(t, transformerConfig.out_dim, AC_MODE_RELU);
   t = ff.softmax(t);
+  // select most likely next token
+  Tensor output = ff.arg_top_k(t, /*k=*/1, false);
 
   //------------------- Initialize the inference manager ------------------
   InferenceManager im(&ff,
@@ -117,7 +127,7 @@ void FlexFlow::top_level_task(Task const *task,
          min_tokens_to_generate = 1,
          max_tokens_to_generate = MAX_SEQ_LEN - max_input_tokens;
   DataGenerator data_generator(transformerConfig.total_requests,
-                               transformerConfig.token_dim,
+                               transformerConfig.vocab_size,
                                min_input_tokens,
                                max_input_tokens,
                                min_tokens_to_generate,
@@ -141,7 +151,6 @@ void FlexFlow::top_level_task(Task const *task,
   double ts_start = Realm::Clock::current_time_in_microseconds();
 
   //----------------------- Begin inference! -------------------------------
-  //----------------------- Begin inference! -------------------------------
   int index = 0;
   int processed_requests = 0;
   int num_devices = ffConfig.workersPerNode * ffConfig.numNodes;
@@ -150,6 +159,7 @@ void FlexFlow::top_level_task(Task const *task,
   std::map<int, BatchConfig *> batch_configs;
   std::pair<size_t, size_t> new_prompts;
   BatchConfig *bc = nullptr;
+  std::map<size_t, int> batch_predictions[im.max_num_inflight_batches];
 
   assert(im.max_num_requests_per_batch == transformerConfig.batch_size);
   // assert(transformerConfig.batch_size <= BatchConfig::MAX_NUM_REQUESTS);
@@ -173,6 +183,7 @@ void FlexFlow::top_level_task(Task const *task,
         }
         InferenceResult ir = future.get_result<InferenceResult>();
         bc = batch_configs[bid];
+        data_loader.store_outputs(bc, ir, batch_predictions[bid]);
         processed_requests += bc->update_results(ir);
         max_reqs = transformerConfig.incremental_mode
                        ? bc->MAX_NUM_REQUESTS - bc->num_active_requests()
@@ -200,7 +211,7 @@ void FlexFlow::top_level_task(Task const *task,
       MachineView *view = im.get_machine_view(bid % im.num_devices);
 
       // runtime->begin_trace(ctx, 111 + bid % num_devices /*trace_id*/);
-      data_loader.next_batch(ff, bid, bc, view);
+      data_loader.next_batch(ff, bid, bc, batch_predictions[bid], view);
       FutureMap fm = im.inference(bid, *bc);
       // runtime->end_trace(ctx, 111 + bid % num_devices /*trace_id*/);
 
