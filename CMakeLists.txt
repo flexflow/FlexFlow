@@ -60,6 +60,7 @@ if (FF_GASNET_CONDUIT STREQUAL "ucx")
     get_filename_component(UCX_COMPRESSED_FILE_NAME "${UCX_URL}" NAME)
     # message(STATUS "UCX_URL: ${UCX_URL}")
     # message(STATUS "UCX_COMPRESSED_FILE_NAME: ${UCX_COMPRESSED_FILE_NAME}")
+    set(UCX_COMPRESSED_FILE_PATH "${CMAKE_CURRENT_BINARY_DIR}/${UCX_COMPRESSED_FILE_NAME}")
     set(UCX_BUILD_NEEDED OFF)
     set(UCX_CONFIG_FILE ${UCX_DIR}/config.txt)
     set(UCX_BUILD_OUTPUT ${UCX_DIR}/build.log)
@@ -80,11 +81,11 @@ if (FF_GASNET_CONDUIT STREQUAL "ucx")
     endif()
 
     if(UCX_BUILD_NEEDED)
-        if(NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/${UCX_COMPRESSED_FILE_NAME}")
+        if(NOT EXISTS "${UCX_COMPRESSED_FILE_PATH}")
             message(STATUS "Downloading openucx/ucx from: ${UCX_URL}")
             file(
                 DOWNLOAD
-                "${UCX_URL}" "${CMAKE_CURRENT_BINARY_DIR}/${UCX_COMPRESSED_FILE_NAME}"
+                "${UCX_URL}" "${UCX_COMPRESSED_FILE_PATH}"
                 SHOW_PROGRESS
                 STATUS status
                 LOG log
@@ -110,7 +111,7 @@ if (FF_GASNET_CONDUIT STREQUAL "ucx")
         endif()
 
         execute_process(COMMAND mkdir -p ${UCX_DIR})
-        execute_process(COMMAND tar xzf ${UCX_COMPRESSED_FILE_NAME} -C ${UCX_DIR} --strip-components 1)
+        execute_process(COMMAND tar xzf ${UCX_COMPRESSED_FILE_PATH} -C ${UCX_DIR} --strip-components 1)
         message(STATUS "Building UCX...")
         execute_process(
             COMMAND sh -c "cd ${UCX_DIR} && ${UCX_DIR}/contrib/configure-release --prefix=${UCX_DIR}/install && make -j8 && make install"
