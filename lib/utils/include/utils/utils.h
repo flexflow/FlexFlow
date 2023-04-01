@@ -10,7 +10,7 @@
 #include "utils/record_formatter.h"
 #include "utils/variant.h"
 #include "utils/vector.h"
-#include "utils/visit_struct.h"
+#include "utils/visitable_funcs.h"
 #include "utils/optional.h"
 #include "utils/stack_vector.h"
 #include "utils/stack_map.h"

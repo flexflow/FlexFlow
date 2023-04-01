@@ -5,7 +5,7 @@
 #include "multidigraph.h"
 #include "undirected.h"
 #include "utils/bidict.h"
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
 #include "adjacency_digraph.h"
 #include <memory>
 #include <vector>

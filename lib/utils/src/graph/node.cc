@@ -1,6 +1,6 @@
 #include "utils/graph/node.h"
 #include <sstream>
-#include "utils/visit_struct.h"
+#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 

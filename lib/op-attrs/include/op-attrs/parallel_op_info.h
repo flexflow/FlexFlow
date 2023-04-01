@@ -4,7 +4,7 @@
 #include "op-attrs/ffconst.h"
 #include <tuple>
 #include <functional>
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 

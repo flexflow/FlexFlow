@@ -5,7 +5,7 @@
 #include <cstddef>
 #include "utils/stack_vector.h"
 #include "utils/optional.h"
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 

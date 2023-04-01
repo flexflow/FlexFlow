@@ -6,7 +6,7 @@
 #include "compiler/compiler.h"
 #include "utils/optional.h"
 #include <type_traits>
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 

@@ -1,6 +1,6 @@
 #include "kernels/array_shape.h"
 #include "utils/containers.h"
-#include "utils/visit_struct.h"
+#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 

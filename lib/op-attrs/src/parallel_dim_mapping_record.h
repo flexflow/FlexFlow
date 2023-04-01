@@ -3,7 +3,7 @@
 
 #include "tl/optional.hpp"
 #include <vector>
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 

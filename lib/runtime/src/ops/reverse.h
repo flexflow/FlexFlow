@@ -14,9 +14,6 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
 
   static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
@@ -38,6 +35,6 @@ public:
   int axis;
 };
 
-}; // namespace FlexFlow
+}
 
 #endif

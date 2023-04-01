@@ -4,7 +4,7 @@
 #include "node.h"
 #include "tl/optional.hpp"
 #include <unordered_set>
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 

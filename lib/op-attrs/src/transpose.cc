@@ -1,5 +1,5 @@
 #include "op-attrs/ops/transpose.h"
-#include "utils/visit_struct.h"
+#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 

@@ -23,7 +23,6 @@ public:
   virtual void forward(FFModel const &) = 0;
   virtual void backward(FFModel const &) = 0;
   virtual void create_input_partition(FFModel &model) = 0;
-  void print_layer(FFModel const &model){};
   virtual bool measure_operator_cost(Simulator *sim,
                                      MachineView const &pc,
                                      CostMetrics &cost_metrics) const = 0;

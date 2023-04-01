@@ -22,8 +22,6 @@ namespace FlexFlow {
 
 class Cast : public Op {
 public:
-  using Params = CastParams;
-  using Input = ParallelTensor;
   Cast(FFModel &model,
        ParallelTensor const &input,
        DataType dtype,
@@ -32,12 +30,9 @@ public:
        Params const &params,
        Input const &input,
        char const *name = nullptr);
-  void init(FFModel const &);
-  void forward(FFModel const &);
-  void backward(FFModel const &);
-  void print_layer(FFModel const &model) {
-    assert(0);
-  }
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,

@@ -22,7 +22,6 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override;
   void serialize(Legion::Serializer &) const override;
   /* static PCG::Node deserialize(FFModel &ff, */
   /*                              Legion::Deserializer &d, */

@@ -29,9 +29,6 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
@@ -70,6 +67,6 @@ public:
   Params get_params() const;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFLOW_FLAT_H
+#endif

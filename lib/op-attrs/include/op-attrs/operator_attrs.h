@@ -83,4 +83,4 @@ bool is_valid(PCGOperatorAttrs const &, std::vector<ParallelTensorShape> const &
 
 }
 
-#endif // _OPERATOR_PARAMS_H
+#endif

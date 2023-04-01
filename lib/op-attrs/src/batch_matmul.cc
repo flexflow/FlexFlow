@@ -1,5 +1,5 @@
 #include "op-attrs/ops/batch_matmul.h"
-#include "utils/visit_struct.h"
+#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 

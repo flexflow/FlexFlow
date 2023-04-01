@@ -15,9 +15,6 @@ public:
   void init(FFModel const &);
   void forward(FFModel const &);
   void backward(FFModel const &);
-  void print_layer(FFModel const &model) {
-    assert(0);
-  }
 
   static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,

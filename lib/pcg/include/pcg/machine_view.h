@@ -4,7 +4,7 @@
 #include <vector>
 #include <cstddef>
 #include <ostream>
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
 #include "utils/graph.h"
 #include "op-attrs/operator_attrs.h"
 

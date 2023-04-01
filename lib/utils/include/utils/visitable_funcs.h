@@ -1,8 +1,7 @@
-#ifndef _FLEXFLOW_OP_META_VISIT_STRUCT_H
-#define _FLEXFLOW_OP_META_VISIT_STRUCT_H
+#ifndef _FLEXFLOW_INCLUDE_UTILS_VISITABLE_FUNCS_H
+#define _FLEXFLOW_INCLUDE_UTILS_VISITABLE_FUNCS_H
 
-#include "visit_struct/visit_struct.hpp"
-#include "hash-utils.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
@@ -17,6 +16,8 @@ struct eq_visitor {
 
 template <typename T>
 bool visit_eq(T const &lhs, T const &rhs) {
+  static_assert(visit_struct::traits::is_visitable<T>::value, "Type must be visitable");
+
   eq_visitor vis;
   visit_struct::for_each(lhs, rhs, vis);
   return vis.result;
@@ -33,6 +34,8 @@ struct neq_visitor {
 
 template <typename T>
 bool visit_neq(T const &lhs, T const &rhs) {
+  static_assert(visit_struct::traits::is_visitable<T>::value, "Type must be visitable");
+
   neq_visitor vis;
   visit_struct::for_each(lhs, rhs, vis);
   return vis.result;
@@ -49,6 +52,8 @@ struct lt_visitor {
 
 template <typename T>
 bool visit_lt(const T & t1, const T & t2) {
+  static_assert(visit_struct::traits::is_visitable<T>::value, "Type must be visitable");
+
   eq_visitor vis;
   visit_struct::for_each(t1, t2, vis);
   return vis.result;
@@ -65,6 +70,8 @@ struct hash_visitor {
 
 template <typename T>
 std::size_t visit_hash(T const &t) {
+  static_assert(visit_struct::traits::is_visitable<T>::value, "Type must be visitable");
+
   hash_visitor vis;
   visit_struct::for_each(t, vis);
   return vis.result;
@@ -72,4 +79,4 @@ std::size_t visit_hash(T const &t) {
 
 }
 
-#endif 
+#endif

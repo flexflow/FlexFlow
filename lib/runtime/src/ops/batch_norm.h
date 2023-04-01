@@ -17,9 +17,6 @@ public:
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   void update(FFModel const &);
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
 
   static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,

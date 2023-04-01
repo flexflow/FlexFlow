@@ -1,6 +1,6 @@
 #include "op-attrs/ops/replicate.h"
 #include "utils/hash-utils.h"
-#include "utils/visit_struct.h"
+#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 

@@ -2,7 +2,7 @@
 #define _FLEXFLOW_GATHER_ATTRS_H
 
 #include "op-attrs/parallel_tensor_shape.h"
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
 #include "binary_op.h"
 
 namespace FlexFlow {

@@ -80,7 +80,6 @@ public:
   virtual void forward(FFModel const &);
   virtual void backward(FFModel const &);
 
-  virtual void print_layer(FFModel const &model) = 0;
   virtual bool measure_operator_cost(Simulator *sim,
                                      MachineView const &mv,
                                      CostMetrics &cost_metrics) const = 0;

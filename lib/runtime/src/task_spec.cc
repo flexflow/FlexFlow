@@ -2,7 +2,7 @@
 #include "operator.h"
 #include "utils/containers.h"
 #include "utils/variant.h"
-#include "utils/visit_struct.h"
+#include "utils/visitable_funcs.h"
 
 using namespace Legion;
 

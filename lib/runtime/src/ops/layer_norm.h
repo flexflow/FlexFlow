@@ -1,4 +1,5 @@
-#pragma once
+#ifndef _FLEXFLOW_RUNTIME_SRC_OPS_LAYER_NORM_H
+#define _FLEXFLOW_RUNTIME_SRC_OPS_LAYER_NORM_H
 
 #include "model.h"
 
@@ -26,9 +27,6 @@ public:
   void init(FFModel const &);
   void forward(FFModel const &);
   void backward(FFModel const &);
-  void print_layer(FFModel const &model) {
-    assert(0);
-  }
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
@@ -41,7 +39,6 @@ public:
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;
-  // size_t get_params_hash() const override;
   LayerNormParams get_params() const;
 
   static PerDeviceOpState *init_task(Legion::Task const *task,
@@ -67,4 +64,6 @@ public:
   std::vector<int> axes;
 };
 
-}; // namespace FlexFlow
+}
+
+#endif

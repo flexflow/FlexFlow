@@ -6,7 +6,7 @@
 #include <unordered_set>
 #include "tl/optional.hpp"
 #include <ostream>
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 

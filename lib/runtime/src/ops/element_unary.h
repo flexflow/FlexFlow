@@ -17,9 +17,6 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
   void map_output_tensors(FFModel &model) override;
   bool can_inplace_output() override;
   bool has_inplace_output() override;

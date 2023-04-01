@@ -5,7 +5,7 @@
 #include "multidigraph.h"
 #include "utils/variant.h"
 #include "tl/optional.hpp"
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 

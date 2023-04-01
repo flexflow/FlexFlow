@@ -5,7 +5,7 @@
 #include <vector>
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/ops/unary_op.h"
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
