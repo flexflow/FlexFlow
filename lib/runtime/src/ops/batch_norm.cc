@@ -133,7 +133,7 @@ void BatchNorm::init(FFModel const &ff) {
   regions[2](I): scale
   regions[3](I): bias
 */
-OpMeta * BatchNorm::init_task(Task const *task,
+PerDeviceOpState * BatchNorm::init_task(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {

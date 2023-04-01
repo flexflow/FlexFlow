@@ -1,13 +1,7 @@
 #ifndef _FLEXFLOW_FUSED_PARALLEL_OP_H
 #define _FLEXFLOW_FUSED_PARALLEL_OP_H
 
-#include "device.h"
-#include "flexflow/fftype.h"
-#include "flexflow/layer.h"
-#include "flexflow/node.h"
-#include "op_meta.h"
-#include "flexflow/operator.h"
-#include "flexflow/parallel_ops/fused_parallel_op_params.h"
+#include "operator.h"
 #include "parallel_op.h"
 
 namespace FlexFlow {
@@ -54,6 +48,6 @@ public:
   ParallelOpInfo parallel_ops[MAX_NUM_FUSED_OPERATORS];
 };
 
-}; // namespace FlexFlow
+}
 
 #endif // _FLEXFLOW_FUSED_PARALLEL_OP_H

@@ -1,19 +1,13 @@
 #ifndef _FLEXFLOW_BATCH_MATMUL_H
 #define _FLEXFLOW_BATCH_MATMUL_H
 
-#include "model.h"
+#include "operator.h"
+#include "layer.h"
 
 namespace FlexFlow {
 
 class BatchMatmul : public Op {
 public:
-  using Params = BatchMatmulParams;
-  using Input = std::pair<ParallelTensor, ParallelTensor>;
-  BatchMatmul(FFModel &model,
-              BatchMatmulParams const &params,
-              Input const &inputs,
-              char const *name = nullptr);
-
   BatchMatmul(FFModel &model,
               const ParallelTensor A,
               const ParallelTensor B,
@@ -30,15 +24,15 @@ public:
   void backward(FFModel const &) override;
   void print_layer(FFModel const &model) override;
   void serialize(Legion::Serializer &) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+  /* static PCG::Node deserialize(FFModel &ff, */
+  /*                              Legion::Deserializer &d, */
+  /*                              ParallelTensor inputs[], */
+  /*                              int num_inputs); */
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;
-  Params get_params() const;
-  static OpMeta *init_task(Legion::Task const *task,
+
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);

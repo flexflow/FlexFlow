@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-#include "flexflow/initializer.h"
-#include "flexflow/model.h"
+#include "initializer.h"
+#include "model.h"
+#include "tasks.h"
 
 namespace FlexFlow {
 
@@ -69,7 +70,7 @@ void GlorotUniform::init(FFModel const *ff, const ParallelTensor p) {
                            Predicate::TRUE_PRED,
                            false,
                            0,
-                           p->machine_view.hash());
+                           get_std_hash(p->machine_view));
     launcher.add_region_requirement(RegionRequirement(
         p->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
@@ -111,7 +112,7 @@ void ZeroInitializer::init(FFModel const *ff, const ParallelTensor p) {
                            Predicate::TRUE_PRED,
                            false,
                            0,
-                           p->machine_view.hash());
+                           get_std_hash(p->machine_view));
     launcher.add_region_requirement(RegionRequirement(
         p->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
@@ -199,7 +200,7 @@ void UniformInitializer::init(FFModel const *ff, const ParallelTensor p) {
                            Predicate::TRUE_PRED,
                            false,
                            0,
-                           p->machine_view.hash());
+                           get_std_hash(p->machine_view));
     launcher.add_region_requirement(RegionRequirement(
         p->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
@@ -237,7 +238,7 @@ void NormInitializer::init(FFModel const *ff, const ParallelTensor p) {
                            Predicate::TRUE_PRED,
                            false,
                            0,
-                           p->machine_view.hash());
+                           get_std_hash(p->machine_view));
     launcher.add_region_requirement(RegionRequirement(
         p->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);
@@ -282,7 +283,7 @@ void ConstantInitializer::init(FFModel const *ff, const ParallelTensor p) {
                            Predicate::TRUE_PRED,
                            false,
                            0,
-                           p->machine_view.hash());
+                           get_std_hash(p->machine_view));
     launcher.add_region_requirement(RegionRequirement(
         p->part, 0 /*projection id*/, WRITE_ONLY, EXCLUSIVE, p->region));
     launcher.add_field(0, FID_DATA);

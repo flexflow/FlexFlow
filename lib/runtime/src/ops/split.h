@@ -2,9 +2,7 @@
 #define _FLEXFLOW_SPLIT_H
 
 #include "layer.h"
-#include "flexflow/node.h"
 #include "operator.h"
-#include "op-attrs/split_params.h"
 
 namespace FlexFlow {
 

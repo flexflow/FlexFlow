@@ -145,8 +145,8 @@ void SGDOptimizer::update(const ParallelTensor p) {
     Rect<DIM> rect = domain;                                                   \
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      OpMeta *mp = p->owner_op->meta[idx++];                                   \
-      argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
+      PerDeviceOpState *mp = p->owner_op->meta[idx++];                                   \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(PerDeviceOpState *)));              \
     }                                                                          \
     break;                                                                     \
   }
@@ -261,7 +261,7 @@ void SGDOptimizer::nccl_update_task(Task const *task,
                                     Context ctx,
                                     Runtime *runtime) {
   SGDOptimizer const *op = (SGDOptimizer *)task->args;
-  OpMeta const *meta = *((OpMeta **)task->local_args);
+  PerDeviceOpState const *meta = *((PerDeviceOpState **)task->local_args);
   // FFHandler handler = *((FFHandler*) task->local_args);
   if (op->momentum > 0.0f) {
     assert(regions.size() == 3);
@@ -435,8 +435,8 @@ void AdamOptimizer::update(const ParallelTensor p) {
     Rect<DIM> rect = domain;                                                   \
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      OpMeta *mp = p->owner_op->meta[idx++];                                   \
-      argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
+      PerDeviceOpState *mp = p->owner_op->meta[idx++];                         \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(PerDeviceOpState *)));              \
     }                                                                          \
     break;                                                                     \
   }
@@ -553,7 +553,7 @@ void AdamOptimizer::nccl_update_task(Task const *task,
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   AdamOptimizer const *op = (AdamOptimizer *)task->args;
-  OpMeta const *meta = *((OpMeta **)task->local_args);
+  PerDeviceOpState const *meta = *((PerDeviceOpState **)task->local_args);
   // FFHandler handler = *((FFHandler*) task->local_args);
   Domain domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());

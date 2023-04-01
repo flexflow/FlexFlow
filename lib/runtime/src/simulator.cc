@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-#include "flexflow/simulator.h"
-#include "flexflow/model.h"
-#include "flexflow/parallel_ops/combine.h"
-#include "flexflow/parallel_ops/partition.h"
-#include "flexflow/parallel_ops/reduction.h"
-#include "flexflow/parallel_ops/replicate.h"
-#include "flexflow/utils/dot/dot_file.h"
-#include "flexflow/utils/hash_utils.h"
+#include "simulator.h"
+#include "model.h"
+#include "parallel_ops/combine.h"
+#include "parallel_ops/partition.h"
+#include "parallel_ops/reduction.h"
+#include "parallel_ops/replicate.h"
+#include "utils/dot/dot_file.h"
+#include "utils/hash_utils.h"
 #include "queue"
 #include <memory>
 #include <random>

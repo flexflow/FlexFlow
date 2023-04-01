@@ -1,8 +1,7 @@
 #ifndef _FLEXFLOW_PARALLEL_OP_H
 #define _FLEXFLOW_PARALLEL_OP_H
 
-#include "flexflow/model.h"
-#include "tl/optional.hpp"
+#include "utils/optional.h"
 
 namespace FlexFlow {
 

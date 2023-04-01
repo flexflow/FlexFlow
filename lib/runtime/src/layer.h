@@ -1,7 +1,7 @@
 #pragma once
 
 #include "op-attrs/ffconst.h"
-#include "fftype.h"
+#include "layer_id.h"
 #include "tensor.h"
 
 namespace FlexFlow {

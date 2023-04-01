@@ -127,7 +127,7 @@ void Flat::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Flat::init_task(Task const *task,
+PerDeviceOpState *Flat::init_task(Task const *task,
                         std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {

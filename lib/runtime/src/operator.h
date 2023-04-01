@@ -2,13 +2,12 @@
 #define _OPERATOR_H
 
 #include "runtime/config.h"
-#include "fftype.h"
+#include "layer_id.h"
 #include "pcg/machine_view.h"
 #include "parallel_tensor.h"
 #include <vector>
 #include "utils/stack_vector.h"
-#include "model.h"
-#include "runtime/tasks.h"
+#include "tasks.h"
 #include <stdexcept>
 #include "task_spec.h"
 #include "kernels/per_device_op_state.h"
@@ -21,6 +20,8 @@ extern LegionRuntime::Logger::Category log_profile;
 
 class Simulator;
 class CostMetrics;
+class FFModel;
+class PerDeviceOpState;
 
 class Op {
 protected:

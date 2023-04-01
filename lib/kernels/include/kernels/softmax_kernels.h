@@ -11,11 +11,7 @@ public:
   SoftmaxPerDeviceState(FFHandler handle,
               Softmax const *softmax,
               Legion::Domain const &input_domain);
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnTensorDescriptor_t inputTensor;
-#else
-  miopenTensorDescriptor_t inputTensor;
-#endif
+  ffTensorDescriptor_t inputTensor;
   bool profiling;
   int dim;
   char op_name[MAX_OPNAME];
@@ -33,8 +29,8 @@ void backward_kernel(ffStream_t stream,
                      float const *output_grad_ptr,
                      size_t num_elements);
 
-} // namespace Softmax
-} // namespace Kernels
-} // namespace FlexFlow
+}
+}
+}
 
-#endif // _FLEXFLOW_OPS_KERNELS_SOFTMAX_KERNELS_H
+#endif 

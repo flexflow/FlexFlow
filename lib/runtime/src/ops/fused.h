@@ -1,15 +1,15 @@
 #ifndef _FLEXFLOW_FUSED_H_
 #define _FLEXFLOW_FUSED_H_
 
-#include "model.h"
+#include "operator.h"
 
 namespace FlexFlow {
 
 class FusedOp;
-class FusedOpMeta {
+class FusedPerDeviceOpState {
 public:
-  FusedOpMeta(void) {}
-  OpMeta *meta[MAX_NUM_FUSED_OPERATORS];
+  FusedPerDeviceOpState(void) {}
+  PerDeviceOpState *meta[MAX_NUM_FUSED_OPERATORS];
   FusedOp *fused_op;
   int numOperators;
 };
@@ -34,7 +34,7 @@ public:
   void print_layer(FFModel const &model) override {
     assert(0);
   }
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -66,10 +66,10 @@ public:
   int op_weight_idx[MAX_NUM_FUSED_TENSORS];
   int op_output_idx[MAX_NUM_FUSED_TENSORS];
   Op *operators[MAX_NUM_FUSED_OPERATORS];
-  FusedOpMeta fused_meta[MAX_NUM_WORKERS];
+  FusedPerDeviceOpState fused_meta[MAX_NUM_WORKERS];
   int numOperators;
 };
 
-}; // namespace FlexFlow
+}
 
 #endif

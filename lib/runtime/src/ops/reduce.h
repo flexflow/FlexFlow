@@ -1,7 +1,8 @@
-#pragma once
+#ifndef _FLEXFLOW_RUNTIME_SRC_OPS_REDUCE_H
+#define _FLEXFLOW_RUNTIME_SRC_OPS_REDUCE_H
 
-#include "flexflow/model.h"
-#include "flexflow/ops/reduce_params.h"
+#include "layer.h"
+#include "operator.h"
 
 namespace FlexFlow {
 
@@ -64,4 +65,6 @@ public:
   bool keepdims;
 };
 
-}; // namespace FlexFlow
+}
+
+#endif

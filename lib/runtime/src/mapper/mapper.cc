@@ -15,7 +15,7 @@
 
 #include "mapper.h"
 #include "pcg/machine_view.h"
-#include "runtime/tasks.h"
+#include "tasks.h"
 #include "default_mapper.h"
 
 namespace FlexFlow {

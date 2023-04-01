@@ -1,30 +1,26 @@
-#ifndef _FLEXFLOW_CUDA_HELPER_H_
-#define _FLEXFLOW_CUDA_HELPER_H_
+#ifndef _FLEXFLOW_KERNELS_SRC_DEVICE_H
+#define _FLEXFLOW_KERNELS_SRC_DEVICE_H
 
+#include "kernels/device.h"
 #include "kernels/array_shape.h"
 #include "op-attrs/ffconst.h"
-#include <cublas_v2.h>
-#include <cudnn.h>
-#include <cstdlib>
-#include <iostream>
-#include <sstream>
-#include <cassert>
 
-#define FatalError(s)                                                          \
-  do {                                                                         \
-    std::stringstream _where, _message;                                        \
-    _where << __FILE__ << ':' << __LINE__;                                     \
-    _message << std::string(s) + "\n" << __FILE__ << ':' << __LINE__;          \
-    std::cerr << _message.str() << "\nAborting...\n";                          \
-    assert(false);                                                             \
-    exit(1);                                                                   \
-  } while (0)
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+#define FF_CUDNN_STATUS_SUCCESS CUDNN_STATUS_SUCCESS
+#define FF_CURAND_STATUS_SUCESS CURAND_STATUS_SUCCESS
+#elif defined(FF_USE_HIP_ROCM)
+#define FF_CUDNN_STATUS_SUCCESS miopenStatusSuccess
+#define FF_CURAND_STATUS_SUCESS HIPRAND_STATUS_SUCCESS
+#else
+#error "Unknown device"
+#endif
+
 
 #define checkCUDNN(status)                                                     \
   do {                                                                         \
     std::stringstream _error;                                                  \
-    if (status != CUDNN_STATUS_SUCCESS) {                                      \
-      _error << "CUDNN failure: " << cudnnGetErrorString(status);              \
+    if (status != FF_CUDNN_STATUS_SUCCESS) {                                       \
+      _error << "CUDNN failure: " << status;                                   \
       FatalError(_error.str());                                                \
     }                                                                          \
   } while (0)
@@ -32,34 +28,12 @@
 #define checkCURAND(status)                                                    \
   do {                                                                         \
     std::stringstream _error;                                                  \
-    if (status != CURAND_STATUS_SUCCESS) {                                     \
+    if (status != FF_CURAND_STATUS_SUCESS) {                                    \
       _error << "CURAND failure: " << status;                                  \
       FatalError(_error.str());                                                \
     }                                                                          \
   } while (0)
 
-#define checkCUDA(status)                                                      \
-  do {                                                                         \
-    std::stringstream _error;                                                  \
-    if (status != 0) {                                                         \
-      _error << "Cuda failure: " << status;                                    \
-      FatalError(_error.str());                                                \
-    }                                                                          \
-  } while (0)
-
-#ifdef FF_USE_NCCL
-#define checkNCCL(cmd)                                                         \
-  do {                                                                         \
-    ncclResult_t r = cmd;                                                      \
-    if (r != ncclSuccess) {                                                    \
-      printf("Failed, NCCL error %s:%d '%s'\n",                                \
-             __FILE__,                                                         \
-             __LINE__,                                                         \
-             ncclGetErrorString(r));                                           \
-      exit(EXIT_FAILURE);                                                      \
-    }                                                                          \
-  } while (0)
-#endif
 
 // CUDA: grid stride looping
 #define CUDA_KERNEL_LOOP(i, n)                                                 \
@@ -75,6 +49,20 @@ inline int GET_BLOCKS(int const N) {
   int ret = (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
   return (ret > BLOCK_SIZE_LIMIT) ? BLOCK_SIZE_LIMIT : ret;
 }
+
+#ifdef FF_USE_NCCL
+#define checkNCCL(cmd)                                                         \
+  do {                                                                         \
+    ncclResult_t r = cmd;                                                      \
+    if (r != ncclSuccess) {                                                    \
+      printf("Failed, NCCL error %s:%d '%s'\n",                                \
+             __FILE__,                                                         \
+             __LINE__,                                                         \
+             ncclGetErrorString(r));                                           \
+      exit(EXIT_FAILURE);                                                      \
+    }                                                                          \
+  } while (0)
+#endif
 
 __global__ void
     scale_kernel(float *ptr, size_t size, float a, float b);
@@ -138,10 +126,13 @@ __host__ void updateGAS(float *para_ptr,
 template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
 
-cudnnStatus_t cudnnSetTensorDescriptorFromArrayShape(cudnnTensorDescriptor_t tensor,
+ffStatus_t cudnnSetTensorDescriptorFromArrayShape(ffTensorDescriptor_t tensor,
                                                      FlexFlow::ArrayShape const &shape);
 
-cudaDataType_t ff_to_cuda_datatype(DataType type);
+ffDataType_t ff_to_cuda_datatype(DataType type);
 
-cudnnDataType_t ff_to_cudnn_datatype(DataType type);
-#endif
+ffCudnnDataType_t ff_to_cudnn_datatype(DataType type);
+
+void handle_unimplemented_kernel(OperatorType op_type);
+
+#endif 

@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_TRANSPOSE_H_
 #define _FLEXFLOW_TRANSPOSE_H_
 
-#include "model.h"
-#include "op-attrs/transpose_params.h"
+#include "layer.h"
+#include "operator.h"
 
 namespace FlexFlow {
 
@@ -30,7 +30,7 @@ public:
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);

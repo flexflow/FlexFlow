@@ -1,13 +1,9 @@
 #ifndef _FLEXFLOW_EMBEDDING_H
 #define _FLEXFLOW_EMBEDDING_H
 
-#include "accessor.h"
-#include "fftype.h"
+#include "layer_id.h"
 #include "layer.h"
-#include "flexflow/node.h"
-#include "op_meta.h"
 #include "operator.h"
-#include "op-attrs/embedding_params.h"
 
 namespace FlexFlow {
 

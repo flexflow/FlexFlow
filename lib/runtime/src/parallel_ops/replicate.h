@@ -1,11 +1,7 @@
 #ifndef _FLEXFLOW_REPLICATE_H
 #define _FLEXFLOW_REPLICATE_H
 
-#include "flexflow/layer.h"
-#include "flexflow/node.h"
-#include "op_meta.h"
-#include "flexflow/operator.h"
-#include "flexflow/parallel_ops/replicate_params.h"
+#include "operator.h"
 #include "parallel_op.h"
 
 namespace FlexFlow {
@@ -49,6 +45,6 @@ public:
   int replicate_dim, replicate_degree;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFLOW_REPLICATE_H
+#endif 

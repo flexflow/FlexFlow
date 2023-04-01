@@ -13,51 +13,48 @@
  * limitations under the License.
  */
 
-#include "flexflow/model.h"
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-#include "flexflow/utils/cuda_helper.h"
-#else
-#include "utils/hip_helper.h"
-#endif
-#include "flexflow/ffconst_utils.h"
-#include "flexflow/graph.h"
-#include "flexflow/mapper.h"
-#include "flexflow/ops/aggregate.h"
-#include "flexflow/ops/aggregate_spec.h"
-#include "flexflow/ops/attention.h"
-#include "flexflow/ops/batch_matmul.h"
-#include "flexflow/ops/batch_norm.h"
-#include "flexflow/ops/cache.h"
-#include "flexflow/ops/cast.h"
-#include "flexflow/ops/concat.h"
-#include "flexflow/ops/conv_2d.h"
-#include "flexflow/ops/dropout.h"
-#include "flexflow/ops/element_binary.h"
-#include "flexflow/ops/element_unary.h"
-#include "flexflow/ops/embedding.h"
-#include "flexflow/ops/flat.h"
-#include "flexflow/ops/fused.h"
-#include "flexflow/ops/gather.h"
-#include "flexflow/ops/groupby.h"
-#include "flexflow/ops/layer_norm.h"
-#include "flexflow/ops/linear.h"
-#include "flexflow/ops/noop.h"
-#include "flexflow/ops/pool_2d.h"
-#include "flexflow/ops/reduce.h"
-#include "flexflow/ops/reshape.h"
-#include "flexflow/ops/reverse.h"
-#include "flexflow/ops/softmax.h"
-#include "flexflow/ops/split.h"
-#include "flexflow/ops/topk.h"
-#include "flexflow/ops/transpose.h"
-#include "flexflow/parallel_ops/combine.h"
-#include "flexflow/parallel_ops/fused_parallel_op.h"
-#include "flexflow/parallel_ops/partition.h"
-#include "flexflow/parallel_ops/reduction.h"
-#include "flexflow/parallel_ops/replicate.h"
-#include "flexflow/substitution.h"
-#include "flexflow/utils/random_utils.h"
-#include "flexflow/utils/test_utils.h"
+#include "model.h"
+/* #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA) */
+/* #include "flexflow/utils/cuda_helper.h" */
+/* #else */
+/* #include "utils/hip_helper.h" */
+/* #endif */
+#include "op-attrs/ffconst_utils.h"
+#include "mapper.h"
+#include "ops/aggregate.h"
+#include "ops/aggregate_spec.h"
+#include "ops/attention.h"
+#include "ops/batch_matmul.h"
+#include "ops/batch_norm.h"
+#include "ops/cast.h"
+#include "ops/concat.h"
+#include "ops/conv_2d.h"
+#include "ops/dropout.h"
+#include "ops/element_binary.h"
+#include "ops/element_unary.h"
+#include "ops/embedding.h"
+#include "ops/flat.h"
+#include "ops/fused.h"
+#include "ops/gather.h"
+#include "ops/groupby.h"
+#include "ops/layer_norm.h"
+#include "ops/linear.h"
+#include "ops/noop.h"
+#include "ops/pool_2d.h"
+#include "ops/reduce.h"
+#include "ops/reshape.h"
+#include "ops/reverse.h"
+#include "ops/softmax.h"
+#include "ops/split.h"
+#include "ops/topk.h"
+#include "ops/transpose.h"
+#include "parallel_ops/combine.h"
+#include "parallel_ops/fused_parallel_op.h"
+#include "parallel_ops/partition.h"
+#include "parallel_ops/reduction.h"
+#include "parallel_ops/replicate.h"
+#include "utils/random_utils.h"
+#include "test_utils.h"
 #include "legion/legion_utilities.h"
 #include <dirent.h>
 #include <queue>
@@ -839,7 +836,7 @@ void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
     Rect<DIM> rect = domain;                                                   \
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      meta[idx++] = fm.get_result<OpMeta *>(*it);                              \
+      meta[idx++] = fm.get_result<PerDeviceOpState *>(*it);                              \
     }                                                                          \
     break;                                                                     \
   }
@@ -860,8 +857,8 @@ void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) con
     Rect<DIM> rect = domain;                                                   \
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      OpMeta *mp = meta[idx++];                                                \
-      argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
+      PerDeviceOpState *mp = meta[idx++];                                                \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(PerDeviceOpState *)));              \
     }                                                                          \
     break;                                                                     \
   }
@@ -882,8 +879,8 @@ void Op::set_argumentmap_for_backward(FFModel const &ff, ArgumentMap &argmap) {
     Rect<DIM> rect = domain;                                                   \
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      OpMeta *mp = meta[idx++];                                                \
-      argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
+      PerDeviceOpState *mp = meta[idx++];                                                \
+      argmap.set_point(*it, TaskArgument(&mp, sizeof(PerDeviceOpState *)));              \
     }                                                                          \
     break;                                                                     \
   }
@@ -982,33 +979,6 @@ bool Op::get_weight_parameter(TNParameter tnp,
   }
   *value = weights[weightIdx]->dims[dimIdx].size;
   return true;
-}
-
-OpMeta::OpMeta(FFHandler _handle) : handle(_handle), profiling(false) {
-  for (int i = 0; i < MAX_NUM_INPUTS; i++) {
-    trainableInputs[i] = true;
-  }
-  for (int i = 0; i < MAX_NUM_INPUTS; i++) {
-    input_type[i] = DT_NONE;
-  }
-  for (int i = 0; i < MAX_NUM_WEIGHTS; i++) {
-    weight_type[i] = DT_NONE;
-  }
-  for (int i = 0; i < MAX_NUM_OUTPUTS; i++) {
-    output_type[i] = DT_NONE;
-  }
-}
-
-OpMeta::OpMeta(FFHandler _handle, Op const *op) : OpMeta(_handle) {
-  for (int i = 0; i < op->numInputs; i++) {
-    input_type[i] = op->inputs[i]->data_type;
-  }
-  for (int i = 0; i < op->numWeights; i++) {
-    weight_type[i] = op->weights[i]->data_type;
-  }
-  for (int i = 0; i < op->numOutputs; i++) {
-    output_type[i] = op->outputs[i]->data_type;
-  }
 }
 
 FFModel::FFModel(FFConfig &_config)

@@ -170,7 +170,7 @@ void Split::init(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-OpMeta *Split::init_task(Task const *task,
+PerDeviceOpState *Split::init_task(Task const *task,
                          std::vector<PhysicalRegion> const &regions,
                          Context ctx,
                          Runtime *runtime) {

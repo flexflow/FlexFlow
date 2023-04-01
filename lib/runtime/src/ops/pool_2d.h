@@ -1,12 +1,8 @@
 #ifndef _FLEXFLOW_POOL_2D_H
 #define _FLEXFLOW_POOL_2D_H
 
-#include "fftype.h"
 #include "layer.h"
-#include "flexflow/node.h"
-#include "op_meta.h"
 #include "operator.h"
-#include "op-attrs/pool_2d_params.h"
 
 namespace FlexFlow {
 
@@ -43,7 +39,7 @@ public:
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);

@@ -255,7 +255,7 @@ void Pool2D::init(FFModel const &ff) {
   regions[0]: input
   regions[1]: output
 */
-OpMeta *Pool2D::init_task(Task const *task,
+PerDeviceOpState *Pool2D::init_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {

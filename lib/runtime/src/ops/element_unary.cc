@@ -272,7 +272,7 @@ void ElementUnary::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *ElementUnary::init_task(Task const *task,
+PerDeviceOpState *ElementUnary::init_task(Task const *task,
                                 std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime) {

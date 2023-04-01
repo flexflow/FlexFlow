@@ -196,7 +196,7 @@ void Reduce::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 };
 
-OpMeta *Reduce::init_task(Task const *task,
+PerDeviceOpState *Reduce::init_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {

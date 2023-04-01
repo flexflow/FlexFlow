@@ -2,9 +2,7 @@
 #define _FLEXFLOW_CONCAT_H
 
 #include "layer.h"
-#include "flexflow/node.h"
 #include "operator.h"
-#include "op-attrs/concat_params.h"
 
 namespace FlexFlow {
 

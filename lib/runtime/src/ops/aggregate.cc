@@ -16,7 +16,7 @@
 
 #include "aggregate.h"
 #include "kernels/aggregate_kernels.h"
-#include "runtime/tasks.h"
+#include "tasks.h"
 #include "kernels/profiling.h"
 
 namespace FlexFlow {

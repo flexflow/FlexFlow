@@ -1,11 +1,7 @@
 #ifndef _FLEXFLOW_REDUCTION_H
 #define _FLEXFLOW_REDUCTION_H
 
-#include "flexflow/layer.h"
-#include "flexflow/node.h"
-#include "op_meta.h"
-#include "flexflow/operator.h"
-#include "flexflow/parallel_ops/reduction_params.h"
+#include "operator.h"
 #include "parallel_op.h"
 
 namespace FlexFlow {

@@ -1,4 +1,4 @@
-#include "flexflow/fftype.h"
+#include "layer_id.h"
 #include <cassert>
 
 namespace FlexFlow {
@@ -17,4 +17,4 @@ bool operator==(LayerID const &lhs, LayerID const &rhs) {
   return lhs.id == rhs.id;
 }
 
-}; // namespace FlexFlow
+}

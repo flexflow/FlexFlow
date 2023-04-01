@@ -15,12 +15,8 @@
 #ifndef _FLEXFLOW_CAST_H
 #define _FLEXFLOW_CAST_H
 
-#include "fftype.h"
 #include "layer.h"
-#include "flexflow/ode.h"
-#include "op_meta.h"
 #include "operator.h"
-#include "op-attrs/cast_params.h"
 
 namespace FlexFlow {
 

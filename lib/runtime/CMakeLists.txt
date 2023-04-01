@@ -30,6 +30,8 @@ target_link_libraries(
   kernels
 )
 
+define_ff_vars(${project_target})
+
 project(${test_target})
 
 file(GLOB_RECURSE TEST_SRC

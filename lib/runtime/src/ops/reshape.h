@@ -1,12 +1,8 @@
 #ifndef _FLEXFLOW_RESHAPE_H
 #define _FLEXFLOW_RESHAPE_H
 
-#include "fftype.h"
 #include "layer.h"
-#include "flexflow/node.h"
-#include "op_meta.h"
 #include "operator.h"
-#include "op-attrs/reshape_params.h"
 
 namespace FlexFlow {
 

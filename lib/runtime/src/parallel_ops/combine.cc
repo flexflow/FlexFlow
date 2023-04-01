@@ -80,7 +80,7 @@ Combine::Combine(FFModel &model,
   // outputs[0]->print("Combine::output");
 }
 
-OpMeta *Combine::init_task(Task const *task,
+PerDeviceOpState *Combine::init_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {

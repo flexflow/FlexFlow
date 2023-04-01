@@ -172,7 +172,7 @@ void Reshape::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Reshape::init_task(Task const *task,
+PerDeviceOpState *Reshape::init_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {

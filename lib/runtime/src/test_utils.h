@@ -1,6 +1,6 @@
 #ifndef _FLEXFLOW_UTILS_H_
 #define _FLEXFLOW_UTILS_H_
-#include "flexflow/model.h"
+
 #include <fstream>
 #include <iomanip>
 #include <iostream>

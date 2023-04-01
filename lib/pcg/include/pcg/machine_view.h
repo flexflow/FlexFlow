@@ -10,8 +10,6 @@
 
 namespace FlexFlow {
 
-const int MAX_NUM_WORKERS = 5;
-
 enum class DeviceType {
   GPU, 
   CPU

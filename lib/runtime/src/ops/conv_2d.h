@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_CONV_2D_H
 #define _FLEXFLOW_CONV_2D_H
 
+#include "layer_id.h"
 #include "operator.h"
-#include "op-attrs/conv_2d_params.h"
 
 namespace FlexFlow {
 

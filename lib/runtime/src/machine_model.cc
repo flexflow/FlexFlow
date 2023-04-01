@@ -1,4 +1,4 @@
-#include "flexflow/simulator.h"
+#include "simulator.h"
 
 #include <algorithm>
 #include <functional>

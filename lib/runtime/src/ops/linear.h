@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LINEAR_H
 #define _FLEXFLOW_LINEAR_H
 
-#include "flexflow/node.h"
+#include "layer_id.h"
+#include "layer.h"
 #include "operator.h"
-#include "op-attrs/linear_params.h"
 
 namespace FlexFlow {
 

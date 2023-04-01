@@ -3,8 +3,6 @@
 
 #include "utils/optional.h"
 #include "kernels/device.h"
-#include "kernels/cuda_helper.h"
-#include "kernels/hip_helper.h"
 
 namespace FlexFlow {
 

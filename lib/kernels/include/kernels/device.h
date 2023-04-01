@@ -21,6 +21,9 @@
 #include <hip/hip_fp16.h>
 #endif
 
+#include <iostream>
+#include <cassert>
+
 namespace FlexFlow {
 
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
@@ -43,6 +46,9 @@ typedef cudnnSeqDataDescriptor_t ffSeqDataDescriptor_t;
 typedef cudnnHandle_t ffHandle_t;
 typedef cudaEvent_t ffEvent_t;
 typedef cublasHandle_t ffblasHandle_t;
+typedef cudnnStatus_t ffStatus_t;
+typedef cudaDataType_t ffDataType_t ;
+typedef cudnnDataType_t ffCudnnDataType_t;
 #elif defined(FF_USE_HIP_ROCM)
 typedef hipStream_t ffStream_t;
 hipError_t get_legion_stream(hipStream_t *stream);
@@ -63,10 +69,32 @@ typedef miopenSeqDataDescriptor_t ffSeqDataDescriptor_t;
 typedef miopenHandle_t ffHandle_t;
 typedef hipEvent_t ffEvent_t;
 typedef hipblasHandle_t ffblasHandle_t;
+typedef miopenStatus_t ffStatus_t;
+typedef hipblasDataType_t ffDataType_t ;
+typedef miopenDataType_t ffCudnnDataType_t;
 #else
 #error "Unknown device"
 #endif
 
+#define FatalError(s)                                                          \
+  do {                                                                         \
+    std::stringstream _where, _message;                                        \
+    _where << __FILE__ << ':' << __LINE__;                                     \
+    _message << std::string(s) + "\n" << __FILE__ << ':' << __LINE__;          \
+    std::cerr << _message.str() << "\nAborting...\n";                          \
+    assert(false);                                                             \
+    exit(1);                                                                   \
+  } while (0)
+
+#define checkCUDA(status)                                                      \
+  do {                                                                         \
+    std::stringstream _error;                                                  \
+    if (status != 0) {                                                         \
+      _error << "Cuda failure: " << status;                                    \
+      FatalError(_error.str());                                                \
+    }                                                                          \
+  } while (0)
+
 }
 
-#endif // _FLEXFLOW_DEVICE_H_
+#endif 

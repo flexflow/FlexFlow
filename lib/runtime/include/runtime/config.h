@@ -25,13 +25,6 @@ namespace FlexFlow {
 // ========================================================
 // Define Runtime Constants
 // ========================================================
-#define MAX_NUM_FUSED_OPERATORS 64
-#define MAX_NUM_FUSED_TENSORS 64
-/* #define MAX_NUM_WORKERS 1024 */
-#define MAX_FILENAME 200
-// DataLoader
-#define MAX_SAMPLES_PER_LOAD 64
-#define MAX_FILE_LENGTH 128
 // Pre-assigned const flags
 #define MAP_TO_FB_MEMORY 0xABCD0000
 #define MAP_TO_ZC_MEMORY 0xABCE0000

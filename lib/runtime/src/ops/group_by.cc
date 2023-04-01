@@ -205,7 +205,7 @@ void Group_by::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Group_by::init_task(Task const *task,
+PerDeviceOpState *Group_by::init_task(Task const *task,
                             std::vector<PhysicalRegion> const &regions,
                             Context ctx,
                             Runtime *runtime) {

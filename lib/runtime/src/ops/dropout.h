@@ -1,12 +1,8 @@
 #ifndef _FLEXFLOW_DROPOUT_H
 #define _FLEXFLOW_DROPOUT_H
 
-#include "fftype.h"
 #include "layer.h"
-#include "flexflow/node.h"
-#include "op_meta.h"
 #include "operator.h"
-#include "op-attrs/dropout_params.h"
 
 namespace FlexFlow {
 

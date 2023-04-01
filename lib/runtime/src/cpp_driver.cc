@@ -14,8 +14,8 @@
  */
 
 #include "dirent.h"
-#include "flexflow/mapper.h"
-#include "flexflow/model.h"
+#include "mapper.h"
+#include "model.h"
 
 using namespace Legion;
 using namespace FlexFlow;

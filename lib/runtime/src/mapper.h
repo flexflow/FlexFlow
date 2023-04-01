@@ -19,7 +19,7 @@
 #include "legion.h"
 #include "model.h"
 #include "null_mapper.h"
-#include "runtime/tasks.h"
+#include "tasks.h"
 
 namespace FlexFlow {
 

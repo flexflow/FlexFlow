@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_OPS_GATHER_H
 #define _FLEXFLOW_OPS_GATHER_H
 
-#include "flexflow/model.h"
-#include "flexflow/ops/gather_params.h"
+#include "layer.h"
+#include "operator.h"
 
 namespace FlexFlow {
 

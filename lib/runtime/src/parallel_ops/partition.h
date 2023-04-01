@@ -1,10 +1,7 @@
 #ifndef _FLEXFLOW_PARTITION_H
 #define _FLEXFLOW_PARTITION_H
 
-#include "flexflow/layer.h"
-#include "flexflow/node.h"
-#include "flexflow/operator.h"
-#include "flexflow/parallel_ops/partition_params.h"
+#include "operator.h"
 #include "parallel_op.h"
 
 namespace FlexFlow {
@@ -30,7 +27,7 @@ public:
   bool get_int_parameter(PMParameter, int *) const override;
   bool append_parallel_op_info(
       std::vector<ParallelOpInfo> &parallel_ops) const override;
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -66,6 +63,6 @@ public:
   int repartition_dim, repartition_degree;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFLOW_PARTITION_H
+#endif 

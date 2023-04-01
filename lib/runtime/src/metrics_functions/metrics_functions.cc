@@ -15,7 +15,7 @@
 
 #include "metrics_functions.h"
 #include "model.h"
-#include "runtime/tasks.h"
+#include "tasks.h"
 
 namespace FlexFlow {
 

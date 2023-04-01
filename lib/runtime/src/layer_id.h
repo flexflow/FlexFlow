@@ -17,6 +17,6 @@ public:
   size_t id;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FF_TYPE_H
+#endif 

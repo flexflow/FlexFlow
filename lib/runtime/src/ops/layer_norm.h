@@ -44,7 +44,7 @@ public:
   // size_t get_params_hash() const override;
   LayerNormParams get_params() const;
 
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
