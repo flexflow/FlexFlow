@@ -9,6 +9,10 @@ namespace FlexFlow {
 
 struct MultiHeadAttentionAttrs : public OpAttrsInterface {
 public:
+  MultiHeadAttentionAttrs() = delete;
+  MultiHeadAttentionAttrs(int embed_dim, int num_heads, int kdim, int vdim, float dropout, 
+                          bool bias, bool add_bias_kv, bool add_zero_attn);
+
   int num_outputs(std::vector<ParallelTensorShape> const &inputs) const override;
   bool is_valid(std::vector<ParallelTensorShape> const &inputs) const override;
   std::vector<ParallelTensorShape> output_shapes(std::vector<ParallelTensorShape> const &inputs) const override;
@@ -21,6 +25,11 @@ public:
 
 bool operator==(MultiHeadAttentionAttrs const &, MultiHeadAttentionAttrs const &);
 bool operator<(MultiHeadAttentionAttrs const &, MultiHeadAttentionAttrs const &);
+
+int qProjSize(MultiHeadAttentionAttrs const &attrs);
+int vProjSize(MultiHeadAttentionAttrs const &attrs);
+int kProjSize(MultiHeadAttentionAttrs const &attrs);
+int oProjSize(MultiHeadAttentionAttrs const &attrs);
 
 }
 

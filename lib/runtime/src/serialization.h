@@ -126,8 +126,10 @@ struct Serialization<T, typename std::enable_if<is_trivially_serializable_t<T>::
     sez.serialize(&t, sizeof(T));
   }
 
-  static void deserialize(Legion::Deserializer &dez, T &t) {
-    dez.deserialize(&t, sizeof(T));
+  static T const &deserialize(Legion::Deserializer &dez) {
+    void const *cur = dez.get_current_pointer();
+    dez.advance_pointer(sizeof(T));
+    return *(T const *)cur;
   }
 };
 
@@ -206,15 +208,12 @@ void ff_task_serialize(Legion::Serializer &sez, T const &t) {
 }
 
 template <typename T>
-void ff_task_deserialize(Legion::Deserializer &dez) {
+T const &ff_task_deserialize(Legion::Deserializer &dez) {
   static_assert(is_serializable<T>, "Type must be serializable");
 
   return Serialization<T>::deserialize(dez);
 }
 
-/*     Legion::Deserializer &dez, */
-/*     PCG::Graph *graph, */
-/*     std::unordered_map<PCG::Node, MachineView> &optimal_views); */
 }
 
 #endif

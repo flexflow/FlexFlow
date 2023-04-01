@@ -163,6 +163,18 @@ static OpTaskSignature get_bwd_task_signature() {
   return bwd;
 }
 
+TaskID Aggregate::get_init_task_id() const {
+  return AGGREGATE_INIT_TASK_ID;
+}
+
+TaskID Aggregate::get_fwd_task_id() const {
+  return AGGREGATE_FWD_TASK_ID;
+}
+
+TaskID Aggregate::get_bwd_task_id() const {
+  return AGGREGATE_BWD_TASK_ID;
+}
+
 OpTaskBinding Aggregate::get_init_task_binding() const {
   OpTaskBinding binding;
 

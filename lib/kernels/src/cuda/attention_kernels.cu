@@ -355,22 +355,46 @@ void backward_kernel(MHAPerDeviceState *m,
 } // namespace MultiHeadAttention
 } // namespace Kernels
 
-/* MHAPerDeviceState::MHAPerDeviceState(FFHandler handler, */
-/*                                                Memory gpu_mem, */
-/*                                                int num_samples, */
-/*                                                int num_heads, */
-/*                                                int qSize, */
-/*                                                int kSize, */
-/*                                                int vSize, */
-/*                                                int qProjSize, */
-/*                                                int kProjSize, */
-/*                                                int vProjSize, */
-/*                                                int oProjSize, */
-/*                                                int qoSeqLength, */
-/*                                                int kvSeqLength, */
-/*                                                bool add_bias_kv) */
-/*     : OpMeta(handler) { */
-/* } */
+MHAPerDeviceState::MHAPerDeviceState(FFHandler handler,
+                                               Memory gpu_mem,
+                                               int num_samples,
+                                               int num_heads,
+                                               int qSize,
+                                               int kSize,
+                                               int vSize,
+                                               int qProjSize,
+                                               int kProjSize,
+                                               int vProjSize,
+                                               int oProjSize,
+                                               int qoSeqLength,
+                                               int kvSeqLength,
+                                               bool add_bias_kv)
+    : OpMeta(handler) {
+}
+
+MHAPerDeviceState::MHAPerDeviceState(FFHandler handler,
+                                     std::unique_ptr<IAllocator> allocator,
+                                     MultiHeadAttentionAttrs const &attrs,
+                                     ArrayShape const &query_shape,
+                                     ArrayShape const &key_shape,
+                                     ArrayShape const &value_shape) {
+  : MHAPerDeviceState(handler, 
+                      allocator, 
+                      query_shape[2],
+                      attrs.num_heads, 
+                      query_shape[0],
+                      key_shape[0],
+                      value_shape[0],
+                      qProjSize(attrs),
+                      kProjSize(attrs),
+                      vProjSize(attrs),
+                      oProjSize(attrs),
+                      query_shape[1],
+                      key_shape[1],
+                      attrs.add_bias_kv)
+{ }
+
+
 
 MHAPerDeviceState::~MHAPerDeviceState(void) {
   free(loWinIdx);

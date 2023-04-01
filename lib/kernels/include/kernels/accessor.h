@@ -58,6 +58,9 @@ public:
     }
   }
 
+  bool operator==(GenericTensorAccessorW const &);
+  bool operator!=(GenericTensorAccessorW const &);
+
   int32_t *get_int32_ptr() const;
   int64_t *get_int64_ptr() const;
   float *get_float_ptr() const;
@@ -87,6 +90,9 @@ public:
     }
   }
 
+  bool operator==(GenericTensorAccessorR const &);
+  bool operator!=(GenericTensorAccessorR const &);
+
   int32_t const *get_int32_ptr() const;
   int64_t const *get_int64_ptr() const;
   float const *get_float_ptr() const;
@@ -98,5 +104,8 @@ public:
 };
 
 }
+
+VISITABLE_STRUCT(::FlexFlow::GenericTensorAccessorW, data_type, shape, ptr);
+VISITABLE_STRUCT(::FlexFlow::GenericTensorAccessorR, data_type, shape, ptr);
 
 #endif

@@ -19,6 +19,18 @@ bool operator<(MultiHeadAttentionAttrs const &lhs, MultiHeadAttentionAttrs const
   return visit_lt(lhs, rhs);
 }
 
+int vProjSize(MultiHeadAttentionAttrs const &attrs) {
+  return attrs.vdim;
+}
+
+int kProjSize(MultiHeadAttentionAttrs const &attrs) {
+  return attrs.kdim;
+}
+
+int oProjSize(MultiHeadAttentionAttrs const &attrs) {
+  return attrs.embed_dim;
+}
+
 }
 
 namespace std {

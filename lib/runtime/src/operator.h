@@ -114,8 +114,6 @@ public:
   virtual void serialize(Legion::Serializer &) const;
   virtual Op *
       materialize(FFModel &ff, ParallelTensor inputs[], int num_inputs) const;
-  size_t get_untyped_params_hash() const;
-  virtual size_t get_params_hash() const;
 
   virtual tl::optional<RecordFormatter> as_dot() const;
 
@@ -143,22 +141,6 @@ protected:
 
   bool check_output_input_weight_same_parallel_is() const;
 
-  /* template <typename T> */
-  /* Legion::IndexLauncher make_fwd_index_launcher(FFModel const &ff, TaskID task_id, tl::optional<T const &> arg = tl::nullopt) const { */
-  /*   using namespace Legion; */
-
-  /* } */
-
-  /* virtual OpTasksSpec get_tasks_spec() const = 0; */
-  /* OpTasksSpec get_fully_defined_tasks_spec() const; */
-  /* OpTaskSpec infer_bwd_spec(TaskID bwd_task_id, OpTaskSpec const &fwd_spec) const; */
-  /* OpTaskSpec infer_init_spec(TaskID init_task_id, OpTaskSpec const &bwd_spec) const; */
-  /* void infer_bwd_spec(OpTasksSpec &spec) const; */
-  /* void infer_init_spec(OpTasksSpec &spec) const; */
-
-  /* void execute_task_spec(FFModel const &, OpTaskSpec const &); */
-  /* ParallelTensor const &get_parallel_tensor(TensorRole, int); */ 
-
   void execute_task(FFModel const &, TaskID, OpTaskSignature const &);
   ParallelTensor const &get_parallel_tensor(TensorSpec const &) const;
   TensorSpec input_tensor(int idx) const;
@@ -166,8 +148,11 @@ protected:
   void set_argumentmap(OpTaskType, FFModel const &f, Legion::ArgumentMap);
 
   virtual OpTaskBinding get_init_task_binding() const = 0;
+  virtual TaskID get_init_task_id() const = 0;
   virtual OpTaskBinding get_fwd_task_binding() const = 0;
+  virtual TaskID get_fwd_task_id() const = 0;
   virtual OpTaskBinding get_bwd_task_binding() const = 0;
+  virtual TaskID get_bwd_task_id() const = 0;
 public:
   OperatorType op_type;
   DataType data_type;
@@ -196,6 +181,10 @@ void profile(F const &f, bool profiling, Str s, Ts &&...ts) {
     log_profile.debug(s, elapsed.value());
   }
 }
+
+template <TaskID TASK> OpTaskSignature get_signature();
+
+OpTaskSignature get_signature(TaskID);
 
 }
 

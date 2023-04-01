@@ -4,6 +4,7 @@
 #include "kernels/allocation.h"
 #include "legion.h"
 #include "utils/stack_vector.h"
+#include <memory>
 
 #define MAX_INSTANCE_ALLOCATIONS 1
 
@@ -19,6 +20,8 @@ private:
   Legion::Memory memory;
   stack_vector<Realm::RegionInstance, MAX_INSTANCE_ALLOCATIONS> instances;
 };
+
+std::unique_ptr<IAllocator> get_gpu_memory_allocator(Legion::Task const *);
 
 }
 

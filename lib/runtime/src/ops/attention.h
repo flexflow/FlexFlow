@@ -1,43 +1,13 @@
 #ifndef _FLEXFLOW_ATTENTION_H
 #define _FLEXFLOW_ATTENTION_H
 
-#include "fftype.h"
-#include "kernels/op_meta.h"
 #include "operator.h"
 #include "layer.h"
-#include "op-attrs/attention_params.h"
-#include "kernels/attention_kernels.h"
 
 namespace FlexFlow {
 
-class RealmBackedAttentionMeta : public MultiHeadAttentionMeta {
-public:
-  RealmBackedAttentionMeta(FFHandler handler,
-                         Legion::Memory gpu_mem,
-                         int num_samples,
-                         int num_heads,
-                         int qSize,
-                         int kSize,
-                         int vSize,
-                         int qProjSize,
-                         int kProjSize,
-                         int vProjSize,
-                         int oProjSize,
-                         int qoSeqLength,
-                         int kvSeqLength,
-                         bool add_bias_kv);
-  ~RealmBackedAttentionMeta(void);
-
-  void *gpu_alloc(size_t size) override;
-public:
-  Realm::RegionInstance reserveInst;
-};
-
 class MultiHeadAttention : public Op {
 public:
-  using Params = MultiHeadAttentionParams;
-  using Input = std::tuple<ParallelTensor, ParallelTensor, ParallelTensor>;
-
   MultiHeadAttention(FFModel &model,
                      LayerID const &layer_guid,
                      const ParallelTensor _query,
@@ -75,8 +45,10 @@ public:
                      const ParallelTensor value,
                      bool allocate_weights);
   MultiHeadAttention(FFModel &model,
-                     Params const &params,
-                     Input const &inputs,
+                     ParallelTensor const &query,
+                     ParallelTensor const &key, 
+                     ParallelTensor const &value,
+                     MultiHeadAttentionAttrs const &,
                      bool allocate_weights = false,
                      char const *name = nullptr);
   static Op *
@@ -89,9 +61,7 @@ public:
   void print_layer(FFModel const &model) override {
     assert(0);
   }
-  bool get_int_parameter(PMParameter, int *) const override;
-
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -106,52 +76,24 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
-  static void forward_kernel(MultiHeadAttentionMeta const *m,
-                             float const *query_ptr,
-                             float const *key_ptr,
-                             float const *value_ptr,
-                             float const *weight_ptr,
-                             float *output_ptr,
-                             ffStream_t stream);
-  static void forward_kernel_wrapper(MultiHeadAttentionMeta const *m,
-                                     float const *query_ptr,
-                                     float const *key_ptr,
-                                     float const *value_ptr,
-                                     float const *weight_ptr,
-                                     float *output_ptr);
-  static void backward_kernel(MultiHeadAttentionMeta const *m,
-                              float const *query_ptr,
-                              float *query_grad_ptr,
-                              float const *key_ptr,
-                              float *key_grad_ptr,
-                              float const *value_ptr,
-                              float *value_grad_ptr,
-                              float const *weight_ptr,
-                              float *weight_grad_ptr,
-                              float const *output_grad_ptr,
-                              ffStream_t stream);
-  static void backward_kernel_wrapper(MultiHeadAttentionMeta const *m,
-                                      float const *query_ptr,
-                                      float *query_grad_ptr,
-                                      float const *key_ptr,
-                                      float *key_grad_ptr,
-                                      float const *value_ptr,
-                                      float *value_grad_ptr,
-                                      float const *weight_ptr,
-                                      float *weight_grad_ptr,
-                                      float const *output_grad_ptr);
 
-  Params get_params() const;
 
+  OpTaskBinding get_init_task_binding() const override;
+  TaskID get_init_task_id() const override;
+  OpTaskBinding get_fwd_task_binding() const override;
+  TaskID get_fwd_task_id() const override;
+  OpTaskBinding get_bwd_task_binding() const override;
+  TaskID get_bwd_task_id() const override;
 public:
-  int num_heads;
-  float dropout;
-  bool bias;
-  bool add_bias_kv, add_zero_attn;
-  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
+  MultiHeadAttentionAttrs attrs;
+  int qSize, kSize, vSize, qProjSize;
   int qoSeqLength, kvSeqLength;
 };
 
-}; // namespace FlexFlow
+template <> OpTaskSignature get_signature<ATTENTION_INIT_TASK_ID>();
+template <> OpTaskSignature get_signature<ATTENTION_FWD_TASK_ID>();
+template <> OpTaskSignature get_signature<ATTENTION_BWD_TASK_ID>();
 
-#endif // _FLEXFLOW_ATTENTION_H
+}
+
+#endif

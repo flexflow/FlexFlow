@@ -233,6 +233,7 @@ void Op::execute_task(FFModel const &ff, TaskID task_id, OpTaskSignature const &
 }
 
 void Op::init(FFModel const &ff) {
+  this->execute_task_spec(ff, this->get_init_task_binding(), 
   this->execute_task_spec(ff, this->get_fully_defined_tasks_spec().get_init());
 }
 
@@ -242,6 +243,15 @@ void Op::forward(FFModel const &ff) {
 
 void Op::backward(FFModel const &ff) {
   this->execute_task_spec(ff, this->get_fully_defined_tasks_spec().get_bwd());
+}
+
+OpTaskSignature get_signature(TaskID task_id) {
+  switch (task_id) {
+    case AGGREGATE_INIT_TASK_ID: return get_signature<AGGREGATE_INIT_TASK_ID>();
+    case AGGREGATE_FWD_TASK_ID: return get_signature<AGGREGATE_FWD_TASK_ID>();
+    case AGGREGATE_BWD_TASK_ID: return get_signature<AGGREGATE_BWD_TASK_ID>();
+    case CONV2D_BWD_TASK_ID: return get_signature<CONV2D_BWD_TASK_ID>();
+  }
 }
 
 }

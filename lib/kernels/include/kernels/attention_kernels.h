@@ -4,12 +4,16 @@
 #include "kernels/device.h"
 #include "kernels/per_device_op_state.h"
 #include "kernels/config.h"
+#include "kernels/allocation.h"
+#include <memory>
+#include "op-attrs/ops/attention.h"
 
 namespace FlexFlow {
 
 class MHAPerDeviceState : public PerDeviceOpState {
 public:
   MHAPerDeviceState(FFHandler handler,
+                    std::unique_ptr<IAllocator> allocator,
                     int num_samples,
                     int num_heads,
                     int qSize,
@@ -22,16 +26,17 @@ public:
                     int qoSeqLength,
                     int kvSeqLength,
                     bool add_bias_kv);
+  MHAPerDeviceState(FFHandler handler, 
+                    std::unique_ptr<IAllocator> allocator,
+                    MultiHeadAttentionAttrs const &attrs);
 
-  virtual ~MHAPerDeviceState(); 
-
-  virtual void *gpu_alloc(size_t size) = 0;
 public:
   size_t weightSize, reserveSpaceSize;
   ffAttnDescriptor_t attnDesc;
   ffSeqDataDescriptor_t qDesc, kDesc, vDesc, oDesc;
   int *devQoSeqArray, *devKvSeqArray, *loWinIdx, *hiWinIdx;
   void *reserveSpace;
+  std::unique_ptr<IAllocator> allocator;
 };
 
 

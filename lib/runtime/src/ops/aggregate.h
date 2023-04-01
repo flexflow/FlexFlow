@@ -48,13 +48,18 @@ public:
                              CostMetrics &cost_metrics) const override;
 
   OpTaskBinding get_init_task_binding() const override;
+  TaskID get_init_task_id() const override;
   OpTaskBinding get_fwd_task_binding() const override;
+  TaskID get_fwd_task_id() const override;
   OpTaskBinding get_bwd_task_binding() const override;
+  TaskID get_bwd_task_id() const override;
 public:
   AggregateAttrs attrs;
 };
 
-
+template <> OpTaskSignature get_signature<AGGREGATE_INIT_TASK_ID>();
+template <> OpTaskSignature get_signature<AGGREGATE_FWD_TASK_ID>();
+template <> OpTaskSignature get_signature<AGGREGATE_BWD_TASK_ID>();
 
 }
 
