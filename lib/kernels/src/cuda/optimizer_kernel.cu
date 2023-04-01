@@ -76,7 +76,7 @@ __host__ void SGDOptimizer::ps_update_task_gpu(SGDOptimizer const *op,
 
 #ifdef FF_USE_NCCL
 __host__ void SGDOptimizer::nccl_update_task_gpu(SGDOptimizer const *op,
-                                                 OpMeta const *meta,
+                                                 PerDeviceOpState const *meta,
                                                  float const *w_grad_ptr,
                                                  size_t size,
                                                  float *w_ptr,
@@ -184,7 +184,7 @@ __host__ void AdamOptimizer::ps_update_task_gpu(AdamOptimizer const *op,
 
 #ifdef FF_USE_NCCL
 __host__ void AdamOptimizer::nccl_update_task_gpu(AdamOptimizer const *op,
-                                                  OpMeta const *meta,
+                                                  PerDeviceOpState const *meta,
                                                   float const *w_grad_ptr,
                                                   size_t size,
                                                   float *w_ptr,
@@ -218,4 +218,4 @@ __host__ void AdamOptimizer::nccl_update_task_gpu(AdamOptimizer const *op,
 }
 #endif
 
-}; // namespace FlexFlow
+}

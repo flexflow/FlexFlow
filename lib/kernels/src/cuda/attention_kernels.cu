@@ -369,7 +369,7 @@ MHAPerDeviceState::MHAPerDeviceState(FFHandler handler,
                                                int qoSeqLength,
                                                int kvSeqLength,
                                                bool add_bias_kv)
-    : OpMeta(handler) {
+    : PerDeviceOpState(handler) {
 }
 
 MHAPerDeviceState::MHAPerDeviceState(FFHandler handler,

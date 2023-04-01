@@ -557,7 +557,7 @@ void Conv2D::init(FFModel const &ff) {
   regions[4](O): filter_grad
   regions[5](O): input_grad
 */
-OpMeta *Conv2D::init_task(Task const *task,
+PerDeviceOpState *Conv2D::init_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {

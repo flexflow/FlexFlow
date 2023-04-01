@@ -5,7 +5,6 @@
 
 namespace FlexFlow {
 
-class BatchNormMeta;
 class BatchNorm : public Op {
 public:
   BatchNorm(FFModel &model,
@@ -22,7 +21,7 @@ public:
     assert(0);
   }
 
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -37,14 +36,12 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  // ffStream_t stream);
-  // ffStream_t stream);
 public:
   bool relu;
   int num_replica;
 };
 
 
-}; // namespace FlexFlow
+}
 
 #endif

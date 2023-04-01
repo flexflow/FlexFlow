@@ -29,7 +29,7 @@ public:
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -60,6 +60,6 @@ public:
   int shape_array[MAX_TENSOR_DIM];
 };
 
-}; // namespace FlexFlow
+}
 
 #endif

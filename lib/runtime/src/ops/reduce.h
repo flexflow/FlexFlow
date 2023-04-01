@@ -6,17 +6,8 @@
 
 namespace FlexFlow {
 
-class Reduce;
-
-
 class Reduce : public Op {
 public:
-  using Params = ReduceParams;
-  using Input = ParallelTensor;
-  Reduce(FFModel &model,
-         Params const &params,
-         const Input input,
-         char const *name = nullptr);
   Reduce(FFModel &model,
          const ParallelTensor input,
          std::vector<int> const &axes,
@@ -34,7 +25,7 @@ public:
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -57,7 +48,6 @@ public:
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;
-  Params get_params() const;
 
 public:
   int num_axes;

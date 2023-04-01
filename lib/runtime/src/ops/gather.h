@@ -8,12 +8,6 @@ namespace FlexFlow {
 
 class Gather : public Op {
 public:
-  using Params = GatherParams;
-  using Input = std::pair<ParallelTensor, ParallelTensor>;
-  Gather(FFModel &model,
-         Params const &params,
-         Input const &input,
-         char const *name = nullptr);
   Gather(FFModel &model,
          const ParallelTensor input,
          const ParallelTensor index,
@@ -31,7 +25,7 @@ public:
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -60,6 +54,6 @@ public:
   int legion_dim;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFLOW_OPS_GATHER_H
+#endif

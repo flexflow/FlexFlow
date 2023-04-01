@@ -42,7 +42,7 @@ public:
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -50,18 +50,6 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  template <typename IDT>
-  static void forward_task_with_1_type(
-      Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
-      Legion::Runtime *runtime);
-  template <typename IDT, typename ODT>
-  static void forward_task_with_2_type(
-      Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
-      Legion::Runtime *runtime);
   static void backward_task(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
@@ -90,9 +78,8 @@ public:
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;
-  Params get_params() const;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXLOW_CAST_H
+#endif 

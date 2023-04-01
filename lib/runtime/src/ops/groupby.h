@@ -1,21 +1,13 @@
 #ifndef _FLEXFLOW_GROUPBY_H_
 #define _FLEXFLOW_GROUPBY_H_
 
-#include "model.h"
+#include "operator.h"
+#include "layer.h"
 
 namespace FlexFlow {
 
-class GroupByMeta : public OpMeta {
-public:
-  GroupByMeta(FFHandler handle, int n);
-  ~GroupByMeta(void);
-  float **dev_region_ptrs;
-};
-
 class Group_by : public Op {
 public:
-  using Params = Group_byParams;
-  using Input = std::pair<ParallelTensor, ParallelTensor>;
   Group_by(FFModel &model,
            const ParallelTensor _input,
            const ParallelTensor _assign,
@@ -40,7 +32,7 @@ public:
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -83,13 +75,12 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  Params get_params() const;
 
 public:
   int n;
   float alpha;
 };
 
-}; // namespace FlexFlow
+}
 
 #endif

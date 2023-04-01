@@ -8,8 +8,6 @@
 
 namespace FlexFlow {
 
-class Gather;
-
 class GatherPerDeviceState : public PerDeviceOpState {
 public:
   GatherPerDeviceState(FFHandler handler, Gather const *gather);

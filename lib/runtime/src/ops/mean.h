@@ -1,6 +1,7 @@
-#pragma once
+#ifndef _FLEXFLOW_RUNTIME_SRC_OPS_MEAN_H
+#define _FLEXFLOW_RUNTIME_SRC_OPS_MEAN_H
 
-#include "model.h"
+#include "operator.h"
 
 namespace FlexFlow {
 
@@ -18,7 +19,7 @@ public:
     assert(0);
   }
 
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -35,4 +36,6 @@ public:
                              CostMetrics &cost_metrics) const;
 };
 
-}; // namespace FlexFlow
+}
+
+#endif

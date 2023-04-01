@@ -1,15 +1,10 @@
 #ifndef _FLEXFLOW_TOPK_H_
 #define _FLEXFLOW_TOPK_H_
 
-#include "model.h"
+#include "operator.h"
+#include "layer.h"
 
 namespace FlexFlow {
-
-class TopKMeta : public OpMeta {
-public:
-  TopKMeta(FFHandler handle);
-  bool sorted;
-};
 
 class TopK : public Op {
 public:
@@ -36,7 +31,7 @@ public:
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -49,10 +44,10 @@ public:
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   void serialize(Legion::Serializer &s) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+  /* static PCG::Node deserialize(FFModel &ff, */
+  /*                              Legion::Deserializer &d, */
+  /*                              ParallelTensor inputs[], */
+  /*                              int num_inputs); */
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;
@@ -98,6 +93,6 @@ public:
   bool sorted;
 };
 
-}; // namespace FlexFlow
+}
 
 #endif

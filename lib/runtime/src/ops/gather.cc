@@ -193,7 +193,7 @@ void Gather::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Gather::init_task(Task const *task,
+PerDeviceOpState *Gather::init_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {

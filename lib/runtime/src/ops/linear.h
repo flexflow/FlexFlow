@@ -7,9 +7,6 @@
 
 namespace FlexFlow {
 
-class FFModel;
-class Layer;
-
 class Linear : public Op {
 public:
   using Params = LinearParams;
@@ -43,7 +40,7 @@ public:
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -71,9 +68,6 @@ public:
                                ParallelTensor inputs[],
                                int num_inputs);
 
-  // size_t get_params_hash() const override;
-  LinearParams get_params() const;
-
 private:
   Linear(int guid,
          bool profiling,
@@ -85,7 +79,7 @@ private:
          char const *name);
 
   template <int NDIM>
-  static OpMeta *
+  static PerDeviceOpState *
       init_task_with_dim(Legion::Task const *task,
                          std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
@@ -114,6 +108,6 @@ public:
   ParallelTensor replica;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXLOW_LINEAR_H
+#endif

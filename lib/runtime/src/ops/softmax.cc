@@ -150,7 +150,7 @@ void Softmax::init(FFModel const &ff) {
   regions[0]: input
   regions[1]: output
  */
-OpMeta *Softmax::init_task(Task const *task,
+PerDeviceOpState *Softmax::init_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {

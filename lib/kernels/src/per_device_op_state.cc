@@ -18,17 +18,4 @@ PerDeviceOpState::PerDeviceOpState(FFHandler _handle)
   }
 }
 
-PerDeviceOpState::PerDeviceOpState(FFHandler _handle, Op const *op) 
-  : PerDeviceOpState(_handle) {
-  for (int i = 0; i < op->numInputs; i++) {
-    input_type[i] = op->inputs[i]->data_type;
-  }
-  for (int i = 0; i < op->numWeights; i++) {
-    weight_type[i] = op->weights[i]->data_type;
-  }
-  for (int i = 0; i < op->numOutputs; i++) {
-    output_type[i] = op->outputs[i]->data_type;
-  }
-}
-
 }

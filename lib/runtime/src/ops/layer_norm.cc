@@ -220,7 +220,7 @@ void LayerNorm::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *LayerNorm::init_task(Task const *task,
+PerDeviceOpState *LayerNorm::init_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {

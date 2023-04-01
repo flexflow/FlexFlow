@@ -49,7 +49,7 @@ void register_flexflow_internal_tasks() {
                                    "ElementWiseUnary Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, ElementUnary::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, ElementUnary::init_task>(
         registrar, "ElementWiseUnary Init Task");
   }
   {
@@ -74,7 +74,7 @@ void register_flexflow_internal_tasks() {
                                    "ElementWiseBinary Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, ElementBinary::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, ElementBinary::init_task>(
         registrar, "ElementWiseBinary Init Task");
   }
   {
@@ -98,7 +98,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(CAST_INIT_TASK_ID, "Cast Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Cast::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Cast::init_task>(
         registrar, "Cast Init Task");
   }
   {
@@ -120,7 +120,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(CONV2D_INIT_TASK_ID, "Conv2D Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Conv2D::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Conv2D::init_task>(
         registrar, "Conv2D Init Task");
   }
   {
@@ -149,7 +149,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(DROPOUT_INIT_TASK_ID, "Dropout Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Dropout::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Dropout::init_task>(
         registrar, "Dropout Init Task");
   }
   {
@@ -171,7 +171,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(EMBED_INIT_TASK_ID, "Embedding Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Embedding::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Embedding::init_task>(
         registrar, "Embedding Init Task");
   }
   {
@@ -208,7 +208,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(GATHER_INIT_TASK_ID, "Gather Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Gather::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Gather::init_task>(
         registrar, "Gather Init Task");
   }
   {
@@ -231,7 +231,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(GROUP_BY_INIT_TASK_ID, "Group_by Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Group_by::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Group_by::init_task>(
         registrar, "Group_by Init Task");
   }
   {
@@ -254,7 +254,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(AGGREGATE_INIT_TASK_ID, "Aggregate Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Aggregate::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Aggregate::init_task>(
         registrar, "Aggregate Init Task");
   }
   {
@@ -278,7 +278,7 @@ void register_flexflow_internal_tasks() {
                                    "Aggregate specification Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, AggregateSpec::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, AggregateSpec::init_task>(
         registrar, "Aggregate specification Init Task");
   }
   {
@@ -303,7 +303,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(POOL2D_INIT_TASK_ID, "pool2d_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Pool2D::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Pool2D::init_task>(
         registrar, "pool2d_init_task");
   }
   {
@@ -325,7 +325,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(BATCHNORM_INIT_TASK_ID, "bn_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, BatchNorm::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, BatchNorm::init_task>(
         registrar, "bn_init_task");
   }
   {
@@ -348,7 +348,7 @@ void register_flexflow_internal_tasks() {
                                    "BatchMatmul Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, BatchMatmul::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, BatchMatmul::init_task>(
         registrar, "BatchMatmul Init Task");
   }
   {
@@ -373,7 +373,7 @@ void register_flexflow_internal_tasks() {
                                    "layernorm_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, LayerNorm::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, LayerNorm::init_task>(
         registrar, "layernorm_init_task");
   }
   {
@@ -395,7 +395,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(LINEAR_INIT_TASK_ID, "Linear Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Linear::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Linear::init_task>(
         registrar, "Linear Init Task");
   }
   {
@@ -417,7 +417,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(FLAT_INIT_TASK_ID, "flat_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Flat::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Flat::init_task>(
         registrar, "flat_init_task");
   }
   {
@@ -439,7 +439,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(SOFTMAX_INIT_TASK_ID, "softmax_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Softmax::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Softmax::init_task>(
         registrar, "softmax_init_task");
   }
   {
@@ -494,7 +494,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(CONCAT_INIT_TASK_ID, "Concat Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Concat::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Concat::init_task>(
         registrar, "Concat Init Task");
   }
   {
@@ -516,7 +516,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(SPLIT_INIT_TASK_ID, "Split Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Split::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Split::init_task>(
         registrar, "Split Init Task");
   }
   {
@@ -538,7 +538,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(REDUCE_INIT_TASK_ID, "Reduce Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Reduce::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Reduce::init_task>(
         registrar, "Reduce Init Task");
   }
   {
@@ -560,7 +560,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(RESHAPE_INIT_TASK_ID, "Reshape Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Reshape::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Reshape::init_task>(
         registrar, "Reshape Init Task");
   }
   {
@@ -582,7 +582,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(REVERSE_INIT_TASK_ID, "Reverse Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Reverse::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Reverse::init_task>(
         registrar, "Reverse Init Task");
   }
   {
@@ -604,7 +604,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(TOPK_INIT_TASK_ID, "TopK Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, TopK::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, TopK::init_task>(
         registrar, "TopK Init Task");
   }
   {
@@ -626,7 +626,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(TRANSPOSE_INIT_TASK_ID, "Transpose Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Transpose::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Transpose::init_task>(
         registrar, "Transpose Init Task");
   }
   {
@@ -649,7 +649,7 @@ void register_flexflow_internal_tasks() {
                                    "MultiHeadAttention Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, MultiHeadAttention::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, MultiHeadAttention::init_task>(
         registrar, "MultiHeadAttention Init Task");
   }
   {
@@ -673,7 +673,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(NOOP_INIT_TASK_ID, "Weight NCCL Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, NoOp::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, NoOp::init_task>(
         registrar, "Weight NCCL Init Task");
   }
   // FusedOp Task
@@ -681,7 +681,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(FUSEDOP_INIT_TASK_ID, "FusedOp Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, FusedOp::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, FusedOp::init_task>(
         registrar, "FusedOp Init Task");
   }
   {
@@ -705,7 +705,7 @@ void register_flexflow_internal_tasks() {
                                    "Repartition Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Repartition::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Repartition::init_task>(
         registrar, "Repartition init Task");
   }
   {
@@ -729,7 +729,7 @@ void register_flexflow_internal_tasks() {
     TaskVariantRegistrar registrar(COMBINE_INIT_TASK_ID, "Combine Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
-    Runtime::preregister_task_variant<OpMeta *, Combine::init_task>(
+    Runtime::preregister_task_variant<PerDeviceOpState *, Combine::init_task>(
         registrar, "Combine init Task");
   }
   {

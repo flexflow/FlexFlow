@@ -25,7 +25,7 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -37,6 +37,6 @@ public:
   size_t input_tensor_guid;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFLOW_NOOP_H
+#endif

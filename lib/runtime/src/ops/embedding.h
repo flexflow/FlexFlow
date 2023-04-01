@@ -58,7 +58,7 @@ public:
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -88,20 +88,6 @@ public:
   Params get_params() const;
 
 private:
-#ifdef DEADCODE
-  template <typename TI>
-  static void
-      forward_task_with_type(Legion::Task const *task,
-                             std::vector<Legion::PhysicalRegion> const &regions,
-                             Legion::Context ctx,
-                             Legion::Runtime *runtime);
-  template <typename TI>
-  static void backward_task_with_type(
-      Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
-      Legion::Runtime *runtime);
-#endif
   int input_vocab_size_replica_dim() const;
   int input_channel_out_replica_dim() const;
   int output_vocab_size_replica_dim() const;
@@ -118,6 +104,6 @@ public:
   AggrMode aggr;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFLOW_EMBEDDING_H
+#endif

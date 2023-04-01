@@ -82,12 +82,12 @@ Mean::Mean(FFModel &model,
 
 void Mean::init(FFModel const &ff) {}
 
-OpMeta *Mean::init_task(Task const *task,
+PerDeviceOpState *Mean::init_task(Task const *task,
                         std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {
   FFHandler handler = *((FFHandler const *)task->local_args);
-  OpMeta *m = new OpMeta(handler);
+  PerDeviceOpState *m = new PerDeviceOpState(handler);
   return m;
 }
 

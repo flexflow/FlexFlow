@@ -240,7 +240,7 @@ void BatchMatmul::init_with_dim(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *BatchMatmul::init_task(Task const *task,
+PerDeviceOpState *BatchMatmul::init_task(Task const *task,
                                std::vector<PhysicalRegion> const &regions,
                                Context ctx,
                                Runtime *runtime) {
