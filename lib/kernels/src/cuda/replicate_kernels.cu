@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/kernels/replicate_kernels.h"
+#include "kernels/replicate_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -23,7 +23,7 @@ namespace Replicate {
 template <typename T>
 void forward_kernel(T const *input_ptr, T *output_ptr, size_t num_elements) {
   cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   checkCUDA(cudaMemcpyAsync(output_ptr,
                             input_ptr,
                             num_elements * sizeof(T),
@@ -50,7 +50,7 @@ void backward_kernel(T const *output_grad_ptr,
                      size_t num_replicas) {
   size_t total_elements = num_elements * num_replicas;
   cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   replicate_backward_kernel<T>
       <<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS, 0, stream>>>(
           output_grad_ptr, input_grad_ptr, num_elements, num_replicas);

@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/kernels/partition_kernels.h"
-#include "flexflow/utils/cuda_helper.h"
+#include "kernels/partition_kernels.h"
+#include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
 
-RepartitionMeta::RepartitionMeta(FFHandler handler) : OpMeta(handler) {}
+RepartitionPerDeviceState::RepartitionPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {}
 
 namespace Kernels {
 namespace Repartition {
@@ -26,7 +26,7 @@ namespace Repartition {
 template <typename T>
 void forward_kernel(T const *input_ptr, T *output_ptr, size_t num_elements) {
   cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   checkCUDA(cudaMemcpyAsync(output_ptr,
                             input_ptr,
                             num_elements * sizeof(T),
@@ -39,7 +39,7 @@ void backward_kernel(T const *output_grad_ptr,
                      T *input_grad_ptr,
                      size_t num_elements) {
   cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   add_kernel<T><<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
       input_grad_ptr, output_grad_ptr, num_elements);
 }

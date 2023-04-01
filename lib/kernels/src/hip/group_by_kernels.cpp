@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/groupby.h"
-#include "utils/hip_helper.h"
+#include "kernels/groupby_kernels.h"
+#include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 #include <math.h>
 #include <stdio.h>
@@ -24,6 +24,8 @@
 #define MAX_N 12
 
 namespace FlexFlow {
+namespace Kernels {
+namespace GroupBy {
 
 __global__ void
     gb_forward_kernel(float const *input,
@@ -117,9 +119,9 @@ __global__ void
   }
 }
 
-/*static*/
-void Group_by::forward_kernel_wrapper(
-    GroupByMeta const *m,
+void forward_kernel(
+    hipStream_t stream,
+    GroupByPerDeviceState const *m,
     float const *input,
     int const *exp_assign,
     float **outputs,
@@ -128,9 +130,7 @@ void Group_by::forward_kernel_wrapper(
     float alpha, // factor additional memory assigned
     int batch_size,
     int data_dim) {
-  // TODO: why cublas/cudnn stream is needed here?
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
 
   // call forward kernel
   hipMemcpy(
@@ -152,7 +152,8 @@ void Group_by::forward_kernel_wrapper(
 }
 
 void Group_by::backward_kernel_wrapper(
-    GroupByMeta const *m,
+    hipStream_t stream,
+    GroupByPerDeviceState const *m,
     float *input_grad,
     int const *exp_assign,
     float **output_grads,
@@ -161,9 +162,6 @@ void Group_by::backward_kernel_wrapper(
     float alpha, // factor additional memory assigned
     int batch_size,
     int data_dim) {
-  // TODO: why cublas/cudnn stream is needed here
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
 
   // call forward kernel
   hipMemcpy(m->dev_region_ptrs,
@@ -186,10 +184,13 @@ void Group_by::backward_kernel_wrapper(
                      data_dim);
 }
 
-GroupByMeta::GroupByMeta(FFHandler handler, int n) : OpMeta(handler) {
+}
+}
+
+GroupByPerDeviceState::GroupByPerDeviceState(FFHandler handler, int n) : PerDeviceOpState(handler) {
   checkCUDA(hipMalloc(&dev_region_ptrs, n * sizeof(float *)));
 }
-GroupByMeta::~GroupByMeta(void) {
+GroupByPerDeviceState::~GroupByPerDeviceState(void) {
   checkCUDA(hipFree(&dev_region_ptrs));
 }
 

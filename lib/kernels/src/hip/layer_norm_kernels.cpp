@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "layer_norm_kernels.h"
-#include "utils/hip_helper.h"
+#include "kernels/layer_norm_kernels.h"
+#include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
@@ -24,12 +24,18 @@ constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 constexpr int kColwiseReduceTileSize = 32;
 
-LayerNormMeta::LayerNormMeta(FFHandler handle, LayerNorm const *ln)
-    : OpMeta(handle) {
-  elementwise_affine = ln->elementwise_affine;
-  effective_batch_size = ln->effective_batch_size;
-  effective_num_elements = ln->effective_num_elements;
-  eps = ln->eps;
+LayerNormPerDeviceState::LayerNormPerDeviceState(FFHandler handle, 
+                          bool elementwise_affine_,
+                          int64_t effective_batch_size_,
+                          int64_t effective_num_elements_,
+                          bool profiling_,
+                          float eps_)
+    : PerDeviceOpState(handle) {
+  elementwise_affine = elementwise_affine_;
+  effective_batch_size = effective_batch_size_;
+  effective_num_elements = effective_num_elements_;
+  profiling = profiling_;
+  eps = eps_;
   checkCUDA(hipMalloc(&mean_ptr, sizeof(float) * effective_batch_size));
   checkCUDA(hipMalloc(&rstd_ptr, sizeof(float) * effective_batch_size));
   checkCUDA(hipMalloc(&ds_ptr, sizeof(float) * effective_batch_size));
@@ -42,60 +48,13 @@ namespace Kernels {
 namespace LayerNorm {
 
 template <typename T>
-void forward_kernel_wrapper(LayerNormMeta const *m,
+void forward_kernel(LayerNormPerDeviceState const *m,
                                        T const *in_ptr,
                                        T *out_ptr,
                                        T *gamma_ptr,
                                        T *beta_ptr) {
   hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::forward_kernel<float>(
-      m, in_ptr, out_ptr, gamma_ptr, beta_ptr, stream);
-}
-
-template <typename T>
-void backward_kernel_wrapper(LayerNormMeta const *m,
-                                        T const *output_grad_ptr,
-                                        T const *input_ptr,
-                                        T *input_grad_ptr,
-                                        T const *gamma_ptr,
-                                        T *gamma_grad_ptr,
-                                        T *beta_grad_ptr) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::backward_kernel<float>(m,
-                                    output_grad_ptr,
-                                    input_ptr,
-                                    input_grad_ptr,
-                                    gamma_ptr,
-                                    gamma_grad_ptr,
-                                    beta_grad_ptr,
-                                    stream);
-}
-
-template void forward_kernel_wrapper<float>(LayerNormMeta const *m,
-                                                       float const *in_ptr,
-                                                       float *out_ptr,
-                                                       float *gamma_ptr,
-                                                       float *beta_ptr);
-template void
-    backward_kernel_wrapper<float>(LayerNormMeta const *m,
-                                              float const *output_grad_ptr,
-                                              float const *input_ptr,
-                                              float *input_grad_ptr,
-                                              float const *gamma_ptr,
-                                              float *gamma_grad_ptr,
-                                              float *beta_grad_ptr);
-
-namespace Internal {
   
-template <typename T>
-void forward_kernel(LayerNormMeta const *m,
-                               T const *in_ptr,
-                               T *out_ptr,
-                               T *gamma_ptr,
-                               T *beta_ptr,
-                               hipStream_t stream) {
   hipLaunchKernelGGL(HIP_KERNEL_NAME(RowwiseMomentsCUDAKernel<float>),
                      m->effective_batch_size,
                      kCUDABlockReduceNumThreads,
@@ -120,16 +79,16 @@ void forward_kernel(LayerNormMeta const *m,
                      out_ptr);
 }
 
-
 template <typename T>
-void backward_kernel(LayerNormMeta const *m,
-                                T const *output_grad_ptr,
-                                T const *input_ptr,
-                                T *input_grad_ptr,
-                                T const *gamma_ptr,
-                                T *gamma_grad_ptr,
-                                T *beta_grad_ptr,
-                                hipStream_t stream) {
+void backward_kernel(LayerNormPerDeviceState const *m,
+                                        T const *output_grad_ptr,
+                                        T const *input_ptr,
+                                        T *input_grad_ptr,
+                                        T const *gamma_ptr,
+                                        T *gamma_grad_ptr,
+                                        T *beta_grad_ptr) {
+  hipStream_t stream;
+  
   const int64_t M = m->effective_batch_size;
   const int64_t N = m->effective_num_elements;
   hipLaunchKernelGGL(HIP_KERNEL_NAME(ComputeInternalGradientsCUDAKernel<T>),
@@ -196,6 +155,19 @@ void backward_kernel(LayerNormMeta const *m,
   }
 }
 
+template void forward_kernel<float>(LayerNormPerDeviceState const *m,
+                                                       float const *in_ptr,
+                                                       float *out_ptr,
+                                                       float *gamma_ptr,
+                                                       float *beta_ptr);
+template void
+    backward_kernel<float>(LayerNormPerDeviceState const *m,
+                                              float const *output_grad_ptr,
+                                              float const *input_ptr,
+                                              float *input_grad_ptr,
+                                              float const *gamma_ptr,
+                                              float *gamma_grad_ptr,
+                                              float *beta_grad_ptr);
 
 template <typename T>
 __device__ __forceinline__ T WARP_SHFL_DOWN(T value,
@@ -460,7 +432,6 @@ __global__ void GammaBetaBackwardCUDAKernel(int64_t M,
   }
 }
 
-} // namespace Internal
 } // namespace LayerNorm
 } // namespace Kernels
 } // namespace FlexFlow

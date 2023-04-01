@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "aggregate_spec_kernels.h"
 #include "kernels/aggregate_spec_kernels.h"
 #include "kernels/cuda_helper.h"
 
@@ -30,7 +29,7 @@ AggregateSpecPerDeviceState::~AggregateSpecPerDeviceState(void) {
 namespace Kernels {
 namespace AggregateSpec {
 
-void forward_kernel_wrapper(AggregateSpecPerDeviceState const *m,
+void forward_kernel(cudaStream_t stream, AggregateSpecPerDeviceState const *m,
                                            float **exp_preds,
                                            int const *acc_gate_assign_ptr,
                                            float *acc_output_ptr,
@@ -39,8 +38,7 @@ void forward_kernel_wrapper(AggregateSpecPerDeviceState const *m,
                                            int rows,
                                            int const batch_size,
                                            int out_dim) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
@@ -50,7 +48,7 @@ void forward_kernel_wrapper(AggregateSpecPerDeviceState const *m,
              n * sizeof(float *),
              cudaMemcpyHostToDevice);
 
-  Internal::aggspec_forward_kernel<<<GET_BLOCKS(batch_size * k * out_dim),
+  aggspec_forward_kernel<<<GET_BLOCKS(batch_size * k * out_dim),
                            min(CUDA_NUM_THREADS,
                                (int)(batch_size * k * out_dim)),
                            0,
@@ -64,7 +62,7 @@ void forward_kernel_wrapper(AggregateSpecPerDeviceState const *m,
                                      out_dim);
 }
 
-void backward_kernel_wrapper(AggregateSpecPerDeviceState const *m,
+void backward_kernel(cudaStream_t stream, AggregateSpecPerDeviceState const *m,
                                             float **exp_grads,
                                             int const *acc_gate_assign_ptr,
                                             int const *acc_true_gate_assign_ptr,
@@ -77,8 +75,7 @@ void backward_kernel_wrapper(AggregateSpecPerDeviceState const *m,
                                             float lambda_bal,
                                             int const batch_size,
                                             int out_dim) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
@@ -88,7 +85,7 @@ void backward_kernel_wrapper(AggregateSpecPerDeviceState const *m,
              n * sizeof(float *),
              cudaMemcpyHostToDevice);
 
-  Internal::aggspec_backward_kernel<<<GET_BLOCKS(batch_size * k * out_dim),
+  aggspec_backward_kernel<<<GET_BLOCKS(batch_size * k * out_dim),
                             min(CUDA_NUM_THREADS,
                                 (int)(batch_size * k * out_dim)),
                             0,
@@ -107,7 +104,6 @@ void backward_kernel_wrapper(AggregateSpecPerDeviceState const *m,
 }
 
 
-namespace Internal {
 __global__ void
     aggspec_forward_kernel(float **exp_preds,
                            int const *exp_assign,
@@ -299,7 +295,6 @@ __global__ void
                                out_dim);
 }
 
-} // namespace Internal
 } // namespace AggregateSpec
 } // namespace Kernels
 } // namespace FlexFlow

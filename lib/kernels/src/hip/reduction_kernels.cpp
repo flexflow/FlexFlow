@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/kernels/reduction_kernels.h"
-#include "utils/hip_helper.h"
+#include "kernels/reduction_kernels.h"
+#include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
@@ -40,7 +40,7 @@ void forward_kernel(T const *input_ptr,
                     size_t num_elements,
                     size_t num_replicas) {
   hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   size_t total_elements = num_elements * num_replicas;
   hipLaunchKernelGGL(HIP_KERNEL_NAME(reduction_forward_kernel<T>),
                      GET_BLOCKS(total_elements),
@@ -58,7 +58,7 @@ void backward_kernel(T const *output_grad_ptr,
                      T *input_grad_ptr,
                      size_t num_elements) {
   hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   checkCUDA(hipMemcpyAsync(input_grad_ptr,
                            output_grad_ptr,
                            num_elements * sizeof(T),

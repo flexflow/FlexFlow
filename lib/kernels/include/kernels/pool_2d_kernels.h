@@ -2,13 +2,13 @@
 #define _FLEXFLOW_OPS_KERNELS_POOL_2D_KERNELS_H
 
 #include "kernels/device.h"
-#include "kernels/op_meta.h"
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
-class Pool2DMeta : public OpMeta {
+class Pool2DPerDeviceState : public PerDeviceOpState {
 public:
-  Pool2DMeta(FFHandler handle);
+  Pool2DPerDeviceState(FFHandler handle);
   ffTensorDescriptor_t inputTensor, outputTensor;
   ffActivationDescriptor_t actiDesc;
   ffPoolingDescriptor_t poolDesc;
@@ -19,7 +19,7 @@ public:
 namespace Kernels {
 namespace Pool2D {
 
-void init_kernel(Pool2DMeta *m,
+void init_kernel(Pool2DPerDeviceState *m,
                  int input_w,
                  int input_h,
                  int input_c,
@@ -36,30 +36,19 @@ void init_kernel(Pool2DMeta *m,
                  int stride_w,
                  PoolType pool_type);
 
-void forward_kernel_wrapper(Pool2DMeta const *m,
-                            void const *input_ptr,
-                            void *output_ptr);
-void backward_kernel_wrapper(Pool2DMeta const *m,
-                             void const *input_ptr,
-                             void *input_grad_ptr,
-                             void const *output_ptr,
-                             void const *output_grad_ptr);
-
-namespace Internal {
-
-void forward_kernel(Pool2DMeta const *m,
+void forward_kernel(ffStream_t stream,
+                    Pool2DPerDeviceState const *m,
                     void const *input_ptr,
-                    void *output_ptr,
-                    ffStream_t stream);
+                    void *output_ptr);
 
-void backward_kernel(Pool2DMeta const *m,
+void backward_kernel(ffStream_t stream,
+                     Pool2DPerDeviceState const *m,
                      void const *input_ptr,
                      void *input_grad_ptr,
                      void const *output_ptr,
-                     void const *output_grad_ptr,
-                     ffStream_t stream);
+                     void const *output_grad_ptr);
 
-} // namespace Internal
+
 } // namespace Pool2D
 } // namespace Kernels
 } // namespace FlexFlow

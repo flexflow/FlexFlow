@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/kernels/linear_kernels.h"
-#include "utils/hip_helper.h"
+#include "kernels/linear_kernels.h"
+#include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
-LinearMeta::LinearMeta(FFHandler handler, int batch_size) : OpMeta(handler) {
+LinearPerDeviceState::LinearPerDeviceState(FFHandler handler, int batch_size) : PerDeviceOpState(handler) {
   // Allocate an all-one's vector
   float *dram_one_ptr = (float *)malloc(sizeof(float) * batch_size);
   for (int i = 0; i < batch_size; i++) {
@@ -55,7 +55,7 @@ bool use_activation(ActiMode mode) {
   return false;
 }
 
-void Linear::init_kernel(LinearMeta *m, int batch_size, int channel) {
+void init_kernel(LinearPerDeviceState *m, int batch_size, int channel) {
   if (use_activation(m->activation)) {
     miopenActivationMode_t mode;
     switch (m->activation) {
@@ -79,7 +79,7 @@ void Linear::init_kernel(LinearMeta *m, int batch_size, int channel) {
   }
 }
 
-void forward_kernel_wrapper(LinearMeta const *m,
+void forward_kernel(hipStream_t stream, LinearPerDeviceState const *m,
                             void const *input_ptr,
                             void *output_ptr,
                             void const *weight_ptr,
@@ -87,118 +87,8 @@ void forward_kernel_wrapper(LinearMeta const *m,
                             int in_dim,
                             int out_dim,
                             int batch_size) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  hipEvent_t t_start, t_end;
-  if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
-  }
-  Internal::forward_kernel(m,
-                           input_ptr,
-                           output_ptr,
-                           weight_ptr,
-                           bias_ptr,
-                           in_dim,
-                           out_dim,
-                           batch_size,
-                           stream);
-
-  if (m->profiling) {
-    hipEventRecord(t_end, stream);
-    checkCUDA(hipEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
-    printf("%s [Linear] forward time = %.2lfms\n", m->op_name, elapsed);
-    // print_tensor<float>(acc_input.ptr, acc_input.rect.volume(),
-    // "[Linear:forward:input]"); print_tensor<float>(acc_kernel.ptr,
-    // acc_kernel.rect.volume(), "[Linear:forward:kernel]");
-    // print_tensor<float>(acc_bias.ptr, acc_bias.rect.volume(),
-    // "[Linear:forward:bias]"); print_tensor<float>(acc_output.ptr,
-    // acc_output.rect.volume(), "[Linear:forward:output]");
-  }
-}
-
-void backward_kernel_wrapper(LinearMeta const *m,
-                             void const *input_ptr,
-                             void *input_grad_ptr,
-                             void const *output_ptr,
-                             void *output_grad_ptr,
-                             void const *kernel_ptr,
-                             void *kernel_grad_ptr,
-                             void *bias_grad_ptr,
-                             int in_dim,
-                             int out_dim,
-                             int batch_size) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  hipEvent_t t_start, t_end;
-  if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
-  }
-  Internal::backward_kernel(m,
-                            input_ptr,
-                            input_grad_ptr,
-                            output_ptr,
-                            output_grad_ptr,
-                            kernel_ptr,
-                            kernel_grad_ptr,
-                            bias_grad_ptr,
-                            in_dim,
-                            out_dim,
-                            batch_size,
-                            stream);
-  if (m->profiling) {
-    hipEventRecord(t_end, stream);
-    checkCUDA(hipEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
-    printf("%s Linear backward time = %.2lfms\n", m->op_name, elapsed);
-    // print_tensor<float>(acc_output_grad.ptr, acc_output_grad.rect.volume(),
-    // "[Linear:backward:output_grad]");
-    // print_tensor<float>(acc_kernel_grad.ptr, acc_kernel_grad.rect.volume(),
-    // "[Linear:backward:kernel_grad]"); print_tensor<1,
-    // float>(acc_bias_grad.ptr, acc_bias_grad.rect,
-    // "[Linear:backward:bias_grad]"); print_tensor<float>(input_grad,
-    // acc_input.rect.volume(), "[Linear:backward:input_grad]");
-  }
-}
-
-/*
-__host__
-Parameter* Linear::get_parameter(int index)
-{
-  if (index == 0) {
-    return &weights[0];
-  } else if (index == 1){
-    return &weights[1];
-  } else {
-    assert(0);
-    return NULL;
-  }
-}
-*/
-
-namespace Internal {
-
-void forward_kernel(LinearMeta const *m,
-                    void const *input_ptr,
-                    void *output_ptr,
-                    void const *weight_ptr,
-                    void const *bias_ptr,
-                    int in_dim,
-                    int out_dim,
-                    int batch_size,
-                    hipStream_t stream) {
+  
+  
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
@@ -281,18 +171,18 @@ void forward_kernel(LinearMeta const *m,
   }
 }
 
-void backward_kernel(LinearMeta const *m,
-                     void const *input_ptr,
-                     void *input_grad_ptr,
-                     void const *output_ptr,
-                     void *output_grad_ptr,
-                     void const *kernel_ptr,
-                     void *kernel_grad_ptr,
-                     void *bias_grad_ptr,
-                     int in_dim,
-                     int out_dim,
-                     int batch_size,
-                     hipStream_t stream) {
+void backward_kernel(hipStream_t stream, LinearPerDeviceState const *m,
+                             void const *input_ptr,
+                             void *input_grad_ptr,
+                             void const *output_ptr,
+                             void *output_grad_ptr,
+                             void const *kernel_ptr,
+                             void *kernel_grad_ptr,
+                             void *bias_grad_ptr,
+                             int in_dim,
+                             int out_dim,
+                             int batch_size) {
+  
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -385,9 +275,9 @@ void backward_kernel(LinearMeta const *m,
                             compute_type,
                             HIPBLAS_GEMM_DEFAULT));
   }
+  
 }
 
-} // namespace Internal
 } // namespace Linear
 } // namespace Kernels
-}; // namespace FlexFlow
+} // namespace FlexFlow

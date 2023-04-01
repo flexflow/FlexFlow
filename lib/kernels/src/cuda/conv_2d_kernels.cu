@@ -3,7 +3,7 @@
 
 namespace FlexFlow {
 
-Conv2DMeta::Conv2DMeta(FFHandler handler) : OpMeta(handler) {
+Conv2DPerDeviceState::Conv2DPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&biasTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
@@ -15,7 +15,7 @@ Conv2DMeta::Conv2DMeta(FFHandler handler) : OpMeta(handler) {
 namespace Kernels {
 namespace Conv2D {
 
-void init_kernel(Conv2DMeta *m,
+void init_kernel(Conv2DPerDeviceState *m,
                  int input_w,
                  int input_h,
                  int input_c,
@@ -98,7 +98,7 @@ void init_kernel(Conv2DMeta *m,
   float time;
   // select forward algorithm
   m->fwdAlgo =
-      Internal::selectConvolutionForwardAlgorithm(m->handle.dnn,
+      selectConvolutionForwardAlgorithm(m->handle.dnn,
                                                   m->inputTensor,
                                                   input_ptr,
                                                   m->filterDesc,
@@ -114,7 +114,7 @@ void init_kernel(Conv2DMeta *m,
   }
 
   // select backward filter algorithm
-  m->bwdFilterAlgo = Internal::selectConvolutionBackwardFilterAlgorithm(
+  m->bwdFilterAlgo = selectConvolutionBackwardFilterAlgorithm(
       m->handle.dnn,
       m->inputTensor,
       input_ptr,
@@ -132,7 +132,7 @@ void init_kernel(Conv2DMeta *m,
 
   // select backward data algorithm
   m->bwdDataAlgo =
-      Internal::selectConvolutionBackwardDataAlgorithm(m->handle.dnn,
+      selectConvolutionBackwardDataAlgorithm(m->handle.dnn,
                                                        m->filterDesc,
                                                        kernel_ptr,
                                                        m->outputTensor,
@@ -153,94 +153,12 @@ void init_kernel(Conv2DMeta *m,
   }
 }
 
-void forward_kernel_wrapper(Conv2DMeta const *m,
-                            float const *input_ptr,
-                            float *output_ptr,
-                            float const *filter_ptr,
-                            float const *bias_ptr) {
-  // printf("fwdAlgo(%d), bwdFilterALgo(%d), bwdDataAlgo(%d)\n",
-  // (int)m->fwdAlgo,(int) m->bwdFilterAlgo,(int) m->bwdDataAlgo);
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-
-  Internal::forward_kernel(
-      m, input_ptr, output_ptr, filter_ptr, bias_ptr, stream);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    print_tensor<float>(input_ptr, 16, "[Conv2D:forward:input]");
-    print_tensor<float>(filter_ptr, 16, "[Conv2D:forward:kernel]");
-    print_tensor<float>(bias_ptr, 16, "[Conv2D:forward:bias]");
-    print_tensor<float>(output_ptr, 16, "[Conv2D:forward:output]");
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("%s [Conv2D] forward time (CF) = %.2fms\n", m->op_name, elapsed);
-  }
-}
-
-void backward_kernel_wrapper(Conv2DMeta const *m,
-                             float const *input_ptr,
-                             float *input_grad_ptr,
-                             float const *output_ptr,
-                             float *output_grad_ptr,
-                             float const *kernel_ptr,
-                             float *kernel_grad_ptr,
-                             float *bias_grad_ptr) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-
-  Internal::backward_kernel(m,
-                            input_ptr,
-                            input_grad_ptr,
-                            output_ptr,
-                            output_grad_ptr,
-                            kernel_ptr,
-                            kernel_grad_ptr,
-                            bias_grad_ptr,
-                            stream);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("%s [Conv2D] backward time = %.2fms\n", m->op_name, elapsed);
-    // print_tensor<4, float>(acc_output_grad.ptr, acc_output_grad.rect,
-    // "[Conv2D:backward:output_grad]"); print_tensor<4,
-    // float>(acc_kernel_grad.ptr, acc_kernel_grad.rect,
-    // "[Conv2D:backward:kernel_grad]"); print_tensor<1,
-    // float>(acc_bias_grad.ptr, acc_bias_grad.rect,
-    // "[Conv2D:backward:bias_grad]"); print_tensor<4,
-    // float>(acc_input_grad.ptr, acc_input_grad.rect,
-    // "[Conv2D:backward:input_grad]");
-  }
-}
-
-namespace Internal {
-
-void forward_kernel(Conv2DMeta const *m,
+void forward_kernel(cudaStream_t stream,
+                    Conv2DPerDeviceState const *m,
                     float const *input_ptr,
                     float *output_ptr,
                     float const *filter_ptr,
-                    float const *bias_ptr,
-                    cudaStream_t stream) {
+                    float const *bias_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
@@ -280,15 +198,15 @@ void forward_kernel(Conv2DMeta const *m,
   }
 }
 
-void backward_kernel(Conv2DMeta const *m,
+void backward_kernel(cudaStream_t stream,
+                     Conv2DPerDeviceState const *m,
                      float const *input_ptr,
                      float *input_grad_ptr,
                      float const *output_ptr,
                      float *output_grad_ptr,
                      float const *kernel_ptr,
                      float *kernel_grad_ptr,
-                     float *bias_grad_ptr,
-                     cudaStream_t stream) {
+                     float *bias_grad_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f;
@@ -471,7 +389,7 @@ cudnnConvolutionBwdFilterAlgo_t selectConvolutionBackwardFilterAlgorithm(
   return perfResults[0].algo;
 }
 
-} // namespace Internal
+
 } // namespace Conv2D
 } // namespace Kernels
 } // namespace FlexFlow

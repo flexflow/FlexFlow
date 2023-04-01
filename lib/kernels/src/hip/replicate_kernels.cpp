@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/kernels/replicate_kernels.h"
-#include "utils/hip_helper.h"
+#include "kernels/replicate_kernels.h"
+#include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
@@ -24,7 +24,7 @@ namespace Replicate {
 template <typename T>
 void forward_kernel(T const *input_ptr, T *output_ptr, size_t num_elements) {
   hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   checkCUDA(hipMemcpyAsync(output_ptr,
                            input_ptr,
                            num_elements * sizeof(T),
@@ -51,7 +51,7 @@ void backward_kernel(T const *output_grad_ptr,
                      size_t num_replicas) {
   size_t total_elements = num_elements * num_replicas;
   hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   hipLaunchKernelGGL(HIP_KERNEL_NAME(replicate_backward_kernel<T>),
                      GET_BLOCKS(total_elements),
                      CUDA_NUM_THREADS,

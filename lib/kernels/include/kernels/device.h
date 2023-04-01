@@ -41,6 +41,7 @@ typedef cudnnReduceTensorDescriptor_t ffReduceTensorDescriptor_t;
 typedef cudnnAttnDescriptor_t ffAttnDescriptor_t;
 typedef cudnnSeqDataDescriptor_t ffSeqDataDescriptor_t;
 typedef cudnnHandle_t ffHandle_t;
+typedef cudaEvent_t ffEvent_t;
 typedef cublasHandle_t ffblasHandle_t;
 #elif defined(FF_USE_HIP_ROCM)
 typedef hipStream_t ffStream_t;
@@ -60,6 +61,7 @@ typedef miopenReduceTensorDescriptor_t ffReduceTensorDescriptor_t;
 typedef miopenAttnDescriptor_t ffAttnDescriptor_t;
 typedef miopenSeqDataDescriptor_t ffSeqDataDescriptor_t;
 typedef miopenHandle_t ffHandle_t;
+typedef hipEvent_t ffEvent_t;
 typedef hipblasHandle_t ffblasHandle_t;
 #else
 #error "Unknown device"

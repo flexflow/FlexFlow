@@ -36,7 +36,7 @@ namespace BatchMatmul {
 /*                             int b_seq_length_dim, */
 /*                             int seq_length) { */
 /*   cudaStream_t stream; */
-/*   checkCUDA(get_legion_stream(&stream)); */
+/*    */
 
 /*   cudaEvent_t t_start, t_end; */
 /*   if (meta->profiling) { */
@@ -81,7 +81,7 @@ namespace BatchMatmul {
 /*                              int k, */
 /*                              int batch) { */
 /*   cudaStream_t stream; */
-/*   checkCUDA(get_legion_stream(&stream)); */
+/*    */
 
 /*   cudaEvent_t t_start, t_end; */
 /*   if (meta->profiling) { */
@@ -122,7 +122,8 @@ O: (batch, n, m)
 O = A * B
 */
 
-void forward_kernel(BatchMatmulPerDeviceState const *meta,
+void forward_kernel(cudaStream_t stream,
+                    BatchMatmulPerDeviceState const *meta,
                     float *o_ptr,
                     float const *a_ptr,
                     float const *b_ptr,
@@ -199,7 +200,8 @@ O, OGrad: (batch, n, m)
 AGrad = OGrad * B^T
 BGrad = A^T * OGrad
 */
-void backward_kernel(BatchMatmulPerDeviceState const *meta,
+void backward_kernel(cudaStream_t stream,
+                     BatchMatmulPerDeviceState const *meta,
                      float const *o_ptr,
                      float const *o_grad_ptr,
                      float const *a_ptr,
@@ -210,8 +212,7 @@ void backward_kernel(BatchMatmulPerDeviceState const *meta,
                      int m,
                      int n,
                      int k,
-                     int batch,
-                     cudaStream_t stream) {
+                     int batch) {
   checkCUDA(cublasSetStream(meta->handle.blas, stream));
   checkCUDNN(cudnnSetStream(meta->handle.dnn, stream));
 

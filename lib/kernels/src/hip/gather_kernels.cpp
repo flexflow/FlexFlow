@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/kernels/gather_kernels.h"
+#include "kernels/gather_kernels.h"
 #include "flexflow/ops/gather.h"
-#include "utils/hip_helper.h"
+#include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
@@ -23,20 +23,20 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Domain;
 
-GatherMeta::GatherMeta(FFHandler handler, Gather const *gather)
-    : OpMeta(handler, gather) {
+GatherPerDeviceState::GatherPerDeviceState(FFHandler handler, Gather const *gather)
+    : PerDeviceOpState(handler, gather) {
   legion_dim = gather->legion_dim;
 }
 
 namespace Kernels {
 namespace Gather {
 
-void forward_kernel_wrapper(GatherMeta const *m,
+void forward_kernel_wrapper(GatherPerDeviceState const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorR const &index,
                             GenericTensorAccessorW const &output) {
   hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   coord_t stride = 1;
   for (int i = 0; i < m->legion_dim; i++) {
     stride *= (output.domain.hi()[i] - output.domain.lo()[i] + 1);
@@ -63,12 +63,12 @@ void forward_kernel_wrapper(GatherMeta const *m,
   }
 }
 
-void backward_kernel_wrapper(GatherMeta const *m,
+void backward_kernel_wrapper(GatherPerDeviceState const *m,
                              GenericTensorAccessorR const &output_grad,
                              GenericTensorAccessorR const &index,
                              GenericTensorAccessorW const &input_grad) {
   hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   coord_t stride = 1;
   for (int i = 0; i < m->legion_dim; i++) {
     stride *= (output_grad.domain.hi()[i] - output_grad.domain.lo()[i] + 1);

@@ -26,7 +26,7 @@ namespace BatchNorm {
 /*                                float const *scale_ptr, */
 /*                                float const *bias_ptr) { */
 /*   cudaStream_t stream; */
-/*   checkCUDA(get_legion_stream(&stream)); */
+/*    */
 
 /*   cudaEvent_t t_start, t_end; */
 /*   if (m->profiling) { */
@@ -60,7 +60,7 @@ namespace BatchNorm {
 /*                              float *bias_grad_ptr, */
 /*                              size_t numElements) { */
 /*   cudaStream_t stream; */
-/*   checkCUDA(get_legion_stream(&stream)); */
+/*    */
 
 /*   cudaEvent_t t_start, t_end; */
 /*   if (m->profiling) { */
@@ -203,7 +203,7 @@ BatchNormPerDeviceState::BatchNormPerDeviceState(FFHandler handler,
     saveMean = (float *)runningVar + output_c;
     saveVar = (float *)saveMean + output_c;
     cudaStream_t stream;
-    checkCUDA(get_legion_stream(&stream));
+    
     assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
         runningMean, output_c, 0.0f);
     assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(

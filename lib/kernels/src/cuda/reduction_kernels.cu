@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/kernels/reduction_kernels.h"
-#include "flexflow/utils/cuda_helper.h"
+#include "kernels/reduction_kernels.h"
+#include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -39,7 +39,7 @@ void forward_kernel(T const *input_ptr,
                     size_t num_elements,
                     size_t num_replicas) {
   cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   size_t total_elements = num_elements * num_replicas;
   reduction_forward_kernel<T>
       <<<GET_BLOCKS(total_elements), CUDA_NUM_THREADS, 0, stream>>>(
@@ -51,7 +51,7 @@ void backward_kernel(T const *output_grad_ptr,
                      T *input_grad_ptr,
                      size_t num_elements) {
   cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   checkCUDA(cudaMemcpyAsync(input_grad_ptr,
                             output_grad_ptr,
                             num_elements * sizeof(T),

@@ -24,13 +24,13 @@ using Legion::coord_t;
 using Legion::Domain;
 using Legion::Memory;
 
-DropoutMeta::DropoutMeta(FFHandler handler,
+DropoutPerDeviceState::DropoutPerDeviceState(FFHandler handler,
                          bool profiling,
                          float rate,
                          unsigned long long seed,
                          Memory gpu_mem,
                          Domain const &output_domain)
-    : OpMeta(handler) {
+    : PerDeviceOpState(handler) {
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
   checkCUDNN(miopenCreateDropoutDescriptor(&dropoutDesc));
@@ -69,7 +69,7 @@ DropoutMeta::DropoutMeta(FFHandler handler,
                                         MIOPEN_RNG_PSEUDO_XORWOW));
 }
 
-DropoutMeta::~DropoutMeta(void) {
+DropoutPerDeviceState::~DropoutPerDeviceState(void) {
   reserveInst.destroy();
   checkCUDNN(miopenDestroyTensorDescriptor(inputTensor));
   checkCUDNN(miopenDestroyTensorDescriptor(outputTensor));
@@ -79,28 +79,10 @@ DropoutMeta::~DropoutMeta(void) {
 namespace Kernels {
 namespace Dropout {
 
-void forward_kernel_wrapper(DropoutMeta *m,
-                            float const *input_ptr,
-                            float *output_ptr) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::forward_kernel(m, input_ptr, output_ptr, stream);
-}
-
-void backward_kernel_wrapper(DropoutMeta *m,
-                             float const *output_grad_ptr,
-                             float *input_grad_ptr) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::backward_kernel(m, output_grad_ptr, input_grad_ptr, stream);
-}
-
-namespace Internal {
-
-void forward_kernel(DropoutMeta *m,
+void forward_kernel(hipStream_t stream,
+                    DropoutPerDeviceState *m,
                     float const *input_ptr,
-                    float *output_ptr,
-                    hipStream_t stream) {
+                    float *output_ptr) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   checkCUDNN(miopenDropoutForward(m->handle.dnn,
@@ -114,10 +96,10 @@ void forward_kernel(DropoutMeta *m,
                                   m->reserveSpaceSize));
 }
 
-void backward_kernel(DropoutMeta *m,
+void backward_kernel(hipStream_t stream,
+                     DropoutPerDeviceState *m,
                      float const *output_grad_ptr,
-                     float *input_grad_ptr,
-                     hipStream_t stream) {
+                     float *input_grad_ptr) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   checkCUDNN(miopenDropoutBackward(m->handle.dnn,
@@ -131,7 +113,7 @@ void backward_kernel(DropoutMeta *m,
                                    m->reserveSpaceSize));
 }
 
-} // namespace Internal
+
 } // namespace Dropout
 } // namespace Kernels
 } // namespace FlexFlow

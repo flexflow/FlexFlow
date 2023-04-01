@@ -6,7 +6,6 @@
 namespace FlexFlow {
 namespace Kernels {
 namespace Conv2D {
-namespace Internal {
 
 miopenConvFwdAlgorithm_t selectConvolutionForwardAlgorithm(
     miopenHandle_t handle,
@@ -47,7 +46,6 @@ miopenConvBwdDataAlgorithm_t selectConvolutionBackwardDataAlgorithm(
     void *dx,
     float *time);
 
-}
 }
 }
 }

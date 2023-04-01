@@ -4,28 +4,43 @@
 #include "utils/optional.h"
 #include "kernels/device.h"
 #include "kernels/cuda_helper.h"
+#include "kernels/hip_helper.h"
 
 namespace FlexFlow {
 
 template <typename F, typename ...Ts>
 optional<float> profiling_wrapper(F const &f, bool profiling, Ts &&...ts) { 
-  cudaStream_t stream;
+  ffStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
-  cudaEvent_t t_start, t_end;
+  ffEvent_t t_start, t_end;
   if (profiling) {
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
     cudaEventCreate(&t_start);
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
+#elif defined(FF_USE_HIP_ROCM)
+    hipEventCreate(&t_start);
+    hipEventCreate(&t_end);
+    hipEventRecord(t_start, stream);
+#endif
   }
   f(stream, ts...); 
   if (profiling) {
+    float elapsed = 0;
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
     checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
+#elif defined(FF_USE_HIP_ROCM)
+    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventSynchronize(t_end));
+    checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
+    hipEventDestroy(t_start);
+    hipEventDestroy(t_end);
+#endif
     return elapsed;
     /* printf("MultiHeadAttention forward time = %.2fms\n", elapsed); */
   }

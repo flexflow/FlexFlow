@@ -14,7 +14,7 @@
  */
 
 #include "flexflow/ops/mean.h"
-#include "utils/hip_helper.h"
+#include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {}; // namespace FlexFlow
