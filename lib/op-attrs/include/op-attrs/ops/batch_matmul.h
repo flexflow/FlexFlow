@@ -7,12 +7,7 @@
 
 namespace FlexFlow {
 
-struct BatchMatmulAttrs : public BinaryOpAttrs {
-public:
-  bool is_valid(ParallelTensorShape const &rhs_input_shape, ParallelTensorShape const &lhs_input_shape) const override;
-  ParallelTensorShape output_shape(ParallelTensorShape const &rhs_input_shape, ParallelTensorShape const &lhs_input_shape) const override;
-  OperatorType op_type() const override;
-public:
+struct BatchMatmulAttrs {
   int a_seq_length_dim, b_seq_length_dim;
 };
 

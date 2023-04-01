@@ -1,22 +1,22 @@
 #include "op-attrs/ops/reduction.h"
-#include "utils/hash-utils.h"
+#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 
 bool operator==(ReductionAttrs const &lhs, ReductionAttrs const &rhs) {
-  return lhs.as_tuple() == rhs.as_tuple();
+  return visit_eq(lhs, rhs);
 }
 
 bool operator<(ReductionAttrs const &lhs, ReductionAttrs const &rhs) {
-  return lhs.as_tuple() < rhs.as_tuple();
+  return visit_lt(lhs, rhs);
 }
 
-ParallelTensorShape ReductionAttrs::output_shape(ParallelTensorShape const &input_shape) const {
-  ParallelTensorShape output = input_shape;
-  output.at(this->reduction_legion_dim).degree /= this->reduction_degree;
-  output.at(this->reduction_legion_dim).size /= this->reduction_degree;
-  return output;
-}
+/* ParallelTensorShape ReductionAttrs::output_shape(ParallelTensorShape const &input_shape) const { */
+/*   ParallelTensorShape output = input_shape; */
+/*   output.at(this->reduction_legion_dim).degree /= this->reduction_degree; */
+/*   output.at(this->reduction_legion_dim).size /= this->reduction_degree; */
+/*   return output; */
+/* } */
 
 }
 
@@ -25,6 +25,6 @@ using ::FlexFlow::ReductionAttrs;
 
 size_t hash<ReductionAttrs>::operator()(
     ReductionAttrs const &params) const {
-  return get_std_hash(params.as_tuple());
+  return visit_hash(params);
 } 
 }

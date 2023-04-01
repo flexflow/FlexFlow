@@ -2,6 +2,7 @@
 #define _FLEXFLOW_OP_ATTRS_GET_OP_TYPE_H
 
 #include "operator_attrs.h"
+#include "utils/variant.h"
 
 namespace FlexFlow {
 
@@ -33,6 +34,18 @@ OperatorType get_op_type(ReductionAttrs const &);
 OperatorType get_op_type(RepartitionAttrs const &);
 OperatorType get_op_type(ReplicateAttrs const &);
 OperatorType get_op_type(FusedParallelOpAttrs const &);
+
+struct GetOpTypeFunctor {
+  template <typename T>
+  OperatorType operator()(T const &t) {
+    return get_op_type(t);
+  }
+};
+
+template <typename ...Ts> 
+OperatorType get_op_type(variant<Ts...> const &attrs) {
+  return visit(GetOpTypeFunctor{}, attrs);
+}
 
 }
 

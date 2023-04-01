@@ -7,11 +7,11 @@
 
 namespace FlexFlow {
 
-struct SoftmaxAttrs : public UnaryOpAttrs {
-public:
-  OperatorType op_type() const override;
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-public:
+struct SoftmaxAttrs {
+/* public: */
+/*   OperatorType op_type() const override; */
+/*   ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
+/* public: */
   int dim;
 };
 bool operator==(SoftmaxAttrs const &, SoftmaxAttrs const &);

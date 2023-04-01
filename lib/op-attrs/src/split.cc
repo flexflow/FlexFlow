@@ -3,9 +3,9 @@
 
 namespace FlexFlow {
 
-OperatorType SplitAttrs::op_type() const {
-  return OP_SPLIT;
-}
+/* OperatorType SplitAttrs::op_type() const { */
+/*   return OP_SPLIT; */
+/* } */
 
 bool operator==(SplitAttrs const &lhs, SplitAttrs const &rhs) {
   return visit_eq(lhs, rhs);

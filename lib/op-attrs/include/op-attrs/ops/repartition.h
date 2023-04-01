@@ -7,11 +7,7 @@
 
 namespace FlexFlow {
 
-struct RepartitionAttrs : public UnaryOpAttrs {
-public:
-  bool is_valid(ParallelTensorShape const &input_shape) const override;
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
+struct RepartitionAttrs {
 public:
   int repartition_legion_dim;
   int repartition_degree;

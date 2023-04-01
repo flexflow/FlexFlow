@@ -16,11 +16,11 @@ constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
 };
 
 
-bool Pool2DAttrs::is_valid(ParallelTensorShape const &input) const {
-  ParallelTensorShape output_shape = this->calculate_output_shape(input);
+/* bool Pool2DAttrs::is_valid(ParallelTensorShape const &input) const { */
+/*   ParallelTensorShape output_shape = this->calculate_output_shape(input); */
 
-  return output_shape.is_valid() && (input.at(Input::REPLICA).degree == 1);
-}
+/*   return output_shape.is_valid() && (input.at(Input::REPLICA).degree == 1); */
+/* } */
 
 static std::vector<ParallelDimMappingRecord> construct_mappings(ParallelTensorShape const &input_shape) {
   auto const outputMappings = construct_output_parallel_dims( { {Input::REPLICA,

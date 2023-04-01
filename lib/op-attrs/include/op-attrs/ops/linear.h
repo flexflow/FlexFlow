@@ -8,15 +8,15 @@
 
 namespace FlexFlow {
 
-struct LinearAttrs : public UnaryOpAttrs {
+struct LinearAttrs {
 public:
   ParallelTensorShape calculate_output_shape(ParallelTensorShape const &input_shape) const;
   ParallelTensorShape calculate_kernel_shape(ParallelTensorShape const &input_shape) const;
   ParallelTensorShape calculate_bias_shape(ParallelTensorShape const &input_shape) const;
 
-  bool is_valid(ParallelTensorShape const &input_shape) const override;
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
+  /* bool is_valid(ParallelTensorShape const &input_shape) const override; */
+  /* ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
+  /* OperatorType op_type() const override; */
 public:
   int out_channels;
   bool use_bias;

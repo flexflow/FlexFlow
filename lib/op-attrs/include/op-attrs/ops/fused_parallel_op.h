@@ -9,10 +9,10 @@
 
 namespace FlexFlow {
 
-struct FusedParallelOpAttrs : public UnaryOpAttrs {
-public:
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
+struct FusedParallelOpAttrs {
+/* public: */
+/*   ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
+/*   OperatorType op_type() const override; */
 
 public:
   std::vector<ParallelOpInfo> parallel_ops;

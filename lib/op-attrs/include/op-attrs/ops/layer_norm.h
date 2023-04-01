@@ -7,11 +7,11 @@
 
 namespace FlexFlow {
 
-struct LayerNormAttrs : public UnaryOpAttrs {
-public:
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
-public:
+struct LayerNormAttrs {
+/* public: */
+/*   ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
+/*   OperatorType op_type() const override; */
+/* public: */
   std::vector<int> axes;
   bool elementwise_affine;
   float eps;

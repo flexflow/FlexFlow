@@ -8,11 +8,11 @@
 
 namespace FlexFlow {
 
-struct EmbeddingAttrs : public UnaryOpAttrs {
-public:
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
-public:
+struct EmbeddingAttrs {
+/* public: */
+/*   ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
+/*   OperatorType op_type() const override; */
+/* public: */
   int num_entries, out_channels;
   AggrMode aggr;
   DataType data_type;

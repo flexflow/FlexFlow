@@ -7,10 +7,10 @@
 
 namespace FlexFlow {
 
-struct Group_byAttrs : public BinaryOpAttrs {
+struct Group_byAttrs {
 public:
-  ParallelTensorShape output_shape(ParallelTensorShape const &, ParallelTensorShape const &) const override;
-  OperatorType op_type() const override;
+  /* ParallelTensorShape output_shape(ParallelTensorShape const &, ParallelTensorShape const &) const override; */
+  /* OperatorType op_type() const override; */
 public:
   int n;
   float alpha;

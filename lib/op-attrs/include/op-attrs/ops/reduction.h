@@ -7,13 +7,10 @@
 
 namespace FlexFlow {
 
-struct ReductionAttrs : public UnaryOpAttrs {
-public:
-  using AsConstTuple = std::tuple<int, int>;
-  AsConstTuple as_tuple() const;
-
-  ParallelTensorShape output_shape(ParallelTensorShape const &) const override;
-  OperatorType op_type() const override;
+struct ReductionAttrs {
+/* public: */
+  /* ParallelTensorShape output_shape(ParallelTensorShape const &) const override; */
+  /* OperatorType op_type() const override; */
 public:
   int reduction_legion_dim;
   int reduction_degree;

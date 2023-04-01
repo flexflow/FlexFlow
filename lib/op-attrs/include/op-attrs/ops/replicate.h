@@ -7,10 +7,10 @@
 
 namespace FlexFlow {
 
-struct ReplicateAttrs : public UnaryOpAttrs {
-public:
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
+struct ReplicateAttrs {
+/* public: */
+/*   ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
+/*   OperatorType op_type() const override; */
 public:
   int replicate_legion_dim;
   int replicate_degree;

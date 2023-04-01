@@ -7,12 +7,7 @@
 
 namespace FlexFlow {
 
-struct ReshapeAttrs : public UnaryOpAttrs {
-public:
-  bool is_valid(ParallelTensorShape const &) const override;
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
-public:
+struct ReshapeAttrs {
   std::vector<int> shape;
 };
 

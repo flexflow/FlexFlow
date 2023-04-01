@@ -8,11 +8,11 @@
 
 namespace FlexFlow {
 
-struct ReduceAttrs : public UnaryOpAttrs {
-public:
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
-  bool is_valid(ParallelTensorShape const &) const override;
+struct ReduceAttrs {
+/* public: */
+/*   ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
+/*   OperatorType op_type() const override; */
+/*   bool is_valid(ParallelTensorShape const &) const override; */
 public:
   std::vector<int> axes;
   bool keepdims;

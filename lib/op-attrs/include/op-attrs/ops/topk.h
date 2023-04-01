@@ -7,12 +7,12 @@
 
 namespace FlexFlow {
 
-struct TopKAttrs : public UnaryOpAttrs {
-public:
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
+struct TopKAttrs {
+/* public: */
+/*   ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
+/*   OperatorType op_type() const override; */
 
-public:
+/* public: */
   int k;
   bool sorted;
 };

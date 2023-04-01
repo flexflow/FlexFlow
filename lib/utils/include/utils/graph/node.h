@@ -4,9 +4,9 @@
 #include <cstddef>
 #include <functional>
 #include <unordered_set>
-#include "tl/optional.hpp"
 #include <ostream>
 #include "utils/visitable.h"
+#include "utils/optional.h"
 
 namespace FlexFlow {
 

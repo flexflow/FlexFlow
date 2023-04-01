@@ -7,7 +7,7 @@
 
 namespace FlexFlow {
 
-struct Conv2DAttrs : public UnaryOpAttrs {
+struct Conv2DAttrs {
 public:
 
   ParallelTensorShape calculate_output_shape(ParallelTensorShape const &input_shape) const;
@@ -19,9 +19,9 @@ public:
    *
    * Likely deprecated (see https://github.com/flexflow/FlexFlow/pull/317)
    */
-  bool is_valid(ParallelTensorShape const &input_shape) const override;
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
+  /* bool is_valid(ParallelTensorShape const &input_shape) const override; */
+  /* ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
+  /* OperatorType op_type() const override; */
 public:
   int out_channels, kernel_h, kernel_w, stride_h, stride_w, padding_h,
       padding_w, groups;

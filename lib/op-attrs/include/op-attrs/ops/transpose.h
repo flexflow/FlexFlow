@@ -7,11 +7,11 @@
 
 namespace FlexFlow {
 
-struct TransposeAttrs : public UnaryOpAttrs {
-public:
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
-public:
+struct TransposeAttrs {
+/* public: */
+/*   ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
+/*   OperatorType op_type() const override; */
+/* public: */
   std::vector<int> perm;
 };
 

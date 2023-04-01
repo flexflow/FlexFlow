@@ -3,10 +3,10 @@
 
 namespace FlexFlow {
 
-bool RepartitionAttrs::is_valid(ParallelTensorShape const &input_shape) const {
-  ParallelDim dim = input_shape.at(this->repartition_legion_dim);
-  return (dim.size % this->repartition_degree * dim.degree == 0);
-}
+/* bool RepartitionAttrs::is_valid(ParallelTensorShape const &input_shape) const { */
+/*   ParallelDim dim = input_shape.at(this->repartition_legion_dim); */
+/*   return (dim.size % this->repartition_degree * dim.degree == 0); */
+/* } */
 
 bool operator==(RepartitionAttrs const &lhs, RepartitionAttrs const &rhs) {
   return visit_eq(lhs, rhs);

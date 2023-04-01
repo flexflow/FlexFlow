@@ -7,11 +7,11 @@
 
 namespace FlexFlow {
 
-struct SplitAttrs : public UnaryInputOpAttrs {
-public:
-  std::vector<ParallelTensorShape> output_shapes(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
-public:
+struct SplitAttrs {
+/* public: */
+/*   std::vector<ParallelTensorShape> output_shapes(ParallelTensorShape const &input_shape) const override; */
+/*   OperatorType op_type() const override; */
+/* public: */
   std::vector<int> splits;
   int legion_axis;
 };

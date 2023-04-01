@@ -7,13 +7,13 @@
 
 namespace FlexFlow {
 
-struct AggregateSpecAttrs : public UnaryOpAttrs {
+struct AggregateSpecAttrs {
 public:
   AggregateSpecAttrs() = delete;
   AggregateSpecAttrs(int n, float lambda_bal);
 
-  OperatorType op_type() const override;
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
+  /* OperatorType op_type() const override; */
+  /* ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
 public:
   int n;
   float lambda_bal;

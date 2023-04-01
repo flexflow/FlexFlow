@@ -30,32 +30,32 @@ namespace FlexFlow {
 /* OperatorType GetOpType::operator()(CombineAttrs const &p) const { return OP_COMBINE; } */
 /* OperatorType GetOpType::operator()(FusedParallelOpAttrs const &p) const { return OP_FUSED_PARALLEL; } */
 
-struct AsOpAttrs {
-  template <typename T>
-  OpAttrsInterface const &operator()(T const &p) {
-    return p;
-  }
-};
+/* struct AsOpAttrs { */
+/*   template <typename T> */
+/*   OpAttrsInterface const &operator()(T const &p) { */
+/*     return p; */
+/*   } */
+/* }; */
 
-OperatorType get_op_type(OpAttrsInterface const &o) {
-  return o.op_type();
-}
-                                                          //
-OperatorType get_op_type(CompGraphOperatorAttrs const &o) { 
-  return get_op_type(visit(AsOpAttrs{}, o));
-}
+/* OperatorType get_op_type(OpAttrsInterface const &o) { */
+/*   return o.op_type(); */
+/* } */
+/*                                                           // */
+/* OperatorType get_op_type(CompGraphOperatorAttrs const &o) { */ 
+/*   return get_op_type(visit(AsOpAttrs{}, o)); */
+/* } */
 
-OperatorType get_op_type(PCGOperatorAttrs const &o) { 
-  return get_op_type(visit(AsOpAttrs{}, o));
-}
+/* OperatorType get_op_type(PCGOperatorAttrs const &o) { */ 
+/*   return get_op_type(visit(AsOpAttrs{}, o)); */
+/* } */
 
-std::vector<ParallelTensorShape> get_output_shapes(PCGOperatorAttrs const &op_params, std::vector<ParallelTensorShape> const &input_tensor_shapes) {
-  return mpark::visit(AsOpAttrs{}, op_params).output_shapes(input_tensor_shapes);
-}
+/* std::vector<ParallelTensorShape> get_output_shapes(PCGOperatorAttrs const &op_params, std::vector<ParallelTensorShape> const &input_tensor_shapes) { */
+/*   return mpark::visit(AsOpAttrs{}, op_params).output_shapes(input_tensor_shapes); */
+/* } */
 
-bool is_parallel_op(PCGOperatorAttrs const &o) {
-  return is_parallel_op(get_op_type(o));
-}
+/* bool is_parallel_op(PCGOperatorAttrs const &o) { */
+/*   return is_parallel_op(get_op_type(o)); */
+/* } */
 
 void as_dot(int x, RecordFormatter &r) {
   r << std::to_string(x); 

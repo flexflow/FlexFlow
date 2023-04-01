@@ -8,10 +8,10 @@
 
 namespace FlexFlow {
 
-struct ElementUnaryAttrs : public UnaryOpAttrs {
-public:
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
+struct ElementUnaryAttrs {
+/* public: */
+  /* ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
+  /* OperatorType op_type() const override; */
 public:
   OperatorType op;
   /* bool inplace; */

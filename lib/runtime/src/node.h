@@ -9,13 +9,13 @@ namespace FlexFlow {
 
 class Op;
 
-struct Node {
-  Node() = delete;
-  Node(size_t _guid, Op const *_ptr);
+struct OpNode {
+  OpNode() = delete;
+  OpNode(size_t _guid, Op const *_ptr);
 
-  bool operator==(Node const &) const;
-  bool operator!=(Node const &) const;
-  bool operator<(Node const &) const;
+  bool operator==(OpNode const &) const;
+  bool operator!=(OpNode const &) const;
+  bool operator<(OpNode const &) const;
 
   size_t guid;
   Op const *ptr;

@@ -4,5 +4,7 @@
 #include "ffconst.h"
 #include "parallel_tensor_shape.h"
 #include "operator_attrs.h"
+#include "get_op_type.h"
+#include "get_output_shapes.h"
 
-#endif // _FLEXFLOW_OP_META_H
+#endif

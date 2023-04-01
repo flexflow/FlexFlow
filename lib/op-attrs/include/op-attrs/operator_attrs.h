@@ -68,9 +68,8 @@ using ParallelOperatorAttrs = variant<
 
 using PCGOperatorAttrs = variant_join<CompGraphOperatorAttrs, ParallelOperatorAttrs>;
 
-OperatorType get_op_type(CompGraphOperatorAttrs const &);
-OperatorType get_op_type(PCGOperatorAttrs const &);
-OperatorType get_op_type(OpAttrsInterface const &);
+/* OperatorType get_op_type(CompGraphOperatorAttrs const &); */
+/* OperatorType get_op_type(PCGOperatorAttrs const &); */
 
 RecordFormatter as_dot(CompGraphOperatorAttrs const &);
 RecordFormatter as_dot(PCGOperatorAttrs const &);

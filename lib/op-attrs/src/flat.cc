@@ -24,16 +24,16 @@ bool operator<(FlatAttrs const &lhs, FlatAttrs const &rhs) {
 }
 
 
-bool FlatAttrs::is_valid(ParallelTensorShape const &input) const {
-  ParallelTensorShape output_shape = this->calculate_output_shape(input);
+/* bool FlatAttrs::is_valid(ParallelTensorShape const &input) const { */
+/*   ParallelTensorShape output_shape = this->calculate_output_shape(input); */
 
-  bool is_valid = true;
-  is_valid &= input.is_valid();
-  is_valid &= output_shape.is_valid();
-  is_valid &= (input.at(Input::WIDTH).degree == 1);
+/*   bool is_valid = true; */
+/*   is_valid &= input.is_valid(); */
+/*   is_valid &= output_shape.is_valid(); */
+/*   is_valid &= (input.at(Input::WIDTH).degree == 1); */
 
-  return is_valid;
-}
+/*   return is_valid; */
+/* } */
 
 ParallelTensorShape FlatAttrs::calculate_output_shape(ParallelTensorShape const &input) const {
   assert (input.num_dims() == Input::NUMDIM);

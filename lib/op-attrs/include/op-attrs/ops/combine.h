@@ -7,10 +7,10 @@
 
 namespace FlexFlow {
 
-struct CombineAttrs : public UnaryOpAttrs {
-  ParallelTensorShape output_shape(ParallelTensorShape const &) const override;
-  bool is_valid(ParallelTensorShape const &input) const override;
-  OperatorType op_type() const override;
+struct CombineAttrs {
+  /* ParallelTensorShape output_shape(ParallelTensorShape const &) const override; */
+  /* bool is_valid(ParallelTensorShape const &input) const override; */
+  /* OperatorType op_type() const override; */
 public:
   int combine_legion_dim;
   int combine_degree;

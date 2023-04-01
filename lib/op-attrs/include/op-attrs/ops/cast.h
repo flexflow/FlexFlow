@@ -8,11 +8,7 @@
 
 namespace FlexFlow {
 
-struct CastAttrs : public UnaryOpAttrs {
-  bool is_valid(ParallelTensorShape const &) const override;
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
-public:
+struct CastAttrs {
   DataType dtype;
 };
 

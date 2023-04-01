@@ -7,12 +7,12 @@
 
 namespace FlexFlow {
 
-struct GatherAttrs : public BinaryOpAttrs {
-public:
-  ParallelTensorShape output_shape(ParallelTensorShape const &, ParallelTensorShape const &) const override;
-  OperatorType op_type() const override;
-  bool is_valid(ParallelTensorShape const &, ParallelTensorShape const &) const override;
-public:
+struct GatherAttrs {
+/* public: */
+  /* ParallelTensorShape output_shape(ParallelTensorShape const &, ParallelTensorShape const &) const override; */
+  /* OperatorType op_type() const override; */
+  /* bool is_valid(ParallelTensorShape const &, ParallelTensorShape const &) const override; */
+/* public: */
   int legion_dim;
 };
 

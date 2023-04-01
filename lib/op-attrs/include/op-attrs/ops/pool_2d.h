@@ -8,16 +8,16 @@
 
 namespace FlexFlow {
 
-struct Pool2DAttrs : public UnaryOpAttrs {
+struct Pool2DAttrs {
 public:
   void solve_dims(ParallelTensorShape const &input,
                   ParallelTensorShape &output) const;
 
   ParallelTensorShape calculate_output_shape(ParallelTensorShape const &input) const;
 
-  bool is_valid(ParallelTensorShape const &input_shape) const override;
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
+  /* bool is_valid(ParallelTensorShape const &input_shape) const override; */
+  /* ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
+  /* OperatorType op_type() const override; */
 public:
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;

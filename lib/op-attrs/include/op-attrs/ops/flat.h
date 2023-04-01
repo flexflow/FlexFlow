@@ -7,10 +7,10 @@
 
 namespace FlexFlow {
 
-struct FlatAttrs : public UnaryOpAttrs {
-  bool is_valid(ParallelTensorShape const &input_shape) const override;
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
+struct FlatAttrs {
+  /* bool is_valid(ParallelTensorShape const &input_shape) const override; */
+  /* ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
+  /* OperatorType op_type() const override; */
 private:
   int output_size(ParallelTensorShape const &input,
                   ParallelTensorShape &output) const;

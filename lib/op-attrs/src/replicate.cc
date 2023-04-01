@@ -12,9 +12,9 @@ bool operator<(ReplicateAttrs const &lhs, ReplicateAttrs const &rhs) {
   return visit_lt(lhs, rhs);
 }
 
-OperatorType ReplicateAttrs::op_type() const {
-  return OP_REPLICATE;
-}
+/* OperatorType ReplicateAttrs::op_type() const { */
+/*   return OP_REPLICATE; */
+/* } */
 
 }
 
