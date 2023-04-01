@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "dirent.h"
 #include "mapper.h"
 #include "model.h"
 

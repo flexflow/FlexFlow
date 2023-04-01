@@ -16,7 +16,7 @@
 #include "split.h"
 #include "model.h"
 #include "kernels/split_kernels.h"
-#include "utils/hash_utils.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 // declare Legion names

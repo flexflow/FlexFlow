@@ -14,7 +14,7 @@
  */
 
 #include "noop.h"
-#include "utils/hash_utils.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 // declare Legion names

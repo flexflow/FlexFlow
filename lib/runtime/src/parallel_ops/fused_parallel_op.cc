@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/fused_parallel_op.h"
-#include "flexflow/model.h"
-#include "flexflow/utils/hash_utils.h"
+#include "parallel_ops/fused_parallel_op.h"
+#include "model.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 // declare Legion names

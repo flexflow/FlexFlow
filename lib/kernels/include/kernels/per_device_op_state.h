@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_KERNELS_PER_NODE_OP_STATE_H
 #define _FLEXFLOW_KERNELS_PER_NODE_OP_STATE_H
 
-#include "kernels/config.h"
+#include "kernels/ff_handler.h"
 #include "op-attrs/ffconst.h"
 #include <vector>
 #include "utils/stack_vector.h"

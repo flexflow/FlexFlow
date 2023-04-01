@@ -19,9 +19,9 @@
 #include "parallel_ops/partition.h"
 #include "parallel_ops/reduction.h"
 #include "parallel_ops/replicate.h"
-#include "utils/dot/dot_file.h"
-#include "utils/hash_utils.h"
-#include "queue"
+#include "utils/dot_file.h"
+#include "utils/hash-utils.h"
+#include <queue>
 #include <memory>
 #include <random>
 #include <unordered_set>

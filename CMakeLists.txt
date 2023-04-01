@@ -26,7 +26,16 @@ function(define_ff_vars target)
     MAX_NUM_FUSED_TENSORS=${FF_MAX_NUM_FUSED_TENSORS}
     MAX_NUM_WORKERS=${FF_MAX_NUM_WORKERS}
     FF_USE_NCCL=${FF_USE_NCCL}
+    MAX_TENSOR_DIM=${FF_MAX_DIM}
     )
+
+  if (FF_GPU_BACKEND STREQUAL "cuda")
+    target_compile_definitions(${target} PRIVATE FF_USE_CUDA)
+  elseif (FF_GPU_BACKEND STREQUAL "hip_cuda")
+    target_compile_definitions(${target} PRIVATE FF_USE_HIP_CUDA)
+  elseif (FF_GPU_BACKEND STREQUAL "hip_rocm")
+    target_compile_definitions(${target} PRIVATE FF_USE_HIP_ROCM)
+  endif()
 endfunction()
 
 option(FF_USE_EXTERNAL_LEGION "Use pre-installed Legion" OFF)

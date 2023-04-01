@@ -2,10 +2,11 @@
 #define _FLEXFLOW_KERNELS_ACCESSOR_H
 
 #include "op-attrs/ffconst.h"
-#include "kernels/config.h"
+#include "kernels/ff_handler.h"
 #include "array_shape.h"
 #include <stdexcept>
 #include "op-attrs/ffconst_utils.h"
+#include "device.h"
 
 namespace FlexFlow {
 

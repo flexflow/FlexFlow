@@ -83,6 +83,6 @@ struct hash<std::vector<T>> {
     return seed;
   }
 };
-} // namespace std
+}
 
-#endif // _FLEXFLOW_HASH_UTILS_H
+#endif

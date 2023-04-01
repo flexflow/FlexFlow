@@ -3,7 +3,7 @@
 
 #include "kernels/device.h"
 #include "kernels/per_device_op_state.h"
-#include "kernels/domain.h"
+#include "kernels/array_shape.h"
 
 namespace FlexFlow {
 
@@ -23,9 +23,9 @@ namespace Kernels {
 namespace ElementBinary {
 
 void init_kernel(ElementBinaryPerDeviceState *m,
-                 Domain const &input1_domain,
-                 Domain const &input2_domain,
-                 Domain const &output_domain);
+                 ArrayShape const &input1_domain,
+                 ArrayShape const &input2_domain,
+                 ArrayShape const &output_domain);
 
 void forward_kernel(ffStream_t stream,
                     ElementBinaryPerDeviceState const *m,

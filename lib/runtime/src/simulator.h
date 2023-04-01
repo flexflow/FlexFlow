@@ -26,7 +26,7 @@
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
-#include "kernels/config.h"
+#include "kernels/ff_handler.h"
 
 namespace FlexFlow {
 

@@ -2,7 +2,7 @@
 #include "layer.h"
 #include "model.h"
 #include "kernels/conv_2d_kernels.h"
-#include "utils/hash_utils.h"
+#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
 #include "mpark/variant.hpp"
 

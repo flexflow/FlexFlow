@@ -5,6 +5,14 @@
 #include "kernels/array_shape.h"
 #include "op-attrs/ffconst.h"
 
+#if defined(FF_USE_CUDA)
+#include <cuda_fp16.h>
+#elif defined(FF_USE_HIP_CUDA)
+#include <cuda_fp16.h>
+#elif defined(FF_USE_HIP_ROCM)
+#include <hip/hip_fp16.h>
+#endif
+
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #define FF_CUDNN_STATUS_SUCCESS CUDNN_STATUS_SUCCESS
 #define FF_CURAND_STATUS_SUCESS CURAND_STATUS_SUCCESS

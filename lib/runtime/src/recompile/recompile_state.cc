@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/model.h"
-#include "flexflow/recompile.h"
+#include "model.h"
+#include "recompile.h"
 #include "legion.h"
 
 namespace FlexFlow {
@@ -37,4 +37,4 @@ void RecompileState::alter() {
   recompilations++;
 }
 
-}; // namespace FlexFlow
+}

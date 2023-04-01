@@ -3,7 +3,7 @@
 
 #include "kernels/device.h"
 #include "kernels/per_device_op_state.h"
-#include "kernels/config.h"
+#include "kernels/ff_handler.h"
 #include "kernels/allocation.h"
 #include <memory>
 #include "op-attrs/ops/attention.h"

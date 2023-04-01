@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/optimizer.h"
-#include "flexflow/model.h"
+#include "optimizer.h"
+#include "model.h"
 
 namespace FlexFlow {
 

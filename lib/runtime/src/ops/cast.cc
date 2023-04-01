@@ -15,7 +15,7 @@
 
 #include "cast.h"
 #include "model.h"
-#include "utils/hash_utils.h"
+#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
 
 using namespace FlexFlow::Kernels::Cast;

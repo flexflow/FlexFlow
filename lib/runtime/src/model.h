@@ -37,6 +37,7 @@
 #include "compiler/compiler.h"
 #include "op-attrs/ffconst.h"
 #include "layer_id.h"
+#include "kernels/ff_handler.h"
 
 namespace FlexFlow {
 
@@ -377,35 +378,6 @@ public:
                                          int gpus_per_node,
                                          int cpus_per_node,
                                          std::vector<MachineView> &valid_views);
-  // ========================================
-  // Internal PCG::Node creation APIs
-  // ========================================
-  /* tl::optional<Node> get_or_create_node(std::vector<ParallelTensor> const &inputs, */
-  /*                         PCGOperatorAttrs const &attrs) { */
-  /*   auto input_shapes = vector_transform([](ParallelTensor const &t) { return t->get_shape(); }, inputs); */
-
-  /*   if (!is_valid(attrs, input_shapes)) { */
-  /*     return tl::nullopt; */
-  /*   } */
-
-  /*   T *op = nullptr; */
-
-  /*   std::pair<typename ToShape<typename T::Input>::type, Params> key{ */
-  /*       input_shapes, params}; */
-  /*   auto &cache = get<std::unordered_map< */
-  /*       std::pair<typename ToShape<typename T::Input>::type, Params>, */
-  /*       T *>>(this->cached_ops); */
-  /*   auto const &it = cache.find(key); */
-  /*   if (it != cache.end()) { */
-  /*     op = it->second; */
-  /*   } else { */
-  /*     op = new T(*this, params, input); */
-  /*     cache[key] = op; */
-  /*   } */
-
-  /*   assert(op->get_params() == params); */
-  /*   return this->new_node(op); */
-  /* } */
 
   Node get_or_create_noop_node(const ParallelTensor input);
   Node get_or_create_input_node(ParallelTensorShape const &);
@@ -490,10 +462,6 @@ public:
 #ifdef FF_USE_NCCL
   ncclComm_t *find_nccl_comms(MachineView const &view) const;
 #endif
-#ifdef FF_USE_PROPAGATE
-  void propagate(std::map<Op *, MachineView> const &current,
-                 std::map<Op *, MachineView> &next) const;
-#endif
   void rewrite(std::map<Op const *, MachineView> const &current,
                std::map<Op const *, MachineView> &next,
                bool use_propagation) const;
@@ -568,38 +536,6 @@ private:
   Node new_node(Op *);
 };
 
-class UtilityTasks {
-public:
-  static FFHandler
-      init_cuda_task(Legion::Task const *task,
-                     std::vector<Legion::PhysicalRegion> const &regions,
-                     Legion::Context ctx,
-                     Legion::Runtime *runtime);
-  static void dummy_task(Legion::Task const *task,
-                         std::vector<Legion::PhysicalRegion> const &regions,
-                         Legion::Context ctx,
-                         Legion::Runtime *runtime);
-  static void
-      init_images_task(Legion::Task const *task,
-                       std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime);
-  static void
-      init_labels_task(Legion::Task const *task,
-                       std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime);
-  static void
-      load_images_task(Legion::Task const *task,
-                       std::vector<Legion::PhysicalRegion> const &regions,
-                       Legion::Context ctx,
-                       Legion::Runtime *runtime);
-  static void
-      normalize_images_task(Legion::Task const *task,
-                            std::vector<Legion::PhysicalRegion> const &regions,
-                            Legion::Context ctx,
-                            Legion::Runtime *runtime);
-};
 
 void top_level_task(Legion::Task const *task,
                     std::vector<Legion::PhysicalRegion> const &regions,
@@ -611,10 +547,8 @@ void data_load_task(Legion::Task const *task,
                     Legion::Context ctx,
                     Legion::Runtime *runtime);
 
-void register_flexflow_internal_tasks();
-
 void register_custom_tasks();
 
-}; // namespace FlexFlow
+}
 
-#endif //_FLEXFLOW_MODEL_H_
+#endif

@@ -7,7 +7,7 @@
 #include <utility>
 #include <vector>
 
-#include "flexflow/simulator.h"
+#include "simulator.h"
 namespace FlexFlow {
 #define PRINT_EDGE(e, n)                                                       \
   do {                                                                         \
