@@ -164,7 +164,7 @@ void NoOp::init_inference(FFModel const &ff,
     ArgumentMap argmap;
     Context ctx = ff.config.lg_ctx;
     Runtime *runtime = ff.config.lg_hlr;
-    set_argumentmap_for_init_inference(ff, argmap, view);
+    set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
     IndexLauncher launcher(NOOP_INIT_TASK_ID,
                            parallel_is,
                            TaskArgument(NULL, 0),
@@ -175,7 +175,7 @@ void NoOp::init_inference(FFModel const &ff,
                            machine_view_hash);
     FutureMap fm = runtime->execute_index_space(ctx, launcher);
     fm.wait_all_results();
-    set_opmeta_from_futuremap_inference(ff, fm, view);
+    set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
   }
 }
 
