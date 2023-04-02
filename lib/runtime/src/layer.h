@@ -1,8 +1,11 @@
-#pragma once
+#ifndef _FLEXFLOW_RUNTIME_SRC_LAYER_H
+#define _FLEXFLOW_RUNTIME_SRC_LAYER_H
 
 #include "op-attrs/ffconst.h"
 #include "layer_id.h"
 #include "tensor.h"
+#include "utils/optional.h"
+#include "utils/stack_vector.h"
 
 namespace FlexFlow {
 
@@ -15,11 +18,7 @@ public:
         char const *name,
         int numInputs,
         int numWeights,
-        int numOutputs,
-        const Tensor input1 = NULL,
-        const Tensor input2 = NULL,
-        const Tensor input3 = NULL,
-        const Tensor input4 = NULL);
+        int numOutputs);
   Layer(FFModel *model,
         OperatorType otype,
         DataType dtype,
@@ -27,29 +26,38 @@ public:
         int numInputs,
         int numWeights,
         int numOutputs,
-        Tensor const *tensors = NULL);
+        optional<Tensor const &> input1,
+        optional<Tensor const &> input2 = nullopt,
+        optional<Tensor const &> input3 = nullopt,
+        optional<Tensor const &> input4 = nullopt);
+  Layer(FFModel *model,
+        OperatorType otype,
+        DataType dtype,
+        char const *name,
+        int numInputs,
+        int numWeights,
+        int numOutputs,
+        Tensor const *tensors);
   void add_int_property(std::string const &key, long long value);
   void add_float_property(std::string const &key, float value);
   void add_int_vector_property(std::string const &key,
                                std::vector<int> const &value);
   void add_initializer(std::string const &key, Initializer *initializer);
-  bool get_int_property(std::string const &key, long long &value) const;
-  bool get_float_property(std::string const &key, float &value) const;
-  bool get_int_vector_property(std::string const &key,
-                               std::vector<int> &value) const;
-  bool get_initializer(std::string const &key, Initializer *&initializer) const;
+  long long get_int_property(std::string const &key) const;
+  float get_float_property(std::string const &key) const;
+  std::vector<int> get_int_vector_property(std::string const &key) const;
+  Initializer *get_initializer(std::string const &key) const;
   Tensor get_parameter(int index);
-  void print();
 
 public:
   OperatorType op_type;
   DataType data_type;
   LayerID layer_guid;
   char name[MAX_OPNAME];
-  Tensor outputs[MAX_NUM_OUTPUTS];
-  Tensor inputs[MAX_NUM_INPUTS];
-  Tensor weights[MAX_NUM_WEIGHTS];
-  bool trainableInputs[MAX_NUM_INPUTS];
+  stack_vector<Tensor, MAX_NUM_OUTPUTS> outputs;
+  stack_vector<Tensor, MAX_NUM_INPUTS> inputs;
+  stack_vector<Tensor, MAX_NUM_WEIGHTS> weights;
+  stack_vector<Tensor, MAX_NUM_INPUTS> trainableInputs;
   int numInputs, numWeights, numOutputs;
   bool profiling;
 
@@ -60,4 +68,6 @@ private:
   std::unordered_map<std::string, std::vector<int>> int_vector_properties;
 };
 
-}; // namespace FlexFlow
+}
+
+#endif

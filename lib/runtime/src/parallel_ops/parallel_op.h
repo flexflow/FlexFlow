@@ -6,7 +6,7 @@
 namespace FlexFlow {
 
 struct ParallelOpJoinResult {
-  tl::optional<ParallelOpInfo> op = tl::nullopt;
+  optional<ParallelOpInfo> op = nullopt;
   bool join_did_succeed = false;
 };
 
@@ -34,6 +34,6 @@ public:
   Legion::LogicalPartition input_lp, output_grad_lp;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFLOW_PARALLEL_OP_H
+#endif

@@ -1,11 +1,28 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/hash-utils.h"
+#include "utils/visitable_funcs.h"
+#include "utils/containers.h"
+
+VISITABLE_STRUCT(::FlexFlow::ParallelDim, size, degree, parallel_idx, is_replica_dim);
+VISITABLE_STRUCT(::FlexFlow::ParallelTensorShape, dims, data_type);
 
 namespace FlexFlow {
 
+ParallelDim::ParallelDim(int size, int degree, int parallel_idx, bool is_replica_dim) 
+  : size(size), degree(degree), parallel_idx(parallel_idx), is_replica_dim(is_replica_dim)
+{ }
+
+bool ParallelDim::operator==(ParallelDim const &other) const {
+  return visit_eq(*this, other);
+}
+
+bool ParallelDim::operator!=(ParallelDim const &other) const {
+  return visit_neq(*this, other);
+}
+
 ParallelTensorShape::ParallelTensorShape(std::vector<ParallelDim> const &dims,
                                          DataType data_type)
-    : dims(dims), data_type(data_type) { }
+    : dims(dims.cbegin(), dims.cend()), data_type(data_type) { }
 
 int ParallelTensorShape::get_num_replica_dims() const {
   int num_replica_dims = 0;
@@ -70,7 +87,7 @@ using ::FlexFlow::ParallelDim;
 using ::FlexFlow::ParallelTensorShape;
 
 size_t hash<ParallelDim>::operator()(ParallelDim const &dim) const {
-  return get_std_hash(dim.as_tuple()); 
+  return visit_hash(dim);
 }
 
 size_t hash<ParallelTensorShape>::operator()(

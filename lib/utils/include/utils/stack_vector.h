@@ -4,6 +4,8 @@
 #include <array>
 #include <cassert>
 #include "hash-utils.h"
+#include "optional.h"
+#include <type_traits>
 
 namespace FlexFlow {
 
@@ -21,6 +23,10 @@ public:
     }
   }
 
+  operator std::vector<T>() {
+    return { this->begin(), this->end() };
+  }
+
   void push_back(T const &t) {
     assert (this->m_size < MAXSIZE);
     this->contents[this->m_size] = t;
@@ -34,22 +40,22 @@ public:
 
   T const &back() const {
     assert (this->m_size >= 1);
-    return this->contents[this->m_size-1];
+    return this->contents[this->m_size-1].value();
   }
 
   T &back() {
     assert (this->m_size >= 1);
-    return this->contents[this->m_size-1];
+    return this->contents[this->m_size-1].value();
   }
 
   T const &at(std::size_t idx) const {
     assert (idx < MAXSIZE);
-    return this->contents[idx];
+    return this->contents[idx].value();
   }
 
   T &at(std::size_t idx) {
     assert (idx < MAXSIZE);
-    return this->contents[idx];
+    return this->contents[idx].value();
   }
 
   T const &operator[](std::size_t idx) const {
@@ -60,14 +66,91 @@ public:
     return this->at(idx);
   }
 
-  using iterator = typename std::array<T, MAXSIZE>::iterator;
-  using const_iterator = typename std::array<T, MAXSIZE>::const_iterator;
+  template <bool IS_CONST>
+  struct Iterator {
+    using Iterator_category = std::random_access_iterator_tag;   
+    using difference_type = std::ptrdiff_t;
+    using value_type = T;
+    using reference = typename std::conditional<IS_CONST, T const &, T &>::type;
+    using pointer = typename std::conditional<IS_CONST, T const *, T *>::type;
+
+    typename std::conditional<IS_CONST, optional<T> const *, optional<T> *>::type ptr;
+
+    Iterator(typename std::conditional<IS_CONST, optional<T> const *, optional<T> *>::type ptr) : ptr(ptr) { }
+
+    template<bool WAS_CONST, typename = typename std::enable_if<IS_CONST || !WAS_CONST>::type>
+    Iterator(Iterator<WAS_CONST> const &rhs) : ptr(rhs.ptr) { }
+
+    reference operator*() const { return ptr->value(); }
+    pointer operator->() const { return &ptr->value(); }
+
+    Iterator &operator++() { ptr++; return *this; }
+    Iterator operator++(int) { 
+      Iterator tmp = *this;
+      ++(*this);
+      return tmp;
+    }
+
+    Iterator &operator--() { ptr--; return *this; }
+    Iterator operator--(int) {
+      Iterator tmp = *this;
+      --(*this);
+      return tmp;
+    }
+
+    bool operator==(Iterator const &other) const {
+      return this->ptr == other.ptr;
+    }
+
+    bool operator!=(Iterator const &other) const {
+      return this->ptr != other.ptr;
+    }
+
+    reference operator+=(difference_type diff) const { ptr += diff; return *this; }
+    Iterator operator+(difference_type diff) const { return { ptr + diff }; }
+
+    friend Iterator operator+(difference_type diff, Iterator it) {
+      return it + diff;
+    }
+
+    reference operator-=(difference_type diff) const { ptr -= diff; return *this; }
+    Iterator operator-(difference_type diff) const { return { ptr - diff }; }
+
+    difference_type operator-(Iterator const &rhs) const {
+      return this->ptr - rhs.ptr;
+    }
+
+    reference operator[](difference_type const &diff) const {
+      return this->ptr[diff].value();
+    }
+
+    bool operator<(Iterator const &rhs) const {
+      return this->ptr < rhs.ptr;
+    }
+
+    bool operator>(Iterator const &rhs) const {
+      return this->ptr > rhs.ptr;
+    }
+
+    bool operator<=(Iterator const &rhs) const {
+      return this->ptr <= rhs.ptr;
+    }
+
+    bool operator>=(Iterator const &rhs) const {
+      return this->ptr >= rhs.ptr;
+    }
+  };
+
+  using iterator = Iterator<false>;
+  using const_iterator = Iterator<true>;
+
   using value_type = T;
   using reference = T&;
   using const_reference = T const &;
 
   iterator begin() {
-    return this->contents.begin();
+    optional<T> *ptr = this->contents.data();
+    return iterator(ptr);
   }
 
   const_iterator begin() const {
@@ -75,7 +158,8 @@ public:
   }
 
   const_iterator cbegin() const {
-    return this->contents.cbegin();
+    optional<T> const *ptr = this->contents.data();
+    return const_iterator(ptr);
   }
 
   iterator end() {
@@ -110,28 +194,18 @@ public:
   std::size_t size() const {
     return this->m_size;
   }
-
-  T *data() {
-    return this->contents.data();
-  }
-
-  T const *data() const {
-    return this->contents.data();
-  }
 private:
   std::size_t m_size = 0;
-  std::array<T, MAXSIZE> contents;
+  std::array<optional<T>, MAXSIZE> contents;
 };
 
 }
 
 namespace std {
 
-using ::FlexFlow::stack_vector;
-
 template <typename T, std::size_t MAXSIZE>
-struct hash<stack_vector<T, MAXSIZE>> {
-  size_t operator()(stack_vector<T, MAXSIZE> const &v) {
+struct hash<::FlexFlow::stack_vector<T, MAXSIZE>> {
+  size_t operator()(::FlexFlow::stack_vector<T, MAXSIZE> const &v) {
     size_t result = 0;
     hash_combine(result, v.size());
     for (auto const &ele : v) {

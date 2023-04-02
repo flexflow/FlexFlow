@@ -12,10 +12,11 @@ struct TransposeAttrs {
 /*   ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
 /*   OperatorType op_type() const override; */
 /* public: */
-  std::vector<int> perm;
+  stack_vector<int, MAX_TENSOR_DIM> perm;
 };
 
 bool operator==(TransposeAttrs const &, TransposeAttrs const &);
+bool operator!=(TransposeAttrs const &, TransposeAttrs const &);
 bool operator<(TransposeAttrs const &, TransposeAttrs const &);
 
 }

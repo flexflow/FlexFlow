@@ -17,6 +17,7 @@
 
 #include "layer.h"
 #include "operator.h"
+#include "op-attrs/ops/cast.h"
 
 namespace FlexFlow {
 
@@ -27,8 +28,8 @@ public:
        DataType dtype,
        char const *name);
   Cast(FFModel &model,
-       Params const &params,
-       Input const &input,
+       CastAttrs const &params,
+       std::vector<ParallelTensor> const &input,
        char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -66,10 +67,10 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const;
   void serialize(Legion::Serializer &s) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+  /* static PCG::Node deserialize(FFModel &ff, */
+  /*                              Legion::Deserializer &d, */
+  /*                              ParallelTensor inputs[], */
+  /*                              int num_inputs); */
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;

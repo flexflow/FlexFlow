@@ -74,6 +74,15 @@ void as_dot(std::vector<T> const &x, RecordFormatter &r) {
   r << rr;
 }
 
+template <typename T, size_t MAXSIZE>
+void as_dot(stack_vector<T, MAXSIZE> const &x, RecordFormatter &r) {
+  RecordFormatter rr;
+  for (T const &t : x) {
+    as_dot(t, r);
+  }
+  r << rr;
+}
+
 void as_dot(ParallelOpInfo const &p, RecordFormatter &r) {
   RecordFormatter rr;
   as_dot(p.op_type, rr);

@@ -17,9 +17,7 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
+  
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
@@ -42,10 +40,10 @@ public:
                              CostMetrics &cost_metrics) const override;
 
   void serialize(Legion::Serializer &s) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+  /* static PCG::Node deserialize(FFModel &ff, */
+  /*                              Legion::Deserializer &d, */
+  /*                              ParallelTensor inputs[], */
+  /*                              int num_inputs); */
 
 public:
   float rate;

@@ -8,7 +8,7 @@
 namespace FlexFlow {
 
 struct ReshapeAttrs {
-  std::vector<int> shape;
+  stack_vector<int, MAX_TENSOR_DIM> shape;
 };
 
 bool operator==(ReshapeAttrs const &, ReshapeAttrs const &);

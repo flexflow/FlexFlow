@@ -1,7 +1,8 @@
 #ifndef _FLEXFLOW_NOOP_H
 #define _FLEXFLOW_NOOP_H
 
-#include "model.h"
+#include "operator.h"
+#include "layer.h"
 
 namespace FlexFlow {
 
@@ -9,19 +10,16 @@ class NoOp : public Op {
 public:
   NoOp(FFModel &model,
        OperatorType type,
-       const ParallelTensor output,
+       ParallelTensor const &output,
        char const *name = NULL);
   NoOp(FFModel &model,
        OperatorType type,
        size_t input_tensor_guid,
-       const ParallelTensor output,
+       ParallelTensor const &output,
        char const *name = NULL);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
@@ -30,7 +28,6 @@ public:
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
 
-  size_t get_params_hash() const override;
   tl::optional<RecordFormatter> as_dot() const override;
 
 public:

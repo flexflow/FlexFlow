@@ -2,9 +2,9 @@
 #define _FLEXFLOW_OP_META_OPS_REDUCE_ATTRS_H
 
 #include "op-attrs/parallel_tensor_shape.h"
-#include <vector>
 #include "unary_op.h"
 #include "utils/visitable.h"
+#include "utils/stack_vector.h"
 
 namespace FlexFlow {
 
@@ -14,11 +14,12 @@ struct ReduceAttrs {
 /*   OperatorType op_type() const override; */
 /*   bool is_valid(ParallelTensorShape const &) const override; */
 public:
-  std::vector<int> axes;
+  stack_vector<int, MAX_TENSOR_DIM> axes;
   bool keepdims;
 };
 
 bool operator==(ReduceAttrs const &, ReduceAttrs const &);
+bool operator!=(ReduceAttrs const &, ReduceAttrs const &);
 
 }
 

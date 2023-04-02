@@ -24,10 +24,6 @@ public:
   };
   FusedOp(FFModel &model, Op *op);
   bool add_operator(FFModel &model, Op *op);
-  ParallelTensor init_inout(FFModel &model, const ParallelTensor input) {
-    assert(0);
-    return ParallelTensor();
-  }
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;

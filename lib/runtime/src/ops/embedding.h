@@ -22,8 +22,7 @@ class Embedding;
 
 class Embedding : public Op {
 public:
-  using Params = EmbeddingParams;
-  using Input = ParallelTensor;
+  using Attrs = EmbeddingAttrs;
 
   Embedding(FFModel &model,
             LayerID const &_layer_guid,
@@ -39,17 +38,14 @@ public:
             const ParallelTensor input,
             bool allocate_weights);
   Embedding(FFModel &model,
-            Params const &params,
-            Input const input,
+            Attrs const &params,
+            std::vector<ParallelTensor> const &input,
             bool allocate_weights = false,
             char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   // void update(const FFModel&);
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
   // Parameter* get_parameter(int index);
   // void create_weights(FFModel& model);
   // void create_input_partition(FFModel& model);
@@ -84,8 +80,6 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-
-  Params get_params() const;
 
 private:
   int input_vocab_size_replica_dim() const;

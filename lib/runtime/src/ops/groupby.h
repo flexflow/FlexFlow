@@ -3,31 +3,29 @@
 
 #include "operator.h"
 #include "layer.h"
+#include "kernels/groupby_kernels.h"
 
 namespace FlexFlow {
 
 class Group_by : public Op {
 public:
   Group_by(FFModel &model,
-           const ParallelTensor _input,
-           const ParallelTensor _assign,
-           int _n,
-           float _alpha,
+           ParallelTensor const &input,
+           ParallelTensor const &assign,
+           int n,
+           float alpha,
            char const *name);
   Group_by(FFModel &model,
            Group_by const &other,
-           const ParallelTensor input,
-           const ParallelTensor assign);
+           ParallelTensor const &input,
+           ParallelTensor const &assign);
   Group_by(FFModel &model,
-           Params const &params,
-           Input const &inputs,
+           Group_byAttrs const &attrs,
+           std::vector<ParallelTensor> const &inputs,
            char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
@@ -45,15 +43,15 @@ public:
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
   void serialize(Legion::Serializer &s) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+  /* static PCG::Node deserialize(FFModel &ff, */
+  /*                              Legion::Deserializer &d, */
+  /*                              ParallelTensor inputs[], */
+  /*                              int num_inputs); */
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;
   static void
-      forward_kernel_wrapper(GroupByMeta const *m,
+      forward_kernel_wrapper(GroupByPerDeviceState const *m,
                              float const *input,
                              int const *exp_assign,
                              float **outputs,
@@ -63,7 +61,7 @@ public:
                              int batch_size,
                              int data_dim);
   static void
-      backward_kernel_wrapper(GroupByMeta const *m,
+      backward_kernel_wrapper(GroupByPerDeviceState const *m,
                               float *input_grad,
                               int const *exp_assign,
                               float **output_grads,

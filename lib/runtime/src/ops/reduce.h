@@ -3,13 +3,14 @@
 
 #include "layer.h"
 #include "operator.h"
+#include "utils/stack_vector.h"
 
 namespace FlexFlow {
 
 class Reduce : public Op {
 public:
   Reduce(FFModel &model,
-         const ParallelTensor input,
+         ParallelTensor const &input,
          std::vector<int> const &axes,
          bool keepdims,
          char const *name = nullptr);
@@ -38,17 +39,16 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
   void serialize(Legion::Serializer &s) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+  /* static PCG::Node deserialize(FFModel &ff, */
+  /*                              Legion::Deserializer &d, */
+  /*                              ParallelTensor inputs[], */
+  /*                              int num_inputs); */
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;
 
 public:
-  int num_axes;
-  int axes[MAX_TENSOR_DIM];
+  stack_vector<int, MAX_TENSOR_DIM> axes;
   bool keepdims;
 };
 

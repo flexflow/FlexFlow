@@ -3,13 +3,13 @@
 
 #include "layer.h"
 #include "operator.h"
+#include "op-attrs/ops/concat.h"
 
 namespace FlexFlow {
 
 class Concat : public Op {
 public:
-  using Params = ConcatParams;
-  using Input = std::vector<ParallelTensor>;
+  using Attrs = ConcatAttrs;
 
   Concat(FFModel &model,
          int n,
@@ -17,13 +17,12 @@ public:
          int axis,
          char const *name);
   Concat(FFModel &model,
-         ConcatParams const &params,
+         Attrs const &attrs,
          std::vector<ParallelTensor> const &inputs,
          char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  bool get_int_parameter(PMParameter, int *) const override;
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
@@ -43,8 +42,6 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-
-  Params get_params() const;
 
 public:
   int legion_axis;

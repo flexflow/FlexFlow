@@ -8,20 +8,17 @@ namespace FlexFlow {
 
 class Softmax : public Op {
 public:
-  using Params = SoftmaxParams;
-  using Input = ParallelTensor;
   Softmax(FFModel &model,
-          const ParallelTensor logit,
+          ParallelTensor const &logit,
           int dim,
           char const *name);
   Softmax(FFModel &model,
-          Params const &params,
-          const Input input,
+          SoftmaxAttrs const &attrs,
+          std::vector<ParallelTensor> const &input,
           char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  bool get_int_parameter(PMParameter, int *) const override;
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
@@ -41,7 +38,6 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  Params get_params() const;
 
 private:
   template <int NDIM>

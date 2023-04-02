@@ -287,6 +287,15 @@ T maximum(stack_vector<T, MAXSIZE> const &v) {
   return std::max_element(v.begin(), v.end());
 }
 
+template <typename T>
+T reversed(T const &t) {
+  T r;
+  for (auto i = t.cend() - 1; i >= t.begin(); i++) {
+    r.push_back(*i);
+  }
+  return r;
+}
+
 }
 
 #endif

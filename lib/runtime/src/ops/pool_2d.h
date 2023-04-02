@@ -8,9 +8,6 @@ namespace FlexFlow {
 
 class Pool2D : public Op {
 public:
-  using Params = Pool2DParams;
-  using Input = ParallelTensor;
-
   Pool2D(FFModel &model,
          const ParallelTensor input,
          int kernelH,
@@ -24,8 +21,8 @@ public:
          char const *name);
   Pool2D(FFModel &model, Pool2D const &other, ParallelTensor const input);
   Pool2D(FFModel &model,
-         Params const &params,
-         const Input input,
+         Pool2DAttrs const &attrs,
+         std::vector<ParallelTensor> const &inputs,
          char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -53,15 +50,13 @@ public:
                              CostMetrics &cost_metrics) const override;
 
   void serialize(Legion::Serializer &) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+  /* static PCG::Node deserialize(FFModel &ff, */
+  /*                              Legion::Deserializer &d, */
+  /*                              ParallelTensor inputs[], */
+  /*                              int num_inputs); */
 
-  static void
-      construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
-
-  Params get_params() const;
+  /* static void */
+  /*     construct_output_mappings(std::vector<ParallelDimMappingRecord> &); */
 
 private:
   int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]);
@@ -75,6 +70,6 @@ public:
   ActiMode activation;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif //_FLEXFLOW_POOL_2D_H
+#endif

@@ -43,8 +43,18 @@ class FFConfig;
  */
 struct ParallelTensorBase {
   static constexpr ParallelTensorBase *NO_TENSOR = nullptr;
-  ParallelTensorBase(void) = default;
+
+  ParallelTensorBase() = default;
   ParallelTensorBase(ParallelTensorBase const &rhs);
+
+  ParallelTensorBase(size_t parallel_tensor_guid,
+                     ParallelTensorShape const &,
+                     bool create_gradients,
+                     optional<ParameterSyncType> sync_type = nullopt,
+                     Initializer *initializer = nullptr);
+                     
+
+
   // Tensor& operator=(const Tensor& rhs);
   // bool operator==(const Tensor& rhs) const;
   void inline_map(FFConfig &config);
@@ -88,13 +98,14 @@ public:
   size_t parallel_tensor_guid = 0;
   int num_dims = 0;
   // int adim[MAX_TENSOR_DIM];
-  ParallelDim dims[MAX_TENSOR_DIM];
+  stack_vector<ParallelDim, MAX_TENSOR_DIM> dims;
   DataType data_type = DT_NONE;
   ParameterSyncType sync_type = ParameterSyncType::NONE;
   Initializer *initializer = nullptr;
   // Describes the ownership of this tensor
   Op const *owner_op = nullptr;
   int owner_idx = 0;
+
   bool create_gradients = false;
 
   // The following fields are initialized after model.compile
@@ -109,7 +120,15 @@ public:
 
 struct ParallelTensor {
 public:
-  ParallelTensor(ParallelTensorBase const &);
+  ParallelTensor() = delete;
+  ParallelTensor(std::shared_ptr<ParallelTensorBase> ptr) 
+    : ptr(ptr) 
+  { }
+
+  template <typename ...Args>
+  ParallelTensor(Args&&...args)
+    : ParallelTensor(std::make_shared<ParallelTensorBase>(std::forward<Args>(args)...))
+  { }
 
   ParallelTensorBase *operator->();
   ParallelTensorBase const *operator->() const;
@@ -119,4 +138,4 @@ private:
 
 using ParallelParameter = ParallelTensor;
 
-}; // namespace FlexFlow
+}

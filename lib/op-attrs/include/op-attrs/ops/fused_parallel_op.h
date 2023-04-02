@@ -14,10 +14,10 @@ struct FusedParallelOpAttrs {
 /*   ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
 /*   OperatorType op_type() const override; */
 
-public:
-  std::vector<ParallelOpInfo> parallel_ops;
+  stack_vector<ParallelOpInfo, MAX_NUM_FUSED_OPERATORS> parallel_ops;
 };
 bool operator==(FusedParallelOpAttrs const &, FusedParallelOpAttrs const &);
+bool operator!=(FusedParallelOpAttrs const &, FusedParallelOpAttrs const &);
 bool operator<(FusedParallelOpAttrs const &, FusedParallelOpAttrs const &);
 
 }

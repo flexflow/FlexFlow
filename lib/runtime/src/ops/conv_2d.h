@@ -3,17 +3,15 @@
 
 #include "layer_id.h"
 #include "operator.h"
+#include "layer.h"
 
 namespace FlexFlow {
-
-class FFModel;
-class Layer;
 
 namespace Conv2DInput {
 static constexpr int INDEX = 0;
 
 enum { WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3, REPLICA = 4, NUMDIM };
-} // namespace Conv2DInput
+} 
 
 namespace Conv2DOutput {
 enum { WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3, REPLICA = 4, NUMDIM };
@@ -30,15 +28,14 @@ enum {
   REPLICA = 4,
   NUMDIM
 };
-} // namespace Conv2DKernel
+} 
 
-namespace Conv2DBias {
-static constexpr int INDEX = 1;
+/* namespace Conv2DBias { */
+/* static constexpr int INDEX = 1; */
 
 class Conv2D : public Op {
 public:
-  using Params = Conv2DParams;
-  using Input = ParallelTensor;
+  using Attrs = Conv2DAttrs;
 
   Conv2D(FFModel &model,
          LayerID const &layer_guid,
@@ -60,15 +57,13 @@ public:
          const ParallelTensor input,
          bool allocate_weights);
   Conv2D(FFModel &model,
-         Params const &params,
-         Input const input,
+         Attrs const &attrs,
          char const *name = nullptr,
          bool allocate_weights = false);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   // void update(const FFModel&);
-  void print_layer(FFModel const &model) override;
   // Parameter* get_parameter(int index);
   // void create_weights(FFModel& model);
   // void create_input_partition(FFModel& model);
@@ -96,20 +91,12 @@ public:
                           MachineView const &pc,
                           CostMetrics &cost_metrics) const override;
 
-  void serialize(Legion::Serializer &s) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
-
-  static void
-      construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
-  static void construct_mappings(std::vector<ParallelDimMappingRecord> &,
-                                 bool use_bias);
-  static void construct_weight_mappings(std::vector<ParallelDimMappingRecord> &,
-                                        bool use_bias);
-
-  Params get_params() const;
+  /* static void */
+  /*     construct_output_mappings(std::vector<ParallelDimMappingRecord> &); */
+  /* static void construct_mappings(std::vector<ParallelDimMappingRecord> &, */
+  /*                                bool use_bias); */
+  /* static void construct_weight_mappings(std::vector<ParallelDimMappingRecord> &, */
+  /*                                       bool use_bias); */
 
   tl::optional<RecordFormatter> as_dot() const override;
 
@@ -121,6 +108,6 @@ public:
   bool use_bias;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFLOW_CONV_2D_H
+#endif 

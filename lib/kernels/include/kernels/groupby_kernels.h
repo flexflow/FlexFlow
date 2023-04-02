@@ -5,10 +5,10 @@
 
 namespace FlexFlow {
 
-class GroupByMeta : public PerDeviceOpState {
+class GroupByPerDeviceState : public PerDeviceOpState {
 public:
-  GroupByMeta(FFHandler handle, int n);
-  ~GroupByMeta(void);
+  GroupByPerDeviceState(FFHandler handle, int n);
+  ~GroupByPerDeviceState(void);
   float **dev_region_ptrs;
 };
 

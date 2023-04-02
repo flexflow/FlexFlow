@@ -15,6 +15,7 @@ struct ParallelOpInfo {
 };
 
 bool operator==(ParallelOpInfo const &, ParallelOpInfo const &);
+bool operator!=(ParallelOpInfo const &, ParallelOpInfo const &);
 bool operator<(ParallelOpInfo const &, ParallelOpInfo const &);
 
 }
@@ -28,4 +29,4 @@ struct hash<::FlexFlow::ParallelOpInfo> {
 };
 }
 
-#endif /* _FLEXFLOW_PARALLEL_OPS_PARALLEL_OP_INFO_H */
+#endif

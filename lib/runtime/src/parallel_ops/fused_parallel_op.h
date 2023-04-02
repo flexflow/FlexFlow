@@ -8,12 +8,10 @@ namespace FlexFlow {
 
 class FusedParallelOp : public ParallelOp {
 public:
-  using Params = FusedParallelOpParams;
-  using Input = ParallelTensor;
   FusedParallelOp(FFModel &model,
                   const ParallelTensor input,
                   std::vector<ParallelOpInfo> const &parallel_ops);
-  FusedParallelOp(FFModel &model, Params const &params, const Input input);
+  FusedParallelOp(FFModel &model, FusedParallelOpAttrs const &attrs, std::vector<ParallelTensor> const &inputs);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -40,14 +38,10 @@ public:
                              CostMetrics &cost_metrics) const override;
   void set_parallel_ops(std::vector<ParallelOpInfo> const &_parallel_ops);
   bool check_no_redundant_parallel_ops(void) const;
-
-  Params get_params() const;
-
 public:
-  int num_parallel_ops;
-  ParallelOpInfo parallel_ops[MAX_NUM_FUSED_OPERATORS];
+  stack_vector<ParallelOpInfo, MAX_NUM_FUSED_OPERATORS> parallel_ops;
 };
 
 }
 
-#endif // _FLEXFLOW_FUSED_PARALLEL_OP_H
+#endif

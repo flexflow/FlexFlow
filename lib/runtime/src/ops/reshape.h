@@ -8,15 +8,13 @@ namespace FlexFlow {
 
 class Reshape : public Op {
 public:
-  using Params = ReshapeParams;
-  using Input = ParallelTensor;
   Reshape(FFModel &model,
-          const ParallelTensor input,
+          ParallelTensor const &input,
           std::vector<int> const &shape,
           char const *name);
   Reshape(FFModel &model,
-          Params const &params,
-          const Input input,
+          ReshapeAttrs const &attrs,
+          std::vector<ParallelTensor> const &input,
           char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -43,18 +41,16 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
   void serialize(Legion::Serializer &s) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+  /* static PCG::Node deserialize(FFModel &ff, */
+  /*                              Legion::Deserializer &d, */
+  /*                              ParallelTensor inputs[], */
+  /*                              int num_inputs); */
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;
-  Params get_params() const;
 
 public:
-  size_t shape_length;
-  int shape_array[MAX_TENSOR_DIM];
+  stack_vector<int, MAX_TENSOR_DIM> shape;
 };
 
 }

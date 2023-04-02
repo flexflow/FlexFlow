@@ -3,22 +3,21 @@
 
 #include "operator.h"
 #include "layer.h"
+#include "kernels/topk_kernels.h"
 
 namespace FlexFlow {
 
 class TopK : public Op {
 public:
-  using Params = TopKParams;
-  using Input = ParallelTensor;
   TopK(FFModel &model,
-       const ParallelTensor input,
+       ParallelTensor const &input,
        int k,
        bool sorted,
        char const *name);
-  TopK(FFModel &model, TopK const &other, const ParallelTensor input);
+  TopK(FFModel &model, TopK const &other, ParallelTensor const &input);
   TopK(FFModel &model,
-       Params const &params,
-       Input const input,
+       TopKAttrs const &attrs,
+       std::vector<ParallelTensor> const &input,
        char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
@@ -51,39 +50,6 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  static void forward_kernel(TopKMeta const *m,
-                             float const *input_ptr,
-                             float *output_ptr,
-                             int *indices_ptr,
-                             size_t batch_size,
-                             int length,
-                             int k,
-                             bool sorted,
-                             ffStream_t stream);
-  static void forward_kernel_wrapper(TopKMeta const *m,
-                                     float const *input_ptr,
-                                     float *output_ptr,
-                                     int *indices_ptr,
-                                     size_t batch_size,
-                                     int length,
-                                     int k,
-                                     bool sorted);
-  static void backward_kernel(TopKMeta const *m,
-                              float const *out_grad_ptr,
-                              int const *indices_ptr,
-                              float *in_grad_ptr,
-                              size_t batch_size,
-                              int length,
-                              int k,
-                              ffStream_t stream);
-  static void backward_kernel_wrapper(TopKMeta const *m,
-                                      float const *out_grad_ptr,
-                                      int const *indices_ptr,
-                                      float *in_grad_ptr,
-                                      size_t batch_size,
-                                      int length,
-                                      int k);
-  Params get_params() const;
 
 public:
   int k;
