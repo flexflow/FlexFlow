@@ -75,12 +75,17 @@ MultiDiEdgeQuery MultiDiEdgeQuery::all() {
   return MultiDiEdgeQuery{};
 }
 
+MultiDiEdgeQuery::MultiDiEdgeQuery(tl::optional<std::unordered_set<Node>> const &srcs_, 
+                   tl::optional<std::unordered_set<Node>> const &dsts_, 
+                   tl::optional<std::unordered_set<std::size_t>> const &srcIdxs_, 
+                   tl::optional<std::unordered_set<std::size_t>> const &dstIdxs_): srcs(srcs_), dsts(dsts_), srcIdxs(srcIdxs_), dstIdxs(dstIdxs_) { }
+
 }
 
 namespace std {
 using ::FlexFlow::MultiDiEdge;
 
-std::size_t hash<MultiDiEdge>::operator()(MultiDiEdge const &e) const {
+size_t hash<MultiDiEdge>::operator()(MultiDiEdge const &e) const {
   return visit_hash(e);
 }
 }

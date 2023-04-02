@@ -194,4 +194,13 @@ mpark::variant<Serial, Parallel, Node> to_final_ast(SplitAST const &ast) {
   return mpark::visit(ToFinalAST{}, ast);
 }
 
+SplitASTNode::SplitASTNode(SplitType type) : type(type) {}
+
+SplitASTNode::SplitASTNode(SplitType type, SplitAST const &child1, SplitAST const &child2) : type(type) {
+  children.push_back(child1);
+  children.push_back(child2);
+}
+
+SplitASTNode::SplitASTNode(SplitType type, std::vector<SplitAST> const &children) : type(type), children(children) {}
+
 }

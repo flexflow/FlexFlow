@@ -7,6 +7,7 @@
 #include "tl/optional.hpp"
 #include <ostream>
 #include "utils/visitable.h"
+#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
 

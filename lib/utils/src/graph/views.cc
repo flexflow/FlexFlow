@@ -378,4 +378,8 @@ std::unique_ptr<IDiGraphView> unsafe_view_as_contracted(IDiGraphView const &, st
 /*   return result; */
 /* } */
 
+JoinNodeKey::JoinNodeKey(Node const &n, LRDirection d) : node(n), direction(d) { }
+
+ContractNodeView::ContractNodeView(IDiGraphView const & g_, Node const &removed, Node const &into): g(g_), from(removed), to(into) { }
+
 }

@@ -2,6 +2,7 @@
 #define _FLEXFLOW_INCLUDE_UTILS_VISITABLE_FUNCS_H
 
 #include "utils/visitable.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 

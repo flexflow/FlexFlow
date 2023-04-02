@@ -338,6 +338,18 @@ std::unordered_map<Node, std::unordered_set<Node>> get_dominators(IDiGraphView c
   return result;
 }
 
+std::unordered_set<Node> get_dominators(IDiGraphView const &, Node const &) {
+  // TODO
+  std::unordered_set<Node> result;
+  return result;
+}
+
+std::unordered_set<Node> get_dominators(IDiGraphView const &, std::unordered_set<Node> const &) {
+  // TODO
+  std::unordered_set<Node> result;
+  return result;
+}
+
 std::unordered_map<Node, std::unordered_set<Node>> get_post_dominators(IMultiDiGraphView const &g) {
   return get_post_dominators(*unsafe_view_as_digraph(g));
 }
@@ -412,6 +424,21 @@ MultiDiEdge unsplit_edge(OutputMultiDiEdge const &output_edge, InputMultiDiEdge 
   assert (input_edge.uid.first == output_edge.src.idx);
   assert (input_edge.uid.second == output_edge.srcIdx);
   return { output_edge.src, input_edge.dst, output_edge.srcIdx, input_edge.dstIdx };
+}
+
+bool contains_edge(IMultiDiGraph const &, MultiDiEdge const &) {
+  // TODO
+  return false;
+}
+
+bool contains_edge(IDiGraph const &, DirectedEdge const &) {
+  // TODO
+  return false;
+}
+
+bool contains_edge(IUndirectedGraph const &, UndirectedEdge const &) {
+  // TODO
+  return false;
 }
 
 }
