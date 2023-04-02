@@ -1,6 +1,12 @@
 #! /usr/bin/env bash
+set -x
+set -e
 eval "$(conda shell.bash hook)"
-
+echo "Starting Alignment test. First, let's check the conda environment..."
+conda info
+echo "Checking availability of numpy module..."
+python -c "import numpy as np"
+python3 -c "import numpy as np"
 rm -rf align/out
 
 function generate_ff_tensor(){
@@ -23,6 +29,7 @@ done;
 
 #create torch tensorss
 conda activate pytorch
+conda info --envs
 for(( i=0;i<${#ops[@]};i++)) 
 do
     generate_torch_tensor "${ops[i]}";

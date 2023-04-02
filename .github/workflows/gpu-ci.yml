@@ -78,6 +78,8 @@ jobs:
         run: |
           conda info
           conda list
+          python -c "import numpy as np"
+          python3 -c "import numpy as np"
 
       - name: Install conda and Pytorch dependencies for pytorch alignment test
         run: |
@@ -85,6 +87,8 @@ jobs:
           conda env create -f conda/pytorch-gpu.yml
           conda info
           conda list
+          python -c "import numpy as np"
+          python3 -c "import numpy as np"
           conda deactivate
           conda activate flexflow
 
@@ -92,6 +96,8 @@ jobs:
         run: |
           conda info
           conda list
+          python -c "import numpy as np"
+          python3 -c "import numpy as np"
 
       - name: Build FlexFlow
         run: |
