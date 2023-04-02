@@ -43,6 +43,13 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
+  OpTaskBinding get_init_task_binding() const override; 
+  TaskID get_init_task_id() const override;
+  OpTaskBinding get_fwd_task_binding() const override;
+  TaskID get_fwd_task_id() const override;
+  OpTaskBinding get_bwd_task_binding() const override;
+  TaskID get_bwd_task_id() const override;
+
 public:
   FFIterationConfig iter_config;
   int op_num_inputs[MAX_NUM_FUSED_OPERATORS];

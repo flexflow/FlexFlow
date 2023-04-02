@@ -61,6 +61,7 @@
 #include <queue>
 #include <unordered_set>
 #include "op_node.h"
+#include "utils/containers.h"
 
 using namespace Legion;
 
@@ -1144,59 +1145,87 @@ ParallelTensor FFModel::create_linear_replica(int const dims[],
 }
 
 IndexSpace FFModel::get_task_is(MachineView const &view) const {
-  auto const &iter = all_task_is.find(view);
-  assert(iter != all_task_is.end());
-  return iter->second;
+  return all_task_is.at(view);
 }
 
-IndexSpace FFModel::get_task_is(ParallelConfig const &pc) const {
-  MachineView view;
-  view.ndims = pc.nDims;
-  for (int i = 0; i < view.ndims; i++) {
-    view.dim[i] = pc.dim[i];
+/* IndexSpace FFModel::get_task_is(ParallelConfig const &pc) const { */
+/*   MachineView view; */
+/*   view.ndims = pc.nDims; */
+/*   for (int i = 0; i < view.ndims; i++) { */
+/*     view.dim[i] = pc.dim[i]; */
+/*   } */
+/*   return get_task_is(view); */
+/* } */
+
+static int get_index_space_dimension(ParallelTensorShape const &shape) {
+  std::vector<int> parallel_idxs;
+  for (ParallelDim const &dim : shape) {
+    if (dim.parallel_idx >= 0) {
+      parallel_idxs.push_back(dim.parallel_idx);
+    }
   }
-  return get_task_is(view);
+
+  for (int parallel_idx : parallel_idxs) {
+    assert (parallel_idx < parallel_idxs.size());
+  }
+
+  return parallel_idxs.size();
+}
+
+static MachineView singleton_view() {
+  return {
+    DeviceType::GPU,
+    {
+      0, 
+      {
+        {1, 1}
+      }
+    }
+  };
 }
 
 IndexSpace FFModel::get_or_create_task_is(ParallelTensor const &tensor) {
-  MachineView view;
-  view.ndims = 0;
-  for (int i = 0; i < tensor->num_dims; i++) {
-    if (tensor->dims[i].parallel_idx >= 0) {
-      view.dim[tensor->dims[i].parallel_idx] = tensor->dims[i].degree;
-      view.ndims++;
+  int index_space_dimension = get_index_space_dimension(tensor->get_shape());
+  if (index_space_dimension == 0) {
+    return get_or_create_task_is(singleton_view());
+  }
+
+  std::vector<optional<StridedRectangleSide>> sides(index_space_dimension, nullopt);
+
+  for (ParallelDim const &dim : tensor->dims) {
+    if (dim.parallel_idx >= 0) {
+      sides.at(dim.parallel_idx) = {dim.degree, 1};
     }
   }
-  if (view.ndims == 0) {
-    view.ndims = 1;
-    view.dim[0] = 1;
-  }
+
+  StridedRectangle rect = { 0, value_all(sides) };
+  MachineView view = { DeviceType::GPU, rect };
   return get_or_create_task_is(view);
 }
 
-IndexSpace FFModel::get_or_create_task_is(ParallelConfig const &pc) {
-  MachineView view;
-  view.ndims = pc.nDims;
-  for (int i = 0; i < view.ndims; i++) {
-    view.dim[i] = pc.dim[i];
-  }
-  return get_or_create_task_is(view);
-}
+/* IndexSpace FFModel::get_or_create_task_is(ParallelConfig const &pc) { */
+/*   MachineView view; */
+/*   view.ndims = pc.nDims; */
+/*   for (int i = 0; i < view.ndims; i++) { */
+/*     view.dim[i] = pc.dim[i]; */
+/*   } */
+/*   return get_or_create_task_is(view); */
+/* } */
 
 IndexSpace FFModel::get_or_create_task_is(MachineView const &view) {
-  if (all_task_is.find(view) != all_task_is.end()) {
-    return all_task_is[view];
+  if (contains_key(this->all_task_is, view)) {
+    return all_task_is.at(view);
   }
   IndexSpace task_is;
   Context ctx = config.lg_ctx;
   Runtime *runtime = config.lg_hlr;
-  switch (view.ndims) {
+  switch (view.num_dims()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
     Rect<DIM> task_rect;                                                       \
     for (int i = 0; i < DIM; i++) {                                            \
       task_rect.lo[i] = 0;                                                     \
-      task_rect.hi[i] = view.dim[i] - 1;                                       \
+      task_rect.hi[i] = view.at(i).num_points - 1;                             \
     }                                                                          \
     task_is = runtime->create_index_space(ctx, task_rect);                     \
     break;                                                                     \
@@ -1206,34 +1235,27 @@ IndexSpace FFModel::get_or_create_task_is(MachineView const &view) {
     default:
       assert(false);
   }
-  printf("ndim(%d) dims[%d %d %d %d]\n",
-         view.ndims,
-         view.dim[0],
-         view.dim[1],
-         view.dim[2],
-         view.dim[3]);
   all_task_is[view] = task_is;
   return task_is;
 }
 
-IndexSpace FFModel::get_or_create_task_is(Domain const &domain) {
-  MachineView view;
-  view.ndims = domain.get_dim();
-  for (int i = 0; i < view.ndims; i++) {
-    view.dim[i] = domain.hi()[i] - domain.lo()[i] + 1;
+static MachineView get_example_view(Domain const &domain) {
+  std::vector<StridedRectangleSide> sides;
+  for (int i = 0; i < domain.get_dim(); i++) {
+    sides.push_back({ domain.hi()[i] - domain.lo()[i] + 1, 1 });
   }
-  return get_or_create_task_is(view);
+  StridedRectangle rect = { 0, sides };
+  MachineView view = { DeviceType::GPU, rect };
+  return view;
+}
+
+IndexSpace FFModel::get_or_create_task_is(Domain const &domain) {
+  return get_or_create_task_is(get_example_view(domain));
 }
 
 IndexSpace FFModel::get_task_is(Domain const &domain) const {
-  MachineView view;
-  view.ndims = domain.get_dim();
-  for (int i = 0; i < view.ndims; i++) {
-    view.dim[i] = domain.hi()[i] - domain.lo()[i] + 1;
-  }
-  auto const &iter = all_task_is.find(view);
-  assert(iter != all_task_is.end());
-  return iter->second;
+  MachineView view = get_example_view(domain); 
+  return this->all_task_is.at(view);
 }
 
 void FFModel::reset_metrics() {
@@ -1368,8 +1390,8 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
       // runtime->get_index_space_domain(operators[l]->outputs[0]->parallel_is);
       // Domain d2 =
       // runtime->get_index_space_domain(operators[i]->outputs[0]->parallel_is);
-      MachineView view1 = operators[l]->outputs[0]->machine_view;
-      MachineView view2 = operators[i]->outputs[0]->machine_view;
+      MachineView view1 = operators[l]->outputs[0]->machine_view.value();
+      MachineView view2 = operators[i]->outputs[0]->machine_view.value();
       if (view1 == view2) {
         FusedOp *fused_op = nullptr;
         bool allocate_new_fused_op = false;
@@ -1440,42 +1462,40 @@ bool FFModel::apply_fusion(std::vector<Op *> const &operators,
   return false;
 }
 
+static ParallelTensorShape get_parallel_tensor_shape(Tensor const &tensor) {
+  int num_dims = tensor->num_dims();
+  std::vector<ParallelDim> dims;
+  for (int j = 0; j < num_dims; j++) {
+    dims.emplace_back(tensor->dims[j], 1, -1, false);
+  }
+  dims.emplace_back(1, 1, -1, true);
+  ParallelTensorShape shape = { dims, tensor->data_type };
+  return shape;
+}
+
 Op *FFModel::create_operator_from_layer(
     Layer *layer, std::vector<ParallelTensor> const &inputs) {
   switch (layer->op_type) {
     case OP_INPUT: {
       // Input op cannot have an input
       assert(inputs.size() == 0);
-      // Current assume we add one dimension before each tensor
       Tensor tensor = layer->outputs[0];
-      int num_dims = tensor->num_dims;
-      ParallelDim dims[MAX_TENSOR_DIM];
-      for (int j = 0; j < num_dims; j++) {
-        dims[j].size = tensor->dims[j];
-        dims[j].degree = 1;
-        dims[j].parallel_idx = -1;
-        dims[j].is_replica_dim = false;
-      }
-      dims[num_dims].size = 1;
-      dims[num_dims].degree = 1;
-      dims[num_dims].parallel_idx = -1;
-      dims[num_dims].is_replica_dim = true;
+      // Current assume we add one dimension before each tensor
       // create_parallel_tensor adds an NoOp into operators
+      ParallelTensorShape shape = get_parallel_tensor_shape(tensor);
       ParallelTensor pt =
-          create_parallel_tensor_legion_ordering(num_dims + 1,
-                                                 dims,
-                                                 tensor->data_type,
+          create_parallel_tensor_legion_ordering(shape,
                                                  nullptr,
                                                  0,
                                                  true /*gradients*/,
                                                  tensor->tensor_guid);
       // assert that this tensor hasn't been mapped before
-      assert(tensor->parallel_tensor == nullptr);
+      assert(tensor->parallel_tensor == nullopt);
       tensor->parallel_tensor = pt;
       // start from data parllel tensor
       if (config.only_data_parallel) {
         Repartition *part = new Repartition(
-            *this, pt, num_dims - 1, config.numNodes * config.workersPerNode);
+            *this, pt, shape.num_dims() - 1, config.numNodes * config.workersPerNode);
         operators.push_back(part);
       }
       return operators[operators.size() - 1];

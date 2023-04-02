@@ -7,6 +7,7 @@
 #include "utils/visitable.h"
 #include "utils/graph.h"
 #include "op-attrs/operator_attrs.h"
+#include "utils/stack_vector.h"
 
 namespace FlexFlow {
 
@@ -34,7 +35,7 @@ struct StridedRectangle {
   bool operator!=(StridedRectangle const &) const;
 
   int start;
-  std::vector<StridedRectangleSide> sides;
+  stack_vector<StridedRectangleSide, MAX_TENSOR_DIM> sides;
 };
 
 
@@ -55,6 +56,7 @@ struct MachineView {
   std::vector<int> device_ids() const;
 
   DeviceID at(std::vector<int> const &idxs) const;
+  StridedRectangleSide at(int idx) const;
   DeviceID get_starting_device_id() const;
 
   MachineView starting_at(DeviceID) const;

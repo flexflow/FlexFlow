@@ -40,6 +40,13 @@ public:
                              CostMetrics &cost_metrics) const override;
 
   tl::optional<RecordFormatter> as_dot() const override;
+
+  OpTaskBinding get_init_task_binding() const override;
+  TaskID get_init_task_id() const override;
+  OpTaskBinding get_fwd_task_binding() const override;
+  TaskID get_fwd_task_id() const override;
+  OpTaskBinding get_bwd_task_binding() const override;
+  TaskID get_bwd_task_id() const override;
 public:
   int repartition_dim, repartition_degree;
 };

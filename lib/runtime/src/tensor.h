@@ -44,6 +44,8 @@ struct TensorBase {
   size_t get_volume() const;
   Legion::Domain get_domain() const;
 
+  int num_dims() const;
+
   void print(std::string const &name) const;
   template <typename T>
   bool set_tensor(FFModel const *model,
@@ -57,7 +59,6 @@ struct TensorBase {
                                   bool get_gradients);
 public:
   size_t tensor_guid = 0;
-  int num_dims = 0;
   // int adim[MAX_TENSOR_DIM];
   stack_vector<int, MAX_TENSOR_DIM> dims;
   DataType data_type = DT_NONE;

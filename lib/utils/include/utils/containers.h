@@ -14,6 +14,7 @@
 #include <cassert>
 #include "bidict.h"
 #include "stack_map.h"
+#include <map>
 
 namespace FlexFlow {
 
@@ -75,6 +76,11 @@ bool contains(Container const &c, typename Container::value_type const &e) {
 
 template <typename K, typename V>
 bool contains_key(std::unordered_map<K, V> const &m, K const &k) {
+  return m.find(k) != m.end();
+}
+
+template <typename K, typename V>
+bool contains_key(std::map<K, V> const &m, K const &k) {
   return m.find(k) != m.end();
 }
 
@@ -294,6 +300,17 @@ T reversed(T const &t) {
     r.push_back(*i);
   }
   return r;
+}
+
+template <typename T>
+std::vector<T> value_all(std::vector<optional<T>> const &v) {
+  std::vector<T> result; 
+  
+  for (auto const &element : v) {
+    result.push_back(v);
+  }
+
+  return result;
 }
 
 }

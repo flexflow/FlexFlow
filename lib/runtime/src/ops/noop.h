@@ -30,6 +30,12 @@ public:
 
   tl::optional<RecordFormatter> as_dot() const override;
 
+  OpTaskBinding get_init_task_binding() const override;
+  TaskID get_init_task_id() const override;
+  OpTaskBinding get_fwd_task_binding() const override { assert(false); }
+  TaskID get_fwd_task_id() const override { assert(false); }
+  OpTaskBinding get_bwd_task_binding() const override { assert(false); }
+  TaskID get_bwd_task_id() const override { assert(false); }
 public:
   size_t input_tensor_guid;
 };
