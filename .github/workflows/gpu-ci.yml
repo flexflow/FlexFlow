@@ -51,8 +51,8 @@ jobs:
     defaults:
       run:
         shell: bash -l {0} # required to use an activated conda environment
-    env: 
-      CONDA: "3"    
+    env:
+      CONDA: "3"
     needs: gpu-ci-concierge
     container:
       image: ghcr.io/flexflow/flexflow-environment-cuda:latest
@@ -65,7 +65,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
-          
+
       - name: Install conda and FlexFlow dependencies
         uses: conda-incubator/setup-miniconda@v2
         with:
@@ -74,9 +74,24 @@ jobs:
           environment-file: conda/flexflow-cpu.yml
           auto-activate-base: false
 
+      - name: Check conda name and info
+        run: |
+          conda info
+          conda list
+
       - name: Install conda and Pytorch dependencies for pytorch alignment test
         run: |
+          conda deactivate
           conda env create -f conda/pytorch-gpu.yml
+          conda info
+          conda list
+          conda deactivate
+          conda activate flexflow
+
+      - name: Check conda name and info
+        run: |
+          conda info
+          conda list
 
       - name: Build FlexFlow
         run: |
@@ -157,4 +172,3 @@ jobs:
           ./examples/cpp/inference/gpt_tokenizer_test.sh
           # Python tests
           ./tests/multi_gpu_tests.sh 4
-
