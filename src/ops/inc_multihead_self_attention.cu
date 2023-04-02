@@ -536,7 +536,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     : OpMeta(handler, attn) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  // checkCUDNN(cudnnSetStream(handler.dnn, stream));
+  checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
   qSize = attn->qSize;
   kSize = attn->kSize;
