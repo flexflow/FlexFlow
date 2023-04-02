@@ -133,7 +133,8 @@ jobs:
 
       - name: Run flexflow alignment with pytorch
         run: |
-          # run alingment tests
+          # run alignment tests
+          ./python/flexflow_python tests/align/align_create_tensor_ff.py -ll:py 1 -ll:gpu 1 -ll:fsize 5000 -ll:zsize 4096 -b 16 -o add
           ./tests/align/test_all_operators.sh
 
   gpu-ci-flexflow:
