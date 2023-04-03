@@ -21,54 +21,105 @@
 namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
-using Legion::Domain;
+
+#define C10_WARP_SIZE 32
+constexpr int kCUDABlockReduceNumThreads = 512;
+constexpr int kCUDANumThreads = 256;
 
 RMSNormMeta::RMSNormMeta(FFHandler handler,
                          RMSNorm const *rms,
                          coord_t _in_dim,
                          coord_t _num_dims)
-    : OpMeta(handler, rms) {
+    : OpMeta(handler, rms) 
+{
   eps = rms->eps;
-  in_dim = _in_dim;
-  num_dims = _num_dims;
+  alpha = 1.0f;
+  beta = 0.0f;
+
+  in_dim = _in_dim;       // in_dim: feature_dim
+  num_dims = _num_dims;   // num_dims: batch_size
   num_elements = in_dim * num_dims;
 
-  checkCUDA(cudaMalloc(&mean_ptr, in_dim * num_dims * sizeof(float)));
-
-  // set descriptor for reduce kenrnel
-  checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceDesc));
-  checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(cudnnSetTensor4dDescriptor(
-      input_desc, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, num_dims, in_dim, 1));
-
-  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
-  checkCUDNN(cudnnSetTensor4dDescriptor(output_desc,
-                                        CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
-                                        1,
-                                        num_dims,
-                                        in_dim,
-                                        1));
-
-  checkCUDNN(cudnnSetReduceTensorDescriptor(reduceDesc,
-                                            CUDNN_REDUCE_TENSOR_AVG,
-                                            CUDNN_DATA_FLOAT,
-                                            CUDNN_PROPAGATE_NAN,
-                                            CUDNN_REDUCE_TENSOR_NO_INDICES,
-                                            CUDNN_32BIT_INDICES));
-  // checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
-  // Domain output_domain = input_domain;
-  // for (size_t i = 0; i < rd->num_axes; i++) {
-  //   assert(input_domain.dim > rd->axes[i]);
-  //   output_domain.rect_data[rd->axes[i] + output_domain.dim] =
-  //       output_domain.rect_data[rd->axes[i]];
-  // }
-  // checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor,
-  // output_domain));
+  checkCUDA(cudaMalloc(&rstd_ptr, num_dims * sizeof(float)));
+  checkCUDA(cudaMalloc(&norm_ptr, num_elements * sizeof(float)));
 }
 
 namespace Kernels {
 namespace RMSNorm {
+
+template <typename T>
+__device__ __forceinline__ T WARP_SHFL_DOWN(T value,
+                                            unsigned int delta,
+                                            int width = warpSize,
+                                            unsigned int mask = 0xffffffff) {
+#ifndef __HIP_PLATFORM_HCC__
+  return __shfl_down_sync(mask, value, delta, width);
+#else
+  return __shfl_down(value, delta, width);
+#endif
+}
+
+template <typename T>
+__inline__ __device__ T WarpReduceSum(T val) {
+#pragma unroll
+  for (int offset = (C10_WARP_SIZE >> 1); offset > 0; offset >>= 1) {
+    val += WARP_SHFL_DOWN(val, offset);
+  }
+  return val;
+}
+
+template <typename T>
+__inline__ __device__ T BlockReduceSum(T val, T *shared) {
+  int const lid = threadIdx.x % C10_WARP_SIZE;
+  int const wid = threadIdx.x / C10_WARP_SIZE;
+  val = WarpReduceSum(val);
+  __syncthreads();
+  if (lid == 0) {
+    shared[wid] = val;
+  }
+  __syncthreads();
+  val = (threadIdx.x < blockDim.x / C10_WARP_SIZE) ? shared[lid] : 0;
+  if (wid == 0) {
+    val = WarpReduceSum(val);
+  }
+  return val;
+}
+
+template <typename T>
+__global__ void
+    RowwiseMomentsKernel(int64_t N, T eps, T const *X, T *rstd) {
+  __shared__ T m_shared[C10_WARP_SIZE];
+  __shared__ T v_shared[C10_WARP_SIZE];
+  const int64_t i = blockIdx.x;
+  T sum1 = 0;
+  T sum2 = 0;
+  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
+    const int64_t index = i * N + j;
+    sum1 += static_cast<T>(X[index]);
+    sum2 += static_cast<T>(X[index]) * static_cast<T>(X[index]);
+  }
+  sum1 = BlockReduceSum<T>(sum1, m_shared);
+  sum2 = BlockReduceSum<T>(sum2, v_shared);
+  if (threadIdx.x == 0) {
+    const T scale = T(1) / static_cast<T>(N);
+    sum1 *= scale;
+    sum2 = max(sum2 * scale - sum1 * sum1, T(0));
+    rstd[i] = rsqrt(sum2 + static_cast<T>(eps));
+  }
+}
+
+template <typename T>
+__global__ void NormKernel(int64_t N,
+                               T const *X,
+                               T const *rstd,
+                               T *Y) {
+  using T_ACC = T;
+  const int64_t i = blockIdx.x;
+  for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
+    const int64_t index = i * N + j;
+    Y[index] = static_cast<T_ACC>(X[index]) * static_cast<T_ACC>(rstd[i]);
+  }
+}
 
 void forward_kernel_wrapper(RMSNormMeta const *m,
                             GenericTensorAccessorR const &input,
@@ -84,12 +135,35 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
     cudaEventRecord(t_start, stream);
   }
 
-  Internal::forward_kernel(m,
-                           input.get_float_ptr(),
-                           weight.get_float_ptr(),
-                           output.get_float_ptr(),
-                           input.domain.get_volume(),
-                           stream);
+  RowwiseMomentsKernel<float>
+      <<<m->num_dims, kCUDABlockReduceNumThreads, 0, stream>>>(
+          m->in_dim, m->eps, input.get_float_ptr(), m->rstd_ptr);
+  NormKernel<float>
+    <<<m->num_dims, kCUDANumThreads, 0, stream>>>(
+        m->in_dim,
+        input.get_float_ptr(),
+        m->rstd_ptr,
+        m->norm_ptr);
+
+  checkCUDA(cublasGemmEx(m->handle.blas,
+                         CUBLAS_OP_T, // transpose weight (column major)
+                         CUBLAS_OP_N,
+                         m->in_dim,
+                         m->num_dims,
+                         m->in_dim,
+                         &(m->alpha),
+                         weight.get_float_ptr(), // weight, shape (in_dim, in_dim)
+                         CUDA_R_32F,
+                         m->in_dim,
+                         m->norm_ptr,            // norm, shape (in_dim, num_dims)
+                         CUDA_R_32F,
+                         m->in_dim,
+                         &(m->beta),
+                         output.get_float_ptr(), // output, shape (in_dim, num_dims), same as norm
+                         CUDA_R_32F,
+                         m->in_dim,
+                         CUDA_R_32F,
+                         CUBLAS_GEMM_DFALT_TENSOR_OP));
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
@@ -104,57 +178,6 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
   }
 }
 
-namespace Internal {
-/*static*/
-void norm_kernel(RMSNormMeta const *m,
-                 float const *input_ptr,
-                 float *output_ptr,
-                 cudaStream_t stream) {
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-
-  float alpha = 2.0f;
-  float beta = 0.0f;
-
-  checkCUDA(cublasSgeam(m->handle.blas,
-                        CUBLAS_OP_T,
-                        CUBLAS_OP_N,
-                        m->num_dims,
-                        m->in_dim,
-                        &alpha,
-                        input_ptr,
-                        m->in_dim,
-                        &beta,
-                        input_ptr,
-                        m->in_dim,
-                        output_ptr,
-                        m->num_dims));
-
-  cublasSaxpy(handle, m->num_elements, &m->eps, output_ptr, 1, output_ptr, 1);
-}
-
-void forward_kernel(RMSNormMeta const *m,
-                    float const *input_ptr,
-                    float const *weight_ptr,
-                    float *output_ptr,
-                    coord_t dim_size,
-                    cudaStream_t stream) {
-
-  // impl from
-  // https://github.com/facebookresearch/llama/blob/main/llama/model.py#:~:text=class%20RMSNorm(torch,*%20self.weight
-  // pow
-  norm_kernel(m, input_ptr, m->mean_ptr, stream);
-
-  // reduce
-
-  // add eps
-
-  // multiply with x
-
-  // apply weights
-
-  return;
-}
-} // namespace Internal
 } // namespace RMSNorm
 } // namespace Kernels
 } // namespace FlexFlow

@@ -209,7 +209,7 @@ OpMeta *RMSNorm::init_task(Task const *task,
                            Runtime *runtime) {
   RMSNorm *rn = (RMSNorm *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  RMSNormMeta *meta = new RMSNormMeta(handle, rn);
+  RMSNormMeta *meta = new RMSNormMeta(handle, rn, in_dims, batch_size); // Fix this
   return meta;
 }
 

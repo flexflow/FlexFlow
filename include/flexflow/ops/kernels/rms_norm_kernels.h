@@ -7,12 +7,13 @@
 #include "flexflow/op_meta.h"
 
 namespace FlexFlow {
+using Legion::coord_t;
 
 class RMSNorm;
 
 class RMSNormMeta : public OpMeta {
 public:
-  RMSNormMeta(FFHandler handler, RMSNorm const *rms);
+  RMSNormMeta(FFHandler handler, RMSNorm const *rms, coord_t _in_dim, coord_t _num_dims);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnReduceTensorDescriptor_t reduceDesc;
@@ -23,7 +24,12 @@ public:
 
 public:
   float eps;
-  float *mean_ptr;
+  float *rstd_ptr;
+  float *norm_ptr;
+
+  float alpha;
+  float beta;
+
   int in_dim;
   int num_dims;
   int num_elements;
@@ -36,20 +42,6 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorR const &weight,
                             GenericTensorAccessorW const &output);
-namespace Internal {
-
-void norm_kernel(RMSNormMeta const *m,
-                 float const *input_ptr,
-                 float *output_ptr,
-                 ffStream_t stream);
-
-void forward_kernel(RMSNormMeta const *m,
-                    float const *input_ptr,
-                    float const *weight_ptr,
-                    float *output_ptr,
-                    Legion::coord_t dim_size,
-                    ffStream_t stream);
-} // namespace Internal
 } // namespace RMSNorm
 } // namespace Kernels
 } // namespace FlexFlow
