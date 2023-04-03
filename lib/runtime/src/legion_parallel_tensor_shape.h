@@ -9,9 +9,9 @@ struct LegionParallelTensorShape {
   LegionParallelTensorShape() = delete;
   LegionParallelTensorShape(ParallelTensorShape const &);
 
-  template <typename It>
-  LegionParallelTensorShape(It dims_start, It dims_stop, DataType data_type)
-    : dims(dims_start, dims_stop), data_type(data_type)
+  template <typename C>
+  LegionParallelTensorShape(C const &dims, DataType data_type)
+    : dims(dims), data_type(data_type)
   { }
 
   bool operator==(LegionParallelTensorShape const &) const;

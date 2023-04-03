@@ -121,14 +121,20 @@ public:
 struct ParallelTensor {
 public:
   ParallelTensor() = delete;
+  
+  ParallelTensor(size_t parallel_tensor_guid,
+                     ParallelTensorShape const &,
+                     bool create_gradients,
+                     optional<ParameterSyncType> sync_type = nullopt,
+                     Initializer *initializer = nullptr);
   ParallelTensor(std::shared_ptr<ParallelTensorBase> ptr) 
     : ptr(ptr) 
   { }
 
-  template <typename ...Args>
-  ParallelTensor(Args&&...args)
-    : ParallelTensor(std::make_shared<ParallelTensorBase>(std::forward<Args>(args)...))
-  { }
+  /* template <typename ...Args> */
+  /* ParallelTensor(Args&&...args) */
+  /*   : ParallelTensor(std::make_shared<ParallelTensorBase>(std::forward<Args>(args)...)) */
+  /* { } */
 
   ParallelTensorBase *operator->();
   ParallelTensorBase const *operator->() const;

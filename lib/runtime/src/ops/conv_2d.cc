@@ -27,7 +27,7 @@ using Legion::TaskLauncher;
 
 using namespace FlexFlow::Kernels::Conv2D;
 
-Tensor FFModel::conv2d(const Tensor input,
+Tensor FFModel::conv2d(Tensor const &input,
                        int outChannels,
                        int kernelH,
                        int kernelW,
@@ -42,59 +42,69 @@ Tensor FFModel::conv2d(const Tensor input,
                        Initializer *kernel_initializer,
                        Initializer *bias_initializer,
                        char const *name) {
-  assert(input->num_dims == 4); /*NCHW*/
+  assert(input->num_dims() == 4); /*NCHW*/
 
-  Layer *conv = new Layer(this,
-                          OP_CONV2D,
-                          DT_FLOAT,
-                          name,
-                          1 /*inputs*/,
-                          use_bias ? 2 : 1 /*weights*/,
-                          1 /*outputs*/,
-                          input);
-  {
-    int numdims = 4;
-    int dims[MAX_TENSOR_DIM];
-    dims[3] = input->dims[3];
-    dims[2] = outChannels;
-    dims[1] = 1 + (input->dims[1] + 2 * paddingH - kernelH) / strideH;
-    dims[0] = 1 + (input->dims[0] + 2 * paddingW - kernelW) / strideW;
-    conv->outputs[0] = create_tensor_legion_ordering(
-        numdims, dims, DT_FLOAT, conv, 0, true /*create_grad*/);
-  }
-  {
-    int dims[4] = {kernelW, kernelH, input->dims[2], outChannels};
-    conv->weights[0] = create_weight_legion_ordering(4,
-                                                     dims,
-                                                     DT_FLOAT,
-                                                     conv,
-                                                     true /*create_grad*/,
-                                                     kernel_initializer,
-                                                     CHOSEN_SYNC_TYPE);
-  }
+  Conv2DAttrs attrs = {
+    outChannels,
+    kernelH,
+    kernelW,
+    strideH,
+    strideW,
+    paddingH,
+    paddingW,
+    groups,
+    activation,
+    use_bias
+  };
+
+  TensorShape output_shape = get_output_shape(attrs, input->get_shape());
+  Tensor output = this->tensor_mgr.create(output_shape, CreateGrad::YES, conv);
+
+  std::vector<Tensor> weights;
+
+  TensorShape kernel_shape = get_kernel_shape(attrs, input->get_shape());
+  weights.push_back(this->tensor_mgr.create(kernel_shape, CreateGrad::YES, kernel_initializer, CHOSEN_SYNC_TYPE));
+
   if (use_bias) {
-    int dims[1] = {outChannels};
-    conv->weights[1] = create_weight_legion_ordering(1,
-                                                     dims,
-                                                     DT_FLOAT,
-                                                     conv,
-                                                     true /*create_grad*/,
-                                                     bias_initializer,
-                                                     CHOSEN_SYNC_TYPE);
+    TensorShape bias_shape = get_bias_shape(attrs,input->get_shape());
+    weights.push_back(this->tensor_mgr.create(bias_shape, CreateGrad::YES, bias_initializer, CHOSEN_SYNC_TYPE));
   }
-  conv->add_int_property("out_channels", outChannels);
-  conv->add_int_property("kernel_h", kernelH);
-  conv->add_int_property("kernel_w", kernelW);
-  conv->add_int_property("stride_h", strideH);
-  conv->add_int_property("stride_w", strideW);
-  conv->add_int_property("padding_h", paddingH);
-  conv->add_int_property("padding_w", paddingW);
-  conv->add_int_property("activation", activation);
-  conv->add_int_property("groups", groups);
-  conv->add_int_property("use_bias", use_bias);
+
+  Layer *conv = this->layer_mgr.create(attrs, DT_FLOAT, name, {input}, weights, {output});
+
+  //{
+  //  int numdims = 4;
+  //  int dims[MAX_TENSOR_DIM];
+  //  dims[3] = input->dims[3];
+  //  dims[2] = outChannels;
+  //  dims[1] = 1 + (input->dims[1] + 2 * paddingH - kernelH) / strideH;
+  //  dims[0] = 1 + (input->dims[0] + 2 * paddingW - kernelW) / strideW;
+  //  conv->outputs[0] = create_tensor_legion_ordering(
+  //      numdims, dims, DT_FLOAT, conv, 0, true /*create_grad*/);
+  //}
+  //{
+  //  int dims[4] = {kernelW, kernelH, input->dims[2], outChannels};
+  //  conv->weights[0] = create_weight_legion_ordering(4,
+  //                                                   dims,
+  //                                                   DT_FLOAT,
+  //                                                   conv,
+  //                                                   true /*create_grad*/,
+  //                                                   kernel_initializer,
+  //                                                   CHOSEN_SYNC_TYPE);
+  //}
+  //if (use_bias) {
+  //  int dims[1] = {outChannels};
+  //  conv->weights[1] = create_weight_legion_ordering(1,
+  //                                                   dims,
+  //                                                   DT_FLOAT,
+  //                                                   conv,
+  //                                                   true /*create_grad*/,
+  //                                                   bias_initializer,
+  //                                                   CHOSEN_SYNC_TYPE);
+  //}
   conv->add_initializer("kernel", kernel_initializer);
   conv->add_initializer("bias", bias_initializer);
-  layers.push_back(conv);
+  /* layers.push_back(conv); */
   return conv->outputs[0];
 }
 
@@ -102,94 +112,13 @@ Op *Conv2D::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
-  long long value;
-  layer->get_int_property("out_channels", value);
-  int out_channels = value;
-  layer->get_int_property("kernel_h", value);
-  int kernelH = value;
-  layer->get_int_property("kernel_w", value);
-  int kernelW = value;
-  layer->get_int_property("stride_h", value);
-  int strideH = value;
-  layer->get_int_property("stride_w", value);
-  int strideW = value;
-  layer->get_int_property("padding_h", value);
-  int paddingH = value;
-  layer->get_int_property("padding_w", value);
-  int paddingW = value;
-  layer->get_int_property("activation", value);
-  ActiMode activation = (ActiMode)value;
-  layer->get_int_property("groups", value);
-  int groups = value;
-  layer->get_int_property("use_bias", value);
-  bool use_bias = value;
-  Initializer *kernel_initializer, *bias_initializer;
-  layer->get_initializer("kernel", kernel_initializer);
-  layer->get_initializer("bias", bias_initializer);
-  return new Conv2D(model,
-                    layer->layer_guid,
-                    inputs[0],
-                    out_channels,
-                    kernelH,
-                    kernelW,
-                    strideH,
-                    strideW,
-                    paddingH,
-                    paddingW,
-                    activation,
-                    groups,
-                    use_bias,
-                    false, // allocate_weights
-                    layer->name);
+  return new Conv2D(model, 
+                    get<Conv2DAttrs>(layer->attrs), 
+                    inputs,
+                    layer->name, 
+                    false /*allocate_weights*/
+                    );
 }
-
-Conv2DParams Conv2D::get_params() const {
-  Conv2DParams params;
-  params.layer_guid = this->layer_guid;
-  params.out_channels = this->out_channels;
-  params.kernel_h = this->kernel_h;
-  params.kernel_w = this->kernel_w;
-  params.stride_h = this->stride_h;
-  params.stride_w = this->stride_w;
-  params.padding_h = this->padding_h;
-  params.padding_w = this->padding_w;
-  params.activation = this->activation;
-  params.groups = this->groups;
-  params.use_bias = this->use_bias;
-
-  return params;
-}
-
-// size_t Conv2DParams::get_hash(const ParallelTensor input) const {
-//   size_t hash = input->get_owner_independent_hash();
-//   hash_combine(hash, this->layer_guid.id);
-//   hash_combine(hash, this->out_channels);
-//   hash_combine(hash, this->kernel_h);
-//   hash_combine(hash, this->kernel_w);
-//   hash_combine(hash, this->stride_h);
-//   hash_combine(hash, this->stride_w);
-//   hash_combine(hash, this->padding_h);
-//   hash_combine(hash, this->padding_w);
-//   hash_combine(hash, this->activation);
-//   hash_combine(hash, this->groups);
-//   hash_combine(hash, this->use_bias);
-
-//   return hash;
-// }
-
-// size_t Conv2D::get_params_hash() const {
-//   return this->get_params().get_hash(this->inputs[0]);
-// }
-
-using PCG::Node;
-
-/* bool operator==(Conv2DParams const &lhs, Conv2DParams const &rhs) { */
-/*   return lhs.layer_guid == rhs.layer_guid && lhs.kernel_h == rhs.kernel_h && */
-/*          lhs.kernel_w == rhs.kernel_w && lhs.stride_h == rhs.stride_h && */
-/*          lhs.stride_w == rhs.stride_w && lhs.padding_h == rhs.padding_h && */
-/*          lhs.padding_w == rhs.padding_w && lhs.groups == rhs.groups && */
-/*          lhs.activation == rhs.activation && lhs.use_bias == rhs.use_bias; */
-/* } */
 
 /* void Conv2DParams::mark_replica_dims( */
 /*     ParallelTensorShape const &input, */
@@ -371,8 +300,8 @@ Conv2D::Conv2D(FFModel &model,
              other.name) {}
 
 Conv2D::Conv2D(FFModel &model,
-               Conv2DParams const &params,
-               ParallelTensor const input,
+               Conv2DAttrs const &attrs,
+               std::vector<ParallelTensor> const &inputs,
                char const *name,
                bool allocate_weights)
     : Conv2D(model,

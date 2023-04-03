@@ -35,8 +35,6 @@ enum {
 
 class Conv2D : public Op {
 public:
-  using Attrs = Conv2DAttrs;
-
   Conv2D(FFModel &model,
          LayerID const &layer_guid,
          const ParallelTensor input,
@@ -57,7 +55,8 @@ public:
          const ParallelTensor input,
          bool allocate_weights);
   Conv2D(FFModel &model,
-         Attrs const &attrs,
+         Conv2DAttrs const &attrs,
+         std::vector<ParallelTensor> const &inputs,
          char const *name = nullptr,
          bool allocate_weights = false);
   void init(FFModel const &) override;

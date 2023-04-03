@@ -9,6 +9,8 @@ namespace FlexFlow {
 
 struct Conv2DAttrs {
 public:
+  Conv2DAttrs() = delete;
+  Conv2DAttrs(int out_channels, int kernel_h, int kernel_w, int stride_h, int stride_w, int padding_h, int padding_w, int groups, ActiMode activation, bool use_bias);
 
   ParallelTensorShape calculate_output_shape(ParallelTensorShape const &input_shape) const;
   ParallelTensorShape calculate_kernel_shape(ParallelTensorShape const &input_shape) const;

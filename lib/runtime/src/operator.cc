@@ -1,12 +1,13 @@
 #include "operator.h"
 #include "op-attrs/ffconst_utils.h"
 #include <stdexcept>
+#include "model.h"
 
 using namespace Legion;
 
 namespace FlexFlow {
 
-Op::Op(FFModel &model,
+Op::Op(size_t op_guid,
        OperatorType otype,
        DataType dtype,
        char const *name,
@@ -14,36 +15,39 @@ Op::Op(FFModel &model,
        int numWeights,
        bool allocate_weights,
        int numOutputs,
-       const ParallelTensor input1,
-       const ParallelTensor input2,
-       const ParallelTensor input3,
-       const ParallelTensor input4)
-    : Op(model,
+       bool profiling,
+       optional<ParallelTensor> const &input1,
+       optional<ParallelTensor> const &input2,
+       optional<ParallelTensor> const &input3,
+       optional<ParallelTensor> const &input4)
+    : Op(op_guid,
          otype,
          dtype,
          name,
          numInputs,
          allocate_weights ? numWeights : 0,
          numOutputs,
+         profiling,
          input1,
          input2,
          input3,
          input4) {}
 
-Op::Op(FFModel &model,
+Op::Op(size_t _op_guid,
        OperatorType _otype,
        DataType _dtype,
        char const *_name,
        int _numInputs,
        int _numWeights,
        int _numOutputs,
-       const ParallelTensor _input1,
-       const ParallelTensor _input2,
-       const ParallelTensor _input3,
-       const ParallelTensor _input4)
-    : op_type(_otype), data_type(_dtype), op_guid(model.op_global_guid++),
+       bool _profiling,
+       optional<ParallelTensor> const &_input1,
+       optional<ParallelTensor> const &_input2,
+       optional<ParallelTensor> const &_input3,
+       optional<ParallelTensor> const &_input4)
+    : op_type(_otype), data_type(_dtype), op_guid(_op_guid),
       numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
-      profiling(model.config.profiling) {
+      profiling(_profiling) {
   for (int i = 0; i < MAX_NUM_INPUTS; i++) {
     inputs[i] = NULL;
   }
@@ -78,17 +82,18 @@ Op::Op(FFModel &model,
   parallel_dims_mapping = new std::vector<ParallelDimMappingRecord>();
 }
 
-Op::Op(FFModel &model,
+Op::Op(size_t _op_guid,
        OperatorType _otype,
        DataType _dtype,
        char const *_name,
        int _numInputs,
        int _numWeights,
        int _numOutputs,
+       bool _profiling,
        ParallelTensor const *_inputs)
-    : op_type(_otype), data_type(_dtype), op_guid(model.op_global_guid++),
+    : op_type(_otype), data_type(_dtype), op_guid(_op_guid),
       numInputs(_numInputs), numWeights(_numWeights), numOutputs(_numOutputs),
-      profiling(model.config.profiling) {
+      profiling(_profiling) {
   std::string pcname;
   if (_name == NULL) {
     pcname = get_operator_type_name(op_type);
@@ -183,8 +188,8 @@ void Op::zero_grad(FFModel const &ff) {
   if (op_type == OP_INPUT || op_type == OP_WEIGHT) {
     return;
   }
-  Runtime *runtime = ff.config.lg_hlr;
-  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.legion_config.lg_hlr;
+  Context ctx = ff.config.legion_config.lg_ctx;
   ArgumentMap argmap;
   ZeroInitMeta meta;
   meta.op_ptr = this;
@@ -214,7 +219,7 @@ void Op::zero_grad(FFModel const &ff) {
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
+                         get_std_hash(outputs[0]->machine_view));
   for (int i = 0; i < numWeights; i++) {
     launcher.add_region_requirement(RegionRequirement(weights[i]->part_grad,
                                                       0 /*projection id*/,

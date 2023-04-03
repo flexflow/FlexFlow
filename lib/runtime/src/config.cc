@@ -5,14 +5,15 @@ using namespace Legion;
 
 namespace FlexFlow {
 
-FFConfig::FFConfig() {
-  // Use Real::Machine::get_address_space_count() to obtain the number of nodes
-  numNodes = Realm::Machine::get_machine().get_address_space_count();
+LegionConfig::LegionConfig() 
+  : lg_ctx(Runtime::get_context()), lg_hlr(Runtime::get_runtime())
+{
+  this->field_space = this->lg_hlr->create_field_space(this->lg_ctx); 
+}
 
-  Runtime *runtime = Runtime::get_runtime();
-  lg_hlr = runtime;
-  lg_ctx = Runtime::get_context();
-  field_space = runtime->create_field_space(lg_ctx);
+FFConfig::FFConfig() {
+  // Use Realm::Machine::get_address_space_count() to obtain the number of nodes
+  numNodes = Realm::Machine::get_machine().get_address_space_count();
 }
 
 

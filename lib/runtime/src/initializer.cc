@@ -14,24 +14,19 @@
  */
 
 #include "initializer.h"
-#include "model.h"
 #include "tasks.h"
+#include <cmath>
+#include "accessor.h"
 
 namespace FlexFlow {
 
 using namespace Legion;
 
-Initializer::Initializer(void) {}
-
-Initializer::~Initializer(void) {}
-
 GlorotUniform::GlorotUniform(int _seed) : Initializer(), seed(_seed) {}
 
-GlorotUniform::~GlorotUniform(void) {}
-
-void GlorotUniform::init(FFModel const *ff, const ParallelTensor p) {
-  Context ctx = ff->config.lg_ctx;
-  Runtime *runtime = ff->config.lg_hlr;
+void GlorotUniform::init(LegionConfig const &config, ParallelTensor const &p) {
+  Context ctx = config.lg_ctx;
+  Runtime *runtime = config.lg_hlr;
   int dim = p->num_dims - 1;
   while (p->dims[dim].is_replica_dim) {
     dim--;
@@ -82,11 +77,9 @@ void GlorotUniform::init(FFModel const *ff, const ParallelTensor p) {
 
 ZeroInitializer::ZeroInitializer(void) : Initializer() {}
 
-ZeroInitializer::~ZeroInitializer(void) {}
-
-void ZeroInitializer::init(FFModel const *ff, const ParallelTensor p) {
-  Context ctx = ff->config.lg_ctx;
-  Runtime *runtime = ff->config.lg_hlr;
+void ZeroInitializer::init(LegionConfig const &config, ParallelTensor const &p) {
+  Context ctx = config.lg_ctx;
+  Runtime *runtime = config.lg_hlr;
   if (p->sync_type == ParameterSyncType::PS) {
     ZeroInitMeta meta;
     meta.num_regions = 1;
@@ -175,11 +168,9 @@ void ZeroInitializer::init_task_cpu(Task const *task,
 UniformInitializer::UniformInitializer(int _seed, float _min, float _max)
     : Initializer(), seed(_seed), min_val(_min), max_val(_max) {}
 
-UniformInitializer::~UniformInitializer(void) {}
-
-void UniformInitializer::init(FFModel const *ff, const ParallelTensor p) {
-  Context ctx = ff->config.lg_ctx;
-  Runtime *runtime = ff->config.lg_hlr;
+void UniformInitializer::init(LegionConfig const &config, ParallelTensor const &p) {
+  Context ctx = config.lg_ctx;
+  Runtime *runtime = config.lg_hlr;
   this->data_type = p->data_type;
   if (p->sync_type == ParameterSyncType::PS) {
     TaskLauncher launcher(UNIFORM_INIT_TASK_ID,
@@ -213,11 +204,9 @@ void UniformInitializer::init(FFModel const *ff, const ParallelTensor p) {
 NormInitializer::NormInitializer(int _seed, float _mean, float _stddev)
     : seed(_seed), mean(_mean), stddev(_stddev) {}
 
-NormInitializer::~NormInitializer(void) {}
-
-void NormInitializer::init(FFModel const *ff, const ParallelTensor p) {
-  Context ctx = ff->config.lg_ctx;
-  Runtime *runtime = ff->config.lg_hlr;
+void NormInitializer::init(LegionConfig const &config, ParallelTensor const &p) {
+  Context ctx = config.lg_ctx;
+  Runtime *runtime = config.lg_hlr;
   this->data_type = p->data_type;
   if (p->sync_type == ParameterSyncType::PS) {
     TaskLauncher launcher(NORMAL_INIT_TASK_ID,
@@ -260,9 +249,9 @@ ConstantInitializer::ConstantInitializer(int _value)
 
 ConstantInitializer::~ConstantInitializer(void) {}
 
-void ConstantInitializer::init(FFModel const *ff, const ParallelTensor p) {
-  Context ctx = ff->config.lg_ctx;
-  Runtime *runtime = ff->config.lg_hlr;
+void ConstantInitializer::init(LegionConfig const &config, ParallelTensor const &p) {
+  Context ctx = config.lg_ctx;
+  Runtime *runtime = config.lg_hlr;
   assert(p->data_type == this->data_type);
   if (p->sync_type == ParameterSyncType::PS) {
     TaskLauncher launcher(CONSTANT_INIT_TASK_ID,

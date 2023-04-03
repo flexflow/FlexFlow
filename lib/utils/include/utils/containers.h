@@ -307,7 +307,7 @@ std::vector<T> value_all(std::vector<optional<T>> const &v) {
   std::vector<T> result; 
   
   for (auto const &element : v) {
-    result.push_back(v);
+    result.push_back(element.value());
   }
 
   return result;

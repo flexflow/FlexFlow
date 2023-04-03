@@ -32,6 +32,11 @@ class Layer;
 class FFModel;
 class Initializer;
 
+enum class CreateGrad {
+  YES,
+  NO
+};
+
 struct TensorBase {
   TensorBase(void) = default;
   TensorBase(TensorBase const &rhs);
@@ -39,10 +44,14 @@ struct TensorBase {
              TensorShape const &,
              bool create_gradients, 
              Initializer const *initializer = nullptr, 
-             ParameterSyncType sync_type = ParameterSyncType::NONE);
+             ParameterSyncType sync_type = ParameterSyncType::NONE, 
+             Layer const *layer = nullptr,
+             int owner_idx = 0);
 
   size_t get_volume() const;
   Legion::Domain get_domain() const;
+
+  TensorShape get_shape() const;
 
   int num_dims() const;
 
@@ -74,12 +83,23 @@ public:
 struct Tensor {
 public: 
   Tensor() = delete;
-  explicit Tensor(std::shared_ptr<TensorBase const> ptr);
+  /* explicit Tensor(std::shared_ptr<TensorBase> ptr); */
 
-  template <typename ...Args>
-  Tensor(Args&&...args)
-    : ptr(std::make_shared<TensorBase>(std::forward<Args>(args)...))
-  { }
+  /* template <typename ...Args> */
+  /* Tensor(Args&&...args) */
+  /*   : ptr(std::make_shared<TensorBase>(std::forward<Args>(args)...)) */
+  /* { } */
+
+  Tensor(size_t tensor_guid, 
+             TensorShape const &,
+             bool create_gradients, 
+             Initializer const *initializer = nullptr, 
+             ParameterSyncType sync_type = ParameterSyncType::NONE);
+  Tensor(size_t tensor_guid, 
+             TensorShape const &,
+             CreateGrad create_gradients, 
+             Initializer const *initializer = nullptr, 
+             ParameterSyncType sync_type = ParameterSyncType::NONE);
 
   Tensor(Tensor const &) = default;
   Tensor(Tensor &) = default;
@@ -87,7 +107,7 @@ public:
   TensorBase *operator->();
   TensorBase const *operator->() const;
 private:
-  std::shared_ptr<TensorBase const> ptr;
+  std::shared_ptr<TensorBase> ptr;
 };
 
 static_assert(std::is_copy_constructible<Tensor>::value, "Tensor must be copy constructible");

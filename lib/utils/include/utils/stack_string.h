@@ -6,7 +6,7 @@
 namespace FlexFlow {
 
 template <typename Char, size_t MAXSIZE>
-struct stack_string {
+struct stack_basic_string {
   stack_string() = default;
 
   operator std::basic_string<Char>() const {
@@ -17,8 +17,11 @@ struct stack_string {
     return result;
   }
 private:
-  stack_vector<Char, MAXSIZE> contents
+  stack_vector<Char, MAXSIZE> contents;
 };
+
+template <size_t MAXSIZE>
+using stack_string = stack_basic_string<char, MAXSIZE>;
 
 }
 

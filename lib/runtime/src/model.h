@@ -41,6 +41,8 @@
 #include "op_node.h"
 #include "tensor_shape.h"
 #include "legion_parallel_tensor_shape.h"
+#include "index_space_manager.h"
+#include "parallel_tensor_manager.h"
 
 namespace FlexFlow {
 
@@ -55,7 +57,7 @@ MachineView get_basic_data_parallel_machine_view(int num_parts, int dims);
 
 class FFModel {
 public:
-  FFModel(FFConfig &config);
+  FFModel(FFConfig const &config);
 
   // C++ APIs for constructing models
   // Add an exp layer
@@ -276,16 +278,16 @@ public:
                              bool add_zero_attn = false,
                              Initializer *kernel_initializer = NULL,
                              char const *name = NULL);
-  Tensor create_tensor_legion_ordering(LegionTensorShape const &shape,
-                                       Layer const *owner_op = NULL,
-                                       int owner_idx = 0,
-                                       bool create_grad = true);
+  Tensor create_tensor(LegionTensorShape const &shape,
+                       Layer const *owner_op = NULL,
+                       int owner_idx = 0,
+                       bool create_grad = true);
   ParallelTensor
-      create_parallel_tensor_legion_ordering(LegionParallelTensorShape const &,
-                                             Op const *owner_op = NULL,
-                                             int owner_idx = 0,
-                                             bool create_grad = true,
-                                             size_t input_tensor_guid = 0);
+      create_parallel_tensor(LegionParallelTensorShape const &,
+                             Op const *owner_op = NULL,
+                             int owner_idx = 0,
+                             bool create_grad = true,
+                             size_t input_tensor_guid = 0);
   Tensor create_tensor(TensorShape const &,
                        Layer const *owner_op = NULL,
                        int owner_idx = 0,
@@ -295,30 +297,18 @@ public:
                                         int owner_idx = 0,
                                         bool create_grad = true,
                                         size_t input_tensor_guid = 0);
-  template <int NDIM>
-  Tensor create_tensor(TensorShape const &,
-                       Layer const *owner_op = NULL,
-                       int owner_idx = 0,
-                       bool create_grad = true);
-  template <int NDIM>
-  ParallelTensor create_parallel_tensor(ParallelTensorShape const &,
-                                        Op const *owner_op = NULL,
-                                        int owner_idx = 0,
-                                        bool create_grad = true,
-                                        size_t input_tensor_guid = 0);
-  Parameter
-      create_weight(TensorShape const &,
-                    Layer const *owner_op = NULL,
-                    bool create_grad = true,
-                    Initializer *initializer = NULL,
-                    ParameterSyncType sync_type = ParameterSyncType::NONE);
-  Parameter create_weight_legion_ordering(
+  Parameter create_weight(
+      TensorShape const &,
+      Layer const *owner_op = NULL,
+      bool create_grad = true,
+      Initializer *initializer = NULL,
+      ParameterSyncType sync_type = ParameterSyncType::NONE);
+  Parameter create_weight(
       LegionTensorShape const &,
       Layer const *owner_op = NULL,
       bool create_grad = true,
       Initializer *initializer = NULL,
       ParameterSyncType sync_type = ParameterSyncType::NONE);
-  template <int NDIM>
   ParallelParameter create_parallel_weight(
       ParallelTensorShape const &,
       Op const *owner_op = NULL,
@@ -326,20 +316,11 @@ public:
       Initializer *initializer = NULL,
       ParameterSyncType sync_type = ParameterSyncType::NONE);
   ParallelParameter create_parallel_weight(
-      ParallelTensorShape const &,
-      Op const *owner_op = NULL,
-      bool create_grad = true,
-      Initializer *initializer = NULL,
-      ParameterSyncType sync_type = ParameterSyncType::NONE);
-  ParallelParameter create_parallel_weight_legion_ordering(
       LegionParallelTensorShape const &,
       Op const *owner_op = NULL,
       bool create_grad = true,
       Initializer *initializer = NULL,
       ParameterSyncType sync_type = ParameterSyncType::NONE);
-
-  void map_tensor(ParallelTensor &tensor, Op const *parallel_op);
-  void map_weight(ParallelTensor &tensor, Op const *parallel_op);
 
   optional<ParallelTensor> get_parallel_tensor_from_tensor(Tensor const &tensor) const;
 
@@ -364,51 +345,7 @@ public:
   // ========================================
   // Internal APIs that should not be invoked from applications
   // ========================================
-  void create_disjoint_partition(int num_dims,
-                                 const ParallelDim dims[],
-                                 Legion::IndexSpace const &part_is,
-                                 Legion::LogicalRegion const &region,
-                                 Legion::LogicalPartition &part);
-  template <int NDIM, int TDIM>
-  void create_disjoint_partition_with_dim2(
-      const ParallelDim dims[],
-      Legion::IndexSpaceT<TDIM> const &part_is,
-      Legion::LogicalRegion const &region,
-      Legion::LogicalPartition &part);
-  void create_aliased_partition(int num_dims,
-                                const ParallelDim dims[],
-                                int aliased_dim,
-                                Legion::IndexSpace const &part_is,
-                                Legion::LogicalRegion const &region,
-                                Legion::LogicalPartition &part);
-  template <int NDIM, int TDIM>
-  void create_aliased_partition_with_dim2(
-      const ParallelDim dims[],
-      int aliased_dim,
-      Legion::IndexSpaceT<TDIM> const &part_is,
-      Legion::LogicalRegion const &region,
-      Legion::LogicalPartition &part);
 
-  template <int NDIM>
-  void create_disjoint_partition(ParallelTensor const &tensor,
-                                 Legion::IndexSpaceT<NDIM> const &part_is,
-                                 Legion::LogicalPartition &part_fwd,
-                                 Legion::LogicalPartition &part_bwd);
-
-  template <int NDIM, int TDIM>
-  void create_data_parallel_partition_with_diff_dims(
-      ParallelTensor const &tensor,
-      Legion::IndexSpaceT<TDIM> const &task_is,
-      Legion::LogicalPartition &part_fwd,
-      Legion::LogicalPartition &part_bwd);
-  template <int NDIM>
-  void map_conv_weight(ParallelTensor p, Op const *parallel_op);
-  template <int NDIM, int TDIM>
-  void map_linear_weight(ParallelTensor p, Op const *parallel_op);
-  template <int NDIM, int TDIM>
-  ParallelTensor create_linear_replica(int const *dims,
-                                       Legion::IndexSpaceT<TDIM> const &part_is,
-                                       DataType data_type);
   static PerfMetrics
       update_metrics_task(Legion::Task const *task,
                           std::vector<Legion::PhysicalRegion> const &regions,
@@ -439,38 +376,63 @@ public:
 #endif
   void recompile_on_condition(RecompileState &r);
   void zero_gradients();
-  void print_layers(int id);
 
   std::unordered_map<Op *, std::vector<std::pair<Op *, int>>>
       get_bwd_edge_map() const;
 
-  // Internal funcitons
-  Legion::IndexSpace get_or_create_task_is(MachineView const &);
-  Legion::IndexSpace get_or_create_task_is(Legion::Domain const &domain);
-  Legion::IndexSpace get_or_create_task_is(ParallelTensor const &);
-  Legion::IndexSpace get_task_is(Legion::Domain const &domain) const;
-  Legion::IndexSpace get_task_is(MachineView const &) const;
   void create_operators_from_layers();
   Op *create_operator_from_layer(Layer *layer,
                                  std::vector<ParallelTensor> const &inputs);
   // APIs for setting iteration configs
 public:
   void set_iteration_config_sequence_length(int seq_length);
+private:
+  void execute_graph_optimize();
+  void perform_inplace_optimizations();
+  void perform_fusion_optimizations();
+  void initialize_nccl_communicators();
+  void optimize_unnecessary_gradient_calculations();
+  void print_operator_regions() const;
+  void create_label_tensor(LossType);
+  void populate_tensor_to_parallel_tensor_mapping();
+
+  template <int NDIM>
+  ParallelParameter create_parallel_weight(
+      ParallelTensorShape const &,
+      Op const *owner_op = NULL,
+      bool create_grad = true,
+      Initializer *initializer = NULL,
+      ParameterSyncType sync_type = ParameterSyncType::NONE);
+
+  template <int NDIM>
+  Tensor create_tensor(TensorShape const &,
+                       Layer const *owner_op = NULL,
+                       int owner_idx = 0,
+                       bool create_grad = true);
+  template <int NDIM>
+  ParallelTensor create_parallel_tensor(ParallelTensorShape const &,
+                                        Op const *owner_op = NULL,
+                                        int owner_idx = 0,
+                                        bool create_grad = true,
+                                        size_t input_tensor_guid = 0);
 
 public:
-  size_t op_global_guid, layer_global_guid;
-  size_t tensor_global_guid, parallel_tensor_global_guid, node_global_guid;
+  size_t op_global_guid;
+  size_t node_global_guid;
   FFConfig config;
   FFIterationConfig iter_config;
   Optimizer *optimizer;
-  Loss *loss_op;
-  Metrics *metrics_op;
+  optional<Loss> loss_op;
+  optional<Metrics> metrics_op;
   std::unique_ptr<Simulator> simulator;
   int metrics_input;
   optional<ParallelTensor> parallel_label_tensor;
   optional<Tensor> label_tensor;
+  IndexSpaceManager index_space_mgr;
+  ParallelTensorManager parallel_tensor_mgr;
+  TensorManager tensor_mgr;
+  LayerManager layer_mgr;
 
-  std::vector<Layer *> layers;
   std::vector<Op *> operators;
   std::vector<ParallelTensor> parameters;
   std::vector<FFHandler> handlers;
@@ -483,14 +445,6 @@ public:
 #endif
 private:
   bool debug;
-  std::map<MachineView, Legion::IndexSpace> all_task_is;
-
-  template <int NDIM>
-  void map_tensor_with_dim(ParallelTensor &tensor, Op const *parallel_op);
-  template <int NDIM, int TDIM>
-  void map_tensor_with_dim2(ParallelTensor &tensor, Op const *parallel_op);
-  template <int NDIM>
-  void map_weight_with_dim(ParallelTensor &weight, Op const *parallel_op);
 
   Tensor binary(OperatorType op,
                 Tensor const x,

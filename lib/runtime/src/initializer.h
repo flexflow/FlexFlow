@@ -18,6 +18,7 @@
 
 #include "legion.h"
 #include "parallel_tensor.h"
+#include "runtime/config.h"
 
 namespace FlexFlow {
 
@@ -25,16 +26,16 @@ class FFModel;
 
 class Initializer {
 public:
-  Initializer(void);
-  virtual ~Initializer(void);
-  virtual void init(FFModel const *ff, const ParallelTensor p) = 0;
+  Initializer() = default;
+  virtual ~Initializer() = default;
+  virtual void init(LegionConfig const &, ParallelTensor const &) = 0;
 };
 
 class GlorotUniform : public Initializer {
 public:
   GlorotUniform(int _seed);
-  ~GlorotUniform(void);
-  void init(FFModel const *ff, const ParallelTensor p);
+  ~GlorotUniform() = default;
+  void init(LegionConfig const &, ParallelTensor const &);
   static void init_task(Legion::Task const *task,
                         std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,
@@ -55,8 +56,8 @@ struct ZeroInitMeta {
 class ZeroInitializer : public Initializer {
 public:
   ZeroInitializer(void);
-  ~ZeroInitializer(void);
-  void init(FFModel const *ff, const ParallelTensor p);
+  ~ZeroInitializer() = default;
+  void init(LegionConfig const &, ParallelTensor const &p);
   static void init_task(Legion::Task const *task,
                         std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,
@@ -70,8 +71,8 @@ public:
 class UniformInitializer : public Initializer {
 public:
   UniformInitializer(int _seed, float _min, float _max);
-  ~UniformInitializer(void);
-  void init(FFModel const *ff, const ParallelTensor p);
+  ~UniformInitializer() = default;
+  void init(LegionConfig const &, ParallelTensor const &);
   static void init_task(Legion::Task const *task,
                         std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,
@@ -84,8 +85,8 @@ public:
 class NormInitializer : public Initializer {
 public:
   NormInitializer(int _seed, float _mean, float _stddev);
-  ~NormInitializer(void);
-  void init(FFModel const *ff, const ParallelTensor p);
+  ~NormInitializer() = default;
+  void init(LegionConfig const &, ParallelTensor const &);
   static void init_task(Legion::Task const *task,
                         std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,
@@ -101,7 +102,7 @@ public:
   ConstantInitializer(int64_t _value);
   ConstantInitializer(int _value);
   ~ConstantInitializer(void);
-  void init(FFModel const *ff, const ParallelTensor p);
+  void init(LegionConfig const &, ParallelTensor const &);
   static void init_task(Legion::Task const *task,
                         std::vector<Legion::PhysicalRegion> const &regions,
                         Legion::Context ctx,

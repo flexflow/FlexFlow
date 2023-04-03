@@ -40,6 +40,14 @@ struct FFInitInfo {
   bool allowTensorOpMathConversion;
 };
 
+struct LegionConfig {
+  LegionConfig();
+
+  Legion::Context lg_ctx;
+  Legion::Runtime *lg_hlr;
+  Legion::FieldSpace field_space;
+};
+
 class FFConfig {
 public:
   enum PreservedIDs {
@@ -67,10 +75,8 @@ public:
   float learningRate = 0.01f;
   float weightDecay = 0.0001f;
   size_t workSpaceSize = (size_t)1 * 1024 * 1024 * 1024; // 2GB
-  Legion::Context lg_ctx;
-  Legion::Runtime *lg_hlr;
-  Legion::FieldSpace field_space;
   bool profiling = false; 
+  LegionConfig legion_config;
   bool perform_fusion = false;
   size_t simulator_work_space_size = (size_t)2 * 1024 * 1024 * 1024; // 2GB
   size_t search_budget = -1;

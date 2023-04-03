@@ -4,7 +4,7 @@
 
 namespace FlexFlow {
 
-Layer::Layer(FFModel *model,
+Layer::Layer(size_t _layer_guid,
              OperatorType _otype,
              DataType _dtype,
              char const *_name,
@@ -16,7 +16,7 @@ Layer::Layer(FFModel *model,
              optional<Tensor const &> _input3,
              optional<Tensor const &> _input4)
     : op_type(_otype), data_type(_dtype),
-      layer_guid(model->layer_global_guid++), numInputs(_numInputs),
+      layer_guid(_layer_guid), numInputs(_numInputs),
       numWeights(_numWeights), numOutputs(_numOutputs) {
   std::string pcname;
   if (_name == nullptr) {
@@ -39,7 +39,7 @@ Layer::Layer(FFModel *model,
   }
 }
 
-Layer::Layer(FFModel *model,
+Layer::Layer(size_t _layer_guid,
              OperatorType _otype,
              DataType _dtype,
              char const *_name,
@@ -48,7 +48,7 @@ Layer::Layer(FFModel *model,
              int _numOutputs,
              Tensor const *_tensors)
     : op_type(_otype), data_type(_dtype),
-      layer_guid(model->layer_global_guid++), numInputs(_numInputs),
+      layer_guid(_layer_guid), numInputs(_numInputs),
       numWeights(_numWeights), numOutputs(_numOutputs) {
   std::string pcname;
   if (_name == nullptr) {
@@ -64,33 +64,8 @@ Layer::Layer(FFModel *model,
   }
 }
 
-void Layer::add_int_property(std::string const &key, long long value) {
-  int_properties[key] = value;
-}
-
-void Layer::add_float_property(std::string const &key, float value) {
-  float_properties[key] = value;
-}
-
-void Layer::add_int_vector_property(std::string const &key,
-                                    std::vector<int> const &value) {
-  int_vector_properties[key] = value;
-}
-
 void Layer::add_initializer(std::string const &key, Initializer *initializer) {
   initializers[key] = initializer;
-}
-
-long long Layer::get_int_property(std::string const &key) const {
-  return this->int_properties.at(key);
-}
-
-float Layer::get_float_property(std::string const &key) const {
-  return this->float_properties.at(key);
-}
-
-std::vector<int> Layer::get_int_vector_property(std::string const &key) const {
-  return this->int_vector_properties.at(key);
 }
 
 Initializer *Layer::get_initializer(std::string const &key) const {
