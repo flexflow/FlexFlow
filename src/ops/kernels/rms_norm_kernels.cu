@@ -36,7 +36,7 @@ RMSNormMeta::RMSNormMeta(FFHandler handler, RMSNorm const *rms)
   batch_size = rms->effective_batch_size;
   num_elements = in_dim * batch_size;
 
-  checkCUDA(cudaMalloc(&rstd_ptr, batch_size * sizeof(float)));
+  checkCUDA(cudaMalloc(&rms_ptr, batch_size * sizeof(float)));
   checkCUDA(cudaMalloc(&norm_ptr, num_elements * sizeof(float)));
 }
 
@@ -82,26 +82,21 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 }
 
 template <typename T>
-__global__ void RowwiseMomentsKernel(int64_t N, T eps, T const *X, T *rstd) {
-  __shared__ T m_shared[C10_WARP_SIZE];
+__global__ void RowwiseRootMeanSquareKernel(int64_t N, T eps, T const *X, T *rms) {
   __shared__ T v_shared[C10_WARP_SIZE];
   const int64_t i = blockIdx.x;
-  T sum1 = 0;
-  T sum2 = 0;
+  T sum = 0;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
     const int64_t index = i * N + j;
-    sum1 += static_cast<T>(X[index]);
-    sum2 += static_cast<T>(X[index]) * static_cast<T>(X[index]);
+    sum += static_cast<T>(X[index]) * static_cast<T>(X[index]);
   }
-  sum1 = BlockReduceSum<T>(sum1, m_shared);
-  sum2 = BlockReduceSum<T>(sum2, v_shared);
+  sum = BlockReduceSum<T>(sum, v_shared); // use BlockReduceSum() to sum X_ij^2
   if (threadIdx.x == 0) {
     const T scale = T(1) / static_cast<T>(N);
-    sum1 *= scale;
-    sum2 = max(sum2 * scale - sum1 * sum1, T(0));
-    rstd[i] = rsqrt(sum2 + static_cast<T>(eps));
+    rms[i] = sqrt(static_cast<T>(N) / (sum * scale) + static_cast<T>(eps));
   }
 }
+
 
 template <typename T>
 __global__ void NormKernel(int64_t N, T const *X, T const *rstd, T *Y) {
@@ -127,11 +122,11 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
     cudaEventRecord(t_start, stream);
   }
 
-  RowwiseMomentsKernel<float>
+  RowwiseRootMeanSquareKernel<float>
       <<<m->batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
-          m->in_dim, m->eps, input.get_float_ptr(), m->rstd_ptr);
+          m->in_dim, m->eps, input.get_float_ptr(), m->rms_ptr);
   NormKernel<float><<<m->batch_size, kCUDANumThreads, 0, stream>>>(
-      m->in_dim, input.get_float_ptr(), m->rstd_ptr, m->norm_ptr);
+      m->in_dim, input.get_float_ptr(), m->rms_ptr, m->norm_ptr);
 
   checkCUDA(cublasGemmEx(
       m->handle.blas,
