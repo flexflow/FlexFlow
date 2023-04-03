@@ -496,7 +496,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   }
   // reload the weight_o
 
-  if (!m->has_load_weights) {
+  if (!(*m->has_load_weights)) {
     int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
     build_w_out_tensor<<<GET_BLOCKS(parallelism),
                          min(CUDA_NUM_THREADS, parallelism),
@@ -509,7 +509,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
                                    (m->qSize * m->qProjSize +
                                     m->kSize * m->kProjSize +
                                     m->vSize * m->vProjSize));
-    m->has_load_weights = true;
+    *m->has_load_weights = true;
   }
 
   // phase 1: Implement kernel to compute KQV for input tokens
@@ -569,7 +569,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
                     oProjSize * (vProjSize > 0 ? vProjSize : vSize));
   weightSize = weights_params * num_heads * sizeof(float);
-  has_load_weights = false;
+  has_load_weights = (bool *)calloc(1, sizeof(bool));
+  *has_load_weights = false;
   // Currently do not support adding bias to key/value projection
   assert(!attn->add_bias_kv);
 
