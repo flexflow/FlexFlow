@@ -20,7 +20,7 @@
 // #define MAX_SEQ_LEN 1024
 // #define BATCH_SIZE 2
 #define MAX_SEQ_LEN 20
-#define BATCH_SIZE 2
+#define BATCH_SIZE 32
 #define MAX_REQUESTS 256
 
 namespace FlexFlow {
@@ -34,7 +34,7 @@ class BatchConfig {
 public:
   BatchConfig();
   bool register_new_request(size_t guid,
-                            int initial_length,
+                            int initial_len,
                             int tokens_to_generate);
   void prepare_next_batch();
   int update_results(InferenceResult const &ir);
@@ -57,6 +57,7 @@ public:
   int num_processing_tokens[MAX_NUM_REQUESTS]; // a request's number of tokens
                                                // being processed in the current
                                                // batch/iteration
+  size_t initial_length[MAX_NUM_REQUESTS];
   size_t max_sequence_length[MAX_NUM_REQUESTS];
 
   struct token_idxs {
@@ -64,6 +65,7 @@ public:
                            // that the token belongs to
     size_t token_position; // the index indicating the position of each token
                            // within its request
+    size_t initial_length;
   };
 
   struct SampleIdxs {

@@ -43,14 +43,26 @@ public:
                                   std::vector<PhysicalRegion> const &regions,
                                   Context ctx,
                                   Runtime *runtime);
-  void next_batch(FFModel &, int, BatchConfig *);
+  void next_batch(FFModel &ff,
+                  int bid,
+                  BatchConfig *bc,
+                  std::map<size_t, int> &batch_predictions,
+                  MachineView const *mv = nullptr);
+  void store_outputs(BatchConfig *bc,
+                     InferenceResult const &ir,
+                     std::map<size_t, int> &batch_predictions);
 
 public:
   size_t num_samples;
   ParallelTensor full_input;
   std::vector<ParallelTensor> batch_input;
+  std::map<size_t, std::vector<int>> outputs;
   struct DataLoaderInput {
     InferenceConfig const &_inferenceConfig;
     DataGenerator &_data_generator;
+  };
+  struct DataLoaderNextBatchInput {
+    BatchConfig::SampleIdxs const &meta;
+    std::map<size_t, int> const &prev_batch_preds;
   };
 };

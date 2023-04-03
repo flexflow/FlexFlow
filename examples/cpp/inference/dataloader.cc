@@ -58,7 +58,7 @@ DataLoader::DataLoader(FFModel &ff,
     dims[batch_idx].size = num_samples;
 
     full_input =
-        ff.create_parallel_tensor_legion_ordering(numdims, dims, DT_FLOAT);
+        ff.create_parallel_tensor_legion_ordering(numdims, dims, DT_INT32);
     ff.map_tensor(full_input, NULL /*parallel_op*/);
   }
 
@@ -93,7 +93,7 @@ void DataLoader::load_entire_dataset(Task const *task,
   assert(task->regions.size() == regions.size());
 
   // get input pointer
-  float *input_ptr = helperGetTensorPointerWO<float>(
+  int *input_ptr = helperGetTensorPointerWO<int>(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -110,7 +110,11 @@ void DataLoader::load_entire_dataset(Task const *task,
   }
 }
 
-void DataLoader::next_batch(FFModel &ff, int bid, BatchConfig *bc) {
+void DataLoader::next_batch(FFModel &ff,
+                            int bid,
+                            BatchConfig *bc,
+                            std::map<size_t, int> &batch_predictions,
+                            MachineView const *mv) {
   size_t num_active_tokens = bc->num_active_tokens();
   if (num_active_tokens == 0) {
     return;
@@ -137,19 +141,28 @@ void DataLoader::next_batch(FFModel &ff, int bid, BatchConfig *bc) {
        num_active_tokens); */
     assert(ff.config.batchSize == batch_size &&
            batch_size * seq_len >= num_active_tokens);
-    for (Domain::DomainPointIterator it(domain); it; it++) {
-      // SampleIdxs meta = bc->token2ids;
-      argmap.set_point(
-          *it, TaskArgument(&bc->token2ids, sizeof(BatchConfig::SampleIdxs)));
-    }
+
+    /* std::cout << "About to call next_batch function..." << std::endl;
+    bc->print();
+    std::cout << "batch_predictions: ";
+    for (const auto& elem : batch_predictions){
+        std::cout << elem.first << ":" << elem.second << ", ";
+    } */
+    DataLoaderNextBatchInput next_batch_input = {bc->token2ids,
+                                                 batch_predictions};
+    DataLoaderNextBatchInput const *ptr = &next_batch_input;
+    size_t next_batch_input_sz = sizeof(next_batch_input);
+    assert(ptr->prev_batch_preds.size() == batch_predictions.size());
+    MachineView const *view = mv ? mv : &batch_input[bid]->machine_view;
+    size_t machine_view_hash = view->hash();
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1,
                            batch_input[bid]->parallel_is,
-                           TaskArgument(NULL, 0),
+                           TaskArgument(ptr, next_batch_input_sz),
                            argmap,
                            Predicate::TRUE_PRED,
                            false /*must*/,
                            0 /*mapper_id*/,
-                           batch_input[bid]->machine_view.hash());
+                           machine_view_hash);
     launcher.add_region_requirement(RegionRequirement(full_input->region,
                                                       0 /*projection id*/,
                                                       READ_ONLY,
@@ -166,6 +179,49 @@ void DataLoader::next_batch(FFModel &ff, int bid, BatchConfig *bc) {
     launcher.add_field(1, FID_DATA);
     runtime->execute_index_space(ctx, launcher);
   }
+}
+
+void DataLoader::store_outputs(BatchConfig *bc,
+                               InferenceResult const &ir,
+                               std::map<size_t, int> &batch_predictions) {
+  assert(bc->token2ids.num_samples == bc->num_active_tokens() &&
+         bc->token2ids.num_samples <= bc->MAX_NUM_TOKENS);
+  batch_predictions.clear();
+  // bc->print();
+  for (size_t i = 0; i < bc->token2ids.num_samples; i++) {
+    if (i == bc->token2ids.num_samples - 1 ||
+        bc->token2ids.guids[i] != bc->token2ids.guids[i + 1]) {
+      assert(bc->token2ids.token_indexes[i].token_position ==
+             bc->token_last_available_idx[bc->token2ids.token_indexes[i]
+                                              .request_index]);
+      if (outputs.find(bc->token2ids.guids[i]) == outputs.end()) {
+        std::vector<int> v{ir.results[i]};
+        outputs[bc->token2ids.guids[i]] = v;
+      } else {
+        outputs[bc->token2ids.guids[i]].push_back(ir.results[i]);
+      }
+      /* std::cout << "outputs: ";
+      for(const auto& elem : outputs){
+        std::cout << elem.first << ": [";
+        for (const auto &vel : elem.second) {
+          std::cout << vel << " ";
+        }
+        std::cout << "]" << std::endl;
+      } */
+      // std::cout << "outputs[bc->token2ids.guids[i]].size(): " <<
+      // outputs[bc->token2ids.guids[i]].size() << std::endl; std::cout << "i: "
+      // << i << std::endl; std::cout <<
+      // "bc->token2ids.token_indexes[i].token_position: " <<
+      // bc->token2ids.token_indexes[i].token_position << std::endl; std::cout
+      // << "bc->token2ids.token_indexes[i].initial_length: " <<
+      // bc->token2ids.token_indexes[i].initial_length << std::endl;
+      assert(outputs[bc->token2ids.guids[i]].size() ==
+             (bc->token2ids.token_indexes[i].token_position + 1) -
+                 (bc->token2ids.token_indexes[i].initial_length - 1));
+      batch_predictions[bc->token2ids.guids[i]] = ir.results[i];
+    }
+  }
+  assert(batch_predictions.size() == bc->num_active_requests());
 }
 
 void FlexFlow::register_custom_tasks() {

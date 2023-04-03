@@ -29,6 +29,7 @@ public:
                    int max_num_inflight_batches);
   void compile_model_and_allocate_buffer(void);
   void init_operators_inference();
+  MachineView *get_machine_view(int mv_id);
   Legion::FutureMap inference(int index, BatchConfig const &bc);
 
 public:

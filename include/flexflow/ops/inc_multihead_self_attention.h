@@ -119,6 +119,7 @@ public:
   size_t weights_params, weightSize, reserveSpaceSize;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int num_heads;
+  bool *has_load_weights;
 #ifdef INFERENCE_TESTS
   float *kcache, *vcache;
 #endif

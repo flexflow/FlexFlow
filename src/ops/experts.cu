@@ -80,7 +80,8 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
                              sorted_indices + num_indices,
                              original_indices);
 
-  // get lower and upper bound of indices corresponding to experts in the block
+  // get lower and upper bound of token->expert assignments corresponding to
+  // experts in the block
   thrust::device_ptr<int> lb = thrust::lower_bound(thrust::cuda::par.on(stream),
                                                    sorted_indices,
                                                    sorted_indices + num_indices,
@@ -90,28 +91,34 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
                           sorted_indices,
                           sorted_indices + num_indices,
                           experts_start_idx + num_experts_per_block - 1);
-
+  // lowest index in the sorted indices array corresponding to an expert within
+  // the block
   *lb_index = lb - sorted_indices;
+  // 1 + largest index in the sorted indices array corresponding to an expert
+  // within the block
   *ub_index = ub - sorted_indices;
   *num_valid_assignments = (*ub_index) - (*lb_index);
   if ((*num_valid_assignments) == 0) {
     return;
   }
 
-  // create "exp_local_label_to_index", a mapping from local expert label to its
-  // non-zero expert index
   thrust::device_ptr<int> non_zero_expert_labels =
       thrust::device_pointer_cast(m->non_zero_expert_labels);
+  // non_zero_expert_labels: a list of global labels of the experts in this
+  // block receiving nonzero tokens
   thrust::device_ptr<int> non_zero_expert_labels_end = thrust::unique_copy(
       thrust::cuda::par.on(stream), lb, ub, non_zero_expert_labels);
+  // number of experts in this block receiving at least one token
   *non_zero_experts_count = non_zero_expert_labels_end - non_zero_expert_labels;
 
   using namespace thrust::placeholders;
+  // convert global labels to local labelling (e.g. expert 65->index 65-64=1 in
+  // block containing experts 64-96) by substracting the experts_start_idx,
+  // inplace.
   thrust::for_each(thrust::cuda::par.on(stream),
                    non_zero_expert_labels,
                    non_zero_expert_labels + (*non_zero_experts_count),
-                   _1 -=
-                   experts_start_idx); // convert global indexes to local ones
+                   _1 -= experts_start_idx);
 
   thrust::device_ptr<int> temp_sequence =
       thrust::device_pointer_cast(m->temp_sequence);
@@ -119,6 +126,9 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
                    temp_sequence,
                    temp_sequence + (*non_zero_experts_count));
 
+  // create "exp_local_label_to_index", a mapping from local expert label to its
+  // non-zero expert index (i.e. expert with index i is the i-th expert in the
+  // block to receive at least 1 token)
   thrust::device_ptr<int> exp_local_label_to_index =
       thrust::device_pointer_cast(m->exp_local_label_to_index);
   thrust::scatter(thrust::cuda::par.on(stream),
@@ -145,7 +155,7 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
   assert((*start_indexes) == (*non_zero_experts_count));
 
   // append ub_index
-  expert_start_indexes[(*start_indexes)] = (*ub_index);
+  expert_start_indexes[(*start_indexes)] = (*ub_index) - (*lb_index);
 
   // get number of token assignment to each expert
   thrust::device_ptr<int> num_assignments_per_expert =
@@ -435,7 +445,25 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 
   cudaStreamSynchronize(stream);
 
+  assert(ub_index - lb_index == num_valid_assignments);
+  assert(num_valid_assignments >= non_zero_experts_count);
+  assert(non_zero_experts_count <= num_experts_per_block);
+  if (non_zero_experts_count == 0) {
+    assert(num_valid_assignments == 0 && gemm_batch_count == 0);
+  } else {
+    assert(num_valid_assignments > 0 && gemm_batch_count > 0);
+  }
+  assert(num_valid_assignments <= num_indices);
+  assert(gemm_batch_count <= num_valid_assignments);
+
   if (num_valid_assignments == 0) {
+    if (m->profiling) {
+      cudaEventRecord(t_end, stream);
+      cudaEventSynchronize(t_end);
+      float milliseconds = 0;
+      cudaEventElapsedTime(&milliseconds, t_start, t_end);
+      printf("forward_kernel_wrapper: %f ms\n", milliseconds);
+    }
     return;
   }
 
@@ -469,34 +497,34 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 
   cudaStreamSynchronize(stream);
 
-  // experts_forward_GemmBatched_kernel(m,
-  //                                    (void const **)m->weight_idx_array,
-  //                                    (void const **)m->token_idx_array,
-  //                                    (void **)m->dev_batch_outputs,
-  //                                    (void const **)m->bias_idx_array,
-  //                                    activation,
-  //                                    data_dim,
-  //                                    out_dim,
-  //                                    num_tokens,
-  //                                    num_chosen_experts,
-  //                                    gemm_batch_count,
-  //                                    stream);
+  experts_forward_GemmBatched_kernel(m,
+                                     (void const **)m->weight_idx_array,
+                                     (void const **)m->token_idx_array,
+                                     (void **)m->dev_batch_outputs,
+                                     (void const **)m->bias_idx_array,
+                                     activation,
+                                     data_dim,
+                                     out_dim,
+                                     num_tokens,
+                                     num_chosen_experts,
+                                     gemm_batch_count,
+                                     stream);
 
   cudaStreamSynchronize(stream);
 
-  // int aggregation_parallelism =
-  //     std::max(num_tokens, gemm_batch_count) * out_dim;
-  // experts_forward_aggregate_kernel<<<GET_BLOCKS(aggregation_parallelism),
-  //                                    min(CUDA_NUM_THREADS,
-  //                                        (int)aggregation_parallelism),
-  //                                    0,
-  //                                    stream>>>(num_tokens,
-  //                                              gemm_batch_count,
-  //                                              out_dim,
-  //                                              output,
-  //                                              m->dev_batch_outputs,
-  //                                              m->coefficient_idx_array,
-  //                                              m->output_idx_array);
+  int aggregation_parallelism =
+      std::max(num_tokens, gemm_batch_count) * out_dim;
+  experts_forward_aggregate_kernel<<<GET_BLOCKS(aggregation_parallelism),
+                                     min(CUDA_NUM_THREADS,
+                                         (int)aggregation_parallelism),
+                                     0,
+                                     stream>>>(num_tokens,
+                                               gemm_batch_count,
+                                               out_dim,
+                                               output,
+                                               m->dev_batch_outputs,
+                                               m->coefficient_idx_array,
+                                               m->output_idx_array);
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
