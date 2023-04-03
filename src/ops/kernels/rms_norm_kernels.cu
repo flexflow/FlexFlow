@@ -27,20 +27,18 @@ constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 
 RMSNormMeta::RMSNormMeta(FFHandler handler,
-                         RMSNorm const *rms,
-                         coord_t _in_dim,
-                         coord_t _num_dims)
+                         RMSNorm const *rms)
     : OpMeta(handler, rms) 
 {
   eps = rms->eps;
   alpha = 1.0f;
   beta = 0.0f;
 
-  in_dim = _in_dim;       // in_dim: feature_dim
-  num_dims = _num_dims;   // num_dims: batch_size
-  num_elements = in_dim * num_dims;
+  in_dim = rms->data_dim;
+  batch_size = rms->effective_batch_size;
+  num_elements = in_dim * batch_size;
 
-  checkCUDA(cudaMalloc(&rstd_ptr, num_dims * sizeof(float)));
+  checkCUDA(cudaMalloc(&rstd_ptr, batch_size * sizeof(float)));
   checkCUDA(cudaMalloc(&norm_ptr, num_elements * sizeof(float)));
 }
 
@@ -136,10 +134,10 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
   }
 
   RowwiseMomentsKernel<float>
-      <<<m->num_dims, kCUDABlockReduceNumThreads, 0, stream>>>(
+      <<<m->batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
           m->in_dim, m->eps, input.get_float_ptr(), m->rstd_ptr);
   NormKernel<float>
-    <<<m->num_dims, kCUDANumThreads, 0, stream>>>(
+    <<<m->batch_size, kCUDANumThreads, 0, stream>>>(
         m->in_dim,
         input.get_float_ptr(),
         m->rstd_ptr,
@@ -149,17 +147,17 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
                          CUBLAS_OP_T, // transpose weight (column major)
                          CUBLAS_OP_N,
                          m->in_dim,
-                         m->num_dims,
+                         m->batch_size,
                          m->in_dim,
                          &(m->alpha),
                          weight.get_float_ptr(), // weight, shape (in_dim, in_dim)
                          CUDA_R_32F,
                          m->in_dim,
-                         m->norm_ptr,            // norm, shape (in_dim, num_dims)
+                         m->norm_ptr,            // norm, shape (in_dim, batch_size)
                          CUDA_R_32F,
                          m->in_dim,
                          &(m->beta),
-                         output.get_float_ptr(), // output, shape (in_dim, num_dims), same as norm
+                         output.get_float_ptr(), // output, shape (in_dim, batch_size), same as norm
                          CUDA_R_32F,
                          m->in_dim,
                          CUDA_R_32F,

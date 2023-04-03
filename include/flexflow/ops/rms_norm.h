@@ -67,6 +67,8 @@ public:
 public:
   float eps;
   char op_name[MAX_OPNAME];
+  int effective_batch_size;
+  int data_dim;
 };
 } // namespace FlexFlow
 #endif // _FLEXFLOW_RMS_NORM_H

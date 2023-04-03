@@ -13,7 +13,7 @@ class RMSNorm;
 
 class RMSNormMeta : public OpMeta {
 public:
-  RMSNormMeta(FFHandler handler, RMSNorm const *rms, coord_t _in_dim, coord_t _num_dims);
+  RMSNormMeta(FFHandler handler, RMSNorm const *rms);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnReduceTensorDescriptor_t reduceDesc;
@@ -31,7 +31,7 @@ public:
   float beta;
 
   int in_dim;
-  int num_dims;
+  int batch_size;
   int num_elements;
   char op_name[MAX_OPNAME];
 };

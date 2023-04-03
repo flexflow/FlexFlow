@@ -107,25 +107,43 @@ RMSNorm::RMSNorm(FFModel &model,
          OP_RMS_NORM,
          _input->data_type,
          name,
-         1 /*inputs*/,
-         1 /*weights*/,
-         1 /*outputs*/,
+         1 /*num of inputs tensor */,
+         1 /*num of weights tensor */,
+         1 /*onum of utputs tensor */,
          _input) {
 
-  // output has the same parallel dims as input
-  ParallelDim dims[MAX_TENSOR_DIM];
-  for (int i = 0; i < _input->num_dims; i++) {
-    dims[i] = _input->dims[i];
+  inputs[0] = _input;
+
+  int num_dims = _input->num_dims;
+  data_dim = _input->dims[0].size;
+  effective_batch_size = 1;
+  for (int i = 1; i <= num_dims - 2; i++) {
+    effective_batch_size *= _input->dims[i].size;
   }
+
+  // output has the same parallel dims as input
+  ParallelDim output_dims[MAX_TENSOR_DIM];
+  ParallelDim weight_dims[MAX_TENSOR_DIM];
+  for (int i = 0; i < _input->num_dims; i++) {
+    output_dims[i] = _input->dims[i];
+    weight_dims[i] = _input->dims[i];
+    weight_dims[i].size = 1;
+  }
+
+  // weights should have the shape of (data_dim, data_dim)
+  weight_dims[0].size = _input->dims[0].size;
+  weight_dims[1].size = _input->dims[0].size;
+
   outputs[0] = model.create_parallel_tensor_legion_ordering(
-      _input->num_dims, dims, _input->data_type, this);
+      _input->num_dims, output_dims, _input->data_type, this);
+  
   // weights
   Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
 
-  // TODO weight dims check
+  // TODO: weight dims check
   weights[0] =
       model.create_parallel_weight_legion_ordering(_input->num_dims,
-                                                   dims,
+                                                   weight_dims,
                                                    _input->data_type,
                                                    this /*owner_op*/,
                                                    true /*create_grad*/,
@@ -209,7 +227,7 @@ OpMeta *RMSNorm::init_task(Task const *task,
                            Runtime *runtime) {
   RMSNorm *rn = (RMSNorm *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  RMSNormMeta *meta = new RMSNormMeta(handle, rn, in_dims, batch_size); // Fix this
+  RMSNormMeta *meta = new RMSNormMeta(handle, rn);
   return meta;
 }
 
