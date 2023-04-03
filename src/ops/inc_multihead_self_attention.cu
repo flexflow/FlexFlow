@@ -32,8 +32,7 @@ __global__ void build_w_out_tensor(float const *weight_ptr,
     int row_idx = i % vProjSize;
     int col_idx = (i / vProjSize) % oProjSize;
     int head_idx = i / (vProjSize * oProjSize);
-    contiguous_weight_ptr[col_idx * vProjSize * num_heads +
-                          head_idx * vProjSize + row_idx] =
+    contiguous_weight_ptr[i] =
         weight_ptr[head_idx * (qkv_weight_block_size + vProjSize * oProjSize) +
                    qkv_weight_block_size + col_idx * vProjSize + row_idx];
   }
@@ -495,23 +494,39 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-  cudaDeviceSynchronize();
+  // reload the weight_o
+
+  if (!(*m->has_load_weights)) {
+    int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
+    build_w_out_tensor<<<GET_BLOCKS(parallelism),
+                         min(CUDA_NUM_THREADS, parallelism),
+                         0,
+                         stream>>>(weight_ptr,
+                                   m->W_out_contiguous,
+                                   m->vProjSize,
+                                   m->oProjSize,
+                                   m->num_heads,
+                                   (m->qSize * m->qProjSize +
+                                    m->kSize * m->kProjSize +
+                                    m->vSize * m->vProjSize));
+    *m->has_load_weights = true;
+  }
+
   // phase 1: Implement kernel to compute KQV for input tokens
   inference_kernel1(m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
-  cudaDeviceSynchronize();
+
   // phase 2: Update key/val cache
   cudaMemcpyAsync(m->dev_token2ids,
                   &(bc->token2ids.token_indexes),
                   bc->MAX_NUM_TOKENS * sizeof(BatchConfig::token_idxs),
                   cudaMemcpyHostToDevice,
                   stream);
-  cudaDeviceSynchronize();
+
   inference_kernel2(m, bc, stream);
-  cudaDeviceSynchronize();
+
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
   inference_kernel3(m, bc, output_ptr, stream);
-  cudaDeviceSynchronize();
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
@@ -537,7 +552,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     : OpMeta(handler, attn) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  // checkCUDNN(cudnnSetStream(handler.dnn, stream));
+  checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
   qSize = attn->qSize;
   kSize = attn->kSize;
@@ -554,7 +569,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
                     oProjSize * (vProjSize > 0 ? vProjSize : vSize));
   weightSize = weights_params * num_heads * sizeof(float);
-
+  has_load_weights = (bool *)calloc(1, sizeof(bool));
+  *has_load_weights = false;
   // Currently do not support adding bias to key/value projection
   assert(!attn->add_bias_kv);
 

@@ -68,73 +68,89 @@ void InferenceManager::compile_model_and_allocate_buffer(void) {
       tensor_buffer[pt_base] = list;
     }
   }
-}
-
-void InferenceManager::init_operators_inference() {
+  // Set machine_view for batch_tensors in the tensor_buffer
   for (int batch_index = 0; batch_index < max_num_inflight_batches;
        batch_index++) {
-    for (int device_index = 0; device_index < num_devices; device_index++) {
-      // int fused_experts_index = 0;
-      for (size_t o = 0; o < model->operators.size(); o++) {
-        Op *op = model->operators[o];
-        if (op->op_type == OP_WEIGHT) {
-          continue;
-        }
-        MachineView *view;
-        // if (op->op_type == OP_EXPERTS) {
-        //   if (fused_experts_index != device_index) {
-        //     fused_experts_index++;
-        //     continue;
-        //   }
-        //   view = &machine_views[fused_experts_index];
-        //   fused_experts_index++;
-        // } else {
-        view = &machine_views[device_index];
-        //}
-        std::vector<ParallelTensor> inputs(op->numInputs);
-        std::vector<ParallelTensor> outputs(op->numOutputs);
-        for (int i = 0; i < op->numInputs; i++) {
-          assert(op->inputs[i] != nullptr);
-          assert(op->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
-          assert(tensor_buffer[op->inputs[i]].size() > batch_index);
-          inputs[i] = tensor_buffer[op->inputs[i]][batch_index];
-          assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
-        }
-        for (int i = 0; i < op->numOutputs; i++) {
-          assert(op->outputs[i] != nullptr);
-          assert(op->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
-          assert(tensor_buffer[op->outputs[i]].size() > batch_index);
-          outputs[i] = tensor_buffer[op->outputs[i]][batch_index];
-          assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
-        }
-        if (op->is_parallel_op()) {
-          ((ParallelOp *)op)
-              ->create_input_partition_inference(*model, inputs, outputs);
-        }
-        op->init_inference(*model, inputs, outputs, view);
+    int expert_device_index = 0;
+    int device_index = batch_index % num_devices;
+    for (size_t o = 0; o < model->operators.size(); o++) {
+      Op *op = model->operators[o];
+      if (op->op_type == OP_WEIGHT) {
+        continue;
+      }
+      MachineView *view;
+      if (op->op_type == OP_EXPERTS) {
+        view = get_machine_view(expert_device_index);
+        // view = &machine_views[expert_device_index];
+        expert_device_index = (expert_device_index + 1) % num_devices;
+      } else {
+        // pick mv w startdeviceid = device_index
+        // view = &machine_views[device_index];
+        view = get_machine_view(device_index);
+      }
+      for (int i = 0; i < op->numOutputs; i++) {
+        tensor_buffer[op->outputs[i]][batch_index]->machine_view = *view;
+        Domain part_domain =
+            runtime->get_index_space_domain(ctx, op->outputs[i]->parallel_is);
+        assert(view->get_domain() == part_domain);
       }
     }
   }
 }
 
+void InferenceManager::init_operators_inference() {
+  for (int batch_index = 0; batch_index < max_num_inflight_batches;
+       batch_index++) {
+    int expert_device_index = 0;
+    int device_index = batch_index % num_devices;
+    for (size_t o = 0; o < model->operators.size(); o++) {
+      Op *op = model->operators[o];
+      if (op->op_type == OP_WEIGHT) {
+        continue;
+      }
+      std::vector<ParallelTensor> inputs(op->numInputs);
+      std::vector<ParallelTensor> outputs(op->numOutputs);
+      for (int i = 0; i < op->numInputs; i++) {
+        assert(op->inputs[i] != nullptr);
+        assert(op->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+        assert(tensor_buffer[op->inputs[i]].size() > batch_index);
+        inputs[i] = tensor_buffer[op->inputs[i]][batch_index];
+        assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+      }
+      assert(op->numOutputs > 0);
+      for (int i = 0; i < op->numOutputs; i++) {
+        assert(op->outputs[i] != nullptr);
+        assert(op->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+        assert(tensor_buffer[op->outputs[i]].size() > batch_index);
+        outputs[i] = tensor_buffer[op->outputs[i]][batch_index];
+        if (i > 0) {
+          assert(outputs[0]->machine_view == outputs[i]->machine_view);
+        }
+        assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+      }
+      if (op->is_parallel_op()) {
+        ((ParallelOp *)op)
+            ->create_input_partition_inference(*model, inputs, outputs);
+      }
+      op->init_inference(*model, inputs, outputs);
+    }
+  }
+}
+
+MachineView *InferenceManager::get_machine_view(int mv_id) {
+  assert(mv_id >= 0 && mv_id < machine_views.size());
+  return &machine_views[mv_id];
+}
+
 FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
+  // We currently assume that the index-th batch will be placed
+  // on the device_index-th device (except for the experts layers)
   int batch_index = index % max_num_inflight_batches;
-  int device_index = index % num_devices;
-  int expert_device_index = 0;
   FutureMap fm;
   for (size_t o = 0; o < model->operators.size(); o++) {
     Op *op = model->operators[o];
     if (op->op_type == OP_WEIGHT || op->op_type == OP_INPUT) {
       continue;
-    }
-
-    MachineView *view;
-    if (op->op_type == OP_EXPERTS) {
-      view = &machine_views[expert_device_index];
-      expert_device_index = (expert_device_index + 1) % num_devices;
-    } else {
-      // pick mv w startdeviceid = device_index
-      view = &machine_views[device_index];
     }
 
     std::vector<ParallelTensor> inputs(op->numInputs);
@@ -157,7 +173,7 @@ FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
       outputs[i] = tensor_buffer[op->outputs[i]][batch_index];
       assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
     }
-    fm = op->inference(*model, bc, inputs, outputs, view);
+    fm = op->inference(*model, bc, inputs, outputs);
   }
   return fm;
 };
