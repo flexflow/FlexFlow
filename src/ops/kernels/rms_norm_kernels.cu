@@ -26,10 +26,8 @@ using Legion::coord_t;
 constexpr int kCUDABlockReduceNumThreads = 512;
 constexpr int kCUDANumThreads = 256;
 
-RMSNormMeta::RMSNormMeta(FFHandler handler,
-                         RMSNorm const *rms)
-    : OpMeta(handler, rms) 
-{
+RMSNormMeta::RMSNormMeta(FFHandler handler, RMSNorm const *rms)
+    : OpMeta(handler, rms) {
   eps = rms->eps;
   alpha = 1.0f;
   beta = 0.0f;
@@ -84,8 +82,7 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 }
 
 template <typename T>
-__global__ void
-    RowwiseMomentsKernel(int64_t N, T eps, T const *X, T *rstd) {
+__global__ void RowwiseMomentsKernel(int64_t N, T eps, T const *X, T *rstd) {
   __shared__ T m_shared[C10_WARP_SIZE];
   __shared__ T v_shared[C10_WARP_SIZE];
   const int64_t i = blockIdx.x;
@@ -107,10 +104,7 @@ __global__ void
 }
 
 template <typename T>
-__global__ void NormKernel(int64_t N,
-                               T const *X,
-                               T const *rstd,
-                               T *Y) {
+__global__ void NormKernel(int64_t N, T const *X, T const *rstd, T *Y) {
   using T_ACC = T;
   const int64_t i = blockIdx.x;
   for (int64_t j = threadIdx.x; j < N; j += blockDim.x) {
@@ -136,32 +130,30 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
   RowwiseMomentsKernel<float>
       <<<m->batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
           m->in_dim, m->eps, input.get_float_ptr(), m->rstd_ptr);
-  NormKernel<float>
-    <<<m->batch_size, kCUDANumThreads, 0, stream>>>(
-        m->in_dim,
-        input.get_float_ptr(),
-        m->rstd_ptr,
-        m->norm_ptr);
+  NormKernel<float><<<m->batch_size, kCUDANumThreads, 0, stream>>>(
+      m->in_dim, input.get_float_ptr(), m->rstd_ptr, m->norm_ptr);
 
-  checkCUDA(cublasGemmEx(m->handle.blas,
-                         CUBLAS_OP_T, // transpose weight (column major)
-                         CUBLAS_OP_N,
-                         m->in_dim,
-                         m->batch_size,
-                         m->in_dim,
-                         &(m->alpha),
-                         weight.get_float_ptr(), // weight, shape (in_dim, in_dim)
-                         CUDA_R_32F,
-                         m->in_dim,
-                         m->norm_ptr,            // norm, shape (in_dim, batch_size)
-                         CUDA_R_32F,
-                         m->in_dim,
-                         &(m->beta),
-                         output.get_float_ptr(), // output, shape (in_dim, batch_size), same as norm
-                         CUDA_R_32F,
-                         m->in_dim,
-                         CUDA_R_32F,
-                         CUBLAS_GEMM_DFALT_TENSOR_OP));
+  checkCUDA(cublasGemmEx(
+      m->handle.blas,
+      CUBLAS_OP_T, // transpose weight (column major)
+      CUBLAS_OP_N,
+      m->in_dim,
+      m->batch_size,
+      m->in_dim,
+      &(m->alpha),
+      weight.get_float_ptr(), // weight, shape (in_dim, in_dim)
+      CUDA_R_32F,
+      m->in_dim,
+      m->norm_ptr, // norm, shape (in_dim, batch_size)
+      CUDA_R_32F,
+      m->in_dim,
+      &(m->beta),
+      output
+          .get_float_ptr(), // output, shape (in_dim, batch_size), same as norm
+      CUDA_R_32F,
+      m->in_dim,
+      CUDA_R_32F,
+      CUBLAS_GEMM_DFALT_TENSOR_OP));
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);

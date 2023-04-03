@@ -136,7 +136,7 @@ RMSNorm::RMSNorm(FFModel &model,
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _input->num_dims, output_dims, _input->data_type, this);
-  
+
   // weights
   Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
 
