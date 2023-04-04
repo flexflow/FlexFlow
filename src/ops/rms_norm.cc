@@ -24,7 +24,6 @@ namespace FlexFlow {
 // declare Legion names
 using Legion::ArgumentMap;
 using Legion::Context;
-using Legion::coord_t;
 using Legion::Domain;
 using Legion::FutureMap;
 using Legion::IndexLauncher;
