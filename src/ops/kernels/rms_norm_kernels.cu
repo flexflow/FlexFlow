@@ -82,7 +82,8 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
 }
 
 template <typename T>
-__global__ void RowwiseRootMeanSquareKernel(int64_t N, T eps, T const *X, T *rms) {
+__global__ void
+    RowwiseRootMeanSquareKernel(int64_t N, T eps, T const *X, T *rms) {
   __shared__ T v_shared[C10_WARP_SIZE];
   const int64_t i = blockIdx.x;
   T sum = 0;
@@ -96,7 +97,6 @@ __global__ void RowwiseRootMeanSquareKernel(int64_t N, T eps, T const *X, T *rms
     rms[i] = sqrt(static_cast<T>(N) / (sum * scale) + static_cast<T>(eps));
   }
 }
-
 
 template <typename T>
 __global__ void NormKernel(int64_t N, T const *X, T const *rstd, T *Y) {
