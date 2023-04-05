@@ -93,8 +93,7 @@ __global__ void
   }
   sum = BlockReduceSum<T>(sum, v_shared); // use BlockReduceSum() to sum X_ij^2
   if (threadIdx.x == 0) {
-    const T scale = T(1) / static_cast<T>(N);
-    rms[i] = sqrt(static_cast<T>(N) / (sum * scale) + static_cast<T>(eps));
+    rms[i] = sqrt((static_cast<T>(N) / sum) + static_cast<T>(eps));
   }
 }
 
