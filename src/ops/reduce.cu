@@ -24,12 +24,23 @@ using Legion::Domain;
 ReduceMeta::ReduceMeta(FFHandler handler,
                        Reduce const *rd,
                        Domain const &input_domain)
-    : OpMeta(handler) {
+    : op_type(rd->op_type), OpMeta(handler) {
   checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceDesc));
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  cudnnReduceTensorOp_t reduce_op;
+  switch (op_type) {
+    case OP_REDUCE_SUM:
+      reduce_op = CUDNN_REDUCE_TENSOR_ADD;
+      break;
+    case OP_REDUCE_MEAN:
+      reduce_op = CUDNN_REDUCE_TENSOR_AVG;
+      break;
+    default:
+      assert(false);
+  }
   checkCUDNN(cudnnSetReduceTensorDescriptor(reduceDesc,
-                                            CUDNN_REDUCE_TENSOR_ADD,
+                                            reduce_op,
                                             CUDNN_DATA_FLOAT,
                                             CUDNN_PROPAGATE_NAN,
                                             CUDNN_REDUCE_TENSOR_NO_INDICES,
@@ -41,6 +52,9 @@ ReduceMeta::ReduceMeta(FFHandler handler,
     output_domain.rect_data[rd->axes[i] + output_domain.dim] =
         output_domain.rect_data[rd->axes[i]];
   }
+  assert(output_domain.get_volume() % input_domain.get_volume() == 0);
+  reduction_size = input_domain.get_volume() / output_domain.get_volume();
+  assert(reduction_size > 0);
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_domain));
 }
 
@@ -85,12 +99,24 @@ void Reduce::backward_kernel(ReduceMeta const *m,
                              float *input_grad_ptr,
                              cudaStream_t stream) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-  float alpha = 1.0f;
+  float alpha = 1.0, beta = 1.0f;
+  switch (m->op_type) {
+    case OP_REDUCE_SUM:
+      alpha = 1.0f;
+      break;
+    case OP_REDUCE_MEAN:
+      // When the output is the average of multiple input elements
+      // we need to scale the gradients by 1.0 / reduction_size
+      alpha = 1.0f / m->reduction_size;
+      break;
+    default:
+      assert(false);
+  }
   checkCUDNN(cudnnAddTensor(m->handle.dnn,
                             &alpha,
                             m->outputTensor,
                             output_grad_ptr,
-                            &alpha,
+                            &beta,
                             m->inputTensor,
                             input_grad_ptr));
 }
