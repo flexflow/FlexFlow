@@ -32,5 +32,7 @@ jobs:
 
       - name: Run daemon
         run: |
-          pip install pygithub
+          pip3 install pip --upgrade
+          pip3 install pyopenssl --upgrade
+          pip3 install pygithub
           python3 .github/workflows/helpers/gpu_ci_helper.py --daemon

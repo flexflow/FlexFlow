@@ -60,7 +60,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: flexflow
-          environment-file: environment.yml
+          environment-file: conda/environment.yml
           auto-activate-base: false
 
       - name: Build FlexFlow
@@ -143,7 +143,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: flexflow
-          environment-file: environment.yml
+          environment-file: conda/environment.yml
           auto-activate-base: false
 
       - name: Build FlexFlow
