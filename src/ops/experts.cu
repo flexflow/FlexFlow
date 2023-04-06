@@ -71,7 +71,7 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
 
   thrust::device_ptr<int> original_indices =
       thrust::device_pointer_cast(m->original_indices);
-  printf("thrust::sequence %i, size %i\n", __LINE__, num_indices);
+  // printf("thrust::sequence %i, size %i\n", __LINE__, num_indices);
   thrust::sequence(thrust::cuda::par.on(stream),
                    original_indices,
                    original_indices + num_indices);
@@ -123,7 +123,8 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
 
   thrust::device_ptr<int> temp_sequence =
       thrust::device_pointer_cast(m->temp_sequence);
-  printf("thrust::sequence %i, size %i\n", __LINE__, (*non_zero_experts_count));
+  // printf("thrust::sequence %i, size %i\n", __LINE__,
+  // (*non_zero_experts_count));
   thrust::sequence(thrust::cuda::par.on(stream),
                    temp_sequence,
                    temp_sequence + (*non_zero_experts_count));
@@ -143,11 +144,11 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
   // non-zero tokens
   thrust::device_ptr<int> expert_start_indexes =
       thrust::device_pointer_cast(m->expert_start_indexes);
-  printf("thrust::sequence %i, size %i, allocated size: %i\n",
+  /* printf("thrust::sequence %i, size %i, allocated size: %i\n",
          __LINE__,
          (*num_valid_assignments),
          std::max(m->num_experts + 1,
-                  m->num_chosen_experts * m->effective_batch_size));
+                  m->num_chosen_experts * m->effective_batch_size)); */
   thrust::sequence(thrust::cuda::par.on(stream),
                    expert_start_indexes,
                    expert_start_indexes + (*num_valid_assignments));
@@ -1009,6 +1010,38 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   output_idx_array_thrust_vec_sorted.clear();
   output_idx_array_thrust_vec_sorted.shrink_to_fit();
 
+  // Check batch output pointers
+  assert(gemm_batch_count <= m->effective_batch_size);
+  float **dev_batch_outputs_cuda = (float **)calloc(
+      num_chosen_experts * m->effective_batch_size, sizeof(float *));
+  assert(dev_batch_outputs_cuda);
+  checkCUDA(
+      cudaMemcpy(dev_batch_outputs_cuda,
+                 m->dev_batch_outputs,
+                 sizeof(float *) * num_chosen_experts * m->effective_batch_size,
+                 cudaMemcpyDeviceToHost));
+  std::vector<float *> dev_batch_outputs_cuda_vec(
+      dev_batch_outputs_cuda,
+      dev_batch_outputs_cuda + num_chosen_experts * m->effective_batch_size);
+
+  std::vector<float *> batch_outputs_host_vec(
+      m->batch_outputs,
+      m->batch_outputs + num_chosen_experts * m->effective_batch_size);
+  assert(batch_outputs_host_vec == dev_batch_outputs_cuda_vec);
+
+  /* std::cout << "dev_batch_outputs_cuda_vec[i]: ";
+  for (int i=0; i<dev_batch_outputs_cuda_vec.size(); i++) {
+    assert(dev_batch_outputs_cuda_vec[i]);
+    if (i>0) {
+      assert(dev_batch_outputs_cuda_vec[i] == dev_batch_outputs_cuda_vec[i-1] +
+  out_dim);
+    }
+    std::cout << dev_batch_outputs_cuda_vec[i] << " ";
+  }
+  std::cout << std::endl; */
+
+  free(dev_batch_outputs_cuda);
+
   experts_forward_GemmBatched_kernel(m,
                                      (void const **)m->weight_idx_array,
                                      (void const **)m->token_idx_array,
@@ -1109,12 +1142,12 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
   checkCUDA(cudaMalloc(&batch_outputs[0],
                        out_dim * num_chosen_experts * effective_batch_size *
                            sizeof(float)));
-  checkCUDA(cudaMemset(batch_outputs[0],
+  /* checkCUDA(cudaMemset(batch_outputs[0],
                        0,
                        out_dim * num_chosen_experts * effective_batch_size *
-                           sizeof(float)));
+                           sizeof(float))); */
   for (int i = 1; i < num_chosen_experts * effective_batch_size; i++) {
-    batch_outputs[i] = batch_outputs[i - 1] + out_dim * sizeof(float);
+    batch_outputs[i] = batch_outputs[i - 1] + out_dim;
   }
   checkCUDA(
       cudaMalloc(&dev_batch_outputs,
