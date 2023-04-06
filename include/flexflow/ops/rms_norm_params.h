@@ -1,0 +1,26 @@
+#ifndef _FLEXFLOW_RMSNORM_PARAMS_H
+#define _FLEXFLOW_RMSNORM_PARAMS_H
+
+#include "flexflow/parallel_tensor.h"
+
+namespace FlexFlow {
+
+struct RMSNormParams {
+  LayerID layer_guid;
+  float eps;
+
+  bool is_valid(ParallelTensorShape const &) const;
+};
+
+bool operator==(RMSNormParams const &, RMSNormParams const &);
+
+} // namespace FlexFlow
+
+namespace std {
+template <>
+struct hash<FlexFlow::RMSNormParams> {
+  size_t operator()(FlexFlow::RMSNormParams const &) const;
+};
+} // namespace std
+
+#endif // _FLEXFLOW_RMSNORM_PARAMS_H
