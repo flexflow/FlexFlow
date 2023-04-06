@@ -123,7 +123,7 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
 
   thrust::device_ptr<int> temp_sequence =
       thrust::device_pointer_cast(m->temp_sequence);
-  printf("thrust::sequence %i, size %i\n", __LINE__,  (*non_zero_experts_count));
+  printf("thrust::sequence %i, size %i\n", __LINE__, (*non_zero_experts_count));
   thrust::sequence(thrust::cuda::par.on(stream),
                    temp_sequence,
                    temp_sequence + (*non_zero_experts_count));
@@ -143,7 +143,11 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
   // non-zero tokens
   thrust::device_ptr<int> expert_start_indexes =
       thrust::device_pointer_cast(m->expert_start_indexes);
-  printf("thrust::sequence %i, size %i, allocated size: %i\n", __LINE__,  (*num_valid_assignments), std::max(m->num_experts+1, m->num_chosen_experts * m->effective_batch_size));
+  printf("thrust::sequence %i, size %i, allocated size: %i\n",
+         __LINE__,
+         (*num_valid_assignments),
+         std::max(m->num_experts + 1,
+                  m->num_chosen_experts * m->effective_batch_size));
   thrust::sequence(thrust::cuda::par.on(stream),
                    expert_start_indexes,
                    expert_start_indexes + (*num_valid_assignments));
@@ -451,88 +455,118 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   // Checking
   // 1. check that m->sorted_indices contains indices sorted
   int *indices_cpu = download_tensor<int>(indices, num_indices);
-  //assert(indices_cpu != nullptr);
+  // assert(indices_cpu != nullptr);
   std::vector<int> indices_vec(indices_cpu, indices_cpu + num_indices);
   std::vector<int> indices_vec_sorted(indices_vec.size());
   std::copy(indices_vec.begin(), indices_vec.end(), indices_vec_sorted.begin());
   std::stable_sort(indices_vec_sorted.begin(), indices_vec_sorted.end());
-  
-  int *thrust_sorted_indices_cpu = download_tensor<int>(m->sorted_indices, m->num_chosen_experts * m->effective_batch_size);
-  //assert(thrust_sorted_indices_cpu != nullptr);
-  std::vector<int> thrust_sorted_indices_vec(thrust_sorted_indices_cpu, thrust_sorted_indices_cpu + num_indices);
-  for (int i=0; i<num_indices; i++) {
+
+  int *thrust_sorted_indices_cpu = download_tensor<int>(
+      m->sorted_indices, m->num_chosen_experts * m->effective_batch_size);
+  // assert(thrust_sorted_indices_cpu != nullptr);
+  std::vector<int> thrust_sorted_indices_vec(
+      thrust_sorted_indices_cpu, thrust_sorted_indices_cpu + num_indices);
+  for (int i = 0; i < num_indices; i++) {
     if (indices_vec_sorted[i] != thrust_sorted_indices_vec[i]) {
-      printf("i=%i\n",i);
+      printf("i=%i\n", i);
       printf("indices: ");
-      std::copy(indices_vec.begin(), indices_vec.end(),
-              std::ostream_iterator<int>(std::cout, " "));
+      std::copy(indices_vec.begin(),
+                indices_vec.end(),
+                std::ostream_iterator<int>(std::cout, " "));
       std::cout << std::endl;
       printf("indices_vec_sorted: ");
-      std::copy(indices_vec_sorted.begin(), indices_vec_sorted.end(),
-              std::ostream_iterator<int>(std::cout, " "));
+      std::copy(indices_vec_sorted.begin(),
+                indices_vec_sorted.end(),
+                std::ostream_iterator<int>(std::cout, " "));
       std::cout << std::endl;
       printf("thrust_sorted_indices_vec: ");
-      std::copy(thrust_sorted_indices_vec.begin(), thrust_sorted_indices_vec.end(),
-              std::ostream_iterator<int>(std::cout, " "));
+      std::copy(thrust_sorted_indices_vec.begin(),
+                thrust_sorted_indices_vec.end(),
+                std::ostream_iterator<int>(std::cout, " "));
       std::cout << std::endl;
     }
     assert(indices_vec_sorted[i] == thrust_sorted_indices_vec[i]);
   }
   // 2. check that indices[m->original_indices[i]] = i
-  int *thrust_original_indices_cpu = download_tensor<int>(m->original_indices, m->num_chosen_experts * m->effective_batch_size);
-  //assert(thrust_original_indices_cpu != nullptr);
-  std::vector<int> thrust_original_indices_vec(thrust_original_indices_cpu, thrust_original_indices_cpu + num_indices);
-  for (int i=0; i<num_indices; i++) {
-    assert(indices_vec[thrust_original_indices_vec[i]] == thrust_sorted_indices_vec[i]);
+  int *thrust_original_indices_cpu = download_tensor<int>(
+      m->original_indices, m->num_chosen_experts * m->effective_batch_size);
+  // assert(thrust_original_indices_cpu != nullptr);
+  std::vector<int> thrust_original_indices_vec(
+      thrust_original_indices_cpu, thrust_original_indices_cpu + num_indices);
+  for (int i = 0; i < num_indices; i++) {
+    assert(indices_vec[thrust_original_indices_vec[i]] ==
+           thrust_sorted_indices_vec[i]);
   }
 
-  // 3. check that lb_index is the index of the first element greater or equal to expert_start_idx
+  // 3. check that lb_index is the index of the first element greater or equal
+  // to expert_start_idx
   // 4. check that ub_index is greater than last, or outside array
-  std::vector<int>::iterator low,up;
-  low = std::lower_bound (indices_vec_sorted.begin(), indices_vec_sorted.end(), experts_start_idx);
-  up = std::upper_bound (indices_vec_sorted.begin(), indices_vec_sorted.end(), experts_start_idx+num_experts_per_block-1);
-  int lb_index_check = low - indices_vec_sorted.begin(), ub_index_check = up - indices_vec_sorted.begin();
+  std::vector<int>::iterator low, up;
+  low = std::lower_bound(
+      indices_vec_sorted.begin(), indices_vec_sorted.end(), experts_start_idx);
+  up = std::upper_bound(indices_vec_sorted.begin(),
+                        indices_vec_sorted.end(),
+                        experts_start_idx + num_experts_per_block - 1);
+  int lb_index_check = low - indices_vec_sorted.begin(),
+      ub_index_check = up - indices_vec_sorted.begin();
 
   if (lb_index_check != lb_index || ub_index_check != ub_index) {
-    printf("experts_start_idx: %i, num_experts_per_block: %i, lb_index: %i, lb_index_check: %i, ub_index: %i, ub_index_check: %i\n", 
-    experts_start_idx, num_experts_per_block, lb_index, lb_index_check, ub_index, ub_index_check);
+    printf("experts_start_idx: %i, num_experts_per_block: %i, lb_index: %i, "
+           "lb_index_check: %i, ub_index: %i, ub_index_check: %i\n",
+           experts_start_idx,
+           num_experts_per_block,
+           lb_index,
+           lb_index_check,
+           ub_index,
+           ub_index_check);
     printf("indices_vec_sorted: ");
-    std::copy(indices_vec_sorted.begin(), indices_vec_sorted.end(),
-            std::ostream_iterator<int>(std::cout, " "));
+    std::copy(indices_vec_sorted.begin(),
+              indices_vec_sorted.end(),
+              std::ostream_iterator<int>(std::cout, " "));
     std::cout << std::endl;
   }
   assert(lb_index_check == lb_index);
   assert(ub_index_check == ub_index);
 
-  // 5. compute num_valid_assignments manually, and check that is equal to value computed in thrust
+  // 5. compute num_valid_assignments manually, and check that is equal to value
+  // computed in thrust
   int num_valid_assignments_manual = ub_index_check - lb_index_check;
   assert(num_valid_assignments_manual == num_valid_assignments);
 
   // 6. check m->non_zero_expert_labels, *non_zero_experts_count
   std::set<int> non_zero_experts_check;
-  for (int i=0; i<num_indices; i++) {
-    if (indices_vec_sorted[i] >= experts_start_idx && indices_vec_sorted[i] < experts_start_idx + num_experts_per_block) {
+  for (int i = 0; i < num_indices; i++) {
+    if (indices_vec_sorted[i] >= experts_start_idx &&
+        indices_vec_sorted[i] < experts_start_idx + num_experts_per_block) {
       non_zero_experts_check.insert(indices_vec_sorted[i]);
     }
   }
   assert(non_zero_experts_count == non_zero_experts_check.size());
   // 7. check exp_local_label_to_index
-  int *non_zero_expert_labels_cpu = download_tensor<int>(m->non_zero_expert_labels, non_zero_experts_count);
-  //assert(non_zero_expert_labels_cpu != nullptr);
-  std::vector<int> non_zero_expert_labels_vec(non_zero_expert_labels_cpu, non_zero_expert_labels_cpu + non_zero_experts_count);
-  assert(std::is_sorted(non_zero_expert_labels_vec.begin(), non_zero_expert_labels_vec.end()));
-  std::vector <int> non_zero_experts_check_vec;
+  int *non_zero_expert_labels_cpu =
+      download_tensor<int>(m->non_zero_expert_labels, non_zero_experts_count);
+  // assert(non_zero_expert_labels_cpu != nullptr);
+  std::vector<int> non_zero_expert_labels_vec(non_zero_expert_labels_cpu,
+                                              non_zero_expert_labels_cpu +
+                                                  non_zero_experts_count);
+  assert(std::is_sorted(non_zero_expert_labels_vec.begin(),
+                        non_zero_expert_labels_vec.end()));
+  std::vector<int> non_zero_experts_check_vec;
   for (auto el : non_zero_experts_check) {
     non_zero_experts_check_vec.push_back(el - experts_start_idx);
   }
-  assert(std::is_sorted(non_zero_experts_check_vec.begin(), non_zero_experts_check_vec.end()));
+  assert(std::is_sorted(non_zero_experts_check_vec.begin(),
+                        non_zero_experts_check_vec.end()));
   assert(non_zero_expert_labels_vec == non_zero_experts_check_vec);
 
-  int *exp_local_label_to_index = download_tensor<int>(m->exp_local_label_to_index, non_zero_experts_count);
-  //assert(exp_local_label_to_index != nullptr);
-  std::vector<int> exp_local_label_to_index_vec(exp_local_label_to_index, exp_local_label_to_index + non_zero_experts_count);
-  int z=0;
-  for (int i=0; i<non_zero_experts_count; i++) {
+  int *exp_local_label_to_index =
+      download_tensor<int>(m->exp_local_label_to_index, non_zero_experts_count);
+  // assert(exp_local_label_to_index != nullptr);
+  std::vector<int> exp_local_label_to_index_vec(exp_local_label_to_index,
+                                                exp_local_label_to_index +
+                                                    non_zero_experts_count);
+  int z = 0;
+  for (int i = 0; i < non_zero_experts_count; i++) {
     if (non_zero_experts_check.find(i) != non_zero_experts_check.end()) {
       assert(exp_local_label_to_index_vec[i] == z);
       z++;
@@ -540,26 +574,31 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   }
 
   // 8. Check expert_start_indexes
-  int *expert_start_indices_thrust = download_tensor<int>(m->expert_start_indexes, non_zero_experts_count+1);
-  //assert(expert_start_indices_thrust != nullptr);
-  std::vector<int> expert_start_indices_thrust_vec(expert_start_indices_thrust, expert_start_indices_thrust + non_zero_experts_count+1);
+  int *expert_start_indices_thrust =
+      download_tensor<int>(m->expert_start_indexes, non_zero_experts_count + 1);
+  // assert(expert_start_indices_thrust != nullptr);
+  std::vector<int> expert_start_indices_thrust_vec(
+      expert_start_indices_thrust,
+      expert_start_indices_thrust + non_zero_experts_count + 1);
   std::vector<int> expert_start_indices_cpu;
   std::set<int> exp_label;
-  
+
   std::vector<int> num_assignments_per_expert_cpu;
-  
-  for (int i=lb_index; i<ub_index; i++) {
-    assert(indices_vec_sorted[i] >= experts_start_idx && indices_vec_sorted[i] < experts_start_idx + num_experts_per_block);
+
+  for (int i = lb_index; i < ub_index; i++) {
+    assert(indices_vec_sorted[i] >= experts_start_idx &&
+           indices_vec_sorted[i] < experts_start_idx + num_experts_per_block);
     if (exp_label.find(indices_vec_sorted[i]) == exp_label.end()) {
       exp_label.insert(indices_vec_sorted[i]);
-      expert_start_indices_cpu.push_back(i-lb_index);
+      expert_start_indices_cpu.push_back(i - lb_index);
 
       num_assignments_per_expert_cpu.push_back(1);
     } else {
-      num_assignments_per_expert_cpu[num_assignments_per_expert_cpu.size() - 1] += 1;
+      num_assignments_per_expert_cpu[num_assignments_per_expert_cpu.size() -
+                                     1] += 1;
     }
   }
-  expert_start_indices_cpu.push_back(ub_index-lb_index);
+  expert_start_indices_cpu.push_back(ub_index - lb_index);
   assert(num_assignments_per_expert_cpu.size() == non_zero_experts_count);
   /* std::cout << "indices_vec_sorted: ";
   for (int i=lb_index; i<ub_index; i++) {
@@ -575,37 +614,51 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     std::cout << expert_start_indices_thrust_vec[i] << " ";
   }
   std::cout << std::endl; */
-  assert(std::is_sorted(expert_start_indices_cpu.begin(), expert_start_indices_cpu.end()));
+  assert(std::is_sorted(expert_start_indices_cpu.begin(),
+                        expert_start_indices_cpu.end()));
   assert(expert_start_indices_cpu == expert_start_indices_thrust_vec);
 
-  int *num_assignments_per_expert_thrust = (int*) calloc(non_zero_experts_count, sizeof(int));
+  int *num_assignments_per_expert_thrust =
+      (int *)calloc(non_zero_experts_count, sizeof(int));
   assert(num_assignments_per_expert_thrust != nullptr);
-  assert(download_tensor<int>(m->num_assignments_per_expert, num_assignments_per_expert_thrust, non_zero_experts_count));
+  assert(download_tensor<int>(m->num_assignments_per_expert,
+                              num_assignments_per_expert_thrust,
+                              non_zero_experts_count));
   assert(num_assignments_per_expert_thrust != nullptr);
-  std::vector<int> num_assignments_per_expert_thrust_vec(num_assignments_per_expert_thrust, num_assignments_per_expert_thrust + non_zero_experts_count);
-  assert(num_assignments_per_expert_cpu == num_assignments_per_expert_thrust_vec);
+  std::vector<int> num_assignments_per_expert_thrust_vec(
+      num_assignments_per_expert_thrust,
+      num_assignments_per_expert_thrust + non_zero_experts_count);
+  assert(num_assignments_per_expert_cpu ==
+         num_assignments_per_expert_thrust_vec);
 
-  int *destination_start_indices_thrust = (int*) calloc(non_zero_experts_count, sizeof(int));
+  int *destination_start_indices_thrust =
+      (int *)calloc(non_zero_experts_count, sizeof(int));
   assert(destination_start_indices_thrust != nullptr);
-  assert(download_tensor<int>(m->destination_start_indices, destination_start_indices_thrust, non_zero_experts_count));
+  assert(download_tensor<int>(m->destination_start_indices,
+                              destination_start_indices_thrust,
+                              non_zero_experts_count));
   assert(destination_start_indices_thrust != nullptr);
-  std::vector<int> destination_start_indices_thrust_vec(destination_start_indices_thrust, destination_start_indices_thrust + non_zero_experts_count);
+  std::vector<int> destination_start_indices_thrust_vec(
+      destination_start_indices_thrust,
+      destination_start_indices_thrust + non_zero_experts_count);
   std::vector<int> destination_start_indices_cpu;
-  int gemm_batch_count_cpu=0;
-  for (int i=0; i<num_assignments_per_expert_cpu.size(); i++) {
-    if (i==0) {
+  int gemm_batch_count_cpu = 0;
+  for (int i = 0; i < num_assignments_per_expert_cpu.size(); i++) {
+    if (i == 0) {
       destination_start_indices_cpu.push_back(0);
     } else {
-      destination_start_indices_cpu.push_back(std::min(expert_capacity, num_assignments_per_expert_cpu[i-1] ));
+      destination_start_indices_cpu.push_back(
+          std::min(expert_capacity, num_assignments_per_expert_cpu[i - 1]));
     }
   }
-  for (int i=0; i<num_assignments_per_expert_cpu.size(); i++) {
-    gemm_batch_count_cpu += std::min(expert_capacity, num_assignments_per_expert_cpu[i] );
+  for (int i = 0; i < num_assignments_per_expert_cpu.size(); i++) {
+    gemm_batch_count_cpu +=
+        std::min(expert_capacity, num_assignments_per_expert_cpu[i]);
   }
-  for (int i=1; i<destination_start_indices_cpu.size(); i++) {
-    destination_start_indices_cpu[i] += destination_start_indices_cpu[i-1];
+  for (int i = 1; i < destination_start_indices_cpu.size(); i++) {
+    destination_start_indices_cpu[i] += destination_start_indices_cpu[i - 1];
   }
-  /* 
+  /*
   std::cout << "destination_start_indices_cpu: ";
   for (int i=0; i<destination_start_indices_cpu.size(); i++) {
     std::cout << destination_start_indices_cpu[i] << " ";
@@ -619,7 +672,6 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   assert(destination_start_indices_cpu == destination_start_indices_thrust_vec);
   assert(gemm_batch_count == gemm_batch_count_cpu);
 
-  
   checkCUDA(cudaFreeHost(thrust_sorted_indices_cpu));
   checkCUDA(cudaFreeHost(thrust_original_indices_cpu));
   checkCUDA(cudaFreeHost(non_zero_expert_labels_cpu));
@@ -687,41 +739,47 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 
   checkCUDA(cudaStreamSynchronize(stream));
 
-  std::vector<const float*> token_ptrs, weight_ptrs, bias_ptrs, coefficient_ptrs;
-  std::vector<float*> output_ptrs;
+  std::vector<float const *> token_ptrs, weight_ptrs, bias_ptrs,
+      coefficient_ptrs;
+  std::vector<float *> output_ptrs;
   std::map<int, int> num_t_per_exp;
-  for (int i=0; i<num_indices; i++) {
+  for (int i = 0; i < num_indices; i++) {
     int global_exp_label = indices_vec[i];
 
-    if (global_exp_label >= experts_start_idx && global_exp_label < experts_start_idx + num_experts_per_block && (num_t_per_exp.find(global_exp_label) == num_t_per_exp.end() || num_t_per_exp[global_exp_label] < expert_capacity)) {
+    if (global_exp_label >= experts_start_idx &&
+        global_exp_label < experts_start_idx + num_experts_per_block &&
+        (num_t_per_exp.find(global_exp_label) == num_t_per_exp.end() ||
+         num_t_per_exp[global_exp_label] < expert_capacity)) {
       if (num_t_per_exp.find(global_exp_label) == num_t_per_exp.end()) {
         num_t_per_exp[global_exp_label] = 1;
       } else {
         num_t_per_exp[global_exp_label] = num_t_per_exp[global_exp_label] + 1;
       }
       int token_idx = i / num_chosen_experts;
-      //std::cout << "Push back token_idx (" << token_idx << ") * data_dim (" << data_dim << "): " << token_idx*data_dim << std::endl;
-      
+      // std::cout << "Push back token_idx (" << token_idx << ") * data_dim ("
+      // << data_dim << "): " << token_idx*data_dim << std::endl;
+
       token_ptrs.push_back(&input[token_idx * data_dim]);
       coefficient_ptrs.push_back(&topk_gate_preds[i]);
       int local_exp_label = global_exp_label - experts_start_idx;
-      weight_ptrs.push_back(weights[local_exp_label * (1+use_bias)]);
+      weight_ptrs.push_back(weights[local_exp_label * (1 + use_bias)]);
       output_ptrs.push_back(&output[token_idx * out_dim]);
       if (use_bias) {
-        bias_ptrs.push_back(weights[local_exp_label * (1 + use_bias) + use_bias]);
+        bias_ptrs.push_back(
+            weights[local_exp_label * (1 + use_bias) + use_bias]);
       }
     }
   }
 
-  int i=0, s=0;
+  int i = 0, s = 0;
   for (auto it : num_t_per_exp) {
     int num_t = it.second;
-    s+=num_t;
+    s += num_t;
     assert(num_assignments_per_expert_cpu[i] == num_t);
     i++;
   }
   assert(s == gemm_batch_count);
-  assert(token_ptrs.size() == gemm_batch_count && 
+  assert(token_ptrs.size() == gemm_batch_count &&
          weight_ptrs.size() == gemm_batch_count &&
          coefficient_ptrs.size() == gemm_batch_count &&
          output_ptrs.size() == gemm_batch_count);
@@ -729,65 +787,116 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     assert(bias_ptrs.size() == gemm_batch_count);
   }
 
-  std::vector<const float*> token_ptrs_sorted(token_ptrs.size()), weight_ptrs_sorted(weight_ptrs.size()), bias_ptrs_sorted(bias_ptrs.size()), coefficient_ptrs_sorted(coefficient_ptrs.size());
-  std::vector<float*> output_ptrs_sorted(output_ptrs.size());
+  std::vector<float const *> token_ptrs_sorted(token_ptrs.size()),
+      weight_ptrs_sorted(weight_ptrs.size()),
+      bias_ptrs_sorted(bias_ptrs.size()),
+      coefficient_ptrs_sorted(coefficient_ptrs.size());
+  std::vector<float *> output_ptrs_sorted(output_ptrs.size());
   std::copy(token_ptrs.begin(), token_ptrs.end(), token_ptrs_sorted.begin());
   std::sort(token_ptrs_sorted.begin(), token_ptrs_sorted.end());
   std::copy(weight_ptrs.begin(), weight_ptrs.end(), weight_ptrs_sorted.begin());
   std::sort(weight_ptrs_sorted.begin(), weight_ptrs_sorted.end());
   std::copy(bias_ptrs.begin(), bias_ptrs.end(), bias_ptrs_sorted.begin());
   std::sort(bias_ptrs_sorted.begin(), bias_ptrs_sorted.end());
-  std::copy(coefficient_ptrs.begin(), coefficient_ptrs.end(), coefficient_ptrs_sorted.begin());
+  std::copy(coefficient_ptrs.begin(),
+            coefficient_ptrs.end(),
+            coefficient_ptrs_sorted.begin());
   std::sort(coefficient_ptrs_sorted.begin(), coefficient_ptrs_sorted.end());
   std::copy(output_ptrs.begin(), output_ptrs.end(), output_ptrs_sorted.begin());
   std::sort(output_ptrs_sorted.begin(), output_ptrs_sorted.end());
 
-  
-
-  // Download 
-  float const **token_idx_array_thrust = (float const **) calloc(gemm_batch_count, sizeof(float const*));
+  // Download
+  float const **token_idx_array_thrust =
+      (float const **)calloc(gemm_batch_count, sizeof(float const *));
   assert(token_idx_array_thrust);
-  checkCUDA(cudaMemcpy(token_idx_array_thrust, m->token_idx_array, sizeof(float const *) * gemm_batch_count, cudaMemcpyDeviceToHost));
-  std::vector<float const*> token_idx_array_thrust_vec(token_idx_array_thrust, token_idx_array_thrust + gemm_batch_count);
-  float const **weight_idx_array_thrust = (float const **) calloc(gemm_batch_count, sizeof(float const*));
+  checkCUDA(cudaMemcpy(token_idx_array_thrust,
+                       m->token_idx_array,
+                       sizeof(float const *) * gemm_batch_count,
+                       cudaMemcpyDeviceToHost));
+  std::vector<float const *> token_idx_array_thrust_vec(
+      token_idx_array_thrust, token_idx_array_thrust + gemm_batch_count);
+  float const **weight_idx_array_thrust =
+      (float const **)calloc(gemm_batch_count, sizeof(float const *));
   assert(weight_idx_array_thrust);
-  checkCUDA(cudaMemcpy(weight_idx_array_thrust, m->weight_idx_array, sizeof(float const *) * gemm_batch_count, cudaMemcpyDeviceToHost));
-  std::vector<float const*> weight_idx_array_thrust_vec(weight_idx_array_thrust, weight_idx_array_thrust + gemm_batch_count);
-  float const **coefficient_idx_array_thrust = (float const **) calloc(gemm_batch_count, sizeof(float const*));
+  checkCUDA(cudaMemcpy(weight_idx_array_thrust,
+                       m->weight_idx_array,
+                       sizeof(float const *) * gemm_batch_count,
+                       cudaMemcpyDeviceToHost));
+  std::vector<float const *> weight_idx_array_thrust_vec(
+      weight_idx_array_thrust, weight_idx_array_thrust + gemm_batch_count);
+  float const **coefficient_idx_array_thrust =
+      (float const **)calloc(gemm_batch_count, sizeof(float const *));
   assert(coefficient_idx_array_thrust);
-  checkCUDA(cudaMemcpy(coefficient_idx_array_thrust, m->coefficient_idx_array, sizeof(float const *) * gemm_batch_count, cudaMemcpyDeviceToHost));
-  std::vector<float const*> coefficient_idx_array_thrust_vec(coefficient_idx_array_thrust, coefficient_idx_array_thrust + gemm_batch_count);
-  float const **bias_idx_array_thrust = (float const **) calloc(gemm_batch_count, sizeof(float const*));
+  checkCUDA(cudaMemcpy(coefficient_idx_array_thrust,
+                       m->coefficient_idx_array,
+                       sizeof(float const *) * gemm_batch_count,
+                       cudaMemcpyDeviceToHost));
+  std::vector<float const *> coefficient_idx_array_thrust_vec(
+      coefficient_idx_array_thrust,
+      coefficient_idx_array_thrust + gemm_batch_count);
+  float const **bias_idx_array_thrust =
+      (float const **)calloc(gemm_batch_count, sizeof(float const *));
   assert(bias_idx_array_thrust);
-  if (use_bias)
-    checkCUDA(cudaMemcpy(bias_idx_array_thrust, m->bias_idx_array, sizeof(float const *) * gemm_batch_count, cudaMemcpyDeviceToHost));
-  std::vector<float const*> bias_idx_array_thrust_vec(bias_idx_array_thrust, bias_idx_array_thrust + gemm_batch_count);
-  float **output_idx_array_thrust = (float **) calloc(gemm_batch_count, sizeof(float*));
+  if (use_bias) {
+    checkCUDA(cudaMemcpy(bias_idx_array_thrust,
+                         m->bias_idx_array,
+                         sizeof(float const *) * gemm_batch_count,
+                         cudaMemcpyDeviceToHost));
+  }
+  std::vector<float const *> bias_idx_array_thrust_vec(
+      bias_idx_array_thrust, bias_idx_array_thrust + gemm_batch_count);
+  float **output_idx_array_thrust =
+      (float **)calloc(gemm_batch_count, sizeof(float *));
   assert(output_idx_array_thrust);
-  checkCUDA(cudaMemcpy(output_idx_array_thrust, m->output_idx_array, sizeof(float *) * gemm_batch_count, cudaMemcpyDeviceToHost));
-  std::vector<float *> output_idx_array_thrust_vec(output_idx_array_thrust, output_idx_array_thrust + gemm_batch_count);
+  checkCUDA(cudaMemcpy(output_idx_array_thrust,
+                       m->output_idx_array,
+                       sizeof(float *) * gemm_batch_count,
+                       cudaMemcpyDeviceToHost));
+  std::vector<float *> output_idx_array_thrust_vec(
+      output_idx_array_thrust, output_idx_array_thrust + gemm_batch_count);
 
-  std::vector<const float*> token_idx_array_thrust_vec_sorted(token_idx_array_thrust_vec.size()), weight_idx_array_thrust_vec_sorted(weight_idx_array_thrust_vec.size()), coefficient_idx_array_thrust_vec_sorted(coefficient_idx_array_thrust_vec.size()), bias_idx_array_thrust_vec_sorted(bias_idx_array_thrust_vec.size());
-  std::vector<float*> output_idx_array_thrust_vec_sorted(output_idx_array_thrust_vec.size());
-  std::copy(token_idx_array_thrust_vec.begin(), token_idx_array_thrust_vec.end(), token_idx_array_thrust_vec_sorted.begin());
-  std::sort(token_idx_array_thrust_vec_sorted.begin(), token_idx_array_thrust_vec_sorted.end());
-  std::copy(weight_idx_array_thrust_vec.begin(), weight_idx_array_thrust_vec.end(), weight_idx_array_thrust_vec_sorted.begin());
-  std::sort(weight_idx_array_thrust_vec_sorted.begin(), weight_idx_array_thrust_vec_sorted.end());
-  std::copy(coefficient_idx_array_thrust_vec.begin(), coefficient_idx_array_thrust_vec.end(), coefficient_idx_array_thrust_vec_sorted.begin());
-  std::sort(coefficient_idx_array_thrust_vec_sorted.begin(), coefficient_idx_array_thrust_vec_sorted.end());
-  std::copy(bias_idx_array_thrust_vec.begin(), bias_idx_array_thrust_vec.end(), bias_idx_array_thrust_vec_sorted.begin());
-  std::sort(bias_idx_array_thrust_vec_sorted.begin(), bias_idx_array_thrust_vec_sorted.end());
-  std::copy(output_idx_array_thrust_vec.begin(), output_idx_array_thrust_vec.end(), output_idx_array_thrust_vec_sorted.begin());
-  std::sort(output_idx_array_thrust_vec_sorted.begin(), output_idx_array_thrust_vec_sorted.end());
-  
+  std::vector<float const *> token_idx_array_thrust_vec_sorted(
+      token_idx_array_thrust_vec.size()),
+      weight_idx_array_thrust_vec_sorted(weight_idx_array_thrust_vec.size()),
+      coefficient_idx_array_thrust_vec_sorted(
+          coefficient_idx_array_thrust_vec.size()),
+      bias_idx_array_thrust_vec_sorted(bias_idx_array_thrust_vec.size());
+  std::vector<float *> output_idx_array_thrust_vec_sorted(
+      output_idx_array_thrust_vec.size());
+  std::copy(token_idx_array_thrust_vec.begin(),
+            token_idx_array_thrust_vec.end(),
+            token_idx_array_thrust_vec_sorted.begin());
+  std::sort(token_idx_array_thrust_vec_sorted.begin(),
+            token_idx_array_thrust_vec_sorted.end());
+  std::copy(weight_idx_array_thrust_vec.begin(),
+            weight_idx_array_thrust_vec.end(),
+            weight_idx_array_thrust_vec_sorted.begin());
+  std::sort(weight_idx_array_thrust_vec_sorted.begin(),
+            weight_idx_array_thrust_vec_sorted.end());
+  std::copy(coefficient_idx_array_thrust_vec.begin(),
+            coefficient_idx_array_thrust_vec.end(),
+            coefficient_idx_array_thrust_vec_sorted.begin());
+  std::sort(coefficient_idx_array_thrust_vec_sorted.begin(),
+            coefficient_idx_array_thrust_vec_sorted.end());
+  std::copy(bias_idx_array_thrust_vec.begin(),
+            bias_idx_array_thrust_vec.end(),
+            bias_idx_array_thrust_vec_sorted.begin());
+  std::sort(bias_idx_array_thrust_vec_sorted.begin(),
+            bias_idx_array_thrust_vec_sorted.end());
+  std::copy(output_idx_array_thrust_vec.begin(),
+            output_idx_array_thrust_vec.end(),
+            output_idx_array_thrust_vec_sorted.begin());
+  std::sort(output_idx_array_thrust_vec_sorted.begin(),
+            output_idx_array_thrust_vec_sorted.end());
+
   if (token_ptrs_sorted != token_idx_array_thrust_vec_sorted) {
     std::cout << "token_ptrs: ";
-    for (int i=0; i<token_ptrs_sorted.size(); i++) {
+    for (int i = 0; i < token_ptrs_sorted.size(); i++) {
       std::cout << token_ptrs_sorted[i] << " ";
     }
     std::cout << std::endl;
     std::cout << "token_idx_array_thrust_vec: ";
-    for (int i=0; i<token_idx_array_thrust_vec_sorted.size(); i++) {
+    for (int i = 0; i < token_idx_array_thrust_vec_sorted.size(); i++) {
       std::cout << token_idx_array_thrust_vec_sorted[i] << " ";
     }
     std::cout << std::endl;
@@ -796,12 +905,12 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     std::cout << "out_dim: " << out_dim << std::endl;
     std::cout << "expert_start_idx: " << experts_start_idx << std::endl;
     std::cout << "indices: ";
-    for (int i=0; i<indices_vec.size(); i++) {
+    for (int i = 0; i < indices_vec.size(); i++) {
       std::cout << indices_vec[i] << " ";
     }
     std::cout << std::endl;
     std::cout << "indices_vec_sorted: ";
-    for (int i=0; i<indices_vec_sorted.size(); i++) {
+    for (int i = 0; i < indices_vec_sorted.size(); i++) {
       std::cout << indices_vec_sorted[i] << " ";
     }
     std::cout << std::endl;
@@ -810,12 +919,12 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   assert(weight_ptrs_sorted == weight_idx_array_thrust_vec_sorted);
   if (coefficient_ptrs_sorted != coefficient_idx_array_thrust_vec_sorted) {
     std::cout << "coefficient_ptrs_sorted: ";
-    for (int i=0; i<coefficient_ptrs_sorted.size(); i++) {
+    for (int i = 0; i < coefficient_ptrs_sorted.size(); i++) {
       std::cout << coefficient_ptrs_sorted[i] << " ";
     }
     std::cout << std::endl;
     std::cout << "coefficient_idx_array_thrust_vec_sorted: ";
-    for (int i=0; i<coefficient_idx_array_thrust_vec_sorted.size(); i++) {
+    for (int i = 0; i < coefficient_idx_array_thrust_vec_sorted.size(); i++) {
       std::cout << coefficient_idx_array_thrust_vec_sorted[i] << " ";
     }
     std::cout << std::endl;
@@ -824,12 +933,12 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
     std::cout << "out_dim: " << out_dim << std::endl;
     std::cout << "expert_start_idx: " << experts_start_idx << std::endl;
     std::cout << "indices: ";
-    for (int i=0; i<indices_vec.size(); i++) {
+    for (int i = 0; i < indices_vec.size(); i++) {
       std::cout << indices_vec[i] << " ";
     }
     std::cout << std::endl;
     std::cout << "indices_vec_sorted: ";
-    for (int i=0; i<indices_vec_sorted.size(); i++) {
+    for (int i = 0; i < indices_vec_sorted.size(); i++) {
       std::cout << indices_vec_sorted[i] << " ";
     }
     std::cout << std::endl;
@@ -841,17 +950,18 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   assert(output_ptrs_sorted == output_idx_array_thrust_vec_sorted);
 
   assert(token_ptrs_sorted.size() == gemm_batch_count &&
-        weight_ptrs_sorted.size() == gemm_batch_count &&
-        coefficient_ptrs_sorted.size() == gemm_batch_count &&
-        (!use_bias || bias_ptrs_sorted.size() == gemm_batch_count) &&
-        output_ptrs_sorted.size() == gemm_batch_count);
+         weight_ptrs_sorted.size() == gemm_batch_count &&
+         coefficient_ptrs_sorted.size() == gemm_batch_count &&
+         (!use_bias || bias_ptrs_sorted.size() == gemm_batch_count) &&
+         output_ptrs_sorted.size() == gemm_batch_count);
 
-
-  for (int i=0; i<token_ptrs_sorted.size(); i++) {
+  for (int i = 0; i < token_ptrs_sorted.size(); i++) {
     assert(token_ptrs_sorted[i]);
     assert(weight_ptrs_sorted[i]);
     assert(coefficient_ptrs_sorted[i]);
-    if (use_bias) assert(bias_ptrs_sorted[i]);
+    if (use_bias) {
+      assert(bias_ptrs_sorted[i]);
+    }
     assert(output_ptrs_sorted[i]);
   }
 
@@ -868,7 +978,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   indices_vec_sorted.shrink_to_fit();
   num_assignments_per_expert_cpu.clear();
   num_assignments_per_expert_cpu.shrink_to_fit();
-  
+
   token_ptrs.clear();
   token_ptrs.shrink_to_fit();
   token_ptrs_sorted.clear();
@@ -969,8 +1079,12 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
       std::max(num_experts, num_chosen_experts * effective_batch_size) *
           sizeof(int)));
   checkCUDA(cudaMalloc(&exp_local_label_to_index, num_experts * sizeof(int)));
-  // expert_start_indexes needs one more slot to save the upper bound index. Initial sequence can require more space, though.
-  checkCUDA(cudaMalloc(&expert_start_indexes, std::max(num_experts+1, num_chosen_experts * effective_batch_size) * sizeof(int)));
+  // expert_start_indexes needs one more slot to save the upper bound index.
+  // Initial sequence can require more space, though.
+  checkCUDA(cudaMalloc(
+      &expert_start_indexes,
+      std::max(num_experts + 1, num_chosen_experts * effective_batch_size) *
+          sizeof(int)));
   checkCUDA(cudaMalloc(&num_assignments_per_expert, num_experts * sizeof(int)));
   checkCUDA(cudaMalloc(&destination_start_indices, num_experts * sizeof(int)));
 
