@@ -147,6 +147,7 @@ enum OperatorType {
   OP_LAYERNORM,
   OP_EXPERTS,
   OP_GATHER, // https://pytorch.org/docs/stable/generated/torch.gather.html
+  OP_RMS_NORM,
   OP_INC_MULTIHEAD_SELF_ATTENTION,
   // Parallel Ops
   OP_REPARTITION,

@@ -24,6 +24,7 @@
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/reverse.h"
+#include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
@@ -113,6 +114,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((Aggregate *)op)->get_params();
     case OP_AGG_SPEC:
       return ((AggregateSpec *)op)->get_params();
+    case OP_RMS_NORM:
+      return ((RMSNorm *)op)->get_params();
 
       // TODO: implement the get_params() function for the operators below and
       // uncomment the lines below
