@@ -31,7 +31,7 @@ struct InferenceConfig {
     batch_size = BATCH_SIZE;
     out_dim = DATA_DIM;
     num_labels = out_dim;
-    num_layers = 3;
+    num_layers = 12;
 
     vocab_size = 50257;
     block_size = 1024;
@@ -49,7 +49,7 @@ struct InferenceConfig {
     // Encoder layer
     num_attention_heads = 16;
     attention_kdim = attention_vdim = hidden_size / num_attention_heads;
-    num_encoder_layers = 3;
+    num_encoder_layers = 12;
   }
 
   // Input/output data

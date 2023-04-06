@@ -227,25 +227,25 @@ __host__ void
 template <typename T>
 __host__ T *download_tensor(T const *ptr, size_t num_elements) {
   // device synchronize to make sure the data are ready
-  // checkCUDA(cudaDeviceSynchronize());
+  checkCUDA(cudaDeviceSynchronize());
   T *host_ptr;
   checkCUDA(cudaHostAlloc(&host_ptr,
                           sizeof(T) * num_elements,
                           cudaHostAllocPortable | cudaHostAllocMapped));
   checkCUDA(cudaMemcpy(
       host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
-  // checkCUDA(cudaDeviceSynchronize());
+  checkCUDA(cudaDeviceSynchronize());
   return host_ptr;
 }
 
 template <typename T>
 __host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
   // device synchronize to make sure the data are ready
-  // checkCUDA(cudaDeviceSynchronize());
+  checkCUDA(cudaDeviceSynchronize());
   assert(dst != nullptr);
   checkCUDA(
       cudaMemcpy(dst, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
-  // checkCUDA(cudaDeviceSynchronize());
+  checkCUDA(cudaDeviceSynchronize());
   return true;
 }
 
