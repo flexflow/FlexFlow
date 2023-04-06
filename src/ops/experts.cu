@@ -71,7 +71,6 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
 
   thrust::device_ptr<int> original_indices =
       thrust::device_pointer_cast(m->original_indices);
-  // printf("thrust::sequence %i, size %i\n", __LINE__, num_indices);
   thrust::sequence(thrust::cuda::par.on(stream),
                    original_indices,
                    original_indices + num_indices);
@@ -123,8 +122,6 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
 
   thrust::device_ptr<int> temp_sequence =
       thrust::device_pointer_cast(m->temp_sequence);
-  // printf("thrust::sequence %i, size %i\n", __LINE__,
-  // (*non_zero_experts_count));
   thrust::sequence(thrust::cuda::par.on(stream),
                    temp_sequence,
                    temp_sequence + (*non_zero_experts_count));
@@ -144,11 +141,6 @@ void experts_forward_thrust_wrapper(ExpertsMeta const *m,
   // non-zero tokens
   thrust::device_ptr<int> expert_start_indexes =
       thrust::device_pointer_cast(m->expert_start_indexes);
-  /* printf("thrust::sequence %i, size %i, allocated size: %i\n",
-         __LINE__,
-         (*num_valid_assignments),
-         std::max(m->num_experts + 1,
-                  m->num_chosen_experts * m->effective_batch_size)); */
   thrust::sequence(thrust::cuda::par.on(stream),
                    expert_start_indexes,
                    expert_start_indexes + (*num_valid_assignments));
@@ -1159,10 +1151,10 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
   checkCUDA(cudaMalloc(&batch_outputs[0],
                        out_dim * num_chosen_experts * effective_batch_size *
                            sizeof(float)));
-  /* checkCUDA(cudaMemset(batch_outputs[0],
+  checkCUDA(cudaMemset(batch_outputs[0],
                        0,
                        out_dim * num_chosen_experts * effective_batch_size *
-                           sizeof(float))); */
+                           sizeof(float)));
   for (int i = 1; i < num_chosen_experts * effective_batch_size; i++) {
     batch_outputs[i] = batch_outputs[i - 1] + out_dim;
   }
