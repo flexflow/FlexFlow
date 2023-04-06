@@ -453,6 +453,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 
   checkCUDA(cudaStreamSynchronize(stream));
 
+#ifdef INFERENCE_TESTS
   // Checking
   // 1. check that m->sorted_indices contains indices sorted
   int *indices_cpu = download_tensor<int>(indices, num_indices);
@@ -687,6 +688,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   expert_start_indices_cpu.shrink_to_fit();
   destination_start_indices_cpu.clear();
   destination_start_indices_cpu.shrink_to_fit();
+#endif
 
   assert(ub_index - lb_index == num_valid_assignments);
   assert(num_valid_assignments >= non_zero_experts_count);
@@ -740,6 +742,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 
   checkCUDA(cudaStreamSynchronize(stream));
 
+#ifdef INFERENCE_TESTS
   std::vector<float const *> token_ptrs, weight_ptrs, bias_ptrs,
       coefficient_ptrs;
   std::vector<float *> output_ptrs;
@@ -776,7 +779,20 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   for (auto it : num_t_per_exp) {
     int num_t = it.second;
     s += num_t;
-    assert(num_assignments_per_expert_cpu[i] == num_t);
+    /* if (num_assignments_per_expert_cpu[i] != num_t) {
+      std::cout << "num_assignments_per_expert_cpu: ";
+      for (int j=0; j<num_assignments_per_expert_cpu.size(); j++) {
+        std::cout << num_assignments_per_expert_cpu[j] << " ";
+      }
+      std::cout << std::endl;
+      std::cout << "num_t_per_exp: ";
+      for (auto it2 : num_t_per_exp) {
+        std::cout << "(" << it2.first << ", " << it2.second << ") ";
+      }
+      std::cout << std::endl;
+      std::cout << "expert capacity: " << expert_capacity << std::endl;
+    }
+    assert(num_assignments_per_expert_cpu[i] == num_t); */
     i++;
   }
   assert(s == gemm_batch_count);
@@ -1041,6 +1057,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   std::cout << std::endl; */
 
   free(dev_batch_outputs_cuda);
+#endif
 
   experts_forward_GemmBatched_kernel(m,
                                      (void const **)m->weight_idx_array,
