@@ -82,7 +82,7 @@ Tensor FFModel::experts(Tensor const *inputs,
                        DT_FLOAT,
                        name,
                        3 /*inputs*/,
-                       num_experts * (1 + use_bias) /*weights*/,
+                       (1 + use_bias) /*weights*/,
                        1 /*outputs*/,
                        inputs);
   {
@@ -96,12 +96,12 @@ Tensor FFModel::experts(Tensor const *inputs,
     assert(e->outputs[0] != nullptr);
   }
   {
-    int dims[3] = {num_experts, inputs[0]->dims[0], experts_output_dim_size};
+    int dims[3] = {inputs[0]->dims[0], experts_output_dim_size, num_experts};
     e->weights[0] = create_weight_legion_ordering(
         3, dims, DT_FLOAT, e, true /*create_grad*/, nullptr, CHOSEN_SYNC_TYPE);
   }
   if (use_bias) {
-    int dims[2] = {num_experts, experts_output_dim_size};
+    int dims[2] = {experts_output_dim_size, num_experts};
     e->weights[1] = create_weight_legion_ordering(
         2, dims, DT_FLOAT, e, true /*create_grad*/, nullptr, CHOSEN_SYNC_TYPE);
   }
@@ -346,7 +346,7 @@ Experts::Experts(FFModel &model,
 #endif
     {
       Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
-      assert(kernel_shape.num_dims == 3);
+      assert(kernel_shape.dims[2].size == num_experts);
       weights[0] = model.create_parallel_weight_legion_ordering(
           kernel_shape.num_dims, // 3,
           kernel_shape.dims,     // dims,
@@ -359,7 +359,7 @@ Experts::Experts(FFModel &model,
     }
     if (use_bias) {
       Initializer *bias_initializer = new ZeroInitializer();
-      assert(bias_shape.num_dims == 2);
+      assert(bias_shape.dims[1].size == num_experts);
       weights[1] = model.create_parallel_weight_legion_ordering(
           bias_shape.num_dims, // 1,
           bias_shape.dims,     // dims,
@@ -715,7 +715,7 @@ void Experts::inference_task(Task const *task,
 
   int num_experts = m->num_experts;
   bool use_bias = m->use_bias;
-  assert(regions.size() - 4 == num_experts * (1 + use_bias));
+  assert(regions.size() - 4 == (1 + use_bias));
 
   // get input, indices, topk_gate_preds, outputs
   float const *input_ptr = helperGetTensorPointerRO<float>(
@@ -790,10 +790,10 @@ void Experts::inference_task(Task const *task,
   Domain weights_domain = runtime->get_index_space_domain(
       ctx, task->regions[4].region.get_index_space());
   int weights_dims = weights_domain.get_dim();
-  assert(weights_dims == input_dims + 1);
-  assert(weights_domain.hi()[0] - weights_domain.lo()[0] + 1 == num_experts);
-  assert(weights_domain.hi()[1] - weights_domain.lo()[1] + 1 == data_dim);
-  assert(weights_domain.hi()[2] - weights_domain.lo()[2] + 1 == out_dim);
+  assert(weights_dims == input_dims);
+  assert(weights_domain.hi()[0] - weights_domain.lo()[0] + 1 == data_dim);
+  assert(weights_domain.hi()[1] - weights_domain.lo()[1] + 1 == out_dim);
+  assert(weights_domain.hi()[2] - weights_domain.lo()[2] + 1 == num_experts);
 
   float const *bias_ptr = nullptr;
   if (use_bias) {
@@ -803,8 +803,8 @@ void Experts::inference_task(Task const *task,
         ctx, task->regions[5].region.get_index_space());
     int bias_dims = bias_domain.get_dim();
     assert(bias_dims == 4);
-    assert(bias_domain.hi()[0] - bias_domain.lo()[0] + 1 == num_experts);
-    assert(bias_domain.hi()[1] - bias_domain.lo()[1] + 1 == out_dim);
+    assert(bias_domain.hi()[0] - bias_domain.lo()[0] + 1 == out_dim);
+    assert(bias_domain.hi()[1] - bias_domain.lo()[1] + 1 == num_experts);
   }
 
 #ifdef INFERENCE_TESTS
@@ -1099,7 +1099,9 @@ std::unordered_map<ExpertsParams::NamedDimensions, int>
           {OUTPUT_REPLICA, num_dims - 1},
           {KERNEL_CHANNEL_IN, 0},
           {KERNEL_CHANNEL_OUT, 1},
-          {BIAS_CHANNEL_OUT, 0}};
+          {KERNEL_NUM_EXPERTS, 2},
+          {BIAS_CHANNEL_OUT, 0},
+          {BIAS_NUM_EXPERTS, 1}};
 }
 
 void ExpertsParams::calculate_nonreplica_dim_sizes(
@@ -1127,11 +1129,13 @@ void ExpertsParams::calculate_nonreplica_dim_sizes(
         input_shape.dims[INPUT_CHANNEL].degree;
     kernel_dims[dimension_names.at(KERNEL_CHANNEL_OUT)].size =
         experts_output_dim_size;
+    kernel_dims[dimension_names.at(KERNEL_NUM_EXPERTS)].size = num_experts;
     *kernel_ndims = num_dims;
   }
   if (bias_dims != nullptr) {
     bias_dims[dimension_names.at(BIAS_CHANNEL_OUT)].size =
         experts_output_dim_size;
+    bias_dims[dimension_names.at(BIAS_NUM_EXPERTS)].size = num_experts;
     *bias_ndims = num_dims;
   }
 }
