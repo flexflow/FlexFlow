@@ -210,7 +210,8 @@ __global__ void experts_forward_prepare_kernel(
     float const *input, // @In: Tokens' values (in_dim, batch_size)
     float *output,
     float const **token_idx_array,  // @Out: Barray for GemmBatchedEx
-    float const **weights,          // @In: Experts' weights
+    float const *weights,           // @In: Experts' weights
+    float const *biases,            // @In: Experts' biases
     float const **weight_idx_array, // @Out: Aarray for GemmBatchedEx
     float const **bias_idx_array,   // @Out: Experts' bias
     float const *coefficients,      // @In: topk_gate_predss coefficients tensor
@@ -233,11 +234,11 @@ __global__ void experts_forward_prepare_kernel(
                       within_expert_offset] = &input[token_idx * data_dim];
       weight_idx_array[destination_start_indices[expert_index] +
                        within_expert_offset] =
-          weights[local_expert_label * (1 + use_bias)];
+          &weights[local_expert_label * data_dim * out_dim];
       if (use_bias) {
         bias_idx_array[destination_start_indices[expert_index] +
                        within_expert_offset] =
-            weights[local_expert_label * (1 + use_bias) + use_bias];
+            &biases[local_expert_label * out_dim];
       }
       coefficient_idx_array[destination_start_indices[expert_index] +
                             within_expert_offset] = &coefficients[rev_idx];
@@ -378,7 +379,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      int const *indices,
                                      float const *topk_gate_preds,
                                      float *output,
-                                     float const **weights,
+                                     float const *weights,
+                                     float const *biases,
                                      int num_active_tokens,
                                      int chosen_experts,
                                      int batch_size,
@@ -411,13 +413,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
   // assert(num_tokens == batch_size);
   assert(out_dim == m->out_dim);
 
-  // TODO: remove this once we condense all weights in a single tensor
-  // currently each weight matrix is placed on GPU by Legion, but the array
-  // holding the pointers to each weight matrix is on CPU
-  cudaMemcpy(m->dev_weights,
-             weights,
-             num_experts_per_block * (1 + use_bias) * sizeof(float *),
-             cudaMemcpyHostToDevice);
+  assert(weights != nullptr);
+  assert(use_bias == (biases != nullptr));
 
   int num_indices = num_tokens * num_chosen_experts;
   // values below are set by Thrust in the experts_forward_thrust_wrapper
@@ -443,7 +440,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                  &gemm_batch_count,
                                  stream);
 
-  //checkCUDA(cudaStreamSynchronize(stream));
+  // checkCUDA(cudaStreamSynchronize(stream));
 
 #ifdef INFERENCE_TESTS
   // Checking
@@ -725,14 +722,15 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                              input,
                                              output,
                                              m->token_idx_array,
-                                             m->dev_weights,
+                                             weights,
+                                             biases,
                                              m->weight_idx_array,
                                              m->bias_idx_array,
                                              topk_gate_preds,
                                              m->coefficient_idx_array,
                                              m->output_idx_array);
 
-  //checkCUDA(cudaStreamSynchronize(stream));
+  // checkCUDA(cudaStreamSynchronize(stream));
 
 #ifdef INFERENCE_TESTS
   std::vector<float const *> token_ptrs, weight_ptrs, bias_ptrs,
@@ -758,11 +756,10 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
       token_ptrs.push_back(&input[token_idx * data_dim]);
       coefficient_ptrs.push_back(&topk_gate_preds[i]);
       int local_exp_label = global_exp_label - experts_start_idx;
-      weight_ptrs.push_back(weights[local_exp_label * (1 + use_bias)]);
+      weight_ptrs.push_back(&weights[local_exp_label * (out_dim * data_dim)]);
       output_ptrs.push_back(&output[token_idx * out_dim]);
       if (use_bias) {
-        bias_ptrs.push_back(
-            weights[local_exp_label * (1 + use_bias) + use_bias]);
+        bias_ptrs.push_back(&biases[local_exp_label * out_dim]);
       }
     }
   }
@@ -1064,7 +1061,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      gemm_batch_count,
                                      stream);
 
-  //checkCUDA(cudaStreamSynchronize(stream));
+  // checkCUDA(cudaStreamSynchronize(stream));
 
   int aggregation_parallelism =
       std::max(num_tokens, gemm_batch_count) * out_dim;
@@ -1133,8 +1130,6 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
   checkCUDA(
       cudaMalloc(&token_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
-  checkCUDA(
-      cudaMalloc(&dev_weights, num_experts * (1 + use_bias) * sizeof(float *)));
   checkCUDA(
       cudaMalloc(&weight_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
@@ -1226,7 +1221,6 @@ ExpertsMeta::~ExpertsMeta(void) {
   checkCUDA(cudaFree(num_assignments_per_expert));
   checkCUDA(cudaFree(destination_start_indices));
   checkCUDA(cudaFree(token_idx_array));
-  checkCUDA(cudaFree(dev_weights));
   checkCUDA(cudaFree(weight_idx_array));
   checkCUDA(cudaFree(coefficient_idx_array));
   checkCUDA(cudaFree(output_idx_array));
