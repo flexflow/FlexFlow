@@ -95,29 +95,15 @@ Tensor FFModel::experts(Tensor const *inputs,
         num_dims, dims, DT_FLOAT, e, 0, true /*create_grad*/);
     assert(e->outputs[0] != nullptr);
   }
-  for (int i = 0; i < num_experts; i++) {
-    {
-      int dims[2] = {inputs[0]->dims[0], experts_output_dim_size};
-      e->weights[i * (1 + use_bias)] =
-          create_weight_legion_ordering(2,
-                                        dims,
-                                        DT_FLOAT,
-                                        e,
-                                        true /*create_grad*/,
-                                        nullptr,
-                                        CHOSEN_SYNC_TYPE);
-    }
-    if (use_bias) {
-      int dims[1] = {experts_output_dim_size};
-      e->weights[i * (1 + use_bias) + use_bias] =
-          create_weight_legion_ordering(1,
-                                        dims,
-                                        DT_FLOAT,
-                                        e,
-                                        true /*create_grad*/,
-                                        nullptr,
-                                        CHOSEN_SYNC_TYPE);
-    }
+  {
+    int dims[3] = {num_experts, inputs[0]->dims[0], experts_output_dim_size};
+    e->weights[0] = create_weight_legion_ordering(
+        3, dims, DT_FLOAT, e, true /*create_grad*/, nullptr, CHOSEN_SYNC_TYPE);
+  }
+  if (use_bias) {
+    int dims[2] = {num_experts, experts_output_dim_size};
+    e->weights[1] = create_weight_legion_ordering(
+        2, dims, DT_FLOAT, e, true /*create_grad*/, nullptr, CHOSEN_SYNC_TYPE);
   }
 
   e->add_int_property("num_experts", num_experts);
@@ -285,7 +271,7 @@ Experts::Experts(FFModel &model,
          DT_FLOAT,
          name,
          3 /*inputs*/,
-         _num_experts * (1 + _use_bias) /*weights*/,
+         (1 + _use_bias) /*weights*/,
          1 /*outputs*/,
          inputs),
       num_experts(_num_experts), experts_start_idx(_experts_start_idx),
@@ -301,7 +287,7 @@ Experts::Experts(FFModel &model,
   assert(num_experts > 0);
   assert(numInputs == 3);
   assert(numOutputs == 1);
-  assert(numWeights == num_experts * (1 + use_bias));
+  assert(numWeights == (1 + use_bias));
 
   // Check input dimensions
   int num_dims = inputs[0]->num_dims;
@@ -358,35 +344,31 @@ Experts::Experts(FFModel &model,
 #else
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
-    for (int i = 0; i < num_experts; i++) {
+    {
       Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
-      {
-        // ParallelDim dims[2] = {inputs[0]->dims[0], out_dims[0]};
-        weights[i * (1 + use_bias)] =
-            model.create_parallel_weight_legion_ordering(
-                kernel_shape.num_dims, // 2,
-                kernel_shape.dims,     // dims,
-                DT_FLOAT,
-                NULL /*owner_op*/,
-                true /*create_grad*/,
-                kernel_initializer,
-                comm_type);
-        assert(weights[i * (1 + use_bias)] != nullptr);
-      }
-      if (use_bias) {
-        Initializer *bias_initializer = new ZeroInitializer();
-        ParallelDim dims[1] = {out_dims[0]};
-        weights[i * (1 + use_bias) + use_bias] =
-            model.create_parallel_weight_legion_ordering(
-                bias_shape.num_dims, // 1,
-                bias_shape.dims,     // dims,
-                DT_FLOAT,
-                NULL /*owner_op*/,
-                true /*create_grad*/,
-                bias_initializer,
-                comm_type);
-        assert(weights[i * (1 + use_bias) + use_bias] != nullptr);
-      }
+      assert(kernel_shape.num_dims == 3);
+      weights[0] = model.create_parallel_weight_legion_ordering(
+          kernel_shape.num_dims, // 3,
+          kernel_shape.dims,     // dims,
+          DT_FLOAT,
+          NULL /*owner_op*/,
+          true /*create_grad*/,
+          kernel_initializer,
+          comm_type);
+      assert(weights[0] != nullptr);
+    }
+    if (use_bias) {
+      Initializer *bias_initializer = new ZeroInitializer();
+      assert(bias_shape.num_dims == 2);
+      weights[1] = model.create_parallel_weight_legion_ordering(
+          bias_shape.num_dims, // 1,
+          bias_shape.dims,     // dims,
+          DT_FLOAT,
+          NULL /*owner_op*/,
+          true /*create_grad*/,
+          bias_initializer,
+          comm_type);
+      assert(weights[1] != nullptr);
     }
   }
   assert(check_output_input_weight_parallel_dims(allocate_weights));
@@ -490,23 +472,19 @@ void Experts::init_inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(3, FID_DATA);
-  for (int i = 0; i < num_experts; i++) {
-    launcher.add_region_requirement(
-        RegionRequirement(weights[i * (1 + use_bias)]->part,
-                          0 /*projection id*/,
-                          READ_ONLY,
-                          EXCLUSIVE,
-                          weights[i * (1 + use_bias)]->region));
-    launcher.add_field(4 + i * (1 + use_bias), FID_DATA);
-    if (use_bias) {
-      launcher.add_region_requirement(
-          RegionRequirement(weights[i * (1 + use_bias) + use_bias]->part,
-                            0 /*projection id*/,
-                            READ_ONLY,
-                            EXCLUSIVE,
-                            weights[i * (1 + use_bias) + use_bias]->region));
-      launcher.add_field(4 + i * (1 + use_bias) + use_bias, FID_DATA);
-    }
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(4, FID_DATA);
+  if (use_bias) {
+    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[1]->region));
+    launcher.add_field(5, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -555,23 +533,19 @@ void Experts::init(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     outputs[0]->region));
   launcher.add_field(3, FID_DATA);
-  for (int i = 0; i < num_experts; i++) {
-    launcher.add_region_requirement(
-        RegionRequirement(weights[i * (1 + use_bias)]->part,
-                          0 /*projection id*/,
-                          READ_ONLY,
-                          EXCLUSIVE,
-                          weights[i * (1 + use_bias)]->region));
-    launcher.add_field(4 + i * (1 + use_bias), FID_DATA);
-    if (use_bias) {
-      launcher.add_region_requirement(
-          RegionRequirement(weights[i * (1 + use_bias) + use_bias]->part,
-                            0 /*projection id*/,
-                            READ_ONLY,
-                            EXCLUSIVE,
-                            weights[i * (1 + use_bias) + use_bias]->region));
-      launcher.add_field(4 + i * (1 + use_bias) + use_bias, FID_DATA);
-    }
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(4, FID_DATA);
+  if (use_bias) {
+    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[1]->region));
+    launcher.add_field(5, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
@@ -641,23 +615,19 @@ void Experts::forward(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     outputs[0]->region));
   launcher.add_field(3, FID_DATA);
-  for (int i = 0; i < num_experts; i++) {
-    launcher.add_region_requirement(
-        RegionRequirement(weights[i * (1 + use_bias)]->part,
-                          0 /*projection id*/,
-                          READ_ONLY,
-                          EXCLUSIVE,
-                          weights[i * (1 + use_bias)]->region));
-    launcher.add_field(4 + i * (1 + use_bias), FID_DATA);
-    if (use_bias) {
-      launcher.add_region_requirement(
-          RegionRequirement(weights[i * (1 + use_bias) + use_bias]->part,
-                            0 /*projection id*/,
-                            READ_ONLY,
-                            EXCLUSIVE,
-                            weights[i * (1 + use_bias) + use_bias]->region));
-      launcher.add_field(4 + i * (1 + use_bias) + use_bias, FID_DATA);
-    }
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(4, FID_DATA);
+  if (use_bias) {
+    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[1]->region));
+    launcher.add_field(5, FID_DATA);
   }
   runtime->execute_index_space(ctx, launcher);
 }
@@ -714,23 +684,19 @@ FutureMap Experts::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(3, FID_DATA);
-  for (int i = 0; i < num_experts; i++) {
-    launcher.add_region_requirement(
-        RegionRequirement(weights[i * (1 + use_bias)]->part,
-                          0 /*projection id*/,
-                          READ_ONLY,
-                          EXCLUSIVE,
-                          weights[i * (1 + use_bias)]->region));
-    launcher.add_field(4 + i * (1 + use_bias), FID_DATA);
-    if (use_bias) {
-      launcher.add_region_requirement(
-          RegionRequirement(weights[i * (1 + use_bias) + use_bias]->part,
-                            0 /*projection id*/,
-                            READ_ONLY,
-                            EXCLUSIVE,
-                            weights[i * (1 + use_bias) + use_bias]->region));
-      launcher.add_field(4 + i * (1 + use_bias) + use_bias, FID_DATA);
-    }
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(4, FID_DATA);
+  if (use_bias) {
+    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[1]->region));
+    launcher.add_field(5, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);
 }
@@ -818,37 +784,29 @@ void Experts::inference_task(Task const *task,
   }
 
   // get weights
-  float const *weights_ptrs[num_experts * (1 + use_bias)];
-  for (int i = 0; i < num_experts; i++) {
-    weights_ptrs[i * (1 + use_bias)] =
-        helperGetTensorPointerRO<float>(regions[4 + i * (1 + use_bias)],
-                                        task->regions[4 + i * (1 + use_bias)],
-                                        FID_DATA,
-                                        ctx,
-                                        runtime);
-    Domain weights_domain = runtime->get_index_space_domain(
-        ctx, task->regions[4 + i * (1 + use_bias)].region.get_index_space());
-    int weights_dims = weights_domain.get_dim();
-    assert(weights_dims == input_dims);
-    assert(weights_domain.hi()[0] - weights_domain.lo()[0] + 1 == data_dim);
-    assert(weights_domain.hi()[1] - weights_domain.lo()[1] + 1 == out_dim);
-    if (use_bias) {
-      weights_ptrs[i * (1 + use_bias) + use_bias] =
-          helperGetTensorPointerRO<float>(
-              regions[4 + i * (1 + use_bias) + use_bias],
-              task->regions[4 + i * (1 + use_bias) + use_bias],
-              FID_DATA,
-              ctx,
-              runtime);
-      Domain bias_domain = runtime->get_index_space_domain(
-          ctx,
-          task->regions[4 + i * (1 + use_bias) + use_bias]
-              .region.get_index_space());
-      int bias_dims = bias_domain.get_dim();
-      assert(bias_dims == 4);
-      assert(bias_domain.hi()[0] - bias_domain.lo()[0] + 1 == out_dim);
-    }
+  float const *weights_ptr = helperGetTensorPointerRO<float>(
+      regions[4], task->regions[4], FID_DATA, ctx, runtime);
+  assert(weights_ptr != nullptr);
+  Domain weights_domain = runtime->get_index_space_domain(
+      ctx, task->regions[4].region.get_index_space());
+  int weights_dims = weights_domain.get_dim();
+  assert(weights_dims == input_dims + 1);
+  assert(weights_domain.hi()[0] - weights_domain.lo()[0] + 1 == num_experts);
+  assert(weights_domain.hi()[1] - weights_domain.lo()[1] + 1 == data_dim);
+  assert(weights_domain.hi()[2] - weights_domain.lo()[2] + 1 == out_dim);
+
+  float const *bias_ptr = nullptr;
+  if (use_bias) {
+    bias_ptr = helperGetTensorPointerRO<float>(
+        regions[5], task->regions[5], FID_DATA, ctx, runtime);
+    Domain bias_domain = runtime->get_index_space_domain(
+        ctx, task->regions[5].region.get_index_space());
+    int bias_dims = bias_domain.get_dim();
+    assert(bias_dims == 4);
+    assert(bias_domain.hi()[0] - bias_domain.lo()[0] + 1 == num_experts);
+    assert(bias_domain.hi()[1] - bias_domain.lo()[1] + 1 == out_dim);
   }
+
 #ifdef INFERENCE_TESTS
   if (DEBUG_MODE) {
     std::cout << "forward_kernel_wrapper" << std::endl
@@ -989,7 +947,8 @@ void Experts::inference_task(Task const *task,
                                   indices_ptr,
                                   topk_gate_pred_ptr,
                                   output_ptr,
-                                  weights_ptrs,
+                                  weights_ptr,
+                                  bias_ptr,
                                   num_active_tokens,
                                   chosen_experts,
                                   batch_size,
