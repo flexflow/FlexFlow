@@ -443,7 +443,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                  &gemm_batch_count,
                                  stream);
 
-  checkCUDA(cudaStreamSynchronize(stream));
+  //checkCUDA(cudaStreamSynchronize(stream));
 
 #ifdef INFERENCE_TESTS
   // Checking
@@ -732,7 +732,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                              m->coefficient_idx_array,
                                              m->output_idx_array);
 
-  checkCUDA(cudaStreamSynchronize(stream));
+  //checkCUDA(cudaStreamSynchronize(stream));
 
 #ifdef INFERENCE_TESTS
   std::vector<float const *> token_ptrs, weight_ptrs, bias_ptrs,
@@ -1064,7 +1064,7 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                      gemm_batch_count,
                                      stream);
 
-  checkCUDA(cudaStreamSynchronize(stream));
+  //checkCUDA(cudaStreamSynchronize(stream));
 
   int aggregation_parallelism =
       std::max(num_tokens, gemm_batch_count) * out_dim;
