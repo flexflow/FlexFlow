@@ -10,6 +10,7 @@ namespace FlexFlow {
 class Reduce : public Op {
 public:
   Reduce(FFModel &model,
+         OperatorType op_type,
          ParallelTensor const &input,
          std::vector<int> const &axes,
          bool keepdims,

@@ -2,6 +2,7 @@
 #define _FLEXFLOW_OPS_KERNELS_RESHAPE_KERNELS_H
 
 #include "kernels/device.h"
+#include "kernels/accessor.h"
 #include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
@@ -15,16 +16,15 @@ public:
 namespace Kernels {
 namespace Reshape {
 
-template <typename T>
 void forward_kernel(ffStream_t stream,
-                    T const *input_ptr,
-                    T *output_ptr,
-                    size_t num_elements);
-template <typename T>
+                    ReshapePerDeviceState const *m,
+                    GenericTensorAccessorR const &input,
+                    GenericTensorAccessorW const &output);
+
 void backward_kernel(ffStream_t stream,
-                     T *input_grad_ptr,
-                     T const *output_grad_ptr,
-                     size_t num_elements);
+                     ReshapePerDeviceState const *m,
+                     GenericTensorAccessorW const &input,
+                     GenericTensorAccessorR const &output);
 
 
 } // namespace Reshape

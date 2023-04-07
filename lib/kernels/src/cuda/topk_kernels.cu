@@ -26,84 +26,6 @@ TopKPerDeviceState::TopKPerDeviceState(FFHandler handler) : PerDeviceOpState(han
 namespace Kernels {
 namespace TopK {
 
-void forward_kernel_wrapper(TopKPerDeviceState const *m,
-                                  float const *input_ptr,
-                                  float *output_ptr,
-                                  int *indices_ptr,
-                                  size_t batch_size,
-                                  int length,
-                                  int k,
-                                  bool sorted) {
-  cudaStream_t stream;
-  
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-
-  Internal::forward_kernel(m,
-                       input_ptr,
-                       output_ptr,
-                       indices_ptr,
-                       batch_size,
-                       length,
-                       k,
-                       sorted,
-                       stream);
-
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("[TopK] forward time = %.2lfms\n", elapsed);
-  }
-}
-
-
-void backward_kernel_wrapper(TopKPerDeviceState const *m,
-                                   float const *value_grad_ptr,
-                                   int const *indices_ptr,
-                                   float *in_grad_ptr,
-                                   size_t batch_size,
-                                   int length,
-                                   int k) {
-  cudaStream_t stream;
-  
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-
-  Internal::backward_kernel(m,
-                        value_grad_ptr,
-                        indices_ptr,
-                        in_grad_ptr,
-                        batch_size,
-                        length,
-                        k,
-                        stream);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("[TopK] backward time = %.2lfms\n", elapsed);
-  }
-}
-
-namespace Internal {
-
 enum class HeapType { kMinHeap, kMaxHeap };
 enum class PreferIndices { kLower, kHigher };
 
@@ -447,15 +369,15 @@ __global__ void topk_forward_kernel(T const *__restrict__ input,
   }
 }
 
-void forward_kernel(TopKPerDeviceState const *m,
+void forward_kernel(cudaStream_t stream,
+                          TopKPerDeviceState const *m,
                           float const *input_ptr,
                           float *output_ptr,
                           int *indices_ptr,
                           size_t batch_size,
                           int length,
                           int k,
-                          bool sorted,
-                          cudaStream_t stream) {
+                          bool sorted) {
   // Adopted from TensorFlow's TopK implementation
   // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/topk_op_gpu.h
   int num_shards = 0;
@@ -500,14 +422,14 @@ __global__ void topk_backward_kernel(T const *__restrict__ value_grad_ptr,
   }
 }
 
-void backward_kernel(TopKPerDeviceState const *m,
+void backward_kernel(cudaStream_t stream,
+                           TopKPerDeviceState const *m,
                            float const *value_grad_ptr,
                            int const *indices_ptr,
                            float *in_grad_ptr,
                            size_t batch_size,
                            int length,
-                           int k,
-                           cudaStream_t stream) {
+                           int k) {
   topk_backward_kernel<<<GET_BLOCKS(batch_size * k),
                          CUDA_NUM_THREADS,
                          0,
@@ -515,7 +437,6 @@ void backward_kernel(TopKPerDeviceState const *m,
       value_grad_ptr, indices_ptr, in_grad_ptr, batch_size, length, k);
 }
 
-} // namespace Internal
 } // namespace TopK
 } // namespace Kernels
 } // namespace FlexFlow

@@ -144,7 +144,7 @@ void forward_kernel(ffStream_t stream,
                     ElementUnaryPerDeviceState const *m, 
                     GenericTensorAccessorR const &input, 
                     GenericTensorAccessorW const &output) { {
-  DataTypeDispatch<ForwardKernel>{}(m->data_type, stream, m, input, output);
+  DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, m, input, output);
 }
 
 void backward_kernel(ffStream_t stream,
@@ -153,7 +153,7 @@ void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorR const &input_grad,
                      GenericTensorAccessorW const &output,                     
                      GenericTensorAccessorW const &output_grad)
-  DataTypeDispatch<BackwardKernel>{}(m->data_type, stream, m, input, input_grad, output, output_grad);
+  DataTypeDispatch1<BackwardKernel>{}(m->data_type, stream, m, input, input_grad, output, output_grad);
 }
 
 template <typename T>

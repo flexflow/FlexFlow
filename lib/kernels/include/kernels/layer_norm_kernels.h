@@ -20,30 +20,29 @@ public:
   bool elementwise_affine;
   int64_t effective_batch_size, effective_num_elements;
   float eps;
-  float *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;
+  float *mean, *rstd, *ds, *db, *scale, *bias;
   char op_name[MAX_OPNAME];
+  DataType data_type;
 };
 
 namespace Kernels {
 namespace LayerNorm {
 
-template <typename T>
 void forward_kernel(ffStream_t stream,
                             LayerNormPerDeviceState const *m,
-                            T const *input_ptr,
-                            T *output_ptr,
-                            T *gamma_ptr,
-                            T *beta_ptr);
+                            GenericTensorAccessorR const &input,
+                            GenericTensorAccessorW const &output,
+                            GenericTensorAccessorW const &gamma,
+                            GenericTensorAccessorW const &beta);
 
-template <typename T>
 void backward_kernel(ffStream_t stream,
                             LayerNormPerDeviceState const *m,
-                            T const *output_grad_ptr,
-                            T const *input_ptr,
-                            T *input_grad_ptr,
-                            T const *gamma_ptr,
-                            T *gamma_grad_ptr,
-                            T *beta_grad_ptr);
+                            GenericTensorAccessorR const &output_grad,
+                            GenericTensorAccessorR const &input,
+                            GenericTensorAccessorW const &input_grad,
+                            GenericTensorAccessorR const &gamma,
+                            GenericTensorAccessorW const &gamma_grad,
+                            GenericTensorAccessorW const &beta_grad);
                             
 } // namespace LayerNorm
 } // namespace Kernels

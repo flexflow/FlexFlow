@@ -13,120 +13,54 @@
  * limitations under the License.
  */
 
+#include "kernels/datatype_dispatch.h"
 #include "kernels/gather_kernels.h"
-#include "flexflow/ops/gather.h"
 #include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
-// declare Legion names
-using Legion::coord_t;
-using Legion::Domain;
 
-GatherPerDeviceState::GatherPerDeviceState(FFHandler handler, Gather const *gather)
-    : PerDeviceOpState(handler, gather) {
-  legion_dim = gather->legion_dim;
-}
+GatherPerDeviceState::GatherPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {};
 
 namespace Kernels {
 namespace Gather {
 
-void forward_kernel_wrapper(GatherPerDeviceState const *m,
+template <DataType IndexTxype>
+struct ForwardKernel {
+  void operator() (hipStream_t stream, GatherPerDeviceState const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorR const &index,
-                            GenericTensorAccessorW const &output) {
-  hipStream_t stream;
-  
-  coord_t stride = 1;
-  for (int i = 0; i < m->legion_dim; i++) {
-    stride *= (output.domain.hi()[i] - output.domain.lo()[i] + 1);
-  }
-  coord_t dim_size =
-      output.domain.hi()[m->legion_dim] - output.domain.lo()[m->legion_dim] + 1;
-  if (index.data_type == DT_INT32) {
-    Internal::forward_kernel(input.get_float_ptr(),
-                             index.get_int32_ptr(),
-                             output.get_float_ptr(),
-                             output.domain.get_volume(),
-                             stride,
-                             dim_size,
-                             stream);
-  } else {
-    assert(index.data_type == DT_INT64);
-    Internal::forward_kernel(input.get_float_ptr(),
-                             index.get_int64_ptr(),
-                             output.get_float_ptr(),
-                             output.domain.get_volume(),
-                             stride,
-                             dim_size,
-                             stream);
-  }
+                            GenericTensorAccessorW const &output,
+                            size_t stride, size_t dim_size) {
+    handle_unimplemented_hip_kernel(OP_GATHER);
 }
 
-void backward_kernel_wrapper(GatherPerDeviceState const *m,
+void forward_kernel(hipStream_t stream, GatherPerDeviceState const *m,
+                            GenericTensorAccessorR const &input,
+                            GenericTensorAccessorR const &index,
+                            GenericTensorAccessorW const &output,
+                            size_t stride, size_t dim_size) {
+  DataTypeDispatch1<ForwardKernel>{}(m->index_data_type, stream, m, input, index, output, stride, dim_size);
+}
+
+template <DataType IndexType>
+struct BackwardKernel {
+  void operator() (hipStream_t stream, GatherPerDeviceState const *m,
                              GenericTensorAccessorR const &output_grad,
                              GenericTensorAccessorR const &index,
-                             GenericTensorAccessorW const &input_grad) {
-  hipStream_t stream;
-  
-  coord_t stride = 1;
-  for (int i = 0; i < m->legion_dim; i++) {
-    stride *= (output_grad.domain.hi()[i] - output_grad.domain.lo()[i] + 1);
-  }
-  coord_t dim_size = output_grad.domain.hi()[m->legion_dim] -
-                     output_grad.domain.lo()[m->legion_dim] + 1;
-  if (index.data_type == DT_INT32) {
-    Internal::backward_kernel(output_grad.get_float_ptr(),
-                              index.get_int32_ptr(),
-                              input_grad.get_float_ptr(),
-                              output_grad.domain.get_volume(),
-                              stride,
-                              dim_size,
-                              stream);
-  } else {
-    assert(index.data_type == DT_INT64);
-    Internal::backward_kernel(output_grad.get_float_ptr(),
-                              index.get_int64_ptr(),
-                              input_grad.get_float_ptr(),
-                              output_grad.domain.get_volume(),
-                              stride,
-                              dim_size,
-                              stream);
-  }
+                             GenericTensorAccessorW const &input_grad,
+                             size_t stride, size_t dim_size) {
+    handle_unimplemented_hip_kernel(OP_GATHER);
 }
 
-namespace Internal {
-
-template <typename IndexType>
-void forward_kernel(float const *input_ptr,
-                    IndexType const *index_ptr,
-                    float *output_ptr,
-                    coord_t output_size,
-                    coord_t stride,
-                    coord_t dim_size,
-                    hipStream_t stream) {
-  assert(input_ptr != nullptr);
-  assert(index_ptr != nullptr);
-  assert(output_ptr != nullptr);
-  handle_unimplemented_hip_kernel(OP_GATHER);
+void backward_kernel(hipStream_t stream, GatherPerDeviceState const *m,
+                             GenericTensorAccessorR const &output_grad,
+                             GenericTensorAccessorR const &index,
+                             GenericTensorAccessorW const &input_grad,
+                             size_t stride, size_t dim_size) {
+  DataTypeDispatch1<BackwardKernel>{}(m->index_data_type, stream, m, output_grad, index, input_grad, stride, dim_size);
 }
 
-template <typename IndexType>
-void backward_kernel(float const *output_grad_ptr,
-                     IndexType const *index_ptr,
-                     float *input_grad_ptr,
-                     coord_t output_size,
-                     coord_t stride,
-                     coord_t dim_size,
-                     hipStream_t stream) {
-  assert(output_grad_ptr != nullptr);
-  assert(input_grad_ptr != nullptr);
-  assert(index_ptr != nullptr);
-  handle_unimplemented_hip_kernel(OP_GATHER);
-}
-
-} // namespace Internal
 } // namespace Gather
 } // namespace Kernels
-
-}; // namespace FlexFlow
+} // namespace FlexFlow

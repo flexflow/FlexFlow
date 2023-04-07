@@ -21,15 +21,37 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Replicate {
 
-template <typename T>
-void forward_kernel(T const *input_ptr, T *output_ptr, size_t num_elements) {
-  hipStream_t stream;
-  
-  checkCUDA(hipMemcpyAsync(output_ptr,
-                           input_ptr,
-                           num_elements * sizeof(T),
-                           hipMemcpyDeviceToDevice,
-                           stream));
+template <DataType T>
+struct ForwardKernel {
+  void operator()(hipStream_t stream,
+                  GenericTensorAccessorR const &input,
+                  GenericTensorAccessorW const &output) {
+
+    checkCUDA(hipMemcpyAsync(input.get<T>(),
+                              output.get<T>(),
+                              input.shape.num_elements() * sizeof(T),
+                              hipMemcpyDeviceToDevice,
+                              stream));
+  }
+}
+
+template <DataType T>
+struct BackwardKernel {
+  void operator()(hipStream_t stream,
+                  GenericTensorAccessorW const &input,
+                  GenericTensorAccessorR const &output,
+                  size_t num_replicas) {
+    size_t total_elements = input.shape.num_elements() * num_replicas;
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(replicate_backward_kernel<T>),
+                     GET_BLOCKS(total_elements),
+                     CUDA_NUM_THREADS,
+                     0,
+                     stream,
+                     input.get<T>(),
+                     output.get<T>(),
+                     input.shape.num_elements(),
+                     num_replicas);
+  }
 }
 
 template <typename T>
@@ -44,37 +66,18 @@ __global__ void replicate_backward_kernel(T const *input_ptr,
   }
 }
 
-template <typename T>
-void backward_kernel(T const *output_grad_ptr,
-                     T *input_grad_ptr,
-                     size_t num_elements,
-                     size_t num_replicas) {
-  size_t total_elements = num_elements * num_replicas;
-  hipStream_t stream;
-  
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(replicate_backward_kernel<T>),
-                     GET_BLOCKS(total_elements),
-                     CUDA_NUM_THREADS,
-                     0,
-                     stream,
-                     output_grad_ptr,
-                     input_grad_ptr,
-                     num_elements,
-                     num_replicas);
+void forward_kernel(hipStream_t stream,
+                    GenericTensorAccessorR const &input,
+                    GenericTensorAccessorW const &output) {
+  DataTypeDispatch1<ForwardKernel>{}(input->data_type, stream, input, output);
 }
 
-template void forward_kernel<float>(float const *input_ptr,
-                                    float *output_ptr,
-                                    size_t num_elements);
-template __global__ void
-    replicate_backward_kernel<float>(float const *input_ptr,
-                                     float *output_ptr,
-                                     size_t num_elements,
-                                     size_t num_replicas);
-template void backward_kernel<float>(float const *output_grad_ptr,
-                                     float *input_grad_ptr,
-                                     size_t num_elements,
-                                     size_t num_replicas);
+void backward_kernel(hipStream_t stream,
+                     GenericTensorAccessorW const &input,
+                     GenericTensorAccessorR const &output,
+                     size_t num_replicas) {
+  DataTypeDispatch1<BackwardKernel>{}(input->data_type, stream, input, output, num_replicas);
+}
 
 } // namespace Replicate
 } // namespace Kernels

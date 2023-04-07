@@ -19,6 +19,8 @@ public:
   miopenTensorDescriptor_t inputTensor, outputTensor;
   miopenReduceTensorDescriptor_t reduceDesc;
 #endif
+  OperatorType op_type;
+  size_t reduction_size;
 };
 
 namespace Kernels {

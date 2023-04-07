@@ -14,6 +14,7 @@
  */
 
 #include "kernels/reduction_kernels.h"
+#include "kernels/datatype_dispatch.h"
 #include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -34,49 +35,52 @@ __global__ void reduction_forward_kernel(T const *input_ptr,
   }
 }
 
-template <typename T>
-void forward_kernel(T const *input_ptr,
-                    T *output_ptr,
-                    size_t num_elements,
-                    size_t num_replicas) {
-  hipStream_t stream;
+template <DataType T>
+struct ForwardKernel {
+  void operator()(cudaStream_t stream,
+                  GenericTensorAccessorR const &input,
+                  GenericTensorAccessorW const &output,
+                  size_t num_replicas) {
   
-  size_t total_elements = num_elements * num_replicas;
+  size_t total_elements = input.shape.num_elements() * num_replicas;
   hipLaunchKernelGGL(HIP_KERNEL_NAME(reduction_forward_kernel<T>),
                      GET_BLOCKS(total_elements),
                      CUDA_NUM_THREADS,
                      0,
                      stream,
-                     input_ptr,
-                     output_ptr,
-                     num_elements,
+                     input.get<T>(),
+                     output.get<T>(),
+                     input.shape.num_elements(),
                      num_replicas);
+  }
 }
 
-template <typename T>
-void backward_kernel(T const *output_grad_ptr,
-                     T *input_grad_ptr,
-                     size_t num_elements) {
-  hipStream_t stream;
-  
-  checkCUDA(hipMemcpyAsync(input_grad_ptr,
-                           output_grad_ptr,
-                           num_elements * sizeof(T),
-                           hipMemcpyDeviceToDevice,
-                           stream));
+template <DataType T>
+struct BackwardKernel {
+  void operator()(cudaStream_t stream,
+                  GenericTensorAccessorW const &input,
+                  GenericTensorAccessorR const &output) {
+    checkCUDA(hipMemcpyAsync(input.get<T>(),
+                              output.get<T>(),
+                              input.shape.num_elements() * sizeof(T),
+                              hipMemcpyDeviceToDevice,
+                              stream));
+  }
 }
 
-template __global__ void reduction_forward_kernel<float>(float const *input_ptr,
-                                                         float *output_ptr,
-                                                         size_t num_elements,
-                                                         size_t num_replicas);
-template void forward_kernel<float>(float const *input_ptr,
-                                    float *output_ptr,
-                                    size_t num_elements,
-                                    size_t num_replicas);
-template void backward_kernel<float>(float const *output_grad_ptr,
-                                     float *input_grad_ptr,
-                                     size_t num_elements);
+void forward_kernel(hipStream_t stream,
+                    GenericTensorAccessorR const &input,
+                    GenericTensorAccessorW const &output,
+                    size_t num_replicas) {
+  DataTypeDispatch1<ForwardKernel>{}(input->data_type, stream, input, output, num_replicas);
+}
+
+void backward_kernel(hipStream_t stream,
+                     GenericTensorAccessorW const &input,
+                     GenericTensorAccessorR const &output) {
+  DataTypeDispatch1<BackwardKernel>{}(input->data_type, stream, input, output);
+}
+
 } // namespace Reduction
 } // namespace Kernels
 } // namespace FlexFlow

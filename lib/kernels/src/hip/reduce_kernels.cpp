@@ -25,10 +25,21 @@ using Legion::Domain;
 ReducePerDeviceState::ReducePerDeviceState(FFHandler handler,
                        Reduce const *rd,
                        Domain const &input_domain)
-    : PerDeviceOpState(handler) {
+    : op_type(rd->op_type), PerDeviceOpState(handler) {
   checkCUDNN(miopenCreateReduceTensorDescriptor(&reduceDesc));
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
+  cudnnReduceTensorOp_t reduce_op;
+  switch (rd->op_type) {
+    case OP_REDUCE_SUM:
+      reduce_op = CUDNN_REDUCE_TENSOR_ADD;
+      break;
+    case OP_REDUCE_MEAN:
+      reduce_op = CUDNN_REDUCE_TENSOR_AVG;
+      break;
+    default:
+      assert(false);
+  }
   checkCUDNN(miopenSetReduceTensorDescriptor(reduceDesc,
                                              MIOPEN_REDUCE_TENSOR_ADD,
                                              miopenFloat,
@@ -42,6 +53,9 @@ ReducePerDeviceState::ReducePerDeviceState(FFHandler handler,
     output_domain.rect_data[rd->axes[i] + output_domain.dim] =
         output_domain.rect_data[rd->axes[i]];
   }
+  assert(output_domain.get_volume() % input_domain.get_volume() == 0);
+  reduction_size = input_domain.get_volume() / output_domain.get_volume();
+  assert(reduction_size > 0);
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_domain));
 }
 
@@ -81,6 +95,18 @@ void backward_kernel(hipStream_t stream,
                              float *input_grad_ptr) {
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
+  switch (m->op_type) {
+    case OP_REDUCE_SUM:
+      alpha = 1.0f;
+      break;
+    case OP_REDUCE_MEAN:
+      // When the output is the average of multiple input elements
+      // we need to scale the gradients by 1.0 / reduction_size
+      alpha = 1.0f / m->reduction_size;
+      break;
+    default:
+      assert(false);
+  }
   checkCUDNN(miopenOpTensor(m->handle.dnn,
                             miopenTensorOpAdd,
                             &alpha,

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "kernels/datatype_dispatch.h"
 #include "kernels/layer_norm_kernels.h"
 #include "kernels/cuda_helper.h"
 
@@ -46,115 +47,106 @@ LayerNormPerDeviceState::LayerNormPerDeviceState(FFHandler handle,
 namespace Kernels {
 namespace LayerNorm {
 
-template <typename T>
-void forward_kernel(LayerNormPerDeviceState const *m,
-                                       T const *in_ptr,
-                                       T *out_ptr,
-                                       T *gamma_ptr,
-                                       T *beta_ptr) {
-  cudaStream_t stream;
-  
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-  RowwiseMomentsCUDAKernel<float>
+template <DataType T>
+struct ForwardKernel {
+  void operator() (cudaStream_t stream,
+                            LayerNormPerDeviceState const *m,
+                            GenericTensorAccessorR const &input,
+                            GenericTensorAccessorW const &output,
+                            GenericTensorAccessorW const &gamma,
+                            GenericTensorAccessorW const &beta)
+  {
+    RowwiseMomentsCUDAKernel<float>
       <<<m->effective_batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
-          m->effective_num_elements, m->eps, in_ptr, m->mean_ptr, m->rstd_ptr);
-  LayerNormForwardCUDAKernel<float>
+          m->effective_num_elements, m->eps, input.get<T>(), m->mean_ptr, m->rstd_ptr);
+    LayerNormForwardCUDAKernel<float>
       <<<m->effective_batch_size, kCUDANumThreads, 0, stream>>>(
           m->effective_num_elements,
-          in_ptr,
+          input.get<T>(),
           m->mean_ptr,
           m->rstd_ptr,
-          gamma_ptr,
-          beta_ptr,
-          out_ptr);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("[LayerNorm] forward time (CF) = %.2fms\n", elapsed);
-    print_tensor<T>(in_ptr, 32, "[LayerNorm:forward:input]");
-    print_tensor<T>(out_ptr, 32, "[LayerNorm:forward:output]");
+          gamma.get<T>(),
+          beta.get<T>(),
+          output.get<T>());
   }
 }
 
-template <typename T>
-void backward_kernel(LayerNormPerDeviceState const *m,
-                                        T const *output_grad_ptr,
-                                        T const *input_ptr,
-                                        T *input_grad_ptr,
-                                        T const *gamma_ptr,
-                                        T *gamma_grad_ptr,
-                                        T *beta_grad_ptr) {
-  cudaStream_t stream;
-  
-  const int64_t M = m->effective_batch_size;
-  const int64_t N = m->effective_num_elements;
-  ComputeInternalGradientsCUDAKernel<T>
-      <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
-          N, output_grad_ptr, input_ptr, gamma_ptr, m->ds_ptr, m->db_ptr);
-  const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
-  ComputeGradientFusedParamsCUDAKernel<T>
-      <<<B, kCUDANumThreads, 0, stream>>>(M,
-                                          N,
-                                          m->mean_ptr,
-                                          m->rstd_ptr,
-                                          m->ds_ptr,
-                                          m->db_ptr,
-                                          m->scale_ptr,
-                                          m->bias_ptr);
-  if (gamma_grad_ptr != NULL || beta_grad_ptr != NULL) {
-    if (M < 512) {
-      // For small batch size, do colwise reduce directly
-      const int64_t B = (N + kCUDANumThreads - 1) / kCUDANumThreads;
-      GammaBetaBackwardSimpleCUDAKernel<T>
-          <<<B, kCUDANumThreads, 0, stream>>>(M,
-                                              N,
-                                              output_grad_ptr,
-                                              input_ptr,
-                                              m->mean_ptr,
-                                              m->rstd_ptr,
-                                              gamma_grad_ptr,
-                                              beta_grad_ptr);
-    } else {
-      const int64_t B =
-          (N + kColwiseReduceTileSize - 1) / kColwiseReduceTileSize;
-      constexpr int kThreadX = kColwiseReduceTileSize;
-      constexpr int kThreadY = kColwiseReduceTileSize / 2;
-      GammaBetaBackwardCUDAKernel<T>
-          <<<B, dim3(kThreadX, kThreadY), 0, stream>>>(M,
-                                                       N,
-                                                       output_grad_ptr,
-                                                       input_ptr,
-                                                       m->mean_ptr,
-                                                       m->rstd_ptr,
-                                                       gamma_grad_ptr,
-                                                       beta_grad_ptr);
+template <DataType T>
+struct BackwardKernel {
+  void operator() (cudaStream_t stream,
+                            LayerNormPerDeviceState const *m,
+                            GenericTensorAccessorR const &output_grad,
+                            GenericTensorAccessorR const &input,
+                            GenericTensorAccessorW const &input_grad,
+                            GenericTensorAccessorR const &gamma,
+                            GenericTensorAccessorW const &gamma_grad,
+                            GenericTensorAccessorW const &beta_grad) {
+    const int64_t M = m->effective_batch_size;
+    const int64_t N = m->effective_num_elements;
+    ComputeInternalGradientsCUDAKernel<T>
+        <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
+            N, output_grad.get<T>(), input.get<T>(), gamma.get<T>(), m->ds_ptr, m->db_ptr);
+    const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
+    ComputeGradientFusedParamsCUDAKernel<T>
+        <<<B, kCUDANumThreads, 0, stream>>>(M,
+                                            N,
+                                            m->mean_ptr,
+                                            m->rstd_ptr,
+                                            m->ds_ptr,
+                                            m->db_ptr,
+                                            m->scale_ptr,
+                                            m->bias_ptr);
+    if (gamma_grad.get<T>() != NULL || beta_grad.get<T>() != NULL) {
+      if (M < 512) {
+        // For small batch size, do colwise reduce directly
+        const int64_t B = (N + kCUDANumThreads - 1) / kCUDANumThreads;
+        GammaBetaBackwardSimpleCUDAKernel<T>
+            <<<B, kCUDANumThreads, 0, stream>>>(M,
+                                                N,
+                                                output_grad.get<T>(),
+                                                input.get<T>(),
+                                                m->mean_ptr,
+                                                m->rstd_ptr,
+                                                gamma_grad.get<T>(),
+                                                beta_grad.get<T>());
+      } else {
+        const int64_t B =
+            (N + kColwiseReduceTileSize - 1) / kColwiseReduceTileSize;
+        constexpr int kThreadX = kColwiseReduceTileSize;
+        constexpr int kThreadY = kColwiseReduceTileSize / 2;
+        GammaBetaBackwardCUDAKernel<T>
+            <<<B, dim3(kThreadX, kThreadY), 0, stream>>>(M,
+                                                        N,
+                                                        output_grad.get<T>(),
+                                                        input.get<T>(),
+                                                        m->mean_ptr,
+                                                        m->rstd_ptr,
+                                                        gamma_grad.get<T>(),
+                                                        beta_grad.get<T>());
+      }
     }
   }
 }
 
-template void forward_kernel<float>(LayerNormPerDeviceState const *m,
-                                                       float const *in_ptr,
-                                                       float *out_ptr,
-                                                       float *gamma_ptr,
-                                                       float *beta_ptr);
-template void
-    backward_kernel<float>(LayerNormPerDeviceState const *m,
-                                              float const *output_grad_ptr,
-                                              float const *input_ptr,
-                                              float *input_grad_ptr,
-                                              float const *gamma_ptr,
-                                              float *gamma_grad_ptr,
-                                              float *beta_grad_ptr);
+void forward_kernel(cudaStream_t stream,
+                            LayerNormPerDeviceState const *m,
+                            GenericTensorAccessorR const &input,
+                            GenericTensorAccessorW const &output,
+                            GenericTensorAccessorW const &gamma,
+                            GenericTensorAccessorW const &beta) {
+  DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, m, input, output, gamma, beta);
+}
+
+void backward_kernel(cudaStream_t stream,
+                            LayerNormPerDeviceState const *m,
+                            GenericTensorAccessorR const &output_grad,
+                            GenericTensorAccessorR const &input,
+                            GenericTensorAccessorW const &input_grad,
+                            GenericTensorAccessorR const &gamma,
+                            GenericTensorAccessorW const &gamma_grad,
+                            GenericTensorAccessorW const &beta_grad) {
+  DataTypeDispatch1<BackwardKernel>{}(m->data_type, stream, m, output_grad, input, input_grad, gamma, gamma_grad, beta_grad);
+}
 
 template <typename T>
 __device__ __forceinline__ T WARP_SHFL_DOWN(T value,

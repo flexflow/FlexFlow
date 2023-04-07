@@ -15,6 +15,7 @@ struct ReduceAttrs {
 /*   bool is_valid(ParallelTensorShape const &) const override; */
 public:
   stack_vector<int, MAX_TENSOR_DIM> axes;
+  OperatorType op_type;
   bool keepdims;
 };
 
