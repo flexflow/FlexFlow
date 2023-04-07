@@ -756,11 +756,10 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
       token_ptrs.push_back(&input[token_idx * data_dim]);
       coefficient_ptrs.push_back(&topk_gate_preds[i]);
       int local_exp_label = global_exp_label - experts_start_idx;
-      weight_ptrs.push_back(weights[local_exp_label * (1 + use_bias)]);
+      weight_ptrs.push_back(&weights[local_exp_label * (out_dim * data_dim)]);
       output_ptrs.push_back(&output[token_idx * out_dim]);
       if (use_bias) {
-        bias_ptrs.push_back(
-            weights[local_exp_label * (1 + use_bias) + use_bias]);
+        bias_ptrs.push_back(&biases[local_exp_label * out_dim]);
       }
     }
   }
