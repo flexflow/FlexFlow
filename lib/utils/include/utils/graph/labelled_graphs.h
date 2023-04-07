@@ -27,7 +27,7 @@ public:
   }
 
   T const &at(Node const &n) const {
-    return this->node_map->at(n);
+    return this->node_map.at(n);
   }
 public:
   std::unique_ptr<IMultiDiGraph> base_graph;
