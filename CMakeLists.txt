@@ -83,6 +83,7 @@ set(FF_MAX_DIM "4" CACHE STRING "Maximum dimention of tensors")
 
 # option for legion
 option(FF_USE_EXTERNAL_LEGION "Use pre-installed Legion" OFF)
+set(LEGION_MAX_RETURN_SIZE "32768" CACHE STRING "Maximum Legion return size")
 
 set(FLEXFLOW_EXT_LIBRARIES "")
 set(FLEXFLOW_INCLUDE_DIRS "")
@@ -206,9 +207,11 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 message(STATUS "FlexFlow MAX_DIM: ${FF_MAX_DIM}")
+message(STATUS "LEGION_MAX_RETURN_SIZE: ${LEGION_MAX_RETURN_SIZE}")
 
 list(APPEND FF_CC_FLAGS
-  -DMAX_TENSOR_DIM=${FF_MAX_DIM})
+  -DMAX_TENSOR_DIM=${FF_MAX_DIM}
+  -DLEGION_MAX_RETURN_SIZE=${LEGION_MAX_RETURN_SIZE})
 
 if(FF_USE_AVX2)
   list(APPEND FF_CC_FLAGS
@@ -218,7 +221,8 @@ endif()
 
 list(APPEND FF_NVCC_FLAGS
   -Wno-deprecated-gpu-targets
-  -DMAX_TENSOR_DIM=${FF_MAX_DIM})
+  -DMAX_TENSOR_DIM=${FF_MAX_DIM}
+  -DLEGION_MAX_RETURN_SIZE=${LEGION_MAX_RETURN_SIZE})
 
 list(APPEND FF_LD_FLAGS
   -lrt

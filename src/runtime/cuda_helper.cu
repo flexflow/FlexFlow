@@ -247,6 +247,17 @@ __host__ T *download_tensor(T const *ptr, size_t num_elements) {
   return host_ptr;
 }
 
+template <typename T>
+__host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
+  // device synchronize to make sure the data are ready
+  // checkCUDA(cudaDeviceSynchronize());
+  assert(dst != nullptr);
+  checkCUDA(
+      cudaMemcpy(dst, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
+  // checkCUDA(cudaDeviceSynchronize());
+  return true;
+}
+
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Domain domain) {
   int dims[MAX_TENSOR_DIM];
@@ -435,3 +446,14 @@ template __host__ int32_t *download_tensor<int32_t>(int32_t const *ptr,
                                                     size_t num_elements);
 template __host__ int64_t *download_tensor<int64_t>(int64_t const *ptr,
                                                     size_t num_elements);
+template __host__ bool
+    download_tensor<float>(float const *ptr, float *dst, size_t num_elements);
+template __host__ bool download_tensor<double>(double const *ptr,
+                                               double *dst,
+                                               size_t num_elements);
+template __host__ bool download_tensor<int32_t>(int32_t const *ptr,
+                                                int32_t *dst,
+                                                size_t num_elements);
+template __host__ bool download_tensor<int64_t>(int64_t const *ptr,
+                                                int64_t *dst,
+                                                size_t num_elements);

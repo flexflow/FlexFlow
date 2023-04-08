@@ -132,12 +132,16 @@ enum TaskIDs {
   TOPK_INIT_TASK_ID,
   TOPK_FWD_TASK_ID,
   TOPK_BWD_TASK_ID,
+  ARG_TOPK_INIT_TASK_ID,
+  ARG_TOPK_INF_TASK_ID,
   TRANSPOSE_INIT_TASK_ID,
   TRANSPOSE_FWD_TASK_ID,
   TRANSPOSE_BWD_TASK_ID,
   ATTENTION_INIT_TASK_ID,
   ATTENTION_FWD_TASK_ID,
   ATTENTION_BWD_TASK_ID,
+  RMSNROM_INIT_TASK_ID,
+  RMSNROM_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_BWD_TASK_ID,
@@ -284,7 +288,9 @@ class Reshape;
 class Softmax;
 class Split;
 class TopK;
+class ArgTopK;
 class Transpose;
+class RMSNorm;
 class Combine;
 class Repartition;
 class Reduction;
@@ -496,6 +502,9 @@ public:
                       int a_seq_length_dim = -1,
                       int b_seq_length_dim = -1,
                       char const *name = nullptr);
+  // Add a root mean square layer
+  Tensor
+      rms_norm(const Tensor input, float eps, int dim, char const *name = NULL);
   // Add a dense layer
   Tensor dense(const Tensor input,
                int outDim,
@@ -560,6 +569,11 @@ public:
              int k,
              bool sorted,
              char const *name = NULL);
+  Tensor arg_top_k(const Tensor input,
+                   // Tensor *outputs,
+                   int k,
+                   bool sorted,
+                   char const *name = NULL);
   Tensor multihead_attention(const Tensor query,
                              const Tensor key,
                              const Tensor value,
@@ -953,8 +967,12 @@ public:
       std::unordered_map<std::pair<ParallelTensorShape, SoftmaxParams>,
                          Softmax *>,
       std::unordered_map<std::pair<ParallelTensorShape, TopKParams>, TopK *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ArgTopKParams>,
+                         ArgTopK *>,
       std::unordered_map<std::pair<ParallelTensorShape, TransposeParams>,
                          Transpose *>,
+      std::unordered_map<std::pair<ParallelTensorShape, RMSNormParams>,
+                         RMSNorm *>,
       std::unordered_map<std::pair<ParallelTensorShape, RepartitionParams>,
                          Repartition *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReplicateParams>,

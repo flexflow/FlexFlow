@@ -24,6 +24,7 @@
 #include "flexflow/mapper.h"
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/aggregate_spec.h"
+#include "flexflow/ops/arg_topk.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
@@ -979,10 +980,11 @@ void Op::set_argumentmap_for_init(FFModel const &ff, ArgumentMap &argmap) {
 
 void Op::set_argumentmap_for_init_inference(FFModel const &ff,
                                             ArgumentMap &argmap,
-                                            MachineView const *view) {
+                                            ParallelTensor const output0) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, this->parallel_is);
+  MachineView const view = output0->machine_view;
   switch (domain.get_dim()) {
 #ifdef FF_USE_NCCL
 #define DIMFUNC(DIM)                                                           \
@@ -990,10 +992,10 @@ void Op::set_argumentmap_for_init_inference(FFModel const &ff,
     Rect<DIM> rect = domain;                                                   \
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      FFHandler handle = ff.handlers[view->get_device_id(*it)];                \
+      FFHandler handle = ff.handlers[view.get_device_id(*it)];                 \
       if (ff.config.computationMode == COMP_MODE_TRAINING &&                   \
           op_type == OP_WEIGHT) {                                              \
-        ncclComm_t *nccl_comms = ff.find_nccl_comms(*view);                    \
+        ncclComm_t *nccl_comms = ff.find_nccl_comms(view);                     \
         handle.ncclComm = nccl_comms[idx++];                                   \
       }                                                                        \
       argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));         \
@@ -1007,7 +1009,7 @@ void Op::set_argumentmap_for_init_inference(FFModel const &ff,
   case DIM: {                                                                  \
     Rect<DIM> rect = domain;                                                   \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      FFHandler handle = ff.handlers[view->get_device_id(*it)];                \
+      FFHandler handle = ff.handlers[view.get_device_id(*it)];                 \
       argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));         \
     }                                                                          \
     break;                                                                     \
@@ -1043,7 +1045,7 @@ void Op::set_opmeta_from_futuremap(FFModel const &ff, FutureMap const &fm) {
 
 void Op::set_opmeta_from_futuremap_inference(FFModel const &ff,
                                              FutureMap const &fm,
-                                             MachineView const *view) {
+                                             ParallelTensor const output) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
@@ -1053,7 +1055,7 @@ void Op::set_opmeta_from_futuremap_inference(FFModel const &ff,
     Rect<DIM> rect = domain;                                                   \
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      inference_meta[view->hash()][idx++] = fm.get_result<OpMeta *>(*it);      \
+      inference_meta[output][idx++] = fm.get_result<OpMeta *>(*it);            \
     }                                                                          \
     break;                                                                     \
   }
@@ -1088,7 +1090,7 @@ void Op::set_argumentmap_for_forward(FFModel const &ff, ArgumentMap &argmap) {
 
 void Op::set_argumentmap_for_inference(FFModel const &ff,
                                        ArgumentMap &argmap,
-                                       MachineView const *view) {
+                                       ParallelTensor const output) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   Domain domain = runtime->get_index_space_domain(ctx, parallel_is);
@@ -1098,7 +1100,7 @@ void Op::set_argumentmap_for_inference(FFModel const &ff,
     Rect<DIM> rect = domain;                                                   \
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      OpMeta *mp = inference_meta[view->hash()][idx++];                        \
+      OpMeta *mp = inference_meta[output][idx++];                              \
       argmap.set_point(*it, TaskArgument(&mp, sizeof(OpMeta *)));              \
     }                                                                          \
     break;                                                                     \
@@ -2862,6 +2864,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_ARG_TOPK: {
+      Op *op = ArgTopK::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_GROUP_BY: {
       Op *op = Group_by::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -4472,6 +4479,21 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<TopK::backward_task>(
         registrar, "TopK Backward Task");
+  }
+  // ArgTopk task
+  {
+    TaskVariantRegistrar registrar(ARG_TOPK_INIT_TASK_ID, "ArgTopK Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, ArgTopK::init_task>(
+        registrar, "ArgTopK Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(ARG_TOPK_INF_TASK_ID, "ArgTopK Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<InferenceResult, ArgTopK::inference_task>(
+        registrar, "ArgTopK Inference Task");
   }
   // Transpose task
   {

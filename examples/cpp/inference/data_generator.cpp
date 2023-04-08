@@ -19,7 +19,7 @@ int main(int argc, char const *argv[]) {
 
   // DataGenerator parameters
   size_t total_requests = 2560;
-  size_t token_dim = 16;
+  size_t vocab_size = 50257;
   size_t max_sequence_length = 512 + 128;
   bool use_poisson_distr = true;
   // average number of request arrivals per second
@@ -28,11 +28,11 @@ int main(int argc, char const *argv[]) {
   size_t min_input_tokens = 32, max_input_tokens = 512,
          min_tokens_to_generate = 1, max_tokens_to_generate = 128;
 
-  float *requests = (float *)calloc(
-      token_dim * max_sequence_length * total_requests, sizeof(float));
+  int *requests =
+      (int *)calloc(max_sequence_length * total_requests, sizeof(int));
 
   DataGenerator data_generator(total_requests,
-                               token_dim,
+                               vocab_size,
                                min_input_tokens,
                                max_input_tokens,
                                min_tokens_to_generate,

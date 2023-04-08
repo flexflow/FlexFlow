@@ -123,6 +123,7 @@ enum OperatorType {
   OP_SHAPE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Shape
   OP_SIZE,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Size
   OP_TOPK,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#TopK
+  OP_ARG_TOPK,
   OP_WHERE, // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Where
   OP_CEIL,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Ceil
   OP_CAST,  // https://github.com/onnx/onnx/blob/master/docs/Operators.md#Cast
@@ -146,6 +147,7 @@ enum OperatorType {
   OP_LAYERNORM,
   OP_EXPERTS,
   OP_GATHER, // https://pytorch.org/docs/stable/generated/torch.gather.html
+  OP_RMS_NORM,
   OP_INC_MULTIHEAD_SELF_ATTENTION,
   // Parallel Ops
   OP_REPARTITION,

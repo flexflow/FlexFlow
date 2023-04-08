@@ -147,7 +147,7 @@ void TopK::init_inference(FFModel const &ff,
   Runtime *runtime = ff.config.lg_hlr;
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   size_t machine_view_hash = view->hash();
-  set_argumentmap_for_init_inference(ff, argmap, view);
+  set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
   IndexLauncher launcher(TOPK_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(TopK)),
@@ -176,7 +176,7 @@ void TopK::init_inference(FFModel const &ff,
   launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  set_opmeta_from_futuremap_inference(ff, fm, view);
+  set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
 }
 
 void TopK::init(FFModel const &ff) {
@@ -273,7 +273,7 @@ FutureMap TopK::inference(FFModel const &ff,
   Runtime *runtime = ff.config.lg_hlr;
   parallel_is = batch_outputs[0]->parallel_is;
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
-  set_argumentmap_for_inference(ff, argmap, view);
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   /* std::cout << "TopK op machine_view: " << *(MachineView const *)mv
             << std::endl; */

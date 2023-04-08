@@ -47,7 +47,9 @@ struct ExpertsParams {
     OUTPUT_REPLICA,
     KERNEL_CHANNEL_IN,
     KERNEL_CHANNEL_OUT,
-    BIAS_CHANNEL_OUT
+    KERNEL_NUM_EXPERTS,
+    BIAS_CHANNEL_OUT,
+    BIAS_NUM_EXPERTS,
   };
 
   std::unordered_map<NamedDimensions, int>
