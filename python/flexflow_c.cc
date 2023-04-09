@@ -1015,16 +1015,16 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
   Initializer *kernel_initializer =
       FFCObjectWrapper::unwrap(kernel_initializer_);
   Tensor tensor = handle->inc_multihead_self_attention(input,
-                                              embed_dim,
-                                              num_heads,
-                                              kdim,
-                                              vdim,
-                                              dropout,
-                                              bias,
-                                              add_bias_kv,
-                                              add_zero_attn,
-                                              kernel_initializer,
-                                              name);
+                                                       embed_dim,
+                                                       num_heads,
+                                                       kdim,
+                                                       vdim,
+                                                       dropout,
+                                                       bias,
+                                                       add_bias_kv,
+                                                       add_zero_attn,
+                                                       kernel_initializer,
+                                                       name);
   return FFCObjectWrapper::wrap(tensor);
 }
 

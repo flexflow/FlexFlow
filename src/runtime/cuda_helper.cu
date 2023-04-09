@@ -63,13 +63,12 @@ __global__ void copy_kernel(DT *dst, const DT *src, coord_t size) {
 }
 
 template <typename DT>
-__global__ void copy_kernel_discrete(DT *dst, const DT *src, coord_t size, size_t* index) {
+__global__ void
+    copy_kernel_discrete(DT *dst, const DT *src, coord_t size, size_t *index) {
   CUDA_KERNEL_LOOP(i, size) {
     dst[i] = src[index[i]];
   }
 }
-
-
 
 template <typename DT>
 __global__ void reluBackward(DT *grad_ptr, const DT *output, size_t n) {
@@ -426,10 +425,14 @@ template __global__ void
 template __global__ void
     copy_kernel<int64_t>(int64_t *dst, int64_t const *src, coord_t size);
 
-template __global__ void
-    copy_kernel_discrete<float>(float *dst, float const *src, coord_t size, size_t* index);
-template __global__ void
-    copy_kernel_discrete<int64_t>(int64_t *dst, int64_t const *src, coord_t size, size_t* index);
+template __global__ void copy_kernel_discrete<float>(float *dst,
+                                                     float const *src,
+                                                     coord_t size,
+                                                     size_t *index);
+template __global__ void copy_kernel_discrete<int64_t>(int64_t *dst,
+                                                       int64_t const *src,
+                                                       coord_t size,
+                                                       size_t *index);
 
 template __global__ void apply_add_with_scale<float>(float *data_ptr,
                                                      float const *grad_ptr,
@@ -459,8 +462,9 @@ template __host__ void
 
 template __host__ void
     save_tensor<float>(float const *ptr, size_t rect, char const *file_name);
-template __host__ void
-    save_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *file_name);
+template __host__ void save_tensor<int64_t>(int64_t const *ptr,
+                                            size_t rect,
+                                            char const *file_name);
 
 template __host__ float *download_tensor<float>(float const *ptr,
                                                 size_t num_elements);

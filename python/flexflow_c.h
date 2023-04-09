@@ -368,7 +368,7 @@ flexflow_tensor_t flexflow_model_add_multihead_attention(
     bool add_zero_attn,
     flexflow_initializer_t kernel_initializer,
     char const *name);
-    
+
 flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
     flexflow_model_t handle_,
     const flexflow_tensor_t input_,

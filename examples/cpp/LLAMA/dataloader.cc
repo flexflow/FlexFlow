@@ -94,7 +94,7 @@ void DataLoader::next_batch(FFModel &ff,
     size_t next_batch_input_sz = sizeof(next_batch_input);
     assert(ptr->prev_batch_preds.size() == batch_predictions.size());
 
-    std::cout<<"next batch internal" << std::endl;
+    std::cout << "next batch internal" << std::endl;
     IndexLauncher launcher(CUSTOM_GPU_TASK_ID_1,
                            batch_input->parallel_is,
                            TaskArgument(ptr, next_batch_input_sz),

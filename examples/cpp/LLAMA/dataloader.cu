@@ -68,21 +68,23 @@ void DataLoader::load_input(Task const *task,
   size_t *cuda_index;
 
   //-------get index of input-----
-    std::cout << "print the input of batch 1....."<<std::endl;
-    for(int i = 0; i < batch_size; i++){
-       //todo meta->batch_idx * (llamaconfig.sentence_len * batch_size) 
-      index[i] = (llamaconfig.sentence_len * i) + meta.token_indexes[i].token_position; 
-      
-      std::cout << "token pos: "<< meta.token_indexes[i].token_position <<std::endl;
-      std::cout << "value: "<<full_input.ptr[index[i]] << std::endl;
-    }
-    cudaMalloc((void **)&cuda_index, batch_size * sizeof(size_t));
-    cudaMemcpy(cuda_index, index, batch_size * sizeof(size_t),
-    cudaMemcpyHostToDevice);
+  std::cout << "print the input of batch 1....." << std::endl;
+  for (int i = 0; i < batch_size; i++) {
+    // todo meta->batch_idx * (llamaconfig.sentence_len * batch_size)
+    index[i] =
+        (llamaconfig.sentence_len * i) + meta.token_indexes[i].token_position;
 
-    copy_kernel_discrete<<<GET_BLOCKS(size_to_copy), CUDA_NUM_THREADS>>>(
-        batch_input.ptr, full_input.ptr, size_to_copy, cuda_index);
-    checkCUDA(cudaDeviceSynchronize());
+    std::cout << "token pos: " << meta.token_indexes[i].token_position
+              << std::endl;
+    std::cout << "value: " << full_input.ptr[index[i]] << std::endl;
+  }
+  cudaMalloc((void **)&cuda_index, batch_size * sizeof(size_t));
+  cudaMemcpy(
+      cuda_index, index, batch_size * sizeof(size_t), cudaMemcpyHostToDevice);
+
+  copy_kernel_discrete<<<GET_BLOCKS(size_to_copy), CUDA_NUM_THREADS>>>(
+      batch_input.ptr, full_input.ptr, size_to_copy, cuda_index);
+  checkCUDA(cudaDeviceSynchronize());
 
   std::cout << "load input finished....." << std::endl;
 }
