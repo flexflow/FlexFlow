@@ -43,13 +43,13 @@
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
-#include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
 #include "flexflow/ops/reshape.h"
 #include "flexflow/ops/reverse.h"
+#include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
 #include "flexflow/ops/topk.h"
@@ -1582,7 +1582,7 @@ ParallelParameter FFModel::create_parallel_weight(const ParallelDim dims[],
   for (int i = 0; i < NDIM; i++) {
     p->dims[i] = dims[NDIM - 1 - i];
   }
-  
+
   assert(p->get_volume() > 0);
   assert(p->check_valid());
   return p;
@@ -2983,8 +2983,6 @@ void FFModel::compile(LossType loss_type,
             assert(op->op_type == layer->op_type);
             assert(op->numWeights == layer->numWeights);
             parallel_weight = op->weights[i];
-
-            
           }
         }
         assert(parallel_weight != nullptr);
@@ -2992,7 +2990,6 @@ void FFModel::compile(LossType loss_type,
       }
     }
   }
-  
 
   bool repl_labels = (operators[operators.size() - 1]->op_type == OP_AGG_SPEC);
   loss_op = new Loss(loss_type, repl_labels);
@@ -3039,7 +3036,6 @@ void FFModel::compile(LossType loss_type,
       }
     }
   }
-
 
   for (size_t l = 0; l < operators.size(); l++) {
     Op *op = operators[l];
@@ -4250,8 +4246,7 @@ void register_flexflow_internal_tasks() {
   }
   // rms norm task
   {
-    TaskVariantRegistrar registrar(RMSNROM_INIT_TASK_ID,
-                                   "rmsnorm_init_task");
+    TaskVariantRegistrar registrar(RMSNROM_INIT_TASK_ID, "rmsnorm_init_task");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta *, RMSNorm::init_task>(

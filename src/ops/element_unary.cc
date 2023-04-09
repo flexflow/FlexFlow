@@ -307,24 +307,27 @@ void ElementUnary::init_inference(
                               0 /*mapper_id*/,
                               machine_view_hash);
   if (!inplace) {
-    init_launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
-                                                           0 /*projection id*/,
-                                                           READ_ONLY,
-                                                           EXCLUSIVE,
-                                                           batch_inputs[0]->region));
+    init_launcher.add_region_requirement(
+        RegionRequirement(batch_inputs[0]->part,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          batch_inputs[0]->region));
     init_launcher.add_field(0, FID_DATA);
-    init_launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                           0 /*projection id*/,
-                                                           WRITE_ONLY,
-                                                           EXCLUSIVE,
-                                                           batch_outputs[0]->region));
+    init_launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region));
     init_launcher.add_field(1, FID_DATA);
   } else {
-    init_launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
-                                                           0 /*projection id*/,
-                                                           READ_WRITE,
-                                                           EXCLUSIVE,
-                                                           batch_inputs[0]->region));
+    init_launcher.add_region_requirement(
+        RegionRequirement(batch_inputs[0]->part,
+                          0 /*projection id*/,
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          batch_inputs[0]->region));
     init_launcher.add_field(0, FID_DATA);
   }
   FutureMap fm = runtime->execute_index_space(ctx, init_launcher);
@@ -402,11 +405,12 @@ void ElementUnary::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-FutureMap ElementUnary::inference(FFModel const &ff,
-                             BatchConfig const &bc,
-                             std::vector<ParallelTensor> const &batch_inputs,
-                             std::vector<ParallelTensor> const &batch_outputs,
-                             MachineView const *mv) {
+FutureMap
+    ElementUnary::inference(FFModel const &ff,
+                            BatchConfig const &bc,
+                            std::vector<ParallelTensor> const &batch_inputs,
+                            std::vector<ParallelTensor> const &batch_outputs,
+                            MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -426,11 +430,12 @@ FutureMap ElementUnary::inference(FFModel const &ff,
   if (inplace) {
     assert(batch_outputs[0]->part == batch_inputs[0]->part);
     assert(batch_outputs[0]->region == batch_inputs[0]->region);
-    launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                      0 /*projection id*/,
-                                                      READ_WRITE,
-                                                      EXCLUSIVE,
-                                                      batch_outputs[0]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part,
+                          0 /*projection id*/,
+                          READ_WRITE,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region));
     launcher.add_field(0, FID_DATA);
   } else {
     launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
@@ -439,11 +444,12 @@ FutureMap ElementUnary::inference(FFModel const &ff,
                                                       EXCLUSIVE,
                                                       batch_inputs[0]->region));
     launcher.add_field(0, FID_DATA);
-    launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                      0 /*projection id*/,
-                                                      WRITE_ONLY,
-                                                      EXCLUSIVE,
-                                                      batch_outputs[0]->region));
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region));
     launcher.add_field(1, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);
