@@ -21,7 +21,7 @@ using namespace Legion;
 using namespace FlexFlow;
 
 struct LLAMAConfig {
-   LLAMAConfig(void) {
+  LLAMAConfig(void) {
     // todo read from config/param file
     n_layers = 32;
     vocab_size = 32000;
@@ -31,7 +31,11 @@ struct LLAMAConfig {
     norm_eps = 1e-6;
     total_sentence = 5;
     sentence_len = 347;
+    max_gen_length = 256;
     batchSize = 5;
+    total_requests = 2560;
+    incremental_mode = true;
+    sequence_length = MAX_SEQ_LEN;
 
     // todo from args
     weight_file_path = "/home/ubuntu/FlexFlow/examples/cpp/LLAMA/weights/";
@@ -43,8 +47,10 @@ struct LLAMAConfig {
     hidden_dim =
         multiple_of * int((hidden_dim + multiple_of - 1) / multiple_of);
   }
-  int n_heads, n_layers, vocab_size, dim, multiple_of, norm_eps, hidden_dim,
-      total_sentence, sentence_len, batchSize;
+  int n_heads, n_layers, vocab_size, dim, multiple_of, hidden_dim,
+      total_sentence, sentence_len, batchSize, total_requests, incremental_mode,
+      sequence_length, max_gen_length;
+  float norm_eps;
   std::string weight_file_path;
   std::string input_path;
 };
@@ -54,7 +60,9 @@ public:
   DataLoader(FFModel &ff,
              LLAMAConfig const *llamaconfig,
              ParallelTensor const &input);
-  void next_batch(FFModel &ff);
+  void next_batch(FFModel &ff,
+                  BatchConfig *bc,
+                  std::map<size_t, int> &batch_predictions);
   void reset();
   static void load_entire_dataset(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
@@ -72,10 +80,14 @@ public:
   static void load_attention_weights(T *ptr,
                                      size_t size,
                                      std::string layer_name,
-                                     std::string weight_path);                         
+                                     std::string weight_path);
+  void store_outputs(BatchConfig *bc,
+                     InferenceResult const &ir,
+                     std::map<size_t, int> &batch_predictions);
 
 public:
   int num_samples, next_index, next_token_idx, next_batch_index;
+  std::map<size_t, std::vector<int>> outputs;
   FlexFlow::ParallelTensor full_input, batch_input;
 };
 
@@ -84,4 +96,9 @@ struct SampleIdxs {
   int idxs[MAX_NUM_SAMPLES];
   int token_idx;
   int batch_idx;
+};
+
+struct DataLoaderNextBatchInput {
+  BatchConfig::SampleIdxs const &meta;
+  std::map<size_t, int> const &prev_batch_preds;
 };

@@ -225,11 +225,34 @@ __host__ void
   printf("%s", prefix);
   for (idx = 0; idx < num_elements; idx++) {
     printf(" %.4lf", (float)host_ptr[idx]);
-    if (idx >= 16) {
+    if (idx >= 32) {
       break;
     }
   }
   printf("\n");
+  checkCUDA(cudaFreeHost(host_ptr));
+}
+
+template <typename T>
+__host__ void
+    save_tensor(T const *ptr, size_t num_elements, char const *file_name) {
+  // device synchronize to make sure the data are ready
+  // checkCUDA(cudaDeviceSynchronize());
+  T *host_ptr;
+  checkCUDA(cudaHostAlloc(&host_ptr,
+                          sizeof(T) * num_elements,
+                          cudaHostAllocPortable | cudaHostAllocMapped));
+  checkCUDA(cudaMemcpy(
+      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
+  // checkCUDA(cudaDeviceSynchronize());
+
+  FILE *tensor_file;
+  tensor_file = fopen(file_name, "w");
+  
+  for (unsigned i = 0; i < num_elements; i++) {
+    fprintf(tensor_file, "%f, ", (float)host_ptr[i]);
+  }
+  fclose(tensor_file);
   checkCUDA(cudaFreeHost(host_ptr));
 }
 
@@ -437,6 +460,11 @@ template __host__ void
     print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
 template __host__ void
     print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
+
+template __host__ void
+    save_tensor<float>(float const *ptr, size_t rect, char const *file_name);
+template __host__ void
+    save_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *file_name);
 
 template __host__ float *download_tensor<float>(float const *ptr,
                                                 size_t num_elements);

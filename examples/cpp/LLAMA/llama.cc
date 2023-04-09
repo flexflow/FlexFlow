@@ -18,7 +18,24 @@
 
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_app("minigpt");
+LegionRuntime::Logger::Category log_app("llama");
+
+void parse_input_args(char **argv, int argc, LLAMAConfig &config) {
+  for (int i = 1; i < argc; i++) {
+
+    //input
+    if (!strcmp(argv[i], "--dataset")) {
+      config.input_path = std::string(argv[++i]);
+      continue;
+    }
+
+    //weights
+    if (!strcmp(argv[i], "--weights")) {
+      config.weight_file_path = std::string(argv[++i]);
+      continue;
+    }
+  }
+}
 
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
@@ -28,6 +45,11 @@ void FlexFlow::top_level_task(Task const *task,
   LLAMAConfig llamaConfig;
   FFModel ff(ffconfig);
   std::unordered_map<std::string, Layer *> weights_layers;
+
+  InputArgs const &command_args = HighLevelRuntime::get_input_args();
+    char **argv = command_args.argv;
+    int argc = command_args.argc;
+    parse_input_args(argv, argc, llamaConfig);
 
   //------------------------------ build the model --------------------------
   Tensor input;
@@ -49,7 +71,7 @@ void FlexFlow::top_level_task(Task const *task,
 
   // std::cout << "------token shape";
   // std::cout << token->num_dims << "------\n";
-  // for(int i = 0; i < token->num_dims; i++){
+  // for (int i = 0; i < token->num_dims; i++) {
   //   std::cout << token->dims[i] << "------\n";
   // }
 
@@ -57,39 +79,40 @@ void FlexFlow::top_level_task(Task const *task,
   for (int i = 0; i < 1; i++) {
     // step 1: attention
     std::vector<int> axes = {2};
-    Tensor norm_output =
-        ff.layer_norm(token, axes, false, llamaConfig.norm_eps);
+    Tensor att_norm = ff.rms_norm(token, llamaConfig.norm_eps, llamaConfig.dim);
     Layer *attention_norm = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) +
                                "_attention_norm_weight",
                            attention_norm);
-
-    // TODO add a rotary embedding before calling attention
-    Tensor mha = ff.multihead_attention(norm_output,
-                                        norm_output,
-                                        norm_output,
+    Tensor mha =
+        ff.inc_multihead_self_attention(att_norm,
                                         llamaConfig.dim,
                                         llamaConfig.n_heads,
                                         llamaConfig.dim / llamaConfig.n_heads,
-                                        llamaConfig.dim / llamaConfig.n_heads);
-
+                                        llamaConfig.dim / llamaConfig.n_heads,
+                                        0.0f,
+                                        true,
+                                        false,
+                                        false,
+                                        NULL,
+                                        true);
     Layer *attention_layer = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) + "_attention_weight",
                            attention_layer);
     token = ff.add(token, mha);
 
     // step 2: SILU activaion
-    Tensor ffn_norm = ff.layer_norm(token, axes, false, llamaConfig.norm_eps);
+    Tensor ff_norm = ff.rms_norm(token, llamaConfig.norm_eps, llamaConfig.dim);
     Layer *ffn_layer = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) + "_ffn_norm_weight",
                            ffn_layer);
 
-    Tensor w1 = ff.dense(ffn_norm, llamaConfig.hidden_dim, AC_MODE_RELU, false);
+    Tensor w1 = ff.dense(ff_norm, llamaConfig.hidden_dim, AC_MODE_NONE, false);
     Layer *w1_layer = ff.layers.back();
     weights_layers.emplace(
         "layers_" + std::to_string(i) + "_feed_forward_w1_weight", w1_layer);
 
-    Tensor w3 = ff.dense(ffn_norm, llamaConfig.hidden_dim, AC_MODE_RELU, false);
+    Tensor w3 = ff.dense(ff_norm, llamaConfig.hidden_dim, AC_MODE_NONE, false);
     Layer *w3_layer = ff.layers.back();
     weights_layers.emplace(
         "layers_" + std::to_string(i) + "_feed_forward_w3_weight", w3_layer);
@@ -98,47 +121,53 @@ void FlexFlow::top_level_task(Task const *task,
     Tensor silu = ff.multiply(w1, sigmoid);
     Tensor multi = ff.multiply(silu, w3);
 
-    Tensor w2 = ff.dense(multi, llamaConfig.dim, AC_MODE_RELU, false);
+    Tensor w2 = ff.dense(multi, llamaConfig.dim, AC_MODE_NONE, false);
     Layer *w2_layer = ff.layers.back();
     weights_layers.emplace(
         "layers_" + std::to_string(i) + "_feed_forward_w2_weight", w2_layer);
     token = ff.add(token, w2);
   }
 
+  //final normalization and linear
   std::vector<int> axes = {2};
-  token = ff.layer_norm(token, axes, true, llamaConfig.norm_eps);
-  Tensor output = ff.dense(token, llamaConfig.vocab_size, AC_MODE_RELU, false);
+  token = ff.rms_norm(token, 1e-6, 4096);
+  Layer *final_norm = ff.layers.back();
+  weights_layers.emplace("norm_weight", final_norm);
+
+
+  Tensor dense = ff.dense(token, llamaConfig.vocab_size, AC_MODE_NONE, false);
+  Layer *final_linear = ff.layers.back();
+  weights_layers.emplace("output_weight", final_linear);
+
+  Tensor output = ff.arg_top_k(dense, /*k=*/1, false);
+
+  // Tensor top1_output[2];
+  // ff.top_k(dense, top1_output, 1, false);
+  // // placeholder
+  // Tensor output = ff.scalar_add(top1_output[1], 0, false, "scalar_add");
 
   //------------------- compile the model --------------------------------
-
-  InferenceManager im(
-      &ff, llamaConfig.batchSize, 4);
+  std::cout << "------start compile ----------" << std::endl;
+  InferenceManager im(&ff, llamaConfig.batchSize, 1);
   im.compile_model_and_allocate_buffer();
+
+  std::cout << "------init ops----------" << std::endl;
   im.init_operators_inference();
-
-
-  // optimizer
-  // Optimizer *optimizer = new SGDOptimizer(&ff, 0.01f);
-  // std::vector<MetricsType> metrics;
-  // metrics.push_back(METRICS_ACCURACY);
-  // metrics.push_back(METRICS_SPARSE_CATEGORICAL_CROSSENTROPY);
-  // ff.compile(optimizer, LOSS_SPARSE_CATEGORICAL_CROSSENTROPY, metrics);
-  // std::cout << "------model compiled ----------" << std::endl;
-  
-
+  std::cout << "------model compiled and init ----------" << std::endl;
 
   //------------------------------ load inputs --------------------------
+  std::cout << "------create dataloaders ----------" << std::endl;
   // read prompt into input
   ParallelTensor input_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
-  // assert(im.tensor_buffer.find(input_pt) != im.tensor_buffer.end());
-  DataLoader loader(ff, &llamaConfig, input_pt);
-
-  
+  assert(im.tensor_buffer.find(input_pt) != im.tensor_buffer.end());
+  std::cout << im.tensor_buffer[input_pt].size() << std::endl;
+  DataLoader loader(ff, &llamaConfig, im.tensor_buffer[input_pt].at(0));
 
   //------------------------------ load weights---------------------------
   for (auto &v : weights_layers) {
     Tensor weight = v.second->weights[0];
+    std::cout << "weights layer: " << v.first << "\n";
 
     if (weight == NULL) {
       std::cout << "op no weights : " << v.first << "\n";
@@ -155,42 +184,80 @@ void FlexFlow::top_level_task(Task const *task,
     assert(weight->data_type == DT_FLOAT);
     float *data = (float *)malloc(sizeof(float) * volume);
 
-    if (v.first.find("attention") != std::string::npos) {
+    if (v.first.find("attention_w") != std::string::npos) {
       loader.load_attention_weights(
           data, volume, v.first, llamaConfig.weight_file_path);
+
     } else {
       loader.load_from_file(
           data, volume, llamaConfig.weight_file_path + v.first);
+      if (v.first.find("attention_norm") != std::string::npos) {
+        // std::cout << "norm weight data" << std::endl;
+        // for (int i = 0; i < 100; i++) {
+        //   std::cout << data[i] << ", ";
+        // }
+      }
     }
 
-    weight->set_tensor<float>(&ff, dims_vec, data);
+    ParallelTensor weight_pt;
+    ff.get_parallel_tensor_from_tensor(weight, weight_pt);
+    weight_pt->set_tensor<float>(&ff, dims_vec, data);
   }
   std::cout << "------load wieght finished----------" << std::endl;
 
-  
   //------------------------------ do inference---------------------------
-  BatchConfig *bc = new BatchConfig();
-  // ff.init_operators();
+  int processed_requests = 0;
+  std::map<int, Future> future_handlers;
+  std::map<int, BatchConfig *> batch_configs;
+  BatchConfig *bc = nullptr;
+  std::map<size_t, int> batch_predictions[1];
   loader.reset();
-  loader.next_batch(ff);
-  
-  
-  FutureMap fm = im.inference(0, *bc);
-  loader.next_batch(ff);
-  fm = im.inference(0, *bc);
-  
-  // // first iteration: total batch/batch size
-  // for (int i = 0; i < (llamaConfig.total_sentence / llamaConfig.batchSize);
-  //      i++) {
-  //   // second iteration: for each batch, predict one by one token
-  //   for (int j = 0; j < llamaConfig.sentence_len; j++) {
-  //     // input shape: batch_size * 1
-  //     std::cout << "iteration" << j << ", ";
-  //     FutureMap fm = im.inference(bid, *bc);
-  //     loader.next_batch(ff);
-  //   }
-  //   loader.reset();
-  //   // TODO process one sentence
-  // }
+
+  while (processed_requests < llamaConfig.sentence_len) {
+    int bid = 0;
+    size_t max_reqs, max_tkns;
+    if (future_handlers.find(bid) == future_handlers.end()) {
+      bc = new BatchConfig();
+    } else {
+      // have luanched this bid
+      Future future = future_handlers[bid];
+      if (!future.is_ready(true /*subscribe*/)) {
+        continue;
+      }else{
+        std::cout<< "future is ready...." << std::endl;       
+      }
+      // process end
+      InferenceResult ir = future.get_result<InferenceResult>();
+      bc = batch_configs[bid];
+
+      std::cout<< "store outputs start...." << std::endl;       
+      loader.store_outputs(bc, ir, batch_predictions[bid]);
+      processed_requests += bc->update_results(ir);
+      break;
+    }
+    // batch cofig register 5 reqs
+    for (int i = 0; i < llamaConfig.batchSize; i++) {
+      assert(bc->register_new_request(i, 1, llamaConfig.max_gen_length));
+    }
+
+    std::cout << "prepare next batch" << std::endl;
+    bc->prepare_next_batch();
+    std::cout << " next batch" << std::endl;
+    loader.next_batch(ff, bc, batch_predictions[bid]);
+
+    bc->prepare_next_batch();
+    loader.next_batch(ff, bc, batch_predictions[bid]);
+    break;
+
+
+    // runtime->issue_execution_fence(ctx);
+    // FutureMap fm = im.inference(bid, *bc);
+    // runtime->issue_execution_fence(ctx);
+    // assert(fm.get_future_map_domain().get_volume() == 1);
+    // future_handlers[bid] = fm.get_future(0);
+    // batch_configs[bid] = bc;
+  }
+
+  // float* data
   std::cout << "----------inference finished--------------" << std::endl;
 }

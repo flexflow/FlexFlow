@@ -41,6 +41,7 @@ InferenceManager::InferenceManager(FFModel *_model,
 void InferenceManager::compile_model_and_allocate_buffer(void) {
   std::vector<MetricsType> metrics;
   model->config.batchSize = max_num_requests_per_batch;
+  std::cout<<"compile-------\n";
   model->compile(
       LOSS_MEAN_SQUARED_ERROR_AVG_REDUCE, metrics, COMP_MODE_INFERENCE);
   Context ctx = model->config.lg_ctx;

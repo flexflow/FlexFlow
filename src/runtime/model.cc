@@ -43,6 +43,7 @@
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
+#include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
@@ -1581,6 +1582,7 @@ ParallelParameter FFModel::create_parallel_weight(const ParallelDim dims[],
   for (int i = 0; i < NDIM; i++) {
     p->dims[i] = dims[NDIM - 1 - i];
   }
+  
   assert(p->get_volume() > 0);
   assert(p->check_valid());
   return p;
@@ -2824,6 +2826,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_RMS_NORM: {
+      Op *op = RMSNorm::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_LINEAR: {
       Op *op = Linear::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -2976,6 +2983,8 @@ void FFModel::compile(LossType loss_type,
             assert(op->op_type == layer->op_type);
             assert(op->numWeights == layer->numWeights);
             parallel_weight = op->weights[i];
+
+            
           }
         }
         assert(parallel_weight != nullptr);
@@ -2983,6 +2992,7 @@ void FFModel::compile(LossType loss_type,
       }
     }
   }
+  
 
   bool repl_labels = (operators[operators.size() - 1]->op_type == OP_AGG_SPEC);
   loss_op = new Loss(loss_type, repl_labels);
@@ -2992,6 +3002,14 @@ void FFModel::compile(LossType loss_type,
   TaskLauncher launcher(UPDATE_METRICS_TASK_ID,
                         TaskArgument(metrics_op, sizeof(Metrics)));
   current_metrics = runtime->execute_task(ctx, launcher);
+
+  for (size_t l = 0; l < operators.size(); l++) {
+    Op *op = operators[l];
+    if(op->numWeights > 0){
+std::cout << "opppppp: " << op->name <<"region: " << op->weights[0]->region <<std::endl;
+    }
+    
+  }
 
   // Perform inplace optimizations
   if (config.enable_inplace_optimizations) {
@@ -3030,16 +3048,27 @@ void FFModel::compile(LossType loss_type,
     }
   }
 
+
   for (size_t l = 0; l < operators.size(); l++) {
     Op *op = operators[l];
+    if(op->numWeights > 0){
+std::cout << "opppppp1111: " << op->name <<"region: " << op->weights[0]->region <<std::endl;
+    }
+
     for (int i = 0; i < op->numInputs; i++) {
       assert(op->inputs[i]->owner_op != NULL);
     }
     for (int i = 0; i < op->numWeights; i++) {
       assert(op->weights[i]->owner_op != NULL);
+
+      std::cout << "oP: " << op->name << "i: " << i <<"region: " << op->weights[i]->region <<std::endl;
+      // std::cout << "invalid region: " << LogicalRegion::NO_REGION <<std::endl;
+
       assert(op->weights[i]->region != LogicalRegion::NO_REGION);
       parameters.push_back(op->weights[i]);
     }
+
+    std::cout << "op map tensors: " << op->name <<"-" << config.computationMode<<std::endl;
     op->map_output_tensors(*this);
     // for (int i = 0; i < op->numOutputs; i++) {
     //   // Output tensor
@@ -4234,6 +4263,22 @@ void register_flexflow_internal_tasks() {
     registrar.set_leaf();
     Runtime::preregister_task_variant<LayerNorm::forward_task>(
         registrar, "layernorm_fwd_task");
+  }
+  // rms norm task
+  {
+    TaskVariantRegistrar registrar(RMSNROM_INIT_TASK_ID,
+                                   "rmsnorm_init_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, RMSNorm::init_task>(
+        registrar, "rmsnorm_init_task");
+  }
+  {
+    TaskVariantRegistrar registrar(RMSNROM_FWD_TASK_ID, "rmsnorm_fwd_task");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<RMSNorm::forward_task>(
+        registrar, "rmsnorm_fwd_task");
   }
   {
     TaskVariantRegistrar registrar(LAYERNORM_BWD_TASK_ID, "layernorm_bwd_task");

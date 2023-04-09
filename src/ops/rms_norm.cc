@@ -50,6 +50,7 @@ RMSNormParams RMSNorm::get_params() const {
   RMSNormParams params;
   params.layer_guid = this->layer_guid;
   params.eps = this->eps;
+  params.dim = this->dim;
   return params;
 }
 
@@ -69,7 +70,7 @@ Tensor FFModel::rms_norm(const Tensor input,
       input->num_dims, input->dims, DT_FLOAT, rm, 0, true /*create_grad*/);
 
   // weights
-  int weight_dims[1] = {input->dims[input->num_dims - 1]};
+  int weight_dims[1] = {dim};
   rm->weights[0] = create_weight_legion_ordering(1,
                                                  weight_dims,
                                                  DT_FLOAT,
@@ -77,7 +78,9 @@ Tensor FFModel::rms_norm(const Tensor input,
                                                  true /*create_grad*/,
                                                  nullptr,
                                                  CHOSEN_SYNC_TYPE);
+
   rm->add_float_property("eps", eps);
+  rm->add_int_property("dim", dim);
   layers.push_back(rm);
   return rm->outputs[0];
 }
@@ -88,19 +91,44 @@ Op *RMSNorm::create_operator_from_layer(
     std::vector<ParallelTensor> const &inputs) {
   float eps;
   layer->get_float_property("eps", eps);
-  return new RMSNorm(model, layer->layer_guid, inputs[0], eps, layer->name);
+  long long value;
+  layer->get_int_property("dim", value);
+  int dim = value;
+
+  return new RMSNorm(
+      model, layer->layer_guid, inputs[0], eps, dim, false, layer->name);
 }
 
 RMSNorm::RMSNorm(FFModel &model,
                  RMSNormParams const &params,
                  ParallelTensor const input,
+                 bool allocate_weights = false,
                  char const *name)
-    : RMSNorm(model, params.layer_guid, input, params.eps, name) {}
+    : RMSNorm(model,
+              params.layer_guid,
+              input,
+              params.eps,
+              params.dim,
+              allocate_weights,
+              name) {}
 
+RMSNorm::RMSNorm(FFModel &model,
+                 RMSNorm const &other,
+                 const ParallelTensor input,
+                 bool allocate_weights)
+    : RMSNorm(model,
+              other.layer_guid,
+              input,
+              other.eps,
+              other.dim,
+              allocate_weights,
+              other.name) {}
 RMSNorm::RMSNorm(FFModel &model,
                  LayerID const &_layer_guid,
                  const ParallelTensor _input,
                  float _eps,
+                 int dim,
+                 bool allocate_weights,
                  char const *name)
     : Op(model,
          OP_RMS_NORM,
@@ -110,10 +138,11 @@ RMSNorm::RMSNorm(FFModel &model,
          1 /*num of weights tensor */,
          1 /*onum of utputs tensor */,
          _input) {
-
+  eps = _eps;
   inputs[0] = _input;
-
+  layer_guid = _layer_guid;
   int num_dims = _input->num_dims;
+  this->dim = dim;
   data_dim = _input->dims[0].size;
   effective_batch_size = 1;
   for (int i = 1; i <= num_dims - 2; i++) {
@@ -122,32 +151,32 @@ RMSNorm::RMSNorm(FFModel &model,
 
   // output has the same parallel dims as input
   ParallelDim output_dims[MAX_TENSOR_DIM];
-  ParallelDim weight_dims[MAX_TENSOR_DIM];
   for (int i = 0; i < _input->num_dims; i++) {
     output_dims[i] = _input->dims[i];
-    weight_dims[i] = _input->dims[i];
-    weight_dims[i].size = 1;
   }
-
-  // weights should have the shape of (data_dim, data_dim)
-  weight_dims[0].size = _input->dims[0].size;
-  weight_dims[1].size = _input->dims[0].size;
-
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _input->num_dims, output_dims, _input->data_type, this);
 
-  // weights
-  Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
+  if (allocate_weights) {
+    // weights should have the shape of (data_dim, data_dim)
+    ParallelDim new_weight_dims[MAX_TENSOR_DIM];
 
-  // TODO: weight dims check
-  weights[0] =
-      model.create_parallel_weight_legion_ordering(_input->num_dims,
-                                                   weight_dims,
-                                                   _input->data_type,
-                                                   this /*owner_op*/,
-                                                   true /*create_grad*/,
-                                                   kernel_initializer,
-                                                   CHOSEN_SYNC_TYPE);
+    new_weight_dims[0] = _input->dims[_input->num_dims - 1];
+    new_weight_dims[1].size = dim;
+    new_weight_dims[1].degree = 1;
+    new_weight_dims[1].parallel_idx = -1;
+
+    // weights
+    Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
+    weights[0] =
+        model.create_parallel_weight_legion_ordering(2,
+                                                     new_weight_dims,
+                                                     _input->data_type,
+                                                     NULL /*owner_op*/,
+                                                     false /*create_grad*/,
+                                                     kernel_initializer,
+                                                     CHOSEN_SYNC_TYPE);
+  }
 }
 
 void RMSNorm::init(FFModel const &ff) {
@@ -177,6 +206,13 @@ void RMSNorm::init(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     inputs[0]->region));
   launcher.add_field(1, FID_DATA);
+
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
@@ -215,6 +251,13 @@ void RMSNorm::init_inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(1, FID_DATA);
+
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
@@ -319,17 +362,18 @@ void RMSNorm::forward_task(Task const *task,
   assert(regions.size() == 3);
   RMSNormMeta const *m = *((RMSNormMeta **)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
-      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
-      m->input_type[1], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+      DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
-      m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+      DT_FLOAT, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
+      DT_FLOAT, regions[2], task->regions[2], FID_DATA, ctx, runtime);
   forward_kernel_wrapper(m, input, weight, output);
 }
 
 void RMSNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->eps);
+  sez.serialize(this->dim);
 }
 
 using PCG::Node;
@@ -341,13 +385,16 @@ Node RMSNorm::deserialize(FFModel &ff,
   assert(num_inputs == 1);
   float eps;
   size_t id;
+  int dim;
   dez.deserialize(id);
+
   LayerID layer_guid(id);
   dez.deserialize(eps);
-
+  dez.deserialize(dim);
   RMSNormParams params;
   params.layer_guid = layer_guid;
   params.eps = eps;
+  params.dim = dim;
   return ff.get_or_create_node<RMSNorm>(inputs[0], params);
 }
 
@@ -372,6 +419,8 @@ size_t hash<FlexFlow::RMSNormParams>::operator()(
     FlexFlow::RMSNormParams const &params) const {
   size_t key = 0;
   hash_combine(key, params.eps);
+  hash_combine(key, params.layer_guid.id);
+  hash_combine(key, params.dim);
   return key;
 }
 }; // namespace std

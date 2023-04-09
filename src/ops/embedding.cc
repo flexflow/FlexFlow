@@ -370,9 +370,9 @@ void Embedding::init(FFModel const &ff) {
 }
 
 void Embedding::init_inference(FFModel const &ff,
-                            std::vector<ParallelTensor> const &batch_inputs,
-                            std::vector<ParallelTensor> const &batch_outputs,
-                            MachineView const *mv) {
+                               std::vector<ParallelTensor> const &batch_inputs,
+                               std::vector<ParallelTensor> const &batch_outputs,
+                               MachineView const *mv) {
   assert(check_output_input_weight_same_parallel_is());
   parallel_is = batch_outputs[0]->parallel_is;
   ArgumentMap argmap;
@@ -380,7 +380,7 @@ void Embedding::init_inference(FFModel const &ff,
   Runtime *runtime = ff.config.lg_hlr;
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   size_t machine_view_hash = view->hash();
-  set_argumentmap_for_init_inference(ff, argmap, view);
+  set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
   IndexLauncher launcher(EMBED_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Embedding)),
@@ -403,16 +403,9 @@ void Embedding::init_inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     weights[0]->region));
   launcher.add_field(1, FID_DATA);
-// regions[3]: input_grad
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
-  launcher.add_field(2, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
-  set_opmeta_from_futuremap(ff, fm);
+  set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
 }
 
 OpMeta *Embedding::init_task(Task const *task,
@@ -466,17 +459,17 @@ void Embedding::forward(FFModel const &ff) {
 }
 
 FutureMap Embedding::inference(FFModel const &ff,
-                            BatchConfig const &bc,
-                            std::vector<ParallelTensor> const &batch_inputs,
-                            std::vector<ParallelTensor> const &batch_outputs,
-                            MachineView const *mv) {
+                               BatchConfig const &bc,
+                               std::vector<ParallelTensor> const &batch_inputs,
+                               std::vector<ParallelTensor> const &batch_outputs,
+                               MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
 
   parallel_is = batch_outputs[0]->parallel_is;
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
-  set_argumentmap_for_inference(ff, argmap, view);
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
 
   IndexLauncher launcher(EMBED_FWD_TASK_ID,

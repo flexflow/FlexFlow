@@ -997,6 +997,37 @@ flexflow_tensor_t flexflow_model_add_multihead_attention(
   return FFCObjectWrapper::wrap(tensor);
 }
 
+flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
+    flexflow_model_t handle_,
+    const flexflow_tensor_t input_,
+    int embed_dim,
+    int num_heads,
+    int kdim,
+    int vdim,
+    float dropout,
+    bool bias,
+    bool add_bias_kv,
+    bool add_zero_attn,
+    flexflow_initializer_t kernel_initializer_,
+    char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Initializer *kernel_initializer =
+      FFCObjectWrapper::unwrap(kernel_initializer_);
+  Tensor tensor = handle->inc_multihead_self_attention(input,
+                                              embed_dim,
+                                              num_heads,
+                                              kdim,
+                                              vdim,
+                                              dropout,
+                                              bias,
+                                              add_bias_kv,
+                                              add_zero_attn,
+                                              kernel_initializer,
+                                              name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
 void flexflow_model_set_sgd_optimizer(flexflow_model_t handle_,
                                       flexflow_sgd_optimizer_t optimizer_) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);

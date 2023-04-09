@@ -8,7 +8,7 @@ namespace FlexFlow {
 struct RMSNormParams {
   LayerID layer_guid;
   float eps;
-
+  int dim;
   bool is_valid(ParallelTensorShape const &) const;
 };
 

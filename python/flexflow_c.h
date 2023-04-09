@@ -368,6 +368,20 @@ flexflow_tensor_t flexflow_model_add_multihead_attention(
     bool add_zero_attn,
     flexflow_initializer_t kernel_initializer,
     char const *name);
+    
+flexflow_tensor_t flexflow_model_add_inc_multihead_attention(
+    flexflow_model_t handle_,
+    const flexflow_tensor_t input_,
+    int embed_dim,
+    int num_heads,
+    int kdim,
+    int vdim,
+    float dropout,
+    bool bias,
+    bool add_bias_kv,
+    bool add_zero_attn,
+    flexflow_initializer_t kernel_initializer_,
+    char const *name);
 
 void flexflow_model_set_sgd_optimizer(flexflow_model_t handle,
                                       flexflow_sgd_optimizer_t optimizer);
