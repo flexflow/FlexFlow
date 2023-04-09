@@ -52,28 +52,29 @@ std::unordered_map<MultiDiEdge, ParallelTensorShape> infer_tensor_shapes(Paralle
 /*   return { raw_subgraph, raw_nodeMap }; */
 /* } */
 
-/* struct GetNodes { */
-/*   template <typename T> */
-/*   std::unordered_set<Node> operator()(T const &t) { */
-/*    return get_nodes(t); */ 
-/*   } */
-/* }; */
+struct GetNodes {
+  template <typename T>
+  std::unordered_set<Node> operator()(T const &t) {
+   return get_nodes(t);
+  }
 
-/* std::unordered_set<Node> get_nodes(Serial const &serial) { */
-/*   return set_union(vector_transform(GetNodes{}, serial.children)); */
-/* } */
+};
 
-/* std::unordered_set<Node> get_nodes(Parallel const &parallel) { */
-/*   return set_union(vector_transform(GetNodes{}, parallel.children)); */
-/* } */
+std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
+   return mpark::visit(GetNodes{}, sp); 
+} 
 
-/* std::unordered_set<Node> get_nodes(Node const &node) { */
-/*   return {node}; */
-/* } */
+std::unordered_set<Node> get_nodes(Serial const &serial) {
+  return set_union(vector_transform([](mpark::variant<Parallel, Node> const child) { return mpark::visit(GetNodes{}, child);}, serial.children));
+}
 
-/* std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) { */
-/*   return mpark::visit(GetNodes{}, sp); */
-/* } */
+std::unordered_set<Node> get_nodes(Parallel const &parallel) {
+  return set_union(vector_transform([](mpark::variant<Serial, Node> const child) { return mpark::visit(GetNodes{}, child);}, parallel.children));
+}
+
+std::unordered_set<Node> get_nodes(Node const &node) {
+  return {node};
+}
 
 /* float optimal_cost(ParallelComputationGraph const &g, std::unordered_set<MachineView> const &allowed_machine_views) { */
 /*   auto sp_decomposition = get_serial_parallel_decomposition(g); */
@@ -148,9 +149,29 @@ struct LabelledOpenMultiDiGraph {
 
 using SubParallelComputationGraph = LabelledOpenMultiDiGraph<PCGOperatorAttrs, ParallelTensorShape, MachineView>;
 
-std::unordered_set<Node> get_close_sources(IOpenMultiDiGraph const &g);
-std::unordered_set<Node> get_close_sinks(IOpenMultiDiGraph const &g);
+std::unordered_set<Node> get_close_sources(IOpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_close_sinks(IOpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_open_sources(IOpenMultiDiGraphView const &g);
+std::unordered_set<Node> get_open_sinks(IOpenMultiDiGraphView const &g);
 
+std::unordered_set<MultiDiEdge> get_cut(IOpenMultiDiGraphView const &g, GraphSplit const &split);
+
+enum class InputSettings {
+  INCLUDE_INPUTS,
+  EXCLUDE_INPUTS
+};
+
+enum class OutputSettings {
+  INCLUDE_OUTPUTS,
+  EXCLUDE_OUTPUTS
+};
+
+SubParallelComputationGraph get_subgraph(
+  SubParallelComputationGraph const &g,
+  std::unordered_set<Node> const &nodes,
+  InputSettings input_settings,
+  OutputSettings output_settings) {
+}
 
 // using SubParallelComputationGraph = mpark::variant<
 //   ParallelComputationGraph,
@@ -187,15 +208,49 @@ float estimate_cost(SubParallelComputationGraph const &g,
 //   }
 // }
 
+// Is there a better way through meta-programming?
+struct VariantCast {
+  template<typename T>
+  SerialParallelDecomposition const &operator()(T const &t) {
+    return cast(t);
+  }
+
+  SerialParallelDecomposition const &cast(Serial const &serial) {
+    return serial;
+  }
+
+  SerialParallelDecomposition const &cast(Parallel const &parallel) {
+    return parallel;
+  }
+
+  SerialParallelDecomposition const &cast(Node const &node) {
+    return node;
+  }
+};
+
+template<typename T>
+SerialParallelDecomposition const &variant_cast(T const &t) {
+  return mpark::visit(VariantCast{}, t);
+}
+
+// We may replace this by having unflattened AST
+template<typename T>
 std::pair<
   SerialParallelDecomposition,
   SerialParallelDecomposition
-> decompose(SerialParallelDecomposition const &sp_decomposition) {
+> decompose(T const &t) {
+  if (t.children.size() == 2) {
+    return { variant_cast(t.children[0]), variant_cast(t.children[1]) };
+  }
+  T decompn1 = t;
+  decompn1.children.pop_back();
+  return { decompn1, variant_cast(t.children.back()) };
 }
 
 GraphSplit get_graph_split(
   SerialParallelDecomposition const &pre_decomposition,
   SerialParallelDecomposition const &post_decomposition) {
+  return { get_nodes(pre_decomposition), get_nodes(post_decomposition) };
 }
 
 // std::pair<
@@ -212,10 +267,33 @@ GraphSplit get_graph_split(
 
 // }
 
+enum class EdgeDirection {
+  FIRST_TO_SECOND,
+  SECOND_TO_FIRST
+};
+
 std::pair<
   SubParallelComputationGraph,
   SubParallelComputationGraph
 > apply_split(SubParallelComputationGraph const &g, GraphSplit const &split) {
+  auto g1 = unsafe_view_as_subgraph(g.graph(), split.first);
+  auto g2 = unsafe_view_as_subgraph(g.graph(), split.second);
+
+  if (get_cut(g.graph(), split).size() > 0) {
+    // Sequential split
+    if (get_open_sinks(*g1).size() <= get_open_sources(*g2).size()) {
+      // get_open_sinks(*g1).size() should be 1 in perfect sp graphs
+      return { get_subgraph(g, split.first, InputSettings::INCLUDE_INPUTS, OutputSettings::EXCLUDE_OUTPUTS),
+              get_subgraph(g, split.second, InputSettings::INCLUDE_INPUTS, OutputSettings::INCLUDE_OUTPUTS) };
+    } else {
+      return { get_subgraph(g, split.first, InputSettings::INCLUDE_INPUTS, OutputSettings::INCLUDE_OUTPUTS),
+              get_subgraph(g, split.second, InputSettings::EXCLUDE_INPUTS, OutputSettings::INCLUDE_OUTPUTS) };
+    }
+  } else {
+      // Parallel split
+      return { get_subgraph(g, split.first, InputSettings::INCLUDE_INPUTS, OutputSettings::INCLUDE_OUTPUTS),
+              get_subgraph(g, split.second, InputSettings::INCLUDE_INPUTS, OutputSettings::INCLUDE_OUTPUTS) };
+  }
 }
 
 std::vector<std::pair<MachineResource, MachineResource>> get_resource_split(MachineResource const &resource) {
