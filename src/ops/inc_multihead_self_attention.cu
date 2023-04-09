@@ -31,7 +31,7 @@ __global__ void build_w_out_tensor(float const *weight_ptr,
     int row_idx = i % vProjSize;
     int col_idx = (i / vProjSize) % oProjSize;
     int head_idx = i / (vProjSize * oProjSize);
-    contiguous_weight_ptr[i] = contiguous_weight_ptr[i] =
+    contiguous_weight_ptr[i] =
         weight_ptr[head_idx * (qkv_weight_block_size + vProjSize * oProjSize) +
                    qkv_weight_block_size + col_idx * vProjSize + row_idx];
   }
@@ -221,7 +221,6 @@ void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
                                        0, /**todo this should be updated in a
                                              real work, maybe from batchconfig*/
                                        true);
-    
   }
 }
 
@@ -482,7 +481,6 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
                                          m->num_heads,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    // save_tensor<float>((float *)C, 4096, "matmul.txt");
     // Project to output, save result directly on output tensor
     alpha = 1.0f, beta = 0.0f;
     m_ = m->oProjSize;
@@ -511,7 +509,7 @@ void inference_kernel3(IncMultiHeadSelfAttentionMeta const *m,
                            cublas_data_type,
                            ldc,
                            compute_type,
-                           CUBLAS_GEMM_DEFAULT_TENSOR_OP)); 
+                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     tokens_previous_requests += num_new_tokens;
     tokens_prev_requests_squares += num_new_tokens * total_tokens;
   }
@@ -580,7 +578,6 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
-    // save_tensor<float>(output_ptr, 61440, "/home/ubuntu/FlexFlow/examples/cpp/LLAMA/output/output.txt");
   }
 }
 

@@ -113,7 +113,7 @@ __global__ void elewise_apply_weights(int64_t batch_size,
                                       float const *weights,
                                       float *output) {
   CUDA_KERNEL_LOOP(i, batch_size * in_dim) {
-    output[i] = norm[i] * weights[i % 4096];
+    output[i] = norm[i] * weights[i % in_dim];
   }
 }
 

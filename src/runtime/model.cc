@@ -3003,14 +3003,6 @@ void FFModel::compile(LossType loss_type,
                         TaskArgument(metrics_op, sizeof(Metrics)));
   current_metrics = runtime->execute_task(ctx, launcher);
 
-  for (size_t l = 0; l < operators.size(); l++) {
-    Op *op = operators[l];
-    if(op->numWeights > 0){
-std::cout << "opppppp: " << op->name <<"region: " << op->weights[0]->region <<std::endl;
-    }
-    
-  }
-
   // Perform inplace optimizations
   if (config.enable_inplace_optimizations) {
     for (size_t l = 1; l < operators.size(); l++) {
@@ -3051,24 +3043,16 @@ std::cout << "opppppp: " << op->name <<"region: " << op->weights[0]->region <<st
 
   for (size_t l = 0; l < operators.size(); l++) {
     Op *op = operators[l];
-    if(op->numWeights > 0){
-std::cout << "opppppp1111: " << op->name <<"region: " << op->weights[0]->region <<std::endl;
-    }
 
     for (int i = 0; i < op->numInputs; i++) {
       assert(op->inputs[i]->owner_op != NULL);
     }
     for (int i = 0; i < op->numWeights; i++) {
       assert(op->weights[i]->owner_op != NULL);
-
-      std::cout << "oP: " << op->name << "i: " << i <<"region: " << op->weights[i]->region <<std::endl;
-      // std::cout << "invalid region: " << LogicalRegion::NO_REGION <<std::endl;
-
       assert(op->weights[i]->region != LogicalRegion::NO_REGION);
       parameters.push_back(op->weights[i]);
     }
 
-    std::cout << "op map tensors: " << op->name <<"-" << config.computationMode<<std::endl;
     op->map_output_tensors(*this);
     // for (int i = 0; i < op->numOutputs; i++) {
     //   // Output tensor
