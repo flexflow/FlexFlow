@@ -238,6 +238,10 @@ public:
                           bool create_grad = true,
                           Initializer *initializer = nullptr,
                           ParameterSyncType sync_type = ParameterSyncType::NONE);
+  Parameter create_weight(LegionTensorShape const &,
+                          bool create_grad = true,
+                          Initializer *initializer = nullptr,
+                          ParameterSyncType sync_type = ParameterSyncType::NONE);
 
   optional<TensorSourceInfo> get_source(Tensor const &) const;
 

@@ -17,29 +17,33 @@ enum class DeviceType {
 };
 
 struct StridedRectangleSide {
+public:
   StridedRectangleSide() = delete;
   StridedRectangleSide(int size, int stride);
 
-  bool operator=(StridedRectangleSide const &) const;
-  bool operator!=(StridedRectangleSide const &) const;
-
+public:
   int num_points;
   int stride;
 };
+bool operator==(StridedRectangleSide const &, StridedRectangleSide const &);
+bool operator!=(StridedRectangleSide const &, StridedRectangleSide const &);
 
 struct StridedRectangle {
+public:
   StridedRectangle() = delete;
   StridedRectangle(int start, std::vector<StridedRectangleSide> const &);
 
-  bool operator==(StridedRectangle const &) const;
-  bool operator!=(StridedRectangle const &) const;
-
+public:
   int start;
   stack_vector<StridedRectangleSide, MAX_TENSOR_DIM> sides;
 };
+bool operator==(StridedRectangle const &, StridedRectangle const &);
+bool operator!=(StridedRectangle const &, StridedRectangle const &);
 
 
-using DeviceID = int;
+struct DeviceID : strong_typedef<DeviceID, int> {
+  using strong_typedef::strong_typedef;
+};
 
 int num_entries(StridedRectangle const &);
 std::ostream &operator<<(std::ostream &, StridedRectangle const &);
@@ -99,6 +103,28 @@ VISITABLE_STRUCT(::FlexFlow::MachineView, device_type, rect);
 VISITABLE_STRUCT(::FlexFlow::StridedRectangle, sides);
 VISITABLE_STRUCT(::FlexFlow::StridedRectangleSide, num_points, stride);
 VISITABLE_STRUCT(::FlexFlow::MachineSpecification, num_nodes, num_cpus_per_node, num_gpus_per_node, inter_node_bandwidth, intra_node_bandwidth);
+
+MAKE_TYPEDEF_HASHABLE(::FlexFlow::DeviceID);
+MAKE_TYPEDEF_PRINTABLE(::FlexFlow::DeviceID, "DeviceID");
+
+namespace fmt {
+
+template <>
+struct formatter<::FlexFlow::DeviceType> : formatter<string_view> { 
+  template <typename FormatContext>
+  auto format(::FlexFlow::DeviceType d, FormatContext& ctx) const -> decltype(ctx.out()) {
+    using ::FlexFlow::DeviceType;
+
+    string_view name = "unknown";
+    switch (d) {
+      case DeviceType::GPU: name = "GPU"; break;
+      case DeviceType::CPU: name = "CPU"; break;
+    }
+    return formatter<string_view>::format(name, ctx);
+  } 
+};
+
+};
 
 namespace std {
 template <>

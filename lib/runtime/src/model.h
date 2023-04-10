@@ -68,16 +68,6 @@ public:
   ParallelTensor create_parallel_tensor(ParallelTensorShape const &,
                                         bool create_grad = true,
                                         size_t input_tensor_guid = 0);
-  Parameter create_weight(
-      TensorShape const &,
-      bool create_grad = true,
-      Initializer *initializer = NULL,
-      ParameterSyncType sync_type = ParameterSyncType::NONE);
-  Parameter create_weight(
-      LegionTensorShape const &,
-      bool create_grad = true,
-      Initializer *initializer = NULL,
-      ParameterSyncType sync_type = ParameterSyncType::NONE);
   ParallelParameter create_parallel_weight(
       ParallelTensorShape const &,
       bool create_grad = true,
