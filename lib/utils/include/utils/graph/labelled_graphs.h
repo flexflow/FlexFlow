@@ -75,7 +75,15 @@ public:
     return this->node_map.at(n);
   }
 
+  NodeLabel &at(Node const &n) {
+    return this->node_map.at(n);
+  }
+
   EdgeLabel const &at(MultiDiEdge const &e) const {
+    return this->edge_map.at(e);
+  }
+
+  EdgeLabel &at(MultiDiEdge const &e) {
     return this->edge_map.at(e);
   }
 
@@ -83,7 +91,15 @@ public:
     return this->input_map.at(e);
   }
 
+  InputLabel &at(UpwardOpenMultDiEdge const &e) {
+    return this->input_map.at(e);
+  }
+
   OutputLabel const &at(DownwardOpenMultiDiEdge const &e) const {
+    return this->output_map.at(e);
+  }
+
+  OutputLabel &at(DownwardOpenMultiDiEdge const &e) {
     return this->output_map.at(e);
   }
 
