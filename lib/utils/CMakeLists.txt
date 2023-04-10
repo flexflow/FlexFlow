@@ -21,8 +21,10 @@ target_include_directories(
 target_link_libraries(
   ${project_target}
   optional
+  expected
   mpark_variant
   visit_struct
+  fmt::fmt
 )
 set_target_properties(
   ${project_target} 

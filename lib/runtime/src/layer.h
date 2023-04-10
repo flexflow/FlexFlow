@@ -12,10 +12,6 @@
 
 namespace FlexFlow {
 
-struct layer_guid_t : strong_typedef<layer_guid_t, size_t> {
-  using strong_typedef::strong_typedef;
-};
-
 class Layer {
 public:
   Layer() = delete;
@@ -23,20 +19,14 @@ public:
         OperatorType,
         DataType,
         std::string const &name,
-        CompGraphOperatorAttrs const &attrs, 
-        Initializer *initializer);
-  void add_initializer(std::string const &key, Initializer *initializer);
-  Initializer *get_initializer(std::string const &key) const;
-  Tensor get_parameter(int index);
+        CompGraphOperatorAttrs const &attrs);
 public:
+  LayerID layer_guid;
   OperatorType op_type;
   DataType data_type;
-  LayerID layer_guid;
   stack_string<MAX_OPNAME> name;
   bool profiling;
   CompGraphOperatorAttrs attrs;
-private:
-  std::unordered_map<std::string, Initializer *> initializers;
 };
 
 struct LayerManager {
@@ -49,7 +39,7 @@ public:
 
   template <typename Variant>
   Layer create(Variant const &attrs, DataType data_type, std::string const &name) {
-    return this->create(variant_cast<CompGraphOperatorAttrs>(attrs), data_type, name);
+    return this->create(widen<CompGraphOperatorAttrs>(attrs), data_type, name);
   }
 
   LayerID next_id() {

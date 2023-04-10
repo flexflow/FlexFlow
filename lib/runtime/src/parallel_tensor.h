@@ -134,10 +134,10 @@ public:
   /*   : ParallelTensor(std::make_shared<ParallelTensorBase>(std::forward<Args>(args)...)) */
   /* { } */
 
-  ParallelTensorBase *operator->();
+  /* ParallelTensorBase *operator->(); */
   ParallelTensorBase const *operator->() const;
 private:
-  std::shared_ptr<ParallelTensorBase> ptr;
+  std::shared_ptr<ParallelTensorBase> const ptr;
 };
 
 using ParallelParameter = ParallelTensor;
@@ -147,6 +147,8 @@ struct ParallelTensorManager {
   ParallelTensor create(Args&&...args) {
     return ParallelTensor(this->parallel_tensor_global_guid++, std::forward<Args>(args)...);
   }
+
+  ParallelTensor at(parallel_tensor_guid_t) const;
 private:
   size_t parallel_tensor_global_guid = PARALLEL_TENSOR_GUID_FIRST_VALID;
 };

@@ -20,6 +20,9 @@ bool operator<(InputAttrs const &, InputAttrs const &);
 
 }
 
+VISITABLE_STRUCT_EMPTY(::FlexFlow::NoopAttrs);
+VISITABLE_STRUCT_EMPTY(::FlexFlow::InputAttrs);
+
 namespace std {
 
 template <>

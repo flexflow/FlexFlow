@@ -63,7 +63,6 @@
 #include <unordered_set>
 #include "op_node.h"
 #include "utils/containers.h"
-#include "parallel_tensor_manager.h"
 #include "parallel_tensor_mapping.h"
 #include "make_operator.h"
 #include "op-attrs/ops/noop.h"
@@ -101,10 +100,11 @@ LegionRuntime::Logger::Category log_profile("profile");
 /*   return dim_mapping; */
 /* } */
 
-FFModel::FFModel(FFConfig const &_config)
+FFModel::FFModel(FFConfig const &_config, ModelSpec _model_spec)
     : op_global_guid(OP_GUID_FIRST_VALID),
-      node_global_guid(NODE_GUID_FIRST_VALID), config(_config), optimizer(NULL),
-      loss_op(nullopt), metrics_op(nullopt), simulator(nullptr), index_space_mgr(_config.legion_config) {
+      config(_config), 
+      index_space_mgr(_config.legion_config), 
+      model_spec(std::move(_model_spec)) {
 
   Runtime *runtime = config.legion_config.lg_hlr;
   Context ctx = config.legion_config.lg_ctx;
@@ -162,31 +162,31 @@ ncclComm_t *FFModel::find_nccl_comms(MachineView const &view) const {
 }
 #endif
 
-Tensor FFModel::create_constant(TensorShape const &shape,
-                                float value) {
-  // FIXME: currently create gradients for constants since the current auto grad
-  // algorithm computes gradients for all operators
-  Tensor tensor = create_tensor(shape, false /*create_grad*/);
-  tensor->initializer = new ConstantInitializer(value);
-  return tensor;
-}
+// Tensor FFModel::create_constant(TensorShape const &shape,
+//                                 float value) {
+//   // FIXME: currently create gradients for constants since the current auto grad
+//   // algorithm computes gradients for all operators
+//   Tensor tensor = create_tensor(shape, false /*create_grad*/);
+//   tensor->initializer = new ConstantInitializer(value);
+//   return tensor;
+// }
 
 OpNode FFModel::new_node(Op const *op) {
   return this->op_node_mgr.create(op);
 }
 
-Tensor FFModel::create_tensor(TensorShape const &shape,
-                              bool create_grad) {
-  switch (shape.num_dims()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM:                                                                    \
-    return create_tensor<DIM>(shape, create_grad);
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false && "Unsupported dim!");
-  }
-}
+// Tensor FFModel::create_tensor(TensorShape const &shape,
+//                               bool create_grad) {
+//   switch (shape.num_dims()) {
+// #define DIMFUNC(DIM)                                                           \
+//   case DIM:                                                                    \
+//     return create_tensor<DIM>(shape, create_grad);
+//     LEGION_FOREACH_N(DIMFUNC)
+// #undef DIMFUNC
+//     default:
+//       assert(false && "Unsupported dim!");
+//   }
+// }
 
 ParallelTensor FFModel::create_parallel_tensor(ParallelTensorShape const &shape,
                                                bool create_grad,
@@ -195,7 +195,7 @@ ParallelTensor FFModel::create_parallel_tensor(ParallelTensorShape const &shape,
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
     return create_parallel_tensor<DIM>(                                        \
-        shape, op, idx, create_grad, input_tensor_guid);
+        shape, create_grad, input_tensor_guid);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -203,10 +203,10 @@ ParallelTensor FFModel::create_parallel_tensor(ParallelTensorShape const &shape,
   }
 }
 
-Tensor FFModel::create_tensor(LegionTensorShape const &shape,
-                                              bool create_grad) {
-  return create_tensor(static_cast<TensorShape>(shape), create_grad);
-}
+/* Tensor FFModel::create_tensor(LegionTensorShape const &shape, */
+/*                                               bool create_grad) { */
+/*   return create_tensor(static_cast<TensorShape>(shape), create_grad); */
+/* } */
 
 ParallelTensor
     FFModel::create_parallel_tensor(LegionParallelTensorShape const &shape,
@@ -215,149 +215,156 @@ ParallelTensor
   return this->create_parallel_tensor(static_cast<ParallelTensorShape>(shape), create_grad, input_tensor_guid);
 }
 
-template <int NDIM>
-Tensor FFModel::create_tensor(TensorShape const &shape,
-                              bool create_grad) {
-  assert (shape.num_dims() == NDIM);
-  Tensor tensor = this->tensor_mgr.create(shape, create_grad);
-  Layer *input_layer = this->layer_mgr.create(InputAttrs{}, shape.data_type, "input", {}, {}, {tensor});
-  this->tensor_uses.update(*input_layer);
+/* template <int NDIM> */
+/* Tensor FFModel::create_tensor(TensorShape const &shape, */
+/*                               bool create_grad) { */
+/*   assert (shape.num_dims() == NDIM); */
+/*   Tensor tensor = this->tensor_mgr.create(shape, create_grad); */
+/*   Layer *input_layer = this->layer_mgr.create(InputAttrs{}, shape.data_type, "input", {}, {}, {tensor}); */
+/*   this->tensor_uses.update(*input_layer); */
 
-  return tensor;
-}
+/*   return tensor; */
+/* } */
 
-template <int NDIM>
-ParallelTensor FFModel::create_parallel_tensor(ParallelTensorShape const &shape,
-                                               bool create_grad,
-                                               size_t input_tensor_guid) {
-  assert (shape.num_dims() == NDIM);
-  ParallelTensor tensor = this->parallel_tensor_mgr.create(shape, create_grad);
+/* template <int NDIM> */
+/* ParallelTensor FFModel::create_parallel_tensor(ParallelTensorShape const &shape, */
+/*                                                bool create_grad, */
+/*                                                size_t input_tensor_guid) { */
+/*   assert (shape.num_dims() == NDIM); */
+/*   ParallelTensor tensor = this->parallel_tensor_mgr.create(shape, create_grad); */
 
-  if (owner_op == nullptr) {
-    NoOp *input_op = new NoOp(*this, OP_INPUT, input_tensor_guid, tensor);
-    operators.push_back(input_op);
-    tensor->owner_op = input_op;
-    tensor->owner_idx = 0;
-  } else {
-    tensor->owner_op = owner_op;
-    tensor->owner_idx = owner_idx;
-  }
+/*   if (owner_op == nullptr) { */
+/*     NoOp *input_op = new NoOp(*this, OP_INPUT, input_tensor_guid, tensor); */
+/*     operators.push_back(input_op); */
+/*     tensor->owner_op = input_op; */
+/*     tensor->owner_idx = 0; */
+/*   } else { */
+/*     tensor->owner_op = owner_op; */
+/*     tensor->owner_idx = owner_idx; */
+/*   } */
 
-  assert(tensor->check_valid());
-  return tensor;
-}
+/*   assert(tensor->check_valid()); */
+/*   return tensor; */
+/* } */
 
-Parameter FFModel::create_weight(LegionTensorShape const &shape,
-                                                 Layer const *layer,
-                                                 bool create_grad,
-                                                 Initializer *initializer,
-                                                 ParameterSyncType sync_type) {
-  return this->create_weight(static_cast<TensorShape>(shape), layer, create_grad, initializer, sync_type);
-}
+/* Parameter FFModel::create_weight(LegionTensorShape const &shape, */
+/*                                                  Layer const *layer, */
+/*                                                  bool create_grad, */
+/*                                                  Initializer *initializer, */
+/*                                                  ParameterSyncType sync_type) { */
+/*   return this->create_weight(static_cast<TensorShape>(shape), layer, create_grad, initializer, sync_type); */
+/* } */
 
-Parameter FFModel::create_weight(TensorShape const &shape,
-                                 Layer const *owner_layer,
-                                 bool create_grad,
-                                 Initializer *initializer,
-                                 ParameterSyncType sync_type) {
-  assert(owner_layer != nullptr);
-  if (owner_layer == nullptr) {
-    owner_layer = this->layer_mgr.create(OP_WEIGHT, shape.data_type, nullptr, 0/*inputs*/, 0/*weights*/, 1/*outputs*/);
-  }
+//Parameter FFModel::create_weight(TensorShape const &shape,
+//                                 Layer const *owner_layer,
+//                                 bool create_grad,
+//                                 Initializer *initializer,
+//                                 ParameterSyncType sync_type) {
+//  assert(owner_layer != nullptr);
+//  if (owner_layer == nullptr) {
+//    owner_layer = this->layer_mgr.create(OP_WEIGHT, shape.data_type, nullptr, 0/*inputs*/, 0/*weights*/, 1/*outputs*/);
+//  }
+//
+//  Parameter p = this->tensor_mgr.create(shape, create_grad, initializer, sync_type, owner_layer, 0/*owner_idx*/);
+//
+//  assert(p->get_volume() > 0);
+//  return p;
+//}
 
-  Parameter p = this->tensor_mgr.create(shape, create_grad, initializer, sync_type, owner_layer, 0/*owner_idx*/);
+/* template <int NDIM> */
+/* ParallelParameter FFModel::create_parallel_weight(ParallelTensorShape const &shape, */ 
+/*                                                   Op const *owner_op, */
+/*                                                   bool create_grad, */
+/*                                                   Initializer *initializer, */
+/*                                                   ParameterSyncType sync_type) { */
+/*   ParallelParameter p = this->parallel_tensor_mgr.create( */
+/*     shape, */
+/*     create_grad, */
+/*     sync_type, */
+/*     initializer */
+/*   ); */
 
-  assert(p->get_volume() > 0);
-  return p;
-}
+/*   if (owner_op == NULL) { */
+/*     NoOp *weight_op = new NoOp(*this, OP_WEIGHT, p); */
+/*     operators.push_back(weight_op); */
+/*     p->owner_op = weight_op; */
+/*   } else { */
+/*     p->owner_op = owner_op; */
+/*   } */
+/*   p->owner_idx = 0; */
 
-template <int NDIM>
-ParallelParameter FFModel::create_parallel_weight(ParallelTensorShape const &shape, 
-                                                  Op const *owner_op,
-                                                  bool create_grad,
-                                                  Initializer *initializer,
-                                                  ParameterSyncType sync_type) {
-  ParallelParameter p = this->parallel_tensor_mgr.create(
-    shape,
-    create_grad,
-    sync_type,
-    initializer
-  );
+/*   assert(p->get_volume() > 0); */
+/*   assert(p->check_valid()); */
+/*   return p; */
+/* } */
 
-  if (owner_op == NULL) {
-    NoOp *weight_op = new NoOp(*this, OP_WEIGHT, p);
-    operators.push_back(weight_op);
-    p->owner_op = weight_op;
-  } else {
-    p->owner_op = owner_op;
-  }
-  p->owner_idx = 0;
+/* ParallelParameter FFModel::create_parallel_weight(ParallelTensorShape const &shape, */
+/*                                                   Op const *owner_op, */
+/*                                                   bool create_grad, */
+/*                                                   Initializer *initializer, */
+/*                                                   ParameterSyncType sync_type) { */
+/*   switch (shape.num_dims()) { */
+/* #define DIMFUNC(DIM)                                                           \ */
+/*   case DIM:                                                                    \ */
+/*     return create_parallel_weight<DIM>(                                        \ */
+/*         shape, owner_op, create_grad, initializer, sync_type); */
+/*     LEGION_FOREACH_N(DIMFUNC) */
+/* #undef DIMFUNC */
+/*     default: */
+/*       assert(false && "Unsupported dim!"); */
+/*   } */
+/* } */
 
-  assert(p->get_volume() > 0);
-  assert(p->check_valid());
-  return p;
-}
+/* ParallelParameter FFModel::create_parallel_weight( */
+/*     LegionParallelTensorShape const &shape, */
+/*     Op const *owner_op, */
+/*     bool create_grad, */
+/*     Initializer *initializer, */
+/*     ParameterSyncType sync_type) { */
 
-ParallelParameter FFModel::create_parallel_weight(ParallelTensorShape const &shape,
-                                                  Op const *owner_op,
-                                                  bool create_grad,
-                                                  Initializer *initializer,
-                                                  ParameterSyncType sync_type) {
-  switch (shape.num_dims()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM:                                                                    \
-    return create_parallel_weight<DIM>(                                        \
-        shape, owner_op, create_grad, initializer, sync_type);
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false && "Unsupported dim!");
-  }
-}
-
-ParallelParameter FFModel::create_parallel_weight(
-    LegionParallelTensorShape const &shape,
-    Op const *owner_op,
-    bool create_grad,
-    Initializer *initializer,
-    ParameterSyncType sync_type) {
-
-  return this->create_parallel_weight(static_cast<ParallelTensorShape>(shape), owner_op, create_grad, initializer, sync_type);
-}
+/*   return this->create_parallel_weight(static_cast<ParallelTensorShape>(shape), owner_op, create_grad, initializer, sync_type); */
+/* } */
 
 
 optional<ParallelTensor> FFModel::get_parallel_tensor_from_tensor(
     Tensor const &tensor) const {
+  std::vector<parallel_tensor_guid_t> pt_guids = this->tensor_map.at(tensor);
+  if (pt_guids.size() == 0) {
+    return nullopt;
+  } else {
+    return this->parallel_tensor_mgr.at(get_only(pt_guids));
+  }
   // check if tensor->parallel_tensor is already set
-  if (tensor->parallel_tensor != nullopt) {
-    return tensor->parallel_tensor;
-  }
-  if (tensor->owner_layer != nullptr) {
-    Op *mapped_op = nullptr;
-    if (tensor->owner_layer->op_type == OP_INPUT) {
-      // We use tensor_guid to match input operators
-      size_t tensor_guid = tensor->owner_layer->outputs[0]->tensor_guid;
-      for (auto const &op : operators) {
-        if (op->op_type == OP_INPUT) {
-          if (tensor_guid == ((NoOp *)op)->input_tensor_guid) {
-            assert(mapped_op == nullptr);
-            mapped_op = op;
-          }
-        }
-      }
-    } else {
-      for (auto const &op : operators) {
-        if (op->layer_guid == tensor->owner_layer->layer_guid) {
-          assert(mapped_op == nullptr);
-          mapped_op = op;
-        }
-      }
-    }
-    if (mapped_op != nullptr) {
-      return mapped_op->outputs[tensor->owner_idx];
-    }
-  }
-  return nullopt;
+  // if (tensor->parallel_tensor != nullopt) {
+  //   return tensor->parallel_tensor;
+  // }
+  // optional<TensorSourceInfo> source = this->model_spec.get_source(tensor);
+  // if (source.has_value()) {
+  //   Op const *mapped_op = nullptr;
+  //   if (source->layer.op_type == OP_INPUT) {
+  //     // We use tensor_guid to match input operators
+  //     tensor_guid_t tensor_guid = this->model_spec.get_output(source->layer, 0)->guid;
+  //     for (auto const &op : operators) {
+  //       if (op->op_type == OP_INPUT) {
+  //         if (tensor_guid == ((NoOp *)op)->input_tensor_guid) {
+  //           assert(mapped_op == nullptr);
+  //           mapped_op = op;
+  //         }
+  //       }
+  //     }
+  //   } else {
+  //     for (auto const &op : operators) {
+  //       if (op->layer_guid == source->layer.layer_guid) {
+  //         assert(mapped_op == nullptr);
+  //         mapped_op = op;
+  //       }
+  //     }
+  //   }
+  //   if (mapped_op != nullptr) {
+  //     return mapped_op->outputs[source->idx];
+  //   }
+  // }
+  // return nullopt;
 }
 
 void FFModel::reset_metrics() {
@@ -369,15 +376,15 @@ void FFModel::reset_metrics() {
 }
 
 void FFModel::init_operators() {
-  for (size_t i = 0; i < operators.size(); i++) {
-    operators[i]->init(*this);
+  for (auto const &op : operators) {
+    op->init(*this);
   }
 }
 
 void FFModel::forward(int seq_length) {
   iter_config.seq_length = seq_length;
-  for (size_t i = 0; i < operators.size(); i++) {
-    operators[i]->forward(*this);
+  for (auto const &op : operators) {
+    op->forward(*this);
   }
 }
 
@@ -388,7 +395,7 @@ void FFModel::recompile_on_condition(RecompileState &r) {
 }
 
 void FFModel::compute_metrics() {
-  Op *final_operator = get_final_operator();
+  Op const *final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
   metrics_op->compute(this, final_operator->outputs[0], parallel_label_tensor.value());
 }
@@ -403,7 +410,7 @@ void FFModel::backward(int seq_length) {
   // Compute metrics
   compute_metrics();
   // Compute the gradients of the final operator wrt loss
-  Op *final_operator = get_final_operator();
+  Op const *final_operator = get_final_operator();
   assert(final_operator->numOutputs == 1);
   loss_op->backward(this, final_operator->outputs[0], parallel_label_tensor.value());
   // Perform backpropagation
@@ -435,15 +442,16 @@ void FFModel::update() {
   }
 }
 
-Op *FFModel::get_final_operator() const {
+Op const *FFModel::get_final_operator() const {
   int idx = operators.size() - 1;
+  std::vector<Op const *> operators = this->get_operators();
   while (operators[idx]->op_type == OP_INPUT ||
          operators[idx]->op_type == OP_WEIGHT) {
     idx--;
   }
   // assert that the final operator has exactly one output
   assert(operators[idx]->numOutputs == 1);
-  return operators[idx];
+  return operators.at(idx);
 }
 
 void FFModel::compile(Optimizer *_optimizer,

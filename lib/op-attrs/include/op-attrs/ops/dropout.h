@@ -8,8 +8,8 @@
 namespace FlexFlow {
 
 struct DropoutAttrs {
-  /* ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
-  /* OperatorType op_type() const override; */
+public:
+  DropoutAttrs(float rate, unsigned long long seed);
 public:
   float rate;
   unsigned long long seed;

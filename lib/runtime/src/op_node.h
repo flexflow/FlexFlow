@@ -25,7 +25,6 @@ struct OpNode {
 
   op_node_guid_t guid;
   Op const *ptr;
-  optional<size_t> original_guid = nullopt;
 };
 
 struct OpNodeManager {
@@ -36,5 +35,8 @@ private:
 };
 
 }
+
+MAKE_TYPEDEF_HASHABLE(::FlexFlow::op_node_guid_t);
+MAKE_TYPEDEF_PRINTABLE(::FlexFlow::op_node_guid_t, "op_node_guid");
 
 #endif

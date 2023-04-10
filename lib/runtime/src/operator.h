@@ -45,7 +45,7 @@ public:
      bool allocate_weights,
      int numOutputs,
      bool profiling,
-     tl::optional<ParallelTensor> const &input1 = tl::nullopt,
+     optional<ParallelTensor> const &input1 = nullopt,
      tl::optional<ParallelTensor> const &input2 = tl::nullopt,
      tl::optional<ParallelTensor> const &input3 = tl::nullopt,
      tl::optional<ParallelTensor> const &input4 = tl::nullopt);
@@ -72,9 +72,9 @@ public:
      ParallelTensor const *tensors);
   
   // Pure virtual functions that must be implemented
-  virtual void init(FFModel const &);
-  virtual void forward(FFModel const &);
-  virtual void backward(FFModel const &);
+  virtual void init(FFModel const &) = 0;
+  virtual void forward(FFModel const &) = 0;
+  virtual void backward(FFModel const &) = 0;
 
   virtual bool measure_operator_cost(Simulator *sim,
                                      MachineView const &mv,
@@ -157,7 +157,6 @@ public:
   LayerID layer_guid;
   op_guid_t op_guid;
   stack_string<MAX_OPNAME> name;
-  char name[MAX_OPNAME];
   Legion::IndexSpace parallel_is;
   stack_vector<ParallelTensor, MAX_NUM_OUTPUTS> outputs;
   stack_vector<ParallelTensor, MAX_NUM_INPUTS> inputs;

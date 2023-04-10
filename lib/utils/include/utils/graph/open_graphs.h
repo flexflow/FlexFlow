@@ -36,7 +36,7 @@ using DownwardOpenMultiDiEdge = variant<
   MultiDiEdge
 >;
 
-using UpwardOpenMultDiEdge = variant<
+using UpwardOpenMultiDiEdge = variant<
   InputMultiDiEdge,
   MultiDiEdge
 >;
@@ -92,8 +92,8 @@ struct hash<::FlexFlow::DownwardOpenMultiDiEdge> {
 };
 
 template <>
-struct hash<::FlexFlow::UpwardOpenMultDiEdge> {
-  size_t operator()(::FlexFlow::UpwardOpenMultDiEdge const &) const;
+struct hash<::FlexFlow::UpwardOpenMultiDiEdge> {
+  size_t operator()(::FlexFlow::UpwardOpenMultiDiEdge const &) const;
 };
 
 template <>
@@ -122,7 +122,7 @@ struct IDownwardOpenMultiDiGraphView : public IGraphView {
 };
 
 struct IUpwardOpenMultiDiGraphView : public IGraphView {
-  virtual std::unordered_set<UpwardOpenMultDiEdge> query_edges(UpwardOpenMultiDiEdgeQuery const &) const = 0;
+  virtual std::unordered_set<UpwardOpenMultiDiEdge> query_edges(UpwardOpenMultiDiEdgeQuery const &) const = 0;
 };
 
 struct IOpenMultiDiGraph : public IOpenMultiDiGraphView, public IGraph {
@@ -131,8 +131,8 @@ struct IOpenMultiDiGraph : public IOpenMultiDiGraphView, public IGraph {
 };
 
 struct IUpwardOpenMultiDiGraph : public IUpwardOpenMultiDiGraphView, public IGraph {
-  virtual void add_edge(UpwardOpenMultDiEdge const &) = 0;
-  virtual void remove_edge(UpwardOpenMultDiEdge const &) = 0;
+  virtual void add_edge(UpwardOpenMultiDiEdge const &) = 0;
+  virtual void remove_edge(UpwardOpenMultiDiEdge const &) = 0;
 };
 
 struct IDownwardOpenMultiDiGraph : public IDownwardOpenMultiDiGraphView, public IGraph {

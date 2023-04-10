@@ -56,7 +56,7 @@ public:
     return n;
   }
 
-  void add_edge(UpwardOpenMultDiEdge const &e, InputLabel const &label) {
+  void add_edge(InputMultiDiEdge const &e, InputLabel const &label) {
     this->base_graph->add_edge(e);
     this->input_map.insert({e, label});
   }
@@ -66,7 +66,7 @@ public:
     this->edge_map.insert({e, label});
   }
 
-  void add_edge(DownwardOpenMultiDiEdge const &e, OutputLabel const &label) {
+  void add_edge(OutputMultiDiEdge const &e, OutputLabel const &label) {
     this->base_graph->add_edge(e);
     this->output_map.insert({e, label});
   }
@@ -87,15 +87,15 @@ public:
     return this->edge_map.at(e);
   }
 
-  InputLabel const &at(UpwardOpenMultDiEdge const &e) const {
+  InputLabel const &at(InputMultiDiEdge const &e) const {
     return this->input_map.at(e);
   }
 
-  InputLabel &at(UpwardOpenMultDiEdge const &e) {
+  InputLabel &at(InputMultiDiEdge const &e) {
     return this->input_map.at(e);
   }
 
-  OutputLabel const &at(DownwardOpenMultiDiEdge const &e) const {
+  OutputLabel const &at(OutputMultiDiEdge const &e) const {
     return this->output_map.at(e);
   }
 
@@ -112,8 +112,8 @@ private:
   std::unique_ptr<IOpenMultiDiGraph> base_graph;
   std::unordered_map<Node, NodeLabel> node_map;
   std::unordered_map<MultiDiEdge, EdgeLabel> edge_map;
-  std::unordered_map<UpwardOpenMultDiEdge, InputLabel> input_map;
-  std::unordered_map<DownwardOpenMultiDiEdge, OutputLabel> output_map;
+  std::unordered_map<InputMultiDiEdge, InputLabel> input_map;
+  std::unordered_map<OutputMultiDiEdge, OutputLabel> output_map;
 };
 }
 

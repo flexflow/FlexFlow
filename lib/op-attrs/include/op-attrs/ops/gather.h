@@ -4,16 +4,16 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/visitable.h"
 #include "binary_op.h"
+#include "op-attrs/legion_dim.h"
 
 namespace FlexFlow {
 
 struct GatherAttrs {
-/* public: */
-  /* ParallelTensorShape output_shape(ParallelTensorShape const &, ParallelTensorShape const &) const override; */
-  /* OperatorType op_type() const override; */
-  /* bool is_valid(ParallelTensorShape const &, ParallelTensorShape const &) const override; */
-/* public: */
-  int legion_dim;
+public:
+  GatherAttrs() = delete;
+  GatherAttrs(legion_dim_t);
+public:
+  legion_dim_t legion_dim;
 };
 
 bool operator==(GatherAttrs const &, GatherAttrs const &);

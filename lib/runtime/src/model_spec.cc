@@ -1,12 +1,16 @@
 #include "model_spec.h"
 #include "op-attrs/ffconst.h"
 #include "op-attrs/get_output_shapes.h"
+#include "utils/expected.h"
 
 namespace FlexFlow {
 
-Tensor ModelSpec::as_type(Tensor const &x, DataType data_type, std::string const &name) {
+or_error_msg<Tensor> ModelSpec::as_type(Tensor const &x, DataType data_type, std::string const &name) {
   if (x->data_type < data_type) {
     return this->cast(x, data_type, name);
+  } else if (x->data_type > data_type) {
+    return error_msg("Could not convert provided tensor data type {} to desired data type {}",
+                     x->data_type, data_type);
   }
   return x;
 }
@@ -171,10 +175,61 @@ Tensor ModelSpec::conv2d(Tensor const &x,
   Layer layer = this->layer_mgr.create(attrs, DT_FLOAT, name);  
   TensorShape output_shape = get_output_shape(attrs, input->get_shape());
 
-  std::vector<TensorShape> weights;
-  weights.push_back(get_kernel_shape(attrs, input->get_shape()));
+  std::vector<std::pair<TensorShape, Initializer *>> weights;
+
+  weights.push_back({get_kernel_shape(attrs, input), kernel_initializer});
+
   if (use_bias) {
-    weights.push_back(get_bias_shape(attrs, input->get_shape()));
+    weights.push_back({
+      get_bias_shape(attrs, input),
+      bias_initializer
+    });
+  }
+
+  return this->add_layer(layer, {input}, weights, output_shape);
+}
+
+Tensor ModelSpec::dropout(Tensor const &x,
+                          float rate,
+                          std::string const &name, 
+                          unsigned long long seed) {
+  DropoutAttrs attrs = { rate, seed };
+
+  Layer layer = this->layer_mgr.create(attrs, DT_FLOAT, name);
+  Tensor input = this->as_type(x, DT_FLOAT, name + "input_pre_cast");
+
+  TensorShape output_shape = get_output_shape(attrs, input);
+
+  return this->add_layer(layer, {input}, {}, output_shape);
+}
+
+Tensor ModelSpec::embedding(Tensor const &x,
+                            int num_entries, 
+                            int outDim,
+                            AggrMode aggr,
+                            std::string const &name,
+                            DataType dtype,
+                            Initializer *kernel_initializer) {
+  EmbeddingAttrs attrs = { num_entries, outDim, aggr, dtype };
+
+  Layer layer = this->layer_mgr.create(attrs, DT_FLOAT, name);
+  Tensor input = this->as_type(x, DT_FLOAT, name + "input_pre_cast");
+
+  TensorShape output_shape = get_output_shape(attrs, input);
+  TensorShape weights_shape = get_weights_shape(attrs, input);
+  
+  return this->add_layer(layer, {input}, {{weights_shape, kernel_initializer}}, output_shape);
+}
+
+Tensor ModelSpec::gather(Tensor const &data, 
+                         Tensor const &assign,
+                         int dim,
+                         std::string const &name) {
+  GatherAttrs attrs = { legion_dim_t(dim) };
+
+  Layer layer = this->layer_mgr.create(attrs, DT_FLOAT, name);
+  if () {
+    
   }
 }
 

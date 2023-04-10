@@ -3,7 +3,7 @@
 
 #include "visit_struct/visit_struct.hpp"
 
-#define VISITABLE_STRUCT_EMPTYLOL(STRUCT_NAME)                                                     \
+#define VISITABLE_STRUCT_EMPTY(STRUCT_NAME)                                                     \
 namespace visit_struct {                                                                           \
 namespace traits {                                                                                 \
                                                                                                    \

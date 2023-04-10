@@ -3,68 +3,84 @@
 
 #include "tensor.h"
 #include "layer.h"
+#include "utils/expected.h"
 
 namespace FlexFlow {
 
+template <typename T>
+using or_error_msg = expected<T, std::string>;
+
+struct TensorSourceInfo {
+  Layer layer;
+  int idx;
+};
+
 struct ModelSpec {
 public:
+
+  ModelSpec() = default;
+  ModelSpec(ModelSpec const &) = delete;
+  ModelSpec(ModelSpec &&) = default;
+
   // C++ APIs for constructing models
   // Add an exp layer
-  Tensor exp(Tensor const &, std::string const &name);
+  or_error_msg<Tensor> exp(Tensor const &, optional<std::string> const &name = nullopt);
   // Add an add layer
-  Tensor add(Tensor const &x,
+  or_error_msg<Tensor> add(Tensor const &x,
              Tensor const &y,
-             std::string const &name);
+             optional<std::string> const &name = nullopt);
   // Add a subtract layer
-  Tensor subtract(Tensor const &x,
+  or_error_msg<Tensor> subtract(Tensor const &x,
                   Tensor const &y,
-                  std::string const &name);
+                  optional<std::string> const &name = nullopt);
   // Add a multiply layer
-  Tensor multiply(Tensor const &x,
+  or_error_msg<Tensor> multiply(Tensor const &x,
                   Tensor const &y,
-                  std::string const &name);
+                  optional<std::string> const &name = nullopt);
   // Add a divide layer
   Tensor divide(Tensor const &x,
                 Tensor const &y,
-                std::string const &name);
+                optional<std::string> const &name = nullopt);
   // Add a max layer
   Tensor max(Tensor const &x,
              Tensor const &y,
-             std::string const &name);
+             optional<std::string> const &name = nullopt);
   // Add a min layer
   Tensor min(Tensor const &x,
              Tensor const &y,
-             std::string const &name);
+             optional<std::string> const &name = nullopt);
   // Add a rsqrt layer
-  Tensor rsqrt(Tensor const &x, std::string const &name);
+  Tensor rsqrt(Tensor const &x, 
+               optional<std::string> const &name = nullopt);
   // Add a pow layer
   Tensor pow(Tensor const &x,
              float exponent,
-             std::string const &name);
+             optional<std::string> const &name = nullopt);
   // Add a scalar multiply layer
   Tensor scalar_multiply(Tensor const &x,
                          float scalar,
-                         std::string const &name);
+                         optional<std::string> const &name = nullopt);
   Tensor scalar_add(Tensor const &x,
                     float scalar,
-                    std::string const &name);
+                    optional<std::string> const &name = nullopt);
   Tensor scalar_sub(Tensor const &lhs,
                     float rhs,
-                    std::string const &name);
+                    optional<std::string> const &name = nullopt);
   Tensor scalar_truediv(Tensor const &numerator,
                         float denominator,
-                        std::string const &name);
+                        optional<std::string> const &name = nullopt);
   // Add a sin layer
-  Tensor sin(Tensor const &x, std::string const &name);
+  Tensor sin(Tensor const &x, 
+             optional<std::string> const &name = nullopt);
   // Add a cos layer
-  Tensor cos(Tensor const &x, std::string const &name);
+  Tensor cos(Tensor const &x, optional<std::string> const &name = nullopt);
   // Add an activation layer
-  Tensor relu(Tensor const &x, std::string const &name);
-  Tensor identity(Tensor const &x, std::string const &name);
-  Tensor gelu(Tensor const &x, std::string const &name);
-  Tensor sigmoid(Tensor const &x, std::string const &name);
-  Tensor tanh(Tensor const &x, std::string const &name);
-  Tensor elu(Tensor const &x, std::string const &name);
+  Tensor relu(Tensor const &x, optional<std::string> const &name = nullopt);
+  Tensor identity(Tensor const &x, optional<std::string> const &name = nullopt);
+  Tensor gelu(Tensor const &x, optional<std::string> const &name = nullopt);
+  Tensor sigmoid(Tensor const &x, optional<std::string> const &name = nullopt);
+  Tensor tanh(Tensor const &x, optional<std::string> const &name = nullopt);
+  Tensor elu(Tensor const &x, optional<std::string> const &name = nullopt);
   // Add a 2D convolutional layer
   Tensor conv2d(Tensor const &input,
                 int outChannels,
@@ -74,31 +90,30 @@ public:
                 int strideW,
                 int paddingH,
                 int paddingW,
-                std::string const &name,
                 ActiMode activation = AC_MODE_NONE,
                 int groups = 1,
                 bool use_bias = true,
                 Initializer *kernel_initializer = nullptr,
-                Initializer *bias_initializer = nullptr);
+                Initializer *bias_initializer = nullptr,
+                optional<std::string> const &name = nullopt);
   // Add a dropout layer
   Tensor dropout(Tensor const &input,
                  float rate,
                  unsigned long long seed = 0,
-                 char const *name = nullptr);
+                 optional<std::string> const &name = nullopt);
   // Add an embedding layer
   Tensor embedding(Tensor const &input,
-                   int num_entires,
+                   int num_entries,
                    int outDim,
                    AggrMode aggr,
                    DataType dtype = DT_FLOAT,
-                   Layer const *shared_op = nullptr,
                    Initializer *kernel_initializer = nullptr,
-                   char const *name = nullptr);
+                   optional<std::string> const &name = nullopt);
   // Add a gather layer
-  Tensor gather(Tensor const &input,
+  std::vector<Tensor> gather(Tensor const &input,
                 Tensor const &index,
                 int dim,
-                char const *name = nullptr);
+                optional<std::string> const &name = nullopt);
   // Add a group_by layer
   void group_by(Tensor const &data,
                 Tensor const &assign,
@@ -159,7 +174,7 @@ public:
                Initializer *bias_initializer = nullptr,
                char const *name = nullptr);
   // Add a cast layer
-  Tensor cast(Tensor const &input, DataType dtype, std::string const &name);
+  or_error_msg<Tensor> cast(Tensor const &input, DataType dtype, optional<std::string> const &name = nullopt);
   // Add a concat layer
   Tensor
       concat(int n, Tensor const *tensors, int axis, char const *name = nullptr);
@@ -215,24 +230,43 @@ public:
                              bool add_zero_attn = false,
                              Initializer *kernel_initializer = nullptr,
                              char const *name = nullptr);
-  Tensor create_tensor(LegionTensorShape const &shape,
-                       bool create_grad = true);
   Tensor create_tensor(TensorShape const &,
                        bool create_grad = true);
+  Tensor create_tensor(LegionTensorShape const &shape,
+                       bool create_grad = true);
+  Parameter create_weight(TensorShape const &, 
+                          bool create_grad = true,
+                          Initializer *initializer = nullptr,
+                          ParameterSyncType sync_type = ParameterSyncType::NONE);
+
+  optional<TensorSourceInfo> get_source(Tensor const &) const;
+
+  std::vector<Tensor> get_outputs(Layer const &) const;
+  Tensor get_output(Layer const &, int idx) const;
+
+  Tensor at(tensor_guid_t) const; 
 private:
   void add_layer(Layer const &layer, std::vector<Tensor> const &inputs, std::vector<Tensor> const &weights, std::vector<Tensor> const &outputs);
+  Tensor add_layer(Layer const &layer, 
+                 std::vector<Tensor> const &inputs, 
+                 std::vector<std::pair<TensorShape, Initializer *>> const &weight_shapes,
+                 TensorShape const &output_shape);
+  std::vector<Tensor> add_layer(Layer const &layer, 
+                 std::vector<Tensor> const &inputs, 
+                 std::vector<std::pair<TensorShape, Initializer *>> const &weight_shapes,
+                 std::vector<TensorShape> const &output_shapes);
 
-  Tensor as_type(Tensor const &, DataType, std::string const &);
+  or_error_msg<Tensor> as_type(Tensor const &, DataType, std::string const &);
 
   std::pair<bool, Tensor> broadcast(Tensor const &, TensorShape const &target_shape);
 
   TensorShape get_broadcast_target_shape(std::vector<TensorShape> const &);
 
-  Tensor element_binary(OperatorType, Tensor const &lhs, Tensor const &rhs, std::string const &name);
+  Tensor element_binary(OperatorType, Tensor const &lhs, Tensor const &rhs, optional<std::string> const &name = nullopt);
 
-  Tensor element_unary(OperatorType, Tensor const &input, std::string const &name);
-  Tensor element_scalar_unary(OperatorType, Tensor const &input, float scalar, std::string const &name);
-  Tensor element_unary(variant<ElementUnaryAttrs, ElementScalarUnaryAttrs> const &, Tensor const &input, std::string const &name);
+  Tensor element_unary(OperatorType, Tensor const &input, optional<std::string> const &name = nullopt);
+  Tensor element_scalar_unary(OperatorType, Tensor const &input, float scalar, optional<std::string> const &name = nullopt);
+  Tensor element_unary(variant<ElementUnaryAttrs, ElementScalarUnaryAttrs> const &, Tensor const &input, optional<std::string> const &name = nullopt);
 private:
   LayerManager layer_mgr; 
   TensorManager tensor_mgr;

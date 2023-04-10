@@ -4,20 +4,16 @@
 namespace FlexFlow {
 
 bool operator==(NoopAttrs const &lhs, NoopAttrs const &rhs) {
-  return true;
+  return visit_eq(lhs, rhs);
 }
 
 bool operator!=(NoopAttrs const &lhs, NoopAttrs const &rhs) {
-  return false;
+  return visit_neq(lhs, rhs);
 }
 
 bool operator<(NoopAttrs const &lhs, NoopAttrs const &rhs) {
-  return false;
+  return visit_lt(lhs, rhs);
 }
-
-InputAttrs::InputAttrs(std::size_t _input_tensor_guid)
-  : input_tensor_guid(_input_tensor_guid)
-{ }
 
 bool operator==(InputAttrs const &lhs, InputAttrs const &rhs) {
   return visit_eq(lhs, rhs);

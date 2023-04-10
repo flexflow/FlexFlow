@@ -4,6 +4,7 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/ops/unary_op.h"
 #include "utils/visitable.h"
+#include "op-attrs/tensor_shape.h"
 
 namespace FlexFlow {
 
@@ -32,6 +33,9 @@ public:
 };
 bool operator==(Conv2DAttrs const &, Conv2DAttrs const &);
 bool operator<(Conv2DAttrs const &, Conv2DAttrs const &);
+
+TensorShape get_kernel_shape(Conv2DAttrs const &, TensorShape const &);
+TensorShape get_bias_shape(Conv2DAttrs const &, TensorShape const &);
 
 }
 

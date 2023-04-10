@@ -42,9 +42,9 @@
 #include "tensor_shape.h"
 #include "legion_parallel_tensor_shape.h"
 #include "index_space_manager.h"
-#include "parallel_tensor_manager.h"
 #include "parallel_tensor_uses.h"
 #include "model_spec.h"
+#include "tensor_mapping.h"
 
 namespace FlexFlow {
 
@@ -59,7 +59,7 @@ MachineView get_basic_data_parallel_machine_view(int num_parts, int dims);
 
 class FFModel {
 public:
-  FFModel(FFConfig const &config, ModelSpec const &);
+  FFModel(FFConfig const &config, ModelSpec);
 
   ParallelTensor
       create_parallel_tensor(LegionParallelTensorShape const &,
@@ -91,7 +91,6 @@ public:
 
   optional<ParallelTensor> get_parallel_tensor_from_tensor(Tensor const &tensor) const;
 
-  Tensor create_constant(TensorShape const &, float value);
   // ========================================
   // Graph APIs
   // ========================================
@@ -101,8 +100,6 @@ public:
                                          int cpus_per_node,
                                          std::vector<MachineView> &valid_views);
 
-  Node get_or_create_noop_node(ParallelTensor const &input);
-  Node get_or_create_input_node(ParallelTensorShape const &);
   Node get_or_create_fused_parallel_node(
       ParallelTensor const &input,
       std::vector<ParallelOpInfo> const &parallel_ops);
@@ -127,7 +124,7 @@ public:
   void update();
   bool apply_fusion(std::vector<Op *> const &operators,
                     std::vector<Op *> &new_operators);
-  Op *get_final_operator() const;
+  Op const *get_final_operator() const;
   void compile(LossType loss_type,
                std::vector<MetricsType> const &metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
@@ -170,33 +167,33 @@ private:
       ParameterSyncType sync_type = ParameterSyncType::NONE);
 
   template <int NDIM>
-  Tensor create_tensor(TensorShape const &,
-                       bool create_grad = true);
-  template <int NDIM>
   ParallelTensor create_parallel_tensor(ParallelTensorShape const &,
                                         bool create_grad = true,
                                         size_t input_tensor_guid = 0);
 
+  Op const *get_source(ParallelTensor const &) const;
+
+  std::vector<Op *> get_operators();
+  std::vector<Op const *> get_operators() const;
 public:
-  size_t op_global_guid;
-  size_t node_global_guid;
+  size_t op_global_guid = OP_GUID_FIRST_VALID;
   FFConfig config;
   FFIterationConfig iter_config;
-  Optimizer *optimizer;
-  optional<Loss> loss_op;
-  optional<Metrics> metrics_op;
-  std::unique_ptr<Simulator> simulator;
+  Optimizer *optimizer = nullptr;
+  optional<Loss> loss_op = nullopt;
+  optional<Metrics> metrics_op = nullopt;
+  std::unique_ptr<Simulator> simulator = nullptr;
   int metrics_input;
   optional<ParallelTensor> parallel_label_tensor;
   optional<Tensor> label_tensor;
 
   IndexSpaceManager index_space_mgr;
   ParallelTensorManager parallel_tensor_mgr;
-  TensorManager tensor_mgr;
-  LayerManager layer_mgr;
   OpNodeManager op_node_mgr;
+  ModelSpec model_spec;
+  ParallelTensorUses uses;
+  TensorMapping tensor_map;
 
-  std::vector<std::unique_ptr<Op *>> operators;
   std::vector<ParallelTensor> parameters;
   std::vector<FFHandler> handlers;
   Legion::Future current_metrics;
@@ -208,6 +205,7 @@ public:
 #endif
 private:
   bool debug;
+  std::vector<std::unique_ptr<Op>> operators;
 
   Tensor binary(OperatorType op,
                 Tensor const x,

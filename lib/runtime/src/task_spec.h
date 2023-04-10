@@ -34,6 +34,11 @@ enum class IsTrainable {
   NO
 };
 
+enum class TaskType {
+  INDEX,
+  STANDARD
+};
+
 enum class OpTaskType {
   INIT,
   FWD,
@@ -46,7 +51,10 @@ enum class SlotType {
 };
 
 using slot_id = int;
-using region_idx = int;
+
+struct region_idx_t : strong_typedef<region_idx_t, int> {
+  using strong_typedef::strong_typedef;
+};
 
 struct TensorSpec {
   TensorSpec() = delete;
@@ -148,8 +156,8 @@ private:
 };
 
 using TensorArgumentFormat = variant<
-  std::pair<region_idx, TensorSpec>,
-  std::vector<std::pair<region_idx, TensorSpec>>
+  std::pair<region_idx_t, TensorSpec>,
+  std::vector<std::pair<region_idx_t, TensorSpec>>
 >;
 
 using SlotKey = std::pair<slot_id, IsGrad>;
@@ -238,7 +246,7 @@ struct OpTaskArgumentAccessor {
   }
 
   template <Legion::PrivilegeMode PRIV>
-  privilege_mode_to_accessor<PRIV> get_generic_accessor(TensorSpec const &tensor_spec, region_idx idx) {
+  privilege_mode_to_accessor<PRIV> get_generic_accessor(TensorSpec const &tensor_spec, region_idx_t idx) {
     auto tensor_privs = tensor_spec.get_privileges();
     if (tensor_privs != PRIV) {
       std::ostringstream oss;
@@ -246,11 +254,11 @@ struct OpTaskArgumentAccessor {
       throw std::runtime_error(oss.str());
     }
     
-    return helperGetGenericTensorAccessor<PRIV>(tensor_spec.datatype, regions[idx], task->regions[idx], FID_DATA, ctx, runtime);
+    return helperGetGenericTensorAccessor<PRIV>(tensor_spec.datatype, regions[idx.value()], task->regions[idx.value()], FID_DATA, ctx, runtime);
   }
 
   template <Legion::PrivilegeMode PRIV>
-  privilege_mode_to_accessor<PRIV> get_generic_accessor(std::pair<region_idx, TensorSpec> const &p) {
+  privilege_mode_to_accessor<PRIV> get_generic_accessor(std::pair<region_idx_t, TensorSpec> const &p) {
     return this->get_generic_accessor<PRIV>(p.second, p.first);
   }
 
@@ -275,7 +283,7 @@ struct OpTaskArgumentAccessor {
   std::vector<privilege_mode_to_accessor<PRIV>> get_variadic_tensor(slot_id slot, IsGrad is_grad) {
     std::vector<privilege_mode_to_accessor<PRIV>> result;
 
-    auto argument_format = get<std::vector<std::pair<region_idx, TensorSpec>>>(this->args_fmt.region_idxs.at({slot, is_grad}));
+    auto argument_format = get<std::vector<std::pair<region_idx_t, TensorSpec>>>(this->args_fmt.region_idxs.at({slot, is_grad}));
     for (auto const &argument : argument_format) {
       result.push_back(this->get_generic_accessor<PRIV>(argument));
     }
@@ -303,6 +311,9 @@ private:
 }
 
 VISITABLE_STRUCT(::FlexFlow::TensorSpec, role, idx, is_grad, is_trainable, mode);
+
+MAKE_TYPEDEF_HASHABLE(::FlexFlow::region_idx_t);
+MAKE_TYPEDEF_PRINTABLE(::FlexFlow::region_idx_t, "region_idx");
 
 
 #endif

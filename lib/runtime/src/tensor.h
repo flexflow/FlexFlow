@@ -65,10 +65,6 @@ struct TensorBase {
                   T const *data);
   template <typename T>
   bool get_tensor(FFModel const *model, T *data, bool get_gradients);
-  template <typename T>
-  bool get_output_parallel_tensor(FFModel const *ff,
-                                  T *data,
-                                  bool get_gradients);
 public:
   tensor_guid_t guid;
   // int adim[MAX_TENSOR_DIM];
@@ -76,7 +72,6 @@ public:
   DataType data_type = DT_NONE;
   ParameterSyncType sync_type = ParameterSyncType::NONE;
   Initializer *initializer = nullptr;
-  optional<ParallelTensor> parallel_tensor = nullopt;
 
   bool create_gradients = false;
 };
@@ -95,6 +90,8 @@ public:
              CreateGrad create_gradients, 
              Initializer const *initializer = nullptr, 
              ParameterSyncType sync_type = ParameterSyncType::NONE);
+
+  operator TensorShape() const;
 
   Tensor(Tensor const &) = default;
   Tensor(Tensor &) = default;
@@ -129,5 +126,8 @@ private:
 
 
 }
+
+MAKE_TYPEDEF_HASHABLE(::FlexFlow::tensor_guid_t);
+MAKE_TYPEDEF_PRINTABLE(::FlexFlow::tensor_guid_t, "tensor_guid");
 
 #endif

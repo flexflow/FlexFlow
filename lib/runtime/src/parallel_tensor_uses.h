@@ -15,6 +15,14 @@ namespace FlexFlow {
 /*   int idx; */
 /* }; */
 
+struct ParallelTensorSourceInfo {
+  ParallelTensorSourceInfo() = delete;
+  ParallelTensorSourceInfo(Op const *, int);
+
+  Op const *op;
+  int idx;
+};
+
 struct ParallelTensorUses {
   ParallelTensorUses() = default;
 
@@ -22,13 +30,13 @@ struct ParallelTensorUses {
   /* std::vector<ParallelTensorUseDescription> at(ParallelTensorBase const *) const; */
   /* std::vector<ParallelTensorUseDescription> at(size_t parallel_tensor_guid) const; */
 
-  Op const *get_source(ParallelTensor const &) const;
+  optional<ParallelTensorSourceInfo> get_source(ParallelTensor const &) const;
 
   void update(Op const &);
   void remove(Op const &);
 private:
   std::unordered_map<size_t, size_t> uses;
-  std::unordered_map<size_t, std::vector<ParallelTensorUseDescription>> uses;
+  /* std::unordered_map<size_t, std::vector<ParallelTensorUseDescription>> uses; */
 };
 
 }

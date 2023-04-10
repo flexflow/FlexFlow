@@ -31,3 +31,9 @@
 [submodule "deps/visit_struct"]
 	path = deps/visit_struct
 	url = https://github.com/cbeck88/visit_struct.git
+[submodule "deps/expected"]
+	path = deps/expected
+	url = https://github.com/TartanLlama/expected.git
+[submodule "deps/fmt"]
+	path = deps/fmt
+	url = https://github.com/fmtlib/fmt.git
