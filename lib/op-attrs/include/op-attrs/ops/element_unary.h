@@ -8,14 +8,23 @@
 
 namespace FlexFlow {
 
-struct ElementUnaryAttrs {
-/* public: */
-  /* ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
-  /* OperatorType op_type() const override; */
+struct ElementScalarUnaryAttrs {
+public:
+  ElementScalarUnaryAttrs(OperatorType, float);
 public:
   OperatorType op;
   /* bool inplace; */
-  float scalar = 0.0;
+  float scalar;
+};
+
+bool operator==(ElementScalarUnaryAttrs const &, ElementScalarUnaryAttrs const &);
+bool operator<(ElementScalarUnaryAttrs const &, ElementScalarUnaryAttrs const &);
+
+struct ElementUnaryAttrs {
+public:
+  ElementUnaryAttrs(OperatorType);
+public:
+  OperatorType op;
 };
 
 bool operator==(ElementUnaryAttrs const &, ElementUnaryAttrs const &);
@@ -23,9 +32,15 @@ bool operator<(ElementUnaryAttrs const &, ElementUnaryAttrs const &);
 
 }
 
-VISITABLE_STRUCT(::FlexFlow::ElementUnaryAttrs, op, scalar);
+VISITABLE_STRUCT(::FlexFlow::ElementScalarUnaryAttrs, op, scalar);
+VISITABLE_STRUCT(::FlexFlow::ElementUnaryAttrs, op);
 
 namespace std {
+template <>
+struct hash<::FlexFlow::ElementScalarUnaryAttrs> {
+  size_t operator()(::FlexFlow::ElementScalarUnaryAttrs const &) const;
+};
+
 template <>
 struct hash<::FlexFlow::ElementUnaryAttrs> {
   size_t operator()(::FlexFlow::ElementUnaryAttrs const &) const;

@@ -4,6 +4,8 @@
 #include <memory>
 #include "multidigraph.h"
 #include <unordered_map>
+#include "open_graphs.h"
+#include "utils/unique.h"
 
 namespace FlexFlow {
 
@@ -34,6 +36,69 @@ public:
   std::unordered_map<Node, T> node_map;
 };
 
+template<typename NodeLabel, 
+         typename EdgeLabel, 
+         typename InputLabel = EdgeLabel, 
+         typename OutputLabel = InputLabel>
+struct LabelledOpenMultiDiGraph {
+public:
+  LabelledOpenMultiDiGraph(std::unique_ptr<IOpenMultiDiGraph> base)
+    : base_graph(std::move(base))
+  { }
+
+  operator IOpenMultiDiGraph const &() const {
+    return *this->base_graph;
+  }
+
+  Node add_node(NodeLabel const &t) {
+    Node n = this->base_graph->add_node();
+    node_map.insert({ n, t });
+    return n;
+  }
+
+  void add_edge(UpwardOpenMultDiEdge const &e, InputLabel const &label) {
+    this->base_graph->add_edge(e);
+    this->input_map.insert({e, label});
+  }
+
+  void add_edge(MultiDiEdge const &e, EdgeLabel const &label) {
+    this->base_graph->add_edge(e);
+    this->edge_map.insert({e, label});
+  }
+
+  void add_edge(DownwardOpenMultiDiEdge const &e, OutputLabel const &label) {
+    this->base_graph->add_edge(e);
+    this->output_map.insert({e, label});
+  }
+
+  NodeLabel const &at(Node const &n) const {
+    return this->node_map.at(n);
+  }
+
+  EdgeLabel const &at(MultiDiEdge const &e) const {
+    return this->edge_map.at(e);
+  }
+
+  InputLabel const &at(UpwardOpenMultDiEdge const &e) const {
+    return this->input_map.at(e);
+  }
+
+  OutputLabel const &at(DownwardOpenMultiDiEdge const &e) const {
+    return this->output_map.at(e);
+  }
+
+  template <typename BaseImpl, 
+            typename ...Args>
+  static LabelledOpenMultiDiGraph create(Args &&... args) {
+    return LabelledOpenMultiDiGraph(make_unique<BaseImpl>(std::forward<Args>(args)...));
+  }
+private:
+  std::unique_ptr<IOpenMultiDiGraph> base_graph;
+  std::unordered_map<Node, NodeLabel> node_map;
+  std::unordered_map<MultiDiEdge, EdgeLabel> edge_map;
+  std::unordered_map<UpwardOpenMultDiEdge, InputLabel> input_map;
+  std::unordered_map<DownwardOpenMultiDiEdge, OutputLabel> output_map;
+};
 }
 
 #endif 

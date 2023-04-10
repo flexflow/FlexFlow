@@ -8,63 +8,31 @@
 #include "utils/stack_vector.h"
 #include "utils/stack_string.h"
 #include "op-attrs/op-attrs.h"
+#include "utils/strong_typedef.h"
 
 namespace FlexFlow {
 
-class FFModel;
+struct layer_guid_t : strong_typedef<layer_guid_t, size_t> {
+  using strong_typedef::strong_typedef;
+};
+
 class Layer {
 public:
   Layer() = delete;
-  Layer(size_t layer_guid,
-        OperatorType otype,
-        DataType dtype,
-        char const *name,
-        int numInputs,
-        int numWeights,
-        int numOutputs,
-        CompGraphOperatorAttrs const &attrs);
-  Layer(size_t layer_guid,
-        OperatorType otype,
-        DataType dtype,
-        char const *name,
-        int numInputs,
-        int numWeights,
-        int numOutputs,
-        CompGraphOperatorAttrs const &attrs,
-        optional<Tensor const &> input1,
-        optional<Tensor const &> input2 = nullopt,
-        optional<Tensor const &> input3 = nullopt,
-        optional<Tensor const &> input4 = nullopt);
-  Layer(size_t layer_guid,
-        OperatorType otype,
-        DataType dtype,
-        char const *name,
-        int numInputs,
-        int numWeights,
-        int numOutputs,
-        CompGraphOperatorAttrs const &attrs,
-        Tensor const *tensors);
-  Layer(size_t layer_guid,
-        CompGraphOperatorAttrs const &attrs,
-        DataType data_type,
-        char const *name,
-        std::vector<Tensor> const &inputs,
-        std::vector<Tensor> const &weights,
-        std::vector<Tensor> const &outputs);
+  Layer(LayerID,
+        OperatorType,
+        DataType,
+        std::string const &name,
+        CompGraphOperatorAttrs const &attrs, 
+        Initializer *initializer);
   void add_initializer(std::string const &key, Initializer *initializer);
   Initializer *get_initializer(std::string const &key) const;
   Tensor get_parameter(int index);
-
 public:
   OperatorType op_type;
   DataType data_type;
   LayerID layer_guid;
   stack_string<MAX_OPNAME> name;
-  stack_vector<Tensor, MAX_NUM_OUTPUTS> outputs;
-  stack_vector<Tensor, MAX_NUM_INPUTS> inputs;
-  stack_vector<Tensor, MAX_NUM_WEIGHTS> weights;
-  stack_vector<bool, MAX_NUM_INPUTS> trainableInputs;
-  int numInputs, numWeights, numOutputs;
   bool profiling;
   CompGraphOperatorAttrs attrs;
 private:
@@ -73,13 +41,21 @@ private:
 
 struct LayerManager {
 public:
-  template <typename ...Args>
-  Layer *create(Args&&...args) {
-    layers.emplace_back(new Layer(this->layer_global_guid++, std::forward<Args>(args)...));
-    return this->layers.back().get();
+  Layer create(CompGraphOperatorAttrs const &attrs,
+        DataType data_type,
+        std::string const &name) {
+    return {this->next_id(), get_op_type(attrs), data_type, name, attrs};
+  }
+
+  template <typename Variant>
+  Layer create(Variant const &attrs, DataType data_type, std::string const &name) {
+    return this->create(variant_cast<CompGraphOperatorAttrs>(attrs), data_type, name);
+  }
+
+  LayerID next_id() {
+    return LayerID(this->layer_global_guid++);
   }
 private:
-  std::vector<std::unique_ptr<Layer>> layers;
   size_t layer_global_guid = LAYER_GUID_FIRST_VALID;
 };
 

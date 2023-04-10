@@ -15,9 +15,11 @@ OperatorType get_op_type(EmbeddingAttrs const &) { return OP_EMBEDDING; }
 OperatorType get_op_type(FlatAttrs const &) { return OP_FLAT; }
 OperatorType get_op_type(GatherAttrs const &) { return OP_GATHER; }
 OperatorType get_op_type(Group_byAttrs const &) { return OP_GROUP_BY; }
+OperatorType get_op_type(InputAttrs const &) { return OP_INPUT; }
 OperatorType get_op_type(LayerNormAttrs const &) { return OP_LAYERNORM; }
 OperatorType get_op_type(LinearAttrs const &) { return OP_LINEAR; }
 OperatorType get_op_type(MultiHeadAttentionAttrs const &) { return OP_MULTIHEAD_ATTENTION; }
+OperatorType get_op_type(NoopAttrs const &) { return OP_NOOP; }
 OperatorType get_op_type(Pool2DAttrs const &) { return OP_POOL2D; }
 OperatorType get_op_type(ReduceAttrs const &) { return OP_REDUCE_SUM; }
 OperatorType get_op_type(ReshapeAttrs const &) { return OP_RESHAPE; }

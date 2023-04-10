@@ -25,6 +25,7 @@
 #include "parallel_tensor.h"
 #include "tensor_shape.h"
 #include <type_traits>
+#include "utils/strong_typedef.h"
 
 namespace FlexFlow {
 
@@ -37,16 +38,18 @@ enum class CreateGrad {
   NO
 };
 
+struct tensor_guid_t : strong_typedef<tensor_guid_t, size_t> {
+  using strong_typedef::strong_typedef;
+};
+
 struct TensorBase {
-  TensorBase(void) = default;
+  TensorBase() = delete;
   TensorBase(TensorBase const &rhs);
-  TensorBase(size_t tensor_guid, 
+  TensorBase(tensor_guid_t, 
              TensorShape const &,
              bool create_gradients, 
              Initializer const *initializer = nullptr, 
-             ParameterSyncType sync_type = ParameterSyncType::NONE, 
-             Layer const *layer = nullptr,
-             int owner_idx = 0);
+             ParameterSyncType sync_type = ParameterSyncType::NONE);
 
   size_t get_volume() const;
   Legion::Domain get_domain() const;
@@ -67,16 +70,14 @@ struct TensorBase {
                                   T *data,
                                   bool get_gradients);
 public:
-  size_t tensor_guid = 0;
+  tensor_guid_t guid;
   // int adim[MAX_TENSOR_DIM];
   stack_vector<int, MAX_TENSOR_DIM> dims;
   DataType data_type = DT_NONE;
   ParameterSyncType sync_type = ParameterSyncType::NONE;
   Initializer *initializer = nullptr;
   optional<ParallelTensor> parallel_tensor = nullopt;
-  // Describes the ownership of this tensor
-  Layer const *owner_layer = nullptr;
-  int owner_idx = 0;
+
   bool create_gradients = false;
 };
 
@@ -89,13 +90,7 @@ public:
   /* Tensor(Args&&...args) */
   /*   : ptr(std::make_shared<TensorBase>(std::forward<Args>(args)...)) */
   /* { } */
-
-  Tensor(size_t tensor_guid, 
-             TensorShape const &,
-             bool create_gradients, 
-             Initializer const *initializer = nullptr, 
-             ParameterSyncType sync_type = ParameterSyncType::NONE);
-  Tensor(size_t tensor_guid, 
+  Tensor(tensor_guid_t guid, 
              TensorShape const &,
              CreateGrad create_gradients, 
              Initializer const *initializer = nullptr, 
@@ -113,6 +108,25 @@ private:
 static_assert(std::is_copy_constructible<Tensor>::value, "Tensor must be copy constructible");
 
 using Parameter = Tensor;
+
+struct TensorManager {
+public:
+  TensorManager() = default;
+
+  Tensor create(TensorShape const &shape,
+             CreateGrad create_gradients, 
+             Initializer const *initializer = nullptr, 
+             ParameterSyncType sync_type = ParameterSyncType::NONE) {
+    return Tensor(this->next_id(), shape, create_gradients, initializer, sync_type);
+  }
+private:
+  tensor_guid_t next_id() {
+    return tensor_guid_t(this->tensor_global_guid++);
+  };
+private:
+  size_t tensor_global_guid = TENSOR_GUID_FIRST_VALID;
+};
+
 
 }
 

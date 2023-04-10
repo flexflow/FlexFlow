@@ -9,12 +9,12 @@
 namespace FlexFlow {
 
 struct ElementBinaryAttrs {
-/* public: */
-  /* bool is_valid(ParallelTensorShape const &, ParallelTensorShape const &) const override; */
-  /* ParallelTensorShape output_shape(ParallelTensorShape const &, ParallelTensorShape const &) const override; */
-  /* OperatorType op_type() const override; */
+public:
+  ElementBinaryAttrs(OperatorType, bool should_broadcast_lhs, bool should_broadcast_rhs);
 public:
   OperatorType type;
+  bool should_broadcast_lhs;
+  bool should_broadcast_rhs;
 };
 
 bool operator==(ElementBinaryAttrs const &, ElementBinaryAttrs const &);

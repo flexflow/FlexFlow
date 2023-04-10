@@ -4,28 +4,9 @@
 #include <cstddef>
 #include "utils/stack_vector.h"
 #include "op-attrs/ffconst.h"
+#include "op-attrs/tensor_shape.h"
 
 namespace FlexFlow {
-
-struct TensorShape;
-struct LegionTensorShape;
-
-struct TensorShape {
-  TensorShape() = delete;
-  TensorShape(std::vector<size_t> const &dims, DataType data_type);
-  TensorShape(LegionTensorShape const &);
-
-  template <size_t MAXSIZE>
-  TensorShape(stack_vector<size_t, MAXSIZE> const &dims, DataType data_type)
-    : dims(dims.start(), dims.end()), data_type(data_type)
-  { }
-
-  int num_dims() const;
-
-public:
-  DataType data_type;
-  stack_vector<size_t, MAX_TENSOR_DIM> dims;
-};
 
 struct LegionTensorShape {
   LegionTensorShape() = delete;
@@ -36,6 +17,8 @@ struct LegionTensorShape {
   LegionTensorShape(stack_vector<size_t, MAXSIZE> const &dims, DataType data_type)
     : dims(dims.start(), dims.end()), data_type(data_type)
   { }
+
+  operator TensorShape() const;
 
   int num_dims() const;
   

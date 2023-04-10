@@ -57,7 +57,6 @@ void Loss::backward(FFModel *model,
   }
   // scale_factor = 1.0f;
   //  Use the same parallel strategy as the owner of logit
-  std::string pcname = logit->owner_op->name;
   Context ctx = model->config.legion_config.lg_ctx;
   Runtime *runtime = model->config.legion_config.lg_hlr;
   Domain part_domain = runtime->get_index_space_domain(ctx, logit->parallel_is);

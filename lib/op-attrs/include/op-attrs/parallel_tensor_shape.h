@@ -23,8 +23,6 @@ struct ParallelDim {
   bool is_replica_dim;
 };
 
-struct ParallelTensorShape;
-
 /**
  * @brief Represent the shape of a ParallelTensor.
  */

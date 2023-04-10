@@ -273,6 +273,11 @@ std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
   return result;
 }
 
+template <typename F, typename Elem>
+void inplace_filter(std::vector<Elem> &v, F const &f) {
+  std::remove_if(v.begin(), v.end(), [&](Elem const &e) { return !f(e); });
+}
+
 template <typename T>
 std::pair<std::vector<T>, std::vector<T>> vector_split(std::vector<T> const &v, std::size_t idx) {
   assert (v.size() > idx);

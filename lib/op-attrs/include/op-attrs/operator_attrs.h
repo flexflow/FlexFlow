@@ -17,6 +17,7 @@
 #include "ops/groupby.h"
 #include "ops/layer_norm.h"
 #include "ops/linear.h"
+#include "ops/noop.h"
 #include "ops/pool_2d.h"
 #include "ops/reshape.h"
 #include "ops/softmax.h"
@@ -42,14 +43,17 @@ using CompGraphOperatorAttrs = variant<
                                        Conv2DAttrs,
                                        DropoutAttrs,
                                        ElementBinaryAttrs,
+                                       ElementScalarUnaryAttrs,
                                        ElementUnaryAttrs,
                                        EmbeddingAttrs,
                                        FlatAttrs,
                                        GatherAttrs,
                                        Group_byAttrs,
+                                       InputAttrs,
                                        LayerNormAttrs,
                                        LinearAttrs,
                                        MultiHeadAttentionAttrs,
+                                       NoopAttrs,
                                        Pool2DAttrs,
                                        ReduceAttrs,
                                        ReshapeAttrs,

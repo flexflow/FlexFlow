@@ -37,6 +37,19 @@ struct variant_join_helper<mpark::variant<Args1...>, mpark::variant<Args2...>> {
 template <class Variant1, class Variant2>
 using variant_join = typename variant_join_helper<Variant1, Variant2>::type;
 
+template <typename Out>
+struct VariantCastFunctor {
+  template <typename T>
+  Out operator()(T const &t) const {
+    return Out(t);
+  }
+};
+
+template <typename VariantOut, typename VariantIn>
+VariantOut variant_cast(VariantIn const &v) {
+  return visit(VariantCastFunctor<VariantOut>{}, v);
+}
+
 }
 
 #endif 

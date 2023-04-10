@@ -43,6 +43,8 @@
 #include "legion_parallel_tensor_shape.h"
 #include "index_space_manager.h"
 #include "parallel_tensor_manager.h"
+#include "parallel_tensor_uses.h"
+#include "model_spec.h"
 
 namespace FlexFlow {
 
@@ -57,275 +59,39 @@ MachineView get_basic_data_parallel_machine_view(int num_parts, int dims);
 
 class FFModel {
 public:
-  FFModel(FFConfig const &config);
+  FFModel(FFConfig const &config, ModelSpec const &);
 
-  // C++ APIs for constructing models
-  // Add an exp layer
-  Tensor exp(Tensor const &x, char const *name = NULL);
-  // Add an add layer
-  Tensor add(Tensor const &x,
-             Tensor const &y,
-             bool inplace_a = false,
-             char const *name = NULL);
-  // Add a subtract layer
-  Tensor subtract(Tensor const &x,
-                  Tensor const &y,
-                  bool inplace_a = false,
-                  char const *name = NULL);
-  // Add a multiply layer
-  Tensor multiply(Tensor const &x,
-                  Tensor const &y,
-                  bool inplace_a = false,
-                  char const *name = NULL);
-  // Add a divide layer
-  Tensor divide(Tensor const &x,
-                Tensor const &y,
-                bool inplace_a = false,
-                char const *name = NULL);
-  // Add a max layer
-  Tensor max(Tensor const &x,
-             Tensor const &y,
-             bool inplace_a = false,
-             char const *name = NULL);
-  // Add a min layer
-  Tensor min(Tensor const &x,
-             Tensor const &y,
-             bool inplace_a = false,
-             char const *name = NULL);
-  // Add a rsqrt layer
-  Tensor rsqrt(Tensor const &x, bool inplace = true, char const *name = NULL);
-  // Add a pow layer
-  Tensor pow(Tensor const &x,
-             float const exponent,
-             bool inplace = true,
-             char const *name = NULL);
-  // Add a scalar multiply layer
-  Tensor scalar_multiply(Tensor const &x,
-                         float const scalar,
-                         bool inplace = true,
-                         char const *name = NULL);
-  Tensor scalar_add(Tensor const &x,
-                    float const scalar,
-                    bool inplace = true,
-                    char const *name = NULL);
-  Tensor scalar_sub(Tensor const &x,
-                    float const scalar,
-                    bool inplace = true,
-                    char const *name = NULL);
-  Tensor scalar_truediv(Tensor const &x,
-                        float const scalar,
-                        bool inplace = true,
-                        char const *name = NULL);
-  // Add a sin layer
-  Tensor sin(Tensor const &x, char const *name = NULL);
-  // Add a cos layer
-  Tensor cos(Tensor const &x, char const *name = NULL);
-  // Add an activation layer
-  Tensor relu(Tensor const &x, bool inplace = true, char const *name = NULL);
-  Tensor identity(Tensor const &x, char const *name = NULL);
-  Tensor gelu(Tensor const &x, char const *name = NULL);
-  Tensor sigmoid(Tensor const &x, char const *name = NULL);
-  Tensor tanh(Tensor const &x, char const *name = NULL);
-  Tensor elu(Tensor const &x, bool inplace = true, char const *name = NULL);
-  // Add a 2D convolutional layer
-  Tensor conv2d(Tensor const &input,
-                int outChannels,
-                int kernelH,
-                int kernelW,
-                int strideH,
-                int strideW,
-                int paddingH,
-                int paddingW,
-                ActiMode activation = AC_MODE_NONE,
-                int groups = 1,
-                bool use_bias = true,
-                Layer const *shared_op = NULL,
-                Initializer *krenel_initializer = NULL,
-                Initializer *bias_initializer = NULL,
-                char const *name = NULL);
-  // Add a dropout layer
-  Tensor dropout(Tensor const &input,
-                 float rate,
-                 unsigned long long seed = 0,
-                 char const *name = NULL);
-  // Add an embedding layer
-  Tensor embedding(Tensor const &input,
-                   int num_entires,
-                   int outDim,
-                   AggrMode aggr,
-                   DataType dtype = DT_FLOAT,
-                   Layer const *shared_op = NULL,
-                   Initializer *kernel_initializer = NULL,
-                   char const *name = NULL);
-  // Add a gather layer
-  Tensor gather(Tensor const &input,
-                Tensor const &index,
-                int dim,
-                char const *name = NULL);
-  // Add a group_by layer
-  void group_by(Tensor const &data,
-                Tensor const &assign,
-                Tensor *outputs,
-                int n,
-                float alpha,
-                char const *name = NULL);
-  // Add a cache layer
-  Tensor cache(Tensor const &input,
-               int num_batches,
-               std::function<float(float *, void const *, void const *, int)>
-                   score_f = {},
-               char const *name = NULL);
-  // Add aggregate layer
-  Tensor aggregate(Tensor const *inputs,
-                   int n,
-                   float lambda_bal,
-                   char const *name = NULL);
-  // Add aggregate_spec layer
-  Tensor aggregate_spec(Tensor const *inputs,
-                        int n,
-                        float lambda_bal,
-                        char const *name = NULL);
-  // Add a 2D pooling layer
-  Tensor pool2d(Tensor const &input,
-                int kernelH,
-                int kernelW,
-                int strideH,
-                int strideW,
-                int paddingH,
-                int paddingW,
-                PoolType type = POOL_MAX,
-                ActiMode activation = AC_MODE_NONE,
-                char const *name = NULL);
-  // Add a batch_norm layer
-  Tensor layer_norm(Tensor const &input,
-                    std::vector<int> const &axes,
-                    bool elementwise_affine,
-                    float eps,
-                    char const *name = NULL);
-  // Add a batch_norm layer
-  Tensor
-      batch_norm(Tensor const &input, bool relu = true, char const *name = NULL);
-  // Add a batch_matmul layer
-  Tensor batch_matmul(Tensor const &A,
-                      Tensor const &B,
-                      int a_seq_length_dim = -1,
-                      int b_seq_length_dim = -1,
-                      char const *name = nullptr);
-  // Add a dense layer
-  Tensor dense(Tensor const &input,
-               int outDim,
-               ActiMode activation = AC_MODE_NONE,
-               bool use_bias = true,
-               DataType data_type = DT_FLOAT,
-               Layer const *shared_op = NULL,
-               Initializer *kernel_initializer = NULL,
-               Initializer *bias_initializer = NULL,
-               char const *name = NULL);
-  // Add a cast layer
-  Tensor cast(Tensor const &input, DataType dtype, char const *name = nullptr);
-  // Add a concat layer
-  Tensor
-      concat(int n, Tensor const *tensors, int axis, char const *name = NULL);
-  // Add a mean layer
-  Tensor mean(Tensor const &input,
-              std::vector<int> const &dims,
-              bool keepdims,
-              char const *name);
-  // Add a moe layer (wrapping topk, group_by and aggregate operators)
-  Tensor moe(Tensor const &input,
-             int num_exp,
-             int num_select,
-             int expert_hidden_size,
-             float alpha,
-             float lambda);
-  // Add a split layer
-  void split(Tensor const &input,
-             Tensor *outputs,
-             std::vector<int> const &split,
-             int axis,
-             char const *name = NULL);
-  // Add a flat layer
-  Tensor flat(Tensor const &input, char const *name = NULL);
-  // Add a softmax layer
-  Tensor softmax(Tensor const &input, int dim = -1, char const *name = NULL);
-  // Create input tensors and constants
-  Tensor transpose(Tensor const &input,
-                   std::vector<int> const &perm,
-                   char const *name = NULL);
-  Tensor reduce_sum(Tensor const &input,
-                    std::vector<int> const &axes,
-                    bool keepdims = false,
-                    char const *name = nullptr);
-  Tensor reshape(Tensor const &input,
-                 std::vector<int> const &shape,
-                 char const *name = NULL);
-  Tensor reverse(Tensor const &input, int axis, char const *name = NULL);
-  void top_k(Tensor const &input,
-             Tensor *outputs,
-             int k,
-             bool sorted,
-             char const *name = NULL);
-  Tensor multihead_attention(Tensor const &query,
-                             Tensor const &key,
-                             Tensor const &value,
-                             int embed_dim,
-                             int num_heads,
-                             int kdim = 0,
-                             int vdim = 0,
-                             float dropout = 0.0f,
-                             bool bias = true,
-                             bool add_bias_kv = false,
-                             bool add_zero_attn = false,
-                             Initializer *kernel_initializer = NULL,
-                             char const *name = NULL);
-  Tensor create_tensor(LegionTensorShape const &shape,
-                       Layer const *owner_op = NULL,
-                       int owner_idx = 0,
-                       bool create_grad = true);
   ParallelTensor
       create_parallel_tensor(LegionParallelTensorShape const &,
-                             Op const *owner_op = NULL,
-                             int owner_idx = 0,
                              bool create_grad = true,
                              size_t input_tensor_guid = 0);
-  Tensor create_tensor(TensorShape const &,
-                       Layer const *owner_op = NULL,
-                       int owner_idx = 0,
-                       bool create_grad = true);
   ParallelTensor create_parallel_tensor(ParallelTensorShape const &,
-                                        Op const *owner_op = NULL,
-                                        int owner_idx = 0,
                                         bool create_grad = true,
                                         size_t input_tensor_guid = 0);
   Parameter create_weight(
       TensorShape const &,
-      Layer const *owner_op = NULL,
       bool create_grad = true,
       Initializer *initializer = NULL,
       ParameterSyncType sync_type = ParameterSyncType::NONE);
   Parameter create_weight(
       LegionTensorShape const &,
-      Layer const *owner_op = NULL,
       bool create_grad = true,
       Initializer *initializer = NULL,
       ParameterSyncType sync_type = ParameterSyncType::NONE);
   ParallelParameter create_parallel_weight(
       ParallelTensorShape const &,
-      Op const *owner_op = NULL,
       bool create_grad = true,
       Initializer *initializer = NULL,
       ParameterSyncType sync_type = ParameterSyncType::NONE);
   ParallelParameter create_parallel_weight(
       LegionParallelTensorShape const &,
-      Op const *owner_op = NULL,
       bool create_grad = true,
       Initializer *initializer = NULL,
       ParameterSyncType sync_type = ParameterSyncType::NONE);
 
   optional<ParallelTensor> get_parallel_tensor_from_tensor(Tensor const &tensor) const;
 
-  template <int NDIM>
-  Tensor create_constant(int const dims[], float value, DataType date_type);
+  Tensor create_constant(TensorShape const &, float value);
   // ========================================
   // Graph APIs
   // ========================================
@@ -399,20 +165,15 @@ private:
   template <int NDIM>
   ParallelParameter create_parallel_weight(
       ParallelTensorShape const &,
-      Op const *owner_op = NULL,
       bool create_grad = true,
       Initializer *initializer = NULL,
       ParameterSyncType sync_type = ParameterSyncType::NONE);
 
   template <int NDIM>
   Tensor create_tensor(TensorShape const &,
-                       Layer const *owner_op = NULL,
-                       int owner_idx = 0,
                        bool create_grad = true);
   template <int NDIM>
   ParallelTensor create_parallel_tensor(ParallelTensorShape const &,
-                                        Op const *owner_op = NULL,
-                                        int owner_idx = 0,
                                         bool create_grad = true,
                                         size_t input_tensor_guid = 0);
 
@@ -428,12 +189,14 @@ public:
   int metrics_input;
   optional<ParallelTensor> parallel_label_tensor;
   optional<Tensor> label_tensor;
+
   IndexSpaceManager index_space_mgr;
   ParallelTensorManager parallel_tensor_mgr;
   TensorManager tensor_mgr;
   LayerManager layer_mgr;
+  OpNodeManager op_node_mgr;
 
-  std::vector<Op *> operators;
+  std::vector<std::unique_ptr<Op *>> operators;
   std::vector<ParallelTensor> parameters;
   std::vector<FFHandler> handlers;
   Legion::Future current_metrics;
@@ -459,7 +222,7 @@ private:
                float scalar = 0.0);
   ElementUnary *
       unary(OperatorType op, char const *name = NULL, float scalar = 0.0);
-  OpNode new_node(Op *);
+  OpNode new_node(Op const *);
 };
 
 

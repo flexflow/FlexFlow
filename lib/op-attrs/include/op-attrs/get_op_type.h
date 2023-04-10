@@ -6,7 +6,6 @@
 
 namespace FlexFlow {
 
-OperatorType get_op_type(MultiHeadAttentionAttrs const &);
 OperatorType get_op_type(AggregateSpecAttrs const &);
 OperatorType get_op_type(BatchMatmulAttrs const &);
 OperatorType get_op_type(CastAttrs const &);
@@ -19,9 +18,11 @@ OperatorType get_op_type(EmbeddingAttrs const &);
 OperatorType get_op_type(FlatAttrs const &);
 OperatorType get_op_type(GatherAttrs const &);
 OperatorType get_op_type(Group_byAttrs const &);
+OperatorType get_op_type(InputAttrs const &);
 OperatorType get_op_type(LayerNormAttrs const &);
 OperatorType get_op_type(LinearAttrs const &);
 OperatorType get_op_type(MultiHeadAttentionAttrs const &);
+OperatorType get_op_type(NoopAttrs const &);
 OperatorType get_op_type(Pool2DAttrs const &);
 OperatorType get_op_type(ReduceAttrs const &);
 OperatorType get_op_type(ReshapeAttrs const &);

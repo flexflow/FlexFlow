@@ -66,6 +66,7 @@
 #include "parallel_tensor_manager.h"
 #include "parallel_tensor_mapping.h"
 #include "make_operator.h"
+#include "op-attrs/ops/noop.h"
 
 using namespace Legion;
 
@@ -100,9 +101,8 @@ LegionRuntime::Logger::Category log_profile("profile");
 /*   return dim_mapping; */
 /* } */
 
-FFModel::FFModel(FFConfig &_config)
+FFModel::FFModel(FFConfig const &_config)
     : op_global_guid(OP_GUID_FIRST_VALID),
-      layer_global_guid(LAYER_GUID_FIRST_VALID),
       node_global_guid(NODE_GUID_FIRST_VALID), config(_config), optimizer(NULL),
       loss_op(nullopt), metrics_op(nullopt), simulator(nullptr), index_space_mgr(_config.legion_config) {
 
@@ -162,30 +162,25 @@ ncclComm_t *FFModel::find_nccl_comms(MachineView const &view) const {
 }
 #endif
 
-template <int NDIM>
-Tensor FFModel::create_constant(int const dims[],
-                                float value,
-                                DataType data_type) {
+Tensor FFModel::create_constant(TensorShape const &shape,
+                                float value) {
   // FIXME: currently create gradients for constants since the current auto grad
   // algorithm computes gradients for all operators
-  Tensor tensor = create_tensor<NDIM>(
-      dims, data_type, NULL /*owner_op*/, false /*create_grad*/);
+  Tensor tensor = create_tensor(shape, false /*create_grad*/);
   tensor->initializer = new ConstantInitializer(value);
   return tensor;
 }
 
-OpNode FFModel::new_node(Op *op) {
-  return {this->node_global_guid++, op};
+OpNode FFModel::new_node(Op const *op) {
+  return this->op_node_mgr.create(op);
 }
 
 Tensor FFModel::create_tensor(TensorShape const &shape,
-                              Layer const *layer,
-                              int idx,
                               bool create_grad) {
   switch (shape.num_dims()) {
 #define DIMFUNC(DIM)                                                           \
   case DIM:                                                                    \
-    return create_tensor<DIM>(shape, layer, idx, create_grad);
+    return create_tensor<DIM>(shape, create_grad);
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
     default:
@@ -194,8 +189,6 @@ Tensor FFModel::create_tensor(TensorShape const &shape,
 }
 
 ParallelTensor FFModel::create_parallel_tensor(ParallelTensorShape const &shape,
-                                               Op const *op,
-                                               int idx,
                                                bool create_grad,
                                                size_t input_tensor_guid) {
   switch (shape.num_dims()) {
@@ -211,46 +204,30 @@ ParallelTensor FFModel::create_parallel_tensor(ParallelTensorShape const &shape,
 }
 
 Tensor FFModel::create_tensor(LegionTensorShape const &shape,
-                                              Layer const *layer,
-                                              int idx,
                                               bool create_grad) {
-  return create_tensor(static_cast<TensorShape>(shape), layer, idx, create_grad);
+  return create_tensor(static_cast<TensorShape>(shape), create_grad);
 }
 
 ParallelTensor
     FFModel::create_parallel_tensor(LegionParallelTensorShape const &shape,
-                                                    Op const *op,
-                                                    int idx,
                                                     bool create_grad,
                                                     size_t input_tensor_guid) {
-  return this->create_parallel_tensor(static_cast<ParallelTensorShape>(shape), op, idx, create_grad, input_tensor_guid);
+  return this->create_parallel_tensor(static_cast<ParallelTensorShape>(shape), create_grad, input_tensor_guid);
 }
 
 template <int NDIM>
 Tensor FFModel::create_tensor(TensorShape const &shape,
-                              Layer const *owner_layer,
-                              int owner_idx,
                               bool create_grad) {
   assert (shape.num_dims() == NDIM);
   Tensor tensor = this->tensor_mgr.create(shape, create_grad);
-
-  if (owner_layer == NULL) {
-    Layer *input_layer = this->layer_mgr.create(OP_INPUT, shape.data_type, "input", {}/*TODO @lockshaw*/, {}, {}, {tensor});
-
-    tensor->owner_layer = input_layer;
-    tensor->owner_idx = 0;
-  } else {
-    tensor->owner_layer = owner_layer;
-    tensor->owner_idx = owner_idx;
-  }
+  Layer *input_layer = this->layer_mgr.create(InputAttrs{}, shape.data_type, "input", {}, {}, {tensor});
+  this->tensor_uses.update(*input_layer);
 
   return tensor;
 }
 
 template <int NDIM>
 ParallelTensor FFModel::create_parallel_tensor(ParallelTensorShape const &shape,
-                                               Op const *owner_op,
-                                               int owner_idx,
                                                bool create_grad,
                                                size_t input_tensor_guid) {
   assert (shape.num_dims() == NDIM);
@@ -1253,7 +1230,6 @@ void FFIterationConfig::reset() {
   template ParallelParameter FFModel::create_parallel_weight<DIM>(             \
       const ParallelDim dims[],                                                \
       DataType data_type,                                                      \
-      Op const *owner_op,                                                      \
       bool create_grad,                                                        \
       Initializer *initializer,                                                \
       ParameterSyncType sync_type);                                            \

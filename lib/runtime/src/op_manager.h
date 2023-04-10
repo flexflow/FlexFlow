@@ -8,7 +8,7 @@ namespace FlexFlow {
 struct OpManager {
   template <typename T, typename ...Args>
   Op *create(Args&&...args) {
-
+    return new T(
   }
 };
 

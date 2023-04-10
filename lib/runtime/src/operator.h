@@ -1,5 +1,5 @@
-#ifndef _OPERATOR_H
-#define _OPERATOR_H
+#ifndef _FLEXFLOW_RUNTIME_SRC_OPERATOR_H
+#define _FLEXFLOW_RUNTIME_SRC_OPERATOR_H
 
 #include "runtime/config.h"
 #include "layer_id.h"
@@ -12,6 +12,8 @@
 #include "task_spec.h"
 #include "kernels/per_device_op_state.h"
 #include "kernels/profiling.h"
+#include "utils/strong_typedef.h"
+#include "utils/stack_string.h"
 
 namespace FlexFlow {
 
@@ -21,7 +23,10 @@ extern LegionRuntime::Logger::Category log_profile;
 class Simulator;
 class CostMetrics;
 class FFModel;
-class PerDeviceOpState;
+
+struct op_guid_t : strong_typedef<op_guid_t, size_t> {
+  using strong_typedef::strong_typedef;
+};
 
 class Op {
 protected:
@@ -31,7 +36,7 @@ protected:
                                    CostMetrics &cost_metrics) const;
 
 public:
-  Op(size_t op_guid,
+  Op(op_guid_t guid,
      OperatorType otype,
      DataType dtype,
      char const *name,
@@ -44,7 +49,7 @@ public:
      tl::optional<ParallelTensor> const &input2 = tl::nullopt,
      tl::optional<ParallelTensor> const &input3 = tl::nullopt,
      tl::optional<ParallelTensor> const &input4 = tl::nullopt);
-  Op(size_t op_guid,
+  Op(op_guid_t op_guid,
      OperatorType otype,
      DataType dtype,
      char const *_name,
@@ -56,7 +61,7 @@ public:
      tl::optional<ParallelTensor> const &input2 = tl::nullopt,
      tl::optional<ParallelTensor> const &input3 = tl::nullopt,
      tl::optional<ParallelTensor> const &input4 = tl::nullopt);
-  Op(size_t op_guid,
+  Op(op_guid_t op_guid,
      OperatorType otype,
      DataType dtype,
      char const *_name,
@@ -150,7 +155,8 @@ public:
   // the guid of the layer associated with the current operator
   // layer_guid is used to match layer with op
   LayerID layer_guid;
-  size_t op_guid;
+  op_guid_t op_guid;
+  stack_string<MAX_OPNAME> name;
   char name[MAX_OPNAME];
   Legion::IndexSpace parallel_is;
   stack_vector<ParallelTensor, MAX_NUM_OUTPUTS> outputs;

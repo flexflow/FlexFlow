@@ -132,6 +132,12 @@ RecordFormatter generic_as_dot<FlatAttrs>(FlatAttrs const &p) {
   return r;
 }
 
+template <>
+RecordFormatter generic_as_dot<NoopAttrs>(NoopAttrs const &p) {
+  RecordFormatter r;
+  return r;
+}
+
 struct AsDot {
   template <typename T>
   RecordFormatter operator()(T const &t) {

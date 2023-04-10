@@ -75,14 +75,6 @@ Op *ElementUnary::create_operator_from_layer(
       model, layer->op_type, inputs[0], inplace, layer->name, scalar);
 }
 
-ElementUnaryParams ElementUnary::get_params() const {
-  ElementUnaryParams params;
-  params.op_type = this->op_type;
-  params.inplace = this->inplace;
-  params.scalar = this->scalar;
-  return params;
-}
-
 Tensor FFModel::exp(const Tensor x, char const *name) {
   return this->unary(OP_EXP, x, false /*inplace*/, name);
 }

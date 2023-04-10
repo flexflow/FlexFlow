@@ -5,6 +5,7 @@
 #include "utils/containers.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/optional.h"
+#include "tensor_shape.h"
 
 namespace FlexFlow {
 
@@ -62,6 +63,9 @@ output_shapes(T const &t, std::vector<ParallelTensorShape> const &shapes) {
 
   return {output_shape(t, shapes.at(0), shapes.at(1))};
 }
+
+template <typename T>
+TensorShape get_output_shape(T const &attrs, TensorShape const &t);
 
 ParallelTensorShape get_output_shape(AggregateAttrs const &, std::vector<ParallelTensorShape> const &);
 ParallelTensorShape get_output_shape(AggregateSpecAttrs const &, ParallelTensorShape const &);

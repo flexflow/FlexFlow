@@ -3,18 +3,12 @@
 
 #include "op-attrs/ffconst.h"
 #include <cstddef>
+#include "utils/strong_typedef.h"
 
 namespace FlexFlow {
 
-class LayerID {
-public:
-  LayerID();
-  LayerID(size_t id);
-  bool is_valid_id() const;
-  friend bool operator==(LayerID const &lhs, LayerID const &rhs);
-
-public:
-  size_t id;
+struct LayerID : strong_typedef<LayerID, size_t> {
+  using strong_typedef::strong_typedef; 
 };
 
 }
