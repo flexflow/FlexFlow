@@ -142,6 +142,10 @@ enum TaskIDs {
   ATTENTION_BWD_TASK_ID,
   RMSNROM_INIT_TASK_ID,
   RMSNROM_FWD_TASK_ID,
+  BEAM_TOPK_INIT_TASK_ID,
+  BEAM_TOPK_FWD_TASK_ID,
+  SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+  SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_BWD_TASK_ID,
@@ -291,6 +295,8 @@ class TopK;
 class ArgTopK;
 class Transpose;
 class RMSNorm;
+class BeamTopK;
+class SpecIncMultiHeadSelfAttention;
 class Combine;
 class Repartition;
 class Reduction;
@@ -505,6 +511,26 @@ public:
   // Add a root mean square layer
   Tensor
       rms_norm(const Tensor input, float eps, int dim, char const *name = NULL);
+  // Add a beam search top k layer
+  Tensor beam_top_k(const Tensor input,
+                    int k,
+                    int beam_width,
+                    int batch_size,
+                    int data_dim,
+                    int target_seq_length,
+                    int vocab_size,
+                    char const *name = NULL);
+  Tensor spec_inc_multihead_self_attention(const Tensor input,
+                                  int embed_dim,
+                                  int num_heads,
+                                  int kdim = 0,
+                                  int vdim = 0,
+                                  float dropout = 0.0f,
+                                  bool bias = true,
+                                  bool add_bias_kv = false,
+                                  bool add_zero_attn = false,
+                                  Initializer *kernel_initializer = NULL,
+                                  char const *name = NULL);
   // Add a dense layer
   Tensor dense(const Tensor input,
                int outDim,
@@ -959,6 +985,11 @@ public:
       std::unordered_map<
           std::pair<ParallelTensorShape, IncMultiHeadSelfAttentionParams>,
           IncMultiHeadSelfAttention *>,
+      std::unordered_map<std::pair<ParallelTensorShape, BeamTopKParams>,
+                         BeamTopK *>,
+      std::unordered_map<
+          std::pair<ParallelTensorShape, SpecIncMultiHeadSelfAttentionParams>,
+          SpecIncMultiHeadSelfAttention *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReduceParams>,
                          Reduce *>,
       std::unordered_map<std::pair<ParallelTensorShape, ReshapeParams>,
