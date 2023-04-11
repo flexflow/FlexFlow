@@ -15,7 +15,7 @@ struct NodeLabelledMultiDiGraph {
 public:
   NodeLabelledMultiDiGraph() = delete;
   NodeLabelledMultiDiGraph(NodeLabelledMultiDiGraph const &) = default;
-  NodeLabelledMultiDiGraph operator=(NodeLabelledMultiDiGraph const &) = default;
+  NodeLabelledMultiDiGraph &operator=(NodeLabelledMultiDiGraph const &) = default;
 
   operator MultiDiGraph const &() const {
     return this->base_graph;
@@ -65,6 +65,10 @@ struct MultiDiOutput {
   Node node;
   size_t idx;
 };
+
+bool operator==(MultiDiOutput const &, MultiDiOutput const &);
+bool operator!=(MultiDiOutput const &, MultiDiOutput const &);
+bool operator<(MultiDiOutput const &, MultiDiOutput const &);
 
 struct MultiDiInput {
   MultiDiInput(Node const &, size_t);
@@ -203,6 +207,20 @@ private:
 
 }
 
+namespace std {
+
+template <>
+struct hash<::FlexFlow::MultiDiOutput> {
+  size_t operator()(::FlexFlow::MultiDiOutput const &) const;
+};
+
+template <>
+struct hash<::FlexFlow::MultiDiInput> {
+  size_t operator()(::FlexFlow::MultiDiInput const &) const;
+};
+
+}
+
 namespace fmt {
 
 template <>
@@ -220,6 +238,21 @@ struct formatter<::FlexFlow::MultiDiInput> : formatter<std::string> {
     return formatter<std::string>::format(fmt::format("MultiDiInput({}, {})", x.node, x.idx), ctx);
   }
 };
+
+}
+
+VISITABLE_STRUCT(::FlexFlow::MultiDiOutput, node, idx);
+VISITABLE_STRUCT(::FlexFlow::MultiDiInput, node, idx);
+
+namespace FlexFlow {
+
+static_assert(is_hashable<MultiDiOutput>::value, "MultiDiOutput must be hashable");
+static_assert(is_equal_comparable<MultiDiOutput>::value, "MultiDiOutput must support ==");
+static_assert(is_neq_comparable<MultiDiOutput>::value, "MultiDiOutput must support !=");
+static_assert(is_lt_comparable<MultiDiOutput>::value, "MultiDiOutput must support <");
+static_assert(!is_default_constructible<MultiDiOutput>::value, "MultiDiOutput must not be default constructible");
+static_assert(is_copy_constructible<MultiDiOutput>::value, "MultiDiOutput must be copy constructible");
+static_assert(is_fmtable<MultiDiOutput>::value, "MultiDiOutput must support fmt");
 
 }
 

@@ -7,13 +7,13 @@ bool operator==(SoftmaxAttrs const &lhs, SoftmaxAttrs const &rhs) {
   return visit_eq(lhs, rhs);
 }
 
+bool operator!=(SoftmaxAttrs const &lhs, SoftmaxAttrs const &rhs) {
+  return visit_neq(lhs, rhs);
+}
+
 bool operator<(SoftmaxAttrs const &lhs, SoftmaxAttrs const &rhs) {
   return visit_lt(lhs, rhs);
 }
-
-/* OperatorType SoftmaxAttrs::op_type() const { */
-/*   return OP_SOFTMAX; */
-/* } */
 
 }
 

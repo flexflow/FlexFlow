@@ -5,6 +5,7 @@
 #include "op-attrs/ffconst_utils.h"
 #include "utils/containers.h"
 #include "utils/fmt.h"
+#include "utils/type_traits.h"
 
 namespace FlexFlow {
 
@@ -57,26 +58,6 @@ namespace FlexFlow {
 /* bool is_parallel_op(PCGOperatorAttrs const &o) { */
 /*   return is_parallel_op(get_op_type(o)); */
 /* } */
-template< typename... Ts >
-struct make_void { typedef void type; };
- 
-template< typename... Ts >
-using void_t = typename make_void<Ts...>::type;
-
-template <typename T, typename Enable = void>
-struct is_streamable : std::false_type { };
-
-template <typename T>
-struct is_streamable<T, void_t<decltype(std::cout << std::declval<T>())>>
-  : std::true_type { };
-
-template <typename T, typename Enable = void> 
-struct is_fmtable : std::false_type { };
-
-template <typename T>
-struct is_fmtable<T, void_t<decltype(fmt::to_string(std::declval<T>()))>>
-  : std::true_type { };
-
 template <typename T>
 typename std::enable_if<(is_streamable<T>::value && !is_fmtable<T>::value)>::type 
 as_dot(T const &t, RecordFormatter &r) {

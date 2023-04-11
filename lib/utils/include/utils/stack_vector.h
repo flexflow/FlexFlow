@@ -6,6 +6,7 @@
 #include "hash-utils.h"
 #include "optional.h"
 #include <type_traits>
+#include "utils/type_traits.h"
 
 namespace FlexFlow {
 
@@ -191,12 +192,28 @@ public:
     return !(*this == other);
   }
 
+  bool operator<(stack_vector const &other) const {
+    for (std::size_t i = 0; i < std::min(this->m_size, other.m_size); i++) {
+      if (this->at(i) < other.at(i)) {
+        return true;
+      } else if (this->at(i) > other.at(i)) {
+        return false;
+      }
+    }
+
+    return (this->m_size < other.m_size);
+  }
+
   std::size_t size() const {
     return this->m_size;
   }
 private:
   std::size_t m_size = 0;
   std::array<optional<T>, MAXSIZE> contents;
+
+  static_assert(implies<is_equal_comparable<T>, is_equal_comparable<stack_vector>>::value, "");
+  static_assert(implies<is_neq_comparable<T>, is_neq_comparable<stack_vector>>::value, "");
+  static_assert(implies<is_lt_comparable<T>, is_lt_comparable<stack_vector>>::value, "");
 };
 
 }

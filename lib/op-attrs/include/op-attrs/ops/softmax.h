@@ -4,17 +4,19 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/ops/unary_op.h"
 #include "utils/visitable.h"
+#include "op-attrs/ff_dim.h"
 
 namespace FlexFlow {
 
 struct SoftmaxAttrs {
-/* public: */
-/*   OperatorType op_type() const override; */
-/*   ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
-/* public: */
-  int dim;
+public:
+  SoftmaxAttrs(ff_dim_t dim);
+public:
+  ff_dim_t dim;
 };
+
 bool operator==(SoftmaxAttrs const &, SoftmaxAttrs const &);
+bool operator!=(SoftmaxAttrs const &, SoftmaxAttrs const &);
 bool operator<(SoftmaxAttrs const &, SoftmaxAttrs const &);
 
 }
@@ -28,4 +30,4 @@ struct hash<::FlexFlow::SoftmaxAttrs> {
 };
 }
 
-#endif // _FLEXFLOW_SOFTMAX_ATTRS_H
+#endif

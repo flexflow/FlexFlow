@@ -3,6 +3,7 @@
 
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/visitable_funcs.h"
+#include "core.h"
 
 namespace FlexFlow {
 
@@ -18,6 +19,7 @@ public:
 };
 
 bool operator==(MultiHeadAttentionAttrs const &, MultiHeadAttentionAttrs const &);
+bool operator!=(MultiHeadAttentionAttrs const &, MultiHeadAttentionAttrs const &);
 bool operator<(MultiHeadAttentionAttrs const &, MultiHeadAttentionAttrs const &);
 
 int qProjSize(MultiHeadAttentionAttrs const &attrs);
@@ -35,6 +37,12 @@ template <>
 struct hash<::FlexFlow::MultiHeadAttentionAttrs> {
   size_t operator()(::FlexFlow::MultiHeadAttentionAttrs const &) const;
 };
+}
+
+namespace FlexFlow {
+
+static_assert(is_valid_opattr<MultiHeadAttentionAttrs>::value, "MultiHeadAttentionAttrs must be a valid opattr (see core.h)");
+
 }
 
 #endif 

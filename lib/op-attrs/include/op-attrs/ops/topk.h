@@ -8,15 +8,16 @@
 namespace FlexFlow {
 
 struct TopKAttrs {
-/* public: */
-/*   ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
-/*   OperatorType op_type() const override; */
-
-/* public: */
+public:
+  TopKAttrs() = delete;
+  TopKAttrs(int k, bool sorted);
+public:
   int k;
   bool sorted;
 };
+
 bool operator==(TopKAttrs const &, TopKAttrs const &);
+bool operator!=(TopKAttrs const &, TopKAttrs const &);
 bool operator<(TopKAttrs const &, TopKAttrs const &);
 
 }
@@ -30,4 +31,4 @@ struct hash<::FlexFlow::TopKAttrs> {
 };
 }
 
-#endif // _FLEXFLOW_TOPK_ATTRS_H
+#endif

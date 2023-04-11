@@ -3,6 +3,7 @@
 
 #include "utils/visitable.h"
 #include "utils/hash-utils.h"
+#include "utils/type_traits.h"
 
 namespace FlexFlow {
 
@@ -17,7 +18,8 @@ struct eq_visitor {
 
 template <typename T>
 bool visit_eq(T const &lhs, T const &rhs) {
-  static_assert(visit_struct::traits::is_visitable<T>::value, "Type must be visitable");
+  static_assert(is_visitable<T>::value, "Type must be visitable");
+  static_assert(elements_satisfy<is_equal_comparable, T>::value, "Values must be comparable via operator==");
 
   eq_visitor vis;
   visit_struct::for_each(lhs, rhs, vis);
@@ -35,7 +37,8 @@ struct neq_visitor {
 
 template <typename T>
 bool visit_neq(T const &lhs, T const &rhs) {
-  static_assert(visit_struct::traits::is_visitable<T>::value, "Type must be visitable");
+  static_assert(is_visitable<T>::value, "Type must be visitable");
+  static_assert(elements_satisfy<is_neq_comparable, T>::value, "Values must be comparable via operator!=");
 
   neq_visitor vis;
   visit_struct::for_each(lhs, rhs, vis);
@@ -53,7 +56,8 @@ struct lt_visitor {
 
 template <typename T>
 bool visit_lt(const T & t1, const T & t2) {
-  static_assert(visit_struct::traits::is_visitable<T>::value, "Type must be visitable");
+  static_assert(is_visitable<T>::value, "Type must be visitable");
+  static_assert(elements_satisfy<is_lt_comparable, T>::value, "Values must be comparable via operator<");
 
   eq_visitor vis;
   visit_struct::for_each(t1, t2, vis);
@@ -71,7 +75,8 @@ struct hash_visitor {
 
 template <typename T>
 std::size_t visit_hash(T const &t) {
-  static_assert(visit_struct::traits::is_visitable<T>::value, "Type must be visitable");
+  static_assert(is_visitable<T>::value, "Type must be visitable");
+  static_assert(elements_satisfy<is_hashable, T>::value, "Values must be hashable");
 
   hash_visitor vis;
   visit_struct::for_each(t, vis);

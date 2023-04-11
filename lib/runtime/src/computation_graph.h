@@ -278,7 +278,7 @@ private:
 private:
   LayerManager layer_mgr; 
   TensorManager tensor_mgr;
-  LabelledOpenMultiDiGraph<Layer, Tensor> graph;
+  OutputLabelledMultiDiGraph<Layer, Tensor> graph;
 };
 
 static_assert(std::is_copy_constructible<ComputationGraph>::value, "");

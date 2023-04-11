@@ -17,12 +17,19 @@ struct ParallelDim {
 
   bool operator==(ParallelDim const &) const;
   bool operator!=(ParallelDim const &) const;
+  bool operator<(ParallelDim const &) const;
 
   int size;
   int degree;
   int parallel_idx;
   bool is_replica_dim;
 };
+
+static_assert(is_equal_comparable<ParallelDim>::value, "ParallelDim must support ==");
+static_assert(is_neq_comparable<ParallelDim>::value, "ParallelDim must support !=");
+static_assert(is_lt_comparable<ParallelDim>::value, "ParallelDim must support <");
+static_assert(!is_default_constructible<ParallelDim>::value, "ParallelDim must not be default constructible");
+static_assert(is_copy_constructible<ParallelDim>::value, "ParallelDim must be copy constructible");
 
 /**
  * @brief Represent the shape of a ParallelTensor.

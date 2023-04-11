@@ -38,26 +38,6 @@ struct needs_serialization { };
 /*           int i, */ 
 /*           typename std::enable_if<(needs_serialization<visit_struct::type_at<i, T>>::value && visit_serializable<T, (i+1)>::value)>::type> */
 
-template <typename ...Args> struct tuple_prepend;
-
-template <typename T, typename ...Args> 
-struct tuple_prepend<T, std::tuple<Args...>> {
-  using type = std::tuple<T, Args...>;
-};
-template <typename T, int i, typename Enable = void> struct visit_as_tuple_helper;
-
-template <typename T, int i>
-struct visit_as_tuple_helper<T, i, typename std::enable_if<(i < visit_struct::traits::visitable<T>::field_count)>::type> {
-  using type = typename tuple_prepend<typename visit_struct::type_at<i, T>, typename visit_as_tuple_helper<T, i+1>::type>::type;
-};
-
-template <typename T, int i>
-struct visit_as_tuple_helper<T, i, typename std::enable_if<(i == visit_struct::traits::visitable<T>::field_count)>::type> {
-  using type = std::tuple<>;
-};
-
-template <typename T>
-using visit_as_tuple = typename visit_as_tuple_helper<T, 0>::type;
 
 template <typename ...Args> struct visit_trivially_serializable;
 
