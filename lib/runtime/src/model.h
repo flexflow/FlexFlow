@@ -43,8 +43,10 @@
 #include "legion_parallel_tensor_shape.h"
 #include "index_space_manager.h"
 #include "parallel_tensor_uses.h"
-#include "model_spec.h"
+#include "computation_graph.h"
+#include "parallel_computation_graph.h"
 #include "tensor_mapping.h"
+#include "operator.h"
 
 namespace FlexFlow {
 
@@ -59,32 +61,13 @@ MachineView get_basic_data_parallel_machine_view(int num_parts, int dims);
 
 class FFModel {
 public:
-  FFModel(FFConfig const &config, ModelSpec);
-
-  ParallelTensor
-      create_parallel_tensor(LegionParallelTensorShape const &,
-                             bool create_grad = true,
-                             size_t input_tensor_guid = 0);
-  ParallelTensor create_parallel_tensor(ParallelTensorShape const &,
-                                        bool create_grad = true,
-                                        size_t input_tensor_guid = 0);
-  ParallelParameter create_parallel_weight(
-      ParallelTensorShape const &,
-      bool create_grad = true,
-      Initializer *initializer = NULL,
-      ParameterSyncType sync_type = ParameterSyncType::NONE);
-  ParallelParameter create_parallel_weight(
-      LegionParallelTensorShape const &,
-      bool create_grad = true,
-      Initializer *initializer = NULL,
-      ParameterSyncType sync_type = ParameterSyncType::NONE);
+  FFModel(FFConfig const &config, ComputationGraph const &, ParallelComputationGraph const &);
 
   optional<ParallelTensor> get_parallel_tensor_from_tensor(Tensor const &tensor) const;
 
   // ========================================
   // Graph APIs
   // ========================================
-  bool convert_graph_to_operators(SearchSolution const &);
   static void register_all_machine_views(int num_nodes,
                                          int gpus_per_node,
                                          int cpus_per_node,
@@ -114,7 +97,7 @@ public:
   void update();
   bool apply_fusion(std::vector<Op *> const &operators,
                     std::vector<Op *> &new_operators);
-  Op const *get_final_operator() const;
+  Operator get_final_operator() const;
   void compile(LossType loss_type,
                std::vector<MetricsType> const &metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
@@ -122,20 +105,14 @@ public:
                LossType loss_type,
                std::vector<MetricsType> const &metrics,
                CompMode comp_mode = COMP_MODE_TRAINING);
-  SearchSolution graph_optimize(ComputationGraph const &, 
-                                MachineSpecification const &);
+  /* SearchSolution graph_optimize(ComputationGraph const &, */ 
+  /*                               MachineSpecification const &); */
 #ifdef FF_USE_NCCL
   ncclComm_t *find_nccl_comms(MachineView const &view) const;
 #endif
   void recompile_on_condition(RecompileState &r);
   void zero_gradients();
 
-  std::unordered_map<Op *, std::vector<std::pair<Op *, int>>>
-      get_bwd_edge_map() const;
-
-  void create_operators_from_layers();
-  Op *create_operator_from_layer(Layer *layer,
-                                 std::vector<ParallelTensor> const &inputs);
   // APIs for setting iteration configs
 public:
   void set_iteration_config_sequence_length(int seq_length);
@@ -148,20 +125,6 @@ private:
   void print_operator_regions() const;
   void create_label_tensor(LossType);
   void populate_tensor_to_parallel_tensor_mapping();
-
-  template <int NDIM>
-  ParallelParameter create_parallel_weight(
-      ParallelTensorShape const &,
-      bool create_grad = true,
-      Initializer *initializer = NULL,
-      ParameterSyncType sync_type = ParameterSyncType::NONE);
-
-  template <int NDIM>
-  ParallelTensor create_parallel_tensor(ParallelTensorShape const &,
-                                        bool create_grad = true,
-                                        size_t input_tensor_guid = 0);
-
-  Op const *get_source(ParallelTensor const &) const;
 
   std::vector<Op *> get_operators();
   std::vector<Op const *> get_operators() const;
@@ -180,7 +143,8 @@ public:
   IndexSpaceManager index_space_mgr;
   ParallelTensorManager parallel_tensor_mgr;
   OpNodeManager op_node_mgr;
-  ModelSpec model_spec;
+  ComputationGraph computation_graph;
+  ParallelComputationGraph pcg;
   ParallelTensorUses uses;
   TensorMapping tensor_map;
 
@@ -188,7 +152,7 @@ public:
   std::vector<FFHandler> handlers;
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
-  std::unordered_map<PCGOperatorAttrs, Op*> cached_ops;
+  /* std::unordered_map<PCGOperatorAttrs, Op*> cached_ops; */
   std::vector<MachineView> all_valid_views;
 #ifdef FF_USE_NCCL
   std::unordered_map<size_t, ncclComm_t *> view_hash_to_nccl_comms;

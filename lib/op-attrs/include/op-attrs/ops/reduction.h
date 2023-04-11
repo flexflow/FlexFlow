@@ -8,9 +8,8 @@
 namespace FlexFlow {
 
 struct ReductionAttrs {
-/* public: */
-  /* ParallelTensorShape output_shape(ParallelTensorShape const &) const override; */
-  /* OperatorType op_type() const override; */
+public:
+  ReductionAttrs(int dim, int degree);
 public:
   int reduction_legion_dim;
   int reduction_degree;

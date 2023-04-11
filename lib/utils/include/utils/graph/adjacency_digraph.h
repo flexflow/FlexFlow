@@ -19,10 +19,20 @@ public:
 
   bool operator==(AdjacencyDiGraph const &) const;
   bool operator!=(AdjacencyDiGraph const &) const;
+
+  AdjacencyDiGraph *clone() const override {
+    return new AdjacencyDiGraph(this->next_node_idx, this->adjacency);
+  }
 private:
+  using ContentsType = std::unordered_map<Node, std::unordered_set<Node>>;
+
+  AdjacencyDiGraph(std::size_t, ContentsType);
+
   std::size_t next_node_idx = 0;
-  std::unordered_map<Node, std::unordered_set<Node>> adjacency;
+  ContentsType adjacency;
 };
+
+static_assert(is_rc_copy_virtual_compliant<AdjacencyDiGraph>::value, RC_COPY_VIRTUAL_MSG);
 
 }
 

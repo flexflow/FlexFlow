@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include "utils/visitable.h"
 #include "utils/stack_vector.h"
+#include "op-attrs/tensor_shape.h"
 
 namespace FlexFlow {
 
@@ -41,6 +42,8 @@ struct ParallelTensorShape {
    */
   ParallelTensorShape(std::vector<ParallelDim> const &dims,
                       DataType data_type);
+
+  ParallelTensorShape(TensorShape const &);
 
   bool operator==(ParallelTensorShape const &other) const;
   bool operator!=(ParallelTensorShape const &other) const;

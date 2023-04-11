@@ -4,6 +4,7 @@
 #include "visit_struct/visit_struct.hpp"
 #include "op-attrs/ffconst_utils.h"
 #include "utils/containers.h"
+#include "utils/fmt.h"
 
 namespace FlexFlow {
 
@@ -69,12 +70,25 @@ template <typename T>
 struct is_streamable<T, void_t<decltype(std::cout << std::declval<T>())>>
   : std::true_type { };
 
+template <typename T, typename Enable = void> 
+struct is_fmtable : std::false_type { };
+
 template <typename T>
-typename std::enable_if<is_streamable<T>::value>::type 
+struct is_fmtable<T, void_t<decltype(fmt::to_string(std::declval<T>()))>>
+  : std::true_type { };
+
+template <typename T>
+typename std::enable_if<(is_streamable<T>::value && !is_fmtable<T>::value)>::type 
 as_dot(T const &t, RecordFormatter &r) {
   std::ostringstream oss;
   oss << t;
   r << oss;
+}
+
+template <typename T>
+typename std::enable_if<(is_fmtable<T>::value)>::type
+as_dot(T const &t, RecordFormatter &r) {
+  r << fmt::to_string(t);
 }
 
 void as_dot(int x, RecordFormatter &r) {
@@ -103,16 +117,13 @@ void as_dot(stack_vector<T, MAXSIZE> const &x, RecordFormatter &r) {
   r << rr;
 }
 
-void as_dot(ParallelOpInfo const &p, RecordFormatter &r) {
-  RecordFormatter rr;
-  as_dot(p.op_type, rr);
-  as_dot(p.parallel_dim, rr);
-  as_dot(p.parallel_degree, rr);
-  r << rr; 
-}
-
 struct as_dot_visitor {
-  RecordFormatter result;
+  as_dot_visitor() = delete;
+  as_dot_visitor(RecordFormatter &result)
+    : result(result)
+  { }
+
+  RecordFormatter &result;
 
   template <typename T>
   void operator()(const char *name, T const &t) {
@@ -140,32 +151,21 @@ struct as_dot_visitor {
 };
 
 template <typename T>
-RecordFormatter generic_as_dot(T const &t) {
-  as_dot_visitor vis;
+typename std::enable_if<is_visitable<T>::value>::type
+as_dot(T const &t, RecordFormatter &r) {
+  as_dot_visitor vis(r);
   visit_struct::for_each(t, vis);
-  return vis.result;
-}
-
-template <>
-RecordFormatter generic_as_dot<FlatAttrs>(FlatAttrs const &p) {
-  RecordFormatter r; 
-  return r;
-}
-
-template <>
-RecordFormatter generic_as_dot<NoopAttrs>(NoopAttrs const &p) {
-  RecordFormatter r;
-  return r;
 }
 
 struct AsDot {
   template <typename T>
   RecordFormatter operator()(T const &t) {
-    return generic_as_dot(t);
+    return as_dot(t);
   }
 };
 
-RecordFormatter as_dot(PCGOperatorAttrs const &o) {
+template <typename ...Args>
+RecordFormatter as_dot(variant<Args...> const &o) {
   return mpark::visit(AsDot{}, o);
 }
 

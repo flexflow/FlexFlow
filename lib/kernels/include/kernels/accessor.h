@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include "op-attrs/ffconst_utils.h"
 #include "device.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 
@@ -53,9 +54,7 @@ public:
     if (this->data_type == DT) {
       return static_cast<real_type<DT> *>(this->ptr);
     } else {
-      std::ostringstream oss;
-      oss << "Invalid access type (" << to_string(this->data_type) << " != " << to_string(DT) << ")";
-      throw std::runtime_error(oss.str());
+      throw mk_runtime_error("Invalid access data type ({} != {})", this->data_type, DT);
     }
   }
 
@@ -85,9 +84,7 @@ public:
     if (this->data_type == DT) {
       return static_cast<real_type<DT> const *>(this->ptr);
     } else {
-      std::ostringstream oss;
-      oss << "Invalid access type (" << to_string(this->data_type) << " != " << to_string(DT) << ")";
-      throw std::runtime_error(oss.str());
+      throw mk_runtime_error("Invalid access data type ({} != {})", this->data_type, DT);
     }
   }
 

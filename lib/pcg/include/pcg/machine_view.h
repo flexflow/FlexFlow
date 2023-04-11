@@ -94,8 +94,8 @@ struct MachineResource {
   int start_gpu_id = 0, start_cpu_id = 0;
 };
 
-using ParallelComputationGraph = LabelledMultiDiGraph<PCGOperatorAttrs>;
-using ComputationGraph = LabelledMultiDiGraph<CompGraphOperatorAttrs>;
+/* using ParallelComputationGraph = OutputLabelledMultiDiGraph<PCGOperatorAttrs, ParallelTensorShape>; */
+/* using ComputationGraph = OutputLabelledMultiDiGraph<CompGraphOperatorAttrs, TensorShape>; */
 
 }
 

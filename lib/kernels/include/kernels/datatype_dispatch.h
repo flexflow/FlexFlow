@@ -22,7 +22,7 @@ Out dispatch(DataType dt, Args&&... args) {
     case DT_BOOLEAN:
       return F<DT_BOOLEAN>{}(std::forward<Args>(args)...);
     default:
-      throw std::runtime_error("Unknown datatype" + get_data_type_name(dt));
+      throw mk_runtime_error("Unknown datatype {}", dt);
   }
 }
 

@@ -64,8 +64,15 @@ output_shapes(T const &t, std::vector<ParallelTensorShape> const &shapes) {
   return {output_shape(t, shapes.at(0), shapes.at(1))};
 }
 
-template <typename T>
-TensorShape get_output_shape(T const &attrs, TensorShape const &t);
+TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &);
+std::vector<TensorShape> get_tensor_shapes_unsafe(std::vector<ParallelTensorShape> const &);
+
+template <typename Attrs> TensorShape get_output_shape(Attrs const &attrs, TensorShape const &);
+template <typename Attrs> TensorShape get_output_shape(Attrs const &attrs, TensorShape const &, TensorShape const &);
+template <typename Attrs> TensorShape get_output_shape(Attrs const &attrs, std::vector<TensorShape> const &);
+template <typename Attrs> std::vector<TensorShape> get_output_shapes(Attrs const &attrs, TensorShape const &);
+template <typename Attrs> std::vector<TensorShape> get_output_shapes(Attrs const &attrs, TensorShape const &, TensorShape const &);
+template <typename Attrs> std::vector<TensorShape> get_output_shapes(Attrs const &attrs, std::vector<TensorShape> const &);
 
 ParallelTensorShape get_output_shape(AggregateAttrs const &, std::vector<ParallelTensorShape> const &);
 ParallelTensorShape get_output_shape(AggregateSpecAttrs const &, ParallelTensorShape const &);
@@ -81,7 +88,7 @@ ParallelTensorShape get_output_shape(ElementUnaryAttrs const &, ParallelTensorSh
 ParallelTensorShape get_output_shape(EmbeddingAttrs const &, ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(FlatAttrs const &, ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(FusedParallelOpAttrs const &, ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(GatherAttrs const &, ParallelTensorShape const &, ParallelTensorShape const &);
+std::vector<ParallelTensorShape> get_output_shapes(GatherAttrs const &, ParallelTensorShape const &, ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(Group_byAttrs const &, ParallelTensorShape const &, ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(LayerNormAttrs const &, ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(LinearAttrs const &, ParallelTensorShape const &);

@@ -23,6 +23,8 @@ bool operator<(FlatAttrs const &, FlatAttrs const &);
 
 }
 
+VISITABLE_STRUCT_EMPTY(::FlexFlow::FlatAttrs);
+
 namespace std {
 template <>
 struct hash<::FlexFlow::FlatAttrs> {

@@ -31,10 +31,11 @@
 #include "ops/replicate.h"
 #include "ops/topk.h"
 #include "utils/variant.h"
+#include "ops/broadcast.h"
 
 namespace FlexFlow {
 
-using CompGraphOperatorAttrs = variant<
+using SharedOperatorAttrs = variant<
                                        AggregateAttrs,
                                        AggregateSpecAttrs,
                                        BatchMatmulAttrs,
@@ -62,15 +63,17 @@ using CompGraphOperatorAttrs = variant<
                                        TopKAttrs,
                                        TransposeAttrs>;
 
-using ParallelOperatorAttrs = variant<
-                                       CombineAttrs,
-                                       ReductionAttrs,
-                                       RepartitionAttrs,
-                                       ReplicateAttrs,
-                                       FusedParallelOpAttrs
+using ParallelOperatorAttrs = variant<CombineAttrs,
+                                      ReductionAttrs,
+                                      RepartitionAttrs,
+                                      ReplicateAttrs,
+                                      FusedParallelOpAttrs
 >;
 
-using PCGOperatorAttrs = variant_join<CompGraphOperatorAttrs, ParallelOperatorAttrs>;
+using ComputationGraphAttrs = variant_join<SharedOperatorAttrs, variant<BroadcastAttrs>>;
+using CompGraphOperatorAttrs = ComputationGraphAttrs;
+
+using PCGOperatorAttrs = variant_join<SharedOperatorAttrs, ParallelOperatorAttrs>;
 
 /* OperatorType get_op_type(CompGraphOperatorAttrs const &); */
 /* OperatorType get_op_type(PCGOperatorAttrs const &); */

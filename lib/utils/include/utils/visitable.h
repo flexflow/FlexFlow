@@ -55,4 +55,11 @@ struct visitable<STRUCT_NAME, void> {                                           
 }                                                                                                  \
 static_assert(true, "")
 
+namespace FlexFlow {
+
+template <typename T>
+using is_visitable = ::visit_struct::traits::is_visitable<T>;
+
+}
+
 #endif 

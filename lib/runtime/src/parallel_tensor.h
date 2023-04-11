@@ -28,10 +28,10 @@
 #include <ostream>
 #include <unordered_map>
 #include "utils/strong_typedef.h"
+#include "tensor.h"
 
 namespace FlexFlow {
 
-class Op;
 class FFModel;
 class Initializer;
 
@@ -56,8 +56,6 @@ struct ParallelTensorBase {
                      bool create_gradients,
                      optional<ParameterSyncType> sync_type = nullopt,
                      Initializer *initializer = nullptr);
-                     
-
 
   void inline_map(FFConfig &config);
   void inline_unmap(FFConfig &config);
@@ -120,9 +118,9 @@ struct ParallelTensor {
 public:
   ParallelTensor() = delete;
   
-  ParallelTensor(size_t parallel_tensor_guid,
+  ParallelTensor(parallel_tensor_guid_t guid,
                      ParallelTensorShape const &,
-                     bool create_gradients,
+                     CreateGrad create_gradients,
                      optional<ParameterSyncType> sync_type = nullopt,
                      Initializer *initializer = nullptr);
   ParallelTensor(std::shared_ptr<ParallelTensorBase> ptr) 
@@ -137,19 +135,25 @@ public:
   /* ParallelTensorBase *operator->(); */
   ParallelTensorBase const *operator->() const;
 private:
-  std::shared_ptr<ParallelTensorBase> const ptr;
+  std::shared_ptr<ParallelTensorBase const> ptr;
 };
 
 using ParallelParameter = ParallelTensor;
 
 struct ParallelTensorManager {
-  template <typename ...Args>
-  ParallelTensor create(Args&&...args) {
-    return ParallelTensor(this->parallel_tensor_global_guid++, std::forward<Args>(args)...);
+  ParallelTensor create(ParallelTensorShape const &shape,
+                        CreateGrad create_grad,
+                        optional<ParameterSyncType> sync_type = nullopt,
+                        Initializer *initializer = nullptr) {
+    return ParallelTensor(this->next_id(), shape, create_grad, sync_type, initializer);
   }
 
   ParallelTensor at(parallel_tensor_guid_t) const;
 private:
+  parallel_tensor_guid_t next_id() {
+    return parallel_tensor_guid_t(this->parallel_tensor_global_guid++);
+  }
+
   size_t parallel_tensor_global_guid = PARALLEL_TENSOR_GUID_FIRST_VALID;
 };
 

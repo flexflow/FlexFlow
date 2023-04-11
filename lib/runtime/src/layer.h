@@ -37,11 +37,12 @@ public:
     return {this->next_id(), get_op_type(attrs), data_type, name, attrs};
   }
 
-  template <typename Variant>
-  Layer create(Variant const &attrs, DataType data_type, std::string const &name) {
+  template <typename ...Args>
+  Layer create(variant<Args...> const &attrs, DataType data_type, std::string const &name) {
     return this->create(widen<CompGraphOperatorAttrs>(attrs), data_type, name);
   }
 
+private:
   LayerID next_id() {
     return LayerID(this->layer_global_guid++);
   }

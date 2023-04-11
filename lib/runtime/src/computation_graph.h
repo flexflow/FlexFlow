@@ -1,9 +1,10 @@
-#ifndef _FLEXFLOW_RUNTIME_SRC_MODEL_SPEC_H
-#define _FLEXFLOW_RUNTIME_SRC_MODEL_SPEC_H
+#ifndef _FLEXFLOW_RUNTIME_SRC_COMPUTATION_GRAPH_H
+#define _FLEXFLOW_RUNTIME_SRC_COMPUTATION_GRAPH_H
 
 #include "tensor.h"
 #include "layer.h"
 #include "utils/expected.h"
+#include "utils/graph.h"
 
 namespace FlexFlow {
 
@@ -15,26 +16,27 @@ struct TensorSourceInfo {
   int idx;
 };
 
-struct ModelSpec {
+struct ComputationGraph {
 public:
-
-  ModelSpec() = default;
-  ModelSpec(ModelSpec const &) = delete;
-  ModelSpec(ModelSpec &&) = default;
+  ComputationGraph() = default;
+  ComputationGraph(ComputationGraph const &) = default;
+  ComputationGraph(ComputationGraph &&) = default;
+  
+  ComputationGraph &operator=(ComputationGraph const &) = default;
 
   // C++ APIs for constructing models
   // Add an exp layer
-  or_error_msg<Tensor> exp(Tensor const &, optional<std::string> const &name = nullopt);
+  Tensor exp(Tensor const &, optional<std::string> const &name = nullopt);
   // Add an add layer
-  or_error_msg<Tensor> add(Tensor const &x,
+  Tensor add(Tensor const &x,
              Tensor const &y,
              optional<std::string> const &name = nullopt);
   // Add a subtract layer
-  or_error_msg<Tensor> subtract(Tensor const &x,
+  Tensor subtract(Tensor const &x,
                   Tensor const &y,
                   optional<std::string> const &name = nullopt);
   // Add a multiply layer
-  or_error_msg<Tensor> multiply(Tensor const &x,
+  Tensor multiply(Tensor const &x,
                   Tensor const &y,
                   optional<std::string> const &name = nullopt);
   // Add a divide layer
@@ -112,7 +114,7 @@ public:
   // Add a gather layer
   std::vector<Tensor> gather(Tensor const &input,
                 Tensor const &index,
-                int dim,
+                ff_dim_t dim,
                 optional<std::string> const &name = nullopt);
   // Add a group_by layer
   void group_by(Tensor const &data,
@@ -174,7 +176,7 @@ public:
                Initializer *bias_initializer = nullptr,
                char const *name = nullptr);
   // Add a cast layer
-  or_error_msg<Tensor> cast(Tensor const &input, DataType dtype, optional<std::string> const &name = nullopt);
+  Tensor cast(Tensor const &input, DataType dtype, optional<std::string> const &name = nullopt);
   // Add a concat layer
   Tensor
       concat(int n, Tensor const *tensors, int axis, char const *name = nullptr);
@@ -249,7 +251,11 @@ public:
   Tensor get_output(Layer const &, int idx) const;
 
   Tensor at(tensor_guid_t) const; 
+
+  friend void swap(ComputationGraph &, ComputationGraph &);
 private:
+  Tensor broadcast(Tensor const &, TensorShape const &);
+
   void add_layer(Layer const &layer, std::vector<Tensor> const &inputs, std::vector<Tensor> const &weights, std::vector<Tensor> const &outputs);
   Tensor add_layer(Layer const &layer, 
                  std::vector<Tensor> const &inputs, 
@@ -260,9 +266,7 @@ private:
                  std::vector<std::pair<TensorShape, Initializer *>> const &weight_shapes,
                  std::vector<TensorShape> const &output_shapes);
 
-  or_error_msg<Tensor> as_type(Tensor const &, DataType, std::string const &);
-
-  std::pair<bool, Tensor> broadcast(Tensor const &, TensorShape const &target_shape);
+  Tensor as_type(Tensor const &, DataType, std::string const &);
 
   TensorShape get_broadcast_target_shape(std::vector<TensorShape> const &);
 
@@ -276,6 +280,11 @@ private:
   TensorManager tensor_mgr;
   LabelledOpenMultiDiGraph<Layer, Tensor> graph;
 };
+
+static_assert(std::is_copy_constructible<ComputationGraph>::value, "");
+static_assert(std::is_move_constructible<ComputationGraph>::value, "");
+static_assert(std::is_copy_assignable<ComputationGraph>::value, "");
+static_assert(std::is_copy_constructible<ComputationGraph>::value, "");
 
 }
 

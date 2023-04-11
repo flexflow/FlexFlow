@@ -4,16 +4,16 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/visitable.h"
 #include "binary_op.h"
-#include "op-attrs/legion_dim.h"
+#include "op-attrs/ff_dim.h"
 
 namespace FlexFlow {
 
 struct GatherAttrs {
 public:
   GatherAttrs() = delete;
-  GatherAttrs(legion_dim_t);
+  GatherAttrs(ff_dim_t);
 public:
-  legion_dim_t legion_dim;
+  ff_dim_t dim;
 };
 
 bool operator==(GatherAttrs const &, GatherAttrs const &);
@@ -21,7 +21,7 @@ bool operator<(GatherAttrs const &, GatherAttrs const &);
 
 }
 
-VISITABLE_STRUCT(::FlexFlow::GatherAttrs, legion_dim);
+VISITABLE_STRUCT(::FlexFlow::GatherAttrs, dim);
 
 namespace std {
 template <>

@@ -85,11 +85,11 @@ struct hashable : std::hash<underlying_type<StrongTypedef>> {
 #define MAKE_TYPEDEF_PRINTABLE(TYPEDEF_NAME, TYPEDEF_SHORTNAME) \
   namespace fmt { \
     template <> \
-    struct formatter<TYPEDEF_NAME> : fmt::formatter<std::string> { \
+    struct formatter<TYPEDEF_NAME> : formatter<::std::string> { \
       template <typename FormatContext> \
       auto format(TYPEDEF_NAME const &x, FormatContext &ctx) const -> decltype(ctx.out()) { \
-        std::string s = fmt::format("{}({})", TYPEDEF_SHORTNAME, x.value()); \
-        return formatter<std::string>(s, ctx); \
+        ::std::string s = fmt::format("{}({})", (TYPEDEF_SHORTNAME), x.value()); \
+        return formatter<::std::string>::format(s, ctx); \
       } \
     }; \
   } \

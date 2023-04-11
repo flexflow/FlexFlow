@@ -100,11 +100,12 @@ LegionRuntime::Logger::Category log_profile("profile");
 /*   return dim_mapping; */
 /* } */
 
-FFModel::FFModel(FFConfig const &_config, ModelSpec _model_spec)
+FFModel::FFModel(FFConfig const &_config, ComputationGraph const &cg, ParallelComputationGraph const &pcg)
     : op_global_guid(OP_GUID_FIRST_VALID),
       config(_config), 
       index_space_mgr(_config.legion_config), 
-      model_spec(std::move(_model_spec)) {
+      computation_graph(cg),
+      pcg(pcg) {
 
   Runtime *runtime = config.legion_config.lg_hlr;
   Context ctx = config.legion_config.lg_ctx;

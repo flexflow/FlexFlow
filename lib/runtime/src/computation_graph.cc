@@ -1,0 +1,261 @@
+#include "computation_graph.h"
+#include "op-attrs/ffconst.h"
+#include "op-attrs/get_output_shapes.h"
+#include "utils/expected.h"
+#include "op-attrs/ffconst_utils.h"
+#include "utils/fmt.h"
+
+namespace FlexFlow {
+
+Tensor ComputationGraph::as_type(Tensor const &x, DataType data_type, std::string const &name) {
+  if (x->data_type < data_type) {
+    return this->cast(x, data_type, name);
+  } else if (x->data_type > data_type) {
+    throw mk_runtime_error("Could not convert provided tensor data type {} to desired data type {}",
+                           x->data_type, data_type);
+  }
+  return x;
+}
+
+static std::string get_default_name(OperatorType op_type) {
+  return get_operator_type_name(op_type);
+}
+
+static std::string get_default_name(ComputationGraphAttrs const &attrs) {
+  return get_default_name(get_op_type(attrs));
+}
+
+template <typename ...Args>
+static std::string get_default_name(variant<Args...> const &attrs) {
+  return get_default_name(widen<ComputationGraphAttrs>(attrs));
+}
+
+Tensor ComputationGraph::element_unary(variant<ElementUnaryAttrs, ElementScalarUnaryAttrs> const &attrs, Tensor const &x, optional<std::string> const &maybe_name) {
+  std::string name = maybe_name.value_or(get_default_name(attrs));
+
+  Tensor input = this->as_type(x, DT_FLOAT, name + "input_pre_cast");
+
+  Layer layer = this->layer_mgr.create(attrs, DT_FLOAT, name);  
+  TensorShape output_shape = get_output_shape(attrs, input);
+
+  return this->add_layer(layer, {input}, {}, output_shape);
+}
+
+Tensor ComputationGraph::element_unary(OperatorType op_type, Tensor const &input, optional<std::string> const &name) {
+  ElementUnaryAttrs attrs = { op_type };
+  return this->element_unary(attrs, input, name);
+}
+
+Tensor ComputationGraph::element_scalar_unary(OperatorType op_type, Tensor const &input, float scalar, optional<std::string> const &name) {
+  ElementScalarUnaryAttrs attrs = { op_type, scalar };
+  return this->element_unary(attrs, input, name);
+}
+
+Tensor ComputationGraph::element_binary(OperatorType op_type, Tensor const &lhs, Tensor const &rhs, optional<std::string> const &maybe_name) {
+  std::string name = maybe_name.value_or(get_default_name(op_type));
+
+  TensorShape compute_shape = this->get_broadcast_target_shape({lhs->get_shape(), rhs->get_shape()});
+  DataType compute_type = std::max(lhs->data_type, rhs->data_type);
+
+  Tensor const lhs_input = this->as_type(this->broadcast(lhs, compute_shape), compute_type, name + "_inputl_pre_cast");
+  Tensor const rhs_input = this->as_type(this->broadcast(rhs, compute_shape), compute_type, name + "_inputr_pre_cast");
+
+  ElementBinaryAttrs attrs = { op_type, false, false };
+
+  Layer layer = this->layer_mgr.create(attrs, compute_type, name);
+  TensorShape output_shape = get_output_shape(attrs, lhs_input, rhs_input);
+
+  return this->add_layer(layer, {lhs_input, rhs_input}, {}, output_shape);
+}
+
+Tensor ComputationGraph::exp(Tensor const &input, optional<std::string> const &name) {
+  return this->element_unary(OP_EXP, input, name);
+}
+
+Tensor ComputationGraph::add(Tensor const &lhs, Tensor const &rhs, optional<std::string> const &name) {
+  return this->element_binary(OP_EW_ADD, lhs, rhs, name);
+}
+
+Tensor ComputationGraph::subtract(Tensor const &lhs, Tensor const &rhs, optional<std::string> const &name) {
+  return this->element_binary(OP_EW_SUB, lhs, rhs, name);
+}
+
+Tensor ComputationGraph::multiply(Tensor const &lhs, Tensor const &rhs, optional<std::string> const &name) {
+  return this->element_binary(OP_EW_MUL, lhs, rhs, name);
+}
+
+Tensor ComputationGraph::divide(Tensor const &lhs, Tensor const &rhs, optional<std::string> const &name) {
+  return this->element_binary(OP_EW_DIV, lhs, rhs, name);
+}
+
+Tensor ComputationGraph::max(Tensor const &lhs, Tensor const &rhs, optional<std::string> const &name) {
+  return this->element_binary(OP_EW_MAX, lhs, rhs, name);
+}
+
+Tensor ComputationGraph::min(Tensor const &lhs, Tensor const &rhs, optional<std::string> const &name) {
+  return this->element_binary(OP_EW_MIN, lhs, rhs, name);
+}
+
+Tensor ComputationGraph::rsqrt(Tensor const &input, optional<std::string> const &name) {
+  return this->element_unary(OP_RSQRT, input, name);
+}
+
+Tensor ComputationGraph::pow(Tensor const &input, float exponent, optional<std::string> const &name) {
+  return this->element_scalar_unary(OP_POW, input, exponent, name);
+}
+
+Tensor ComputationGraph::scalar_multiply(Tensor const &input, float scalar, optional<std::string> const &name) {
+  return this->element_scalar_unary(OP_SCALAR_MULTIPLY, input, scalar, name);
+}
+
+Tensor ComputationGraph::scalar_add(Tensor const &input, float scalar, optional<std::string> const &name) {
+  return this->element_scalar_unary(OP_SCALAR_ADD, input, scalar, name);
+}
+
+Tensor ComputationGraph::scalar_sub(Tensor const &lhs, float rhs, optional<std::string> const &name) {
+  return this->element_scalar_unary(OP_SCALAR_SUB, lhs, rhs, name);
+}
+
+Tensor ComputationGraph::scalar_truediv(Tensor const &numerator, float denominator, optional<std::string> const &name) {
+  return this->element_scalar_unary(OP_SCALAR_TRUE_DIV, numerator, denominator, name);
+}
+
+Tensor ComputationGraph::sin(Tensor const &input, optional<std::string> const &name) {
+  return this->element_unary(OP_SIN, input, name);
+}
+
+Tensor ComputationGraph::cos(Tensor const &input, optional<std::string> const &name) {
+  return this->element_unary(OP_COS, input, name);
+}
+
+Tensor ComputationGraph::relu(Tensor const &input, optional<std::string> const &name) {
+  return this->element_unary(OP_RELU, input, name);
+}
+
+Tensor ComputationGraph::identity(Tensor const &input, optional<std::string> const &name) {
+  return this->element_unary(OP_IDENTITY, input, name);
+}
+
+Tensor ComputationGraph::gelu(Tensor const &input, optional<std::string> const &name) {
+  return this->element_unary(OP_GELU, input, name);
+}
+
+Tensor ComputationGraph::sigmoid(Tensor const &input, optional<std::string> const &name) {
+  return this->element_unary(OP_SIGMOID, input, name);
+}
+
+Tensor ComputationGraph::tanh(Tensor const &input, optional<std::string> const &name) {
+  return this->element_unary(OP_TANH, input, name);
+}
+
+Tensor ComputationGraph::elu(Tensor const &input, optional<std::string> const &name) {
+  return this->element_unary(OP_ELU, input, name);
+}
+
+Tensor ComputationGraph::conv2d(Tensor const &x, 
+                         int outChannels,
+                         int kernelH,
+                         int kernelW,
+                         int strideH,
+                         int strideW,
+                         int paddingH,
+                         int paddingW,
+                         ActiMode activation,
+                         int groups,
+                         bool use_bias,
+                         Initializer *kernel_initializer, 
+                         Initializer *bias_initializer,
+                         optional<std::string> const &maybe_name) {
+  Conv2DAttrs attrs = {
+    outChannels,
+    kernelH,
+    kernelW,
+    strideH, 
+    strideW,
+    paddingH,
+    paddingW,
+    groups,
+    activation,
+    use_bias
+  };
+  std::string name = maybe_name.value_or(get_default_name(attrs));
+
+  Tensor input = this->as_type(x, DT_FLOAT, name + "input_pre_cast");
+
+  Layer layer = this->layer_mgr.create(attrs, DT_FLOAT, name);  
+  TensorShape output_shape = get_output_shape(attrs, input);
+
+  std::vector<std::pair<TensorShape, Initializer *>> weights;
+
+  weights.push_back({get_kernel_shape(attrs, input), kernel_initializer});
+
+  if (use_bias) {
+    weights.push_back({
+      get_bias_shape(attrs, input),
+      bias_initializer
+    });
+  }
+
+  return this->add_layer(layer, {input}, weights, output_shape);
+}
+
+Tensor ComputationGraph::dropout(Tensor const &x,
+                          float rate,
+                          unsigned long long seed,
+                          optional<std::string> const &maybe_name) {
+  DropoutAttrs attrs = { rate, seed };
+  std::string name = maybe_name.value_or(get_default_name(attrs));
+
+  Layer layer = this->layer_mgr.create(attrs, DT_FLOAT, name);
+  Tensor input = this->as_type(x, DT_FLOAT, name + "input_pre_cast");
+
+  TensorShape output_shape = get_output_shape(attrs, input);
+
+  return this->add_layer(layer, {input}, {}, output_shape);
+}
+
+Tensor ComputationGraph::embedding(Tensor const &x,
+                            int num_entries, 
+                            int outDim,
+                            AggrMode aggr,
+                            DataType dtype,
+                            Initializer *kernel_initializer,
+                            optional<std::string> const &maybe_name) {
+  EmbeddingAttrs attrs = { num_entries, outDim, aggr, dtype };
+  std::string name = maybe_name.value_or(get_default_name(attrs));
+
+  Layer layer = this->layer_mgr.create(attrs, DT_FLOAT, name);
+  Tensor input = this->as_type(x, DT_FLOAT, name + "input_pre_cast");
+
+  TensorShape output_shape = get_output_shape(attrs, input);
+  TensorShape weights_shape = get_weights_shape(attrs, input);
+  
+  return this->add_layer(layer, {input}, {{weights_shape, kernel_initializer}}, output_shape);
+}
+
+std::vector<Tensor> ComputationGraph::gather(Tensor const &input, 
+                         Tensor const &index,
+                         ff_dim_t dim,
+                         optional<std::string> const &maybe_name) {
+  GatherAttrs attrs = { dim };
+  std::string name = maybe_name.value_or(get_default_name(attrs));
+
+  Layer layer = this->layer_mgr.create(attrs, DT_FLOAT, name);
+  if (index->data_type != DT_INT32 && index->data_type != DT_INT64) {
+    throw mk_runtime_error("Invalid data type for input tensor 2 for Gather: {} (should be {} or {})", 
+                           input->data_type, DT_INT32, DT_INT64);
+  }
+  std::vector<TensorShape> output_shapes = get_output_shapes(attrs, input, index);
+
+  return this->add_layer(layer, {input}, {}, output_shapes);
+}
+
+void swap(ComputationGraph &lhs, ComputationGraph &rhs) {
+  using std::swap;
+
+  swap(lhs.layer_mgr, rhs.layer_mgr);
+  swap(lhs.tensor_mgr, rhs.tensor_mgr);
+  swap(lhs.graph, rhs.graph);
+}
+
+}

@@ -14,6 +14,7 @@
 #include "kernels/profiling.h"
 #include "utils/strong_typedef.h"
 #include "utils/stack_string.h"
+#include "op-attrs/operator_attrs.h"
 
 namespace FlexFlow {
 
@@ -36,40 +37,12 @@ protected:
                                    CostMetrics &cost_metrics) const;
 
 public:
-  Op(op_guid_t guid,
-     OperatorType otype,
-     DataType dtype,
-     char const *name,
-     int numInputs,
-     int numWeights,
-     bool allocate_weights,
-     int numOutputs,
-     bool profiling,
-     optional<ParallelTensor> const &input1 = nullopt,
-     tl::optional<ParallelTensor> const &input2 = tl::nullopt,
-     tl::optional<ParallelTensor> const &input3 = tl::nullopt,
-     tl::optional<ParallelTensor> const &input4 = tl::nullopt);
-  Op(op_guid_t op_guid,
-     OperatorType otype,
-     DataType dtype,
-     char const *_name,
-     int numInputs,
-     int numWeights,
-     int numOutputs,
-     bool profiling,
-     tl::optional<ParallelTensor> const &input1 = tl::nullopt,
-     tl::optional<ParallelTensor> const &input2 = tl::nullopt,
-     tl::optional<ParallelTensor> const &input3 = tl::nullopt,
-     tl::optional<ParallelTensor> const &input4 = tl::nullopt);
-  Op(op_guid_t op_guid,
-     OperatorType otype,
-     DataType dtype,
-     char const *_name,
-     int numInputs,
-     int numWeights,
-     int numOutputs,
-     bool profiling,
-     ParallelTensor const *tensors);
+  Op(op_guid_t,
+     OperatorType,
+     DataType,
+     std::string const &name,
+     PCGOperatorAttrs const &attrs,
+     bool profiling);
   
   // Pure virtual functions that must be implemented
   virtual void init(FFModel const &) = 0;
@@ -150,20 +123,15 @@ protected:
   virtual OpTaskBinding get_bwd_task_binding() const = 0;
   virtual TaskID get_bwd_task_id() const = 0;
 public:
+  op_guid_t guid;
   OperatorType op_type;
   DataType data_type;
   // the guid of the layer associated with the current operator
   // layer_guid is used to match layer with op
-  LayerID layer_guid;
-  op_guid_t op_guid;
   stack_string<MAX_OPNAME> name;
   Legion::IndexSpace parallel_is;
-  stack_vector<ParallelTensor, MAX_NUM_OUTPUTS> outputs;
-  stack_vector<ParallelTensor, MAX_NUM_INPUTS> inputs;
-  stack_vector<ParallelParameter, MAX_NUM_WEIGHTS> weights;
   stack_vector<bool, MAX_NUM_INPUTS> trainableInputs;
   stack_vector<PerDeviceOpState *, MAX_NUM_WORKERS> meta;
-  int numInputs, numWeights, numOutputs;
   bool profiling;
 #ifdef FF_USE_NCCL
   ncclUniqueId ncclId;
@@ -181,6 +149,47 @@ void profile(F const &f, bool profiling, Str s, Ts &&...ts) {
 template <TaskID TASK> OpTaskSignature get_signature();
 
 OpTaskSignature get_signature(TaskID);
+
+struct Operator {
+public:
+  Operator() = delete;
+
+  Operator(op_guid_t,
+           OperatorType, 
+           DataType,
+           std::string const &name,
+           PCGOperatorAttrs const &attrs,
+           bool profiling);
+
+  Op *operator->();
+  Op const *operator->() const;
+private:
+  std::shared_ptr<Op const> ptr;
+};
+
+struct OperatorManager {
+public:
+  OperatorManager() = default;
+
+  Operator create(PCGOperatorAttrs const &attrs,
+                  DataType data_type,
+                  std::string const &name, 
+                  bool profiling) {
+    return {this->next_id(), get_op_type(attrs), data_type, name, attrs, profiling};
+  }
+
+  template <typename Variant>
+  Operator create(Variant const &attrs, DataType data_type, std::string const &name, bool profiling) {
+    return this->create(widen<PCGOperatorAttrs>(attrs), data_type, name, profiling);
+  }
+
+private:
+  op_guid_t next_id() {
+    return op_guid_t(this->op_global_guid++);
+  }
+private:
+  size_t op_global_guid = OP_GUID_FIRST_VALID;
+};
 
 }
 
