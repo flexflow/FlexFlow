@@ -47,6 +47,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     if args.daemon:
+        print("Running the daemon...")
         # Check if there is any `gpu-ci` workflow in progress or queued
         target_workflows = [
             ".github/workflows/gpu-ci.yml",
@@ -75,6 +76,7 @@ if __name__ == "__main__":
                 f"aws ec2 stop-instances --region us-east-2 --instance-ids {instance_id}"
             )
     else:
+        print("Waiting for the deamon to finish running...")
         # Wait until the daemon has finished running
         target_workflow = [".github/workflows/gpu-ci-daemon.yml"]
         n = get_num_workflow_runs(repo, target_workflow, in_progress_only=True)

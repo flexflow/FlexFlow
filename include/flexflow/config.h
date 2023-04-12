@@ -117,6 +117,7 @@ public:
   int epochs, batchSize, printFreq;
   // int inputHeight, inputWidth;
   int numNodes, cpusPerNode, workersPerNode;
+  float device_mem; // The device (GPU) memory threshold; given by -ll:fsize
   float learningRate, weightDecay;
   size_t workSpaceSize;
   Legion::Context lg_ctx;
@@ -155,6 +156,7 @@ public:
   int base_optimize_threshold;
   bool enable_control_replication;
   int python_data_loader_type;
+  bool perform_memory_search{false};
 };
 
 class FFIterationConfig {
