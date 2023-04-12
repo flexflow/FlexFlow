@@ -19,7 +19,7 @@
 namespace FlexFlow {
 // declare Legion names
 
-ElementBinaryMeta::ElementBinaryMeta(FFHandler handler) : OpMeta(handler) {
+ElementBinaryPerDeviceState::ElementBinaryPerDeviceState(FFHandler handler) : OpPerDeviceState(handler) {
   checkCUDNN(cudnnCreateTensorDescriptor(&input1Tensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&input2Tensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
@@ -36,7 +36,7 @@ ElementBinaryMeta::ElementBinaryMeta(FFHandler handler) : OpMeta(handler) {
 namespace Kernels {
 namespace ElementBinary {
 
-void init_kernel(ElementBinaryMeta *m,
+void init_kernel(ElementBinaryPerDeviceState *m,
                  Domain const &input1_domain,
                  Domain const &input2_domain,
                  Domain const &output_domain) {
@@ -73,112 +73,6 @@ void init_kernel(ElementBinaryMeta *m,
   checkCUDNN(
       cudnnSetTensorDescriptorFromDomain(m->outputTensor, output_domain));
 }
-
-void forward_kernel_wrapper(ElementBinaryMeta const *m,
-                            float const *in1_ptr,
-                            float const *in2_ptr,
-                            float *out_ptr) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-  Internal::forward_kernel(m, in1_ptr, in2_ptr, out_ptr, stream);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    char const *opName;
-    switch (m->op_type) {
-      case OP_EW_ADD:
-        opName = "Add";
-        break;
-      case OP_EW_SUB:
-        opName = "Sub";
-        break;
-      case OP_EW_MUL:
-        opName = "Mul";
-        break;
-      case OP_EW_DIV:
-        opName = "Div";
-        break;
-      case OP_EW_MAX:
-        opName = "Max";
-        break;
-      case OP_EW_MIN:
-        opName = "Min";
-        break;
-      default:
-        assert(false);
-    }
-    printf("[%s] forward time (CF) = %.2fms\n", opName, elapsed);
-    // print_tensor<float>(in1_ptr, 32, "[EWB:forward:input1]");
-    // print_tensor<float>(in2_ptr, 32, "[EWB:forward:input2]");
-    // print_tensor<float>(out_ptr, 32, "[EWB:forward:output]");
-  }
-}
-
-                             float const *out_grad_ptr,
-                             float const *in1_ptr,
-                             float const *in2_ptr,
-                             float *in1_grad_ptr,
-                             float *in2_grad_ptr) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-
-  Internal::backward_kernel(
-      m, out_grad_ptr, in1_ptr, in2_ptr, in1_grad_ptr, in2_grad_ptr, stream);
-  // elewise_binary_backward_kernel<<<GET_BLOCKS(out_grad_domain.get_volume()),
-  // CUDA_NUM_THREADS>>>( out_grad_domain.get_volume(), alpha, alpha,
-  // ele->op_type, out_grad_ptr, in1_ptr, in2_ptr, in1_grad_ptr, in2_grad_ptr);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    char const *opName;
-    switch (m->op_type) {
-      case OP_EW_ADD:
-        opName = "Add";
-        break;
-      case OP_EW_SUB:
-        opName = "Sub";
-        break;
-      case OP_EW_MUL:
-        opName = "Mul";
-        break;
-      case OP_EW_DIV:
-        opName = "Div";
-        break;
-      case OP_EW_MAX:
-        opName = "Max";
-        break;
-      case OP_EW_MIN:
-        opName = "Min";
-        break;
-      default:
-        assert(false);
-    }
-    printf("[%s] backward time (CB) = %.2fms\n", opName, elapsed);
-  }
-}
-
-namespace Internal {
 
 __global__ void elewise_binary_forward_kernel(coord_t volume,
                                               float const alpha,
@@ -285,10 +179,11 @@ __global__ void elewise_binary_backward_kernel(coord_t volume,
   }
 }
 
+void forward_kernel(cudaStream_t stream,
+                    ElementBinaryPerDeviceState const *m,
                     float const *in1_ptr,
                     float const *in2_ptr,
-                    float *out_ptr,
-                    cudaStream_t stream) {
+                    float *out_ptr) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 0.0f;
@@ -385,13 +280,13 @@ __global__ void elewise_binary_backward_kernel(coord_t volume,
   }
 }
 
-void backward_kernel(ElementBinaryMeta const *m,
+void backward_kernel(cudaStream_t stream,
+                     ElementBinaryPerDeviceState const *m,
                      float const *out_grad_ptr,
                      float const *in1_ptr,
                      float const *in2_ptr,
                      float *in1_grad_ptr,
-                     float *in2_grad_ptr,
-                     cudaStream_t stream) {
+                     float *in2_grad_ptr) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
@@ -559,7 +454,6 @@ void backward_kernel(ElementBinaryMeta const *m,
   }
 }
 
-} // namespace Internal
 } // namespace ElementBinary
 } // namespace Kernels
-}; // namespace FlexFlow
+} // namespace FlexFlow

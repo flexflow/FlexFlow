@@ -1,36 +1,29 @@
 #ifndef _FLEXFLOW_COMBINE_H
 #define _FLEXFLOW_COMBINE_H
 
-#include "flexflow/layer.h"
-#include "flexflow/node.h"
-#include "flexflow/operator.h"
-#include "flexflow/parallel_ops/combine_params.h"
+#include "operator.h"
 #include "parallel_op.h"
 
 namespace FlexFlow {
 
 class Combine : public ParallelOp {
 public:
-  using Params = CombineParams;
-  using Input = ParallelTensor;
-
   Combine(FFModel &model,
-          const ParallelTensor input,
+          ParallelTensor const &input,
           int combine_legion_dim,
           int combine_degree,
           char const *name = NULL);
   Combine(FFModel &model,
-          Params const &params,
-          Input const input,
+          CombineAttrs const &params,
+          std::vector<ParallelTensor> const &input,
           char const *name = nullptr);
   void create_input_partition(FFModel &model) override;
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  bool get_int_parameter(PMParameter, int *) const override;
   bool append_parallel_op_info(
       std::vector<ParallelOpInfo> &parallel_ops) const override;
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -58,7 +51,6 @@ public:
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
 
-  Params get_params() const;
   tl::optional<RecordFormatter> as_dot() const override;
 
 public:

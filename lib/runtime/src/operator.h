@@ -1,83 +1,54 @@
-#ifndef _OPERATOR_H
-#define _OPERATOR_H
+#ifndef _FLEXFLOW_RUNTIME_SRC_OPERATOR_H
+#define _FLEXFLOW_RUNTIME_SRC_OPERATOR_H
 
 #include "runtime/config.h"
-#include "fftype.h"
+#include "layer_id.h"
 #include "pcg/machine_view.h"
 #include "parallel_tensor.h"
 #include <vector>
 #include "utils/stack_vector.h"
-#include "model.h"
-#include "runtime/tasks.h"
+#include "tasks.h"
 #include <stdexcept>
 #include "task_spec.h"
+#include "kernels/per_device_op_state.h"
+#include "kernels/profiling.h"
+#include "utils/strong_typedef.h"
+#include "utils/stack_string.h"
+#include "op-attrs/operator_attrs.h"
 
 namespace FlexFlow {
 
 extern LegionRuntime::Logger::Category log_measure;
+extern LegionRuntime::Logger::Category log_profile;
 
-class OpMeta;
 class Simulator;
 class CostMetrics;
+class FFModel;
+
+struct op_guid_t : strong_typedef<op_guid_t, size_t> {
+  using strong_typedef::strong_typedef;
+};
 
 class Op {
 protected:
   void inner_measure_operator_cost(Simulator *sim,
-                                   std::function<void()> const &forward,
-                                   std::function<void()> const &backward,
+                                   std::function<void(ffStream_t)> const &forward,
+                                   std::function<void(ffStream_t)> const &backward,
                                    CostMetrics &cost_metrics) const;
 
 public:
-  Op(FFModel &model,
-     OperatorType otype,
-     DataType dtype,
-     char const *_name,
-     int numInputs,
-     int numWeights,
-     bool allocate_weights,
-     int numOutputs,
-     tl::optional<ParallelTensor> const &input1 = tl::nullopt,
-     tl::optional<ParallelTensor> const &input2 = tl::nullopt,
-     tl::optional<ParallelTensor> const &input3 = tl::nullopt,
-     tl::optional<ParallelTensor> const &input4 = tl::nullopt);
-  Op(FFModel &model,
-     OperatorType otype,
-     DataType dtype,
-     char const *_name,
-     int numInputs,
-     int numWeights,
-     int numOutputs,
-     tl::optional<ParallelTensor> const &input1 = tl::nullopt,
-     tl::optional<ParallelTensor> const &input2 = tl::nullopt,
-     tl::optional<ParallelTensor> const &input3 = tl::nullopt,
-     tl::optional<ParallelTensor> const &input4 = tl::nullopt);
-  Op(int guid,
-     bool profiling,
-     OperatorType otype,
-     DataType dtype,
-     char const *name,
-     int numInputs,
-     int numWeights,
-     int numOutputs,
-     tl::optional<ParallelTensor> const &input1 = tl::nullopt,
-     tl::optional<ParallelTensor> const &input2 = tl::nullopt,
-     tl::optional<ParallelTensor> const &input3 = tl::nullopt,
-     tl::optional<ParallelTensor> const &input4 = tl::nullopt);
-  Op(FFModel &model,
-     OperatorType otype,
-     DataType dtype,
-     char const *_name,
-     int numInputs,
-     int numWeights,
-     int numOutputs,
-     ParallelTensor const *tensors);
+  Op(op_guid_t,
+     OperatorType,
+     DataType,
+     std::string const &name,
+     PCGOperatorAttrs const &attrs,
+     bool profiling);
   
   // Pure virtual functions that must be implemented
-  virtual void init(FFModel const &);
-  virtual void forward(FFModel const &);
-  virtual void backward(FFModel const &);
+  virtual void init(FFModel const &) = 0;
+  virtual void forward(FFModel const &) = 0;
+  virtual void backward(FFModel const &) = 0;
 
-  virtual void print_layer(FFModel const &model) = 0;
   virtual bool measure_operator_cost(Simulator *sim,
                                      MachineView const &mv,
                                      CostMetrics &cost_metrics) const = 0;
@@ -112,8 +83,6 @@ public:
   virtual void serialize(Legion::Serializer &) const;
   virtual Op *
       materialize(FFModel &ff, ParallelTensor inputs[], int num_inputs) const;
-  size_t get_untyped_params_hash() const;
-  virtual size_t get_params_hash() const;
 
   virtual tl::optional<RecordFormatter> as_dot() const;
 
@@ -139,40 +108,87 @@ protected:
   void set_opmeta_from_futuremap(FFModel const &ff,
                                  Legion::FutureMap const &fm);
 
-  /* template <typename T> */
-  /* Legion::IndexLauncher make_fwd_index_launcher(FFModel const &ff, TaskID task_id, tl::optional<T const &> arg = tl::nullopt) const { */
-  /*   using namespace Legion; */
+  bool check_output_input_weight_same_parallel_is() const;
 
-  /* } */
+  void execute_task(FFModel const &, TaskID, OpTaskSignature const &);
+  ParallelTensor const &get_parallel_tensor(TensorSpec const &) const;
+  TensorSpec input_tensor(int idx) const;
+  OpTaskBinding get_task_binding(OpTaskType) const;
+  void set_argumentmap(OpTaskType, FFModel const &f, Legion::ArgumentMap);
 
-  virtual OpTasksSpec get_tasks_spec() const = 0;
-  OpTasksSpec get_fully_defined_tasks_spec() const;
-  OpTaskSpec infer_bwd_spec(TaskID bwd_task_id, OpTaskSpec const &fwd_spec) const;
-  OpTaskSpec infer_init_spec(TaskID init_task_id, OpTaskSpec const &bwd_spec) const;
-  void infer_bwd_spec(OpTasksSpec &spec) const;
-  void infer_init_spec(OpTasksSpec &spec) const;
-
-  void execute_task_spec(FFModel const &, OpTaskSpec const &);
-  ParallelTensor const &get_parallel_tensor(TensorRole, int); 
+  virtual OpTaskBinding get_init_task_binding() const = 0;
+  virtual TaskID get_init_task_id() const = 0;
+  virtual OpTaskBinding get_fwd_task_binding() const = 0;
+  virtual TaskID get_fwd_task_id() const = 0;
+  virtual OpTaskBinding get_bwd_task_binding() const = 0;
+  virtual TaskID get_bwd_task_id() const = 0;
 public:
+  op_guid_t guid;
   OperatorType op_type;
   DataType data_type;
   // the guid of the layer associated with the current operator
   // layer_guid is used to match layer with op
-  LayerID layer_guid;
-  size_t op_guid;
-  char name[MAX_OPNAME];
+  stack_string<MAX_OPNAME> name;
   Legion::IndexSpace parallel_is;
-  stack_vector<ParallelTensor, MAX_NUM_OUTPUTS> outputs;
-  stack_vector<ParallelTensor, MAX_NUM_INPUTS> inputs;
-  stack_vector<ParallelParameter, MAX_NUM_WEIGHTS> weights;
   stack_vector<bool, MAX_NUM_INPUTS> trainableInputs;
-  stack_vector<OpMeta *, MAX_NUM_WORKERS> meta;
-  int numInputs, numWeights, numOutputs;
+  stack_vector<PerDeviceOpState *, MAX_NUM_WORKERS> meta;
   bool profiling;
 #ifdef FF_USE_NCCL
   ncclUniqueId ncclId;
 #endif
+};
+
+template <typename F, typename ...Ts, typename Str>
+void profile(F const &f, bool profiling, Str s, Ts &&...ts) {
+  optional<float> elapsed = profiling_wrapper<F, Ts...>(f, profiling, std::forward<Ts>(ts)...);
+  if (elapsed.has_value()) {
+    log_profile.debug(s, elapsed.value());
+  }
+}
+
+template <TaskID TASK> OpTaskSignature get_signature();
+
+OpTaskSignature get_signature(TaskID);
+
+struct Operator {
+public:
+  Operator() = delete;
+
+  Operator(op_guid_t,
+           OperatorType, 
+           DataType,
+           std::string const &name,
+           PCGOperatorAttrs const &attrs,
+           bool profiling);
+
+  Op *operator->();
+  Op const *operator->() const;
+private:
+  std::shared_ptr<Op const> ptr;
+};
+
+struct OperatorManager {
+public:
+  OperatorManager() = default;
+
+  Operator create(PCGOperatorAttrs const &attrs,
+                  DataType data_type,
+                  std::string const &name, 
+                  bool profiling) {
+    return {this->next_id(), get_op_type(attrs), data_type, name, attrs, profiling};
+  }
+
+  template <typename Variant>
+  Operator create(Variant const &attrs, DataType data_type, std::string const &name, bool profiling) {
+    return this->create(widen<PCGOperatorAttrs>(attrs), data_type, name, profiling);
+  }
+
+private:
+  op_guid_t next_id() {
+    return op_guid_t(this->op_global_guid++);
+  }
+private:
+  size_t op_global_guid = OP_GUID_FIRST_VALID;
 };
 
 }

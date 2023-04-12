@@ -1,12 +1,8 @@
 #ifndef _FLEXFLOW_FLAT_H
 #define _FLEXFLOW_FLAT_H
 
-#include "fftype.h"
 #include "layer.h"
-#include "flexflow/node.h"
-#include "op_meta.h"
 #include "operator.h"
-#include "op-attrs/flat_params.h"
 
 namespace FlexFlow {
 
@@ -21,27 +17,21 @@ constexpr int NUMDIM = 3, CHANNEL = 0, SAMPLE = 1, REPLICA = 2;
 
 class Flat : public Op {
 public:
-  using Params = FlatParams;
-  using Input = ParallelTensor;
-
-  Flat(FFModel &model, const ParallelTensor input, char const *name);
+  Flat(FFModel &model, ParallelTensor const &input, char const *name);
   Flat(FFModel &model,
-       Params const &params,
-       const Input input,
+       FlatAttrs const &params,
+       std::vector<ParallelTensor> const &input,
        char const *name = nullptr);
 
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -56,24 +46,19 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  Legion::Domain get_input_tensor_shape(ParallelConfig const &pc,
-                                        int input_idx,
-                                        int part_idx) const override;
 
   void serialize(Legion::Serializer &) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+  /* static PCG::Node deserialize(FFModel &ff, */
+  /*                              Legion::Deserializer &d, */
+  /*                              ParallelTensor inputs[], */
+  /*                              int num_inputs); */
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;
-  static void
-      construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
-
-  Params get_params() const;
+  /* static void */
+  /*     construct_output_mappings(std::vector<ParallelDimMappingRecord> &); */
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFLOW_FLAT_H
+#endif

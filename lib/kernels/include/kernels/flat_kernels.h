@@ -1,39 +1,29 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_FLAT_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_FLAT_KERNELS_H
 
-#include "device.h"
-#include "fftype.h"
-#include "op_meta.h"
+#include "kernels/device.h"
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
-class FlatMeta : public OpMeta {
+class FlatPerDeviceState : public PerDeviceOpState {
 public:
-  FlatMeta(FFHandler handle) : OpMeta(handle){};
+  FlatPerDeviceState(FFHandler handle) : PerDeviceOpState(handle){};
 };
 
 namespace Kernels {
 namespace Flat {
 
-void forward_kernel_wrapper(float const *input_ptr,
-                            float *output_ptr,
-                            size_t num_elements);
-void backward_kernel_wrapper(float *input_grad_ptr,
-                             float const *output_grad_ptr,
-                             size_t num_elements);
-
-namespace Internal {
-
-void forward_kernel(float const *input_ptr,
+void forward_kernel(ffStream_t stream,
+                    float const *input_ptr,
                     float *output_ptr,
-                    size_t num_elements,
-                    ffStream_t stream);
-void backward_kernel(float *input_grad_ptr,
+                    size_t num_elements);
+void backward_kernel(ffStream_t stream,
+                     float *input_grad_ptr,
                      float const *output_grad_ptr,
-                     size_t num_elements,
-                     ffStream_t stream);
+                     size_t num_elements);
 
-} // namespace Internal
+
 } // namespace Flat
 } // namespace Kernels
 } // namespace FlexFlow

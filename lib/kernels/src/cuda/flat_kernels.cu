@@ -21,52 +21,34 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Flat {
 
-void forward_kernel_wrapper(float const *input_ptr,
+void forward_kernel(cudaStream_t stream, float const *input_ptr,
                             float *output_ptr,
                             size_t num_elements) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::forward_kernel(input_ptr, output_ptr, num_elements, stream);
+  
+  
+  checkCUDA(cudaMemcpyAsync(output_ptr,
+                            input_ptr,
+                            num_elements * sizeof(float),
+                            cudaMemcpyDeviceToDevice,
+                            stream));
   // checkCUDA(cudaDeviceSynchronize());
 }
 
-void backward_kernel_wrapper(float *input_grad_ptr,
+void backward_kernel(cudaStream_t stream, float *input_grad_ptr,
                              float const *output_grad_ptr,
                              size_t num_elements) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::backward_kernel(
-      input_grad_ptr, output_grad_ptr, num_elements, stream);
+  
+  
+  float alpha = 1.0f;
+  apply_add_with_scale<float>
+      <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
+          input_grad_ptr, output_grad_ptr, num_elements, alpha);
   // checkCUDA(cudaMemcpyAsync(acc_input_grad.ptr, acc_output_grad.ptr,
   //                           acc_input_grad.rect.volume() * sizeof(float),
   //                           cudaMemcpyDeviceToDevice));
   // checkCUDA(cudaDeviceSynchronize());
 }
 
-namespace Internal {
-
-void forward_kernel(float const *input_ptr,
-                    float *output_ptr,
-                    size_t num_elements,
-                    cudaStream_t stream) {
-  checkCUDA(cudaMemcpyAsync(output_ptr,
-                            input_ptr,
-                            num_elements * sizeof(float),
-                            cudaMemcpyDeviceToDevice,
-                            stream));
-}
-
-void backward_kernel(float *input_grad_ptr,
-                     float const *output_grad_ptr,
-                     size_t num_elements,
-                     cudaStream_t stream) {
-  float alpha = 1.0f;
-  apply_add_with_scale<float>
-      <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
-          input_grad_ptr, output_grad_ptr, num_elements, alpha);
-}
-
-} // namespace Internal
 } // namespace Flat
 } // namespace Kernels
 } // namespace FlexFlow

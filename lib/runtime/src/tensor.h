@@ -13,72 +13,120 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef _FLEXFLOW_RUNTIME_SRC_TENSOR_H
+#define _FLEXFLOW_RUNTIME_SRC_TENSOR_H
 
 #include "legion.h"
 #include <unordered_map>
+#include <memory>
+#include "op-attrs/ffconst.h"
+#include "utils/stack_vector.h"
+#include "kernels/array_shape.h"
+#include "tensor_shape.h"
+#include <type_traits>
+#include "utils/strong_typedef.h"
 
 namespace FlexFlow {
 
 class Layer;
 class FFModel;
 class Initializer;
-class ParallelTensorBase;
+
+enum class CreateGrad {
+  YES,
+  NO
+};
+
+struct tensor_guid_t : strong_typedef<tensor_guid_t, size_t> {
+  using strong_typedef::strong_typedef;
+};
 
 struct TensorBase {
-  TensorBase(void) = default;
+  TensorBase() = delete;
   TensorBase(TensorBase const &rhs);
-  // void inline_map(FFConfig &config);
-  // void inline_unmap(FFConfig &config);
-  // template<typename T>
-  // T* get_raw_ptr(FFConfig &config);
-  // void attach_raw_ptr(FFConfig &config, void *raw_ptr, bool column_major);
-  // void detach_raw_ptr(FFConfig &config);
-  // bool get_input_sub_tensor(const ParallelConfig& pc,
-  //                           TensorBase& tensor,
-  //                           OperatorType type);
-  // bool get_output_sub_tensor(const ParallelConfig& pc,
-  //                            TensorBase& tensor,
-  //                            OperatorType type);
-  // size_t get_owner_independent_hash() const;
+  TensorBase(tensor_guid_t, 
+             TensorShape const &,
+             bool create_gradients, 
+             Initializer const *initializer = nullptr, 
+             ParameterSyncType sync_type = ParameterSyncType::NONE);
+
   size_t get_volume() const;
-  // size_t get_total_num_parts() const;
   Legion::Domain get_domain() const;
-  // bool check_valid() const;
-  // bool is_valid_machine_view(const MachineView& view) const;
+
+  TensorShape get_shape() const;
+
+  int num_dims() const;
+
   void print(std::string const &name) const;
-  // static bool update_parallel_ids(int numdim, ParallelDim* dims);
   template <typename T>
   bool set_tensor(FFModel const *model,
                   std::vector<int> const &dims,
                   T const *data);
   template <typename T>
   bool get_tensor(FFModel const *model, T *data, bool get_gradients);
-  template <typename T>
-  bool get_output_parallel_tensor(FFModel const *ff,
-                                  T *data,
-                                  bool get_gradients);
-  // TensorShape get_shape() const;
-private:
-  // template <typename T>
-  // bool get_input_sub_tensor_via_mappings(const ParallelConfig& pc,
-  // TensorBase& tensor) const;
 public:
-  size_t tensor_guid = 0;
-  int num_dims = 0;
+  tensor_guid_t guid;
   // int adim[MAX_TENSOR_DIM];
-  int dims[MAX_TENSOR_DIM];
+  stack_vector<int, MAX_TENSOR_DIM> dims;
   DataType data_type = DT_NONE;
   ParameterSyncType sync_type = ParameterSyncType::NONE;
   Initializer *initializer = nullptr;
-  ParallelTensorBase *parallel_tensor = nullptr;
-  // Describes the ownership of this tensor
-  Layer const *owner_layer = nullptr;
-  int owner_idx = 0;
+
   bool create_gradients = false;
 };
 
-typedef TensorBase *Tensor;
-typedef TensorBase *Parameter;
+struct Tensor {
+public: 
+  Tensor() = delete;
+  /* explicit Tensor(std::shared_ptr<TensorBase> ptr); */
 
-}; // namespace FlexFlow
+  /* template <typename ...Args> */
+  /* Tensor(Args&&...args) */
+  /*   : ptr(std::make_shared<TensorBase>(std::forward<Args>(args)...)) */
+  /* { } */
+  Tensor(tensor_guid_t guid, 
+             TensorShape const &,
+             CreateGrad create_gradients, 
+             Initializer const *initializer = nullptr, 
+             ParameterSyncType sync_type = ParameterSyncType::NONE);
+
+  operator TensorShape() const;
+
+  Tensor(Tensor const &) = default;
+  Tensor(Tensor &) = default;
+
+  TensorBase *operator->();
+  TensorBase const *operator->() const;
+private:
+  std::shared_ptr<TensorBase> ptr;
+};
+
+static_assert(std::is_copy_constructible<Tensor>::value, "Tensor must be copy constructible");
+
+using Parameter = Tensor;
+
+struct TensorManager {
+public:
+  TensorManager() = default;
+
+  Tensor create(TensorShape const &shape,
+             CreateGrad create_gradients, 
+             Initializer const *initializer = nullptr, 
+             ParameterSyncType sync_type = ParameterSyncType::NONE) {
+    return Tensor(this->next_id(), shape, create_gradients, initializer, sync_type);
+  }
+private:
+  tensor_guid_t next_id() {
+    return tensor_guid_t(this->tensor_global_guid++);
+  };
+private:
+  size_t tensor_global_guid = TENSOR_GUID_FIRST_VALID;
+};
+
+
+}
+
+MAKE_TYPEDEF_HASHABLE(::FlexFlow::tensor_guid_t);
+MAKE_TYPEDEF_PRINTABLE(::FlexFlow::tensor_guid_t, "tensor_guid");
+
+#endif

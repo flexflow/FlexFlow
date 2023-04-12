@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/partition.h"
-#include "flexflow/model.h"
-#include "flexflow/parallel_ops/kernels/partition_kernels.h"
-#include "flexflow/utils/hash_utils.h"
+#include "parallel_ops/partition.h"
+#include "model.h"
+#include "kernels/partition_kernels.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -94,7 +94,7 @@ Repartition::Repartition(FFModel &model,
                   params.repartition_degree,
                   name) {}
 
-OpMeta *Repartition::init_task(Task const *task,
+PerDeviceOpState *Repartition::init_task(Task const *task,
                                std::vector<PhysicalRegion> const &regions,
                                Context ctx,
                                Runtime *runtime) {

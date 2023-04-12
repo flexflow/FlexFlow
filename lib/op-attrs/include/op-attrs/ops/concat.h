@@ -2,32 +2,23 @@
 #define _FLEXFLOW_CONCAT_ATTRS_H
 
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/ops/op_attrs.h"
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
+#include "op-attrs/ff_dim.h"
 
 namespace FlexFlow {
 
-struct ConcatAttrs : public OpAttrsInterface {
+struct ConcatAttrs : use_visitable_cmp<ConcatAttrs> {
 public:
-  bool is_valid(std::vector<ParallelTensorShape> const &input_shapes) const override;
-  std::vector<ParallelTensorShape> output_shapes(std::vector<ParallelTensorShape> const &input_shapes) const override;
-  OperatorType op_type() const override;
-public:
-  int axis;
-};
+  ConcatAttrs() = delete;
+  ConcatAttrs(ff_dim_t);
 
-bool operator==(ConcatAttrs const &, ConcatAttrs const &);
-bool operator<(ConcatAttrs const &, ConcatAttrs const &);
+public:
+  ff_dim_t axis;
+};
 
 }
 
 VISITABLE_STRUCT(::FlexFlow::ConcatAttrs, axis);
+MAKE_VISIT_HASHABLE(::FlexFlow::ConcatAttrs);
 
-namespace std {
-template <>
-struct hash<::FlexFlow::ConcatAttrs> {
-  size_t operator()(::FlexFlow::ConcatAttrs const &) const;
-};
-} 
-
-#endif // _FLEXFLOW_CONCAT_ATTRS_H
+#endif

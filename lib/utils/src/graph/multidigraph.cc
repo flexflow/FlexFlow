@@ -1,5 +1,4 @@
 #include "utils/graph/multidigraph.h"
-#include "utils/visit_struct.h"
 
 namespace FlexFlow {
 
@@ -7,16 +6,8 @@ MultiDiEdge::MultiDiEdge(Node src, Node dst, size_t srcIdx, size_t dstIdx)
   : src(src), dst(dst), srcIdx(srcIdx), dstIdx(dstIdx)
 { }
 
-bool MultiDiEdge::operator==(MultiDiEdge const &other) const {
-  return visit_eq(*this, other);
-}
-
-bool MultiDiEdge::operator<(MultiDiEdge const &other) const {
-  return visit_lt(*this, other);
-}
-
 std::ostream &operator<<(std::ostream &s, MultiDiEdge const &e) {
-  return (s << "MultiDiEdge<" << e.src.idx << ":" << e.srcIdx << " -> " << e.dst.idx << ":" << e.dstIdx << ">");
+  return (s << "MultiDiEdge<" << e.src.value() << ":" << e.srcIdx << " -> " << e.dst.value() << ":" << e.dstIdx << ">");
 }
 
 MultiDiEdgeQuery MultiDiEdgeQuery::with_src_nodes(std::unordered_set<Node> const &nodes) const {
@@ -75,12 +66,47 @@ MultiDiEdgeQuery MultiDiEdgeQuery::all() {
   return MultiDiEdgeQuery{};
 }
 
+MultiDiGraph::MultiDiGraph(MultiDiGraph const &other) 
+  : ptr(other.ptr->clone())
+{ }
+
+MultiDiGraph &MultiDiGraph::operator=(MultiDiGraph other) {
+  swap(*this, other);
+  return *this;
 }
 
-namespace std {
-using ::FlexFlow::MultiDiEdge;
+void swap(MultiDiGraph &lhs, MultiDiGraph &rhs) {
+  using std::swap;
 
-std::size_t hash<MultiDiEdge>::operator()(MultiDiEdge const &e) const {
-  return visit_hash(e);
+  swap(lhs.ptr, rhs.ptr);
 }
+
+Node MultiDiGraph::add_node() {
+  return this->ptr->add_node();
+}
+
+void MultiDiGraph::add_node_unsafe(Node const &n) {
+  return this->ptr->add_node_unsafe(n);
+}
+
+void MultiDiGraph::remove_node_unsafe(Node const &n) {
+  return this->ptr->remove_node_unsafe(n);
+}
+
+void MultiDiGraph::add_edge(MultiDiEdge const &e) {
+  return this->ptr->add_edge(e);
+}
+
+void MultiDiGraph::remove_edge(MultiDiEdge const &e) {
+  return this->ptr->remove_edge(e);
+}
+
+std::unordered_set<MultiDiEdge> MultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
+  return this->ptr->query_edges(q);
+}
+
+MultiDiGraph::MultiDiGraph(std::unique_ptr<IMultiDiGraph> _ptr)
+  : ptr(std::move(_ptr))
+{ }
+
 }

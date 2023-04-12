@@ -1,20 +1,13 @@
 #ifndef _FLEXFLOW_POOL_2D_H
 #define _FLEXFLOW_POOL_2D_H
 
-#include "fftype.h"
 #include "layer.h"
-#include "flexflow/node.h"
-#include "op_meta.h"
 #include "operator.h"
-#include "op-attrs/pool_2d_params.h"
 
 namespace FlexFlow {
 
 class Pool2D : public Op {
 public:
-  using Params = Pool2DParams;
-  using Input = ParallelTensor;
-
   Pool2D(FFModel &model,
          const ParallelTensor input,
          int kernelH,
@@ -28,22 +21,19 @@ public:
          char const *name);
   Pool2D(FFModel &model, Pool2D const &other, ParallelTensor const input);
   Pool2D(FFModel &model,
-         Params const &params,
-         const Input input,
+         Pool2DAttrs const &attrs,
+         std::vector<ParallelTensor> const &inputs,
          char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   void update(FFModel const &);
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -60,15 +50,13 @@ public:
                              CostMetrics &cost_metrics) const override;
 
   void serialize(Legion::Serializer &) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+  /* static PCG::Node deserialize(FFModel &ff, */
+  /*                              Legion::Deserializer &d, */
+  /*                              ParallelTensor inputs[], */
+  /*                              int num_inputs); */
 
-  static void
-      construct_output_mappings(std::vector<ParallelDimMappingRecord> &);
-
-  Params get_params() const;
+  /* static void */
+  /*     construct_output_mappings(std::vector<ParallelDimMappingRecord> &); */
 
 private:
   int output_size(ParallelDim output_dims[MAX_TENSOR_DIM]);
@@ -82,6 +70,6 @@ public:
   ActiMode activation;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif //_FLEXFLOW_POOL_2D_H
+#endif

@@ -1,5 +1,6 @@
 #include "kernels/array_shape.h"
 #include "utils/containers.h"
+#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 
@@ -15,6 +16,24 @@ ArrayShape::ArrayShape(std::vector<std::size_t> const &dims)
 
 std::size_t ArrayShape::get_volume() const {
   return product(this->dims);
+}
+
+bool ArrayShape::operator==(ArrayShape const &other) const {
+  return visit_eq(*this, other);
+}
+
+bool ArrayShape::operator!=(ArrayShape const &other) const {
+  return visit_neq(*this, other);
+}
+
+}
+
+namespace std {
+
+using ::FlexFlow::ArrayShape;
+
+size_t hash<ArrayShape>::operator()(ArrayShape const &shape) const {
+  return visit_hash(shape);
 }
 
 }

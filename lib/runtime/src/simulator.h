@@ -26,6 +26,7 @@
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
+#include "kernels/ff_handler.h"
 
 namespace FlexFlow {
 
@@ -738,12 +739,8 @@ public:
   Pool2DMeta *pool2d_meta;
   ElementUnaryMeta *ele_unary_meta;
   ElementBinaryMeta *ele_binary_meta;
-  // EmbeddingMeta *embedding_meta;
-  // SoftmaxMeta *softmax_meta;
   BatchMatmulMeta *batch_matmul_meta;
-  // BatchNormMeta *batch_norm_meta;
   ConcatMeta *concat_meta;
-  // DropoutMeta *dropout_meta;
   TransposeMeta *transpose_meta;
   int segment_size;
   int max_num_segments; // simulation could be slow if the number of segments

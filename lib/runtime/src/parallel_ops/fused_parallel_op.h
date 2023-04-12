@@ -1,25 +1,17 @@
 #ifndef _FLEXFLOW_FUSED_PARALLEL_OP_H
 #define _FLEXFLOW_FUSED_PARALLEL_OP_H
 
-#include "device.h"
-#include "flexflow/fftype.h"
-#include "flexflow/layer.h"
-#include "flexflow/node.h"
-#include "op_meta.h"
-#include "flexflow/operator.h"
-#include "flexflow/parallel_ops/fused_parallel_op_params.h"
+#include "operator.h"
 #include "parallel_op.h"
 
 namespace FlexFlow {
 
 class FusedParallelOp : public ParallelOp {
 public:
-  using Params = FusedParallelOpParams;
-  using Input = ParallelTensor;
   FusedParallelOp(FFModel &model,
                   const ParallelTensor input,
                   std::vector<ParallelOpInfo> const &parallel_ops);
-  FusedParallelOp(FFModel &model, Params const &params, const Input input);
+  FusedParallelOp(FFModel &model, FusedParallelOpAttrs const &attrs, std::vector<ParallelTensor> const &inputs);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -46,14 +38,10 @@ public:
                              CostMetrics &cost_metrics) const override;
   void set_parallel_ops(std::vector<ParallelOpInfo> const &_parallel_ops);
   bool check_no_redundant_parallel_ops(void) const;
-
-  Params get_params() const;
-
 public:
-  int num_parallel_ops;
-  ParallelOpInfo parallel_ops[MAX_NUM_FUSED_OPERATORS];
+  stack_vector<ParallelOpInfo, MAX_NUM_FUSED_OPERATORS> parallel_ops;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFLOW_FUSED_PARALLEL_OP_H
+#endif

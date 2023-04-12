@@ -1,22 +1,17 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_SOFTMAX_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_SOFTMAX_KERNELS_H
 
-#include "device.h"
-#include "fftype.h"
-#include "op_meta.h"
+#include "kernels/device.h"
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
-class SoftmaxMeta : public OpMeta {
+class SoftmaxPerDeviceState : public PerDeviceOpState {
 public:
-  SoftmaxMeta(FFHandler handle,
+  SoftmaxPerDeviceState(FFHandler handle,
               Softmax const *softmax,
               Legion::Domain const &input_domain);
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnTensorDescriptor_t inputTensor;
-#else
-  miopenTensorDescriptor_t inputTensor;
-#endif
+  ffTensorDescriptor_t inputTensor;
   bool profiling;
   int dim;
   char op_name[MAX_OPNAME];
@@ -25,27 +20,17 @@ public:
 namespace Kernels {
 namespace Softmax {
 
-void forward_kernel_wrapper(SoftmaxMeta const *m,
-                            float const *input_ptr,
-                            float *output_ptr);
-
-void backward_kernel_wrapper(SoftmaxMeta const *m,
-                             float *input_grad_ptr,
-                             float const *output_grad_ptr,
-                             size_t num_elements);
-
-namespace Internal {
-void forward_kernel(SoftmaxMeta const *m,
+void forward_kernel(ffStream_t stream,
+                    SoftmaxPerDeviceState const *m,
                     float const *input_ptr,
-                    float *output_ptr,
-                    ffStream_t stream);
-void backward_kernel(float *input_grad_ptr,
+                    float *output_ptr);
+void backward_kernel(ffStream_t stream,
+                     float *input_grad_ptr,
                      float const *output_grad_ptr,
-                     size_t num_elements,
-                     ffStream_t stream);
-} // namespace Internal
-} // namespace Softmax
-} // namespace Kernels
-} // namespace FlexFlow
+                     size_t num_elements);
 
-#endif // _FLEXFLOW_OPS_KERNELS_SOFTMAX_KERNELS_H
+}
+}
+}
+
+#endif 

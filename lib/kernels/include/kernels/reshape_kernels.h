@@ -1,45 +1,32 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_RESHAPE_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_RESHAPE_KERNELS_H
 
-#include "device.h"
-#include "fftype.h"
-#include "op_meta.h"
+#include "kernels/device.h"
+#include "kernels/accessor.h"
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
-class ReshapeMeta : public OpMeta {
+class ReshapePerDeviceState : public PerDeviceOpState {
 public:
-  ReshapeMeta(FFHandler handler);
+  ReshapePerDeviceState(FFHandler handler);
   DataType data_type;
 };
 
 namespace Kernels {
 namespace Reshape {
 
-template <typename T>
-void forward_kernel_wrapper(T const *input_ptr,
-                            T *output_ptr,
-                            size_t num_elements);
+void forward_kernel(ffStream_t stream,
+                    ReshapePerDeviceState const *m,
+                    GenericTensorAccessorR const &input,
+                    GenericTensorAccessorW const &output);
 
-template <typename T>
-void backward_kernel_wrapper(T *input_grad_ptr,
-                             T const *output_grad_ptr,
-                             size_t num_elements);
+void backward_kernel(ffStream_t stream,
+                     ReshapePerDeviceState const *m,
+                     GenericTensorAccessorW const &input,
+                     GenericTensorAccessorR const &output);
 
-namespace Internal {
 
-template <typename T>
-void forward_kernel(T const *input_ptr,
-                    T *output_ptr,
-                    size_t num_elements,
-                    ffStream_t stream);
-template <typename T>
-void backward_kernel(T *input_grad_ptr,
-                     T const *output_grad_ptr,
-                     size_t num_elements,
-                     ffStream_t stream);
-
-} // namespace Internal
 } // namespace Reshape
 } // namespace Kernels
 } // namespace FlexFlow

@@ -174,7 +174,7 @@ void TopK::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *TopK::init_task(Task const *task,
+PerDeviceOpState *TopK::init_task(Task const *task,
                         std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {

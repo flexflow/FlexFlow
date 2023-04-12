@@ -1,39 +1,29 @@
 #ifndef _FLEXFLOW_SOFTMAX_H
 #define _FLEXFLOW_SOFTMAX_H
 
-#include "fftype.h"
 #include "layer.h"
-#include "flexflow/node.h"
-#include "op_meta.h"
 #include "operator.h"
-#include "op-attrs/softmax_params.h"
 
 namespace FlexFlow {
 
 class Softmax : public Op {
 public:
-  using Params = SoftmaxParams;
-  using Input = ParallelTensor;
   Softmax(FFModel &model,
-          const ParallelTensor logit,
+          ParallelTensor const &logit,
           int dim,
           char const *name);
   Softmax(FFModel &model,
-          Params const &params,
-          const Input input,
+          SoftmaxAttrs const &attrs,
+          std::vector<ParallelTensor> const &input,
           char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  bool get_int_parameter(PMParameter, int *) const override;
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -48,7 +38,6 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
-  Params get_params() const;
 
 private:
   template <int NDIM>
@@ -68,6 +57,6 @@ public:
   int dim;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFLOW_SOFTMAX_H
+#endif 

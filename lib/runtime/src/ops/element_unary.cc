@@ -1,7 +1,7 @@
 #include "element_unary.h"
 #include "kernels/element_unary_kernels.h"
 #include "model.h"
-#include "utils/hash_utils.h"
+#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {
@@ -73,14 +73,6 @@ Op *ElementUnary::create_operator_from_layer(
   layer->get_float_property("scalar", scalar);
   return new ElementUnary(
       model, layer->op_type, inputs[0], inplace, layer->name, scalar);
-}
-
-ElementUnaryParams ElementUnary::get_params() const {
-  ElementUnaryParams params;
-  params.op_type = this->op_type;
-  params.inplace = this->inplace;
-  params.scalar = this->scalar;
-  return params;
 }
 
 Tensor FFModel::exp(const Tensor x, char const *name) {
@@ -272,7 +264,7 @@ void ElementUnary::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *ElementUnary::init_task(Task const *task,
+PerDeviceOpState *ElementUnary::init_task(Task const *task,
                                 std::vector<PhysicalRegion> const &regions,
                                 Context ctx,
                                 Runtime *runtime) {

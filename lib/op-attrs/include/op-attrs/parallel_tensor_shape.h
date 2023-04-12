@@ -5,50 +5,31 @@
 #include <vector>
 #include "utils/record_formatter.h"
 #include <unordered_map>
+#include "utils/visitable.h"
+#include "utils/stack_vector.h"
+#include "op-attrs/tensor_shape.h"
 
 namespace FlexFlow {
 
 struct ParallelDim {
-  static constexpr int UNKNOWN_DEGREE = -1;
-  static constexpr int UNKNOWN_INDEX = -2;
+  ParallelDim() = delete;
+  ParallelDim(int size, int degree, int parallel_idx, bool is_replica_dim = false);
 
-  bool operator==(ParallelDim const &rhs) const {
-    if (size != rhs.size) {
-      return false;
-    }
-    if (degree != rhs.degree) {
-      return false;
-    }
-    if (parallel_idx != rhs.parallel_idx) {
-      return false;
-    }
-    return true;
-  }
+  bool operator==(ParallelDim const &) const;
+  bool operator!=(ParallelDim const &) const;
+  bool operator<(ParallelDim const &) const;
 
-  bool operator!=(ParallelDim const &rhs) const {
-    if (size != rhs.size) {
-      return true;
-    }
-    if (degree != rhs.degree) {
-      return true;
-    }
-    if (parallel_idx != rhs.parallel_idx) {
-      return true;
-    }
-    return false;
-  }
-
-
-  using AsConstTuple = std::tuple<int, int, int, bool>;
-  AsConstTuple as_tuple() const;
-
-public:
-  int size = 0;
-  int degree = UNKNOWN_DEGREE;
-  int parallel_idx = UNKNOWN_INDEX;
-  bool is_replica_dim = false;
+  int size;
+  int degree;
+  int parallel_idx;
+  bool is_replica_dim;
 };
 
+static_assert(is_equal_comparable<ParallelDim>::value, "ParallelDim must support ==");
+static_assert(is_neq_comparable<ParallelDim>::value, "ParallelDim must support !=");
+static_assert(is_lt_comparable<ParallelDim>::value, "ParallelDim must support <");
+static_assert(!is_default_constructible<ParallelDim>::value, "ParallelDim must not be default constructible");
+static_assert(is_copy_constructible<ParallelDim>::value, "ParallelDim must be copy constructible");
 
 /**
  * @brief Represent the shape of a ParallelTensor.
@@ -68,6 +49,8 @@ struct ParallelTensorShape {
    */
   ParallelTensorShape(std::vector<ParallelDim> const &dims,
                       DataType data_type);
+
+  ParallelTensorShape(TensorShape const &);
 
   bool operator==(ParallelTensorShape const &other) const;
   bool operator!=(ParallelTensorShape const &other) const;
@@ -89,8 +72,8 @@ struct ParallelTensorShape {
   size_t size() const;
   size_t num_dims() const;
 
-  using iterator = std::vector<ParallelDim>::iterator;
-  using const_iterator = std::vector<ParallelDim>::const_iterator;
+  using iterator = stack_vector<ParallelDim, MAX_TENSOR_DIM>::iterator;
+  using const_iterator = stack_vector<ParallelDim, MAX_TENSOR_DIM>::const_iterator;
 
   iterator begin();
   const_iterator begin() const;
@@ -101,12 +84,10 @@ struct ParallelTensorShape {
 
 public:
   DataType data_type;               ///< Data type
-private:
-  std::vector<ParallelDim> dims; ///< Details of each dimension
+  stack_vector<ParallelDim, MAX_TENSOR_DIM> dims;
 };
 
 std::ostream &operator<<(std::ostream &, ParallelTensorShape const &);
-
 }
 
 namespace std {

@@ -14,7 +14,7 @@
  */
 
 #include "noop.h"
-#include "utils/hash_utils.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -85,12 +85,12 @@ NoOp::NoOp(FFModel &model,
   outputs[0]->owner_idx = 0;
 }
 
-OpMeta *NoOp::init_task(Task const *task,
+PerDeviceOpState *NoOp::init_task(Task const *task,
                         std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {
   FFHandler handle = *((FFHandler const *)task->local_args);
-  OpMeta *m = new OpMeta(handle);
+  PerDeviceOpState *m = new PerDeviceOpState(handle);
   return m;
 }
 

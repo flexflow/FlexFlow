@@ -25,6 +25,9 @@ target_link_libraries(
   utils
   visit_struct
 )
+
+define_ff_vars(${project_target})
+
 set_target_properties(
   ${project_target} 
   PROPERTIES 

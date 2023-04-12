@@ -3,33 +3,33 @@
 
 #include "op-attrs/ffconst.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/ops/unary_op.h"
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
+#include "core.h"
 
 namespace FlexFlow {
 
-struct ElementUnaryAttrs : public UnaryOpAttrs {
+struct ElementScalarUnaryAttrs : public use_visitable_cmp<ElementScalarUnaryAttrs> {
 public:
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
+  ElementScalarUnaryAttrs(OperatorType, float);
 public:
   OperatorType op;
   /* bool inplace; */
-  float scalar = 0.0;
+  float scalar;
 };
 
-bool operator==(ElementUnaryAttrs const &, ElementUnaryAttrs const &);
-bool operator<(ElementUnaryAttrs const &, ElementUnaryAttrs const &);
+struct ElementUnaryAttrs : public use_visitable_cmp<ElementUnaryAttrs> {
+public:
+  ElementUnaryAttrs(OperatorType);
+public:
+  OperatorType op;
+};
 
 }
 
-VISITABLE_STRUCT(::FlexFlow::ElementUnaryAttrs, op, scalar);
+VISITABLE_STRUCT(::FlexFlow::ElementScalarUnaryAttrs, op, scalar);
+MAKE_VISIT_HASHABLE(::FlexFlow::ElementScalarUnaryAttrs);
 
-namespace std {
-template <>
-struct hash<::FlexFlow::ElementUnaryAttrs> {
-  size_t operator()(::FlexFlow::ElementUnaryAttrs const &) const;
-};
-} 
+VISITABLE_STRUCT(::FlexFlow::ElementUnaryAttrs, op);
+MAKE_VISIT_HASHABLE(::FlexFlow::ElementUnaryAttrs);
 
 #endif 

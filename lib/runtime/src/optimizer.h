@@ -18,11 +18,11 @@
 
 #include "parallel_tensor.h"
 #include "legion.h"
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
 class FFModel;
-class OpMeta;
 
 class Optimizer {
 public:
@@ -61,7 +61,7 @@ public:
                        Legion::Context ctx,
                        Legion::Runtime *runtime);
   static void nccl_update_task_gpu(SGDOptimizer const *op,
-                                   OpMeta const *meta,
+                                   PerDeviceOpState const *meta,
                                    float const *w_grad_ptr,
                                    size_t size,
                                    float *w_ptr,
@@ -104,7 +104,7 @@ public:
                        Legion::Context ctx,
                        Legion::Runtime *runtime);
   static void nccl_update_task_gpu(AdamOptimizer const *op,
-                                   OpMeta const *meta,
+                                   PerDeviceOpState const *meta,
                                    float const *w_grad_ptr,
                                    size_t size,
                                    float *w_ptr,

@@ -74,11 +74,11 @@ std::unordered_set<MultiDiEdge> to_multidigraph_edges(std::unordered_set<Directe
   return result;
 }
 
-ViewDiGraphAsUndirectedGraph::ViewDiGraphAsUndirectedGraph(IDiGraphView const &directed)
-  : directed(&directed), shared(nullptr)
+ViewDiGraphAsUndirectedGraph::ViewDiGraphAsUndirectedGraph(IDiGraphView const &_directed)
+  : directed(&_directed)
 { }
 
-ViewDiGraphAsUndirectedGraph::ViewDiGraphAsUndirectedGraph(std::shared_ptr<IDiGraphView> const &directed) 
+ViewDiGraphAsUndirectedGraph::ViewDiGraphAsUndirectedGraph(std::shared_ptr<IDiGraphView const> const &directed) 
   : directed(directed.get()), shared(directed)
 { }
 
@@ -118,10 +118,10 @@ std::unordered_set<Node> ViewDiGraphAsMultiDiGraph::query_nodes(NodeQuery const 
 }
 
 ViewMultiDiGraphAsDiGraph::ViewMultiDiGraphAsDiGraph(IMultiDiGraphView const &multidi) 
-  : multidi(&multidi), shared(nullptr)
+  : multidi(&multidi)
 { }
 
-ViewMultiDiGraphAsDiGraph::ViewMultiDiGraphAsDiGraph(std::shared_ptr<IMultiDiGraphView> const &multidi)
+ViewMultiDiGraphAsDiGraph::ViewMultiDiGraphAsDiGraph(std::shared_ptr<IMultiDiGraphView const> const &multidi)
   : multidi(multidi.get()), shared(multidi)
 { }
 

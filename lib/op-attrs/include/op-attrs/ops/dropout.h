@@ -2,31 +2,26 @@
 #define _FLEXFLOW_DROPOUT_ATTRS_H
 
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/ops/unary_op.h"
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
+#include "core.h"
 
 namespace FlexFlow {
 
-struct DropoutAttrs : public UnaryOpAttrs {
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
+struct DropoutAttrs : public use_visitable_cmp<DropoutAttrs> {
+public:
+  DropoutAttrs(float rate, unsigned long long seed);
 public:
   float rate;
   unsigned long long seed;
 };
 
-bool operator==(DropoutAttrs const &, DropoutAttrs const &);
-bool operator<(DropoutAttrs const &, DropoutAttrs const &);
-
 }
 
 VISITABLE_STRUCT(::FlexFlow::DropoutAttrs, rate, seed);
+MAKE_VISIT_HASHABLE(::FlexFlow::DropoutAttrs);
 
-namespace std {
-template <>
-struct hash<::FlexFlow::DropoutAttrs> {
-  size_t operator()(::FlexFlow::DropoutAttrs const &) const;
-};
-} 
+namespace FlexFlow {
+static_assert(is_valid_opattr<DropoutAttrs>::value, "DropoutAttrs must be a valid opattr (see core.h)");
+}
 
 #endif 

@@ -3,7 +3,7 @@
 
 #include "kernels/device.h"
 #include "kernels/per_device_op_state.h"
-#include "kernels/config.h"
+#include "kernels/ff_handler.h"
 
 #define AGGREGATE_MAX_K 4
 #define AGGREGATE_MAX_BATCH_SIZE 64

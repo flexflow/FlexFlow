@@ -17,12 +17,23 @@ public:
   std::unordered_set<Edge> query_edges(EdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
+  AdjacencyMultiDiGraph *clone() const override { 
+    return new AdjacencyMultiDiGraph(this->next_node_idx, this->adjacency);
+  }
+private:
+  using ContentsType = 
+    std::unordered_map<Node, 
+      std::unordered_map<Node,
+        std::unordered_map<std::size_t, std::unordered_set<std::size_t>>>>;
+
+  AdjacencyMultiDiGraph(std::size_t, ContentsType const &);
+
 private:
   std::size_t next_node_idx = 0;
-  std::unordered_map<Node, 
-    std::unordered_map<Node,
-      std::unordered_map<std::size_t, std::unordered_set<std::size_t>>>> adjacency;
+  ContentsType adjacency;
 };
+
+static_assert(is_rc_copy_virtual_compliant<AdjacencyMultiDiGraph>::value, RC_COPY_VIRTUAL_MSG);
 
 }
 

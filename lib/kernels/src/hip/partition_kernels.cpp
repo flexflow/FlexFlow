@@ -13,74 +13,62 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/kernels/partition_kernels.h"
-#include "utils/hip_helper.h"
+#include "kernels/partition_kernels.h"
+#include "kernels/hip_helper.h"
+#include "kernels/datatype_dispatch.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
-RepartitionMeta::RepartitionMeta(FFHandler handler) : OpMeta(handler) {}
+RepartitionPerDeviceState::RepartitionPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {}
 
 namespace Kernels {
 namespace Repartition {
 
-template <typename T>
-void forward_kernel(T const *input_ptr, T *output_ptr, size_t num_elements) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  checkCUDA(hipMemcpyAsync(output_ptr,
-                           input_ptr,
-                           num_elements * sizeof(T),
-                           hipMemcpyDeviceToDevice,
-                           stream));
+tempate <DataType T>
+struct ForwardKernel {
+  void operator()(hipStream_t stream,
+                  RepartitionPerDeviceState const *m,
+                  GenericTensorAccessorR const &input, 
+                  GenericTensorAccessorW const &output) {
+    checkCUDA(hipMemcpyAsync(output.get<T>(),
+                            input.get<T>(),
+                            input.shape.num_elements() * sizeof(T),
+                            hipMemcpyDeviceToDevice,
+                            stream));
+  }
 }
 
-template <typename T>
-void backward_kernel(T const *output_grad_ptr,
-                     T *input_grad_ptr,
-                     size_t num_elements) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(add_kernel<T>),
-                     GET_BLOCKS(num_elements),
-                     CUDA_NUM_THREADS,
-                     0,
-                     stream,
-                     input_grad_ptr,
-                     output_grad_ptr,
-                     num_elements);
+tempate <DataType T>
+struct BackwardKernel {
+  void operator()(hipStream_t stream,
+                  RepartitionPerDeviceState const *m,
+                  GenericTensorAccessorR const &output_grad, 
+                  GenericTensorAccessorW const &input_grad) {
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(add_kernel<T>),
+      GET_BLOCKS(input_grad.shape.num_elements()), 
+      CUDA_NUM_THREADS, 
+      0, 
+      stream,
+      input_grad.get<T>(), 
+      output_grad.get<T>(), 
+      input_grad.shape.num_elements());
+  }
 }
 
-// float
-template void forward_kernel<float>(float const *input_ptr,
-                                    float *output_ptr,
-                                    size_t num_elements);
-template void backward_kernel<float>(float const *output_grad_ptr,
-                                     float *input_grad_ptr,
-                                     size_t num_elements);
-// double
-template void forward_kernel<double>(double const *input_ptr,
-                                     double *output_ptr,
-                                     size_t num_elements);
-template void backward_kernel<double>(double const *output_grad_ptr,
-                                      double *input_grad_ptr,
-                                      size_t num_elements);
+void forward_kernel(hipStream_t stream,
+                    RepartitionPerDeviceState const *m,
+                    GenericTensorAccessorR const &input, 
+                    GenericTensorAccessorW const &output) {
+  DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, m, input, output)
+}
 
-// int
-template void forward_kernel<int>(int const *input_ptr,
-                                  int *output_ptr,
-                                  size_t num_elements);
-template void backward_kernel<int>(int const *output_grad_ptr,
-                                   int *input_grad_ptr,
-                                   size_t num_elements);
-
-// long
-template void forward_kernel<long>(long const *input_ptr,
-                                   long *output_ptr,
-                                   size_t num_elements);
-template void backward_kernel<long>(long const *output_grad_ptr,
-                                    long *input_grad_ptr,
-                                    size_t num_elements);
+void backward_kernel(hipStream_t stream,
+                     RepartitionPerDeviceState const *m,
+                     GenericTensorAccessorR const &output_grad,
+                     GenericTensorAccessorW const &input_grad) {
+  DataTypeDispatch1<BackwardKernel>{}(m->data_type, stream, m, input_grad, output_grad)
+}
 
 } // namespace Repartition
 } // namespace Kernels

@@ -4,6 +4,8 @@
 #include "visit_struct/visit_struct.hpp"
 #include "op-attrs/ffconst_utils.h"
 #include "utils/containers.h"
+#include "utils/fmt.h"
+#include "utils/type_traits.h"
 
 namespace FlexFlow {
 
@@ -30,31 +32,44 @@ namespace FlexFlow {
 /* OperatorType GetOpType::operator()(CombineAttrs const &p) const { return OP_COMBINE; } */
 /* OperatorType GetOpType::operator()(FusedParallelOpAttrs const &p) const { return OP_FUSED_PARALLEL; } */
 
-struct AsOpAttrs {
-  template <typename T>
-  OpAttrsInterface const &operator()(T const &p) {
-    return p;
-  }
-};
+/* struct AsOpAttrs { */
+/*   template <typename T> */
+/*   OpAttrsInterface const &operator()(T const &p) { */
+/*     return p; */
+/*   } */
+/* }; */
 
-OperatorType get_op_type(OpAttrsInterface const &o) {
-  return o.op_type();
-}
-                                                          //
-OperatorType get_op_type(CompGraphOperatorAttrs const &o) { 
-  return get_op_type(visit(AsOpAttrs{}, o));
+/* OperatorType get_op_type(OpAttrsInterface const &o) { */
+/*   return o.op_type(); */
+/* } */
+/*                                                           // */
+/* OperatorType get_op_type(CompGraphOperatorAttrs const &o) { */ 
+/*   return get_op_type(visit(AsOpAttrs{}, o)); */
+/* } */
+
+/* OperatorType get_op_type(PCGOperatorAttrs const &o) { */ 
+/*   return get_op_type(visit(AsOpAttrs{}, o)); */
+/* } */
+
+/* std::vector<ParallelTensorShape> get_output_shapes(PCGOperatorAttrs const &op_params, std::vector<ParallelTensorShape> const &input_tensor_shapes) { */
+/*   return mpark::visit(AsOpAttrs{}, op_params).output_shapes(input_tensor_shapes); */
+/* } */
+
+/* bool is_parallel_op(PCGOperatorAttrs const &o) { */
+/*   return is_parallel_op(get_op_type(o)); */
+/* } */
+template <typename T>
+typename std::enable_if<(is_streamable<T>::value && !is_fmtable<T>::value)>::type 
+as_dot(T const &t, RecordFormatter &r) {
+  std::ostringstream oss;
+  oss << t;
+  r << oss;
 }
 
-OperatorType get_op_type(PCGOperatorAttrs const &o) { 
-  return get_op_type(visit(AsOpAttrs{}, o));
-}
-
-std::vector<ParallelTensorShape> get_output_shapes(PCGOperatorAttrs const &op_params, std::vector<ParallelTensorShape> const &input_tensor_shapes) {
-  return mpark::visit(AsOpAttrs{}, op_params).output_shapes(input_tensor_shapes);
-}
-
-bool is_parallel_op(PCGOperatorAttrs const &o) {
-  return is_parallel_op(get_op_type(o));
+template <typename T>
+typename std::enable_if<(is_fmtable<T>::value)>::type
+as_dot(T const &t, RecordFormatter &r) {
+  r << fmt::to_string(t);
 }
 
 void as_dot(int x, RecordFormatter &r) {
@@ -74,16 +89,22 @@ void as_dot(std::vector<T> const &x, RecordFormatter &r) {
   r << rr;
 }
 
-void as_dot(ParallelOpInfo const &p, RecordFormatter &r) {
+template <typename T, size_t MAXSIZE>
+void as_dot(stack_vector<T, MAXSIZE> const &x, RecordFormatter &r) {
   RecordFormatter rr;
-  as_dot(p.op_type, rr);
-  as_dot(p.parallel_dim, rr);
-  as_dot(p.parallel_degree, rr);
-  r << rr; 
+  for (T const &t : x) {
+    as_dot(t, r);
+  }
+  r << rr;
 }
 
 struct as_dot_visitor {
-  RecordFormatter result;
+  as_dot_visitor() = delete;
+  as_dot_visitor(RecordFormatter &result)
+    : result(result)
+  { }
+
+  RecordFormatter &result;
 
   template <typename T>
   void operator()(const char *name, T const &t) {
@@ -111,26 +132,21 @@ struct as_dot_visitor {
 };
 
 template <typename T>
-RecordFormatter generic_as_dot(T const &t) {
-  as_dot_visitor vis;
+typename std::enable_if<is_visitable<T>::value>::type
+as_dot(T const &t, RecordFormatter &r) {
+  as_dot_visitor vis(r);
   visit_struct::for_each(t, vis);
-  return vis.result;
-}
-
-template <>
-RecordFormatter generic_as_dot<FlatAttrs>(FlatAttrs const &p) {
-  RecordFormatter r; 
-  return r;
 }
 
 struct AsDot {
   template <typename T>
   RecordFormatter operator()(T const &t) {
-    return generic_as_dot(t);
+    return as_dot(t);
   }
 };
 
-RecordFormatter as_dot(PCGOperatorAttrs const &o) {
+template <typename ...Args>
+RecordFormatter as_dot(variant<Args...> const &o) {
   return mpark::visit(AsDot{}, o);
 }
 

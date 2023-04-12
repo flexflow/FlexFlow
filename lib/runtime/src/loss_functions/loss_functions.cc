@@ -14,7 +14,7 @@
  */
 
 #include "model.h"
-#include "runtime/tasks.h"
+#include "tasks.h"
 #include "utils/hash-utils.h"
 #include "operator.h"
 
@@ -57,9 +57,8 @@ void Loss::backward(FFModel *model,
   }
   // scale_factor = 1.0f;
   //  Use the same parallel strategy as the owner of logit
-  std::string pcname = logit->owner_op->name;
-  Context ctx = model->config.lg_ctx;
-  Runtime *runtime = model->config.lg_hlr;
+  Context ctx = model->config.legion_config.lg_ctx;
+  Runtime *runtime = model->config.legion_config.lg_hlr;
   Domain part_domain = runtime->get_index_space_domain(ctx, logit->parallel_is);
   Domain logit_domain = runtime->get_index_partition_color_space(
       ctx, logit->part.get_index_partition());

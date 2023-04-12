@@ -1,6 +1,6 @@
 #include "flexflow/basic_graph.h"
 #include "flexflow/dominators.h"
-#include "flexflow/utils/hash_utils.h"
+#include "flexflow/utils/hash-utils.h"
 #include "gtest/gtest.h"
 
 using namespace FlexFlow::PCG::Utils;

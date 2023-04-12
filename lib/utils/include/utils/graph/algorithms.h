@@ -50,7 +50,7 @@ void remove_edges(IUndirectedGraph &, std::vector<UndirectedEdge> const &);
 std::unordered_set<MultiDiEdge> get_edges(IMultiDiGraphView const &);
 std::unordered_set<DirectedEdge> get_edges(IDiGraphView const &);
 std::unordered_set<UndirectedEdge> get_edges(IUndirectedGraphView const &);
-std::unordered_set<UpwardOpenMultDiEdge> get_edges(IUpwardOpenMultiDiGraphView const &);
+std::unordered_set<UpwardOpenMultiDiEdge> get_edges(IUpwardOpenMultiDiGraphView const &);
 std::unordered_set<DownwardOpenMultiDiEdge> get_edges(IDownwardOpenMultiDiGraphView const &);
 std::unordered_set<OpenMultiDiEdge> get_edges(IOpenMultiDiGraphView const &);
 
@@ -58,9 +58,9 @@ std::unordered_set<UndirectedEdge> get_node_edges(IUndirectedGraphView const &, 
 
 std::unordered_set<MultiDiEdge> get_incoming_edges(IMultiDiGraphView const &, Node const &);
 std::unordered_set<DirectedEdge> get_incoming_edges(IDiGraphView const &, Node const &);
-std::unordered_set<UpwardOpenMultDiEdge> get_incoming_edges(IUpwardOpenMultiDiGraphView const &, Node const &);
+std::unordered_set<UpwardOpenMultiDiEdge> get_incoming_edges(IUpwardOpenMultiDiGraphView const &, Node const &);
 std::unordered_set<MultiDiEdge> get_incoming_edges(IDownwardOpenMultiDiGraphView const &, Node const &);
-std::unordered_set<UpwardOpenMultDiEdge> get_incoming_edges(IOpenMultiDiGraphView const &, Node const &);
+std::unordered_set<UpwardOpenMultiDiEdge> get_incoming_edges(IOpenMultiDiGraphView const &, Node const &);
 
 std::unordered_set<MultiDiEdge> get_incoming_edges(IMultiDiGraphView const &, std::unordered_set<Node>);
 std::unordered_set<DirectedEdge> get_incoming_edges(IDiGraphView const &, std::unordered_set<Node> const &);

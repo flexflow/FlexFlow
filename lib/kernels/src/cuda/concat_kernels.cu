@@ -26,7 +26,6 @@ void init_meta(ConcatPerDeviceState *m, int legion_axis) {
   m->legion_axis = legion_axis;
 }
 
-namespace Internal {
 
 void calc_blk_size(size_t &num_blocks,
                    size_t &blk_size,
@@ -43,11 +42,11 @@ void calc_blk_size(size_t &num_blocks,
   }
 }
 
-void forward_kernel(GenericTensorAccessorW const &output,
+void forward_kernel(cudaStream_t stream,
+                    GenericTensorAccessorW const &output,
                     GenericTensorAccessorR const *inputs,
                     int num_inputs,
-                    int axis,
-                    cudaStream_t stream) {
+                    int axis) {
   size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
   calc_blk_size(num_blocks, output_blk_size, output.shape, axis);
@@ -74,11 +73,11 @@ void forward_kernel(GenericTensorAccessorW const &output,
   }
 }
 
-void backward_kernel(GenericTensorAccessorR const &output_grad,
+void backward_kernel(cudaStream_t stream,
+                     GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorW const *input_grads,
                      int num_inputs,
-                     int axis,
-                     cudaStream_t stream) {
+                     int axis) {
   size_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   assert(num_inputs <= MAX_NUM_INPUTS);
   switch (output_grad.domain.get_dim()) {
@@ -121,7 +120,6 @@ void backward_kernel(GenericTensorAccessorR const &output_grad,
   // float>(input_grads[0], input_rect, "[Concat:backward:input0]");
 }
 
-} // namespace Internal
 } // namespace Concat
 } // namespace Kernels
 } // namespace FlexFlow

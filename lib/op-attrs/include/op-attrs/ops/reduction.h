@@ -2,34 +2,22 @@
 #define _FLEXFLOW_REDUCTION_ATTRS_H
 
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/ops/unary_op.h"
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
+#include "op-attrs/ff_dim.h"
 
 namespace FlexFlow {
 
-struct ReductionAttrs : public UnaryOpAttrs {
+struct ReductionAttrs : public use_visitable_eq<ReductionAttrs> {
 public:
-  using AsConstTuple = std::tuple<int, int>;
-  AsConstTuple as_tuple() const;
-
-  ParallelTensorShape output_shape(ParallelTensorShape const &) const override;
-  OperatorType op_type() const override;
+  ReductionAttrs(ff_dim_t reduction_dim, int reduction_degree);
 public:
-  int reduction_legion_dim;
+  ff_dim_t reduction_dim;
   int reduction_degree;
 };
-bool operator==(ReductionAttrs const &, ReductionAttrs const &);
-bool operator<(ReductionAttrs const &, ReductionAttrs const &);
 
 }
 
-VISITABLE_STRUCT(::FlexFlow::ReductionAttrs, reduction_legion_dim, reduction_degree);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::ReductionAttrs> {
-  size_t operator()(::FlexFlow::ReductionAttrs const &) const;
-};
-} 
+VISITABLE_STRUCT(::FlexFlow::ReductionAttrs, reduction_dim, reduction_degree);
+MAKE_VISIT_HASHABLE(::FlexFlow::ReductionAttrs);
 
 #endif 

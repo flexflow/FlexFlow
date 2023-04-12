@@ -2,7 +2,7 @@
 #include "layer.h"
 #include "model.h"
 #include "kernels/linear_kernels.h"
-#include "utils/hash_utils.h"
+#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {
@@ -259,7 +259,7 @@ void Linear::init(FFModel const &ff) {
   regions[1](I): kernel
   regions[2](I): bias
 */
-OpMeta *Linear::init_task(Task const *task,
+PerDeviceOpState *Linear::init_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {
@@ -278,7 +278,7 @@ OpMeta *Linear::init_task(Task const *task,
 }
 
 template <int NDIM>
-OpMeta *Linear::init_task_with_dim(Task const *task,
+PerDeviceOpState *Linear::init_task_with_dim(Task const *task,
                                    std::vector<PhysicalRegion> const &regions,
                                    Context ctx,
                                    Runtime *runtime) {

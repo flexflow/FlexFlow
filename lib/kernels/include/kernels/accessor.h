@@ -2,10 +2,12 @@
 #define _FLEXFLOW_KERNELS_ACCESSOR_H
 
 #include "op-attrs/ffconst.h"
-#include "kernels/config.h"
+#include "kernels/ff_handler.h"
 #include "array_shape.h"
 #include <stdexcept>
 #include "op-attrs/ffconst_utils.h"
+#include "device.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 
@@ -38,6 +40,7 @@ template <DataType DT>
 using real_type = typename data_type_enum_to_class<DT>::type;
 
 size_t size_of(DataType);
+
 class GenericTensorAccessorW {
 public:
   GenericTensorAccessorW() = delete;
@@ -51,11 +54,12 @@ public:
     if (this->data_type == DT) {
       return static_cast<real_type<DT> *>(this->ptr);
     } else {
-      std::ostringstream oss;
-      oss << "Invalid access type (" << to_string(this->data_type) << " != " << to_string(DT) << ")";
-      throw std::runtime_error(oss.str());
+      throw mk_runtime_error("Invalid access data type ({} != {})", this->data_type, DT);
     }
   }
+
+  bool operator==(GenericTensorAccessorW const &);
+  bool operator!=(GenericTensorAccessorW const &);
 
   int32_t *get_int32_ptr() const;
   int64_t *get_int64_ptr() const;
@@ -80,11 +84,12 @@ public:
     if (this->data_type == DT) {
       return static_cast<real_type<DT> const *>(this->ptr);
     } else {
-      std::ostringstream oss;
-      oss << "Invalid access type (" << to_string(this->data_type) << " != " << to_string(DT) << ")";
-      throw std::runtime_error(oss.str());
+      throw mk_runtime_error("Invalid access data type ({} != {})", this->data_type, DT);
     }
   }
+
+  bool operator==(GenericTensorAccessorR const &);
+  bool operator!=(GenericTensorAccessorR const &);
 
   int32_t const *get_int32_ptr() const;
   int64_t const *get_int64_ptr() const;
@@ -97,5 +102,8 @@ public:
 };
 
 }
+
+VISITABLE_STRUCT(::FlexFlow::GenericTensorAccessorW, data_type, shape, ptr);
+VISITABLE_STRUCT(::FlexFlow::GenericTensorAccessorR, data_type, shape, ptr);
 
 #endif

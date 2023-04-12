@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "reduce_kernels.h"
+#include "kernels/reduce_kernels.h"
 #include "kernels/cuda_helper.h"
 
 namespace FlexFlow {
@@ -21,15 +21,26 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Domain;
 
-ReduceMeta::ReduceMeta(FFHandler handler,
+ReducePerDeviceState::ReducePerDeviceState(FFHandler handler,
                        Reduce const *rd,
                        Domain const &input_domain)
-    : OpMeta(handler) {
+    : op_type(rd->op_type), PerDeviceOpState(handler) {
   checkCUDNN(cudnnCreateReduceTensorDescriptor(&reduceDesc));
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  cudnnReduceTensorOp_t reduce_op;
+  switch (rd->op_type) {
+    case OP_REDUCE_SUM:
+      reduce_op = CUDNN_REDUCE_TENSOR_ADD;
+      break;
+    case OP_REDUCE_MEAN:
+      reduce_op = CUDNN_REDUCE_TENSOR_AVG;
+      break;
+    default:
+      assert(false);
+  }
   checkCUDNN(cudnnSetReduceTensorDescriptor(reduceDesc,
-                                            CUDNN_REDUCE_TENSOR_ADD,
+                                            reduce_op,
                                             CUDNN_DATA_FLOAT,
                                             CUDNN_PROPAGATE_NAN,
                                             CUDNN_REDUCE_TENSOR_NO_INDICES,
@@ -41,10 +52,13 @@ ReduceMeta::ReduceMeta(FFHandler handler,
     output_domain.rect_data[rd->axes[i] + output_domain.dim] =
         output_domain.rect_data[rd->axes[i]];
   }
+  assert(output_domain.get_volume() % input_domain.get_volume() == 0);
+  reduction_size = input_domain.get_volume() / output_domain.get_volume();
+  assert(reduction_size > 0);
   checkCUDNN(cudnnSetTensorDescriptorFromDomain(outputTensor, output_domain));
 }
 
-ReduceMeta::~ReduceMeta(void) {
+ReducePerDeviceState::~ReducePerDeviceState(void) {
   checkCUDNN(cudnnDestroyReduceTensorDescriptor(reduceDesc));
   checkCUDNN(cudnnDestroyTensorDescriptor(inputTensor));
   checkCUDNN(cudnnDestroyTensorDescriptor(outputTensor));
@@ -53,30 +67,10 @@ ReduceMeta::~ReduceMeta(void) {
 namespace Kernels {
 namespace Reduce {
 
-void forward_kernel_wrapper(ReduceMeta const *m,
-                                    GenericTensorAccessorR const &input,
-                                    GenericTensorAccessorW const &output) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::forward_kernel(
-      m, input.get_float_ptr(), output.get_float_ptr(), stream);
-}
-
-void backward_kernel_wrapper(ReduceMeta const *m,
-                                     GenericTensorAccessorR const &output_grad,
-                                     GenericTensorAccessorW const &input_grad) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::backward_kernel(
-      m, output_grad.get_float_ptr(), input_grad.get_float_ptr(), stream);
-}
-
-namespace Internal {
-
-void forward_kernel(ReduceMeta const *m,
+void forward_kernel(cudaStream_t stream,
+                            ReducePerDeviceState const *m,
                             float const *input_ptr,
-                            float *output_ptr,
-                            cudaStream_t stream) {
+                            float *output_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
   checkCUDNN(cudnnReduceTensor(m->handle.dnn,
@@ -94,22 +88,33 @@ void forward_kernel(ReduceMeta const *m,
 };
 
 
-void backward_kernel(ReduceMeta const *m,
+void backward_kernel(cudaStream_t stream,
+                             ReducePerDeviceState const *m,
                              float const *output_grad_ptr,
-                             float *input_grad_ptr,
-                             cudaStream_t stream) {
+                             float *input_grad_ptr) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-  float alpha = 1.0f;
+  float alpha = 1.0, beta = 1.0f;
+  switch (m->op_type) {
+    case OP_REDUCE_SUM:
+      alpha = 1.0f;
+      break;
+    case OP_REDUCE_MEAN:
+      // When the output is the average of multiple input elements
+      // we need to scale the gradients by 1.0 / reduction_size
+      alpha = 1.0f / m->reduction_size;
+      break;
+    default:
+      assert(false);
+  }
   checkCUDNN(cudnnAddTensor(m->handle.dnn,
                             &alpha,
                             m->outputTensor,
                             output_grad_ptr,
-                            &alpha,
+                            &beta,
                             m->inputTensor,
                             input_grad_ptr));
 }
 
-} // namespace Internal
 } // namespace Reduce
 } // namespace Kernels
 } // namespace FlexFlow

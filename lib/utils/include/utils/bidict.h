@@ -53,6 +53,11 @@ struct bidict {
   }
 
   using const_iterator = typename std::unordered_map<L, R>::const_iterator;
+  using value_type = std::pair<L, R>;
+  using reference = value_type &;
+  using const_reference = value_type const &;
+  using key_type = L;
+  using mapped_type = R;
   /* struct const_iterator { */
   /*   using iterator_category = std::forward_iterator_tag; */
   /*   using difference_type = std::size_t; */

@@ -17,9 +17,6 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
   void map_output_tensors(FFModel &model) override;
   bool can_inplace_output() override;
   bool has_inplace_output() override;
@@ -28,7 +25,7 @@ public:
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -48,6 +45,6 @@ public:
   bool broadcast_input1, broadcast_input2;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFFLOW_ELEMENT_BINARY_H
+#endif 

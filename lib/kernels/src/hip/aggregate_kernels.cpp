@@ -13,16 +13,14 @@
  * limitations under the License.
  */
 
-#include "aggregate_kernels.h"
-#include "utils/hip_helper.h"
+#include "kernels/aggregate_kernels.h"
+#include "kernels/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
 namespace Kernels {
 namespace Aggregate {
-
-namespace Internal {
 
 __global__ void agg_forward_kernel(float **exp_preds,
                                    int const *exp_assign,
@@ -205,7 +203,7 @@ __global__ void agg_backward_kernel(float **exp_preds,
 }
 
 /*static*/
-void Aggregate::forward_kernel_wrapper(AggregateMeta const *m,
+void Aggregate::forward_kernel(hipStream_t stream, AggregatePerDeviceState const *m,
                                        float **exp_preds,
                                        int const *acc_gate_assign_ptr,
                                        float const *acc_gate_pred_ptr,
@@ -215,8 +213,7 @@ void Aggregate::forward_kernel_wrapper(AggregateMeta const *m,
                                        int rows,
                                        int const batch_size,
                                        int out_dim) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -241,7 +238,7 @@ void Aggregate::forward_kernel_wrapper(AggregateMeta const *m,
 }
 
 /*static*/
-void Aggregate::backward_kernel_wrapper(AggregateMeta const *m,
+void Aggregate::backward_kernel(hipStream_t stream, AggregatePerDeviceState const *m,
                                         float **exp_preds,
                                         float **exp_grads,
                                         int const *acc_gate_assign_ptr,
@@ -255,8 +252,7 @@ void Aggregate::backward_kernel_wrapper(AggregateMeta const *m,
                                         float lambda_bal,
                                         int const batch_size,
                                         int out_dim) {
-  hipStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+  
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
@@ -286,16 +282,15 @@ void Aggregate::backward_kernel_wrapper(AggregateMeta const *m,
                      out_dim);
 }
 
-AggregateMeta::AggregateMeta(FFHandler handler, int n) : OpMeta(handler) {
+AggregatePerDeviceState::AggregatePerDeviceState(FFHandler handler, int n) : PerDeviceOpState(handler) {
   checkCUDA(hipMalloc(&dev_exp_preds, n * sizeof(float *)));
   checkCUDA(hipMalloc(&dev_exp_grads, n * sizeof(float *)));
 }
-AggregateMeta::~AggregateMeta(void) {
+AggregatePerDeviceState::~AggregatePerDeviceState(void) {
   checkCUDA(hipFree(&dev_exp_preds));
   checkCUDA(hipFree(&dev_exp_grads));
 }
 
-} // namespace Internal
 } // namespace Aggregate
 } // namespace Kernels
 } // namespace FlexFlow

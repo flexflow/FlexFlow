@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/combine.h"
-#include "flexflow/model.h"
-#include "flexflow/parallel_ops/kernels/combine_kernels.h"
-#include "flexflow/utils/hash_utils.h"
+#include "parallel_ops/combine.h"
+#include "model.h"
+#include "kernels/combine_kernels.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 // declare Legion names
@@ -80,7 +80,7 @@ Combine::Combine(FFModel &model,
   // outputs[0]->print("Combine::output");
 }
 
-OpMeta *Combine::init_task(Task const *task,
+PerDeviceOpState *Combine::init_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {

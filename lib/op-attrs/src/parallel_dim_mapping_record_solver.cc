@@ -134,27 +134,6 @@ std::vector<ParallelDimMappingRecord> construct_weight_parallel_dims(
 /*   return true; */
 /* } */
 
-/* bool check_output_input_weight_same_parallel_is() const { */
-/*   assert(numOutputs > 0); */
-/*   IndexSpace parallel_is = outputs[0]->parallel_is; */
-/*   for (int i = 0; i < numOutputs; i++) { */
-/*     if (outputs[i]->parallel_is != parallel_is) { */
-/*       return false; */
-/*     } */
-/*   } */
-/*   for (int i = 0; i < numInputs; i++) { */
-/*     if (inputs[i]->parallel_is != parallel_is) { */
-/*       return false; */
-/*     } */
-/*   } */
-/*   for (int i = 0; i < numWeights; i++) { */
-/*     if (weights[i]->parallel_is != parallel_is) { */
-/*       return false; */
-/*     } */
-/*   } */
-/*   return true; */
-/* } */
-
 /* bool check_output_input_weight_same_machine_view() const { */
 /*   assert(numOutputs > 0); */
 /*   MachineView machine_view = outputs[0]->machine_view; */

@@ -2,14 +2,14 @@
 #define _FLEXFLOW_OPS_KERNELS_ELEMENT_BINARY_KERNELS_H
 
 #include "kernels/device.h"
-#include "kernels/op_meta.h"
-#include "kernels/domain.h"
+#include "kernels/per_device_op_state.h"
+#include "kernels/array_shape.h"
 
 namespace FlexFlow {
 
-class ElementBinaryMeta : public OpMeta {
+class ElementBinaryPerDeviceState : public PerDeviceOpState {
 public:
-  ElementBinaryMeta(FFHandler handle);
+  ElementBinaryPerDeviceState(FFHandler handle);
   ffTensorDescriptor_t input1Tensor, input2Tensor, outputTensor;
   ffOpTensorDescriptor_t opDesc;
   ffReduceTensorDescriptor_t reduceAddDesc;
@@ -22,39 +22,24 @@ public:
 namespace Kernels {
 namespace ElementBinary {
 
-void init_kernel(ElementBinaryMeta *m,
-                 Domain const &input1_domain,
-                 Domain const &input2_domain,
-                 Domain const &output_domain);
+void init_kernel(ElementBinaryPerDeviceState *m,
+                 ArrayShape const &input1_domain,
+                 ArrayShape const &input2_domain,
+                 ArrayShape const &output_domain);
 
-void forward_kernel_wrapper(ElementBinaryMeta const *m,
-                            float const *in1_ptr,
-                            float const *in2_ptr,
-                            float *out_ptr);
-
-void backward_kernel_wrapper(ElementBinaryMeta const *m,
-                             float const *out_grad_ptr,
-                             float const *in1_ptr,
-                             float const *in2_ptr,
-                             float *in1_grad_ptr,
-                             float *in2_grad_ptr);
-
-namespace Internal {
-
-void forward_kernel(ElementBinaryMeta const *m,
+void forward_kernel(ffStream_t stream,
+                    ElementBinaryPerDeviceState const *m,
                     float const *in1_ptr,
                     float const *in2_ptr,
-                    float *out_ptr,
-                    ffStream_t stream);
-void backward_kernel(ElementBinaryMeta const *m,
+                    float *out_ptr);
+void backward_kernel(ffStream_t stream,
+                     ElementBinaryPerDeviceState const *m,
                      float const *out_grad_ptr,
                      float const *in1_ptr,
                      float const *in2_ptr,
                      float *in1_grad_ptr,
-                     float *in2_grad_ptr,
-                     ffStream_t stream);
+                     float *in2_grad_ptr);
 
-} 
 }
 }
 }

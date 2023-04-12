@@ -96,7 +96,7 @@ void Reverse::init(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-OpMeta *Reverse::init_task(Task const *task,
+PerDeviceOpState *Reverse::init_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {

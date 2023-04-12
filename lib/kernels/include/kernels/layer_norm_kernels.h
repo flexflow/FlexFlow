@@ -1,63 +1,49 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_LAYER_NORM_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_LAYER_NORM_KERNELS_H
 
-#include "device.h"
-#include "fftype.h"
-#include "op_meta.h"
+#include "kernels/device.h"
+#include "kernels/per_device_op_state.h"
 
 namespace FlexFlow {
 
 
-class LayerNormMeta : public OpMeta {
+class LayerNormPerDeviceState : public PerDeviceOpState {
 public:
-  LayerNormMeta(FFHandler handle, LayerNorm const *ln);
+  LayerNormPerDeviceState(FFHandler handle, 
+                          bool elementwise_affine_,
+                          int64_t effective_batch_size_,
+                          int64_t effective_num_elements_,
+                          bool profiling_,
+                          float eps_);
 
 public:
   bool elementwise_affine;
   int64_t effective_batch_size, effective_num_elements;
   float eps;
-  float *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;
+  float *mean, *rstd, *ds, *db, *scale, *bias;
   char op_name[MAX_OPNAME];
+  DataType data_type;
 };
 
 namespace Kernels {
 namespace LayerNorm {
-template <typename T>
-void forward_kernel_wrapper(LayerNormMeta const *m,
-                                     T const *input_ptr,
-                                     T *output_ptr,
-                                     T *gamma_ptr,
-                                     T *beta_ptr);
 
-template <typename T>
-void backward_kernel_wrapper(LayerNormMeta const *m,
-                                      T const *output_grad_ptr,
-                                      T const *input_ptr,
-                                      T *input_grad_ptr,
-                                      T const *gamma_ptr,
-                                      T *gamma_grad_ptr,
-                                      T *beta_grad_ptr);
+void forward_kernel(ffStream_t stream,
+                            LayerNormPerDeviceState const *m,
+                            GenericTensorAccessorR const &input,
+                            GenericTensorAccessorW const &output,
+                            GenericTensorAccessorW const &gamma,
+                            GenericTensorAccessorW const &beta);
 
-namespace Internal {
-
-template <typename T>
-void forward_kernel(LayerNormMeta const *m,
-                            T const *input_ptr,
-                            T *output_ptr,
-                            T *gamma_ptr,
-                            T *beta_ptr,
-                            ffStream_t stream);
-
-template <typename T>
-void backward_kernel(LayerNormMeta const *m,
-                            T const *output_grad_ptr,
-                            T const *input_ptr,
-                            T *input_grad_ptr,
-                            T const *gamma_ptr,
-                            T *gamma_grad_ptr,
-                            T *beta_grad_ptr,
-                            ffStream_t stream);
-} // namespace Internal
+void backward_kernel(ffStream_t stream,
+                            LayerNormPerDeviceState const *m,
+                            GenericTensorAccessorR const &output_grad,
+                            GenericTensorAccessorR const &input,
+                            GenericTensorAccessorW const &input_grad,
+                            GenericTensorAccessorR const &gamma,
+                            GenericTensorAccessorW const &gamma_grad,
+                            GenericTensorAccessorW const &beta_grad);
+                            
 } // namespace LayerNorm
 } // namespace Kernels
 } // namespace FlexFlow

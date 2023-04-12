@@ -299,7 +299,7 @@ void FusedOp::init(FFModel const &ff) {
     Rect<DIM> rect = domain;                                                   \
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
-      meta[idx++] = fm.get_result<OpMeta *>(*it);                              \
+      meta[idx++] = fm.get_result<PerDeviceOpState *>(*it);                              \
     }                                                                          \
     break;                                                                     \
   }

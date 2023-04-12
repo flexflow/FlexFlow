@@ -24,20 +24,21 @@ bool operator<(FlatAttrs const &lhs, FlatAttrs const &rhs) {
 }
 
 
-bool FlatAttrs::is_valid(ParallelTensorShape const &input) const {
-  ParallelTensorShape output_shape = this->calculate_output_shape(input);
+/* bool FlatAttrs::is_valid(ParallelTensorShape const &input) const { */
+/*   ParallelTensorShape output_shape = this->calculate_output_shape(input); */
 
-  bool is_valid = true;
-  is_valid &= input.is_valid();
-  is_valid &= output_shape.is_valid();
-  is_valid &= (input.at(Input::WIDTH).degree == 1);
+/*   bool is_valid = true; */
+/*   is_valid &= input.is_valid(); */
+/*   is_valid &= output_shape.is_valid(); */
+/*   is_valid &= (input.at(Input::WIDTH).degree == 1); */
 
-  return is_valid;
-}
+/*   return is_valid; */
+/* } */
 
 ParallelTensorShape FlatAttrs::calculate_output_shape(ParallelTensorShape const &input) const {
   assert (input.num_dims() == Input::NUMDIM);
-  std::vector<ParallelDim> output_dims(Output::NUMDIM);
+  ParallelTensorShape output_dims;
+  output_dims.data_type = input.data_type;
 
   output_dims.at(Output::REPLICA) = input.at(Input::REPLICA);
   output_dims.at(Output::SAMPLE) = input.at(Input::SAMPLE);
@@ -49,7 +50,7 @@ ParallelTensorShape FlatAttrs::calculate_output_shape(ParallelTensorShape const 
   output_dims.at(Output::CHANNEL).size = input.at(Input::CHANNEL).size * input.at(Input::HEIGHT).size * input.at(Input::WIDTH).size;
   output_dims.at(Output::CHANNEL).parallel_idx = input.at(Input::CHANNEL).parallel_idx;
 
-  return {output_dims, input.data_type};
+  return output_dims;
 }
 
 }

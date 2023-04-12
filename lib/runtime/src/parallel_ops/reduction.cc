@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/reduction.h"
-#include "flexflow/model.h"
-#include "flexflow/parallel_ops/kernels/reduction_kernels.h"
-#include "flexflow/utils/hash_utils.h"
+#include "parallel_ops/reduction.h"
+#include "model.h"
+#include "kernels/reduction_kernels.h"
+#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 // declare Legion names

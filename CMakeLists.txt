@@ -4,7 +4,40 @@ project(FlexFlow)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
 set(FF_MAX_DIM "5" CACHE STRING "Maximum tensor order")
+set(FF_MAX_OPNAME "128" CACHE STRING "Maximum op name length")
+set(FF_MAX_NUM_OUTPUTS "256" CACHE STRING "Maximum number of outputs (per operator)")
+set(FF_MAX_NUM_INPUTS "256" CACHE STRING "Maximum number of inputs (per operator)")
+set(FF_MAX_NUM_WEIGHTS "64" CACHE STRING "Maximum number of weights (per operator)")
+set(FF_MAX_NUM_FUSED_OPERATORS "64" CACHE STRING "Maximum number of fused tensors")
+set(FF_MAX_NUM_FUSED_TENSORS "64" CACHE STRING "Maximum number of input and output tensors per fused op")
+set(FF_MAX_NUM_WORKERS "1024" CACHE STRING "Maximum number of GPUs")
 option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)
+
+set(FF_GPU_BACKENDS cuda hip_cuda hip_rocm intel)
+set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")
+
+function(define_ff_vars target)
+  target_compile_definitions(${target} PRIVATE 
+    MAX_OPNAME=${FF_MAX_OPNAME}
+    MAX_NUM_OUTPUTS=${FF_MAX_NUM_OUTPUTS}
+    MAX_NUM_INPUTS=${FF_MAX_NUM_INPUTS}
+    MAX_NUM_WEIGHTS=${FF_MAX_NUM_WEIGHTS}
+    MAX_NUM_FUSED_OPERATORS=${FF_MAX_NUM_FUSED_OPERATORS}
+    MAX_NUM_FUSED_TENSORS=${FF_MAX_NUM_FUSED_TENSORS}
+    MAX_NUM_WORKERS=${FF_MAX_NUM_WORKERS}
+    FF_USE_NCCL=${FF_USE_NCCL}
+    MAX_TENSOR_DIM=${FF_MAX_DIM}
+    )
+
+  if (FF_GPU_BACKEND STREQUAL "cuda")
+    target_compile_definitions(${target} PRIVATE FF_USE_CUDA)
+  elseif (FF_GPU_BACKEND STREQUAL "hip_cuda")
+    target_compile_definitions(${target} PRIVATE FF_USE_HIP_CUDA)
+  elseif (FF_GPU_BACKEND STREQUAL "hip_rocm")
+    target_compile_definitions(${target} PRIVATE FF_USE_HIP_ROCM)
+  endif()
+endfunction()
+
 option(FF_USE_EXTERNAL_LEGION "Use pre-installed Legion" OFF)
 option(FF_BUILD_RESNET "build resnet example" OFF)
 option(FF_BUILD_RESNEXT "build resnext example" OFF)
@@ -29,8 +62,6 @@ if (FF_CUDA_ARCH STREQUAL "")
   message(FATAL_ERROR "FF_CUDA_ARCH cannot be an empty string. Set it to `autodetect`, `all`, or pass one or multiple valid CUDA archs.")
 endif()
 
-set(FF_GPU_BACKENDS cuda hip_cuda hip_rocm intel)
-set(FF_GPU_BACKEND "cuda" CACHE STRING "Select GPU Backend ${FF_GPU_BACKENDS}")
 include(cuda)
 include(cudnn)
 include(nccl)
@@ -38,11 +69,13 @@ include(nccl)
 
 include(json)
 include(optional)
+include(expected)
 include(spdlog)
 include(variant)
 include(doctest)
 include(visit_struct)
 include(CTest)
+include(fmt)
 include(legion)
 #include(gtest)
 #include(fmt)

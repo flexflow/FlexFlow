@@ -1,63 +1,81 @@
-#pragma once
+#ifndef _FLEXFLOW_RUNTIME_SRC_LAYER_H
+#define _FLEXFLOW_RUNTIME_SRC_LAYER_H
 
 #include "op-attrs/ffconst.h"
-#include "fftype.h"
+#include "layer_id.h"
 #include "tensor.h"
+#include "utils/optional.h"
+#include "utils/stack_vector.h"
+#include "utils/stack_string.h"
+#include "op-attrs/op-attrs.h"
+#include "utils/strong_typedef.h"
 
 namespace FlexFlow {
 
-class FFModel;
 class Layer {
 public:
-  Layer(FFModel *model,
-        OperatorType otype,
-        DataType dtype,
-        char const *name,
-        int numInputs,
-        int numWeights,
-        int numOutputs,
-        const Tensor input1 = NULL,
-        const Tensor input2 = NULL,
-        const Tensor input3 = NULL,
-        const Tensor input4 = NULL);
-  Layer(FFModel *model,
-        OperatorType otype,
-        DataType dtype,
-        char const *name,
-        int numInputs,
-        int numWeights,
-        int numOutputs,
-        Tensor const *tensors = NULL);
-  void add_int_property(std::string const &key, long long value);
-  void add_float_property(std::string const &key, float value);
-  void add_int_vector_property(std::string const &key,
-                               std::vector<int> const &value);
-  void add_initializer(std::string const &key, Initializer *initializer);
-  bool get_int_property(std::string const &key, long long &value) const;
-  bool get_float_property(std::string const &key, float &value) const;
-  bool get_int_vector_property(std::string const &key,
-                               std::vector<int> &value) const;
-  bool get_initializer(std::string const &key, Initializer *&initializer) const;
-  Tensor get_parameter(int index);
-  void print();
-
+  Layer() = delete;
+  Layer(LayerID,
+        DataType,
+        std::string const &name,
+        CompGraphOperatorAttrs const &attrs);
 public:
-  OperatorType op_type;
+  LayerID guid;
   DataType data_type;
-  LayerID layer_guid;
-  char name[MAX_OPNAME];
-  Tensor outputs[MAX_NUM_OUTPUTS];
-  Tensor inputs[MAX_NUM_INPUTS];
-  Tensor weights[MAX_NUM_WEIGHTS];
-  bool trainableInputs[MAX_NUM_INPUTS];
-  int numInputs, numWeights, numOutputs;
+  stack_string<MAX_OPNAME> name;
   bool profiling;
-
-private:
-  std::unordered_map<std::string, long long> int_properties;
-  std::unordered_map<std::string, float> float_properties;
-  std::unordered_map<std::string, Initializer *> initializers;
-  std::unordered_map<std::string, std::vector<int>> int_vector_properties;
+  CompGraphOperatorAttrs attrs;
 };
 
-}; // namespace FlexFlow
+bool operator==(Layer const &, Layer const &);
+bool operator!=(Layer const &, Layer const &);
+bool operator<(Layer const &, Layer const &);
+
+struct LayerManager {
+public:
+  Layer create(CompGraphOperatorAttrs const &attrs,
+        DataType data_type,
+        std::string const &name) {
+    return {this->next_id(), data_type, name, attrs};
+  }
+
+  template <typename ...Args>
+  Layer create(variant<Args...> const &attrs, DataType data_type, std::string const &name) {
+    return this->create(widen<CompGraphOperatorAttrs>(attrs), data_type, name);
+  }
+
+private:
+  LayerID next_id() {
+    return LayerID(this->layer_global_guid++);
+  }
+private:
+  size_t layer_global_guid = LAYER_GUID_FIRST_VALID;
+};
+
+}
+
+VISITABLE_STRUCT(::FlexFlow::Layer, guid, data_type, name, profiling, attrs);
+
+namespace std {
+
+template <>
+struct hash<::FlexFlow::Layer> {
+  size_t operator()(::FlexFlow::Layer const &) const;
+};
+
+}
+
+namespace FlexFlow {
+
+static_assert(is_equal_comparable<Layer>::value, "Layer must be comparable via ==");
+static_assert(is_neq_comparable<Layer>::value, "Layer must be comparable via !=");
+static_assert(is_lt_comparable<Layer>::value, "Layer must be comparable via <");
+static_assert(std::is_copy_constructible<Layer>::value, "Layer must be copy constructible");
+static_assert(std::is_move_constructible<Layer>::value, "Layer must be move constructible");
+static_assert(std::is_copy_assignable<Layer>::value, "Layer must be copy assignable");
+static_assert(std::is_move_assignable<Layer>::value, "Layer must be move assignable");
+static_assert(!std::is_default_constructible<Layer>::value, "Layer must not be default constructible");
+
+}
+
+#endif

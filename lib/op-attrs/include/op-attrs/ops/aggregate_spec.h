@@ -2,21 +2,22 @@
 #define _FLEXFLOW_AGGREGATE_SPEC_ATTRS_H
 
 #include "op-attrs/parallel_tensor_shape.h"
-#include "unary_op.h"
-#include "visit_struct/visit_struct.hpp"
+#include "core.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
-struct AggregateSpecAttrs : public UnaryOpAttrs {
+struct AggregateSpecAttrs {
 public:
-  OperatorType op_type() const override;
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
+  AggregateSpecAttrs() = delete;
+  AggregateSpecAttrs(int n, float lambda_bal);
 public:
   int n;
   float lambda_bal;
 };
 bool operator==(AggregateSpecAttrs const &, AggregateSpecAttrs const &);
-
+bool operator!=(AggregateSpecAttrs const &, AggregateSpecAttrs const &);
+bool operator<(AggregateSpecAttrs const &, AggregateSpecAttrs const &);
 }
 
 VISITABLE_STRUCT(::FlexFlow::AggregateSpecAttrs, n, lambda_bal);
@@ -26,6 +27,12 @@ template <>
 struct hash<::FlexFlow::AggregateSpecAttrs> {
   size_t operator()(::FlexFlow::AggregateSpecAttrs const &) const;
 };
+}
+
+namespace FlexFlow {
+
+static_assert(is_valid_opattr<AggregateSpecAttrs>::value, "AggregateSpecAttrs must be a valid opattr (see core.h)");
+
 }
 
 #endif 

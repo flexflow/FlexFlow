@@ -54,41 +54,44 @@ Undirected to_undirected(IDiGraphView const &directed) {
 
 struct ViewDiGraphAsUndirectedGraph : public IUndirectedGraphView {
 public:
-  ViewDiGraphAsUndirectedGraph() = delete;
   explicit ViewDiGraphAsUndirectedGraph(IDiGraphView const &);
-  explicit ViewDiGraphAsUndirectedGraph(std::shared_ptr<IDiGraphView> const &);
+  explicit ViewDiGraphAsUndirectedGraph(std::shared_ptr<IDiGraphView const> const &);
 
   std::unordered_set<UndirectedEdge> query_edges(UndirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 private:
-  std::shared_ptr<IDiGraphView> const shared;
-  IDiGraphView const *directed;
+  ViewDiGraphAsUndirectedGraph();
+
+  std::shared_ptr<IDiGraphView const> shared = nullptr;
+  IDiGraphView const *directed = nullptr;
 };
 
 struct ViewDiGraphAsMultiDiGraph : public IMultiDiGraphView {
 public:
-  ViewDiGraphAsMultiDiGraph() = delete;
   explicit ViewDiGraphAsMultiDiGraph(IDiGraphView const &);
   explicit ViewDiGraphAsMultiDiGraph(std::shared_ptr<IDiGraphView> const &);
 
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 private:
-  std::shared_ptr<IDiGraphView> const shared = nullptr;
-  IDiGraphView const *directed;
+  ViewDiGraphAsMultiDiGraph();
+
+  std::shared_ptr<IDiGraphView const> shared = nullptr;
+  IDiGraphView const *directed = nullptr;
 };
 
 struct ViewMultiDiGraphAsDiGraph : public IDiGraphView {
 public:
-  ViewMultiDiGraphAsDiGraph() = delete;
   explicit ViewMultiDiGraphAsDiGraph(IMultiDiGraphView const &);
-  explicit ViewMultiDiGraphAsDiGraph(std::shared_ptr<IMultiDiGraphView> const &);
+  explicit ViewMultiDiGraphAsDiGraph(std::shared_ptr<IMultiDiGraphView const> const &);
 
   std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 private:
-  std::shared_ptr<IMultiDiGraphView> const shared;
-  IMultiDiGraphView const *multidi;
+  ViewMultiDiGraphAsDiGraph(); 
+
+  std::shared_ptr<IMultiDiGraphView const> shared = nullptr;
+  IMultiDiGraphView const *multidi = nullptr;
 };
 
 struct ViewOpenMultiDiGraphAsMultiDiGraph : public IMultiDiGraphView { 

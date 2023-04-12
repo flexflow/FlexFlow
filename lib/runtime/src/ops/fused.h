@@ -1,15 +1,15 @@
 #ifndef _FLEXFLOW_FUSED_H_
 #define _FLEXFLOW_FUSED_H_
 
-#include "model.h"
+#include "operator.h"
 
 namespace FlexFlow {
 
 class FusedOp;
-class FusedOpMeta {
+class FusedPerDeviceOpState {
 public:
-  FusedOpMeta(void) {}
-  OpMeta *meta[MAX_NUM_FUSED_OPERATORS];
+  FusedPerDeviceOpState(void) {}
+  PerDeviceOpState *meta[MAX_NUM_FUSED_OPERATORS];
   FusedOp *fused_op;
   int numOperators;
 };
@@ -24,17 +24,10 @@ public:
   };
   FusedOp(FFModel &model, Op *op);
   bool add_operator(FFModel &model, Op *op);
-  ParallelTensor init_inout(FFModel &model, const ParallelTensor input) {
-    assert(0);
-    return ParallelTensor();
-  }
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -49,6 +42,13 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
+
+  OpTaskBinding get_init_task_binding() const override; 
+  TaskID get_init_task_id() const override;
+  OpTaskBinding get_fwd_task_binding() const override;
+  TaskID get_fwd_task_id() const override;
+  OpTaskBinding get_bwd_task_binding() const override;
+  TaskID get_bwd_task_id() const override;
 
 public:
   FFIterationConfig iter_config;
@@ -66,10 +66,10 @@ public:
   int op_weight_idx[MAX_NUM_FUSED_TENSORS];
   int op_output_idx[MAX_NUM_FUSED_TENSORS];
   Op *operators[MAX_NUM_FUSED_OPERATORS];
-  FusedOpMeta fused_meta[MAX_NUM_WORKERS];
+  FusedPerDeviceOpState fused_meta[MAX_NUM_WORKERS];
   int numOperators;
 };
 
-}; // namespace FlexFlow
+}
 
 #endif

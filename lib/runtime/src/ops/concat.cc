@@ -16,7 +16,7 @@
 #include "concat.h"
 #include "model.h"
 #include "kernels/concat_kernels.h"
-#include "utils/hash_utils.h"
+#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {
@@ -182,7 +182,7 @@ void Concat::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Concat::init_task(Task const *task,
+PerDeviceOpState *Concat::init_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {

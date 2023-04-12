@@ -4,37 +4,26 @@
 #include <cstddef>
 #include <functional>
 #include <unordered_set>
-#include "tl/optional.hpp"
 #include <ostream>
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
+#include "utils/optional.h"
+#include "utils/fmt.h"
+#include <memory>
+#include "utils/type_traits.h"
+#include "utils/strong_typedef.h"
 
 namespace FlexFlow {
 
-struct Node {
-public:
-  Node() = delete;
-  explicit Node(std::size_t idx); 
-
-  bool operator==(Node const &) const;
-  bool operator!=(Node const &) const;
-  bool operator<(Node const &) const;
-
-  std::string to_string() const;
-public:
-  std::size_t idx;
+struct Node : public strong_typedef<Node, size_t> { 
+  using strong_typedef::strong_typedef;
 };
+
 std::ostream &operator<<(std::ostream &, Node const &);
 
 }
 
-VISITABLE_STRUCT(::FlexFlow::Node, idx);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::Node> {
-  std::size_t operator()(::FlexFlow::Node const &) const;
-};
-}
+MAKE_TYPEDEF_HASHABLE(::FlexFlow::Node);
+MAKE_TYPEDEF_PRINTABLE(::FlexFlow::Node, "Node");
 
 namespace FlexFlow {
 
@@ -50,16 +39,28 @@ NodeQuery query_intersection(NodeQuery const &, NodeQuery const &);
 NodeQuery query_union(NodeQuery const &, NodeQuery const &);
 
 struct IGraphView {
+  IGraphView() = default;
+  IGraphView(IGraphView const &) = delete;
+  IGraphView &operator=(IGraphView const &) = delete;
+
   virtual std::unordered_set<Node> query_nodes(NodeQuery const &) const = 0;
+  virtual ~IGraphView() {};
 };
 
-struct IGraph {
+static_assert(is_rc_copy_virtual_compliant<IGraphView>::value, RC_COPY_VIRTUAL_MSG);
+
+struct IGraph : IGraphView {
+  IGraph(IGraph const &) = delete;
+  IGraph &operator=(IGraph const &) = delete;
+
   virtual Node add_node() = 0;
   virtual void add_node_unsafe(Node const &) = 0;
   virtual void remove_node_unsafe(Node const &) = 0;
+  virtual IGraph *clone() const = 0;
 };
 
-}
+static_assert(is_rc_copy_virtual_compliant<IGraph>::value, RC_COPY_VIRTUAL_MSG);
 
+}
 
 #endif 

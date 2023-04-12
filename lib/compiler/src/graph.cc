@@ -17,6 +17,7 @@
 #include "op-attrs/op-attrs.h"
 #include "utils/disjoint_set.h"
 #include <iostream>
+#include "utils/unique.h"
 
 // using FlexFlow::utils::Node;
 // using FlexFlow::opmeta::OperatorParameters;
@@ -623,10 +624,7 @@ GraphOptimalViewSerialized
            "machine-model-version = 0 or 1. When machine-model-version = 1, "
            "machine-model-file should not be empty.");
   }
-  // Assume this task is running on GPU0
-  std::shared_ptr<Simulator> simulator(
-      new Simulator(model, model->handlers[0], gpu_mem, machine));
-  model->simulator = simulator.get();
+  model->simulator = make_unique<Simulator>(model, model->handlers[0], gpu_mem, machine);
   std::unique_ptr<Graph> best_graph;
   std::unordered_map<Node, MachineView> optimal_views;
   if (model->config.only_data_parallel) {

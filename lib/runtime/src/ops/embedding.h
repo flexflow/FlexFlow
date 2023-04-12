@@ -1,13 +1,9 @@
 #ifndef _FLEXFLOW_EMBEDDING_H
 #define _FLEXFLOW_EMBEDDING_H
 
-#include "accessor.h"
-#include "fftype.h"
+#include "layer_id.h"
 #include "layer.h"
-#include "flexflow/node.h"
-#include "op_meta.h"
 #include "operator.h"
-#include "op-attrs/embedding_params.h"
 
 namespace FlexFlow {
 
@@ -26,8 +22,7 @@ class Embedding;
 
 class Embedding : public Op {
 public:
-  using Params = EmbeddingParams;
-  using Input = ParallelTensor;
+  using Attrs = EmbeddingAttrs;
 
   Embedding(FFModel &model,
             LayerID const &_layer_guid,
@@ -43,17 +38,14 @@ public:
             const ParallelTensor input,
             bool allocate_weights);
   Embedding(FFModel &model,
-            Params const &params,
-            Input const input,
+            Attrs const &params,
+            std::vector<ParallelTensor> const &input,
             bool allocate_weights = false,
             char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
   // void update(const FFModel&);
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
   // Parameter* get_parameter(int index);
   // void create_weights(FFModel& model);
   // void create_input_partition(FFModel& model);
@@ -62,7 +54,7 @@ public:
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
 
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -89,23 +81,7 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
-  Params get_params() const;
-
 private:
-#ifdef DEADCODE
-  template <typename TI>
-  static void
-      forward_task_with_type(Legion::Task const *task,
-                             std::vector<Legion::PhysicalRegion> const &regions,
-                             Legion::Context ctx,
-                             Legion::Runtime *runtime);
-  template <typename TI>
-  static void backward_task_with_type(
-      Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
-      Legion::Runtime *runtime);
-#endif
   int input_vocab_size_replica_dim() const;
   int input_channel_out_replica_dim() const;
   int output_vocab_size_replica_dim() const;
@@ -122,6 +98,6 @@ public:
   AggrMode aggr;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFLOW_EMBEDDING_H
+#endif

@@ -1,8 +1,9 @@
 #include "element_binary.h"
 #include "model.h"
 #include "kernels/element_binary_kernels.h"
-#include "utils/hash_utils.h"
+#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
+#include "task_spec.h"
 
 namespace FlexFlow {
 
@@ -330,7 +331,7 @@ void ElementBinary::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *ElementBinary::init_task(Task const *task,
+PerDeviceOpState *ElementBinary::init_task(Task const *task,
                                  std::vector<PhysicalRegion> const &regions,
                                  Context ctx,
                                  Runtime *runtime) {
@@ -383,30 +384,58 @@ OpMeta *ElementBinary::init_task(Task const *task,
   return m;
 }
 
-OpTasksSpec ElementBinary::get_task_spec() const {
-  OpTasksSpec spec {
-    ELEMENTBINARY_INIT_TASK_ID,
-    ELEMENTBINARY_FWD_TASK_ID,
-    ELEMENTBINARY_BWD_TASK_ID
-  };
-  auto &fwd = spec.get_fwd();
+OpTaskSignature get_fwd_task_signature() {
+  OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(LHS_INPUT);
   fwd.add_input_slot(RHS_INPUT);
   fwd.add_output_slot(OUTPUT);
+}
 
-  auto input0 = spec.input_tensor(0);
-  auto input1 = spec.input_tensor(1);
-  auto output = spec.output_tensor(0);
+OpTaskSignature get_bwd_task_signature() {
+  return infer_bwd_signature(get_fwd_task_signature());
+}
 
-  fwd.bind({
-    {LHS_INPUT, input0},
-    {RHS_INPUT, this->has_same_operands ? input0 : input1},
-    {OUTPUT, this->inplace_a ? input0 : output}
+OpTaskBinding ElementBinary::get_binding() {
+  OpTaskBinding binding;
+
+  auto input0 = input_tensor(this, 0);
+  auto input1 = input_tensor(this, 1);
+  auto output = output_tensor(this, 0);
+
+  binding.bind({
+    { LHS_INPUT, input0 },
+    { RHS_INPUT, this->has_same_operands ? input0 : input1},
+    { OUTPUT, this->inplace_a ? input0 : output }
   });
 
-  return spec;
+  return binding;
 }
+
+/* OpTasksSpec ElementBinary::get_task_spec() const { */
+/*   OpTasksSpec spec { */
+/*     ELEMENTBINARY_INIT_TASK_ID, */
+/*     ELEMENTBINARY_FWD_TASK_ID, */
+/*     ELEMENTBINARY_BWD_TASK_ID */
+/*   }; */
+/*   auto &fwd = spec.get_fwd(); */
+
+/*   fwd.add_input_slot(LHS_INPUT); */
+/*   fwd.add_input_slot(RHS_INPUT); */
+/*   fwd.add_output_slot(OUTPUT); */
+
+/*   auto input0 = spec.input_tensor(0); */
+/*   auto input1 = spec.input_tensor(1); */
+/*   auto output = spec.output_tensor(0); */
+
+/*   fwd.bind({ */
+/*     {LHS_INPUT, input0}, */
+/*     {RHS_INPUT, this->has_same_operands ? input0 : input1}, */
+/*     {OUTPUT, this->inplace_a ? input0 : output} */
+/*   }); */
+
+/*   return spec; */
+/* } */
 
 /* TaskSpec ElementBinary::get_forward_task_spec() const { */
 /*   TaskSpec spec = { ELEMENTBINARY_FWD_TASK_ID, Pass::FWD, {} }; */

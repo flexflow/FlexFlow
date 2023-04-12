@@ -2,32 +2,22 @@
 #define _FLEXFLOW_TOPK_ATTRS_H
 
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/ops/unary_op.h"
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 
-struct TopKAttrs : public UnaryOpAttrs {
+struct TopKAttrs : public use_visitable_cmp<TopKAttrs> {
 public:
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
-
+  TopKAttrs() = delete;
+  TopKAttrs(int k, bool sorted);
 public:
   int k;
   bool sorted;
 };
-bool operator==(TopKAttrs const &, TopKAttrs const &);
-bool operator<(TopKAttrs const &, TopKAttrs const &);
 
 }
 
 VISITABLE_STRUCT(::FlexFlow::TopKAttrs, k, sorted);
+MAKE_VISIT_HASHABLE(::FlexFlow::TopKAttrs);
 
-namespace std {
-template <>
-struct hash<::FlexFlow::TopKAttrs> {
-  size_t operator()(::FlexFlow::TopKAttrs const &) const;
-};
-}
-
-#endif // _FLEXFLOW_TOPK_ATTRS_H
+#endif

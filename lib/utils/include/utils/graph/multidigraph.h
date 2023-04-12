@@ -4,19 +4,15 @@
 #include "tl/optional.hpp"
 #include <unordered_set>
 #include "node.h"
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
+#include "utils/unique.h"
 
 namespace FlexFlow {
 
-struct MultiDiEdge {
+struct MultiDiEdge : use_visitable_cmp<MultiDiEdge> {
 public:
   MultiDiEdge() = delete;
   MultiDiEdge(Node src, Node dst, size_t srcIdx, size_t dstIdx);
-
-  bool operator==(MultiDiEdge const &) const;
-  bool operator<(MultiDiEdge const &) const;
-
-  std::string to_string() const;
 public:
   Node src, dst;
   std::size_t srcIdx, dstIdx;
@@ -26,14 +22,7 @@ std::ostream &operator<<(std::ostream &, MultiDiEdge const &);
 }
 
 VISITABLE_STRUCT(::FlexFlow::MultiDiEdge, src, dst, srcIdx, dstIdx);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::MultiDiEdge> {
-  std::size_t operator()(::FlexFlow::MultiDiEdge const &) const;
-};
-}
-
+MAKE_VISIT_HASHABLE(::FlexFlow::MultiDiEdge);
 
 namespace FlexFlow {
 
@@ -65,12 +54,57 @@ struct IMultiDiGraphView : public IGraphView {
   using EdgeQuery = MultiDiEdgeQuery;
 
   virtual std::unordered_set<Edge> query_edges(EdgeQuery const &) const = 0;
+  virtual ~IMultiDiGraphView();
 };
+
+static_assert(is_rc_copy_virtual_compliant<IMultiDiGraphView>::value, RC_COPY_VIRTUAL_MSG);
 
 struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;
   virtual void remove_edge(Edge const &) = 0;
+
+  virtual IMultiDiGraph *clone() const = 0;
 };
+
+static_assert(is_rc_copy_virtual_compliant<IMultiDiGraph>::value, RC_COPY_VIRTUAL_MSG);
+
+struct MultiDiGraph {
+public:
+  using Edge = MultiDiEdge;
+  using EdgeQuery = MultiDiEdgeQuery;
+
+  MultiDiGraph() = delete;
+  MultiDiGraph(MultiDiGraph const &);
+
+  MultiDiGraph &operator=(MultiDiGraph);
+
+  friend void swap(MultiDiGraph &, MultiDiGraph &);
+
+  Node add_node();
+  void add_node_unsafe(Node const &);
+  void remove_node_unsafe(Node const &);
+
+  void add_edge(Edge const &e);
+  void remove_edge(Edge const &e);
+
+  std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
+
+  template <typename T>
+  static 
+  typename std::enable_if<std::is_base_of<IMultiDiGraph, T>::value, MultiDiGraph>::type 
+  create() { 
+    return MultiDiGraph(make_unique<T>());
+  }
+private:
+  MultiDiGraph(std::unique_ptr<IMultiDiGraph>);
+private:
+  std::unique_ptr<IMultiDiGraph> ptr;
+};
+
+static_assert(std::is_copy_constructible<MultiDiGraph>::value, "");
+static_assert(std::is_move_constructible<MultiDiGraph>::value, "");
+static_assert(std::is_copy_assignable<MultiDiGraph>::value, "");
+static_assert(std::is_move_assignable<MultiDiGraph>::value, "");
 
 }
 

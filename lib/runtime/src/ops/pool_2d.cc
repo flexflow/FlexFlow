@@ -1,7 +1,7 @@
 #include "pool_2d.h"
 #include "model.h"
 #include "kernels/pool_2d_kernels.h"
-#include "utils/hash_utils.h"
+#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
 
 using namespace FlexFlow::Kernels::Pool2D;
@@ -255,7 +255,7 @@ void Pool2D::init(FFModel const &ff) {
   regions[0]: input
   regions[1]: output
 */
-OpMeta *Pool2D::init_task(Task const *task,
+PerDeviceOpState *Pool2D::init_task(Task const *task,
                           std::vector<PhysicalRegion> const &regions,
                           Context ctx,
                           Runtime *runtime) {

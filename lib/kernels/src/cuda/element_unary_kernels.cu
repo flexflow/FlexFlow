@@ -15,6 +15,7 @@
 
 #include "kernels/element_unary_kernels.h"
 #include "kernels/cuda_helper.h"
+#include "kernels/datatype_dispatch.h"
 
 namespace FlexFlow {
 
@@ -22,7 +23,7 @@ namespace FlexFlow {
 using Legion::coord_t;
 using Legion::Domain;
 
-ElementUnaryMeta::ElementUnaryMeta(FFHandler handler) : OpMeta(handler) {
+ElementUnaryPerDeviceState::ElementUnaryPerDeviceState(FFHandler handler) : PerDeviceOpState(handler) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
@@ -44,7 +45,7 @@ static bool use_cudnn(OperatorType op_type) {
 }
 
 
-void init_kernel(ElementUnaryMeta *m,
+void init_kernel(ElementUnaryPerDeviceState *m,
                  Domain const &input_domain,
                  Domain const &output_domain) {
 
@@ -75,95 +76,85 @@ void init_kernel(ElementUnaryMeta *m,
   }
 }
 
-template <typename T>
-void forward_kernel_wrapper(ElementUnaryMeta const *m,
-                            T const *input_ptr,
-                            T *output_ptr,
-                            size_t num_elements) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
-  Internal::forward_kernel<T>(m, input_ptr, output_ptr, num_elements, stream);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("[%s] forward time (CF) = %.2fms\n", m->op_name, elapsed);
-    // print_tensor<T>(input_ptr, 32, "[EWU:forward:input]");
-    // print_tensor<T>(output_ptr, 32, "[EWU:forward:output]");
+template <DataType T>
+struct ForwardKernel {
+  void operator()(ffStream_t stream, ElementUnaryPerDeviceState const *m, GenericTensorAccessorR const &input, GenericTensorAccessorW const &output) {
+    checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+    if (use_cudnn(m->op_type)) {
+      float alpha = 1.0f, beta = 0.0f;
+      checkCUDNN(cudnnActivationForward(m->handle.dnn,
+                                        m->actiDesc,
+                                        &alpha,
+                                        m->inputTensor,
+                                        input.get<T>(),
+                                        &beta,
+                                        m->outputTensor,
+                                        output.get<T>()));
+    } else {
+      size_t num_elements = input.shape.num_elements();
+      elewise_unary_forward_kernel<<<GET_BLOCKS(num_elements),
+                                    CUDA_NUM_THREADS,
+                                    0,
+                                    stream>>>(
+          num_elements, (T)m->scalar, m->op_type, input.get<T>(), output.get<T>());
+    }
   }
 }
 
-template <typename T>
-void backward_kernel_wrapper(ElementUnaryMeta const *m,
-                             T const *input_ptr,
-                             T *input_grad_ptr,
-                             T const *output_ptr,
-                             T const *output_grad_ptr,
-                             size_t num_elements) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  Internal::backward_kernel<T>(m,
-                               input_ptr,
-                               input_grad_ptr,
-                               output_ptr,
-                               output_grad_ptr,
-                               num_elements,
-                               stream);
+template <DataType T>
+struct BackwardKernel {
+  void operator()(ffStream_t stream,
+                     ElementUnaryPerDeviceState const *m,
+                     GenericTensorAccessorR const &input,
+                     GenericTensorAccessorR const &input_grad,
+                     GenericTensorAccessorW const &output,                     
+                     GenericTensorAccessorW const &output_grad) {
+    checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
+    if (use_cudnn(m->op_type)) {
+      float alpha = 1.0f;
+      checkCUDNN(cudnnActivationBackward(m->handle.dnn,
+                                        m->actiDesc,
+                                        &alpha,
+                                        m->outputTensor,
+                                        output.get<T>(),
+                                        m->outputTensor,
+                                        output_grad.get<T>()),
+                                        m->inputTensor,
+                                        input.get<T>(),
+                                        &alpha,
+                                        m->inputTensor,
+                                        input_grad.get<T>()));
+    } else {
+      size_t num_elements = input.shape.num_elements();
+      elewise_unary_backward_kernel<T>
+          <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
+              num_elements,
+              m->scalar,
+              m->op_type,
+              output.get<T>(),
+              output_grad.get<T>(),
+              input.get<T>(),
+              input_grad.get<T>());
+    }
+  }
 }
 
-template void forward_kernel_wrapper<float>(ElementUnaryMeta const *m,
-                                            float const *input_ptr,
-                                            float *output_ptr,
-                                            size_t num_elements);
-template void forward_kernel_wrapper<double>(ElementUnaryMeta const *m,
-                                             double const *input_ptr,
-                                             double *output_ptr,
-                                             size_t num_elements);
-template void forward_kernel_wrapper<int32_t>(ElementUnaryMeta const *m,
-                                              int32_t const *input_ptr,
-                                              int32_t *output_ptr,
-                                              size_t num_elements);
-template void forward_kernel_wrapper<int64_t>(ElementUnaryMeta const *m,
-                                              int64_t const *input_ptr,
-                                              int64_t *output_ptr,
-                                              size_t num_elements);
+void forward_kernel(ffStream_t stream, 
+                    ElementUnaryPerDeviceState const *m, 
+                    GenericTensorAccessorR const &input, 
+                    GenericTensorAccessorW const &output) { {
+  DataTypeDispatch1<ForwardKernel>{}(m->data_type, stream, m, input, output);
+}
 
-template void backward_kernel_wrapper<float>(ElementUnaryMeta const *m,
-                                             float const *input_ptr,
-                                             float *input_grad_ptr,
-                                             float const *output_ptr,
-                                             float const *output_grad_ptr,
-                                             size_t num_elements);
-template void backward_kernel_wrapper<double>(ElementUnaryMeta const *m,
-                                              double const *input_ptr,
-                                              double *input_grad_ptr,
-                                              double const *output_ptr,
-                                              double const *output_grad_ptr,
-                                              size_t num_elements);
-template void backward_kernel_wrapper<int32_t>(ElementUnaryMeta const *m,
-                                               int32_t const *input_ptr,
-                                               int32_t *input_grad_ptr,
-                                               int32_t const *output_ptr,
-                                               int32_t const *output_grad_ptr,
-                                               size_t num_elements);
-template void backward_kernel_wrapper<int64_t>(ElementUnaryMeta const *m,
-                                               int64_t const *input_ptr,
-                                               int64_t *input_grad_ptr,
-                                               int64_t const *output_ptr,
-                                               int64_t const *output_grad_ptr,
-                                               size_t num_elements);
-
-namespace Internal {
+void backward_kernel(ffStream_t stream,
+                     ElementUnaryPerDeviceState const *m,
+                     GenericTensorAccessorR const &input,
+                     GenericTensorAccessorR const &input_grad,
+                     GenericTensorAccessorW const &output,                     
+                     GenericTensorAccessorW const &output_grad)
+  DataTypeDispatch1<BackwardKernel>{}(m->data_type, stream, m, input, input_grad, output, output_grad);
+}
 
 template <typename T>
 __global__ void elewise_unary_forward_kernel(
@@ -220,32 +211,6 @@ __global__ void elewise_unary_forward_kernel(
   }
 }
 
-template <typename T>
-void forward_kernel(ElementUnaryMeta const *m,
-                    T const *input_ptr,
-                    T *output_ptr,
-                    size_t num_elements,
-                    cudaStream_t stream) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-
-  if (use_cudnn(m->op_type)) {
-    float alpha = 1.0f, beta = 0.0f;
-    checkCUDNN(cudnnActivationForward(m->handle.dnn,
-                                      m->actiDesc,
-                                      &alpha,
-                                      m->inputTensor,
-                                      input_ptr,
-                                      &beta,
-                                      m->outputTensor,
-                                      output_ptr));
-  } else {
-    elewise_unary_forward_kernel<<<GET_BLOCKS(num_elements),
-                                   CUDA_NUM_THREADS,
-                                   0,
-                                   stream>>>(
-        num_elements, (T)m->scalar, m->op_type, input_ptr, output_ptr);
-  }
-}
 
 template <typename T>
 __global__ void elewise_unary_backward_kernel(coord_t volume,
@@ -313,44 +278,7 @@ __global__ void elewise_unary_backward_kernel(coord_t volume,
   }
 }
 
-template <typename T>
-void backward_kernel(ElementUnaryMeta const *m,
-                     T const *input_ptr,
-                     T *input_grad_ptr,
-                     T const *output_ptr,
-                     T const *output_grad_ptr,
-                     size_t num_elements,
-                     cudaStream_t stream) {
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
-  if (use_cudnn(m->op_type)) {
-    float alpha = 1.0f;
-    checkCUDNN(cudnnActivationBackward(m->handle.dnn,
-                                       m->actiDesc,
-                                       &alpha,
-                                       m->outputTensor,
-                                       output_ptr,
-                                       m->outputTensor,
-                                       output_grad_ptr,
-                                       m->inputTensor,
-                                       input_ptr,
-                                       &alpha,
-                                       m->inputTensor,
-                                       input_grad_ptr));
-  } else {
-    elewise_unary_backward_kernel<T>
-        <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
-            num_elements,
-            m->scalar,
-            m->op_type,
-            output_ptr,
-            output_grad_ptr,
-            input_ptr,
-            input_grad_ptr);
-  }
-}
-
-}
-}
-}
-}
+} // namespace ElementUnary
+} // namespace Kernels
+} // namespace FlexFlow

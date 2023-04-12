@@ -2,32 +2,23 @@
 #define _FLEXFLOW_PARTITION_ATTRS_H
 
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/ops/unary_op.h"
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
+#include "op-attrs/ff_dim.h"
 
 namespace FlexFlow {
 
-struct RepartitionAttrs : public UnaryOpAttrs {
+struct RepartitionAttrs : public use_visitable_cmp<RepartitionAttrs> {
 public:
-  bool is_valid(ParallelTensorShape const &input_shape) const override;
-  ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
+  RepartitionAttrs() = delete;
+  RepartitionAttrs(ff_dim_t repartition_dim, int repartition_degree);
 public:
-  int repartition_legion_dim;
+  ff_dim_t repartition_dim;
   int repartition_degree;
 };
-bool operator==(RepartitionAttrs const &, RepartitionAttrs const &);
-bool operator<(RepartitionAttrs const &, RepartitionAttrs const &);
 
 }
 
-VISITABLE_STRUCT(::FlexFlow::RepartitionAttrs, repartition_legion_dim, repartition_degree);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::RepartitionAttrs> {
-  size_t operator()(::FlexFlow::RepartitionAttrs const &) const;
-};
-}
+VISITABLE_STRUCT(::FlexFlow::RepartitionAttrs, repartition_dim, repartition_degree);
+MAKE_VISIT_HASHABLE(::FlexFlow::RepartitionAttrs);
 
 #endif 

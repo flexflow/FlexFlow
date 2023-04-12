@@ -2,16 +2,14 @@
 #define _FLEXFLOW_CONCAT_H
 
 #include "layer.h"
-#include "flexflow/node.h"
 #include "operator.h"
-#include "op-attrs/concat_params.h"
+#include "op-attrs/ops/concat.h"
 
 namespace FlexFlow {
 
 class Concat : public Op {
 public:
-  using Params = ConcatParams;
-  using Input = std::vector<ParallelTensor>;
+  using Attrs = ConcatAttrs;
 
   Concat(FFModel &model,
          int n,
@@ -19,21 +17,17 @@ public:
          int axis,
          char const *name);
   Concat(FFModel &model,
-         ConcatParams const &params,
+         Attrs const &attrs,
          std::vector<ParallelTensor> const &inputs,
          char const *name = nullptr);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  bool get_int_parameter(PMParameter, int *) const override;
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -49,12 +43,10 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
 
-  Params get_params() const;
-
 public:
   int legion_axis;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFLOW_CONCAT_H
+#endif

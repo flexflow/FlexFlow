@@ -15,38 +15,30 @@
 #ifndef _FLEXFLOW_CAST_H
 #define _FLEXFLOW_CAST_H
 
-#include "fftype.h"
 #include "layer.h"
-#include "flexflow/ode.h"
-#include "op_meta.h"
 #include "operator.h"
-#include "op-attrs/cast_params.h"
+#include "op-attrs/ops/cast.h"
 
 namespace FlexFlow {
 
 class Cast : public Op {
 public:
-  using Params = CastParams;
-  using Input = ParallelTensor;
   Cast(FFModel &model,
        ParallelTensor const &input,
        DataType dtype,
        char const *name);
   Cast(FFModel &model,
-       Params const &params,
-       Input const &input,
+       CastAttrs const &params,
+       std::vector<ParallelTensor> const &input,
        char const *name = nullptr);
-  void init(FFModel const &);
-  void forward(FFModel const &);
-  void backward(FFModel const &);
-  void print_layer(FFModel const &model) {
-    assert(0);
-  }
+  void init(FFModel const &) override;
+  void forward(FFModel const &) override;
+  void backward(FFModel const &) override;
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -54,18 +46,6 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
-  template <typename IDT>
-  static void forward_task_with_1_type(
-      Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
-      Legion::Runtime *runtime);
-  template <typename IDT, typename ODT>
-  static void forward_task_with_2_type(
-      Legion::Task const *task,
-      std::vector<Legion::PhysicalRegion> const &regions,
-      Legion::Context ctx,
-      Legion::Runtime *runtime);
   static void backward_task(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
@@ -87,16 +67,15 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const;
   void serialize(Legion::Serializer &s) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
+  /* static PCG::Node deserialize(FFModel &ff, */
+  /*                              Legion::Deserializer &d, */
+  /*                              ParallelTensor inputs[], */
+  /*                              int num_inputs); */
   Op *materialize(FFModel &ff,
                   ParallelTensor inputs[],
                   int num_inputs) const override;
-  Params get_params() const;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXLOW_CAST_H
+#endif 

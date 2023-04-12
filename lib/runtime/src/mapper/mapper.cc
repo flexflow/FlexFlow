@@ -15,8 +15,9 @@
 
 #include "mapper.h"
 #include "pcg/machine_view.h"
-#include "runtime/tasks.h"
+#include "tasks.h"
 #include "default_mapper.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 
@@ -25,13 +26,23 @@ using namespace Mapping;
 
 LegionRuntime::Logger::Category log_ff_mapper("Mapper");
 
-int get_device_index(MachineView const &machine_view, DomainPoint const &point, Domain const &domain) {
+DeviceID get_device_index(MachineView const &machine_view, DomainPoint const &point, Domain const &domain) {
   assert(point.get_dim() == domain.get_dim());
   std::vector<int> idxs;
   for (int i = 0; i < point.get_dim(); i++) {
     idxs.push_back(point[i] - domain.lo()[i]);
   }
   return machine_view.at(idxs);
+}
+
+ShardID FFShardingFunctor::get_shard_id(DeviceID device_id, DeviceType device_type) const {
+  if (device_type == DeviceType::GPU) {
+    return device_id.value() / this->gpus_per_node;
+  } else if (device_type == DeviceType::CPU) {
+    return device_id.value() / this->cpus_per_node;
+  } else {
+    throw mk_runtime_error("Unknown DeviceType {}", device_type);
+  }
 }
 
 FFShardingFunctor::FFShardingFunctor(int _gpus_per_node,
@@ -41,22 +52,13 @@ FFShardingFunctor::FFShardingFunctor(int _gpus_per_node,
     : gpus_per_node(_gpus_per_node), cpus_per_node(_cpus_per_node),
       num_nodes(_num_nodes), machine_view(_mv) {}
 
-FFShardingFunctor::~FFShardingFunctor(void) {}
-
 ShardID FFShardingFunctor::shard(DomainPoint const &point,
                                  Domain const &full_space,
                                  const size_t total_shards) {
   assert(point.get_dim() == full_space.get_dim());
-  int device_id = get_device_index(this->machine_view, point, full_space);
+  DeviceID device_id = get_device_index(this->machine_view, point, full_space);
 
-  ShardID shard_id;
-  if (machine_view.device_type == DeviceType::GPU) {
-    shard_id = device_id / gpus_per_node;
-  } else if (machine_view.device_type == DeviceType::CPU) {
-    shard_id = device_id / cpus_per_node;
-  } else {
-    assert(false && "Unsupported device type");
-  }
+  ShardID shard_id = this->get_shard_id(device_id, machine_view.device_type);
   assert(shard_id < (size_t)num_nodes);
   // fprintf(stderr, "view.hash(%zu) shard_id(%zu)\n", machine_view.hash(),
   // shard_id);
@@ -123,8 +125,8 @@ FFMapper::FFMapper(MapperRuntime *rt,
   if (enable_control_replication) {
     log_ff_mapper.print("Enabled Control Replication Optimizations.");
   }
-  this->register_machine_view(FFConfig::DataParallelism_GPU, make_1d_machine_view(DeviceType::GPU, 0, all_gpus.size(), 1));
-  this->register_machine_view(FFConfig::DataParallelism_CPU, make_1d_machine_view(DeviceType::CPU, 0, all_cpus.size(), 1));
+  this->register_machine_view(FFConfig::DataParallelism_GPU, make_1d_machine_view(DeviceType::GPU, DeviceID(0), all_gpus.size(), 1));
+  this->register_machine_view(FFConfig::DataParallelism_CPU, make_1d_machine_view(DeviceType::CPU, DeviceID(0), all_cpus.size(), 1));
 
 
   assert(all_gpus.size() % total_nodes == 0);
@@ -159,8 +161,8 @@ void FFMapper::register_sharding_functors(Runtime *runtime,
   }
   NodesConfig nodes(num_nodes, gpus_per_node, cpus_per_node);
 
-  runtime->register_sharding_functor(FFConfig::DataParallelism_GPU, nodes.make_sharding_functor(make_1d_machine_view(DeviceType::GPU, 0, nodes.get_total_num_gpus(), 1)));
-  runtime->register_sharding_functor(FFConfig::DataParallelism_CPU, nodes.make_sharding_functor(make_1d_machine_view(DeviceType::CPU, 0, nodes.get_total_num_cpus(), 1)));
+  runtime->register_sharding_functor(FFConfig::DataParallelism_GPU, nodes.make_sharding_functor(make_1d_machine_view(DeviceType::GPU, DeviceID(0), nodes.get_total_num_gpus(), 1)));
+  runtime->register_sharding_functor(FFConfig::DataParallelism_CPU, nodes.make_sharding_functor(make_1d_machine_view(DeviceType::CPU, DeviceID(0), nodes.get_total_num_cpus(), 1)));
 
   assert(gpus_per_node > 0);
   assert(cpus_per_node > 0);
@@ -259,12 +261,12 @@ void FFMapper::select_task_options(const MapperContext ctx,
     if (machine_views.find(hash) != machine_views.end()) {
       MachineView view = machine_views.at(hash);
       if (view.num_devices() == 1) {
-        output.initial_proc = all_gpus[view.get_starting_device_id()];
+        output.initial_proc = this->get_processor(view.get_starting_device_id(), DeviceType::GPU);
         // Current assert this sould be a local proc
         assert(output.initial_proc.address_space() == node_id);
         return;
       } else {
-        output.initial_proc = all_gpus[view.get_starting_device_id()];
+        output.initial_proc = this->get_processor(view.get_starting_device_id(), DeviceType::GPU);
         return;
       }
     }
@@ -386,18 +388,18 @@ void FFMapper::slice_task(const MapperContext ctx,
     }
   }
   switch (input.domain.get_dim()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM: {                                                                  \
-    Rect<DIM> rect = input.domain;                                             \
-    int cnt = 0;                                                               \
-    for (PointInRectIterator<DIM> pir(rect); pir(); pir++) {                   \
-      int idx = get_device_index(view.value(), *pir, task.index_domain);       \
-      assert((size_t)idx < devices->size());                                   \
-      Rect<DIM> slice(*pir, *pir);                                             \
-      output.slices[cnt++] = TaskSlice(                                        \
-          slice, (*devices)[idx], false /*recurse*/, false /*stealable*/);     \
-    }                                                                          \
-    break;                                                                     \
+#define DIMFUNC(DIM)                                                             \
+  case DIM: {                                                                    \
+    Rect<DIM> rect = input.domain;                                               \
+    int cnt = 0;                                                                 \
+    for (PointInRectIterator<DIM> pir(rect); pir(); pir++) {                     \
+      int idx = get_device_index(view.value(), *pir, task.index_domain).value(); \
+      assert((size_t)idx < devices->size());                                     \
+      Rect<DIM> slice(*pir, *pir);                                               \
+      output.slices[cnt++] = TaskSlice(                                          \
+          slice, (*devices)[idx], false /*recurse*/, false /*stealable*/);       \
+    }                                                                            \
+    break;                                                                       \
   }
     LEGION_FOREACH_N(DIMFUNC)
 #undef DIMFUNC
@@ -668,7 +670,7 @@ void FFMapper::select_task_sources(const MapperContext ctx,
       // Found a strategy
       view = machine_views.at(hash);
     }
-    Processor parameter_server = all_gpus.at(view->get_starting_device_id());
+    Processor parameter_server = this->get_processor(view->get_starting_device_id(), DeviceType::GPU);
     // Prefer instances located on the parameter server
     Memory ps_memory = proc_fbmems[parameter_server];
     default_policy_select_sources(ctx,

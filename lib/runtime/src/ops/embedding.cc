@@ -364,7 +364,7 @@ void Embedding::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Embedding::init_task(Task const *task,
+PerDeviceOpState *Embedding::init_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
@@ -1182,7 +1182,7 @@ void Embedding::backward_task_cpu(Task const *task,
 }
 
 EmbeddingMeta::EmbeddingMeta(FFHandler _handle, Op const *op)
-    : OpMeta(_handle, op) {}
+    : PerDeviceOpState(_handle, op) {}
 }
 ; // namespace FlexFlow
 

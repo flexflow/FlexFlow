@@ -1,27 +1,21 @@
 #ifndef _FLEXFLOW_LINEAR_H
 #define _FLEXFLOW_LINEAR_H
 
-#include "flexflow/node.h"
+#include "layer_id.h"
+#include "layer.h"
 #include "operator.h"
-#include "op-attrs/linear_params.h"
 
 namespace FlexFlow {
 
-class FFModel;
-class Layer;
-
 class Linear : public Op {
 public:
-  using Params = LinearParams;
-  using Input = ParallelTensor;
-
   Linear(FFModel &model,
          LayerID const &layer_guid,
-         const ParallelTensor input,
+         ParallelTensor const &input,
          int out_dim,
          ActiMode activation,
-         bool _use_bias,
-         DataType _data_type,
+         bool use_bias,
+         DataType data_type,
          bool allocate_weights,
          char const *name);
   Linear(FFModel &model,
@@ -29,7 +23,7 @@ public:
          ParallelTensor const input,
          bool allocate_weights);
   Linear(FFModel &model,
-         LinearParams const &params,
+         LinearAttrs const &attrs,
          ParallelTensor input,
          char const *name = nullptr,
          bool allocate_weights = false);
@@ -37,13 +31,11 @@ public:
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override;
-  bool get_int_parameter(PMParameter, int *) const override;
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -61,18 +53,15 @@ public:
   bool estimate_sync_cost(Simulator *sim,
                           MachineView const &pc,
                           CostMetrics &cost_metrics) const override;
-  ParallelConfig get_random_parallel_config(FFModel const &ff) const override;
-  bool is_valid_parallel_config(FFModel const &ff,
-                                ParallelConfig const &pc) const override;
+  /* ParallelConfig get_random_parallel_config(FFModel const &ff) const override; */
+  /* bool is_valid_parallel_config(FFModel const &ff, */
+  /*                               ParallelConfig const &pc) const override; */
 
   void serialize(Legion::Serializer &) const override;
-  static PCG::Node deserialize(FFModel &ff,
-                               Legion::Deserializer &d,
-                               ParallelTensor inputs[],
-                               int num_inputs);
-
-  // size_t get_params_hash() const override;
-  LinearParams get_params() const;
+  /* static PCG::Node deserialize(FFModel &ff, */
+  /*                              Legion::Deserializer &d, */
+  /*                              ParallelTensor inputs[], */
+  /*                              int num_inputs); */
 
 private:
   Linear(int guid,
@@ -85,7 +74,7 @@ private:
          char const *name);
 
   template <int NDIM>
-  static OpMeta *
+  static PerDeviceOpState *
       init_task_with_dim(Legion::Task const *task,
                          std::vector<Legion::PhysicalRegion> const &regions,
                          Legion::Context ctx,
@@ -114,6 +103,6 @@ public:
   ParallelTensor replica;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXLOW_LINEAR_H
+#endif

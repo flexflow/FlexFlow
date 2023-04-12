@@ -1,13 +1,12 @@
 #ifndef _FLEXFLOW_PARALLEL_OP_H
 #define _FLEXFLOW_PARALLEL_OP_H
 
-#include "flexflow/model.h"
-#include "tl/optional.hpp"
+#include "utils/optional.h"
 
 namespace FlexFlow {
 
 struct ParallelOpJoinResult {
-  tl::optional<ParallelOpInfo> op = tl::nullopt;
+  optional<ParallelOpInfo> op = nullopt;
   bool join_did_succeed = false;
 };
 
@@ -24,7 +23,6 @@ public:
   virtual void forward(FFModel const &) = 0;
   virtual void backward(FFModel const &) = 0;
   virtual void create_input_partition(FFModel &model) = 0;
-  void print_layer(FFModel const &model){};
   virtual bool measure_operator_cost(Simulator *sim,
                                      MachineView const &pc,
                                      CostMetrics &cost_metrics) const = 0;
@@ -36,6 +34,6 @@ public:
   Legion::LogicalPartition input_lp, output_grad_lp;
 };
 
-}; // namespace FlexFlow
+}
 
-#endif // _FLEXFLOW_PARALLEL_OP_H
+#endif

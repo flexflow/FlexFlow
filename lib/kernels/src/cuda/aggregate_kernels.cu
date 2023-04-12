@@ -15,7 +15,6 @@
 
 #include "kernels/aggregate_kernels.h"
 #include "kernels/cuda_helper.h"
-#include "aggregate_kernels.h"
 
 namespace FlexFlow {
 
@@ -30,7 +29,6 @@ AggregatePerDeviceState::~AggregatePerDeviceState(void) {
 
 namespace Kernels {
 namespace Aggregate {
-namespace Internal {
 
 __global__ void agg_forward_kernel(float **exp_preds,
                                    int const *exp_assign,
@@ -213,36 +211,25 @@ __global__ void agg_backward_kernel(float **exp_preds,
 }
 
 
-} // namespace Internal
-
-
-void forward_kernel_wrapper(AggregatePerDeviceState const *m,
-                                       float **exp_preds,
-                                       int const *acc_gate_assign_ptr,
-                                       float const *acc_gate_pred_ptr,
-                                       float *acc_output_ptr,
-                                       int n,
-                                       int const k,
-                                       int rows,
-                                       int const batch_size,
-                                       int out_dim) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+void forward_kernel(cudaStream_t stream,
+                            AggregatePerDeviceState const *m,
+                            float **exp_preds,
+                            int const *acc_gate_assign_ptr,
+                            float const *acc_gate_pred_ptr,
+                            float *acc_output_ptr,
+                            int n,
+                            int const k,
+                            int rows,
+                            int const batch_size,
+                            int out_dim) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
 
   // call forward_kernel
   cudaMemcpy(
       m->dev_exp_preds, exp_preds, n * sizeof(float *), cudaMemcpyHostToDevice);
 
-  Internal::agg_forward_kernel<<<GET_BLOCKS(batch_size * k * out_dim),
+  agg_forward_kernel<<<GET_BLOCKS(batch_size * k * out_dim),
                        min(CUDA_NUM_THREADS, (int)(batch_size * k * out_dim)),
                        0,
                        stream>>>(m->dev_exp_preds,
@@ -254,18 +241,9 @@ void forward_kernel_wrapper(AggregatePerDeviceState const *m,
                                  rows,
                                  batch_size,
                                  out_dim);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("[Aggregate] forward time = %.2lfms\n", elapsed);
-  }
 }
 
-void backward_kernel_wrapper(AggregatePerDeviceState const *m,
+void backward_kernel(cudaStream_t stream, AggregatePerDeviceState const *m,
                                         float **exp_preds,
                                         float **exp_grads,
                                         int const *acc_gate_assign_ptr,
@@ -279,24 +257,16 @@ void backward_kernel_wrapper(AggregatePerDeviceState const *m,
                                         float lambda_bal,
                                         int const batch_size,
                                         int out_dim) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
 
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
   // call backward kernel
   cudaMemcpy(
       m->dev_exp_preds, exp_preds, n * sizeof(float *), cudaMemcpyHostToDevice);
   cudaMemcpy(
       m->dev_exp_grads, exp_grads, n * sizeof(float *), cudaMemcpyHostToDevice);
 
-  Internal::agg_backward_kernel<<<GET_BLOCKS(batch_size * k * out_dim),
+  agg_backward_kernel<<<GET_BLOCKS(batch_size * k * out_dim),
                         min(CUDA_NUM_THREADS, (int)(batch_size * k * out_dim)),
                         0,
                         stream>>>(m->dev_exp_preds,
@@ -312,15 +282,6 @@ void backward_kernel_wrapper(AggregatePerDeviceState const *m,
                                   lambda_bal,
                                   batch_size,
                                   out_dim);
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("[Aggregate] backward time = %.2lfms\n", elapsed);
-  }
 }
 } 
 }

@@ -16,7 +16,7 @@
 #include "reshape.h"
 #include "model.h"
 #include "kernels/reshape_kernels.h"
-#include "utils/hash_utils.h"
+#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {
@@ -172,7 +172,7 @@ void Reshape::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Reshape::init_task(Task const *task,
+PerDeviceOpState *Reshape::init_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
                            Runtime *runtime) {

@@ -25,15 +25,7 @@ target_link_libraries(
   op-attrs
 )
 
-if (FF_GPU_BACKEND STREQUAL "cuda")
-  target_compile_definitions(${project_target} PUBLIC FF_USE_CUDA)
-elseif (FF_GPU_BACKEND STREQUAL "hip_cuda")
-  target_compile_definitions(${project_target} PUBLIC FF_USE_HIP_CUDA)
-elseif (FF_GPU_BACKEND STREQUAL "hip_rocm")
-  target_compile_definitions(${project_target} PUBLIC FF_USE_HIP_ROCM)
-endif()
-
-target_compile_definitions(${project_target} PUBLIC MAX_TENSOR_DIM)
+define_ff_vars(kernels)
 
 set_target_properties(
   ${project_target} 

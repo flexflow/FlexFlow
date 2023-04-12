@@ -15,7 +15,7 @@
 
 #include "cast.h"
 #include "model.h"
-#include "utils/hash_utils.h"
+#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
 
 using namespace FlexFlow::Kernels::Cast;
@@ -135,7 +135,7 @@ void Cast::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *Cast::init_task(Task const *task,
+PerDeviceOpState *Cast::init_task(Task const *task,
                         std::vector<PhysicalRegion> const &regions,
                         Context ctx,
                         Runtime *runtime) {

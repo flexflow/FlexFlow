@@ -25,13 +25,6 @@ namespace FlexFlow {
 // ========================================================
 // Define Runtime Constants
 // ========================================================
-#define MAX_NUM_FUSED_OPERATORS 64
-#define MAX_NUM_FUSED_TENSORS 64
-/* #define MAX_NUM_WORKERS 1024 */
-#define MAX_FILENAME 200
-// DataLoader
-#define MAX_SAMPLES_PER_LOAD 64
-#define MAX_FILE_LENGTH 128
 // Pre-assigned const flags
 #define MAP_TO_FB_MEMORY 0xABCD0000
 #define MAP_TO_ZC_MEMORY 0xABCE0000
@@ -42,21 +35,18 @@ constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::NCCL;
 constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::PS;
 #endif
 
-class FFConfig;
-
-
 struct FFInitInfo {
   size_t workSpaceSize;
   bool allowTensorOpMathConversion;
-  // int myRank, allRanks;
 };
 
-// bool load_strategies_from_file(const std::string& filename,
-//          std::map<Legion::MappingTagID, ParallelConfig>& strategies);
+struct LegionConfig {
+  LegionConfig();
 
-// bool save_strategies_to_file(const std::string& filename,
-//                              const std::map<std::string, ParallelConfig>&
-//                              strategies);
+  Legion::Context lg_ctx;
+  Legion::Runtime *lg_hlr;
+  Legion::FieldSpace field_space;
+};
 
 class FFConfig {
 public:
@@ -75,54 +65,44 @@ public:
   };
 
   FFConfig();
-  // bool load_strategy_file(std::string filename);
-  // bool save_strategy_file(std::string filename);
   static Legion::MappingTagID get_hash_id(std::string const &pcname);
-  // bool find_parallel_config(int ndims,
-  //                           const std::string& pcname,
-  //                           ParallelConfig& config) const;
 public:
-  int epochs, batchSize, printFreq;
-  // int inputHeight, inputWidth;
-  int numNodes, cpusPerNode, workersPerNode;
-  float learningRate, weightDecay;
-  size_t workSpaceSize;
-  Legion::Context lg_ctx;
-  Legion::Runtime *lg_hlr;
-  Legion::FieldSpace field_space;
-  bool syntheticInput, profiling, perform_fusion;
-  size_t simulator_work_space_size;
-  size_t search_budget;
-  float search_alpha;
-  bool search_overlap_backward_update;
-  CompMode computationMode;
+  int epochs = 1;
+  int batchSize = 64;
+  int numNodes = 1;
+  int cpusPerNode = 0;
+  int workersPerNode = 0;
+  float learningRate = 0.01f;
+  float weightDecay = 0.0001f;
+  size_t workSpaceSize = (size_t)1 * 1024 * 1024 * 1024; // 2GB
+  bool profiling = false; 
+  LegionConfig legion_config;
+  bool perform_fusion = false;
+  size_t simulator_work_space_size = (size_t)2 * 1024 * 1024 * 1024; // 2GB
+  size_t search_budget = -1;
+  float search_alpha = 1.2f;
+  bool search_overlap_backward_update = false;
+  CompMode computationMode = COMP_MODE_TRAINING;
   // Control parallelizable dimensions
-  bool only_data_parallel;
-  bool enable_sample_parallel;
-  bool enable_parameter_parallel;
-  bool enable_attribute_parallel;
-  bool enable_inplace_optimizations;
+  bool only_data_parallel = false;
+  bool enable_parameter_parallel = false;
+  bool enable_inplace_optimizations = false;
   // Control Tensor Op Math Conversion
-  bool allow_tensor_op_math_conversion;
-  std::string dataset_path;
-  std::string import_strategy_file;
-  std::string export_strategy_file;
-  std::string export_strategy_task_graph_file;
-  std::string export_strategy_computation_graph_file;
-  bool include_costs_dot_graph;
-  tl::optional<std::string> substitution_json_path = tl::nullopt;
-  // We use MappingTagID as the key since we will pass the tag to the mapper
-  // std::map<Legion::MappingTagID, ParallelConfig> strategies;
-  int machine_model_version;
-  std::string machine_model_file;
-  int simulator_segment_size;
-  int simulator_max_num_segments;
-  bool enable_propagation;
-  tl::optional<int> search_num_nodes = tl::nullopt;
-  tl::optional<int> search_num_workers = tl::nullopt;
-  int base_optimize_threshold;
-  bool enable_control_replication;
-  int python_data_loader_type;
+  bool allow_tensor_op_math_conversion = false;
+  optional<std::string> dataset_path = nullopt;
+  optional<std::string> export_strategy_computation_graph_file = nullopt;
+  bool include_costs_dot_graph = false;
+  optional<std::string> substitution_json_path = nullopt;
+  int machine_model_version = 0;
+  optional<std::string> machine_model_file = nullopt;
+  int simulator_segment_size = 16777216; // 16 MB
+  int simulator_max_num_segments = 1;
+  optional<int> search_num_nodes = nullopt;
+  optional<int> search_num_workers = nullopt;
+  int base_optimize_threshold = 10;
+  bool enable_control_replication = true;
+  // The default python data loader type is 2 to enable control replication
+  int python_data_loader_type = 2;
 };
 
 class FFIterationConfig {
@@ -136,6 +116,6 @@ enum FieldIDs {
   FID_DATA,
 };
 
-}; // namespace FlexFlow
+}
 
-#endif //_FLEXFLOW_CONFIG_H_
+#endif 

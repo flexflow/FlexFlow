@@ -16,7 +16,7 @@
 #include "layer_norm.h"
 #include "kernels/layer_norm_kernels.h"
 #include "model.h"
-#include "utils/hash_utils.h"
+#include "utils/hash-utils.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {
@@ -220,7 +220,7 @@ void LayerNorm::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-OpMeta *LayerNorm::init_task(Task const *task,
+PerDeviceOpState *LayerNorm::init_task(Task const *task,
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {

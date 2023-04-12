@@ -2,32 +2,23 @@
 #define _FLEXFLOW_SPLIT_ATTRS_H
 
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/ops/unary_op.h"
-#include "visit_struct/visit_struct.hpp"
+#include "utils/visitable.h"
+#include "op-attrs/ff_dim.h"
 
 namespace FlexFlow {
 
-struct SplitAttrs : public UnaryInputOpAttrs {
+struct SplitAttrs : public use_visitable_cmp<SplitAttrs> {
 public:
-  std::vector<ParallelTensorShape> output_shapes(ParallelTensorShape const &input_shape) const override;
-  OperatorType op_type() const override;
+  SplitAttrs() = delete;
+  SplitAttrs(stack_vector<int, MAX_NUM_OUTPUTS> const &splits, ff_dim_t axis);
 public:
-  std::vector<int> splits;
-  int legion_axis;
+  stack_vector<int, MAX_NUM_OUTPUTS> splits;
+  ff_dim_t axis;
 };
-
-bool operator==(SplitAttrs const &, SplitAttrs const &);
-bool operator<(SplitAttrs const &, SplitAttrs const &);
 
 }
 
-VISITABLE_STRUCT(::FlexFlow::SplitAttrs, splits, legion_axis);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::SplitAttrs> {
-  size_t operator()(::FlexFlow::SplitAttrs const &) const;
-};
-} 
+VISITABLE_STRUCT(::FlexFlow::SplitAttrs, splits, axis);
+MAKE_VISIT_HASHABLE(::FlexFlow::SplitAttrs);
 
 #endif 

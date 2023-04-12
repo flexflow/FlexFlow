@@ -14,19 +14,20 @@ public:
             float _lambda_bal,
             char const *name);
   Aggregate(FFModel &model,
+            ParallelTensor const *inputs, 
+            AggregateAttrs const &attrs,
+            char const *name);
+  Aggregate(FFModel &model,
             Aggregate const &other,
             std::vector<ParallelTensor> const &inputs);
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
-  void print_layer(FFModel const &model) override {
-    assert(0);
-  }
   static Op *
       create_operator_from_layer(FFModel &model,
                                  Layer const *layer,
                                  std::vector<ParallelTensor> const &inputs);
-  static OpMeta *init_task(Legion::Task const *task,
+  static PerDeviceOpState *init_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
@@ -43,13 +44,20 @@ public:
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
 
-  OpTasksSpec get_tasks_spec() const override;
-
+  OpTaskBinding get_init_task_binding() const override;
+  TaskID get_init_task_id() const override;
+  OpTaskBinding get_fwd_task_binding() const override;
+  TaskID get_fwd_task_id() const override;
+  OpTaskBinding get_bwd_task_binding() const override;
+  TaskID get_bwd_task_id() const override;
 public:
-  int n;
-  float lambda_bal;
+  AggregateAttrs attrs;
 };
 
-}; // namespace FlexFlow
+template <> OpTaskSignature get_signature<AGGREGATE_INIT_TASK_ID>();
+template <> OpTaskSignature get_signature<AGGREGATE_FWD_TASK_ID>();
+template <> OpTaskSignature get_signature<AGGREGATE_BWD_TASK_ID>();
+
+}
 
 #endif

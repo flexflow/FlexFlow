@@ -2,32 +2,22 @@
 #define _FLEXFLOW_GATHER_ATTRS_H
 
 #include "op-attrs/parallel_tensor_shape.h"
-#include "visit_struct/visit_struct.hpp"
-#include "binary_op.h"
+#include "utils/visitable.h"
+#include "op-attrs/ff_dim.h"
 
 namespace FlexFlow {
 
-struct GatherAttrs : public BinaryOpAttrs {
+struct GatherAttrs : public use_visitable_cmp<GatherAttrs> {
 public:
-  ParallelTensorShape output_shape(ParallelTensorShape const &, ParallelTensorShape const &) const override;
-  OperatorType op_type() const override;
-  bool is_valid(ParallelTensorShape const &, ParallelTensorShape const &) const override;
+  GatherAttrs() = delete;
+  GatherAttrs(ff_dim_t);
 public:
-  int legion_dim;
+  ff_dim_t dim;
 };
-
-bool operator==(GatherAttrs const &, GatherAttrs const &);
-bool operator<(GatherAttrs const &, GatherAttrs const &);
 
 }
 
-VISITABLE_STRUCT(::FlexFlow::GatherAttrs, legion_dim);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::GatherAttrs> {
-  size_t operator()(::FlexFlow::GatherAttrs const &) const;
-};
-} 
+VISITABLE_STRUCT(::FlexFlow::GatherAttrs, dim);
+MAKE_VISIT_HASHABLE(::FlexFlow::GatherAttrs);
 
 #endif 

@@ -13,6 +13,8 @@
 #include <vector>
 #include <cassert>
 #include "bidict.h"
+#include "stack_map.h"
+#include <map>
 
 namespace FlexFlow {
 
@@ -78,6 +80,16 @@ bool contains_key(std::unordered_map<K, V> const &m, K const &k) {
 }
 
 template <typename K, typename V>
+bool contains_key(std::map<K, V> const &m, K const &k) {
+  return m.find(k) != m.end();
+}
+
+template <typename K, typename V, size_t MAXSIZE>
+bool contains_key(stack_map<K, V, MAXSIZE> const &m, K const &k) {
+  return m.find(k) != m.end();
+}
+
+template <typename K, typename V>
 bool contains_l(bidict<K, V> const &m, K const &k) {
   return m.find(k) != m.end();
 }
@@ -87,21 +99,20 @@ bool contains_r(bidict<K, V> const &m, V const &v) {
   return m.find(v) != m.end();
 }
 
-template <typename K, typename V>
-std::unordered_set<K> keys(std::unordered_map<K, V> const &m) {
-  std::unordered_set<K> result;
-  for (auto const &kv : m) {
-    result.insert(kv.first);
+template <typename C>
+std::vector<typename C::key_type> keys(C const &c) {
+  std::vector<typename C::key_type> result;
+  for (auto const &kv : c) {
+    result.push_back(kv.first);
   }
   return result;
 }
 
-
-template <typename K, typename V>
-std::unordered_set<K> keys(bidict<K, V> const &m) {
-  std::unordered_set<K> result;
-  for (auto const &kv : m) {
-    result.insert(kv.first);
+template <typename C>
+std::vector<typename C::mapped_type> values(C const &c) {
+  std::vector<typename C::mapped_type> result;
+  for (auto const &kv : c) {
+    result.push_back(kv.second);
   }
   return result;
 }
@@ -217,10 +228,10 @@ std::unordered_set<D> map_over_unordered_set(std::function<D(S const &)> const &
   return result;
 }
 
-template <typename T>
-T get_only(std::unordered_set<T> const &s) {
-  assert (s.size() == 1);
-  return *s.cbegin(); 
+template <typename C>
+typename C::value_type get_only(C const &c) {
+  assert (c.size() == 1);
+  return *c.cbegin(); 
 }
 
 template <typename T>
@@ -244,11 +255,27 @@ bool all_of(C const &c, F const &f) {
   return true;
 }
 
+template <typename C>
+bool are_all_same(C const &c) {
+  auto const &first = *c.cbegin();
+  for (auto const &v : c) {
+    if (v != first) {
+      return false;
+    }
+  }
+  return true;
+}
+
 template <typename F, typename In, typename Out = decltype(std::declval<F>()(std::declval<In>()))>
 std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
   std::vector<Out> result;
   std::transform(v.cbegin(), v.cend(), std::back_inserter(result), f);
   return result;
+}
+
+template <typename F, typename Elem>
+void inplace_filter(std::vector<Elem> &v, F const &f) {
+  std::remove_if(v.begin(), v.end(), [&](Elem const &e) { return !f(e); });
 }
 
 template <typename T>
@@ -260,6 +287,36 @@ std::pair<std::vector<T>, std::vector<T>> vector_split(std::vector<T> const &v, 
   return { prefix, postfix };
 }
 
+
+template <typename T>
+T maximum(std::vector<T> const &v) {
+  return std::max_element(v.begin(), v.end());
+}
+
+template <typename T, size_t MAXSIZE>
+T maximum(stack_vector<T, MAXSIZE> const &v) {
+  return std::max_element(v.begin(), v.end());
+}
+
+template <typename T>
+T reversed(T const &t) {
+  T r;
+  for (auto i = t.cend() - 1; i >= t.begin(); i++) {
+    r.push_back(*i);
+  }
+  return r;
+}
+
+template <typename T>
+std::vector<T> value_all(std::vector<optional<T>> const &v) {
+  std::vector<T> result; 
+  
+  for (auto const &element : v) {
+    result.push_back(element.value());
+  }
+
+  return result;
+}
 
 }
 

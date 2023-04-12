@@ -1,20 +1,20 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_REPLICATE_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_REPLICATE_KERNELS_H
 
-#include "device.h"
-#include "fftype.h"
+#include "kernels/accessor.h"
+#include "kernels/device.h"
 
 namespace FlexFlow {
 namespace Kernels {
 namespace Replicate {
 
-template <typename T>
-void forward_kernel(T const *input_ptr, T *output_ptr, size_t num_elements);
+void forward_kernel(ffStream_t stream,
+                    GenericTensorAccessorR const &input,
+                    GenericTensorAccessorW const &output);
 
-template <typename T>
-void backward_kernel(T const *output_grad_ptr,
-                     T *input_grad_ptr,
-                     size_t num_elements,
+void backward_kernel(ffStream_t stream,
+                     GenericTensorAccessorW const &input,
+                     GenericTensorAccessorR const &output,
                      size_t num_replicas);
 
 } // namespace Replicate

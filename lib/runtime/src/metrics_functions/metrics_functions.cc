@@ -15,7 +15,7 @@
 
 #include "metrics_functions.h"
 #include "model.h"
-#include "runtime/tasks.h"
+#include "tasks.h"
 
 namespace FlexFlow {
 
@@ -70,8 +70,8 @@ void Metrics::compute(FFModel *model,
                       const ParallelTensor logit,
                       const ParallelTensor label) {
   // Use the same parallel strategy as the owner of logit
-  Context ctx = model->config.lg_ctx;
-  Runtime *runtime = model->config.lg_hlr;
+  Context ctx = model->config.legion_config.lg_ctx;
+  Runtime *runtime = model->config.legion_config.lg_hlr;
   Domain part_domain = runtime->get_index_space_domain(ctx, logit->parallel_is);
   Domain logit_domain = runtime->get_index_partition_color_space(
       ctx, logit->part.get_index_partition());
@@ -247,4 +247,4 @@ void PerfMetrics::print(Metrics const *m) {
   fprintf(stderr, "%s\n", output.c_str());
 }
 
-}; // namespace FlexFlow
+}
