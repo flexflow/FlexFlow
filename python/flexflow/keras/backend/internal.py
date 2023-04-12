@@ -277,8 +277,6 @@ class Gather(Layer):
   def _calculate_inout_shape(self, input_tensors):
     self.input_shape = input_tensors[0].batch_shape
     self.output_shape = input_tensors[1].batch_shape
-    # self.output_shape = input_tensors[0].batch_shape
-    # self.output_shape[self.axis] = len(input_tensors[1])
     fflogger.debug("add output %s" %( str(self.output_shape)))
 
   def get_summary(self):
