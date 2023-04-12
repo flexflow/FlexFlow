@@ -1,15 +1,10 @@
 #include "op-attrs/ops/batch_matmul.h"
-#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 
-bool operator==(BatchMatmulAttrs const &lhs, BatchMatmulAttrs const &rhs) {
-  return visit_eq(lhs, rhs);
-}
-
-bool operator<(BatchMatmulAttrs const &lhs, BatchMatmulAttrs const &rhs) {
-  return visit_lt(lhs, rhs);
-}
+BatchMatmulAttrs::BatchMatmulAttrs(int _a_seq_length_dim, int _b_seq_length_dim)
+  : a_seq_length_dim(_a_seq_length_dim), b_seq_length_dim(_b_seq_length_dim)
+{ }
 
 /* bool BatchMatmulAttrs::is_valid( */
 /*     ParallelTensorShape const &lhs, ParallelTensorShape const &rhs) const { */
@@ -30,15 +25,5 @@ bool operator<(BatchMatmulAttrs const &lhs, BatchMatmulAttrs const &rhs) {
 
 /*   return true; */
 /* } */
-
-}
-
-namespace std {
-
-using ::FlexFlow::BatchMatmulAttrs;
-
-size_t hash<BatchMatmulAttrs>::operator()(BatchMatmulAttrs const &p) const {
-  return visit_hash(p);
-}
 
 }

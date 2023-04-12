@@ -9,13 +9,10 @@
 
 namespace FlexFlow {
 
-struct DirectedEdge {
+struct DirectedEdge : use_visitable_cmp<DirectedEdge> {
 public:
   DirectedEdge() = delete;
   DirectedEdge(Node src, Node dst);
-
-  bool operator==(DirectedEdge const &) const;
-  bool operator<(DirectedEdge const &) const;
 public:
   Node src, dst;
 };
@@ -23,12 +20,8 @@ std::ostream &operator<<(std::ostream &, DirectedEdge const &);
 
 }
 
-namespace std {
-template <>
-struct hash<::FlexFlow::DirectedEdge> {
-  std::size_t operator()(::FlexFlow::DirectedEdge const &) const;
-};
-}
+VISITABLE_STRUCT(::FlexFlow::DirectedEdge, src, dst);
+MAKE_VISIT_HASHABLE(::FlexFlow::DirectedEdge);
 
 namespace FlexFlow {
 
@@ -103,7 +96,5 @@ static_assert(std::is_copy_assignable<DiGraph>::value, "");
 static_assert(std::is_move_assignable<DiGraph>::value, "");
 
 }
-
-VISITABLE_STRUCT(::FlexFlow::DirectedEdge, src, dst);
 
 #endif

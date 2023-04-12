@@ -9,15 +9,10 @@
 
 namespace FlexFlow {
 
-struct MultiDiEdge {
+struct MultiDiEdge : use_visitable_cmp<MultiDiEdge> {
 public:
   MultiDiEdge() = delete;
   MultiDiEdge(Node src, Node dst, size_t srcIdx, size_t dstIdx);
-
-  bool operator==(MultiDiEdge const &) const;
-  bool operator<(MultiDiEdge const &) const;
-
-  std::string to_string() const;
 public:
   Node src, dst;
   std::size_t srcIdx, dstIdx;
@@ -27,14 +22,7 @@ std::ostream &operator<<(std::ostream &, MultiDiEdge const &);
 }
 
 VISITABLE_STRUCT(::FlexFlow::MultiDiEdge, src, dst, srcIdx, dstIdx);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::MultiDiEdge> {
-  std::size_t operator()(::FlexFlow::MultiDiEdge const &) const;
-};
-}
-
+MAKE_VISIT_HASHABLE(::FlexFlow::MultiDiEdge);
 
 namespace FlexFlow {
 

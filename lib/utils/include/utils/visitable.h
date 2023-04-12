@@ -1,86 +1,118 @@
 #ifndef _FLEXFLOW_INCLUDE_UTILS_VISITABLE_H
 #define _FLEXFLOW_INCLUDE_UTILS_VISITABLE_H
 
-#include "visit_struct/visit_struct.hpp"
-
-#define VISITABLE_STRUCT_EMPTY(STRUCT_NAME)                                                     \
-namespace visit_struct {                                                                           \
-namespace traits {                                                                                 \
-                                                                                                   \
-template <>                                                                                        \
-struct visitable<STRUCT_NAME, void> {                                                              \
-                                                                                                   \
-  using this_type = STRUCT_NAME;                                                                   \
-                                                                                                   \
-  static VISIT_STRUCT_CONSTEXPR auto get_name()                                                    \
-    -> decltype(#STRUCT_NAME) {                                                                    \
-    return #STRUCT_NAME;                                                                           \
-  }                                                                                                \
-                                                                                                   \
-  static VISIT_STRUCT_CONSTEXPR const std::size_t field_count = 0;                                 \
-                                                                                                   \
-  template <typename V, typename S>                                                                \
-  VISIT_STRUCT_CXX14_CONSTEXPR static void apply(V && visitor, S && struct_instance)               \
-  {                                                                                                \
-  }                                                                                                \
-                                                                                                   \
-  template <typename V, typename S1, typename S2>                                                  \
-  VISIT_STRUCT_CXX14_CONSTEXPR static void apply(V && visitor, S1 && s1, S2 && s2)                 \
-  {                                                                                                \
-  }                                                                                                \
-                                                                                                   \
-  template <typename V>                                                                            \
-  VISIT_STRUCT_CXX14_CONSTEXPR static void visit_pointers(V && visitor)                            \
-  {                                                                                                \
-  }                                                                                                \
-                                                                                                   \
-  template <typename V>                                                                            \
-  VISIT_STRUCT_CXX14_CONSTEXPR static void visit_types(V && visitor)                               \
-  {                                                                                                \
-  }                                                                                                \
-                                                                                                   \
-  template <typename V>                                                                            \
-  VISIT_STRUCT_CXX14_CONSTEXPR static void visit_accessors(V && visitor)                           \
-  {                                                                                                \
-  }                                                                                                \
-                                                                                                   \
-  struct fields_enum {                                                                             \
-    enum index { };                                                                                \
-  };                                                                                               \
-                                                                                                   \
-  static VISIT_STRUCT_CONSTEXPR const bool value = true;                                           \
-};                                                                                                 \
-                                                                                                   \
-}                                                                                                  \
-}                                                                                                  \
-static_assert(true, "")
+#include "utils/hash-utils.h"
+#include "utils/type_traits.h"
 
 namespace FlexFlow {
 
-template <typename T>
-using is_visitable = ::visit_struct::traits::is_visitable<T>;
+struct eq_visitor {
+  bool result = true;
 
-template <typename ...Args> struct tuple_prepend;
-
-template <typename T, typename ...Args> 
-struct tuple_prepend<T, std::tuple<Args...>> {
-  using type = std::tuple<T, Args...>;
-};
-template <typename T, int i, typename Enable = void> struct visit_as_tuple_helper;
-
-template <typename T, int i>
-struct visit_as_tuple_helper<T, i, typename std::enable_if<(i < visit_struct::traits::visitable<T>::field_count)>::type> {
-  using type = typename tuple_prepend<typename visit_struct::type_at<i, T>, typename visit_as_tuple_helper<T, i+1>::type>::type;
-};
-
-template <typename T, int i>
-struct visit_as_tuple_helper<T, i, typename std::enable_if<(i == visit_struct::traits::visitable<T>::field_count)>::type> {
-  using type = std::tuple<>;
+  template <typename T>
+  void operator()(const char *, T const &t1, T const &t2) {
+    result &= (t1 == t2);
+  }
 };
 
 template <typename T>
-using visit_as_tuple = typename visit_as_tuple_helper<T, 0>::type;
+bool visit_eq(T const &lhs, T const &rhs) {
+  static_assert(is_visitable<T>::value, "Type must be visitable");
+  static_assert(elements_satisfy<is_equal_comparable, T>::value, "Values must be comparable via operator==");
 
+  eq_visitor vis;
+  visit_struct::for_each(lhs, rhs, vis);
+  return vis.result;
 }
+
+struct neq_visitor {
+  bool result = false;
+
+  template <typename T>
+  void operator()(const char *, T const &t1, T const &t2) {
+    result |= (t1 != t2);
+  }
+};
+
+template <typename T>
+bool visit_neq(T const &lhs, T const &rhs) {
+  static_assert(is_visitable<T>::value, "Type must be visitable");
+  static_assert(elements_satisfy<is_neq_comparable, T>::value, "Values must be comparable via operator!=");
+
+  neq_visitor vis;
+  visit_struct::for_each(lhs, rhs, vis);
+  return vis.result;
+}
+
+struct lt_visitor {
+  bool result = true;
+
+  template <typename T>
+  void operator()(const char *, const T & t1, const T & t2) {
+    result = result && (t1 < t2);
+  }
+};
+
+template <typename T>
+bool visit_lt(const T & t1, const T & t2) {
+  static_assert(is_visitable<T>::value, "Type must be visitable");
+  static_assert(elements_satisfy<is_lt_comparable, T>::value, "Values must be comparable via operator<");
+
+  eq_visitor vis;
+  visit_struct::for_each(t1, t2, vis);
+  return vis.result;
+}
+
+struct hash_visitor {
+  std::size_t result = 0;
+
+  template <typename T>
+  void operator()(const char *, T const &t1) {
+    hash_combine(result, t1);
+  }
+};
+
+template <typename T>
+std::size_t visit_hash(T const &t) {
+  static_assert(is_visitable<T>::value, "Type must be visitable");
+  static_assert(elements_satisfy<is_hashable, T>::value, "Values must be hashable");
+
+  hash_visitor vis;
+  visit_struct::for_each(t, vis);
+  return vis.result;
+}
+
+template <typename T>
+struct use_visitable_eq {
+  friend bool operator==(T const &lhs, T const &rhs) {
+    return visit_eq(lhs, rhs);
+  }
+
+  friend bool operator!=(T const &lhs, T const &rhs) {
+    return visit_neq(lhs, rhs);
+  }
+};
+
+template <typename T>
+struct use_visitable_cmp : use_visitable_eq<T> {
+  friend bool operator<(T const &lhs, T const &rhs) {
+    return visit_lt(lhs, rhs);
+  }
+};
+
+template <typename T>
+struct use_visitable_hash {
+  std::size_t operator()(T const &t) const {
+    return visit_hash(t);
+  }
+};
+}
+
+#define MAKE_VISIT_HASHABLE(TYPENAME) \
+  namespace std { \
+    template <> \
+    struct hash<TYPENAME> : ::FlexFlow::use_visitable_hash<TYPENAME> { }; \
+  } \
+  static_assert(true, "")
 
 #endif 

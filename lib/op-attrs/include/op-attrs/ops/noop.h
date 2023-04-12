@@ -6,35 +6,21 @@
 
 namespace FlexFlow {
 
-struct NoopAttrs { };
+struct NoopAttrs : public use_visitable_cmp<NoopAttrs> { 
+public:
+  NoopAttrs() = default;
+};
 
-bool operator==(NoopAttrs const &, NoopAttrs const &);
-bool operator!=(NoopAttrs const &, NoopAttrs const &);
-bool operator<(NoopAttrs const &, NoopAttrs const &);
-
-struct InputAttrs { };
-
-bool operator==(InputAttrs const &, InputAttrs const &);
-bool operator!=(InputAttrs const &, InputAttrs const &);
-bool operator<(InputAttrs const &, InputAttrs const &);
+struct InputAttrs : public use_visitable_cmp<InputAttrs> { 
+public:
+  InputAttrs() = default;
+};
 
 }
 
 VISITABLE_STRUCT_EMPTY(::FlexFlow::NoopAttrs);
 VISITABLE_STRUCT_EMPTY(::FlexFlow::InputAttrs);
-
-namespace std {
-
-template <>
-struct hash<::FlexFlow::NoopAttrs> {
-  size_t operator()(::FlexFlow::NoopAttrs const &) const;
-};
-
-template <>
-struct hash<::FlexFlow::InputAttrs> {
-  size_t operator()(::FlexFlow::InputAttrs const &) const;
-};
-
-}
+MAKE_VISIT_HASHABLE(::FlexFlow::NoopAttrs);
+MAKE_VISIT_HASHABLE(::FlexFlow::InputAttrs);
 
 #endif

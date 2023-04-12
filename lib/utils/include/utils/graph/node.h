@@ -10,34 +10,20 @@
 #include "utils/fmt.h"
 #include <memory>
 #include "utils/type_traits.h"
+#include "utils/strong_typedef.h"
 
 namespace FlexFlow {
 
-struct Node {
-public:
-  Node() = delete;
-  explicit Node(std::size_t idx); 
-
-  bool operator==(Node const &) const;
-  bool operator!=(Node const &) const;
-  bool operator<(Node const &) const;
-
-  std::string to_string() const;
-public:
-  std::size_t idx;
+struct Node : public strong_typedef<Node, size_t> { 
+  using strong_typedef::strong_typedef;
 };
+
 std::ostream &operator<<(std::ostream &, Node const &);
 
 }
 
-VISITABLE_STRUCT(::FlexFlow::Node, idx);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::Node> {
-  std::size_t operator()(::FlexFlow::Node const &) const;
-};
-}
+MAKE_TYPEDEF_HASHABLE(::FlexFlow::Node);
+MAKE_TYPEDEF_PRINTABLE(::FlexFlow::Node, "Node");
 
 namespace FlexFlow {
 
@@ -76,18 +62,5 @@ struct IGraph : IGraphView {
 static_assert(is_rc_copy_virtual_compliant<IGraph>::value, RC_COPY_VIRTUAL_MSG);
 
 }
-
-namespace fmt {
-
-template <> 
-struct formatter<::FlexFlow::Node> : formatter<std::string> {
-  template <typename FormatContext>
-  auto format(::FlexFlow::Node const &n, FormatContext &ctx) const -> decltype(ctx.out()) {
-    return formatter<std::string>(fmt::format("Node({})", n.idx), ctx);
-  }
-};
-
-}
-
 
 #endif 

@@ -2,7 +2,6 @@
 #include "parallel_dim_mapping_record.h"
 #include "parallel_dim_mapping_record_solver.h"
 #include "utils/vector.h"
-#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 
@@ -104,20 +103,4 @@ std::vector<ParallelDimMappingRecord> construct_mappings(ParallelTensorShape con
 /*   return OP_CONV2D; */
 /* } */
 
-bool operator==(Conv2DAttrs const &lhs, Conv2DAttrs const &rhs) {
-  return visit_eq(lhs, rhs);
-}
-
-bool operator<(Conv2DAttrs const &lhs, Conv2DAttrs const &rhs) {
-  return visit_lt(lhs, rhs);
-}
-
-}
-
-namespace std {
-using Conv2DAttrs = ::FlexFlow::Conv2DAttrs;
-
-size_t hash<Conv2DAttrs>::operator()(Conv2DAttrs const &p) const {
-  return visit_hash(p);
-}
 }

@@ -2,30 +2,21 @@
 #define _FLEXFLOW_GROUPBY_ATTRS_H
 
 #include "op-attrs/parallel_tensor_shape.h"
-#include "binary_op.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
 
-struct Group_byAttrs {
+struct Group_byAttrs : public use_visitable_eq<Group_byAttrs> {
 public:
-  /* ParallelTensorShape output_shape(ParallelTensorShape const &, ParallelTensorShape const &) const override; */
-  /* OperatorType op_type() const override; */
+  Group_byAttrs(int n, float alpha);
 public:
   int n;
   float alpha;
 };
-bool operator==(Group_byAttrs const &, Group_byAttrs const &);
 
 }
 
 VISITABLE_STRUCT(::FlexFlow::Group_byAttrs, n, alpha);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::Group_byAttrs> {
-  size_t operator()(::FlexFlow::Group_byAttrs const &) const;
-};
-}
+MAKE_VISIT_HASHABLE(::FlexFlow::Group_byAttrs);
 
 #endif 

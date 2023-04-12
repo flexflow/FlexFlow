@@ -2,25 +2,28 @@
 #define _FLEXFLOW_COMBINE_ATTRS_H
 
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/ops/unary_op.h"
 #include "utils/visitable.h"
+#include "op-attrs/ff_dim.h"
+#include "core.h"
 
 namespace FlexFlow {
 
 struct CombineAttrs {
-  /* ParallelTensorShape output_shape(ParallelTensorShape const &) const override; */
-  /* bool is_valid(ParallelTensorShape const &input) const override; */
-  /* OperatorType op_type() const override; */
 public:
-  int combine_legion_dim;
+  CombineAttrs() = delete;
+  CombineAttrs(ff_dim_t combine_dim, int combine_degree);
+public:
+  ff_dim_t combine_dim;
   int combine_degree;
 };
+
 bool operator==(CombineAttrs const &, CombineAttrs const &);
+bool operator!=(CombineAttrs const &, CombineAttrs const &);
 bool operator<(CombineAttrs const &, CombineAttrs const &);
 
 }
 
-VISITABLE_STRUCT(::FlexFlow::CombineAttrs, combine_legion_dim, combine_degree);
+VISITABLE_STRUCT(::FlexFlow::CombineAttrs, combine_dim, combine_degree);
 
 namespace std {
 template <>
@@ -28,5 +31,9 @@ struct hash<::FlexFlow::CombineAttrs> {
   size_t operator()(::FlexFlow::CombineAttrs const &) const;
 };
 } 
+
+namespace FlexFlow {
+static_assert(is_valid_opattr<CombineAttrs>::value, "CombineAttrs must be a valid opattr (see core.h)");
+}
 
 #endif 

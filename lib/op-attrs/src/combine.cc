@@ -1,16 +1,11 @@
 #include "op-attrs/ops/combine.h"
 #include "utils/hash-utils.h"
-#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 
-bool operator==(CombineAttrs const &lhs, CombineAttrs const &rhs) {
-  return visit_eq(lhs, rhs);
-}
-
-bool operator<(CombineAttrs const &lhs, CombineAttrs const &rhs) {
-  return visit_lt(lhs, rhs);
-}
+CombineAttrs::CombineAttrs(ff_dim_t _combine_dim, int _combine_degree) 
+  : combine_dim(_combine_dim), combine_degree(_combine_degree)
+{ }
 
 /* bool CombineAttrs::is_valid(ParallelTensorShape const &input) const { */
 /*   return input.at(this->combine_legion_dim).degree % this->combine_degree == 0; */
@@ -22,13 +17,4 @@ bool operator<(CombineAttrs const &lhs, CombineAttrs const &rhs) {
 /*   return output; */
 /* } */
 
-}
-
-namespace std {
-using ::FlexFlow::CombineAttrs;
-
-size_t hash<CombineAttrs>::operator()(
-    CombineAttrs const &params) const {
-  return visit_hash(params);
-} 
 }

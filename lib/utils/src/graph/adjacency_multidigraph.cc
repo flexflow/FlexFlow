@@ -13,7 +13,7 @@ Node AdjacencyMultiDiGraph::add_node() {
 
 void AdjacencyMultiDiGraph::add_node_unsafe(Node const &node) {
   adjacency[node];
-  this->next_node_idx = std::max(this->next_node_idx, node.idx+1);
+  this->next_node_idx = std::max(this->next_node_idx, node.value()+1);
 }
 
 void AdjacencyMultiDiGraph::remove_node_unsafe(Node const &n) {

@@ -1,5 +1,4 @@
 #include "utils/graph/multidigraph.h"
-#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 
@@ -7,16 +6,8 @@ MultiDiEdge::MultiDiEdge(Node src, Node dst, size_t srcIdx, size_t dstIdx)
   : src(src), dst(dst), srcIdx(srcIdx), dstIdx(dstIdx)
 { }
 
-bool MultiDiEdge::operator==(MultiDiEdge const &other) const {
-  return visit_eq(*this, other);
-}
-
-bool MultiDiEdge::operator<(MultiDiEdge const &other) const {
-  return visit_lt(*this, other);
-}
-
 std::ostream &operator<<(std::ostream &s, MultiDiEdge const &e) {
-  return (s << "MultiDiEdge<" << e.src.idx << ":" << e.srcIdx << " -> " << e.dst.idx << ":" << e.dstIdx << ">");
+  return (s << "MultiDiEdge<" << e.src.value() << ":" << e.srcIdx << " -> " << e.dst.value() << ":" << e.dstIdx << ">");
 }
 
 MultiDiEdgeQuery MultiDiEdgeQuery::with_src_nodes(std::unordered_set<Node> const &nodes) const {
@@ -118,12 +109,4 @@ MultiDiGraph::MultiDiGraph(std::unique_ptr<IMultiDiGraph> _ptr)
   : ptr(std::move(_ptr))
 { }
 
-}
-
-namespace std {
-using ::FlexFlow::MultiDiEdge;
-
-std::size_t hash<MultiDiEdge>::operator()(MultiDiEdge const &e) const {
-  return visit_hash(e);
-}
 }

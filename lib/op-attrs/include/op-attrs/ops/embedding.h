@@ -3,14 +3,15 @@
 
 #include "op-attrs/ffconst.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/ops/unary_op.h"
 #include "utils/visitable.h"
 #include "op-attrs/tensor_shape.h"
+#include "core.h"
 
 namespace FlexFlow {
 
-struct EmbeddingAttrs {
+struct EmbeddingAttrs : use_visitable_cmp<EmbeddingAttrs> {
 public:
+  EmbeddingAttrs() = delete;
   EmbeddingAttrs(int num_entries, int out_channels, AggrMode aggr, DataType data_type);
 public:
   int num_entries, out_channels;
@@ -18,20 +19,15 @@ public:
   DataType data_type;
 };
 
-bool operator==(EmbeddingAttrs const &, EmbeddingAttrs const &);
-bool operator<(EmbeddingAttrs const &, EmbeddingAttrs const &);
-
 TensorShape get_weights_shape(EmbeddingAttrs const &, TensorShape const &);
 
 }
 
 VISITABLE_STRUCT(::FlexFlow::EmbeddingAttrs, num_entries, out_channels, aggr, data_type);
+MAKE_VISIT_HASHABLE(::FlexFlow::EmbeddingAttrs);
 
-namespace std {
-template <>
-struct hash<::FlexFlow::EmbeddingAttrs> {
-  size_t operator()(::FlexFlow::EmbeddingAttrs const &) const;
-};
-} 
+namespace FlexFlow {
+static_assert(is_valid_opattr<EmbeddingAttrs>::value, "EmbeddingAttrs must be a valid opattr (see core.h)");
+}
 
 #endif 

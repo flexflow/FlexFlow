@@ -1,25 +1,10 @@
 #include "op-attrs/ops/embedding.h"
-#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 
-bool operator==(EmbeddingAttrs const &lhs, EmbeddingAttrs const &rhs) {
-  return visit_eq(lhs, rhs);
-}
-
-bool operator<(EmbeddingAttrs const &lhs, EmbeddingAttrs const &rhs) {
-  return visit_lt(lhs, rhs);
-}
-
-}
-
-namespace std {
-
-using ::FlexFlow::EmbeddingAttrs;
-
-size_t hash<EmbeddingAttrs>::operator()(EmbeddingAttrs const &attrs) const {
-  return visit_hash(attrs);
-}
+EmbeddingAttrs::EmbeddingAttrs(int _num_entries, int _out_channels, AggrMode _aggr, DataType _data_type)
+  : num_entries(_num_entries), out_channels(_out_channels), aggr(_aggr), data_type(_data_type)
+{ }
 
 }
 

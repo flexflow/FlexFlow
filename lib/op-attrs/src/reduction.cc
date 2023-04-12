@@ -1,15 +1,10 @@
 #include "op-attrs/ops/reduction.h"
-#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 
-bool operator==(ReductionAttrs const &lhs, ReductionAttrs const &rhs) {
-  return visit_eq(lhs, rhs);
-}
-
-bool operator<(ReductionAttrs const &lhs, ReductionAttrs const &rhs) {
-  return visit_lt(lhs, rhs);
-}
+ReductionAttrs::ReductionAttrs(ff_dim_t _reduction_dim, int _reduction_degree)
+  : reduction_dim(_reduction_dim), reduction_degree(_reduction_degree)
+{ }
 
 /* ParallelTensorShape ReductionAttrs::output_shape(ParallelTensorShape const &input_shape) const { */
 /*   ParallelTensorShape output = input_shape; */
@@ -18,13 +13,4 @@ bool operator<(ReductionAttrs const &lhs, ReductionAttrs const &rhs) {
 /*   return output; */
 /* } */
 
-}
-
-namespace std {
-using ::FlexFlow::ReductionAttrs;
-
-size_t hash<ReductionAttrs>::operator()(
-    ReductionAttrs const &params) const {
-  return visit_hash(params);
-} 
 }

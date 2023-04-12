@@ -1,15 +1,10 @@
 #include "op-attrs/ops/concat.h"
-#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 
-bool operator==(ConcatAttrs const &lhs, ConcatAttrs const &rhs) {
-  return visit_eq(lhs, rhs);
-}
-
-bool operator<(ConcatAttrs const &lhs, ConcatAttrs const &rhs) {
-  return visit_lt(lhs, rhs);
-}
+ConcatAttrs::ConcatAttrs(ff_dim_t _axis)
+  : axis(_axis)
+{ }
 
 /* bool ConcatAttrs::is_valid( */
 /*     std::vector<ParallelTensorShape> const &input) const { */
@@ -19,14 +14,5 @@ bool operator<(ConcatAttrs const &lhs, ConcatAttrs const &rhs) {
 /*   } */
 /*   return valid; */
 /* } */
-
-}
-
-namespace std {
-using ::FlexFlow::ConcatAttrs;
-
-size_t hash<ConcatAttrs>::operator()(ConcatAttrs const &p) const {
-  return visit_hash(p);
-}
 
 }

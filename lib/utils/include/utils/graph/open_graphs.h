@@ -9,21 +9,23 @@
 
 namespace FlexFlow {
 
-struct InputMultiDiEdge {
-  std::pair<std::size_t, std::size_t> uid; // necessary to differentiate multiple input edges from different sources resulting from a graph cut
+struct InputMultiDiEdge : use_visitable_cmp<InputMultiDiEdge> {
+  InputMultiDiEdge() = delete;
+  InputMultiDiEdge(std::pair<std::size_t, std::size_t> const &, Node const &, std::size_t const &);
 
+  std::pair<std::size_t, std::size_t> uid; // necessary to differentiate multiple input edges from different sources resulting from a graph cut
   Node dst;
   std::size_t dstIdx;
 };
-bool operator==(InputMultiDiEdge const &, InputMultiDiEdge const &);
 
-struct OutputMultiDiEdge {
+struct OutputMultiDiEdge : use_visitable_cmp<OutputMultiDiEdge> {
+  OutputMultiDiEdge() = delete;
+  OutputMultiDiEdge(std::pair<std::size_t, std::size_t> const &, Node const &, std::size_t const &);
+
   std::pair<std::size_t, std::size_t> uid; // necessary to differentiate multiple output edges from different sources resulting from a graph cut
-
   Node src;
   std::size_t srcIdx;
 };
-bool operator==(OutputMultiDiEdge const &, OutputMultiDiEdge const &);
 
 using OpenMultiDiEdge = variant<
   InputMultiDiEdge,
@@ -79,39 +81,15 @@ struct UpwardOpenMultiDiEdgeQuery {
 
 }
 
-namespace std {
-
-template <>
-struct hash<::FlexFlow::OpenMultiDiEdge> {
-  size_t operator()(::FlexFlow::OpenMultiDiEdge const &) const;
-};
-
-template <>
-struct hash<::FlexFlow::DownwardOpenMultiDiEdge> {
-  size_t operator()(::FlexFlow::DownwardOpenMultiDiEdge const &) const;
-};
-
-template <>
-struct hash<::FlexFlow::UpwardOpenMultiDiEdge> {
-  size_t operator()(::FlexFlow::UpwardOpenMultiDiEdge const &) const;
-};
-
-template <>
-struct hash<::FlexFlow::OutputMultiDiEdge> {
-  size_t operator()(::FlexFlow::OutputMultiDiEdge const &) const;
-};
-
-template <>
-struct hash<::FlexFlow::InputMultiDiEdge> {
-  size_t operator()(::FlexFlow::InputMultiDiEdge const &) const;
-};
-
-}
-
 VISITABLE_STRUCT(::FlexFlow::InputMultiDiEdge, uid, dst, dstIdx);
 VISITABLE_STRUCT(::FlexFlow::OutputMultiDiEdge, uid, src, srcIdx);
+MAKE_VISIT_HASHABLE(::FlexFlow::InputMultiDiEdge);
+MAKE_VISIT_HASHABLE(::FlexFlow::OutputMultiDiEdge);
 
 namespace FlexFlow {
+
+static_assert(is_hashable<OutputMultiDiEdge>::value, "OpenMultiDiEdge must be hashable");
+static_assert(is_hashable<OpenMultiDiEdge>::value, "OpenMultiDiEdge must be hashable");
 
 struct IOpenMultiDiGraphView : public IGraphView {
   virtual std::unordered_set<OpenMultiDiEdge> query_edges(OpenMultiDiEdgeQuery const &) const = 0;

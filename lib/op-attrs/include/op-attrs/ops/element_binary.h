@@ -3,13 +3,14 @@
 
 #include "op-attrs/ffconst.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/ops/binary_op.h"
 #include "utils/visitable.h"
+#include "core.h"
 
 namespace FlexFlow {
 
-struct ElementBinaryAttrs {
+struct ElementBinaryAttrs : use_visitable_cmp<ElementBinaryAttrs> {
 public:
+  ElementBinaryAttrs() = delete;
   ElementBinaryAttrs(OperatorType, bool should_broadcast_lhs, bool should_broadcast_rhs);
 public:
   OperatorType type;
@@ -17,18 +18,13 @@ public:
   bool should_broadcast_rhs;
 };
 
-bool operator==(ElementBinaryAttrs const &, ElementBinaryAttrs const &);
-bool operator<(ElementBinaryAttrs const &, ElementBinaryAttrs const &);
-
 }
 
 VISITABLE_STRUCT(::FlexFlow::ElementBinaryAttrs, type);
+MAKE_VISIT_HASHABLE(::FlexFlow::ElementBinaryAttrs);
 
-namespace std {
-template <>
-struct hash<::FlexFlow::ElementBinaryAttrs> {
-  size_t operator()(::FlexFlow::ElementBinaryAttrs const &) const;
-};
+namespace FlexFlow {
+static_assert(is_valid_opattr<ElementBinaryAttrs>::value, "ElementBinaryAttrs must be a valid opattr (see core.h)");
 }
 
 #endif 

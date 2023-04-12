@@ -2,34 +2,17 @@
 #define _FLEXFLOW_FLAT_ATTRS_H
 
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/ops/unary_op.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
 
-struct FlatAttrs {
-  /* bool is_valid(ParallelTensorShape const &input_shape) const override; */
-  /* ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
-  /* OperatorType op_type() const override; */
-private:
-  int output_size(ParallelTensorShape const &input,
-                  ParallelTensorShape &output) const;
-
-  ParallelTensorShape calculate_output_shape(ParallelTensorShape const &input) const;
+struct FlatAttrs : public use_visitable_cmp<FlatAttrs> { 
+  FlatAttrs() = default;
 };
-
-bool operator==(FlatAttrs const &, FlatAttrs const &);
-bool operator<(FlatAttrs const &, FlatAttrs const &);
 
 }
 
 VISITABLE_STRUCT_EMPTY(::FlexFlow::FlatAttrs);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::FlatAttrs> {
-  size_t operator()(::FlexFlow::FlatAttrs const &) const;
-};
-}
+MAKE_VISIT_HASHABLE(::FlexFlow::FlatAttrs);
 
 #endif 

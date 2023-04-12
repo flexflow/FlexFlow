@@ -1,9 +1,26 @@
 #include "op-attrs/ops/pool_2d.h"
 #include "parallel_dim_mapping_record.h"
 #include "parallel_dim_mapping_record_solver.h"
-#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
+
+Pool2DAttrs::Pool2DAttrs(int _kernel_h,
+                         int _kernel_w,
+                         int _stride_h,
+                         int _stride_w,
+                         int _padding_h,
+                         int _padding_w,
+                         PoolType _pool_type,
+                         ActiMode _activation)
+  : kernel_h(_kernel_h),
+    kernel_w(_kernel_w),
+    stride_h(_stride_h),
+    stride_w(_stride_w),
+    padding_h(_padding_h),
+    padding_w(_padding_w),
+    pool_type(_pool_type),
+    activation(_activation)
+{ }
 
 namespace Input {
 constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
@@ -51,21 +68,4 @@ ParallelTensorShape Pool2DAttrs::calculate_output_shape(ParallelTensorShape cons
   return solve_mappings(input).output_shapes.at(0);
 }
 
-bool operator==(Pool2DAttrs const &lhs, Pool2DAttrs const &rhs) {
-  return visit_eq(lhs, rhs);
-}
-
-bool operator<(Pool2DAttrs const &lhs, Pool2DAttrs const &rhs) {
-  return visit_lt(lhs, rhs);
-}
-
-}
-
-namespace std {
-using ::FlexFlow::Pool2DAttrs;
-
-size_t hash<Pool2DAttrs>::operator()(
-    Pool2DAttrs const &params) const {
-  return visit_hash(params);
-}
 }

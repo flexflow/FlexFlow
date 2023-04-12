@@ -1,26 +1,9 @@
 #include "op-attrs/ops/split.h"
-#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 
-/* OperatorType SplitAttrs::op_type() const { */
-/*   return OP_SPLIT; */
-/* } */
+SplitAttrs::SplitAttrs(stack_vector<int, MAX_NUM_OUTPUTS> const &_splits, ff_dim_t _axis)
+  : splits(_splits), axis(_axis)
+{ }
 
-bool operator==(SplitAttrs const &lhs, SplitAttrs const &rhs) {
-  return visit_eq(lhs, rhs);
-}
-
-bool operator<(SplitAttrs const &lhs, SplitAttrs const &rhs) {
-  return visit_lt(lhs, rhs);
-}
-
-}
-
-namespace std {
-using ::FlexFlow::SplitAttrs;
-
-size_t hash<SplitAttrs>::operator()(SplitAttrs const &p) const {
-  return visit_hash(p);
-}
 }

@@ -1,22 +1,9 @@
 #include "op-attrs/ops/transpose.h"
-#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 
-bool operator==(TransposeAttrs const &lhs, TransposeAttrs const &rhs) {
-  return visit_eq(lhs, rhs);
-}
+TransposeAttrs::TransposeAttrs(stack_vector<ff_dim_t, MAX_TENSOR_DIM> const &_perm)
+  : perm(_perm)
+{ }
 
-bool operator<(TransposeAttrs const &lhs, TransposeAttrs const &rhs) {
-  return visit_lt(lhs, rhs);
-}
-
-}
-
-namespace std {
-using ::FlexFlow::TransposeAttrs;
-
-size_t hash<TransposeAttrs>::operator()(TransposeAttrs const &params) const {
-  return visit_hash(params);
-}
 }

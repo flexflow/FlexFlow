@@ -3,16 +3,21 @@
 
 #include "op-attrs/ffconst.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/ops/unary_op.h"
 #include "utils/visitable.h"
+#include "core.h"
 
 namespace FlexFlow {
 
 struct CastAttrs {
+public:
+  CastAttrs() = delete;
+  CastAttrs(DataType);
+public:
   DataType dtype;
 };
 
 bool operator==(CastAttrs const &, CastAttrs const &);
+bool operator!=(CastAttrs const &, CastAttrs const &);
 bool operator<(CastAttrs const &, CastAttrs const &);
 
 }
@@ -25,5 +30,11 @@ struct hash<::FlexFlow::CastAttrs> {
   size_t operator()(::FlexFlow::CastAttrs const &) const;
 };
 } 
+
+namespace FlexFlow {
+
+static_assert(is_valid_opattr<CastAttrs>::value, "CastAttrs must be a valid opattr (see core.h)");
+
+}
 
 #endif 

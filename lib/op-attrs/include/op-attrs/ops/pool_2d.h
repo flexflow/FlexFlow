@@ -3,40 +3,24 @@
 
 #include "op-attrs/ffconst.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/ops/unary_op.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
 
-struct Pool2DAttrs {
+struct Pool2DAttrs : use_visitable_cmp<Pool2DAttrs> {
 public:
-  void solve_dims(ParallelTensorShape const &input,
-                  ParallelTensorShape &output) const;
-
-  ParallelTensorShape calculate_output_shape(ParallelTensorShape const &input) const;
-
-  /* bool is_valid(ParallelTensorShape const &input_shape) const override; */
-  /* ParallelTensorShape output_shape(ParallelTensorShape const &input_shape) const override; */
-  /* OperatorType op_type() const override; */
+  Pool2DAttrs() = delete;
+  Pool2DAttrs(int kernel_h, int kernel_w, int stride_h, int stride_w, int padding_h, int padding_w, PoolType pool_type, ActiMode activation);
 public:
   int kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w;
   PoolType pool_type;
   ActiMode activation;
 };
 
-bool operator==(Pool2DAttrs const &, Pool2DAttrs const &);
-bool operator<(Pool2DAttrs const &, Pool2DAttrs const &);
-
 }
 
 VISITABLE_STRUCT(::FlexFlow::Pool2DAttrs, 
                  kernel_h, kernel_w, stride_h, stride_w, padding_h, padding_w, pool_type, activation);
-
-namespace std {
-template <>
-struct hash<::FlexFlow::Pool2DAttrs> {
-  size_t operator()(::FlexFlow::Pool2DAttrs const &) const;
-};
-} 
+MAKE_VISIT_HASHABLE(::FlexFlow::Pool2DAttrs);
 
 #endif 

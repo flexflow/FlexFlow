@@ -47,6 +47,10 @@ public:
       return lhs.value() != rhs.value();
     }
 
+    friend bool operator<(strong_typedef const &lhs, strong_typedef const &rhs) {
+      return lhs.value() < rhs.value();
+    }
+
     T const &value() const noexcept {
       return value_;
     }

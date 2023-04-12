@@ -8,25 +8,18 @@
 
 namespace FlexFlow {
 
-struct UndirectedEdge {
+struct UndirectedEdge : use_visitable_cmp<UndirectedEdge> {
 public:
   UndirectedEdge() = delete;
   UndirectedEdge(Node src, Node dst);
-
-  bool operator==(UndirectedEdge const &) const;
-  bool operator<(UndirectedEdge const &) const;
 public:
   Node smaller, bigger;
 };
 
 }
 
-namespace std {
-template <>
-struct hash<::FlexFlow::UndirectedEdge> {
-  std::size_t operator()(::FlexFlow::UndirectedEdge const &) const;
-};
-}
+VISITABLE_STRUCT(::FlexFlow::UndirectedEdge, smaller, bigger);
+MAKE_VISIT_HASHABLE(::FlexFlow::UndirectedEdge);
 
 namespace FlexFlow {
 
@@ -97,6 +90,5 @@ static_assert(std::is_move_assignable<UndirectedGraph>::value, "");
 
 }
 
-VISITABLE_STRUCT(::FlexFlow::UndirectedEdge, smaller, bigger);
 
 #endif
