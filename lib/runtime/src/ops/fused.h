@@ -1,12 +1,13 @@
 #ifndef _FLEXFLOW_FUSED_H_
 #define _FLEXFLOW_FUSED_H_
 
+#include "kernels/per_device_op_state.h"
 #include "operator.h"
 
 namespace FlexFlow {
 
 class FusedOp;
-class FusedPerDeviceOpState {
+class FusedPerDeviceOpState : public PerDeviceOpState {
 public:
   FusedPerDeviceOpState(void) {}
   PerDeviceOpState *meta[MAX_NUM_FUSED_OPERATORS];
