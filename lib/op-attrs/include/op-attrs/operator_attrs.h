@@ -63,6 +63,33 @@ using SharedOperatorAttrs = variant<
                                        TopKAttrs,
                                        TransposeAttrs>;
 
+static_assert(is_valid_opattr<AggregateAttrs>::value, "");
+static_assert(is_valid_opattr<AggregateSpecAttrs>::value, "");
+static_assert(is_valid_opattr<BatchMatmulAttrs>::value, "");
+static_assert(is_valid_opattr<CastAttrs>::value, "");
+static_assert(is_valid_opattr<ConcatAttrs>::value, "");
+static_assert(is_valid_opattr<Conv2DAttrs>::value, "");
+static_assert(is_valid_opattr<DropoutAttrs>::value, "");
+static_assert(is_valid_opattr<ElementBinaryAttrs>::value, "");
+static_assert(is_valid_opattr<ElementScalarUnaryAttrs>::value, "");
+static_assert(is_valid_opattr<ElementUnaryAttrs>::value, "");
+static_assert(is_valid_opattr<EmbeddingAttrs>::value, "");
+static_assert(is_valid_opattr<FlatAttrs>::value, "");
+static_assert(is_valid_opattr<GatherAttrs>::value, "");
+static_assert(is_valid_opattr<Group_byAttrs>::value, "");
+static_assert(is_valid_opattr<InputAttrs>::value, "");
+static_assert(is_valid_opattr<LayerNormAttrs>::value, "");
+static_assert(is_valid_opattr<LinearAttrs>::value, "");
+static_assert(is_valid_opattr<MultiHeadAttentionAttrs>::value, "");
+static_assert(is_valid_opattr<NoopAttrs>::value, "");
+static_assert(is_valid_opattr<Pool2DAttrs>::value, "");
+static_assert(is_valid_opattr<ReduceAttrs>::value, "");
+static_assert(is_valid_opattr<ReshapeAttrs>::value, "");
+static_assert(is_valid_opattr<SplitAttrs>::value, "");
+static_assert(is_valid_opattr<SoftmaxAttrs>::value, "");
+static_assert(is_valid_opattr<TopKAttrs>::value, "");
+static_assert(is_valid_opattr<TransposeAttrs>::value, "");
+
 using ParallelOperatorAttrs = variant<CombineAttrs,
                                       ReductionAttrs,
                                       RepartitionAttrs,

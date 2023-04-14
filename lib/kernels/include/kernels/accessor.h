@@ -41,7 +41,7 @@ using real_type = typename data_type_enum_to_class<DT>::type;
 
 size_t size_of(DataType);
 
-class GenericTensorAccessorW {
+class GenericTensorAccessorW : public use_visitable_eq<GenericTensorAccessorW> {
 public:
   GenericTensorAccessorW() = delete;
 
@@ -58,9 +58,6 @@ public:
     }
   }
 
-  bool operator==(GenericTensorAccessorW const &);
-  bool operator!=(GenericTensorAccessorW const &);
-
   int32_t *get_int32_ptr() const;
   int64_t *get_int64_ptr() const;
   float *get_float_ptr() const;
@@ -71,7 +68,7 @@ public:
   void *ptr;
 };
 
-class GenericTensorAccessorR {
+class GenericTensorAccessorR : public use_visitable_eq<GenericTensorAccessorR> {
 public:
   GenericTensorAccessorR() = delete;
   GenericTensorAccessorR(DataType data_type,
@@ -87,9 +84,6 @@ public:
       throw mk_runtime_error("Invalid access data type ({} != {})", this->data_type, DT);
     }
   }
-
-  bool operator==(GenericTensorAccessorR const &);
-  bool operator!=(GenericTensorAccessorR const &);
 
   int32_t const *get_int32_ptr() const;
   int64_t const *get_int64_ptr() const;

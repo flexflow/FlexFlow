@@ -3,7 +3,6 @@
 
 #include <string>
 #include "utils/optional.h"
-#include "utils/visitable_funcs.h"
 #include "utils/strong_typedef.h"
 #include "op-attrs/ffconst.h"
 

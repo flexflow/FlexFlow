@@ -22,7 +22,8 @@
 #include "op-attrs/ffconst.h"
 #include "utils/stack_vector.h"
 #include "kernels/array_shape.h"
-#include "tensor_shape.h"
+#include "op-attrs/tensor_shape.h"
+#include "legion_tensor_shape.h"
 #include <type_traits>
 #include "utils/strong_typedef.h"
 

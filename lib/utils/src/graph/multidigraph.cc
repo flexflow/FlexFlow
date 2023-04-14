@@ -66,6 +66,12 @@ MultiDiEdgeQuery MultiDiEdgeQuery::all() {
   return MultiDiEdgeQuery{};
 }
 
+void swap(MultiDiGraphView &lhs, MultiDiGraphView &rhs) {
+  using std::swap;
+
+  swap(lhs.ptr, rhs.ptr);
+}
+
 MultiDiGraph::MultiDiGraph(MultiDiGraph const &other) 
   : ptr(other.ptr->clone())
 { }

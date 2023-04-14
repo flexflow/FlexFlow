@@ -160,4 +160,6 @@ private:
 
 }
 
+MAKE_TYPEDEF_HASHABLE(::FlexFlow::parallel_tensor_guid_t);
+
 #endif

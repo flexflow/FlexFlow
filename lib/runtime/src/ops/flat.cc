@@ -59,11 +59,6 @@ int FlatParams::output_size(ParallelTensorShape const &input,
 }
 
 
-bool operator==(FlatParams const &, FlatParams const &) {
-  // flat doesn't have params to compare
-  return true;
-}
-
 
 Flat::Flat(FFModel &model, const ParallelTensor _input, char const *name)
     : Op(model,

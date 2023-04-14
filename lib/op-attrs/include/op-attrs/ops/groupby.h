@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-struct Group_byAttrs : public use_visitable_eq<Group_byAttrs> {
+struct Group_byAttrs : public use_visitable_cmp<Group_byAttrs> {
 public:
   Group_byAttrs(int n, float alpha);
 public:

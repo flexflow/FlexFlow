@@ -1,5 +1,4 @@
 #include "kernels/accessor.h"
-#include "utils/visitable_funcs.h"
 
 namespace FlexFlow {
 
@@ -8,14 +7,6 @@ GenericTensorAccessorW::GenericTensorAccessorW(DataType data_type,
                                                void *ptr)
     : data_type(data_type), shape(shape), ptr(ptr) 
 { }
-
-bool GenericTensorAccessorW::operator==(GenericTensorAccessorW const &other) {
-  return visit_eq(*this, other);
-}
-
-bool GenericTensorAccessorW::operator!=(GenericTensorAccessorW const &other) {
-  return visit_neq(*this, other);
-}
 
 int32_t *GenericTensorAccessorW::get_int32_ptr() const {
   return this->get<DT_INT32>();
@@ -46,14 +37,6 @@ GenericTensorAccessorR::GenericTensorAccessorR(DataType data_type,
 GenericTensorAccessorR::GenericTensorAccessorR(GenericTensorAccessorW const &w) 
   : data_type(w.data_type), shape(w.shape), ptr(w.ptr)
 { }
-
-bool GenericTensorAccessorR::operator==(GenericTensorAccessorR const &other) {
-  return visit_eq(*this, other);
-}
-
-bool GenericTensorAccessorR::operator!=(GenericTensorAccessorR const &other) {
-  return visit_neq(*this, other);
-}
 
 int32_t const *GenericTensorAccessorR::get_int32_ptr() const {
   return this->get<DT_INT32>();

@@ -16,11 +16,11 @@ public:
 
   Legion::IndexSpace get_or_create_task_is(MachineView const &);
   Legion::IndexSpace get_or_create_task_is(Legion::Domain const &);
-  Legion::IndexSpace get_or_create_task_is(ParallelTensorShape const &);
+  Legion::IndexSpace get_or_create_task_is(ParallelTensorDims const &);
 
   Legion::IndexSpace get_task_is(MachineView const &) const;
   Legion::IndexSpace get_task_is(Legion::Domain const &) const;
-  Legion::IndexSpace get_task_is(ParallelTensorShape const &) const;
+  Legion::IndexSpace get_task_is(ParallelTensorDims const &) const;
 private:
   LegionConfig config;
   std::map<MachineView, Legion::IndexSpace> all_task_is;

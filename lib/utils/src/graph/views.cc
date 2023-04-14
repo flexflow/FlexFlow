@@ -24,11 +24,11 @@ DirectedEdge flipped(DirectedEdge const &e) {
 }
 
 
-std::unique_ptr<IDiGraphView> unsafe_view_as_flipped(IDiGraphView const &g) {
-  return std::unique_ptr<IDiGraphView>(new FlippedView(g));
+DiGraphView unsafe_view_as_flipped(DiGraphView const &g) {
+  return DiGraphView::create<FlippedView>(g);
 }
 
-DiSubgraphView::DiSubgraphView(IDiGraphView const &g, std::unordered_set<Node> const &subgraph_nodes)
+DiSubgraphView::DiSubgraphView(maybe_owned_ref<DiGraphView const> g, std::unordered_set<Node> const &subgraph_nodes)
   : g(g), subgraph_nodes(subgraph_nodes)
 { } 
 
@@ -337,8 +337,8 @@ void DiGraphViewStack::add_view(std::function<std::unique_ptr<IDiGraphView>(IDiG
   this->views.push_back(f(*this->views.back()));
 }
 
-std::unique_ptr<IDiGraphView> unsafe_view_as_contracted(IDiGraphView const &g, Node const &removed, Node const &into) {
-  return std::unique_ptr<IDiGraphView>(new ContractNodeView(g, removed, into));
+DiGraphView unsafe_view_as_contracted(DiGraphView const &g, Node const &removed, Node const &into) {
+  return DiGraphView::create<ContractNodeView>(g.unsafe(), removed, into);
 }
 
 static void assert_map_is_flattened(std::unordered_map<Node, Node> const &m) {

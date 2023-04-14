@@ -39,7 +39,7 @@
 #include "layer_id.h"
 #include "kernels/ff_handler.h"
 #include "op_node.h"
-#include "tensor_shape.h"
+#include "op-attrs/tensor_shape.h"
 #include "legion_parallel_tensor_shape.h"
 #include "index_space_manager.h"
 #include "parallel_tensor_uses.h"
@@ -47,6 +47,7 @@
 #include "parallel_computation_graph.h"
 #include "tensor_mapping.h"
 #include "operator.h"
+#include "parallel_tensor_legion_backing.h"
 
 namespace FlexFlow {
 
@@ -147,6 +148,8 @@ public:
   ParallelComputationGraph pcg;
   ParallelTensorUses uses;
   TensorMapping tensor_map;
+
+  std::unordered_map<parallel_tensor_guid_t, ParallelTensorLegionBacking> legion_backing;
 
   std::vector<ParallelTensor> parameters;
   std::vector<FFHandler> handlers;

@@ -12,7 +12,7 @@
 
 namespace FlexFlow {
 
-class Layer {
+struct Layer : public use_visitable_cmp<Layer> {
 public:
   Layer() = delete;
   Layer(LayerID,
@@ -26,10 +26,6 @@ public:
   bool profiling;
   CompGraphOperatorAttrs attrs;
 };
-
-bool operator==(Layer const &, Layer const &);
-bool operator!=(Layer const &, Layer const &);
-bool operator<(Layer const &, Layer const &);
 
 struct LayerManager {
 public:
@@ -55,15 +51,7 @@ private:
 }
 
 VISITABLE_STRUCT(::FlexFlow::Layer, guid, data_type, name, profiling, attrs);
-
-namespace std {
-
-template <>
-struct hash<::FlexFlow::Layer> {
-  size_t operator()(::FlexFlow::Layer const &) const;
-};
-
-}
+MAKE_VISIT_HASHABLE(::FlexFlow::Layer);
 
 namespace FlexFlow {
 
