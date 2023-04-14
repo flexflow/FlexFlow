@@ -249,6 +249,30 @@ std::vector<std::pair<MachineResource, MachineResource>> get_resource_split(Mach
 //   }
 // }
 
+struct Strategy {
+  Strategy(float runtime, std::unordered_map<Node, MachineView> machine_views)
+    : runtime(runtime), machine_views(machine_views) {}
+
+  bool operator<(Strategy const &s) const {
+    return runtime < s.runtime;
+  }
+
+  static Strategy sequential_combine(Strategy const &s1, Strategy const &s2) {
+    return Strategy(s1.runtime + s2.runtime, merge_maps(s1.machine_views, s2.machine_views));
+  }
+
+  static Strategy parallel_combine(Strategy const &s1, Strategy const &s2) {
+    return Strategy(std::max(s1.runtime, s2.runtime), merge_maps(s1.machine_views, s2.machine_views));
+  }
+
+  static Strategy infinity() {
+    return Strategy(std::numeric_limits<float>::infinity(), std::unordered_map<Node, MachineView>{});
+  }
+
+  float runtime;
+  std::unordered_map<Node, MachineView> machine_views;
+};
+
 struct OptimalCost {
   OptimalCost(SubParallelComputationGraph const &g, 
               ICostEstimator const &cost_estimator, 
@@ -265,11 +289,11 @@ struct OptimalCost {
     {}
 
   template <typename T>
-  float operator()(T const &t) const {
+  Strategy operator()(T const &t) const {
     return this->optimal_cost(t);
   }
 
-  float optimal_cost(Serial const &serial) const {
+  Strategy optimal_cost(Serial const &serial) const {
     // return sum(vector_transform([&](variant<Parallel, Node> const &t) { return visit(*this, t); }, serial.children));
     SerialParallelDecomposition pre_decompn, post_decompn;
     std::tie(pre_decompn, post_decompn) = decompose(serial);
@@ -284,18 +308,19 @@ struct OptimalCost {
 
     Node const &split_point = get_only(set_union(pre_graph_sinks, post_graph_sources));
 
-    float optimal_result = std::numeric_limits<float>::infinity();
+    Strategy optimal_result = Strategy::infinity();
 
     for (MachineView const &mv : allowed_machine_views(g.at(split_point), resource)) {
       optional<MachineView> pre_sink_mv = contains(pre_graph_sinks, split_point) ? make_optional(mv) : nullopt;
       optional<MachineView> post_source_mv = contains(post_graph_sources, split_point) ? make_optional(mv) : nullopt;
       minimize(optimal_result,
-        visit(OptimalCost(pre_graph, cost_estimator, resource, source_machine_view, pre_sink_mv, allowed_machine_views), pre_decompn) +
-        visit(OptimalCost(post_graph, cost_estimator, resource, post_source_mv, sink_machine_view, allowed_machine_views), post_decompn));
+        Strategy::sequential_combine(
+          visit(OptimalCost(pre_graph, cost_estimator, resource, source_machine_view, pre_sink_mv, allowed_machine_views), pre_decompn),
+          visit(OptimalCost(post_graph, cost_estimator, resource, post_source_mv, sink_machine_view, allowed_machine_views), post_decompn)));
     }
   }
 
-  float optimal_cost(Parallel const &parallel) const {
+  Strategy optimal_cost(Parallel const &parallel) const {
     SerialParallelDecomposition decompn1, decompn2;
 
     std::tie(decompn1, decompn2) = decompose(parallel);
@@ -303,29 +328,34 @@ struct OptimalCost {
     auto subgraphs = apply_split(g, get_graph_split(decompn1, decompn2));
     SubParallelComputationGraph g1 = subgraphs.first, g2 = subgraphs.second;
 
-    float optimal_result = visit(OptimalCost(g1, cost_estimator, resource, source_machine_view, sink_machine_view, allowed_machine_views), decompn1)
-                         + visit(OptimalCost(g2, cost_estimator, resource, source_machine_view, sink_machine_view, allowed_machine_views), decompn2);
+    Strategy optimal_result = Strategy::sequential_combine(
+      visit(OptimalCost(g1, cost_estimator, resource, source_machine_view, sink_machine_view, allowed_machine_views), decompn1),
+      visit(OptimalCost(g2, cost_estimator, resource, source_machine_view, sink_machine_view, allowed_machine_views), decompn2));
 
     for (auto const &resource_split : get_resource_split(resource)) {
       minimize(optimal_result,
-        std::max(visit(OptimalCost(g1, cost_estimator, resource_split.first, source_machine_view, sink_machine_view, allowed_machine_views), decompn1),
-                 visit(OptimalCost(g2, cost_estimator, resource_split.second, source_machine_view, sink_machine_view, allowed_machine_views), decompn2)));
+        Strategy::parallel_combine(
+          visit(OptimalCost(g1, cost_estimator, resource_split.first, source_machine_view, sink_machine_view, allowed_machine_views), decompn1),
+          visit(OptimalCost(g2, cost_estimator, resource_split.second, source_machine_view, sink_machine_view, allowed_machine_views), decompn2)));
     }
   }
 
-  float optimal_cost(Node const &node) const {
+  Strategy optimal_cost(Node const &node) const {
     if (source_machine_view) {
       assert(get_closed_sources(g.graph()).empty());
       assert(contains(allowed_machine_views(g.at(node), resource), source_machine_view.value()));
-      return estimate_cost(g, cost_estimator, std::unordered_map<Node, MachineView>{{node, source_machine_view.value()}});
+      std::unordered_map<Node, MachineView> mv_map{{node, source_machine_view.value()}};
+      return Strategy(estimate_cost(g, cost_estimator, mv_map), mv_map);
     } else if (sink_machine_view) {
       assert(get_closed_sinks(g.graph()).empty());
       assert(contains(allowed_machine_views(g.at(node), resource), sink_machine_view.value()));
-      return estimate_cost(g, cost_estimator, std::unordered_map<Node, MachineView>{{node, source_machine_view.value()}});
+      std::unordered_map<Node, MachineView> mv_map{{node, sink_machine_view.value()}};
+      return Strategy(estimate_cost(g, cost_estimator, mv_map), mv_map);
     } else {
-      float optimal_result = std::numeric_limits<float>::infinity();
+      Strategy optimal_result = Strategy::infinity();
       for (auto mv : allowed_machine_views(g.at(node), resource)) {
-        minimize(optimal_result, estimate_cost(g, cost_estimator, std::unordered_map<Node, MachineView>{{node, mv}}));
+        std::unordered_map<Node, MachineView> mv_map{{node, mv}};
+        minimize(optimal_result, Strategy(estimate_cost(g, cost_estimator, mv_map), mv_map));
       }
       return optimal_result;
     }
