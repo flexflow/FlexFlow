@@ -15,7 +15,11 @@
 
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/model.h"
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "flexflow/utils/cuda_helper.h"
+#else
+#include "flexflow/utils/hip_helper.h"
+#endif
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
 #ifdef INFERENCE_TESTS
