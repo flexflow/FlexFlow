@@ -140,24 +140,4 @@ static_assert(is_rc_copy_virtual_compliant<IDownwardOpenMultiDiGraph>::value, RC
 
 }
 
-namespace fmt {
-
-template <>
-struct formatter<::FlexFlow::MultiDiOutput> : formatter<std::string> {
-  template <typename FormatContext>
-  auto format(::FlexFlow::MultiDiOutput const &x, FormatContext &ctx) const -> decltype(ctx.out()) {
-    return formatter<std::string>::format(fmt::format("MultiDiOutput({}, {})", x.node, x.idx), ctx);
-  }
-};
-
-template <>
-struct formatter<::FlexFlow::MultiDiInput> : formatter<std::string> {
-  template <typename FormatContext>
-  auto format(::FlexFlow::MultiDiInput const &x, FormatContext &ctx) const -> decltype(ctx.out()) {
-    return formatter<std::string>::format(fmt::format("MultiDiInput({}, {})", x.node, x.idx), ctx);
-  }
-};
-
-}
-
 #endif
