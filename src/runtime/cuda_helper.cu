@@ -223,8 +223,8 @@ __host__ void
   int idx = 0;
   printf("%s", prefix);
   for (idx = 0; idx < num_elements; idx++) {
-    printf(" %.4lf", (float)host_ptr[idx]);
-    if (idx >= 16) {
+    printf(" %.20lf", (float)host_ptr[idx]);
+    if (idx >= 50) {
       break;
     }
   }
@@ -247,6 +247,10 @@ __host__ void
 
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
+  for (unsigned i = 0; i < num_elements; i++) {
+    fprintf(tensor_file, "%.20f, ", (float)host_ptr[i]);
+  }
+
   fclose(tensor_file);
   checkCUDA(cudaFreeHost(host_ptr));
 }

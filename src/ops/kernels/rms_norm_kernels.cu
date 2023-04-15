@@ -74,7 +74,7 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
     shared[wid] = val;
   }
   __syncthreads();
-  val = (threadIdx.x < blockDim.x / C10_WARP_SIZE) ? shared[lid] : 0;
+  val = (threadIdx.x < (blockDim.x / C10_WARP_SIZE)) ? shared[lid] : T(0);
   if (wid == 0) {
     val = WarpReduceSum(val);
   }
@@ -92,9 +92,20 @@ __global__ void
     sum += static_cast<T>(X[index]) * static_cast<T>(X[index]);
   }
   sum = BlockReduceSum<T>(sum, v_shared); // use BlockReduceSum() to sum X_ij^2
-  if (threadIdx.x == 0) {
-    rms[i] = 1.0 / (sqrt((sum / static_cast<T>(N)) + static_cast<T>(eps)));
-  }
+
+  // if (threadIdx.x == 0) {
+  //   rms[i] = rsqrt((sum / static_cast<T>(N)) + static_cast<T>(eps));
+  //    __syncthreads();
+  //   printf("index: %d, rms norm mean value: %.15f, rms norm sum value: "
+  //          "%.20f, eps: %f, value: %.20f, num:%d, num2: %d\n",
+  //          i,
+  //          sum / static_cast<T>(N),
+  //          sum,
+  //          static_cast<T>(eps),
+  //          rms[i],
+  //          blockDim.x,
+  //          warpSize);
+  // }
 }
 
 template <typename T>
@@ -123,7 +134,7 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
                             GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-
+  int parallelism = m->batch_size * m->in_dim;
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
@@ -137,7 +148,7 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
 
   NormKernel<float><<<m->batch_size, kCUDANumThreads, 0, stream>>>(
       m->in_dim, input.get_float_ptr(), m->rms_ptr, m->norm_ptr);
-  int parallelism = m->batch_size * m->in_dim;
+
   elewise_apply_weights<<<GET_BLOCKS(parallelism),
                           min(CUDA_NUM_THREADS, parallelism),
                           0,

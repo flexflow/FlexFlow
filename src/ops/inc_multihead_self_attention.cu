@@ -39,6 +39,7 @@ __global__ void build_w_out_tensor(float const *weight_ptr,
 
 __global__ void apply_rotary_embedding(float *input_ptr,
                                        cuFloatComplex *complex_input,
+                                       BatchConfig::token_idxs const *id_map,
                                        int qProjSize,
                                        int kProjSize,
                                        int num_heads,
@@ -46,7 +47,6 @@ __global__ void apply_rotary_embedding(float *input_ptr,
                                        int q_block_size,
                                        int k_block_size,
                                        int v_block_size,
-                                       int pos,
                                        bool q_tensor) {
   int proj_size = q_tensor ? qProjSize : kProjSize;
   CUDA_KERNEL_LOOP(i, num_tokens * proj_size * num_heads / 2) {
@@ -64,6 +64,16 @@ __global__ void apply_rotary_embedding(float *input_ptr,
     // get the freq_cis: shape 1 * (qProjSize/2) = 1 * 64
     // apply a Cartesian coordinate transformation
     // multiple with input & /copy back to q/k
+
+    // get position of token
+    //  int head_idx = i / (num_tokens * proj_size);
+    int token_idx =
+        (i - head_idx * (num_tokens * proj_size / 2)) / (proj_size / 2);
+    size_t pos = id_map[token_idx].token_position;
+
+    // float before_real = complex_input[i].x, before_complex =
+    // complex_input[i].y;
+
     int pos_i = i % (proj_size / 2);
     float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
     cuFloatComplex complex_pos = {cos(freq), sin(freq)};
@@ -71,15 +81,17 @@ __global__ void apply_rotary_embedding(float *input_ptr,
     complex_input[i] = cuCmulf(complex_input[i], complex_pos);
     input_ptr[real_part_index] = complex_input[i].x;
     input_ptr[real_part_index + 1] = complex_input[i].y;
-    // if(i <= 320){
-    //      printf("ffindex: %d, 1 real %f, 1 complex%f , 2 real %f, 2
-    // complex%f, pos%d\n",
-    //         i,
+
+    // if (i % 64 == 1 && head_idx == 0) {
+    //   printf("head id: %d, tokenid: %d, pospospos:->  %d, before real part
+    //   %f, "
+    //          "before complex part: %f, real part: %f,"
+    //          "complext part: %f,  freq_cis real: %f, freq_cis commplexx
+    //          %f\n", head_idx, token_idx, pos, before_real, before_complex,
     //          complex_input[i].x,
     //          complex_input[i].y,
     //          complex_pos.x,
-    //          complex_pos.y,
-    //          i % (proj_size / 2));
+    //          complex_pos.y);
     // }
   }
 }
@@ -93,7 +105,6 @@ void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
 
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-
   float alpha = 1.0f, beta = 0.0f;
   assert(m->qSize == m->vSize && m->qSize == m->kSize);
   cudaDataType_t data_type = ff_to_cuda_datatype(DT_FLOAT);
@@ -121,7 +132,6 @@ void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
   size_t strideC =
       (m_q + m_k + m_v) * n; // size of the output block for each head.
   // Q
-
   checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                        CUBLAS_OP_T,
                                        CUBLAS_OP_N,
@@ -206,11 +216,13 @@ void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
     checkCUDA(cudaMalloc(&complex_input,
                          num_tokens * m->qProjSize * m->num_heads *
                              sizeof(cuFloatComplex *) / 2));
+    /*q*/
     apply_rotary_embedding<<<GET_BLOCKS(parallelism),
                              min(CUDA_NUM_THREADS, parallelism),
                              0,
                              stream>>>(output_ptr,
                                        complex_input,
+                                       m->dev_token2ids,
                                        m->qProjSize,
                                        m->kProjSize,
                                        m->num_heads,
@@ -218,9 +230,22 @@ void inference_kernel1(IncMultiHeadSelfAttentionMeta const *m,
                                        q_block_size,
                                        k_block_size,
                                        v_block_size,
-                                       0, /**todo this should be updated in a
-                                             real work, maybe from batchconfig*/
                                        true);
+    /*k*/
+    apply_rotary_embedding<<<GET_BLOCKS(parallelism),
+                             min(CUDA_NUM_THREADS, parallelism),
+                             0,
+                             stream>>>(output_ptr,
+                                       complex_input,
+                                       m->dev_token2ids,
+                                       m->qProjSize,
+                                       m->kProjSize,
+                                       m->num_heads,
+                                       num_tokens,
+                                       q_block_size,
+                                       k_block_size,
+                                       v_block_size,
+                                       false);
   }
 }
 

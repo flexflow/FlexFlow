@@ -46,15 +46,18 @@ void FlexFlow::top_level_task(Task const *task,
   FFModel ff(ffconfig);
   std::unordered_map<std::string, Layer *> weights_layers;
 
-  InputArgs const &command_args = HighLevelRuntime::get_input_args();
-  char **argv = command_args.argv;
-  int argc = command_args.argc;
-  parse_input_args(argv, argc, llamaConfig);
+  // InputArgs const &command_args = HighLevelRuntime::get_input_args();
+  // char **argv = command_args.argv;
+  // int argc = command_args.argc;
+  // parse_input_args(argv, argc, llamaConfig);
+
+  std::cout << "print llama config: " << llamaConfig.input_path << "-->"
+            << llamaConfig.batchSize;
 
   //------------------------------ build the model --------------------------
   Tensor input;
   {
-    int const token_dims[] = {llamaConfig.batchSize, 1};
+    int const token_dims[] = {llamaConfig.batchSize, llamaConfig.max_seq_len};
     input = ff.create_tensor<2>(token_dims, DT_INT64);
   }
 
@@ -133,17 +136,10 @@ void FlexFlow::top_level_task(Task const *task,
   token = ff.rms_norm(token, 1e-6, 4096);
   Layer *final_norm = ff.layers.back();
   weights_layers.emplace("norm_weight", final_norm);
-
   Tensor dense = ff.dense(token, llamaConfig.vocab_size, AC_MODE_NONE, false);
   Layer *final_linear = ff.layers.back();
   weights_layers.emplace("output_weight", final_linear);
-
-  Tensor output = ff.arg_top_k(dense, /*k=*/3, false);
-
-  // Tensor top1_output[2];
-  // ff.top_k(dense, top1_output, 1, false);
-  // // placeholder
-  // Tensor output = ff.scalar_add(top1_output[1], 0, false, "scalar_add");
+  Tensor output = ff.arg_top_k(dense, /*k=*/1, false);
 
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
@@ -209,8 +205,10 @@ void FlexFlow::top_level_task(Task const *task,
   std::map<int, Future> future_handlers;
   std::map<int, BatchConfig *> batch_configs;
   BatchConfig *bc = nullptr;
-  std::map<size_t, int> batch_predictions[1];
+  std::map<size_t, long> batch_predictions[1];
   loader.reset();
+
+  bool new_req = true;
 
   while (processed_requests < llamaConfig.sentence_len) {
     int bid = 0;
@@ -232,14 +230,22 @@ void FlexFlow::top_level_task(Task const *task,
       std::cout << "store outputs start...." << std::endl;
       loader.store_outputs(bc, ir, batch_predictions[bid]);
       processed_requests += bc->update_results(ir);
-      break;
+
+      if (!new_req) {
+        break;
+      }
+      new_req = false;
     }
     // batch cofig register 5 reqs
-    for (int i = 0; i < llamaConfig.batchSize; i++) {
-      assert(bc->register_new_request(i, 1, llamaConfig.max_gen_length));
+    // init length relate to the min_prompt_size for llama
+    if (new_req) {
+      for (int i = 0; i < llamaConfig.batchSize; i++) {
+        assert(bc->register_new_request(i, llamaConfig.max_seq_len, 347));
+      }
     }
 
     bc->prepare_next_batch();
+    std::cout << "new tokens: " << bc->num_active_tokens();
     loader.next_batch(ff, bc, batch_predictions[bid]);
 
     FutureMap fm = im.inference(bid, *bc);

@@ -36,10 +36,13 @@ struct LLAMAConfig {
     total_requests = 2560;
     incremental_mode = true;
     sequence_length = MAX_SEQ_LEN;
+    max_seq_len = 8;
 
     // todo from args
-    weight_file_path;
-    input_path = "";
+    weight_file_path =
+        "/home/ubuntu/FlexFlow/examples/cpp/inference/LLAMA/weights/";
+    input_path = "/home/ubuntu/FlexFlow/examples/cpp/inference/LLAMA/tokens/"
+                 "llama_demo_tokens";
 
     // hidden dim
     hidden_dim = 4 * dim;
@@ -49,7 +52,7 @@ struct LLAMAConfig {
   }
   int n_heads, n_layers, vocab_size, dim, multiple_of, hidden_dim,
       total_sentence, sentence_len, batchSize, total_requests, incremental_mode,
-      sequence_length, max_gen_length;
+      sequence_length, max_gen_length, max_seq_len;
   float norm_eps;
   std::string weight_file_path;
   std::string input_path;
@@ -62,7 +65,7 @@ public:
              ParallelTensor const &input);
   void next_batch(FFModel &ff,
                   BatchConfig *bc,
-                  std::map<size_t, int> &batch_predictions);
+                  std::map<size_t, long> &batch_predictions);
   void reset();
   static void load_entire_dataset(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
@@ -83,7 +86,7 @@ public:
                                      std::string weight_path);
   void store_outputs(BatchConfig *bc,
                      InferenceResult const &ir,
-                     std::map<size_t, int> &batch_predictions);
+                     std::map<size_t, long> &batch_predictions);
 
 public:
   int num_samples, next_index, next_token_idx, next_batch_index;
@@ -100,5 +103,5 @@ struct SampleIdxs {
 
 struct DataLoaderNextBatchInput {
   BatchConfig::SampleIdxs const &meta;
-  std::map<size_t, int> const &prev_batch_preds;
+  std::map<size_t, long> const &prev_batch_preds;
 };

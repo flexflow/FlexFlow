@@ -29,9 +29,8 @@ void DataLoader::load_input(Task const *task,
   DataLoaderNextBatchInput const input_struct =
       *((DataLoaderNextBatchInput *)task->args);
   BatchConfig::SampleIdxs const &meta = input_struct.meta;
-//   std::map<size_t, int> const &prev_batch_preds = input_struct.prev_batch_preds;
-
-  std::cout << "next batch cuda1" << std::endl;
+  std::map<size_t, long> const &prev_batch_preds =
+      input_struct.prev_batch_preds;
 
   TensorAccessorR<long, 3> full_input(
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -41,7 +40,6 @@ void DataLoader::load_input(Task const *task,
                                        ctx,
                                        runtime,
                                        false /*readOutput*/);
-  std::cout << "next batch cuda2" << std::endl;
   Domain full_input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain batch_input_domain = runtime->get_index_space_domain(
@@ -54,37 +52,65 @@ void DataLoader::load_input(Task const *task,
 
   // copy 1 token from each batch
   //  FIXME: currently assume continous indices
-  assert(meta.num_samples <= batch_size);
-  //   for (int i = 1; i < meta.num_samples; i++) {
-  //     assert(meta.idxs[i] == meta.idxs[0] + i);
-  //   }
+  size_t guid = meta.guids[0];
+  size_t start_idx = meta.token_indexes[0].token_position;
+  size_t dst_idx = 0;
 
-  size_t size_to_copy = (batch_input_domain.get_volume());
+  std::cout << "num samples " << meta.num_samples << "\n";
 
-  checkCUDA(cudaMemset(
-      batch_input.ptr, 0, batch_input_domain.get_volume() * sizeof(long)));
+  for (size_t i = 0; i <= meta.num_samples; i++) {
 
-  size_t index[size_to_copy];
-  size_t *cuda_index;
+    // if the first token in one request
+    if (i == meta.num_samples || meta.guids[i] != guid) {
+      size_t tokens_to_copy =
+          (meta.token_indexes[i - 1].token_position - start_idx + 1);
+      std::cout << "size to copy:  " << tokens_to_copy << "\n";
 
-  //-------get index of input-----
-  std::cout << "print the input of batch 1....." << std::endl;
-  for (int i = 0; i < batch_size; i++) {
-    // todo meta->batch_idx * (llamaconfig.sentence_len * batch_size)
-    index[i] =
-        (llamaconfig.sentence_len * i) + meta.token_indexes[i].token_position;
+      if (tokens_to_copy > 1 || meta.token_indexes[i - 1].token_position <
+                                    meta.token_indexes[i - 1].initial_length) {
+        // token pos < init length, the init length is the input sentence length
+        // so this is the initial input, load from file.
 
-    std::cout << "token pos: " << meta.token_indexes[i].token_position
-              << std::endl;
-    std::cout << "value: " << full_input.ptr[index[i]] << std::endl;
+        size_t copy_start_index = guid * llamaconfig.sentence_len;
+        std::cout << "copy index:  " << copy_start_index << "\n";
+        copy_kernel<<<GET_BLOCKS(tokens_to_copy), CUDA_NUM_THREADS>>>(
+            batch_input.ptr + dst_idx,
+            full_input.ptr + copy_start_index,
+            tokens_to_copy);
+
+        std::cout << "------------req---------------: " << guid << "\n";
+        if (guid == 0) {
+          std::cout << "guid: " << meta.guids[i] << ", i: " << i << std::endl;
+        }
+        for (int i = 0; i < 8; i++) {
+          std::cout << "value: " << full_input.ptr[copy_start_index + i]
+                    << std::endl;
+        }
+        std::cout << "dst index: " << dst_idx << "\n";
+
+      } else {
+        // for token by token generating, get token from the previous inference.
+
+        long token = prev_batch_preds.at(guid);
+        std::cout << "fuck next iter  "
+                  << meta.token_indexes[i - 1].token_position
+                  << ", dst_idx: " << dst_idx << ", token:" << token << "\n";
+        long *dst_ptr = batch_input.ptr + dst_idx;
+
+        cudaMemcpy(dst_ptr, &token, sizeof(long), cudaMemcpyHostToDevice);
+        checkCUDA(cudaDeviceSynchronize());
+        std::cout << "guid: " << guid << ", token: " << token << "\n";
+        print_tensor<long>(dst_ptr, 8, "aaaaaa");
+      }
+
+      // update for next req
+      if (i < meta.num_samples) {
+        guid = meta.guids[i];
+        start_idx = meta.token_indexes[i].token_position;
+      }
+      dst_idx = i;
+    }
   }
-  cudaMalloc((void **)&cuda_index, batch_size * sizeof(size_t));
-  cudaMemcpy(
-      cuda_index, index, batch_size * sizeof(size_t), cudaMemcpyHostToDevice);
-
-  copy_kernel_discrete<<<GET_BLOCKS(size_to_copy), CUDA_NUM_THREADS>>>(
-      batch_input.ptr, full_input.ptr, size_to_copy, cuda_index);
-  checkCUDA(cudaDeviceSynchronize());
 
   std::cout << "load input finished....." << std::endl;
 }

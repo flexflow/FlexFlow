@@ -8,7 +8,7 @@ DataLoader::DataLoader(FFModel &ff,
                        ParallelTensor const &input) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  num_samples = 347;
+  num_samples = llamaconfig->sentence_len;
 
   {
     batch_input = input;
@@ -16,7 +16,12 @@ DataLoader::DataLoader(FFModel &ff,
 
     ParallelDim dims[num_dims];
     for (int i = 0; i < num_dims; i++) {
-      dims[i].size = input->dims[i].size;
+      if (i == 0) {
+        dims[i].size = 1;
+      } else {
+        dims[i].size = input->dims[i].size;
+      }
+
       dims[i].degree = 1;
       dims[i].parallel_idx = -1;
       dims[i].is_replica_dim = input->dims[i].is_replica_dim;
@@ -31,6 +36,7 @@ DataLoader::DataLoader(FFModel &ff,
   }
 
   size_t llamaconfig_size = sizeof(llamaconfig);
+  std::cout << "llama config dataloader: " << llamaconfig->input_path;
 
   // Load entire dataset
   TaskLauncher launcher(CUSTOM_CPU_TASK_ID_1,
@@ -62,12 +68,15 @@ void DataLoader::load_entire_dataset(Task const *task,
   std::cout << "load entire dataset" << rect_input.volume();
 
   // load from file
-  load_from_file(input_ptr, rect_input.volume(), llamaconfig->input_path);
+  load_from_file(input_ptr,
+                 rect_input.volume(),
+                 "/home/ubuntu/FlexFlow/examples/cpp/inference/LLAMA/tokens/"
+                 "llama_demo_tokens");
 }
 
 void DataLoader::next_batch(FFModel &ff,
                             BatchConfig *bc,
-                            std::map<size_t, int> &batch_predictions) {
+                            std::map<size_t, long> &batch_predictions) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   // Load Input
@@ -203,25 +212,19 @@ void DataLoader::load_attention_weights(T *ptr,
     }
     assert(partial_size == host_array.size());
 
-    size_t offset = index * 4096 * 4096;
     size_t one_head_size = 4096 * 128;
     size_t data_index = 0;
 
-    if (file_index == 3) {
-      std::cout << "print wo weights" << std::endl;
-      for (int i = 0; i < 10; i++) {
-        std::cout << host_array.at(i) << ", " << std::endl;
-      }
-    }
-
     for (int i = 0; i < 32; i++) {
       size_t start_index = i * one_head_size * 4 + file_index * one_head_size;
-      if (file_index == 3 && i == 0) {
-        std::cout << "print wo start index" << start_index << "-> data"
-                  << host_array.at(data_index) << std::endl;
-      }
+      // if (file_index == 3) {
+      //   printf("print wo start index %d, data %.10f\n",
+      //          start_index,
+      //          host_array.at(data_index));
+      // }
       for (size_t j = start_index; j < start_index + one_head_size; j++) {
-        ptr[j] = host_array.at(data_index++);
+        ptr[j] = host_array.at(data_index);
+        data_index += 1;
       }
     }
     file_index++;
@@ -233,33 +236,39 @@ void DataLoader::load_attention_weights(T *ptr,
 
 void DataLoader::store_outputs(BatchConfig *bc,
                                InferenceResult const &ir,
-                               std::map<size_t, int> &batch_predictions) {
+                               std::map<size_t, long> &batch_predictions) {
   assert(bc->token2ids.num_samples == bc->num_active_tokens() &&
          bc->token2ids.num_samples <= bc->MAX_NUM_TOKENS);
 
   std::cout << "store outputs...." << std::endl;
   batch_predictions.clear();
-  // bc->print();
-  for (size_t i = 0; i < bc->token2ids.num_samples; i++) {
-    if (i == bc->token2ids.num_samples - 1 ||
-        bc->token2ids.guids[i] != bc->token2ids.guids[i + 1]) {
-      assert(bc->token2ids.token_indexes[i].token_position ==
-             bc->token_last_available_idx[bc->token2ids.token_indexes[i]
-                                              .request_index]);
-      if (outputs.find(bc->token2ids.guids[i]) == outputs.end()) {
-        std::vector<int> v{ir.results[i]};
-        outputs[bc->token2ids.guids[i]] = v;
-      } else {
-        outputs[bc->token2ids.guids[i]].push_back(ir.results[i]);
-      }
-      assert(outputs[bc->token2ids.guids[i]].size() ==
-             (bc->token2ids.token_indexes[i].token_position + 1) -
-                 (bc->token2ids.token_indexes[i].initial_length - 1));
-      batch_predictions[bc->token2ids.guids[i]] = ir.results[i];
+  size_t guid = bc->token2ids.guids[0];
+  size_t start_idx = bc->token2ids.token_indexes[0].token_position;
 
-      // std::cout<<"ith pred: " << ir.results[i] <<std::endl;
+  for (size_t i = 0; i <= bc->token2ids.num_samples; i++) {
+    if (i == bc->token2ids.num_samples || bc->token2ids.guids[i] != guid) {
+      // see how many tokens has been put to model in this req
+      // to get the index of the final token
+      int result_index =
+          bc->token2ids.token_indexes[i - 1].token_position - start_idx;
+      batch_predictions[guid] = ir.results[i - 1];
+      std::cout << "i: " << i << ", dds-" << guid << ", result index"
+                << result_index << ", result value: " << batch_predictions[guid]
+                << "\n";
+
+      if (i < bc->token2ids.num_samples) {
+        guid = bc->token2ids.guids[i];
+        start_idx = bc->token2ids.token_indexes[i].token_position;
+      }
     }
   }
+  // bc->print();
+  // for (size_t i = 0; i < bc->num_active_requests(); i++) {
+  //   batch_predictions[i] = ir.results[i];
+  //   std::cout << "i: " << i << ", ith pred: " << i
+  //             << ", value: " << batch_predictions[i]
+  //             << std::endl;
+  // }
   assert(batch_predictions.size() == bc->num_active_requests());
 }
 
