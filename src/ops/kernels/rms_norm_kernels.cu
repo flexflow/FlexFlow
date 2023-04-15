@@ -93,19 +93,18 @@ __global__ void
   }
   sum = BlockReduceSum<T>(sum, v_shared); // use BlockReduceSum() to sum X_ij^2
 
-  // if (threadIdx.x == 0) {
-  //   rms[i] = rsqrt((sum / static_cast<T>(N)) + static_cast<T>(eps));
-  //    __syncthreads();
-  //   printf("index: %d, rms norm mean value: %.15f, rms norm sum value: "
-  //          "%.20f, eps: %f, value: %.20f, num:%d, num2: %d\n",
-  //          i,
-  //          sum / static_cast<T>(N),
-  //          sum,
-  //          static_cast<T>(eps),
-  //          rms[i],
-  //          blockDim.x,
-  //          warpSize);
-  // }
+  if (threadIdx.x == 0) {
+    rms[i] = rsqrt((sum / static_cast<T>(N)) + static_cast<T>(eps));
+    // printf("index: %d, rms norm mean value: %.15f, rms norm sum value: "
+    //        "%.20f, eps: %f, value: %.20f, num:%d, num2: %d\n",
+    //        i,
+    //        sum / static_cast<T>(N),
+    //        sum,
+    //        static_cast<T>(eps),
+    //        rms[i],
+    //        blockDim.x,
+    //        warpSize);
+  }
 }
 
 template <typename T>
