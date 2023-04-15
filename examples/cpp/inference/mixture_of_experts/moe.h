@@ -30,9 +30,12 @@ struct MoeConfig : InferenceConfig {
     // expert capacity parameters
     alpha = 2.0f;   // factor overhead tensor size for imbalance
     lambda = 0.04f; // multiplier for load balance term
-    // expert hidden size
-    hidden_size = DATA_DIM;
+    for (int i = 1; i < num_layers; i += 2) {
+      moe_layers.insert(i);
+    }
   }
+
+  void load_configs();
 
   // MoE layer
   int num_exp;
@@ -40,4 +43,5 @@ struct MoeConfig : InferenceConfig {
   int num_select;
   float alpha;
   float lambda;
+  std::set<int> moe_layers;
 };

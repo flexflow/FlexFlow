@@ -8,7 +8,8 @@ set(CPU_SRC
   moe.cc
   ../dataloader.cc
   ../data_generator.cc
-  ../gpt_tokenizer.cc)
+  ../gpt_tokenizer.cc
+  ../inference_config.cc)
 
 set(GPU_SRC
   ../dataloader.cu)
