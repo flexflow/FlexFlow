@@ -1,9 +1,6 @@
 #ifndef _FLEXFLOW_INC_MULTIHEAD_SELF_ATTENTION_H
 #define _FLEXFLOW_INC_MULTIHEAD_SELF_ATTENTION_H
 
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-#include "cuComplex.h"
-#endif
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/inference.h"

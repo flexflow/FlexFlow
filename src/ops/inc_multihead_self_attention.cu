@@ -12,6 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
+#include "cuComplex.h"
+#endif
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/utils/cuda_helper.h"
 

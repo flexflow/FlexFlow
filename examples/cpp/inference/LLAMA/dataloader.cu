@@ -92,15 +92,11 @@ void DataLoader::load_input(Task const *task,
         // for token by token generating, get token from the previous inference.
 
         long token = prev_batch_preds.at(guid);
-        std::cout << "fuck next iter  "
-                  << meta.token_indexes[i - 1].token_position
+        std::cout << "next iter  " << meta.token_indexes[i - 1].token_position
                   << ", dst_idx: " << dst_idx << ", token:" << token << "\n";
         long *dst_ptr = batch_input.ptr + dst_idx;
 
         cudaMemcpy(dst_ptr, &token, sizeof(long), cudaMemcpyHostToDevice);
-        checkCUDA(cudaDeviceSynchronize());
-        std::cout << "guid: " << guid << ", token: " << token << "\n";
-        print_tensor<long>(dst_ptr, 8, "aaaaaa");
       }
 
       // update for next req
