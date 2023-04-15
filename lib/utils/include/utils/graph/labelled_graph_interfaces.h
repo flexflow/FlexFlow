@@ -10,6 +10,11 @@ namespace FlexFlow {
 template <typename NodeLabel>
 struct INodeLabelledMultiDiGraph {
 public:
+  INodeLabelledMultiDiGraph() = default;
+  INodeLabelledMultiDiGraph(const INodeLabelledMultiDiGraph&) = delete;
+  INodeLabelledMultiDiGraph& operator=(const INodeLabelledMultiDiGraph&) = delete;
+  virtual ~INodeLabelledMultiDiGraph() {}
+
   virtual Node add_node(NodeLabel const &) = 0;
   virtual NodeLabel &at(Node const &n) = 0;
   virtual NodeLabel const &at(Node const &n) const = 0;
