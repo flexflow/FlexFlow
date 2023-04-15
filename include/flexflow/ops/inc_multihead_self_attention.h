@@ -16,7 +16,6 @@
 #include <cfloat>
 #include <complex>
 
-
 namespace FlexFlow {
 
 class IncMultiHeadSelfAttentionMeta;
