@@ -207,34 +207,33 @@ LayerNorm::LayerNorm(FFModel &model,
   effective_batch_size = inputs[0]->get_volume() / M;
   assert(elementwise_affine == (numWeights == 2));
   if (numWeights > 0 && allocate_weights) {
-    ParallelDim dims[axes.size() + 1];
+    ParallelDim dims[axes.size()];
     for (int i = 0; i < axes.size(); i++) {
       dims[i] = inputs[0]->dims[i];
     }
-    dims[axes.size()] =
-        inputs[0]->dims[_input->num_dims - 1]; // copy replica dim
     int seed = std::rand();
-    Initializer *initializer = new GlorotUniform(seed);
+    Initializer *gamma_initializer = new UniformInitializer(seed, 1.0f, 1.0f);
+    Initializer *beta_initializer = new UniformInitializer(seed, 0.0f, 0.0f);
 #ifdef USE_NCCL
     ParameterSyncType comm_type = ParameterSyncType::NCCL;
 #else
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
     weights[0] =
-        model.create_parallel_weight_legion_ordering(axes.size() + 1,
+        model.create_parallel_weight_legion_ordering(axes.size(),
                                                      dims,
                                                      DT_FLOAT,
                                                      NULL /*owner_op*/,
                                                      true /*create_grad*/,
-                                                     initializer,
+                                                     gamma_initializer,
                                                      comm_type);
     weights[1] =
-        model.create_parallel_weight_legion_ordering(axes.size() + 1,
+        model.create_parallel_weight_legion_ordering(axes.size(),
                                                      dims,
                                                      DT_FLOAT,
                                                      NULL /*owner_op*/,
                                                      true /*create_grad*/,
-                                                     initializer,
+                                                     beta_initializer,
                                                      comm_type);
   }
 }
@@ -477,17 +476,11 @@ void LayerNorm::forward_task(Task const *task,
     assert(gamma_domain == beta_domain);
     assert(gamma_domain.get_volume() == m->effective_num_elements);
     int numdims = gamma_domain.get_dim();
-    for (int i = 0; i < numdims - 1; i++) {
+    for (int i = 0; i < numdims; i++) {
       int g_d = gamma_domain.hi()[i] - gamma_domain.lo()[i] + 1;
       int in_d = in_domain.hi()[i] - in_domain.lo()[i] + 1;
       assert(g_d == in_d);
     }
-    // check replica dim
-    int g_d =
-        gamma_domain.hi()[numdims - 1] - gamma_domain.lo()[numdims - 1] + 1;
-    int in_d = in_domain.hi()[in_domain.get_dim() - 1] -
-               in_domain.lo()[in_domain.get_dim() - 1] + 1;
-    assert(g_d == in_d);
   } else {
     assert(regions.size() == 2);
   }
