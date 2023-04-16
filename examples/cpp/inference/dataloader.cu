@@ -105,7 +105,7 @@ void DataLoader::load_input(Task const *task,
         assert(prev_batch_preds.find(guid) != prev_batch_preds.end());
         int token = prev_batch_preds.at(guid);
         int *dst_ptr = batch_input_ptr + dst_idx;
-        cudaMemcpy(dst_ptr, &token, 1, cudaMemcpyHostToDevice);
+        cudaMemcpy(dst_ptr, &token, sizeof(int), cudaMemcpyHostToDevice);
         // copy_kernel<<<GET_BLOCKS(tokens_to_copy),
         // CUDA_NUM_THREADS>>>(dst_ptr, &token, tokens_to_copy);
         //  cudaMemcpyAsync(batch_input_ptr + dst_idx * token_dim, &token, 1,

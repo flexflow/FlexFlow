@@ -32,6 +32,7 @@
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
+#include "flexflow/ops/rms_norm.h"
 #include "flexflow/ops/softmax.h"
 #include "flexflow/ops/split.h"
 #include "flexflow/parallel_ops/combine.h"
@@ -3712,6 +3713,13 @@ bool FFModel::convert_graph_to_operators(
         assert(inList.size() == 1);
         IncMultiHeadSelfAttention *attn = (IncMultiHeadSelfAttention *)node.ptr;
         new_op = new IncMultiHeadSelfAttention(*this, *attn, inputs[0], true);
+        break;
+        break;
+      }
+      case OP_RMS_NORM: {
+        assert(inList.size() == 1);
+        RMSNorm *rms = (RMSNorm *)node.ptr;
+        new_op = new RMSNorm(*this, *rms, inputs[0], true);
         break;
         break;
       }

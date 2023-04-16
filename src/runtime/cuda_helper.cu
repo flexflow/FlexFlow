@@ -63,6 +63,14 @@ __global__ void copy_kernel(DT *dst, const DT *src, coord_t size) {
 }
 
 template <typename DT>
+__global__ void
+    copy_kernel_discrete(DT *dst, const DT *src, coord_t size, size_t *index) {
+  CUDA_KERNEL_LOOP(i, size) {
+    dst[i] = src[index[i]];
+  }
+}
+
+template <typename DT>
 __global__ void reluBackward(DT *grad_ptr, const DT *output, size_t n) {
   CUDA_KERNEL_LOOP(i, n) {
     grad_ptr[i] = (output[i] > 0.0f) ? grad_ptr[i] : 0;
@@ -215,12 +223,35 @@ __host__ void
   int idx = 0;
   printf("%s", prefix);
   for (idx = 0; idx < num_elements; idx++) {
-    printf(" %.4lf", (float)host_ptr[idx]);
-    if (idx >= 16) {
+    printf(" %.20lf", (float)host_ptr[idx]);
+    if (idx >= 50) {
       break;
     }
   }
   printf("\n");
+  checkCUDA(cudaFreeHost(host_ptr));
+}
+
+template <typename T>
+__host__ void
+    save_tensor(T const *ptr, size_t num_elements, char const *file_name) {
+  // device synchronize to make sure the data are ready
+  // checkCUDA(cudaDeviceSynchronize());
+  T *host_ptr;
+  checkCUDA(cudaHostAlloc(&host_ptr,
+                          sizeof(T) * num_elements,
+                          cudaHostAllocPortable | cudaHostAllocMapped));
+  checkCUDA(cudaMemcpy(
+      host_ptr, ptr, sizeof(T) * num_elements, cudaMemcpyDeviceToHost));
+  // checkCUDA(cudaDeviceSynchronize());
+
+  FILE *tensor_file;
+  tensor_file = fopen(file_name, "w");
+  for (unsigned i = 0; i < num_elements; i++) {
+    fprintf(tensor_file, "%.20f, ", (float)host_ptr[i]);
+  }
+
+  fclose(tensor_file);
   checkCUDA(cudaFreeHost(host_ptr));
 }
 
@@ -398,6 +429,15 @@ template __global__ void
 template __global__ void
     copy_kernel<int64_t>(int64_t *dst, int64_t const *src, coord_t size);
 
+template __global__ void copy_kernel_discrete<float>(float *dst,
+                                                     float const *src,
+                                                     coord_t size,
+                                                     size_t *index);
+template __global__ void copy_kernel_discrete<int64_t>(int64_t *dst,
+                                                       int64_t const *src,
+                                                       coord_t size,
+                                                       size_t *index);
+
 template __global__ void apply_add_with_scale<float>(float *data_ptr,
                                                      float const *grad_ptr,
                                                      size_t size,
@@ -423,6 +463,12 @@ template __host__ void
     print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
 template __host__ void
     print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
+
+template __host__ void
+    save_tensor<float>(float const *ptr, size_t rect, char const *file_name);
+template __host__ void save_tensor<int64_t>(int64_t const *ptr,
+                                            size_t rect,
+                                            char const *file_name);
 
 template __host__ float *download_tensor<float>(float const *ptr,
                                                 size_t num_elements);

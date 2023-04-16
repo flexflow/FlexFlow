@@ -428,6 +428,13 @@ class MultiHeadAttention(Op):
     super(MultiHeadAttention, self).__init__(handle, idx, name)
 
 # -----------------------------------------------------------------------
+# Increamental MultiHeadAttention
+# -----------------------------------------------------------------------
+class IncMultiHeadAttention(Op):
+  def __init__(self, handle, idx=None, name=None):
+    super(IncMultiHeadAttention, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
 # flexflow_op_t handle to Op
 # -----------------------------------------------------------------------
 def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
@@ -506,7 +513,9 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
   elif op_type == OpType.REVERSE:
     return Reverse(handle, idx, name)
   elif op_type == OpType.MULTIHEAD_ATTENTION:
-    return Reverse(handle, idx, name)
+    return MultiHeadAttention(handle, idx, name)
+  elif op_type == OpType.INC_MULTIHEAD_ATTENTION:
+        return MultiHeadAttention(handle, idx, name)
   elif op_type == OpType.RSQRT:
     return Rsqrt(handle, idx, name)
   elif op_type == OpType.POW:
@@ -1950,7 +1959,55 @@ class FFModel(object):
     handle = ffc.flexflow_model_add_multihead_attention(self.handle, query.handle, key.handle, value.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle, c_name)
     self.add_layer(OpType.MULTIHEAD_ATTENTION, name)
     return Tensor(handle, owner_op_type=OpType.MULTIHEAD_ATTENTION)
+  def inc_multihead_attention(self, input, 
+                          embed_dim, num_heads, 
+                          kdim=0, vdim=0, dropout=0.0, 
+                          bias=True, add_bias_kv=False, add_zero_attn=False, 
+                          kernel_initializer=None, name=None):
+    """Defines the MultiHead Attention operation as described in Attention Is All You Need 
+    which takes in the tensors :attr:`query`, :attr:`key`, and :attr:`value`, 
+    and returns the dot-product attention between them:.
+             
+    :param input: the input Tensor.
+    :type query: Tensor
 
+    :param embed_dim: total dimension of the model
+    :type embed_dim: int
+                          
+    :param num_heads: Number of attention heads.
+    :type num_heads: int
+                          
+    :param kdim: total number of features in key. Default is 0
+    :type kdim: int
+                          
+    :param vdim: total number of features in value. Default is 0
+    :type vdim: int
+                          
+    :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
+    :type dropout: float(0-1)
+                          
+    :param bias: Whether the dense layers use bias vectors. Default is True.
+    :type bias: bool
+                          
+    :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
+    :type add_bias_kv: bool
+                          
+    :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
+    :type add_zero_attn: bool
+    
+    :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
+    :type kernel_initializer: Initializer
+             
+    :param name: the name of the layer. Default is None.
+    :type name: string
+
+    :returns:  Tensor -- the output tensor.
+    """     
+    c_name = get_c_name(name)                 
+    kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
+    handle = ffc.flexflow_model_add_inc_multihead_attention(self.handle, input.handle, embed_dim, num_heads, kdim, vdim, dropout, bias, add_bias_kv, add_zero_attn, kernel_init_handle, c_name)
+    self.add_layer(OpType.INC_MULTIHEAD_ATTENTION, name)
+    return Tensor(handle, owner_op_type=OpType.INC_MULTIHEAD_ATTENTION)
   def reset_metrics(self):
     """Reset performance metrics.
              
