@@ -11,6 +11,7 @@
 #include "flexflow/ops/inc_multihead_self_attention_params.h"
 #include "math.h"
 #include <cfloat>
+#include <complex>
 
 namespace FlexFlow {
 
@@ -32,6 +33,7 @@ public:
                             bool _bias,
                             bool _add_bias_kv,
                             bool _add_zero_attn,
+                            bool _apply_rotary_embedding,
                             bool allocate_weights,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
@@ -45,6 +47,7 @@ public:
                             bool _bias,
                             bool _add_bias_kv,
                             bool _add_zero_attn,
+                            bool _apply_rotary_embedding,
                             bool allocate_weights,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
@@ -88,6 +91,7 @@ public:
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
+
   static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
                                        BatchConfig const *bc,
                                        float const *input_ptr,
@@ -99,7 +103,7 @@ public:
   int num_heads;
   float dropout;
   bool bias;
-  bool add_bias_kv, add_zero_attn;
+  bool add_bias_kv, add_zero_attn, apply_rotary_embedding;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
 };
@@ -120,6 +124,7 @@ public:
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int num_heads;
   bool *has_load_weights;
+  bool *apply_rotary_embedding;
 #ifdef INFERENCE_TESTS
   float *kcache, *vcache;
 #endif

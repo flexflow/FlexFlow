@@ -17,11 +17,19 @@ public:
           LayerID const &_layer_guid,
           const ParallelTensor _input,
           float _eps,
+          int dim,
+          bool allocate_weights,
           char const *name);
   RMSNorm(FFModel &model,
           RMSNormParams const &params,
           ParallelTensor input,
+          bool allocate_weights,
           char const *name = nullptr);
+
+  RMSNorm(FFModel &model,
+          RMSNorm const &other,
+          const ParallelTensor input,
+          bool allocate_weights);
   void init(FFModel const &);
   void forward(FFModel const &);
   void backward(FFModel const &);
@@ -68,7 +76,7 @@ public:
   float eps;
   char op_name[MAX_OPNAME];
   int effective_batch_size;
-  int data_dim;
+  int dim, data_dim;
 };
 } // namespace FlexFlow
 #endif // _FLEXFLOW_RMS_NORM_H

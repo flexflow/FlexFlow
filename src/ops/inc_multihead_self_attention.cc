@@ -15,8 +15,13 @@
 
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/model.h"
+#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "flexflow/utils/cuda_helper.h"
+#else
+#include "flexflow/utils/hip_helper.h"
+#endif
 #include "flexflow/utils/hash_utils.h"
+#include "legion/legion_utilities.h"
 #ifdef INFERENCE_TESTS
 #include <torch/torch.h>
 using namespace at::indexing;
@@ -41,6 +46,7 @@ using Legion::Runtime;
 using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
+using PCG::Node;
 
 bool IncMultiHeadSelfAttentionParams::is_valid(
     ParallelTensorShape const &input) const {
@@ -58,6 +64,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
                                              bool add_bias_kv,
                                              bool add_zero_attn,
                                              Initializer *kernel_initializer,
+                                             bool apply_rotary_embedding,
                                              char const *name) {
   // Currently assume that
   Layer *li = new Layer(this,
@@ -105,6 +112,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
   li->add_int_property("add_bias_kv", add_bias_kv);
   li->add_int_property("add_zero_attn", add_zero_attn);
   li->add_float_property("dropout", dropout);
+  li->add_int_property("apply_rotary_embedding", apply_rotary_embedding);
   layers.push_back(li);
   return li->outputs[0];
 }
@@ -130,6 +138,8 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
   bool add_bias_kv = (bool)value;
   layer->get_int_property("add_zero_attn", value);
   bool add_zero_attn = (bool)value;
+  layer->get_int_property("apply_rotary_embedding", value);
+  bool apply_rotary_embedding = (bool)value;
   return new IncMultiHeadSelfAttention(model,
                                        layer->layer_guid,
                                        inputs[0],
@@ -141,6 +151,7 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
                                        bias,
                                        add_bias_kv,
                                        add_zero_attn,
+                                       apply_rotary_embedding,
                                        false /*allocate_weights*/,
                                        layer->name);
 }
@@ -157,6 +168,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     bool _bias,
     bool _add_bias_kv,
     bool _add_zero_attn,
+    bool _apply_rotary_embedding,
     bool allocate_weights,
     char const *name)
     // Initializer* _bias_initializer)
@@ -170,6 +182,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
          _input),
       num_heads(_num_heads), dropout(_dropout), bias(_bias),
       add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
+      apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
       vProjSize(_vdim), oProjSize(_embed_dim),
@@ -239,6 +252,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     bool _bias,
     bool _add_bias_kv,
     bool _add_zero_attn,
+    bool _apply_rotary_embedding,
     bool allocate_weights,
     char const *name)
     // Initializer* _bias_initializer)
@@ -253,6 +267,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
          _weight),
       num_heads(_num_heads), dropout(_dropout), bias(_bias),
       add_bias_kv(_add_bias_kv), add_zero_attn(_add_zero_attn),
+      apply_rotary_embedding(_apply_rotary_embedding),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
       vProjSize(_vdim), oProjSize(_embed_dim),
@@ -325,6 +340,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 other.bias,
                                 other.add_bias_kv,
                                 other.add_zero_attn,
+                                other.apply_rotary_embedding,
                                 allocate_weights,
                                 other.name) {}
 
@@ -345,6 +361,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 params.bias,
                                 params.add_bias_kv,
                                 params.add_zero_attn,
+                                params.apply_rotary_embedding,
                                 allocate_weights,
                                 name) {}
 
@@ -487,7 +504,6 @@ FutureMap IncMultiHeadSelfAttention::inference(
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   int idx = 0;
-
   printf("BatchConfig, num_tokens: %d, num_requests: %d\n",
          bc.num_tokens,
          bc.num_requests);
@@ -554,6 +570,7 @@ void IncMultiHeadSelfAttention::inference_task(
   assert(input_domain.get_dim() == 4);
   assert(weight_domain.get_dim() == 3);
   assert(output_domain.get_dim() == 4);
+
   /* print_tensor<float>(input.get_float_ptr(),
                       input_domain.get_volume(),
                       "[Attention:forward:query]"); */
@@ -1297,15 +1314,14 @@ bool IncMultiHeadSelfAttention::measure_operator_cost(
   return false;
 }
 
-using PCG::Node;
-
 bool operator==(IncMultiHeadSelfAttentionParams const &lhs,
                 IncMultiHeadSelfAttentionParams const &rhs) {
   return lhs.layer_guid == rhs.layer_guid && lhs.embed_dim == rhs.embed_dim &&
          lhs.num_heads == rhs.num_heads && lhs.kdim == rhs.kdim &&
          lhs.vdim == rhs.vdim && lhs.dropout == rhs.dropout &&
          lhs.bias == rhs.bias && lhs.add_bias_kv == rhs.add_bias_kv &&
-         lhs.add_zero_attn == rhs.add_zero_attn;
+         lhs.add_zero_attn == rhs.add_zero_attn &&
+         lhs.apply_rotary_embedding == rhs.apply_rotary_embedding;
 }
 
 IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
@@ -1319,6 +1335,7 @@ IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
   params.bias = this->bias;
   params.add_bias_kv = this->add_bias_kv;
   params.add_zero_attn = this->add_zero_attn;
+  params.apply_rotary_embedding = this->apply_rotary_embedding;
   return params;
 }
 
@@ -1337,6 +1354,7 @@ size_t hash<FlexFlow::IncMultiHeadSelfAttentionParams>::operator()(
   hash_combine(key, params.bias);
   hash_combine(key, params.add_bias_kv);
   hash_combine(key, params.add_zero_attn);
+  hash_combine(key, params.apply_rotary_embedding);
   return key;
 }
 }; // namespace std

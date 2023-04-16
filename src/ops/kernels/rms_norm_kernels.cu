@@ -74,7 +74,7 @@ __inline__ __device__ T BlockReduceSum(T val, T *shared) {
     shared[wid] = val;
   }
   __syncthreads();
-  val = (threadIdx.x < blockDim.x / C10_WARP_SIZE) ? shared[lid] : 0;
+  val = (threadIdx.x < (blockDim.x / C10_WARP_SIZE)) ? shared[lid] : T(0);
   if (wid == 0) {
     val = WarpReduceSum(val);
   }
@@ -92,8 +92,18 @@ __global__ void
     sum += static_cast<T>(X[index]) * static_cast<T>(X[index]);
   }
   sum = BlockReduceSum<T>(sum, v_shared); // use BlockReduceSum() to sum X_ij^2
+
   if (threadIdx.x == 0) {
-    rms[i] = sqrt((static_cast<T>(N) / sum) + static_cast<T>(eps));
+    rms[i] = rsqrt((sum / static_cast<T>(N)) + static_cast<T>(eps));
+    // printf("index: %d, rms norm mean value: %.15f, rms norm sum value: "
+    //        "%.20f, eps: %f, value: %.20f, num:%d, num2: %d\n",
+    //        i,
+    //        sum / static_cast<T>(N),
+    //        sum,
+    //        static_cast<T>(eps),
+    //        rms[i],
+    //        blockDim.x,
+    //        warpSize);
   }
 }
 
@@ -107,13 +117,23 @@ __global__ void NormKernel(int64_t N, T const *X, T const *rstd, T *Y) {
   }
 }
 
+__global__ void elewise_apply_weights(int64_t batch_size,
+                                      int64_t in_dim,
+                                      float const *norm,
+                                      float const *weights,
+                                      float *output) {
+  CUDA_KERNEL_LOOP(i, batch_size * in_dim) {
+    output[i] = norm[i] * weights[i % in_dim];
+  }
+}
+
 void forward_kernel_wrapper(RMSNormMeta const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorR const &weight,
                             GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-
+  int parallelism = m->batch_size * m->in_dim;
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
     cudaEventCreate(&t_start);
@@ -124,31 +144,18 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
   RowwiseRootMeanSquareKernel<float>
       <<<m->batch_size, kCUDABlockReduceNumThreads, 0, stream>>>(
           m->in_dim, m->eps, input.get_float_ptr(), m->rms_ptr);
+
   NormKernel<float><<<m->batch_size, kCUDANumThreads, 0, stream>>>(
       m->in_dim, input.get_float_ptr(), m->rms_ptr, m->norm_ptr);
 
-  checkCUDA(cublasGemmEx(
-      m->handle.blas,
-      CUBLAS_OP_T, // transpose weight (column major)
-      CUBLAS_OP_N,
-      m->in_dim,
-      m->batch_size,
-      m->in_dim,
-      &(m->alpha),
-      weight.get_float_ptr(), // weight, shape (in_dim, in_dim)
-      CUDA_R_32F,
-      m->in_dim,
-      m->norm_ptr, // norm, shape (in_dim, batch_size)
-      CUDA_R_32F,
-      m->in_dim,
-      &(m->beta),
-      output
-          .get_float_ptr(), // output, shape (in_dim, batch_size), same as norm
-      CUDA_R_32F,
-      m->in_dim,
-      CUDA_R_32F,
-      CUBLAS_GEMM_DFALT_TENSOR_OP));
-
+  elewise_apply_weights<<<GET_BLOCKS(parallelism),
+                          min(CUDA_NUM_THREADS, parallelism),
+                          0,
+                          stream>>>(m->batch_size,
+                                    m->in_dim,
+                                    m->norm_ptr,
+                                    weight.get_float_ptr(),
+                                    output.get_float_ptr());
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
     checkCUDA(cudaEventSynchronize(t_end));
@@ -157,8 +164,6 @@ void forward_kernel_wrapper(RMSNormMeta const *m,
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("[RMSNorm] forward time (CF) = %.2fms\n", elapsed);
-    print_tensor<float>(input.get_float_ptr(), 32, "[RMSNorm:forward:input]");
-    print_tensor<float>(output.get_float_ptr(), 32, "[RMSNorm:forward:output]");
   }
 }
 

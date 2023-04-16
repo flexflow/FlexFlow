@@ -597,6 +597,7 @@ public:
                                       bool add_bias_kv = false,
                                       bool add_zero_attn = false,
                                       Initializer *kernel_initializer = NULL,
+                                      bool apply_rotary_embedding = false,
                                       char const *name = NULL);
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
