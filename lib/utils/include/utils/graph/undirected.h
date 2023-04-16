@@ -44,6 +44,18 @@ protected:
 
 static_assert(is_rc_copy_virtual_compliant<IUndirectedGraphView>::value, RC_COPY_VIRTUAL_MSG);
 
+struct UndirectedGraphView {
+  using Edge = UndirectedEdge;
+  using EdgeQuery = UndirectedEdgeQuery;
+
+  UndirectedGraphView() = delete;
+
+private:
+  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const>);
+private:
+  std::shared_ptr<IUndirectedGraphView const> ptr;
+};
+
 struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
   virtual void add_edge(UndirectedEdge const &) = 0;
   virtual void remove_edge(UndirectedEdge const &) = 0;
