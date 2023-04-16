@@ -74,36 +74,6 @@ private:
   T *_ptr;
 };
 
-struct MultiDiGraphView {
-public:
-  using Edge = MultiDiEdge;
-  using EdgeQuery = MultiDiEdgeQuery;
-
-  friend void swap(MultiDiGraphView &, MultiDiGraphView &);
-
-  operator maybe_owned_ref<IMultiDiGraphView const>() const {
-    return maybe_owned_ref<IMultiDiGraphView const>(this->ptr);
-  }
-
-  IMultiDiGraphView const *unsafe() const {
-    return this->ptr.get(); 
-  }
-
-  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
-  std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
-
-  template <typename T, typename ...Args>
-  static 
-  typename std::enable_if<std::is_base_of<IMultiDiGraphView, T>::value, MultiDiGraphView>::type 
-  create(Args &&... args) { 
-    return MultiDiGraph(make_unique<T>(std::forward<Args>(args)...));
-  }
-private:
-  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const>);
-private:
-  std::shared_ptr<IMultiDiGraphView const> ptr;
-};
-
 static_assert(is_rc_copy_virtual_compliant<IMultiDiGraphView>::value, RC_COPY_VIRTUAL_MSG);
 
 struct IMultiDiGraph : public IMultiDiGraphView, public IGraph {
@@ -148,6 +118,37 @@ private:
 private:
   std::unique_ptr<IMultiDiGraph> ptr;
 };
+
+struct MultiDiGraphView {
+public:
+  using Edge = MultiDiEdge;
+  using EdgeQuery = MultiDiEdgeQuery;
+
+  friend void swap(MultiDiGraphView &, MultiDiGraphView &);
+
+  operator maybe_owned_ref<IMultiDiGraphView const>() const {
+    return maybe_owned_ref<IMultiDiGraphView const>(this->ptr);
+  }
+
+  IMultiDiGraphView const *unsafe() const {
+    return this->ptr.get(); 
+  }
+
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
+  std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
+
+  template <typename T, typename ...Args>
+  static 
+  typename std::enable_if<std::is_base_of<IMultiDiGraphView, T>::value, MultiDiGraphView>::type 
+  create(Args &&... args) { 
+    return MultiDiGraph(make_unique<T>(std::forward<Args>(args)...));
+  }
+private:
+  MultiDiGraphView(std::shared_ptr<IMultiDiGraphView const>);
+private:
+  std::shared_ptr<IMultiDiGraphView const> ptr;
+};
+
 
 static_assert(std::is_copy_constructible<MultiDiGraph>::value, "");
 static_assert(std::is_move_constructible<MultiDiGraph>::value, "");

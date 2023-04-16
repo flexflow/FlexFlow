@@ -224,6 +224,9 @@ DirectedEdge flipped(DirectedEdge const &);
 DiGraphView unsafe_view_as_flipped(DiGraphView const &);
 DiGraphView view_as_flipped(DiGraphView const &);
 
+UndirectedGraphView unsafe_view_subgraph(UndirectedGraphView const &, std::unordered_set<Node> const &);
+UndirectedGraphView view_subgraph(UndirectedGraphView const &, std::unordered_set<Node> const &);
+
 DiGraphView unsafe_view_subgraph(DiGraphView const &, std::unordered_set<Node> const &);
 DiGraphView view_subgraph(DiGraphView const &, std::unordered_set<Node> const &);
 
@@ -233,14 +236,14 @@ MultiDiGraphView view_subgraph(MultiDiGraphView const &, std::unordered_set<Node
 OpenMultiDiGraphView unsafe_view_as_subgraph(OpenMultiDiGraphView const &, std::unordered_set<Node> const &);
 OpenMultiDiGraphView view_subgraph(OpenMultiDiGraphView const &, std::unordered_set<Node> const &);
 
-UndirectedGraphView unsafe_view_as_joined(UndirectedGraphView const &, IUndirectedGraphView const &);
-UndirectedGraphView view_as_joined(UndirectedGraphView const &, std::shared_ptr<IUndirectedGraphView const>);
+UndirectedGraphView unsafe_view_as_joined(UndirectedGraphView const &, UndirectedGraphView const &);
+UndirectedGraphView view_as_joined(UndirectedGraphView const &, UndirectedGraphView const &);
 
-DiGraphView unsafe_view_as_joined(DiGraphView const &, IDiGraphView const &);
-DiGraphView view_as_joined(DiGraphView const &, std::shared_ptr<IDiGraphView const>);
+DiGraphView unsafe_view_as_joined(DiGraphView const &, DiGraphView const &);
+DiGraphView view_as_joined(DiGraphView const &, DiGraphView const &);
 
-MultiDiGraphView unsafe_view_as_joined(MultiDiGraphView const &, IMultiDiGraphView const &);
-MultiDiGraphView view_as_joined(MultiDiGraphView const &, std::shared_ptr<IDiGraphView const>);
+MultiDiGraphView unsafe_view_as_joined(MultiDiGraphView const &, MultiDiGraphView const &);
+MultiDiGraphView view_as_joined(MultiDiGraphView const &, MultiDiGraphView const &);
 
 DiGraphView unsafe_view_with_added_edges(DiGraphView const &, std::unordered_set<DirectedEdge> const &);
 DiGraphView view_with_added_edges(DiGraphView const &, std::unordered_set<DirectedEdge> const &);

@@ -92,14 +92,6 @@ struct IOpenMultiDiGraphView : public IGraphView {
   virtual std::unordered_set<OpenMultiDiEdge> query_edges(OpenMultiDiEdgeQuery const &) const = 0;
 };
 
-struct OpenMultiDiGraphView {
-public:
-  using Edge = MultiDiEdge;
-  using EdgeQuery = MultiDiEdgeQuery;
-
-  friend void swap(OpenMultiDiGraphView);
-};
-
 static_assert(is_rc_copy_virtual_compliant<IOpenMultiDiGraphView>::value, RC_COPY_VIRTUAL_MSG);
 
 struct IDownwardOpenMultiDiGraphView : public IGraphView {
@@ -137,26 +129,6 @@ struct IDownwardOpenMultiDiGraph : public IDownwardOpenMultiDiGraphView, public 
 };
 
 static_assert(is_rc_copy_virtual_compliant<IDownwardOpenMultiDiGraph>::value, RC_COPY_VIRTUAL_MSG);
-
-}
-
-namespace fmt {
-
-template <>
-struct formatter<::FlexFlow::MultiDiOutput> : formatter<std::string> {
-  template <typename FormatContext>
-  auto format(::FlexFlow::MultiDiOutput const &x, FormatContext &ctx) const -> decltype(ctx.out()) {
-    return formatter<std::string>::format(fmt::format("MultiDiOutput({}, {})", x.node, x.idx), ctx);
-  }
-};
-
-template <>
-struct formatter<::FlexFlow::MultiDiInput> : formatter<std::string> {
-  template <typename FormatContext>
-  auto format(::FlexFlow::MultiDiInput const &x, FormatContext &ctx) const -> decltype(ctx.out()) {
-    return formatter<std::string>::format(fmt::format("MultiDiInput({}, {})", x.node, x.idx), ctx);
-  }
-};
 
 }
 

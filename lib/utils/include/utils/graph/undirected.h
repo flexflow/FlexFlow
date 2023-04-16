@@ -5,6 +5,7 @@
 #include <unordered_set>
 #include "node.h"
 #include "utils/unique.h"
+#include "utils/maybe_owned_ref.h"
 
 namespace FlexFlow {
 
@@ -40,6 +41,38 @@ struct IUndirectedGraphView : public IGraphView {
   virtual ~IUndirectedGraphView();
 protected:
   IUndirectedGraphView() = default;
+};
+
+struct UndirectedGraphView {
+public:
+  using Edge = UndirectedEdge;
+  using EdgeQuery = UndirectedEdgeQuery;
+
+  UndirectedGraphView() = delete;
+
+  friend void swap(UndirectedGraphView &, UndirectedGraphView &);
+
+  std::unordered_set<Node> query_nodes(NodeQuery const &);
+  std::unordered_set<Edge> query_edges(EdgeQuery const &);
+
+  operator maybe_owned_ref<IUndirectedGraphView const>() const {
+    return maybe_owned_ref<IUndirectedGraphView const>(this->ptr);
+  }
+
+  IUndirectedGraphView const *unsafe() const {
+    return this->ptr.get(); 
+  }
+
+  template <typename T, typename ...Args>
+  static
+  typename std::enable_if<std::is_base_of<IUndirectedGraphView, T>::value, UndirectedGraphView>::type
+  create(Args &&... args) {
+    return UndirectedGraphView(std::make_shared<T>(std::forward<Args>(args)...));
+  }
+private:
+  UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const>);
+private:
+  std::shared_ptr<IUndirectedGraphView const> ptr;
 };
 
 struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
