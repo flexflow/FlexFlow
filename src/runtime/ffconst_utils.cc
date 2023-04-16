@@ -149,6 +149,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "MultiHeadAttention";
     case OP_INC_MULTIHEAD_SELF_ATTENTION:
       return "IncMultiHeadSelfAttention";
+    case OP_SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION:
+      return "SpeculativeIncMultiHeadSelfAttention";
     case OP_INPUT:
       return "Input";
     case OP_WEIGHT:

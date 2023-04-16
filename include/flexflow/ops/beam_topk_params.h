@@ -7,7 +7,7 @@
 namespace FlexFlow {
 
 struct BeamTopKParams {
-  int k;
+  LayerID layer_guid;
   bool sorted;
   bool is_valid(ParallelTensorShape const &) const;
 };

@@ -4,7 +4,7 @@
 #include "flexflow/inference.h"
 #include "flexflow/model.h"
 #include "flexflow/node.h"
-#include "flexflow/ops/Beam_topk_params.h"
+#include "flexflow/ops/beam_topk_params.h"
 
 namespace FlexFlow {
 
@@ -20,7 +20,7 @@ public:
   using Input = ParallelTensor;
   BeamTopK(FFModel &model,
           const ParallelTensor input,
-          int k,
+          LayerID const &_layer_guid,
           bool sorted,
           char const *name);
   BeamTopK(FFModel &model, BeamTopK const &other, const ParallelTensor input);
@@ -73,8 +73,9 @@ public:
                              // float *output_ptr,
                              int *indices_ptr,
                              size_t batch_size,
+                             size_t tokens_per_request,
                              int length,
-                             int k,
+                             std::vector<int> beam_width,
                              bool sorted,
                              ffStream_t stream);
   static void forward_kernel_wrapper(BeamTopKMeta const *m,
@@ -82,12 +83,13 @@ public:
                                      // float *output_ptr,
                                      int *indices_ptr,
                                      size_t batch_size,
+                                     size_t tokens_per_request,
+                                     int length,
                                      std::vector<int> beam_width,
                                      bool sorted);
   Params get_params() const;
 
 public:
-  int k;
   bool sorted;
 };
 

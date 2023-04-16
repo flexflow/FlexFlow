@@ -16,6 +16,7 @@
 #pragma once
 
 #include <cstdlib>
+#include <unordered_map>
 
 // #define MAX_SEQ_LEN 1024
 // #define BATCH_SIZE 2
@@ -47,7 +48,6 @@ public:
   // static int const MAX_SEQUENCE_LENGTH = MAX_SEQ_LEN;
   //  These are set by update
   int num_tokens, num_requests;
-  int num_beam_tokens, num_beam_requests;
   bool cached_results;
   int token_start_idx[MAX_NUM_REQUESTS]; // index of first token in a request
                                          // that should be processed in the

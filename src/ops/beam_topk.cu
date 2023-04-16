@@ -332,10 +332,10 @@ __device__ void mergeShards(int num_shards,
 }
 
 template <typename T>
-__global__ void arg_topk_forward_kernel(T const *__restrict__ input,
+__global__ void beam_topk_forward_kernel(T const *__restrict__ input,
                                         size_t shared_memory_size,
                                         int length,
-                                        int k,
+                                        int *heap_size,
                                         bool sorted,
                                         // T *__restrict__ output,
                                         int *__restrict__ indices) {
@@ -345,6 +345,11 @@ __global__ void arg_topk_forward_kernel(T const *__restrict__ input,
   int const thread_index = threadIdx.x;
   int const thread_count = blockDim.x;
   Entry<T> *shared_entries = (Entry<T> *)shared_memory;
+
+  //heap size of a specific req
+  int k = heap_size[batch_index];
+
+  printf("thread index %d, thread_count %d, batch_index %d, k%d\n", thread_index, thread_count, batch_index, k);
   heapBeamTopK<T, StridedData>(
       batch_input, length, k, shared_entries, true, thread_index, thread_count);
   __syncthreads();
@@ -368,16 +373,29 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
                              // float *output_ptr,
                              int *indices_ptr,
                              size_t batch_size,
+                             size_t tokens_per_request,
                              int length,
-                             int k,
+                             std::vector<int> beam_width,
                              bool sorted,
                              cudaStream_t stream) {
   // Adopted from TensorFlow's BeamTopK implementation
   // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/topk_op_gpu.h
   int num_shards = 0;
+  int max_heap_size = 0;
+
+
+  int heap_size[beam_width.size()];
+  for(int i = 0; i < beam_width.size(); i++){
+    //eg.: if beam width = 3, there are 3 sub requests, 
+    //and we select top 3 * 3 across all sub requests
+    heap_size[i] = beam_width.at(i) * beam_width.at(i);
+    max_heap_size = std::max(max_heap_size, heap_size[i]);
+  }
+  size_t beam_num_blocks = beam_width.size();
+
   {
     constexpr auto shared_memory_size = 48 << 10;
-    auto const heap_size = k * sizeof(Entry<float>);
+    auto const heap_size = max_heap_size * sizeof(Entry<float>);
     // shared_memory_size = (num_shards + 1) * heap_size <=>
     num_shards = shared_memory_size / heap_size - 1;
     assert(num_shards > 0);
@@ -385,17 +403,21 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
       num_shards = CUDA_NUM_THREADS;
     }
   }
+
+  std::cout << "maxheap size:  " <<max_heap_size << "\n";
   // We are limited by the amount of shared memory we have per block.
-  size_t shared_memory_size = (num_shards + 1) * k * sizeof(Entry<float>);
-  // size_t num_blocks = (batch_size + num_shards - 1) / num_shards;
+  size_t shared_memory_size = (num_shards + 1) * max_heap_size * sizeof(Entry<float>);
+  
   size_t num_blocks = batch_size;
-  assert(num_shards >= (size_t)k);
-  num_shards = k;
-  arg_topk_forward_kernel<<<num_blocks, num_shards, 0, stream>>>(
+  assert(num_shards >= (size_t)max_heap_size);
+  num_shards = max_heap_size;
+
+  printf("fuck beam topk kernel, %ld, %ld %ld\n", beam_num_blocks, num_shards, shared_memory_size);
+  beam_topk_forward_kernel<<<beam_num_blocks, num_shards, 0, stream>>>(
       input_ptr,
       shared_memory_size,
       length,
-      k,
+      heap_size,
       sorted,
       // output_ptr,
       indices_ptr);
@@ -407,8 +429,10 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
                                      // float *output_ptr,
                                      int *indices_ptr,
                                      size_t batch_size,
+                                     size_t tokens_per_request,
+                                     int length,
                                      std::vector<int> beam_width,
-                                     bool sorted); {
+                                     bool sorted) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -419,20 +443,14 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
     cudaEventRecord(t_start, stream);
   }
 
-  int k[beam_width.size()];
-  for(int i = 0; i < beam_width.size(); i++){
-    //eg.: if beam width = 3, there are 3 sub requests, 
-    //and we select top 3 * 3 across all sub requests
-    k[i] = beam_width.at(i) * beam_width.at(i);
-  }
-
   BeamTopK::forward_kernel(m,
                           input_ptr,
                           // output_ptr,
                           indices_ptr,
                           batch_size,
+                          tokens_per_request,
                           length,
-                          k,
+                          beam_width,
                           sorted,
                           stream);
 

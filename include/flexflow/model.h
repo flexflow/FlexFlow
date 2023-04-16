@@ -145,7 +145,7 @@ enum TaskIDs {
   BEAM_TOPK_INIT_TASK_ID,
   BEAM_TOPK_INF_TASK_ID,
   SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
-  SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
+  SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_BWD_TASK_ID,
@@ -512,25 +512,7 @@ public:
   Tensor
       rms_norm(const Tensor input, float eps, int dim, char const *name = NULL);
   // Add a beam search top k layer
-  Tensor beam_top_k(const Tensor input,
-                    int k,
-                    int beam_width,
-                    int batch_size,
-                    int data_dim,
-                    int target_seq_length,
-                    int vocab_size,
-                    char const *name = NULL);
-  Tensor spec_inc_multihead_self_attention(const Tensor input,
-                                  int embed_dim,
-                                  int num_heads,
-                                  int kdim = 0,
-                                  int vdim = 0,
-                                  float dropout = 0.0f,
-                                  bool bias = true,
-                                  bool add_bias_kv = false,
-                                  bool add_zero_attn = false,
-                                  Initializer *kernel_initializer = NULL,
-                                  char const *name = NULL);
+  Tensor beam_top_k(const Tensor input, bool sorted, char const *name = NULL);
   // Add a dense layer
   Tensor dense(const Tensor input,
                int outDim,
@@ -625,6 +607,19 @@ public:
                                       Initializer *kernel_initializer = NULL,
                                       bool apply_rotary_embedding = false,
                                       char const *name = NULL);
+
+Tensor spec_inc_multihead_self_attention(const Tensor input,
+                                  int embed_dim,
+                                  int num_heads,
+                                  int kdim = 0,
+                                  int vdim = 0,
+                                  float dropout = 0.0f,
+                                  bool bias = true,
+                                  bool add_bias_kv = false,
+                                  bool add_zero_attn = false,
+                                  Initializer *kernel_initializer = NULL,
+                                  bool apply_rotary_embedding = false,
+                                  char const *name = NULL);                                    
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
                                        DataType data_type,
