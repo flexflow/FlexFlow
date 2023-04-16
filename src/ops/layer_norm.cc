@@ -109,11 +109,6 @@ Tensor FFModel::layer_norm(const Tensor input,
                                                  0,
                                                  true /*create_grad*/);
   if (num_weights == 2) {
-    // int M = 1;
-    // for (int i = 0; i < axes.size(); i++) {
-    //   M *= input->dims[axes[i]];
-    // }
-    // int dims[1] = {M};
     int numdims = axes.size();
     int dims[numdims];
     for (int i = 0; i < numdims; i++) {
