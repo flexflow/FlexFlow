@@ -62,9 +62,25 @@ Tensor FFModel::layer_norm(const Tensor input,
                            bool elementwise_affine,
                            float eps,
                            char const *name) {
-  // FIXME: currently disable elementwise_affine
-  elementwise_affine = false;
-  // axes must be the last axes.size() dimensions
+  // In PyTorch, axes must be the sizes of the last axes.size() dimensions of
+  // the input tensor. However, since the tensor dimensions are reversed in
+  // FlexFlow (batch size is the last dimension), we require that axes must be
+  // the sizes of the FIRST axes.size() dimensions of the input tensor.
+
+  // Another difference is that in PyTorch, the axes vector should contain the
+  // sizes of the dimensions with respect to which you want to compute the
+  // layernorm. In FlexFlow, instead, axes should contain the INDICES of the
+  // dimensions in question. We do this because the size of a dimension might be
+  // different when splitting a tensor in model parallelism.
+  assert(
+      axes.size() <= input->num_dims &&
+      "number of axes must be less than tensor dimensions"); // input does not
+                                                             // have replica
+                                                             // dimension here
+  for (int i = 0; i < axes.size(); i++) {
+    assert(axes[i] == i && "axes must be the first axes.size() dimensions");
+  }
+#ifdef DEADCODE
   for (int i = 0; i < axes.size(); i++) {
     bool found = false;
     for (int j = 0; j < axes.size(); j++) {
@@ -76,6 +92,7 @@ Tensor FFModel::layer_norm(const Tensor input,
       assert(false && "axes must be the last axes.size() dimensions");
     }
   }
+#endif
   int num_weights = elementwise_affine ? 2 : 0;
   Layer *ln = new Layer(this,
                         OP_LAYERNORM,
@@ -92,19 +109,24 @@ Tensor FFModel::layer_norm(const Tensor input,
                                                  0,
                                                  true /*create_grad*/);
   if (num_weights == 2) {
-    int M = 1;
-    for (int i = 0; i < axes.size(); i++) {
-      M *= input->dims[input->num_dims - 1 - axes[i]];
+    // int M = 1;
+    // for (int i = 0; i < axes.size(); i++) {
+    //   M *= input->dims[axes[i]];
+    // }
+    // int dims[1] = {M};
+    int numdims = axes.size();
+    int dims[numdims];
+    for (int i = 0; i < numdims; i++) {
+      dims[i] = input->dims[axes[i]];
     }
-    int dims[1] = {M};
-    ln->weights[0] = create_weight_legion_ordering(1,
+    ln->weights[0] = create_weight_legion_ordering(numdims,
                                                    dims,
                                                    input->data_type,
                                                    ln,
                                                    true /*create_grad*/,
                                                    nullptr,
                                                    CHOSEN_SYNC_TYPE);
-    ln->weights[1] = create_weight_legion_ordering(1,
+    ln->weights[1] = create_weight_legion_ordering(numdims,
                                                    dims,
                                                    input->data_type,
                                                    ln,
@@ -179,19 +201,42 @@ LayerNorm::LayerNorm(FFModel &model,
   ParallelDim output_dims[MAX_TENSOR_DIM];
   int M = 1;
   for (int i = 0; i < axes.size(); i++) {
-    M *= inputs[0]->dims[inputs[0]->num_dims - 1 - axes[i]].size;
+    M *= inputs[0]->dims[axes[i]].size;
   }
   effective_num_elements = M;
   effective_batch_size = inputs[0]->get_volume() / M;
+  assert(elementwise_affine == (numWeights == 2));
   if (numWeights > 0 && allocate_weights) {
-    int kernel_dims = 2;
-    assert(false);
-    // weights[0] = model.create_parallel_weight_legion_ordering(
-    //     kernel_dims,
-  } else {
-    // do nothing
+    ParallelDim dims[axes.size() + 1];
+    for (int i = 0; i < axes.size(); i++) {
+      dims[i] = inputs[0]->dims[i];
+    }
+    dims[axes.size()] =
+        inputs[0]->dims[_input->num_dims - 1]; // copy replica dim
+    int seed = std::rand();
+    Initializer *initializer = new GlorotUniform(seed);
+#ifdef USE_NCCL
+    ParameterSyncType comm_type = ParameterSyncType::NCCL;
+#else
+    ParameterSyncType comm_type = ParameterSyncType::PS;
+#endif
+    weights[0] =
+        model.create_parallel_weight_legion_ordering(axes.size() + 1,
+                                                     dims,
+                                                     DT_FLOAT,
+                                                     NULL /*owner_op*/,
+                                                     true /*create_grad*/,
+                                                     initializer,
+                                                     comm_type);
+    weights[1] =
+        model.create_parallel_weight_legion_ordering(axes.size() + 1,
+                                                     dims,
+                                                     DT_FLOAT,
+                                                     NULL /*owner_op*/,
+                                                     true /*create_grad*/,
+                                                     initializer,
+                                                     comm_type);
   }
-  return;
 }
 
 void LayerNorm::init_inference(FFModel const &ff,
@@ -226,6 +271,20 @@ void LayerNorm::init_inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(1, FID_DATA);
+  if (elementwise_affine) {
+    launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[0]->region));
+    launcher.add_field(2, FID_DATA);
+    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[1]->region));
+    launcher.add_field(3, FID_DATA);
+  }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
@@ -258,6 +317,20 @@ void LayerNorm::init(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     inputs[0]->region));
   launcher.add_field(1, FID_DATA);
+  if (elementwise_affine) {
+    launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[0]->region));
+    launcher.add_field(2, FID_DATA);
+    launcher.add_region_requirement(RegionRequirement(weights[1]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[1]->region));
+    launcher.add_field(3, FID_DATA);
+  }
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
@@ -403,6 +476,18 @@ void LayerNorm::forward_task(Task const *task,
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
     assert(gamma_domain == beta_domain);
     assert(gamma_domain.get_volume() == m->effective_num_elements);
+    int numdims = gamma_domain.get_dim();
+    for (int i = 0; i < numdims - 1; i++) {
+      int g_d = gamma_domain.hi()[i] - gamma_domain.lo()[i] + 1;
+      int in_d = in_domain.hi()[i] - in_domain.lo()[i] + 1;
+      assert(g_d == in_d);
+    }
+    // check replica dim
+    int g_d =
+        gamma_domain.hi()[numdims - 1] - gamma_domain.lo()[numdims - 1] + 1;
+    int in_d = in_domain.hi()[in_domain.get_dim() - 1] -
+               in_domain.lo()[in_domain.get_dim() - 1] + 1;
+    assert(g_d == in_d);
   } else {
     assert(regions.size() == 2);
   }
