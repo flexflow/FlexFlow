@@ -2271,6 +2271,7 @@ GraphOptimalViewSerialized
         sez.serialize(attn->bias);
         sez.serialize(attn->add_bias_kv);
         sez.serialize(attn->add_zero_attn);
+        sez.serialize(attn->apply_rotary_embedding);
         break;
       }
       case OP_SOFTMAX: {
@@ -2636,7 +2637,7 @@ void FFModel::deserialize_graph_optimal_view(
         assert(num_inputs == 1);
         int embed_dim, num_heads, k_dim, v_dim;
         float dropout;
-        bool bias, add_bias_kv, add_zero_attn;
+        bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding;
         size_t id;
         dez.deserialize(id);
         LayerID layer_guid(id);
@@ -2648,6 +2649,7 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(bias);
         dez.deserialize(add_bias_kv);
         dez.deserialize(add_zero_attn);
+        dez.deserialize(apply_rotary_embedding);
 
         IncMultiHeadSelfAttentionParams params;
         params.embed_dim = embed_dim;
@@ -2659,6 +2661,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.add_bias_kv = add_bias_kv;
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
+        params.apply_rotary_embedding = apply_rotary_embedding;
         node = get_or_create_node<IncMultiHeadSelfAttention>(inputs[0], params);
         break;
       }

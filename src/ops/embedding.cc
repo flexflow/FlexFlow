@@ -381,7 +381,6 @@ void Embedding::init_inference(FFModel const &ff,
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   size_t machine_view_hash = view->hash();
   set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
-
   IndexLauncher launcher(EMBED_INIT_TASK_ID,
                          parallel_is,
                          TaskArgument(this, sizeof(Embedding)),
