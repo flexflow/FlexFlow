@@ -115,6 +115,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "TopK";
     case OP_ARG_TOPK:
       return "ArgTopK";
+    case OP_BEAM_TOPK:
+      return "BeamTopK";
     case OP_WHERE:
       return "Where";
     case OP_CEIL:

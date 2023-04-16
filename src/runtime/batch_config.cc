@@ -96,12 +96,31 @@ bool BatchConfig::register_new_request(size_t guid,
       request_guid[i] = guid;
       num_processing_tokens[i] = 0;
       request_completed[i] = false;
+      sub_requests[i] = 0;
       update_num_active_requests_tokens();
       return true;
     }
   }
   update_num_active_requests_tokens();
   return false;
+}
+
+// call after register new request, always second iteration of inference
+bool BatchConfig::register_sub_request(size_t parent_id, int beam_width) {
+  cached_results = false;
+  assert(initial_len > 0 && tokens_to_generate > 0);
+  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
+    // only for in-running requests
+    if (request_completed[parent_id]) {
+      continue;
+    }
+
+    if (request_guid[i] == parent_id) {
+      sub_requests[i] = beam_width;
+    }
+  }
+  update_num_active_requests_tokens();
+  return true;
 }
 
 void BatchConfig::prepare_next_batch() {
@@ -122,6 +141,33 @@ void BatchConfig::prepare_next_batch() {
   }
   update_num_active_requests_tokens();
   log_bc.print("[NextBatch] num_tokens(%d)", count);
+}
+
+// update token/requests with beam width
+void BatchConfig::update_num_active_requests_tokens_v2() {
+  num_requests = 0;
+  num_tokens = 0;
+  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
+    if (!request_completed[i]) {
+      num_requests++;
+      int sub_request_num = sub_requests[i];
+      for (int j = 0; j < sub_request_num; j++) {
+        for (int k = 0; k < num_processing_tokens[i]; k++) {
+          token2ids.guids[num_tokens] = request_guid[i];
+          token2ids.token_indexes[num_tokens].token_position =
+              token_start_idx[i] + j;
+          token2ids.token_indexes[num_tokens].request_index = i;
+          token2ids.token_indexes[num_tokens].initial_length =
+              initial_length[i];
+          token2ids.token_indexes[num_tokens].sub_request_index = j;    
+          num_tokens++;
+        }
+      }
+    }
+
+  }
+  token2ids.num_samples = num_tokens;
+  cached_results = true;
 }
 
 void BatchConfig::update_num_active_requests_tokens() {

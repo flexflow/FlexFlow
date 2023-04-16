@@ -2876,6 +2876,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_BEAM_TOPK: {
+      Op *op = BeamTopK::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_GROUP_BY: {
       Op *op = Group_by::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);

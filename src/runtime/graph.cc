@@ -2673,6 +2673,10 @@ void FFModel::deserialize_graph_optimal_view(
         node = ArgTopK::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
+      case OP_BEAM_TOPK: {
+        node = BeamTopK::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
       case OP_GROUP_BY: {
         node = Group_by::deserialize(*this, dez, inputs, num_inputs);
         break;

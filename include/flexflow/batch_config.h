@@ -47,6 +47,7 @@ public:
   // static int const MAX_SEQUENCE_LENGTH = MAX_SEQ_LEN;
   //  These are set by update
   int num_tokens, num_requests;
+  int num_beam_tokens, num_beam_requests;
   bool cached_results;
   int token_start_idx[MAX_NUM_REQUESTS]; // index of first token in a request
                                          // that should be processed in the
@@ -63,6 +64,8 @@ public:
   struct token_idxs {
     size_t request_index;  // the index within the BatchConfig of the request
                            // that the token belongs to
+
+    size_t sub_request_index;  // the index within the BatchConfig of the sub request                       
     size_t token_position; // the index indicating the position of each token
                            // within its request
     size_t initial_length;
@@ -74,6 +77,9 @@ public:
                                                    // each token belongs to
     token_idxs token_indexes[InferenceResult::MAX_NUM_TOKENS];
   };
+
+  //<request_id, sub_req_num = corresponding beam width>
+  std::unordered_map<size_t, int> sub_requests;
 
   SampleIdxs token2ids;
   size_t request_guid[MAX_NUM_REQUESTS];
