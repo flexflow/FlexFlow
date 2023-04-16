@@ -43,6 +43,8 @@ protected:
   IUndirectedGraphView() = default;
 };
 
+static_assert(is_rc_copy_virtual_compliant<IUndirectedGraphView>::value, RC_COPY_VIRTUAL_MSG);
+
 struct UndirectedGraphView {
 public:
   using Edge = UndirectedEdge;

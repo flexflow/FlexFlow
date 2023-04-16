@@ -221,7 +221,7 @@ private:
 DirectedEdge flipped(DirectedEdge const &);
 
 
-DiGraphView unsafe_view_as_flipped(DiGraphView const &);
+DiGraphView unsafe_view_as_flipped(IDiGraphView const &);
 DiGraphView view_as_flipped(DiGraphView const &);
 
 UndirectedGraphView unsafe_view_subgraph(UndirectedGraphView const &, std::unordered_set<Node> const &);

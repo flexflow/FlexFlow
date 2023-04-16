@@ -24,7 +24,7 @@ DirectedEdge flipped(DirectedEdge const &e) {
 }
 
 
-DiGraphView unsafe_view_as_flipped(DiGraphView const &g) {
+DiGraphView unsafe_view_as_flipped(IDiGraphView const &g) {
   return DiGraphView::create<FlippedView>(g);
 }
 
