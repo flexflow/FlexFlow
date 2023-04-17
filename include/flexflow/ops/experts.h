@@ -45,8 +45,10 @@ public:
   float const **one_ptr_array;
 
   // array of arrays to store cublasGemmBatchedEx outputs before aggregation
-  float **batch_outputs;
-  float **dev_batch_outputs;
+  float **batch_outputs1;
+  float **batch_outputs2;
+  float **dev_batch_outputs1;
+  float **dev_batch_outputs2;
 
   int num_experts;
   int experts_start_idx;
@@ -61,11 +63,13 @@ public:
   bool use_bias;
   ActiMode activation;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnTensorDescriptor_t resultTensorDesc;
   cudnnActivationDescriptor_t actiDesc;
+  cudnnTensorDescriptor_t resultTensorDesc1;
+  cudnnTensorDescriptor_t resultTensorDesc2;
 #else
-  miopenTensorDescriptor_t resultTensorDesc;
   miopenActivationDescriptor_t actiDesc;
+  miopenTensorDescriptor_t resultTensorDesc1;
+  miopenTensorDescriptor_t resultTensorDesc2;
 #endif
 };
 
