@@ -85,17 +85,14 @@ __global__ void apply_rotary_embedding(float *input_ptr,
     input_ptr[real_part_index] = complex_input[i].x;
     input_ptr[real_part_index + 1] = complex_input[i].y;
 
-    // if (i % 64 == 1 && head_idx == 0) {
-    //   printf("head id: %d, tokenid: %d, pospospos:->  %d, before real part
-    //   %f, "
-    //          "before complex part: %f, real part: %f,"
-    //          "complext part: %f,  freq_cis real: %f, freq_cis commplexx
-    //          %f\n", head_idx, token_idx, pos, before_real, before_complex,
-    //          complex_input[i].x,
-    //          complex_input[i].y,
-    //          complex_pos.x,
-    //          complex_pos.y);
-    // }
+    if (i % 64 == 1 && head_idx == 0) {
+      printf("head id: %d, tokenid: %d, pospospos:->  %d, , real part: %f, complext part: %f,  freq_cis real: %f, freq_cis commplexx %f\n", 
+            head_idx, token_idx, pos,
+             complex_input[i].x,
+             complex_input[i].y,
+             complex_pos.x,
+             complex_pos.y);
+    }
   }
 }
 
@@ -579,16 +576,18 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
                                     m->vSize * m->vProjSize));
     *m->has_load_weights = true;
   }
-  // phase 1: Implement kernel to compute KQV for input tokens
-  inference_kernel1(m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
-
-  // phase 2: Update key/val cache
+  
+  //here because we need postion info in infernece 1
   cudaMemcpyAsync(m->dev_token2ids,
                   &(bc->token2ids.token_indexes),
                   bc->MAX_NUM_TOKENS * sizeof(BatchConfig::token_idxs),
                   cudaMemcpyHostToDevice,
                   stream);
+                  
+  // phase 1: Implement kernel to compute KQV for input tokens
+  inference_kernel1(m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
 
+  // phase 2: Update key/val cache
   inference_kernel2(m, bc, stream);
 
   // phase 3: Compute attention score
@@ -607,6 +606,8 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
     // acc_output.rect, "[Attention:forward:output]");
   }
+
+  save_tensor(output_ptr, 40 * 4096, "/home/ubuntu/FlexFlow/examples/cpp/inference/LLAMA/output/att.txt");
 }
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(

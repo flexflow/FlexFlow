@@ -39,7 +39,9 @@ BatchConfig::BatchConfig() {
     token2ids.token_indexes[i].token_position = SIZE_MAX;
     token2ids.token_indexes[i].initial_length = SIZE_MAX;
   }
-  update_num_active_requests_tokens();
+  //update_num_active_requests_tokens();
+
+   update_num_active_requests_tokens_v2();
 }
 
 int BatchConfig::update_results(InferenceResult const &ir) {
@@ -77,7 +79,8 @@ int BatchConfig::update_results(InferenceResult const &ir) {
       assert(token_start_idx[i] <= token_last_available_idx[i]);
     }
   }
-  update_num_active_requests_tokens();
+  // update_num_active_requests_tokens();
+  update_num_active_requests_tokens_v2();
   return completed;
 }
 
@@ -97,11 +100,13 @@ bool BatchConfig::register_new_request(size_t guid,
       num_processing_tokens[i] = 0;
       request_completed[i] = false;
       sub_requests[i] = 1;
-      update_num_active_requests_tokens();
+      //update_num_active_requests_tokens();
+      update_num_active_requests_tokens_v2();
       return true;
     }
   }
-  update_num_active_requests_tokens();
+  //update_num_active_requests_tokens();
+  update_num_active_requests_tokens_v2();
   return false;
 }
 
@@ -139,36 +144,43 @@ void BatchConfig::prepare_next_batch() {
     }
     count += num_processing_tokens[i];
   }
-  update_num_active_requests_tokens();
+
+  //update_num_active_requests_tokens();
+  // change to v2
+  update_num_active_requests_tokens_v2();
   log_bc.print("[NextBatch] num_tokens(%d)", count);
 }
 
 // update token/requests with beam width
-// void update_num_active_requests_tokens_v2() {
-//   num_requests = 0;
-//   num_tokens = 0;
-//   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-//     if (!request_completed[i]) {
-//       num_requests++;
-//       int sub_request_num = sub_requests[i];
-//       for (int j = 0; j < sub_request_num; j++) {
-//         for (int k = 0; k < num_processing_tokens[i]; k++) {
-//           token2ids.guids[num_tokens] = request_guid[i];
-//           token2ids.token_indexes[num_tokens].token_position =
-//               token_start_idx[i] + j;
-//           token2ids.token_indexes[num_tokens].request_index = i;
-//           token2ids.token_indexes[num_tokens].initial_length =
-//               initial_length[i];
-//           token2ids.token_indexes[num_tokens].sub_request_index = j;    
-//           num_tokens++;
-//         }
-//       }
-//     }
+void BatchConfig::update_num_active_requests_tokens_v2() {
+  num_requests = 0;
+  num_tokens = 0;
+  for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
+    if (!request_completed[i]) {
+      num_requests++;
+      int sub_request_num = sub_requests[i];
+      std::cout << "sub_request_num : " << sub_request_num << "\n";
+      for (int sub_index = 0; sub_index < sub_request_num; sub_index++) {
+        for (int j = 0; j < num_processing_tokens[i]; j++) {
+          token2ids.guids[num_tokens] = request_guid[i];
+          token2ids.token_indexes[num_tokens].token_position =
+              token_start_idx[i] + j;
+          token2ids.token_indexes[num_tokens].request_index = i;
+          token2ids.token_indexes[num_tokens].initial_length =
+              initial_length[i];
+          token2ids.token_indexes[num_tokens].sub_request_index = sub_index;
+          token2ids.token_indexes[num_tokens].beam_width = sub_request_num;
 
-//   }
-//   token2ids.num_samples = num_tokens;
-//   cached_results = true;
-// }
+          //todo xinhao, update in second iteration
+          token2ids.token_indexes[num_tokens].parent_id = 0;
+          num_tokens++;
+        }
+      }
+    }
+  }
+  token2ids.num_samples = num_tokens;
+  cached_results = true;
+}
 
 void BatchConfig::update_num_active_requests_tokens() {
   num_requests = 0;
@@ -180,6 +192,7 @@ void BatchConfig::update_num_active_requests_tokens() {
         token2ids.guids[num_tokens] = request_guid[i];
         token2ids.token_indexes[num_tokens].token_position =
             token_start_idx[i] + j;
+        std::cout << "token position: " << num_tokens << ", value: " << token2ids.token_indexes[num_tokens].token_position << "\n";
         token2ids.token_indexes[num_tokens].request_index = i;
         token2ids.token_indexes[num_tokens].initial_length = initial_length[i];
         num_tokens++;
