@@ -201,6 +201,8 @@ __global__ void experts_forward_prepare_kernel(
     int num_chosen_experts,
     int data_dim,
     int out_dim,
+    int experts_num_layers,
+    int experts_internal_dim_size,
     bool use_bias,
     int *sorted_indices,
     int *expert_start_indexes,
@@ -209,13 +211,15 @@ __global__ void experts_forward_prepare_kernel(
     int *original_indices,
     float const *input, // @In: Tokens' values (in_dim, batch_size)
     float *output,
-    float const **token_idx_array,  // @Out: Barray for GemmBatchedEx
-    float const *weights,           // @In: Experts' weights
-    float const *biases,            // @In: Experts' biases
-    float const **weight_idx_array, // @Out: Aarray for GemmBatchedEx
-    float const **bias_idx_array,   // @Out: Experts' bias
-    float const *coefficients,      // @In: topk_gate_predss coefficients tensor
-                                    // (num_chosen_experts, batch_size)
+    float const **token_idx_array,   // @Out: Barray for GemmBatchedEx
+    float const *weights,            // @In: Experts' weights
+    float const *biases,             // @In: Experts' biases
+    float const **weight_idx_array1, // @Out: Aarray for GemmBatchedEx
+    float const **weight_idx_array2,
+    float const **bias_idx_array1, // @Out: Experts' bias
+    float const **bias_idx_array2,
+    float const *coefficients, // @In: topk_gate_predss coefficients tensor
+                               // (num_chosen_experts, batch_size)
     float const **coefficient_idx_array, // @Out: Barray for Aggregation
     float **output_idx_array) {
 
@@ -226,19 +230,38 @@ __global__ void experts_forward_prepare_kernel(
     int local_expert_label = global_expert_label - experts_start_idx;
     int expert_index = exp_local_label_to_index[local_expert_label];
     int within_expert_offset = i - expert_start_indexes[expert_index];
+    int weight_params_count =
+        experts_num_layers == 1
+            ? data_dim * out_dim
+            : experts_internal_dim_size * (data_dim + out_dim);
     if (within_expert_offset < expert_capacity) {
       int rev_idx = original_indices[i + lb_index];
       int token_idx = (rev_idx / num_chosen_experts);
 
       token_idx_array[destination_start_indices[expert_index] +
                       within_expert_offset] = &input[token_idx * data_dim];
-      weight_idx_array[destination_start_indices[expert_index] +
-                       within_expert_offset] =
-          &weights[local_expert_label * data_dim * out_dim];
+      weight_idx_array1[destination_start_indices[expert_index] +
+                        within_expert_offset] =
+          &weights[local_expert_label * weight_params_count];
+      if (experts_num_layers == 2) {
+        weight_idx_array2[destination_start_indices[expert_index] +
+                          within_expert_offset] =
+            &weights[local_expert_label * weight_params_count +
+                     (data_dim * experts_internal_dim_size)];
+      }
       if (use_bias) {
-        bias_idx_array[destination_start_indices[expert_index] +
-                       within_expert_offset] =
-            &biases[local_expert_label * out_dim];
+        int bias_params_count = (experts_num_layers == 1)
+                                    ? out_dim
+                                    : (experts_internal_dim_size + out_dim);
+        bias_idx_array1[destination_start_indices[expert_index] +
+                        within_expert_offset] =
+            &biases[local_expert_label * bias_params_count];
+        if (experts_num_layers == 2) {
+          bias_idx_array2[destination_start_indices[expert_index] +
+                          within_expert_offset] =
+              &biases[local_expert_label * bias_params_count +
+                      experts_internal_dim_size];
+        }
       }
       coefficient_idx_array[destination_start_indices[expert_index] +
                             within_expert_offset] = &coefficients[rev_idx];
@@ -713,6 +736,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                              num_chosen_experts,
                                              data_dim,
                                              out_dim,
+                                             m->experts_num_layers,
+                                             m->experts_internal_dim_size,
                                              use_bias,
                                              m->sorted_indices,
                                              m->expert_start_indexes,
@@ -724,8 +749,10 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                              m->token_idx_array,
                                              weights,
                                              biases,
-                                             m->weight_idx_array,
-                                             m->bias_idx_array,
+                                             m->weight_idx_array1,
+                                             m->weight_idx_array2,
+                                             m->bias_idx_array1,
+                                             m->bias_idx_array2,
                                              topk_gate_preds,
                                              m->coefficient_idx_array,
                                              m->output_idx_array);
@@ -1049,10 +1076,10 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 #endif
 
   experts_forward_GemmBatched_kernel(m,
-                                     (void const **)m->weight_idx_array,
+                                     (void const **)m->weight_idx_array1,
                                      (void const **)m->token_idx_array,
                                      (void **)m->dev_batch_outputs,
-                                     (void const **)m->bias_idx_array,
+                                     (void const **)m->bias_idx_array1,
                                      activation,
                                      data_dim,
                                      out_dim,
@@ -1135,11 +1162,21 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
       cudaMalloc(&token_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
   checkCUDA(
-      cudaMalloc(&weight_idx_array,
+      cudaMalloc(&weight_idx_array1,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
+  if (experts_num_layers == 2) {
+    checkCUDA(cudaMalloc(&weight_idx_array2,
+                         num_chosen_experts * effective_batch_size *
+                             sizeof(float *)));
+  }
   checkCUDA(
-      cudaMalloc(&bias_idx_array,
+      cudaMalloc(&bias_idx_array1,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
+  if (experts_num_layers == 2) {
+    checkCUDA(cudaMalloc(&bias_idx_array2,
+                         num_chosen_experts * effective_batch_size *
+                             sizeof(float *)));
+  }
   checkCUDA(
       cudaMalloc(&coefficient_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
@@ -1225,11 +1262,13 @@ ExpertsMeta::~ExpertsMeta(void) {
   checkCUDA(cudaFree(num_assignments_per_expert));
   checkCUDA(cudaFree(destination_start_indices));
   checkCUDA(cudaFree(token_idx_array));
-  checkCUDA(cudaFree(weight_idx_array));
+  checkCUDA(cudaFree(weight_idx_array1));
+  checkCUDA(cudaFree(weight_idx_array2));
   checkCUDA(cudaFree(coefficient_idx_array));
   checkCUDA(cudaFree(output_idx_array));
   checkCUDA(cudaFree(dev_batch_outputs));
-  checkCUDA(cudaFree(bias_idx_array));
+  checkCUDA(cudaFree(bias_idx_array1));
+  checkCUDA(cudaFree(bias_idx_array2));
   checkCUDA(cudaFree(batch_outputs[0]));
   delete[] batch_outputs;
   // Bias

@@ -35,10 +35,12 @@ public:
   int *destination_start_indices;
   float const **token_idx_array;
   float const **dev_weights;
-  float const **weight_idx_array;
+  float const **weight_idx_array1;
+  float const **weight_idx_array2;
   float const **coefficient_idx_array;
   float **output_idx_array;
-  float const **bias_idx_array;
+  float const **bias_idx_array1;
+  float const **bias_idx_array2;
   float const *one_ptr;
   float const **one_ptr_array;
 
