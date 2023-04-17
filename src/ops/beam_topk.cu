@@ -237,7 +237,7 @@ __device__ void heapBeamTopK(T const *__restrict__ input,
       heap.assign(slot, {index, input_data[index]});
       slot++;
     }
-    input_data += request_length[batch_index]  * length;
+    input_data += request_length[batch_index] * length;
   }
 
   // // Initialize the min-heap.
@@ -258,7 +258,7 @@ __device__ void heapBeamTopK(T const *__restrict__ input,
         heap.replace_root({index, input_data[index]}, k);
       }
     }
-    input_data += request_length[batch_index]  * length;
+    input_data += request_length[batch_index] * length;
   }
 
   // Sort if wanted.
@@ -370,12 +370,12 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
   int k = heap_size[batch_index];
 
   int pre_offset = 0;
-  for(int i = 0; i < batch_index; i++){
-      if(request_nums[i] < request_nums[batch_index]){
-        pre_offset += heap_size[i] * length;
-      }
-  } 
-  pre_offset += request_index[batch_index] * length ;
+  for (int i = 0; i < batch_index; i++) {
+    if (request_nums[i] < request_nums[batch_index]) {
+      pre_offset += heap_size[i] * length;
+    }
+  }
+  pre_offset += request_index[batch_index] * length;
 
   printf("beam thread index %d, thread_count %d, batch_index %d, k %d, which "
          "req %d, req index %d, cuda_request_length %d, pre_offset %d\n",
@@ -432,7 +432,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
 
   // sub request
   size_t beam_num_blocks = 0;
-  std::unordered_map<size_t, int> sub_requests = bc->sub_requests;
+  const int *sub_requests = bc->sub_requests;
 
   std::vector<int> heap_sizes;
   std::vector<int> request_num;
@@ -444,21 +444,19 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
       continue;
     }
     int num_new_tokens = bc->num_processing_tokens[i];
-    batch_size -= num_new_tokens * sub_requests.at(i);
+    batch_size -= num_new_tokens * sub_requests[i];
     beam_num_blocks += num_new_tokens;
 
     for (int j = 0; j < num_new_tokens; j++) {
-      heap_sizes.push_back(sub_requests.at(i));
+      heap_sizes.push_back(sub_requests[i]);
       request_num.push_back(i);
       request_index.push_back(j);
       request_length.push_back(num_new_tokens);
     }
 
-    assert(sub_requests.at(i) > -1);
+    assert(sub_requests[i] > -1);
     int beam_heap_length = sub_requests[i] * sub_requests[i];
-    tokens[index] = bc->num_processing_tokens[i];
     max_heap_size = std::max(max_heap_size, beam_heap_length);
-
     index += 1;
 
     for (int i = 0; i < bc->num_processing_tokens[i]; i++) {
@@ -470,13 +468,13 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
 
   int *cuda_heaps;
 
-  //token in which requests
+  // token in which requests
   int *cuda_requests;
 
-  //token in request's index
+  // token in request's index
   int *cuda_requests_index;
 
-  //how many tokens in the token's request
+  // how many tokens in the token's request
   int *cuda_request_length;
   checkCUDA(cudaMalloc(&cuda_heaps, sizeof(int) * heap_sizes.size()));
   checkCUDA(cudaMalloc(&cuda_requests, sizeof(int) * heap_sizes.size()));
@@ -498,8 +496,7 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
   checkCUDA(cudaMemcpy(cuda_request_length,
                        request_length.data(),
                        sizeof(int) * heap_sizes.size(),
-                       cudaMemcpyHostToDevice));                     
-                       
+                       cudaMemcpyHostToDevice));
 
   {
     constexpr auto shared_memory_size = 48 << 10;
@@ -517,7 +514,6 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
   // We are limited by the amount of shared memory we have per block.
   size_t shared_memory_size =
       (num_shards + 1) * max_heap_size * sizeof(Entry<float>);
-
 
   assert(num_shards >= (size_t)max_heap_size);
   num_shards = max_heap_size;

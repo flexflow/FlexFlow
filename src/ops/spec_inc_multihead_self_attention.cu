@@ -25,11 +25,11 @@ using Legion::coord_t;
 using Legion::Memory;
 
 __global__ void spec_build_w_out_tensor(float const *weight_ptr,
-                                   float *contiguous_weight_ptr,
-                                   int vProjSize,
-                                   int oProjSize,
-                                   int num_heads,
-                                   int qkv_weight_block_size) {
+                                        float *contiguous_weight_ptr,
+                                        int vProjSize,
+                                        int oProjSize,
+                                        int num_heads,
+                                        int qkv_weight_block_size) {
   CUDA_KERNEL_LOOP(i, vProjSize * oProjSize * num_heads) {
     int row_idx = i % vProjSize;
     int col_idx = (i / vProjSize) % oProjSize;
@@ -40,17 +40,18 @@ __global__ void spec_build_w_out_tensor(float const *weight_ptr,
   }
 }
 
-__global__ void spec_apply_rotary_embedding(float *input_ptr,
-                                       cuFloatComplex *complex_input,
-                                       BatchConfig::token_idxs const *id_map,
-                                       int qProjSize,
-                                       int kProjSize,
-                                       int num_heads,
-                                       int num_tokens,
-                                       int q_block_size,
-                                       int k_block_size,
-                                       int v_block_size,
-                                       bool q_tensor) {
+__global__ void
+    spec_apply_rotary_embedding(float *input_ptr,
+                                cuFloatComplex *complex_input,
+                                BatchConfig::token_idxs const *id_map,
+                                int qProjSize,
+                                int kProjSize,
+                                int num_heads,
+                                int num_tokens,
+                                int q_block_size,
+                                int k_block_size,
+                                int v_block_size,
+                                bool q_tensor) {
   int proj_size = q_tensor ? qProjSize : kProjSize;
   CUDA_KERNEL_LOOP(i, num_tokens * proj_size * num_heads / 2) {
     // create complex number
@@ -215,53 +216,55 @@ void inference_kernel1(SpecIncMultiHeadSelfAttentionMeta const *m,
   int k_block_size = m->kProjSize * num_tokens;
   int v_block_size = m->vProjSize * num_tokens;
   cuFloatComplex *complex_input;
+
+  // todo xinhao remember to set token index for each beam
   if (*m->apply_rotary_embedding) {
     checkCUDA(cudaMalloc(&complex_input,
                          num_tokens * m->qProjSize * m->num_heads *
                              sizeof(cuFloatComplex *) / 2));
     /*q*/
     spec_apply_rotary_embedding<<<GET_BLOCKS(parallelism),
-                             min(CUDA_NUM_THREADS, parallelism),
-                             0,
-                             stream>>>(output_ptr,
-                                       complex_input,
-                                       m->dev_token2ids,
-                                       m->qProjSize,
-                                       m->kProjSize,
-                                       m->num_heads,
-                                       num_tokens,
-                                       q_block_size,
-                                       k_block_size,
-                                       v_block_size,
-                                       true);
+                                  min(CUDA_NUM_THREADS, parallelism),
+                                  0,
+                                  stream>>>(output_ptr,
+                                            complex_input,
+                                            m->dev_token2ids,
+                                            m->qProjSize,
+                                            m->kProjSize,
+                                            m->num_heads,
+                                            num_tokens,
+                                            q_block_size,
+                                            k_block_size,
+                                            v_block_size,
+                                            true);
     /*k*/
     spec_apply_rotary_embedding<<<GET_BLOCKS(parallelism),
-                             min(CUDA_NUM_THREADS, parallelism),
-                             0,
-                             stream>>>(output_ptr,
-                                       complex_input,
-                                       m->dev_token2ids,
-                                       m->qProjSize,
-                                       m->kProjSize,
-                                       m->num_heads,
-                                       num_tokens,
-                                       q_block_size,
-                                       k_block_size,
-                                       v_block_size,
-                                       false);
+                                  min(CUDA_NUM_THREADS, parallelism),
+                                  0,
+                                  stream>>>(output_ptr,
+                                            complex_input,
+                                            m->dev_token2ids,
+                                            m->qProjSize,
+                                            m->kProjSize,
+                                            m->num_heads,
+                                            num_tokens,
+                                            q_block_size,
+                                            k_block_size,
+                                            v_block_size,
+                                            false);
   }
 }
 
 __global__ void spec_store_kv_cache(float const *devQKVProjArray,
-                               float *cache_ptr,
-                               BatchConfig::token_idxs const *id_map,
-                               int qProjSize,
-                               int kProjSize,
-                               int vProjSize,
-                               int num_tokens,
-                               int num_heads,
-                               int max_seq_len,
-                               bool k_cache) {
+                                    float *cache_ptr,
+                                    BatchConfig::token_idxs const *id_map,
+                                    int qProjSize,
+                                    int kProjSize,
+                                    int vProjSize,
+                                    int num_tokens,
+                                    int num_heads,
+                                    int max_seq_len,
+                                    bool k_cache) {
   CUDA_KERNEL_LOOP(i,
                    num_tokens * (k_cache ? kProjSize : vProjSize) * num_heads) {
     int proj_size = k_cache ? kProjSize : vProjSize;
@@ -275,12 +278,55 @@ __global__ void spec_store_kv_cache(float const *devQKVProjArray,
     float val =
         devQKVProjArray[head_idx * qkv_block_size + current_head_block_size +
                         token_idx * proj_size + data_idx];
+
+    // above no need to be changed
     int const req_id = id_map[token_idx].request_index;
     int const tok_id = id_map[token_idx].token_position;
+    // sub request index
+    int const sub_req_id = id_map[token_idx].sub_request_index;
+    int const beam_width = id_map[token_idx].beam_width;
+    int const parent_id = id_map[token_idx].parent_id;
+    if (token_idx == 0 && head_idx == 0) {
+      printf("sub req id %d, beam_width %d, parent_id %d, data_idx %d",
+             sub_req_id,
+             beam_width,
+             parent_id,
+             data_idx);
+    }
 
-    cache_ptr[req_id * (num_heads * max_seq_len * proj_size) +
-              head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
-              data_idx] = val;
+    // previous index, need to know beam width with each request
+    int pre_offset = 0;
+    for (int i = 0; i < req_id; i++) {
+      pre_offset += (num_heads * max_seq_len * proj_size) * beam_width;
+    }
+
+    // identify which sub request does this token come from
+    // for initial token, 0
+    // for other, may 0,0,1/ 0,1,2/ 1,1,1 to get which cache to be reuse and
+    // which to be delete copy beam_size bunch of blocks when sub_req_id ==
+    // parent_id : like 0 -> 0, 1->1, 2->2, do nothing, just append the new k/v
+
+    // cudaMemcpyDeviceToDevice
+    if (sub_req_id != parent_id) {
+      // copy from the corresponding parent index and append
+      size_t parent_cache_index =
+          pre_offset + parent_id * (num_heads * max_seq_len * proj_size) +
+          head_idx * (max_seq_len * proj_size) + data_idx;
+      size_t this_cache_index =
+          pre_offset + sub_req_id * (num_heads * max_seq_len * proj_size) +
+          head_idx * (max_seq_len * proj_size) + data_idx;
+      cache_ptr[this_cache_index] = cache_ptr[parent_cache_index];
+    }
+
+    // cache new k/v
+     cache_ptr[pre_offset + sub_req_id * (num_heads * max_seq_len *
+     proj_size) +
+               head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
+               data_idx] = val;
+
+    // cache_ptr[req_id * (num_heads * max_seq_len * proj_size) +
+    //           head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
+    //           data_idx] = val;
   }
 }
 
@@ -291,42 +337,42 @@ void inference_kernel2(SpecIncMultiHeadSelfAttentionMeta const *m,
   if (num_tokens > 0) {
     int parallelism = m->kProjSize * num_tokens * m->num_heads;
     spec_store_kv_cache<<<GET_BLOCKS(parallelism),
-                     min(CUDA_NUM_THREADS, parallelism),
-                     0,
-                     stream>>>(m->devQKVProjArray,
-                               m->keyCache,
-                               m->dev_token2ids,
-                               m->qProjSize,
-                               m->kProjSize,
-                               m->vProjSize,
-                               num_tokens,
-                               m->num_heads,
-                               MAX_SEQ_LEN,
-                               /* k_cache = */ true);
+                          min(CUDA_NUM_THREADS, parallelism),
+                          0,
+                          stream>>>(m->devQKVProjArray,
+                                    m->keyCache,
+                                    m->dev_token2ids,
+                                    m->qProjSize,
+                                    m->kProjSize,
+                                    m->vProjSize,
+                                    num_tokens,
+                                    m->num_heads,
+                                    MAX_SEQ_LEN,
+                                    /* k_cache = */ true);
 
     parallelism = m->vProjSize * num_tokens * m->num_heads;
     spec_store_kv_cache<<<GET_BLOCKS(parallelism),
-                     min(CUDA_NUM_THREADS, parallelism),
-                     0,
-                     stream>>>(m->devQKVProjArray,
-                               m->valueCache,
-                               m->dev_token2ids,
-                               m->qProjSize,
-                               m->kProjSize,
-                               m->vProjSize,
-                               num_tokens,
-                               m->num_heads,
-                               MAX_SEQ_LEN,
-                               /* k_cache = */ false);
+                          min(CUDA_NUM_THREADS, parallelism),
+                          0,
+                          stream>>>(m->devQKVProjArray,
+                                    m->valueCache,
+                                    m->dev_token2ids,
+                                    m->qProjSize,
+                                    m->kProjSize,
+                                    m->vProjSize,
+                                    num_tokens,
+                                    m->num_heads,
+                                    MAX_SEQ_LEN,
+                                    /* k_cache = */ false);
   }
 }
 
 __global__ void spec_fill_entries_above_diagonal(float *matrix,
-                                            size_t num_rows,
-                                            size_t num_cols,
-                                            size_t num_heads,
-                                            size_t entries_above_diagonal,
-                                            float value) {
+                                                 size_t num_rows,
+                                                 size_t num_cols,
+                                                 size_t num_heads,
+                                                 size_t entries_above_diagonal,
+                                                 float value) {
   CUDA_KERNEL_LOOP(i, entries_above_diagonal * num_heads) {
     size_t head_idx = i / entries_above_diagonal;
     size_t entry_idx = i % entries_above_diagonal;
@@ -418,14 +464,15 @@ void inference_kernel3(SpecIncMultiHeadSelfAttentionMeta const *m,
     if (entries_above_diagonal > 0) {
       size_t parallelism = m->num_heads * entries_above_diagonal;
       spec_fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
-                                    min((size_t)CUDA_NUM_THREADS, parallelism),
-                                    0,
-                                    stream>>>((float *)C,
-                                              num_new_tokens,
-                                              total_tokens,
-                                              m->num_heads,
-                                              entries_above_diagonal,
-                                              -INFINITY);
+                                         min((size_t)CUDA_NUM_THREADS,
+                                             parallelism),
+                                         0,
+                                         stream>>>((float *)C,
+                                                   num_new_tokens,
+                                                   total_tokens,
+                                                   m->num_heads,
+                                                   entries_above_diagonal,
+                                                   -INFINITY);
     }
     // Compute Softmax(QK^T/sqrt(d_k))
     cudnnTensorDescriptor_t qk_tensor;
@@ -567,28 +614,30 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
   if (!(*m->has_load_weights)) {
     int parallelism = m->vProjSize * m->oProjSize * m->num_heads;
     spec_build_w_out_tensor<<<GET_BLOCKS(parallelism),
-                         min(CUDA_NUM_THREADS, parallelism),
-                         0,
-                         stream>>>(weight_ptr,
-                                   m->W_out_contiguous,
-                                   m->vProjSize,
-                                   m->oProjSize,
-                                   m->num_heads,
-                                   (m->qSize * m->qProjSize +
-                                    m->kSize * m->kProjSize +
-                                    m->vSize * m->vProjSize));
+                              min(CUDA_NUM_THREADS, parallelism),
+                              0,
+                              stream>>>(weight_ptr,
+                                        m->W_out_contiguous,
+                                        m->vProjSize,
+                                        m->oProjSize,
+                                        m->num_heads,
+                                        (m->qSize * m->qProjSize +
+                                         m->kSize * m->kProjSize +
+                                         m->vSize * m->vProjSize));
     *m->has_load_weights = true;
   }
-  // phase 1: Implement kernel to compute KQV for input tokens
-  inference_kernel1(m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
 
-  // phase 2: Update key/val cache
+  // here because we need postion info in infernece 1
   cudaMemcpyAsync(m->dev_token2ids,
                   &(bc->token2ids.token_indexes),
                   bc->MAX_NUM_TOKENS * sizeof(BatchConfig::token_idxs),
                   cudaMemcpyHostToDevice,
                   stream);
 
+  // phase 1: Implement kernel to compute KQV for input tokens
+  inference_kernel1(m, bc, input_ptr, weight_ptr, m->devQKVProjArray, stream);
+
+  // phase 2: Update key/val cache
   inference_kernel2(m, bc, stream);
 
   // phase 3: Compute attention score
@@ -632,6 +681,9 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
   assert(qProjSize == kProjSize); // required for attention QK^T matmul
   vProjSize = attn->vProjSize;
   oProjSize = attn->oProjSize;
+
+  // print params;
+  std::cout << "print paramms:  oprojSize:" << oProjSize << "\n";
 
   num_heads = _num_heads;
   weights_params = (qSize * qProjSize + kSize * kProjSize + vSize * vProjSize +
@@ -698,9 +750,9 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     W_out_contiguous = (float *)attn_heads + attn_heads_size;
     int parallelism = vProjSize * oProjSize * num_heads;
     spec_build_w_out_tensor<<<GET_BLOCKS(parallelism),
-                         min(CUDA_NUM_THREADS, parallelism),
-                         0,
-                         stream>>>(
+                              min(CUDA_NUM_THREADS, parallelism),
+                              0,
+                              stream>>>(
         weight_ptr,
         W_out_contiguous,
         vProjSize,

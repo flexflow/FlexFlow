@@ -23,6 +23,7 @@
 #define MAX_SEQ_LEN 20
 #define BATCH_SIZE 32
 #define MAX_REQUESTS 256
+#define MAX_BEAM_SIZE 16
 
 namespace FlexFlow {
 
@@ -40,11 +41,13 @@ public:
   void prepare_next_batch();
   int update_results(InferenceResult const &ir);
   void update_num_active_requests_tokens();
+  void update_num_active_requests_tokens_v2();
   int num_active_requests() const;
   int num_active_tokens() const;
   void print() const;
   static int const MAX_NUM_REQUESTS = MAX_REQUESTS;
   static int const MAX_NUM_TOKENS = InferenceResult::MAX_NUM_TOKENS;
+  static int const MAX_NUM_SUB_REQUESTS = MAX_REQUESTS * MAX_BEAM_SIZE;
   // static int const MAX_SEQUENCE_LENGTH = MAX_SEQ_LEN;
   //  These are set by update
   int num_tokens, num_requests;
@@ -69,6 +72,10 @@ public:
     size_t token_position; // the index indicating the position of each token
                            // within its request
     size_t initial_length;
+    size_t beam_width;
+
+    //from which parent sub requests,, init to be 0.
+    size_t parent_id;
   };
 
   struct SampleIdxs {
@@ -79,7 +86,7 @@ public:
   };
 
   //<request_id, sub_req_num = corresponding beam width>
-  std::unordered_map<size_t, int> sub_requests;
+  int sub_requests[MAX_NUM_REQUESTS];
 
   SampleIdxs token2ids;
   size_t request_guid[MAX_NUM_REQUESTS];
