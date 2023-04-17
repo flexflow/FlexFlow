@@ -1216,7 +1216,9 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                                gemm_batch_count,
                                                out_dim,
                                                output,
-                                               m->dev_batch_outputs1,
+                                               m->experts_num_layers == 1
+                                                   ? m->dev_batch_outputs1
+                                                   : m->dev_batch_outputs2,
                                                m->coefficient_idx_array,
                                                m->output_idx_array);
 
