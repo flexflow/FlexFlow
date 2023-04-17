@@ -1,0 +1,19 @@
+model:Ÿ
+N
+inputoutput"AveragePool*
+auto_pad"
+SAME_LOWER *
+kernel_shape@@ 
+test_graphZ
+input
+
+
+
+
+b 
+output
+
+
+
+
+B

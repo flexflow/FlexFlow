@@ -1,0 +1,19 @@
+model:›
+J
+inputoutput"MaxPool*
+auto_pad"
+SAME_UPPER *
+kernel_shape@@ 
+test_graphZ
+input
+
+
+
+
+b 
+output
+
+
+
+
+B
