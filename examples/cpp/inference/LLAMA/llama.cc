@@ -139,6 +139,9 @@ void FlexFlow::top_level_task(Task const *task,
   Tensor dense = ff.dense(token, llamaConfig.vocab_size, AC_MODE_NONE, false);
   Layer *final_linear = ff.layers.back();
   weights_layers.emplace("output_weight", final_linear);
+
+
+  //Tensor output = ff.beam_topk(dense, false);
   Tensor output = ff.arg_top_k(dense, /*k=*/1, false);
 
   //------------------- compile the model --------------------------------

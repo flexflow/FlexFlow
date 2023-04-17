@@ -25,6 +25,7 @@
 #include "flexflow/ops/aggregate.h"
 #include "flexflow/ops/aggregate_spec.h"
 #include "flexflow/ops/arg_topk.h"
+#include "flexflow/ops/beam_topk.h"
 #include "flexflow/ops/attention.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
@@ -42,6 +43,7 @@
 #include "flexflow/ops/gather.h"
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
+#include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -2746,6 +2748,14 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION: {
+      Op *op = SpecIncMultiHeadSelfAttention::create_operator_from_layer(
+          *this, layer, inputs);
+      
+      operators.push_back(op);
+      std::cout << "spec inc mha: " << op->name<<"\n";
+      return op;
+    }
     case OP_INC_MULTIHEAD_SELF_ATTENTION: {
       Op *op = IncMultiHeadSelfAttention::create_operator_from_layer(
           *this, layer, inputs);
@@ -2876,6 +2886,11 @@ Op *FFModel::create_operator_from_layer(
       operators.push_back(op);
       return op;
     }
+    case OP_BEAM_TOPK: {
+      Op *op = BeamTopK::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
     case OP_GROUP_BY: {
       Op *op = Group_by::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
@@ -2980,6 +2995,7 @@ void FFModel::compile(LossType loss_type,
         ParallelTensor parallel_weight = nullptr;
         for (auto const &op : operators) {
           if (op->layer_guid == layer->layer_guid) {
+            std::cout << "opopop: " << op->name << "\n";
             assert(op->op_type == layer->op_type);
             assert(op->numWeights == layer->numWeights);
             parallel_weight = op->weights[i];
@@ -4519,6 +4535,21 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<InferenceResult, ArgTopK::inference_task>(
         registrar, "ArgTopK Inference Task");
   }
+  // BeamTopk task
+  {
+    TaskVariantRegistrar registrar(BEAM_TOPK_INIT_TASK_ID, "ArgTopK Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, BeamTopK::init_task>(
+        registrar, "BeamTopK Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(BEAM_TOPK_INF_TASK_ID, "ArgTopK Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<InferenceResult, BeamTopK::inference_task>(
+        registrar, "BeamTopK Inference Task");
+  }
   // Transpose task
   {
     TaskVariantRegistrar registrar(TRANSPOSE_INIT_TASK_ID, "Transpose Init");
@@ -4584,6 +4615,25 @@ void register_flexflow_internal_tasks() {
     Runtime::preregister_task_variant<
         IncMultiHeadSelfAttention::inference_task>(
         registrar, "IncMultiHeadSelfAttention Inference Task");
+  }
+  //speculative MultiHeadAttention task
+  {
+    TaskVariantRegistrar registrar(SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
+                                   "Speculative IncMultiHeadSelfAttention Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *,
+                                      SpecIncMultiHeadSelfAttention::init_task>(
+        registrar, "Speculative IncMultiHeadSelfAttention Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+                                   "Speculative IncMultiHeadSelfAttention Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<
+        SpecIncMultiHeadSelfAttention::inference_task>(
+        registrar, "Speculative IncMultiHeadSelfAttention Inference Task");
   }
   // NoOp
   {
