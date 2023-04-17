@@ -47,7 +47,9 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
                          ActiMode _activation)
     : OpMeta(handler), num_experts(_num_experts),
       experts_start_idx(_experts_start_idx), data_dim(_data_dim),
-      out_dim(_out_dim), effective_batch_size(_effective_batch_size),
+      out_dim(_out_dim), experts_num_layers(_experts_num_layers),
+      experts_internal_dim_size(_experts_internal_dim_size),
+      effective_batch_size(_effective_batch_size),
       num_chosen_experts(_num_chosen_experts), alpha(_alpha),
       use_bias(_use_bias), activation(_activation) {}
 ExpertsMeta::~ExpertsMeta(void) {}

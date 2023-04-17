@@ -69,7 +69,8 @@ Tensor FFModel::experts(Tensor const *inputs,
 
   assert(inputs[1]->data_type == DT_INT32 || inputs[1]->data_type == DT_INT64);
 
-  assert(experts_num_layers == 1 && "Multi-layer experts not implemented yet.");
+  assert(experts_num_layers >= 1);
+  assert(experts_num_layers <= 2 && "Multi-layer experts not implemented yet.");
   assert(experts_num_layers == 1 || experts_internal_dim_size > 0);
 
   // parameters for the FFN implementing the experts. We can make these
@@ -96,12 +97,19 @@ Tensor FFModel::experts(Tensor const *inputs,
     assert(e->outputs[0] != nullptr);
   }
   {
-    int dims[3] = {inputs[0]->dims[0], experts_output_dim_size, num_experts};
+    int nparams = (experts_num_layers == 1)
+                      ? (inputs[0]->dims[0] * experts_output_dim_size)
+                      : experts_internal_dim_size *
+                            (inputs[0]->dims[0] + experts_output_dim_size);
+    int dims[2] = {nparams, num_experts};
     e->weights[0] = create_weight_legion_ordering(
-        3, dims, DT_FLOAT, e, true /*create_grad*/, nullptr, CHOSEN_SYNC_TYPE);
+        2, dims, DT_FLOAT, e, true /*create_grad*/, nullptr, CHOSEN_SYNC_TYPE);
   }
   if (use_bias) {
-    int dims[2] = {experts_output_dim_size, num_experts};
+    int nparams = (experts_num_layers == 1)
+                      ? experts_output_dim_size
+                      : (experts_internal_dim_size + experts_output_dim_size);
+    int dims[2] = {nparams, num_experts};
     e->weights[1] = create_weight_legion_ordering(
         2, dims, DT_FLOAT, e, true /*create_grad*/, nullptr, CHOSEN_SYNC_TYPE);
   }
@@ -307,7 +315,8 @@ Experts::Experts(FFModel &model,
   assert(inputs[2]->dims[0].degree == 1);
   // check data type of indices input
   assert(inputs[1]->data_type == DT_INT32 || inputs[1]->data_type == DT_INT64);
-  assert(experts_num_layers == 1 && "Multi-layer experts not implemented yet.");
+  assert(experts_num_layers >= 1);
+  assert(experts_num_layers <= 2 && "Multi-layer experts not implemented yet.");
   assert(experts_num_layers == 1 || experts_internal_dim_size > 0);
 
   // save the token embedding dimension (data_dim) and the effective batch size
@@ -332,11 +341,11 @@ Experts::Experts(FFModel &model,
 
   // auto dimension_names =
   // this->get_params().get_dimension_names(inputs[0]->get_shape());
-  ParallelTensorShape input_shape = inputs[0]->get_shape();
-  ParallelTensorShape output_shape, kernel_shape, bias_shape;
-  ExpertsParams params = this->get_params();
-  params.construct_mappings(*this->parallel_dims_mapping, input_shape);
-  params.solve_dims(input_shape, output_shape, kernel_shape, bias_shape);
+  // ParallelTensorShape input_shape = inputs[0]->get_shape();
+  // ParallelTensorShape output_shape, kernel_shape, bias_shape;
+  // ExpertsParams params = this->get_params();
+  // params.construct_mappings(*this->parallel_dims_mapping, input_shape);
+  // params.solve_dims(input_shape, output_shape, kernel_shape, bias_shape);
 
   if (allocate_weights) {
 #ifdef USE_NCCL
@@ -345,29 +354,52 @@ Experts::Experts(FFModel &model,
     ParameterSyncType comm_type = ParameterSyncType::PS;
 #endif
     {
+      ParallelDim dims[3];
+      int nparams = (experts_num_layers == 1)
+                        ? (data_dim * experts_output_dim_size)
+                        : experts_internal_dim_size *
+                              (data_dim + experts_output_dim_size);
+      dims[0].size = nparams;
+      dims[0].degree = 1;
+      dims[0].parallel_idx = -1;
+      dims[1] = inputs[0]->dims[num_dims - 1];
+      dims[1].size = num_experts;
+      dims[2] = inputs[0]->dims[num_dims - 2];
+      dims[2].size = dims[0].degree;
       Initializer *kernel_initializer = new GlorotUniform(std::rand() /*seed*/);
-      assert(kernel_shape.dims[2].size == num_experts);
-      weights[0] = model.create_parallel_weight_legion_ordering(
-          kernel_shape.num_dims, // 3,
-          kernel_shape.dims,     // dims,
-          DT_FLOAT,
-          NULL /*owner_op*/,
-          true /*create_grad*/,
-          kernel_initializer,
-          comm_type);
+      // assert(kernel_shape.dims[2].size == num_experts);
+      weights[0] =
+          model.create_parallel_weight_legion_ordering(3,
+                                                       dims,
+                                                       DT_FLOAT,
+                                                       NULL /*owner_op*/,
+                                                       true /*create_grad*/,
+                                                       kernel_initializer,
+                                                       comm_type);
       assert(weights[0] != nullptr);
     }
     if (use_bias) {
       Initializer *bias_initializer = new ZeroInitializer();
-      assert(bias_shape.dims[1].size == num_experts);
-      weights[1] = model.create_parallel_weight_legion_ordering(
-          bias_shape.num_dims, // 1,
-          bias_shape.dims,     // dims,
-          DT_FLOAT,
-          NULL /*owner_op*/,
-          true /*create_grad*/,
-          bias_initializer,
-          comm_type);
+      // assert(bias_shape.dims[1].size == num_experts);
+      ParallelDim dims[3];
+      int nparams = (experts_num_layers == 1)
+                        ? experts_output_dim_size
+                        : (experts_internal_dim_size + experts_output_dim_size);
+      dims[0].size = nparams;
+      dims[0].degree = 1;
+      dims[0].parallel_idx = -1;
+      dims[1] = inputs[0]->dims[num_dims - 1];
+      dims[1].size = num_experts;
+      dims[2] = inputs[0]->dims[num_dims - 2];
+      dims[2].size = dims[0].degree;
+      weights[1] =
+          model.create_parallel_weight_legion_ordering(3,
+                                                       dims,
+                                                       DT_FLOAT,
+                                                       NULL /*owner_op*/,
+                                                       true /*create_grad*/,
+                                                       bias_initializer,
+                                                       comm_type);
       assert(weights[1] != nullptr);
     }
   }
@@ -563,6 +595,8 @@ OpMeta *Experts::init_task(Task const *task,
                                    exp->experts_start_idx,
                                    exp->data_dim,
                                    exp->out_dim,
+                                   exp->experts_num_layers,
+                                   exp->experts_internal_dim_size,
                                    exp->effective_batch_size,
                                    exp->num_chosen_experts,
                                    exp->alpha,
@@ -754,6 +788,8 @@ void Experts::inference_task(Task const *task,
       input_domain.hi()[samples_index] - input_domain.lo()[samples_index] + 1;
   coord_t chosen_experts = indices_domain.hi()[0] - indices_domain.lo()[0] + 1;
   coord_t out_dim = output_domain.hi()[0] - output_domain.lo()[0] + 1;
+  coord_t num_replicas =
+      input_domain.hi()[replica_dim] - input_domain.lo()[replica_dim] + 1;
   assert(data_dim == m->data_dim);
   assert(out_dim == m->out_dim);
   assert(chosen_experts == m->num_chosen_experts);
@@ -790,10 +826,14 @@ void Experts::inference_task(Task const *task,
   Domain weights_domain = runtime->get_index_space_domain(
       ctx, task->regions[4].region.get_index_space());
   int weights_dims = weights_domain.get_dim();
-  assert(weights_dims == input_dims);
-  assert(weights_domain.hi()[0] - weights_domain.lo()[0] + 1 == data_dim);
-  assert(weights_domain.hi()[1] - weights_domain.lo()[1] + 1 == out_dim);
-  assert(weights_domain.hi()[2] - weights_domain.lo()[2] + 1 == num_experts);
+  assert(weights_dims == 3);
+  int nparams_weight =
+      (m->experts_num_layers == 1)
+          ? (data_dim * out_dim)
+          : m->experts_internal_dim_size * (data_dim + out_dim);
+  assert(weights_domain.hi()[0] - weights_domain.lo()[0] + 1 == nparams_weight);
+  assert(weights_domain.hi()[1] - weights_domain.lo()[1] + 1 == num_experts);
+  assert(weights_domain.hi()[2] - weights_domain.lo()[2] + 1 == num_replicas);
 
   float const *bias_ptr = nullptr;
   if (use_bias) {
@@ -802,9 +842,13 @@ void Experts::inference_task(Task const *task,
     Domain bias_domain = runtime->get_index_space_domain(
         ctx, task->regions[5].region.get_index_space());
     int bias_dims = bias_domain.get_dim();
-    assert(bias_dims == 4);
-    assert(bias_domain.hi()[0] - bias_domain.lo()[0] + 1 == out_dim);
+    assert(bias_dims == 3);
+    int nparams_bias = (m->experts_num_layers == 1)
+                           ? out_dim
+                           : (m->experts_internal_dim_size + out_dim);
+    assert(bias_domain.hi()[0] - bias_domain.lo()[0] + 1 == nparams_bias);
     assert(bias_domain.hi()[1] - bias_domain.lo()[1] + 1 == num_experts);
+    assert(bias_domain.hi()[2] - bias_domain.lo()[2] + 1 == num_replicas);
   }
 
 #ifdef INFERENCE_TESTS
