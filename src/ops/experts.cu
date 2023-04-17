@@ -1290,15 +1290,17 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
       cudaMalloc(&output_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
   batch_outputs1 = new float *[num_chosen_experts * effective_batch_size];
+  int batch_outputs1_dim =
+      (experts_num_layers == 1) ? out_dim : experts_internal_dim_size;
   checkCUDA(cudaMalloc(&batch_outputs1[0],
-                       out_dim * num_chosen_experts * effective_batch_size *
-                           sizeof(float)));
+                       batch_outputs1_dim * num_chosen_experts *
+                           effective_batch_size * sizeof(float)));
   checkCUDA(cudaMemset(batch_outputs1[0],
                        0,
-                       out_dim * num_chosen_experts * effective_batch_size *
-                           sizeof(float)));
+                       batch_outputs1_dim * num_chosen_experts *
+                           effective_batch_size * sizeof(float)));
   for (int i = 1; i < num_chosen_experts * effective_batch_size; i++) {
-    batch_outputs1[i] = batch_outputs1[i - 1] + out_dim;
+    batch_outputs1[i] = batch_outputs1[i - 1] + batch_outputs1_dim;
   }
   checkCUDA(
       cudaMalloc(&dev_batch_outputs1,
