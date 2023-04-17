@@ -1892,6 +1892,7 @@ void GraphSearchHelper::graph_optimize(
   this->logger->debug() << "Starting graph optimization";
 
   Graph *graph = this->construct_graph();
+  graph->print_dot();
   graph->duplicate_input_nodes();
   std::unordered_map<Node, MachineView> empty_strategy;
   if (!this->config.export_strategy_computation_graph_file.empty()) {
@@ -1929,6 +1930,8 @@ void GraphSearchHelper::graph_optimize(
     }
   }
   best_graph->print_strategy_computation_graph(optimal.views);
+  //std::cout << "PCG:" << std::endl; 
+  //best_graph->print_dot(); 
   optimal_views = real_optimal_views;
 }
 
@@ -3117,6 +3120,7 @@ void FFModel::graph_optimize(
     std::unordered_map<Node, MachineView> &optimal_views) {
   this->graph_search->graph_optimize(
       budget, only_data_parallel, best_graph, optimal_views);
+    best_graph->print_dot();
 }
 
 bool FFModel::convert_graph_to_operators(

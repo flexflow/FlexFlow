@@ -1588,6 +1588,7 @@ GraphOptimalViewSerialized
   std::unordered_map<Node, MachineView> optimal_views;
   if (model->config.only_data_parallel) {
     Graph *graph = new Graph(model);
+    graph->print_dot();
     std::unordered_map<FlexFlow::Op const *, Node> op_to_node_map;
     for (FlexFlow::Op const *dstOp : model->operators) {
       Node dstNode;

@@ -172,6 +172,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "Pipeline";
     case OP_FUSED_PARALLEL:
       return "FusedParallelOp";
+    case OP_GELU:
+      return "Gelu";
     default:
       throw std::runtime_error("Operator type unsupported: " +
                                std::to_string(type));

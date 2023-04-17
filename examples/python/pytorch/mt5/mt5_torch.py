@@ -7,7 +7,7 @@ https://shivanandroy.com/fine-tune-t5-transformer-with-pytorch/
 import os
 
 import numpy as np
-import pandas as pd
+#import pandas as pd
 import torch
 from torch.utils.data import DataLoader, Dataset
 from transformers import MT5ForConditionalGeneration, T5Tokenizer
@@ -311,5 +311,5 @@ if __name__ == "__main__":
         "MAX_TARGET_TEXT_LENGTH": 48,
         "LEARNING_RATE": 1e-4,
     }
-    device = torch.device(0)
+    device = torch.device('cpu')
     TorchMT5Trainer(model_params, device)

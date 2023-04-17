@@ -418,7 +418,7 @@ void Linear::forward_task_with_dim(Task const *task,
   assert(acc_kernel.rect.volume() == static_cast<size_t>(in_dim * out_dim));
   float const *acc_bias_ptr = NULL;
   if (m->use_bias) {
-    TensorAccessorR<float, 3> acc_bias(
+    TensorAccessorR<float, NDIM> acc_bias(
         regions[3], task->regions[3], FID_DATA, ctx, runtime);
     assert(acc_bias.rect.volume() == static_cast<size_t>(out_dim));
     acc_bias_ptr = acc_bias.ptr;
@@ -604,7 +604,7 @@ void Linear::backward_task_with_dim(Task const *task,
          static_cast<size_t>(in_dim * out_dim));
   float *acc_bias_grad_ptr = NULL;
   if (m->use_bias) {
-    TensorAccessorW<float, 3> acc_bias_grad(regions[rid],
+    TensorAccessorW<float, NDIM> acc_bias_grad(regions[rid],
                                             task->regions[rid],
                                             FID_DATA,
                                             ctx,

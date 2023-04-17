@@ -330,6 +330,17 @@ void Split::backward_task(Task const *task,
                           split->numOutputs);
 }
 
+tl::optional<RecordFormatter> Split::as_dot() const {
+  RecordFormatter rr;
+  RecordFormatter r;
+
+  r << this->inputs[0]->get_shape().as_dot();
+  r << this->outputs[0]->get_shape().as_dot();
+  rr << r;
+
+  return rr;
+}
+
 bool Split::measure_operator_cost(Simulator *sim,
                                   MachineView const &mv,
                                   CostMetrics &cost_metrics) const {

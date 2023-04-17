@@ -1,4 +1,4 @@
-# Copyright 2023 CMU, Facebook, LANL, MIT, NVIDIA, and Stanford (alphabetical)
+# Copyright 2020 Stanford University, Los Alamos National Laboratory
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 from collections import OrderedDict
 from enum import Enum
 from typing import List
-import copy
 
 import numpy as np
 from flexflow.core.flexflow_cffi import Tensor, NormInitializer
@@ -26,6 +25,7 @@ from flexflow.type import (ActiMode, AggrMode, DataType, OpType,
 
 try:
     import torch
+    print(torch.__version__)
     from torch.fx.immutable_collections import immutable_dict
 except:
     pass
@@ -931,7 +931,7 @@ class FunctionNode(Node):
         elif name.find("contiguous") >= 0: return ContiguousNode(node)
         elif name.find("tanh") >= 0: return TanhFNode(node)
         elif name.find("gelu") >= 0: return GeluFNode(node)
-        assert 0, f"Unknown function or method: {name}"
+        assert 0, f"Unknown function or method: {name} {node}"
 
     @staticmethod
     def is_right_scalar_op(node):
@@ -1424,7 +1424,7 @@ class GetItemNode(FunctionNode):
             stop = old_size if slice_elem.stop == None else slice_elem.stop
             new_size = stop - start
             return new_size < old_size
-        
+
         def is_single_element(slice_elem):
             return isinstance(slice_elem, int)
 
@@ -1441,6 +1441,7 @@ class GetItemNode(FunctionNode):
         # Match dimensions from right to left                                                                  
         new_shape = []  # append then reverse                                                                  
         j = len(shape) - 1
+        import copy
         curr_tensor = copy.copy(tensor)
 
         for slice_elem in reversed(slices):
@@ -1482,7 +1483,38 @@ class GetItemNode(FunctionNode):
 
         new_shape.reverse()
         return ffmodel.reshape(input=curr_tensor, shape=new_shape, name=name,)
-            
+        
+        
+        
+#        """Returns a reshaped tensor based on the given slices."""
+#        def is_colon(slice_elem):
+#            """Returns if the slice is equivalent to `:`."""
+#            return slice_elem == slice(None, None, None)
+#
+#        def is_unsqueeze(slice_elem):
+#            """Returns if the slice is equivalent to unsqueezing that
+#            dimension."""
+#            return slice_elem is None
+#        shape = tensor.dims
+#        # Match dimensions from right to left
+#        new_shape = []  # append then reverse
+#        j = len(shape) - 1
+#        for slice_elem in reversed(slices):
+#            if is_colon(slice_elem):
+#                assert j >= 0
+#                new_shape.append(shape[j])
+#                j -= 1
+#            elif is_unsqueeze(slice_elem):
+#                new_shape.append(1)
+#            else:
+#                assert 0, f"Unsupported slice element: {slice_elem}"
+#        new_shape.reverse()
+#        return ffmodel.reshape(
+#            input=tensor, shape=new_shape, name=name,
+#        )
+
+
+
     @staticmethod
     def strings_to_slices(strings: List[str]):
         # Extract slice elements
@@ -1751,7 +1783,7 @@ class ScalarFloorDivNode(FunctionNode):
     def parse(self):
         s = [self.name]
         scalar = self.innodes[1]
-        if type(scalar) is not int or type(scalar) is not float:
+        if not isinstance(scalar, [int, float]):
             assert 0, "FlexFlow does not support tensor floor division"
         innodes = (self.innodes[0],)
         s.append(self.parse_inoutnodes(innodes))
@@ -2440,6 +2472,11 @@ class PyTorchModel():
                     batch_size=self.batch_size,
                     sequence_length=self.seq_length,
                 )
+        
+            #import pickle
+            #with open('symbolic_trace', 'rb') as f:
+                #traced = pickle.load(f)
+
         else:
             traced = torch.fx.symbolic_trace(self.model)
 

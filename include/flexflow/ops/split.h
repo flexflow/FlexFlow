@@ -50,6 +50,8 @@ public:
 
   Params get_params() const;
 
+  tl::optional<RecordFormatter> as_dot() const override;
+
 public:
   int legion_axis;
   std::vector<int> splits;

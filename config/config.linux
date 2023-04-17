@@ -14,7 +14,7 @@
 #INSTALL_DIR=
 
 # set build type
-BUILD_TYPE=${BUILD_TYPE:-Release}
+BUILD_TYPE=Debug
 
 # set CUDA Arch to the desired GPU architecture(s) to target (e.g. pass "FF_CUDA_ARCH=60" for Pascal). 
 # To pass more than one value, separate architecture numbers with a comma (e.g. FF_CUDA_ARCH=70,75).
@@ -23,10 +23,10 @@ BUILD_TYPE=${BUILD_TYPE:-Release}
 FF_CUDA_ARCH=${FF_CUDA_ARCH:-"autodetect"}
 
 # set CUDNN dir in case cmake cannot autodetect a path
-CUDNN_DIR=${CUDNN_DIR:-"/usr/local/cuda"}
+CUDNN_DIR=${CUDNN_DIR:-"/sw/summit/cuda/11.0.3"} #/usr/local/cuda
 
 # set CUDA dir in case cmake cannot autodetect a path
-CUDA_DIR=${CUDA_DIR:-"/usr/local/cuda"}
+CUDA_DIR=${CUDA_DIR:-"/sw/summit/cuda/11.0.3"}
 
 # enable Python
 FF_USE_PYTHON=${FF_USE_PYTHON:-ON}
