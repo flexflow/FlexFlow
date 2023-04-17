@@ -203,18 +203,20 @@ __device__ IndexedHeap<heapType, preferIndices, Data, T>
   return IndexedHeap<heapType, preferIndices, Data, T>{Data<T>{data}};
 }
 
-// heapBeamTopK walks over [input, input+length) with `step_size` stride starting
-// at `start_index`. It builds a top-`k` heap that is stored in `heap_entries`
-// using `Accessor` to access elements in `heap_entries`. If sorted=true, the
-// elements will be sorted at the end.
+// heapBeamTopK walks over [input, input+length) with `step_size` stride
+// starting at `start_index`. It builds a top-`k` heap that is stored in
+// `heap_entries` using `Accessor` to access elements in `heap_entries`. If
+// sorted=true, the elements will be sorted at the end.
 template <typename T, template <typename> class Data = LinearData>
 __device__ void heapBeamTopK(T const *__restrict__ input,
-                            int length,
-                            int k,
-                            Entry<T> *__restrict__ heap_entries,
-                            bool sorted = false,
-                            int start_index = 0,
-                            int step_size = 1) {
+                             int *request_length,
+                             int batch_index,
+                             int length,
+                             int k,
+                             Entry<T> *__restrict__ heap_entries,
+                             bool sorted = false,
+                             int start_index = 0,
+                             int step_size = 1) {
   assert(k <= length);
 
   auto heap =
@@ -225,29 +227,43 @@ __device__ void heapBeamTopK(T const *__restrict__ input,
   if (heap_end_index > length) {
     heap_end_index = length;
   }
+
+  // get data from k sub requests
   // Initialize the min-heap.
-  for (int index = start_index, slot = 0; index < heap_end_index;
-       index += step_size, slot++) {
-    heap.assign(slot, {index, input[index]});
+  T const *input_data = input;
+  int slot = 0;
+  for (int i = 0; i < k; i++) {
+    for (int index = start_index; index < heap_end_index; index += step_size) {
+      heap.assign(slot, {index, input_data[index]});
+      slot++;
+    }
+    input_data += request_length[batch_index]  * length;
   }
 
-  heap.build(k);
+  // // Initialize the min-heap.
+  // for (int index = start_index, slot = 0; index < heap_end_index;
+  //      index += step_size, slot++) {
+  //   heap.assign(slot, {index, input[index]});
+  // }
 
-  // Now iterate over the remaining items.
-  // If an item is smaller than the min element, it is not amongst the top k.
-  // Otherwise, replace the min element with it and push upwards.
-  for (int index = heap_end_index; index < length; index += step_size) {
-    // We prefer elements with lower indices. This is given here.
-    // Later elements automatically have higher indices, so can be discarded.
-    if (input[index] > heap.root().value) {
-      // This element should replace the min.
-      heap.replace_root({index, input[index]}, k);
+  heap.build(k * k);
+
+  for (int i = 0; i < k; i++) {
+    input_data = input;
+    for (int index = heap_end_index; index < length; index += step_size) {
+      // We prefer elements with lower indices. This is given here.
+      // Later elements automatically have higher indices, so can be discarded.
+      if (input_data[index] > heap.root().value) {
+        // This element should replace the min.
+        heap.replace_root({index, input_data[index]}, k);
+      }
     }
+    input_data += request_length[batch_index]  * length;
   }
 
   // Sort if wanted.
   if (sorted) {
-    heap.sort(k);
+    heap.sort(k * k);
   }
 }
 
@@ -333,25 +349,55 @@ __device__ void mergeShards(int num_shards,
 
 template <typename T>
 __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
-                                        size_t shared_memory_size,
-                                        int length,
-                                        int *heap_size,
-                                        bool sorted,
-                                        // T *__restrict__ output,
-                                        int *__restrict__ indices) {
+                                         size_t shared_memory_size,
+                                         int length,
+                                         int *heap_size,
+                                         int *request_nums,
+                                         int *request_index,
+                                         int *request_length,
+                                         bool sorted,
+                                         // T *__restrict__ output,
+                                         int *__restrict__ indices) {
   __shared__ char shared_memory[48 << 10];
+
+  // //1， 2， 3... 20
   int const batch_index = blockIdx.x;
-  T const *batch_input = input + batch_index * length;
   int const thread_index = threadIdx.x;
   int const thread_count = blockDim.x;
   Entry<T> *shared_entries = (Entry<T> *)shared_memory;
 
-  //heap size of a specific req
+  // heap size of a specific req
   int k = heap_size[batch_index];
 
-  printf("thread index %d, thread_count %d, batch_index %d, k%d\n", thread_index, thread_count, batch_index, k);
-  heapBeamTopK<T, StridedData>(
-      batch_input, length, k, shared_entries, true, thread_index, thread_count);
+  int pre_offset = 0;
+  for(int i = 0; i < batch_index; i++){
+      if(request_nums[i] < request_nums[batch_index]){
+        pre_offset += heap_size[i] * length;
+      }
+  } 
+  pre_offset += request_index[batch_index] * length ;
+
+  printf("beam thread index %d, thread_count %d, batch_index %d, k %d, which "
+         "req %d, req index %d, cuda_request_length %d, pre_offset %d\n",
+         thread_index,
+         thread_count,
+         batch_index,
+         k,
+         request_nums[batch_index],
+         request_index[batch_index],
+         request_length[batch_index],
+         pre_offset);
+
+  heapBeamTopK<T, StridedData>(input + pre_offset,
+                               request_length,
+                               batch_index,
+                               length,
+                               k,
+                               shared_entries,
+                               true,
+                               thread_index,
+                               thread_count);
+
   __syncthreads();
   if (thread_index == 0) {
     int const offset = batch_index * k;
@@ -369,29 +415,91 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
 
 /*static*/
 void BeamTopK::forward_kernel(BeamTopKMeta const *m,
-                             float const *input_ptr,
-                             // float *output_ptr,
-                             int *indices_ptr,
-                             size_t batch_size,
-                             size_t tokens_per_request,
-                             int length,
-                             std::vector<int> beam_width,
-                             bool sorted,
-                             cudaStream_t stream) {
+                              BatchConfig const *bc,
+                              float const *input_ptr,
+                              // float *output_ptr,
+                              int *indices_ptr,
+                              size_t batch_size,
+                              size_t tokens_per_request,
+                              int length,
+                              bool sorted,
+                              cudaStream_t stream) {
   // Adopted from TensorFlow's BeamTopK implementation
   // https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/kernels/topk_op_gpu.h
   int num_shards = 0;
   int max_heap_size = 0;
+  int index = 0;
 
+  // sub request
+  size_t beam_num_blocks = 0;
+  std::unordered_map<size_t, int> sub_requests = bc->sub_requests;
 
-  int heap_size[beam_width.size()];
-  for(int i = 0; i < beam_width.size(); i++){
-    //eg.: if beam width = 3, there are 3 sub requests, 
-    //and we select top 3 * 3 across all sub requests
-    heap_size[i] = beam_width.at(i) * beam_width.at(i);
-    max_heap_size = std::max(max_heap_size, heap_size[i]);
+  std::vector<int> heap_sizes;
+  std::vector<int> request_num;
+  std::vector<int> request_index;
+  std::vector<int> request_length;
+
+  for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
+    if (bc->request_completed[i]) {
+      continue;
+    }
+    int num_new_tokens = bc->num_processing_tokens[i];
+    batch_size -= num_new_tokens * sub_requests.at(i);
+    beam_num_blocks += num_new_tokens;
+
+    for (int j = 0; j < num_new_tokens; j++) {
+      heap_sizes.push_back(sub_requests.at(i));
+      request_num.push_back(i);
+      request_index.push_back(j);
+      request_length.push_back(num_new_tokens);
+    }
+
+    assert(sub_requests.at(i) > -1);
+    int beam_heap_length = sub_requests[i] * sub_requests[i];
+    tokens[index] = bc->num_processing_tokens[i];
+    max_heap_size = std::max(max_heap_size, beam_heap_length);
+
+    index += 1;
+
+    for (int i = 0; i < bc->num_processing_tokens[i]; i++) {
+    }
   }
-  size_t beam_num_blocks = beam_width.size();
+  assert(batch_size == 0);
+  // std::cout << "heap sizesssss:  " << heap_sizes.size() << "\n";
+  assert(index == bc->num_active_requests());
+
+  int *cuda_heaps;
+
+  //token in which requests
+  int *cuda_requests;
+
+  //token in request's index
+  int *cuda_requests_index;
+
+  //how many tokens in the token's request
+  int *cuda_request_length;
+  checkCUDA(cudaMalloc(&cuda_heaps, sizeof(int) * heap_sizes.size()));
+  checkCUDA(cudaMalloc(&cuda_requests, sizeof(int) * heap_sizes.size()));
+  checkCUDA(cudaMalloc(&cuda_requests_index, sizeof(int) * heap_sizes.size()));
+  checkCUDA(cudaMalloc(&cuda_request_length, sizeof(int) * heap_sizes.size()));
+
+  checkCUDA(cudaMemcpy(cuda_heaps,
+                       heap_sizes.data(),
+                       sizeof(int) * heap_sizes.size(),
+                       cudaMemcpyHostToDevice));
+  checkCUDA(cudaMemcpy(cuda_requests,
+                       request_num.data(),
+                       sizeof(int) * heap_sizes.size(),
+                       cudaMemcpyHostToDevice));
+  checkCUDA(cudaMemcpy(cuda_requests_index,
+                       request_index.data(),
+                       sizeof(int) * heap_sizes.size(),
+                       cudaMemcpyHostToDevice));
+  checkCUDA(cudaMemcpy(cuda_request_length,
+                       request_length.data(),
+                       sizeof(int) * heap_sizes.size(),
+                       cudaMemcpyHostToDevice));                     
+                       
 
   {
     constexpr auto shared_memory_size = 48 << 10;
@@ -402,22 +510,29 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
     if (num_shards > CUDA_NUM_THREADS) {
       num_shards = CUDA_NUM_THREADS;
     }
+    std::cout << "maxheap size:  " << max_heap_size << "\n";
+    std::cout << "maxheap size:  " << max_heap_size << "heap size, "
+              << heap_size << "\n";
   }
-
-  std::cout << "maxheap size:  " <<max_heap_size << "\n";
   // We are limited by the amount of shared memory we have per block.
-  size_t shared_memory_size = (num_shards + 1) * max_heap_size * sizeof(Entry<float>);
-  
-  size_t num_blocks = batch_size;
+  size_t shared_memory_size =
+      (num_shards + 1) * max_heap_size * sizeof(Entry<float>);
+
+
   assert(num_shards >= (size_t)max_heap_size);
   num_shards = max_heap_size;
 
-  printf("fuck beam topk kernel, %ld, %ld %ld\n", beam_num_blocks, num_shards, shared_memory_size);
+  std::cout << "num blocks:  " << beam_num_blocks << "num shards,  "
+            << num_shards << "\n";
+
   beam_topk_forward_kernel<<<beam_num_blocks, num_shards, 0, stream>>>(
       input_ptr,
       shared_memory_size,
       length,
-      heap_size,
+      cuda_heaps,
+      cuda_requests,
+      cuda_requests_index,
+      cuda_request_length,
       sorted,
       // output_ptr,
       indices_ptr);
@@ -425,14 +540,14 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
 
 /*static*/
 void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
-                                     float const *input_ptr,
-                                     // float *output_ptr,
-                                     int *indices_ptr,
-                                     size_t batch_size,
-                                     size_t tokens_per_request,
-                                     int length,
-                                     std::vector<int> beam_width,
-                                     bool sorted) {
+                                      BatchConfig const *bc,
+                                      float const *input_ptr,
+                                      // float *output_ptr,
+                                      int *indices_ptr,
+                                      size_t batch_size,
+                                      size_t tokens_per_request,
+                                      int length,
+                                      bool sorted) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -444,15 +559,15 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
   }
 
   BeamTopK::forward_kernel(m,
-                          input_ptr,
-                          // output_ptr,
-                          indices_ptr,
-                          batch_size,
-                          tokens_per_request,
-                          length,
-                          beam_width,
-                          sorted,
-                          stream);
+                           bc,
+                           input_ptr,
+                           // output_ptr,
+                           indices_ptr,
+                           batch_size,
+                           tokens_per_request,
+                           length,
+                           sorted,
+                           stream);
 
   if (m->profiling) {
     cudaEventRecord(t_end, stream);

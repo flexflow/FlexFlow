@@ -19,15 +19,15 @@ public:
   using Params = BeamTopKParams;
   using Input = ParallelTensor;
   BeamTopK(FFModel &model,
-          const ParallelTensor input,
-          LayerID const &_layer_guid,
-          bool sorted,
-          char const *name);
+           const ParallelTensor input,
+           LayerID const &_layer_guid,
+           bool sorted,
+           char const *name);
   BeamTopK(FFModel &model, BeamTopK const &other, const ParallelTensor input);
   BeamTopK(FFModel &model,
-          Params const &params,
-          Input const input,
-          char const *name = nullptr);
+           Params const &params,
+           Input const input,
+           char const *name = nullptr);
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
                       std::vector<ParallelTensor> const &,
@@ -69,23 +69,23 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
   static void forward_kernel(BeamTopKMeta const *m,
+                             BatchConfig const *bc,
                              float const *input_ptr,
                              // float *output_ptr,
                              int *indices_ptr,
                              size_t batch_size,
                              size_t tokens_per_request,
                              int length,
-                             std::vector<int> beam_width,
                              bool sorted,
                              ffStream_t stream);
   static void forward_kernel_wrapper(BeamTopKMeta const *m,
+                                     BatchConfig const *bc,
                                      float const *input_ptr,
                                      // float *output_ptr,
                                      int *indices_ptr,
                                      size_t batch_size,
                                      size_t tokens_per_request,
                                      int length,
-                                     std::vector<int> beam_width,
                                      bool sorted);
   Params get_params() const;
 

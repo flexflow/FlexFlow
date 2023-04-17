@@ -306,24 +306,24 @@ InferenceResult
   std::cout << "beam search topk params: " << length <<", " << k << ", " << batch_size <<"\n";
   assert(out2_domain.get_volume() / k == batch_size);
 
-  std::vector<int> beam_width;
-  std::unordered_map<size_t, int> sub_requests = bc->sub_requests;
-  for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
-    if (bc->request_completed[i]) {
-      continue;
-    }
-    // add beam width for each main request
-    beam_width.push_back(sub_requests[i]);
-    std::cout << "sub req num: " <<sub_requests[i] << "\n";
-  }
+  // std::vector<int> beam_width;
+  // std::unordered_map<size_t, int> sub_requests = bc->sub_requests;
+  // for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
+  //   if (bc->request_completed[i]) {
+  //     continue;
+  //   }
+  //   // add beam width for each main request
+  //   beam_width.push_back(sub_requests[i]);
+  //   std::cout << "sub req num: " <<sub_requests[i] << "\n";
+  // }
 
   // need meta for: how many sub requests in a main request
   BeamTopK::forward_kernel_wrapper(
-      m, in_ptr, index_ptr, batch_size, tokens_per_request, length, beam_width, m->sorted);
+      m, bc, in_ptr, index_ptr, batch_size, tokens_per_request, length, m->sorted);
 
   InferenceResult ir;
   download_tensor<int>(index_ptr, ir.results, batch_size);
-  print_tensor<int>(index_ptr, 5, "beamk: top elements");
+  print_tensor<int>(index_ptr, 40, "beamk: top elements");
   return ir;
 }
 
