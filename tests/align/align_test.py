@@ -181,7 +181,94 @@ def test_add():
     )
 
 def test_subtract():
-    out_dir = os.path.join(BASE_DIR, "subtract", "out")
+    _test_operator('subtract')
+
+
+def test_multiply():
+    _test_operator('multiply')
+
+
+def test_pool2d():
+    _test_operator('pool2d')
+
+
+def test_reducesum():
+    _test_operator('reducesum')
+
+
+def test_reshape():
+    _test_operator('reshape')
+
+
+def test_flat():
+    _test_operator('flat')
+
+
+def test_sin():
+    _test_operator('sin')
+
+
+def test_transpose():
+    _test_operator('transpose')
+
+
+def test_exp():
+    _test_operator('exp')
+
+
+def test_cos():
+    _test_operator('cos')
+
+
+def test_scalar_add():
+    _test_operator('scalar_add')
+
+
+def test_scalar_sub():
+    _test_operator('scalar_sub')
+
+
+def test_scalar_multiply():
+    _test_operator('scalar_multiply')
+
+
+def test_scalar_truediv():
+    _test_operator('scalar_truediv')
+
+
+def test_relu():
+    _test_operator('relu')
+
+
+def test_sigmoid():
+    _test_operator('sigmoid')
+
+
+def test_tanh():
+    _test_operator('tanh')
+
+
+def test_identity():
+    _test_operator('identity')
+    
+    
+def test_linear():
+    _test_operator('linear')
+    
+    
+# def test_max():
+#     _test_operator('max')
+    
+    
+# def test_min():
+#     _test_operator('min')
+    
+def test_gather():
+    _test_operator('gather')
+
+
+def _test_operator(operater_name):
+    out_dir = os.path.join(BASE_DIR, operater_name)
     expand = prepend_dirname_fn(out_dir)
     align_tensors(
         [

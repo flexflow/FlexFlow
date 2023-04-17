@@ -23,7 +23,9 @@ jobs:
 
       - name: Wait for daemon to be done
         run: |
-          pip install pygithub
+          pip3 install pip --upgrade
+          pip3 install pyopenssl --upgrade
+          pip3 install pygithub
           python3 .github/workflows/helpers/gpu_ci_helper.py
 
   multinode-gpu-test:
@@ -83,4 +85,4 @@ jobs:
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         run: |
-          curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"Weekly multinode GPU test failed! <https://github.com/flexflow/flexflow-third-party/actions/runs/$GITHUB_RUN_ID|(See here).> :x: \"}" $SLACK_WEBHOOK
+          curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"Weekly multinode GPU test failed! <https://github.com/flexflow/FlexFlow/actions/runs/$GITHUB_RUN_ID|(See here).> :x: \"}" $SLACK_WEBHOOK
