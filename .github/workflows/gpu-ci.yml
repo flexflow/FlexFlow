@@ -108,6 +108,7 @@ jobs:
           export FF_HOME=$(pwd)
           ./tests/python_interface_test.sh after-installation
 
+      # TODO: need fix in https://github.com/flexflow/FlexFlow/pull/669
       # - name: Run flexflow alignment with pytorch
       #   run: |
       #     # run alingment tests
