@@ -39,7 +39,7 @@ Tensor create_inc_multihead_attention_decoder(
     FFModel *model,
     TransformerConfig const *transformerConfig,
     Tensor const &input) {
-  std::vector<int> axes{2};
+  std::vector<int> axes{0};
   Tensor t =
       transformerConfig->incremental_mode
           ? model->inc_multihead_self_attention(

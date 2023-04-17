@@ -18,7 +18,7 @@
 
 // #define MAX_SEQ_LEN 1024
 #define MAX_SEQ_LEN 20
-#define BATCH_SIZE 32
+#define BATCH_SIZE 16
 #define MNIST_DIMS 28 * 28
 #define DATA_DIM MNIST_DIMS
 // #define DATA_DIM 3
