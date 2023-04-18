@@ -26,9 +26,7 @@ SoftmaxMeta::SoftmaxMeta(FFHandler handler,
                          Domain const &input_domain)
     : OpMeta(handler) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(
-      cudnnSetTensorDescriptorFromDomain4SoftMax(inputTensor, input_domain));
-
+  checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
   dim = softmax->dim;
   profiling = softmax->profiling;
   std::strcpy(op_name, softmax->name);
@@ -49,7 +47,6 @@ void forward_kernel_wrapper(SoftmaxMeta const *m,
     cudaEventCreate(&t_end);
     cudaEventRecord(t_start, stream);
   }
-
   Internal::forward_kernel(m, input_ptr, output_ptr, stream);
   if (m->profiling) {
     cudaEventRecord(t_end, stream);
