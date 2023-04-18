@@ -99,6 +99,72 @@ void DataGenerator::generate_requests(int *req_ptr) {
   std::generate(req_ptr, req_ptr + max_input_tokens * num_requests, gen);
 };
 
+bool DataGenerator::load_requests(int *req_ptr, std::string fpath1, std::string fpath2, std::string fpath3) {
+  // Open input files
+  std::ifstream inFile1(fpath1);
+  std::ifstream inFile2(fpath2);
+  std::ifstream inFile3(fpath3);
+
+  std::cerr << "Loading requests from " << fpath1 << ", " << fpath2 << ", " << fpath3 << std::endl;
+  if (!inFile1.is_open()) {
+    std::cerr << "Error: Failed to open the request token file: " << fpath1 << std::endl;
+  }
+  if (!inFile2.is_open()) {
+    std::cerr << "Error: Failed to open the token generation file: " << fpath2 << std::endl;
+  }
+  if (!inFile3.is_open()) {
+    std::cerr << "Error: Failed to open the arrival info file: " << fpath3 << std::endl;
+  }
+
+  if (inFile1.is_open() && inFile2.is_open() && inFile3.is_open()) {
+    // Read arrival times from file3
+    std::vector<double> arrival_times;
+    double time;
+    while (inFile3 >> time) {
+      arrival_times.push_back(time);
+    }
+    if (arrival_times.size() != num_requests) {
+      std::cerr << "Error: The number of arrival times in the input file does not match the number of requests." << std::endl;
+      return false;
+    }
+
+    // Read requests and tokens_to_generate from file1 and file2
+    int counter = 0;
+    for (auto const &pair : seq_lengths) {
+      size_t initial_length = pair.first;
+      size_t tokens_to_generate;
+      if (!(inFile2 >> tokens_to_generate)) {
+        std::cerr << "Error: Failed to read tokens_to_generate from the input file." << std::endl;
+        return false;
+      }
+      if (tokens_to_generate != pair.second) {
+        std::cerr << "Error: The number of tokens_to_generate in the input file does not match the expected value." << std::endl;
+        return false;
+      }
+      for (int i = 0; i < initial_length; i++) {
+        if (!(inFile1 >> req_ptr[counter * max_input_tokens + i])) {
+          std::cerr << "Error: Failed to read a request from the input file." << std::endl;
+          return false;
+        }
+      }
+      counter += 1;
+    }
+
+    // Fill the remaining memory with zeros
+    std::fill(req_ptr + counter * max_input_tokens, req_ptr + num_requests * max_input_tokens, 0);
+
+    // Copy arrival times to member variable
+    arrivals = std::move(arrival_times);
+
+    std::cout << "Data loaded from input files successfully." << std::endl;
+    return true;
+  } else {
+    std::cerr << "Error: Failed to open one or more input files." << std::endl;
+    return false;
+  }
+}
+
+
 void DataGenerator::start_timer(void) {
   arrivals_ptr = arrivals.begin();
   start_time = Clock::now();

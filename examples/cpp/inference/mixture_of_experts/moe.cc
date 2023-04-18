@@ -31,13 +31,20 @@ void parse_input_args(char **argv, int argc, MoeConfig &config) {
     if (!strcmp(argv[i], "--dataset")) {
       config.dataset_path = std::string(argv[++i]);
       continue;
+    } else if (!strcmp(argv[i], "--token_to_generate")) {
+      config.token_to_generate = std::string(argv[++i]);
+      continue;
+    } else if (!strcmp(argv[i], "--arrival_info_path")) {
+      config.arrival_info_path = std::string(argv[++i]);
+      continue;
     }
   }
 }
 
 void MoeConfig::load_configs() {
-  std::string folder =
-      "/home/ubuntu/nlp_gpt3_text-generation_0.35B_MoE-64/model/c-models/4-gpu";
+  // std::string folder =
+  //     "/home/ubuntu/nlp_gpt3_text-generation_0.35B_MoE-64/model/c-models/4-gpu";
+  std::string folder = "/home/zeyu/fast/models/c-models/4-gpu";
   std::string config_ini_filepath = folder + "/config.ini";
   std::map<std::string, std::string> conf = get_configs(config_ini_filepath);
   num_exp = std::min(MAX_EXPERTS, std::stoi(conf["expert_num"]));

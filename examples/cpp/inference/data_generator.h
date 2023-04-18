@@ -46,6 +46,7 @@ public:
   // Generate random requests by filling each tensor with random tokens. For
   // now, assume all requests have the same sequence length.
   void generate_requests(int *req_ptr);
+  bool load_requests(int *req_ptr, std::string fpath1, std::string fpath2, std::string fpath3);
   void start_timer(void);
   // Get number of requests that have arrived since the last time this function
   // was called
