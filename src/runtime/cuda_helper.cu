@@ -233,11 +233,14 @@ __host__ void
 }
 
 template <typename T>
-__host__ void
-    save_tensor(T const *ptr, size_t num_elements, char const *file_name) {
+__host__ void save_tensor(T const *ptr,
+                          size_t start_index,
+                          size_t num_elements,
+                          char const *file_name) {
   // device synchronize to make sure the data are ready
   // checkCUDA(cudaDeviceSynchronize());
   T *host_ptr;
+  ptr += start_index;
   checkCUDA(cudaHostAlloc(&host_ptr,
                           sizeof(T) * num_elements,
                           cudaHostAllocPortable | cudaHostAllocMapped));
@@ -246,10 +249,14 @@ __host__ void
   // checkCUDA(cudaDeviceSynchronize());
 
   FILE *tensor_file;
+  float sum = 0;
   tensor_file = fopen(file_name, "w");
   for (unsigned i = 0; i < num_elements; i++) {
     fprintf(tensor_file, "%.20f, ", (float)host_ptr[i]);
+    sum += (float)host_ptr[i];
   }
+
+  printf("sum of dim softmax: %.20f", sum);
 
   fclose(tensor_file);
   checkCUDA(cudaFreeHost(host_ptr));
@@ -280,6 +287,59 @@ __host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
   return true;
 }
 
+cudnnStatus_t
+    cudnnSetTensorDescriptorFromDomain4SoftMax(cudnnTensorDescriptor_t tensor,
+                                               Domain domain) {
+  int dims[MAX_TENSOR_DIM];
+  switch (domain.get_dim()) {
+    case 1: {
+      Rect<1> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      return cudnnSetTensor4dDescriptor(
+          tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[0], 1, 1, 1);
+    }
+    case 2: {
+      Rect<2> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      return cudnnSetTensor4dDescriptor(
+          tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[1], dims[0], 1, 1);
+    }
+    case 3: {
+      Rect<3> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      std::cout << "dim 0: " << dims[0] << "dim 1: " << dims[1]
+                << "dim 2:" << dims[2] << "\n";
+      return cudnnSetTensor4dDescriptor(tensor,
+                                        CUDNN_TENSOR_NCHW,
+                                        CUDNN_DATA_FLOAT,
+                                        dims[2] * dims[1],
+                                        dims[0],
+                                        1,
+                                        1);
+    }
+    case 4: {
+      Rect<4> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      dims[3] = rect.hi[3] - rect.lo[3] + 1;
+      return cudnnSetTensor4dDescriptor(tensor,
+                                        CUDNN_TENSOR_NCHW,
+                                        CUDNN_DATA_FLOAT,
+                                        dims[3] * dims[2] * dims[1],
+                                        dims[0],
+                                        1,
+                                        1);
+    }
+    default:
+      assert(false && "Unsupported dim number softmax");
+  }
+  return CUDNN_STATUS_BAD_PARAM;
+}
+
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Domain domain) {
   int dims[MAX_TENSOR_DIM];
@@ -302,6 +362,8 @@ cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
       dims[0] = rect.hi[0] - rect.lo[0] + 1;
       dims[1] = rect.hi[1] - rect.lo[1] + 1;
       dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      std::cout << "dim 0: " << dims[0] << "dim 1: " << dims[1]
+                << "dim 2:" << dims[2] << "\n";
       return cudnnSetTensor4dDescriptor(tensor,
                                         CUDNN_TENSOR_NCHW,
                                         CUDNN_DATA_FLOAT,
@@ -464,9 +526,12 @@ template __host__ void
 template __host__ void
     print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
 
-template __host__ void
-    save_tensor<float>(float const *ptr, size_t rect, char const *file_name);
+template __host__ void save_tensor<float>(float const *ptr,
+                                          size_t start_index,
+                                          size_t rect,
+                                          char const *file_name);
 template __host__ void save_tensor<int64_t>(int64_t const *ptr,
+                                            size_t start_index,
                                             size_t rect,
                                             char const *file_name);
 

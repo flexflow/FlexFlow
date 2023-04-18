@@ -140,7 +140,10 @@ template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
 
 template <typename T>
-void save_tensor(T const *ptr, size_t num_elements, char const *file_name);
+void save_tensor(T const *ptr,
+                 size_t start_index,
+                 size_t num_elements,
+                 char const *file_name);
 
 template <typename T>
 T *download_tensor(T const *ptr, size_t num_elements);
@@ -151,6 +154,9 @@ bool download_tensor(T const *ptr, T *dst, size_t num_elements);
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Legion::Domain domain);
 
+cudnnStatus_t
+    cudnnSetTensorDescriptorFromDomain4SoftMax(cudnnTensorDescriptor_t tensor,
+                                               Legion::Domain domain);
 cudaDataType_t ff_to_cuda_datatype(DataType type);
 cudnnDataType_t ff_to_cudnn_datatype(DataType type);
 
