@@ -201,6 +201,8 @@ __global__ void experts_forward_prepare_kernel(
     int num_chosen_experts,
     int data_dim,
     int out_dim,
+    int experts_num_layers,
+    int experts_internal_dim_size,
     bool use_bias,
     int *sorted_indices,
     int *expert_start_indexes,
@@ -209,13 +211,15 @@ __global__ void experts_forward_prepare_kernel(
     int *original_indices,
     float const *input, // @In: Tokens' values (in_dim, batch_size)
     float *output,
-    float const **token_idx_array,  // @Out: Barray for GemmBatchedEx
-    float const *weights,           // @In: Experts' weights
-    float const *biases,            // @In: Experts' biases
-    float const **weight_idx_array, // @Out: Aarray for GemmBatchedEx
-    float const **bias_idx_array,   // @Out: Experts' bias
-    float const *coefficients,      // @In: topk_gate_predss coefficients tensor
-                                    // (num_chosen_experts, batch_size)
+    float const **token_idx_array,   // @Out: Barray for GemmBatchedEx
+    float const *weights,            // @In: Experts' weights
+    float const *biases,             // @In: Experts' biases
+    float const **weight_idx_array1, // @Out: Aarray for GemmBatchedEx
+    float const **weight_idx_array2,
+    float const **bias_idx_array1, // @Out: Experts' bias
+    float const **bias_idx_array2,
+    float const *coefficients, // @In: topk_gate_predss coefficients tensor
+                               // (num_chosen_experts, batch_size)
     float const **coefficient_idx_array, // @Out: Barray for Aggregation
     float **output_idx_array) {
 
@@ -226,19 +230,38 @@ __global__ void experts_forward_prepare_kernel(
     int local_expert_label = global_expert_label - experts_start_idx;
     int expert_index = exp_local_label_to_index[local_expert_label];
     int within_expert_offset = i - expert_start_indexes[expert_index];
+    int weight_params_count =
+        experts_num_layers == 1
+            ? data_dim * out_dim
+            : experts_internal_dim_size * (data_dim + out_dim);
     if (within_expert_offset < expert_capacity) {
       int rev_idx = original_indices[i + lb_index];
       int token_idx = (rev_idx / num_chosen_experts);
 
       token_idx_array[destination_start_indices[expert_index] +
                       within_expert_offset] = &input[token_idx * data_dim];
-      weight_idx_array[destination_start_indices[expert_index] +
-                       within_expert_offset] =
-          &weights[local_expert_label * data_dim * out_dim];
+      weight_idx_array1[destination_start_indices[expert_index] +
+                        within_expert_offset] =
+          &weights[local_expert_label * weight_params_count];
+      if (experts_num_layers == 2) {
+        weight_idx_array2[destination_start_indices[expert_index] +
+                          within_expert_offset] =
+            &weights[local_expert_label * weight_params_count +
+                     (data_dim * experts_internal_dim_size)];
+      }
       if (use_bias) {
-        bias_idx_array[destination_start_indices[expert_index] +
-                       within_expert_offset] =
-            &biases[local_expert_label * out_dim];
+        int bias_params_count = (experts_num_layers == 1)
+                                    ? out_dim
+                                    : (experts_internal_dim_size + out_dim);
+        bias_idx_array1[destination_start_indices[expert_index] +
+                        within_expert_offset] =
+            &biases[local_expert_label * bias_params_count];
+        if (experts_num_layers == 2) {
+          bias_idx_array2[destination_start_indices[expert_index] +
+                          within_expert_offset] =
+              &biases[local_expert_label * bias_params_count +
+                      experts_internal_dim_size];
+        }
       }
       coefficient_idx_array[destination_start_indices[expert_index] +
                             within_expert_offset] = &coefficients[rev_idx];
@@ -264,13 +287,18 @@ bool use_activation(ActiMode mode) {
 }
 
 void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
-                                        void const **weights_ptr,
+                                        void const **weights_ptr1,
+                                        void const **weights_ptr2,
                                         void const **input_ptr,
-                                        void **results_ptr,
-                                        void const **bias_ptr,
+                                        void **results_ptr1,
+                                        void **results_ptr2,
+                                        void const **bias_ptr1,
+                                        void const **bias_ptr2,
                                         ActiMode activation,
                                         int in_dim,
                                         int out_dim,
+                                        int experts_num_layers,
+                                        int experts_internal_dim_size,
                                         int num_tokens,
                                         int num_chosen_experts,
                                         int gemm_batch_count,
@@ -290,63 +318,169 @@ void experts_forward_GemmBatched_kernel(ExpertsMeta const *m,
 
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
 
+  int m_ = out_dim;
+  int n = 1;
+  int k = in_dim;
+  void const **A = weights_ptr1;
+  void const **B = input_ptr;
+  void **C = results_ptr1;
+  int lda = in_dim;
+  int ldb = in_dim;
+  int ldc = out_dim;
+  if (experts_num_layers == 2) {
+    m_ = ldc = experts_internal_dim_size;
+  }
   checkCUDA(cublasGemmBatchedEx(
       m->handle.blas,
       CUBLAS_OP_T, // Tranpose Weight, shape (in_dim, out_dim) => (out_dim,
                    // in_dim)
       CUBLAS_OP_N, // Input_token, shape (in_dim, 1)
-      out_dim,     // num_row of (A, C) = out_dim
-      1,           // num_col of (B, C) = 1
-      in_dim,      // num_col of A and num_rows of B = in_dim
+      m_,          // num_row of (A, C) = out_dim
+      n,           // num_col of (B, C) = 1
+      k,           // num_col of A and num_rows of B = in_dim
       &alpha,
-      weights_ptr, // Aarray (num_tokens * chosen_experts, in_dim, out_dim)
+      A, // Aarray (num_tokens * chosen_experts, in_dim, out_dim)
       weight_type,
-      in_dim,    // Leading Dimension of weight before transpose
-      input_ptr, // Barray (num_tokens * chosen_experts, in_dim, 1)
+      lda, // Leading Dimension of weight before transpose
+      B,   // Barray (num_tokens * chosen_experts, in_dim, 1)
       input_type,
-      in_dim, // Leading Dimension of input_token
+      ldb, // Leading Dimension of input_token
       &beta,
-      results_ptr, // Carray (num_tokens * chosen_experts, out_dim, 1)
+      C, // Carray (num_tokens * chosen_experts, out_dim, 1)
       output_type,
-      out_dim,          // Leading Dimension of output
+      ldc,              // Leading Dimension of output
       gemm_batch_count, // Total submatrixes
       compute_type,
       CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
-  // TODO 2: bias and activations
   if (m->use_bias) {
+    m_ = out_dim;
+    n = 1;
+    k = 1;
+    A = bias_ptr1;
+    B = (void const **)m->one_ptr_array;
+    C = results_ptr1;
+    lda = out_dim;
+    ldb = 1;
+    ldc = out_dim;
+    if (experts_num_layers == 2) {
+      m_ = lda = ldc = experts_internal_dim_size;
+    }
+    alpha = 1.0f, beta = 0.0f;
     checkCUDA(cublasGemmBatchedEx(
         m->handle.blas,
         CUBLAS_OP_N, // Bias, shape (out_dim, 1)
         CUBLAS_OP_N, // Coefficient, shape (1, 1)
-        out_dim,     // num_row of (A, C) = out_dim
-        1,           // num_col of (B, C) = 1
-        1,           // num_col of A and num_rows of B = 1
+        m_,          // num_row of (A, C) = out_dim
+        n,           // num_col of (B, C) = 1
+        k,           // num_col of A and num_rows of B = 1
         &alpha,
-        bias_ptr, // bias tensor (out_dim, 1)
+        A, // bias tensor (out_dim, 1)
         weight_type,
-        out_dim,                         // Leading Dimension of bias tensor
-        (void const **)m->one_ptr_array, // all-one tensor (1, 1)
+        lda, // Leading Dimension of bias tensor
+        B,   // all-one tensor (1, 1)
         CUDA_R_32F,
-        1, // Leading Dimension of all-one tensor
+        ldb, // Leading Dimension of all-one tensor
         &alpha,
-        results_ptr, // Carray (num_tokens * chosen_experts, out_dim, 1)
+        C, // Carray (num_tokens * chosen_experts, out_dim, 1)
         output_type,
-        out_dim,          // Leading Dimension of output
+        ldc,              // Leading Dimension of output
         gemm_batch_count, // Total submatrixs
         compute_type,
         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
 
   if (use_activation(activation)) {
+    alpha = 1.0f, beta = 0.0f;
     checkCUDNN(cudnnActivationForward(m->handle.dnn,
                                       m->actiDesc,
                                       &alpha,
-                                      m->resultTensorDesc,
-                                      m->batch_outputs[0],
+                                      m->resultTensorDesc1,
+                                      m->batch_outputs1[0],
                                       &beta,
-                                      m->resultTensorDesc,
-                                      m->batch_outputs[0]));
+                                      m->resultTensorDesc1,
+                                      m->batch_outputs1[0]));
+  }
+
+  if (experts_num_layers == 2) {
+    m_ = out_dim;
+    n = 1;
+    k = experts_internal_dim_size;
+    A = weights_ptr2;
+    B = (void const **)results_ptr1;
+    C = results_ptr2;
+    lda = experts_internal_dim_size;
+    ldb = experts_internal_dim_size;
+    ldc = out_dim;
+    alpha = 1.0f, beta = 0.0f;
+    checkCUDA(cublasGemmBatchedEx(
+        m->handle.blas,
+        CUBLAS_OP_T, // Tranpose Weight, shape (in_dim, out_dim) => (out_dim,
+                     // in_dim)
+        CUBLAS_OP_N, // Input_token, shape (in_dim, 1)
+        m_,          // num_row of (A, C) = out_dim
+        n,           // num_col of (B, C) = 1
+        k,           // num_col of A and num_rows of B = in_dim
+        &alpha,
+        A, // Aarray (num_tokens * chosen_experts, in_dim, out_dim)
+        weight_type,
+        lda, // Leading Dimension of weight before transpose
+        B,   // Barray (num_tokens * chosen_experts, in_dim, 1)
+        input_type,
+        ldb, // Leading Dimension of input_token
+        &beta,
+        C, // Carray (num_tokens * chosen_experts, out_dim, 1)
+        output_type,
+        ldc,              // Leading Dimension of output
+        gemm_batch_count, // Total submatrixes
+        compute_type,
+        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
+    if (m->use_bias) {
+      m_ = out_dim;
+      n = 1;
+      k = 1;
+      A = bias_ptr2;
+      B = (void const **)m->one_ptr_array;
+      C = results_ptr2;
+      lda = out_dim;
+      ldb = 1;
+      ldc = out_dim;
+      alpha = 1.0f, beta = 0.0f;
+      checkCUDA(cublasGemmBatchedEx(
+          m->handle.blas,
+          CUBLAS_OP_N, // Bias, shape (out_dim, 1)
+          CUBLAS_OP_N, // Coefficient, shape (1, 1)
+          m_,          // num_row of (A, C) = out_dim
+          n,           // num_col of (B, C) = 1
+          k,           // num_col of A and num_rows of B = 1
+          &alpha,
+          A, // bias tensor (out_dim, 1)
+          weight_type,
+          lda, // Leading Dimension of bias tensor
+          B,   // all-one tensor (1, 1)
+          CUDA_R_32F,
+          ldb, // Leading Dimension of all-one tensor
+          &alpha,
+          C, // Carray (num_tokens * chosen_experts, out_dim, 1)
+          output_type,
+          ldc,              // Leading Dimension of output
+          gemm_batch_count, // Total submatrixs
+          compute_type,
+          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    }
+
+    if (use_activation(activation)) {
+      alpha = 1.0f, beta = 0.0f;
+      checkCUDNN(cudnnActivationForward(m->handle.dnn,
+                                        m->actiDesc,
+                                        &alpha,
+                                        m->resultTensorDesc2,
+                                        m->batch_outputs2[0],
+                                        &beta,
+                                        m->resultTensorDesc2,
+                                        m->batch_outputs2[0]));
+    }
   }
 }
 
@@ -713,6 +847,8 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                              num_chosen_experts,
                                              data_dim,
                                              out_dim,
+                                             m->experts_num_layers,
+                                             m->experts_internal_dim_size,
                                              use_bias,
                                              m->sorted_indices,
                                              m->expert_start_indexes,
@@ -724,8 +860,10 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                              m->token_idx_array,
                                              weights,
                                              biases,
-                                             m->weight_idx_array,
-                                             m->bias_idx_array,
+                                             m->weight_idx_array1,
+                                             m->weight_idx_array2,
+                                             m->bias_idx_array1,
+                                             m->bias_idx_array2,
                                              topk_gate_preds,
                                              m->coefficient_idx_array,
                                              m->output_idx_array);
@@ -1049,13 +1187,18 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
 #endif
 
   experts_forward_GemmBatched_kernel(m,
-                                     (void const **)m->weight_idx_array,
+                                     (void const **)m->weight_idx_array1,
+                                     (void const **)m->weight_idx_array2,
                                      (void const **)m->token_idx_array,
-                                     (void **)m->dev_batch_outputs,
-                                     (void const **)m->bias_idx_array,
+                                     (void **)m->dev_batch_outputs1,
+                                     (void **)m->dev_batch_outputs2,
+                                     (void const **)m->bias_idx_array1,
+                                     (void const **)m->bias_idx_array2,
                                      activation,
                                      data_dim,
                                      out_dim,
+                                     m->experts_num_layers,
+                                     m->experts_internal_dim_size,
                                      num_tokens,
                                      num_chosen_experts,
                                      gemm_batch_count,
@@ -1073,7 +1216,9 @@ void Experts::forward_kernel_wrapper(ExpertsMeta const *m,
                                                gemm_batch_count,
                                                out_dim,
                                                output,
-                                               m->dev_batch_outputs,
+                                               m->experts_num_layers == 1
+                                                   ? m->dev_batch_outputs1
+                                                   : m->dev_batch_outputs2,
                                                m->coefficient_idx_array,
                                                m->output_idx_array);
 
@@ -1093,6 +1238,8 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
                          int _experts_start_idx,
                          int _data_dim,
                          int _out_dim,
+                         int _experts_num_layers,
+                         int _experts_internal_dim_size,
                          int _effective_batch_size,
                          int _num_chosen_experts,
                          float _alpha,
@@ -1100,7 +1247,9 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
                          ActiMode _activation)
     : OpMeta(handler), num_experts(_num_experts),
       experts_start_idx(_experts_start_idx), data_dim(_data_dim),
-      out_dim(_out_dim), effective_batch_size(_effective_batch_size),
+      out_dim(_out_dim), experts_num_layers(_experts_num_layers),
+      experts_internal_dim_size(_experts_internal_dim_size),
+      effective_batch_size(_effective_batch_size),
       num_chosen_experts(_num_chosen_experts), alpha(_alpha),
       use_bias(_use_bias), activation(_activation) {
   expert_capacity =
@@ -1131,10 +1280,10 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
       cudaMalloc(&token_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
   checkCUDA(
-      cudaMalloc(&weight_idx_array,
+      cudaMalloc(&weight_idx_array1,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
   checkCUDA(
-      cudaMalloc(&bias_idx_array,
+      cudaMalloc(&bias_idx_array1,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
   checkCUDA(
       cudaMalloc(&coefficient_idx_array,
@@ -1142,25 +1291,54 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
   checkCUDA(
       cudaMalloc(&output_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
-  batch_outputs = new float *[num_chosen_experts * effective_batch_size];
-  checkCUDA(cudaMalloc(&batch_outputs[0],
-                       out_dim * num_chosen_experts * effective_batch_size *
-                           sizeof(float)));
-  checkCUDA(cudaMemset(batch_outputs[0],
+  batch_outputs1 = new float *[num_chosen_experts * effective_batch_size];
+  int batch_outputs1_dim =
+      (experts_num_layers == 1) ? out_dim : experts_internal_dim_size;
+  checkCUDA(cudaMalloc(&batch_outputs1[0],
+                       batch_outputs1_dim * num_chosen_experts *
+                           effective_batch_size * sizeof(float)));
+  checkCUDA(cudaMemset(batch_outputs1[0],
                        0,
-                       out_dim * num_chosen_experts * effective_batch_size *
-                           sizeof(float)));
+                       batch_outputs1_dim * num_chosen_experts *
+                           effective_batch_size * sizeof(float)));
   for (int i = 1; i < num_chosen_experts * effective_batch_size; i++) {
-    batch_outputs[i] = batch_outputs[i - 1] + out_dim;
+    batch_outputs1[i] = batch_outputs1[i - 1] + batch_outputs1_dim;
   }
   checkCUDA(
-      cudaMalloc(&dev_batch_outputs,
+      cudaMalloc(&dev_batch_outputs1,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
   checkCUDA(
-      cudaMemcpy(dev_batch_outputs,
-                 batch_outputs,
+      cudaMemcpy(dev_batch_outputs1,
+                 batch_outputs1,
                  num_chosen_experts * effective_batch_size * sizeof(float *),
                  cudaMemcpyHostToDevice));
+  if (experts_num_layers == 2) {
+    checkCUDA(cudaMalloc(&weight_idx_array2,
+                         num_chosen_experts * effective_batch_size *
+                             sizeof(float *)));
+    checkCUDA(cudaMalloc(&bias_idx_array2,
+                         num_chosen_experts * effective_batch_size *
+                             sizeof(float *)));
+    batch_outputs2 = new float *[num_chosen_experts * effective_batch_size];
+    checkCUDA(cudaMalloc(&batch_outputs2[0],
+                         out_dim * num_chosen_experts * effective_batch_size *
+                             sizeof(float)));
+    checkCUDA(cudaMemset(batch_outputs2[0],
+                         0,
+                         out_dim * num_chosen_experts * effective_batch_size *
+                             sizeof(float)));
+    for (int i = 1; i < num_chosen_experts * effective_batch_size; i++) {
+      batch_outputs2[i] = batch_outputs2[i - 1] + out_dim;
+    }
+    checkCUDA(cudaMalloc(&dev_batch_outputs2,
+                         num_chosen_experts * effective_batch_size *
+                             sizeof(float *)));
+    checkCUDA(
+        cudaMemcpy(dev_batch_outputs2,
+                   batch_outputs2,
+                   num_chosen_experts * effective_batch_size * sizeof(float *),
+                   cudaMemcpyHostToDevice));
+  }
   // Bias
   float *dram_one_ptr = (float *)malloc(sizeof(float) * 1);
   for (int i = 0; i < 1; i++) {
@@ -1183,7 +1361,10 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
   }
   // Activation
   checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
-  checkCUDNN(cudnnCreateTensorDescriptor(&resultTensorDesc));
+  checkCUDNN(cudnnCreateTensorDescriptor(&resultTensorDesc1));
+  if (experts_num_layers == 2) {
+    checkCUDNN(cudnnCreateTensorDescriptor(&resultTensorDesc2));
+  }
   if (use_activation(activation)) {
     cudnnActivationMode_t mode;
     switch (activation) {
@@ -1199,15 +1380,36 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
     }
     checkCUDNN(
         cudnnSetActivationDescriptor(actiDesc, mode, CUDNN_PROPAGATE_NAN, 0.0));
-    checkCUDNN(
-        cudnnSetTensor4dDescriptor(resultTensorDesc,
-                                   CUDNN_TENSOR_NCHW,
-                                   // CUDNN_DATA_FLOAT,
-                                   cuda_to_cudnn_datatype(CUDA_R_32F),
-                                   num_chosen_experts * effective_batch_size,
-                                   out_dim,
-                                   1,
-                                   1));
+    if (experts_num_layers == 1) {
+      checkCUDNN(
+          cudnnSetTensor4dDescriptor(resultTensorDesc1,
+                                     CUDNN_TENSOR_NCHW,
+                                     // CUDNN_DATA_FLOAT,
+                                     cuda_to_cudnn_datatype(CUDA_R_32F),
+                                     num_chosen_experts * effective_batch_size,
+                                     out_dim,
+                                     1,
+                                     1));
+    } else {
+      checkCUDNN(
+          cudnnSetTensor4dDescriptor(resultTensorDesc1,
+                                     CUDNN_TENSOR_NCHW,
+                                     // CUDNN_DATA_FLOAT,
+                                     cuda_to_cudnn_datatype(CUDA_R_32F),
+                                     num_chosen_experts * effective_batch_size,
+                                     experts_internal_dim_size,
+                                     1,
+                                     1));
+      checkCUDNN(
+          cudnnSetTensor4dDescriptor(resultTensorDesc2,
+                                     CUDNN_TENSOR_NCHW,
+                                     // CUDNN_DATA_FLOAT,
+                                     cuda_to_cudnn_datatype(CUDA_R_32F),
+                                     num_chosen_experts * effective_batch_size,
+                                     out_dim,
+                                     1,
+                                     1));
+    }
   }
 }
 ExpertsMeta::~ExpertsMeta(void) {
@@ -1221,19 +1423,25 @@ ExpertsMeta::~ExpertsMeta(void) {
   checkCUDA(cudaFree(num_assignments_per_expert));
   checkCUDA(cudaFree(destination_start_indices));
   checkCUDA(cudaFree(token_idx_array));
-  checkCUDA(cudaFree(weight_idx_array));
+  checkCUDA(cudaFree(weight_idx_array1));
+  checkCUDA(cudaFree(weight_idx_array2));
   checkCUDA(cudaFree(coefficient_idx_array));
   checkCUDA(cudaFree(output_idx_array));
-  checkCUDA(cudaFree(dev_batch_outputs));
-  checkCUDA(cudaFree(bias_idx_array));
-  checkCUDA(cudaFree(batch_outputs[0]));
-  delete[] batch_outputs;
+  checkCUDA(cudaFree(dev_batch_outputs1));
+  checkCUDA(cudaFree(dev_batch_outputs2));
+  checkCUDA(cudaFree(bias_idx_array1));
+  checkCUDA(cudaFree(bias_idx_array2));
+  checkCUDA(cudaFree(batch_outputs1[0]));
+  checkCUDA(cudaFree(batch_outputs2[0]));
+  delete[] batch_outputs1;
+  delete[] batch_outputs2;
   // Bias
   checkCUDA(cudaFree((void *)one_ptr));
   checkCUDA(cudaFree((void *)one_ptr_array));
   // Activation
   checkCUDNN(cudnnDestroyActivationDescriptor(actiDesc));
-  checkCUDNN(cudnnDestroyTensorDescriptor(resultTensorDesc));
+  checkCUDNN(cudnnDestroyTensorDescriptor(resultTensorDesc1));
+  checkCUDNN(cudnnDestroyTensorDescriptor(resultTensorDesc2));
 }
 
 }; // namespace FlexFlow

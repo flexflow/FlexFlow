@@ -13,6 +13,8 @@ public:
               int _experts_start_idx,
               int _data_dim,
               int _out_dim,
+              int _experts_num_layers,
+              int _experts_internal_dim_size,
               int _effective_batch_size,
               int _num_chosen_experts,
               float _alpha,
@@ -33,21 +35,27 @@ public:
   int *destination_start_indices;
   float const **token_idx_array;
   float const **dev_weights;
-  float const **weight_idx_array;
+  float const **weight_idx_array1;
+  float const **weight_idx_array2;
   float const **coefficient_idx_array;
   float **output_idx_array;
-  float const **bias_idx_array;
+  float const **bias_idx_array1;
+  float const **bias_idx_array2;
   float const *one_ptr;
   float const **one_ptr_array;
 
   // array of arrays to store cublasGemmBatchedEx outputs before aggregation
-  float **batch_outputs;
-  float **dev_batch_outputs;
+  float **batch_outputs1;
+  float **batch_outputs2;
+  float **dev_batch_outputs1;
+  float **dev_batch_outputs2;
 
   int num_experts;
   int experts_start_idx;
   int data_dim;
   int out_dim;
+  int experts_num_layers;
+  int experts_internal_dim_size;
   int effective_batch_size;
   int num_chosen_experts;
   int expert_capacity;
@@ -55,11 +63,13 @@ public:
   bool use_bias;
   ActiMode activation;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  cudnnTensorDescriptor_t resultTensorDesc;
   cudnnActivationDescriptor_t actiDesc;
+  cudnnTensorDescriptor_t resultTensorDesc1;
+  cudnnTensorDescriptor_t resultTensorDesc2;
 #else
-  miopenTensorDescriptor_t resultTensorDesc;
   miopenActivationDescriptor_t actiDesc;
+  miopenTensorDescriptor_t resultTensorDesc1;
+  miopenTensorDescriptor_t resultTensorDesc2;
 #endif
 };
 
