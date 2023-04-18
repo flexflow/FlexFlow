@@ -36,6 +36,7 @@ struct MoeConfig : InferenceConfig {
   }
 
   void load_configs();
+  void print_configs();
 
   // MoE layer
   int num_exp;

@@ -55,7 +55,7 @@ struct InferenceConfig {
     hidden_size = DATA_DIM;
     // Encoder layer
     num_attention_heads = 16;
-    attention_kdim = attention_vdim = hidden_size / num_attention_heads;
+    size_per_head = hidden_size / num_attention_heads;
   }
 
   // Input/output data
@@ -77,6 +77,5 @@ struct InferenceConfig {
   // Model parameters
   int hidden_size;
   int num_attention_heads;
-  int attention_kdim;
-  int attention_vdim;
+  int size_per_head;
 };
