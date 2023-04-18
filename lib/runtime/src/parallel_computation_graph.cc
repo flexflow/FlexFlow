@@ -6,7 +6,7 @@ ParallelTensor ParallelComputationGraph::create_parallel_tensor(ParallelTensorSh
                                                                 CreateGrad create_grad, 
                                                                 optional<tensor_guid_t> tensor_guid)
 {
-
+  
 }
 
 }

@@ -55,22 +55,20 @@ public:
   virtual bool estimate_sync_cost(Simulator *sim,
                                   MachineView const &pc,
                                   CostMetrics &cost_metrics) const;
+  //
   // Other virtual functions that can be optionally overwritten
-  virtual MachineView get_random_parallel_config(FFModel const &ff) const;
-  virtual MachineView get_data_parallel_config(FFModel const &ff) const;
   virtual Legion::Domain get_input_tensor_shape(MachineView const &pc,
                                                 int input_idx,
-                                                int part_idx) const;
+                                                int part_idx) const; // deprecated
   virtual Legion::Domain get_output_tensor_shape(MachineView const &pc,
                                                  int output_idx,
-                                                 int part_idx) const;
+                                                 int part_idx) const; // deprecated
   virtual Legion::Domain get_weight_tensor_shape(MachineView const &pc,
                                                  int weight_idx,
-                                                 int part_idx) const;
+                                                 int part_idx) const; // deprecated
   virtual bool is_valid_parallel_config(FFModel const &ff,
                                         MachineView const &pc) const;
-  virtual bool is_adoptable_parallel_config(FFModel const &ff,
-                                            MachineView const &pc) const;
+  
   // Helper functions
   void prefetch(FFModel const &);
   void zero_grad(FFModel const &);
@@ -80,11 +78,6 @@ public:
   virtual bool has_inplace_output();
   virtual void do_inplace_output();
   virtual bool is_parallel_op() const;
-  virtual void serialize(Legion::Serializer &) const;
-  virtual Op *
-      materialize(FFModel &ff, ParallelTensor inputs[], int num_inputs) const;
-
-  virtual tl::optional<RecordFormatter> as_dot() const;
 
   int get_dimension() const;
 #ifdef FF_USE_NCCL
@@ -129,7 +122,7 @@ public:
   // the guid of the layer associated with the current operator
   // layer_guid is used to match layer with op
   stack_string<MAX_OPNAME> name;
-  Legion::IndexSpace parallel_is;
+  /* Legion::IndexSpace parallel_is; */
   stack_vector<bool, MAX_NUM_INPUTS> trainableInputs;
   stack_vector<PerDeviceOpState *, MAX_NUM_WORKERS> meta;
   bool profiling;

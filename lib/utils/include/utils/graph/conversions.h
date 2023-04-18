@@ -106,17 +106,17 @@ private:
 };
 
 
-std::unique_ptr<IUndirectedGraphView> unsafe_view_as_undirected(IDiGraphView const &);
-std::unique_ptr<IUndirectedGraphView> view_as_undirected(std::shared_ptr<IDiGraphView const>);
+UndirectedGraphView unsafe_view_as_undirected(DiGraphView const &);
+UndirectedGraphView view_as_undirected(DiGraphView const &);
 
-std::unique_ptr<IMultiDiGraphView> unsafe_view_as_multidigraph(IDiGraphView const &);
-std::unique_ptr<IMultiDiGraphView> view_as_multidigraph(std::shared_ptr<IDiGraphView const>);
+MultiDiGraphView unsafe_view_as_multidigraph(DiGraphView const &);
+MultiDiGraphView view_as_multidigraph(DiGraphView const &);
 
-std::unique_ptr<IDiGraphView> unsafe_view_as_digraph(IMultiDiGraphView const &);
-std::unique_ptr<IDiGraphView> view_as_digraph(std::shared_ptr<IMultiDiGraphView const>);
+DiGraphView unsafe_view_as_digraph(MultiDiGraphView const &);
+IDiGraphView view_as_digraph(IMultiDiGraphView const &);
 
-std::unique_ptr<IMultiDiGraphView> unsafe_view_as_multidigraph(std::shared_ptr<IOpenMultiDiGraphView const>);
-std::unique_ptr<IMultiDiGraphView> view_as_multidigraph(std::shared_ptr<IOpenMultiDiGraphView const>);
+IMultiDiGraphView unsafe_view_as_multidigraph(OpenMultiDiGraphView const &);
+IMultiDiGraphView view_as_multidigraph(OpenMultiDiGraphView const &);
 }
 
 #endif

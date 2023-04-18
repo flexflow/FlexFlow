@@ -111,8 +111,4 @@ std::unordered_set<MultiDiEdge> MultiDiGraph::query_edges(MultiDiEdgeQuery const
   return this->ptr->query_edges(q);
 }
 
-MultiDiGraph::MultiDiGraph(std::unique_ptr<IMultiDiGraph> _ptr)
-  : ptr(std::move(_ptr))
-{ }
-
 }

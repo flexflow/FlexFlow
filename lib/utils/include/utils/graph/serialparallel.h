@@ -9,11 +9,11 @@
 
 namespace FlexFlow {
 
-Node find_source_node(IDiGraphView const &);
-Node find_sink_node(IDiGraphView const &);
+Node find_source_node(DiGraphView const &);
+Node find_sink_node(DiGraphView const &);
 
-optional<Node> find_bottleneck_node(IMultiDiGraphView const &);
-optional<Node> find_bottleneck_node(IDiGraphView const &);
+optional<Node> find_bottleneck_node(MultiDiGraphView const &);
+optional<Node> find_bottleneck_node(DiGraphView const &);
 
 struct Parallel;
 
@@ -27,7 +27,7 @@ struct Parallel {
 
 using SerialParallelDecomposition = variant<Serial, Parallel, Node>;
 
-SerialParallelDecomposition get_serial_parallel_decomposition(IDiGraphView const &);
+SerialParallelDecomposition get_serial_parallel_decomposition(DiGraphView const &);
 
 }
 

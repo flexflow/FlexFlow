@@ -86,8 +86,7 @@ template<typename NodeLabel,
          typename EdgeLabel, 
          typename InputLabel = EdgeLabel, 
          typename OutputLabel = InputLabel>
-struct ILabelledOpenMultiDiGraph : public ILabelledMultiDiGraph<NodeLabel, EdgeLabel>,
-                                   public IMultiDiGraphView {
+struct ILabelledOpenMultiDiGraph : public ILabelledMultiDiGraph<NodeLabel, EdgeLabel> {
 public:
   virtual void add_edge(InputMultiDiEdge const &e, InputLabel const &label) = 0;
   virtual void add_edge(OutputMultiDiEdge const &e, OutputLabel const &label) = 0;

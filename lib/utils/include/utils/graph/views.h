@@ -28,12 +28,12 @@ private:
 struct DiSubgraphView : public IDiGraphView {
 public:
   DiSubgraphView() = delete;
-  explicit DiSubgraphView(maybe_owned_ref<IDiGraphView const>, std::unordered_set<Node> const &);
+  DiSubgraphView(maybe_owned_ref<IDiGraphView const>, std::unordered_set<Node> const &);
 
   std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 private:
-  IDiGraphView const &g;
+  maybe_owned_ref<IDiGraphView const> g;
   std::unordered_set<Node> subgraph_nodes;
 };
 
@@ -102,7 +102,7 @@ private:
 struct JoinedUndirectedGraphView : public IUndirectedGraphView {
 public:
   JoinedUndirectedGraphView() = delete;
-  explicit JoinedUndirectedGraphView(IUndirectedGraphView const &lhs, IUndirectedGraphView const &rhs);
+  explicit JoinedUndirectedGraphView(maybe_owned_ref<IUndirectedGraphView const> lhs, maybe_owned_ref<IUndirectedGraphView const> rhs);
 
   std::unordered_set<UndirectedEdge> query_edges(UndirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
@@ -110,15 +110,15 @@ private:
   UndirectedEdge fix_lhs_edge(UndirectedEdge const &) const;
   UndirectedEdge fix_rhs_edge(UndirectedEdge const &) const;
 private:
-  IUndirectedGraphView const &lhs;
-  IUndirectedGraphView const &rhs;
+  maybe_owned_ref<IUndirectedGraphView const> lhs;
+  maybe_owned_ref<IUndirectedGraphView const> rhs;
   JoinedNodeView joined_nodes;
 };
 
 struct JoinedDigraphView : public IDiGraphView {
 public:
   JoinedDigraphView() = delete;
-  explicit JoinedDigraphView(IDiGraphView const &lhs, IDiGraphView const &rhs);
+  explicit JoinedDigraphView(maybe_owned_ref<IDiGraphView const> lhs, maybe_owned_ref<IDiGraphView const> rhs);
 
   std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
@@ -128,8 +128,8 @@ private:
   DirectedEdge fix_lhs_edge(DirectedEdge const &) const;
   DirectedEdge fix_rhs_edge(DirectedEdge const &) const;
 private:
-  IDiGraphView const &lhs;
-  IDiGraphView const &rhs;
+  maybe_owned_ref<IDiGraphView const> lhs;
+  maybe_owned_ref<IDiGraphView const> rhs;
   JoinedNodeView joined_nodes;
 };
 
@@ -221,7 +221,7 @@ private:
 DirectedEdge flipped(DirectedEdge const &);
 
 
-DiGraphView unsafe_view_as_flipped(IDiGraphView const &);
+DiGraphView unsafe_view_as_flipped(DiGraphView const &);
 DiGraphView view_as_flipped(DiGraphView const &);
 
 UndirectedGraphView unsafe_view_subgraph(UndirectedGraphView const &, std::unordered_set<Node> const &);

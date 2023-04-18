@@ -52,10 +52,13 @@ public:
 
   UndirectedGraphView() = delete;
 
+  operator GraphView const &() const;
+  operator GraphView &();
+
   friend void swap(UndirectedGraphView &, UndirectedGraphView &);
 
-  std::unordered_set<Node> query_nodes(NodeQuery const &);
-  std::unordered_set<Edge> query_edges(EdgeQuery const &);
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
+  std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   operator maybe_owned_ref<IUndirectedGraphView const>() const {
     return maybe_owned_ref<IUndirectedGraphView const>(this->ptr);
@@ -73,9 +76,13 @@ public:
   }
 private:
   UndirectedGraphView(std::shared_ptr<IUndirectedGraphView const>);
+
+  friend UndirectedGraphView unsafe(IUndirectedGraphView const &);
 private:
   std::shared_ptr<IUndirectedGraphView const> ptr;
 };
+
+UndirectedGraphView unsafe(IUndirectedGraphView const &);
 
 struct IUndirectedGraph : public IUndirectedGraphView, public IGraph {
   virtual void add_edge(UndirectedEdge const &) = 0;
@@ -93,6 +100,8 @@ public:
   UndirectedGraph(UndirectedGraph const &);
 
   UndirectedGraph &operator=(UndirectedGraph);
+
+  operator UndirectedGraphView() const;
 
   friend void swap(UndirectedGraph &, UndirectedGraph &);
 

@@ -58,10 +58,15 @@ public:
 
   DiGraphView() = delete;
 
+  operator GraphView() const;
+
   friend void swap(DiGraphView &, DiGraphView &);
 
-  std::unordered_set<Node> query_nodes(NodeQuery const &);
-  std::unordered_set<Edge> query_edges(EdgeQuery const &);
+  bool operator==(DiGraphView const &) const;
+  bool operator!=(DiGraphView const &) const;
+
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const;
+  std::unordered_set<Edge> query_edges(EdgeQuery const &) const;
 
   operator maybe_owned_ref<IDiGraphView const>() const {
     return maybe_owned_ref<IDiGraphView const>(this->ptr);
@@ -79,9 +84,13 @@ public:
   }
 private:
   DiGraphView(std::shared_ptr<IDiGraphView const>);
+
+  friend DiGraphView unsafe(IDiGraphView const &);
 private:
   std::shared_ptr<IDiGraphView const> ptr;
 };
+
+DiGraphView unsafe(IDiGraphView const &);
 
 struct IDiGraph : public IDiGraphView, public IGraph {
   virtual void add_edge(Edge const &) = 0;
@@ -100,6 +109,8 @@ public:
   DiGraph(DiGraph const &);
 
   DiGraph &operator=(DiGraph);
+
+  operator DiGraphView() const;
 
   friend void swap(DiGraph &, DiGraph &);
 
