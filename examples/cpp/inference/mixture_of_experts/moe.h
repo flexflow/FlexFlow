@@ -26,7 +26,7 @@ struct MoeConfig : InferenceConfig {
     // number of experts in each block of fused experts
     experts_per_block = 32;
     // number of experts to route each token to
-    num_select = 2;
+    num_select = 1;
     // expert capacity parameters
     alpha = 2.0f;   // factor overhead tensor size for imbalance
     lambda = 0.04f; // multiplier for load balance term

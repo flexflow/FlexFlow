@@ -161,3 +161,52 @@ std::pair<size_t, size_t> DataGenerator::get_request_length(size_t guid) {
                 // sequence with given guid)
   return seq_lengths[guid];
 }
+
+bool DataGenerator::print_arrival_times(std::string fpath) {
+  std::ofstream outFile(fpath); // Create an output file stream
+  if (outFile.is_open()) {      // Check if the file is opened successfully
+    for (double const &time : arrivals) {
+      outFile
+          << time
+          << std::endl; // Write each entry to the file followed by a newline
+    }
+    outFile.close(); // Close the file
+    std::cout << "Data written to " << fpath << " successfully." << std::endl;
+    return true;
+  } else {
+    std::cerr << "Unable to open " << fpath << " for writing." << std::endl;
+    return false; // Return with an error code
+  }
+}
+
+bool DataGenerator::print_all_requests(int *requests,
+                                       int max_sequence_length,
+                                       std::string fpath1,
+                                       std::string fpath2) {
+  std::ofstream outFile1(fpath1); // Create an output file stream
+  std::ofstream outFile2(fpath2); // Create an output file stream
+  if (outFile1.is_open() &&
+      outFile2.is_open()) { // Check if the file is opened successfully
+
+    int counter = 0;
+    for (auto const &pair : seq_lengths) {
+      size_t initial_length = pair.first;
+      size_t tokens_to_generate = pair.second;
+      for (int i = 0; i < initial_length; i++) {
+        outFile1 << requests[counter * max_input_tokens + i] << " ";
+      }
+      outFile1 << std::endl;
+      outFile2 << tokens_to_generate << std::endl;
+      counter += 1;
+    }
+    outFile1.close(); // Close the file
+    outFile2.close(); // Close the file
+    std::cout << "Data written to " << fpath1 << " and " << fpath2
+              << " successfully." << std::endl;
+    return true;
+  } else {
+    std::cerr << "Unable to open " << fpath1 << " or " << fpath2
+              << " for writing." << std::endl;
+    return false; // Return with an error code
+  }
+}

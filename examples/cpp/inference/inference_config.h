@@ -23,8 +23,10 @@
 #include <string>
 
 #define MAX_SEQ_LEN 256
-#define BATCH_SIZE 4
-#define DATA_DIM 784
+#define BATCH_SIZE 8
+#define DATA_DIM 1024
+#define MAX_LAYERS 3
+#define MAX_EXPERTS 64
 
 void removeSpaces(std::string &str);
 std::set<int> setFromList(std::string &str);

@@ -18,12 +18,14 @@
 #include <cassert>
 #include <chrono>
 #include <ctime>
+#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <math.h>
 #include <random>
 #include <thread>
 #include <unistd.h>
+#include <vector>
 
 using namespace std;
 
@@ -50,6 +52,11 @@ public:
   std::pair<size_t, size_t> get_requests(size_t max_requests,
                                          size_t max_tokens);
   std::pair<size_t, size_t> get_request_length(size_t guid);
+  bool print_arrival_times(std::string fpath);
+  bool print_all_requests(int *requests,
+                          int max_sequence_length,
+                          std::string fpath1,
+                          std::string fpath2);
 
 private:
   // Compute the arrival times of each request and save them in the arrivals

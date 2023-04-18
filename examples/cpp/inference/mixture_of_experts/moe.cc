@@ -40,11 +40,11 @@ void MoeConfig::load_configs() {
       "/home/ubuntu/nlp_gpt3_text-generation_0.35B_MoE-64/model/c-models/4-gpu";
   std::string config_ini_filepath = folder + "/config.ini";
   std::map<std::string, std::string> conf = get_configs(config_ini_filepath);
-  num_exp = std::stoi(conf["expert_num"]);
+  num_exp = std::min(MAX_EXPERTS, std::stoi(conf["expert_num"]));
   int tensor_para_size = std::stoi(conf["tensor_para_size"]);
   assert(num_exp % tensor_para_size == 0);
   experts_per_block = num_exp / tensor_para_size;
-  num_layers = std::stoi(conf["num_layer"]);
+  num_layers = std::min(MAX_LAYERS, std::stoi(conf["num_layer"]));
   vocab_size = std::stoi(conf["vocab_size"]);
   num_attention_heads = std::stoi(conf["head_num"]);
   int gpt_with_moe = std::stoi(conf["gpt_with_moe"]);
@@ -77,7 +77,9 @@ Tensor create_moe(FFModel *model,
                        moeConfig->experts_per_block,     /*number of experts*/
                        moeConfig->experts_per_block * i, /*expert start index*/
                        moeConfig->hidden_size,           /*output_size*/
-                       moeConfig->alpha);
+                       moeConfig->alpha,
+                       2,
+                       moeConfig->hidden_size * 4);
     assert(block_preds != nullptr);
     if (i == 0) {
       exp_preds = block_preds;
@@ -93,7 +95,7 @@ Tensor create_moe(FFModel *model,
 
 Tensor
     gpt_moe(FFModel *model, MoeConfig const *moeConfig, Tensor const &input) {
-  std::vector<int> axes = {0, 1, 2};
+  std::vector<int> axes = {0};
   Tensor x = input;
   for (int i = 0; i < moeConfig->num_layers; i++) {
     Tensor t = moeConfig->incremental_mode
@@ -115,7 +117,8 @@ Tensor
         model->add(
             (moeConfig->moe_layers.find(i) != moeConfig->moe_layers.end())
                 ? create_moe(model, moeConfig, x)
-                : model->dense(x, moeConfig->hidden_size),
+                : model->dense(model->dense(x, 4 * moeConfig->hidden_size),
+                               moeConfig->hidden_size),
             x),
         axes,
         true,
@@ -130,6 +133,7 @@ void FlexFlow::top_level_task(Task const *task,
                               Runtime *runtime) {
   //----------------------- Initial configurations ------------------------
   MoeConfig moeConfig;
+  moeConfig.load_configs();
   FFConfig ffConfig;
   ffConfig.batchSize = moeConfig.batch_size;
   {
