@@ -42,9 +42,8 @@ void parse_input_args(char **argv, int argc, MoeConfig &config) {
 }
 
 void MoeConfig::load_configs() {
-  // std::string folder =
-  //     "/home/ubuntu/nlp_gpt3_text-generation_0.35B_MoE-64/model/c-models/4-gpu";
-  std::string folder = "/home/zeyu/fast/models/c-models/4-gpu";
+  std::string folder =
+      "/home/ubuntu/nlp_gpt3_text-generation_0.35B_MoE-64/model/c-models/1-gpu";
   std::string config_ini_filepath = folder + "/config.ini";
   std::map<std::string, std::string> conf = get_configs(config_ini_filepath);
   num_exp = std::min(MAX_EXPERTS, std::stoi(conf["expert_num"]));
@@ -61,9 +60,39 @@ void MoeConfig::load_configs() {
   max_sequence_length =
       std::min(MAX_SEQ_LEN, std::stoi(conf["max_pos_seq_len"]));
   assert(max_sequence_length <= MAX_SEQ_LEN);
-  int size_per_head = std::stoi(conf["size_per_head"]);
+  size_per_head = std::stoi(conf["size_per_head"]);
   hidden_size = token_dim = out_dim = size_per_head * num_attention_heads;
   assert(hidden_size <= DATA_DIM);
+}
+
+void MoeConfig::print_configs() {
+  std::cout << "token_dim: " << token_dim << std::endl;
+  std::cout << "max_sequence_length: " << max_sequence_length << std::endl;
+  std::cout << "batch_size: " << batch_size << std::endl;
+  std::cout << "out_dim: " << out_dim << std::endl;
+  std::cout << "num_layers: " << num_layers << std::endl;
+  std::cout << "vocab_size: " << vocab_size << std::endl;
+  std::cout << "dataset_path: " << dataset_path << std::endl;
+  std::cout << "total_requests: " << total_requests << std::endl;
+  std::cout << "poisson_distribution: "
+            << (poisson_distribution ? "true" : "false") << std::endl;
+  std::cout << "arrival_rate: " << arrival_rate << std::endl;
+  std::cout << "num_inflight_batches: " << num_inflight_batches << std::endl;
+  std::cout << "incremental_mode: " << (incremental_mode ? "true" : "false")
+            << std::endl;
+  std::cout << "hidden_size: " << hidden_size << std::endl;
+  std::cout << "num_attention_heads: " << num_attention_heads << std::endl;
+  std::cout << "size_per_head: " << size_per_head << std::endl;
+  std::cout << "num_exp: " << num_exp << std::endl;
+  std::cout << "experts_per_block: " << experts_per_block << std::endl;
+  std::cout << "num_select: " << num_select << std::endl;
+  std::cout << "alpha: " << alpha << std::endl;
+  std::cout << "lambda: " << lambda << std::endl;
+  std::cout << "moe_layers: ";
+  for (auto const &layer : moe_layers) {
+    std::cout << layer << " ";
+  }
+  std::cout << std::endl;
 }
 
 Tensor create_moe(FFModel *model,
@@ -110,15 +139,15 @@ Tensor
                          x,
                          moeConfig->hidden_size,
                          moeConfig->num_attention_heads,
-                         moeConfig->attention_kdim,
-                         moeConfig->attention_vdim)
+                         moeConfig->size_per_head,
+                         moeConfig->size_per_head)
                    : model->multihead_attention(x,
                                                 x,
                                                 x,
                                                 moeConfig->hidden_size,
                                                 moeConfig->num_attention_heads,
-                                                moeConfig->attention_kdim,
-                                                moeConfig->attention_vdim);
+                                                moeConfig->size_per_head,
+                                                moeConfig->size_per_head);
     x = model->layer_norm(model->add(t, x), axes, true, 1e-05);
     x = model->layer_norm(
         model->add(
@@ -141,8 +170,14 @@ void FlexFlow::top_level_task(Task const *task,
   //----------------------- Initial configurations ------------------------
   MoeConfig moeConfig;
   moeConfig.load_configs();
+
   FFConfig ffConfig;
   ffConfig.batchSize = moeConfig.batch_size;
+  int num_devices = ffConfig.workersPerNode * ffConfig.numNodes;
+  // overwrite experts_per_block depending on the number of devices
+  assert(moeConfig.num_exp % num_devices == 0);
+  moeConfig.experts_per_block = moeConfig.num_exp / num_devices;
+  moeConfig.print_configs();
   {
     InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
@@ -218,7 +253,6 @@ void FlexFlow::top_level_task(Task const *task,
   //----------------------- Begin inference! -------------------------------
   int index = 0;
   int processed_requests = 0;
-  int num_devices = ffConfig.workersPerNode * ffConfig.numNodes;
   data_generator.start_timer();
   std::map<int, Future> future_handlers;
   std::map<int, BatchConfig *> batch_configs;

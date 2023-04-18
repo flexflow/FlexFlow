@@ -19,7 +19,7 @@
 
 #define MAX_SEQ_LEN 256
 #define BATCH_SIZE 8
-#define MAX_REQUESTS 8
+#define MAX_REQUESTS 512
 
 namespace FlexFlow {
 

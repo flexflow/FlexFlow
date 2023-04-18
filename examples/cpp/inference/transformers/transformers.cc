@@ -46,15 +46,15 @@ Tensor create_inc_multihead_attention_decoder(
                 input,
                 transformerConfig->hidden_size,
                 transformerConfig->num_attention_heads,
-                transformerConfig->attention_kdim,
-                transformerConfig->attention_vdim)
+                transformerConfig->size_per_head,
+                transformerConfig->size_per_head)
           : model->multihead_attention(input,
                                        input,
                                        input,
                                        transformerConfig->hidden_size,
                                        transformerConfig->num_attention_heads,
-                                       transformerConfig->attention_kdim,
-                                       transformerConfig->attention_vdim);
+                                       transformerConfig->size_per_head,
+                                       transformerConfig->size_per_head);
   t = model->layer_norm(model->add(t, input), axes, true, 1e-05);
   Tensor x = model->dense(
       model->dense(
