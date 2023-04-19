@@ -108,10 +108,10 @@ void DataLoader::load_entire_dataset(Task const *task,
   } else {
     // Load specific dataset
     printf("Loading dataset from %s\n", conf.dataset_path.c_str());
-    // printf("Loading arrival info from %s\n", conf.arrival_info_path.c_str());
-    // printf("Loading generated tokens length from %s\n", conf.token_to_generate.c_str());
-    bool succeed = datagen.load_requests(input_ptr, conf.dataset_path, conf.token_to_generate, conf.arrival_info_path);
-    assert(succeed);
+    assert(datagen.load_requests(input_ptr,
+                                 conf.dataset_path,
+                                 conf.token_to_generate,
+                                 conf.arrival_info_path));
   }
 }
 

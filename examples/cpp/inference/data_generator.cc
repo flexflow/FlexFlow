@@ -27,7 +27,8 @@ DataGenerator::DataGenerator(size_t _num_requests,
                              size_t _min_tokens_to_generate,
                              size_t _max_tokens_to_generate,
                              bool _poisson_distr,
-                             double _lambda)
+                             double _lambda,
+                             bool load_data_from_file)
     : num_requests(_num_requests), vocab_size(_vocab_size),
       min_input_tokens(_min_input_tokens), max_input_tokens(_max_input_tokens),
       min_tokens_to_generate(_min_tokens_to_generate),
@@ -36,7 +37,9 @@ DataGenerator::DataGenerator(size_t _num_requests,
   assert(max_input_tokens >= min_input_tokens);
   assert(max_tokens_to_generate >= min_tokens_to_generate);
   assert(max_input_tokens + max_tokens_to_generate <= MAX_SEQ_LEN);
-  generate_requests_meta();
+  if (!load_data_from_file) {
+    generate_requests_meta();
+  }
 };
 
 // generate each request's arrival time and sequence length
@@ -99,21 +102,28 @@ void DataGenerator::generate_requests(int *req_ptr) {
   std::generate(req_ptr, req_ptr + max_input_tokens * num_requests, gen);
 };
 
-bool DataGenerator::load_requests(int *req_ptr, std::string fpath1, std::string fpath2, std::string fpath3) {
+bool DataGenerator::load_requests(int *req_ptr,
+                                  std::string fpath1,
+                                  std::string fpath2,
+                                  std::string fpath3) {
   // Open input files
   std::ifstream inFile1(fpath1);
   std::ifstream inFile2(fpath2);
   std::ifstream inFile3(fpath3);
 
-  std::cerr << "Loading requests from " << fpath1 << ", " << fpath2 << ", " << fpath3 << std::endl;
+  std::cerr << "Loading requests from " << fpath1 << ", " << fpath2 << ", "
+            << fpath3 << std::endl;
   if (!inFile1.is_open()) {
-    std::cerr << "Error: Failed to open the request token file: " << fpath1 << std::endl;
+    std::cerr << "Error: Failed to open the request token file: " << fpath1
+              << std::endl;
   }
   if (!inFile2.is_open()) {
-    std::cerr << "Error: Failed to open the token generation file: " << fpath2 << std::endl;
+    std::cerr << "Error: Failed to open the token generation file: " << fpath2
+              << std::endl;
   }
   if (!inFile3.is_open()) {
-    std::cerr << "Error: Failed to open the arrival info file: " << fpath3 << std::endl;
+    std::cerr << "Error: Failed to open the arrival info file: " << fpath3
+              << std::endl;
   }
 
   if (inFile1.is_open() && inFile2.is_open() && inFile3.is_open()) {
@@ -124,37 +134,47 @@ bool DataGenerator::load_requests(int *req_ptr, std::string fpath1, std::string 
       arrival_times.push_back(time);
     }
     if (arrival_times.size() != num_requests) {
-      std::cerr << "Error: The number of arrival times in the input file does not match the number of requests." << std::endl;
+      std::cerr << "Error: The number of arrival times in the input file does "
+                   "not match the number of requests."
+                << std::endl;
       return false;
     }
 
     // Read requests and tokens_to_generate from file1 and file2
-    int counter = 0;
-    for (auto const &pair : seq_lengths) {
-      size_t initial_length = pair.first;
+    assert(seq_lengths.size() == 0);
+
+    size_t row = 0;
+    string line;
+    while (getline(inFile1, line)) {
+      stringstream ss(line);
+      size_t col = 0;
+      while (ss >> req_ptr[row * max_input_tokens + col]) {
+        col++;
+      }
+      // read corresponding number of tokens to generate
       size_t tokens_to_generate;
       if (!(inFile2 >> tokens_to_generate)) {
-        std::cerr << "Error: Failed to read tokens_to_generate from the input file." << std::endl;
+        std::cerr
+            << "Error: Failed to read tokens_to_generate from the input file."
+            << std::endl;
         return false;
       }
-      if (tokens_to_generate != pair.second) {
-        std::cerr << "Error: The number of tokens_to_generate in the input file does not match the expected value." << std::endl;
-        return false;
-      }
-      for (int i = 0; i < initial_length; i++) {
-        if (!(inFile1 >> req_ptr[counter * max_input_tokens + i])) {
-          std::cerr << "Error: Failed to read a request from the input file." << std::endl;
-          return false;
-        }
-      }
-      counter += 1;
+      seq_lengths.push_back(std::make_pair(col, tokens_to_generate));
+      row++;
     }
-
-    // Fill the remaining memory with zeros
-    std::fill(req_ptr + counter * max_input_tokens, req_ptr + num_requests * max_input_tokens, 0);
 
     // Copy arrival times to member variable
     arrivals = std::move(arrival_times);
+
+    assert(arrivals.size() == num_requests);
+    assert(seq_lengths.size() == num_requests);
+
+    for (auto const &pair : seq_lengths) {
+      size_t a = pair.first;
+      size_t b = pair.second;
+      assert(a >= min_input_tokens && a <= max_input_tokens);
+      assert(b >= min_tokens_to_generate && b <= max_tokens_to_generate);
+    }
 
     std::cout << "Data loaded from input files successfully." << std::endl;
     return true;
@@ -163,7 +183,6 @@ bool DataGenerator::load_requests(int *req_ptr, std::string fpath1, std::string 
     return false;
   }
 }
-
 
 void DataGenerator::start_timer(void) {
   arrivals_ptr = arrivals.begin();
