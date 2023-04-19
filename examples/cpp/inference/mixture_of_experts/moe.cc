@@ -31,6 +31,12 @@ void parse_input_args(char **argv, int argc, MoeConfig &config) {
     if (!strcmp(argv[i], "--dataset")) {
       config.dataset_path = std::string(argv[++i]);
       continue;
+    } else if (!strcmp(argv[i], "--tokens_to_generate")) {
+      config.token_to_generate = std::string(argv[++i]);
+      continue;
+    } else if (!strcmp(argv[i], "--arrival_info_path")) {
+      config.arrival_info_path = std::string(argv[++i]);
+      continue;
     }
   }
 }
@@ -67,6 +73,8 @@ void MoeConfig::print_configs() {
   std::cout << "num_layers: " << num_layers << std::endl;
   std::cout << "vocab_size: " << vocab_size << std::endl;
   std::cout << "dataset_path: " << dataset_path << std::endl;
+  std::cout << "token_to_generate: " << token_to_generate << std::endl;
+  std::cout << "arrival_info_path: " << arrival_info_path << std::endl;
   std::cout << "total_requests: " << total_requests << std::endl;
   std::cout << "poisson_distribution: "
             << (poisson_distribution ? "true" : "false") << std::endl;
@@ -167,11 +175,6 @@ void FlexFlow::top_level_task(Task const *task,
 
   FFConfig ffConfig;
   ffConfig.batchSize = moeConfig.batch_size;
-  int num_devices = ffConfig.workersPerNode * ffConfig.numNodes;
-  // overwrite experts_per_block depending on the number of devices
-  assert(moeConfig.num_exp % num_devices == 0);
-  moeConfig.experts_per_block = moeConfig.num_exp / num_devices;
-  moeConfig.print_configs();
   {
     InputArgs const &command_args = HighLevelRuntime::get_input_args();
     char **argv = command_args.argv;
@@ -183,6 +186,13 @@ void FlexFlow::top_level_task(Task const *task,
                   ffConfig.numNodes);
   }
   FFModel ff(ffConfig);
+
+  int num_devices = ffConfig.workersPerNode * ffConfig.numNodes;
+  // overwrite experts_per_block depending on the number of devices
+  assert(moeConfig.num_exp % num_devices == 0);
+  moeConfig.experts_per_block = moeConfig.num_exp / num_devices;
+
+  moeConfig.print_configs();
 
   //----------------------- Create inputs --------------------------------
   Tensor input;
@@ -220,6 +230,11 @@ void FlexFlow::top_level_task(Task const *task,
   size_t min_input_tokens = 8, max_input_tokens = 128,
          min_tokens_to_generate = 1,
          max_tokens_to_generate = MAX_SEQ_LEN - max_input_tokens;
+  bool load_data_from_file = (moeConfig.dataset_path.length() != 0);
+  if (load_data_from_file) {
+    assert(moeConfig.token_to_generate.length() != 0 &&
+           moeConfig.arrival_info_path.length() != 0);
+  }
   DataGenerator data_generator(moeConfig.total_requests,
                                moeConfig.vocab_size,
                                min_input_tokens,
@@ -227,7 +242,8 @@ void FlexFlow::top_level_task(Task const *task,
                                min_tokens_to_generate,
                                max_tokens_to_generate,
                                moeConfig.poisson_distribution,
-                               moeConfig.arrival_rate);
+                               moeConfig.arrival_rate,
+                               load_data_from_file);
   ParallelTensor input_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
   assert(im.tensor_buffer.find(input_pt) != im.tensor_buffer.end());

@@ -68,6 +68,9 @@ struct InferenceConfig {
   int vocab_size;
 
   std::string dataset_path;
+  std::string requests_file;
+  std::string token_to_generate;
+  std::string arrival_info_path;
   // Inference parameters
   int total_requests;
   bool poisson_distribution;
