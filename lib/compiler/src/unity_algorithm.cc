@@ -279,18 +279,51 @@ struct OptimalCost {
               MachineResource const &resource,
               optional<MachineView> const &source_machine_view, // assume perfect SP
               optional<MachineView> const &sink_machine_view,
-              std::function<std::unordered_set<MachineView>(PCGOperatorAttrs const &, MachineResource const &)> const &allowed_machine_views)
+              std::function<std::unordered_set<MachineView>(PCGOperatorAttrs const &, MachineResource const &)> const &allowed_machine_views,
+              std::unordered_map<size_t, Strategy> &cached_subgraph_costs)
     : g(g),
       cost_estimator(cost_estimator),
       resource(resource),
       source_machine_view(source_machine_view),
       sink_machine_view(sink_machine_view),
-      allowed_machine_views(allowed_machine_views)
+      allowed_machine_views(allowed_machine_views),
+      cached_subgraph_costs(cached_subgraph_costs)
     {}
+
+  // TODO: move them out of the functor
+  template <typename T>
+  size_t hash_state(T const &sp_decomposition) const {
+    size_t h = std::hash<T>(sp_decomposition);
+    hash_combine(h, resource);
+    hash_combine(source_machine_view);
+    hash_combine(sink_machine_view);
+    return h;
+  }
+
+  optional<Strategy> load_result_from_cache(size_t hash_value) const {
+    if (contains_key(cached_subgraph_costs, hash_value)) {
+      return make_optional(cached_subgraph_costs.at(hash_value));
+    }
+    return nullopt;
+  }
+
+  void save_result_to_cache(size_t hash_value, Strategy const &strategy) const {
+    assert(!contains_key(cached_subgraph_costs, hash_value));
+    cached_subgraph_costs[hash_value] = strategy;
+  }
 
   template <typename T>
   Strategy operator()(T const &t) const {
-    return this->optimal_cost(t);
+    size_t state_hash_value = hash_state(serial);
+    optional<Strategy> cached_result = load_result_from_cache(state_hash_value);
+    if (cached_result) {
+      return cached_result.value();
+    }
+
+    Strategy result = this->optimal_cost(t);
+
+    save_result_to_cache(state_hash_value, optimal_result);
+    return result;
   }
 
   Strategy optimal_cost(Serial const &serial) const {
@@ -315,9 +348,11 @@ struct OptimalCost {
       optional<MachineView> post_source_mv = contains(post_graph_sources, split_point) ? make_optional(mv) : nullopt;
       minimize(optimal_result,
         Strategy::sequential_combine(
-          visit(OptimalCost(pre_graph, cost_estimator, resource, source_machine_view, pre_sink_mv, allowed_machine_views), pre_decompn),
-          visit(OptimalCost(post_graph, cost_estimator, resource, post_source_mv, sink_machine_view, allowed_machine_views), post_decompn)));
+          visit(OptimalCost(pre_graph, cost_estimator, resource, source_machine_view, pre_sink_mv, allowed_machine_views, cached_subgraph_costs), pre_decompn),
+          visit(OptimalCost(post_graph, cost_estimator, resource, post_source_mv, sink_machine_view, allowed_machine_views, cached_subgraph_costs), post_decompn)));
     }
+
+    return optimal_result;
   }
 
   Strategy optimal_cost(Parallel const &parallel) const {
@@ -329,15 +364,17 @@ struct OptimalCost {
     SubParallelComputationGraph g1 = subgraphs.first, g2 = subgraphs.second;
 
     Strategy optimal_result = Strategy::sequential_combine(
-      visit(OptimalCost(g1, cost_estimator, resource, source_machine_view, sink_machine_view, allowed_machine_views), decompn1),
-      visit(OptimalCost(g2, cost_estimator, resource, source_machine_view, sink_machine_view, allowed_machine_views), decompn2));
+      visit(OptimalCost(g1, cost_estimator, resource, source_machine_view, sink_machine_view, allowed_machine_views, cached_subgraph_costs), decompn1),
+      visit(OptimalCost(g2, cost_estimator, resource, source_machine_view, sink_machine_view, allowed_machine_views, cached_subgraph_costs), decompn2));
 
     for (auto const &resource_split : get_resource_split(resource)) {
       minimize(optimal_result,
         Strategy::parallel_combine(
-          visit(OptimalCost(g1, cost_estimator, resource_split.first, source_machine_view, sink_machine_view, allowed_machine_views), decompn1),
-          visit(OptimalCost(g2, cost_estimator, resource_split.second, source_machine_view, sink_machine_view, allowed_machine_views), decompn2)));
+          visit(OptimalCost(g1, cost_estimator, resource_split.first, source_machine_view, sink_machine_view, allowed_machine_views, cached_subgraph_costs), decompn1),
+          visit(OptimalCost(g2, cost_estimator, resource_split.second, source_machine_view, sink_machine_view, allowed_machine_views, cached_subgraph_costs), decompn2)));
     }
+
+    return optimal_result;
   }
 
   Strategy optimal_cost(Node const &node) const {
@@ -367,6 +404,7 @@ struct OptimalCost {
   optional<MachineView> const &source_machine_view;
   optional<MachineView> const &sink_machine_view;
   std::function<std::unordered_set<MachineView>(PCGOperatorAttrs const &, MachineResource const &)> const &allowed_machine_views;
+  std::unordered_map<size_t, Strategy> &cached_subgraph_costs;
 };
 
 // float optimal_cost(ParallelComputationGraph const &g, 
@@ -375,5 +413,4 @@ struct OptimalCost {
 //                    ICostEstimator const &cost_estimator) {
 //   return visit(OptimalCost(g, allowed_machine_views, cost_estimator), sp_decomposition);
 // }
-
 }
