@@ -289,46 +289,26 @@ void Aggregate::forward_task(Task const *task,
   AggregatePerDeviceState const *m = *((AggregatePerDeviceState **)task->local_args);
 
   // get gate_pred, gate_assign, output
-  AccessorRO<float, 3> const acc_gate_pred(regions[0], FID_DATA);
-  AccessorRO<int, 3> const acc_gate_assign(regions[1], FID_DATA);
-  AccessorWO<float, 3> const acc_output(regions[n + 2], FID_DATA);
+  auto gate_pred = acc.get_tensor<READ_WRITE>(GATE_PREDS);
+  auto gate_assign = acc.get_tensor<READ_WRITE>(GATE_ASSIGN);
+  auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
 
-  Rect<3> rect_gate_pred = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  Rect<3> rect_gate_assign = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  Rect<3> rect_output = runtime->get_index_space_domain(
-      ctx, task->regions[n + 2].region.get_index_space());
-
-  coord_t batch_size = rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1;
-  assert(batch_size == rect_gate_assign.hi[1] - rect_gate_assign.lo[1] + 1);
-  assert(rect_gate_pred.hi[0] - rect_gate_pred.lo[0] ==
-         rect_gate_assign.hi[0] - rect_gate_assign.lo[0]);
-  assert(batch_size == rect_output.hi[1] - rect_output.lo[1] + 1);
-  coord_t out_dim = rect_output.hi[0] - rect_output.lo[0] + 1;
+  coord_t batch_size = gate_pred.shape[1];
+  assert(batch_size == gate_assign.shape[1]);
+  assert(gate_pred.shape[0] == gate_assign.shape[0]);
+  assert(batch_size == output.shape[1]);
+  coord_t out_dim = output.shape[0];
 
   // get exp_preds
-  std::vector<float *> exp_preds(n);
+  auto acc_exp_preds = acc.get_variadic_tensor<READ_WRITE>(EXP_PREDS);
+  coord_t rows = acc_exp_preds[0].shape[1];
+  assert (all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) { return a.shape[1] == rows; }));
+  assert (all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) { return a.shape[0] == out_dim; }));
+  
+  std::vector<float *> exp_preds = vector_transform([](GenericTensorAccessorW const &a) { return a.get_float_ptr(); }, acc_exp_preds);
   assert (exp_preds.size() == n);
-  // get first exp_pred and row and out_dim
-  Domain exp_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
-  exp_preds[0] = helperGetTensorPointerWO<float>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  coord_t rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
-  assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
 
-  for (int i = 1; i < n; i++) {
-    exp_domain = runtime->get_index_space_domain(
-        ctx, task->regions[i + 2].region.get_index_space());
-    exp_preds[i] = helperGetTensorPointerWO<float>(
-        regions[i + 2], task->regions[i + 2], FID_DATA, ctx, runtime);
-
-    assert(rows == exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
-    assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
-  }
-
-  int k = (int)(rect_gate_assign.hi[0] - rect_gate_assign.lo[0] + 1);
+  int k = (int)(gate_assign.shape[0]);
 
   profile(
     forward_kernel, 
@@ -336,9 +316,9 @@ void Aggregate::forward_task(Task const *task,
     "[Aggregate] forward_time = %.2lfms\n",
     m,
     exp_preds.data(),
-    acc_gate_assign.ptr(rect_gate_assign),
-    acc_gate_pred.ptr(rect_gate_pred),
-    acc_output.ptr(rect_output),
+    gate_assign.get_float_ptr(),
+    gate_pred.get_float_ptr(),
+    output.get_float_ptr(),
     n,
     k,
     rows,
@@ -439,67 +419,40 @@ void Aggregate::backward_task(Task const *task,
   assert((int)task->regions.size() == 2 * n + 5);
 
   // get gate_pred, gate_grad, gate_assign, output_grad
-  AccessorRO<float, 3> const acc_gate_pred(regions[0], FID_DATA);
-  AccessorRO<int, 3> const acc_gate_assign(regions[1], FID_DATA);
-  AccessorRO<int, 3> const acc_true_gate_assign(regions[2], FID_DATA);
-  AccessorWO<float, 3> const full_acc_gate_grad(regions[3], FID_DATA);
-  AccessorRO<float, 3> const acc_output_grad(regions[2 * n + 4], FID_DATA);
+  auto gate_pred = acc.get_tensor<READ_ONLY>(GATE_PREDS);
+  auto gate_assign = acc.get_tensor<READ_ONLY>(GATE_ASSIGN);
+  auto true_gate_assign = acc.get_tensor<READ_ONLY>(TRUE_GATE_ASSIGN);
+  auto full_gate_grad = acc.get_tensor_grad<READ_WRITE>(GATE_GRADIENTS_FULL);
+  auto output_grad = acc.get_tensor_grad<READ_ONLY>(OUTPUT);
 
-  Rect<3> rect_gate_pred = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  Rect<3> rect_gate_assign = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  Rect<3> rect_true_gate_assign = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
-  Rect<3> rect_full_gate_grad = runtime->get_index_space_domain(
-      ctx, task->regions[3].region.get_index_space());
-  Rect<3> rect_out_grad = runtime->get_index_space_domain(
-      ctx, task->regions[2 * n + 4].region.get_index_space());
-
-  coord_t batch_size = rect_gate_pred.hi[1] - rect_gate_pred.lo[1] + 1;
-  assert(batch_size == rect_gate_assign.hi[1] - rect_gate_assign.lo[1] + 1);
-  assert(rect_gate_assign == rect_true_gate_assign);
-  assert(batch_size == rect_out_grad.hi[1] - rect_out_grad.lo[1] + 1);
-  assert(batch_size ==
-         rect_full_gate_grad.hi[1] - rect_full_gate_grad.lo[1] + 1);
-  coord_t k = rect_gate_assign.hi[0] - rect_gate_assign.lo[0] + 1;
-  assert(rect_gate_pred.hi[0] - rect_gate_pred.lo[0] + 1 == k);
-  coord_t out_dim = rect_out_grad.hi[0] - rect_out_grad.lo[0] + 1;
-  assert(n == rect_full_gate_grad.hi[0] - rect_full_gate_grad.lo[0] + 1);
+  coord_t batch_size = gate_pred.shape[1];
+  assert(batch_size == gate_assign.shape[1]);
+  assert(gate_assign.shape == true_gate_assign.shape);
+  assert(batch_size == full_gate_grad.shape[1]);
+  coord_t k = gate_assign.shape[0];
+  assert(k * batch_size == output_grad.shape[1]);
+  assert(gate_pred.shape[0] == k);
+  coord_t out_dim = output_grad.shape[0];
+  assert(n == full_gate_grad.shape[0]);
 
   // get exp_preds
-  std::vector<float *> exp_preds(n);
+  auto acc_exp_preds = acc.get_variadic_tensor<READ_WRITE>(EXP_PREDS);
+  coord_t rows = acc_exp_preds[0].shape[1];
+  assert (all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) { return a.shape[1] == rows; }));
+  assert (all_of(acc_exp_preds, [&](GenericTensorAccessorW const &a) { return a.shape[0] == out_dim; }));
+  
+  std::vector<float *> exp_preds = vector_transform([](GenericTensorAccessorW const &a) { return a.get_float_ptr(); }, acc_exp_preds);
   assert (exp_preds.size() == n);
 
-  // get first exp_pred and row
-  Domain exp_domain = runtime->get_index_space_domain(
-      ctx, task->regions[4].region.get_index_space());
-  exp_preds[0] = helperGetTensorPointerRW<float>(
-      regions[4], task->regions[4], FID_DATA, ctx, runtime);
-  coord_t rows = exp_domain.hi()[1] - exp_domain.lo()[1] + 1;
-  assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
-
-  for (int i = 1; i < n; i++) {
-    exp_domain = runtime->get_index_space_domain(
-        ctx, task->regions[i + 4].region.get_index_space());
-    exp_preds[i] = helperGetTensorPointerRW<float>(
-        regions[i + 4], task->regions[i + 4], FID_DATA, ctx, runtime);
-    assert(rows == exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
-    assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
-  }
-
   // get chosen_exp_grads
-  std::vector<float *> exp_grads(n);
-  assert (exp_grads.size() == n);
+  auto acc_exp_grads = acc.get_variadic_tensor_grad<READ_WRITE>(EXP_PREDS);
+  
+  size_t rows = acc_exp_grads[0].shape[1];
+  assert (all_of(acc_exp_grads, [&](GenericTensorAccessorW const &a) { return a.shape[1] == rows; }));
+  assert (all_of(acc_exp_grads, [&](GenericTensorAccessorW const &a) { return a.shape[0] == out_dim; }));
 
-  for (int i = 0; i < n; i++) {
-    exp_domain = runtime->get_index_space_domain(
-        ctx, task->regions[n + i + 4].region.get_index_space());
-    exp_grads[i] = helperGetTensorPointerRW<float>(
-        regions[n + i + 4], task->regions[n + i + 4], FID_DATA, ctx, runtime);
-    assert(rows == exp_domain.hi()[1] - exp_domain.lo()[1] + 1);
-    assert(out_dim == exp_domain.hi()[0] - exp_domain.lo()[0] + 1);
-  }
+  std::vector<float *> exp_grads = vector_transform([](GenericTensorAccessorW const &a) { return a.get_float_ptr(); }, acc_exp_grads);
+  assert (exp_grads.size() == n);
 
   /* profiling_wrapper() */
 
@@ -510,11 +463,11 @@ void Aggregate::backward_task(Task const *task,
     m,
     exp_preds.data(), 
     exp_grads.data(),
-    acc_gate_assign.ptr(rect_gate_assign),
-    acc_true_gate_assign.ptr(rect_true_gate_assign),
-    acc_gate_pred.ptr(rect_gate_pred),
-    full_acc_gate_grad.ptr(rect_full_gate_grad),
-    acc_output_grad.ptr(rect_out_grad),
+    gate_assign.get_float_ptr(),
+    true_gate_assign.get_float_ptr(),
+    gate_pred.get_float_ptr(),
+    full_gate_grad.get_float_ptr(),
+    output_grad.get_float_ptr(),
     n,
     k,
     rows,

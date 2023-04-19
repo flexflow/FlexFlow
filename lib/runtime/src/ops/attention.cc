@@ -731,6 +731,7 @@ void MultiHeadAttention::backward_task(
   
   profile(
     backward_kernel,
+    m->profiling,
     "[MultiHeadAttention] backward_time = %.2lfms\n",
     m,
     query.get_float_ptr(),
@@ -800,8 +801,8 @@ bool MultiHeadAttention::measure_operator_cost(
   assert(m->profiling == false);
 
   std::function<void()> forward, backward;
-  forward = [&] {
-    forward_kernel_wrapper(
+  forward = [&](ffStream_t stream) {
+    forward_kernel(
         m, query_ptr, key_ptr, value_ptr, weight_ptr, output_ptr);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
@@ -823,8 +824,8 @@ bool MultiHeadAttention::measure_operator_cost(
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
 
-    backward = [&] {
-      backward_kernel_wrapper(m,
+    backward = [&](ffStream_t stream) {
+      backward_kernel(stream, m,
                               query_ptr,
                               query_grad_ptr,
                               key_ptr,

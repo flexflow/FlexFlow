@@ -15,6 +15,8 @@
 
 #include "batch_matmul.h"
 #include "kernels/batch_matmul_kernels.h"
+#include "tasks.h"
+#include "kernels/profiling.h"
 #include "legion/legion_utilities.h"
 
 namespace FlexFlow {
@@ -37,6 +39,15 @@ using Legion::TaskLauncher;
 using PCG::Node;
 
 using namespace FlexFlow::Kernels::BatchMatmul;
+
+enum Slots {
+  A_INPUT,
+  B_INPUT,
+  OUTPUT,
+  A_INPUT_GRAD,
+  B_INPUT_GRAD,
+  OUTPUT_GRAD
+}
 
 
 BatchMatmulParams BatchMatmul::get_params() const {
@@ -190,12 +201,77 @@ Op *BatchMatmul::materialize(FFModel &ff,
   return new BatchMatmul(ff, params, {inputs[0], inputs[1]}, this->name);
 }
 
+static OpTaskSignature get_init_task_signature() {
+  OpTaskSignature init(OpTaskType::INIT);
+
+  init.add_arg_slot<BatchMatmulAttrs>(ATTRS);
+  init.add_arg_slot<bool>(PROFILING);
+}
+
+static OpTaskSignature get_fwd_task_signature() {
+  OpTaskSignature fwd(OpTaskType::FWD);
+
+  fwd.add_input_slot(A_INPUT, READ_WRITE);
+  fwd.add_input_slot(B_INPUT, READ_WRITE);
+  fwd.add_output_slot(OUTPUT);
+
+  return fwd;
+}
+
+static OpTaskSignature get_bwd_task_signature() {
+  OpTaskSignature bwd(OpTaskType::BWD);
+
+  bwd.add_input_slot(A_INPUT);
+  bwd.add_input_slot(B_INPUT);
+  bwd.add_input_grad_slot(A_INPUT_GRAD);
+  bwd.add_input_grad_slot(B_INPUT_GRAD);
+  bwd.add_output_slot(OUTPUT);
+  bwd.add_output_grad_slot(OUTPUT_GRAD);
+
+  return bwd;
+}
+
+OpTaskBinding BatchMatmul::get_init_task_binding() const {
+  OpTaskBinding binding;
+
+  binding.bind_arg(ATTRS, this->attrs);
+  binding.bind_arg(PROFILING, this->profiling);
+
+  return binding;
+}
+
+OpTaskBinding BatchMatmul::get_fwd_task_binding() const {
+  OpTaskBinding binding;
+
+  binding.bind(A_INPUT, input_tensor(0));
+  binding.bind(B_INPUT, input_tensor(1));
+  binding.bind(OUTPUT, output_tensor(0));
+
+  binding.bind_arg(ATTRS, this->attrs);
+  return binding;
+}
+
+OpTaskBinding BatchMatmul::get_bwd_task_binding() const {
+  OpTaskBinding binding;
+  binding.bind(A_INPUT, input_tensor(0));
+  binding.bind(B_INPUT, input_tensor(1));
+  binding.bind_grad(A_INPUT_GRAD, input_tensor(0).grad());
+  binding.bind_grad(B_INPUT_GRAD, input_tensor(1).grad());
+
+  binding.bind(OUTPUT, output_tensor(0));
+  binding.bind_grad(OUTPUT_GRAD, output_tensor(0).grad());
+
+  binding.bind_arg(ATTRS, this->attrs);
+  return binding;
+}
+
 void BatchMatmul::init(FFModel const &ff) {
   int dim = outputs[0]->num_dims;
   switch (dim) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
-    init_with_dim<DIM>(ff);                                                    \
+    //init_with_dim<DIM>(ff);  
+    this->execute_task(ff, BATCHMATMUL_INIT_TASK_ID, get_init_task_signature());                                                  
     break;                                                                     \
   }
     LEGION_FOREACH_N(DIMFUNC)
@@ -204,52 +280,55 @@ void BatchMatmul::init(FFModel const &ff) {
       assert(false);
   }
 }
-
-template <int NDIM>
-void BatchMatmul::init_with_dim(FFModel const &ff) {
-  assert(check_output_input_weight_same_parallel_is());
-  parallel_is = outputs[0]->parallel_is;
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(BATCHMATMUL_INIT_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(BatchMatmul)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  for (int i = 0; i < numInputs; i++) {
-    launcher.add_region_requirement(RegionRequirement(inputs[i]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      inputs[i]->region));
-    launcher.add_field(i + 1, FID_DATA);
-  }
-  FutureMap fm = runtime->execute_index_space(ctx, launcher);
-  fm.wait_all_results();
-  set_opmeta_from_futuremap(ff, fm);
-}
+// /
+// template <int NDIM>
+// void BatchMatmul::init_with_dim(FFModel const &ff) {
+//   assert(check_output_input_weight_same_parallel_is());
+//   parallel_is = outputs[0]->parallel_is;
+//   ArgumentMap argmap;
+//   Context ctx = ff.config.lg_ctx;
+//   Runtime *runtime = ff.config.lg_hlr;
+//   set_argumentmap_for_init(ff, argmap);
+//   IndexLauncher launcher(BATCHMATMUL_INIT_TASK_ID,
+//                          parallel_is,
+//                          TaskArgument(this, sizeof(BatchMatmul)),
+//                          argmap,
+//                          Predicate::TRUE_PRED,
+//                          false /*must*/,
+//                          0 /*mapper_id*/,
+//                          outputs[0]->machine_view.hash());
+//   launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+//                                                     0 /*projection id*/,
+//                                                     WRITE_ONLY,
+//                                                     EXCLUSIVE,
+//                                                     outputs[0]->region));
+//   launcher.add_field(0, FID_DATA);
+//   for (int i = 0; i < numInputs; i++) {
+//     launcher.add_region_requirement(RegionRequirement(inputs[i]->part,
+//                                                       0 /*projection id*/,
+//                                                       READ_ONLY,
+//                                                       EXCLUSIVE,
+//                                                       inputs[i]->region));
+//     launcher.add_field(i + 1, FID_DATA);
+//   }
+//   FutureMap fm = runtime->execute_index_space(ctx, launcher);
+//   fm.wait_all_results();
+//   set_opmeta_from_futuremap(ff, fm);
+// }
 
 PerDeviceOpState *BatchMatmul::init_task(Task const *task,
                                std::vector<PhysicalRegion> const &regions,
                                Context ctx,
                                Runtime *runtime) {
-  BatchMatmul const *bmm = (BatchMatmul *)task->args;
+  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  auto const &attrs = acc.get_argument<BatchMatmulAttrs>(ATTRS);
+  bool profiling = acc.get_argument<bool>(PROFILING);
+
   FFHandler handle = *((FFHandler const *)task->local_args);
-  BatchMatmulMeta *m = new BatchMatmulMeta(handle);
-  m->profiling = bmm->profiling;
-  m->a_seq_length_dim = bmm->a_seq_length_dim;
-  m->b_seq_length_dim = bmm->b_seq_length_dim;
+  BatchMatmulPerDeviceState *m = new BatchMatmulPerDeviceState(handle);
+  m->profiling = profiling;
+  m->a_seq_length_dim = attrs.a_seq_length_dim;
+  m->b_seq_length_dim = attrs.b_seq_length_dim;
   return m;
 }
 
@@ -258,7 +337,8 @@ void BatchMatmul::forward(FFModel const &ff) {
   switch (dim) {
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
-    forward_with_dim<DIM>(ff);                                                 \
+    //forward_with_dim<DIM>(ff);   
+    this->execute_task(ff, BATCHMATMUL_FWD_TASK_ID, get_fwd_task_signature());                                              
     break;                                                                     \
   }
     LEGION_FOREACH_N(DIMFUNC)
@@ -268,44 +348,44 @@ void BatchMatmul::forward(FFModel const &ff) {
   }
 }
 
-template <int NDIM>
-void BatchMatmul::forward_with_dim(FFModel const &ff) {
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(
-      BATCHMATMUL_FWD_TASK_ID,
-      parallel_is,
-      TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)),
-      argmap,
-      Predicate::TRUE_PRED,
-      false /*must*/,
-      0 /*mapper_id*/,
-      outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  for (int i = 0; i < numInputs; i++) {
-    launcher.add_region_requirement(RegionRequirement(inputs[i]->part,
-                                                      0 /*projection id*/,
-                                                      READ_ONLY,
-                                                      EXCLUSIVE,
-                                                      inputs[i]->region));
-    launcher.add_field(i + 1, FID_DATA);
-  }
-  runtime->execute_index_space(ctx, launcher);
-}
+// template <int NDIM>
+// void BatchMatmul::forward_with_dim(FFModel const &ff) {
+//   ArgumentMap argmap;
+//   Context ctx = ff.config.lg_ctx;
+//   Runtime *runtime = ff.config.lg_hlr;
+//   set_argumentmap_for_forward(ff, argmap);
+//   IndexLauncher launcher(
+//       BATCHMATMUL_FWD_TASK_ID,
+//       parallel_is,
+//       TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)),
+//       argmap,
+//       Predicate::TRUE_PRED,
+//       false /*must*/,
+//       0 /*mapper_id*/,
+//       outputs[0]->machine_view.hash());
+//   launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+//                                                     0 /*projection id*/,
+//                                                     WRITE_ONLY,
+//                                                     EXCLUSIVE,
+//                                                     outputs[0]->region));
+//   launcher.add_field(0, FID_DATA);
+//   for (int i = 0; i < numInputs; i++) {
+//     launcher.add_region_requirement(RegionRequirement(inputs[i]->part,
+//                                                       0 /*projection id*/,
+//                                                       READ_ONLY,
+//                                                       EXCLUSIVE,
+//                                                       inputs[i]->region));
+//     launcher.add_field(i + 1, FID_DATA);
+//   }
+//   runtime->execute_index_space(ctx, launcher);
+// }
 
 /*
   regions[0](O): output
   regions[1](I): A
   regions[2](I): B
-  (optional) regions[3](I): C
-  output = A * B + C
+  ////////////////////(optional) regions[3](I): C -- TODO: is C deprecated? 
+  output = A * B  /////////+ C
 */
 void BatchMatmul::forward_task(Task const *task,
                                std::vector<PhysicalRegion> const &regions,
@@ -313,46 +393,48 @@ void BatchMatmul::forward_task(Task const *task,
                                Runtime *runtime) {
   assert(regions.size() == 3);
   assert(task->regions.size() == 3);
+
+  OpTaskArgumentAccessor acc (task, regions, ctx, runtime);
+
   // const BatchMatmul* bmm = (const BatchMatmul*) task->args;
   FFIterationConfig const *iter_config = (FFIterationConfig const *)task->args;
-  BatchMatmulMeta const *meta = *((BatchMatmulMeta **)task->local_args);
-  Domain out_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  Domain a_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  Domain b_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
-  int m = b_domain.hi()[0] - b_domain.lo()[0] + 1;
-  assert(m == out_domain.hi()[0] - out_domain.lo()[0] + 1);
-  int n = a_domain.hi()[1] - a_domain.lo()[1] + 1;
-  assert(n == out_domain.hi()[1] - out_domain.lo()[1] + 1);
-  int k = a_domain.hi()[0] - a_domain.lo()[0] + 1;
-  assert(k == b_domain.hi()[1] - b_domain.lo()[1] + 1);
-  assert(a_domain.get_dim() == b_domain.get_dim());
-  assert(a_domain.get_dim() == out_domain.get_dim());
+  // BatchMatmulMeta const *meta = *((BatchMatmulMeta **)task->local_args);
+  BatchMatmulPerDeviceState const *meta = *((BatchMatmulPerDeviceState **) task->local_args);
+
+  auto a_input = acc.get_tensor<READ_ONLY>(A_INPUT);
+  auto b_input = acc.get_tensor<READ_ONLY>(B_INPUT);
+  auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
+  
+  int m = b_input.shape[0];
+  assert(m == output.shape[0]);
+  int n = a_input.shape[1];
+  assert(n == output.shape[1]);
+  int k = a_input.shape[0];
+  assert(k == b_input.shape[1]);
+
+  assert(a_input.shape.size() == b_input.shape.size()); 
+  assert(a_input.shape.size() == output.shape.size()); 
   int batch = 1;
-  for (int i = 2; i < a_domain.get_dim(); i++) {
-    int dim_size = a_domain.hi()[i] - a_domain.lo()[i] + 1;
-    assert(dim_size == b_domain.hi()[i] - b_domain.lo()[i] + 1);
-    assert(dim_size == out_domain.hi()[i] - out_domain.lo()[i] + 1);
+  for (int i = 2; i < a_input.shape.size(); i++) {
+    int dim_size = a_input.shape[i];
+    assert(dim_size == b_input.shape[i]);
+    assert(dim_size == output.shape[i]);
     batch *= dim_size;
   }
-  float *out_ptr = helperGetTensorPointerWO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float const *a_ptr = helperGetTensorPointerRO<float>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  float const *b_ptr = helperGetTensorPointerRO<float>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  float *out_ptr = output.get_float_ptr();c
+  float const *a_ptr = a_input.get_float_ptr();
+  float const *b_ptr = b_input.get_float_ptr();
   float const *c_ptr = NULL;
-  if (regions.size() == 4) {
-    Domain c_domain = runtime->get_index_space_domain(
-        ctx, task->regions[3].region.get_index_space());
-    assert(c_domain == a_domain);
-    c_ptr = helperGetTensorPointerRO<float>(
-        regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  }
+  // if (regions.size() == 4) {
+  //   Domain c_domain = runtime->get_index_space_domain(
+  //       ctx, task->regions[3].region.get_index_space());
+  //   assert(c_domain == a_domain);
+  //   c_ptr = helperGetTensorPointerRO<float>(
+  //       regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  // }
 
-  forward_kernel_wrapper(meta,
+  profile(forward_kernel, meta->profiling,
+            "[BatchMatmul] forward_time = %.2lfms\n",
                          out_ptr,
                          a_ptr,
                          b_ptr,
@@ -390,65 +472,65 @@ void BatchMatmul::backward(FFModel const &ff) {
   regions[5](I/O): B_grad
   regions[6](I/O): C_grad
 */
-template <int NDIM>
-void BatchMatmul::backward_with_dim(FFModel const &ff) {
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(
-      BATCHMATMUL_BWD_TASK_ID,
-      parallel_is,
-      TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)),
-      argmap,
-      Predicate::TRUE_PRED,
-      false /*must*/,
-      0 /*mapper_id*/,
-      outputs[0]->machine_view.hash());
-  // regions[0](I): output
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  // regions[1](I): output_grad
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region_grad));
-  launcher.add_field(1, FID_DATA);
-  // regions[2](I): A
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
-  launcher.add_field(2, FID_DATA);
-  // regions[3](I/O): A_grad
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
-  launcher.add_field(3, FID_DATA);
-  // regions[4](I): B
-  launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[1]->region));
-  launcher.add_field(4, FID_DATA);
-  // regions[5](I/O): B_grad
-  launcher.add_region_requirement(RegionRequirement(inputs[1]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    inputs[1]->region_grad));
-  launcher.add_field(5, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
-}
+// template <int NDIM>
+// void BatchMatmul::backward_with_dim(FFModel const &ff) {
+//   ArgumentMap argmap;
+//   Context ctx = ff.config.lg_ctx;
+//   Runtime *runtime = ff.config.lg_hlr;
+//   set_argumentmap_for_backward(ff, argmap);
+//   IndexLauncher launcher(
+//       BATCHMATMUL_BWD_TASK_ID,
+//       parallel_is,
+//       TaskArgument(&ff.iter_config, sizeof(FFIterationConfig)),
+//       argmap,
+//       Predicate::TRUE_PRED,
+//       false /*must*/,
+//       0 /*mapper_id*/,
+//       outputs[0]->machine_view.hash());
+//   // regions[0](I): output
+//   launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+//                                                     0 /*projection id*/,
+//                                                     READ_ONLY,
+//                                                     EXCLUSIVE,
+//                                                     outputs[0]->region));
+//   launcher.add_field(0, FID_DATA);
+//   // regions[1](I): output_grad
+//   launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+//                                                     0 /*projection id*/,
+//                                                     READ_ONLY,
+//                                                     EXCLUSIVE,
+//                                                     outputs[0]->region_grad));
+//   launcher.add_field(1, FID_DATA);
+//   // regions[2](I): A
+//   launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+//                                                     0 /*projection id*/,
+//                                                     READ_ONLY,
+//                                                     EXCLUSIVE,
+//                                                     inputs[0]->region));
+//   launcher.add_field(2, FID_DATA);
+//   // regions[3](I/O): A_grad
+//   launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+//                                                     0 /*projection id*/,
+//                                                     READ_WRITE,
+//                                                     EXCLUSIVE,
+//                                                     inputs[0]->region_grad));
+//   launcher.add_field(3, FID_DATA);
+//   // regions[4](I): B
+//   launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+//                                                     0 /*projection id*/,
+//                                                     READ_ONLY,
+//                                                     EXCLUSIVE,
+//                                                     inputs[1]->region));
+//   launcher.add_field(4, FID_DATA);
+//   // regions[5](I/O): B_grad
+//   launcher.add_region_requirement(RegionRequirement(inputs[1]->part_grad,
+//                                                     0 /*projection id*/,
+//                                                     READ_WRITE,
+//                                                     EXCLUSIVE,
+//                                                     inputs[1]->region_grad));
+//   launcher.add_field(5, FID_DATA);
+//   runtime->execute_index_space(ctx, launcher);
+// }
 
 /*
   regions[0](I): output
@@ -468,66 +550,58 @@ __host__ void
   assert(regions.size() == 6);
   assert(task->regions.size() == 6);
   // BatchMatmul* bmm = (BatchMatmul*) task->args;
+  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
   FFIterationConfig const *iter_config = (FFIterationConfig const *)task->args;
-  BatchMatmulMeta const *meta = *((BatchMatmulMeta **)task->local_args);
+  BatchMatmulPerDeviceState const *meta = *((BatchMatmulPerDeviceState **)task->local_args);
   // output domains
-  Domain out_domain = runtime->get_index_space_domain(
-      ctx, task->regions[0].region.get_index_space());
-  Domain out_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
-  assert(out_domain == out_grad_domain);
+  auto output = acc.get_tensor<READ_ONLY>(OUTPUT);
+  auto output_grad = acc.get_tensor<READ_WRITE>(OUTPUT_GRAD);
+  assert(output == output_grad);    // is this equivalent to checking `Domain` equality?
   // A domains
-  Domain a_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
-  Domain a_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[3].region.get_index_space());
-  assert(a_domain == a_grad_domain);
+  auto a_input = acc.get_tensor<READ_ONLY>(A_INPUT);
+  auto a_input_grad = acc.get_tensor<READ_WRITE>(A_INPUT_GRAD);
+  assert(a_input == a_input_grad);
   // B domains
-  Domain b_domain = runtime->get_index_space_domain(
-      ctx, task->regions[4].region.get_index_space());
-  Domain b_grad_domain = runtime->get_index_space_domain(
-      ctx, task->regions[4].region.get_index_space());
-  assert(b_domain == b_grad_domain);
+  auto b_input = acc.get_tensor<READ_ONLY>(B_INPUT);
+  auto b_input_grad = acc.get_tensor<READ_WRITE>(B_INPUT_GRAD);
+  assert(b_input == b_input_grad);
+  
   // check dins
-  int m = b_domain.hi()[0] - b_domain.lo()[0] + 1;
-  assert(m == out_domain.hi()[0] - out_domain.lo()[0] + 1);
-  int n = a_domain.hi()[1] - a_domain.lo()[1] + 1;
-  assert(n == out_domain.hi()[1] - out_domain.lo()[1] + 1);
-  int k = a_domain.hi()[0] - a_domain.lo()[0] + 1;
-  assert(k == b_domain.hi()[1] - b_domain.lo()[1] + 1);
-  assert(a_domain.get_dim() == b_domain.get_dim());
-  assert(a_domain.get_dim() == out_domain.get_dim());
+  int m = b_input.shape[0];
+  assert(m == output.shape[0]);
+  int n = a_input.shape[1];
+  assert(n == output.shape[1]);
+  int k = a_input.shape[0];
+  assert(k == b_input.shape[1]);
+  assert(a_input.shape.size() == b_input.shape.size());
+  assert(a_input.shape.size() == output.shape.size());
   int batch = 1;
-  for (int i = 2; i < a_domain.get_dim(); i++) {
-    int dim_size = a_domain.hi()[i] - a_domain.lo()[i] + 1;
-    assert(dim_size == b_domain.hi()[i] - b_domain.lo()[i] + 1);
-    assert(dim_size == out_domain.hi()[i] - out_domain.lo()[i] + 1);
+  for (int i = 2; i < a_input.shape.size(); i++) {
+    int dim_size = a_input.shape[i];
+    assert(dim_size == b_input.shape[i]);
+    assert(dim_size == output.shape[i]);
     batch *= dim_size;
   }
   // get pointers
-  float const *out_ptr = helperGetTensorPointerRO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  float const *out_grad_ptr = helperGetTensorPointerRO<float>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  float const *a_ptr = helperGetTensorPointerRO<float>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  float *a_grad_ptr = helperGetTensorPointerRW<float>(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
-  float const *b_ptr = helperGetTensorPointerRO<float>(
-      regions[4], task->regions[4], FID_DATA, ctx, runtime);
-  float *b_grad_ptr = helperGetTensorPointerRW<float>(
-      regions[5], task->regions[5], FID_DATA, ctx, runtime);
+  float const *out_ptr = output.get_float_ptr();
+  float const *out_grad_ptr = output_grad.get_float_ptr();
+  float const *a_ptr = a_input.get_float_ptr();
+  float *a_grad_ptr = a_input_grad.get_float_ptr();
+  float const *b_ptr = b_input.get_float_ptr();
+  float *b_grad_ptr = b_input_grad.get_float_ptr();
 
   float *c_grad_ptr = NULL;
 
   // TODO: add support for meta->a_seq_length_dim >= 0
   // or meta->b_seq_length_dim >= 0
-  assert((meta->a_seq_length_dim >= a_domain.get_dim()) ||
+  assert((meta->a_seq_length_dim >= a_len) ||
          (iter_config->seq_length == 0));
-  assert((meta->b_seq_length_dim >= b_domain.get_dim()) ||
+  assert((meta->b_seq_length_dim >= b_len) ||
          (iter_config->seq_length == 0));
 
-  backward_kernel_wrapper(meta,
+  profile(backward_kernel, meta->profiling,
+          "[BatchMatmul] backward_time = %.2lfms\n",
+                          meta,
                           out_ptr,
                           out_grad_ptr,
                           a_ptr,
@@ -580,7 +654,7 @@ bool BatchMatmul::measure_operator_cost(Simulator *sim,
     batch *= sub_input0.dims[i].size;
   }
 
-  BatchMatmulMeta *meta = sim->batch_matmul_meta;
+  BatchMatmulPerDeviceState *meta = sim->batch_matmul_meta;
 
   // allocate tensors in simulator
   sim->free_all();
@@ -602,8 +676,8 @@ bool BatchMatmul::measure_operator_cost(Simulator *sim,
   assert(meta->profiling == false);
 
   std::function<void()> forward, backward;
-  forward = [&] {
-    forward_kernel_wrapper(meta, out_ptr, a_ptr, b_ptr, c_ptr, m, n, k, batch);
+  forward = [&](ffStream_t stream) {
+    forward_kernel(stream, meta, out_ptr, a_ptr, b_ptr, c_ptr, m, n, k, batch);
   };
 
   if (sim->computationMode == COMP_MODE_TRAINING) {
@@ -620,8 +694,8 @@ bool BatchMatmul::measure_operator_cost(Simulator *sim,
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
 
-    backward = [&] {
-      backward_kernel_wrapper(meta,
+    backward = [&](ffStream_t stream) {
+      backward_kernel(stream, meta,
                               out_ptr,
                               out_grad_ptr,
                               a_ptr,
@@ -674,12 +748,3 @@ bool BatchMatmul::measure_operator_cost(Simulator *sim,
 
 }; // namespace FlexFlow
 
-namespace std {
-size_t hash<FlexFlow::BatchMatmulParams>::operator()(
-    FlexFlow::BatchMatmulParams const &params) const {
-  size_t key = 0;
-  hash_combine(key, params.a_seq_length_dim);
-  hash_combine(key, params.b_seq_length_dim);
-  return key;
-}
-}; // namespace std
