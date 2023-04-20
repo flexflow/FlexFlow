@@ -149,10 +149,9 @@ FutureMap InferenceManager::inference(int index, BatchConfig const &bc) {
   FutureMap fm;
   for (size_t o = 0; o < model->operators.size(); o++) {
     Op *op = model->operators[o];
-    if (op->op_type == OP_WEIGHT || op->op_type == OP_INPUT) {
+    if (op->op_type == OP_WEIGHT || op->op_type == OP_INPUT || op->op_type == OP_PLACE_HOLDER) {
       continue;
     }
-
     std::vector<ParallelTensor> inputs(op->numInputs);
     std::vector<ParallelTensor> outputs(op->numOutputs);
     for (int i = 0; i < op->numInputs; i++) {

@@ -44,6 +44,7 @@
 #include "flexflow/ops/groupby.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
+#include "flexflow/ops/place_holder.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
 #include "flexflow/ops/noop.h"
@@ -2753,7 +2754,6 @@ Op *FFModel::create_operator_from_layer(
           *this, layer, inputs);
       
       operators.push_back(op);
-      std::cout << "spec inc mha: " << op->name<<"\n";
       return op;
     }
     case OP_INC_MULTIHEAD_SELF_ATTENTION: {
@@ -2888,6 +2888,11 @@ Op *FFModel::create_operator_from_layer(
     }
     case OP_BEAM_TOPK: {
       Op *op = BeamTopK::create_operator_from_layer(*this, layer, inputs);
+      operators.push_back(op);
+      return op;
+    }
+    case OP_PLACE_HOLDER: {
+      Op *op = PlaceHolder::create_operator_from_layer(*this, layer, inputs);
       operators.push_back(op);
       return op;
     }
@@ -4537,18 +4542,33 @@ void register_flexflow_internal_tasks() {
   }
   // BeamTopk task
   {
-    TaskVariantRegistrar registrar(BEAM_TOPK_INIT_TASK_ID, "ArgTopK Init");
+    TaskVariantRegistrar registrar(BEAM_TOPK_INIT_TASK_ID, "BeamTopK Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<OpMeta *, BeamTopK::init_task>(
         registrar, "BeamTopK Init Task");
   }
   {
-    TaskVariantRegistrar registrar(BEAM_TOPK_INF_TASK_ID, "ArgTopK Inference");
+    TaskVariantRegistrar registrar(BEAM_TOPK_INF_TASK_ID, "BeammTopK Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     Runtime::preregister_task_variant<InferenceResult, BeamTopK::inference_task>(
         registrar, "BeamTopK Inference Task");
+  }
+  // PlaceHolder task
+  {
+    TaskVariantRegistrar registrar(PLACE_HOLDER_INIT_TASK_ID, "PlaceHolder Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<OpMeta *, PlaceHolder::init_task>(
+        registrar, "PlaceHolder Init Task");
+  }
+  {
+    TaskVariantRegistrar registrar(PLACE_HOLDER_INF_TASK_ID, "PlaceHolder Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    Runtime::preregister_task_variant<InferenceResult, PlaceHolder::inference_task>(
+        registrar, "PlaceHolder Inference Task");
   }
   // Transpose task
   {
