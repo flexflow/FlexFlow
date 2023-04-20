@@ -1,5 +1,5 @@
 add_subdirectory(pcg)
-add_subdirectory(compiler)
+#add_subdirectory(compiler)
 add_subdirectory(runtime)
 add_subdirectory(op-attrs)
 add_subdirectory(kernels)

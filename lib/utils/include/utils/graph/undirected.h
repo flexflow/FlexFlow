@@ -25,10 +25,13 @@ MAKE_VISIT_HASHABLE(::FlexFlow::UndirectedEdge);
 namespace FlexFlow {
 
 struct UndirectedEdgeQuery {
-  UndirectedEdgeQuery(tl::optional<std::unordered_set<Node>> const &);
+  UndirectedEdgeQuery() = delete;
+  UndirectedEdgeQuery(optional<std::unordered_set<Node>> const &);
 
-  tl::optional<std::unordered_set<Node>> nodes = tl::nullopt;
+  optional<std::unordered_set<Node>> nodes = nullopt;
 };
+
+UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &, UndirectedEdgeQuery const &);
 
 struct IUndirectedGraphView : public IGraphView {
   using Edge = UndirectedEdge;

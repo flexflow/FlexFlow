@@ -133,29 +133,12 @@ using GraphSplit = std::pair<std::unordered_set<Node>, std::unordered_set<Node>>
 std::pair<OutputMultiDiEdge, InputMultiDiEdge> split_edge(MultiDiEdge const &e);
 MultiDiEdge unsplit_edge(OutputMultiDiEdge const &, InputMultiDiEdge const &);
 
-UndirectedGraphView get_subgraph(UndirectedGraphView const &g, std::unordered_set<Node> const &nodes) {
-  return view_subgraph(g, nodes);
-}
-
-DiGraphView get_subgraph(DiGraphView const &g, std::unordered_set<Node> const &nodes) {
-  return view_subgraph(g, nodes);
-}
-
-MultiDiGraphView get_subgraph(MultiDiGraphView const &g, std::unordered_set<Node> const &nodes) {
-  return view_subgraph(g, nodes);
-}
-
-MultiDiGraphView join(MultiDiGraphView const &lhs, MultiDiGraphView const &rhs) {
-  return view_as_joined(lhs, rhs);
-}
-
-DiGraphView join(DiGraphView const &lhs, DiGraphView const &rhs) {
-  return view_as_joined(lhs, rhs);
-}
-
-UndirectedGraphView join(UndirectedGraphView const &lhs, UndirectedGraphView const &rhs) {
-  return view_as_joined(lhs, rhs);
-}
+UndirectedGraphView get_subgraph(UndirectedGraphView const &g, std::unordered_set<Node> const &nodes);
+DiGraphView get_subgraph(DiGraphView const &g, std::unordered_set<Node> const &nodes);
+MultiDiGraphView get_subgraph(MultiDiGraphView const &g, std::unordered_set<Node> const &nodes);
+MultiDiGraphView join(MultiDiGraphView const &lhs, MultiDiGraphView const &rhs);
+DiGraphView join(DiGraphView const &lhs, DiGraphView const &rhs);
+UndirectedGraphView join(UndirectedGraphView const &lhs, UndirectedGraphView const &rhs);
 
 void export_as_dot(DotFile<Node> &, 
                    DiGraphView const &, 

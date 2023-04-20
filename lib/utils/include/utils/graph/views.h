@@ -25,6 +25,18 @@ private:
   IDiGraphView const &g;
 };
 
+struct UndirectedSubgraphView : public IUndirectedGraphView {
+public:
+  UndirectedSubgraphView() = delete;
+  UndirectedSubgraphView(maybe_owned_ref<IUndirectedGraphView const>, std::unordered_set<Node> const &);
+
+  std::unordered_set<UndirectedEdge> query_edges(UndirectedEdgeQuery const &) const override;
+  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
+private:
+  maybe_owned_ref<IUndirectedGraphView const> g;
+  std::unordered_set<Node> subgraph_nodes;
+};
+
 struct DiSubgraphView : public IDiGraphView {
 public:
   DiSubgraphView() = delete;
@@ -40,12 +52,12 @@ private:
 struct MultiDiSubgraphView : public IMultiDiGraphView {
 public: 
   MultiDiSubgraphView() = delete;
-  explicit MultiDiSubgraphView(IMultiDiGraphView const &, std::unordered_set<Node> const &);
+  explicit MultiDiSubgraphView(maybe_owned_ref<IMultiDiGraphView const>, std::unordered_set<Node> const &);
 
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 private:
-  IMultiDiGraphView const &g;
+  maybe_owned_ref<IMultiDiGraphView const> g;
   std::unordered_set<Node> subgraph_nodes;
 };
 

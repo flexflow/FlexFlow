@@ -23,9 +23,21 @@ DirectedEdge flipped(DirectedEdge const &e) {
   return {e.src, e.dst};  
 }
 
-
 DiGraphView unsafe_view_as_flipped(IDiGraphView const &g) {
   return DiGraphView::create<FlippedView>(g);
+}
+
+UndirectedSubgraphView::UndirectedSubgraphView(maybe_owned_ref<IUndirectedGraphView const> g, std::unordered_set<Node> const &subgraph_nodes)
+  : g(g), subgraph_nodes(subgraph_nodes)
+{ }
+
+std::unordered_set<UndirectedEdge> UndirectedSubgraphView::query_edges(UndirectedEdgeQuery const &query) const {
+  UndirectedEdgeQuery subgraph_query = { this->subgraph_nodes };
+  return this->g.get().query_edges(query_intersection(query, subgraph_query));
+}
+
+std::unordered_set<Node> UndirectedSubgraphView::query_nodes(NodeQuery const &query) const {
+  return this->g.get().query_nodes(query_intersection(query, {this->subgraph_nodes}));
 }
 
 DiSubgraphView::DiSubgraphView(maybe_owned_ref<IDiGraphView const> g, std::unordered_set<Node> const &subgraph_nodes)
@@ -41,21 +53,37 @@ std::unordered_set<Node> DiSubgraphView::query_nodes(NodeQuery const &query) con
   return this->g.get().query_nodes(query_intersection(query, {this->subgraph_nodes}));
 }
 
-MultiDiSubgraphView::MultiDiSubgraphView(IMultiDiGraphView const &g, std::unordered_set<Node> const &subgraph_nodes)
+MultiDiSubgraphView::MultiDiSubgraphView(maybe_owned_ref<IMultiDiGraphView const> g, std::unordered_set<Node> const &subgraph_nodes)
   : g(g), subgraph_nodes(subgraph_nodes)
 { }
 
 std::unordered_set<MultiDiEdge> MultiDiSubgraphView::query_edges(MultiDiEdgeQuery const &query) const {
   MultiDiEdgeQuery subgraph_query = MultiDiEdgeQuery::all().with_src_nodes(this->subgraph_nodes).with_dst_nodes(this->subgraph_nodes);
-  return this->g.query_edges(query_intersection(query, subgraph_query));
+  return this->g.get().query_edges(query_intersection(query, subgraph_query));
+}
+
+UndirectedGraphView unsafe_view_subgraph(UndirectedGraphView const &g, std::unordered_set<Node> const &subgraph_nodes) {
+  return UndirectedGraphView::create<UndirectedSubgraphView>(g.unsafe(), subgraph_nodes);
+}
+
+UndirectedGraphView view_subgraph(UndirectedGraphView const &g, std::unordered_set<Node> const &subgraph_nodes) {
+  return UndirectedGraphView::create<UndirectedSubgraphView>(g, subgraph_nodes);
 }
 
 DiGraphView unsafe_view_subgraph(DiGraphView const &g, std::unordered_set<Node> const &subgraph_nodes) {
   return DiGraphView::create<DiSubgraphView>(g.unsafe(), subgraph_nodes);
 }
 
+DiGraphView view_subgraph(DiGraphView const &g, std::unordered_set<Node> const &subgraph_nodes) {
+  return DiGraphView::create<DiSubgraphView>(g, subgraph_nodes);
+}
+
 MultiDiGraphView unsafe_view_subgraph(MultiDiGraphView const &g, std::unordered_set<Node> const &subgraph_nodes) {
   return MultiDiGraphView::create<MultiDiSubgraphView>(g.unsafe(), subgraph_nodes);
+}
+
+MultiDiGraphView view_subgraph(MultiDiGraphView const &g, std::unordered_set<Node> const &subgraph_nodes) {
+  return MultiDiGraphView::create<MultiDiSubgraphView>(g, subgraph_nodes);
 }
 
 Node NodeSource::fresh_node() {

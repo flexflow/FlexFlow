@@ -98,8 +98,8 @@ public:
     return maybe_owned_ref<IMultiDiGraphView const>(this->ptr);
   }
 
-  IMultiDiGraphView const &unsafe() const {
-    return *this->ptr; 
+  IMultiDiGraphView const *unsafe() const {
+    return this->ptr.get(); 
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;

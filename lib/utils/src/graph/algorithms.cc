@@ -414,4 +414,29 @@ MultiDiEdge unsplit_edge(OutputMultiDiEdge const &output_edge, InputMultiDiEdge 
   return { output_edge.src, input_edge.dst, output_edge.srcIdx, input_edge.dstIdx };
 }
 
+UndirectedGraphView get_subgraph(UndirectedGraphView const &g, std::unordered_set<Node> const &nodes) {
+  return view_subgraph(g, nodes);
+}
+
+DiGraphView get_subgraph(DiGraphView const &g, std::unordered_set<Node> const &nodes) {
+  return view_subgraph(g, nodes);
+}
+
+MultiDiGraphView get_subgraph(MultiDiGraphView const &g, std::unordered_set<Node> const &nodes) {
+  return view_subgraph(g, nodes);
+}
+
+MultiDiGraphView join(MultiDiGraphView const &lhs, MultiDiGraphView const &rhs) {
+  return view_as_joined(lhs, rhs);
+}
+
+DiGraphView join(DiGraphView const &lhs, DiGraphView const &rhs) {
+  return view_as_joined(lhs, rhs);
+}
+
+UndirectedGraphView join(UndirectedGraphView const &lhs, UndirectedGraphView const &rhs) {
+  return view_as_joined(lhs, rhs);
+}
+
+
 }
