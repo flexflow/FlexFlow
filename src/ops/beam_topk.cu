@@ -345,7 +345,7 @@ __device__ void mergeBeamShards(int num_shards,
   // If k > num_shards, we can initialize a min-heap with the top element from
   // each sorted block.
   int const heap_size = k < num_shards ? k : num_shards;
-  printf("see value: %f", entries[0].value);
+  // printf("see value: %f", entries[0].value);
   // Min-heap part.
   {
     auto min_heap = IndexedHeap<HeapType::kMinHeap,
@@ -454,20 +454,20 @@ __global__ void beam_topk_forward_kernel(T const *__restrict__ input,
   heapBeamTopK<T, StridedData>(
       batch_input, length, k, shared_entries, true, thread_index % k, k);
   __syncthreads();
-  printf("beam thread index %d, thread_count %d, thread index %d, batch_index "
-         "%d, k %d, parent_id %d, acc_prob: %f, sub id: %d, request_id: %d, offset: %d, offset2 %d, sub_request_id %d\n",
-         thread_index,
-         thread_count,
-         thread_index,
-         batch_index,
-         k,
-         parent_ids[request_id * BatchConfig::MAX_NUM_BEAMS + sub_request_id],
-         acc_probs[request_id * BatchConfig::MAX_NUM_BEAMS + sub_request_id],
-         sub_request_id,
-         request_id,
-         gpu_block_start_index[batch_index],
-         batch_index * length,
-         sub_request_id);
+  // printf("beam thread index %d, thread_count %d, thread index %d, batch_index "
+  //        "%d, k %d, parent_id %d, acc_prob: %f, sub id: %d, request_id: %d, offset: %d, offset2 %d, sub_request_id %d\n",
+  //        thread_index,
+  //        thread_count,
+  //        thread_index,
+  //        batch_index,
+  //        k,
+  //        parent_ids[request_id * BatchConfig::MAX_NUM_BEAMS + sub_request_id],
+  //        acc_probs[request_id * BatchConfig::MAX_NUM_BEAMS + sub_request_id],
+  //        sub_request_id,
+  //        request_id,
+  //        gpu_block_start_index[batch_index],
+  //        batch_index * length,
+  //        sub_request_id);
 
   if (thread_index == 0) {
     // merge beam_width heaps and store the parent

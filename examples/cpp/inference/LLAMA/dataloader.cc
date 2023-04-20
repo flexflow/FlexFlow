@@ -99,7 +99,7 @@ void DataLoader::next_batch(
     //   argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     // }
 
-    DataLoaderNextBatchInput next_batch_input = {bc->token2ids,
+    DataLoaderNextBatchInput next_batch_input = {*bc,
                                                  batch_predictions};
     DataLoaderNextBatchInput const *ptr = &next_batch_input;
     size_t next_batch_input_sz = sizeof(next_batch_input);
@@ -263,7 +263,6 @@ void DataLoader::store_outputs(
       result_index +=
           (bc->token2ids.token_indexes[i - 1].token_position - start_idx) *
           beam_width;
-      std::cout<<"result indexxxx: " << result_index << std::endl;
       for (int beam_id = 0; beam_id < beam_width; beam_id++) {
         batch_predictions[guid].tokens[beam_id] = ir.results[result_index];
         batch_predictions[guid].probs[beam_id] = ir.probs[result_index];
@@ -271,11 +270,11 @@ void DataLoader::store_outputs(
         result_index += 1;
       }
 
-      std::cout << "i: " << i << ", dds-" << guid << ", result index"
-                << result_index
-                << ", result value: " << batch_predictions[guid].tokens[0]
-                << ", result prob: " << batch_predictions[guid].probs[0]
-                << "parent id: " << batch_predictions[guid].parent_ids[0] << "\n";
+      // std::cout << "i: " << i << ", dds-" << guid << ", result index"
+      //           << result_index
+      //           << ", result value: " << batch_predictions[guid].tokens[0]
+      //           << ", result prob: " << batch_predictions[guid].probs[0]
+      //           << "parent id: " << batch_predictions[guid].parent_ids[0] << "\n";
 
       if (i < bc->token2ids.num_samples) {
         guid = bc->token2ids.guids[i];
@@ -293,10 +292,10 @@ void DataLoader::update_beam_slots(BatchConfig *bc, std::map<size_t, Prediction_
     Prediction_result result = batch_predictions.at(i);
 
     for(int j = 0; j < bc->beam_slots.at(i).beam_size; j++){
-      bc->beam_slots.at(i).parent_id[j] = result.parent_ids[j];
+      bc->beam_slots.at(i).parent_id[j] = j;
       bc->beam_slots.at(i).probs[j] = result.probs[j];
       bc->beam_slots.at(i).tokens[j] = result.tokens[j];
-      std::cout<<"what is the value: " << i << "j = " << j << "parnt: " << bc->beam_slots.at(i).parent_id[j] << "token: "<< bc->beam_slots.at(i).tokens[j] <<  "probs: " << bc->beam_slots.at(i).probs[j] <<std::endl;
+      std::cout<<"request id: " << i << "beam id = " << j << "parnt: " << bc->beam_slots.at(i).parent_id[j] << "token: "<< bc->beam_slots.at(i).tokens[j] <<  "probs: " << bc->beam_slots.at(i).probs[j] <<std::endl;
     }
     
   }

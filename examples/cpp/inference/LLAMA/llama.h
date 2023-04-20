@@ -111,6 +111,6 @@ struct SampleIdxs {
 };
 
 struct DataLoaderNextBatchInput {
-  BatchConfig::SampleIdxs const &meta;
+  BatchConfig const &bc;
   std::map<size_t, Prediction_result> const &prev_batch_preds;
 };

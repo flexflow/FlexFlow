@@ -154,7 +154,7 @@ void FlexFlow::top_level_task(Task const *task,
   }
 
   Tensor softmax = ff.softmax(dense, -1);
-std::cout << "------softmax shape";
+  std::cout << "------softmax shape";
   std::cout << softmax->num_dims << "------\n";
   for (int i = 0; i < softmax->num_dims; i++) {
     std::cout << softmax->dims[i] << "------\n";
@@ -162,8 +162,9 @@ std::cout << "------softmax shape";
 
   Tensor output = ff.beam_top_k(softmax, llamaConfig.max_beam_width, false);
 
-  //place holder
-  output = ff.scalar_add(output, 0, false, "placeholder");
+  // place holder
+  // output = ff.scalar_add(output, 0, false, "placeholder");
+  output = ff.place_holder(output);
 
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
@@ -254,20 +255,23 @@ std::cout << "------softmax shape";
 
       std::cout << "store outputs start...." << std::endl;
       loader.store_outputs(bc, ir, batch_predictions[bid]);
+
+      // uodate beam slot and store the tree;
       loader.update_beam_slots(bc, batch_predictions[bid]);
       processed_requests += bc->update_results(ir);
-      
-
-      //register sub requests for unfinished reqs
-      
-      break;
+      // register sub requests for unfinished reqs
     }
     // batch cofig register 5 reqs
     // init length relate to the min_prompt_size for llama
-    for (int i = 0; i < llamaConfig.batchSize; i++) {
-      assert(bc->register_new_request(i, llamaConfig.max_seq_len, 347, 3));
+    
+    //regist once, no activate data
+    if (new_req) {
+      for (int i = 0; i < llamaConfig.batchSize; i++) {
+        assert(bc->register_new_request(i, llamaConfig.max_seq_len, 347, 3));
+      }
     }
 
+    new_req = false;
     bc->prepare_next_batch();
     std::cout << "new tokens: " << bc->num_active_tokens();
     loader.next_batch(ff, bc, batch_predictions[bid]);
