@@ -73,6 +73,9 @@ int BatchConfig::update_results(InferenceResult const &ir) {
       if (token_start_idx[i] == token_last_available_idx[i] + 1) {
         token_last_available_idx[i]++;
         num_processing_tokens[i] = 1; // incremental phase
+
+        //update sub request num;
+        sub_requests[i] = beam_slots.at(i).beam_size;
       } else {
         assert(false);
       }

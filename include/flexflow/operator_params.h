@@ -20,6 +20,7 @@
 #include "flexflow/ops/inc_multihead_self_attention_params.h"
 #include "flexflow/ops/beam_topk_params.h"
 #include "flexflow/ops/spec_inc_multihead_self_attention_params.h"
+#include "flexflow/ops/place_holder_params.h"
 #include "flexflow/ops/layer_norm_params.h"
 #include "flexflow/ops/linear_params.h"
 #include "flexflow/ops/pool_2d_params.h"
@@ -59,7 +60,8 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        MultiHeadAttentionParams,
                                        IncMultiHeadSelfAttentionParams,
                                        BeamTopKParams,
-                                    //    SpecIncMultiHeadSelfAttentionParams,
+                                       SpecIncMultiHeadSelfAttentionParams,
+                                       PlaceHolderParams,
                                        RMSNormParams,
                                        Pool2DParams,
                                        ReduceParams,

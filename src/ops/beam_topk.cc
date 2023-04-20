@@ -84,8 +84,6 @@ Tensor FFModel::beam_top_k(const Tensor input, int max_beam_width, bool sorted, 
   layers.push_back(li);
   // outputs[0] = li->outputs[0];
   // outputs[1] = li->outputs[1];
-
-  std::cout << "???\n";
   return li->outputs[1];
 }
 
