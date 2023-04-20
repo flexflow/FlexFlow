@@ -86,7 +86,8 @@ int BatchConfig::update_results(InferenceResult const &ir) {
 
 bool BatchConfig::register_new_request(size_t guid,
                                        int initial_len,
-                                       int tokens_to_generate) {
+                                       int tokens_to_generate,
+                                       int beam_width) {
   cached_results = false;
   assert(initial_len > 0 && tokens_to_generate > 0);
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
@@ -102,6 +103,7 @@ bool BatchConfig::register_new_request(size_t guid,
       sub_requests[i] = 1;
       //update_num_active_requests_tokens();
       update_num_active_requests_tokens_v2();
+      create_beam_slots(i, beam_width);
       return true;
     }
   }
@@ -110,23 +112,7 @@ bool BatchConfig::register_new_request(size_t guid,
   return false;
 }
 
-// call after register new request, always second iteration of inference
-// bool register_sub_request(size_t parent_id, int beam_width) {
-//   cached_results = false;
-//   assert(initial_len > 0 && tokens_to_generate > 0);
-//   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
-//     // only for in-running requests
-//     if (request_completed[parent_id]) {
-//       continue;
-//     }
-
-//     if (request_guid[i] == parent_id) {
-//       sub_requests[i] = beam_width;
-//     }
-//   }
-//   update_num_active_requests_tokens();
-//   return true;
-// }
+//call after register new request, always second iteration of inference
 
 void BatchConfig::prepare_next_batch() {
   cached_results = false;
@@ -221,6 +207,12 @@ int BatchConfig::num_active_tokens() const {
            "some BatchConfig functions updated requests but didn't call "
            "update_num_active_requests_tokens() before exit");
   }
+}
+
+
+void BatchConfig::create_beam_slots(int req_index, int beam_width){
+  BeamSlot beam_slot(beam_width);
+  beam_slots.push_back(beam_slot);
 }
 
 void BatchConfig::print() const {

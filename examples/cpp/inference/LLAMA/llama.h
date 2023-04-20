@@ -16,6 +16,7 @@
 #include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 65536
 #define MAX_TOKEN_LEN 32000
+#define MAX_BEAM_SIZE 16
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -37,6 +38,7 @@ struct LLAMAConfig {
     incremental_mode = true;
     sequence_length = MAX_SEQ_LEN;
     max_seq_len = 8;
+    max_beam_width = 3;
 
     // todo from args
     weight_file_path =
@@ -52,10 +54,16 @@ struct LLAMAConfig {
   }
   int n_heads, n_layers, vocab_size, dim, multiple_of, hidden_dim,
       total_sentence, sentence_len, batchSize, total_requests, incremental_mode,
-      sequence_length, max_gen_length, max_seq_len;
+      sequence_length, max_gen_length, max_seq_len, max_beam_width;
   float norm_eps;
   std::string weight_file_path;
   std::string input_path;
+};
+
+struct Prediction_result{
+  long tokens[MAX_BEAM_SIZE];
+  float probs[MAX_BEAM_SIZE];
+  int parent_ids[MAX_BEAM_SIZE];
 };
 
 class DataLoader {
@@ -65,7 +73,7 @@ public:
              ParallelTensor const &input);
   void next_batch(FFModel &ff,
                   BatchConfig *bc,
-                  std::map<size_t, long> &batch_predictions);
+                  std::map<size_t, Prediction_result> &batch_predictions);
   void reset();
   static void load_entire_dataset(Task const *task,
                                   std::vector<PhysicalRegion> const &regions,
@@ -86,7 +94,8 @@ public:
                                      std::string weight_path);
   void store_outputs(BatchConfig *bc,
                      InferenceResult const &ir,
-                     std::map<size_t, long> &batch_predictions);
+                     std::map<size_t, Prediction_result> &batch_predictions);
+  void update_beam_slots(BatchConfig *bc, std::map<size_t, Prediction_result> batch_predictions);                   
 
 public:
   int num_samples, next_index, next_token_idx, next_batch_index;
@@ -103,5 +112,5 @@ struct SampleIdxs {
 
 struct DataLoaderNextBatchInput {
   BatchConfig::SampleIdxs const &meta;
-  std::map<size_t, long> const &prev_batch_preds;
+  std::map<size_t, Prediction_result> const &prev_batch_preds;
 };

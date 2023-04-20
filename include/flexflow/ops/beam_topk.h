@@ -12,6 +12,7 @@ class BeamTopKMeta : public OpMeta {
 public:
   BeamTopKMeta(FFHandler handle);
   bool sorted;
+  int max_beam_width;
 };
 
 class BeamTopK : public Op {
@@ -21,6 +22,7 @@ public:
   BeamTopK(FFModel &model,
            const ParallelTensor input,
            LayerID const &_layer_guid,
+           int max_beam_width,
            bool sorted,
            char const *name);
   BeamTopK(FFModel &model, BeamTopK const &other, const ParallelTensor input);
@@ -71,26 +73,27 @@ public:
   static void forward_kernel(BeamTopKMeta const *m,
                              BatchConfig const *bc,
                              float const *input_ptr,
-                             // float *output_ptr,
+                             float *output_ptr,
                              int *indices_ptr,
+                             int *parent_ptr,
                              size_t batch_size,
-                             size_t tokens_per_request,
                              int length,
                              bool sorted,
                              ffStream_t stream);
   static void forward_kernel_wrapper(BeamTopKMeta const *m,
                                      BatchConfig const *bc,
                                      float const *input_ptr,
-                                     // float *output_ptr,
+                                     float *output_ptr,
                                      int *indices_ptr,
+                                     int *parent_ptr,
                                      size_t batch_size,
-                                     size_t tokens_per_request,
                                      int length,
                                      bool sorted);
   Params get_params() const;
 
 public:
   bool sorted;
+  int max_beam_width;
 };
 
 }; // namespace FlexFlow

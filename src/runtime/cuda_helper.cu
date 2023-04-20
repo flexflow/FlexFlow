@@ -279,6 +279,55 @@ __host__ bool download_tensor(T const *ptr, T *dst, size_t num_elements) {
   // checkCUDA(cudaDeviceSynchronize());
   return true;
 }
+cudnnStatus_t cudnnSetTensorDescriptorFromDomain4SoftMax(cudnnTensorDescriptor_t tensor,
+                                                 Domain domain) {
+  int dims[MAX_TENSOR_DIM];
+  switch (domain.get_dim()) {
+    case 1: {
+      Rect<1> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      return cudnnSetTensor4dDescriptor(
+          tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[0], 1, 1, 1);
+    }
+    case 2: {
+      Rect<2> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      return cudnnSetTensor4dDescriptor(
+          tensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, dims[1], dims[0], 1, 1);
+    }
+    case 3: {
+      Rect<3> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      return cudnnSetTensor4dDescriptor(tensor,
+                                        CUDNN_TENSOR_NCHW,
+                                        CUDNN_DATA_FLOAT,
+                                        dims[2] * dims[1],
+                                        dims[0],
+                                        dims[1],
+                                        1);
+    }
+    case 4: {
+      Rect<4> rect = domain;
+      dims[0] = rect.hi[0] - rect.lo[0] + 1;
+      dims[1] = rect.hi[1] - rect.lo[1] + 1;
+      dims[2] = rect.hi[2] - rect.lo[2] + 1;
+      dims[3] = rect.hi[3] - rect.lo[3] + 1;
+      return cudnnSetTensor4dDescriptor(tensor,
+                                        CUDNN_TENSOR_NCHW,
+                                        CUDNN_DATA_FLOAT,
+                                        dims[3] * dims[2] * dims[1],
+                                        dims[0],
+                                        1,
+                                        1);
+    }
+    default:
+      assert(false && "Unsupported dim number");
+  }
+  return CUDNN_STATUS_BAD_PARAM;
+}
 
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Domain domain) {

@@ -512,7 +512,7 @@ public:
   Tensor
       rms_norm(const Tensor input, float eps, int dim, char const *name = NULL);
   // Add a beam search top k layer
-  Tensor beam_top_k(const Tensor input, bool sorted, char const *name = NULL);
+  Tensor beam_top_k(const Tensor input, int max_beam_size, bool sorted, char const *name = NULL);
   // Add a dense layer
   Tensor dense(const Tensor input,
                int outDim,

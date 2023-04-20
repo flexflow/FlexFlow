@@ -26,7 +26,8 @@ SoftmaxMeta::SoftmaxMeta(FFHandler handler,
                          Domain const &input_domain)
     : OpMeta(handler) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(cudnnSetTensorDescriptorFromDomain(inputTensor, input_domain));
+  checkCUDNN(
+      cudnnSetTensorDescriptorFromDomain4SoftMax(inputTensor, input_domain));
   dim = softmax->dim;
   profiling = softmax->profiling;
   std::strcpy(op_name, softmax->name);

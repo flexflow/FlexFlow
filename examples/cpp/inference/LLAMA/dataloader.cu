@@ -29,7 +29,7 @@ void DataLoader::load_input(Task const *task,
   DataLoaderNextBatchInput const input_struct =
       *((DataLoaderNextBatchInput *)task->args);
   BatchConfig::SampleIdxs const &meta = input_struct.meta;
-  std::map<size_t, long> const &prev_batch_preds =
+  std::map<size_t, Prediction_result> const &prev_batch_preds =
       input_struct.prev_batch_preds;
 
   TensorAccessorR<long, 3> full_input(
@@ -90,13 +90,17 @@ void DataLoader::load_input(Task const *task,
 
       } else {
         // for token by token generating, get token from the previous inference.
+        //generate token based on the sub request size
+        // int sub_request_size = bc->
+        // long token = prev_batch_preds.at(guid).result;
+        // //store the probs into accumulate table
 
-        long token = prev_batch_preds.at(guid);
-        std::cout << "next iter  " << meta.token_indexes[i - 1].token_position
-                  << ", dst_idx: " << dst_idx << ", token:" << token << "\n";
-        long *dst_ptr = batch_input.ptr + dst_idx;
+        // //where token is from 
+        // std::cout << "next iter  " << meta.token_indexes[i - 1].token_position
+        //           << ", dst_idx: " << dst_idx << ", token:" << token << "\n";
+        // long *dst_ptr = batch_input.ptr + dst_idx;
 
-        cudaMemcpy(dst_ptr, &token, sizeof(long), cudaMemcpyHostToDevice);
+        // cudaMemcpy(dst_ptr, &token, sizeof(long), cudaMemcpyHostToDevice);
       }
 
       // update for next req
