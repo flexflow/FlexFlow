@@ -87,18 +87,24 @@ void FlexFlow::top_level_task(Task const *task,
     weights_layers.emplace("layers_" + std::to_string(i) +
                                "_attention_norm_weight",
                            attention_norm);
-    Tensor mha =
-        ff.inc_multihead_self_attention(att_norm,
-                                        llamaConfig.dim,
-                                        llamaConfig.n_heads,
-                                        llamaConfig.dim / llamaConfig.n_heads,
-                                        llamaConfig.dim / llamaConfig.n_heads,
-                                        0.0f,
-                                        true,
-                                        false,
-                                        false,
-                                        NULL,
-                                        true);
+
+    std::cout << "------before att shape";
+    std::cout << att_norm->num_dims << "------\n";
+    for (int i = 0; i < att_norm->num_dims; i++) {
+      std::cout << att_norm->dims[i] << "------\n";
+    }
+    Tensor mha = ff.spec_inc_multihead_self_attention(
+        att_norm,
+        llamaConfig.dim,
+        llamaConfig.n_heads,
+        llamaConfig.dim / llamaConfig.n_heads,
+        llamaConfig.dim / llamaConfig.n_heads,
+        0.0f,
+        true,
+        false,
+        false,
+        NULL,
+        true);
     Layer *attention_layer = ff.layers.back();
     weights_layers.emplace("layers_" + std::to_string(i) + "_attention_weight",
                            attention_layer);
@@ -140,9 +146,24 @@ void FlexFlow::top_level_task(Task const *task,
   Layer *final_linear = ff.layers.back();
   weights_layers.emplace("output_weight", final_linear);
 
+  // Tensor output = ff.arg_top_k(dense, /*k=*/1, false);
+  std::cout << "------dense shape";
+  std::cout << dense->num_dims << "------\n";
+  for (int i = 0; i < dense->num_dims; i++) {
+    std::cout << dense->dims[i] << "------\n";
+  }
 
-  //Tensor output = ff.beam_topk(dense, false);
-  Tensor output = ff.arg_top_k(dense, /*k=*/1, false);
+  Tensor softmax = ff.softmax(dense, -1);
+std::cout << "------softmax shape";
+  std::cout << softmax->num_dims << "------\n";
+  for (int i = 0; i < softmax->num_dims; i++) {
+    std::cout << softmax->dims[i] << "------\n";
+  }
+
+  Tensor output = ff.beam_top_k(softmax, llamaConfig.max_beam_width, false);
+
+  //place holder
+  output = ff.scalar_add(output, 0, false, "placeholder");
 
   //------------------- compile the model --------------------------------
   std::cout << "------start compile ----------" << std::endl;
@@ -208,7 +229,7 @@ void FlexFlow::top_level_task(Task const *task,
   std::map<int, Future> future_handlers;
   std::map<int, BatchConfig *> batch_configs;
   BatchConfig *bc = nullptr;
-  std::map<size_t, long> batch_predictions[1];
+  std::map<size_t, Prediction_result> batch_predictions[1];
   loader.reset();
 
   bool new_req = true;
@@ -228,23 +249,23 @@ void FlexFlow::top_level_task(Task const *task,
       }
       // process end
       InferenceResult ir = future.get_result<InferenceResult>();
+      std::cout << "get success...." << std::endl;
       bc = batch_configs[bid];
 
       std::cout << "store outputs start...." << std::endl;
       loader.store_outputs(bc, ir, batch_predictions[bid]);
+      loader.update_beam_slots(bc, batch_predictions[bid]);
       processed_requests += bc->update_results(ir);
+      
 
-      if (!new_req) {
-        break;
-      }
-      new_req = false;
+      //register sub requests for unfinished reqs
+      
+      break;
     }
     // batch cofig register 5 reqs
     // init length relate to the min_prompt_size for llama
-    if (new_req) {
-      for (int i = 0; i < llamaConfig.batchSize; i++) {
-        assert(bc->register_new_request(i, llamaConfig.max_seq_len, 347));
-      }
+    for (int i = 0; i < llamaConfig.batchSize; i++) {
+      assert(bc->register_new_request(i, llamaConfig.max_seq_len, 347, 3));
     }
 
     bc->prepare_next_batch();

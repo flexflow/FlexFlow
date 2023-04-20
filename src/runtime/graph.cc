@@ -2685,7 +2685,6 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_SPECULATIVE_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(num_inputs == 1);
-        std::cout << "???????\n";
         int embed_dim, num_heads, k_dim, v_dim;
         float dropout;
         bool bias, add_bias_kv, add_zero_attn, apply_rotary_embedding;

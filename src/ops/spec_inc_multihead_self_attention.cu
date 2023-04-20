@@ -283,50 +283,50 @@ __global__ void spec_store_kv_cache(float const *devQKVProjArray,
     int const req_id = id_map[token_idx].request_index;
     int const tok_id = id_map[token_idx].token_position;
     // sub request index
-    int const sub_req_id = id_map[token_idx].sub_request_index;
-    int const beam_width = id_map[token_idx].beam_width;
-    int const parent_id = id_map[token_idx].parent_id;
-    if (token_idx == 0 && head_idx == 0) {
-      printf("sub req id %d, beam_width %d, parent_id %d, data_idx %d",
-             sub_req_id,
-             beam_width,
-             parent_id,
-             data_idx);
-    }
+    // int const sub_req_id = id_map[token_idx].sub_request_index;
+    // int const beam_width = id_map[token_idx].beam_width;
+    // int const parent_id = id_map[token_idx].parent_id;
+    // if (token_idx == 0 && head_idx == 0) {
+    //   printf("sub req id %d, beam_width %d, parent_id %d, data_idx %d",
+    //          sub_req_id,
+    //          beam_width,
+    //          parent_id,
+    //          data_idx);
+    // }
 
-    // previous index, need to know beam width with each request
-    int pre_offset = 0;
-    for (int i = 0; i < req_id; i++) {
-      pre_offset += (num_heads * max_seq_len * proj_size) * beam_width;
-    }
+    // // previous index, need to know beam width with each request
+    // int pre_offset = 0;
+    // for (int i = 0; i < req_id; i++) {
+    //   pre_offset += (num_heads * max_seq_len * proj_size) * beam_width;
+    // }
 
-    // identify which sub request does this token come from
-    // for initial token, 0
-    // for other, may 0,0,1/ 0,1,2/ 1,1,1 to get which cache to be reuse and
-    // which to be delete copy beam_size bunch of blocks when sub_req_id ==
-    // parent_id : like 0 -> 0, 1->1, 2->2, do nothing, just append the new k/v
+    // // identify which sub request does this token come from
+    // // for initial token, 0
+    // // for other, may 0,0,1/ 0,1,2/ 1,1,1 to get which cache to be reuse and
+    // // which to be delete copy beam_size bunch of blocks when sub_req_id ==
+    // // parent_id : like 0 -> 0, 1->1, 2->2, do nothing, just append the new k/v
 
-    // cudaMemcpyDeviceToDevice
-    if (sub_req_id != parent_id) {
-      // copy from the corresponding parent index and append
-      size_t parent_cache_index =
-          pre_offset + parent_id * (num_heads * max_seq_len * proj_size) +
-          head_idx * (max_seq_len * proj_size) + data_idx;
-      size_t this_cache_index =
-          pre_offset + sub_req_id * (num_heads * max_seq_len * proj_size) +
-          head_idx * (max_seq_len * proj_size) + data_idx;
-      cache_ptr[this_cache_index] = cache_ptr[parent_cache_index];
-    }
+    // // cudaMemcpyDeviceToDevice
+    // if (sub_req_id != parent_id) {
+    //   // copy from the corresponding parent index and append
+    //   size_t parent_cache_index =
+    //       pre_offset + parent_id * (num_heads * max_seq_len * proj_size) +
+    //       head_idx * (max_seq_len * proj_size) + data_idx;
+    //   size_t this_cache_index =
+    //       pre_offset + sub_req_id * (num_heads * max_seq_len * proj_size) +
+    //       head_idx * (max_seq_len * proj_size) + data_idx;
+    //   cache_ptr[this_cache_index] = cache_ptr[parent_cache_index];
+    // }
 
-    // cache new k/v
-     cache_ptr[pre_offset + sub_req_id * (num_heads * max_seq_len *
-     proj_size) +
-               head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
-               data_idx] = val;
+    // // cache new k/v
+    //  cache_ptr[pre_offset + sub_req_id * (num_heads * max_seq_len *
+    //  proj_size) +
+    //            head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
+    //            data_idx] = val;
 
-    // cache_ptr[req_id * (num_heads * max_seq_len * proj_size) +
-    //           head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
-    //           data_idx] = val;
+    cache_ptr[req_id * (num_heads * max_seq_len * proj_size) +
+              head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
+              data_idx] = val;
   }
 }
 

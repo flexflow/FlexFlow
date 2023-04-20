@@ -16,7 +16,7 @@
 #pragma once
 
 #include <cstdlib>
-#include <unordered_map>
+#include <vector>
 
 // #define MAX_SEQ_LEN 1024
 // #define BATCH_SIZE 2
@@ -28,8 +28,10 @@
 namespace FlexFlow {
 
 struct InferenceResult {
-  static int const MAX_NUM_TOKENS = MAX_SEQ_LEN * BATCH_SIZE;
+  static int const MAX_NUM_TOKENS = MAX_SEQ_LEN * BATCH_SIZE * MAX_BEAM_SIZE;
   int results[MAX_NUM_TOKENS];
+  float probs[MAX_NUM_TOKENS];
+  int parent_id[MAX_NUM_TOKENS];
 };
 
 class BatchConfig {
@@ -37,17 +39,21 @@ public:
   BatchConfig();
   bool register_new_request(size_t guid,
                             int initial_len,
-                            int tokens_to_generate);
+                            int tokens_to_generate,
+                            int beam_width = 1);
+  bool update_beam_tree();
   void prepare_next_batch();
   int update_results(InferenceResult const &ir);
   void update_num_active_requests_tokens();
   void update_num_active_requests_tokens_v2();
+  void create_beam_slots(int req_index, int beam_width);
   int num_active_requests() const;
   int num_active_tokens() const;
   void print() const;
   static int const MAX_NUM_REQUESTS = MAX_REQUESTS;
   static int const MAX_NUM_TOKENS = InferenceResult::MAX_NUM_TOKENS;
   static int const MAX_NUM_SUB_REQUESTS = MAX_REQUESTS * MAX_BEAM_SIZE;
+  static int const MAX_NUM_BEAMS = MAX_BEAM_SIZE;
   // static int const MAX_SEQUENCE_LENGTH = MAX_SEQ_LEN;
   //  These are set by update
   int num_tokens, num_requests;
@@ -65,17 +71,16 @@ public:
   size_t max_sequence_length[MAX_NUM_REQUESTS];
 
   struct token_idxs {
-    size_t request_index;  // the index within the BatchConfig of the request
-                           // that the token belongs to
+    size_t request_index; // the index within the BatchConfig of the request
+                          // that the token belongs to
 
-    size_t sub_request_index;  // the index within the BatchConfig of the sub request                       
-    size_t token_position; // the index indicating the position of each token
-                           // within its request
+    size_t sub_request_index; // the index within the BatchConfig of the sub
+                              // request
+    size_t token_position;    // the index indicating the position of each token
+                              // within its request
     size_t initial_length;
     size_t beam_width;
-
-    //from which parent sub requests,, init to be 0.
-    size_t parent_id;
+    int parent_id;
   };
 
   struct SampleIdxs {
@@ -87,6 +92,26 @@ public:
 
   //<request_id, sub_req_num = corresponding beam width>
   int sub_requests[MAX_NUM_REQUESTS];
+  // how many parents for the req, init to be 0.
+  struct BeamSlot {
+    BeamSlot(int beam_size){
+      for(int i = 0; i < beam_size; i++){
+         this->probs[i] = 1;
+         this->parent_id[i] = 0;
+      }
+      this->beam_size = beam_size;
+      this->sub_req_size = 1;
+    }
+    int beam_size;
+    int sub_req_size;
+    long tokens[MAX_BEAM_SIZE];
+    float probs[MAX_BEAM_SIZE];
+    int parent_id[MAX_BEAM_SIZE];
+  };
+
+  // remember the parent id, accumalate probs
+  std::vector<BeamSlot> beam_slots;
+  // std::unordered_map<int, BeamSlot> beam_slots;
 
   SampleIdxs token2ids;
   size_t request_guid[MAX_NUM_REQUESTS];

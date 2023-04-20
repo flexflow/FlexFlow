@@ -47,34 +47,46 @@ using PCG::Node;
 // For an input tensor, computes the top k entries in each row
 // (resp. vector along the last dimension). Thus,
 // values.shape = indices.shape = input.shape[:-1] + [k]
-Tensor FFModel::beam_top_k(const Tensor input, bool sorted, char const *name) {
+Tensor FFModel::beam_top_k(const Tensor input, int max_beam_width, bool sorted, char const *name) {
   Layer *li = new Layer(this,
                         OP_BEAM_TOPK,
                         input->data_type,
                         name,
                         1 /*inputs*/,
                         0 /*weights*/,
-                        1 /*outputs*/,
+                        3 /*outputs*/,
                         input);
   {
     int numdims = input->num_dims;
-    // int dims[MAX_TENSOR_DIM];
 
-    std::cout << "input dimen:" << "\n";
+    int dims[MAX_TENSOR_DIM];
     for (int i = 0; i < numdims; i++) {
-      std::cout <<input->dims[i] <<", ";
+      dims[i] = input->dims[i];
     }
-    // dims[0] = k;
+    dims[0] = max_beam_width;
+
+    std::cout << "input dimen:"
+              << numdims <<"\n";
+    for (int i = 0; i < numdims; i++) {
+      std::cout << dims[i] << ", ";
+    }
 
     // beam width is dynamic
     li->outputs[0] = create_tensor_legion_ordering(
-        numdims, input->dims, DT_INT32, li, 0, false /*create_grad*/);
+        numdims, dims, DT_INT32, li, 0, false /*create_grad*/);
+    li->outputs[1] = create_tensor_legion_ordering(
+        numdims, dims, DT_FLOAT, li, 1, false /*create_grad*/);
+    li->outputs[3] = create_tensor_legion_ordering(
+        numdims, dims, DT_INT32, li, 1, false /*create_grad*/);    
   }
   li->add_int_property("sorted", sorted);
+  li->add_int_property("max_beam_width", max_beam_width);
   layers.push_back(li);
   // outputs[0] = li->outputs[0];
   // outputs[1] = li->outputs[1];
-  return li->outputs[0];
+
+  std::cout << "???\n";
+  return li->outputs[1];
 }
 
 Op *BeamTopK::create_operator_from_layer(
@@ -84,13 +96,16 @@ Op *BeamTopK::create_operator_from_layer(
   long long value;
   layer->get_int_property("sorted", value);
   bool sorted = (bool)value;
-  return new BeamTopK(model, inputs[0], layer->layer_guid, sorted, layer->name);
+  layer->get_int_property("max_beam_width", value);
+  int max_beam_width = value;
+  return new BeamTopK(model, inputs[0], layer->layer_guid, max_beam_width, sorted, layer->name);
 }
 
 BeamTopKParams BeamTopK::get_params() const {
   BeamTopKParams params;
   params.layer_guid = this->layer_guid;
   params.sorted = this->sorted;
+  params.max_beam_width = this->max_beam_width;
   return params;
 }
 
@@ -100,12 +115,13 @@ bool BeamTopKParams::is_valid(ParallelTensorShape const &) const {
 }
 
 bool operator==(BeamTopKParams const &lhs, BeamTopKParams const &rhs) {
-  return lhs.layer_guid == rhs.layer_guid && lhs.sorted == rhs.sorted;
+  return lhs.layer_guid == rhs.layer_guid && lhs.sorted == rhs.sorted && lhs.max_beam_width == rhs.max_beam_width;
 }
 
 BeamTopK::BeamTopK(FFModel &model,
                    const ParallelTensor _input,
                    LayerID const &_layer_guid,
+                   int _max_beam_width,
                    bool _sorted,
                    char const *name)
     : Op(model,
@@ -114,9 +130,10 @@ BeamTopK::BeamTopK(FFModel &model,
          name,
          1 /*inputs*/,
          0 /*weights*/,
-         1 /*outputs*/,
+         3 /*outputs*/,
          _input) {
   sorted = _sorted;
+  max_beam_width = _max_beam_width;
   layer_guid = _layer_guid;
   int numdim = inputs[0]->num_dims;
   assert(inputs[0]->dims[0].degree == 1);
@@ -125,18 +142,22 @@ BeamTopK::BeamTopK(FFModel &model,
   //       numdim, dims, _input->data_type, this, 0 /*owner_idx*/);
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, inputs[0]->dims, DT_INT32, this, 0 /*owner_idx*/);
+  outputs[1] = model.create_parallel_tensor_legion_ordering(
+      numdim, inputs[0]->dims, _input->data_type, this, 1 /*owner_idx*/);
+  outputs[2] = model.create_parallel_tensor_legion_ordering(
+      numdim, inputs[0]->dims, DT_INT32, this, 2 /*owner_idx*/);    
 }
 
 BeamTopK::BeamTopK(FFModel &model,
                    BeamTopK const &other,
                    const ParallelTensor input)
-    : BeamTopK(model, input, other.layer_guid, other.sorted, other.name) {}
+    : BeamTopK(model, input, other.layer_guid, other.max_beam_width, other.sorted, other.name) {}
 
 BeamTopK::BeamTopK(FFModel &model,
                    BeamTopKParams const &params,
                    const ParallelTensor input,
                    char const *name)
-    : BeamTopK(model, input, params.layer_guid, params.sorted, name) {}
+    : BeamTopK(model, input, params.layer_guid, params.max_beam_width,  params.sorted, name) {}
 
 void BeamTopK::init_inference(FFModel const &ff,
                               std::vector<ParallelTensor> const &batch_inputs,
@@ -170,6 +191,18 @@ void BeamTopK::init_inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[1]->region));
+  launcher.add_field(2, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[2]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[2]->region));
+  launcher.add_field(3, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
@@ -202,6 +235,18 @@ void BeamTopK::init(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     outputs[0]->region));
   launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(outputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[1]->region));
+  launcher.add_field(2, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(outputs[2]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[2]->region));
+  launcher.add_field(3, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
@@ -216,6 +261,7 @@ OpMeta *BeamTopK::init_task(Task const *task,
   BeamTopKMeta *m = new BeamTopKMeta(handle);
   m->profiling = topk->profiling;
   m->sorted = topk->sorted;
+  m->max_beam_width = topk->max_beam_width;
   return m;
 }
 
@@ -256,12 +302,18 @@ FutureMap BeamTopK::inference(FFModel const &ff,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
   launcher.add_field(1, FID_DATA);
-  //   launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
-  //                                                     0 /*projection id*/,
-  //                                                     WRITE_ONLY,
-  //                                                     EXCLUSIVE,
-  //                                                     batch_outputs[1]->region));
-  //   launcher.add_field(2, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[1]->region));
+  launcher.add_field(2, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[2]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[2]->region));
+  launcher.add_field(3, FID_DATA);
   return runtime->execute_index_space(ctx, launcher);
 }
 
@@ -270,11 +322,12 @@ InferenceResult
                              std::vector<PhysicalRegion> const &regions,
                              Context ctx,
                              Runtime *runtime) {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
+  assert(regions.size() == 4);
+  assert(task->regions.size() == 4);
   BatchConfig const *bc = (BatchConfig *)task->args;
 
-  std::cout << "beam search topk inference: " << "\n";
+  std::cout << "beam search topk inference: "
+            << "\n";
 
   BeamTopKMeta const *m = *((BeamTopKMeta **)task->local_args);
   Domain in1_domain = runtime->get_index_space_domain(
@@ -292,10 +345,14 @@ InferenceResult
   int *index_ptr = helperGetTensorPointerWO<int>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
+  float *value_ptr = helperGetTensorPointerWO<float>(
+      regions[2], task->regions[2], FID_DATA, ctx, runtime);
+
+  int *parent_ptr = helperGetTensorPointerWO<int>(
+      regions[3], task->regions[3], FID_DATA, ctx, runtime);
   // embedding size: eg. 4096
   int length = in1_domain.hi()[0] - in1_domain.lo()[0] + 1;
 
-  
   int k =
       out2_domain.hi()[0] - out2_domain.lo()[0] + 1; /*TODO: This prints to 5*/
 
@@ -303,7 +360,8 @@ InferenceResult
   size_t tokens_per_request = in1_domain.hi()[1] - in1_domain.lo()[1] + 1;
   size_t batch_size = in1_domain.get_volume() / length;
 
-  std::cout << "beam search topk params: " << length <<", " << k << ", " << batch_size <<"\n";
+  std::cout << "beam search topk params: " << length << ", " << k << ", "
+            << batch_size << "\n";
   assert(out2_domain.get_volume() / k == batch_size);
 
   // std::vector<int> beam_width;
@@ -318,12 +376,22 @@ InferenceResult
   // }
 
   // need meta for: how many sub requests in a main request
-  BeamTopK::forward_kernel_wrapper(
-      m, bc, in_ptr, index_ptr, batch_size, tokens_per_request, length, m->sorted);
+  BeamTopK::forward_kernel_wrapper(m,
+                                   bc,
+                                   in_ptr,
+                                   value_ptr,
+                                   index_ptr,
+                                   parent_ptr,
+                                   batch_size,
+                                   length,
+                                   m->sorted);
 
   InferenceResult ir;
-  download_tensor<int>(index_ptr, ir.results, batch_size);
-  print_tensor<int>(index_ptr, 40, "beamk: top elements");
+  download_tensor<int>(index_ptr, ir.results, batch_size * m->max_beam_width);
+  download_tensor<float>(value_ptr, ir.probs, batch_size * m->max_beam_width);
+  download_tensor<int>(parent_ptr, ir.parent_id, batch_size * m->max_beam_width);
+  print_tensor<int>(index_ptr, 85, "beamk: top elements");
+  print_tensor<float>(value_ptr, 85, "beamk: top probabilities");
   return ir;
 }
 
@@ -334,6 +402,7 @@ void BeamTopK::backward(FFModel const &ff) {
 void BeamTopK::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->sorted);
+  sez.serialize(this->max_beam_width);
 }
 
 Node BeamTopK::deserialize(FFModel &ff,
@@ -343,12 +412,15 @@ Node BeamTopK::deserialize(FFModel &ff,
   assert(num_inputs == 1);
   bool sorted;
   size_t id;
+  int max_beam_width;
   dez.deserialize(id);
   LayerID layer_guid(id);
   dez.deserialize(sorted);
+  dez.deserialize(max_beam_width);
   BeamTopKParams params;
   params.layer_guid = layer_guid;
   params.sorted = sorted;
+  params.max_beam_width = max_beam_width;
   return ff.get_or_create_node<BeamTopK>(inputs[0], params);
 }
 
@@ -373,6 +445,7 @@ size_t hash<FlexFlow::BeamTopKParams>::operator()(
   size_t key = 0;
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.sorted);
+  hash_combine(key, params.max_beam_width);
   return key;
 }
 }; // namespace std

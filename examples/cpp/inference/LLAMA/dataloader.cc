@@ -74,9 +74,10 @@ void DataLoader::load_entire_dataset(Task const *task,
                  "llama_demo_tokens");
 }
 
-void DataLoader::next_batch(FFModel &ff,
-                            BatchConfig *bc,
-                            std::map<size_t, long> &batch_predictions) {
+void DataLoader::next_batch(
+    FFModel &ff,
+    BatchConfig *bc,
+    std::map<size_t, Prediction_result> &batch_predictions) {
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   // Load Input
@@ -234,9 +235,10 @@ void DataLoader::load_attention_weights(T *ptr,
   }
 }
 
-void DataLoader::store_outputs(BatchConfig *bc,
-                               InferenceResult const &ir,
-                               std::map<size_t, long> &batch_predictions) {
+void DataLoader::store_outputs(
+    BatchConfig *bc,
+    InferenceResult const &ir,
+    std::map<size_t, Prediction_result> &batch_predictions) {
   assert(bc->token2ids.num_samples == bc->num_active_tokens() &&
          bc->token2ids.num_samples <= bc->MAX_NUM_TOKENS);
 
@@ -245,16 +247,35 @@ void DataLoader::store_outputs(BatchConfig *bc,
   size_t guid = bc->token2ids.guids[0];
   size_t start_idx = bc->token2ids.token_indexes[0].token_position;
 
+  int result_index = 0;
+
   for (size_t i = 0; i <= bc->token2ids.num_samples; i++) {
     if (i == bc->token2ids.num_samples || bc->token2ids.guids[i] != guid) {
       // see how many tokens has been put to model in this req
       // to get the index of the final token
-      int result_index =
-          bc->token2ids.token_indexes[i - 1].token_position - start_idx;
-      batch_predictions[guid] = ir.results[i - 1];
+
+      // every token will get (beam_width) results
+      //  std::cout<< "req index: "<<bc->token2ids.token_indexes[i -
+      //  1].request_index << "\n";
+      int beam_width =
+          bc->beam_slots[bc->token2ids.token_indexes[i - 1].request_index]
+              .beam_size;
+      result_index +=
+          (bc->token2ids.token_indexes[i - 1].token_position - start_idx) *
+          beam_width;
+      std::cout<<"result indexxxx: " << result_index << std::endl;
+      for (int beam_id = 0; beam_id < beam_width; beam_id++) {
+        batch_predictions[guid].tokens[beam_id] = ir.results[result_index];
+        batch_predictions[guid].probs[beam_id] = ir.probs[result_index];
+        batch_predictions[guid].parent_ids[beam_id] = ir.parent_id[result_index];
+        result_index += 1;
+      }
+
       std::cout << "i: " << i << ", dds-" << guid << ", result index"
-                << result_index << ", result value: " << batch_predictions[guid]
-                << "\n";
+                << result_index
+                << ", result value: " << batch_predictions[guid].tokens[0]
+                << ", result prob: " << batch_predictions[guid].probs[0]
+                << "parent id: " << batch_predictions[guid].parent_ids[0] << "\n";
 
       if (i < bc->token2ids.num_samples) {
         guid = bc->token2ids.guids[i];
@@ -262,14 +283,23 @@ void DataLoader::store_outputs(BatchConfig *bc,
       }
     }
   }
-  // bc->print();
-  // for (size_t i = 0; i < bc->num_active_requests(); i++) {
-  //   batch_predictions[i] = ir.results[i];
-  //   std::cout << "i: " << i << ", ith pred: " << i
-  //             << ", value: " << batch_predictions[i]
-  //             << std::endl;
-  // }
-  assert(batch_predictions.size() == bc->num_active_requests());
+}
+
+void DataLoader::update_beam_slots(BatchConfig *bc, std::map<size_t, Prediction_result> batch_predictions){
+  for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
+    if (bc->request_completed[i]) {
+      continue;
+    }
+    Prediction_result result = batch_predictions.at(i);
+
+    for(int j = 0; j < bc->beam_slots.at(i).beam_size; j++){
+      bc->beam_slots.at(i).parent_id[j] = result.parent_ids[j];
+      bc->beam_slots.at(i).probs[j] = result.probs[j];
+      bc->beam_slots.at(i).tokens[j] = result.tokens[j];
+      std::cout<<"what is the value: " << i << "j = " << j << "parnt: " << bc->beam_slots.at(i).parent_id[j] << "token: "<< bc->beam_slots.at(i).tokens[j] <<  "probs: " << bc->beam_slots.at(i).probs[j] <<std::endl;
+    }
+    
+  }
 }
 
 template void DataLoader::load_attention_weights<float>(
