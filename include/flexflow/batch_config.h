@@ -101,9 +101,11 @@ public:
       }
       this->beam_size = beam_size;
       this->sub_req_size = 1;
+      this->current_depth = 0;
     }
     int beam_size;
     int sub_req_size;
+    int current_depth;
     long tokens[MAX_BEAM_SIZE];
     float probs[MAX_BEAM_SIZE];
     int parent_id[MAX_BEAM_SIZE];

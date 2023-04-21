@@ -295,6 +295,7 @@ void DataLoader::update_beam_slots(BatchConfig *bc, std::map<size_t, Prediction_
       bc->beam_slots.at(i).parent_id[j] = j;
       bc->beam_slots.at(i).probs[j] = result.probs[j];
       bc->beam_slots.at(i).tokens[j] = result.tokens[j];
+      bc->beam_slots.at(i).current_depth += 1;
       std::cout<<"request id: " << i << "beam id = " << j << "parnt: " << bc->beam_slots.at(i).parent_id[j] << "token: "<< bc->beam_slots.at(i).tokens[j] <<  "probs: " << bc->beam_slots.at(i).probs[j] <<std::endl;
     }
     
