@@ -107,6 +107,11 @@ void DataLoader::load_entire_dataset(Task const *task,
     datagen.generate_requests(input_ptr);
   } else {
     // Load specific dataset
+    printf("Loading dataset from %s\n", conf.dataset_path.c_str());
+    assert(datagen.load_requests(input_ptr,
+                                 conf.dataset_path,
+                                 conf.token_to_generate,
+                                 conf.arrival_info_path));
   }
 }
 

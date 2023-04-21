@@ -18,12 +18,15 @@
 #include <cassert>
 #include <chrono>
 #include <ctime>
+#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <math.h>
 #include <random>
+#include <sstream>
 #include <thread>
 #include <unistd.h>
+#include <vector>
 
 using namespace std;
 
@@ -39,17 +42,27 @@ public:
                 size_t _min_tokens_to_generate,
                 size_t _max_tokens_to_generate,
                 bool _poisson_distr,
-                double _lambda);
+                double _lambda,
+                bool load_data_from_file = false);
 
   // Generate random requests by filling each tensor with random tokens. For
   // now, assume all requests have the same sequence length.
   void generate_requests(int *req_ptr);
+  bool load_requests(int *req_ptr,
+                     std::string fpath1,
+                     std::string fpath2,
+                     std::string fpath3);
   void start_timer(void);
   // Get number of requests that have arrived since the last time this function
   // was called
   std::pair<size_t, size_t> get_requests(size_t max_requests,
                                          size_t max_tokens);
   std::pair<size_t, size_t> get_request_length(size_t guid);
+  bool print_arrival_times(std::string fpath);
+  bool print_all_requests(int *requests,
+                          int max_sequence_length,
+                          std::string fpath1,
+                          std::string fpath2);
 
 private:
   // Compute the arrival times of each request and save them in the arrivals

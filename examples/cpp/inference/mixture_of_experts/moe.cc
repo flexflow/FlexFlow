@@ -31,8 +31,70 @@ void parse_input_args(char **argv, int argc, MoeConfig &config) {
     if (!strcmp(argv[i], "--dataset")) {
       config.dataset_path = std::string(argv[++i]);
       continue;
+    } else if (!strcmp(argv[i], "--tokens_to_generate")) {
+      config.token_to_generate = std::string(argv[++i]);
+      continue;
+    } else if (!strcmp(argv[i], "--arrival_info_path")) {
+      config.arrival_info_path = std::string(argv[++i]);
+      continue;
     }
   }
+}
+
+void MoeConfig::load_configs() {
+  std::string folder =
+      "/home/ubuntu/nlp_gpt3_text-generation_0.35B_MoE-64/model/c-models/1-gpu";
+  std::string config_ini_filepath = folder + "/config.ini";
+  std::map<std::string, std::string> conf = get_configs(config_ini_filepath);
+  num_exp = std::min(MAX_EXPERTS, std::stoi(conf["expert_num"]));
+  int tensor_para_size = std::stoi(conf["tensor_para_size"]);
+  assert(num_exp % tensor_para_size == 0);
+  experts_per_block = num_exp / tensor_para_size;
+  num_layers = std::min(MAX_LAYERS, std::stoi(conf["num_layer"]));
+  vocab_size = std::stoi(conf["vocab_size"]);
+  num_attention_heads = std::stoi(conf["head_num"]);
+  int gpt_with_moe = std::stoi(conf["gpt_with_moe"]);
+  assert(gpt_with_moe == 1);
+  moe_layers.clear();
+  moe_layers = setFromList(conf["moe_layers"]);
+  max_sequence_length =
+      std::min(MAX_SEQ_LEN, std::stoi(conf["max_pos_seq_len"]));
+  assert(max_sequence_length <= MAX_SEQ_LEN);
+  size_per_head = std::stoi(conf["size_per_head"]);
+  hidden_size = token_dim = out_dim = size_per_head * num_attention_heads;
+  assert(hidden_size <= DATA_DIM);
+}
+
+void MoeConfig::print_configs() {
+  std::cout << "token_dim: " << token_dim << std::endl;
+  std::cout << "max_sequence_length: " << max_sequence_length << std::endl;
+  std::cout << "batch_size: " << batch_size << std::endl;
+  std::cout << "out_dim: " << out_dim << std::endl;
+  std::cout << "num_layers: " << num_layers << std::endl;
+  std::cout << "vocab_size: " << vocab_size << std::endl;
+  std::cout << "dataset_path: " << dataset_path << std::endl;
+  std::cout << "token_to_generate: " << token_to_generate << std::endl;
+  std::cout << "arrival_info_path: " << arrival_info_path << std::endl;
+  std::cout << "total_requests: " << total_requests << std::endl;
+  std::cout << "poisson_distribution: "
+            << (poisson_distribution ? "true" : "false") << std::endl;
+  std::cout << "arrival_rate: " << arrival_rate << std::endl;
+  std::cout << "num_inflight_batches: " << num_inflight_batches << std::endl;
+  std::cout << "incremental_mode: " << (incremental_mode ? "true" : "false")
+            << std::endl;
+  std::cout << "hidden_size: " << hidden_size << std::endl;
+  std::cout << "num_attention_heads: " << num_attention_heads << std::endl;
+  std::cout << "size_per_head: " << size_per_head << std::endl;
+  std::cout << "num_exp: " << num_exp << std::endl;
+  std::cout << "experts_per_block: " << experts_per_block << std::endl;
+  std::cout << "num_select: " << num_select << std::endl;
+  std::cout << "alpha: " << alpha << std::endl;
+  std::cout << "lambda: " << lambda << std::endl;
+  std::cout << "moe_layers: ";
+  for (auto const &layer : moe_layers) {
+    std::cout << layer << " ";
+  }
+  std::cout << std::endl;
 }
 
 Tensor create_moe(FFModel *model,
@@ -53,7 +115,9 @@ Tensor create_moe(FFModel *model,
                        moeConfig->experts_per_block,     /*number of experts*/
                        moeConfig->experts_per_block * i, /*expert start index*/
                        moeConfig->hidden_size,           /*output_size*/
-                       moeConfig->alpha);
+                       moeConfig->alpha,
+                       2,
+                       moeConfig->hidden_size * 4);
     assert(block_preds != nullptr);
     if (i == 0) {
       exp_preds = block_preds;
@@ -67,29 +131,36 @@ Tensor create_moe(FFModel *model,
   return exp_preds;
 }
 
-Tensor create_moe_encoder(FFModel *model,
-                          MoeConfig const *moeConfig,
-                          Tensor const &input) {
-  std::vector<int> axes = {0, 1, 2};
+Tensor
+    gpt_moe(FFModel *model, MoeConfig const *moeConfig, Tensor const &input) {
+  std::vector<int> axes = {0};
   Tensor x = input;
-  for (int i = 0; i < moeConfig->num_encoder_layers; i++) {
+  for (int i = 0; i < moeConfig->num_layers; i++) {
     Tensor t = moeConfig->incremental_mode
                    ? model->inc_multihead_self_attention(
                          x,
                          moeConfig->hidden_size,
                          moeConfig->num_attention_heads,
-                         moeConfig->attention_kdim,
-                         moeConfig->attention_vdim)
+                         moeConfig->size_per_head,
+                         moeConfig->size_per_head)
                    : model->multihead_attention(x,
                                                 x,
                                                 x,
                                                 moeConfig->hidden_size,
                                                 moeConfig->num_attention_heads,
-                                                moeConfig->attention_kdim,
-                                                moeConfig->attention_vdim);
+                                                moeConfig->size_per_head,
+                                                moeConfig->size_per_head);
     x = model->layer_norm(model->add(t, x), axes, true, 1e-05);
     x = model->layer_norm(
-        model->add(create_moe(model, moeConfig, x), x), axes, true, 1e-05);
+        model->add(
+            (moeConfig->moe_layers.find(i) != moeConfig->moe_layers.end())
+                ? create_moe(model, moeConfig, x)
+                : model->dense(model->dense(x, 4 * moeConfig->hidden_size),
+                               moeConfig->hidden_size),
+            x),
+        axes,
+        true,
+        1e-05);
   }
   return x;
 }
@@ -100,6 +171,8 @@ void FlexFlow::top_level_task(Task const *task,
                               Runtime *runtime) {
   //----------------------- Initial configurations ------------------------
   MoeConfig moeConfig;
+  moeConfig.load_configs();
+
   FFConfig ffConfig;
   ffConfig.batchSize = moeConfig.batch_size;
   {
@@ -114,10 +187,17 @@ void FlexFlow::top_level_task(Task const *task,
   }
   FFModel ff(ffConfig);
 
+  int num_devices = ffConfig.workersPerNode * ffConfig.numNodes;
+  // overwrite experts_per_block depending on the number of devices
+  assert(moeConfig.num_exp % num_devices == 0);
+  moeConfig.experts_per_block = moeConfig.num_exp / num_devices;
+
+  moeConfig.print_configs();
+
   //----------------------- Create inputs --------------------------------
   Tensor input;
   {
-    int const dims[] = {ffConfig.batchSize, moeConfig.sequence_length};
+    int const dims[] = {ffConfig.batchSize, moeConfig.max_sequence_length};
     input = ff.create_tensor<2>(dims, DT_INT32);
   }
   Tensor t = input;
@@ -131,7 +211,7 @@ void FlexFlow::top_level_task(Task const *task,
                    embed_init);
 
   //----------------------- Define the model ------------------------------
-  t = create_moe_encoder(&ff, &moeConfig, t);
+  t = gpt_moe(&ff, &moeConfig, t);
   // Tensor t = create_moe(&ff, &moeConfig, input);
   t = ff.dense(t, moeConfig.out_dim, AC_MODE_RELU);
   t = ff.softmax(t);
@@ -145,11 +225,16 @@ void FlexFlow::top_level_task(Task const *task,
   im.init_operators_inference();
 
   //------------ Initialize the data loader and data generator ------------
-  /*size_t min_input_tokens = 32, max_input_tokens = 512,
-         min_tokens_to_generate = 1, max_tokens_to_generate = 128;*/
-  size_t min_input_tokens = 5, max_input_tokens = 10,
+  /* size_t min_input_tokens = 32, max_input_tokens = 512,
+         min_tokens_to_generate = 1, max_tokens_to_generate = 128; */
+  size_t min_input_tokens = 8, max_input_tokens = 128,
          min_tokens_to_generate = 1,
          max_tokens_to_generate = MAX_SEQ_LEN - max_input_tokens;
+  bool load_data_from_file = (moeConfig.dataset_path.length() != 0);
+  if (load_data_from_file) {
+    assert(moeConfig.token_to_generate.length() != 0 &&
+           moeConfig.arrival_info_path.length() != 0);
+  }
   DataGenerator data_generator(moeConfig.total_requests,
                                moeConfig.vocab_size,
                                min_input_tokens,
@@ -157,7 +242,8 @@ void FlexFlow::top_level_task(Task const *task,
                                min_tokens_to_generate,
                                max_tokens_to_generate,
                                moeConfig.poisson_distribution,
-                               moeConfig.arrival_rate);
+                               moeConfig.arrival_rate,
+                               load_data_from_file);
   ParallelTensor input_pt;
   ff.get_parallel_tensor_from_tensor(input, input_pt);
   assert(im.tensor_buffer.find(input_pt) != im.tensor_buffer.end());
@@ -177,7 +263,6 @@ void FlexFlow::top_level_task(Task const *task,
   //----------------------- Begin inference! -------------------------------
   int index = 0;
   int processed_requests = 0;
-  int num_devices = ffConfig.workersPerNode * ffConfig.numNodes;
   data_generator.start_timer();
   std::map<int, Future> future_handlers;
   std::map<int, BatchConfig *> batch_configs;
@@ -194,7 +279,7 @@ void FlexFlow::top_level_task(Task const *task,
       if (future_handlers.find(bid) == future_handlers.end()) {
         max_reqs = moeConfig.incremental_mode ? bc->MAX_NUM_REQUESTS
                                               : im.max_num_requests_per_batch;
-        max_tkns = moeConfig.sequence_length * moeConfig.batch_size;
+        max_tkns = moeConfig.max_sequence_length * moeConfig.batch_size;
         new_prompts = data_generator.get_requests(max_reqs, max_tkns);
         bc = new BatchConfig();
       } else {
@@ -209,7 +294,7 @@ void FlexFlow::top_level_task(Task const *task,
         max_reqs = moeConfig.incremental_mode
                        ? bc->MAX_NUM_REQUESTS - bc->num_active_requests()
                        : im.max_num_requests_per_batch;
-        max_tkns = moeConfig.sequence_length * moeConfig.batch_size -
+        max_tkns = moeConfig.max_sequence_length * moeConfig.batch_size -
                    (moeConfig.incremental_mode ? bc->num_active_tokens() : 0);
         new_prompts = data_generator.get_requests(max_reqs, max_tkns);
       }

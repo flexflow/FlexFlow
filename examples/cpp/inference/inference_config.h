@@ -14,27 +14,34 @@
  */
 #pragma once
 
+#include <algorithm>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <set>
+#include <sstream>
 #include <string>
 
-// #define MAX_SEQ_LEN 1024
-#define MAX_SEQ_LEN 20
-#define BATCH_SIZE 16
-#define MNIST_DIMS 28 * 28
-#define DATA_DIM MNIST_DIMS
-// #define DATA_DIM 3
+#define MAX_SEQ_LEN 256
+#define BATCH_SIZE 8
+#define DATA_DIM 1024
+#define MAX_LAYERS 3
+#define MAX_EXPERTS 64
+
+void removeSpaces(std::string &str);
+std::set<int> setFromList(std::string &str);
+std::map<std::string, std::string> get_configs(std::string path);
 
 struct InferenceConfig {
   InferenceConfig(void) {
     //----------------------- Input/output data ------------------------
     token_dim = DATA_DIM;
-    sequence_length = MAX_SEQ_LEN;
+    max_sequence_length = MAX_SEQ_LEN;
     batch_size = BATCH_SIZE;
     out_dim = DATA_DIM;
-    num_labels = out_dim;
     num_layers = 12;
 
     vocab_size = 50257;
-    block_size = 1024;
 
     //----------------------- Inference parameters ---------------------
     // total number of requests processed as part of the simulation
@@ -48,22 +55,22 @@ struct InferenceConfig {
     hidden_size = DATA_DIM;
     // Encoder layer
     num_attention_heads = 16;
-    attention_kdim = attention_vdim = hidden_size / num_attention_heads;
-    num_encoder_layers = 12;
+    size_per_head = hidden_size / num_attention_heads;
   }
 
   // Input/output data
   int token_dim;
-  int sequence_length;
+  int max_sequence_length;
   int batch_size;
   int out_dim;
-  int num_labels;
   int num_layers;
 
   int vocab_size;
-  int block_size;
 
   std::string dataset_path;
+  std::string requests_file;
+  std::string token_to_generate;
+  std::string arrival_info_path;
   // Inference parameters
   int total_requests;
   bool poisson_distribution;
@@ -73,7 +80,5 @@ struct InferenceConfig {
   // Model parameters
   int hidden_size;
   int num_attention_heads;
-  int attention_kdim;
-  int attention_vdim;
-  int num_encoder_layers;
+  int size_per_head;
 };

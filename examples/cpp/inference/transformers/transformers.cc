@@ -46,15 +46,15 @@ Tensor create_inc_multihead_attention_decoder(
                 input,
                 transformerConfig->hidden_size,
                 transformerConfig->num_attention_heads,
-                transformerConfig->attention_kdim,
-                transformerConfig->attention_vdim)
+                transformerConfig->size_per_head,
+                transformerConfig->size_per_head)
           : model->multihead_attention(input,
                                        input,
                                        input,
                                        transformerConfig->hidden_size,
                                        transformerConfig->num_attention_heads,
-                                       transformerConfig->attention_kdim,
-                                       transformerConfig->attention_vdim);
+                                       transformerConfig->size_per_head,
+                                       transformerConfig->size_per_head);
   t = model->layer_norm(model->add(t, input), axes, true, 1e-05);
   Tensor x = model->dense(
       model->dense(
@@ -89,7 +89,8 @@ void FlexFlow::top_level_task(Task const *task,
   //----------------------- Create inputs --------------------------------
   Tensor input;
   {
-    int const dims[] = {ffConfig.batchSize, transformerConfig.sequence_length};
+    int const dims[] = {ffConfig.batchSize,
+                        transformerConfig.max_sequence_length};
     input = ff.create_tensor<2>(dims, DT_INT32);
   }
 
@@ -172,8 +173,8 @@ void FlexFlow::top_level_task(Task const *task,
         max_reqs = transformerConfig.incremental_mode
                        ? bc->MAX_NUM_REQUESTS
                        : im.max_num_requests_per_batch;
-        max_tkns =
-            transformerConfig.sequence_length * transformerConfig.batch_size;
+        max_tkns = transformerConfig.max_sequence_length *
+                   transformerConfig.batch_size;
         new_prompts = data_generator.get_requests(max_reqs, max_tkns);
         bc = new BatchConfig();
       } else {
@@ -189,7 +190,8 @@ void FlexFlow::top_level_task(Task const *task,
                        ? bc->MAX_NUM_REQUESTS - bc->num_active_requests()
                        : im.max_num_requests_per_batch;
         max_tkns =
-            transformerConfig.sequence_length * transformerConfig.batch_size -
+            transformerConfig.max_sequence_length *
+                transformerConfig.batch_size -
             (transformerConfig.incremental_mode ? bc->num_active_tokens() : 0);
         new_prompts = data_generator.get_requests(max_reqs, max_tkns);
       }
