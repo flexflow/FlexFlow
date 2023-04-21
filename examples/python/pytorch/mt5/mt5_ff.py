@@ -3,6 +3,7 @@ import os
 import sys
 
 import numpy as np
+import torch
 from flexflow.core import *
 from flexflow.torch.model import PyTorchModel
 #from transformers import MT5ForConditionalGeneration, T5Tokenizer
@@ -89,9 +90,17 @@ def top_level_task():
     # Load train data as numpy arrays
     print("Loading data...")
     ids = np.load(os.path.join(NUMPY_DIR, "train_input_ids.npy"))
+    ids = np.pad(ids, ((0,0), (0,17)), 'constant')
+    #ids = np.random.randint(0, 5, (1000, 512))
+    #print('ids_shape', ids.shape)
+    #print('ids', ids)
     mask = np.load(os.path.join(NUMPY_DIR, "train_attention_mask.npy"))
+    mask = np.pad(mask, ((0,0), (0,17)), 'constant')
+    #mask = np.random.randint(0, 2, (1000, 512))
     #y_ids = np.load(os.path.join(NUMPY_DIR, "train_y_ids.npy"))
     lm_labels = np.load(os.path.join(NUMPY_DIR, "train_labels.npy"))
+    lm_labels = np.pad(lm_labels, ((0,0), (0,17)), 'constant')
+    #lm_labels = np.random.randint(-1, 5, (1000, 512))
 
     batch_size = ffconfig.batch_size
     input_ids_shape = (batch_size, ids.shape[1])

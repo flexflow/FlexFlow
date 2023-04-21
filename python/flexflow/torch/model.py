@@ -1409,6 +1409,7 @@ class GetItemNode(FunctionNode):
 
     @staticmethod
     def slice_tensor(ffmodel, tensor, slices, name):
+
         """Returns a reshaped tensor based on the given slices."""
         def is_colon(slice_elem):
             """Returns if the slice is equivalent to `:`."""
@@ -1427,6 +1428,12 @@ class GetItemNode(FunctionNode):
 
         def is_single_element(slice_elem):
             return isinstance(slice_elem, int)
+
+        def is_exact(slice_elem, old_size):
+            start = 0 if slice_elem.start == None else slice_elem.start
+            stop = old_size if slice_elem.stop == None else slice_elem.stop
+            new_size = stop - start
+            return new_size == old_size
 
         shape = tensor.dims
 
@@ -1457,6 +1464,8 @@ class GetItemNode(FunctionNode):
                 curr_tensor = ffmodel.split(input=curr_tensor, sizes=splits, axis=j, name=name)[0]
                 new_shape.append(1)
                 j -= 1
+            elif is_exact(slice_elem, shape[j]):
+                pass
             elif is_truncate(slice_elem, shape[j]):
                 assert j >= 0
                 start = 0 if slice_elem.start == None else slice_elem.start
@@ -1482,7 +1491,10 @@ class GetItemNode(FunctionNode):
                 assert 0, f"Unsupported slice element: {slice_elem}"
 
         new_shape.reverse()
-        return ffmodel.reshape(input=curr_tensor, shape=new_shape, name=name,)
+        if len(new_shape) == 0:
+            return curr_tensor
+        else:
+            return ffmodel.reshape(input=curr_tensor, shape=new_shape, name=name,)
         
         
         

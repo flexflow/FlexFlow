@@ -2634,7 +2634,8 @@ Op *FFModel::create_operator_from_layer(
           if (pt->dims[num_dims-1].size == 1) {
         Replicate *repl = new Replicate(
             *this, pt, num_dims - 1, config.numNodes * config.workersPerNode);
-        operators.push_back(repl);
+	repl->outputs[0]->dims[num_dims-1].is_replica_dim = true;
+	operators.push_back(repl);
       } else {
         Repartition *part = new Repartition(
             *this, pt, num_dims - 1, config.numNodes * config.workersPerNode);
