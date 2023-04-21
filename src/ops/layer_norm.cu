@@ -36,6 +36,8 @@ LayerNormMeta::LayerNormMeta(FFHandler handle, LayerNorm const *ln)
   checkCUDA(cudaMalloc(&db_ptr, sizeof(float) * effective_batch_size));
   checkCUDA(cudaMalloc(&scale_ptr, sizeof(float) * effective_batch_size));
   checkCUDA(cudaMalloc(&bias_ptr, sizeof(float) * effective_batch_size));
+  std::cout << "CUDA ALLOCATION (LayerNorm): "
+            << sizeof(float) * 6 * effective_batch_size << std::endl;
 }
 
 template <typename T>

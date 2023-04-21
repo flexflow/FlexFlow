@@ -1254,49 +1254,73 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
       use_bias(_use_bias), activation(_activation) {
   expert_capacity =
       ceil(alpha * num_chosen_experts / num_experts * effective_batch_size);
-
+  size_t allocation_size = 0;
   checkCUDA(
       cudaMalloc(&sorted_indices,
                  num_chosen_experts * effective_batch_size * sizeof(int)));
+  allocation_size += num_chosen_experts * effective_batch_size * sizeof(int);
   checkCUDA(
       cudaMalloc(&original_indices,
                  num_chosen_experts * effective_batch_size * sizeof(int)));
+  allocation_size += num_chosen_experts * effective_batch_size * sizeof(int);
   checkCUDA(cudaMalloc(&non_zero_expert_labels, num_experts * sizeof(int)));
+  allocation_size += num_experts * sizeof(int);
   checkCUDA(cudaMalloc(
       &temp_sequence,
       std::max(num_experts, num_chosen_experts * effective_batch_size) *
           sizeof(int)));
+  allocation_size +=
+      std::max(num_experts, num_chosen_experts * effective_batch_size) *
+      sizeof(int);
   checkCUDA(cudaMalloc(&exp_local_label_to_index, num_experts * sizeof(int)));
+  allocation_size += num_experts * sizeof(int);
   // expert_start_indexes needs one more slot to save the upper bound index.
   // Initial sequence can require more space, though.
   checkCUDA(cudaMalloc(
       &expert_start_indexes,
       std::max(num_experts + 1, num_chosen_experts * effective_batch_size) *
           sizeof(int)));
+  allocation_size +=
+      std::max(num_experts + 1, num_chosen_experts * effective_batch_size) *
+      sizeof(int);
   checkCUDA(cudaMalloc(&num_assignments_per_expert, num_experts * sizeof(int)));
+  allocation_size += num_experts * sizeof(int);
   checkCUDA(cudaMalloc(&destination_start_indices, num_experts * sizeof(int)));
+  allocation_size += num_experts * sizeof(int);
 
   checkCUDA(
       cudaMalloc(&token_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
+  allocation_size +=
+      num_chosen_experts * effective_batch_size * sizeof(float *);
   checkCUDA(
       cudaMalloc(&weight_idx_array1,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
+  allocation_size +=
+      num_chosen_experts * effective_batch_size * sizeof(float *);
   checkCUDA(
       cudaMalloc(&bias_idx_array1,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
+  allocation_size +=
+      num_chosen_experts * effective_batch_size * sizeof(float *);
   checkCUDA(
       cudaMalloc(&coefficient_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
+  allocation_size +=
+      num_chosen_experts * effective_batch_size * sizeof(float *);
   checkCUDA(
       cudaMalloc(&output_idx_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
+  allocation_size +=
+      num_chosen_experts * effective_batch_size * sizeof(float *);
   batch_outputs1 = new float *[num_chosen_experts * effective_batch_size];
   int batch_outputs1_dim =
       (experts_num_layers == 1) ? out_dim : experts_internal_dim_size;
   checkCUDA(cudaMalloc(&batch_outputs1[0],
                        batch_outputs1_dim * num_chosen_experts *
                            effective_batch_size * sizeof(float)));
+  allocation_size += batch_outputs1_dim * num_chosen_experts *
+                     effective_batch_size * sizeof(float);
   checkCUDA(cudaMemset(batch_outputs1[0],
                        0,
                        batch_outputs1_dim * num_chosen_experts *
@@ -1307,6 +1331,8 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
   checkCUDA(
       cudaMalloc(&dev_batch_outputs1,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
+  allocation_size +=
+      num_chosen_experts * effective_batch_size * sizeof(float *);
   checkCUDA(
       cudaMemcpy(dev_batch_outputs1,
                  batch_outputs1,
@@ -1316,13 +1342,19 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
     checkCUDA(cudaMalloc(&weight_idx_array2,
                          num_chosen_experts * effective_batch_size *
                              sizeof(float *)));
+    allocation_size +=
+        num_chosen_experts * effective_batch_size * sizeof(float *);
     checkCUDA(cudaMalloc(&bias_idx_array2,
                          num_chosen_experts * effective_batch_size *
                              sizeof(float *)));
+    allocation_size +=
+        num_chosen_experts * effective_batch_size * sizeof(float *);
     batch_outputs2 = new float *[num_chosen_experts * effective_batch_size];
     checkCUDA(cudaMalloc(&batch_outputs2[0],
                          out_dim * num_chosen_experts * effective_batch_size *
                              sizeof(float)));
+    allocation_size +=
+        out_dim * num_chosen_experts * effective_batch_size * sizeof(float);
     checkCUDA(cudaMemset(batch_outputs2[0],
                          0,
                          out_dim * num_chosen_experts * effective_batch_size *
@@ -1333,6 +1365,8 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
     checkCUDA(cudaMalloc(&dev_batch_outputs2,
                          num_chosen_experts * effective_batch_size *
                              sizeof(float *)));
+    allocation_size +=
+        num_chosen_experts * effective_batch_size * sizeof(float *);
     checkCUDA(
         cudaMemcpy(dev_batch_outputs2,
                    batch_outputs2,
@@ -1346,6 +1380,7 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
   }
   float *fb_one_ptr;
   checkCUDA(cudaMalloc(&fb_one_ptr, sizeof(float) * 1));
+  allocation_size += sizeof(float) * 1;
   checkCUDA(cudaMemcpy(
       fb_one_ptr, dram_one_ptr, sizeof(float) * 1, cudaMemcpyHostToDevice));
   one_ptr = (float const *)fb_one_ptr;
@@ -1353,12 +1388,17 @@ ExpertsMeta::ExpertsMeta(FFHandler handler,
   checkCUDA(
       cudaMalloc(&one_ptr_array,
                  num_chosen_experts * effective_batch_size * sizeof(float *)));
+  allocation_size +=
+      num_chosen_experts * effective_batch_size * sizeof(float *);
   for (int i = 0; i < num_chosen_experts * effective_batch_size; i++) {
     checkCUDA(cudaMemcpy(&one_ptr_array[i],
                          &fb_one_ptr,
                          sizeof(float *),
                          cudaMemcpyHostToDevice));
   }
+
+  std::cout << "CUDA ALLOCATION (Experts): " << allocation_size << std::endl;
+
   // Activation
   checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
   checkCUDNN(cudnnCreateTensorDescriptor(&resultTensorDesc1));

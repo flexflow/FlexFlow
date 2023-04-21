@@ -26,6 +26,8 @@ LinearMeta::LinearMeta(FFHandler handler, int batch_size) : OpMeta(handler) {
   }
   float *fb_one_ptr;
   checkCUDA(cudaMalloc(&fb_one_ptr, sizeof(float) * batch_size));
+  std::cout << "CUDA ALLOCATION (Linear): " << sizeof(float) * batch_size
+            << std::endl;
   checkCUDA(cudaMemcpy(fb_one_ptr,
                        dram_one_ptr,
                        sizeof(float) * batch_size,
