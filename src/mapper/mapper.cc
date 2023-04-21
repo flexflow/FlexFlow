@@ -662,6 +662,15 @@ void FFMapper::map_task(const MapperContext ctx,
       clog.memory = target_mem;
       clog.processor = task.target_proc;
       created_instances.push_back(clog);
+      log_ff_mapper.print("Task %s (UID %lld) allocating size: %zd with kind %d", task.get_task_name(), task.get_unique_id(), footprint, target_mem.kind());
+      /* log_ff_mapper.print("Instance[%u]: memory:" IDFMT "	proc:" IDFMT
+                          "	size:%zu	task:%s",
+                          idx,
+                          created_instances[idx].memory.id,
+                          created_instances[idx].processor.id,
+                          created_instances[idx].size,
+                          created_instances[idx].task_name.c_str()); */
+
     }
   } // for idx
 }

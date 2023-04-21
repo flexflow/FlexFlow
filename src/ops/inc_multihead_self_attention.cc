@@ -504,9 +504,9 @@ FutureMap IncMultiHeadSelfAttention::inference(
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
   int idx = 0;
-  printf("BatchConfig, num_tokens: %d, num_requests: %d\n",
+  /* printf("BatchConfig, num_tokens: %d, num_requests: %d\n",
          bc.num_tokens,
-         bc.num_requests);
+         bc.num_requests); */
   IndexLauncher launcher(INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(&bc, sizeof(BatchConfig)),
