@@ -161,7 +161,7 @@ void BatchConfig::update_num_active_requests_tokens_v2() {
           token2ids.token_indexes[num_tokens].beam_width = sub_request_num;
 
           //todo xinhao, update in second iteration
-          token2ids.token_indexes[num_tokens].parent_id = 0;
+          token2ids.token_indexes[num_tokens].parent_id = beam_slots.at(i).parent_id[sub_index];
           num_tokens++;
         }
       }
