@@ -99,8 +99,7 @@ void DataLoader::next_batch(
     //   argmap.set_point(*it, TaskArgument(&meta, sizeof(SampleIdxs)));
     // }
 
-    DataLoaderNextBatchInput next_batch_input = {*bc,
-                                                 batch_predictions};
+    DataLoaderNextBatchInput next_batch_input = {*bc, batch_predictions};
     DataLoaderNextBatchInput const *ptr = &next_batch_input;
     size_t next_batch_input_sz = sizeof(next_batch_input);
     assert(ptr->prev_batch_preds.size() == batch_predictions.size());
@@ -266,7 +265,8 @@ void DataLoader::store_outputs(
       for (int beam_id = 0; beam_id < beam_width; beam_id++) {
         batch_predictions[guid].tokens[beam_id] = ir.results[result_index];
         batch_predictions[guid].probs[beam_id] = ir.probs[result_index];
-        batch_predictions[guid].parent_ids[beam_id] = ir.parent_id[result_index];
+        batch_predictions[guid].parent_ids[beam_id] =
+            ir.parent_id[result_index];
         result_index += 1;
       }
 
@@ -274,7 +274,8 @@ void DataLoader::store_outputs(
       //           << result_index
       //           << ", result value: " << batch_predictions[guid].tokens[0]
       //           << ", result prob: " << batch_predictions[guid].probs[0]
-      //           << "parent id: " << batch_predictions[guid].parent_ids[0] << "\n";
+      //           << "parent id: " << batch_predictions[guid].parent_ids[0] <<
+      //           "\n";
 
       if (i < bc->token2ids.num_samples) {
         guid = bc->token2ids.guids[i];
@@ -284,20 +285,29 @@ void DataLoader::store_outputs(
   }
 }
 
-void DataLoader::update_beam_slots(BatchConfig *bc, std::map<size_t, Prediction_result> batch_predictions){
+void DataLoader::update_beam_slots(
+    BatchConfig *bc, std::map<size_t, Prediction_result> batch_predictions) {
   for (int i = 0; i < bc->MAX_NUM_REQUESTS; i++) {
     if (bc->request_completed[i]) {
       continue;
     }
     Prediction_result result = batch_predictions.at(i);
     bc->beam_slots.at(i).current_depth += 1;
-    for(int j = 0; j < bc->beam_slots.at(i).beam_size; j++){
-      bc->beam_slots.at(i).parent_id[j] = j;
+    for (int j = 0; j < bc->beam_slots.at(i).beam_size; j++) {
+      if (bc->beam_slots.at(i).current_depth == 1) {
+        //root
+        bc->beam_slots.at(i).parent_id[j] = j;
+      } else {
+        bc->beam_slots.at(i).parent_id[j] = result.parent_ids[j];
+      }
+
       bc->beam_slots.at(i).probs[j] = result.probs[j];
       bc->beam_slots.at(i).tokens[j] = result.tokens[j];
-      std::cout<<"request id: " << i << "beam id = " << j << "parnt: " << bc->beam_slots.at(i).parent_id[j] << "token: "<< bc->beam_slots.at(i).tokens[j] <<  "probs: " << bc->beam_slots.at(i).probs[j] <<std::endl;
+      std::cout << "request id: " << i << "beam id = " << j
+                << "parnt: " << bc->beam_slots.at(i).parent_id[j]
+                << "token: " << bc->beam_slots.at(i).tokens[j]
+                << "probs: " << bc->beam_slots.at(i).probs[j] << std::endl;
     }
-    
   }
 }
 

@@ -16,7 +16,6 @@
 #include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 65536
 #define MAX_TOKEN_LEN 32000
-#define MAX_BEAM_SIZE 16
 
 using namespace Legion;
 using namespace FlexFlow;

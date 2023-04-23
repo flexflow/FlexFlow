@@ -65,10 +65,10 @@ Tensor FFModel::beam_top_k(const Tensor input, int max_beam_width, bool sorted, 
     }
     dims[0] = max_beam_width;
 
-    std::cout << "input dimen:"
+    std::cout << "beam input dimen:"
               << numdims <<"\n";
     for (int i = 0; i < numdims; i++) {
-      std::cout << dims[i] << ", ";
+      std::cout << input->dims[i] << ", ";
     }
 
     // beam width is dynamic
@@ -389,7 +389,7 @@ InferenceResult
   download_tensor<float>(value_ptr, ir.probs, batch_size * m->max_beam_width);
   download_tensor<int>(parent_ptr, ir.parent_id, batch_size * m->max_beam_width);
   // print_tensor<int>(index_ptr, 85, "beamk: top elements");
-  // print_tensor<float>(value_ptr, 85, "beamk: top probabilities");
+  // print_tensor<float>(in_ptr, 85, "beamk: ");
   return ir;
 }
 
