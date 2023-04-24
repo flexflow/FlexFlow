@@ -92,21 +92,22 @@ void DataLoader::load_input(Task const *task,
 
         // for token by token generating, get token from the previous inference.
         // generate token based on the sub request size
-
         // get beam width
-        int request_index = meta.token_indexes[i].request_index;
+        int request_index = meta.token_indexes[i - 1].request_index;
         std::cout << "i: " << i << "request index: " << request_index << "\n";
         int sub_request_size = input_struct.bc.sub_requests[request_index];
+        
 
         for (int j = 0; j < sub_request_size; j++) {
+          long new_token = input_struct.bc.beam_slots.at(request_index).tokens[j];
           long token = prev_batch_preds.at(guid).tokens[j];
-          std::cout << "token: " << j << "value: " << token << "\n";
+          std::cout << "token: " << j << "value: " << token << "new_token order" << new_token<< "\n";
+          cudaMemcpy(batch_input.ptr + dst_idx + j,
+                   &new_token,
+                   sizeof(long) * 1,
+                   cudaMemcpyHostToDevice);
         }
 
-        cudaMemcpy(batch_input.ptr + dst_idx,
-                   &prev_batch_preds.at(guid).tokens,
-                   sizeof(long) * sub_request_size,
-                   cudaMemcpyHostToDevice);
       }
 
       // update for next req

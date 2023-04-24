@@ -283,7 +283,8 @@ int batch_index,
                                 T>{IndirectLinearData<T>{top_k_heap, entries}};
     // Initialize the heap as a min-heap.
     for (int slot = 0; slot < heap_size; slot++) {
-      float prob = probs[request_id * BatchConfig::MAX_NUM_BEAMS + (slot / k)];
+      // int beam = (slot % max_heap_size) / k;
+      float prob = probs[request_id * BatchConfig::MAX_NUM_BEAMS + ((slot % max_heap_size) / k)];
       min_heap.assign(slot, {slot, (entries[slot].value * prob)});
       if (batch_index == 0) {
         printf("slot %d, value %.15f, prob %15f\n", slot, entries[slot].value, prob);
@@ -296,7 +297,7 @@ int batch_index,
       auto const entry = entries[shard];
       auto const root = min_heap.root();
       
-      float prob = probs[request_id * BatchConfig::MAX_NUM_BEAMS + (shard / k)];
+      float prob = probs[request_id * BatchConfig::MAX_NUM_BEAMS + ((shard % max_heap_size) / k)];
       if (batch_index == 0) {
         printf("shard %d, index %d, value %.15f, prob %.15f\n", shard, entry.index, entry.value, prob);
       }
@@ -333,6 +334,7 @@ int batch_index,
       top_k_parents[rank] = parent_id[request_id * BatchConfig::MAX_NUM_BEAMS + ((shard_index % max_heap_size) / k)];
       int next_shard_index = shard_index + num_shards;
 
+
       // if (batch_index == 1) {
       //   printf("shard_index %d, value %.15f\n",
       //          shard_index,
@@ -356,7 +358,7 @@ int batch_index,
     top_k_values[last_k] = max_element.value;
     int shard_index = max_element.index;
     top_k_indices[last_k] = entries[shard_index].index;
-    top_k_parents[last_k] = 0;
+    top_k_parents[last_k] = parent_id[request_id * BatchConfig::MAX_NUM_BEAMS + ((shard_index % max_heap_size) / k)];
   }
 }
 
@@ -536,17 +538,16 @@ void BeamTopK::forward_kernel(BeamTopKMeta const *m,
     assert(sub_requests[i] > 0);
     // process sub requests
     for (int j = 0; j < sub_requests[i]; j++) {
-      parent_ids[req_index * BatchConfig::MAX_NUM_BEAMS + j] =
-          beam_slots[i].parent_id[j];
+      parent_ids[req_index * BatchConfig::MAX_NUM_BEAMS + j] = j;
+      //beam_slots[i].parent_id[j];
       acc_probs[req_index * BatchConfig::MAX_NUM_BEAMS + j] =
           beam_slots[i].probs[j];
-      if (depth == 1) {
-        std::cout << "probbbb req: " << i
-                  << ", sub req prob : " << beam_slots[i].probs[j]
-                  << "sub pp id: " << beam_slots[i].parent_id[j]
+      std::cout << "probbbb req: " << i
+                  << ", sub req probability : " << beam_slots[i].probs[j]
+                  << ", sub request id " << j
+                  << ", parent id " << beam_slots[i].parent_id[j]
                   << ", data inddd"
                   << req_index * BatchConfig::MAX_NUM_BEAMS + j << "\n";
-      }
     }
 
     // process tokens

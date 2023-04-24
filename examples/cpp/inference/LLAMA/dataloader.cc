@@ -1,5 +1,6 @@
 #include "llama.h"
 #include <random>
+// #include<iomanip>
 
 using namespace Legion;
 
@@ -152,15 +153,11 @@ void DataLoader::load_from_file(T *ptr, size_t size, std::string filename) {
   in.read((char *)host_array.data(), loaded_data_size);
 
   size_t in_get_size = in.gcount();
-  // std::cout << "size seee" << std::endl;
-  // std::cout << loaded_data_size << std::endl;
-  // std::cout << in_get_size << std::endl;
   if (in_get_size != loaded_data_size) {
     std::cout << "load data error";
     return;
   }
 
-  // std::cout << "finish loading input";
   assert(size == host_array.size());
 
   // normal
@@ -254,8 +251,6 @@ void DataLoader::store_outputs(
       // to get the index of the final token
 
       // every token will get (beam_width) results
-      //  std::cout<< "req index: "<<bc->token2ids.token_indexes[i -
-      //  1].request_index << "\n";
       int beam_width =
           bc->beam_slots[bc->token2ids.token_indexes[i - 1].request_index]
               .beam_size;
@@ -269,13 +264,6 @@ void DataLoader::store_outputs(
             ir.parent_id[result_index];
         result_index += 1;
       }
-
-      // std::cout << "i: " << i << ", dds-" << guid << ", result index"
-      //           << result_index
-      //           << ", result value: " << batch_predictions[guid].tokens[0]
-      //           << ", result prob: " << batch_predictions[guid].probs[0]
-      //           << "parent id: " << batch_predictions[guid].parent_ids[0] <<
-      //           "\n";
 
       if (i < bc->token2ids.num_samples) {
         guid = bc->token2ids.guids[i];
@@ -293,21 +281,69 @@ void DataLoader::update_beam_slots(
     }
     Prediction_result result = batch_predictions.at(i);
     bc->beam_slots.at(i).current_depth += 1;
-    for (int j = 0; j < bc->beam_slots.at(i).beam_size; j++) {
-      if (bc->beam_slots.at(i).current_depth == 1) {
-        //root
-        bc->beam_slots.at(i).parent_id[j] = j;
-      } else {
-        bc->beam_slots.at(i).parent_id[j] = result.parent_ids[j];
-      }
+    int beam_size = bc->beam_slots.at(i).beam_size;
+    std::cout << "--------------before stealllllling--------" << "\n";
 
-      bc->beam_slots.at(i).probs[j] = result.probs[j];
-      bc->beam_slots.at(i).tokens[j] = result.tokens[j];
-      std::cout << "request id: " << i << "beam id = " << j
+    for (int j = 0; j < beam_size; j++) {
+      std::cout << "before request id: " << i << "beam id = " << j
+                << "parnt: " << result.parent_ids[j]
+                << "token: " << result.tokens[j]
+                << "probs: " <<result.probs[j]<< std::endl;
+    }
+
+    if (bc->beam_slots.at(i).current_depth == 1) {
+      for (int j = 0; j < beam_size; j++) {
+        bc->beam_slots.at(i).parent_id[j] = j;
+        bc->beam_slots.at(i).probs[j] = result.probs[j];
+        bc->beam_slots.at(i).tokens[j] = result.tokens[j];
+      }
+    } else {
+      std::set<int> parents;
+      std::set<int> childs;
+      //cache stealing
+      for (int j = 0; j < beam_size; j++) {
+        int parent_id = result.parent_ids[j];
+        if (childs.find(parent_id) == childs.end()) {
+          // copy beam slot
+          bc->beam_slots.at(i).parent_id[parent_id] = result.parent_ids[j];
+          bc->beam_slots.at(i).probs[parent_id] = result.probs[j];
+          bc->beam_slots.at(i).tokens[parent_id] = result.tokens[j];
+          parents.emplace(j);
+          childs.emplace(parent_id);
+        }
+      }
+      if (parents.size() < beam_size) {
+        for (int j = 0; j < beam_size; j++) {
+          if (parents.find(j) == parents.end()) {
+            //this slot has not been assigned
+            //find the smallest not assigned child and put in
+            for(int k = 0; k < beam_size; k++){
+              if(childs.find(k) == childs.end()){
+                  //parent -> j to child k;
+                  bc->beam_slots.at(i).parent_id[k] = result.parent_ids[j];
+                  bc->beam_slots.at(i).probs[k] = result.probs[j];
+                  bc->beam_slots.at(i).tokens[k] = result.tokens[j];
+                  parents.emplace(j);
+                  childs.emplace(k);
+                  break;
+              }
+            }
+          }
+        }
+      }
+    }
+    std::cout<< "-----------after stealing-----------"<<std::endl;
+    for (int j = 0; j < beam_size; j++) {
+      std::cout << "after request id: " << i << "beam id = " << j
                 << "parnt: " << bc->beam_slots.at(i).parent_id[j]
                 << "token: " << bc->beam_slots.at(i).tokens[j]
                 << "probs: " << bc->beam_slots.at(i).probs[j] << std::endl;
+                // std::fixed << std::setprecision(15)<< 
     }
+
+    // if(bc->beam_slots.at(i).current_depth > 1){
+    //   assert(false);
+    // }
   }
 }
 
