@@ -16,7 +16,6 @@
 #include "flexflow/model.h"
 #define MAX_NUM_SAMPLES 65536
 #define MAX_TOKEN_LEN 32000
-#define MAX_BEAM_SIZE 16
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -111,6 +110,6 @@ struct SampleIdxs {
 };
 
 struct DataLoaderNextBatchInput {
-  BatchConfig::SampleIdxs const &meta;
+  BatchConfig const &bc;
   std::map<size_t, Prediction_result> const &prev_batch_preds;
 };

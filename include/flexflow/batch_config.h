@@ -23,7 +23,7 @@
 #define MAX_SEQ_LEN 20
 #define BATCH_SIZE 16
 #define MAX_REQUESTS 256
-#define MAX_BEAM_SIZE 16
+#define MAX_BEAM_SIZE 3
 
 namespace FlexFlow {
 
@@ -81,6 +81,7 @@ public:
     size_t initial_length;
     size_t beam_width;
     int parent_id;
+    int beam_depth;
   };
 
   struct SampleIdxs {
@@ -101,9 +102,11 @@ public:
       }
       this->beam_size = beam_size;
       this->sub_req_size = 1;
+      this->current_depth = 0;
     }
     int beam_size;
     int sub_req_size;
+    int current_depth;
     long tokens[MAX_BEAM_SIZE];
     float probs[MAX_BEAM_SIZE];
     int parent_id[MAX_BEAM_SIZE];

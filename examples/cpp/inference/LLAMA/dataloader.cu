@@ -28,7 +28,7 @@ void DataLoader::load_input(Task const *task,
 
   DataLoaderNextBatchInput const input_struct =
       *((DataLoaderNextBatchInput *)task->args);
-  BatchConfig::SampleIdxs const &meta = input_struct.meta;
+  BatchConfig::SampleIdxs const &meta = input_struct.bc.token2ids;
   std::map<size_t, Prediction_result> const &prev_batch_preds =
       input_struct.prev_batch_preds;
 
@@ -89,18 +89,25 @@ void DataLoader::load_input(Task const *task,
         std::cout << "dst index: " << dst_idx << "\n";
 
       } else {
+
         // for token by token generating, get token from the previous inference.
-        //generate token based on the sub request size
-        // int sub_request_size = bc->
-        // long token = prev_batch_preds.at(guid).result;
-        // //store the probs into accumulate table
+        // generate token based on the sub request size
+        // get beam width
+        int request_index = meta.token_indexes[i - 1].request_index;
+        std::cout << "i: " << i << "request index: " << request_index << "\n";
+        int sub_request_size = input_struct.bc.sub_requests[request_index];
+        
 
-        // //where token is from 
-        // std::cout << "next iter  " << meta.token_indexes[i - 1].token_position
-        //           << ", dst_idx: " << dst_idx << ", token:" << token << "\n";
-        // long *dst_ptr = batch_input.ptr + dst_idx;
+        for (int j = 0; j < sub_request_size; j++) {
+          long new_token = input_struct.bc.beam_slots.at(request_index).tokens[j];
+          long token = prev_batch_preds.at(guid).tokens[j];
+          std::cout << "token: " << j << "value: " << token << "new_token order" << new_token<< "\n";
+          cudaMemcpy(batch_input.ptr + dst_idx + j,
+                   &new_token,
+                   sizeof(long) * 1,
+                   cudaMemcpyHostToDevice);
+        }
 
-        // cudaMemcpy(dst_ptr, &token, sizeof(long), cudaMemcpyHostToDevice);
       }
 
       // update for next req

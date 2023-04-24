@@ -264,7 +264,9 @@ __global__ void spec_store_kv_cache(float const *devQKVProjArray,
                                     int num_tokens,
                                     int num_heads,
                                     int max_seq_len,
-                                    bool k_cache) {
+                                    int max_beam_width,
+                                    bool k_cache,
+                                    bool is_root) {
   CUDA_KERNEL_LOOP(i,
                    num_tokens * (k_cache ? kProjSize : vProjSize) * num_heads) {
     int proj_size = k_cache ? kProjSize : vProjSize;
@@ -282,51 +284,75 @@ __global__ void spec_store_kv_cache(float const *devQKVProjArray,
     // above no need to be changed
     int const req_id = id_map[token_idx].request_index;
     int const tok_id = id_map[token_idx].token_position;
-    // sub request index
-    // int const sub_req_id = id_map[token_idx].sub_request_index;
-    // int const beam_width = id_map[token_idx].beam_width;
-    // int const parent_id = id_map[token_idx].parent_id;
-    // if (token_idx == 0 && head_idx == 0) {
-    //   printf("sub req id %d, beam_width %d, parent_id %d, data_idx %d",
-    //          sub_req_id,
-    //          beam_width,
+    int const sub_req_id = id_map[token_idx].sub_request_index;
+    int const parent_id = id_map[token_idx].parent_id;
+    int const beam_depth = id_map[token_idx].beam_depth;
+    int const beam_width = id_map[token_idx].beam_width;
+
+    // new token
+    int new_token_cache_idx = (req_id * max_beam_width + sub_req_id) *
+                                  (num_heads * max_seq_len * proj_size) +
+                              head_idx * (max_seq_len * proj_size) +
+                              tok_id * proj_size + data_idx;
+    cache_ptr[new_token_cache_idx] = val;
+
+    // replica in the root iteration
+    if (is_root) {
+      for (int i = 1; i < beam_width; i++) {
+        cache_ptr[(req_id * max_beam_width + i) *
+                      (num_heads * max_seq_len * proj_size) +
+                  head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
+                  data_idx] = val;
+      }
+    }
+
+    // if (head_idx == 0 && beam_depth == 0 && token_idx == 8 && k_cache) {
+    //   // printf("token idx %d\n", token_idx);
+    //   printf("data idx: %d, tok_id %d, new_token_cache_idx %d, parent_id %d, "
+    //          "sub_req_id %d, num_tokens %d, kProjSize %d, num_heads %d, val "
+    //          "%f, beam_width %d\n",
+    //          data_idx,
+    //          tok_id,
+    //          new_token_cache_idx,
     //          parent_id,
-    //          data_idx);
+    //          sub_req_id,
+    //          num_tokens,
+    //          kProjSize,
+    //          num_heads,
+    //          val,
+    //          beam_width);
     // }
 
-    // // previous index, need to know beam width with each request
-    // int pre_offset = 0;
-    // for (int i = 0; i < req_id; i++) {
-    //   pre_offset += (num_heads * max_seq_len * proj_size) * beam_width;
-    // }
+    // naive cache stealing
+    if (sub_req_id != parent_id) {
+      printf("cache stealing!\n");
+      for (int depth = 0; depth < beam_depth; depth++) {
+        int steal_token_idx = tok_id - beam_depth + depth;
+        int steal_from_idx = (req_id * max_beam_width + parent_id) *
+                                 (num_heads * max_seq_len * proj_size) +
+                             head_idx * (max_seq_len * proj_size) +
+                             steal_token_idx * proj_size + data_idx;
+        int steal_to_idx = (req_id * max_beam_width + sub_req_id) *
+                               (num_heads * max_seq_len * proj_size) +
+                           head_idx * (max_seq_len * proj_size) +
+                           steal_token_idx * proj_size + data_idx;
+        cache_ptr[steal_to_idx] = cache_ptr[steal_from_idx];
+      }
+    }
 
-    // // identify which sub request does this token come from
-    // // for initial token, 0
-    // // for other, may 0,0,1/ 0,1,2/ 1,1,1 to get which cache to be reuse and
-    // // which to be delete copy beam_size bunch of blocks when sub_req_id ==
-    // // parent_id : like 0 -> 0, 1->1, 2->2, do nothing, just append the new k/v
+    // parallel cache stealing not yet implemented
+    // logic shld be
+    // launch spec_store_kv_cache with parallelism * current depth
+    // from the i here, get depth index
+    // if depth index not the current one, check if we need to steal
+    // steal if needed
 
-    // // cudaMemcpyDeviceToDevice
-    // if (sub_req_id != parent_id) {
-    //   // copy from the corresponding parent index and append
-    //   size_t parent_cache_index =
-    //       pre_offset + parent_id * (num_heads * max_seq_len * proj_size) +
-    //       head_idx * (max_seq_len * proj_size) + data_idx;
-    //   size_t this_cache_index =
-    //       pre_offset + sub_req_id * (num_heads * max_seq_len * proj_size) +
-    //       head_idx * (max_seq_len * proj_size) + data_idx;
-    //   cache_ptr[this_cache_index] = cache_ptr[parent_cache_index];
-    // }
-
-    // // cache new k/v
-    //  cache_ptr[pre_offset + sub_req_id * (num_heads * max_seq_len *
-    //  proj_size) +
-    //            head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
-    //            data_idx] = val;
-
-    cache_ptr[req_id * (num_heads * max_seq_len * proj_size) +
-              head_idx * (max_seq_len * proj_size) + tok_id * proj_size +
-              data_idx] = val;
+    // cache stealing theory
+    // identify which sub request does this token come from
+    // for initial token, 0
+    // for other, may 0,0,1/ 0,1,2/ 1,1,1 to get which cache to be reuse and
+    // which to be delete copy beam_size bunch of blocks when sub_req_id ==
+    // parent_id : like 0 -> 0, 1->1, 2->2, do nothing, just append the new k/v
   }
 }
 
@@ -334,6 +360,10 @@ void inference_kernel2(SpecIncMultiHeadSelfAttentionMeta const *m,
                        BatchConfig const *bc,
                        cudaStream_t stream) {
   int num_tokens = bc->num_active_tokens();
+  // stop after 3 iterations
+  int beam_depth = bc->token2ids.token_indexes[0].beam_depth;
+  printf("curr depth: %d\n", bc->token2ids.token_indexes[0].beam_depth);
+  assert(bc->token2ids.token_indexes[0].beam_depth < 3);
   if (num_tokens > 0) {
     int parallelism = m->kProjSize * num_tokens * m->num_heads;
     spec_store_kv_cache<<<GET_BLOCKS(parallelism),
@@ -348,7 +378,9 @@ void inference_kernel2(SpecIncMultiHeadSelfAttentionMeta const *m,
                                     num_tokens,
                                     m->num_heads,
                                     MAX_SEQ_LEN,
-                                    /* k_cache = */ true);
+                                    MAX_BEAM_SIZE,
+                                    /* k_cache = */ true,
+                                    /*root*/ beam_depth == 0);
 
     parallelism = m->vProjSize * num_tokens * m->num_heads;
     spec_store_kv_cache<<<GET_BLOCKS(parallelism),
@@ -363,7 +395,9 @@ void inference_kernel2(SpecIncMultiHeadSelfAttentionMeta const *m,
                                     num_tokens,
                                     m->num_heads,
                                     MAX_SEQ_LEN,
-                                    /* k_cache = */ false);
+                                    MAX_BEAM_SIZE,
+                                    /* k_cache = */ false,
+                                    /*root*/ beam_depth == 0);
   }
 }
 
@@ -412,181 +446,193 @@ void inference_kernel3(SpecIncMultiHeadSelfAttentionMeta const *m,
     if (bc->request_completed[i]) {
       continue;
     }
-    int num_new_tokens = bc->num_processing_tokens[i];
-    int total_tokens = bc->token_last_available_idx[i] + 1;
-    // Compute (QK^T/sqrt(d_k))
-    int m_ = num_new_tokens;
-    int n = total_tokens;
-    int k = m->qProjSize;
-    int lda = k, ldb = k, ldc = m_;
-    int strideA = qkv_block_size;
-    int strideB = kt_block_size;
-    int strideC = num_new_tokens * total_tokens;
+    for (int sub_req_id = 0; sub_req_id < bc->sub_requests[i]; sub_req_id++) {
 
-    float alpha = 1.0f / (float)sqrt(m->kProjSize), beta = 0.0f;
-    // To get A, skip over Q entries from previous requests (same head)
-    void const *A = (void const *)(m->devQKVProjArray +
-                                   tokens_previous_requests * m->qProjSize);
-    // To get B, skip over K entries from previous requests (all heads +
-    // padding)
-    void const *B = (void const *)(m->keyCache + i * kt_req_block_size);
-    // To get C, skip over QK^T products from previous requests
-    void *C =
-        (void *)(m->qk_prods + m->num_heads * tokens_prev_requests_squares);
+      int num_new_tokens = bc->num_processing_tokens[i];
+      int total_tokens = bc->token_last_available_idx[i] + 1;
+      // Compute (QK^T/sqrt(d_k))
+      int m_ = num_new_tokens;
+      int n = total_tokens;
+      int k = m->qProjSize;
+      int lda = k, ldb = k, ldc = m_;
+      int strideA = qkv_block_size;
+      int strideB = kt_block_size;
+      int strideC = num_new_tokens * total_tokens;
 
-    checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
-                                         CUBLAS_OP_T,
-                                         CUBLAS_OP_N,
-                                         m_,
-                                         n,
-                                         k,
-                                         &alpha,
-                                         A,
-                                         cublas_data_type,
-                                         lda,
-                                         strideA,
-                                         B,
-                                         cublas_data_type,
-                                         ldb,
-                                         strideB,
-                                         &beta,
-                                         C,
-                                         cublas_data_type,
-                                         ldc,
-                                         strideC,
-                                         m->num_heads,
-                                         compute_type,
-                                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    // Fill all elements above diagonal in qk prods with -inf to force
-    // causal attention.
-    assert(num_new_tokens <= total_tokens);
-    size_t entries_above_diagonal = num_new_tokens * (num_new_tokens - 1) / 2;
-    if (entries_above_diagonal > 0) {
-      size_t parallelism = m->num_heads * entries_above_diagonal;
-      spec_fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
-                                         min((size_t)CUDA_NUM_THREADS,
-                                             parallelism),
-                                         0,
-                                         stream>>>((float *)C,
-                                                   num_new_tokens,
-                                                   total_tokens,
-                                                   m->num_heads,
-                                                   entries_above_diagonal,
-                                                   -INFINITY);
+      float alpha = 1.0f / (float)sqrt(m->kProjSize), beta = 0.0f;
+      // To get A, skip over Q entries from previous requests (same head)
+      void const *A = (void const *)(m->devQKVProjArray +
+                                     tokens_previous_requests * m->qProjSize);
+      // To get B, skip over K entries from previous requests (all heads +
+      // padding)
+      void const *B =
+          (void const *)(m->keyCache + (i * bc->MAX_NUM_BEAMS + sub_req_id) *
+                                           kt_req_block_size);
+
+      if (i == 0 && sub_req_id == 0 &&
+          bc->beam_slots.at(0).current_depth == 1) {
+        int offset = (float *)B - m->keyCache;
+        printf("key cache offset %d\n", kt_req_block_size);
+      }
+      // To get C, skip over QK^T products from previous requests
+      void *C =
+          (void *)(m->qk_prods + m->num_heads * tokens_prev_requests_squares);
+
+      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_T,
+                                           CUBLAS_OP_N,
+                                           m_,
+                                           n,
+                                           k,
+                                           &alpha,
+                                           A,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           m->num_heads,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      // Fill all elements above diagonal in qk prods with -inf to force
+      // causal attention.
+      assert(num_new_tokens <= total_tokens);
+      size_t entries_above_diagonal = num_new_tokens * (num_new_tokens - 1) / 2;
+      if (entries_above_diagonal > 0) {
+        size_t parallelism = m->num_heads * entries_above_diagonal;
+        spec_fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
+                                           min((size_t)CUDA_NUM_THREADS,
+                                               parallelism),
+                                           0,
+                                           stream>>>((float *)C,
+                                                     num_new_tokens,
+                                                     total_tokens,
+                                                     m->num_heads,
+                                                     entries_above_diagonal,
+                                                     -INFINITY);
+      }
+      // Compute Softmax(QK^T/sqrt(d_k))
+      cudnnTensorDescriptor_t qk_tensor;
+      checkCUDNN(cudnnCreateTensorDescriptor(&qk_tensor));
+      // Before modifying the parameters below, make sure to read the following
+      // description of the CUDNN_TENSOR_NCHW tensor layout, from
+      // https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnTensorFormat_t:
+      // This tensor format specifies that the data is laid out in the following
+      // order: batch size, feature maps, rows, columns. The strides are
+      // implicitly defined in such a way that the data are contiguous in memory
+      // with no padding between images, feature maps, rows, and columns; the
+      // columns are the inner dimension and the images are the outermost
+      // dimension.
+      int n_param = m->num_heads;
+      int c_param = total_tokens;
+      int h_param = 1;
+      int w_param = num_new_tokens;
+      checkCUDNN(cudnnSetTensor4dDescriptor(qk_tensor,
+                                            CUDNN_TENSOR_NCHW,
+                                            CUDNN_DATA_FLOAT,
+                                            n_param,
+                                            c_param,
+                                            h_param,
+                                            w_param));
+      alpha = 1.0f, beta = 0.0f;
+      void *C_softmax = (void *)(m->qk_prods_softmax +
+                                 m->num_heads * tokens_prev_requests_squares);
+      // The softmax operation below is executed according to the
+      // CUDNN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
+      // softmax operation is computed per spatial location (H,W) per image (N)
+      // across dimension C.
+      checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
+                                     CUDNN_SOFTMAX_ACCURATE,
+                                     CUDNN_SOFTMAX_MODE_CHANNEL,
+                                     &alpha,
+                                     qk_tensor,
+                                     (void *)((float *)C),
+                                     &beta,
+                                     qk_tensor,
+                                     (void *)((float *)C_softmax)));
+      // Matmul softmax(QK^T/sqrt(d_k)) by V
+      alpha = 1.0f, beta = 0.0f;
+      m_ = num_new_tokens;
+      n = m->vProjSize;
+      k = total_tokens;
+      lda = m_, ldb = n, ldc = m_;
+      strideA = num_new_tokens * total_tokens;
+      strideB = vt_block_size;
+      strideC = num_new_tokens * m->vProjSize;
+      // To get A, skip over softmax(QK^T/sqrt(d_k)) entries from previous
+      // requests (all heads)
+      A = (void const *)C_softmax;
+      // To get B, skip over V^T entries from previous requests (all heads +
+      // padding)
+      B = (void const *)(m->valueCache + (i * bc->MAX_NUM_BEAMS + sub_req_id) *
+                                             vt_req_block_size);
+      // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
+      // requests
+      C = (void *)(m->attn_heads +
+                   tokens_previous_requests * m->num_heads * m->vProjSize);
+
+      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_N,
+                                           CUBLAS_OP_T,
+                                           m_,
+                                           n,
+                                           k,
+                                           &alpha,
+                                           A,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           m->num_heads,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      // Project to output, save result directly on output tensor
+      alpha = 1.0f, beta = 0.0f;
+      m_ = m->oProjSize;
+      k = m->vProjSize * m->num_heads;
+      n = num_new_tokens;
+      lda = k, ldb = n, ldc = m_;
+      A = (void const *)m->W_out_contiguous;
+      B = (void const *)C;
+      C = (void *)(output_ptr + tokens_previous_requests * m->oProjSize);
+
+      checkCUDA(cublasGemmEx(m->handle.blas,
+                             CUBLAS_OP_T,
+                             CUBLAS_OP_T,
+                             m_,
+                             n,
+                             k,
+                             &alpha,
+                             A,
+                             cublas_data_type,
+                             lda,
+                             B,
+                             cublas_data_type,
+                             ldb,
+                             &beta,
+                             C,
+                             cublas_data_type,
+                             ldc,
+                             compute_type,
+                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      tokens_previous_requests += num_new_tokens;
+      tokens_prev_requests_squares += num_new_tokens * total_tokens;
     }
-    // Compute Softmax(QK^T/sqrt(d_k))
-    cudnnTensorDescriptor_t qk_tensor;
-    checkCUDNN(cudnnCreateTensorDescriptor(&qk_tensor));
-    // Before modifying the parameters below, make sure to read the following
-    // description of the CUDNN_TENSOR_NCHW tensor layout, from
-    // https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnTensorFormat_t:
-    // This tensor format specifies that the data is laid out in the following
-    // order: batch size, feature maps, rows, columns. The strides are
-    // implicitly defined in such a way that the data are contiguous in memory
-    // with no padding between images, feature maps, rows, and columns; the
-    // columns are the inner dimension and the images are the outermost
-    // dimension.
-    int n_param = m->num_heads;
-    int c_param = total_tokens;
-    int h_param = 1;
-    int w_param = num_new_tokens;
-    checkCUDNN(cudnnSetTensor4dDescriptor(qk_tensor,
-                                          CUDNN_TENSOR_NCHW,
-                                          CUDNN_DATA_FLOAT,
-                                          n_param,
-                                          c_param,
-                                          h_param,
-                                          w_param));
-    alpha = 1.0f, beta = 0.0f;
-    void *C_softmax = (void *)(m->qk_prods_softmax +
-                               m->num_heads * tokens_prev_requests_squares);
-    // The softmax operation below is executed according to the
-    // CUDNN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
-    // softmax operation is computed per spatial location (H,W) per image (N)
-    // across dimension C.
-    checkCUDNN(cudnnSoftmaxForward(m->handle.dnn,
-                                   CUDNN_SOFTMAX_ACCURATE,
-                                   CUDNN_SOFTMAX_MODE_CHANNEL,
-                                   &alpha,
-                                   qk_tensor,
-                                   (void *)((float *)C),
-                                   &beta,
-                                   qk_tensor,
-                                   (void *)((float *)C_softmax)));
-    // Matmul softmax(QK^T/sqrt(d_k)) by V
-    alpha = 1.0f, beta = 0.0f;
-    m_ = num_new_tokens;
-    n = m->vProjSize;
-    k = total_tokens;
-    lda = m_, ldb = n, ldc = m_;
-    strideA = num_new_tokens * total_tokens;
-    strideB = vt_block_size;
-    strideC = num_new_tokens * m->vProjSize;
-    // To get A, skip over softmax(QK^T/sqrt(d_k)) entries from previous
-    // requests (all heads)
-    A = (void const *)C_softmax;
-    // To get B, skip over V^T entries from previous requests (all heads +
-    // padding)
-    B = (void const *)(m->valueCache + i * vt_req_block_size);
-    // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
-    // requests
-    C = (void *)(m->attn_heads +
-                 tokens_previous_requests * m->num_heads * m->vProjSize);
-
-    checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
-                                         CUBLAS_OP_N,
-                                         CUBLAS_OP_T,
-                                         m_,
-                                         n,
-                                         k,
-                                         &alpha,
-                                         A,
-                                         cublas_data_type,
-                                         lda,
-                                         strideA,
-                                         B,
-                                         cublas_data_type,
-                                         ldb,
-                                         strideB,
-                                         &beta,
-                                         C,
-                                         cublas_data_type,
-                                         ldc,
-                                         strideC,
-                                         m->num_heads,
-                                         compute_type,
-                                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    // Project to output, save result directly on output tensor
-    alpha = 1.0f, beta = 0.0f;
-    m_ = m->oProjSize;
-    k = m->vProjSize * m->num_heads;
-    n = num_new_tokens;
-    lda = k, ldb = n, ldc = m_;
-    A = (void const *)m->W_out_contiguous;
-    B = (void const *)C;
-    C = (void *)(output_ptr + tokens_previous_requests * m->oProjSize);
-
-    checkCUDA(cublasGemmEx(m->handle.blas,
-                           CUBLAS_OP_T,
-                           CUBLAS_OP_T,
-                           m_,
-                           n,
-                           k,
-                           &alpha,
-                           A,
-                           cublas_data_type,
-                           lda,
-                           B,
-                           cublas_data_type,
-                           ldb,
-                           &beta,
-                           C,
-                           cublas_data_type,
-                           ldc,
-                           compute_type,
-                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    tokens_previous_requests += num_new_tokens;
-    tokens_prev_requests_squares += num_new_tokens * total_tokens;
   }
 
   assert(tokens_previous_requests == num_tokens);
@@ -710,10 +756,12 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     size_t qkv_proj_dim = qProjSize + kProjSize + vProjSize;
     size_t qkv_max_proj_size =
         BatchConfig::MAX_NUM_TOKENS * qkv_proj_dim * num_heads;
-    size_t key_cache_size =
-        num_heads * kProjSize * BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN;
-    size_t value_cache_size =
-        num_heads * vProjSize * BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN;
+    size_t key_cache_size = num_heads * kProjSize *
+                            BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN *
+                            BatchConfig::MAX_NUM_BEAMS;
+    size_t value_cache_size = num_heads * vProjSize *
+                              BatchConfig::MAX_NUM_REQUESTS * MAX_SEQ_LEN *
+                              BatchConfig::MAX_NUM_BEAMS;
     size_t token2ids_size = BatchConfig::MAX_NUM_TOKENS;
     size_t qk_prod_size =
         BatchConfig::MAX_NUM_TOKENS * BatchConfig::MAX_NUM_TOKENS * num_heads;

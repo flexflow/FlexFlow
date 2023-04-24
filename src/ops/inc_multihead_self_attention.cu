@@ -607,7 +607,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     // acc_output.rect, "[Attention:forward:output]");
   }
 
-  save_tensor(output_ptr, 40 * 4096, "/home/ubuntu/FlexFlow/examples/cpp/inference/LLAMA/output/att.txt");
+  // save_tensor(output_ptr, 40 * 4096, "/home/ubuntu/FlexFlow/examples/cpp/inference/LLAMA/output/att.txt");
 }
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
