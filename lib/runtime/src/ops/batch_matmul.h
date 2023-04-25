@@ -48,11 +48,8 @@ public:
                              CostMetrics &cost_metrics) const override;
 
   OpTaskBinding get_init_task_binding() const override;
-  TaskID get_init_task_id() const override;
   OpTaskBinding get_fwd_task_binding() const override;
-  TaskID get_fwd_task_id() const override;
   OpTaskBinding get_bwd_task_binding() const override;
-  TaskID get_bwd_task_id() const override;
 private:
   template <int NDIM>
   void init_with_dim(FFModel const &ff);

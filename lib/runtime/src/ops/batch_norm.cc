@@ -16,10 +16,24 @@
 #include "batch_norm.h"
 #include "kernels/batch_norm_kernels.h"
 #include "legion/legion_utilities.h"
+#include "task_spec.h"
 
 using namespace FlexFlow::Kernels::BatchNorm;
 
 namespace FlexFlow {
+
+enum Slots {
+  INPUT,
+  SCALE,
+  BIAS,
+  OUTPUT,
+  INPUT_GRAD,
+  SCALE_GRAD,
+  BIAS_GRAD,
+  OUTPUT_GRAD,
+  ATTRS,
+  PROFILING
+}
 
 // declare Legion names
 using Legion::ArgumentMap;
@@ -83,48 +97,131 @@ BatchNorm::BatchNorm(FFModel &model,
   return;
 }
 
+static OpTaskSignature get_init_task_signature() {
+  OpTaskSignature init(OpTaskType::INIT);
+
+  init.add_arg_slot<BatchNormAttrs>(ATTRS);
+  init.add_arg_slot<bool>(PROFILING);
+
+  // init.add_input_slot(INPUT);
+  // init.add_param_slot(SCALE);
+  // init.add_param_slot(BIAS);
+  init.add_output_slot(OUTPUT);
+}
+
+static OpTaskSignature get_fwd_task_signature() {
+  OpTaskSignature fwd(OpTaskType::FWD);
+
+  fwd.add_arg_slot<BatchNormAttrs>(ATTRS);
+
+  fwd.add_input_slot(INPUT);
+  fwd.add_param_slot(SCALE);
+  fwd.add_param_slot(BIAS);
+  fwd.add_output_slot(OUTPUT, WRITE_DISCARD);
+
+  return fwd;
+}
+
+static OpTaskSignature get_bwd_task_signature() {
+  OpTaskSignature bwd(OpTaskType::BWD);
+
+  bwd.add_arg_slot<BatchNormAttrs>(ATTRS);
+
+  bwd.add_input_slot(INPUT);
+  bwd.add_input_grad_slot(INPUT_GRAD, READ_WRITE);
+  bwd.add_param_slot(SCALE);
+  bwd.add_param_grad_slot(SCALE_GRAD, READ_WRITE);
+  bwd.add_param_grad_slot(BIAS_GRAD, READ_WRITE);
+  bwd.add_output_grad_slot(OUTPUT_GRAD);
+
+  return bwd;
+}
+
+OpTaskBinding BatchNorm::get_init_task_binding() const {
+  OpTaskBinding binding;
+
+  binding.bind_arg(ATTRS, this->attrs);
+  binding.bind_arg(PROFILING, this->profiling);
+
+  // binding.bind(INPUT, input_tensor(0));
+  // binding.bind(SCALE, param_tensor(0));
+  // binding.bind(BIAS, param_tensor(1));
+  binding.bind(OUTPUT, output_tensor(0));
+
+  return binding;
+}
+
+OpTaskBinding BatchNorm::get_fwd_task_binding() const {
+  OpTaskBinding binding;
+
+  binding.bind_arg(ATTRS, this->attrs);
+
+  binding.bind(INPUT, input_tensor(0));
+  binding.bind(SCALE, param_tensor(0));
+  binding.bind(BIAS, param_tensor(1));
+  binding.bind(OUTPUT, output_tensor(0));
+
+  return binding;
+}
+
+OpTaskBinding BatchNorm::get_bwd_task_binding() const {
+  OpTaskBinding binding;
+
+  binding.bind_arg(ATTRS, this->attrs);
+
+  binding.bind(INPUT, input_tensor(0));
+  binding.bind(INPUT_GRAD, input_tensor(0).grad());
+  binding.bind(SCALE, param_tensor(0));
+  binding.bind(SCALE_GRAD, param_tensor(0).grad());
+  binding.bind(BIAS_GRAD, param_tensor(1).grad());
+  binding.bind(OUTPUT_GRAD, output_tensor(0).grad());
+
+  return binding;
+}
+
 void BatchNorm::init(FFModel const &ff) {
-  assert(check_output_input_weight_same_parallel_is());
-  parallel_is = outputs[0]->parallel_is;
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(BATCHNORM_INIT_TASK_ID,
-                         parallel_is,
-                         TaskArgument(this, sizeof(BatchNorm)),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
-  launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(weights[0]->region,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region));
-  launcher.add_field(2, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(weights[1]->region,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[1]->region));
-  launcher.add_field(3, FID_DATA);
-  FutureMap fm = runtime->execute_index_space(ctx, launcher);
-  fm.wait_all_results();
-  set_opmeta_from_futuremap(ff, fm);
+  this->execute_task(ff, BATCHNORM_INIT_TASK_ID, get_init_task_signature());
+  // assert(check_output_input_weight_same_parallel_is());
+  // parallel_is = outputs[0]->parallel_is;
+  // ArgumentMap argmap;
+  // Context ctx = ff.config.lg_ctx;
+  // Runtime *runtime = ff.config.lg_hlr;
+  // set_argumentmap_for_init(ff, argmap);
+  // IndexLauncher launcher(BATCHNORM_INIT_TASK_ID,
+  //                        parallel_is,
+  //                        TaskArgument(this, sizeof(BatchNorm)),
+  //                        argmap,
+  //                        Predicate::TRUE_PRED,
+  //                        false /*must*/,
+  //                        0 /*mapper_id*/,
+  //                        outputs[0]->machine_view.hash());
+  // launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   inputs[0]->region));
+  // launcher.add_field(0, FID_DATA);
+  // launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+  //                                                   0 /*projection id*/,
+  //                                                   WRITE_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   outputs[0]->region));
+  // launcher.add_field(1, FID_DATA);
+  // launcher.add_region_requirement(RegionRequirement(weights[0]->region,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   weights[0]->region));
+  // launcher.add_field(2, FID_DATA);
+  // launcher.add_region_requirement(RegionRequirement(weights[1]->region,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   weights[1]->region));
+  // launcher.add_field(3, FID_DATA);
+  // FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  // fm.wait_all_results();
+  // set_opmeta_from_futuremap(ff, fm);
 }
 
 /*
@@ -139,70 +236,65 @@ PerDeviceOpState * BatchNorm::init_task(Task const *task,
                          Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  BatchNorm const *bm = (BatchNorm *)task->args;
+  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
   FFHandler handle = *((FFHandler const *)task->local_args);
-  TensorAccessorR<float, 4> acc_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_output(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 1> acc_scale(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 1> acc_bias(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
-  int output_w = acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1;
-  int output_h = acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1;
-  int output_c = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
-  int output_n = acc_output.rect.hi[3] - acc_output.rect.lo[3] + 1;
+  auto output = acc.get_tensor<WRITE_ONLY>(OUTPUT);
+
+  int output_w = output.shape[0];
+  int output_h = output.shape[1];
+  int output_c = output.shape[2];
+  int output_n = output.shape[3];
 
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
                        .only_kind(Memory::GPU_FB_MEM)
                        .best_affinity_to(task->target_proc)
                        .first();
-  BatchNormMeta *m = new BatchNormMeta(
+  BatchNormPerDeviceState *m = new BatchNormPerDeviceState(
       handle, bm, gpu_mem, output_n, output_c, output_h, output_w);
   return m;
 }
 
 void BatchNorm::forward(FFModel const &ff) {
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(BATCHNORM_FWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_DISCARD,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
-  launcher.add_field(1, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(weights[0]->region,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region));
-  launcher.add_field(2, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(weights[1]->region,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[1]->region));
-  launcher.add_field(3, FID_DATA);
+  this->execute_task(ff, BATCHNORM_FWD_TASK_ID, get_fwd_task_signature());
+  // ArgumentMap argmap;
+  // Context ctx = ff.config.lg_ctx;
+  // Runtime *runtime = ff.config.lg_hlr;
+  // set_argumentmap_for_forward(ff, argmap);
+  // IndexLauncher launcher(BATCHNORM_FWD_TASK_ID,
+  //                        parallel_is,
+  //                        TaskArgument(NULL, 0),
+  //                        argmap,
+  //                        Predicate::TRUE_PRED,
+  //                        false /*must*/,
+  //                        0 /*mapper_id*/,
+  //                        outputs[0]->machine_view.hash());
+  // launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   inputs[0]->region));
+  // launcher.add_field(0, FID_DATA);
+  // launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+  //                                                   0 /*projection id*/,
+  //                                                   WRITE_DISCARD,
+  //                                                   EXCLUSIVE,
+  //                                                   outputs[0]->region));
+  // launcher.add_field(1, FID_DATA);
+  // launcher.add_region_requirement(RegionRequirement(weights[0]->region,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   weights[0]->region));
+  // launcher.add_field(2, FID_DATA);
+  // launcher.add_region_requirement(RegionRequirement(weights[1]->region,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   weights[1]->region));
+  // launcher.add_field(3, FID_DATA);
 
-  runtime->execute_index_space(ctx, launcher);
+  // runtime->execute_index_space(ctx, launcher);
 }
 
 /*
@@ -219,82 +311,85 @@ void
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
   // const BatchNorm* bm = (BatchNorm*) task->args;
-  BatchNormMeta *m = *((BatchNormMeta **)task->local_args);
-  TensorAccessorR<float, 4> acc_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_output(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 1> acc_scale(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorR<float, 1> acc_bias(
-      regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  BatchNormPerDeviceState *m = *((BatchNormPerDeviceState **)task->local_args);
+  
+  auto input = acc.get_tensor<READ_ONLY>(INPUT);
+  auto output = acc.get_tensor<WRITE_DISCARD>(OUTPUT);
+  auto scale = acc.get_tensor<READ_ONLY>(SCALE);
+  auto bias = acc.get_tensor<READ_ONLY>(SCALE);
 
-  forward_kernel_wrapper(m, acc_input.ptr, acc_output.ptr, acc_scale.ptr, acc_bias.ptr);
+  profile(
+    forward_kernel,
+    m->profiling,
+    "[BatchNorm] forward_time = %.2lfms\n",
+    m, input.get_float_ptr(), output.get_float_ptr(), scale.get_float_ptr(), bias.get_float_ptr());
 }
 
 void BatchNorm::backward(FFModel const &ff) {
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime *runtime = ff.config.lg_hlr;
-  set_argumentmap_for_backward(ff, argmap);
-  IndexLauncher launcher(BATCHNORM_BWD_TASK_ID,
-                         parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  // regions[0](I): input
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  // regions[1](I/O): input_grad (we only need grad tensors)
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
-  launcher.add_field(1, FID_DATA);
-  // regions[2](I): output
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
-  launcher.add_field(2, FID_DATA);
-  // regions[3](I/O): output_grad
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region_grad));
-  launcher.add_field(3, FID_DATA);
-  // regions[4](I): filter
-  launcher.add_region_requirement(RegionRequirement(weights[0]->region,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region));
-  launcher.add_field(4, FID_DATA);
-  // regions[5](I/O): filter_grad
-  launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region_grad));
-  launcher.add_field(5, FID_DATA);
-  // regions[6](I/O): bias_grad
-  launcher.add_region_requirement(RegionRequirement(weights[1]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    weights[1]->region_grad));
-  launcher.add_field(6, FID_DATA);
-  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  this->execute_task(ff, BATCHNORM_BWD_TASK_ID, get_bwd_task_signature());
+  // ArgumentMap argmap;
+  // Context ctx = ff.config.lg_ctx;
+  // Runtime *runtime = ff.config.lg_hlr;
+  // set_argumentmap_for_backward(ff, argmap);
+  // IndexLauncher launcher(BATCHNORM_BWD_TASK_ID,
+  //                        parallel_is,
+  //                        TaskArgument(NULL, 0),
+  //                        argmap,
+  //                        Predicate::TRUE_PRED,
+  //                        false /*must*/,
+  //                        0 /*mapper_id*/,
+  //                        outputs[0]->machine_view.hash());
+  // // regions[0](I): input
+  // launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   inputs[0]->region));
+  // launcher.add_field(0, FID_DATA);
+  // // regions[1](I/O): input_grad (we only need grad tensors)
+  // launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_WRITE,
+  //                                                   EXCLUSIVE,
+  //                                                   inputs[0]->region_grad));
+  // launcher.add_field(1, FID_DATA);
+  // // regions[2](I): output
+  // launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   outputs[0]->region));
+  // launcher.add_field(2, FID_DATA);
+  // // regions[3](I/O): output_grad
+  // launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_WRITE,
+  //                                                   EXCLUSIVE,
+  //                                                   outputs[0]->region_grad));
+  // launcher.add_field(3, FID_DATA);
+  // // regions[4](I): filter
+  // launcher.add_region_requirement(RegionRequirement(weights[0]->region,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   weights[0]->region));
+  // launcher.add_field(4, FID_DATA);
+  // // regions[5](I/O): filter_grad
+  // launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_WRITE,
+  //                                                   EXCLUSIVE,
+  //                                                   weights[0]->region_grad));
+  // launcher.add_field(5, FID_DATA);
+  // // regions[6](I/O): bias_grad
+  // launcher.add_region_requirement(RegionRequirement(weights[1]->part_grad,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_WRITE,
+  //                                                   EXCLUSIVE,
+  //                                                   weights[1]->region_grad));
+  // launcher.add_field(6, FID_DATA);
+  // FutureMap fm = runtime->execute_index_space(ctx, launcher);
 }
 
 /*
@@ -315,39 +410,30 @@ __host__ void
   assert(task->regions.size() == 7);
   // float beta = 0.0f;
   // const BatchNorm* bm = (BatchNorm*) task->args;
-  BatchNormMeta *m = *((BatchNormMeta **)task->local_args);
-  TensorAccessorR<float, 4> acc_input(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_input_grad(regions[1],
-                                           task->regions[1],
-                                           FID_DATA,
-                                           ctx,
-                                           runtime,
-                                           true /*readOutput*/);
-  TensorAccessorR<float, 4> acc_output(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 4> acc_output_grad(regions[3],
-                                            task->regions[3],
-                                            FID_DATA,
-                                            ctx,
-                                            runtime,
-                                            true /*readOutput*/);
-  TensorAccessorR<float, 1> acc_scale(
-      regions[4], task->regions[4], FID_DATA, ctx, runtime);
-  TensorAccessorW<float, 1> acc_scale_grad(regions[5],
-                                           task->regions[5],
-                                           FID_DATA,
-                                           ctx,
-                                           runtime,
-                                           true /*readOutput*/);
-  TensorAccessorW<float, 1> acc_bias_grad(regions[6],
-                                          task->regions[6],
-                                          FID_DATA,
-                                          ctx,
-                                          runtime,
-                                          true /*readOutput*/);
+  OpTaskArgumentAccessor acc(task, regions, ctx, runtime);
+  BatchNormPerDeviceState *m = *((BatchNormPerDeviceState **)task->local_args);
 
-  backward_kernel_wrapper(m, acc_input.ptr, acc_output_grad.ptr, acc_output.ptr, acc_input_grad.ptr, acc_scale.ptr, acc_scale_grad.ptr, acc_bias_grad.ptr, acc_output.rect.volume());
+  auto input = acc.get_tensor<READ_ONLY>(INPUT);
+  auto input_grad = acc.get_tensor_grad<READ_WRITE>(INPUT_GRAD);
+  auto output = acc.get_tensor<READ_ONLY>(OUTPUT);
+  auto output_grad = acc.get_tensor_grad<READ_WRITE>(OUTPUT_GRAD);
+  auto scale = acc.get_tensor<READ_ONLY>(SCALE);
+  auto scale_grad = acc.get_tensor_grad<READ_WRITE>(SCALE_GRAD);
+  auto bias_grad = acc.get_tensor_grad<READ_WRITE>(BIAS_GRAD);
+
+  profile(
+    backward_kernel,
+    m->profiling,
+    "[BatchNorm] backward_time = %.2lfms\n",
+    m, 
+    input.get_float_ptr(), 
+    output_grad.get_float_ptr(), 
+    output.get_float_ptr(), 
+    input_grad.get_float_ptr(), 
+    scale.get_float_ptr(), 
+    scale_grad.get_float_ptr(), 
+    bias_grad.get_float_ptr(), 
+    output.get_volume());
 }
 
 bool BatchNorm::measure_operator_cost(Simulator *sim,
@@ -365,7 +451,7 @@ bool BatchNorm::measure_operator_cost(Simulator *sim,
   int output_h = sub_output.dims[1].size;
   int output_c = sub_output.dims[2].size;
   int output_n = sub_output.dims[3].size;
-  BatchNormMeta *m = new BatchNormMeta(
+  BatchNormPerDeviceState *m = new BatchNormPerDeviceState(
       sim->handler, this, sim->memory, output_n, output_c, output_h, output_w);
 
   sim->free_all();
@@ -384,8 +470,8 @@ bool BatchNorm::measure_operator_cost(Simulator *sim,
   cost_metrics.weights_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   std::function<void()> forward, backward;
-  forward = [&] {
-    forward_kernel_wrapper(m, input_ptr, output_ptr, scale_ptr, bias_ptr);
+  forward = [&](ffStream_t stream) {
+    forward_kernel(stream, m, input_ptr, output_ptr, scale_ptr, bias_ptr);
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr =
@@ -406,8 +492,8 @@ bool BatchNorm::measure_operator_cost(Simulator *sim,
     cost_metrics.weights_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
 
-    backward = [&] {
-      backward_kernel_wrapper(m,
+    backward = [&](ffStream_t stream) {
+      backward_kernel(stream, m,
                       input_ptr,
                       output_grad_ptr,
                       output_ptr,

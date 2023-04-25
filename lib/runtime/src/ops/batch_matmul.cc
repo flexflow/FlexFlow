@@ -46,7 +46,9 @@ enum Slots {
   OUTPUT,
   A_INPUT_GRAD,
   B_INPUT_GRAD,
-  OUTPUT_GRAD
+  OUTPUT_GRAD,
+  ATTRS,
+  PROFILING
 }
 
 
