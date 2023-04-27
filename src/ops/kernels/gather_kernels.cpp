@@ -41,15 +41,19 @@ void forward_kernel_wrapper(GatherMeta const *m,
   for (int i = 0; i < m->legion_dim; i++) {
     stride *= (output.domain.hi()[i] - output.domain.lo()[i] + 1);
   }
-  coord_t dim_size =
+  coord_t input_dim_size =
+      input.domain.hi()[m->legion_dim] - input.domain.lo()[m->legion_dim] + 1;
+  coord_t output_dim_size =
       output.domain.hi()[m->legion_dim] - output.domain.lo()[m->legion_dim] + 1;
+
   if (index.data_type == DT_INT32) {
     Internal::forward_kernel(input.get_float_ptr(),
                              index.get_int32_ptr(),
                              output.get_float_ptr(),
                              output.domain.get_volume(),
                              stride,
-                             dim_size,
+                             input_dim_size,
+                             output_dim_size,
                              stream);
   } else {
     assert(index.data_type == DT_INT64);
@@ -58,7 +62,8 @@ void forward_kernel_wrapper(GatherMeta const *m,
                              output.get_float_ptr(),
                              output.domain.get_volume(),
                              stride,
-                             dim_size,
+                             input_dim_size,
+                             output_dim_size,
                              stream);
   }
 }
@@ -73,15 +78,19 @@ void backward_kernel_wrapper(GatherMeta const *m,
   for (int i = 0; i < m->legion_dim; i++) {
     stride *= (output_grad.domain.hi()[i] - output_grad.domain.lo()[i] + 1);
   }
-  coord_t dim_size = output_grad.domain.hi()[m->legion_dim] -
-                     output_grad.domain.lo()[m->legion_dim] + 1;
+  coord_t input_dim_size = input_grad.domain.hi()[m->legion_dim] -
+                           input_grad.domain.lo()[m->legion_dim] + 1;
+  coord_t output_dim_size = output_grad.domain.hi()[m->legion_dim] -
+                            output_grad.domain.lo()[m->legion_dim] + 1;
+
   if (index.data_type == DT_INT32) {
     Internal::backward_kernel(output_grad.get_float_ptr(),
                               index.get_int32_ptr(),
                               input_grad.get_float_ptr(),
                               output_grad.domain.get_volume(),
                               stride,
-                              dim_size,
+                              input_dim_size,
+                              output_dim_size,
                               stream);
   } else {
     assert(index.data_type == DT_INT64);
@@ -90,7 +99,8 @@ void backward_kernel_wrapper(GatherMeta const *m,
                               input_grad.get_float_ptr(),
                               output_grad.domain.get_volume(),
                               stride,
-                              dim_size,
+                              input_dim_size,
+                              output_dim_size,
                               stream);
   }
 }
@@ -103,7 +113,8 @@ void forward_kernel(float const *input_ptr,
                     float *output_ptr,
                     coord_t output_size,
                     coord_t stride,
-                    coord_t dim_size,
+                    coord_t input_dim_size,
+                    coord_t output_dim_size,
                     hipStream_t stream) {
   assert(input_ptr != nullptr);
   assert(index_ptr != nullptr);
@@ -117,7 +128,8 @@ void backward_kernel(float const *output_grad_ptr,
                      float *input_grad_ptr,
                      coord_t output_size,
                      coord_t stride,
-                     coord_t dim_size,
+                     coord_t input_dim_size,
+                     coord_t output_dim_size,
                      hipStream_t stream) {
   assert(output_grad_ptr != nullptr);
   assert(input_grad_ptr != nullptr);
